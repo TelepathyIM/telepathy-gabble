@@ -43,115 +43,6 @@ static gboolean
 update_activities_properties (GabbleConnection *conn, const gchar *contact,
     LmMessage *msg);
 
-typedef struct
-{
-  TpHandle handle;
-  GHashTable *properties;
-  gchar *id;
-
-  GabbleConnection *conn;
-  TpHandleRepoIface *room_repo;
-  guint refcount;
-} ActivityInfo;
-
-static const gchar*
-activity_info_get_room (ActivityInfo *info)
-{
-  return tp_handle_inspect (info->room_repo, info->handle);
-}
-
-static ActivityInfo*
-activity_info_new (GabbleConnection *conn,
-                   TpHandle handle)
-{
-  ActivityInfo *info;
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
-
-  g_assert (tp_handle_is_valid (room_repo, handle, NULL));
-
-  info = g_slice_new0 (ActivityInfo);
-
-  info->handle = handle;
-  tp_handle_ref (room_repo, handle);
-  info->properties = NULL;
-  info->id = NULL;
-
-  info->conn = conn;
-  info->room_repo = room_repo;
-  info->refcount = 1;
-
-  DEBUG ("%s (%d)\n", activity_info_get_room (info), info->handle);
-
-  return info;
-}
-
-static void
-activity_info_free (ActivityInfo *info)
-{
-  if (info->properties != NULL)
-    {
-      g_hash_table_destroy (info->properties);
-    }
-  g_free (info->id);
-
-  tp_handle_unref (info->room_repo, info->handle);
-
-  g_slice_free (ActivityInfo, info);
-}
-
-static void
-activity_info_set_properties (ActivityInfo *info,
-                              GHashTable *properties)
-{
-  if (info->properties != NULL)
-    {
-      g_hash_table_destroy (info->properties);
-    }
-
-  info->properties = properties;
-}
-
-static void
-activity_info_unref (ActivityInfo *info)
-{
-  info->refcount--;
-
-  DEBUG ("unref: %s (%d) refcount: %d\n",
-      activity_info_get_room (info), info->handle,
-      info->refcount);
-
-  if (info->refcount == 0)
-    {
-      g_hash_table_remove (info->conn->olpc_activities_info,
-          GUINT_TO_POINTER (info->handle));
-    }
-}
-
-static gboolean
-activity_info_is_visible (ActivityInfo *info)
-{
-  GValue *gv;
-
-  /* false if incomplete */
-  if (info->id == NULL || info->properties == NULL)
-    return FALSE;
-
-  gv = g_hash_table_lookup (info->properties, "private");
-
-  if (gv == NULL)
-    {
-      return FALSE;
-    }
-
-  /* if they put something non-boolean in it, err on the side of privacy */
-  if (!G_VALUE_HOLDS_BOOLEAN (gv))
-    return FALSE;
-
-  /* if they specified a privacy level, go with it */
-  return !g_value_get_boolean (gv);
-}
-
 /* Returns TRUE if it actually contributed something, else FALSE.
  */
 static gboolean
@@ -772,7 +663,25 @@ get_activity_properties_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static ActivityInfo*
+static gboolean
+remove_activity (gpointer key,
+                 gpointer value,
+                 gpointer activity)
+{
+  return activity == value;
+}
+
+static void
+activity_disposed_cb (gpointer _conn,
+                      GObject *activity)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (_conn);
+
+  g_hash_table_foreach_remove (conn->olpc_activities_info,
+      remove_activity, activity);
+}
+
+static GabbleOlpcActivity *
 add_activity_info (GabbleConnection *conn,
                    TpHandle handle)
 {
@@ -1410,7 +1319,7 @@ olpc_buddy_info_activities_event_handler (GabbleConnection *conn,
   return TRUE;
 }
 
-static ActivityInfo*
+static GabbleOlpcActivity *
 add_activity_info_in_set (GabbleConnection *conn,
                           TpHandle room_handle,
                           const gchar *from,
@@ -1717,9 +1626,10 @@ olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
                                                 LmMessage *msg,
                                                 TpHandle handle)
 {
-  guint room_handle;
-  const gchar *activity;
   TpBaseConnection *base = (TpBaseConnection*) conn;
+  LmMessageNode *node;
+  const gchar *from;
+  GabbleOlpcActivity *activity;
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
@@ -2273,7 +2183,8 @@ olpc_activities_properties_event_handler (GabbleConnection *conn,
                                           LmMessage *msg,
                                           TpHandle handle)
 {
-  TpBaseConnection *base = (TpBaseConnection*) conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  const gchar *from;
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */

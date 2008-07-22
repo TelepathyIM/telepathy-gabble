@@ -69,6 +69,7 @@ enum
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
   PROP_TARGET_ID,
+  PROP_REQUESTED,
   PROP_INITIATOR_HANDLE,
   PROP_INITIATOR_ID,
   PROP_CONNECTION,
@@ -182,6 +183,9 @@ gabble_roomlist_channel_get_property (GObject    *object,
               tp_handle_inspect (repo, conn->self_handle));
         }
       break;
+    case PROP_REQUESTED:
+      g_value_set_boolean (value, TRUE);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -259,6 +263,7 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl future_props[] = {
+      { "Requested", "requested", NULL },
       { "TargetID", "target-id", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
@@ -327,6 +332,13 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
+
+  param_spec = g_param_spec_boolean ("requested", "Requested?",
+      "True if this channel was requested by the local user",
+      FALSE,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this room list channel object.",

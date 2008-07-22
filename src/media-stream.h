@@ -41,6 +41,7 @@ typedef guint32 CombinedStreamDirection;
 
 typedef struct _GabbleMediaStream GabbleMediaStream;
 typedef struct _GabbleMediaStreamClass GabbleMediaStreamClass;
+typedef struct _GabbleMediaStreamPrivate GabbleMediaStreamPrivate;
 
 struct _GabbleMediaStreamClass {
     GObjectClass parent_class;
@@ -59,7 +60,7 @@ struct _GabbleMediaStream {
     gboolean got_local_codecs;
     gboolean playing;
 
-    gpointer priv;
+    GabbleMediaStreamPrivate *priv;
 };
 
 GType gabble_media_stream_get_type (void);

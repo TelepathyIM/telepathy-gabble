@@ -92,7 +92,6 @@ enum
 };
 
 /* private structure */
-typedef struct _GabbleMediaStreamPrivate GabbleMediaStreamPrivate;
 
 struct _GabbleMediaStreamPrivate
 {
@@ -119,8 +118,7 @@ struct _GabbleMediaStreamPrivate
   gboolean local_hold:1;
 };
 
-#define GABBLE_MEDIA_STREAM_GET_PRIVATE(obj) \
-    ((GabbleMediaStreamPrivate *) obj->priv)
+#define GABBLE_MEDIA_STREAM_GET_PRIVATE(obj) ((obj)->priv)
 
 #ifdef ENABLE_DEBUG
 #if _GMS_DEBUG_LEVEL > 1

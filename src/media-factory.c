@@ -199,7 +199,7 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 static gboolean _gabble_media_factory_sid_in_use (GabbleMediaFactory *fac,
     const gchar *sid);
 static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac,
-    TpHandle handle);
+    TpHandle creator);
 static void media_channel_closed_cb (GabbleMediaChannel *chan,
     gpointer user_data);
 
@@ -471,7 +471,8 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
  * Creates a new empty GabbleMediaChannel.
  */
 static GabbleMediaChannel *
-new_media_channel (GabbleMediaFactory *fac, TpHandle creator)
+new_media_channel (GabbleMediaFactory *fac,
+                   TpHandle creator)
 {
   GabbleMediaFactoryPrivate *priv;
   TpBaseConnection *conn;

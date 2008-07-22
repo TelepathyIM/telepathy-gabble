@@ -28,6 +28,7 @@
 
 G_BEGIN_DECLS
 
+typedef struct _GabbleRequestPipelinePrivate GabbleRequestPipelinePrivate;
 typedef struct _GabbleRequestPipelineClass GabbleRequestPipelineClass;
 typedef struct _GabbleRequestPipelineItem GabbleRequestPipelineItem;
 typedef void (*GabbleRequestPipelineCb) (GabbleConnection *conn,
@@ -72,7 +73,7 @@ struct _GabbleRequestPipelineClass {
 
 struct _GabbleRequestPipeline {
     GObject parent;
-    gpointer priv;
+    GabbleRequestPipelinePrivate *priv;
 };
 
 GabbleRequestPipeline *gabble_request_pipeline_new (GabbleConnection *conn);

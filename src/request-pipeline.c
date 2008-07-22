@@ -53,7 +53,6 @@ struct _GabbleRequestPipelineItem
   gpointer user_data;
 };
 
-typedef struct _GabbleRequestPipelinePrivate GabbleRequestPipelinePrivate;
 struct _GabbleRequestPipelinePrivate
 {
   GabbleConnection *connection;
@@ -72,8 +71,7 @@ gabble_request_pipeline_error_quark (void)
   return quark;
 }
 
-#define GABBLE_REQUEST_PIPELINE_GET_PRIVATE(o) \
-  ((GabbleRequestPipelinePrivate *) ((o)->priv))
+#define GABBLE_REQUEST_PIPELINE_GET_PRIVATE(o) ((o)->priv)
 
 static void
 gabble_request_pipeline_init (GabbleRequestPipeline *obj)

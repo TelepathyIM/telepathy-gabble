@@ -80,7 +80,6 @@ enum
 };
 
 /* private structure */
-typedef struct _GabbleIMChannelPrivate GabbleIMChannelPrivate;
 
 struct _GabbleIMChannelPrivate
 {
@@ -95,8 +94,7 @@ struct _GabbleIMChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_IM_CHANNEL_GET_PRIVATE(obj) \
-    ((GabbleIMChannelPrivate *) obj->priv)
+#define GABBLE_IM_CHANNEL_GET_PRIVATE(obj) ((obj)->priv)
 
 static void
 gabble_im_channel_init (GabbleIMChannel *self)

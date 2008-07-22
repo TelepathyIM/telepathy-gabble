@@ -125,8 +125,8 @@ gabble_im_channel_constructor (GType type, guint n_props,
 
   tp_handle_ref (contact_handles, priv->handle);
 
-  if (priv->initiator != 0)
-    tp_handle_ref (contact_handles, priv->initiator);
+  g_assert (priv->initiator != 0);
+  tp_handle_ref (contact_handles, priv->initiator);
 
   priv->peer_jid = g_strdup (tp_handle_inspect (contact_handles,
         priv->handle));
@@ -182,6 +182,7 @@ gabble_im_channel_get_property (GObject    *object,
           TpHandleRepoIface *repo = tp_base_connection_get_handles (
               (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
+          g_assert (priv->initiator != 0);
           g_value_set_string (value,
               tp_handle_inspect (repo, priv->initiator));
         }
@@ -229,6 +230,7 @@ gabble_im_channel_set_property (GObject     *object,
     case PROP_INITIATOR_HANDLE:
       /* similarly we can't ref this yet */
       priv->initiator = g_value_get_uint (value);
+      g_assert (priv->initiator != 0);
       break;
     case PROP_HANDLE_TYPE:
     case PROP_CHANNEL_TYPE:

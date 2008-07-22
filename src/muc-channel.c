@@ -197,8 +197,6 @@ const TpPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
 
 /* private structures */
 
-typedef struct _GabbleMucChannelPrivate GabbleMucChannelPrivate;
-
 typedef struct {
     TpHandleSet *members;
     TpHandleSet *owners;

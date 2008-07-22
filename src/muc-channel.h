@@ -42,6 +42,7 @@ typedef enum {
 } GabbleMucState;
 
 typedef struct _GabbleMucChannelClass GabbleMucChannelClass;
+typedef struct _GabbleMucChannelPrivate GabbleMucChannelPrivate;
 
 struct _GabbleMucChannelClass {
     GObjectClass parent_class;
@@ -59,7 +60,7 @@ struct _GabbleMucChannel {
     TpPropertiesMixin properties;
     GabbleTextMixin text;
 
-    gpointer priv;
+    GabbleMucChannelPrivate *priv;
 };
 
 GType gabble_muc_channel_get_type (void);

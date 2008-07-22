@@ -44,10 +44,7 @@ def test(q, bus, conn, stream):
 
     acknowledge_iq(stream, event.stanza)
 
-    while 1:
-        event = q.expect('stream-presence')
-        if event.stanza['type'] == 'subscribe':
-            break
+    event = q.expect('stream-presence', presence_type='subscribe')
 
     presence = domish.Element(('jabber:client', 'presence'))
     presence['from'] = 'bob@foo.com'

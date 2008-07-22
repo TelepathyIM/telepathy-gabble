@@ -94,7 +94,7 @@ def expect_members_changed2(event, data):
 def expect_request_channel_return(event, data):
     bus = data['conn']._bus
     data['text_chan'] = bus.get_object(
-        data['conn']._named_service, event.value[0])
+        data['conn'].bus_name, event.value[0])
 
     props_iface = dbus.Interface(data['text_chan'],
         'org.freedesktop.Telepathy.Properties')

@@ -67,7 +67,6 @@ enum
 };
 
 /* private structure */
-typedef struct _GabbleRosterChannelPrivate GabbleRosterChannelPrivate;
 
 struct _GabbleRosterChannelPrivate
 {
@@ -80,8 +79,7 @@ struct _GabbleRosterChannelPrivate
   gboolean closed;
 };
 
-#define GABBLE_ROSTER_CHANNEL_GET_PRIVATE(obj) \
-    ((GabbleRosterChannelPrivate *) obj->priv)
+#define GABBLE_ROSTER_CHANNEL_GET_PRIVATE(obj) ((obj)->priv)
 
 static void
 gabble_roster_channel_init (GabbleRosterChannel *self)

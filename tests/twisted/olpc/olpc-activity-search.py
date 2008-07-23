@@ -89,6 +89,10 @@ def test(q, bus, conn, stream):
             interface='org.laptop.Telepathy.View',
             args=[[('activity1', handles['room1'])], []])
 
+    # participants are added to view
+    q.expect('dbus-signal', signal='BuddiesChanged',
+            args=[[handles['lucien'], handles['jean']], []])
+
     # participants are added to activity
     q.expect_many(
         EventPattern('dbus-signal', signal='ActivitiesChanged',
@@ -97,10 +101,6 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='ActivitiesChanged',
             interface='org.laptop.Telepathy.BuddyInfo',
             args=[handles['jean'], [('activity1', handles['room1'])]]))
-
-    # participants are added to view
-    q.expect('dbus-signal', signal='BuddiesChanged',
-            args=[[handles['lucien'], handles['jean']], []])
 
     # check activities and buddies in view
     check_view(view0_iface, conn, [('activity1', handles['room1'])],
@@ -262,6 +262,10 @@ def test(q, bus, conn, stream):
     assert sorted(conn.InspectHandles(2, [handles['room4']])) == \
             ['room4@conference.localhost']
 
+    # buddies are added to view
+    q.expect('dbus-signal', signal='BuddiesChanged',
+            args=[[handles['fernand'], handles['jean']], []])
+
     # buddies are added to activity
     q.expect_many(
         EventPattern('dbus-signal', signal='ActivitiesChanged',
@@ -271,9 +275,6 @@ def test(q, bus, conn, stream):
             interface='org.laptop.Telepathy.BuddyInfo',
             args=[handles['jean'], [('activity1', handles['room1']),
                 ('activity4', handles['room4'])]]))
-
-    q.expect('dbus-signal', signal='BuddiesChanged',
-            args=[[handles['fernand'], handles['jean']], []])
 
     # check activities and buddies in view
     check_view(view0_iface, conn, [

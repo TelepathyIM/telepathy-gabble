@@ -482,6 +482,7 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
   guint i;
   GArray *empty;
   TpHandleRepoIface *room_repo;
+  GArray *buddies_changed;
 
   room_repo = tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
       TP_HANDLE_TYPE_ROOM);
@@ -489,6 +490,7 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
   g_assert (buddies->len == buddies_properties->len);
 
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+  buddies_changed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
   /* store properties */
   for (i = 0; i < buddies->len; i++)
@@ -524,14 +526,26 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
             {
               tp_handle_set_add (set, room);
 
-              g_signal_emit (G_OBJECT (self),
-                  signals[BUDDY_ACTIVITIES_CHANGED], 0, handle);
+              /* We fire BuddyInfo.ActivitiesChanged signal after
+               * View.BuddiesChanged so client knows where these buddies
+               * come from */
+              g_array_append_val (buddies_changed, handle);
             }
         }
     }
 
   gabble_svc_olpc_view_emit_buddies_changed (self, buddies, empty);
 
+  for (i = 0; i < buddies_changed->len; i++)
+    {
+      TpHandle handle;
+
+      handle = g_array_index (buddies_changed, TpHandle, i);
+      g_signal_emit (G_OBJECT (self),
+          signals[BUDDY_ACTIVITIES_CHANGED], 0, handle);
+    }
+
+  g_array_free (buddies_changed, TRUE);
   g_array_free (empty, TRUE);
 }
 

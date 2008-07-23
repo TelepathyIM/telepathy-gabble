@@ -3,78 +3,58 @@
 Test GetAvatarTokens() and GetKnownAvatarTokens().
 """
 
-import dbus
-
-from servicetest import tp_name_prefix, lazy, match, unwrap
-from gabbletest import go
 from twisted.words.xish import domish
-import time
 
-@lazy
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
-    return True
-
-def avatars_iface(proxy):
-    return dbus.Interface(proxy, tp_name_prefix +
-        '.Connection.Interface.Avatars')
+from servicetest import unwrap, EventPattern
+from gabbletest import exec_test, make_result_iq
 
 def make_presence(jid, sha1sum):
     p = domish.Element((None, 'presence'))
     p['from'] = jid
     p['to'] = 'test@localhost/Resource'
-    x = domish.Element(('vcard-temp:x:update', 'x'))
-    p.addChild(x)
+    x = p.addElement(('vcard-temp:x:update', 'x'))
     x.addElement('photo', content=sha1sum)
     return p
 
-@match('stream-iq', query_ns='jabber:iq:roster')
-def expect_roster_iq(event, data):
-    event.stanza['type'] = 'result'
-    item = event.query.addElement('item')
+def test(q, bus, conn, stream):
+    conn.Connect()
+    _, event = q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('stream-iq', to=None, query_ns='jabber:iq:roster',
+            query_name='query'))
+
+    result = make_result_iq(stream, event.stanza)
+    item = result.addElement('item')
     item['jid'] = 'amy@foo.com'
     item['subscription'] = 'both'
 
-    item = event.query.addElement('item')
+    item = result.addElement('item')
     item['jid'] = 'bob@foo.com'
     item['subscription'] = 'both'
 
-    item = event.query.addElement('item')
+    item = result.addElement('item')
     item['jid'] = 'che@foo.com'
     item['subscription'] = 'both'
+    stream.send(result)
 
-    data['stream'].send(event.stanza)
+    stream.send(make_presence('amy@foo.com', 'SHA1SUM-FOR-AMY'))
+    stream.send(make_presence('bob@foo.com', 'SHA1SUM-FOR-BOB'))
+    stream.send(make_presence('che@foo.com', None))
 
-    data['stream'].send(make_presence('amy@foo.com', 'SHA1SUM-FOR-AMY'))
-    data['stream'].send(make_presence('bob@foo.com', 'SHA1SUM-FOR-BOB'))
-    data['stream'].send(make_presence('che@foo.com', None))
-
-    return True
-
-@match('dbus-signal', signal='AvatarUpdated')
-def expect_avatar_updated(event, data):
-    handles = data['conn_iface'].RequestHandles(1, [
+    q.expect('dbus-signal', signal='AvatarUpdated')
+    handles = conn.RequestHandles(1, [
         'amy@foo.com', 'bob@foo.com', 'che@foo.com', 'daf@foo.com' ])
 
-    data['avatars_iface'] = avatars_iface(data['conn'])
-    tokens = unwrap(data['avatars_iface'].GetAvatarTokens(handles))
-
+    tokens = unwrap(conn.Avatars.GetAvatarTokens(handles))
     assert tokens == ['SHA1SUM-FOR-AMY', 'SHA1SUM-FOR-BOB', '', '']
 
-    tokens = unwrap(data['avatars_iface'].GetKnownAvatarTokens(handles))
-    tokens = list(tokens.items())
-    tokens.sort()
+    tokens = unwrap(conn.Avatars.GetKnownAvatarTokens(handles))
+    tokens = sorted(tokens.items())
     assert tokens == [(2, 'SHA1SUM-FOR-AMY'), (3, 'SHA1SUM-FOR-BOB'), (4, u'')]
 
-    data['conn_iface'].Disconnect()
-    return True
-
-
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
-
+    exec_test(test)
 

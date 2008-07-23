@@ -742,7 +742,14 @@ gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
           GUINT_TO_POINTER (room));
       if (activity == NULL)
         {
-          /* FIXME: When this could happen ? */
+          /* This shouldn't happen as long as:
+           *
+           * - Gadget doesn't send us <joined> stanzas about an activity
+           *   which was not previsouly announced as being part of the view.
+           *
+           * - We don't call gabble_olpc_view_add_buddies with an activity
+           *   which was not previoulsy added to the view.
+           */
           DEBUG ("Buddy %d is supposed to be in activity %d but view doesn't"
               " contain its info", buddy, room);
           continue;

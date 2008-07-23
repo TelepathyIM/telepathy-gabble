@@ -85,13 +85,22 @@ def test(q, bus, conn, stream):
             'room1@conference.localhost'
     assert props == {'color': '#005FE4,#00A0FF'}
 
-    # participants are added to view
-    q.expect('dbus-signal', signal='BuddiesChanged',
-            args=[[handles['lucien'], handles['jean']], []])
-
     q.expect('dbus-signal', signal='ActivitiesChanged',
             interface='org.laptop.Telepathy.View',
             args=[[('activity1', handles['room1'])], []])
+
+    # participants are added to activity
+    q.expect_many(
+        EventPattern('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.BuddyInfo',
+            args=[handles['lucien'], [('activity1', handles['room1'])]]),
+        EventPattern('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.BuddyInfo',
+            args=[handles['jean'], [('activity1', handles['room1'])]]))
+
+    # participants are added to view
+    q.expect('dbus-signal', signal='BuddiesChanged',
+            args=[[handles['lucien'], handles['jean']], []])
 
     # check activities and buddies in view
     check_view(view0_iface, conn, [('activity1', handles['room1'])],
@@ -243,10 +252,7 @@ def test(q, bus, conn, stream):
 
     handles['fernand'] = conn.RequestHandles(1, ['fernand@localhost',])[0]
 
-    q.expect('dbus-signal', signal='BuddiesChanged',
-            args=[[handles['fernand'], handles['jean']], []])
-
-    # activity is added too
+    # activity is added
     event = q.expect('dbus-signal', signal='ActivitiesChanged',
             interface='org.laptop.Telepathy.View')
     added, removed = event.args
@@ -256,10 +262,27 @@ def test(q, bus, conn, stream):
     assert sorted(conn.InspectHandles(2, [handles['room4']])) == \
             ['room4@conference.localhost']
 
+    # buddies are added to activity
+    q.expect_many(
+        EventPattern('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.BuddyInfo',
+            args=[handles['fernand'], [('activity4', handles['room4'])]]),
+        EventPattern('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.BuddyInfo',
+            args=[handles['jean'], [('activity1', handles['room1']),
+                ('activity4', handles['room4'])]]))
+
+    q.expect('dbus-signal', signal='BuddiesChanged',
+            args=[[handles['fernand'], handles['jean']], []])
+
     # check activities and buddies in view
     check_view(view0_iface, conn, [
         ('activity1', handles['room1']), ('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
+
+    # check activity's properties
+    props = activity_prop_iface.GetProperties(handles['room4'])
+    assert props == {'color': '#DDEEDD,#EEDDEE'}
 
     # Gadget informs us about an activity properties change
     message = domish.Element(('jabber:client', 'message'))

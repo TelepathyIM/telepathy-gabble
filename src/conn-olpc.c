@@ -3093,9 +3093,19 @@ add_activities_to_view_from_node (GabbleConnection *conn,
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   GHashTable *activities;
   LmMessageNode *activity_node;
+  GPtrArray *buddies_to_add;
+  struct buddies_to_add_t
+    {
+      GArray *buddies;
+      GPtrArray *buddies_properties;
+      TpHandle room;
+    };
+  guint i;
 
   activities = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       g_object_unref );
+
+  buddies_to_add = g_ptr_array_new ();
 
   for (activity_node = node->children; activity_node != NULL;
       activity_node = activity_node->next)
@@ -3107,6 +3117,7 @@ add_activities_to_view_from_node (GabbleConnection *conn,
       GabbleOlpcActivity *activity;
       GArray *buddies;
       GPtrArray *buddies_properties;
+      struct buddies_to_add_t *tmp;
 
       jid = lm_message_node_get_attribute (activity_node, "room");
       if (jid == NULL)
@@ -3173,14 +3184,34 @@ add_activities_to_view_from_node (GabbleConnection *conn,
           continue;
         }
 
-      gabble_olpc_view_add_buddies (view, buddies, buddies_properties, handle);
+      /* We have to wait that activities were added to the view before
+       * adding participants */
+      tmp = g_slice_new (struct buddies_to_add_t);
+      tmp->buddies = buddies;
+      tmp->buddies_properties = buddies_properties;
+      tmp->room = handle;
 
-      g_array_free (buddies, TRUE);
-      g_ptr_array_free (buddies_properties, TRUE);
+      g_ptr_array_add (buddies_to_add, tmp);
     }
 
   gabble_olpc_view_add_activities (view, activities);
 
+  /* Add participants to the view */
+  for (i = 0; i < buddies_to_add->len; i++)
+    {
+      struct buddies_to_add_t *tmp;
+
+      tmp = g_ptr_array_index (buddies_to_add, i);
+
+      gabble_olpc_view_add_buddies (view, tmp->buddies,
+          tmp->buddies_properties, tmp->room);
+
+      g_array_free (tmp->buddies, TRUE);
+      g_ptr_array_free (tmp->buddies_properties, TRUE);
+      g_slice_free (struct buddies_to_add_t, tmp);
+    }
+
+  g_ptr_array_free (buddies_to_add, TRUE);
   g_hash_table_destroy (activities);
 
   return TRUE;

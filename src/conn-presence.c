@@ -315,7 +315,8 @@ conn_presence_class_init (GabbleConnectionClass *klass)
       status_available_cb, construct_contact_statuses_cb,
       set_own_status_cb, gabble_statuses);
 
-  tp_presence_mixin_simple_init_dbus_properties ((GObjectClass *) klass);
+  tp_presence_mixin_simple_presence_init_dbus_properties (
+    (GObjectClass *) klass);
 }
 
 

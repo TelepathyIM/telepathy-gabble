@@ -77,6 +77,7 @@ enum
   PROP_REQUESTED,
   PROP_CONNECTION,
   PROP_INTERFACES,
+  PROP_WILL_RETURN,
   LAST_PROPERTY
 };
 
@@ -153,6 +154,30 @@ gabble_im_channel_constructor (GType type, guint n_props,
   return obj;
 }
 
+
+/* FIXME: this is a hack - we should add API for this to TpTextMixin */
+static gboolean
+gabble_im_channel_has_pending (GabbleIMChannel *self)
+{
+  GPtrArray *dummy = NULL;
+  gboolean ret;
+  guint i;
+
+  tp_text_mixin_list_pending_messages ((GObject *) self, FALSE,
+      &dummy, NULL);
+
+  g_assert (dummy != NULL);
+  ret = (dummy->len > 0);
+
+  for (i = 0; i < dummy->len; i++)
+    g_value_array_free (g_ptr_array_index (dummy, i));
+
+  g_ptr_array_free (dummy, TRUE);
+
+  return ret;
+}
+
+
 static void
 gabble_im_channel_get_property (GObject    *object,
                                 guint       property_id,
@@ -205,6 +230,9 @@ gabble_im_channel_get_property (GObject    *object,
       break;
     case PROP_INTERFACES:
       g_value_set_boxed (value, gabble_im_channel_interfaces);
+      break;
+    case PROP_WILL_RETURN:
+      g_value_set_boolean (value, gabble_im_channel_has_pending (chan));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -349,6 +377,14 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
+
+  param_spec = g_param_spec_boolean ("will-return", "Will return?",
+      "True if this channel has pending messages, and so will reopen when "
+      "closed",
+      FALSE,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_WILL_RETURN, param_spec);
 
   tp_text_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
@@ -515,6 +551,29 @@ gabble_im_channel_close (TpSvcChannel *iface,
 
   if (!priv->closed)
     {
+      /* The IM factory will resurrect the channel if we have pending
+       * messages. When we're resurrected, we want the initiator
+       * to be the contact who sent us those messages, if it isn't already */
+      if (gabble_im_channel_has_pending (self))
+        {
+          if (priv->initiator != priv->handle)
+            {
+              TpHandleRepoIface *contact_repo = tp_base_connection_get_handles
+                  ((TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+              g_assert (priv->initiator != 0);
+              g_assert (priv->handle != 0);
+
+              tp_handle_unref (contact_repo, priv->initiator);
+              priv->initiator = priv->handle;
+              tp_handle_ref (contact_repo, priv->initiator);
+            }
+        }
+      else
+        {
+          priv->closed = TRUE;
+        }
+
       tp_svc_channel_emit_closed (self);
 
       if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
@@ -526,8 +585,6 @@ gabble_im_channel_close (TpSvcChannel *iface,
               TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL, priv->conn,
               FALSE /* emit_signal */, NULL);
         }
-
-      priv->closed = TRUE;
     }
 
   tp_svc_channel_return_from_close (context);

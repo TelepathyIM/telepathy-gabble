@@ -289,22 +289,38 @@ im_factory_message_cb (LmMessageHandler *handler,
  * im_channel_closed_cb:
  *
  * Signal callback for when an IM channel is closed. Removes the references
- * that #GabbleConnection holds to them.
+ * that #GabbleConnection holds to them - unless the channel has pending
+ * messages, in which case it is re-announced (so from the perspective of the
+ * D-Bus API, it was replaced by an identical channel).
  */
 static void
 im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 {
-  GabbleImFactory *conn = GABBLE_IM_FACTORY (user_data);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (conn);
+  GabbleImFactory *self = GABBLE_IM_FACTORY (user_data);
+  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (self);
   TpHandle contact_handle;
+  gboolean will_return;
 
   if (priv->channels)
     {
-      g_object_get (chan, "handle", &contact_handle, NULL);
+      g_object_get (chan,
+          "handle", &contact_handle,
+          "will-return", &will_return,
+          NULL);
 
-      DEBUG ("removing channel with handle %d", contact_handle);
-
-      g_hash_table_remove (priv->channels, GINT_TO_POINTER (contact_handle));
+      if (will_return)
+        {
+          DEBUG ("reopening channel with handle %u due to pending messages",
+              contact_handle);
+          tp_channel_factory_iface_emit_new_channel (self,
+              (TpChannelIface *) chan, NULL);
+        }
+      else
+        {
+          DEBUG ("removing channel with handle %u", contact_handle);
+          g_hash_table_remove (priv->channels,
+              GUINT_TO_POINTER (contact_handle));
+        }
     }
 }
 

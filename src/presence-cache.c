@@ -31,6 +31,7 @@
 #define CAPABILITY_BUNDLE_ENOUGH_TRUST 5
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
+#include <dbus/dbus-glib.h>
 #include <telepathy-glib/intset.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE

@@ -1159,7 +1159,7 @@ _parse_presence_message (GabblePresenceCache *cache,
       break;
 
     case LM_MESSAGE_SUB_TYPE_ERROR:
-      NODE_DEBUG (presence_node, "setting contact error due to error");
+      NODE_DEBUG (presence_node, "Received error presence");
       gabble_presence_cache_update (cache, handle, resource,
           GABBLE_PRESENCE_ERROR, status_message, priority);
 

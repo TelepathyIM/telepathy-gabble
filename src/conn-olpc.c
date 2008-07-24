@@ -3889,6 +3889,72 @@ olpc_gadget_search_buddies_by_properties (GabbleSvcOLPCGadget *iface,
   lm_message_unref (query);
 }
 
+static void
+olpc_gadget_search_buddies_by_alias (GabbleSvcOLPCGadget *iface,
+                                     const gchar *alias,
+                                     DBusGMethodInvocation *context)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  LmMessage *query;
+  gchar *id_str;
+  gchar *object_path;
+  guint id;
+  GabbleOlpcView *view;
+
+  if (!check_gadget_buddy (conn, context))
+    return;
+
+  view = create_view (conn, GABBLE_OLPC_VIEW_TYPE_BUDDY);
+  if (view == NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "can't create view" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  g_object_get (view,
+      "id", &id,
+      "object-path", &object_path,
+      NULL);
+
+  id_str = g_strdup_printf ("%u", id);
+
+  query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
+      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
+      '(', "view", "",
+          '@', "xmlns", NS_OLPC_BUDDY,
+          '@', "id", id_str,
+          '(', "buddy", "",
+            '@', "alias", alias,
+          ')',
+      ')',
+      NULL);
+
+  g_free (id_str);
+
+  if (!_gabble_connection_send_with_reply (conn, query,
+        buddy_query_result_cb, G_OBJECT (view), NULL, NULL))
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Failed to send buddy search query to server" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      lm_message_unref (query);
+      g_free (object_path);
+      return;
+    }
+
+  gabble_svc_olpc_gadget_return_from_search_buddies_by_alias (context,
+      object_path);
+
+  g_free (object_path);
+  lm_message_unref (query);
+}
+
 static LmHandlerResult
 activity_query_result_cb (GabbleConnection *conn,
                           LmMessage *sent_msg,
@@ -4213,6 +4279,7 @@ olpc_gadget_iface_init (gpointer g_iface,
     klass, olpc_gadget_##x)
   IMPLEMENT(request_random_buddies);
   IMPLEMENT(search_buddies_by_properties);
+  IMPLEMENT(search_buddies_by_alias);
   IMPLEMENT(request_random_activities);
   IMPLEMENT(search_activities_by_properties);
   IMPLEMENT(search_activities_by_participants);

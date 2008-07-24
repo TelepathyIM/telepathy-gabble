@@ -282,6 +282,43 @@ def test(q, bus, conn, stream):
 
     # FIXME: test current-activity change from gadget
 
+    # test alias search
+    call_async(q, gadget_iface, 'SearchBuddiesByAlias', "tom")
+
+    iq_event, return_event = q.expect_many(
+        EventPattern('stream-iq', to='gadget.localhost',
+            query_ns=NS_OLPC_BUDDY),
+        EventPattern('dbus-return', method='SearchBuddiesByAlias'))
+
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == '2'
+    buddy = xpath.queryForNodes('/iq/view/buddy', iq_event.stanza)
+    assert len(buddy) == 1
+    assert buddy[0]['alias'] == 'tom'
+
+    # reply to random query
+    reply = make_result_iq(stream, iq_event.stanza)
+    reply['from'] = 'gadget.localhost'
+    reply['to'] = 'alice@localhost'
+    view = xpath.queryForNodes('/iq/view', reply)[0]
+    buddy = view.addElement((None, "buddy"))
+    buddy['jid'] = 'tom@localhost'
+    buddy = view.addElement((None, "buddy"))
+    buddy['jid'] = 'thomas@localhost'
+    stream.send(reply)
+
+    view_path = return_event.value[0]
+    view2 = bus.get_object(conn.bus_name, view_path)
+    view2_iface = dbus.Interface(view2, 'org.laptop.Telepathy.View')
+
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+    added, removed = event.args
+    assert removed == []
+    assert len(added) == 2
+    assert sorted(conn.InspectHandles(1, added)) == ['thomas@localhost',
+            'tom@localhost']
+
     # close view 0
     call_async(q, view0_iface, 'Close')
     event, _ = q.expect_many(
@@ -299,6 +336,15 @@ def test(q, bus, conn, stream):
     close = xpath.queryForNodes('/message/close', event.stanza)
     assert len(close) == 1
     assert close[0]['id'] == '1'
+
+    # close view 2
+    call_async(q, view2_iface, 'Close')
+    event, _ = q.expect_many(
+        EventPattern('stream-message', to='gadget.localhost'),
+        EventPattern('dbus-return', method='Close'))
+    close = xpath.queryForNodes('/message/close', event.stanza)
+    assert len(close) == 1
+    assert close[0]['id'] == '2'
 
 if __name__ == '__main__':
     exec_test(test)

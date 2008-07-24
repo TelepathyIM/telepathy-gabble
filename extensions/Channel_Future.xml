@@ -47,7 +47,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         <p>True if this channel was created in response to a call to
           <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.RequestChannel</tp:dbus-ref>,
           or
-          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.RequestChannels</tp:dbus-ref>.</p>
+          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.CreateChannel</tp:dbus-ref>.</p>
 
         <tp:rationale>
           <p>The idea of this property is to distinguish between "incoming"
@@ -63,12 +63,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
             UI or accept the call.</p>
         </tp:rationale>
 
-        <p>If the channel was not explicitly requested, but was created as a
-          side-effect of a call to one of those functions (e.g. joining a
-          Tube in a MUC context on XMPP implies joining that MUC), this
-          property is still true.</p>
-
-        <p>Otherwise, this property is false.</p>
+        <p>If the channel was not explicitly requested (even if it was
+          created as a side-effect of a call to one of those functions,
+          e.g. because joining a Tube in a MUC context on XMPP implies
+          joining that MUC), then this property is false.</p>
 
         <p>For compatibility with older connection managers, clients SHOULD
           assume that this property is true if they see a channel announced
@@ -131,7 +129,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
             dispatcher to accept a channel request for an account that is not
             yet connected (and thus has no valid handles), bring the account
             online, and pass on the same parameters to the new connection's
-            RequestChannels method.</p>
+            CreateChannel method.</p>
         </tp:rationale>
       </tp:docstring>
     </property>

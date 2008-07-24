@@ -1,0 +1,396 @@
+<?xml version="1.0" ?>
+<node name="/Connection_Interface_Requests"
+  xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
+  >
+  <tp:copyright>Copyright (C) 2008 Collabora Limited</tp:copyright>
+  <tp:copyright>Copyright (C) 2008 Nokia Corporation</tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+      modify it under the terms of the GNU Lesser General Public
+      License as published by the Free Software Foundation; either
+      version 2.1 of the License, or (at your option) any later version.</p>
+
+    <p>This library is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+      Lesser General Public License for more details.</p>
+
+    <p>You should have received a copy of the GNU Lesser General Public
+      License along with this library; if not, write to the Free Software
+      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
+      USA.</p>
+  </tp:license>
+
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT"
+    tp:causes-havoc="experimental">
+    <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
+    <tp:added version="0.17.UNRELEASED"/>
+
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      <p>An enhanced version of the Telepathy connection interface, which can
+        represent bundles of channels that should be dispatched together, and
+        does not assume any particular properties by which channels are
+        uniquely identifiable.</p>
+    </tp:docstring>
+
+    <tp:struct name="Channel_Details" array-name="Channel_Details_List">
+      <tp:docstring>
+        Enough details of a channel that clients can work out how to dispatch
+        or handle it.
+      </tp:docstring>
+
+      <tp:member name="Channel" type="o">
+        <tp:docstring>
+          The object path of the channel.
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member name="Properties" type="a{sv}"
+        tp:type="Qualified_Property_Value_Map">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>Properties of the channel.</p>
+
+          <p>Connection managers MUST NOT include properties in this mapping
+            if their values can change. Clients MUST ignore properties
+            that appear in this mapping if their values can change.</p>
+
+          <tp:rationale>
+            <p>If properties that could change were included, the following
+              race condition would be likely to exist in some cases:</p>
+
+            <ul>
+              <li>NewChannels or Get("Channels") includes a property P with
+                value V1</li>
+              <li>Client creates a proxy object for the channel</li>
+              <li>The value of P changes to V2</li>
+              <li>Client connects to PChanged signal</li>
+              <li>Client should call Get("P") or GetAll here, to avoid the
+                race, but client's author has forgotten to do so</li>
+              <li>Proxy object thinks P == V1, but actually P == V2</li>
+            </ul>
+
+            <p>We've taken the opportunity to make the API encourage the
+              client author to get it right. Where possible, we intend that
+              properties whose value will be used in channel dispatching
+              or other "early" processing will be defined so that they are
+              immutable (can never change).</p>
+          </tp:rationale>
+
+          <p>Each dictionary MUST contain the keys
+            <tp:dbus-ref>org.freedesktop.Telepathy.Channel.ChannelType</tp:dbus-ref>,
+            <tp:dbus-ref>org.freedesktop.Telepathy.Channel.TargetHandleType</tp:dbus-ref>
+            and <tp:dbus-ref>org.freedesktop.Telepathy.Channel.TargetHandle</tp:dbus-ref>.
+          </p>
+          <!-- FIXME: maybe also TargetID, Requested, InitiatorHandle,
+          InitiatorID once they leave the FUTURE pseudo-interface -->
+
+          <tp:rationale>
+            <p>We expect these to be crucial to the channel-dispatching
+              process.</p>
+          </tp:rationale>
+        </tp:docstring>
+      </tp:member>
+    </tp:struct>
+
+    <method name="CreateChannel">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Request that channels are created.</p>
+
+        <tp:rationale>
+          <p>There is deliberately no flag corresponding to the
+            suppress_handler argument to
+            <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.RequestChannel</tp:dbus-ref>,
+            because passing a FALSE value for that argument is deprecated.
+            Requests made using this interface always behave as though
+            suppress_handler was TRUE.</p>
+        </tp:rationale>
+
+      </tp:docstring>
+
+      <arg direction="in" name="Request" type="a{sv}"
+        tp:type="Qualified_Property_Value_Map">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>A dictionary containing desirable properties. Some properties
+            are defined such that only an exact match makes sense, and
+            connection managers MUST NOT satisfy a request with a channel
+            where that property does not match; some properties are defined
+            such that the connection manager MAY treat the request as merely
+            a hint, and make a best-effort attempt to satisfy it. This is
+            documented separately for each property.</p>
+
+          <p>If this dictionary contains a property whose semantics
+            are not known to the connection manager, this method MUST fail
+            without side-effects (in particular it must not create a new
+            channel).</p>
+
+          <tp:rationale>
+            <p>This is necessary if we want to be able to invent properties
+              in future that, when used in a request, are hard requirements
+              rather than just hints. A connection manager that did not know
+              the semantics of those properties could incorrectly return a
+              new channel that did not satisfy the requirements.</p>
+          </tp:rationale>
+
+          <p>The connection manager MUST NOT respond successfully,
+            and SHOULD NOT create a new channel or cause any other
+            side-effects, unless it can create a new channel that satisfies
+            the client's requirements.</p>
+
+          <p>Properties that will be set by this argument need not have write
+            access after the channel has been created - indeed, it is
+            expected that most will be read-only.</p>
+        </tp:docstring>
+      </arg>
+
+      <arg name="Channel" direction="out" type="o">
+        <tp:docstring>
+          The Channel object, which SHOULD already have been signalled with
+          <tp:member-ref>NewChannels</tp:member-ref> by the time this method
+          returns.
+        </tp:docstring>
+      </arg>
+
+      <arg name="Properties" direction="out" type="a{sv}"
+        tp:type="Qualified_Property_Value_Map">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>Properties of the channel that was produced, equivalent to
+            the properties in <tp:type>Channel_Details</tp:type>.
+            Connection managers MUST NOT include properties here whose
+            values can change, for the same reasons as in
+            <tp:type>Channel_Details</tp:type>.</p>
+        </tp:docstring>
+      </arg>
+
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
+          <tp:docstring>
+            The channel request was one that can never succeed,
+            such as requesting an unsupported channel type, or requesting
+            a channel type which this connection manager does not support with
+            the given target handle type.
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidHandle">
+          <tp:docstring>
+            An invalid handle was requested as the value of a property whose
+            value is a handle (like
+            <tp:dbus-ref namespace="org.freedesktop.Telepathy">Channel.TargetHandle</tp:dbus-ref>),
+            or a syntactically invalid identifier was requested as the value
+            of a property whose value is the string corresponding to a handle
+            (like TargetID).
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          <tp:docstring>
+            The requested channel cannot be created, but in
+            principle, a similar request might succeed in future. For instance,
+            this might be because the requested contact is using a client
+            that lacks a particular feature, or because a channel matching the
+            request already exists and the protocol requires that only one
+            such channel can exist at a time.
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.Channel.Banned"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.Channel.Full"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.Channel.InviteOnly"/>
+      </tp:possible-errors>
+    </method>
+
+    <signal name="NewChannels">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>New channels have been created. The connection manager SHOULD emit
+          a single signal for any group of closely related channels that are
+          created at the same time, so that the channel dispatcher can try to
+          dispatch them to a handler as a unit.</p>
+
+        <p>In particular, if additional channels are created as a side-effect
+          of a call to <tp:member-ref>CreateChannel</tp:member-ref>,
+          these channels SHOULD appear in the same NewChannels signal as
+          the channel that satisfies the request.</p>
+
+        <tp:rationale>
+          <p>Joining a MUC Tube in XMPP requires joining the corresponding
+            MUC (chatroom), so a Text channel can be created as a
+            side-effect.</p>
+        </tp:rationale>
+      </tp:docstring>
+
+      <arg name="Channels" type="a(oa{sv})" tp:type="Channel_Details[]">
+        <tp:docstring>
+          The channels and their details. All channels that are signalled
+          together like this MUST have the same Bundle property, which may
+          either refer to an existing bundle, or establish a new bundle.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <property name="Channels" type="a(oa{sv})" access="read"
+      tp:type="Channel_Details[]">
+      <tp:docstring>
+        A list of all the channels which currently exist on this connection.
+        Change notification is via the
+        <tp:member-ref>NewChannels</tp:member-ref> and
+        <tp:member-ref>ChannelClosed</tp:member-ref> signals.
+      </tp:docstring>
+    </property>
+
+    <signal name="ChannelClosed">
+      <tp:docstring>
+        Emitted when a channel is closed and hence disappears from the
+        Channels property.
+
+        <tp:rationale>
+          This is redundant with the Close signal on the channel itself, but
+          it does provide full change notification for the Channels property.
+        </tp:rationale>
+      </tp:docstring>
+
+      <arg name="Removed" type="o">
+        <tp:docstring>
+          The channel which has been removed from the Channels property
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <tp:mapping name="Channel_Class">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Mapping representing a class of channels that can be requested
+          from a connection manager, can be handled by a user interface,
+          are supported by a contact, etc.</p>
+
+        <p>Classes of channel are identified by the fixed values of
+          a subset of their properties.</p>
+
+        <p>Channel classes SHOULD always include the keys
+          <tp:dbus-ref>org.freedesktop.Telepathy.Channel.ChannelType</tp:dbus-ref>
+          and
+          <tp:dbus-ref>org.freedesktop.Telepathy.Channel.TargetHandleType</tp:dbus-ref>.
+          </p>
+      </tp:docstring>
+
+      <tp:member type="s" name="Key" tp:type="DBus_Qualified_Member">
+        <tp:docstring>
+          A D-Bus interface name, followed by a dot and a D-Bus property name.
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member type="v" name="Value">
+        <tp:docstring>
+          The value of the property.
+        </tp:docstring>
+      </tp:member>
+    </tp:mapping>
+
+    <tp:struct name="Requestable_Channel_Class"
+      array-name="Requestable_Channel_Class_List">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Structure representing a class of channels that can be requested,
+          identified by a set of properties that identify that class of
+          channel.</p>
+
+        <tp:rationale>
+          <p>This will often just be the channel type and the handle type,
+            but can include other properties of the channel - for instance,
+            encrypted channels might require properties that
+            unencrypted channels do not, like an encryption key.</p>
+        </tp:rationale>
+
+        <p>In some cases, these classes of channel may overlap, in the sense
+          that one class fixes all the properties that another class does,
+          plus some more properties.</p>
+
+        <tp:rationale>
+          <p>For older clients to still be able to understand how to request
+            channels in the presence of a hypothetical "encryption" interface,
+            we'd need to represent it like this:</p>
+
+          <ul>
+            <li>class 1: ChannelType = Text, TargetHandleType = CONTACT</li>
+            <li>class 2: Channel.ChannelType = Text,
+              Channel.TargetHandleType = CONTACT,
+              Encryption.Encrypted = TRUE</li>
+          </ul>
+        </tp:rationale>
+      </tp:docstring>
+
+      <tp:member name="Fixed_Properties" type="a{sv}"
+        tp:type="Channel_Class">
+        <tp:docstring>
+          The property values that identify this requestable channel class.
+          These properties MUST be included in requests for a channel of this
+          class, and MUST take these values.
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member name="Required_Properties" type="as"
+        tp:type="DBus_Qualified_Member[]">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>Properties that MUST be set when requesting a channel of this
+            channel type and handle type.</p>
+
+          <p>Properties MAY have additional requirement semantics not
+            represented in this array. For instance, if TargetHandleType
+            takes a value that is not Handle_Type_None, one or the other of
+            TargetHandle and TargetID is required. In this case,
+            TargetHandle and TargetID would both be listed as optional:
+            clients are expected to understand the documented relationship
+            between the properties.</p>
+
+          <p>Clients that do not understand the semantics of all the
+            Fixed_Properties, and all the properties in this list, MUST NOT
+            request channels of this class (unless they are intended as
+            debugging/development tools to be operated only by users who
+            understand the Telepathy D-Bus API).</p>
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member name="Optional_Properties" type="as"
+        tp:type="DBus_Qualified_Member[]">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>Properties that MAY be set when requesting a
+            channel of this channel type and handle type.</p>
+
+          <p>Properties mentioned in Fixed_Properties or Required_Properties
+            SHOULD NOT appear in this array.</p>
+
+          <p>If this array contains the Channel.Bundle property, then this
+            class of channel can be combined with other channels with that
+            property in a request, or added to an existing bundle. If not,
+            this signifies that the connection manager is unable to mark
+            channels of this class as part of a bundle - this means that
+            to the remote contact they are likely to be indistinguishable
+            from channels requested separately.</p>
+        </tp:docstring>
+      </tp:member>
+    </tp:struct>
+
+    <property name="RequestableChannelClasses" access="read"
+      type="a(a{sv}asas)" tp:type="Requestable_Channel_Class[]">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>The classes of channel that are expected to be available on this
+          connection, i.e. those for which
+          <tp:member-ref>CreateChannel</tp:member-ref> can reasonably
+          be expected to succeed. User interfaces can use this information
+          to show or hide UI components.</p>
+
+        <p>This property cannot change after the connection has gone to
+          state Connection_Status_Connected, so there is no change
+          notification (if the connection has context-dependent capabilities,
+          it SHOULD advertise support for all classes of channel that it might
+          support during its lifetime). Before this state has been reached,
+          the value of this property is undefined.</p>
+
+        <tp:rationale>
+          <p>This is not on an optional interface, because connection
+            managers can always offer some sort of clue about the channel
+            classes they expect to support (at worst, they can announce
+            support for everything for which they have code).</p>
+        </tp:rationale>
+      </tp:docstring>
+    </property>
+
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

@@ -23,13 +23,7 @@
 #include "exportable-channel.h"
 
 #include <telepathy-glib/gtypes.h>
-
-enum {
-    CLOSED,
-    N_SIGNALS
-};
-
-static guint signals[N_SIGNALS] = { 0 };
+#include <telepathy-glib/svc-channel.h>
 
 
 static void
@@ -75,7 +69,8 @@ exportable_channel_base_init (gpointer klass)
       /**
        * GabbleExportableChannel:channel-destroyed:
        *
-       * If true, the closed signal indicates that the channel can go away.
+       * If true, the closed signal on the Channel interface indicates that
+       * the channel can go away.
        *
        * If false, the closed signal indicates that the channel should
        * appear to go away and be re-created.
@@ -88,20 +83,6 @@ exportable_channel_base_init (gpointer klass)
           G_PARAM_READABLE |
           G_PARAM_STATIC_NAME | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NICK);
       g_object_interface_install_property (klass, param_spec);
-
-      /**
-       * GabbleExportableChannel::closed:
-       *
-       * The channel has "closed" for the purposes of the D-Bus API. However,
-       * if channel-destroyed is false, the Connection should immediately
-       * signal that it has been re-created.
-       */
-      signals[CLOSED] = g_signal_new ("closed",
-          G_OBJECT_CLASS_TYPE (klass),
-          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-          0, NULL, NULL,
-          g_cclosure_marshal_VOID__VOID,
-          G_TYPE_NONE, 0);
     }
 }
 
@@ -126,6 +107,8 @@ gabble_exportable_channel_get_type (void)
 
       type = g_type_register_static (G_TYPE_INTERFACE,
           "GabbleExportableChannel", &info, 0);
+
+      g_type_interface_add_prerequisite (type, TP_TYPE_SVC_CHANNEL);
     }
 
   return type;

@@ -479,8 +479,8 @@ new_media_channel (GabbleMediaFactory *fac,
   GabbleMediaChannel *chan;
   gchar *object_path;
 
-  g_return_val_if_fail (GABBLE_IS_MEDIA_FACTORY (fac), NULL);
-  g_return_val_if_fail (creator != 0, NULL);
+  g_assert (GABBLE_IS_MEDIA_FACTORY (fac));
+  g_assert (creator != 0);
 
   priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
   conn = (TpBaseConnection *) priv->conn;

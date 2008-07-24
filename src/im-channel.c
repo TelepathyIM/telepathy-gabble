@@ -155,29 +155,6 @@ gabble_im_channel_constructor (GType type, guint n_props,
 }
 
 
-/* FIXME: this is a hack - we should add API for this to TpTextMixin */
-static gboolean
-gabble_im_channel_has_pending (GabbleIMChannel *self)
-{
-  GPtrArray *dummy = NULL;
-  gboolean ret;
-  guint i;
-
-  tp_text_mixin_list_pending_messages ((GObject *) self, FALSE,
-      &dummy, NULL);
-
-  g_assert (dummy != NULL);
-  ret = (dummy->len > 0);
-
-  for (i = 0; i < dummy->len; i++)
-    g_value_array_free (g_ptr_array_index (dummy, i));
-
-  g_ptr_array_free (dummy, TRUE);
-
-  return ret;
-}
-
-
 static void
 gabble_im_channel_get_property (GObject    *object,
                                 guint       property_id,
@@ -232,7 +209,8 @@ gabble_im_channel_get_property (GObject    *object,
       g_value_set_boxed (value, gabble_im_channel_interfaces);
       break;
     case PROP_WILL_RETURN:
-      g_value_set_boolean (value, gabble_im_channel_has_pending (chan));
+      g_value_set_boolean (value, tp_text_mixin_has_pending_messages (
+            object, NULL));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -554,7 +532,7 @@ gabble_im_channel_close (TpSvcChannel *iface,
       /* The IM factory will resurrect the channel if we have pending
        * messages. When we're resurrected, we want the initiator
        * to be the contact who sent us those messages, if it isn't already */
-      if (gabble_im_channel_has_pending (self))
+      if (tp_text_mixin_has_pending_messages ((GObject *) self, NULL))
         {
           if (priv->initiator != priv->handle)
             {

@@ -39,6 +39,7 @@
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
+#include "exportable-channel.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "roster.h"
@@ -54,6 +55,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT, text_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init));
 
@@ -77,7 +79,8 @@ enum
   PROP_REQUESTED,
   PROP_CONNECTION,
   PROP_INTERFACES,
-  PROP_WILL_RETURN,
+  PROP_CHANNEL_DESTROYED,
+  PROP_CHANNEL_PROPERTIES,
   LAST_PROPERTY
 };
 
@@ -155,6 +158,42 @@ gabble_im_channel_constructor (GType type, guint n_props,
 }
 
 
+static GHashTable *
+gabble_im_channel_dup_channel_properties (GabbleIMChannel *self)
+{
+  static const gchar * const properties[] = {
+      TP_IFACE_CHANNEL, "TargetHandle",
+      TP_IFACE_CHANNEL, "TargetHandleType",
+      TP_IFACE_CHANNEL, "ChannelType",
+      GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
+      GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
+      GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
+      GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+      NULL
+  };
+  const gchar * const *iter;
+  GHashTable *table;
+
+  table = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  for (iter = properties; iter[0] != NULL; iter += 2)
+    {
+      GValue *value = g_slice_new0 (GValue);
+
+      tp_dbus_properties_mixin_get ((GObject *) self, iter[0], iter[1],
+            value, NULL);
+      /* Fetching our immutable properties had better not fail... */
+      g_assert (G_IS_VALUE (value));
+
+      g_hash_table_insert (table, g_strdup_printf ("%s.%s", iter[0], iter[1]),
+          value);
+    }
+
+  return table;
+}
+
+
 static void
 gabble_im_channel_get_property (GObject    *object,
                                 guint       property_id,
@@ -208,9 +247,12 @@ gabble_im_channel_get_property (GObject    *object,
     case PROP_INTERFACES:
       g_value_set_boxed (value, gabble_im_channel_interfaces);
       break;
-    case PROP_WILL_RETURN:
-      g_value_set_boolean (value, tp_text_mixin_has_pending_messages (
-            object, NULL));
+    case PROP_CHANNEL_DESTROYED:
+      g_value_set_boolean (value, priv->closed);
+      break;
+    case PROP_CHANNEL_PROPERTIES:
+      g_value_set_boxed (value,
+          gabble_im_channel_dup_channel_properties (chan));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -250,6 +292,9 @@ gabble_im_channel_set_property (GObject     *object,
       break;
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
+      break;
+    case PROP_CHANNEL_PROPERTIES:
+      /* FIXME: Setting channel-properties on creation not yet implemented */
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -311,6 +356,10 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
       "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
+  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
+      "channel-destroyed");
+  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
+      "channel-properties");
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this IM channel object.",
@@ -355,14 +404,6 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
-
-  param_spec = g_param_spec_boolean ("will-return", "Will return?",
-      "True if this channel has pending messages, and so will reopen when "
-      "closed",
-      FALSE,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
-  g_object_class_install_property (object_class, PROP_WILL_RETURN, param_spec);
 
   tp_text_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
@@ -527,13 +568,19 @@ gabble_im_channel_close (TpSvcChannel *iface,
   presence = gabble_presence_cache_get (priv->conn->presence_cache,
       priv->handle);
 
-  if (!priv->closed)
+  if (priv->closed)
+    {
+      DEBUG ("Already closed, doing nothing");
+    }
+  else
     {
       /* The IM factory will resurrect the channel if we have pending
        * messages. When we're resurrected, we want the initiator
        * to be the contact who sent us those messages, if it isn't already */
       if (tp_text_mixin_has_pending_messages ((GObject *) self, NULL))
         {
+          DEBUG ("Not really closing, I still have pending messages");
+
           if (priv->initiator != priv->handle)
             {
               TpHandleRepoIface *contact_repo = tp_base_connection_get_handles
@@ -549,9 +596,11 @@ gabble_im_channel_close (TpSvcChannel *iface,
         }
       else
         {
+          DEBUG ("Actually closing, I have no pending messages");
           priv->closed = TRUE;
         }
 
+      DEBUG ("Emitting Closed");
       tp_svc_channel_emit_closed (self);
 
       if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))

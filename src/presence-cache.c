@@ -1432,7 +1432,10 @@ gabble_presence_cache_update_many (
         }
     }
 
-  g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, updated);
+  if (updated->len > 0)
+    g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, updated);
+
+  g_array_free (updated, TRUE);
 
   for (i = 0 ; i < contact_handles->len ; i++)
     {
@@ -1442,7 +1445,6 @@ gabble_presence_cache_update_many (
       gabble_presence_cache_maybe_remove (cache, handle);
     }
 
-  g_array_free (updated, TRUE);
 }
 
 void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,

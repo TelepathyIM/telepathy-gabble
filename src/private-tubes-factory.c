@@ -254,9 +254,9 @@ new_tubes_channel (GabblePrivateTubesFactory *fac,
   GabbleTubesChannel *chan;
   char *object_path;
 
-  g_return_val_if_fail (GABBLE_IS_PRIVATE_TUBES_FACTORY (fac), NULL);
-  g_return_val_if_fail (handle != 0, NULL);
-  g_return_val_if_fail (initiator != 0, NULL);
+  g_assert (GABBLE_IS_PRIVATE_TUBES_FACTORY (fac));
+  g_assert (handle != 0);
+  g_assert (initiator != 0);
 
   priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
   conn = (TpBaseConnection *) priv->conn;

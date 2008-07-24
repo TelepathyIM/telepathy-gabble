@@ -14,6 +14,7 @@ TWISTED_TESTS = \
 	roster/test-roster.py \
 	roster/test-roster-subscribe.py \
 	text/initiate.py \
+	text/respawn.py \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
 	text/test-text.py \

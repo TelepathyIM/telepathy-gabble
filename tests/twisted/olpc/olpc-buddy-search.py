@@ -280,8 +280,6 @@ def test(q, bus, conn, stream):
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['charles@localhost', 'oscar@localhost']
 
-    # FIXME: test current-activity change from gadget
-
     # test alias search
     call_async(q, gadget_iface, 'SearchBuddiesByAlias', "tom")
 

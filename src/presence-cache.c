@@ -24,6 +24,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* When five DIFFERENT guys report the same caps for a given bundle, it'll
+ * be enough. But if only ONE guy use the verification string (XEP-0115 v1.5),
+ * it'll be enough too.
+ */
+#define CAPABILITY_BUNDLE_ENOUGH_TRUST 5
+#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
+
 #include <telepathy-glib/intset.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
@@ -289,7 +296,7 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, G_TYPE_POINTER);
+    g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, DBUS_TYPE_G_UINT_ARRAY);
   signals[NICKNAME_UPDATE] = g_signal_new (
     "nickname-update",
     G_TYPE_FROM_CLASS (klass),

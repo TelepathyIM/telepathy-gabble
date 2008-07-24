@@ -1425,6 +1425,7 @@ gabble_presence_cache_update_many (
       TpHandle handle;
 
       handle = g_array_index (contact_handles, TpHandle, i);
+
       if (gabble_presence_cache_do_update (cache, handle, resource,
           presence_id, status_message, priority))
         {

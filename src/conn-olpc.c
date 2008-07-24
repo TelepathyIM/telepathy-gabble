@@ -2541,9 +2541,9 @@ connection_presence_do_update (GabblePresenceCache *cache,
 
   presence = gabble_presence_cache_get (cache, handle);
 
-  if (presence && presence->status == GABBLE_PRESENCE_OFFLINE)
+  if (presence && presence->status <= GABBLE_PRESENCE_LAST_UNAVAILABLE)
     {
-      /* Contact goes offline. We have to unref all the information
+      /* Contact becomes unavailable. We have to unref all the information
        * provided by him
        */
       GPtrArray *empty = g_ptr_array_new ();

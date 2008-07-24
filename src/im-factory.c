@@ -52,7 +52,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleImFactoryPrivate GabbleImFactoryPrivate;
 struct _GabbleImFactoryPrivate
 {
   GabbleConnection *conn;
@@ -70,17 +69,18 @@ static GObject *gabble_im_factory_constructor (GType type, guint n_props,
     GObjectConstructParam *props);
 
 static void
-gabble_im_factory_init (GabbleImFactory *fac)
+gabble_im_factory_init (GabbleImFactory *self)
 {
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GABBLE_TYPE_IM_FACTORY,
+      GabbleImFactoryPrivate);
 
-  priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+  self->priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                           NULL, g_object_unref);
 
-  priv->message_cb = NULL;
+  self->priv->message_cb = NULL;
 
-  priv->conn = NULL;
-  priv->dispose_has_run = FALSE;
+  self->priv->conn = NULL;
+  self->priv->dispose_has_run = FALSE;
 }
 
 static GObject *

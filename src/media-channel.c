@@ -665,9 +665,7 @@ gabble_media_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->creator != 0)
-    tp_handle_unref (contact_handles, priv->creator);
-
+  tp_handle_unref (contact_handles, priv->creator);
   priv->creator = 0;
 
   /** In this we set the state to ENDED, then the callback unrefs

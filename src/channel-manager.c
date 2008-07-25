@@ -44,12 +44,20 @@ channel_manager_base_init (gpointer klass)
       /* FIXME: should probably have a better GType for a GPtrArray of
        * ExportableChannel */
       signals[NEW_CHANNELS] = g_signal_new ("new-channels",
-                    G_OBJECT_CLASS_TYPE (klass),
-                    G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                    0,
-                    NULL, NULL,
-                    g_cclosure_marshal_VOID__POINTER,
-                    G_TYPE_NONE, 1, G_TYPE_POINTER);
+          G_OBJECT_CLASS_TYPE (klass),
+          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          0,
+          NULL, NULL,
+          g_cclosure_marshal_VOID__POINTER,
+          G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+      signals[CHANNEL_CLOSED] = g_signal_new ("channel-closed",
+          G_OBJECT_CLASS_TYPE (klass),
+          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          0,
+          NULL, NULL,
+          g_cclosure_marshal_VOID__STRING,
+          G_TYPE_NONE, 1, G_TYPE_STRING);
 
     }
 }

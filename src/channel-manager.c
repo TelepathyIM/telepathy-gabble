@@ -23,8 +23,6 @@
 #include "config.h"
 #include "channel-manager.h"
 
-#include "gabble-signals-marshal.h"
-
 enum {
     NEW_CHANNELS,
     CHANNEL_CLOSED,

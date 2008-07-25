@@ -37,6 +37,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "exportable-channel.h"
 #include "media-factory.h"
 #include "media-session.h"
 #include "media-session.h"
@@ -68,6 +69,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
       tp_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 static const gchar *gabble_media_channel_interfaces[] = {
@@ -97,6 +99,8 @@ enum
   PROP_CREATOR_ID,
   PROP_FACTORY,
   PROP_INTERFACES,
+  PROP_CHANNEL_DESTROYED,
+  PROP_CHANNEL_PROPERTIES,
   /* TP properties (see also below) */
   PROP_NAT_TRAVERSAL,
   PROP_STUN_SERVER,
@@ -427,6 +431,21 @@ gabble_media_channel_get_property (GObject    *object,
     case PROP_INTERFACES:
       g_value_set_boxed (value, gabble_media_channel_interfaces);
       break;
+    case PROP_CHANNEL_DESTROYED:
+      g_value_set_boolean (value, priv->closed);
+      break;
+    case PROP_CHANNEL_PROPERTIES:
+      g_value_set_boxed (value,
+          gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+              TP_IFACE_CHANNEL, "TargetHandle",
+              TP_IFACE_CHANNEL, "TargetHandleType",
+              TP_IFACE_CHANNEL, "ChannelType",
+              GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
+              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
+              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
+              GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+              NULL));
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -555,6 +574,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
       "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
+
+  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
+      "channel-destroyed");
+  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
+      "channel-properties");
 
   param_spec = g_param_spec_string ("target-id", "Target JID",
       "Currently empty, because this channel always has handle 0.",

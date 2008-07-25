@@ -231,18 +231,12 @@ gabble_roster_channel_get_property (GObject    *object,
       g_value_set_boxed (value, gabble_roster_channel_interfaces);
       break;
     case PROP_INITIATOR_HANDLE:
-      /* FIXME: should be self-handle if we asked for it before it sprang into
-       * existence? */
       g_value_set_uint (value, 0);
       break;
     case PROP_INITIATOR_ID:
-      /* FIXME: should be self-JID if we asked for it before it sprang into
-       * existence? */
       g_value_set_static_string (value, "");
       break;
     case PROP_REQUESTED:
-      /* FIXME: should be TRUE if we asked for it before it sprang into
-       * existence? */
       g_value_set_boolean (value, FALSE);
       break;
     default:

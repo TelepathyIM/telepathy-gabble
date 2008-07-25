@@ -41,6 +41,8 @@
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/svc-generic.h>
 
+#include "extensions/extensions.h"
+
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
 #include "bytestream-factory.h"
@@ -50,6 +52,7 @@
 #include "conn-avatars.h"
 #include "conn-presence.h"
 #include "conn-olpc.h"
+#include "conn-requests.h"
 #include "debug.h"
 #include "disco.h"
 #include "media-channel.h"
@@ -90,6 +93,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       tp_presence_mixin_simple_presence_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       conn_presence_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_REQUESTS,
+      gabble_conn_requests_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY_INFO,
       olpc_buddy_info_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_ACTIVITY_PROPERTIES,
@@ -206,6 +211,10 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
   self->private_tubes_factory = gabble_private_tubes_factory_new (self);
   g_ptr_array_add (channel_factories, self->private_tubes_factory);
 
+  /* Temporary hack for requestotron support */
+  self->channel_managers = channel_factories;
+  channel_factories = g_ptr_array_sized_new (0);
+
   return channel_factories;
 }
 
@@ -237,6 +246,7 @@ gabble_connection_constructor (GType type,
   conn_avatars_init (self);
   conn_presence_init (self);
   conn_olpc_activity_properties_init (self);
+  gabble_conn_requests_init (self);
 
   self->bytestream_factory = gabble_bytestream_factory_new (self);
 
@@ -719,6 +729,8 @@ gabble_connection_dispose (GObject *object)
    * connection to always be there.
    */
   g_idle_add (_unref_lm_connection, self->lmconn);
+
+  gabble_conn_requests_dispose (self);
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
@@ -2745,6 +2757,8 @@ static void
 conn_service_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionClass *klass = (TpSvcConnectionClass *) g_iface;
+
+  gabble_conn_requests_conn_iface_init (g_iface, iface_data);
 
 #define IMPLEMENT(x) tp_svc_connection_implement_##x (klass, \
     gabble_connection_##x)

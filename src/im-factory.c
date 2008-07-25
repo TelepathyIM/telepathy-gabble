@@ -32,6 +32,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 
+#include "channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
@@ -42,6 +43,7 @@ static void gabble_im_factory_iface_init (gpointer g_iface,
     gpointer iface_data);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleImFactory, gabble_im_factory, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
       gabble_im_factory_iface_init));
 
@@ -298,8 +300,17 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (self);
   TpHandle contact_handle;
   gboolean really_destroyed;
+  gchar *object_path;
 
   DEBUG ("%p, channel %p", self, chan);
+
+  g_object_get (chan,
+      "handle", &contact_handle,
+      "object-path", &object_path,
+      "channel-destroyed", &really_destroyed,
+      NULL);
+
+  g_signal_emit_by_name (self, "channel-closed", object_path);
 
   if (priv->channels != NULL)
     {
@@ -316,12 +327,19 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
         }
       else
         {
+          GPtrArray *array = g_ptr_array_sized_new (1);
+
           DEBUG ("reopening channel with handle %u due to pending messages",
               contact_handle);
           tp_channel_factory_iface_emit_new_channel (self,
               (TpChannelIface *) chan, NULL);
+          g_ptr_array_add (array, chan);
+          g_signal_emit_by_name (self, "new-channels", array);
+          g_ptr_array_free (array, TRUE);
         }
     }
+
+  g_free (object_path);
 }
 
 /**

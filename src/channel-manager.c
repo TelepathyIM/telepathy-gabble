@@ -23,11 +23,13 @@
 #include "config.h"
 #include "channel-manager.h"
 
+#include "exportable-channel.h"
 #include "gabble-signals-marshal.h"
 
 enum {
     NEW_CHANNELS,
     CHANNEL_CLOSED,
+    REQUEST_SATISFIED,
     N_SIGNALS
 };
 
@@ -44,15 +46,26 @@ channel_manager_base_init (gpointer klass)
       initialized = TRUE;
 
       /* FIXME: should probably have a better GType for a GPtrArray of
-       * ExportableChannel, and for a GPtrArray of request tokens */
+       * ExportableChannel */
+      /* New channels have been created */
       signals[NEW_CHANNELS] = g_signal_new ("new-channels",
           G_OBJECT_CLASS_TYPE (klass),
           G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
           0,
           NULL, NULL,
-          gabble_marshal_VOID__POINTER_POINTER,
-          G_TYPE_NONE, 2, G_TYPE_POINTER, G_TYPE_POINTER);
+          g_cclosure_marshal_VOID__POINTER,
+          G_TYPE_NONE, 1, G_TYPE_POINTER);
 
+      /* A QUEUED request has been satisfied by a channel */
+      signals[REQUEST_SATISFIED] = g_signal_new ("request-satisfied",
+          G_OBJECT_CLASS_TYPE (klass),
+          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          0,
+          NULL, NULL,
+          gabble_marshal_VOID__POINTER_OBJECT,
+          G_TYPE_NONE, 1, G_TYPE_POINTER, GABBLE_TYPE_EXPORTABLE_CHANNEL);
+
+      /* A channel has been closed */
       signals[CHANNEL_CLOSED] = g_signal_new ("channel-closed",
           G_OBJECT_CLASS_TYPE (klass),
           G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,

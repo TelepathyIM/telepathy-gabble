@@ -23,6 +23,16 @@
 #include "config.h"
 #include "channel-manager.h"
 
+#include "gabble-signals-marshal.h"
+
+enum {
+    NEW_CHANNELS,
+    CHANNEL_CLOSED,
+    N_SIGNALS
+};
+
+static guint signals[N_SIGNALS] = {0};
+
 
 static void
 channel_manager_base_init (gpointer klass)
@@ -32,6 +42,17 @@ channel_manager_base_init (gpointer klass)
   if (!initialized)
     {
       initialized = TRUE;
+
+      /* FIXME: should probably have a better GType for a GPtrArray of
+       * ExportableChannel */
+      signals[NEW_CHANNELS] = g_signal_new ("new-channels",
+                    G_OBJECT_CLASS_TYPE (klass),
+                    G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                    0,
+                    NULL, NULL,
+                    g_cclosure_marshal_VOID__POINTER,
+                    G_TYPE_NONE, 1, G_TYPE_POINTER);
+
     }
 }
 

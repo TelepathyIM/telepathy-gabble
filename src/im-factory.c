@@ -183,7 +183,7 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
 }
 
 static GabbleIMChannel *new_im_channel (GabbleImFactory *fac,
-    TpHandle handle, TpHandle initiator);
+    TpHandle handle, TpHandle initiator, gpointer request_token);
 
 static void im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data);
 
@@ -249,7 +249,7 @@ im_factory_message_cb (LmMessageHandler *handler,
 
       DEBUG ("found no IM channel, creating one");
 
-      chan = new_im_channel (fac, handle, handle);
+      chan = new_im_channel (fac, handle, handle, NULL);
     }
 
   g_assert (chan != NULL);
@@ -334,7 +334,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
           tp_channel_factory_iface_emit_new_channel (self,
               (TpChannelIface *) chan, NULL);
           g_ptr_array_add (array, chan);
-          g_signal_emit_by_name (self, "new-channels", array);
+          g_signal_emit_by_name (self, "new-channels", array, NULL);
           g_ptr_array_free (array, TRUE);
         }
     }
@@ -348,13 +348,14 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 static GabbleIMChannel *
 new_im_channel (GabbleImFactory *fac,
                 TpHandle handle,
-                TpHandle initiator)
+                TpHandle initiator,
+                gpointer request_token)
 {
   GabbleImFactoryPrivate *priv;
   TpBaseConnection *conn;
   GabbleIMChannel *chan;
   char *object_path;
-  GPtrArray *channels;
+  GPtrArray *channels, *requests, *request_lists;
 
   g_return_val_if_fail (GABBLE_IS_IM_FACTORY (fac), NULL);
   g_return_val_if_fail (handle != 0, NULL);
@@ -384,10 +385,28 @@ new_im_channel (GabbleImFactory *fac,
 
   g_free (object_path);
 
+  if (request_token != NULL)
+    {
+      requests = g_ptr_array_sized_new (1);
+      request_lists = g_ptr_array_sized_new (1);
+      g_ptr_array_add (requests, request_token);
+      g_ptr_array_add (request_lists, requests);
+    }
+  else
+    {
+      request_lists = NULL;
+    }
+
   channels = g_ptr_array_sized_new (1);
   g_ptr_array_add (channels, chan);
-  g_signal_emit_by_name (self, "new-channels", channels);
+  g_signal_emit_by_name (fac, "new-channels", channels, request_lists);
   g_ptr_array_free (channels, TRUE);
+
+  if (request_token != NULL)
+    {
+      g_ptr_array_free (requests, TRUE);
+      g_ptr_array_free (request_lists, TRUE);
+    }
 
   return chan;
 }
@@ -510,7 +529,7 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
   if (!chan)
     {
       status = TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
-      chan = new_im_channel (fac, handle, base_conn->self_handle);
+      chan = new_im_channel (fac, handle, base_conn->self_handle, request);
     }
 
   g_assert (chan);

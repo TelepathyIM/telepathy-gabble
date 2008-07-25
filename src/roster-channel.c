@@ -36,6 +36,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "exportable-channel.h"
 #include "roster.h"
 #include "util.h"
 
@@ -50,6 +51,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRosterChannel, gabble_roster_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_CONTACT_LIST, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 static const gchar *gabble_roster_channel_interfaces[] = {
@@ -71,6 +73,8 @@ enum
   PROP_INITIATOR_ID,
   PROP_CONNECTION,
   PROP_INTERFACES,
+  PROP_CHANNEL_DESTROYED,
+  PROP_CHANNEL_PROPERTIES,
   LAST_PROPERTY
 };
 
@@ -239,6 +243,21 @@ gabble_roster_channel_get_property (GObject    *object,
     case PROP_REQUESTED:
       g_value_set_boolean (value, FALSE);
       break;
+    case PROP_CHANNEL_DESTROYED:
+      g_value_set_boolean (value, priv->closed);
+      break;
+    case PROP_CHANNEL_PROPERTIES:
+      g_value_set_boxed (value,
+          gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+              TP_IFACE_CHANNEL, "TargetHandle",
+              TP_IFACE_CHANNEL, "TargetHandleType",
+              TP_IFACE_CHANNEL, "ChannelType",
+              GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
+              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
+              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
+              GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+              NULL));
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -271,6 +290,9 @@ gabble_roster_channel_set_property (GObject     *object,
       break;
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
+      break;
+    case PROP_CHANNEL_PROPERTIES:
+      /* FIXME: Setting channel-properties on creation not yet implemented */
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -381,6 +403,11 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
   g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
       "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
+
+  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
+      "channel-destroyed");
+  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
+      "channel-properties");
 
   gabble_roster_channel_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,

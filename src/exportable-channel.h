@@ -49,6 +49,10 @@ struct _GabbleExportableChannelIface {
 
 GType gabble_exportable_channel_get_type (void);
 
+GHashTable *gabble_tp_dbus_properties_mixin_make_properties_hash (
+    GObject *object, const gchar *first_interface,
+    const gchar *first_property, ...) G_GNUC_NULL_TERMINATED;
+
 G_END_DECLS
 
 #endif

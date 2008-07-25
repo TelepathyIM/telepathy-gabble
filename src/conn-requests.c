@@ -36,6 +36,58 @@
 #include "exportable-channel.h"
 
 
+static GValueArray *
+get_channel_details (TpChannelIface *channel)
+{
+  GObject *obj = (GObject *) channel;
+  GValueArray *structure = g_value_array_new (1);
+  GHashTable *table;
+  GValue *value;
+ gchar *object_path;
+
+  g_object_get (obj,
+      "object-path", &object_path,
+      NULL);
+
+  g_value_array_append (structure, NULL);
+  value = g_value_array_get_nth (structure, 0);
+  g_value_init (value, DBUS_TYPE_G_OBJECT_PATH);
+  g_value_take_boxed (value, object_path);
+  object_path = NULL;
+
+  if (GABBLE_IS_EXPORTABLE_CHANNEL (channel))
+    {
+      g_object_get (obj,
+          "channel-properties", &table,
+          NULL);
+    }
+  else
+    {
+     table = g_hash_table_new_full (g_str_hash, g_str_equal,
+          NULL, (GDestroyNotify) tp_g_value_slice_free);
+
+      value = tp_g_value_slice_new (G_TYPE_UINT);
+      g_object_get_property (obj, "handle", value);
+      g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandle", value);
+
+      value = tp_g_value_slice_new (G_TYPE_UINT);
+      g_object_get_property (obj, "handle-type", value);
+      g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
+
+      value = tp_g_value_slice_new (G_TYPE_STRING);
+      g_object_get_property (obj, "channel-type", value);
+      g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
+    }
+
+  g_value_array_append (structure, NULL);
+  value = g_value_array_get_nth (structure, 1);
+  g_value_init (value, TP_HASH_TYPE_STRING_VARIANT_MAP);
+  g_value_take_boxed (value, table);
+
+  return structure;
+}
+
+
 /* Most of this is cut and pasted from telepathy-glib, and should
  * make its way back there once stable */
 
@@ -207,8 +259,18 @@ satisfy_requests (GabbleConnection *self,
                                         &suppress_handler);
 
   if (is_new)
-    tp_svc_connection_emit_new_channel (self, object_path, channel_type,
-        handle_type, handle, suppress_handler);
+    {
+      GPtrArray *array = g_ptr_array_sized_new (1);
+
+      tp_svc_connection_emit_new_channel (self, object_path, channel_type,
+          handle_type, handle, suppress_handler);
+
+      g_ptr_array_add (array, get_channel_details (chan));
+      gabble_svc_connection_interface_requests_emit_new_channels (self,
+          array);
+      g_value_array_free (g_ptr_array_index (array, 0));
+      g_ptr_array_free (array, TRUE);
+    }
 
   for (i = 0; i < tmp->len; i++)
     {
@@ -235,6 +297,30 @@ satisfy_requests (GabbleConnection *self,
 }
 
 static void
+channel_closed_cb (GObject *channel,
+                   GabbleConnection *self)
+{
+  gchar *object_path;
+
+  g_object_get (channel,
+      "object-path", &object_path,
+      NULL);
+
+  gabble_svc_connection_interface_requests_emit_channel_closed (self,
+      object_path);
+
+  g_free (object_path);
+}
+
+static void
+manager_channel_closed_cb (GObject *manager,
+                           gchar *path,
+                           GabbleConnection *self)
+{
+  gabble_svc_connection_interface_requests_emit_channel_closed (self, path);
+}
+
+static void
 connection_new_channel_cb (TpChannelFactoryIface *factory,
                            GObject *chan,
                            ChannelRequest *channel_request,
@@ -242,6 +328,9 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
 {
   satisfy_requests (GABBLE_CONNECTION (data), factory,
       TP_CHANNEL_IFACE (chan), channel_request, TRUE);
+
+  if (!GABBLE_IS_CHANNEL_MANAGER (factory))
+    g_signal_connect (chan, "closed", (GCallback) channel_closed_cb, data);
 }
 
 static void
@@ -612,6 +701,12 @@ gabble_conn_requests_init (GabbleConnection *self)
           (GCallback) connection_new_channel_cb, self);
       g_signal_connect (factory, "channel-error",
           (GCallback) connection_channel_error_cb, self);
+
+      if (GABBLE_IS_CHANNEL_MANAGER (manager))
+        {
+          g_signal_connect (manager, "channel-closed",
+              (GCallback) manager_channel_closed_cb, self);
+        }
     }
 
   g_assert (self->channel_managers->len == 0);

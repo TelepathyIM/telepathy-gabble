@@ -354,6 +354,7 @@ new_im_channel (GabbleImFactory *fac,
   TpBaseConnection *conn;
   GabbleIMChannel *chan;
   char *object_path;
+  GPtrArray *channels;
 
   g_return_val_if_fail (GABBLE_IS_IM_FACTORY (fac), NULL);
   g_return_val_if_fail (handle != 0, NULL);
@@ -382,6 +383,11 @@ new_im_channel (GabbleImFactory *fac,
       NULL);
 
   g_free (object_path);
+
+  channels = g_ptr_array_sized_new (1);
+  g_ptr_array_add (channels, chan);
+  g_signal_emit_by_name (self, "new-channels", channels);
+  g_ptr_array_free (channels, TRUE);
 
   return chan;
 }

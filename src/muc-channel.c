@@ -41,7 +41,6 @@
 #include "debug.h"
 #include "disco.h"
 #include "error.h"
-#include "presence.h"
 #include "namespaces.h"
 #include "util.h"
 #include "presence-cache.h"
@@ -72,6 +71,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
       password_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
       text_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init)
@@ -115,6 +115,8 @@ enum
   PROP_INTERFACES,
   PROP_INITIATOR_HANDLE,
   PROP_INITIATOR_ID,
+  PROP_CHANNEL_DESTROYED,
+  PROP_CHANNEL_PROPERTIES,
   LAST_PROPERTY
 };
 
@@ -843,6 +845,21 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_REQUESTED:
       g_value_set_boolean (value, (priv->initiator == base_conn->self_handle));
       break;
+    case PROP_CHANNEL_DESTROYED:
+      g_value_set_boolean (value, priv->closed);
+      break;
+    case PROP_CHANNEL_PROPERTIES:
+      g_value_set_boxed (value,
+          gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+              TP_IFACE_CHANNEL, "TargetHandle",
+              TP_IFACE_CHANNEL, "TargetHandleType",
+              TP_IFACE_CHANNEL, "ChannelType",
+              GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
+              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
+              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
+              GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+              NULL));
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -897,6 +914,9 @@ gabble_muc_channel_set_property (GObject     *object,
     case PROP_INVITATION_MESSAGE:
       g_assert (priv->invitation_message == NULL);
       priv->invitation_message = g_value_dup_string (value);
+      break;
+    case PROP_CHANNEL_PROPERTIES:
+      /* FIXME: Setting channel-properties on creation not yet implemented */
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -964,6 +984,10 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
       "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
+  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
+      "channel-destroyed");
+  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
+      "channel-properties");
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
                                     "Gabble connection object that owns this "

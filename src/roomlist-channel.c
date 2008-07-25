@@ -39,6 +39,7 @@
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
+#include "exportable-channel.h"
 #include "namespaces.h"
 #include "util.h"
 
@@ -53,6 +54,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_ROOM_LIST,
       roomlist_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL)
     );
 
@@ -75,6 +77,8 @@ enum
   PROP_CONNECTION,
   PROP_INTERFACES,
   PROP_CONFERENCE_SERVER,
+  PROP_CHANNEL_DESTROYED,
+  PROP_CHANNEL_PROPERTIES,
   LAST_PROPERTY
 };
 
@@ -186,6 +190,22 @@ gabble_roomlist_channel_get_property (GObject    *object,
     case PROP_REQUESTED:
       g_value_set_boolean (value, TRUE);
       break;
+    case PROP_CHANNEL_DESTROYED:
+      g_value_set_boolean (value, priv->closed);
+      break;
+    case PROP_CHANNEL_PROPERTIES:
+      g_value_set_boxed (value,
+          gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+              TP_IFACE_CHANNEL, "TargetHandle",
+              TP_IFACE_CHANNEL, "TargetHandleType",
+              TP_IFACE_CHANNEL, "ChannelType",
+              GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
+              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
+              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
+              GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+              TP_IFACE_CHANNEL_TYPE_ROOM_LIST, "Server",
+              NULL));
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -238,6 +258,9 @@ gabble_roomlist_channel_set_property (GObject     *object,
     case PROP_CONFERENCE_SERVER:
       g_free (priv->conference_server);
       priv->conference_server = g_value_dup_string (value);
+      break;
+    case PROP_CHANNEL_PROPERTIES:
+      /* FIXME: Setting channel-properties on creation not yet implemented */
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -309,6 +332,11 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
       "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE,
       "handle");
+
+  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
+      "channel-destroyed");
+  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
+      "channel-properties");
 
   param_spec = g_param_spec_string ("target-id", "Target JID",
       "Currently empty, because this channel always has handle 0.",

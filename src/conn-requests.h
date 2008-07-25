@@ -27,6 +27,9 @@
 
 G_BEGIN_DECLS
 
+void gabble_conn_requests_get_dbus_property (GObject *object,
+    GQuark interface, GQuark name, GValue *value, gpointer unused);
+
 void gabble_conn_requests_init (GabbleConnection *self);
 void gabble_conn_requests_dispose (GabbleConnection *self);
 void gabble_conn_requests_iface_init (gpointer, gpointer);

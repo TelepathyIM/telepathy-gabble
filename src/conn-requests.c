@@ -522,7 +522,59 @@ conn_requests_list_channels (TpSvcConnection *iface,
 }
 
 
-/* The new Requests API (unimplemented) */
+/* The new Requests API */
+
+
+static void
+get_channel_details_foreach (TpChannelIface *chan,
+                             gpointer data)
+{
+  GPtrArray *details = data;
+
+  g_ptr_array_add (details, get_channel_details (chan));
+}
+
+
+static GPtrArray *
+conn_requests_get_channel_details (GabbleConnection *self)
+{
+  GPtrArray *details = g_ptr_array_sized_new (self->channel_managers->len * 2);
+  guint i;
+
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      TpChannelFactoryIface *factory = g_ptr_array_index
+        (self->channel_managers, i);
+
+      tp_channel_factory_iface_foreach (factory,
+          get_channel_details_foreach, details);
+    }
+
+  return details;
+}
+
+
+void
+gabble_conn_requests_get_dbus_property (GObject *object,
+                                        GQuark interface,
+                                        GQuark name,
+                                        GValue *value,
+                                        gpointer unused G_GNUC_UNUSED)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (object);
+
+  g_return_if_fail (interface ==
+      GABBLE_IFACE_QUARK_CONNECTION_INTERFACE_REQUESTS);
+
+  if (name == g_quark_from_static_string ("Channels"))
+    {
+      g_value_take_boxed (value, conn_requests_get_channel_details (self));
+    }
+  else
+    {
+      g_return_if_reached ();
+    }
+}
 
 
 static void

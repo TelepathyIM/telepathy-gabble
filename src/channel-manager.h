@@ -24,6 +24,7 @@
 #define GABBLE_CHANNEL_MANAGER_H
 
 #include <glib-object.h>
+#include <telepathy-glib/channel-factory-iface.h>
 
 G_BEGIN_DECLS
 
@@ -49,6 +50,13 @@ struct _GabbleChannelManagerIface {
 };
 
 GType gabble_channel_manager_get_type (void);
+
+TpChannelFactoryRequestStatus gabble_channel_factory_create_channel (
+    GabbleChannelManager *manager, GHashTable *properties,
+    gpointer request_token, TpChannelIface **ret, GError **error);
+
+void gabble_channel_manager_foreach (GabbleChannelManager *manager,
+    TpChannelFunc func, gpointer user_data);
 
 G_END_DECLS
 

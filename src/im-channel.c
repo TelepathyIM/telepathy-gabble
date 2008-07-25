@@ -158,42 +158,6 @@ gabble_im_channel_constructor (GType type, guint n_props,
 }
 
 
-static GHashTable *
-gabble_im_channel_dup_channel_properties (GabbleIMChannel *self)
-{
-  static const gchar * const properties[] = {
-      TP_IFACE_CHANNEL, "TargetHandle",
-      TP_IFACE_CHANNEL, "TargetHandleType",
-      TP_IFACE_CHANNEL, "ChannelType",
-      GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
-      GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
-      GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
-      GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
-      NULL
-  };
-  const gchar * const *iter;
-  GHashTable *table;
-
-  table = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-      (GDestroyNotify) tp_g_value_slice_free);
-
-  for (iter = properties; iter[0] != NULL; iter += 2)
-    {
-      GValue *value = g_slice_new0 (GValue);
-
-      tp_dbus_properties_mixin_get ((GObject *) self, iter[0], iter[1],
-            value, NULL);
-      /* Fetching our immutable properties had better not fail... */
-      g_assert (G_IS_VALUE (value));
-
-      g_hash_table_insert (table, g_strdup_printf ("%s.%s", iter[0], iter[1]),
-          value);
-    }
-
-  return table;
-}
-
-
 static void
 gabble_im_channel_get_property (GObject    *object,
                                 guint       property_id,
@@ -252,7 +216,15 @@ gabble_im_channel_get_property (GObject    *object,
       break;
     case PROP_CHANNEL_PROPERTIES:
       g_value_set_boxed (value,
-          gabble_im_channel_dup_channel_properties (chan));
+          gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+              TP_IFACE_CHANNEL, "TargetHandle",
+              TP_IFACE_CHANNEL, "TargetHandleType",
+              TP_IFACE_CHANNEL, "ChannelType",
+              GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
+              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
+              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
+              GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+              NULL));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

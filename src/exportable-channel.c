@@ -24,6 +24,7 @@
 
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/util.h>
 
 
 static void
@@ -112,4 +113,38 @@ gabble_exportable_channel_get_type (void)
     }
 
   return type;
+}
+
+GHashTable *
+gabble_tp_dbus_properties_mixin_make_properties_hash (
+    GObject *object,
+    const gchar *first_interface,
+    const gchar *first_property,
+    ...)
+{
+  va_list ap;
+  GHashTable *table;
+  const gchar *interface, *property;
+
+  table = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  va_start (ap, first_property);
+
+  for (interface = first_interface, property = first_property;
+       interface != NULL;
+       interface = va_arg (ap, gchar *), property = va_arg (ap, gchar *))
+    {
+      GValue *value = g_slice_new0 (GValue);
+
+      tp_dbus_properties_mixin_get (object, interface, property,
+            value, NULL);
+      /* Fetching our immutable properties had better not fail... */
+      g_assert (G_IS_VALUE (value));
+
+      g_hash_table_insert (table,
+          g_strdup_printf ("%s.%s", interface, property), value);
+    }
+
+  return table;
 }

@@ -359,7 +359,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
       G_MAXUINT);
 
-  /* add ourselves to group mixin if needed */
+  tp_group_mixin_add_handle_owner (obj, self_handle, conn->self_handle);
+
+  /* add ourselves to members if we initiated the join */
   if (priv->invite_self)
     {
       GError *error = NULL;
@@ -369,12 +371,12 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       g_assert (priv->invitation_message == NULL);
 
       g_array_append_val (members, self_handle);
-      tp_group_mixin_add_handle_owner (obj, self_handle, conn->self_handle);
       tp_group_mixin_add_members (obj, members,
           "", &error);
       g_assert (error == NULL);
       g_array_free (members, TRUE);
     }
+  /* add ourselves to local_pending if we were invited */
   else
     {
       g_assert (priv->initiator != 0);
@@ -2242,7 +2244,6 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
 {
   GabbleMucChannelPrivate *priv;
   TpBaseConnection *conn;
-  TpHandle self_handle;
   TpIntSet *set_members, *set_pending;
   TpHandleRepoIface *contact_handles;
 
@@ -2263,22 +2264,15 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   set_members = tp_intset_new ();
   set_pending = tp_intset_new ();
 
-  /* This is not a channel-specific handle, so no need to add its owner */
   tp_intset_add (set_members, inviter);
+  tp_intset_add (set_pending, chan->group.self_handle);
 
-  /* create our own identity for the room */
-  create_room_identity (chan, &self_handle, &priv->self_jid);
-  tp_intset_add (set_pending, self_handle);
-
-  tp_group_mixin_add_handle_owner ((GObject *) chan, self_handle,
-      conn->self_handle);
   tp_group_mixin_change_members ((GObject *) chan, message, set_members,
                                      NULL, set_pending, NULL, inviter,
                                      TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
   tp_intset_destroy (set_members);
   tp_intset_destroy (set_pending);
-  tp_handle_unref (contact_handles, self_handle);
 
   /* queue the message */
   if (message && (message[0] != '\0'))

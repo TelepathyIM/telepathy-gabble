@@ -277,8 +277,7 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
 }
 
 
-static void contact_handle_to_room_identity (GabbleMucChannel *, TpHandle,
-    TpHandle *, GString **);
+static void create_room_identity (GabbleMucChannel *, TpHandle *, GString **);
 
 static void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
     TpHandle inviter, const gchar *message);
@@ -316,9 +315,8 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   g_assert (priv->initiator != 0);
   tp_handle_ref (contact_handles, priv->initiator);
 
-  /* get our own identity in the room */
-  contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj),
-      conn->self_handle, &self_handle, &priv->self_jid);
+  /* create our own identity in the room */
+  create_room_identity (self, &self_handle, &priv->self_jid);
   /* this causes us to have one ref to the self handle which is unreffed
    * at the end of this function */
 
@@ -638,8 +636,9 @@ room_properties_update (GabbleMucChannel *chan)
 }
 
 static void
-contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
-                                 TpHandle *room_handle, GString **room_jid)
+create_room_identity (GabbleMucChannel *chan,
+                      TpHandle *room_handle,
+                      GString **room_jid)
 {
   GabbleMucChannelPrivate *priv;
   TpBaseConnection *conn;
@@ -651,7 +650,7 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
   conn = (TpBaseConnection *) priv->conn;
   contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
 
-  main_jid = tp_handle_inspect (contact_repo, main_handle);
+  main_jid = tp_handle_inspect (contact_repo, conn->self_handle);
 
   gabble_decode_jid (main_jid, &username, NULL, NULL);
 
@@ -2267,9 +2266,8 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   /* This is not a channel-specific handle, so no need to add its owner */
   tp_intset_add (set_members, inviter);
 
-  /* get our own identity in the room */
-  contact_handle_to_room_identity (chan, conn->self_handle,
-                                   &self_handle, &priv->self_jid);
+  /* create our own identity for the room */
+  create_room_identity (chan, &self_handle, &priv->self_jid);
   tp_intset_add (set_pending, self_handle);
 
   tp_group_mixin_add_handle_owner ((GObject *) chan, self_handle,

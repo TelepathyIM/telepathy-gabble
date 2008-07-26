@@ -277,7 +277,7 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
 }
 
 
-static void create_room_identity (GabbleMucChannel *, TpHandle *, GString **);
+static void create_room_identity (GabbleMucChannel *, TpHandle *);
 
 static void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
     TpHandle inviter, const gchar *message);
@@ -316,7 +316,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   tp_handle_ref (contact_handles, priv->initiator);
 
   /* create our own identity in the room */
-  create_room_identity (self, &self_handle, &priv->self_jid);
+  create_room_identity (self, &self_handle);
   /* this causes us to have one ref to the self handle which is unreffed
    * at the end of this function */
 
@@ -639,8 +639,7 @@ room_properties_update (GabbleMucChannel *chan)
 
 static void
 create_room_identity (GabbleMucChannel *chan,
-                      TpHandle *room_handle,
-                      GString **room_jid)
+                      TpHandle *room_handle)
 {
   GabbleMucChannelPrivate *priv;
   TpBaseConnection *conn;
@@ -651,6 +650,8 @@ create_room_identity (GabbleMucChannel *chan,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
   conn = (TpBaseConnection *) priv->conn;
   contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
+
+  g_assert (priv->self_jid == NULL);
 
   main_jid = tp_handle_inspect (contact_repo, conn->self_handle);
 
@@ -666,10 +667,7 @@ create_room_identity (GabbleMucChannel *chan,
           GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
     }
 
-  if (room_jid)
-    {
-      *room_jid = g_string_new (jid);
-    }
+  priv->self_jid = g_string_new (jid);
 
   g_free (jid);
 }

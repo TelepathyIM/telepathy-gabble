@@ -2252,12 +2252,6 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
-  if (priv->initiator == 0)
-    {
-      tp_handle_ref (contact_handles, inviter);
-      priv->initiator = inviter;
-    }
-
   /* add ourself to local pending and the inviter to members */
   set_members = tp_intset_new ();
   set_pending = tp_intset_new ();

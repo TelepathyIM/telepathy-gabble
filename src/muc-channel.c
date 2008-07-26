@@ -2266,14 +2266,6 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   tp_intset_destroy (set_members);
   tp_intset_destroy (set_pending);
 
-  /* queue the message */
-  if (message && (message[0] != '\0'))
-    {
-      tp_text_mixin_receive (G_OBJECT (chan),
-          TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, inviter,
-          time (NULL), message);
-    }
-
   /* emit READY signal so NewChannel is emitted */
   g_signal_emit (chan, signals[READY], 0);
   priv->ready_emitted = TRUE;
@@ -2556,9 +2548,6 @@ gabble_muc_channel_add_member (GObject *obj,
 
       /* deny adding */
       tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
-
-      /* clear message queue (which might contain an invite reason) */
-      tp_text_mixin_clear (obj);
 
       return result;
     }

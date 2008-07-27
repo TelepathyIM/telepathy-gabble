@@ -41,6 +41,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "error.h"
+#include "presence.h"
 #include "namespaces.h"
 #include "util.h"
 
@@ -683,8 +684,20 @@ create_presence_message (GabbleMucChannel *self,
   LmMessage *msg;
   LmMessageNode *node;
 
-  msg = lm_message_new_with_sub_type (priv->self_jid->str,
-      LM_MESSAGE_TYPE_PRESENCE, sub_type);
+  /* only take the connection-wide presence if the MUC protocol doesn't rely on
+   * a particular subtype (eg, leaving the room requires type='unavailable') */
+  if (sub_type == LM_MESSAGE_SUB_TYPE_NOT_SET)
+    {
+      /* note that this message doesn't contain capabilities, but that's OK as
+       * most IQ-based protocols won't work in a MUC anyway */
+      msg = gabble_presence_as_message (priv->conn->self_presence,
+          priv->self_jid->str);
+    }
+  else
+    {
+      msg = lm_message_new_with_sub_type (priv->self_jid->str,
+          LM_MESSAGE_TYPE_PRESENCE, sub_type);
+    }
 
   node = lm_message_node_add_child (msg->node, "x", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_MUC);

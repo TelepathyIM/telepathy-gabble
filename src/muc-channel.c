@@ -279,9 +279,6 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
 
 static void create_room_identity (GabbleMucChannel *, TpHandle *);
 
-static void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
-    TpHandle inviter, const gchar *message);
-
 
 static GObject *
 gabble_muc_channel_constructor (GType type, guint n_props,
@@ -361,9 +358,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   tp_group_mixin_add_handle_owner (obj, self_handle, conn->self_handle);
 
-  /* add ourselves to members if we initiated the join */
   if (!priv->invited)
     {
+      /* not invited: add ourselves to members (and hence join immediately) */
       GError *error = NULL;
       GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
 
@@ -376,14 +373,26 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       g_assert (error == NULL);
       g_array_free (members, TRUE);
     }
-  /* add ourselves to local_pending if we were invited */
   else
     {
+      /* invited: add ourself to local pending and the inviter to members */
+      TpIntSet *set_members, *set_pending;
+
       g_assert (priv->initiator != 0);
       g_assert (priv->invitation_message != NULL);
 
-      _gabble_muc_channel_handle_invited (self, priv->initiator,
-          priv->invitation_message);
+      set_members = tp_intset_new ();
+      set_pending = tp_intset_new ();
+
+      tp_intset_add (set_members, priv->initiator);
+      tp_intset_add (set_pending, self->group.self_handle);
+
+      tp_group_mixin_change_members (obj, priv->invitation_message,
+          set_members, NULL, set_pending, NULL,
+          priv->initiator, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+
+      tp_intset_destroy (set_members);
+      tp_intset_destroy (set_pending);
 
       /* we've dealt with it (and copied it elsewhere), so there's no point
        * in keeping it */
@@ -2236,38 +2245,6 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
   tp_text_mixin_receive (G_OBJECT (chan), msg_type, sender,
       timestamp, text);
-}
-
-static void
-_gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
-                                    TpHandle inviter,
-                                    const gchar *message)
-{
-  GabbleMucChannelPrivate *priv;
-  TpBaseConnection *conn;
-  TpIntSet *set_members, *set_pending;
-  TpHandleRepoIface *contact_handles;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  conn = (TpBaseConnection *) priv->conn;
-  contact_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
-
-  /* add ourself to local pending and the inviter to members */
-  set_members = tp_intset_new ();
-  set_pending = tp_intset_new ();
-
-  tp_intset_add (set_members, inviter);
-  tp_intset_add (set_pending, chan->group.self_handle);
-
-  tp_group_mixin_change_members ((GObject *) chan, message, set_members,
-                                     NULL, set_pending, NULL, inviter,
-                                     TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
-
-  tp_intset_destroy (set_members);
-  tp_intset_destroy (set_pending);
 }
 
 /**

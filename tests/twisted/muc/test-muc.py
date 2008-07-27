@@ -139,6 +139,18 @@ def test(q, bus, conn, stream):
     assert body.name == 'body'
     assert body.children[0] == u'goodbye'
 
+    # test that presence changes are sent via the MUC
+    conn.Presence.SetStatus({'away':{'message':'hurrah'}})
+
+    event = q.expect('stream-presence', to='chat@conf.localhost/test')
+    elem = event.stanza
+    show = [e for e in elem.elements() if e.name == 'show'][0]
+    assert show
+    assert show.children[0] == u'away'
+    status = [e for e in elem.elements() if e.name == 'status'][0]
+    assert status
+    assert status.children[0] == u'hurrah'
+
     # test that closing the channel results in an unavailable message
     text_chan.Close()
 

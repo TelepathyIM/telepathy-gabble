@@ -358,22 +358,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   tp_group_mixin_add_handle_owner (obj, self_handle, conn->self_handle);
 
-  if (!priv->invited)
-    {
-      /* not invited: add ourselves to members (and hence join immediately) */
-      GError *error = NULL;
-      GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
-
-      g_assert (priv->initiator == conn->self_handle);
-      g_assert (priv->invitation_message == NULL);
-
-      g_array_append_val (members, self_handle);
-      tp_group_mixin_add_members (obj, members,
-          "", &error);
-      g_assert (error == NULL);
-      g_array_free (members, TRUE);
-    }
-  else
+  if (priv->invited)
     {
       /* invited: add ourself to local pending and the inviter to members */
       TpIntSet *set_members, *set_pending;
@@ -401,6 +386,21 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
       /* mark channel ready so NewChannel is emitted immediately */
       priv->ready = TRUE;
+    }
+  else
+    {
+      /* not invited: add ourselves to members (and hence join immediately) */
+      GError *error = NULL;
+      GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
+
+      g_assert (priv->initiator == conn->self_handle);
+      g_assert (priv->invitation_message == NULL);
+
+      g_array_append_val (members, self_handle);
+      tp_group_mixin_add_members (obj, members,
+          "", &error);
+      g_assert (error == NULL);
+      g_array_free (members, TRUE);
     }
 
   tp_handle_unref (contact_handles, self_handle);

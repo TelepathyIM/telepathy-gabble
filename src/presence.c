@@ -365,16 +365,13 @@ OUT:
 }
 
 LmMessage *
-gabble_presence_as_message (GabblePresence *presence, const gchar *resource)
+gabble_presence_as_message (GabblePresence *presence)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   LmMessage *message;
   LmMessageNode *node, *subnode;
   LmMessageSubType subtype;
-  Resource *res = _find_resource (presence, resource);
-
-  if (res == NULL)
-    res = priv->resources->data;
+  Resource *res = priv->resources->data; /* pick first resource */
 
   g_assert (NULL != res);
 

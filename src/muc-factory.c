@@ -341,28 +341,17 @@ new_muc_channel (GabbleMucFactory *fac,
   g_assert (g_hash_table_lookup (priv->text_channels,
         GINT_TO_POINTER (handle)) == NULL);
 
-  if (invited)
-    {
-      g_assert (inviter != 0);
-      g_assert (message != NULL);
-    }
-  else
-    {
-      g_assert (inviter == conn->self_handle);
-      g_assert (message == NULL);
-    }
-
   object_path = g_strdup_printf ("%s/MucChannel%u",
       conn->object_path, handle);
 
   DEBUG ("creating new chan, object path %s", object_path);
 
   chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
-      "connection", priv->conn,
+       "connection", priv->conn,
        "object-path", object_path,
        "handle", handle,
        "invited", invited,
-       "initiator-handle", inviter,
+       "initiator-handle", invited ? inviter : conn->self_handle,
        "invitation-message", message,
        NULL);
 
@@ -582,9 +571,6 @@ process_muc_invite (GabbleMucFactory *fac,
 
   if (reason_node != NULL)
     reason = lm_message_node_get_value (reason_node);
-
-  if (reason == NULL)
-    reason = "";
 
   /* create the channel */
   room = gabble_remove_resource (from);

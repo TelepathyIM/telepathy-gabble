@@ -139,6 +139,13 @@ def test(q, bus, conn, stream):
     assert body.name == 'body'
     assert body.children[0] == u'goodbye'
 
+    # test that closing the channel results in an unavailable message
+    text_chan.Close()
+
+    event = q.expect('stream-presence', to='chat@conf.localhost/test')
+    elem = event.stanza
+    assert elem['type'] == 'unavailable'
+
     conn.Disconnect()
 
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

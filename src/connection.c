@@ -1244,9 +1244,8 @@ connection_shut_down (TpBaseConnection *base)
 gboolean
 _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
 {
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
   GabblePresence *presence = self->self_presence;
-  LmMessage *message = gabble_presence_as_message (presence, priv->resource);
+  LmMessage *message = gabble_presence_as_message (presence);
   LmMessageNode *node = lm_message_get_node (message);
   gboolean ret;
   gchar *caps_hash;

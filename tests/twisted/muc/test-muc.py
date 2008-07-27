@@ -130,7 +130,6 @@ def test(q, bus, conn, stream):
 
     dbus.Interface(text_chan,
             'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'goodbye')
-    return True
 
     event = q.expect('stream-message')
     elem = event.stanza
@@ -143,6 +142,8 @@ def test(q, bus, conn, stream):
     conn.Disconnect()
 
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+
+    return True
 
 if __name__ == '__main__':
     exec_test(test)

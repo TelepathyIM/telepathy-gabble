@@ -239,12 +239,12 @@ struct _GabbleMucChannelPrivate
 
   TpPropertiesContext *properties_ctx;
 
-  gboolean ready;
+  gboolean ready:1;
 
-  gboolean closed;
-  gboolean dispose_has_run;
+  gboolean closed:1;
+  gboolean dispose_has_run:1;
 
-  gboolean invited;
+  gboolean invited:1;
   gchar *invitation_message;
 
   /* Aggregate all presences when joining the chatroom */

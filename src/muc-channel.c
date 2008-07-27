@@ -389,6 +389,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
        * in keeping it */
       g_free (priv->invitation_message);
       priv->invitation_message = NULL;
+
+      /* mark channel ready so NewChannel is emitted immediately */
+      priv->ready = TRUE;
     }
 
   tp_handle_unref (contact_handles, self_handle);
@@ -2265,10 +2268,6 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
 
   tp_intset_destroy (set_members);
   tp_intset_destroy (set_pending);
-
-  /* emit READY signal so NewChannel is emitted */
-  g_signal_emit (chan, signals[READY], 0);
-  priv->ready = TRUE;
 }
 
 /**

@@ -364,9 +364,6 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       /* invited: add ourself to local pending and the inviter to members */
       TpIntSet *set_members, *set_pending;
 
-      g_assert (priv->initiator != 0);
-      g_assert (priv->invitation_message != NULL);
-
       set_members = tp_intset_new ();
       set_pending = tp_intset_new ();
 

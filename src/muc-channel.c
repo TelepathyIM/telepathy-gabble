@@ -37,6 +37,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 #include "connection.h"
+#include "conn-aliasing.h"
 #include "debug.h"
 #include "disco.h"
 #include "error.h"
@@ -656,8 +657,7 @@ create_room_identity (GabbleMucChannel *chan,
   GabbleMucChannelPrivate *priv;
   TpBaseConnection *conn;
   TpHandleRepoIface *contact_repo;
-  const gchar *main_jid;
-  gchar *username, *jid;
+  gchar *alias = NULL;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
   conn = (TpBaseConnection *) priv->conn;
@@ -665,23 +665,20 @@ create_room_identity (GabbleMucChannel *chan,
 
   g_assert (priv->self_jid == NULL);
 
-  main_jid = tp_handle_inspect (contact_repo, conn->self_handle);
+  _gabble_connection_get_cached_alias (priv->conn, conn->self_handle, &alias);
+  g_assert (alias != NULL);
 
-  gabble_decode_jid (main_jid, &username, NULL, NULL);
+  priv->self_jid = g_string_new (priv->jid);
+  g_string_append_c (priv->self_jid, '/');
+  g_string_append (priv->self_jid, alias);
 
-  jid = g_strdup_printf ("%s/%s", priv->jid, username);
-
-  g_free (username);
+  g_free (alias);
 
   if (room_handle)
     {
-      *room_handle = tp_handle_ensure (contact_repo, jid,
+      *room_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
           GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
     }
-
-  priv->self_jid = g_string_new (jid);
-
-  g_free (jid);
 }
 
 static LmMessage *

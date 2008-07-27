@@ -367,10 +367,14 @@ OUT:
 LmMessage *
 gabble_presence_as_message (GabblePresence *presence, const gchar *resource)
 {
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   LmMessage *message;
   LmMessageNode *node, *subnode;
   LmMessageSubType subtype;
   Resource *res = _find_resource (presence, resource);
+
+  if (res == NULL)
+    res = priv->resources->data;
 
   g_assert (NULL != res);
 

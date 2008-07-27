@@ -239,7 +239,7 @@ struct _GabbleMucChannelPrivate
 
   TpPropertiesContext *properties_ctx;
 
-  gboolean ready_emitted;
+  gboolean ready;
 
   gboolean closed;
   gboolean dispose_has_run;
@@ -1294,12 +1294,12 @@ channel_state_changed (GabbleMucChannel *chan,
     {
       TpBaseConnection *base = (TpBaseConnection *) priv->conn;
 
-      if (!priv->ready_emitted)
+      if (!priv->ready)
         {
           g_signal_emit (chan, signals[READY], 0);
-
-          priv->ready_emitted = TRUE;
+          priv->ready = TRUE;
         }
+
       g_signal_emit (chan, signals[CONTACT_JOIN], 0, base->self_handle);
     }
 }
@@ -1353,7 +1353,7 @@ _gabble_muc_channel_is_ready (GabbleMucChannel *chan)
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  return priv->ready_emitted;
+  return priv->ready;
 }
 
 /**
@@ -2268,7 +2268,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
 
   /* emit READY signal so NewChannel is emitted */
   g_signal_emit (chan, signals[READY], 0);
-  priv->ready_emitted = TRUE;
+  priv->ready = TRUE;
 }
 
 /**

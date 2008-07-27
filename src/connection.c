@@ -1245,7 +1245,7 @@ gboolean
 _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
 {
   GabblePresence *presence = self->self_presence;
-  LmMessage *message = gabble_presence_as_message (presence);
+  LmMessage *message = gabble_presence_as_message (presence, NULL);
   LmMessageNode *node = lm_message_get_node (message);
   gboolean ret;
   gchar *caps_hash;

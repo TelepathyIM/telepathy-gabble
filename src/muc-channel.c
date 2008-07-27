@@ -107,7 +107,7 @@ enum
   PROP_REQUESTED,
   PROP_CONNECTION,
   PROP_STATE,
-  PROP_INVITE_SELF,
+  PROP_INVITED,
   PROP_INVITATION_MESSAGE,
   PROP_INTERFACES,
   PROP_INITIATOR_HANDLE,
@@ -244,7 +244,7 @@ struct _GabbleMucChannelPrivate
   gboolean closed;
   gboolean dispose_has_run;
 
-  gboolean invite_self;
+  gboolean invited;
   gchar *invitation_message;
 
   /* Aggregate all presences when joining the chatroom */
@@ -362,7 +362,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   tp_group_mixin_add_handle_owner (obj, self_handle, conn->self_handle);
 
   /* add ourselves to members if we initiated the join */
-  if (priv->invite_self)
+  if (!priv->invited)
     {
       GError *error = NULL;
       GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
@@ -871,8 +871,8 @@ gabble_muc_channel_set_property (GObject     *object,
         channel_state_changed (chan, prev_state, priv->state);
 
       break;
-    case PROP_INVITE_SELF:
-      priv->invite_self = g_value_get_boolean (value);
+    case PROP_INVITED:
+      priv->invited = g_value_get_boolean (value);
       break;
     case PROP_INITIATOR_HANDLE:
       priv->initiator = g_value_get_uint (value);
@@ -969,11 +969,11 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
-  param_spec = g_param_spec_boolean ("invite-self", "Invite self",
-      "Whether the user should be added to members list.", FALSE,
+  param_spec = g_param_spec_boolean ("invited", "Invited?",
+      "Whether the user has been invited to the channel.", FALSE,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE | G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_INVITE_SELF, param_spec);
+  g_object_class_install_property (object_class, PROP_INVITED, param_spec);
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
       "Additional Channel.Interface.* interfaces",
@@ -2532,9 +2532,9 @@ gabble_muc_channel_add_member (GObject *obj,
           conn->self_handle);
       tp_group_mixin_change_members (obj, "", NULL, set_remove_members,
           NULL, set_remote_pending, 0,
-          priv->invite_self
-            ? TP_CHANNEL_GROUP_CHANGE_REASON_NONE
-            : TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+          priv->invited
+            ? TP_CHANNEL_GROUP_CHANGE_REASON_INVITED
+            : TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
       tp_intset_destroy (set_remove_members);
       tp_intset_destroy (set_remote_pending);

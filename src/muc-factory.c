@@ -329,7 +329,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
 static GabbleMucChannel *
 new_muc_channel (GabbleMucFactory *fac,
                  TpHandle handle,
-                 gboolean invite_self,
+                 gboolean invited,
                  TpHandle inviter,
                  const gchar *message)
 {
@@ -341,15 +341,15 @@ new_muc_channel (GabbleMucFactory *fac,
   g_assert (g_hash_table_lookup (priv->text_channels,
         GINT_TO_POINTER (handle)) == NULL);
 
-  if (invite_self)
-    {
-      g_assert (inviter == conn->self_handle);
-      g_assert (message == NULL);
-    }
-  else
+  if (invited)
     {
       g_assert (inviter != 0);
       g_assert (message != NULL);
+    }
+  else
+    {
+      g_assert (inviter == conn->self_handle);
+      g_assert (message == NULL);
     }
 
   object_path = g_strdup_printf ("%s/MucChannel%u",
@@ -361,7 +361,7 @@ new_muc_channel (GabbleMucFactory *fac,
       "connection", priv->conn,
        "object-path", object_path,
        "handle", handle,
-       "invite-self", invite_self,
+       "invited", invited,
        "initiator-handle", inviter,
        "invitation-message", message,
        NULL);
@@ -448,7 +448,7 @@ do_invite (GabbleMucFactory *fac,
   if (g_hash_table_lookup (priv->text_channels,
         GUINT_TO_POINTER (room_handle)) == NULL)
     {
-      new_muc_channel (fac, room_handle, FALSE, inviter_handle, reason);
+      new_muc_channel (fac, room_handle, TRUE, inviter_handle, reason);
     }
   else
     {
@@ -1132,7 +1132,7 @@ ensure_muc_channel (GabbleMucFactory *fac,
 
   if (*ret == NULL)
     {
-      *ret = new_muc_channel (fac, handle, TRUE, base_conn->self_handle, NULL);
+      *ret = new_muc_channel (fac, handle, FALSE, base_conn->self_handle, NULL);
       return FALSE;
     }
 

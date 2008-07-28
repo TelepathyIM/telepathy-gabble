@@ -758,7 +758,7 @@ gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
           /* This shouldn't happen as long as:
            *
            * - Gadget doesn't send us <joined> stanzas about an activity
-           *   which was not previsouly announced as being part of the view.
+           *   which was not previously announced as being part of the view.
            *
            * - We don't call gabble_olpc_view_add_buddies with an activity
            *   which was not previoulsy added to the view.

@@ -84,7 +84,7 @@ channel_manager_base_init (gpointer klass)
           0,
           NULL, NULL,
           gabble_marshal_VOID__POINTER_OBJECT,
-          G_TYPE_NONE, 2, G_TYPE_POINTER, GABBLE_TYPE_EXPORTABLE_CHANNEL);
+          G_TYPE_NONE, 2, G_TYPE_POINTER, G_TYPE_OBJECT);
 
       /**
        * GabbleChannelManager::request-failed:

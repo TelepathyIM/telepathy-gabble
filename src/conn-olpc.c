@@ -2963,10 +2963,7 @@ buddy_changed (GabbleConnection *conn,
       properties = lm_message_node_extract_properties (node,
           "property");
 
-      if (view != NULL)
-        {
-          gabble_olpc_view_set_buddy_properties (view, handle, properties);
-        }
+      gabble_olpc_view_set_buddy_properties (view, handle, properties);
 
       gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
           properties);

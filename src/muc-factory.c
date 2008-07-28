@@ -119,6 +119,10 @@ cancel_disco_request (gpointer key, gpointer value, gpointer user_data)
   gabble_disco_cancel_request (disco, request);
 }
 
+
+static void gabble_muc_factory_close_all (GabbleMucFactory *fac);
+
+
 static void
 gabble_muc_factory_dispose (GObject *object)
 {
@@ -131,7 +135,7 @@ gabble_muc_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
+  gabble_muc_factory_close_all (fac);
   g_assert (priv->text_channels == NULL);
   g_assert (priv->tubes_channels == NULL);
   g_assert (priv->text_needed_for_tubes == NULL);
@@ -965,9 +969,8 @@ make_roomlist_channel (GabbleMucFactory *fac, gpointer request)
 
 
 static void
-gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
+gabble_muc_factory_close_all (GabbleMucFactory *fac)
 {
-  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
 
   DEBUG ("closing channels");
@@ -1031,6 +1034,8 @@ connection_status_changed_cb (GabbleConnection *conn,
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
+      gabble_muc_factory_close_all (self);
+
       /* this can be called before we have ever been CONNECTING, so we need
        * to guard it */
       if (priv->message_cb != NULL)
@@ -1267,7 +1272,8 @@ gabble_muc_factory_iface_init (gpointer g_iface,
 {
   TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
 
-  klass->close_all = gabble_muc_factory_iface_close_all;
+  klass->close_all =
+      (TpChannelFactoryIfaceProc) gabble_muc_factory_close_all;
   klass->foreach = gabble_muc_factory_iface_foreach;
   klass->request = gabble_muc_factory_iface_request;
 }

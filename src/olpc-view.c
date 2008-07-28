@@ -484,10 +484,12 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
   TpHandleRepoIface *room_repo;
   GArray *buddies_changed;
 
+  g_assert (buddies->len == buddies_properties->len);
+  if (buddies->len == 0)
+    return;
+
   room_repo = tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
       TP_HANDLE_TYPE_ROOM);
-
-  g_assert (buddies->len == buddies_properties->len);
 
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   buddies_changed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
@@ -567,6 +569,9 @@ gabble_olpc_view_remove_buddies (GabbleOlpcView *self,
 {
   GArray *removed, *empty;
 
+  if (tp_handle_set_size (buddies) == 0)
+    return;
+
   tp_handle_set_foreach (buddies,
       (TpHandleSetMemberFunc) remove_buddy_foreach, self);
 
@@ -616,6 +621,9 @@ gabble_olpc_view_add_activities (GabbleOlpcView *self,
 {
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   GPtrArray *added, *empty;
+
+  if (g_hash_table_size (activities) == 0)
+    return;
 
   tp_g_hash_table_update (priv->activities, activities, NULL, g_object_ref);
 
@@ -668,6 +676,9 @@ gabble_olpc_view_remove_activities (GabbleOlpcView *self,
   GArray *array;
   guint i;
   TpHandleRepoIface *contact_repo;
+
+  if (tp_handle_set_size (rooms) == 0)
+    return;
 
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);

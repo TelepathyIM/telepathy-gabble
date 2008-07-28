@@ -239,6 +239,8 @@ gabble_connection_constructor (GType type,
   tp_contacts_mixin_init (G_OBJECT (self),
       G_STRUCT_OFFSET (GabbleConnection, contacts));
 
+  tp_base_connection_register_with_contacts_iface (TP_BASE_CONNECTION (self));
+
   conn_avatars_init (self);
   conn_presence_init (self);
   conn_olpc_activity_properties_init (self);

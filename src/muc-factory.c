@@ -74,6 +74,7 @@ struct _GabbleMucFactoryPrivate
    * text channel is created.
    * GabbleMucChannel * => GabbleTubesChannel * */
   GHashTable *text_needed_for_tubes;
+  /* GabbleDiscoRequest * => NULL (used as a set) */
   GHashTable *disco_requests;
 
   gboolean dispose_has_run;

@@ -109,19 +109,6 @@ gabble_muc_factory_init (GabbleMucFactory *fac)
   priv->dispose_has_run = FALSE;
 }
 
-static GObject *
-gabble_muc_factory_constructor (GType type, guint n_props,
-                                GObjectConstructParam *props)
-{
-  GObject *obj;
-  /* GabbleMucFactoryPrivate *priv; */
-
-  obj = G_OBJECT_CLASS (gabble_muc_factory_parent_class)->
-           constructor (type, n_props, props);
-  /* priv = GABBLE_MUC_FACTORY_GET_PRIVATE (obj); */
-
-  return obj;
-}
 
 static void
 cancel_disco_request (gpointer key, gpointer value, gpointer user_data)
@@ -1013,57 +1000,76 @@ gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
     }
 }
 
+
 static void
-gabble_muc_factory_iface_connecting (TpChannelFactoryIface *iface)
+connection_status_changed_cb (GabbleConnection *conn,
+                              guint status,
+                              guint reason,
+                              GabbleMucFactory *self)
 {
-  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
 
-  DEBUG ("adding callbacks");
+  switch (status)
+    {
+    case TP_CONNECTION_STATUS_CONNECTING:
+      DEBUG ("adding callbacks");
+      g_assert (priv->message_cb == NULL);
+      g_assert (priv->presence_cb == NULL);
 
-  g_assert (priv->message_cb == NULL);
-  g_assert (priv->presence_cb == NULL);
+      priv->message_cb = lm_message_handler_new (muc_factory_message_cb,
+          self, NULL);
+      lm_connection_register_message_handler (priv->conn->lmconn,
+          priv->message_cb, LM_MESSAGE_TYPE_MESSAGE,
+          LM_HANDLER_PRIORITY_NORMAL);
 
-  priv->message_cb = lm_message_handler_new (muc_factory_message_cb, fac,
-      NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn, priv->message_cb,
-                                          LM_MESSAGE_TYPE_MESSAGE,
-                                          LM_HANDLER_PRIORITY_NORMAL);
+      priv->presence_cb = lm_message_handler_new (
+          muc_factory_presence_cb, self, NULL);
+      lm_connection_register_message_handler (priv->conn->lmconn,
+          priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE,
+          LM_HANDLER_PRIORITY_NORMAL);
 
-  priv->presence_cb = lm_message_handler_new (muc_factory_presence_cb,
-      fac, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn,
-      priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE, LM_HANDLER_PRIORITY_NORMAL);
+      break;
+
+    case TP_CONNECTION_STATUS_DISCONNECTED:
+      /* this can be called before we have ever been CONNECTING, so we need
+       * to guard it */
+      if (priv->message_cb != NULL)
+        {
+          DEBUG ("removing callbacks");
+          g_assert (priv->presence_cb != NULL);
+
+          lm_connection_unregister_message_handler (priv->conn->lmconn,
+              priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
+          lm_message_handler_unref (priv->message_cb);
+          priv->message_cb = NULL;
+
+          lm_connection_unregister_message_handler (priv->conn->lmconn,
+              priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE);
+          lm_message_handler_unref (priv->presence_cb);
+          priv->presence_cb = NULL;
+        }
+      break;
+    }
 }
 
 
-static void
-gabble_muc_factory_iface_connected (TpChannelFactoryIface *iface)
+static GObject *
+gabble_muc_factory_constructor (GType type, guint n_props,
+                                GObjectConstructParam *props)
 {
-  /* nothing to do */
+  GObject *obj = G_OBJECT_CLASS (gabble_muc_factory_parent_class)->
+           constructor (type, n_props, props);
+  GabbleMucFactory *self = GABBLE_MUC_FACTORY (obj);
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+
+  /* conn is guaranteed to live longer than the factory, so this
+   * never needs disconnecting */
+  g_signal_connect (priv->conn, "status-changed",
+      (GCallback) connection_status_changed_cb, obj);
+
+  return obj;
 }
 
-static void
-gabble_muc_factory_iface_disconnected (TpChannelFactoryIface *iface)
-{
-  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-
-  DEBUG ("removing callbacks");
-
-  g_assert (priv->message_cb != NULL);
-  g_assert (priv->presence_cb != NULL);
-
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
-  lm_message_handler_unref (priv->message_cb);
-  priv->message_cb = NULL;
-
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE);
-  lm_message_handler_unref (priv->presence_cb);
-  priv->presence_cb = NULL;
-}
 
 struct _ForeachData
 {
@@ -1262,9 +1268,6 @@ gabble_muc_factory_iface_init (gpointer g_iface,
   TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
 
   klass->close_all = gabble_muc_factory_iface_close_all;
-  klass->connecting = gabble_muc_factory_iface_connecting;
-  klass->connected = gabble_muc_factory_iface_connected;
-  klass->disconnected = gabble_muc_factory_iface_disconnected;
   klass->foreach = gabble_muc_factory_iface_foreach;
   klass->request = gabble_muc_factory_iface_request;
 }

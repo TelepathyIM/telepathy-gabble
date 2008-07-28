@@ -170,6 +170,10 @@ gabble_media_factory_set_property (GObject      *object,
   }
 }
 
+
+static void gabble_media_factory_constructed (GObject *object);
+
+
 static void
 gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_class)
 {
@@ -179,6 +183,7 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
   g_type_class_add_private (gabble_media_factory_class,
       sizeof (GabbleMediaFactoryPrivate));
 
+  object_class->constructed = gabble_media_factory_constructed;
   object_class->dispose = gabble_media_factory_dispose;
 
   object_class->get_property = gabble_media_factory_get_property;
@@ -696,86 +701,108 @@ gabble_media_factory_iface_close_all (TpChannelFactoryIface *iface)
     }
 }
 
-static void
-gabble_media_factory_iface_connecting (TpChannelFactoryIface *iface)
-{
-  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-
-  g_assert (priv->conn != NULL);
-  g_assert (priv->conn->lmconn != NULL);
-
-  DEBUG ("adding callbacks");
-
-  g_assert (priv->jingle_cb == NULL);
-  g_assert (priv->jingle_info_cb == NULL);
-
-  priv->jingle_cb = lm_message_handler_new (media_factory_jingle_cb, fac,
-      NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn, priv->jingle_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_NORMAL);
-
-  priv->jingle_info_cb = lm_message_handler_new (jingle_info_iq_callback, fac,
-      NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn,
-                                          priv->jingle_info_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_NORMAL);
-}
 
 static void
-gabble_media_factory_iface_connected (TpChannelFactoryIface *iface)
+connection_status_changed_cb (GabbleConnection *conn,
+                              guint status,
+                              guint reason,
+                              GabbleMediaFactory *self)
 {
-  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  gchar *stun_server = NULL;
-  guint stun_port = 0;
+  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
 
-  g_object_get (priv->conn,
-      "stun-server", &stun_server,
-      "stun-port", &stun_port,
-      NULL);
+  switch (status)
+    {
+    case TP_CONNECTION_STATUS_CONNECTING:
+      g_assert (priv->conn != NULL);
+      g_assert (priv->conn->lmconn != NULL);
 
-  if (stun_server == NULL)
-    {
-      priv->get_stun_from_jingle = TRUE;
-    }
-  else
-    {
-      g_free (priv->stun_server);
-      priv->stun_server = stun_server;
-      priv->stun_port = stun_port;
-    }
+      DEBUG ("adding callbacks");
+      g_assert (priv->jingle_cb == NULL);
+      g_assert (priv->jingle_info_cb == NULL);
 
-  if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
-    {
-      jingle_info_send_request (fac);
+      priv->jingle_cb = lm_message_handler_new (media_factory_jingle_cb,
+          self, NULL);
+      lm_connection_register_message_handler (priv->conn->lmconn,
+          priv->jingle_cb, LM_MESSAGE_TYPE_IQ,
+          LM_HANDLER_PRIORITY_NORMAL);
+
+      priv->jingle_info_cb = lm_message_handler_new (
+          jingle_info_iq_callback, self, NULL);
+      lm_connection_register_message_handler (priv->conn->lmconn,
+          priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ,
+          LM_HANDLER_PRIORITY_NORMAL);
+
+      break;
+
+    case TP_CONNECTION_STATUS_CONNECTED:
+        {
+          gchar *stun_server = NULL;
+          guint stun_port = 0;
+
+          g_object_get (priv->conn,
+              "stun-server", &stun_server,
+              "stun-port", &stun_port,
+              NULL);
+
+          if (stun_server == NULL)
+            {
+              priv->get_stun_from_jingle = TRUE;
+            }
+          else
+            {
+              g_free (priv->stun_server);
+              priv->stun_server = stun_server;
+              priv->stun_port = stun_port;
+            }
+
+          if (priv->conn->features &
+              GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
+            {
+              jingle_info_send_request (self);
+            }
+        }
+      break;
+
+    case TP_CONNECTION_STATUS_DISCONNECTED:
+      /* this can be called before we have ever been CONNECTING, so we need
+       * to guard it */
+      if (priv->jingle_cb != NULL)
+        {
+          DEBUG ("removing callbacks");
+          g_assert (priv->jingle_info_cb != NULL);
+
+          lm_connection_unregister_message_handler (priv->conn->lmconn,
+              priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
+          lm_message_handler_unref (priv->jingle_cb);
+          priv->jingle_cb = NULL;
+
+          lm_connection_unregister_message_handler (priv->conn->lmconn,
+              priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
+          lm_message_handler_unref (priv->jingle_info_cb);
+          priv->jingle_info_cb = NULL;
+        }
+      break;
     }
 }
+
 
 static void
-gabble_media_factory_iface_disconnected (TpChannelFactoryIface *iface)
+gabble_media_factory_constructed (GObject *object)
 {
-  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  void (*chain_up) (GObject *) =
+      G_OBJECT_CLASS (gabble_media_factory_parent_class)->constructed;
+  GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (object);
+  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
 
-  DEBUG ("removing callbacks");
+  if (chain_up != NULL)
+    chain_up (object);
 
-  g_assert (priv->jingle_cb != NULL);
-  g_assert (priv->jingle_info_cb != NULL);
-
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
-  lm_message_handler_unref (priv->jingle_cb);
-  priv->jingle_cb = NULL;
-
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
-  lm_message_handler_unref (priv->jingle_info_cb);
-  priv->jingle_info_cb = NULL;
-
+  /* conn is guaranteed to live longer than the factory, so this
+   * never needs disconnecting */
+  g_signal_connect (priv->conn, "status-changed",
+      (GCallback) connection_status_changed_cb, object);
 }
+
 
 static void
 gabble_media_factory_iface_foreach (TpChannelFactoryIface *iface,
@@ -847,9 +874,6 @@ gabble_media_factory_iface_init (gpointer g_iface,
   TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
 
   klass->close_all = gabble_media_factory_iface_close_all;
-  klass->connected = gabble_media_factory_iface_connected;
-  klass->connecting = gabble_media_factory_iface_connecting;
-  klass->disconnected = gabble_media_factory_iface_disconnected;
   klass->foreach = gabble_media_factory_iface_foreach;
   klass->request = gabble_media_factory_iface_request;
 }

@@ -76,8 +76,7 @@ gabble_olpc_activity_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn,
+  room_repo = tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
       TP_HANDLE_TYPE_ROOM);
   tp_handle_unref (room_repo, self->room);
 
@@ -296,7 +295,6 @@ gabble_olpc_activity_is_visible (GabbleOlpcActivity *self)
     return FALSE;
 
   gv = g_hash_table_lookup (self->properties, "private");
-
   if (gv == NULL)
     {
       return FALSE;

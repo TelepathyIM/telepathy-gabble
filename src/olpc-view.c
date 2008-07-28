@@ -96,11 +96,6 @@ gabble_olpc_view_init (GabbleOlpcView *self)
 
   self->priv = priv;
 
-  priv->buddy_properties = g_hash_table_new_full (g_direct_hash,
-      g_direct_equal, NULL, (GDestroyNotify) g_hash_table_unref);
-  priv->buddy_rooms = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, (GDestroyNotify) tp_handle_set_destroy);
-
   priv->dispose_has_run = FALSE;
 }
 
@@ -235,8 +230,13 @@ gabble_olpc_view_constructor (GType type,
       TP_HANDLE_TYPE_CONTACT);
 
   priv->buddies = tp_handle_set_new (contact_handles);
+
   priv->activities = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, g_object_unref );
+      NULL, g_object_unref);
+  priv->buddy_properties = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, (GDestroyNotify) g_hash_table_unref);
+  priv->buddy_rooms = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, (GDestroyNotify) tp_handle_set_destroy);
 
   return obj;
 }

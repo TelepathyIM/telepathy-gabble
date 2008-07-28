@@ -2946,10 +2946,7 @@ buddy_changed (GabbleConnection *conn,
       return;
     }
 
-  /* FIXME: Should we really have to ensure the handle? If we receive changes
-   * notifications that means this contact is in your search frame so maybe
-   * we should keep a ref on his handle */
-  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+  handle = tp_handle_lookup (contact_repo, jid, NULL, NULL);
   if (handle == 0)
     {
       DEBUG ("Invalid jid: %s. Discard", jid);

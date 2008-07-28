@@ -301,24 +301,6 @@ gabble_private_tubes_factory_iface_close_all (TpChannelFactoryIface *iface)
   g_hash_table_destroy (tmp);
 }
 
-static void
-gabble_private_tubes_factory_iface_connecting (TpChannelFactoryIface *iface)
-{
-  /* nothing to do */
-}
-
-static void
-gabble_private_tubes_factory_iface_connected (TpChannelFactoryIface *iface)
-{
-  /* nothing to do */
-}
-
-static void
-gabble_private_tubes_factory_iface_disconnected (TpChannelFactoryIface *iface)
-{
-  /* nothing to do */
-}
-
 struct _ForeachData
 {
   TpChannelFunc foreach;
@@ -547,9 +529,6 @@ gabble_private_tubes_factory_iface_init (gpointer g_iface,
   TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
 
   klass->close_all = gabble_private_tubes_factory_iface_close_all;
-  klass->connecting = gabble_private_tubes_factory_iface_connecting;
-  klass->connected = gabble_private_tubes_factory_iface_connected;
-  klass->disconnected = gabble_private_tubes_factory_iface_disconnected;
   klass->foreach = gabble_private_tubes_factory_iface_foreach;
   klass->request = gabble_private_tubes_factory_iface_request;
 }

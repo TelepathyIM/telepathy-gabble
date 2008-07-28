@@ -3049,6 +3049,7 @@ populate_buddies_from_nodes (GabbleConnection *conn,
 
           DEBUG ("Invalid jid: %s", jid);
 
+          /* Free the ressources previously allocated */
           for (i = 0; i < buddies->len; i++)
             tp_handle_unref (contact_repo, g_array_index (buddies, TpHandle,
                   i));
@@ -3234,7 +3235,7 @@ activity_added (GabbleConnection *conn,
   add_activities_to_view_from_node (conn, view, added);
 }
 
-/* if activity is not zero, buddies are associated with the passed
+/* if activity is not zero, buddies are associated with the given
  * activity room */
 static gboolean
 add_buddies_to_view_from_node (GabbleConnection *conn,

@@ -3524,21 +3524,13 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
   const gchar *from;
   LmMessageNode *node;
 
-  /* FIXME: We call that to be sure conn->olpc_gadget_{buddy,activity} are
-   * initialised if the service was discovered.
-   * Are we supposed to receive changes notifications message from gadget
-   * if we didn't send it a search request before? If not we can assume
-   * these check_gadget_* functions were already called and just check if
-   * conn->olpc_gadget_{buddy,activity} are not NULL.
-   */
-  if (!check_gadget_buddy (conn, NULL) && !check_gadget_activity (conn, NULL))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
   from = lm_message_node_get_attribute (message->node, "from");
   if (from == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  /* FIXME: we shouldn't hardcode that */
+  /* If we are receiving notifications from Gadget that means we
+   * previoulsy sent it a view request, so
+   * conn->olpc_gadget_{buddy,activity} have been defined */
   if (tp_strdiff (from, conn->olpc_gadget_buddy) &&
       tp_strdiff (from, conn->olpc_gadget_activity))
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

@@ -102,7 +102,7 @@ channel_manager_base_init (gpointer klass)
        * generally respond to this signal by returning failure from
        * CreateChannel or RequestChannel.
        */
-      signals[S_REQUEST_SUCCEEDED] = g_signal_new ("request-failed",
+      signals[S_REQUEST_FAILED] = g_signal_new ("request-failed",
           G_OBJECT_CLASS_TYPE (klass),
           G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
           0,

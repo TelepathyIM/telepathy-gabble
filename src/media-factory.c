@@ -100,6 +100,9 @@ gabble_media_factory_init (GabbleMediaFactory *fac)
 }
 
 
+static void gabble_media_factory_close_all (GabbleMediaFactory *fac);
+
+
 static void
 gabble_media_factory_dispose (GObject *object)
 {
@@ -115,7 +118,7 @@ gabble_media_factory_dispose (GObject *object)
   g_assert (priv->jingle_cb == NULL);
   g_assert (priv->jingle_info_cb == NULL);
 
-  tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
+  gabble_media_factory_close_all (fac);
   g_assert (priv->channels == NULL);
 
   if (priv->session_chans)
@@ -667,9 +670,8 @@ jingle_info_iq_callback (LmMessageHandler *handler,
 
 
 static void
-gabble_media_factory_iface_close_all (TpChannelFactoryIface *iface)
+gabble_media_factory_close_all (GabbleMediaFactory *fac)
 {
-  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
 
   DEBUG ("closing channels");
@@ -764,6 +766,8 @@ connection_status_changed_cb (GabbleConnection *conn,
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
+      gabble_media_factory_close_all (self);
+
       /* this can be called before we have ever been CONNECTING, so we need
        * to guard it */
       if (priv->jingle_cb != NULL)
@@ -873,7 +877,8 @@ gabble_media_factory_iface_init (gpointer g_iface,
 {
   TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
 
-  klass->close_all = gabble_media_factory_iface_close_all;
+  klass->close_all =
+      (TpChannelFactoryIfaceProc) gabble_media_factory_close_all;
   klass->foreach = gabble_media_factory_iface_foreach;
   klass->request = gabble_media_factory_iface_request;
 }

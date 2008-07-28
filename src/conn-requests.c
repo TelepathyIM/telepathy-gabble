@@ -543,10 +543,10 @@ conn_requests_get_channel_details (GabbleConnection *self)
 
   for (i = 0; i < self->channel_managers->len; i++)
     {
-      TpChannelFactoryIface *factory = g_ptr_array_index
-        (self->channel_managers, i);
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
 
-      tp_channel_factory_iface_foreach (factory,
+      gabble_channel_manager_foreach_channel (manager,
           get_channel_details_foreach, details);
     }
 

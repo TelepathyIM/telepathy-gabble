@@ -92,10 +92,30 @@ gabble_private_tubes_factory_init (GabblePrivateTubesFactory *self)
   priv->dispose_has_run = FALSE;
 }
 
+
+static void gabble_private_tubes_factory_close_all (
+    GabblePrivateTubesFactory *fac);
+
+
+static void
+connection_status_changed_cb (GabbleConnection *conn,
+                              guint status,
+                              guint reason,
+                              GabblePrivateTubesFactory *self)
+{
+  switch (status)
+    {
+    case TP_CONNECTION_STATUS_DISCONNECTED:
+      gabble_private_tubes_factory_close_all (self);
+      break;
+    }
+}
+
+
 static GObject *
 gabble_private_tubes_factory_constructor (GType type,
-                                  guint n_props,
-                                  GObjectConstructParam *props)
+                                          guint n_props,
+                                          GObjectConstructParam *props)
 {
   GObject *obj;
   GabblePrivateTubesFactory *self;
@@ -112,8 +132,14 @@ gabble_private_tubes_factory_constructor (GType type,
   lm_connection_register_message_handler (priv->conn->lmconn,
       priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
 
+  /* conn is guaranteed to live longer than the factory, so this
+   * never needs disconnecting */
+  g_signal_connect (priv->conn, "status-changed",
+      (GCallback) connection_status_changed_cb, obj);
+
   return obj;
 }
+
 
 static void
 gabble_private_tubes_factory_dispose (GObject *object)
@@ -128,7 +154,7 @@ gabble_private_tubes_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
+  gabble_private_tubes_factory_close_all (fac);
   g_assert (priv->channels == NULL);
 
   lm_connection_unregister_message_handler (priv->conn->lmconn,
@@ -284,9 +310,8 @@ new_tubes_channel (GabblePrivateTubesFactory *fac,
 }
 
 static void
-gabble_private_tubes_factory_iface_close_all (TpChannelFactoryIface *iface)
+gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
 {
-  GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (iface);
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
   GHashTable *tmp;
@@ -528,7 +553,8 @@ gabble_private_tubes_factory_iface_init (gpointer g_iface,
 {
   TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
 
-  klass->close_all = gabble_private_tubes_factory_iface_close_all;
+  klass->close_all =
+      (TpChannelFactoryIfaceProc) gabble_private_tubes_factory_close_all;
   klass->foreach = gabble_private_tubes_factory_iface_foreach;
   klass->request = gabble_private_tubes_factory_iface_request;
 }

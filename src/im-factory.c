@@ -39,11 +39,12 @@
 #include "im-channel.h"
 #include "text-mixin.h"
 
-static void gabble_im_factory_iface_init (gpointer g_iface,
-    gpointer iface_data);
+static void gabble_im_factory_iface_init (gpointer, gpointer);
+static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleImFactory, gabble_im_factory, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER, NULL);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
+      channel_manager_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
       gabble_im_factory_iface_init));
 
@@ -300,17 +301,16 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (self);
   TpHandle contact_handle;
   gboolean really_destroyed;
-  gchar *object_path;
 
   DEBUG ("%p, channel %p", self, chan);
 
   g_object_get (chan,
       "handle", &contact_handle,
-      "object-path", &object_path,
       "channel-destroyed", &really_destroyed,
       NULL);
 
-  g_signal_emit_by_name (self, "channel-closed", object_path);
+  gabble_channel_manager_emit_channel_closed_for_object (self,
+      (GabbleExportableChannel *) chan);
 
   if (priv->channels != NULL)
     {
@@ -327,19 +327,15 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
         }
       else
         {
-          GPtrArray *array = g_ptr_array_sized_new (1);
 
           DEBUG ("reopening channel with handle %u due to pending messages",
               contact_handle);
           tp_channel_factory_iface_emit_new_channel (self,
               (TpChannelIface *) chan, NULL);
-          g_ptr_array_add (array, chan);
-          g_signal_emit_by_name (self, "new-channels", array);
-          g_ptr_array_free (array, TRUE);
+          gabble_channel_manager_emit_new_channel (self,
+              (GabbleExportableChannel *) chan);
         }
     }
-
-  g_free (object_path);
 }
 
 /**
@@ -355,7 +351,6 @@ new_im_channel (GabbleImFactory *fac,
   TpBaseConnection *conn;
   GabbleIMChannel *chan;
   char *object_path;
-  GPtrArray *channels;
 
   g_return_val_if_fail (GABBLE_IS_IM_FACTORY (fac), NULL);
   g_return_val_if_fail (handle != 0, NULL);
@@ -385,13 +380,12 @@ new_im_channel (GabbleImFactory *fac,
 
   g_free (object_path);
 
-  channels = g_ptr_array_sized_new (1);
-  g_ptr_array_add (channels, chan);
-  g_signal_emit_by_name (fac, "new-channels", channels);
-  g_ptr_array_free (channels, TRUE);
+  gabble_channel_manager_emit_new_channel (fac,
+      (GabbleExportableChannel *) chan);
 
   if (request_token != NULL)
-    g_signal_emit_by_name (fac, "request-satisfied", request_token, chan);
+    gabble_channel_manager_emit_request_succeeded (fac, request_token,
+        (GabbleExportableChannel *) chan);
 
   return chan;
 }
@@ -452,35 +446,39 @@ gabble_im_factory_iface_disconnected (TpChannelFactoryIface *iface)
   priv->message_cb = NULL;
 }
 
+
 struct _ForeachData
 {
-  TpChannelFunc foreach;
+  GabbleExportableChannelFunc func;
   gpointer user_data;
 };
 
 static void
 _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 {
-  struct _ForeachData *data = (struct _ForeachData *) user_data;
-  TpChannelIface *chan = TP_CHANNEL_IFACE (value);
+  struct _ForeachData *data = user_data;
+  GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (value);
 
-  data->foreach (chan, data->user_data);
+  /* assert that it has both interfaces, for now */
+  g_assert (TP_IS_CHANNEL_IFACE (chan));
+
+  data->func (chan, data->user_data);
 }
 
 static void
-gabble_im_factory_iface_foreach (TpChannelFactoryIface *iface,
-                                 TpChannelFunc foreach,
-                                 gpointer user_data)
+gabble_im_factory_foreach_channel (GabbleChannelManager *manager,
+                                   GabbleExportableChannelFunc func,
+                                   gpointer user_data)
 {
-  GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
   struct _ForeachData data;
 
   data.user_data = user_data;
-  data.foreach = foreach;
+  data.func = func;
 
-  g_hash_table_foreach (priv->channels, _foreach_slave, &data);
+  g_hash_table_foreach (self->priv->channels, _foreach_slave, &data);
 }
+
 
 static TpChannelFactoryRequestStatus
 gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
@@ -532,7 +530,20 @@ gabble_im_factory_iface_init (gpointer g_iface,
   klass->connecting = gabble_im_factory_iface_connecting;
   klass->connected = gabble_im_factory_iface_connected;
   klass->disconnected = gabble_im_factory_iface_disconnected;
-  klass->foreach = gabble_im_factory_iface_foreach;
   klass->request = gabble_im_factory_iface_request;
+
+  /* this function is basically the same for channel factory and channel
+   * manager, but with differently-typed pointers */
+  klass->foreach = (TpChannelFactoryIfaceForeachImpl)
+    gabble_im_factory_foreach_channel;
 }
 
+
+static void
+channel_manager_iface_init (gpointer g_iface,
+                            gpointer iface_data)
+{
+  GabbleChannelManagerIface *iface = g_iface;
+
+  iface->foreach_channel = gabble_im_factory_foreach_channel;
+}

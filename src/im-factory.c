@@ -65,8 +65,6 @@ struct _GabbleImFactoryPrivate
   (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_IM_FACTORY,\
                                 GabbleImFactoryPrivate))
 
-static GObject *gabble_im_factory_constructor (GType type, guint n_props,
-    GObjectConstructParam *props);
 
 static void
 gabble_im_factory_init (GabbleImFactory *self)

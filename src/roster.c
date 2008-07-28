@@ -123,6 +123,7 @@ static void gabble_roster_get_property (GObject *object, guint property_id,
 
 static void _gabble_roster_item_free (GabbleRosterItem *item);
 static void item_edit_free (GabbleRosterItemEdit *edits);
+static void gabble_roster_close_all (GabbleRoster *roster);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
@@ -201,7 +202,7 @@ gabble_roster_dispose (GObject *object)
   g_assert (priv->iq_cb == NULL);
   g_assert (priv->presence_cb == NULL);
 
-  tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
+  gabble_roster_close_all (self);
   g_assert (priv->group_channels == NULL);
   g_assert (priv->list_channels == NULL);
 
@@ -1571,10 +1572,9 @@ OUT:
 }
 
 static void
-gabble_roster_factory_iface_close_all (TpChannelFactoryIface *iface)
+gabble_roster_close_all (GabbleRoster *self)
 {
-  GabbleRoster *roster = GABBLE_ROSTER (iface);
-  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (self);
 
   DEBUG ("closing channels");
 
@@ -1633,6 +1633,8 @@ connection_status_changed_cb (GabbleConnection *conn,
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
+      gabble_roster_close_all (self);
+
       /* this can be called before we have ever been CONNECTING, so we need
        * to guard it */
       if (self->priv->iq_cb != NULL)
@@ -1758,7 +1760,7 @@ gabble_roster_factory_iface_init (gpointer g_iface,
 {
   TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
 
-  klass->close_all = gabble_roster_factory_iface_close_all;
+  klass->close_all = (TpChannelFactoryIfaceProc) gabble_roster_close_all;
   klass->foreach = gabble_roster_factory_iface_foreach;
   klass->request = gabble_roster_factory_iface_request;
 }

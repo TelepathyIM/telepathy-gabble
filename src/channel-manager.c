@@ -109,7 +109,7 @@ channel_manager_base_init (gpointer klass)
           NULL, NULL,
           gabble_marshal_VOID__POINTER_UINT_INT_STRING,
           G_TYPE_NONE, 4, G_TYPE_POINTER, G_TYPE_UINT, G_TYPE_INT,
-          G_TYPE_STRING, GABBLE_TYPE_EXPORTABLE_CHANNEL);
+          G_TYPE_STRING);
 
       /**
        * GabbleChannelManager::channel-closed:

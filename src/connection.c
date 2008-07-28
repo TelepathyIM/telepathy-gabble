@@ -2886,7 +2886,6 @@ gabble_connection_send_presence (GabbleConnection *conn,
   lm_message_unref (message);
 
   return result;
-
 }
 
 /* We reimplement RequestHandles to be able to do async validation on

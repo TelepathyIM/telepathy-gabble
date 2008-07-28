@@ -42,7 +42,7 @@ get_channel_details (GObject *obj)
   GValueArray *structure = g_value_array_new (1);
   GHashTable *table;
   GValue *value;
- gchar *object_path;
+  gchar *object_path;
 
   g_object_get (obj,
       "object-path", &object_path,

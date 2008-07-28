@@ -814,10 +814,7 @@ gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
         }
     }
 
-  if (tp_handle_set_size (removed) > 0)
-    {
-      gabble_olpc_view_remove_buddies (self, removed);
-    }
+  gabble_olpc_view_remove_buddies (self, removed);
 
   tp_handle_set_destroy (removed);
 }

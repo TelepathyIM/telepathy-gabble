@@ -26,6 +26,8 @@
 #include <glib-object.h>
 #include <telepathy-glib/channel-factory-iface.h>
 
+#include "exportable-channel.h"
+
 G_BEGIN_DECLS
 
 #define GABBLE_TYPE_CHANNEL_MANAGER (gabble_channel_manager_get_type ())
@@ -45,18 +47,51 @@ G_BEGIN_DECLS
 typedef struct _GabbleChannelManager GabbleChannelManager;
 typedef struct _GabbleChannelManagerIface GabbleChannelManagerIface;
 
+
+/* virtual methods */
+
+typedef void (*GabbleChannelManagerForeachChannelFunc) (
+    GabbleChannelManager *manager, GabbleExportableChannelFunc func,
+    gpointer user_data);
+
+void gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,
+    GabbleExportableChannelFunc func, gpointer user_data);
+
+
 struct _GabbleChannelManagerIface {
     GTypeInterface parent;
+
+    GabbleChannelManagerForeachChannelFunc foreach_channel;
+
+    GCallback _future[8];
 };
+
 
 GType gabble_channel_manager_get_type (void);
 
-TpChannelFactoryRequestStatus gabble_channel_factory_create_channel (
-    GabbleChannelManager *manager, GHashTable *properties,
-    gpointer request_token, TpChannelIface **ret, GError **error);
 
-void gabble_channel_manager_foreach (GabbleChannelManager *manager,
-    TpChannelFunc func, gpointer user_data);
+/* signal emission */
+
+void gabble_channel_manager_emit_new_channel (gpointer instance,
+    GabbleExportableChannel *channel);
+void gabble_channel_manager_emit_new_channels (gpointer instance,
+    GPtrArray *channels);
+
+void gabble_channel_manager_emit_channel_closed (gpointer instance,
+    const gchar *path);
+void gabble_channel_manager_emit_channel_closed_for_object (gpointer instance,
+    GabbleExportableChannel *channel);
+
+void gabble_channel_manager_emit_request_succeeded (gpointer instance,
+    gpointer request_token, GabbleExportableChannel *channel);
+
+void gabble_channel_manager_emit_request_failed (gpointer instance,
+    gpointer request_token, GQuark domain, gint code, const gchar *message);
+void gabble_channel_manager_emit_request_failed_printf (gpointer instance,
+    gpointer request_token, GQuark domain, gint code, const gchar *format,
+    ...) G_GNUC_PRINTF (5, 6);
+
+
 
 G_END_DECLS
 

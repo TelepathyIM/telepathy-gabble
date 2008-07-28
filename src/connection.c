@@ -86,6 +86,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       capabilities_service_iface_init);
     G_IMPLEMENT_INTERFACE(TP_TYPE_SVC_DBUS_PROPERTIES,
        tp_dbus_properties_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACTS,
+      tp_contacts_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
       tp_presence_mixin_simple_presence_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
@@ -233,6 +235,9 @@ gabble_connection_constructor (GType type,
       (connection_capabilities_update_cb), self);
 
   capabilities_fill_cache (self->presence_cache);
+
+  tp_contacts_mixin_init (G_OBJECT (self),
+      G_STRUCT_OFFSET (GabbleConnection, contacts));
 
   conn_avatars_init (self);
   conn_presence_init (self);
@@ -480,6 +485,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+      TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
       NULL };
 
   DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
@@ -643,6 +649,9 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
 
+  tp_contacts_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleConnectionClass, contacts_class));
+
   conn_presence_class_init (gabble_connection_class);
 
 }
@@ -743,6 +752,8 @@ gabble_connection_finalize (GObject *object)
   g_free (priv->fallback_conference_server);
 
   g_free (priv->alias);
+
+  tp_contacts_mixin_finalize (G_OBJECT(self));
 
   conn_presence_finalize (self);
 

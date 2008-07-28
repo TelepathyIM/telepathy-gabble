@@ -106,6 +106,9 @@ gabble_im_factory_constructor (GType type, guint n_props,
 }
 
 
+static void gabble_im_factory_close_all (GabbleImFactory *);
+
+
 static void
 gabble_im_factory_dispose (GObject *object)
 {
@@ -118,7 +121,7 @@ gabble_im_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
+  gabble_im_factory_close_all (fac);
   g_assert (priv->channels == NULL);
 
   if (G_OBJECT_CLASS (gabble_im_factory_parent_class)->dispose)
@@ -398,9 +401,8 @@ new_im_channel (GabbleImFactory *fac,
 }
 
 static void
-gabble_im_factory_iface_close_all (TpChannelFactoryIface *iface)
+gabble_im_factory_close_all (GabbleImFactory *fac)
 {
-  GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
 
   DEBUG ("closing channels");
@@ -433,6 +435,8 @@ connection_status_changed_cb (GabbleConnection *conn,
     }
   else if (status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
+      gabble_im_factory_close_all (self);
+
       /* this can be called before we have ever been CONNECTING, so we need
        * to guard it */
       if (self->priv->message_cb != NULL)
@@ -526,7 +530,8 @@ gabble_im_factory_iface_init (gpointer g_iface,
 {
   TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
 
-  klass->close_all = gabble_im_factory_iface_close_all;
+  klass->close_all =
+      (TpChannelFactoryIfaceProc) gabble_im_factory_close_all;
   klass->request = gabble_im_factory_iface_request;
 
   /* this function is basically the same for channel factory and channel

@@ -110,6 +110,7 @@ struct _ChannelRequest
   gchar *channel_type;
   guint handle_type;
   guint handle;
+  /* always TRUE for CREATE and FALSE for ENSURE */
   gboolean suppress_handler;
 };
 
@@ -125,6 +126,7 @@ channel_request_new (DBusGMethodInvocation *context,
 
   g_assert (NULL != context);
   g_assert (NULL != channel_type);
+  g_assert (method < NUM_METHODS);
 
   ret = g_slice_new0 (ChannelRequest);
   ret->context = context;
@@ -240,16 +242,35 @@ satisfy_request (GabbleConnection *self,
                  GObject *channel,
                  const gchar *object_path)
 {
-  /* FIXME: implement the other two methods */
-  g_assert (request->method == METHOD_REQUEST_CHANNEL);
-
   DEBUG ("completing queued request %p with success, "
       "channel_type=%s, handle_type=%u, "
       "handle=%u, suppress_handler=%u", request, request->channel_type,
       request->handle_type, request->handle, request->suppress_handler);
 
-  tp_svc_connection_return_from_request_channel (request->context,
-      object_path);
+  switch (request->method)
+    {
+    case METHOD_REQUEST_CHANNEL:
+      tp_svc_connection_return_from_request_channel (request->context,
+          object_path);
+      break;
+
+    case METHOD_CREATE_CHANNEL:
+        {
+          GHashTable *properties;
+
+          g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+          g_object_get (channel,
+              "channel-properties", &properties,
+              NULL);
+          gabble_svc_connection_interface_requests_return_from_create_channel (
+              request->context, object_path, properties);
+          g_hash_table_destroy (properties);
+        }
+        break;
+
+    default:
+      g_assert_not_reached ();
+    }
   request->context = NULL;
 
   g_ptr_array_remove (self->channel_requests, request);
@@ -762,11 +783,11 @@ gabble_conn_requests_get_dbus_property (GObject *object,
 
 
 static void
-conn_requests_create_channel (GabbleSvcConnectionInterfaceRequests *svc,
-                              GHashTable *requested_properties,
-                              DBusGMethodInvocation *context)
+conn_requests_requestotron (GabbleConnection *self,
+                            GHashTable *requested_properties,
+                            ChannelRequestMethod method,
+                            DBusGMethodInvocation *context)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (svc);
   guint i;
   ChannelRequest *request = NULL;
   GHashTable *altered_properties = NULL;
@@ -795,20 +816,31 @@ conn_requests_create_channel (GabbleSvcConnectionInterfaceRequests *svc,
    * If handle normalization fails, raise an error */
 
   /* FIXME: fill in the right target handle */
-  request = channel_request_new (context, METHOD_CREATE_CHANNEL,
-      type, 0, 0, FALSE);
+  request = channel_request_new (context, method,
+      type, 0, 0, (method == METHOD_CREATE_CHANNEL));
   g_ptr_array_add (self->channel_requests, request);
 
   for (i = 0; i < self->channel_managers->len; i++)
     {
       GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
+      GabbleChannelManagerRequestFunc func;
 
-      if (gabble_channel_manager_create_channel (manager, request,
-            requested_properties))
+      if (method == METHOD_CREATE_CHANNEL)
+        {
+          func = gabble_channel_manager_create_channel;
+        }
+      else
+        {
+          g_assert (method == METHOD_ENSURE_CHANNEL);
+          func = gabble_channel_manager_ensure_channel;
+        }
+
+      if (func (manager, request, requested_properties))
         goto out;
     }
 
+  /* Nobody accepted the request */
     {
       GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Not implemented" };
@@ -827,11 +859,26 @@ out:
 
 
 static void
+conn_requests_create_channel (GabbleSvcConnectionInterfaceRequests *svc,
+                              GHashTable *requested_properties,
+                              DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (svc);
+
+  return conn_requests_requestotron (self, requested_properties,
+      METHOD_CREATE_CHANNEL, context);
+}
+
+
+static void
 conn_requests_ensure_channel (GabbleSvcConnectionInterfaceRequests *svc,
                               GHashTable *requested_properties,
                               DBusGMethodInvocation *context)
 {
-  tp_dbus_g_method_return_not_implemented (context);
+  GabbleConnection *self = GABBLE_CONNECTION (svc);
+
+  return conn_requests_requestotron (self, requested_properties,
+      METHOD_ENSURE_CHANNEL, context);
 }
 
 

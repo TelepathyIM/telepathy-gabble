@@ -41,7 +41,9 @@
 #include "debug.h"
 #include "disco.h"
 #include "error.h"
+#include "exportable-channel.h"
 #include "namespaces.h"
+#include "presence.h"
 #include "util.h"
 #include "presence-cache.h"
 

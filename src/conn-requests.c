@@ -737,6 +737,129 @@ conn_requests_create_channel (GabbleSvcConnectionInterfaceRequests *svc,
 /* Initialization and glue */
 
 
+static void
+manager_new_channels_cb (GabbleChannelManager *manager,
+                         const GPtrArray *channels,
+                         GSList *request_tokens,
+                         GabbleConnection *self)
+{
+  GSList *iter;
+  gboolean suppress_handler = FALSE;
+
+  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (GABBLE_IS_CONNECTION (self));
+
+  for (iter = request_tokens; iter != NULL; iter = iter->next)
+    {
+      ChannelRequest *request = iter->data;
+
+      if (request->suppress_handler)
+        {
+          suppress_handler = TRUE;
+          break;
+        }
+    }
+
+  /* FIXME: this signal API doesn't actually work if we have more than one
+   * channel */
+  g_assert (channels->len == 1);
+
+  G_STMT_START
+    {
+      GabbleExportableChannel *channel = GABBLE_EXPORTABLE_CHANNEL (
+          g_ptr_array_index (channels, 0));
+      GPtrArray *array = g_ptr_array_sized_new (1);
+      gchar *object_path, *channel_type;
+      guint handle_type, handle;
+
+      /* FIXME: it's assumed to implement TpChannelIface */
+      g_assert (TP_IS_CHANNEL_IFACE (channel));
+
+      g_object_get (channel,
+          "object-path", &object_path,
+          "channel-type", &channel_type,
+          "handle-type", &handle_type,
+          "handle", &handle,
+          NULL);
+
+      tp_svc_connection_emit_new_channel (self, object_path, channel_type,
+          handle_type, handle, suppress_handler);
+
+      g_ptr_array_add (array, get_channel_details (G_OBJECT (channel)));
+      gabble_svc_connection_interface_requests_emit_new_channels (self,
+          array);
+      g_value_array_free (g_ptr_array_index (array, 0));
+      g_ptr_array_free (array, TRUE);
+
+      for (iter = request_tokens; iter != NULL; iter = iter->next)
+        {
+          satisfy_request (self, iter->data, G_OBJECT (channel),
+              object_path);
+        }
+
+      g_free (object_path);
+      g_free (channel_type);
+    }
+  G_STMT_END;
+}
+
+
+static void
+manager_request_already_satisfied_cb (GabbleChannelManager *manager,
+                                      gpointer request_token,
+                                      GabbleExportableChannel *channel,
+                                      GabbleConnection *self)
+{
+  gchar *object_path;
+
+  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+  g_assert (GABBLE_IS_CONNECTION (self));
+
+  /* FIXME: it's assumed to implement TpChannelIface */
+  g_assert (TP_IS_CHANNEL_IFACE (channel));
+
+  g_object_get (channel,
+      "object-path", &object_path,
+      NULL);
+
+  satisfy_request (self, request_token, G_OBJECT (channel), object_path);
+  g_free (object_path);
+}
+
+
+static void
+manager_request_failed_cb (GabbleChannelManager *manager,
+                           gpointer request_token,
+                           guint domain,
+                           gint code,
+                           gchar *message,
+                           GabbleConnection *self)
+{
+  GError error = { domain, code, message };
+
+  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (domain > 0);
+  g_assert (message != NULL);
+  g_assert (GABBLE_IS_CONNECTION (self));
+
+  fail_channel_request (self, request_token, &error);
+}
+
+
+static void
+manager_channel_closed_cb (GabbleChannelManager *manager,
+                           const gchar *path,
+                           GabbleConnection *self)
+{
+  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (path != NULL);
+  g_assert (GABBLE_IS_CONNECTION (self));
+
+  gabble_svc_connection_interface_requests_emit_channel_closed (self, path);
+}
+
+
 void
 gabble_conn_requests_init (GabbleConnection *self)
 {
@@ -768,8 +891,14 @@ gabble_conn_requests_init (GabbleConnection *self)
       GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
 
-      /* FIXME: connect to signals */
-      (void) manager;
+      g_signal_connect (manager, "new-channels",
+          (GCallback) manager_new_channels_cb, self);
+      g_signal_connect (manager, "request-already-satisfied",
+          (GCallback) manager_request_already_satisfied_cb, self);
+      g_signal_connect (manager, "request-failed",
+          (GCallback) manager_request_failed_cb, self);
+      g_signal_connect (manager, "channel-closed",
+          (GCallback) manager_channel_closed_cb, self);
     }
 }
 

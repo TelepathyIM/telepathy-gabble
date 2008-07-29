@@ -259,9 +259,6 @@ gabble_roomlist_channel_set_property (GObject     *object,
       g_free (priv->conference_server);
       priv->conference_server = g_value_dup_string (value);
       break;
-    case PROP_CHANNEL_PROPERTIES:
-      /* FIXME: Setting channel-properties on creation not yet implemented */
-      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;

@@ -336,6 +336,26 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
   g_signal_connect (chan, "closed", (GCallback) channel_closed_cb, data);
 }
 
+
+static void
+fail_channel_request (GabbleConnection *self,
+                      ChannelRequest *request,
+                      GError *error)
+{
+  DEBUG ("completing queued request %p with error, channel_type=%s, "
+      "handle_type=%u, handle=%u, suppress_handler=%u",
+      request, request->channel_type,
+      request->handle_type, request->handle, request->suppress_handler);
+
+  dbus_g_method_return_error (request->context, error);
+  request->context = NULL;
+
+  g_ptr_array_remove (self->channel_requests, request);
+
+  channel_request_free (request);
+}
+
+
 static void
 connection_channel_error_cb (TpChannelFactoryIface *factory,
                              GObject *chan,
@@ -363,21 +383,7 @@ connection_channel_error_cb (TpChannelFactoryIface *factory,
                                         handle, channel_request, NULL);
 
   for (i = 0; i < tmp->len; i++)
-    {
-      ChannelRequest *request = g_ptr_array_index (tmp, i);
-
-      DEBUG ("completing queued request %p with error, channel_type=%s, "
-          "handle_type=%u, handle=%u, suppress_handler=%u",
-          request, request->channel_type,
-          request->handle_type, request->handle, request->suppress_handler);
-
-      dbus_g_method_return_error (request->context, error);
-      request->context = NULL;
-
-      g_ptr_array_remove (self->channel_requests, request);
-
-      channel_request_free (request);
-    }
+    fail_channel_request (self, g_ptr_array_index (tmp, i), error);
 
   g_ptr_array_free (tmp, TRUE);
   g_free (channel_type);

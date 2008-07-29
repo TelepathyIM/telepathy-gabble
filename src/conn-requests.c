@@ -37,9 +37,8 @@
 
 
 static GValueArray *
-get_channel_details (TpChannelIface *channel)
+get_channel_details (GObject *obj)
 {
-  GObject *obj = (GObject *) channel;
   GValueArray *structure = g_value_array_new (1);
   GHashTable *table;
   GValue *value;
@@ -55,7 +54,9 @@ get_channel_details (TpChannelIface *channel)
   g_value_take_boxed (value, object_path);
   object_path = NULL;
 
-  if (GABBLE_IS_EXPORTABLE_CHANNEL (channel))
+  g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (obj) || TP_IS_CHANNEL_IFACE (obj));
+
+  if (GABBLE_IS_EXPORTABLE_CHANNEL (obj))
     {
       g_object_get (obj,
           "channel-properties", &table,
@@ -265,7 +266,7 @@ satisfy_requests (GabbleConnection *self,
       tp_svc_connection_emit_new_channel (self, object_path, channel_type,
           handle_type, handle, suppress_handler);
 
-      g_ptr_array_add (array, get_channel_details (chan));
+      g_ptr_array_add (array, get_channel_details (G_OBJECT (chan)));
       gabble_svc_connection_interface_requests_emit_new_channels (self,
           array);
       g_value_array_free (g_ptr_array_index (array, 0));
@@ -606,12 +607,22 @@ conn_requests_list_channels (TpSvcConnection *iface,
 
 
 static void
-get_channel_details_foreach (TpChannelIface *chan,
-                             gpointer data)
+factory_get_channel_details_foreach (TpChannelIface *chan,
+                                     gpointer data)
 {
   GPtrArray *details = data;
 
-  g_ptr_array_add (details, get_channel_details (chan));
+  g_ptr_array_add (details, get_channel_details (G_OBJECT (chan)));
+}
+
+
+static void
+manager_get_channel_details_foreach (GabbleExportableChannel *chan,
+                                     gpointer data)
+{
+  GPtrArray *details = data;
+
+  g_ptr_array_add (details, get_channel_details (G_OBJECT (chan)));
 }
 
 
@@ -628,7 +639,16 @@ conn_requests_get_channel_details (GabbleConnection *self)
           g_ptr_array_index (self->channel_factories, i));
 
       tp_channel_factory_iface_foreach (factory,
-          get_channel_details_foreach, details);
+          factory_get_channel_details_foreach, details);
+    }
+
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
+
+      gabble_channel_manager_foreach_channel (manager,
+          manager_get_channel_details_foreach, details);
     }
 
   return details;

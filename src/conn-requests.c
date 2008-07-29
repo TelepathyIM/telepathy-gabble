@@ -540,6 +540,8 @@ list_channel_factory_foreach_one (TpChannelIface *chan,
   GValue *entry = tp_dbus_specialized_value_slice_new
       (TP_STRUCT_TYPE_CHANNEL_INFO);
 
+  g_assert (TP_IS_CHANNEL_IFACE (channel));
+
   g_object_get (channel,
       "object-path", &path,
       "channel-type", &type,
@@ -559,6 +561,17 @@ list_channel_factory_foreach_one (TpChannelIface *chan,
   g_free (path);
   g_free (type);
 }
+
+
+static void
+list_channel_manager_foreach_one (GabbleExportableChannel *channel,
+                                  gpointer data)
+{
+  /* FIXME: in the longer term, we don't really want to keep assuming that
+   * every GabbleExportableChannel is a TpChannelIface */
+  list_channel_factory_foreach_one (TP_CHANNEL_IFACE (channel), data);
+}
+
 
 static void
 conn_requests_list_channels (TpSvcConnection *iface,
@@ -582,6 +595,15 @@ conn_requests_list_channels (TpSvcConnection *iface,
 
       tp_channel_factory_iface_foreach (factory,
           list_channel_factory_foreach_one, values);
+    }
+
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = g_ptr_array_index
+        (self->channel_managers, i);
+
+      gabble_channel_manager_foreach_channel (manager,
+          list_channel_manager_foreach_one, values);
     }
 
   channels = g_ptr_array_sized_new (values->len);

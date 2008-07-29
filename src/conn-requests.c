@@ -774,16 +774,27 @@ conn_requests_create_channel (GabbleSvcConnectionInterfaceRequests *svc,
 
 
 static void
-manager_new_channels_cb (GabbleChannelManager *manager,
-                         const GPtrArray *channels,
-                         GSList *request_tokens,
-                         GabbleConnection *self)
+manager_new_channel (gpointer key,
+                     gpointer value,
+                     gpointer data)
 {
+  GabbleExportableChannel *channel = GABBLE_EXPORTABLE_CHANNEL (key);
+  GSList *request_tokens = value;
+  GabbleConnection *self = GABBLE_CONNECTION (data);
+  gchar *object_path, *channel_type;
+  guint handle_type, handle;
   GSList *iter;
   gboolean suppress_handler = FALSE;
 
-  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
-  g_assert (GABBLE_IS_CONNECTION (self));
+  /* FIXME: it's assumed to implement TpChannelIface */
+  g_assert (TP_IS_CHANNEL_IFACE (channel));
+
+  g_object_get (channel,
+      "object-path", &object_path,
+      "channel-type", &channel_type,
+      "handle-type", &handle_type,
+      "handle", &handle,
+      NULL);
 
   for (iter = request_tokens; iter != NULL; iter = iter->next)
     {
@@ -796,47 +807,49 @@ manager_new_channels_cb (GabbleChannelManager *manager,
         }
     }
 
-  /* FIXME: this signal API doesn't actually work if we have more than one
-   * channel */
-  g_assert (channels->len == 1);
+  tp_svc_connection_emit_new_channel (self, object_path, channel_type,
+      handle_type, handle, suppress_handler);
 
-  G_STMT_START
+  for (iter = request_tokens; iter != NULL; iter = iter->next)
     {
-      GabbleExportableChannel *channel = GABBLE_EXPORTABLE_CHANNEL (
-          g_ptr_array_index (channels, 0));
-      GPtrArray *array = g_ptr_array_sized_new (1);
-      gchar *object_path, *channel_type;
-      guint handle_type, handle;
-
-      /* FIXME: it's assumed to implement TpChannelIface */
-      g_assert (TP_IS_CHANNEL_IFACE (channel));
-
-      g_object_get (channel,
-          "object-path", &object_path,
-          "channel-type", &channel_type,
-          "handle-type", &handle_type,
-          "handle", &handle,
-          NULL);
-
-      tp_svc_connection_emit_new_channel (self, object_path, channel_type,
-          handle_type, handle, suppress_handler);
-
-      g_ptr_array_add (array, get_channel_details (G_OBJECT (channel)));
-      gabble_svc_connection_interface_requests_emit_new_channels (self,
-          array);
-      g_value_array_free (g_ptr_array_index (array, 0));
-      g_ptr_array_free (array, TRUE);
-
-      for (iter = request_tokens; iter != NULL; iter = iter->next)
-        {
-          satisfy_request (self, iter->data, G_OBJECT (channel),
-              object_path);
-        }
-
-      g_free (object_path);
-      g_free (channel_type);
+      satisfy_request (self, iter->data, G_OBJECT (channel),
+          object_path);
     }
-  G_STMT_END;
+
+  g_free (object_path);
+  g_free (channel_type);
+}
+
+
+static void
+manager_new_channels_foreach (gpointer key,
+                              gpointer value,
+                              gpointer data)
+{
+  GPtrArray *details = data;
+
+  g_ptr_array_add (details, get_channel_details (G_OBJECT (key)));
+}
+
+
+static void
+manager_new_channels_cb (GabbleChannelManager *manager,
+                         GHashTable *channels,
+                         GabbleConnection *self)
+{
+  GPtrArray *array;
+
+  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (GABBLE_IS_CONNECTION (self));
+
+  array = g_ptr_array_sized_new (g_hash_table_size (channels));
+  g_hash_table_foreach (channels, manager_new_channels_foreach, array);
+  gabble_svc_connection_interface_requests_emit_new_channels (self,
+      array);
+  g_ptr_array_foreach (array, (GFunc) g_value_array_free, NULL);
+  g_ptr_array_free (array, TRUE);
+
+  g_hash_table_foreach (channels, manager_new_channel, self);
 }
 
 

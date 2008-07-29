@@ -63,7 +63,7 @@ exportable_channel_base_init (gpointer klass)
           "Channel properties",
           "The channel properties",
           TP_HASH_TYPE_QUALIFIED_PROPERTY_VALUE_MAP,
-          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+          G_PARAM_READABLE |
           G_PARAM_STATIC_NAME | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NICK);
       g_object_interface_install_property (klass, param_spec);
 

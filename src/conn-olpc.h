@@ -48,8 +48,9 @@ void gabble_connection_connected_olpc (GabbleConnection *conn);
 void
 olpc_activity_properties_iface_init (gpointer g_iface, gpointer iface_data);
 
-void
-conn_olpc_activity_properties_init (GabbleConnection *conn);
+void conn_olpc_activity_properties_init (GabbleConnection *conn);
+
+void conn_olpc_activity_properties_dispose (GabbleConnection *conn);
 
 gboolean conn_olpc_process_activity_properties_message (GabbleConnection *conn,
     LmMessage *msg, const gchar *from);

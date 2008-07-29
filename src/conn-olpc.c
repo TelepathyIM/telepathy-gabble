@@ -3665,6 +3665,16 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
 }
 
 void
+conn_olpc_activity_properties_dispose (GabbleConnection *self)
+{
+  g_hash_table_destroy (self->olpc_current_act);
+  g_hash_table_destroy (self->olpc_pep_activities);
+  g_hash_table_destroy (self->olpc_invited_activities);
+  g_hash_table_destroy (self->olpc_views);
+  g_hash_table_destroy (self->olpc_activities_info);
+}
+
+void
 olpc_activity_properties_iface_init (gpointer g_iface,
                                      gpointer iface_data)
 {

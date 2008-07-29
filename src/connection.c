@@ -752,11 +752,7 @@ gabble_connection_dispose (GObject *object)
   g_object_unref (self->presence_cache);
   self->presence_cache = NULL;
 
-  g_hash_table_destroy (self->olpc_current_act);
-  g_hash_table_destroy (self->olpc_pep_activities);
-  g_hash_table_destroy (self->olpc_invited_activities);
-  g_hash_table_destroy (self->olpc_views);
-  g_hash_table_destroy (self->olpc_activities_info);
+  conn_olpc_activity_properties_dispose (self);
 
   g_hash_table_destroy (self->avatar_requests);
 

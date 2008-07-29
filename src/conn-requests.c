@@ -746,7 +746,14 @@ gabble_conn_requests_init (GabbleConnection *self)
 
     }
 
-  g_assert (self->channel_managers->len == 0);
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
+
+      /* FIXME: connect to signals */
+      (void) manager;
+    }
 }
 
 

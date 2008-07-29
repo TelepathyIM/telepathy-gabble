@@ -395,6 +395,11 @@ conn_requests_request_channel (TpSvcConnection *iface,
       type, handle_type, handle, suppress_handler);
   g_ptr_array_add (self->channel_requests, request);
 
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      /* FIXME: ask it if it can satisfy this request */
+    }
+
   for (i = 0; i < self->channel_factories->len; i++)
     {
       TpChannelFactoryIface *factory = g_ptr_array_index (

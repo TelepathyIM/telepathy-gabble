@@ -3089,6 +3089,8 @@ add_activities_to_view_from_node (GabbleConnection *conn,
 {
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   GHashTable *activities;
   LmMessageNode *activity_node;
   GPtrArray *buddies_to_add;
@@ -3113,8 +3115,6 @@ add_activities_to_view_from_node (GabbleConnection *conn,
       GHashTable *properties;
       TpHandle handle;
       GabbleOlpcActivity *activity;
-      GArray *buddies;
-      GPtrArray *buddies_properties;
       struct buddies_to_add_t *tmp;
 
       jid = lm_message_node_get_attribute (activity_node, "room");
@@ -3171,23 +3171,20 @@ add_activities_to_view_from_node (GabbleConnection *conn,
 
       g_object_set (activity, "properties", properties, NULL);
 
-      buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
-      buddies_properties = g_ptr_array_new ();
-
-      if (!populate_buddies_from_nodes (conn, activity_node, "buddy", buddies,
-            buddies_properties))
-        {
-          g_array_free (buddies, TRUE);
-          g_ptr_array_free (buddies_properties, TRUE);
-          continue;
-        }
-
       /* We have to wait that activities were added to the view before
        * adding participants */
       tmp = g_slice_new (struct buddies_to_add_t);
-      tmp->buddies = buddies;
-      tmp->buddies_properties = buddies_properties;
+      tmp->buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+      tmp->buddies_properties = g_ptr_array_new ();
       tmp->room = handle;
+
+      if (!populate_buddies_from_nodes (conn, activity_node, "buddy",
+            tmp->buddies, tmp->buddies_properties))
+        {
+          g_array_free (tmp->buddies, TRUE);
+          g_ptr_array_free (tmp->buddies_properties, TRUE);
+          continue;
+        }
 
       g_ptr_array_add (buddies_to_add, tmp);
     }
@@ -3198,11 +3195,25 @@ add_activities_to_view_from_node (GabbleConnection *conn,
   for (i = 0; i < buddies_to_add->len; i++)
     {
       struct buddies_to_add_t *tmp;
+      guint j;
 
       tmp = g_ptr_array_index (buddies_to_add, i);
 
       gabble_olpc_view_add_buddies (view, tmp->buddies,
           tmp->buddies_properties, tmp->room);
+
+      /* Free the ressource allocated in populate_buddies_from_nodes */
+      for (j = 0; j < tmp->buddies->len; j++)
+        {
+          TpHandle handle;
+          GHashTable *props;
+
+          handle = g_array_index (tmp->buddies, TpHandle, j);
+          props = g_ptr_array_index (tmp->buddies_properties, j);
+
+          tp_handle_unref (contact_repo, handle);
+          g_hash_table_unref (props);
+        }
 
       g_array_free (tmp->buddies, TRUE);
       g_ptr_array_free (tmp->buddies_properties, TRUE);
@@ -3453,6 +3464,9 @@ remove_buddies_from_activity_view (GabbleConnection *conn,
                                    TpHandle room)
 {
   GArray *buddies;
+  guint i;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
 
   buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
@@ -3464,6 +3478,16 @@ remove_buddies_from_activity_view (GabbleConnection *conn,
     }
 
   gabble_olpc_view_buddies_left_activity (view, buddies, room);
+
+  /* Free the ressource allocated in populate_buddies_from_nodes */
+  for (i = 0; i < buddies->len; i++)
+    {
+      TpHandle handle;
+
+      handle = g_array_index (buddies, TpHandle, i);
+
+      tp_handle_unref (contact_repo, handle);
+    }
 
   g_array_free (buddies, TRUE);
   return TRUE;

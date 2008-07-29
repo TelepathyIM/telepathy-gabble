@@ -22,6 +22,8 @@
 #include "conn-aliasing.h"
 
 #include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/contacts-mixin.h>
 #include <telepathy-glib/svc-connection.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
@@ -212,6 +214,52 @@ _cache_negatively (GabbleConnection *self,
       gabble_conn_aliasing_pep_alias_quark (), (gchar *) NO_ALIAS, NULL);
 }
 
+/* Cache pep if successfull */
+static void
+aliases_request_cache_pep (GabbleConnection *self,
+                           LmMessage *msg,
+                           TpHandle handle,
+                           GError *error)
+{
+  if (error != NULL)
+    {
+      DEBUG ("Error getting alias from PEP: %s", error->message);
+      _cache_negatively (self, handle);
+    }
+  else if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      NODE_DEBUG (msg->node, "Error getting alias from PEP");
+      _cache_negatively (self, handle);
+    }
+  else
+    {
+      /* Try to extract an alias, caching it if necessary. */
+      gabble_conn_aliasing_pep_nick_reply_handler (self, msg, handle);
+    }
+
+}
+
+static void
+aliases_request_basic_pep_cb (GabbleConnection *self,
+                           LmMessage *msg,
+                           gpointer user_data,
+                           GError *error)
+{
+  GabbleConnectionAliasSource source = GABBLE_CONNECTION_ALIAS_NONE;
+  TpHandle handle = GPOINTER_TO_INT (user_data);
+
+  aliases_request_cache_pep (self, msg, handle, error);
+
+  source = _gabble_connection_get_cached_alias (self, handle, NULL);
+
+  if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
+      !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
+    {
+      /* no alias in PEP, get the vcard */
+      gabble_vcard_manager_request (self->vcard_manager, handle, 0,
+        NULL, NULL, G_OBJECT (self));
+    }
+}
 
 static void
 aliases_request_pep_cb (GabbleConnection *self,
@@ -230,21 +278,7 @@ aliases_request_pep_cb (GabbleConnection *self,
   aliases_request->pep_requests[index] = NULL;
   g_slice_free (AliasRequest, alias_request);
 
-  if (error != NULL)
-    {
-      DEBUG ("Error getting alias from PEP: %s", error->message);
-      _cache_negatively (self, handle);
-    }
-  else if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_RESULT)
-    {
-      NODE_DEBUG (msg->node, "Error getting alias from PEP");
-      _cache_negatively (self, handle);
-    }
-  else
-    {
-      /* Try to extract an alias, caching it if necessary. */
-      gabble_conn_aliasing_pep_nick_reply_handler (self, msg, handle);
-    }
+  aliases_request_cache_pep (self, msg, handle, error);
 
   source = _gabble_connection_get_cached_alias (aliases_request->conn,
       handle, &alias);
@@ -273,6 +307,30 @@ aliases_request_pep_cb (GabbleConnection *self,
     aliases_request_free (aliases_request);
 }
 
+
+static GabbleRequestPipelineItem *
+gabble_do_pep_request (GabbleConnection *self, TpHandle handle,
+  TpHandleRepoIface *contact_handles, GabbleRequestPipelineCb callback,
+  gpointer user_data)
+{
+  LmMessage *msg;
+  GabbleRequestPipelineItem *pep_request;
+
+  msg = lm_message_build (tp_handle_inspect (contact_handles, handle),
+      LM_MESSAGE_TYPE_IQ,
+      '(', "pubsub", "",
+        '@', "xmlns", NS_PUBSUB,
+        '(', "items", "",
+          '@', "node", NS_NICK,
+        ')',
+      ')',
+      NULL);
+   pep_request = gabble_request_pipeline_enqueue (self->req_pipeline,
+      msg, 0, callback, user_data);
+   lm_message_unref (msg);
+
+   return pep_request;
+}
 
 /**
  * gabble_connection_request_aliases
@@ -335,30 +393,16 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
             * current ejabberd PEP implementation doesn't seem to give
             * us notifications of the initial state. */
           AliasRequest *data = g_slice_new (AliasRequest);
-          LmMessage *msg;
-          GabbleRequestPipelineItem *pep_request;
 
           g_free (alias);
-
-          msg = lm_message_build (tp_handle_inspect (contact_handles, handle),
-              LM_MESSAGE_TYPE_IQ,
-              '(', "pubsub", "",
-                '@', "xmlns", NS_PUBSUB,
-                '(', "items", "",
-                  '@', "node", NS_NICK,
-                ')',
-              ')',
-              NULL);
 
           data->aliases_request = request;
           data->index = i;
 
-          pep_request = gabble_request_pipeline_enqueue (self->req_pipeline,
-              msg, 0, aliases_request_pep_cb, data);
-          request->pep_requests[i] = pep_request;
           request->pending_pep_requests++;
+          request->pep_requests[i] = gabble_do_pep_request (self,
+              handle, contact_handles, aliases_request_pep_cb, data);
 
-          lm_message_unref (msg);
         }
       else
         {
@@ -845,6 +889,59 @@ OUT:
   return ret;
 }
 
+static void
+conn_aliasing_get_contact_attributes (GObject *obj,
+    const GArray *contacts, GHashTable *attributes_hash)
+{
+  guint i;
+  GabbleConnection *self = GABBLE_CONNECTION(obj);
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      TpHandle handle = g_array_index (contacts, TpHandle, i);
+      GabbleConnectionAliasSource source;
+      gchar *alias;
+      GValue *val = tp_g_value_slice_new (G_TYPE_STRING);
+
+      source = _gabble_connection_get_cached_alias (self, handle, &alias);
+      g_assert (alias != NULL);
+
+      g_value_set_string (val, alias);
+
+      tp_contacts_mixin_set_contact_attribute (attributes_hash,
+        handle, TP_IFACE_CONNECTION_INTERFACE_ALIASING"/alias",
+        val);
+
+      /* If the source wasn't good enough then do a request */
+      if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
+          !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
+        {
+          if (self->features & GABBLE_CONNECTION_FEATURES_PEP)
+            {
+              TpBaseConnection *base = (TpBaseConnection *) self;
+              TpHandleRepoIface *contact_handles =
+                tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+
+              gabble_do_pep_request (self, handle, contact_handles,
+                aliases_request_basic_pep_cb, GINT_TO_POINTER (handle));
+            }
+          else
+            {
+              gabble_vcard_manager_request (self->vcard_manager,
+                 handle, 0, NULL, NULL, G_OBJECT (self));
+            }
+        }
+    }
+}
+
+
+void
+conn_aliasing_init (GabbleConnection *conn)
+{
+  tp_contacts_mixin_add_inspectable_iface (G_OBJECT (conn),
+    TP_IFACE_CONNECTION_INTERFACE_ALIASING,
+    conn_aliasing_get_contact_attributes);
+}
 
 void
 conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data)

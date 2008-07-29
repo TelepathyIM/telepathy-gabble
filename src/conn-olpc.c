@@ -1375,6 +1375,7 @@ extract_current_activity (GabbleConnection *conn,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle room_handle, contact_handle;
+  gboolean created = FALSE;
 
   if (node == NULL)
     return NULL;
@@ -1414,6 +1415,7 @@ extract_current_activity (GabbleConnection *conn,
       activity = add_activity_info_in_set (conn, room_handle, contact,
           conn->olpc_pep_activities);
       g_object_set (activity, "id", id, NULL);
+      created = TRUE;
     }
 
   tp_handle_unref (room_repo, room_handle);
@@ -1424,7 +1426,8 @@ extract_current_activity (GabbleConnection *conn,
       g_hash_table_insert (conn->olpc_current_act,
           GUINT_TO_POINTER (contact_handle), activity);
 
-      g_object_ref (activity);
+      if (!created)
+        g_object_ref (activity);
     }
   else
     {

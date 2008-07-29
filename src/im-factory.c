@@ -343,7 +343,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
           tp_channel_factory_iface_emit_new_channel (self,
               (TpChannelIface *) chan, NULL);
           gabble_channel_manager_emit_new_channel (self,
-              (GabbleExportableChannel *) chan);
+              (GabbleExportableChannel *) chan, NULL);
         }
     }
 }
@@ -361,6 +361,7 @@ new_im_channel (GabbleImFactory *fac,
   TpBaseConnection *conn;
   GabbleIMChannel *chan;
   char *object_path;
+  GSList *request_tokens;
 
   g_return_val_if_fail (GABBLE_IS_IM_FACTORY (fac), NULL);
   g_return_val_if_fail (handle != 0, NULL);
@@ -390,12 +391,15 @@ new_im_channel (GabbleImFactory *fac,
 
   g_free (object_path);
 
-  gabble_channel_manager_emit_new_channel (fac,
-      (GabbleExportableChannel *) chan);
-
   if (request_token != NULL)
-    gabble_channel_manager_emit_request_succeeded (fac, request_token,
-        (GabbleExportableChannel *) chan);
+    request_tokens = g_slist_prepend (NULL, request_token);
+  else
+    request_tokens = NULL;
+
+  gabble_channel_manager_emit_new_channel (fac,
+      (GabbleExportableChannel *) chan, request_tokens);
+
+  g_slist_free (request_tokens);
 
   return chan;
 }

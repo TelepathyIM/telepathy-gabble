@@ -41,9 +41,19 @@
 
 typedef struct _ChannelRequest ChannelRequest;
 
+typedef enum {
+    METHOD_REQUEST_CHANNEL,
+    METHOD_CREATE_CHANNEL,
+    METHOD_ENSURE_CHANNEL,
+    NUM_METHODS
+} ChannelRequestMethod;
+
 struct _ChannelRequest
 {
   DBusGMethodInvocation *context;
+  ChannelRequestMethod method;
+
+  /* relevant if the method is METHOD_REQUEST_CHANNEL */
   gchar *channel_type;
   guint handle_type;
   guint handle;
@@ -52,6 +62,7 @@ struct _ChannelRequest
 
 static ChannelRequest *
 channel_request_new (DBusGMethodInvocation *context,
+                     ChannelRequestMethod method,
                      const char *channel_type,
                      guint handle_type,
                      guint handle,
@@ -64,6 +75,7 @@ channel_request_new (DBusGMethodInvocation *context,
 
   ret = g_slice_new0 (ChannelRequest);
   ret->context = context;
+  ret->method = method;
   ret->channel_type = g_strdup (channel_type);
   ret->handle_type = handle_type;
   ret->handle = handle;
@@ -298,8 +310,8 @@ conn_requests_request_channel (TpSvcConnection *iface,
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) self,
       context);
 
-  request = channel_request_new (context, type, handle_type, handle,
-      suppress_handler);
+  request = channel_request_new (context, METHOD_REQUEST_CHANNEL,
+      type, handle_type, handle, suppress_handler);
   g_ptr_array_add (self->channel_requests, request);
 
   for (i = 0; i < self->channel_managers->len; i++)

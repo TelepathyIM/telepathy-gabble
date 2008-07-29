@@ -486,6 +486,9 @@ connection_status_changed (GabbleConnection *self,
                            guint reason,
                            gpointer unused G_GNUC_UNUSED)
 {
+  /* We deliberately don't iterate over channel managers here -
+   * they don't need this, and are expected to listen to status-changed
+   * for themselves. */
 
   /* cancel all queued channel requests when disconnected */
   if (status == TP_CONNECTION_STATUS_DISCONNECTED)

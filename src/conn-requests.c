@@ -313,14 +313,6 @@ channel_closed_cb (GObject *channel,
 }
 
 static void
-manager_channel_closed_cb (GObject *manager,
-                           gchar *path,
-                           GabbleConnection *self)
-{
-  gabble_svc_connection_interface_requests_emit_channel_closed (self, path);
-}
-
-static void
 connection_new_channel_cb (TpChannelFactoryIface *factory,
                            GObject *chan,
                            ChannelRequest *channel_request,
@@ -329,8 +321,7 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
   satisfy_requests (GABBLE_CONNECTION (data), factory,
       TP_CHANNEL_IFACE (chan), channel_request, TRUE);
 
-  if (!GABBLE_IS_CHANNEL_MANAGER (factory))
-    g_signal_connect (chan, "closed", (GCallback) channel_closed_cb, data);
+  g_signal_connect (chan, "closed", (GCallback) channel_closed_cb, data);
 }
 
 static void
@@ -695,16 +686,13 @@ gabble_conn_requests_init (GabbleConnection *self)
     {
       GObject *factory = g_ptr_array_index (self->channel_factories, i);
 
-      g_assert (TP_IS_CHANNEL_FACTORY_IFACE (manager));
+      g_assert (TP_IS_CHANNEL_FACTORY_IFACE (factory));
 
-      g_signal_connect (manager, "new-channel",
+      g_signal_connect (factory, "new-channel",
           (GCallback) connection_new_channel_cb, self);
       g_signal_connect (factory, "channel-error",
           (GCallback) connection_channel_error_cb, self);
 
-      /* GabbleChannelManager API */
-      g_signal_connect (manager, "channel-closed",
-          (GCallback) manager_channel_closed_cb, self);
     }
 
   g_assert (self->channel_managers->len == 0);

@@ -618,15 +618,16 @@ get_channel_details_foreach (TpChannelIface *chan,
 static GPtrArray *
 conn_requests_get_channel_details (GabbleConnection *self)
 {
-  GPtrArray *details = g_ptr_array_sized_new (self->channel_managers->len * 2);
+  GPtrArray *details = g_ptr_array_sized_new (self->channel_managers->len * 2
+      + self->channel_factories->len * 2);
   guint i;
 
-  for (i = 0; i < self->channel_managers->len; i++)
+  for (i = 0; i < self->channel_factories->len; i++)
     {
-      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
-          g_ptr_array_index (self->channel_managers, i));
+      TpChannelFactoryIface *factory = TP_CHANNEL_FACTORY_IFACE (
+          g_ptr_array_index (self->channel_factories, i));
 
-      gabble_channel_manager_foreach_channel (manager,
+      tp_channel_factory_iface_foreach (factory,
           get_channel_details_foreach, details);
     }
 

@@ -20,12 +20,12 @@ def test(q, bus, conn, stream):
     # and a new <presence> stanza to be sent to the server.
     presence_iface.SetStatus({'away': {'message': 'gone'}})
 
-    signal, event = q.expect_many (
+    signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresenceUpdate'),
         EventPattern('stream-presence'))
-    signal.args == [{1L: (0L, {u'away': {u'message': u'gone'}})}]
+    assert signal.args == [{1L: (0L, {u'away': {u'message': u'gone'}})}]
 
-    children = list(event.stanza.elements())
+    children = list(presence.stanza.elements())
     assert children[0].name == 'show'
     assert str(children[0]) == 'away'
     assert children[1].name == 'status'
@@ -39,12 +39,12 @@ def test(q, bus, conn, stream):
     # generate a signal/message.
     presence_iface.SetStatus({'available': {'message': 'yo'}})
 
-    signal, event = q.expect_many (
+    signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresenceUpdate'),
         EventPattern('stream-presence'))
 
     assert signal.args == [{1L: (0L, {u'available': {u'message': u'yo'}})}]
-    children = list(event.stanza.elements())
+    children = list(presence.stanza.elements())
     assert children[0].name == 'status'
     assert str(children[0]) == 'yo'
 

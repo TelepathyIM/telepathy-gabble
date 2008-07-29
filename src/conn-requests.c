@@ -404,6 +404,8 @@ conn_requests_request_channel (TpSvcConnection *iface,
   GError *error = NULL;
   guint i;
   ChannelRequest *request;
+  GHashTable *request_properties;
+  GValue *v;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) self,
       context);
@@ -412,10 +414,44 @@ conn_requests_request_channel (TpSvcConnection *iface,
       type, handle_type, handle, suppress_handler);
   g_ptr_array_add (self->channel_requests, request);
 
+  /* First try the channel managers */
+
+  request_properties = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) tp_g_value_slice_free);
+
+  v = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_string (v, type);
+  g_hash_table_insert (request_properties, TP_IFACE_CHANNEL ".ChannelType", v);
+
+  v = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (v, handle_type);
+  g_hash_table_insert (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandleType", v);
+
+  v = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (v, handle);
+  g_hash_table_insert (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandle", v);
+
   for (i = 0; i < self->channel_managers->len; i++)
     {
-      /* FIXME: ask it if it can satisfy this request */
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
+      GabbleChannelManagerRequestFunc func;
+
+      /* The semantics of RequestChannel depend on the handle type */
+      if (handle_type == TP_HANDLE_TYPE_NONE)
+        func = gabble_channel_manager_create_channel;
+      else
+        func = gabble_channel_manager_ensure_channel;
+
+      if (func (manager, request, request_properties))
+        return;
     }
+
+  g_hash_table_destroy (request_properties);
+
+  /* OK, none of them wanted it. Now try the channel factories */
 
   for (i = 0; i < self->channel_factories->len; i++)
     {

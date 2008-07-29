@@ -89,7 +89,7 @@ GType gabble_channel_manager_get_type (void);
 void gabble_channel_manager_emit_new_channel (gpointer instance,
     GabbleExportableChannel *channel, GSList *requests);
 void gabble_channel_manager_emit_new_channels (gpointer instance,
-    GPtrArray *channels, GSList *requests);
+    GHashTable *channels);
 
 void gabble_channel_manager_emit_channel_closed (gpointer instance,
     const gchar *path);

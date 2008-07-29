@@ -48,13 +48,14 @@ channel_manager_base_init (gpointer klass)
     {
       initialized = TRUE;
 
-      /* FIXME: should probably have a better GType for a GPtrArray of
-       * ExportableChannel, and for a GSList of requests */
+      /* FIXME: should probably have a better GType for @channels */
       /**
        * GabbleChannelManager::new-channels:
        * @self: the channel manager
-       * @channels: a #GPtrArray of #GabbleExportableChannel
-       * @requests: a #GSList of requests (opaque pointers) satisfied by
+       * @channels: a #GHashTable where the keys are
+       *  #GabbleExportableChannel instances (hashed and compared
+       *  by g_direct_hash() and g_direct_equal()) and the values are
+       *  linked lists (#GSList) of requests (opaque pointers) satisfied by
        *  these channels
        *
        * Emitted when new channels have been created. The Connection should
@@ -67,8 +68,8 @@ channel_manager_base_init (gpointer klass)
           G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
           0,
           NULL, NULL,
-          gabble_marshal_VOID__POINTER_POINTER,
-          G_TYPE_NONE, 2, G_TYPE_POINTER, G_TYPE_POINTER);
+          g_cclosure_marshal_VOID__POINTER,
+          G_TYPE_NONE, 1, G_TYPE_POINTER);
 
       /**
        * GabbleChannelManager::request-already-satisfied:
@@ -168,29 +169,25 @@ gabble_channel_manager_get_type (void)
 /**
  * gabble_channel_manager_emit_new_channels:
  * @instance: An object implementing #GabbleChannelManager
- * @channels: A #GPtrArray of #GabbleExportableChannel, which may be empty
+ * @channels: a #GHashTable where the keys are
+ *  #GabbleExportableChannel instances (hashed and compared
+ *  by g_direct_hash() and g_direct_equal()) and the values are
+ *  linked lists (#GSList) of requests (opaque pointers) satisfied by
+ *  these channels
  *
  * If @channels is non-empty, emit the #GabbleChannelManager::new-channels
  * signal indicating that those channels have been created.
  */
 void
 gabble_channel_manager_emit_new_channels (gpointer instance,
-                                          GPtrArray *channels,
-                                          GSList *requests)
+                                          GHashTable *channels)
 {
   g_return_if_fail (GABBLE_IS_CHANNEL_MANAGER (instance));
 
-  if (channels->len == 0)
-    {
-      g_return_if_fail (requests == NULL);
-      return;
-    }
+  if (g_hash_table_size (channels) == 0)
+    return;
 
-  /* just a quick sanity-check */
-  g_return_if_fail (GABBLE_IS_EXPORTABLE_CHANNEL (g_ptr_array_index (
-          channels, 0)));
-
-  g_signal_emit (instance, signals[S_NEW_CHANNELS], 0, channels, requests);
+  g_signal_emit (instance, signals[S_NEW_CHANNELS], 0, channels);
 }
 
 
@@ -201,21 +198,23 @@ gabble_channel_manager_emit_new_channels (gpointer instance,
  *
  * Emit the #GabbleChannelManager::new-channels signal indicating that the
  * channel has been created. (This is a convenient shortcut for calling
- * gabble_channel_manager_emit_new_channels() with an array of length 1.)
+ * gabble_channel_manager_emit_new_channels() with a one-entry hash table.)
  */
 void
 gabble_channel_manager_emit_new_channel (gpointer instance,
                                          GabbleExportableChannel *channel,
                                          GSList *requests)
 {
-  GPtrArray *array = g_ptr_array_sized_new (1);
+  GHashTable *channels;
 
   g_return_if_fail (GABBLE_IS_CHANNEL_MANAGER (instance));
   g_return_if_fail (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
 
-  g_ptr_array_add (array, channel);
-  g_signal_emit (instance, signals[S_NEW_CHANNELS], 0, array, requests);
-  g_ptr_array_free (array, TRUE);
+  channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, NULL);
+  g_hash_table_insert (channels, channel, requests);
+  g_signal_emit (instance, signals[S_NEW_CHANNELS], 0, channels);
+  g_hash_table_destroy (channels);
 }
 
 

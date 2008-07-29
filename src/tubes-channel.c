@@ -322,9 +322,6 @@ gabble_tubes_channel_set_property (GObject *object,
       case PROP_INITIATOR_HANDLE:
         priv->initiator = g_value_get_uint (value);
         break;
-      case PROP_CHANNEL_PROPERTIES:
-        /* FIXME: Setting channel-properties on creation not yet implemented */
-        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;

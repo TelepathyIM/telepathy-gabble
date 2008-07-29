@@ -58,10 +58,24 @@ void gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,
     GabbleExportableChannelFunc func, gpointer user_data);
 
 
+typedef gboolean (*GabbleChannelManagerRequestFunc) (
+    GabbleChannelManager *manager, gpointer request_token,
+    GHashTable *request_properties);
+
+gboolean gabble_channel_manager_create_channel (GabbleChannelManager *manager,
+    gpointer request_token, GHashTable *request_properties);
+
+gboolean gabble_channel_manager_ensure_channel (GabbleChannelManager *manager,
+    gpointer request_token, GHashTable *request_properties);
+
+
 struct _GabbleChannelManagerIface {
     GTypeInterface parent;
 
     GabbleChannelManagerForeachChannelFunc foreach_channel;
+
+    GabbleChannelManagerRequestFunc create_channel;
+    GabbleChannelManagerRequestFunc ensure_channel;
 
     GCallback _future[8];
 };

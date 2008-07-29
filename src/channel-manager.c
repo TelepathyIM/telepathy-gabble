@@ -367,3 +367,39 @@ gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,
     }
   /* ... else assume it has no channels, and do nothing */
 }
+
+
+gboolean
+gabble_channel_manager_create_channel (GabbleChannelManager *manager,
+                                       gpointer request_token,
+                                       GHashTable *request_properties)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerRequestFunc method = iface->create_channel;
+
+  /* A missing implementation is equivalent to one that always returns FALSE,
+   * meaning "can't do that, ask someone else" */
+  if (method != NULL)
+    return method (manager, request_token, request_properties);
+  else
+    return FALSE;
+}
+
+
+gboolean
+gabble_channel_manager_ensure_channel (GabbleChannelManager *manager,
+                                       gpointer request_token,
+                                       GHashTable *request_properties)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerRequestFunc method = iface->ensure_channel;
+
+  /* A missing implementation is equivalent to one that always returns FALSE,
+   * meaning "can't do that, ask someone else" */
+  if (method != NULL)
+    return method (manager, request_token, request_properties);
+  else
+    return FALSE;
+}

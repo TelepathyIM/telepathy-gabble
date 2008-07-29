@@ -233,6 +233,31 @@ find_matching_channel_requests (GabbleConnection *self,
   return requests;
 }
 
+
+static void
+satisfy_request (GabbleConnection *self,
+                 ChannelRequest *request,
+                 GObject *channel,
+                 const gchar *object_path)
+{
+  /* FIXME: implement the other two methods */
+  g_assert (request->method == METHOD_REQUEST_CHANNEL);
+
+  DEBUG ("completing queued request %p with success, "
+      "channel_type=%s, handle_type=%u, "
+      "handle=%u, suppress_handler=%u", request, request->channel_type,
+      request->handle_type, request->handle, request->suppress_handler);
+
+  tp_svc_connection_return_from_request_channel (request->context,
+      object_path);
+  request->context = NULL;
+
+  g_ptr_array_remove (self->channel_requests, request);
+
+  channel_request_free (request);
+}
+
+
 static void
 satisfy_requests (GabbleConnection *self,
                   TpChannelFactoryIface *factory,
@@ -274,22 +299,8 @@ satisfy_requests (GabbleConnection *self,
     }
 
   for (i = 0; i < tmp->len; i++)
-    {
-      ChannelRequest *request = g_ptr_array_index (tmp, i);
-
-      DEBUG ("completing queued request %p with success, "
-          "channel_type=%s, handle_type=%u, "
-          "handle=%u, suppress_handler=%u", request, request->channel_type,
-          request->handle_type, request->handle, request->suppress_handler);
-
-      tp_svc_connection_return_from_request_channel (request->context,
-          object_path);
-      request->context = NULL;
-
-      g_ptr_array_remove (self->channel_requests, request);
-
-      channel_request_free (request);
-    }
+    satisfy_request (self, g_ptr_array_index (tmp, i), G_OBJECT (chan),
+        object_path);
 
   g_ptr_array_free (tmp, TRUE);
 

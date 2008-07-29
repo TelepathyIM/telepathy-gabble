@@ -314,10 +314,10 @@ conn_requests_request_channel (TpSvcConnection *iface,
       type, handle_type, handle, suppress_handler);
   g_ptr_array_add (self->channel_requests, request);
 
-  for (i = 0; i < self->channel_managers->len; i++)
+  for (i = 0; i < self->channel_factories->len; i++)
     {
       TpChannelFactoryIface *factory = g_ptr_array_index (
-        self->channel_managers, i);
+        self->channel_factories, i);
       TpChannelFactoryRequestStatus cur_status;
       TpChannelIface *chan = NULL;
 
@@ -410,7 +410,7 @@ connection_status_changed (GabbleConnection *self,
   if (status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
       /* trigger close_all on all channel factories */
-      g_ptr_array_foreach (self->channel_managers,
+      g_ptr_array_foreach (self->channel_factories,
           (GFunc) tp_channel_factory_iface_close_all, NULL);
 
       if (self->channel_requests->len > 0)
@@ -426,19 +426,19 @@ connection_status_changed (GabbleConnection *self,
     {
     case TP_CONNECTION_STATUS_CONNECTING:
       self->has_tried_connection = TRUE;
-      g_ptr_array_foreach (self->channel_managers,
+      g_ptr_array_foreach (self->channel_factories,
           (GFunc) tp_channel_factory_iface_connecting, NULL);
       break;
 
     case TP_CONNECTION_STATUS_CONNECTED:
       self->has_tried_connection = TRUE;
-      g_ptr_array_foreach (self->channel_managers,
+      g_ptr_array_foreach (self->channel_factories,
           (GFunc) tp_channel_factory_iface_connected, NULL);
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
       if (self->has_tried_connection)
-        g_ptr_array_foreach (self->channel_managers,
+        g_ptr_array_foreach (self->channel_factories,
             (GFunc) tp_channel_factory_iface_disconnected, NULL);
       break;
 
@@ -491,12 +491,13 @@ conn_requests_list_channels (TpSvcConnection *iface,
       context);
 
   /* I think on average, each factory will have 2 channels :D */
-  values = g_ptr_array_sized_new (self->channel_managers->len * 2);
+  values = g_ptr_array_sized_new (self->channel_factories->len * 2
+      + self->channel_managers->len * 2);
 
-  for (i = 0; i < self->channel_managers->len; i++)
+  for (i = 0; i < self->channel_factories->len; i++)
     {
       TpChannelFactoryIface *factory = g_ptr_array_index
-        (self->channel_managers, i);
+        (self->channel_factories, i);
 
       tp_channel_factory_iface_foreach (factory,
           list_channel_factory_foreach_one, values);
@@ -546,25 +547,36 @@ gabble_conn_requests_init (GabbleConnection *self)
 
   self->channel_requests = g_ptr_array_new ();
 
+  g_assert (self->channel_factories != NULL);
   g_assert (self->channel_managers != NULL);
 
-  for (i = 0; i < self->channel_managers->len; i++)
+  for (i = 0; i < self->channel_factories->len; i++)
     {
-      GObject *manager = g_ptr_array_index (self->channel_managers, i);
+      GObject *factory = g_ptr_array_index (self->channel_factories, i);
 
-      g_assert (TP_IS_CHANNEL_FACTORY_IFACE (manager));
+      g_assert (TP_IS_CHANNEL_FACTORY_IFACE (factory));
 
-      g_signal_connect (manager, "new-channel",
+      g_signal_connect (factory, "new-channel",
           (GCallback) connection_new_channel_cb, self);
-      g_signal_connect (manager, "channel-error",
+      g_signal_connect (factory, "channel-error",
           (GCallback) connection_channel_error_cb, self);
     }
+
+  g_assert (self->channel_managers->len == 0);
 }
 
 
 void
 gabble_conn_requests_dispose (GabbleConnection *self)
 {
+  if (self->channel_factories != NULL)
+    {
+      g_ptr_array_foreach (self->channel_factories, (GFunc) g_object_unref,
+          NULL);
+      g_ptr_array_free (self->channel_factories, TRUE);
+      self->channel_factories = NULL;
+    }
+
   if (self->channel_managers != NULL)
     {
       g_ptr_array_foreach (self->channel_managers, (GFunc) g_object_unref,

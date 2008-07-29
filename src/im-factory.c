@@ -528,6 +528,33 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
   return status;
 }
 
+
+static gboolean
+gabble_im_factory_create_channel (GabbleChannelManager *manager,
+                                  gpointer request_token,
+                                  GHashTable *request_properties)
+{
+  GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
+
+  (void) self;
+
+  return FALSE;
+}
+
+
+static gboolean
+gabble_im_factory_ensure_channel (GabbleChannelManager *manager,
+                                  gpointer request_token,
+                                  GHashTable *request_properties)
+{
+  GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
+
+  (void) self;
+
+  return FALSE;
+}
+
+
 static void
 gabble_im_factory_iface_init (gpointer g_iface,
                               gpointer iface_data)
@@ -552,4 +579,6 @@ channel_manager_iface_init (gpointer g_iface,
   GabbleChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_im_factory_foreach_channel;
+  iface->create_channel = gabble_im_factory_create_channel;
+  iface->ensure_channel = gabble_im_factory_ensure_channel;
 }

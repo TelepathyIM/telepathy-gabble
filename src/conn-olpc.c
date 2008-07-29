@@ -1255,6 +1255,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
               tp_handle_set_destroy (activities_set);
               g_error_free (error);
               g_free (activity);
+              g_free (id);
               return;
             }
 
@@ -1266,6 +1267,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
         }
 
       g_object_set (activity, "id", id, NULL);
+      g_free (id);
 
       tp_handle_set_add (activities_set, channel);
     }

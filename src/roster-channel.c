@@ -291,9 +291,6 @@ gabble_roster_channel_set_property (GObject     *object,
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
       break;
-    case PROP_CHANNEL_PROPERTIES:
-      /* FIXME: Setting channel-properties on creation not yet implemented */
-      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;

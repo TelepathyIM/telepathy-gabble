@@ -30,7 +30,7 @@
 
 enum {
     S_NEW_CHANNELS,
-    S_REQUEST_SUCCEEDED,
+    S_REQUEST_ALREADY_SATISFIED,
     S_REQUEST_FAILED,
     S_CHANNEL_CLOSED,
     N_SIGNALS
@@ -49,36 +49,41 @@ channel_manager_base_init (gpointer klass)
       initialized = TRUE;
 
       /* FIXME: should probably have a better GType for a GPtrArray of
-       * ExportableChannel */
+       * ExportableChannel, and for a GSList of requests */
       /**
        * GabbleChannelManager::new-channels:
        * @self: the channel manager
        * @channels: a #GPtrArray of #GabbleExportableChannel
+       * @requests: a #GSList of requests (opaque pointers) satisfied by
+       *  these channels
        *
        * Emitted when new channels have been created. The Connection should
        * generally emit NewChannels (and NewChannel) in response to this
-       * signal.
+       * signal, and then return from pending CreateChannel, EnsureChannel
+       * and/or RequestChannel calls if appropriate.
        */
       signals[S_NEW_CHANNELS] = g_signal_new ("new-channels",
           G_OBJECT_CLASS_TYPE (klass),
           G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
           0,
           NULL, NULL,
-          g_cclosure_marshal_VOID__POINTER,
-          G_TYPE_NONE, 1, G_TYPE_POINTER);
+          gabble_marshal_VOID__POINTER_POINTER,
+          G_TYPE_NONE, 2, G_TYPE_POINTER, G_TYPE_POINTER);
 
       /**
-       * GabbleChannelManager::request-succeeded:
+       * GabbleChannelManager::request-already-satisfied:
        * @self: the channel manager
        * @request_token: opaque pointer supplied by the requester,
        *  representing a request
-       * @channel: the channel that satisfied the request
+       * @channel: the existing #GabbleExportableChannel that satisfies the
+       *  request
        *
-       * Emitted when a channel request has been satisfied by a channel.
+       * Emitted when a channel request is satisfied by an existing channel.
        * The Connection should generally respond to this signal by returning
-       * success from CreateChannel or RequestChannel.
+       * success from EnsureChannel or RequestChannel.
        */
-      signals[S_REQUEST_SUCCEEDED] = g_signal_new ("request-succeeded",
+      signals[S_REQUEST_ALREADY_SATISFIED] = g_signal_new (
+          "request-already-satisfied",
           G_OBJECT_CLASS_TYPE (klass),
           G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
           0,
@@ -100,7 +105,7 @@ channel_manager_base_init (gpointer klass)
        *
        * Emitted when a channel request has failed. The Connection should
        * generally respond to this signal by returning failure from
-       * CreateChannel or RequestChannel.
+       * CreateChannel, EnsureChannel or RequestChannel.
        */
       signals[S_REQUEST_FAILED] = g_signal_new ("request-failed",
           G_OBJECT_CLASS_TYPE (klass),
@@ -170,18 +175,22 @@ gabble_channel_manager_get_type (void)
  */
 void
 gabble_channel_manager_emit_new_channels (gpointer instance,
-                                          GPtrArray *channels)
+                                          GPtrArray *channels,
+                                          GSList *requests)
 {
   g_return_if_fail (GABBLE_IS_CHANNEL_MANAGER (instance));
 
   if (channels->len == 0)
-    return;
+    {
+      g_return_if_fail (requests == NULL);
+      return;
+    }
 
   /* just a quick sanity-check */
   g_return_if_fail (GABBLE_IS_EXPORTABLE_CHANNEL (g_ptr_array_index (
           channels, 0)));
 
-  g_signal_emit (instance, signals[S_NEW_CHANNELS], 0, channels);
+  g_signal_emit (instance, signals[S_NEW_CHANNELS], 0, channels, requests);
 }
 
 
@@ -196,7 +205,8 @@ gabble_channel_manager_emit_new_channels (gpointer instance,
  */
 void
 gabble_channel_manager_emit_new_channel (gpointer instance,
-                                         GabbleExportableChannel *channel)
+                                         GabbleExportableChannel *channel,
+                                         GSList *requests)
 {
   GPtrArray *array = g_ptr_array_sized_new (1);
 
@@ -204,7 +214,7 @@ gabble_channel_manager_emit_new_channel (gpointer instance,
   g_return_if_fail (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
 
   g_ptr_array_add (array, channel);
-  g_signal_emit (instance, signals[S_NEW_CHANNELS], 0, array);
+  g_signal_emit (instance, signals[S_NEW_CHANNELS], 0, array, requests);
   g_ptr_array_free (array, TRUE);
 }
 
@@ -256,25 +266,25 @@ gabble_channel_manager_emit_channel_closed_for_object (gpointer instance,
 
 
 /**
- * gabble_channel_manager_emit_request_succeeded:
+ * gabble_channel_manager_emit_request_already_satisfied:
  * @instance: An object implementing #GabbleChannelManager
  * @request_token: An opaque pointer representing the request that
  *  succeeded
  * @channel: The channel that satisfies the request
  *
- * Emit the #GabbleChannelManager::request-succeeded signal indicating that
- * @channel satisfies @request_token.
+ * Emit the #GabbleChannelManager::request-already-satisfied signal indicating
+ * that the pre-existing channel @channel satisfies @request_token.
  */
 void
-gabble_channel_manager_emit_request_succeeded (gpointer instance,
+gabble_channel_manager_emit_request_already_satisfied (gpointer instance,
     gpointer request_token,
     GabbleExportableChannel *channel)
 {
   g_return_if_fail (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
   g_return_if_fail (GABBLE_IS_CHANNEL_MANAGER (instance));
 
-  g_signal_emit (instance, signals[S_REQUEST_SUCCEEDED], 0, request_token,
-      channel);
+  g_signal_emit (instance, signals[S_REQUEST_ALREADY_SATISFIED], 0,
+      request_token, channel);
 }
 
 

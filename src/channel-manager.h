@@ -73,25 +73,24 @@ GType gabble_channel_manager_get_type (void);
 /* signal emission */
 
 void gabble_channel_manager_emit_new_channel (gpointer instance,
-    GabbleExportableChannel *channel);
+    GabbleExportableChannel *channel, GSList *requests);
 void gabble_channel_manager_emit_new_channels (gpointer instance,
-    GPtrArray *channels);
+    GPtrArray *channels, GSList *requests);
 
 void gabble_channel_manager_emit_channel_closed (gpointer instance,
     const gchar *path);
 void gabble_channel_manager_emit_channel_closed_for_object (gpointer instance,
     GabbleExportableChannel *channel);
 
-void gabble_channel_manager_emit_request_succeeded (gpointer instance,
-    gpointer request_token, GabbleExportableChannel *channel);
+void gabble_channel_manager_emit_request_already_satisfied (
+    gpointer instance, gpointer request_token,
+    GabbleExportableChannel *channel);
 
 void gabble_channel_manager_emit_request_failed (gpointer instance,
     gpointer request_token, GQuark domain, gint code, const gchar *message);
 void gabble_channel_manager_emit_request_failed_printf (gpointer instance,
     gpointer request_token, GQuark domain, gint code, const gchar *format,
     ...) G_GNUC_PRINTF (5, 6);
-
-
 
 G_END_DECLS
 

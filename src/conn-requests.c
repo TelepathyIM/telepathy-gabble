@@ -766,7 +766,63 @@ conn_requests_create_channel (GabbleSvcConnectionInterfaceRequests *svc,
                               GHashTable *requested_properties,
                               DBusGMethodInvocation *context)
 {
-  tp_dbus_g_method_return_not_implemented (context);
+  GabbleConnection *self = GABBLE_CONNECTION (svc);
+  guint i;
+  ChannelRequest *request = NULL;
+  GHashTable *altered_properties = NULL;
+  const gchar *type;
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) self,
+      context);
+
+  type = tp_asv_get_string (requested_properties,
+        TP_IFACE_CHANNEL ".ChannelType");
+
+  if (type == NULL)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "ChannelType is required" };
+
+      dbus_g_method_return_error (context, &e);
+      goto out;
+    }
+
+  /* FIXME: check (TargetHandleType != NONE || TargetHandle != 0) */
+
+  /* FIXME: if it has TargetID but no TargetHandle, copy requested_properties
+   * to altered_properties, remove TargetID, add TargetHandle, and set
+   * requested_properties = altered_properties (shadowing the original).
+   * If handle normalization fails, raise an error */
+
+  /* FIXME: fill in the right target handle */
+  request = channel_request_new (context, METHOD_CREATE_CHANNEL,
+      type, 0, 0, FALSE);
+  g_ptr_array_add (self->channel_requests, request);
+
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
+
+      if (gabble_channel_manager_create_channel (manager, request,
+            requested_properties))
+        goto out;
+    }
+
+    {
+      GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Not implemented" };
+
+      dbus_g_method_return_error (context, &e);
+      g_ptr_array_remove (self->channel_requests, request);
+      channel_request_free (request);
+    }
+
+out:
+  if (altered_properties != NULL)
+    g_hash_table_destroy (altered_properties);
+
+  return;
 }
 
 

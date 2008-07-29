@@ -1153,6 +1153,7 @@ _gabble_connection_connect (TpBaseConnection *base,
 
       if (!priv->require_encryption)
           priv->ignore_ssl_errors = TRUE;
+      lm_ssl_unref (ssl);
     }
 
   /* send whitespace to the server every 30 seconds */

@@ -770,6 +770,15 @@ conn_requests_create_channel (GabbleSvcConnectionInterfaceRequests *svc,
 }
 
 
+static void
+conn_requests_ensure_channel (GabbleSvcConnectionInterfaceRequests *svc,
+                              GHashTable *requested_properties,
+                              DBusGMethodInvocation *context)
+{
+  tp_dbus_g_method_return_not_implemented (context);
+}
+
+
 /* Initialization and glue */
 
 
@@ -999,6 +1008,8 @@ gabble_conn_requests_iface_init (gpointer g_iface,
                                  gpointer iface_data G_GNUC_UNUSED)
 {
   GabbleSvcConnectionInterfaceRequestsClass *iface = g_iface;
+
+  (void) conn_requests_ensure_channel;
 
 #define IMPLEMENT(x) \
     gabble_svc_connection_interface_requests_implement_##x (\

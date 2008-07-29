@@ -3036,8 +3036,6 @@ populate_buddies_from_nodes (GabbleConnection *conn,
   for (buddy = node->children; buddy != NULL; buddy = buddy->next)
     {
       const gchar *jid;
-      LmMessageNode *properties_node;
-      GHashTable *properties;
       TpHandle handle;
 
       if (tp_strdiff (buddy->name, node_name))
@@ -3068,13 +3066,16 @@ populate_buddies_from_nodes (GabbleConnection *conn,
 
       g_array_append_val (buddies, handle);
 
-      properties_node = lm_message_node_get_child_with_namespace (buddy,
-          "properties", NS_OLPC_BUDDY_PROPS);
-      properties = lm_message_node_extract_properties (properties_node,
-          "property");
-
       if (buddies_properties != NULL)
         {
+          LmMessageNode *properties_node;
+          GHashTable *properties;
+
+          properties_node = lm_message_node_get_child_with_namespace (buddy,
+              "properties", NS_OLPC_BUDDY_PROPS);
+          properties = lm_message_node_extract_properties (properties_node,
+              "property");
+
           g_ptr_array_add (buddies_properties, properties);
         }
     }

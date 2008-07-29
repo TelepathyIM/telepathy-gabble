@@ -4240,6 +4240,7 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
     }
   else
     {
+      /* FIXME */
       if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBE,
             &error))
         {

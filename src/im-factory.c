@@ -27,8 +27,9 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
-#include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-factory-iface.h>
+#include <telepathy-glib/dbus.h>
+#include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 
@@ -530,15 +531,69 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
 
 
 static gboolean
+gabble_im_factory_requestotron (GabbleImFactory *self,
+                                gpointer request_token,
+                                GHashTable *request_properties,
+                                gboolean require_new)
+{
+  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      base_conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle handle;
+  GError *error = NULL;
+  GabbleExportableChannel *channel;
+
+  if (tp_strdiff (tp_asv_get_string (request_properties,
+          TP_IFACE_CHANNEL ".ChannelType"), TP_IFACE_CHANNEL_TYPE_TEXT))
+    return FALSE;
+
+  if (tp_asv_get_uint32 (request_properties,
+        TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
+    return FALSE;
+
+  handle = tp_asv_get_uint32 (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandle", NULL);
+
+  if (!tp_handle_is_valid (contact_repo, handle, &error))
+    goto error;
+
+  channel = g_hash_table_lookup (self->priv->channels,
+      GUINT_TO_POINTER (handle));
+
+  if (channel == NULL)
+    {
+      new_im_channel (self, handle, base_conn->self_handle, request_token);
+      return TRUE;
+    }
+
+  if (require_new)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Already chatting with contact #%u in another channel", handle);
+      goto error;
+    }
+
+  gabble_channel_manager_emit_request_already_satisfied (self, request_token,
+      channel);
+  return TRUE;
+
+error:
+  gabble_channel_manager_emit_request_failed (self, request_token,
+      error->domain, error->code, error->message);
+  g_error_free (error);
+  return TRUE;
+}
+
+
+static gboolean
 gabble_im_factory_create_channel (GabbleChannelManager *manager,
                                   gpointer request_token,
                                   GHashTable *request_properties)
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
 
-  (void) self;
-
-  return FALSE;
+  return gabble_im_factory_requestotron (self, request_token,
+      request_properties, TRUE);
 }
 
 
@@ -549,9 +604,8 @@ gabble_im_factory_ensure_channel (GabbleChannelManager *manager,
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
 
-  (void) self;
-
-  return FALSE;
+  return gabble_im_factory_requestotron (self, request_token,
+      request_properties, FALSE);
 }
 
 

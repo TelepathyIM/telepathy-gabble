@@ -31,11 +31,13 @@ def test(q, bus, conn, stream):
 
     text_chan = bus.get_object(conn.bus_name, ret.value[0])
 
-    assert sig.args[0] == ret.value[0]
-    assert sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
+    assert sig.args[0] == ret.value[0], \
+            (sig.args[0], ret.value[0])
+    assert sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text',\
+            sig.args[1]
     # check that handle type == contact handle
-    assert sig.args[2] == 1
-    assert sig.args[3] == foo_handle
+    assert sig.args[2] == 1, sig.args[1]
+    assert sig.args[3] == foo_handle, (sig.args[3], foo_handle)
     assert sig.args[4] == True      # suppress handler
 
     # Exercise basic Channel Properties from spec 0.17.7

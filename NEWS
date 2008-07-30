@@ -1,3 +1,51 @@
+telepathy-gabble 0.7.7 (unreleased)
+===================================
+
+Requirements:
+
+* telepathy-glib >= 0.7.10
+
+Enhancements:
+
+* Implement XEP-0115 version 1.5 (hashed capabilities)
+
+* Implement Channel and Group properties on all channels, for round-trip
+  reduction if used with a recent client
+
+* Add infrastructure to implement planned properties InitiatorHandle,
+  InitiatorID, TargetID, Requested
+
+* In multi-user chat,
+  Group.GetHandleOwner(Group.GetSelfHandle()) == Connection.GetSelfHandle()
+
+* If a Text channel closes with messages still pending, reopen the text
+  channel, as though those messages had arrived just *after* closing it
+  (solving a race condition that could lead to messages being lost)
+
+* fd.o #14954: Set presence in MUCs to be the same as our global presence
+
+* fd.o #14955: Set nickname in MUCs to be the same as our alias for ourselves
+  (as set with Aliasing)
+
+* Implement SimplePresence as well as Presence
+
+Fixes:
+
+* Fix a reference leak when using (new-style) TLS
+
+* Fix a memory leak when invited to a MUC
+
+* Fix a possible assertion failure when we're sent an invalid MUC invitation
+
+Miscellaneous:
+
+* Rename gabble-foo.[ch] to foo.[ch] (we like tab completion)
+
+* fd.o #14341: add a regression test (currently disabled, because the bug
+  is in Loudmouth)
+
+* Port most of the regression tests to a more comprehensible API
+
 telepathy-gabble 0.7.6 (2008-05-14)
 ===================================
 

@@ -368,6 +368,24 @@ gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,
 }
 
 
+void
+gabble_channel_manager_foreach_channel_class (GabbleChannelManager *manager,
+    GabbleChannelManagerChannelClassFunc func,
+    gpointer user_data)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerForeachChannelClassFunc method =
+      iface->foreach_channel_class;
+
+  if (method != NULL)
+    {
+      method (manager, func, user_data);
+    }
+  /* ... else assume it has no classes of requestable channel */
+}
+
+
 gboolean
 gabble_channel_manager_create_channel (GabbleChannelManager *manager,
                                        gpointer request_token,

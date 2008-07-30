@@ -530,6 +530,43 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
 }
 
 
+static const gchar * const im_channel_required_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    NULL
+};
+
+
+static const gchar * const im_channel_optional_properties[] = {
+    NULL
+};
+
+
+static void
+gabble_im_factory_foreach_channel_class (GabbleChannelManager *manager,
+    GabbleChannelManagerChannelClassFunc func,
+    gpointer user_data)
+{
+  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) tp_g_value_slice_free);
+  GValue *value;
+
+  value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_TEXT);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType",
+      value);
+
+  value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
+      value);
+
+  func (manager, table, im_channel_required_properties,
+      im_channel_optional_properties, user_data);
+
+  g_hash_table_destroy (table);
+}
+
+
 static gboolean
 gabble_im_factory_requestotron (GabbleImFactory *self,
                                 gpointer request_token,
@@ -633,6 +670,7 @@ channel_manager_iface_init (gpointer g_iface,
   GabbleChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_im_factory_foreach_channel;
+  iface->foreach_channel_class = gabble_im_factory_foreach_channel_class;
   iface->create_channel = gabble_im_factory_create_channel;
   iface->request_channel = gabble_im_factory_request_channel;
 }

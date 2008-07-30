@@ -70,7 +70,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     presence = make_presence(contact, None, 'hello')
     stream.send(presence)
 
-    event = q.expect_many(
+    q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
             args=[{contact_handle:
                 (0L, {u'available': {'message': 'hello'}})}]),

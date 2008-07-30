@@ -16,14 +16,13 @@ def test_presence(q, bus, conn, stream):
     iface = dbus.Interface (conn,
         u'org.freedesktop.Telepathy.Connection.Interface.Presence')
 
-    def set_presence (status, message):
-        if message != "":
+    def set_presence (status, message = None):
+        if message:
           iface.SetStatus({status: {'message': message}})
         else:
           iface.SetStatus({status: {}})
 
-    run_test(q, bus, conn, stream,
-      (lambda status, message: set_presence(status, message)))
+    run_test(q, bus, conn, stream, set_presence)
 
 def test_simple_presence(q, bus, conn, stream):
     conn.Connect()
@@ -33,7 +32,7 @@ def test_simple_presence(q, bus, conn, stream):
     iface = dbus.Interface (conn,
         u'org.freedesktop.Telepathy.Connection.Interface.SimplePresence')
     run_test(q, bus, conn, stream,
-      (lambda status, message: iface.SetPresence (status, message)))
+      (lambda status, message = "": iface.SetPresence (status, message)))
 
 def run_test(q, bus, conn, stream, set_status_func):
     # Set presence to away. This should cause PresenceUpdate to be emitted,
@@ -74,7 +73,7 @@ def run_test(q, bus, conn, stream, set_status_func):
 
     # call SetPresence with no optional arguments, as this used to cause a
     # crash in tp-glib
-    set_status_func('available', "")
+    set_status_func('available')
 
     signal, simple_signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresenceUpdate'),
@@ -89,5 +88,4 @@ def run_test(q, bus, conn, stream, set_status_func):
 if __name__ == '__main__':
     exec_test(test_simple_presence)
     exec_test(test_presence)
-
 

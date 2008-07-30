@@ -65,7 +65,7 @@ typedef gboolean (*GabbleChannelManagerRequestFunc) (
 gboolean gabble_channel_manager_create_channel (GabbleChannelManager *manager,
     gpointer request_token, GHashTable *request_properties);
 
-gboolean gabble_channel_manager_ensure_channel (GabbleChannelManager *manager,
+gboolean gabble_channel_manager_request_channel (GabbleChannelManager *manager,
     gpointer request_token, GHashTable *request_properties);
 
 
@@ -75,7 +75,8 @@ struct _GabbleChannelManagerIface {
     GabbleChannelManagerForeachChannelFunc foreach_channel;
 
     GabbleChannelManagerRequestFunc create_channel;
-    GabbleChannelManagerRequestFunc ensure_channel;
+    GabbleChannelManagerRequestFunc request_channel;
+    /* in principle we could have EnsureChannel here too */
 
     GCallback _future[8];
 };

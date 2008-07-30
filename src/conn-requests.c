@@ -984,9 +984,6 @@ manager_request_already_satisfied_cb (GabbleChannelManager *manager,
   g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  /* FIXME: it's assumed to implement TpChannelIface */
-  g_assert (TP_IS_CHANNEL_IFACE (channel));
-
   g_object_get (channel,
       "object-path", &object_path,
       NULL);

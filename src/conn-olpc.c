@@ -4213,6 +4213,16 @@ olpc_gadget_search_activities_by_participants (GabbleSvcOLPCGadget *iface,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
 
+  if (participants->len == 0)
+    {
+     GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+        "you must pass at least one participant" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
   if (!check_gadget_activity (conn, context))
     return;
 

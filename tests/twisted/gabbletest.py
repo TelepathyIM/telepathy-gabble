@@ -308,20 +308,28 @@ def exec_test_deferred (fun, params, protocol=None, timeout=None):
     conn = make_connection(bus, queue.append, params)
     (stream, port) = make_stream(queue.append, protocol=protocol)
 
+    error = None
+
     try:
         fun(queue, bus, conn, stream)
-    finally:
-        try:
-            if colourer:
-              sys.stdout = colourer.fh
-            d = port.stopListening()
-            d.addBoth((lambda *args: reactor.crash()))
+    except Exception, e:
+        error = e
 
-            conn.Disconnect()
-            # second call destroys object
-            conn.Disconnect()
-        except dbus.DBusException, e:
-            pass
+    try:
+        if colourer:
+          sys.stdout = colourer.fh
+        d = port.stopListening()
+        if error is None:
+            d.addBoth((lambda *args: reactor.crash()))
+        else:
+            # please ignore the POSIX behind the curtain
+            d.addBoth((lambda *args: os._exit(1)))
+
+        conn.Disconnect()
+        # second call destroys object
+        conn.Disconnect()
+    except dbus.DBusException, e:
+        pass
 
 def exec_test(fun, params=None, protocol=None, timeout=None):
   reactor.callWhenRunning (exec_test_deferred, fun, params, protocol, timeout)

@@ -790,6 +790,9 @@ conn_requests_requestotron (GabbleConnection *self,
   const gchar *type;
   GabbleChannelManagerRequestFunc func;
   gboolean suppress_handler;
+  TpHandleType target_handle_type;
+  TpHandle target_handle;
+  gboolean valid;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) self,
       context);
@@ -805,6 +808,62 @@ conn_requests_requestotron (GabbleConnection *self,
       dbus_g_method_return_error (context, &e);
       goto out;
     }
+
+  target_handle_type = tp_asv_get_uint32 (requested_properties,
+      TP_IFACE_CHANNEL ".TargetHandleType", &valid);
+
+  /* Allow it to be missing, but not to be otherwise broken */
+  if (!valid && tp_asv_lookup (requested_properties,
+          TP_IFACE_CHANNEL ".TargetHandleType") != NULL)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "TargetHandleType must be an integer in range 0 to 2**32-1" };
+
+      dbus_g_method_return_error (context, &e);
+      goto out;
+    }
+
+  target_handle = tp_asv_get_uint32 (requested_properties,
+      TP_IFACE_CHANNEL ".TargetHandle", &valid);
+
+  /* Allow it to be missing, but not to be otherwise broken */
+  if (!valid && tp_asv_lookup (requested_properties,
+          TP_IFACE_CHANNEL ".TargetHandle") != NULL)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "TargetHandle must be an integer in range 0 to 2**32-1" };
+
+      dbus_g_method_return_error (context, &e);
+      goto out;
+    }
+
+  if (target_handle_type == TP_HANDLE_TYPE_NONE && target_handle != 0)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "When TargetHandleType is NONE, TargetHandle must be omitted or 0" };
+
+      dbus_g_method_return_error (context, &e);
+      goto out;
+    }
+
+  /* FIXME: when TargetID is officially supported, if it has
+   * target_handle_type == TP_HANDLE_TYPE_NONE and has a TargetID, raise
+   * an error */
+
+  /* FIXME: when TargetID is officially supported, if it has both a TargetID
+   * and a TargetHandle, raise an error */
+
+  /* FIXME: when InitiatorHandle, InitiatorID and Requested are officially
+   * supported, if the request has any of them, raise an error */
+
+  /* FIXME: when TargetID is officially supported, if it has TargetID but
+   * no TargetHandle, copy requested_properties to altered_properties,
+   * remove TargetID, add TargetHandle, and set
+   * requested_properties = altered_properties (shadowing the original).
+   * If handle normalization fails, raise an error */
+
+  /* Nonzero target handle types must have nonzero handles */
+  if (target_handle_type != TP_HANDLE_TYPE_NONE && target_handle == 0)
 
   switch (method)
     {
@@ -824,16 +883,8 @@ conn_requests_requestotron (GabbleConnection *self,
       g_assert_not_reached ();
     }
 
-  /* FIXME: check (TargetHandleType != NONE || TargetHandle != 0) */
-
-  /* FIXME: if it has TargetID but no TargetHandle, copy requested_properties
-   * to altered_properties, remove TargetID, add TargetHandle, and set
-   * requested_properties = altered_properties (shadowing the original).
-   * If handle normalization fails, raise an error */
-
-  /* FIXME: fill in the right target handle */
   request = channel_request_new (context, method,
-      type, 0, 0, suppress_handler);
+      type, target_handle_type, target_handle, suppress_handler);
   g_ptr_array_add (self->channel_requests, request);
 
   for (i = 0; i < self->channel_managers->len; i++)

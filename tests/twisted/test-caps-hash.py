@@ -26,7 +26,7 @@ import sys
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, make_result_iq
-from servicetest import sync_dbus
+from servicetest import sync_dbus, EventPattern
 
 gabble_service = 'org.freedesktop.Telepathy.ConnectionManager.gabble'
 text = 'org.freedesktop.Telepathy.Channel.Type.Text'
@@ -70,8 +70,13 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     presence = make_presence(contact, None, 'hello')
     stream.send(presence)
 
-    event = q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{contact_handle: (0L, {u'available': {'message': 'hello'}})}])
+    event = q.expect_many(
+        EventPattern('dbus-signal', signal='PresenceUpdate',
+            args=[{contact_handle:
+                (0L, {u'available': {'message': 'hello'}})}]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+            args=[{contact_handle:
+                (2, u'available', 'hello')}]))
 
     # no special capabilities
     basic_caps = [(contact_handle, text, 3, 0)]
@@ -220,14 +225,24 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     presence = make_presence(contact1, None, 'hello')
     stream.send(presence)
 
-    event = q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{contact_handle1: (0L, {u'available': {'message': 'hello'}})}])
+    event = q.expect_many(
+        EventPattern('dbus-signal', signal='PresenceUpdate',
+            args=[{contact_handle1:
+                (0L, {u'available': {'message': 'hello'}})}]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+            args=[{contact_handle1:
+                (2, u'available', 'hello')}]))
 
     presence = make_presence(contact2, None, 'hello')
     stream.send(presence)
 
-    event = q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{contact_handle2: (0L, {u'available': {'message': 'hello'}})}])
+    event = q.expect_many(
+        EventPattern('dbus-signal', signal='PresenceUpdate',
+            args=[{contact_handle2:
+                (0L, {u'available': {'message': 'hello'}})}]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+            args=[{contact_handle2:
+                (2, u'available', 'hello')}]))
 
     # no special capabilities
     basic_caps = [(contact_handle1, text, 3, 0)]

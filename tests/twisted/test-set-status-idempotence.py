@@ -8,22 +8,44 @@ import dbus
 from servicetest import EventPattern
 from gabbletest import exec_test
 
-def test(q, bus, conn, stream):
+def test_presence(q, bus, conn, stream):
     conn.Connect()
 
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    presence_iface = dbus.Interface (conn,
+    iface = dbus.Interface (conn,
         u'org.freedesktop.Telepathy.Connection.Interface.Presence')
 
+    def set_presence (status, message):
+        if message != "":
+          iface.SetStatus({status: {'message': message}})
+        else:
+          iface.SetStatus({status: {}})
+
+    run_test(q, bus, conn, stream,
+      (lambda status, message: set_presence(status, message)))
+
+def test_simple_presence(q, bus, conn, stream):
+    conn.Connect()
+
+    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+
+    iface = dbus.Interface (conn,
+        u'org.freedesktop.Telepathy.Connection.Interface.SimplePresence')
+    run_test(q, bus, conn, stream,
+      (lambda status, message: iface.SetPresence (status, message)))
+
+def run_test(q, bus, conn, stream, set_status_func):
     # Set presence to away. This should cause PresenceUpdate to be emitted,
     # and a new <presence> stanza to be sent to the server.
-    presence_iface.SetStatus({'away': {'message': 'gone'}})
+    set_status_func('away', 'gone')
 
-    signal, presence = q.expect_many (
+    signal, simple_signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresenceUpdate'),
+        EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('stream-presence'))
     assert signal.args == [{1L: (0L, {u'away': {u'message': u'gone'}})}]
+    assert simple_signal.args == [{1L: (3L, u'away',  u'gone')}]
 
     children = list(presence.stanza.elements())
     assert children[0].name == 'show'
@@ -33,33 +55,39 @@ def test(q, bus, conn, stream):
 
     # Set presence a second time. Since this call is redundant, there should
     # be no PresenceUpdate or <presence> sent to the server.
-    presence_iface.SetStatus({'away':{'message': 'gone'}})
+    set_status_func('away', 'gone')
 
     # Set presence a third time. This call is not redundant, and should
     # generate a signal/message.
-    presence_iface.SetStatus({'available': {'message': 'yo'}})
+    set_status_func('available', 'yo')
 
-    signal, presence = q.expect_many (
+    signal, simple_signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresenceUpdate'),
+        EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('stream-presence'))
 
     assert signal.args == [{1L: (0L, {u'available': {u'message': u'yo'}})}]
+    assert simple_signal.args == [{1L: (2L, u'available',  u'yo')}]
     children = list(presence.stanza.elements())
     assert children[0].name == 'status'
     assert str(children[0]) == 'yo'
 
     # call SetPresence with no optional arguments, as this used to cause a
     # crash in tp-glib
-    presence_iface.SetStatus({'available': {}})
+    set_status_func('available', "")
 
-
-    signal, _ = q.expect_many (
+    signal, simple_signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresenceUpdate'),
+        EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('stream-presence'))
     assert signal.args == [{1L: (0L, {u'available': {}})}]
+    assert simple_signal.args == [{1L: (2L, u'available',  u'')}]
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(test_simple_presence)
+    exec_test(test_presence)
+
+

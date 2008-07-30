@@ -834,6 +834,25 @@ conn_requests_get_channel_details (GabbleConnection *self)
 }
 
 
+static GPtrArray *
+conn_requests_get_requestables (GabbleConnection *self)
+{
+  /* generously guess that each ChannelManager has about 2 ChannelClasses */
+  GPtrArray *details = g_ptr_array_sized_new (self->channel_managers->len * 2);
+  guint i;
+
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
+
+      (void) manager;
+    }
+
+  return details;
+}
+
+
 void
 gabble_conn_requests_get_dbus_property (GObject *object,
                                         GQuark interface,
@@ -849,6 +868,10 @@ gabble_conn_requests_get_dbus_property (GObject *object,
   if (name == g_quark_from_static_string ("Channels"))
     {
       g_value_take_boxed (value, conn_requests_get_channel_details (self));
+    }
+  else if (name == g_quark_from_static_string ("RequestableChannelClasses"))
+    {
+      g_value_take_boxed (value, conn_requests_get_requestables (self));
     }
   else
     {

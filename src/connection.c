@@ -484,6 +484,19 @@ base_connected_cb (TpBaseConnection *base_conn)
 static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
+  static TpDBusPropertiesMixinPropImpl requests_props[] = {
+        { "Channels", NULL, NULL },
+        { "RequestableChannelClasses", NULL, NULL },
+        { NULL }
+  };
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+        { GABBLE_IFACE_CONNECTION_INTERFACE_REQUESTS,
+          gabble_conn_requests_get_dbus_property,
+          NULL,
+          requests_props,
+        },
+        { NULL }
+  };
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_connection_class);
   TpBaseConnectionClass *parent_class = TP_BASE_CONNECTION_CLASS (
       gabble_connection_class);
@@ -653,6 +666,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  gabble_connection_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
 

@@ -21,6 +21,19 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-return', method='RequestHandles')
     foo_handle = event.value[0][0]
 
+    properties = conn.GetAll(
+            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert properties.get('Channels') == [], properties['Channels']
+    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
+                'org.freedesktop.Telepathy.Channel.Type.Text',
+             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
+             },
+             ['org.freedesktop.Telepathy.Channel.TargetHandle'],
+             []
+             ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']
+
     requestotron = dbus.Interface(conn,
             'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT')
     call_async(q, requestotron, 'CreateChannel',
@@ -65,6 +78,13 @@ def test(q, bus, conn, stream):
     assert len(new_sig.args[0][0]) == 2     # two struct members
     assert new_sig.args[0][0][0] == ret.value[0]
     assert new_sig.args[0][0][1] == ret.value[1]
+
+    properties = conn.GetAll(
+            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert new_sig.args[0][0] in properties['Channels'], \
+            (new_sig.args[0][0], properties['Channels'])
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

@@ -318,14 +318,11 @@ def exec_test_deferred (fun, params, protocol=None, timeout=None):
         except dbus.DBusException, e:
             pass
 
-    if colourer != None:
+    if colourer:
       sys.stdout = colourer.fh
 
     d = port.stopListening()
-
-    d.addCallbacks ((lambda *args: reactor.crash()),
-                    (lambda *args: reactor.crash()))
-
+    d.addBoth((lambda *args: reactor.crash()))
 
 def exec_test(fun, params=None, protocol=None, timeout=None):
   reactor.callWhenRunning (exec_test_deferred, fun, params, protocol, timeout)

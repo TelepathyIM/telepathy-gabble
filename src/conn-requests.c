@@ -806,6 +806,8 @@ manager_get_channel_details_foreach (GabbleExportableChannel *chan,
 static GPtrArray *
 conn_requests_get_channel_details (GabbleConnection *self)
 {
+  /* guess that each ChannelManager and each ChannelFactory has two
+   * channels, on average */
   GPtrArray *details = g_ptr_array_sized_new (self->channel_managers->len * 2
       + self->channel_factories->len * 2);
   guint i;

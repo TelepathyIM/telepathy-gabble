@@ -834,6 +834,36 @@ conn_requests_get_channel_details (GabbleConnection *self)
 }
 
 
+static void
+get_requestables_foreach (GabbleChannelManager *manager,
+                          GHashTable *fixed_properties,
+                          const gchar * const *required_properties,
+                          const gchar * const *optional_properties,
+                          gpointer user_data)
+{
+  GPtrArray *details = user_data;
+  GValueArray *requestable = g_value_array_new (3);
+  GValue *value;
+
+  g_value_array_append (requestable, NULL);
+  value = g_value_array_get_nth (requestable, 0);
+  g_value_init (value, GABBLE_HASH_TYPE_CHANNEL_CLASS);
+  g_value_set_boxed (value, fixed_properties);
+
+  g_value_array_append (requestable, NULL);
+  value = g_value_array_get_nth (requestable, 1);
+  g_value_init (value, G_TYPE_STRV);
+  g_value_set_boxed (value, required_properties);
+
+  g_value_array_append (requestable, NULL);
+  value = g_value_array_get_nth (requestable, 2);
+  g_value_init (value, G_TYPE_STRV);
+  g_value_set_boxed (value, optional_properties);
+
+  g_ptr_array_add (details, requestable);
+}
+
+
 static GPtrArray *
 conn_requests_get_requestables (GabbleConnection *self)
 {
@@ -846,7 +876,8 @@ conn_requests_get_requestables (GabbleConnection *self)
       GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
 
-      (void) manager;
+      gabble_channel_manager_foreach_channel_class (manager,
+          get_requestables_foreach, details);
     }
 
   return details;

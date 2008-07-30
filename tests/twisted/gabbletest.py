@@ -235,8 +235,8 @@ def make_stream(event_func, authenticator=None, protocol=None, port=4242):
     stream = protocol(event_func, authenticator)
     factory = twisted.internet.protocol.Factory()
     factory.protocol = lambda *args: stream
-    reactor.listenTCP(port, factory)
-    return stream
+    port = reactor.listenTCP(port, factory)
+    return (stream, port)
 
 def go(params=None, authenticator=None, protocol=None, start=None):
     # hack to ease debugging
@@ -245,7 +245,7 @@ def go(params=None, authenticator=None, protocol=None, start=None):
     bus = dbus.SessionBus()
     handler = servicetest.EventTest()
     conn = make_connection(bus, handler.handle_event, params)
-    stream = make_stream(handler.handle_event, authenticator, protocol)
+    (stream, _) = make_stream(handler.handle_event, authenticator, protocol)
     handler.data = {
         'bus': bus,
         'conn': conn,
@@ -288,13 +288,16 @@ def install_colourer():
             self.fh.write(f(s))
 
     sys.stdout = Colourer(sys.stdout, patterns)
+    return sys.stdout
 
-def exec_test(fun, params=None, protocol=None, timeout=None):
+
+def exec_test_deferred (fun, params, protocol=None, timeout=None):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
+    colourer = None
 
     if sys.stdout.isatty():
-        install_colourer()
+        colourer = install_colourer()
 
     queue = servicetest.IteratingEventQueue(timeout)
     queue.verbose = (
@@ -303,7 +306,7 @@ def exec_test(fun, params=None, protocol=None, timeout=None):
 
     bus = dbus.SessionBus()
     conn = make_connection(bus, queue.append, params)
-    stream = make_stream(queue.append, protocol=protocol)
+    (stream, port) = make_stream(queue.append, protocol=protocol)
 
     try:
         fun(queue, bus, conn, stream)
@@ -314,6 +317,19 @@ def exec_test(fun, params=None, protocol=None, timeout=None):
             conn.Disconnect()
         except dbus.DBusException, e:
             pass
+
+    if colourer != None:
+      sys.stdout = colourer.fh
+
+    d = port.stopListening()
+
+    d.addCallbacks ((lambda *args: reactor.crash()),
+                    (lambda *args: reactor.crash()))
+
+
+def exec_test(fun, params=None, protocol=None, timeout=None):
+  reactor.callWhenRunning (exec_test_deferred, fun, params, protocol, timeout)
+  reactor.run()
 
 # Useful routines for server-side vCard handling
 current_vcard = domish.Element(('vcard-temp', 'vCard'))

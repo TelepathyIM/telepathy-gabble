@@ -43,7 +43,7 @@ def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, di
     presence = make_presence(contact, None, 'hello')
     stream.send(presence)
 
-    _,_ = q.expect_many(
+    q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
             args=[{contact_handle:
                (0L, {u'available': {'message': 'hello'}})}]),
@@ -88,7 +88,7 @@ def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco
     presence = make_presence(contact, None, 'hello')
     stream.send(presence)
 
-    _,_ = q.expect_many(
+    q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
             args=[{contact_handle:
                (0L, {u'available': {'message': 'hello'}})}]),

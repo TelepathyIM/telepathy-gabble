@@ -35,7 +35,7 @@ def test(q, bus, conn, stream):
     presence = make_presence('bob@foo.com/Foo', None, 'hello')
     stream.send(presence)
 
-    _, _ = q.expect_many(
+    q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
            args=[{2L: (0L, {u'available': {'message': 'hello'}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',

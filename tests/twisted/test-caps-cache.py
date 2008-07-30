@@ -9,6 +9,7 @@ import sys
 
 from twisted.words.xish import domish, xpath
 
+from servicetest import EventPattern
 from gabbletest import exec_test, make_result_iq
 
 text = 'org.freedesktop.Telepathy.Channel.Type.Text'
@@ -42,8 +43,14 @@ def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, di
     presence = make_presence(contact, None, 'hello')
     stream.send(presence)
 
-    event = q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{contact_handle: (0L, {u'available': {'message': 'hello'}})}])
+    _,_ = q.expect_many(
+        EventPattern('dbus-signal', signal='PresenceUpdate',
+            args=[{contact_handle:
+               (0L, {u'available': {'message': 'hello'}})}]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+            args=[{contact_handle:
+               (2, u'available', 'hello')}]))
+
 
     # no special capabilities
     basic_caps = [(contact_handle, text, 3, 0)]
@@ -81,8 +88,13 @@ def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco
     presence = make_presence(contact, None, 'hello')
     stream.send(presence)
 
-    event = q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{contact_handle: (0L, {u'available': {'message': 'hello'}})}])
+    _,_ = q.expect_many(
+        EventPattern('dbus-signal', signal='PresenceUpdate',
+            args=[{contact_handle:
+               (0L, {u'available': {'message': 'hello'}})}]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+            args=[{contact_handle:
+               (2, u'available', 'hello')}]))
 
     # no special capabilities
     basic_caps = [(contact_handle, text, 3, 0)]

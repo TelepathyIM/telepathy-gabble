@@ -97,7 +97,9 @@ typedef struct _ChannelRequest ChannelRequest;
 typedef enum {
     METHOD_REQUEST_CHANNEL,
     METHOD_CREATE_CHANNEL,
+#if 0
     METHOD_ENSURE_CHANNEL,
+#endif
     NUM_METHODS
 } ChannelRequestMethod;
 
@@ -110,7 +112,7 @@ struct _ChannelRequest
   gchar *channel_type;
   guint handle_type;
   guint handle;
-  /* always TRUE for CREATE and FALSE for ENSURE */
+  /* always TRUE for CREATE */
   gboolean suppress_handler;
 };
 
@@ -458,15 +460,9 @@ conn_requests_request_channel (TpSvcConnection *iface,
     {
       GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
-      GabbleChannelManagerRequestFunc func;
 
-      /* The semantics of RequestChannel depend on the handle type */
-      if (handle_type == TP_HANDLE_TYPE_NONE)
-        func = gabble_channel_manager_create_channel;
-      else
-        func = gabble_channel_manager_ensure_channel;
-
-      if (func (manager, request, request_properties))
+      if (gabble_channel_manager_request_channel (manager, request,
+            request_properties))
         return;
     }
 
@@ -792,6 +788,8 @@ conn_requests_requestotron (GabbleConnection *self,
   ChannelRequest *request = NULL;
   GHashTable *altered_properties = NULL;
   const gchar *type;
+  GabbleChannelManagerRequestFunc func;
+  gboolean suppress_handler;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) self,
       context);
@@ -808,6 +806,24 @@ conn_requests_requestotron (GabbleConnection *self,
       goto out;
     }
 
+  switch (method)
+    {
+    case METHOD_CREATE_CHANNEL:
+      func = gabble_channel_manager_create_channel;
+      suppress_handler = TRUE;
+      break;
+
+#if 0
+    case METHOD_ENSURE_CHANNEL:
+      func = gabble_channel_manager_ensure_channel;
+      suppress_handler = FALSE;
+      break;
+#endif
+
+    default:
+      g_assert_not_reached ();
+    }
+
   /* FIXME: check (TargetHandleType != NONE || TargetHandle != 0) */
 
   /* FIXME: if it has TargetID but no TargetHandle, copy requested_properties
@@ -817,24 +833,13 @@ conn_requests_requestotron (GabbleConnection *self,
 
   /* FIXME: fill in the right target handle */
   request = channel_request_new (context, method,
-      type, 0, 0, (method == METHOD_CREATE_CHANNEL));
+      type, 0, 0, suppress_handler);
   g_ptr_array_add (self->channel_requests, request);
 
   for (i = 0; i < self->channel_managers->len; i++)
     {
       GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
-      GabbleChannelManagerRequestFunc func;
-
-      if (method == METHOD_CREATE_CHANNEL)
-        {
-          func = gabble_channel_manager_create_channel;
-        }
-      else
-        {
-          g_assert (method == METHOD_ENSURE_CHANNEL);
-          func = gabble_channel_manager_ensure_channel;
-        }
 
       if (func (manager, request, requested_properties))
         goto out;
@@ -870,6 +875,7 @@ conn_requests_create_channel (GabbleSvcConnectionInterfaceRequests *svc,
 }
 
 
+#if 0
 static void
 conn_requests_ensure_channel (GabbleSvcConnectionInterfaceRequests *svc,
                               GHashTable *requested_properties,
@@ -880,6 +886,7 @@ conn_requests_ensure_channel (GabbleSvcConnectionInterfaceRequests *svc,
   return conn_requests_requestotron (self, requested_properties,
       METHOD_ENSURE_CHANNEL, context);
 }
+#endif
 
 
 /* Initialization and glue */
@@ -1111,8 +1118,6 @@ gabble_conn_requests_iface_init (gpointer g_iface,
                                  gpointer iface_data G_GNUC_UNUSED)
 {
   GabbleSvcConnectionInterfaceRequestsClass *iface = g_iface;
-
-  (void) conn_requests_ensure_channel;
 
 #define IMPLEMENT(x) \
     gabble_svc_connection_interface_requests_implement_##x (\

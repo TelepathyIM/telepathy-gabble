@@ -598,9 +598,9 @@ gabble_im_factory_create_channel (GabbleChannelManager *manager,
 
 
 static gboolean
-gabble_im_factory_ensure_channel (GabbleChannelManager *manager,
-                                  gpointer request_token,
-                                  GHashTable *request_properties)
+gabble_im_factory_request_channel (GabbleChannelManager *manager,
+                                   gpointer request_token,
+                                   GHashTable *request_properties)
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
 
@@ -634,5 +634,5 @@ channel_manager_iface_init (gpointer g_iface,
 
   iface->foreach_channel = gabble_im_factory_foreach_channel;
   iface->create_channel = gabble_im_factory_create_channel;
-  iface->ensure_channel = gabble_im_factory_ensure_channel;
+  iface->request_channel = gabble_im_factory_request_channel;
 }

@@ -35,8 +35,11 @@ def test(q, bus, conn, stream):
     presence = make_presence('bob@foo.com/Foo', None, 'hello')
     stream.send(presence)
 
-    event = q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{2L: (0L, {u'available': {'message': 'hello'}})}])
+    _, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='PresenceUpdate',
+           args=[{2L: (0L, {u'available': {'message': 'hello'}})}]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+           args=[{2L: (2, u'available', 'hello')}]))
 
     # no special capabilities
     assert conn.Capabilities.GetCapabilities([2]) == basic_caps

@@ -387,13 +387,13 @@ gabble_channel_manager_create_channel (GabbleChannelManager *manager,
 
 
 gboolean
-gabble_channel_manager_ensure_channel (GabbleChannelManager *manager,
-                                       gpointer request_token,
-                                       GHashTable *request_properties)
+gabble_channel_manager_request_channel (GabbleChannelManager *manager,
+                                        gpointer request_token,
+                                        GHashTable *request_properties)
 {
   GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
       manager);
-  GabbleChannelManagerRequestFunc method = iface->ensure_channel;
+  GabbleChannelManagerRequestFunc method = iface->request_channel;
 
   /* A missing implementation is equivalent to one that always returns FALSE,
    * meaning "can't do that, ask someone else" */

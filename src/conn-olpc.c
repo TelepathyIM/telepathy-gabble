@@ -3611,6 +3611,47 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static void
+connection_presences_updated_cb (GabblePresenceCache *cache,
+                                 GArray *handles,
+                                 GabbleConnection *conn)
+{
+  guint i;
+
+  for (i = 0; i < handles->len ; i++)
+    {
+      TpHandle handle;
+
+      handle = g_array_index (handles, TpHandle, i);
+      connection_presence_do_update (cache, handle, conn);
+    }
+}
+
+static void
+disco_item_found_cb (GabbleDisco *disco,
+                     GabbleDiscoItem *item,
+                     GabbleConnection *conn)
+{
+  if (tp_strdiff (item->category, "collaboration") ||
+      tp_strdiff (item->type, "gadget"))
+    return;
+
+  /* we can't use g_hash_table_lookup as the value associated in the hash
+   * table is NULL */
+  if (g_hash_table_lookup_extended (item->features, NS_OLPC_BUDDY, NULL, NULL))
+    {
+      DEBUG ("buddy gadget discovered");
+      gabble_svc_olpc_gadget_emit_buddy_gadget_discovered (conn);
+    }
+
+  if (g_hash_table_lookup_extended (item->features, NS_OLPC_ACTIVITY, NULL,
+        NULL))
+    {
+      DEBUG ("activity gadget discovered");
+      gabble_svc_olpc_gadget_emit_activity_gadget_discovered (conn);
+    }
+}
+
 void
 conn_olpc_activity_properties_init (GabbleConnection *conn)
 {
@@ -3662,8 +3703,11 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
   g_signal_connect (GABBLE_CHANNEL_MANAGER (conn->muc_factory), "new-channels",
       G_CALLBACK (muc_factory_new_channels_cb), conn);
 
-  g_signal_connect (conn->presence_cache, "presence-update",
-      G_CALLBACK (connection_presence_update_cb), conn);
+  g_signal_connect (conn->disco, "item-found",
+      G_CALLBACK (disco_item_found_cb), conn);
+
+  g_signal_connect (conn->presence_cache, "presences-updated",
+      G_CALLBACK (connection_presences_updated_cb), conn);
 }
 
 void

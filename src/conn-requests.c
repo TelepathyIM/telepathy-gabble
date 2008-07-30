@@ -642,12 +642,89 @@ list_channel_factory_foreach_one (TpChannelIface *chan,
 
 
 static void
+exportable_channel_get_old_info (GabbleExportableChannel *channel,
+                                 gchar **object_path_out,
+                                 gchar **channel_type_out,
+                                 guint *handle_type_out,
+                                 guint *handle_out)
+{
+  gchar *object_path;
+  GHashTable *channel_properties;
+  gboolean valid;
+
+  g_object_get (channel,
+      "object-path", &object_path,
+      "channel-properties", &channel_properties,
+      NULL);
+
+  g_assert (object_path != NULL);
+  g_assert (tp_dbus_check_valid_object_path (object_path, NULL));
+
+  if (object_path_out != NULL)
+    *object_path_out = object_path;
+  else
+    g_free (object_path);
+
+  if (channel_type_out != NULL)
+    {
+      *channel_type_out = g_strdup (tp_asv_get_string (channel_properties,
+          TP_IFACE_CHANNEL ".ChannelType"));
+      g_assert (*channel_type_out != NULL);
+      g_assert (tp_dbus_check_valid_interface_name (*channel_type_out, NULL));
+    }
+
+  if (handle_type_out != NULL)
+    {
+      *handle_type_out = tp_asv_get_uint32 (channel_properties,
+          TP_IFACE_CHANNEL ".TargetHandleType", &valid);
+      g_assert (valid);
+    }
+
+  if (handle_out != NULL)
+    {
+      *handle_out = tp_asv_get_uint32 (channel_properties,
+          TP_IFACE_CHANNEL ".TargetHandle", &valid);
+      g_assert (valid);
+
+      if (handle_type_out != NULL)
+        {
+          if (*handle_type_out == TP_HANDLE_TYPE_NONE)
+            g_assert (*handle_out == 0);
+          else
+            g_assert (*handle_out != 0);
+        }
+    }
+
+  g_hash_table_destroy (channel_properties);
+}
+
+
+static void
 list_channel_manager_foreach_one (GabbleExportableChannel *channel,
                                   gpointer data)
 {
-  /* FIXME: in the longer term, we don't really want to keep assuming that
-   * every GabbleExportableChannel is a TpChannelIface */
-  list_channel_factory_foreach_one (TP_CHANNEL_IFACE (channel), data);
+  GPtrArray *values = (GPtrArray *) data;
+  gchar *path, *type;
+  guint handle_type, handle;
+  GValue *entry = tp_dbus_specialized_value_slice_new
+      (TP_STRUCT_TYPE_CHANNEL_INFO);
+
+  g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+
+  exportable_channel_get_old_info (channel, &path, &type, &handle_type,
+      &handle);
+
+  dbus_g_type_struct_set (entry,
+      0, path,
+      1, type,
+      2, handle_type,
+      3, handle,
+      G_MAXUINT);
+
+  g_ptr_array_add (values, entry);
+
+  g_free (path);
+  g_free (type);
 }
 
 
@@ -956,15 +1033,8 @@ manager_new_channel (gpointer key,
   GSList *iter;
   gboolean suppress_handler = FALSE;
 
-  /* FIXME: it's assumed to implement TpChannelIface */
-  g_assert (TP_IS_CHANNEL_IFACE (channel));
-
-  g_object_get (channel,
-      "object-path", &object_path,
-      "channel-type", &channel_type,
-      "handle-type", &handle_type,
-      "handle", &handle,
-      NULL);
+  exportable_channel_get_old_info (channel, &object_path, &channel_type,
+      &handle_type, &handle);
 
   for (iter = request_tokens; iter != NULL; iter = iter->next)
     {

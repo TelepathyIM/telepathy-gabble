@@ -4267,7 +4267,7 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
           return;
         }
 
-      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBED,
+      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED,
             &error))
         {
           dbus_g_method_return_error (context, error);
@@ -4277,8 +4277,8 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
     }
   else
     {
-      /* FIXME */
-      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBE,
+      /* FIXME: remove from roster ? */
+      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE,
             &error))
         {
           dbus_g_method_return_error (context, error);

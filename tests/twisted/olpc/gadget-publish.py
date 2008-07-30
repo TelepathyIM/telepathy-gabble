@@ -50,6 +50,12 @@ def test(q, bus, conn, stream):
             EventPattern('stream-presence', presence_type='subscribed'),
             EventPattern('dbus-return', method='Publish'))
 
+    call_async(q, gadget_iface, 'Publish', False)
+
+    q.expect_many(
+            EventPattern('stream-presence', presence_type='unsubscribe'),
+            EventPattern('stream-presence', presence_type='unsubscribed'),
+            EventPattern('dbus-return', method='Publish'))
 
 if __name__ == '__main__':
     exec_test(test)

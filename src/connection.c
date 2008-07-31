@@ -203,9 +203,6 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
                                  "connection", self,
                                  NULL));
 
-  self->private_tubes_factory = gabble_private_tubes_factory_new (self);
-  g_ptr_array_add (channel_factories, self->private_tubes_factory);
-
   /* Temporary hack for requestotron support - divert the channel factories
    * and channel managers to somewhere under our control */
   self->channel_factories = channel_factories;
@@ -217,6 +214,9 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
       g_object_new (GABBLE_TYPE_IM_FACTORY,
         "connection", self,
         NULL));
+
+  self->private_tubes_factory = gabble_private_tubes_factory_new (self);
+  g_ptr_array_add (self->channel_managers, self->private_tubes_factory);
 
   return channel_factories;
 }

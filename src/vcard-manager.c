@@ -451,18 +451,18 @@ static void complete_one_request (GabbleVCardManagerRequest *request,
 static void
 cache_entry_complete_requests (GabbleVCardCacheEntry *entry, GError *error)
 {
-  GSList *cur;
+  GSList *cur, *tmp;
 
-  cur = entry->pending_requests;
-  while (cur != NULL)
+  tmp = g_slist_copy (entry->pending_requests);
+
+  for (cur = tmp; cur != NULL; cur = cur->next)
     {
       GabbleVCardManagerRequest *request = cur->data;
 
-      /* advance cur before we complete the request, as it can free the entry */
-      cur = g_slist_next (cur);
-
       complete_one_request (request, error ? NULL : entry->vcard_node, error);
     }
+
+  g_slist_free (tmp);
 }
 
 static void

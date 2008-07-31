@@ -313,6 +313,8 @@ def exec_test_deferred (fun, params, protocol=None, timeout=None):
     try:
         fun(queue, bus, conn, stream)
     except Exception, e:
+        import traceback
+        traceback.print_exc()
         error = e
 
     try:

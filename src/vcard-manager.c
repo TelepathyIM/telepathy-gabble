@@ -451,7 +451,14 @@ static void complete_one_request (GabbleVCardManagerRequest *request,
 static void
 cache_entry_complete_requests (GabbleVCardCacheEntry *entry, GError *error)
 {
-  while (entry->pending_requests)
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE
+      (entry->manager);
+  TpHandle handle;
+
+  handle = entry->handle;
+
+  while (g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle)) != NULL &&
+      entry->pending_requests)
     {
       GabbleVCardManagerRequest *request = entry->pending_requests->data;
 

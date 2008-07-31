@@ -3,7 +3,7 @@ telepathy-gabble 0.7.7 (unreleased)
 
 Requirements:
 
-* telepathy-glib >= 0.7.10
+* telepathy-glib >= 0.7.13
 
 Enhancements:
 

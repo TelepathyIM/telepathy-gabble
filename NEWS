@@ -37,6 +37,9 @@ Fixes:
 
 * Fix a possible assertion failure when we're sent an invalid MUC invitation
 
+* fd.o #16918: fix an access to freed memory when the vCard manager is
+  destroyed
+
 Miscellaneous:
 
 * Rename gabble-foo.[ch] to foo.[ch] (we like tab completion)

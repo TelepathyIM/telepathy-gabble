@@ -51,6 +51,19 @@ def test(q, bus, conn, stream):
     set_up_echo()
     conn.Connect()
 
+    properties = conn.GetAll(
+            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert properties.get('Channels') == [], properties['Channels']
+    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
+                'org.freedesktop.Telepathy.Channel.Type.Tubes',
+             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
+             },
+             ['org.freedesktop.Telepathy.Channel.TargetHandle'],
+             []
+             ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']
+
     _, vcard_event, roster_event = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
@@ -87,8 +100,52 @@ def test(q, bus, conn, stream):
     stream.send(result)
 
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
-    chan_path = conn.RequestChannel(tp_name_prefix + '.Channel.Type.Tubes', 1,
-            bob_handle, True)
+
+    call_async(q, conn, 'RequestChannel',
+            tp_name_prefix + '.Channel.Type.Tubes', 1, bob_handle, True);
+
+    ret, old_sig, new_sig = q.expect_many(
+        EventPattern('dbus-return', method='RequestChannel'),
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
+        )
+
+
+    assert len(ret.value) == 1
+    chan_path = ret.value[0]
+
+    assert old_sig.args[0] == chan_path
+    assert old_sig.args[1] == tp_name_prefix + '.Channel.Type.Tubes'
+    assert old_sig.args[2] == 1         # contact handle
+    assert old_sig.args[3] == bob_handle
+    assert old_sig.args[4] == True      # suppress handler
+
+    assert len(new_sig.args) == 1
+    assert len(new_sig.args[0]) == 1        # one channel
+    assert len(new_sig.args[0][0]) == 2     # two struct members
+    assert new_sig.args[0][0][0] == ret.value[0]
+    emitted_props = new_sig.args[0][0][1]
+
+    assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
+            tp_name_prefix + '.Channel.Type.Tubes'
+    assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 1
+    assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
+            bob_handle
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.TargetID'] == \
+            'bob@localhost'
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+            == conn.GetSelfHandle()
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] == \
+            'test@localhost'
+
+    properties = conn.GetAll(
+            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert new_sig.args[0][0] in properties['Channels'], \
+            (new_sig.args[0][0], properties['Channels'])
+
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
     tubes_iface = dbus.Interface(tubes_chan,
         tp_name_prefix + '.Channel.Type.Tubes')

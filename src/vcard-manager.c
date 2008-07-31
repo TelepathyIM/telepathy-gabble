@@ -451,16 +451,15 @@ static void complete_one_request (GabbleVCardManagerRequest *request,
 static void
 cache_entry_complete_requests (GabbleVCardCacheEntry *entry, GError *error)
 {
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE
-      (entry->manager);
-  TpHandle handle;
+  GSList *cur;
 
-  handle = entry->handle;
-
-  while (g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle)) != NULL &&
-      entry->pending_requests)
+  cur = entry->pending_requests;
+  while (cur != NULL)
     {
-      GabbleVCardManagerRequest *request = entry->pending_requests->data;
+      GabbleVCardManagerRequest *request = cur->data;
+
+      /* advance cur before we complete the request, as it can free the entry */
+      cur = g_slist_next (cur);
 
       complete_one_request (request, error ? NULL : entry->vcard_node, error);
     }

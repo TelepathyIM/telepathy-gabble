@@ -459,9 +459,6 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
   struct _ForeachData *data = user_data;
   GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (value);
 
-  /* assert that it has both interfaces, for now */
-  g_assert (TP_IS_CHANNEL_IFACE (chan));
-
   data->func (chan, data->user_data);
 }
 

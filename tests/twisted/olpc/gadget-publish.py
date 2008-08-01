@@ -5,7 +5,8 @@ test OLPC search activity
 import dbus
 
 from servicetest import call_async, EventPattern
-from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream, \
+    elem
 
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
@@ -47,8 +48,19 @@ def test(q, bus, conn, stream):
 
     q.expect_many(
             EventPattern('stream-presence', presence_type='subscribe'),
-            EventPattern('stream-presence', presence_type='subscribed'),
             EventPattern('dbus-return', method='Publish'))
+
+    # accept the request
+    presence = elem('presence', to='test@localhost', from_='gadget.localhost',
+        type='subscribed')
+    stream.send(presence)
+
+    # send a subscribe request
+    presence = elem('presence', to='test@localhost', from_='gadget.localhost',
+        type='subscribe')
+    stream.send(presence)
+
+    q.expect('stream-presence', presence_type='subscribed'),
 
     call_async(q, gadget_iface, 'Publish', False)
 
@@ -56,6 +68,13 @@ def test(q, bus, conn, stream):
             EventPattern('stream-presence', presence_type='unsubscribe'),
             EventPattern('stream-presence', presence_type='unsubscribed'),
             EventPattern('dbus-return', method='Publish'))
+
+    # Gadget tries to subscribe but is refused now
+    presence = elem('presence', to='test@localhost', from_='gadget.localhost',
+        type='subscribe')
+    stream.send(presence)
+
+    q.expect('stream-presence', presence_type='unsubscribed'),
 
 if __name__ == '__main__':
     exec_test(test)

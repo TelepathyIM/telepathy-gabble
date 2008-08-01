@@ -3696,6 +3696,7 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
 
   conn->olpc_gadget_buddy = NULL;
   conn->olpc_gadget_activity = NULL;
+  conn->olpc_gadget_publish = FALSE;
 
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed_cb), NULL);
@@ -4309,19 +4310,13 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
   if (!check_gadget_buddy (conn, context))
     return;
 
+  conn->olpc_gadget_publish = publish;
+
   if (publish)
     {
       /* FIXME: we should check if we are already registered before */
       /* FIXME: add to roster ? */
       if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBE,
-            &error))
-        {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-          return;
-        }
-
-      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED,
             &error))
         {
           dbus_g_method_return_error (context, error);
@@ -4340,7 +4335,7 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
           return;
         }
 
-      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBED,
+      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED,
             &error))
         {
           dbus_g_method_return_error (context, error);
@@ -4350,6 +4345,60 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
     }
 
   gabble_svc_olpc_gadget_return_from_publish (context);
+}
+
+LmHandlerResult
+conn_olpc_presence_cb (LmMessageHandler *handler,
+                       LmConnection *connection,
+                       LmMessage *presence,
+                       gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  LmMessageNode *pres_node;
+  const gchar *from;
+  LmMessageSubType sub_type;
+  GError *error = NULL;
+
+  pres_node = lm_message_get_node (presence);
+  from = lm_message_node_get_attribute (pres_node, "from");
+  if (from == NULL)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  /* We are only interested about presence from Gadget */
+  if (tp_strdiff (from, conn->olpc_gadget_buddy))
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  sub_type = lm_message_get_sub_type (presence);
+
+  if (sub_type == LM_MESSAGE_SUB_TYPE_SUBSCRIBE)
+    {
+      if (conn->olpc_gadget_publish)
+        {
+          DEBUG ("accept Gadget subscribe request");
+
+          if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBED,
+                &error))
+            {
+              DEBUG ("failed to send subscribed presence to Gadget: %s",
+                  error->message);
+              g_error_free (error);
+            }
+        }
+      else
+        {
+          DEBUG ("decline Gadget subscribe request");
+
+          if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED,
+                &error))
+            {
+              DEBUG ("failed to send subscribed presence to Gadget: %s",
+                  error->message);
+              g_error_free (error);
+            }
+        }
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 void

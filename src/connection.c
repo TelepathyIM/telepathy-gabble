@@ -140,6 +140,7 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *stream_error_cb;
   LmMessageHandler *pubsub_msg_cb;
   LmMessageHandler *olpc_msg_cb;
+  LmMessageHandler *olpc_presence_cb;
 
   /* connection properties */
   gchar *connect_server;
@@ -764,6 +765,7 @@ gabble_connection_dispose (GObject *object)
   g_assert (priv->stream_error_cb == NULL);
   g_assert (priv->pubsub_msg_cb == NULL);
   g_assert (priv->olpc_msg_cb == NULL);
+  g_assert (priv->olpc_presence_cb == NULL);
 
   /*
    * The Loudmouth connection can't be unref'd immediately because this
@@ -1077,6 +1079,7 @@ connect_callbacks (TpBaseConnection *base)
   g_assert (priv->stream_error_cb == NULL);
   g_assert (priv->pubsub_msg_cb == NULL);
   g_assert (priv->olpc_msg_cb == NULL);
+  g_assert (priv->olpc_presence_cb == NULL);
 
   priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
                                               conn, NULL);
@@ -1107,6 +1110,12 @@ connect_callbacks (TpBaseConnection *base)
   lm_connection_register_message_handler (conn->lmconn, priv->olpc_msg_cb,
                                           LM_MESSAGE_TYPE_MESSAGE,
                                           LM_HANDLER_PRIORITY_FIRST);
+
+  priv->olpc_presence_cb = lm_message_handler_new (conn_olpc_presence_cb,
+      conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->olpc_presence_cb,
+                                          LM_MESSAGE_TYPE_PRESENCE,
+                                          LM_HANDLER_PRIORITY_NORMAL);
 }
 
 static void
@@ -1120,6 +1129,7 @@ disconnect_callbacks (TpBaseConnection *base)
   g_assert (priv->stream_error_cb != NULL);
   g_assert (priv->pubsub_msg_cb != NULL);
   g_assert (priv->olpc_msg_cb != NULL);
+  g_assert (priv->olpc_presence_cb != NULL);
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->iq_disco_cb,
                                             LM_MESSAGE_TYPE_IQ);
@@ -1145,6 +1155,11 @@ disconnect_callbacks (TpBaseConnection *base)
                                             LM_MESSAGE_TYPE_MESSAGE);
   lm_message_handler_unref (priv->olpc_msg_cb);
   priv->olpc_msg_cb = NULL;
+
+  lm_connection_unregister_message_handler (conn->lmconn,
+      priv->olpc_presence_cb, LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_handler_unref (priv->olpc_presence_cb);
+  priv->olpc_presence_cb = NULL;
 }
 
 /**

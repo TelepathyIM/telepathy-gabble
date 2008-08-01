@@ -146,6 +146,7 @@ struct _GabbleConnection {
     /* OLPC services */
     const gchar *olpc_gadget_buddy;
     const gchar *olpc_gadget_activity;
+    gboolean olpc_gadget_publish;
 
     /* bytestream factory */
     GabbleBytestreamFactory *bytestream_factory;

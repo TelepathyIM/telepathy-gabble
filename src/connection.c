@@ -190,12 +190,6 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
 
   GPtrArray *channel_factories = g_ptr_array_sized_new (4);
 
-  self->roster = gabble_roster_new (self);
-  g_signal_connect (self->roster, "nickname-update", G_CALLBACK
-      (gabble_conn_aliasing_nickname_updated), self);
-
-  g_ptr_array_add (channel_factories, self->roster);
-
   g_ptr_array_add (channel_factories,
                    g_object_new (GABBLE_TYPE_MEDIA_FACTORY,
                                  "connection", self,
@@ -207,6 +201,11 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
   channel_factories = g_ptr_array_sized_new (0);
 
   self->channel_managers = g_ptr_array_sized_new (1);
+
+  self->roster = gabble_roster_new (self);
+  g_signal_connect (self->roster, "nickname-update", G_CALLBACK
+      (gabble_conn_aliasing_nickname_updated), self);
+  g_ptr_array_add (self->channel_managers, self->roster);
 
   g_ptr_array_add (self->channel_managers,
       g_object_new (GABBLE_TYPE_IM_FACTORY,

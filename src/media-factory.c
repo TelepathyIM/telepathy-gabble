@@ -28,7 +28,6 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
-#include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 
@@ -43,17 +42,13 @@
 #include "util.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
-static void gabble_media_factory_iface_init (gpointer g_iface,
-    gpointer iface_data);
 static LmHandlerResult media_factory_jingle_cb (LmMessageHandler *,
     LmConnection *, LmMessage *, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaFactory, gabble_media_factory,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
-      gabble_media_factory_iface_init));
+      channel_manager_iface_init));
 
 /* properties */
 enum
@@ -346,8 +341,6 @@ media_factory_jingle_cb (LmMessageHandler *handler,
     {
       if (chan_is_new)
         {
-          tp_channel_factory_iface_emit_new_channel (fac,
-              (TpChannelIface *) chan, NULL);
           gabble_channel_manager_emit_new_channel (fac,
               GABBLE_EXPORTABLE_CHANNEL (chan), NULL);
         }
@@ -834,77 +827,8 @@ gabble_media_factory_foreach_channel (GabbleChannelManager *manager,
       GabbleExportableChannel *channel = GABBLE_EXPORTABLE_CHANNEL (
           g_ptr_array_index (priv->channels, i));
 
-      g_assert (TP_IS_CHANNEL_IFACE (channel));
-
       foreach (channel, user_data);
     }
-}
-
-static TpChannelFactoryRequestStatus
-gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
-                                    const gchar *chan_type,
-                                    TpHandleType handle_type,
-                                    guint handle,
-                                    gpointer request,
-                                    TpChannelIface **ret,
-                                    GError **error)
-{
-  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  GabbleMediaChannel *chan = NULL;
-  GSList *request_tokens = NULL;
-
-  if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
-    return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
-
-  if (handle_type == 0)
-    {
-      /* create an empty channel */
-      chan = new_media_channel (fac, conn->self_handle);
-    }
-  else if (handle_type == TP_HANDLE_TYPE_CONTACT)
-    {
-      chan = new_media_channel (fac, conn->self_handle);
-
-      if (!_gabble_media_channel_add_member ((GObject *) chan, handle, "",
-            error))
-        {
-          gabble_media_channel_close (chan);
-
-          return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
-        }
-    }
-  else
-    {
-      return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
-    }
-
-  g_assert (chan != NULL);
-
-  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *) chan,
-      request);
-
-  request_tokens = g_slist_prepend (NULL, request);
-  gabble_channel_manager_emit_new_channel (fac,
-      GABBLE_EXPORTABLE_CHANNEL (chan), request_tokens);
-  g_slist_free (request_tokens);
-
-  *ret = TP_CHANNEL_IFACE (chan);
-  return TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
-}
-
-static void
-gabble_media_factory_iface_init (gpointer g_iface,
-                              gpointer iface_data)
-{
-  TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
-
-  klass->close_all =
-      (TpChannelFactoryIfaceProc) gabble_media_factory_close_all;
-  klass->foreach =
-      (TpChannelFactoryIfaceForeachImpl) gabble_media_factory_foreach_channel;
-  klass->request = gabble_media_factory_iface_request;
 }
 
 
@@ -1025,9 +949,6 @@ gabble_media_factory_request_channel (GabbleChannelManager *manager,
     }
 
   g_assert (channel != NULL);
-
-  tp_channel_factory_iface_emit_new_channel (self, (TpChannelIface *) channel,
-      request_token);
 
   request_tokens = g_slist_prepend (NULL, request_token);
   gabble_channel_manager_emit_new_channel (self,

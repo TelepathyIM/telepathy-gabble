@@ -708,7 +708,7 @@ lm_message_node_extract_properties (LmMessageNode *node,
             }
           else
             {
-              g_debug ("invalid boolean value: %s", value);
+              DEBUG ("invalid boolean value: %s", value);
               continue;
             }
 
@@ -762,7 +762,7 @@ set_child_from_property (gpointer key,
   else
     {
       /* a type we don't know how to handle: ignore it */
-      g_debug ("property with unknown type \"%s\"",
+      DEBUG ("property with unknown type \"%s\"",
           g_type_name (G_VALUE_TYPE (gvalue)));
       return;
     }

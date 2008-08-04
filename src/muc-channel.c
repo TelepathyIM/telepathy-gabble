@@ -2169,7 +2169,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
       return;
     }
 
-  g_debug ("%s: updating new property value for subject", G_STRFUNC);
+  DEBUG ("updating new property value for subject");
 
   changed_values = tp_intset_sized_new (NUM_ROOM_PROPS);
   changed_flags = tp_intset_sized_new (NUM_ROOM_PROPS);

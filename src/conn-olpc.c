@@ -3783,7 +3783,7 @@ create_view (GabbleConnection *conn,
   view = gabble_olpc_view_new (conn, type, id);
   g_hash_table_insert (conn->olpc_views, GUINT_TO_POINTER (id), view);
 
-  g_signal_connect (view, "closed", G_CALLBACK (view_closed_cb), conn);
+  g_signal_connect (view, "closed_", G_CALLBACK (view_closed_cb), conn);
 
   g_signal_connect (view, "buddy-activities-changed",
       G_CALLBACK (buddy_activities_changed_cb), conn);

@@ -35,8 +35,9 @@ def check_view(view, conn, activities, buddies):
 
 def close_view(q, view_iface, id):
     call_async(q, view_iface, 'Close')
-    event, _ = q.expect_many(
+    event, _, _ = q.expect_many(
         EventPattern('stream-message', to='gadget.localhost'),
+        EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-return', method='Close'))
     close = xpath.queryForNodes('/message/close', event.stanza)
     assert len(close) == 1

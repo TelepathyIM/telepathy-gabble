@@ -305,8 +305,9 @@ gabble_olpc_view_class_init (GabbleOlpcViewClass *gabble_olpc_view_class)
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ID, param_spec);
 
+  /* We can't use "closed" as it's already use for the D-Bus signal... */
   signals[CLOSED] =
-    g_signal_new ("closed",
+    g_signal_new ("closed_",
         G_OBJECT_CLASS_TYPE (gabble_olpc_view_class),
         G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
         0,
@@ -477,6 +478,8 @@ gabble_olpc_view_close (GabbleOlpcView *self,
       (TpHandleSetMemberFunc) buddy_left_activities_foreach, self);
 
   g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
+
+  gabble_svc_olpc_view_emit_closed (self);
 
   return TRUE;
 }

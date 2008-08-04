@@ -418,10 +418,24 @@ olpc_view_close (GabbleSvcOLPCView *iface,
                  DBusGMethodInvocation *context)
 {
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
+  GError *error = NULL;
+
+  if (!gabble_olpc_view_close (self, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+
+  gabble_svc_olpc_view_return_from_close (context);
+}
+
+gboolean
+gabble_olpc_view_close (GabbleOlpcView *self,
+                        GError **error)
+{
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   LmMessage *msg;
   gchar *id_str;
-  GError *error = NULL;
 
   id_str = g_strdup_printf ("%u", priv->id);
 
@@ -450,15 +464,11 @@ olpc_view_close (GabbleSvcOLPCView *iface,
 
   g_free (id_str);
 
-  if (!_gabble_connection_send (priv->conn, msg, &error))
+  if (!_gabble_connection_send (priv->conn, msg, error))
     {
-      dbus_g_method_return_error (context, error);
       lm_message_unref (msg);
-      g_error_free (error);
-      return;
+      return FALSE;
     }
-
-  gabble_svc_olpc_view_return_from_close (context);
 
   lm_message_unref (msg);
 
@@ -467,6 +477,8 @@ olpc_view_close (GabbleSvcOLPCView *iface,
       (TpHandleSetMemberFunc) buddy_left_activities_foreach, self);
 
   g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
+
+  return TRUE;
 }
 
 /* If room is not zero, these buddies are associated with the activity

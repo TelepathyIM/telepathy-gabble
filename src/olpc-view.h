@@ -94,6 +94,8 @@ GPtrArray * gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
 void gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
     GArray *buddies, TpHandle room);
 
+gboolean gabble_olpc_view_close (GabbleOlpcView *self, GError **error);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_OLPC_VIEW_H__ */

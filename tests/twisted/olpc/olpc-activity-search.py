@@ -475,16 +475,21 @@ def test(q, bus, conn, stream):
         ['fernand@localhost', 'jean@localhost'])
 
     # close view 0
-    close_view(q, view0_iface, '0')
+    call_async(q, view0_iface, 'Close')
+    event_msg, _, _, _ = q.expect_many(
+        EventPattern('stream-message', to='gadget.localhost'),
+        EventPattern('dbus-return', method='Close'),
+        # Jean and Fernand left activity4
+        EventPattern('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.BuddyInfo',
+            args=[handles['jean'], []]),
+        EventPattern('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.BuddyInfo',
+            args=[handles['fernand'], []]))
 
-    # Jean and Fernand left activity4
-    q.expect_many(
-            EventPattern('dbus-signal', signal='ActivitiesChanged',
-                interface='org.laptop.Telepathy.BuddyInfo',
-                args=[handles['jean'], []]),
-            EventPattern('dbus-signal', signal='ActivitiesChanged',
-                interface='org.laptop.Telepathy.BuddyInfo',
-                args=[handles['fernand'], []]))
+    close = xpath.queryForNodes('/message/close', event_msg.stanza)
+    assert len(close) == 1
+    assert close[0]['id'] == '0'
 
     # close view 1
     close_view(q, view1_iface, '1')

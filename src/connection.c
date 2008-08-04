@@ -1457,7 +1457,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   features = capabilities_get_features (self->self_presence->caps);
 
-  g_debug ("%s: caps now %u", G_STRFUNC, self->self_presence->caps);
+  DEBUG ("caps now %u", self->self_presence->caps);
 
   /* If node is not NULL, it can be either a caps bundle as defined in the
    * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version

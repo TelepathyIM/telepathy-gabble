@@ -91,6 +91,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:docstring>
     </signal>
 
+    <signal name="Closed">
+      <tp:docstring>
+        Signal emitted when the view is closed. Views are closed on users request (Close method) or
+        if the gadget server component is restarted.
+      </tp:docstring>
+    </signal>
+
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An object representing the result of an search.</p>
       <p>Buddy properties changes are notified on the Connection object using the

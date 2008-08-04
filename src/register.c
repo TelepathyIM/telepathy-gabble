@@ -33,7 +33,9 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 #include "connection.h"
+#include "debug.h"
 #include "error.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
@@ -166,7 +168,7 @@ gabble_register_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  g_debug ("%s: dispose called", G_STRFUNC);
+  DEBUG ("dispose called");
 
   if (G_OBJECT_CLASS (gabble_register_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_register_parent_class)->dispose (object);
@@ -175,7 +177,7 @@ gabble_register_dispose (GObject *object)
 void
 gabble_register_finalize (GObject *object)
 {
-  g_debug ("%s called with %p", G_STRFUNC, object);
+  DEBUG ("called with %p", object);
 
   G_OBJECT_CLASS (gabble_register_parent_class)->finalize (object);
 }

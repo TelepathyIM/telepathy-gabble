@@ -297,7 +297,7 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, DBUS_TYPE_G_UINT_ARRAY);
+    g_cclosure_marshal_VOID__BOXED, G_TYPE_NONE, 1, DBUS_TYPE_G_UINT_ARRAY);
   signals[NICKNAME_UPDATE] = g_signal_new (
     "nickname-update",
     G_TYPE_FROM_CLASS (klass),

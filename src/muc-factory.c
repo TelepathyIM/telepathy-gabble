@@ -39,7 +39,6 @@
 #include "muc-channel.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include "roomlist-channel.h"
 #include "text-mixin.h"
 #include "tubes-channel.h"
 #include "util.h"
@@ -69,7 +68,6 @@ struct _GabbleMucFactoryPrivate
   GHashTable *text_channels;
   /* GUINT_TO_POINTER(room_handle) => (GabbleTubesChannel *) */
   GHashTable *tubes_channels;
-  GabbleRoomlistChannel *roomlist_channel;
   /* Tubes channel requests which will be satisfied when the corresponding
    * text channel is created.
    * GabbleMucChannel * => GabbleTubesChannel * */
@@ -920,53 +918,6 @@ muc_factory_presence_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
-static void
-roomlist_channel_closed_cb (GabbleRoomlistChannel *chan, gpointer data)
-{
-  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-
-  if (priv->roomlist_channel != NULL)
-    {
-      g_object_unref (priv->roomlist_channel);
-      priv->roomlist_channel = NULL;
-    }
-}
-
-static gboolean
-make_roomlist_channel (GabbleMucFactory *fac, gpointer request)
-{
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-
-  const gchar *server;
-  gchar *object_path;
-
-  g_assert (priv->roomlist_channel == NULL);
-
-  server = _gabble_connection_find_conference_server (priv->conn);
-
-  if (server == NULL)
-    return FALSE;
-
-  object_path = g_strdup_printf ("%s/RoomlistChannel",
-      conn->object_path);
-
-  priv->roomlist_channel = _gabble_roomlist_channel_new (priv->conn,
-      object_path, server);
-
-  g_signal_connect (priv->roomlist_channel, "closed",
-                    (GCallback) roomlist_channel_closed_cb, fac);
-
-  tp_channel_factory_iface_emit_new_channel (fac,
-      (TpChannelIface *) priv->roomlist_channel, request);
-
-  g_free (object_path);
-
-  return TRUE;
-}
-
-
 
 static void
 gabble_muc_factory_close_all (GabbleMucFactory *fac)
@@ -993,13 +944,6 @@ gabble_muc_factory_close_all (GabbleMucFactory *fac)
       GHashTable *tmp = priv->tubes_channels;
       priv->tubes_channels = NULL;
       g_hash_table_destroy (tmp);
-    }
-
-  if (priv->roomlist_channel != NULL)
-    {
-      GObject *tmp = G_OBJECT (priv->roomlist_channel);
-      priv->roomlist_channel = NULL;
-      g_object_unref (tmp);
     }
 }
 
@@ -1105,9 +1049,6 @@ gabble_muc_factory_iface_foreach (TpChannelFactoryIface *iface,
 
   g_hash_table_foreach (priv->text_channels, _foreach_slave, &data);
   g_hash_table_foreach (priv->tubes_channels, _foreach_slave, &data);
-
-  if (priv->roomlist_channel != NULL)
-    foreach (TP_CHANNEL_IFACE (priv->roomlist_channel), user_data);
 }
 
 /**
@@ -1156,24 +1097,6 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
       TP_HANDLE_TYPE_ROOM);
   GabbleMucChannel *text_chan;
   GabbleTubesChannel *tubes_chan;
-
-  if (!tp_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
-    {
-      if (priv->roomlist_channel != NULL)
-        {
-          *ret = TP_CHANNEL_IFACE (priv->roomlist_channel);
-          return TP_CHANNEL_FACTORY_REQUEST_STATUS_EXISTING;
-        }
-
-      /* FIXME - delay if services aren't discovered yet? */
-      if (!make_roomlist_channel (fac, request))
-        {
-          DEBUG ("no conference server available for roomlist request");
-          return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
-        }
-      *ret = TP_CHANNEL_IFACE (priv->roomlist_channel);
-      return TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
-    }
 
   if (handle_type != TP_HANDLE_TYPE_ROOM)
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;

@@ -24,7 +24,6 @@
 #define GABBLE_CHANNEL_MANAGER_H
 
 #include <glib-object.h>
-#include <telepathy-glib/channel-factory-iface.h>
 
 #include "exportable-channel.h"
 

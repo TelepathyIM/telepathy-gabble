@@ -16,7 +16,6 @@ def test(q, bus, conn, stream):
     m['id'] = '1'
     m.addElement(('http://jabber.org/protocol/disco#info', 'query'))
     stream.send(m)
-    return True
 
     event = q.expect('stream-iq', iq_type='result', to='foo@bar.com')
     elem = event.stanza

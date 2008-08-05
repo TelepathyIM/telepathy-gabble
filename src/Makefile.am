@@ -94,6 +94,8 @@ libgabble_convenience_la_our_sources = \
     roster-channel.c \
     roomlist-channel.h \
     roomlist-channel.c \
+    roomlist-manager.h \
+    roomlist-manager.c \
     text-mixin.h \
     text-mixin.c \
     tube-iface.h \

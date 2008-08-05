@@ -337,18 +337,45 @@ muc_join_error_cb (GabbleMucChannel *chan,
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleTubesChannel *tubes_chan;
+  GSList *requests_satisfied;
+  GSList *iter;
 
   DEBUG ("error->code=%u, error->message=\"%s\"", error->code, error->message);
 
   tp_channel_factory_iface_emit_channel_error (fac, (TpChannelIface *) chan,
       error, NULL);
 
+  requests_satisfied = g_slist_reverse (g_hash_table_lookup (
+        priv->queued_requests, chan));
+  g_hash_table_steal (priv->queued_requests, chan);
+
+  for (iter = requests_satisfied; iter != NULL; iter = iter->next)
+    {
+      gabble_channel_manager_emit_request_failed (fac, iter->data,
+          error->domain, error->code, error->message);
+    }
+
+  g_slist_free (requests_satisfied);
+
   tubes_chan = g_hash_table_lookup (priv->text_needed_for_tubes, chan);
+
   if (tubes_chan != NULL)
     {
       g_hash_table_remove (priv->text_needed_for_tubes, chan);
       tp_channel_factory_iface_emit_channel_error (fac,
           (TpChannelIface *) tubes_chan, error, NULL);
+
+      requests_satisfied = g_slist_reverse (g_hash_table_lookup (
+            priv->queued_requests, tubes_chan));
+      g_hash_table_steal (priv->queued_requests, tubes_chan);
+
+      for (iter = requests_satisfied; iter != NULL; iter = iter->next)
+        {
+          gabble_channel_manager_emit_request_failed (fac, iter->data,
+              error->domain, error->code, error->message);
+        }
+
+      g_slist_free (requests_satisfied);
     }
 }
 

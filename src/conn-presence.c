@@ -57,7 +57,7 @@ static const TpPresenceStatusSpec gabble_statuses[] = {
     gabble_status_arguments, NULL, NULL },
   { "away", TP_CONNECTION_PRESENCE_TYPE_AWAY, TRUE, gabble_status_arguments,
     NULL, NULL },
-  { "dnd", TP_CONNECTION_PRESENCE_TYPE_AWAY, TRUE, gabble_status_arguments,
+  { "dnd", TP_CONNECTION_PRESENCE_TYPE_BUSY, TRUE, gabble_status_arguments,
     NULL, NULL },
   { "available", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE, TRUE,
     gabble_status_arguments, NULL, NULL },

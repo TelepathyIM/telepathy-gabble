@@ -483,7 +483,6 @@ def test(q, bus, conn, stream):
 
     # OK, we're done
     conn.Disconnect()
-    return True
 
     q.expect('tube-signal', signal='Disconnected')
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

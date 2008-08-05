@@ -57,7 +57,6 @@
 #include "disco.h"
 #include "media-channel.h"
 #include "register.h"
-#include "roomlist-channel.h"
 #include "im-factory.h"
 #include "media-factory.h"
 #include "muc-factory.h"
@@ -66,6 +65,7 @@
 #include "presence.h"
 #include "pubsub.h"
 #include "request-pipeline.h"
+#include "roomlist-manager.h"
 #include "roster.h"
 #include "private-tubes-factory.h"
 #include "util.h"
@@ -214,9 +214,6 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
       g_object_new (GABBLE_TYPE_IM_FACTORY,
         "connection", self,
         NULL));
-
-  self->private_tubes_factory = gabble_private_tubes_factory_new (self);
-  g_ptr_array_add (self->channel_managers, self->private_tubes_factory);
 
   return channel_factories;
 }

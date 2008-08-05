@@ -193,11 +193,6 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
 
   g_ptr_array_add (channel_factories, self->roster);
 
-  self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY,
-      "connection", self,
-      NULL);
-  g_ptr_array_add (channel_factories, self->muc_factory);
-
   g_ptr_array_add (channel_factories,
                    g_object_new (GABBLE_TYPE_MEDIA_FACTORY,
                                  "connection", self,
@@ -222,6 +217,11 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
       g_object_new (GABBLE_TYPE_ROOMLIST_MANAGER,
         "connection", self,
         NULL));
+
+  self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY,
+      "connection", self,
+      NULL);
+  g_ptr_array_add (self->channel_managers, self->muc_factory);
 
   return channel_factories;
 }

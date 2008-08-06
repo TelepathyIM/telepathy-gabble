@@ -657,6 +657,27 @@
       also implicitly implies leaving all tubes.</p>
   </section2>
 </section1>
+<section1 topic='Tube capability' anchor='caps'>
+  <section2 topic='Global tube capability' anchor='caps-general'>
+    <p>The tube feature is advertised with XEP-0115 Entity Capabilities using
+    this string:</p>
+    <code>http://telepathy.freedesktop.org/xmpp/tubes</code>
+  </section2>
+  <section2 topic='Specific tube capability' anchor='caps-specific'>
+    <p>We want to know which tube the contacts can handle. There is two
+    different kind of tube capabilities:</p>
+    <ul>
+      <li>Can my contact receive a tube offer of a specific service?</li>
+      <li>Can my contact offer a tube of a specific service?</li>
+    </ul>
+    <p>Only the first kind is considered. The second is out of scope of this
+    specification. Each specific service is advertised with XEP-0115 Entity
+    Capabilities with this string:</p>
+    <code>http://telepathy.freedesktop.org/xmpp/tubes/$type/$service</code>
+    <p>where $type is the tube type (either "dbus" or "stream") and $service is
+    the service name (e.g. "vnc" or "TicTacTube").</p>
+  </section2>
+</section1>
 <section1 topic='Business Rules' anchor='rules'>
   <section2 topic='D-Bus unique names in a MUC context'>
     <p>The D-Bus unique names used in the MUC SHOULD be ":2." followed by the

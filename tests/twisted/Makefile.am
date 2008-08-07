@@ -11,6 +11,14 @@ TWISTED_TESTS = \
 	olpc/olpc-muc-prop-change.py \
 	olpc/test-olpc-bundle.py \
 	olpc/test-olpc-set-props-preload.py \
+	olpc/change-notifications.py \
+	olpc/olpc-buddy-search.py \
+	olpc/gadget-invite.py \
+	olpc/gadget-publish.py \
+	olpc/gadget-restarted.py \
+	presence/presence.py \
+	roster/groups.py \
+	roster/groups-12791.py \
 	roster/test-google-roster.py \
 	roster/test-roster.py \
 	roster/test-roster-subscribe.py \

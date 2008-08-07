@@ -61,7 +61,7 @@ int
 gabble_main (int argc,
              char **argv)
 {
-  gabble_debug_set_log_file_from_env ();
+  tp_debug_divert_messages (g_getenv ("GABBLE_LOGFILE"));
 
 #ifdef ENABLE_DEBUG
   gabble_debug_set_flags_from_env ();

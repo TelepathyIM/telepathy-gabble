@@ -4314,7 +4314,8 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
 
   if (publish)
     {
-      /* FIXME: we should check if we are already registered before */
+      /* FIXME: we should check if we are already registered before. Not
+       * convenient as roster.[ch] is handle oriented */
       /* FIXME: add to roster ? */
       if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBE,
             &error))

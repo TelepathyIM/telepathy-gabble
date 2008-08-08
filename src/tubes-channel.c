@@ -52,6 +52,7 @@
 #include "presence.h"
 #include "tube-iface.h"
 #include "tube-stream.h"
+#include "tube-dbus.h"
 #include "util.h"
 
 #ifdef HAVE_DBUS_TUBE
@@ -1912,10 +1913,11 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
   add_yourself_in_dbus_names (self, id);
 
+  /* The address is known only after we start to listen on the connection,
+   * so we need to listen now. However, connections are accepted only when
+   * the bytestream is fully initialised. See also Bug #13891. */
+  gabble_tube_dbus_listen (GABBLE_TUBE_DBUS (tube));
   g_object_get (tube, "dbus-address", &addr, NULL);
-  /* FIXME: This is broken in 1-1 D-Bus tubes because tube_open will be called
-   * only when the bytestream is fully initialised.
-   * So now we return a NULL string. Bug #13891 on fd.o */
   tp_svc_channel_type_tubes_return_from_accept_d_bus_tube (context, addr);
   g_free (addr);
 #else

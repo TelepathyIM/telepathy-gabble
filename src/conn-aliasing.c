@@ -214,7 +214,7 @@ _cache_negatively (GabbleConnection *self,
       gabble_conn_aliasing_pep_alias_quark (), (gchar *) NO_ALIAS, NULL);
 }
 
-/* Cache pep if successfull */
+/* Cache pep if successful */
 static void
 aliases_request_cache_pep (GabbleConnection *self,
                            LmMessage *msg,

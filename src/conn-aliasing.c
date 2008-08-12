@@ -890,6 +890,31 @@ OUT:
 }
 
 static void
+maybe_request_vcard (GabbleConnection *self, TpHandle handle,
+  GabbleConnectionAliasSource source)
+{
+  /* If the source wasn't good enough then do a request */
+  if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
+      !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
+    {
+      if (self->features & GABBLE_CONNECTION_FEATURES_PEP)
+        {
+          TpBaseConnection *base = (TpBaseConnection *) self;
+          TpHandleRepoIface *contact_handles =
+            tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+
+          gabble_do_pep_request (self, handle, contact_handles,
+            aliases_request_basic_pep_cb, GINT_TO_POINTER (handle));
+        }
+      else
+        {
+          gabble_vcard_manager_request (self->vcard_manager,
+             handle, 0, NULL, NULL, G_OBJECT (self));
+        }
+    }
+}
+
+static void
 conn_aliasing_fill_contact_attributes (GObject *obj,
     const GArray *contacts, GHashTable *attributes_hash)
 {
@@ -906,33 +931,70 @@ conn_aliasing_fill_contact_attributes (GObject *obj,
       source = _gabble_connection_get_cached_alias (self, handle, &alias);
       g_assert (alias != NULL);
 
-      g_value_set_string (val, alias);
+      g_value_take_string (val, alias);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash,
         handle, TP_IFACE_CONNECTION_INTERFACE_ALIASING"/alias",
         val);
 
-      /* If the source wasn't good enough then do a request */
-      if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
-          !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
-        {
-          if (self->features & GABBLE_CONNECTION_FEATURES_PEP)
-            {
-              TpBaseConnection *base = (TpBaseConnection *) self;
-              TpHandleRepoIface *contact_handles =
-                tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
-
-              gabble_do_pep_request (self, handle, contact_handles,
-                aliases_request_basic_pep_cb, GINT_TO_POINTER (handle));
-            }
-          else
-            {
-              gabble_vcard_manager_request (self->vcard_manager,
-                 handle, 0, NULL, NULL, G_OBJECT (self));
-            }
-        }
+      maybe_request_vcard (self, handle, source);
     }
 }
+
+/**
+ * gabble_connection_get_aliases
+ *
+ * Implements D-Bus method GetAliases
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
+ *
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
+ */
+static void
+gabble_connection_get_aliases (TpSvcConnectionInterfaceAliasing *iface,
+                               const GArray *contacts,
+                               DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  GHashTable *result = g_hash_table_new_full (g_direct_hash, g_direct_equal, 
+    NULL, g_free);
+  GError *error;
+  guint i;
+
+  g_assert (GABBLE_IS_CONNECTION (self));
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
+  if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      TpHandle handle = g_array_index (contacts, TpHandle, i);
+      GabbleConnectionAliasSource source;
+      gchar *alias;
+
+      source = _gabble_connection_get_cached_alias (self, handle, &alias);
+      g_assert (alias != NULL);
+
+      g_hash_table_insert (result, GUINT_TO_POINTER (handle), alias);
+
+      maybe_request_vcard (self, handle, source);
+    }
+
+  tp_svc_connection_interface_aliasing_return_from_get_aliases (context,
+    result);
+
+  g_hash_table_destroy (result);
+}
+
 
 
 void
@@ -953,6 +1015,7 @@ conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data)
     klass, gabble_connection_##x)
   IMPLEMENT(get_alias_flags);
   IMPLEMENT(request_aliases);
+  IMPLEMENT(get_aliases);
   IMPLEMENT(set_aliases);
 #undef IMPLEMENT
 }

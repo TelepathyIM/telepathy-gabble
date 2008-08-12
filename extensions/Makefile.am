@@ -4,7 +4,10 @@ EXTRA_DIST = \
     all.xml \
     Channel_Future.xml \
     OLPC_Activity_Properties.xml \
-    OLPC_Buddy_Info.xml
+    OLPC_Buddy_Info.xml \
+    Channel_Interface_Tube.xml \
+    Channel_Type_DBusTube.xml \
+    Channel_Type_StreamTube.xml
 
 noinst_LTLIBRARIES = libgabble-extensions.la
 

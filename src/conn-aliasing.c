@@ -890,7 +890,7 @@ OUT:
 }
 
 static void
-conn_aliasing_get_contact_attributes (GObject *obj,
+conn_aliasing_fill_contact_attributes (GObject *obj,
     const GArray *contacts, GHashTable *attributes_hash)
 {
   guint i;
@@ -940,7 +940,7 @@ conn_aliasing_init (GabbleConnection *conn)
 {
   tp_contacts_mixin_add_inspectable_iface (G_OBJECT (conn),
     TP_IFACE_CONNECTION_INTERFACE_ALIASING,
-    conn_aliasing_get_contact_attributes);
+    conn_aliasing_fill_contact_attributes);
 }
 
 void

@@ -72,7 +72,7 @@ static guint disco_reply_timeout = 5000;
 
 static void conn_service_iface_init (gpointer, gpointer);
 static void capabilities_service_iface_init (gpointer, gpointer);
-static void conn_capabilities_get_contact_attributes (GObject *obj,
+static void conn_capabilities_fill_contact_attributes (GObject *obj,
   const GArray *contacts, GHashTable *attributes_hash);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
@@ -250,7 +250,7 @@ gabble_connection_constructor (GType type,
 
   tp_contacts_mixin_add_inspectable_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
-          conn_capabilities_get_contact_attributes);
+          conn_capabilities_fill_contact_attributes);
 
 
   self->bytestream_factory = gabble_bytestream_factory_new (self);
@@ -2299,8 +2299,8 @@ gabble_connection_get_handle_capabilities (GabbleConnection *self,
 
 
 static void
-conn_capabilities_get_contact_attributes (GObject *obj, const GArray *contacts,
-    GHashTable *attributes_hash)
+conn_capabilities_fill_contact_attributes (GObject *obj,
+  const GArray *contacts, GHashTable *attributes_hash)
 {
   GabbleConnection *self = GABBLE_CONNECTION (obj);
   guint i;

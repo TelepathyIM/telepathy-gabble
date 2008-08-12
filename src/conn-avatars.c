@@ -823,7 +823,7 @@ gabble_connection_clear_avatar (TpSvcConnectionInterfaceAvatars *iface,
 }
 
 static void
-conn_avatars_get_contact_attributes (GObject *obj,
+conn_avatars_fill_contact_attributes (GObject *obj,
     const GArray *contacts, GHashTable *attributes_hash)
 {
   guint i;
@@ -866,7 +866,7 @@ conn_avatars_init (GabbleConnection *conn)
 
   tp_contacts_mixin_add_inspectable_iface (G_OBJECT (conn),
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
-          conn_avatars_get_contact_attributes);
+          conn_avatars_fill_contact_attributes);
 }
 
 

@@ -248,7 +248,7 @@ gabble_connection_constructor (GType type,
   conn_presence_init (self);
   conn_olpc_activity_properties_init (self);
 
-  tp_contacts_mixin_add_inspectable_iface (G_OBJECT (self),
+  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
           conn_capabilities_fill_contact_attributes);
 

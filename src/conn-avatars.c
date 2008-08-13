@@ -864,7 +864,7 @@ conn_avatars_init (GabbleConnection *conn)
   g_signal_connect (conn->presence_cache, "avatar-update", G_CALLBACK
       (connection_avatar_update_cb), conn);
 
-  tp_contacts_mixin_add_inspectable_iface (G_OBJECT (conn),
+  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
           conn_avatars_fill_contact_attributes);
 }

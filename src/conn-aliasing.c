@@ -1000,7 +1000,7 @@ gabble_connection_get_aliases (TpSvcConnectionInterfaceAliasing *iface,
 void
 conn_aliasing_init (GabbleConnection *conn)
 {
-  tp_contacts_mixin_add_inspectable_iface (G_OBJECT (conn),
+  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
     TP_IFACE_CONNECTION_INTERFACE_ALIASING,
     conn_aliasing_fill_contact_attributes);
 }

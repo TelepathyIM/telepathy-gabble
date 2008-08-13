@@ -959,9 +959,9 @@ gabble_connection_get_aliases (TpSvcConnectionInterfaceAliasing *iface,
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
-  GHashTable *result = g_hash_table_new_full (g_direct_hash, g_direct_equal, 
+  GHashTable *result = g_hash_table_new_full (g_direct_hash, g_direct_equal,
     NULL, g_free);
-  GError *error;
+  GError *error = NULL;
   guint i;
 
   g_assert (GABBLE_IS_CONNECTION (self));

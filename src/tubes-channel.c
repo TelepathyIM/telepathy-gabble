@@ -522,8 +522,8 @@ create_new_tube (GabbleTubesChannel *self,
     }
 #endif
 
-  g_signal_connect (tube, "opened", G_CALLBACK (tube_opened_cb), self);
-  g_signal_connect (tube, "closed", G_CALLBACK (tube_closed_cb), self);
+  g_signal_connect (tube, "tube-opened", G_CALLBACK (tube_opened_cb), self);
+  g_signal_connect (tube, "tube-closed", G_CALLBACK (tube_closed_cb), self);
 
   return tube;
 }
@@ -1836,7 +1836,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
         }
     }
 
-  g_signal_connect (tube, "new-connection",
+  g_signal_connect (tube, "tube-new-connection",
       G_CALLBACK (stream_unix_tube_new_connection_cb), self);
 
   tp_svc_channel_type_tubes_return_from_offer_stream_tube (context,

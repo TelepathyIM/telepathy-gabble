@@ -45,7 +45,7 @@ def test(q, bus, conn, stream):
 
     # no special capabilities
     assert conn.Capabilities.GetCapabilities([2]) == basic_caps
-    assert conn.Contacts.InspectContacts([2], [icaps], False) == { 2L:
+    assert conn.Contacts.GetContactAttributes([2], [icaps], False) == { 2L:
         { icaps + "/caps": basic_caps } }
 
     # send updated presence with Jingle audio/video caps info. we turn on both
@@ -91,7 +91,7 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
         args=[[(2, sm, 0, 3, 0, 3)]])
 
-    caps = conn.Contacts.InspectContacts([2], [icaps], False)
+    caps = conn.Contacts.GetContactAttributes([2], [icaps], False)
     assert caps.keys() == [2L]
     assert caps[2L].keys() == [icaps_attr]
     assert len(caps[2L][icaps_attr]) == 2
@@ -109,7 +109,7 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
         args=[[(2, sm, 3, 3, 3, 1)]])
 
-    caps = conn.Contacts.InspectContacts([2], [icaps], False)
+    caps = conn.Contacts.GetContactAttributes([2], [icaps], False)
     assert caps.keys() == [2L]
     assert caps[2L].keys() == [icaps_attr]
     assert len(caps[2L][icaps_attr]) == 2
@@ -125,7 +125,7 @@ def test(q, bus, conn, stream):
         args=[[(2, sm, 3, 0, 1, 0)]])
 
     # Contact went offline, so caps are now unknown
-    conn.Contacts.InspectContacts([2], [icaps], False) == {}
+    conn.Contacts.GetContactAttributes([2], [icaps], False) == {}
 
     # regression test for fd.o #15198: getting caps of invalid handle crashed
     try:

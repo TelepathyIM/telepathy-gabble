@@ -241,9 +241,9 @@ aliases_request_cache_pep (GabbleConnection *self,
 
 static void
 aliases_request_basic_pep_cb (GabbleConnection *self,
-                           LmMessage *msg,
-                           gpointer user_data,
-                           GError *error)
+                              LmMessage *msg,
+                              gpointer user_data,
+                              GError *error)
 {
   GabbleConnectionAliasSource source = GABBLE_CONNECTION_ALIAS_NONE;
   TpHandle handle = GPOINTER_TO_INT (user_data);
@@ -309,9 +309,11 @@ aliases_request_pep_cb (GabbleConnection *self,
 
 
 static GabbleRequestPipelineItem *
-gabble_do_pep_request (GabbleConnection *self, TpHandle handle,
-  TpHandleRepoIface *contact_handles, GabbleRequestPipelineCb callback,
-  gpointer user_data)
+gabble_do_pep_request (GabbleConnection *self,
+                       TpHandle handle,
+                       TpHandleRepoIface *contact_handles,
+                       GabbleRequestPipelineCb callback,
+                       gpointer user_data)
 {
   LmMessage *msg;
   GabbleRequestPipelineItem *pep_request;

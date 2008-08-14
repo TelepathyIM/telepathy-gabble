@@ -21,9 +21,9 @@
 #include "config.h"
 #include "conn-aliasing.h"
 
+#include <telepathy-glib/contacts-mixin.h>
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/contacts-mixin.h>
 #include <telepathy-glib/svc-connection.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION

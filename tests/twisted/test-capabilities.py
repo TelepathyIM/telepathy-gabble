@@ -125,7 +125,7 @@ def test(q, bus, conn, stream):
         args=[[(2, sm, 3, 0, 1, 0)]])
 
     # Contact went offline, so caps are now unknown
-    conn.Contacts.GetContactAttributes([2], [icaps], False) == {}
+    assert conn.Contacts.GetContactAttributes([2], [icaps], False) == {}
 
     # regression test for fd.o #15198: getting caps of invalid handle crashed
     try:

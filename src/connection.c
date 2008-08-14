@@ -2240,8 +2240,7 @@ gabble_connection_get_handle_capabilities (GabbleConnection *self,
 
   if (0 == handle)
     {
-      /* FIXME report the magical channel types available on the
-       * connection itself */
+      /* obsolete request for the connection's capabilities, do nothing */
       return;
     }
 

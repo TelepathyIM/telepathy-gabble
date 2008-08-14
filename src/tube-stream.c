@@ -50,6 +50,7 @@
 #include "disco.h"
 #include "exportable-channel.h"
 #include "gabble-signals-marshal.h"
+#include "muc-channel.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "presence.h"
@@ -1805,7 +1806,55 @@ gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
                                        const GValue *access_control_param,
                                        DBusGMethodInvocation *context)
 {
-  tp_dbus_g_method_return_not_implemented (context);
+  GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  GError *error = NULL;
+
+  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
+      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4 &&
+      address_type != TP_SOCKET_ADDRESS_TYPE_IPV6)
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Address type %d not implemented", address_type);
+
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Unix sockets only support localhost control access" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  if (priv->state != GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Tube is not in the local pending state" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  if (!gabble_tube_stream_accept (GABBLE_TUBE_IFACE (self), &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+#if 0
+  /* TODO: add a property "muc" and set it at initialization */
+  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
+    gabble_muc_channel_send_presence (self->muc, NULL);
+#endif
+
+  gabble_svc_channel_type_streamtube_return_from_accept_stream_tube (context,
+      priv->address);
 }
 
 /**
@@ -1822,8 +1871,8 @@ gabble_tube_stream_get_stream_tube_socket_address (
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
-  tp_svc_channel_type_tubes_return_from_get_stream_tube_socket_address (
-      context, priv->address_type, priv->address);
+  gabble_svc_channel_type_streamtube_return_from_get_stream_tube_socket_address
+      (context, priv->address_type, priv->address);
 }
 
 /**

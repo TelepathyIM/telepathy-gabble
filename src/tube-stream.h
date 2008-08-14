@@ -25,6 +25,7 @@
 #include <telepathy-glib/enums.h>
 
 #include "connection.h"
+#include "extensions/extensions.h"
 
 G_BEGIN_DECLS
 
@@ -69,6 +70,10 @@ GabbleTubeStream *gabble_tube_stream_new (GabbleConnection *conn,
 
 gboolean gabble_tube_stream_check_params (TpSocketAddressType address_type,
     const GValue *address, TpSocketAccessControl access_control,
+    const GValue *access_control_param, GError **error);
+
+gboolean gabble_tube_stream_offer (GabbleTubeStream *self, guint address_type,
+    const GValue *address, guint access_control,
     const GValue *access_control_param, GError **error);
 
 G_END_DECLS

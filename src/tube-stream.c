@@ -144,7 +144,7 @@ struct _GabbleTubeStreamPrivate
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
-  TpTubeState state;
+  GabbleTubeChannelState state;
 
   TpSocketAddressType address_type;
   GValue *address;
@@ -1149,17 +1149,17 @@ gabble_tube_stream_constructor (GType type,
       if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
         {
           /* Private tube */
-          priv->state = TP_TUBE_STATE_REMOTE_PENDING;
+          priv->state = GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED;
         }
       else
         {
           /* Muc tube */
-          priv->state = TP_TUBE_STATE_OPEN;
+          priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
         }
     }
   else
     {
-      priv->state = TP_TUBE_STATE_LOCAL_PENDING;
+      priv->state = GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING;
     }
 
   bus = tp_get_bus ();
@@ -1410,7 +1410,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
-  if (priv->state != TP_TUBE_STATE_LOCAL_PENDING)
+  if (priv->state != GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING)
     return TRUE;
 
   if (!tube_stream_open (self, error))
@@ -1419,7 +1419,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
       return FALSE;
     }
 
-  priv->state = TP_TUBE_STATE_OPEN;
+  priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
   return TRUE;
 }
@@ -1520,10 +1520,10 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
     {
       TpHandle contact;
 
-      if (priv->state == TP_TUBE_STATE_REMOTE_PENDING)
+      if (priv->state == GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING)
         {
           DEBUG ("Received first connection. Tube is now open");
-          priv->state = TP_TUBE_STATE_OPEN;
+          priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
           g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
         }
 
@@ -1717,6 +1717,63 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
         return FALSE;
     }
 }
+
+/* can be called both from the old tube API and the new tube API */
+gboolean gabble_tube_stream_offer (GabbleTubeStream *self,
+                                   guint address_type,
+                                   const GValue *address, guint access_control,
+                                   const GValue *access_control_param,
+                                   GError **error)
+{
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  LmMessageNode *tube_node = NULL;
+  LmMessage *msg;
+  TpHandleRepoIface *contact_repo;
+  const gchar *jid;
+  gboolean result;
+
+  g_assert (priv->state == GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED);
+
+  contact_repo = tp_base_connection_get_handles (
+     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  jid = tp_handle_inspect (contact_repo, priv->handle);
+
+  msg = lm_message_build (jid, LM_MESSAGE_TYPE_MESSAGE,
+      '(', "tube", "",
+        '*', &tube_node,
+        '@', "xmlns", NS_TUBES,
+      ')',
+      '(', "amp", "",
+        '@', "xmlns", NS_AMP,
+        '(', "rule", "",
+          '@', "condition", "deliver-at",
+          '@', "value", "stored",
+          '@', "action", "error",
+        ')',
+        '(', "rule", "",
+          '@', "condition", "match-resource",
+          '@', "value", "exact",
+          '@', "action", "error",
+        ')',
+      ')',
+      NULL);
+
+  g_assert (tube_node != NULL);
+
+  gabble_tube_iface_publish_in_node (GABBLE_TUBE_IFACE (self),
+      (TpBaseConnection *) priv->conn, tube_node);
+
+  result = _gabble_connection_send (priv->conn, msg, error);
+  if (result)
+    {
+      priv->state = GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING;
+    }
+
+  lm_message_unref (msg);
+  return result;
+}
+
 
 /**
  * gabble_tube_stream_offer_stream_tube

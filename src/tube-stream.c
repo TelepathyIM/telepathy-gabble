@@ -1819,7 +1819,11 @@ gabble_tube_stream_get_stream_tube_socket_address (
     GabbleSvcChannelTypeStreamTube *iface,
     DBusGMethodInvocation *context)
 {
-  tp_dbus_g_method_return_not_implemented (context);
+  GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+
+  tp_svc_channel_type_tubes_return_from_get_stream_tube_socket_address (
+      context, priv->address_type, priv->address);
 }
 
 /**

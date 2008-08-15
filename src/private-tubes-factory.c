@@ -30,6 +30,8 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/util.h>
 
+#include "extensions/extensions.h"
+
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
 #include "channel-manager.h"
@@ -561,12 +563,51 @@ gabble_private_tubes_factory_foreach_channel_class (
     GabbleChannelManagerChannelClassFunc func,
     gpointer user_data)
 {
-  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) tp_g_value_slice_free);
+  GHashTable *table;
   GValue *value;
+
+  /* 1-1 Channel.Type.Tubes */
+  table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
 
   value = tp_g_value_slice_new (G_TYPE_STRING);
   g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_TUBES);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType",
+      value);
+
+  value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
+      value);
+
+  func (manager, table, tubes_channel_required_properties,
+      tubes_channel_optional_properties, user_data);
+
+  g_hash_table_destroy (table);
+
+  /* 1-1 Channel.Type.StreamTube */
+  table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_STREAMTUBE);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType",
+      value);
+
+  value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
+      value);
+
+  func (manager, table, tubes_channel_required_properties,
+      tubes_channel_optional_properties, user_data);
+
+  /* 1-1 Channel.Type.DBusTube */
+  table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_DBUSTUBE);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType",
       value);
 

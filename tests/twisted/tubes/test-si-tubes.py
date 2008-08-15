@@ -208,6 +208,23 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
+    # We offered a tube using the old tube API. Check the new tube API works
+    assert len(filter(lambda x:
+                  x[1] == "org.freedesktop.Telepathy.Channel.Type.Tubes",
+                  conn.ListChannels())) == 1
+    assert len(filter(lambda x:
+                  x[1] == "org.freedesktop.Telepathy.Channel.Type.StreamTube",
+                  conn.ListChannels())) == 1
+
+    #channels = filter(lambda x: x[1] != "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT", conn.ListChannels())
+    #print str(len(channels))
+    #print str(channels)
+    #assert len(channels) == 1
+
+    #tube_chan = bus.get_object(conn.bus_name, chan_path)
+    #tube_iface = dbus.Interface(tubes_chan,
+    #    tp_name_prefix + '.Channel.Type.Tubes')
+
     # The CM is the server, so fake a client wanting to talk to it
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'

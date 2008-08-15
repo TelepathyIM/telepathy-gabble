@@ -209,6 +209,19 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
         "connection", self,
         NULL));
 
+  g_ptr_array_add (self->channel_managers,
+      g_object_new (GABBLE_TYPE_ROOMLIST_MANAGER,
+        "connection", self,
+        NULL));
+
+  self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY,
+      "connection", self,
+      NULL);
+  g_ptr_array_add (self->channel_managers, self->muc_factory);
+
+  self->private_tubes_factory = gabble_private_tubes_factory_new (self);
+  g_ptr_array_add (self->channel_managers, self->private_tubes_factory);
+
   return channel_factories;
 }
 

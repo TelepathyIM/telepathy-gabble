@@ -41,6 +41,10 @@ ltmain.sh
 m4/gtk-doc.m4
 missing
 src/gabble-signals-marshal.list
+src/gabble-signals-marshal.c
+src/gabble-signals-marshal.h
+src/media-session-enumtypes.c
+src/media-session-enumtypes.h
 src/telepathy-gabble
 src/write-mgr-file
 stamp-h1

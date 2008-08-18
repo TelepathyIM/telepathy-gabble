@@ -213,8 +213,8 @@ def test(q, bus, conn, stream):
                   x[1] == "org.freedesktop.Telepathy.Channel.Type.Tubes",
                   conn.ListChannels())) == 1
     assert len(filter(lambda x:
-                  x[1] == "org.freedesktop.Telepathy.Channel.Type.StreamTube",
-                  conn.ListChannels())) == 1
+      x[1] == "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT",
+      conn.ListChannels())) == 1
 
     #channels = filter(lambda x: x[1] != "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT", conn.ListChannels())
     #print str(len(channels))

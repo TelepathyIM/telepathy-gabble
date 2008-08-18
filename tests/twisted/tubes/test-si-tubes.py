@@ -216,14 +216,19 @@ def test(q, bus, conn, stream):
       x[1] == "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT",
       conn.ListChannels())) == 1
 
-    #channels = filter(lambda x: x[1] != "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT", conn.ListChannels())
-    #print str(len(channels))
-    #print str(channels)
-    #assert len(channels) == 1
+    channels = filter(lambda x: x[1]
+      == "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT",
+      conn.ListChannels())
+    assert len(channels) == 1
 
-    #tube_chan = bus.get_object(conn.bus_name, chan_path)
-    #tube_iface = dbus.Interface(tubes_chan,
-    #    tp_name_prefix + '.Channel.Type.Tubes')
+    tube_chan = bus.get_object(conn.bus_name, channels[0][0])
+    tube_iface = dbus.Interface(tubes_chan,
+        tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
+
+    tube_props = tube_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    #assert tube_props.get("StreamService") == "echo"
 
     # The CM is the server, so fake a client wanting to talk to it
     iq = IQ(stream, 'set')

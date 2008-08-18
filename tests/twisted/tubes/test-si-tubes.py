@@ -228,7 +228,7 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
-    #assert tube_props.get("StreamService") == "echo"
+    assert tube_props.get("Service") == "echo"
 
     # The CM is the server, so fake a client wanting to talk to it
     iq = IQ(stream, 'set')

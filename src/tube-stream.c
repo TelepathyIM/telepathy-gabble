@@ -1189,6 +1189,10 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       { "InitiatorID", "initiator-id", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl stream_tube_props[] = {
+      { "Service", "service", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
@@ -1199,6 +1203,11 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         future_props,
+      },
+      { GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        stream_tube_props,
       },
       { NULL }
   };

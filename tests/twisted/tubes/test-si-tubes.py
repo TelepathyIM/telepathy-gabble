@@ -225,10 +225,22 @@ def test(q, bus, conn, stream):
     tube_iface = dbus.Interface(tubes_chan,
         tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
 
-    tube_props = tube_chan.GetAll(
+    stream_tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert tube_props.get("Service") == "echo"
+    assert stream_tube_props.get("Service") == "echo"
+
+    tube_props = tube_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert tube_props.get("Initiator") == self_handle
+    #print str(tube_props.get("Parameters"))
+    #assert tube_props.get("Parameters") == {'ay': ('bytes', 'aGVsbG8='),
+    #                  's': ('str', 'hello'),
+    #                  'i': ('int', '-123'),
+    #                  'u': ('uint', '123'),
+    #                 }
+    assert tube_props.get("Status") == 1 # Tube_Channel_State_Remote_Pending
 
     # The CM is the server, so fake a client wanting to talk to it
     iq = IQ(stream, 'set')

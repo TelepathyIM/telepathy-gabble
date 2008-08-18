@@ -69,6 +69,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_TUBE_IFACE, tube_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_STREAM_TUBE,
       streamtube_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_TUBE,
+      NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
         tp_external_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
@@ -1191,6 +1193,13 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   };
   static TpDBusPropertiesMixinPropImpl stream_tube_props[] = {
       { "Service", "service", NULL },
+      /*{ "AvailableStreamTubeTypes", NULL, NULL },*/
+      { NULL }
+  };
+  static TpDBusPropertiesMixinPropImpl tube_iface_props[] = {
+      { "Initiator", "initiator", NULL },
+      /*{ "Parameters", "parameters", NULL },*/
+      { "Status", "state", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
@@ -1208,6 +1217,11 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         stream_tube_props,
+      },
+      { GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        tube_iface_props,
       },
       { NULL }
   };

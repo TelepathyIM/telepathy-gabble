@@ -6,7 +6,10 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-debug
 
 dist-hook:
 	chmod u+w ${distdir}/ChangeLog
-	if test -d _darcs; then darcs changes >${distdir}/ChangeLog; fi
+	if test -d ${top_srcdir}/.git; then \
+		git log --stat > ${distdir}/ChangeLog || \
+		git log > ${distdir}/ChangeLog; \
+	fi
 
 check-twisted: all
 	$(MAKE) -C tests/twisted check-twisted

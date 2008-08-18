@@ -590,7 +590,7 @@ gabble_private_tubes_factory_foreach_channel_class (
       (GDestroyNotify) tp_g_value_slice_free);
 
   value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_STREAMTUBE);
+  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType",
       value);
 
@@ -607,7 +607,7 @@ gabble_private_tubes_factory_foreach_channel_class (
       (GDestroyNotify) tp_g_value_slice_free);
 
   value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_DBUSTUBE);
+  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType",
       value);
 

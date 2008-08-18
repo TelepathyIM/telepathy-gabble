@@ -67,7 +67,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_TUBE_IFACE, tube_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_STREAMTUBE,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_STREAM_TUBE,
       streamtube_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
         tp_external_group_mixin_iface_init);
@@ -980,7 +980,8 @@ gabble_tube_stream_get_property (GObject *object,
         g_value_set_string (value, priv->object_path);
         break;
       case PROP_CHANNEL_TYPE:
-        g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_STREAMTUBE);
+        g_value_set_static_string (value,
+            GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
         break;
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
@@ -1853,7 +1854,7 @@ gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
     gabble_muc_channel_send_presence (self->muc, NULL);
 #endif
 
-  gabble_svc_channel_type_streamtube_return_from_accept_stream_tube (context,
+  gabble_svc_channel_type_stream_tube_return_from_accept_stream_tube (context,
       priv->address);
 }
 
@@ -1871,7 +1872,7 @@ gabble_tube_stream_get_stream_tube_socket_address (
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
-  gabble_svc_channel_type_streamtube_return_from_get_stream_tube_socket_address
+  gabble_svc_channel_type_stream_tube_return_from_get_stream_tube_socket_address
       (context, priv->address_type, priv->address);
 }
 
@@ -1902,7 +1903,7 @@ gabble_tube_stream_get_channel_type (TpSvcChannel *iface,
                                        DBusGMethodInvocation *context)
 {
   tp_svc_channel_return_from_get_channel_type (context,
-      GABBLE_IFACE_CHANNEL_TYPE_STREAMTUBE);
+      GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
 }
 
 /**
@@ -1981,7 +1982,7 @@ streamtube_iface_init (gpointer g_iface,
   GabbleSvcChannelTypeStreamTubeClass *klass =
       (GabbleSvcChannelTypeStreamTubeClass *) g_iface;
 
-#define IMPLEMENT(x) gabble_svc_channel_type_streamtube_implement_##x (\
+#define IMPLEMENT(x) gabble_svc_channel_type_stream_tube_implement_##x (\
     klass, gabble_tube_stream_##x)
   IMPLEMENT(offer_stream_tube);
   IMPLEMENT(accept_stream_tube);

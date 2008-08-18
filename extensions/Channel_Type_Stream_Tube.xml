@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<node name="/Channel_Type_StreamTube" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+<node name="/Channel_Type_Stream_Tube" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <tp:copyright>Copyright (C) 2008 Collabora Limited</tp:copyright>
   <tp:copyright>Copyright (C) 2008 Nokia Corporation</tp:copyright>
   <tp:license>
@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       <p>A stream tube is a transport for ordered, reliable data transfer,
         similar to SOCK_STREAM sockets.</p>
 
-      <p>When accepting a Stream Unix tube, a new listening local socket is
+      <p>When accepting a stream tube, a new listening local socket is
         created. Each time the client connects to this socket, the
         connection manager of the initiator of the tube opens a new
         connection to its local socket. Both sides can then use this pair
@@ -164,7 +164,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </arg>
     </signal>
 
-    <property name="StreamService" type="s" access="read">
+    <property name="Service" type="s" access="read">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p> A string representing the service name that will be used over the
           tube.  It should be a well-known TCP service name as defined by
@@ -173,13 +173,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
           <a href="http://www.dns-sd.org/ServiceTypes.html">
             http://www.dns-sd.org/ServiceTypes.html</a>, for instance
           "rsync" or "daap".</p>
+        <p>When the tube is offered, the service name is transmitted to the
+          other end.</p>
         <p>When requesting a channel with 
           <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.CreateChannel</tp:dbus-ref>,
           this property MUST be included in the request.</p>
       </tp:docstring>
     </property>
 
-    <property name="AvailableStreamTubeTypes" type="a{uau}"
+    <property name="SupportedSocketTypes" type="a{uau}"
               tp:type="Supported_Socket_Map" access="read">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>A mapping from address types (members of Socket_Address_Type) to
@@ -199,9 +201,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
               [Socket_Access_Control_Localhost, Socket_Access_Control_Credentials]
           }
         </pre>
-
-        <p>If stream tubes are not supported, this will be an empty
-          dictionary.</p>
 
         <p>When requesting a channel with 
           <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.CreateChannel</tp:dbus-ref>,

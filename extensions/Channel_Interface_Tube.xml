@@ -48,8 +48,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         <p>Each tube has a dictionary of arbitrary parameters. Parameters are
           commonly used for bootstrap information. The allowable keys,
           types and values are defined by the service. Connection managers
-          must support the value being any primitive (non-container)
-          D-Bus type, or a byte array 'ay'.</p>
+          must support the value being a string (D-Bus type 's'), array of bytes
+          (D-Bus type 'ay'), unsigned integer (D-Bus type 'u'), integer (D-Bus
+          type 'i') and boolean (D-Bus type 'b').</p>
+        <p>When the tube is offered, the parameters are transmitted to the
+          other end.</p>
         <p>When requesting a channel with 
           <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.CreateChannel</tp:dbus-ref>,
           this property MAY be included in the request. If it is not included in

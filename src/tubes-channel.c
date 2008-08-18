@@ -664,6 +664,35 @@ _emit_d_bus_names_changed_foreach_data
   TpHandle contact;
 };
 
+struct _ForeachData
+{
+  GabbleExportableChannelFunc foreach;
+  gpointer user_data;
+};
+
+static void
+foreach_slave (gpointer key,
+               gpointer value,
+               gpointer user_data)
+{
+  GabbleTubeIface *tube = GABBLE_TUBE_IFACE (value);
+  struct _ForeachData *data = (struct _ForeachData *) user_data;
+
+  data->foreach (GABBLE_EXPORTABLE_CHANNEL (tube), data->user_data);
+}
+
+void gabble_tubes_channel_foreach (GabbleTubesChannel *self,
+    GabbleExportableChannelFunc foreach, gpointer user_data)
+{
+  struct _ForeachData data;
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+
+  data.user_data = user_data;
+  data.foreach = foreach;
+
+  g_hash_table_foreach (priv->tubes, foreach_slave, &data);
+}
+
 static void
 emit_d_bus_names_changed_foreach (gpointer key,
                                   gpointer value,

@@ -368,7 +368,13 @@ _foreach_slave (gpointer key,
 
   g_assert (TP_IS_CHANNEL_IFACE (chan));
 
+  /* Add channels of type Channel.Type.Tubes */
   data->foreach (chan, data->user_data);
+
+  /* Add channels of type Channel.Type.{Stream|DBus}Tube which live in the
+   * GabbleTubesChannel object */
+  gabble_tubes_channel_foreach (GABBLE_TUBES_CHANNEL (chan), data->foreach,
+      data->user_data);
 }
 
 static void

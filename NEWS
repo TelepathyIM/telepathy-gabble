@@ -1,5 +1,7 @@
-telepathy-gabble 0.7.8 (unreleased)
+telepathy-gabble 0.7.8 (2008-08-19)
 ===================================
+
+The "Hildesheim Flugplatz" release.
 
 telepathy-gabble is now maintained in git instead of darcs. See README for
 details.
@@ -13,10 +15,15 @@ Enhancements:
 
 * Implement the Contacts interface for bulk contact-handle inspection
 
+* Implement spec 0.17.9 (add the TargetID property to all channels)
+
 * Start to port channel factories away from TpChannelFactoryIface in
   preparation for implementing the Requests API
 
 * Add a simple smoke-test for SimplePresence
+
+* Use tp_debug_divert_messages() rather than our own copy of it, since we
+  now depend on a new enough telepathy-glib anyway
 
 Fixes:
 
@@ -24,16 +31,15 @@ Fixes:
   and not Presence_Type_Away
 
 * Fix the test suite so test failure causes a nonzero exit status
+  (regression in 0.7.7)
 
 * Fix test-si-tubes and test-disco to run the test all the way through
+  (regression in 0.7.7)
 
 * Use the pedantically correct marshaller for a GArray, since GObject 2.17
-  actually checks for POINTER vs BOXED
+  actually checks for POINTER vs BOXED (regression in 0.7.7)
 
 * Remove unconditional debug messages in a few places
-
-* Use tp_debug_divert_messages() rather than our own copy of it, since we
-  now depend on a new enough telepathy-glib anyway
 
 telepathy-gabble 0.7.7 (2008-07-31)
 ===================================

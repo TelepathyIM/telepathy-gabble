@@ -440,7 +440,7 @@ gabble_media_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "TargetHandle",
               TP_IFACE_CHANNEL, "TargetHandleType",
               TP_IFACE_CHANNEL, "ChannelType",
-              GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
+              TP_IFACE_CHANNEL, "TargetID",
               GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
               GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
               GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
@@ -529,13 +529,13 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   static TpDBusPropertiesMixinPropImpl channel_props[] = {
       { "TargetHandleType", "handle-type", NULL },
       { "TargetHandle", "handle", NULL },
+      { "TargetID", "target-id", NULL },
       { "ChannelType", "channel-type", NULL },
       { "Interfaces", "interfaces", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "Requested", "requested", NULL },
-      { "TargetID", "target-id", NULL },
       { "InitiatorHandle", "creator", NULL },
       { "InitiatorID", "creator-id", NULL },
       { NULL }

@@ -25,6 +25,7 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/contacts-mixin.h>
 #include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 
@@ -102,11 +103,13 @@ struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;
     TpDBusPropertiesMixinClass properties_class;
     TpPresenceMixinClass presence_class;
+    TpContactsMixinClass contacts_class;
 };
 
 struct _GabbleConnection {
     TpBaseConnection parent;
     TpPresenceMixin presence;
+    TpContactsMixin contacts;
 
     /* loudmouth connection */
     LmConnection *lmconn;

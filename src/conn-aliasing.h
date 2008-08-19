@@ -27,6 +27,7 @@
 
 G_BEGIN_DECLS
 
+void conn_aliasing_init (GabbleConnection *conn);
 void conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data);
 
 gboolean gabble_conn_aliasing_pep_nick_event_handler (GabbleConnection *conn,

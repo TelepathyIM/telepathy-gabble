@@ -29,8 +29,6 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
-#include <telepathy-glib/channel-iface.h>
-#include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
@@ -48,6 +46,7 @@
 #include "bytestream-factory.h"
 #include "capabilities.h"
 #include "caps-hash.h"
+#include "channel-manager.h"
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
 #include "conn-presence.h"
@@ -57,7 +56,6 @@
 #include "disco.h"
 #include "media-channel.h"
 #include "register.h"
-#include "roomlist-channel.h"
 #include "im-factory.h"
 #include "media-factory.h"
 #include "muc-factory.h"
@@ -66,6 +64,7 @@
 #include "presence.h"
 #include "pubsub.h"
 #include "request-pipeline.h"
+#include "roomlist-manager.h"
 #include "roster.h"
 #include "private-tubes-factory.h"
 #include "util.h"
@@ -197,11 +196,6 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
 
   g_ptr_array_add (channel_factories, self->roster);
 
-  self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY,
-      "connection", self,
-      NULL);
-  g_ptr_array_add (channel_factories, self->muc_factory);
-
   g_ptr_array_add (channel_factories,
                    g_object_new (GABBLE_TYPE_MEDIA_FACTORY,
                                  "connection", self,
@@ -218,6 +212,16 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
       g_object_new (GABBLE_TYPE_IM_FACTORY,
         "connection", self,
         NULL));
+
+  g_ptr_array_add (self->channel_managers,
+      g_object_new (GABBLE_TYPE_ROOMLIST_MANAGER,
+        "connection", self,
+        NULL));
+
+  self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY,
+      "connection", self,
+      NULL);
+  g_ptr_array_add (self->channel_managers, self->muc_factory);
 
   self->private_tubes_factory = gabble_private_tubes_factory_new (self);
   g_ptr_array_add (self->channel_managers, self->private_tubes_factory);
@@ -1338,9 +1342,9 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   lm_message_unref (message);
 
   /* broadcast presence to MUCs */
-  tp_channel_factory_iface_foreach (
-      (TpChannelFactoryIface *) self->muc_factory,
-      (TpChannelFunc) gabble_muc_channel_send_presence, NULL);
+  gabble_channel_manager_foreach_channel (
+      GABBLE_CHANNEL_MANAGER (self->muc_factory),
+      (GabbleExportableChannelFunc) gabble_muc_channel_send_presence, NULL);
 
   return ret;
 }

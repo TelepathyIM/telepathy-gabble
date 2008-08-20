@@ -1517,7 +1517,12 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
     }
 
   priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
+
+  gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (self,
+      GABBLE_TUBE_CHANNEL_STATE_OPEN);
+
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
+  
   return TRUE;
 }
 
@@ -1621,6 +1626,10 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
         {
           DEBUG ("Received first connection. Tube is now open");
           priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
+
+          gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (
+              self, GABBLE_TUBE_CHANNEL_STATE_OPEN);
+
           g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
         }
 
@@ -1880,8 +1889,6 @@ stream_unix_tube_new_connection_cb (GabbleTubeStream *self,
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
-  tp_svc_channel_type_tubes_emit_stream_tube_new_connection (self,
-      priv->id, contact);
   gabble_svc_channel_type_stream_tube_emit_stream_tube_new_connection (self,
       contact);
 }
@@ -1922,6 +1929,17 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
       return;
     }
 
+  g_assert (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX ||
+      address_type == TP_SOCKET_ADDRESS_TYPE_IPV4 ||
+      address_type == TP_SOCKET_ADDRESS_TYPE_IPV6);
+  g_assert (priv->address == NULL);
+  priv->address_type = address_type;
+  priv->address = tp_g_value_slice_dup (address);
+  g_assert (priv->access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST);
+  priv->access_control = access_control;
+  g_assert (priv->access_control_param == NULL);
+  priv->access_control_param = tp_g_value_slice_dup (access_control_param);
+
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       /* Stream initiation */
@@ -1935,6 +1953,9 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
           g_error_free (error);
           return;
         }
+
+      gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (
+          self, GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING);
     }
 
   g_signal_connect (self, "tube-new-connection",

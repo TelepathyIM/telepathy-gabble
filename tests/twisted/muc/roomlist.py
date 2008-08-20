@@ -50,6 +50,7 @@ def test(q, bus, conn, stream):
             dbus_interface='org.freedesktop.DBus.Properties')
     assert channel_props.get('TargetHandle') == 0,\
             channel_props.get('TargetHandle')
+    assert channel_props['TargetID'] == '', channel_props
     assert channel_props.get('TargetHandleType') == 0,\
             channel_props.get('TargetHandleType')
     assert channel_props.get('ChannelType') == \
@@ -64,7 +65,6 @@ def test(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert future_props['Requested'] == True
-    assert future_props['TargetID'] == ''
     assert future_props['InitiatorID'] == 'test@localhost'
     assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
 

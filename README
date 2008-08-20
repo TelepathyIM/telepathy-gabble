@@ -34,7 +34,7 @@ At build time, it also requires:
 
 See configure.ac for full details, including versions required.
 
-Building from Darcs also requires the GNU build system (Autoconf, Automake,
+Building from git also requires the GNU build system (Autoconf, Automake,
 libtool).
 
 Bugs, feature requests and to-do list
@@ -50,7 +50,7 @@ We use an "odd/even" versioning scheme where the minor version (the y in
 x.y.z) determines stability - stable branches have y even, development
 branches have y odd.
 
-Unreleased builds straight from Darcs identify themselves as version
+Unreleased builds straight from git identify themselves as version
 "x.y.z.1". These are compiled with -Werror, so they might stop working
 if your gcc version issues more warnings than ours. If this is a problem
 for you, use a release tarball.
@@ -69,8 +69,13 @@ Telepathy development is supported by Collabora Ltd.
 Hacking
 =======
 
-The current version of telepathy-gabble is always available from:
-  <http://darcs.collabora.co.uk/darcs/telepathy-gabble/>
+The current version of telepathy-gabble is always available from the 'master'
+branch of:
+  <git://git.collabora.co.uk/git/telepathy-gabble.git>
+  <http://git.collabora.co.uk/?p=telepathy-gabble.git> (gitweb)
+
+Stable branches are in the same repository, and are called
+telepathy-gabble-0.6 etc.
 
 Proposed patches awaiting review can usually be found in Merge Monkey:
   <http://monkey.collabora.co.uk/>

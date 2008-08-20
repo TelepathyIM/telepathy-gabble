@@ -53,12 +53,16 @@ def test(q, bus, conn, stream):
     room_self_handle = group_iface.GetSelfHandle()
     assert room_self_handle == local_pending[0]
 
+    channel_props = text_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
+
     # Exercise FUTURE properties
     future_props = text_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert future_props['Requested'] == False
-    assert future_props['TargetID'] == 'chat@conf.localhost'
     assert future_props['InitiatorID'] == 'bob@localhost'
     assert future_props['InitiatorHandle'] == bob_handle
 

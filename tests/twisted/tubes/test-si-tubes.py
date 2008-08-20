@@ -140,7 +140,7 @@ def test(q, bus, conn, stream):
     assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
             bob_handle
     assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.TargetID'] == \
+    assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
             'bob@localhost'
     assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
             == conn.GetSelfHandle()
@@ -218,8 +218,8 @@ def test(q, bus, conn, stream):
     assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
             bob_handle
     assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.TargetID'] == \
-            'bob@localhost', emitted_props[tp_name_prefix + '.Channel.FUTURE.TargetID']
+    assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
+            'bob@localhost', emitted_props[tp_name_prefix + '.Channel.TargetID']
     assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
             == conn.GetSelfHandle()
     assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] == \

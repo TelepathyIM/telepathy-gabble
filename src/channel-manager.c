@@ -224,9 +224,7 @@ gabble_channel_manager_emit_new_channel (gpointer instance,
  * @path: A channel's object-path
  *
  * Emit the #GabbleChannelManager::channel-closed signal indicating that
- * the given channel has been closed. (This is a convenient shortcut for
- * calling gabble_channel_manager_emit_channel_closed() with the
- * #GabbleExportableChannel:object-path property of @channel.)
+ * the channel at the given object path has been closed.
  */
 void
 gabble_channel_manager_emit_channel_closed (gpointer instance,

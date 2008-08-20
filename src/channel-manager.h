@@ -24,6 +24,9 @@
 #define GABBLE_CHANNEL_MANAGER_H
 
 #include <glib-object.h>
+#include <telepathy-glib/channel-factory-iface.h>
+
+#include "exportable-channel.h"
 
 G_BEGIN_DECLS
 
@@ -44,11 +47,66 @@ G_BEGIN_DECLS
 typedef struct _GabbleChannelManager GabbleChannelManager;
 typedef struct _GabbleChannelManagerIface GabbleChannelManagerIface;
 
+
+/* virtual methods */
+
+typedef void (*GabbleChannelManagerForeachChannelFunc) (
+    GabbleChannelManager *manager, GabbleExportableChannelFunc func,
+    gpointer user_data);
+
+void gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,
+    GabbleExportableChannelFunc func, gpointer user_data);
+
+
+typedef gboolean (*GabbleChannelManagerRequestFunc) (
+    GabbleChannelManager *manager, gpointer request_token,
+    GHashTable *request_properties);
+
+gboolean gabble_channel_manager_create_channel (GabbleChannelManager *manager,
+    gpointer request_token, GHashTable *request_properties);
+
+gboolean gabble_channel_manager_request_channel (GabbleChannelManager *manager,
+    gpointer request_token, GHashTable *request_properties);
+
+
 struct _GabbleChannelManagerIface {
     GTypeInterface parent;
+
+    GabbleChannelManagerForeachChannelFunc foreach_channel;
+
+    GabbleChannelManagerRequestFunc create_channel;
+    GabbleChannelManagerRequestFunc request_channel;
+    /* in principle we could have EnsureChannel here too */
+
+    GCallback _future[8];
+    gpointer priv;
 };
 
+
 GType gabble_channel_manager_get_type (void);
+
+
+/* signal emission */
+
+void gabble_channel_manager_emit_new_channel (gpointer instance,
+    GabbleExportableChannel *channel, GSList *requests);
+void gabble_channel_manager_emit_new_channels (gpointer instance,
+    GHashTable *channels);
+
+void gabble_channel_manager_emit_channel_closed (gpointer instance,
+    const gchar *path);
+void gabble_channel_manager_emit_channel_closed_for_object (gpointer instance,
+    GabbleExportableChannel *channel);
+
+void gabble_channel_manager_emit_request_already_satisfied (
+    gpointer instance, gpointer request_token,
+    GabbleExportableChannel *channel);
+
+void gabble_channel_manager_emit_request_failed (gpointer instance,
+    gpointer request_token, GQuark domain, gint code, const gchar *message);
+void gabble_channel_manager_emit_request_failed_printf (gpointer instance,
+    gpointer request_token, GQuark domain, gint code, const gchar *format,
+    ...) G_GNUC_PRINTF (5, 6);
 
 G_END_DECLS
 

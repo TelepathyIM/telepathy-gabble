@@ -36,6 +36,59 @@
 #include "exportable-channel.h"
 
 
+static GValueArray *
+get_channel_details (GObject *obj)
+{
+  GValueArray *structure = g_value_array_new (1);
+  GHashTable *table;
+  GValue *value;
+  gchar *object_path;
+
+  g_object_get (obj,
+      "object-path", &object_path,
+      NULL);
+
+  g_value_array_append (structure, NULL);
+  value = g_value_array_get_nth (structure, 0);
+  g_value_init (value, DBUS_TYPE_G_OBJECT_PATH);
+  g_value_take_boxed (value, object_path);
+  object_path = NULL;
+
+  g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (obj) || TP_IS_CHANNEL_IFACE (obj));
+
+  if (GABBLE_IS_EXPORTABLE_CHANNEL (obj))
+    {
+      g_object_get (obj,
+          "channel-properties", &table,
+          NULL);
+    }
+  else
+    {
+     table = g_hash_table_new_full (g_str_hash, g_str_equal,
+          NULL, (GDestroyNotify) tp_g_value_slice_free);
+
+      value = tp_g_value_slice_new (G_TYPE_UINT);
+      g_object_get_property (obj, "handle", value);
+      g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandle", value);
+
+      value = tp_g_value_slice_new (G_TYPE_UINT);
+      g_object_get_property (obj, "handle-type", value);
+      g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
+
+      value = tp_g_value_slice_new (G_TYPE_STRING);
+      g_object_get_property (obj, "channel-type", value);
+      g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
+    }
+
+  g_value_array_append (structure, NULL);
+  value = g_value_array_get_nth (structure, 1);
+  g_value_init (value, TP_HASH_TYPE_STRING_VARIANT_MAP);
+  g_value_take_boxed (value, table);
+
+  return structure;
+}
+
+
 /* Most of this is cut and pasted from telepathy-glib, and should
  * make its way back there once stable */
 
@@ -44,7 +97,9 @@ typedef struct _ChannelRequest ChannelRequest;
 typedef enum {
     METHOD_REQUEST_CHANNEL,
     METHOD_CREATE_CHANNEL,
+#if 0
     METHOD_ENSURE_CHANNEL,
+#endif
     NUM_METHODS
 } ChannelRequestMethod;
 
@@ -57,6 +112,7 @@ struct _ChannelRequest
   gchar *channel_type;
   guint handle_type;
   guint handle;
+  /* always TRUE for CREATE */
   gboolean suppress_handler;
 };
 
@@ -72,6 +128,7 @@ channel_request_new (DBusGMethodInvocation *context,
 
   g_assert (NULL != context);
   g_assert (NULL != channel_type);
+  g_assert (method < NUM_METHODS);
 
   ret = g_slice_new0 (ChannelRequest);
   ret->context = context;
@@ -180,6 +237,50 @@ find_matching_channel_requests (GabbleConnection *self,
   return requests;
 }
 
+
+static void
+satisfy_request (GabbleConnection *self,
+                 ChannelRequest *request,
+                 GObject *channel,
+                 const gchar *object_path)
+{
+  DEBUG ("completing queued request %p with success, "
+      "channel_type=%s, handle_type=%u, "
+      "handle=%u, suppress_handler=%u", request, request->channel_type,
+      request->handle_type, request->handle, request->suppress_handler);
+
+  switch (request->method)
+    {
+    case METHOD_REQUEST_CHANNEL:
+      tp_svc_connection_return_from_request_channel (request->context,
+          object_path);
+      break;
+
+    case METHOD_CREATE_CHANNEL:
+        {
+          GHashTable *properties;
+
+          g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+          g_object_get (channel,
+              "channel-properties", &properties,
+              NULL);
+          gabble_svc_connection_interface_requests_return_from_create_channel (
+              request->context, object_path, properties);
+          g_hash_table_destroy (properties);
+        }
+        break;
+
+    default:
+      g_assert_not_reached ();
+    }
+  request->context = NULL;
+
+  g_ptr_array_remove (self->channel_requests, request);
+
+  channel_request_free (request);
+}
+
+
 static void
 satisfy_requests (GabbleConnection *self,
                   TpChannelFactoryIface *factory,
@@ -207,31 +308,43 @@ satisfy_requests (GabbleConnection *self,
                                         &suppress_handler);
 
   if (is_new)
-    tp_svc_connection_emit_new_channel (self, object_path, channel_type,
-        handle_type, handle, suppress_handler);
+    {
+      GPtrArray *array = g_ptr_array_sized_new (1);
+
+      tp_svc_connection_emit_new_channel (self, object_path, channel_type,
+          handle_type, handle, suppress_handler);
+
+      g_ptr_array_add (array, get_channel_details (G_OBJECT (chan)));
+      gabble_svc_connection_interface_requests_emit_new_channels (self,
+          array);
+      g_value_array_free (g_ptr_array_index (array, 0));
+      g_ptr_array_free (array, TRUE);
+    }
 
   for (i = 0; i < tmp->len; i++)
-    {
-      ChannelRequest *request = g_ptr_array_index (tmp, i);
-
-      DEBUG ("completing queued request %p with success, "
-          "channel_type=%s, handle_type=%u, "
-          "handle=%u, suppress_handler=%u", request, request->channel_type,
-          request->handle_type, request->handle, request->suppress_handler);
-
-      tp_svc_connection_return_from_request_channel (request->context,
-          object_path);
-      request->context = NULL;
-
-      g_ptr_array_remove (self->channel_requests, request);
-
-      channel_request_free (request);
-    }
+    satisfy_request (self, g_ptr_array_index (tmp, i), G_OBJECT (chan),
+        object_path);
 
   g_ptr_array_free (tmp, TRUE);
 
   g_free (object_path);
   g_free (channel_type);
+}
+
+static void
+channel_closed_cb (GObject *channel,
+                   GabbleConnection *self)
+{
+  gchar *object_path;
+
+  g_object_get (channel,
+      "object-path", &object_path,
+      NULL);
+
+  gabble_svc_connection_interface_requests_emit_channel_closed (self,
+      object_path);
+
+  g_free (object_path);
 }
 
 static void
@@ -242,7 +355,29 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
 {
   satisfy_requests (GABBLE_CONNECTION (data), factory,
       TP_CHANNEL_IFACE (chan), channel_request, TRUE);
+
+  g_signal_connect (chan, "closed", (GCallback) channel_closed_cb, data);
 }
+
+
+static void
+fail_channel_request (GabbleConnection *self,
+                      ChannelRequest *request,
+                      GError *error)
+{
+  DEBUG ("completing queued request %p with error, channel_type=%s, "
+      "handle_type=%u, handle=%u, suppress_handler=%u",
+      request, request->channel_type,
+      request->handle_type, request->handle, request->suppress_handler);
+
+  dbus_g_method_return_error (request->context, error);
+  request->context = NULL;
+
+  g_ptr_array_remove (self->channel_requests, request);
+
+  channel_request_free (request);
+}
+
 
 static void
 connection_channel_error_cb (TpChannelFactoryIface *factory,
@@ -271,21 +406,7 @@ connection_channel_error_cb (TpChannelFactoryIface *factory,
                                         handle, channel_request, NULL);
 
   for (i = 0; i < tmp->len; i++)
-    {
-      ChannelRequest *request = g_ptr_array_index (tmp, i);
-
-      DEBUG ("completing queued request %p with error, channel_type=%s, "
-          "handle_type=%u, handle=%u, suppress_handler=%u",
-          request, request->channel_type,
-          request->handle_type, request->handle, request->suppress_handler);
-
-      dbus_g_method_return_error (request->context, error);
-      request->context = NULL;
-
-      g_ptr_array_remove (self->channel_requests, request);
-
-      channel_request_free (request);
-    }
+    fail_channel_request (self, g_ptr_array_index (tmp, i), error);
 
   g_ptr_array_free (tmp, TRUE);
   g_free (channel_type);
@@ -306,6 +427,8 @@ conn_requests_request_channel (TpSvcConnection *iface,
   GError *error = NULL;
   guint i;
   ChannelRequest *request;
+  GHashTable *request_properties;
+  GValue *v;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) self,
       context);
@@ -313,6 +436,39 @@ conn_requests_request_channel (TpSvcConnection *iface,
   request = channel_request_new (context, METHOD_REQUEST_CHANNEL,
       type, handle_type, handle, suppress_handler);
   g_ptr_array_add (self->channel_requests, request);
+
+  /* First try the channel managers */
+
+  request_properties = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) tp_g_value_slice_free);
+
+  v = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_string (v, type);
+  g_hash_table_insert (request_properties, TP_IFACE_CHANNEL ".ChannelType", v);
+
+  v = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (v, handle_type);
+  g_hash_table_insert (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandleType", v);
+
+  v = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (v, handle);
+  g_hash_table_insert (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandle", v);
+
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
+
+      if (gabble_channel_manager_request_channel (manager, request,
+            request_properties))
+        return;
+    }
+
+  g_hash_table_destroy (request_properties);
+
+  /* OK, none of them wanted it. Now try the channel factories */
 
   for (i = 0; i < self->channel_factories->len; i++)
     {
@@ -405,6 +561,9 @@ connection_status_changed (GabbleConnection *self,
                            guint reason,
                            gpointer unused G_GNUC_UNUSED)
 {
+  /* We deliberately don't iterate over channel managers here -
+   * they don't need this, and are expected to listen to status-changed
+   * for themselves. */
 
   /* cancel all queued channel requests when disconnected */
   if (status == TP_CONNECTION_STATUS_DISCONNECTED)
@@ -459,6 +618,8 @@ list_channel_factory_foreach_one (TpChannelIface *chan,
   GValue *entry = tp_dbus_specialized_value_slice_new
       (TP_STRUCT_TYPE_CHANNEL_INFO);
 
+  g_assert (TP_IS_CHANNEL_IFACE (channel));
+
   g_object_get (channel,
       "object-path", &path,
       "channel-type", &type,
@@ -478,6 +639,94 @@ list_channel_factory_foreach_one (TpChannelIface *chan,
   g_free (path);
   g_free (type);
 }
+
+
+static void
+exportable_channel_get_old_info (GabbleExportableChannel *channel,
+                                 gchar **object_path_out,
+                                 gchar **channel_type_out,
+                                 guint *handle_type_out,
+                                 guint *handle_out)
+{
+  gchar *object_path;
+  GHashTable *channel_properties;
+  gboolean valid;
+
+  g_object_get (channel,
+      "object-path", &object_path,
+      "channel-properties", &channel_properties,
+      NULL);
+
+  g_assert (object_path != NULL);
+  g_assert (tp_dbus_check_valid_object_path (object_path, NULL));
+
+  if (object_path_out != NULL)
+    *object_path_out = object_path;
+  else
+    g_free (object_path);
+
+  if (channel_type_out != NULL)
+    {
+      *channel_type_out = g_strdup (tp_asv_get_string (channel_properties,
+          TP_IFACE_CHANNEL ".ChannelType"));
+      g_assert (*channel_type_out != NULL);
+      g_assert (tp_dbus_check_valid_interface_name (*channel_type_out, NULL));
+    }
+
+  if (handle_type_out != NULL)
+    {
+      *handle_type_out = tp_asv_get_uint32 (channel_properties,
+          TP_IFACE_CHANNEL ".TargetHandleType", &valid);
+      g_assert (valid);
+    }
+
+  if (handle_out != NULL)
+    {
+      *handle_out = tp_asv_get_uint32 (channel_properties,
+          TP_IFACE_CHANNEL ".TargetHandle", &valid);
+      g_assert (valid);
+
+      if (handle_type_out != NULL)
+        {
+          if (*handle_type_out == TP_HANDLE_TYPE_NONE)
+            g_assert (*handle_out == 0);
+          else
+            g_assert (*handle_out != 0);
+        }
+    }
+
+  g_hash_table_destroy (channel_properties);
+}
+
+
+static void
+list_channel_manager_foreach_one (GabbleExportableChannel *channel,
+                                  gpointer data)
+{
+  GPtrArray *values = (GPtrArray *) data;
+  gchar *path, *type;
+  guint handle_type, handle;
+  GValue *entry = tp_dbus_specialized_value_slice_new
+      (TP_STRUCT_TYPE_CHANNEL_INFO);
+
+  g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+
+  exportable_channel_get_old_info (channel, &path, &type, &handle_type,
+      &handle);
+
+  dbus_g_type_struct_set (entry,
+      0, path,
+      1, type,
+      2, handle_type,
+      3, handle,
+      G_MAXUINT);
+
+  g_ptr_array_add (values, entry);
+
+  g_free (path);
+  g_free (type);
+}
+
 
 static void
 conn_requests_list_channels (TpSvcConnection *iface,
@@ -503,6 +752,15 @@ conn_requests_list_channels (TpSvcConnection *iface,
           list_channel_factory_foreach_one, values);
     }
 
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = g_ptr_array_index
+        (self->channel_managers, i);
+
+      gabble_channel_manager_foreach_channel (manager,
+          list_channel_manager_foreach_one, values);
+    }
+
   channels = g_ptr_array_sized_new (values->len);
 
   for (i = 0; i < values->len; i++)
@@ -522,7 +780,217 @@ conn_requests_list_channels (TpSvcConnection *iface,
 }
 
 
-/* The new Requests API (unimplemented) */
+/* The new Requests API */
+
+
+static void
+factory_get_channel_details_foreach (TpChannelIface *chan,
+                                     gpointer data)
+{
+  GPtrArray *details = data;
+
+  g_ptr_array_add (details, get_channel_details (G_OBJECT (chan)));
+}
+
+
+static void
+manager_get_channel_details_foreach (GabbleExportableChannel *chan,
+                                     gpointer data)
+{
+  GPtrArray *details = data;
+
+  g_ptr_array_add (details, get_channel_details (G_OBJECT (chan)));
+}
+
+
+static GPtrArray *
+conn_requests_get_channel_details (GabbleConnection *self)
+{
+  /* guess that each ChannelManager and each ChannelFactory has two
+   * channels, on average */
+  GPtrArray *details = g_ptr_array_sized_new (self->channel_managers->len * 2
+      + self->channel_factories->len * 2);
+  guint i;
+
+  for (i = 0; i < self->channel_factories->len; i++)
+    {
+      TpChannelFactoryIface *factory = TP_CHANNEL_FACTORY_IFACE (
+          g_ptr_array_index (self->channel_factories, i));
+
+      tp_channel_factory_iface_foreach (factory,
+          factory_get_channel_details_foreach, details);
+    }
+
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
+
+      gabble_channel_manager_foreach_channel (manager,
+          manager_get_channel_details_foreach, details);
+    }
+
+  return details;
+}
+
+
+void
+gabble_conn_requests_get_dbus_property (GObject *object,
+                                        GQuark interface,
+                                        GQuark name,
+                                        GValue *value,
+                                        gpointer unused G_GNUC_UNUSED)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (object);
+
+  g_return_if_fail (interface ==
+      GABBLE_IFACE_QUARK_CONNECTION_INTERFACE_REQUESTS);
+
+  if (name == g_quark_from_static_string ("Channels"))
+    {
+      g_value_take_boxed (value, conn_requests_get_channel_details (self));
+    }
+  else
+    {
+      g_return_if_reached ();
+    }
+}
+
+
+static void
+conn_requests_requestotron (GabbleConnection *self,
+                            GHashTable *requested_properties,
+                            ChannelRequestMethod method,
+                            DBusGMethodInvocation *context)
+{
+  guint i;
+  ChannelRequest *request = NULL;
+  GHashTable *altered_properties = NULL;
+  const gchar *type;
+  GabbleChannelManagerRequestFunc func;
+  gboolean suppress_handler;
+  TpHandleType target_handle_type;
+  TpHandle target_handle;
+  gboolean valid;
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) self,
+      context);
+
+  type = tp_asv_get_string (requested_properties,
+        TP_IFACE_CHANNEL ".ChannelType");
+
+  if (type == NULL)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "ChannelType is required" };
+
+      dbus_g_method_return_error (context, &e);
+      goto out;
+    }
+
+  target_handle_type = tp_asv_get_uint32 (requested_properties,
+      TP_IFACE_CHANNEL ".TargetHandleType", &valid);
+
+  /* Allow it to be missing, but not to be otherwise broken */
+  if (!valid && tp_asv_lookup (requested_properties,
+          TP_IFACE_CHANNEL ".TargetHandleType") != NULL)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "TargetHandleType must be an integer in range 0 to 2**32-1" };
+
+      dbus_g_method_return_error (context, &e);
+      goto out;
+    }
+
+  target_handle = tp_asv_get_uint32 (requested_properties,
+      TP_IFACE_CHANNEL ".TargetHandle", &valid);
+
+  /* Allow it to be missing, but not to be otherwise broken */
+  if (!valid && tp_asv_lookup (requested_properties,
+          TP_IFACE_CHANNEL ".TargetHandle") != NULL)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "TargetHandle must be an integer in range 0 to 2**32-1" };
+
+      dbus_g_method_return_error (context, &e);
+      goto out;
+    }
+
+  if (target_handle_type == TP_HANDLE_TYPE_NONE && target_handle != 0)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "When TargetHandleType is NONE, TargetHandle must be omitted or 0" };
+
+      dbus_g_method_return_error (context, &e);
+      goto out;
+    }
+
+  /* FIXME: when TargetID is officially supported, if it has
+   * target_handle_type == TP_HANDLE_TYPE_NONE and has a TargetID, raise
+   * an error */
+
+  /* FIXME: when TargetID is officially supported, if it has both a TargetID
+   * and a TargetHandle, raise an error */
+
+  /* FIXME: when InitiatorHandle, InitiatorID and Requested are officially
+   * supported, if the request has any of them, raise an error */
+
+  /* FIXME: when TargetID is officially supported, if it has TargetID but
+   * no TargetHandle, copy requested_properties to altered_properties,
+   * remove TargetID, add TargetHandle, and set
+   * requested_properties = altered_properties (shadowing the original).
+   * If handle normalization fails, raise an error */
+
+  /* Nonzero target handle types must have nonzero handles */
+  if (target_handle_type != TP_HANDLE_TYPE_NONE && target_handle == 0)
+
+  switch (method)
+    {
+    case METHOD_CREATE_CHANNEL:
+      func = gabble_channel_manager_create_channel;
+      suppress_handler = TRUE;
+      break;
+
+#if 0
+    case METHOD_ENSURE_CHANNEL:
+      func = gabble_channel_manager_ensure_channel;
+      suppress_handler = FALSE;
+      break;
+#endif
+
+    default:
+      g_assert_not_reached ();
+    }
+
+  request = channel_request_new (context, method,
+      type, target_handle_type, target_handle, suppress_handler);
+  g_ptr_array_add (self->channel_requests, request);
+
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
+
+      if (func (manager, request, requested_properties))
+        goto out;
+    }
+
+  /* Nobody accepted the request */
+    {
+      GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Not implemented" };
+
+      dbus_g_method_return_error (context, &e);
+      g_ptr_array_remove (self->channel_requests, request);
+      channel_request_free (request);
+    }
+
+out:
+  if (altered_properties != NULL)
+    g_hash_table_destroy (altered_properties);
+
+  return;
+}
 
 
 static void
@@ -530,11 +998,154 @@ conn_requests_create_channel (GabbleSvcConnectionInterfaceRequests *svc,
                               GHashTable *requested_properties,
                               DBusGMethodInvocation *context)
 {
-  tp_dbus_g_method_return_not_implemented (context);
+  GabbleConnection *self = GABBLE_CONNECTION (svc);
+
+  return conn_requests_requestotron (self, requested_properties,
+      METHOD_CREATE_CHANNEL, context);
 }
 
 
+#if 0
+static void
+conn_requests_ensure_channel (GabbleSvcConnectionInterfaceRequests *svc,
+                              GHashTable *requested_properties,
+                              DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (svc);
+
+  return conn_requests_requestotron (self, requested_properties,
+      METHOD_ENSURE_CHANNEL, context);
+}
+#endif
+
+
 /* Initialization and glue */
+
+
+static void
+manager_new_channel (gpointer key,
+                     gpointer value,
+                     gpointer data)
+{
+  GabbleExportableChannel *channel = GABBLE_EXPORTABLE_CHANNEL (key);
+  GSList *request_tokens = value;
+  GabbleConnection *self = GABBLE_CONNECTION (data);
+  gchar *object_path, *channel_type;
+  guint handle_type, handle;
+  GSList *iter;
+  gboolean suppress_handler = FALSE;
+
+  exportable_channel_get_old_info (channel, &object_path, &channel_type,
+      &handle_type, &handle);
+
+  for (iter = request_tokens; iter != NULL; iter = iter->next)
+    {
+      ChannelRequest *request = iter->data;
+
+      if (request->suppress_handler)
+        {
+          suppress_handler = TRUE;
+          break;
+        }
+    }
+
+  tp_svc_connection_emit_new_channel (self, object_path, channel_type,
+      handle_type, handle, suppress_handler);
+
+  for (iter = request_tokens; iter != NULL; iter = iter->next)
+    {
+      satisfy_request (self, iter->data, G_OBJECT (channel),
+          object_path);
+    }
+
+  g_free (object_path);
+  g_free (channel_type);
+}
+
+
+static void
+manager_new_channels_foreach (gpointer key,
+                              gpointer value,
+                              gpointer data)
+{
+  GPtrArray *details = data;
+
+  g_ptr_array_add (details, get_channel_details (G_OBJECT (key)));
+}
+
+
+static void
+manager_new_channels_cb (GabbleChannelManager *manager,
+                         GHashTable *channels,
+                         GabbleConnection *self)
+{
+  GPtrArray *array;
+
+  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (GABBLE_IS_CONNECTION (self));
+
+  array = g_ptr_array_sized_new (g_hash_table_size (channels));
+  g_hash_table_foreach (channels, manager_new_channels_foreach, array);
+  gabble_svc_connection_interface_requests_emit_new_channels (self,
+      array);
+  g_ptr_array_foreach (array, (GFunc) g_value_array_free, NULL);
+  g_ptr_array_free (array, TRUE);
+
+  g_hash_table_foreach (channels, manager_new_channel, self);
+}
+
+
+static void
+manager_request_already_satisfied_cb (GabbleChannelManager *manager,
+                                      gpointer request_token,
+                                      GabbleExportableChannel *channel,
+                                      GabbleConnection *self)
+{
+  gchar *object_path;
+
+  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+  g_assert (GABBLE_IS_CONNECTION (self));
+
+  g_object_get (channel,
+      "object-path", &object_path,
+      NULL);
+
+  satisfy_request (self, request_token, G_OBJECT (channel), object_path);
+  g_free (object_path);
+}
+
+
+static void
+manager_request_failed_cb (GabbleChannelManager *manager,
+                           gpointer request_token,
+                           guint domain,
+                           gint code,
+                           gchar *message,
+                           GabbleConnection *self)
+{
+  GError error = { domain, code, message };
+
+  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (domain > 0);
+  g_assert (message != NULL);
+  g_assert (GABBLE_IS_CONNECTION (self));
+
+  fail_channel_request (self, request_token, &error);
+}
+
+
+static void
+manager_channel_closed_cb (GabbleChannelManager *manager,
+                           const gchar *path,
+                           GabbleConnection *self)
+{
+  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (path != NULL);
+  g_assert (GABBLE_IS_CONNECTION (self));
+
+  gabble_svc_connection_interface_requests_emit_channel_closed (self, path);
+}
 
 
 void
@@ -560,9 +1171,23 @@ gabble_conn_requests_init (GabbleConnection *self)
           (GCallback) connection_new_channel_cb, self);
       g_signal_connect (factory, "channel-error",
           (GCallback) connection_channel_error_cb, self);
+
     }
 
-  g_assert (self->channel_managers->len == 0);
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
+
+      g_signal_connect (manager, "new-channels",
+          (GCallback) manager_new_channels_cb, self);
+      g_signal_connect (manager, "request-already-satisfied",
+          (GCallback) manager_request_already_satisfied_cb, self);
+      g_signal_connect (manager, "request-failed",
+          (GCallback) manager_request_failed_cb, self);
+      g_signal_connect (manager, "channel-closed",
+          (GCallback) manager_channel_closed_cb, self);
+    }
 }
 
 

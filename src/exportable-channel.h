@@ -43,6 +43,9 @@ G_BEGIN_DECLS
 typedef struct _GabbleExportableChannel GabbleExportableChannel;
 typedef struct _GabbleExportableChannelIface GabbleExportableChannelIface;
 
+typedef void (*GabbleExportableChannelFunc) (GabbleExportableChannel *channel,
+    gpointer user_data);
+
 struct _GabbleExportableChannelIface {
     GTypeInterface parent;
 };

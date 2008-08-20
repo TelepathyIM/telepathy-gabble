@@ -640,10 +640,15 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       base_conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   GError *error = NULL;
-  GabbleExportableChannel *channel;
+  const gchar *channel_type;
+  GabbleTubesChannel *channel;
 
-  if (tp_strdiff (tp_asv_get_string (request_properties,
-          TP_IFACE_CHANNEL ".ChannelType"), TP_IFACE_CHANNEL_TYPE_TUBES))
+  channel_type = tp_asv_get_string (request_properties,
+            TP_IFACE_CHANNEL ".ChannelType");
+
+  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
+      tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
+      tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     return FALSE;
 
   if (tp_asv_get_uint32 (request_properties,
@@ -659,30 +664,74 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
   /* Don't support opening a channel to our self handle */
   if (handle == base_conn->self_handle)
     {
-     g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-         "Can't open a channel to your self handle");
-     goto error;
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Can't open a channel to your self handle");
+      goto error;
     }
 
   channel = g_hash_table_lookup (self->priv->channels,
       GUINT_TO_POINTER (handle));
 
-  if (channel == NULL)
+  if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
     {
-      new_tubes_channel (self, handle, base_conn->self_handle, request_token);
+      if (channel == NULL)
+        {
+          channel = new_tubes_channel (self, handle, base_conn->self_handle,
+              request_token);
+          return TRUE;
+        }
+
+      if (require_new)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "Already chatting with contact #%u in another channel", handle);
+          DEBUG ("Already chatting with contact #%u in another channel",
+              handle);
+          goto error;
+        }
+
+      gabble_channel_manager_emit_request_already_satisfied (self,
+          request_token, GABBLE_EXPORTABLE_CHANNEL (channel));
       return TRUE;
     }
-
-  if (require_new)
+  else
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "Already chatting with contact #%u in another channel", handle);
-      goto error;
-    }
+      GabbleTubeIface *new_channel;
 
-  gabble_channel_manager_emit_request_already_satisfied (self, request_token,
-      channel);
-  return TRUE;
+      if (channel == NULL)
+        {
+          channel = new_tubes_channel (self, handle, base_conn->self_handle,
+              request_token);
+        }
+      g_assert (channel != NULL);
+
+      new_channel = gabble_tubes_channel_tube_request (channel, request_token,
+          request_properties, require_new);
+      if (new_channel != NULL)
+        {
+          GSList *request_tokens;
+
+          tp_channel_factory_iface_emit_new_channel (self,
+              TP_CHANNEL_IFACE (new_channel), request_token);
+
+          if (request_token != NULL)
+            request_tokens = g_slist_prepend (NULL, request_token);
+          else
+            request_tokens = NULL;
+
+          gabble_channel_manager_emit_new_channel (self,
+              GABBLE_EXPORTABLE_CHANNEL (new_channel), request_tokens);
+
+          g_slist_free (request_tokens);
+        }
+      else
+        {
+          gabble_channel_manager_emit_request_already_satisfied (self,
+              request_token, GABBLE_EXPORTABLE_CHANNEL (channel));
+        }
+
+      return TRUE;
+    }
 
 error:
   gabble_channel_manager_emit_request_failed (self, request_token,

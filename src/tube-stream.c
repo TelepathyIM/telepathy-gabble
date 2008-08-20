@@ -128,6 +128,10 @@ enum
   PROP_ACCESS_CONTROL_PARAM,
   PROP_CHANNEL_DESTROYED,
   PROP_CHANNEL_PROPERTIES,
+  PROP_REQUESTED,
+  PROP_TARGET_ID,
+  PROP_INITIATOR_HANDLE,
+  PROP_INITIATOR_ID,
   LAST_PROPERTY
 };
 
@@ -975,6 +979,7 @@ gabble_tube_stream_get_property (GObject *object,
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (object);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
 
   switch (property_id)
     {
@@ -1041,6 +1046,36 @@ gabble_tube_stream_get_property (GObject *object,
                 GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
                 GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
                 NULL));
+        break;
+      case PROP_REQUESTED:
+        g_value_set_boolean (value,
+            (priv->initiator == priv->self_handle));
+        break;
+      case PROP_INITIATOR_ID:
+        if (priv->initiator == 0)
+          {
+            g_value_set_static_string (value, "");
+          }
+        else
+          {
+            TpHandleRepoIface *repo = tp_base_connection_get_handles (
+                base_conn, TP_HANDLE_TYPE_CONTACT);
+
+            g_value_set_string (value,
+                tp_handle_inspect (repo, priv->initiator));
+          }
+        break;
+      case PROP_TARGET_ID:
+          {
+            TpHandleRepoIface *repo = tp_base_connection_get_handles (
+                base_conn, priv->handle_type);
+
+            g_value_set_string (value,
+                tp_handle_inspect (repo, priv->handle));
+          }
+        break;
+      case PROP_INITIATOR_HANDLE:
+        g_value_set_uint (value, priv->initiator);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1117,6 +1152,13 @@ gabble_tube_stream_set_property (GObject *object,
             priv->access_control_param = tp_g_value_slice_dup (
                 g_value_get_pointer (value));
           }
+        break;
+      case PROP_INITIATOR_HANDLE:
+        /* PROP_INITIATOR_HANDLE and PROP_INITIATOR are the same property from
+         * two different interfaces (Channel.FUTURE and
+         * Channel.Interface.Tube.DRAFT). In case of tube channels, this can
+         * never be 0. The value is stored in priv->initiator. The object is
+         * created only with PROP_INITIATOR set, so do nothing here. */
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1318,6 +1360,36 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ACCESS_CONTROL_PARAM,
       param_spec);
+
+  param_spec = g_param_spec_string ("target-id", "Target JID",
+      "The string obtained by inspecting the target handle",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
+
+  param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
+      "The contact who initiated the channel",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
+      "The string obtained by inspecting the initiator-handle",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_ID,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("requested", "Requested?",
+      "True if this channel was requested by the local user",
+      FALSE,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   signals[OPENED] =
     g_signal_new ("tube-opened",

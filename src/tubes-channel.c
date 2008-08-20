@@ -1582,6 +1582,51 @@ generate_tube_id (void)
   return g_random_int_range (0, G_MAXINT);
 }
 
+GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
+    gpointer request_token, GHashTable *request_properties,
+    gboolean require_new)
+{
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubeIface *tube;
+  const gchar *channel_type;
+  const gchar *service;
+  GHashTable *parameters = NULL;
+  guint tube_id;
+  TpTubeType type;
+
+  tube_id = generate_tube_id ();
+
+  parameters = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  channel_type = tp_asv_get_string (request_properties,
+            TP_IFACE_CHANNEL ".ChannelType");
+
+  if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+    {
+      type = TP_TUBE_TYPE_STREAM;
+      service = tp_asv_get_string (request_properties,
+                GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+
+    }
+  else if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+    {
+      type = TP_TUBE_TYPE_DBUS;
+      service = tp_asv_get_string (request_properties,
+                GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+    }
+  else
+    g_assert_not_reached ();
+
+  DEBUG ("Request a tube channel with type='%s' and service='%s'",
+      channel_type, service);
+
+  tube = create_new_tube (self, type, priv->self_handle, service,
+      parameters, NULL, tube_id, NULL);
+
+  return tube;
+}
+
 /**
  * gabble_tubes_channel_offer_d_bus_tube
  *

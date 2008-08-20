@@ -63,6 +63,14 @@ def test(q, bus, conn, stream):
              []
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
+    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
+                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
+             },
+             ['org.freedesktop.Telepathy.Channel.TargetHandle'],
+             []
+             ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']
 
     _, vcard_event, roster_event = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
@@ -101,6 +109,7 @@ def test(q, bus, conn, stream):
 
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
 
+    # old requestotron
     call_async(q, conn, 'RequestChannel',
             tp_name_prefix + '.Channel.Type.Tubes', 1, bob_handle, True);
 
@@ -109,7 +118,6 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         )
-
 
     assert len(ret.value) == 1
     chan_path = ret.value[0]
@@ -146,6 +154,85 @@ def test(q, bus, conn, stream):
     assert new_sig.args[0][0] in properties['Channels'], \
             (new_sig.args[0][0], properties['Channels'])
 
+    # new requestotron
+    requestotron = dbus.Interface(conn,
+            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT')
+
+#    call_async(q, requestotron, 'CreateChannel',
+#            {'org.freedesktop.Telepathy.Channel.ChannelType':
+#                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+#             'org.freedesktop.Telepathy.Channel.TargetHandleType':
+#                1,
+#             'org.freedesktop.Telepathy.Channel.TargetHandle':
+#                bob_handle
+#            });
+#    # some properties are missing in the request, we expect gabble to return
+#    # the relevent error
+#    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
+
+    call_async(q, requestotron, 'CreateChannel',
+            {'org.freedesktop.Telepathy.Channel.ChannelType':
+                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+             'org.freedesktop.Telepathy.Channel.TargetHandleType':
+                1,
+             'org.freedesktop.Telepathy.Channel.TargetHandle':
+                bob_handle,
+             'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service':
+                "newecho",
+            });
+
+    ret, old_sig, new_sig = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
+        )
+
+    assert len(ret.value) == 2 # CreateChannel returns 2 values: o, a{sv}
+    new_chan_path = ret.value[0]
+    new_chan_prop_asv = ret.value[1]
+    assert new_chan_path.find("StreamTube") != -1, new_chan_path
+    assert new_chan_path.find("SITubesChannel") == -1, new_chan_path
+    # The path of the Channel.Type.Tubes object MUST be different to the path
+    # of the Channel.Type.StreamTube object !
+    assert chan_path != new_chan_path
+
+    print "new_chan_path = " + new_chan_path
+    print "chan_path = " + chan_path
+
+    assert old_sig.args[0] == new_chan_path
+    assert old_sig.args[1] == tp_name_prefix + '.Channel.Type.StreamTube.DRAFT', old_sig.args[1]
+    assert old_sig.args[2] == 1         # contact handle
+    assert old_sig.args[3] == bob_handle
+    assert old_sig.args[4] == True      # suppress handler
+
+    assert len(new_sig.args) == 1
+    assert len(new_sig.args[0]) == 1        # one channel
+    assert len(new_sig.args[0][0]) == 2     # two struct members
+    assert new_sig.args[0][0][0] == ret.value[0]
+    emitted_props = new_sig.args[0][0][1]
+    print str(emitted_props)
+
+    assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
+            tp_name_prefix + '.Channel.Type.StreamTube.DRAFT'
+    assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 1
+    assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
+            bob_handle
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.TargetID'] == \
+            'bob@localhost', emitted_props[tp_name_prefix + '.Channel.FUTURE.TargetID']
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+            == conn.GetSelfHandle()
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] == \
+            'test@localhost'
+
+    properties = conn.GetAll(
+            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert new_sig.args[0][0] in properties['Channels'], \
+            (new_sig.args[0][0], properties['Channels'])
+
+    ## following
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
     tubes_iface = dbus.Interface(tubes_chan,
         tp_name_prefix + '.Channel.Type.Tubes')
@@ -208,18 +295,15 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    # We offered a tube using the old tube API. Check the new tube API works
+    # We offered a tube using the old tube API and with the new API, so there
+    # is 2 tubes. Check the new tube API works
     assert len(filter(lambda x:
                   x[1] == "org.freedesktop.Telepathy.Channel.Type.Tubes",
                   conn.ListChannels())) == 1
-    assert len(filter(lambda x:
-      x[1] == "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT",
-      conn.ListChannels())) == 1
-
     channels = filter(lambda x: x[1]
       == "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT",
       conn.ListChannels())
-    assert len(channels) == 1
+    assert len(channels) == 2
 
     tube_chan = bus.get_object(conn.bus_name, channels[0][0])
     tube_iface = dbus.Interface(tubes_chan,
@@ -228,7 +312,7 @@ def test(q, bus, conn, stream):
     stream_tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert stream_tube_props.get("Service") == "echo"
+    assert stream_tube_props.get("Service") == "newecho", stream_tube_props
 
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
@@ -240,7 +324,9 @@ def test(q, bus, conn, stream):
     #                  'i': ('int', '-123'),
     #                  'u': ('uint', '123'),
     #                 }
-    assert tube_props.get("Status") == 1 # Tube_Channel_State_Remote_Pending
+
+    # 3 == Tube_Channel_State_Not_Offered
+    assert tube_props.get("Status") == 3, tube_props
 
     # The CM is the server, so fake a client wanting to talk to it
     iq = IQ(stream, 'set')
@@ -281,14 +367,14 @@ def test(q, bus, conn, stream):
         args=[stream_tube_id, bob_handle])
 
     tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert tubes == [(
+    assert (
         stream_tube_id,
         self_handle,
         1,      # Unix stream
         'echo',
         sample_parameters,
         2,      # OPEN
-        )]
+        ) in tubes
 
     # have the fake client open the stream
     iq = IQ(stream, 'set')
@@ -400,21 +486,22 @@ def test(q, bus, conn, stream):
         args=[dbus_tube_id, 2]) # 2 == OPEN
 
     tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert sorted(tubes) == sorted([(
+    assert (
         dbus_tube_id,
         self_handle,
         0,      # DBUS
         'com.example.TestCase',
         sample_parameters,
         2,      # OPEN
-        ),(
+        ) in tubes
+    assert (
         stream_tube_id,
         self_handle,
         1,      # stream
         'echo',
         sample_parameters,
         2,      # OPEN
-        )])
+        ) in tubes
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
     dbus_tube_conn = Connection(dbus_tube_adr)

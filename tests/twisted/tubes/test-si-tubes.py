@@ -208,9 +208,8 @@ def test(q, bus, conn, stream):
     assert len(new_sig.args) == 1
     assert len(new_sig.args[0]) == 1        # one channel
     assert len(new_sig.args[0][0]) == 2     # two struct members
-    assert new_sig.args[0][0][0] == ret.value[0]
+    assert new_sig.args[0][0][0] == new_chan_path
     emitted_props = new_sig.args[0][0][1]
-    print str(emitted_props)
 
     assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
             tp_name_prefix + '.Channel.Type.StreamTube.DRAFT'
@@ -300,13 +299,15 @@ def test(q, bus, conn, stream):
     assert len(filter(lambda x:
                   x[1] == "org.freedesktop.Telepathy.Channel.Type.Tubes",
                   conn.ListChannels())) == 1
-    channels = filter(lambda x: x[1]
-      == "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT",
+    channels = filter(lambda x:
+      x[1] == "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT" and
+      x[0] == new_chan_path,
       conn.ListChannels())
-    assert len(channels) == 2
+    assert len(channels) == 1
+    assert new_chan_path == channels[0][0]
 
     tube_chan = bus.get_object(conn.bus_name, channels[0][0])
-    tube_iface = dbus.Interface(tubes_chan,
+    tube_iface = dbus.Interface(tube_chan,
         tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
 
     stream_tube_props = tube_chan.GetAll(

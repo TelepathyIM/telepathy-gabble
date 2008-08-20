@@ -366,6 +366,7 @@ _foreach_slave (gpointer key,
   struct _ForeachData *data = (struct _ForeachData *) user_data;
   GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (value);
 
+  /* assert that it has both interfaces, for now */
   g_assert (TP_IS_CHANNEL_IFACE (chan));
 
   /* Add channels of type Channel.Type.Tubes */
@@ -640,8 +641,8 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       base_conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   GError *error = NULL;
-  const gchar *channel_type;
   GabbleTubesChannel *channel;
+  const gchar *channel_type;
 
   channel_type = tp_asv_get_string (request_properties,
             TP_IFACE_CHANNEL ".ChannelType");

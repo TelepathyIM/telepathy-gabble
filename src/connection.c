@@ -265,6 +265,10 @@ gabble_connection_constructor (GType type,
   conn_olpc_activity_properties_init (self);
   gabble_conn_requests_init (self);
 
+  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
+      TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
+          conn_capabilities_fill_contact_attributes);
+
   self->bytestream_factory = gabble_bytestream_factory_new (self);
 
   self->avatar_requests = g_hash_table_new (NULL, NULL);

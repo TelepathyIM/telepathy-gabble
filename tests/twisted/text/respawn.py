@@ -66,8 +66,6 @@ def test(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert future_props['Requested'] == True
-    assert future_props['TargetID'] == jid,\
-            (future_props['TargetID'], jid)
     assert future_props['InitiatorHandle'] == self_handle,\
             (future_props['InitiatorHandle'], self_handle)
     assert future_props['InitiatorID'] == 'test@localhost',\

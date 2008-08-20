@@ -37,11 +37,15 @@ def _expect_group_channel(q, bus, conn, name, contacts):
     inspected = conn.InspectHandles(1, group_iface.GetMembers())
     assert inspected == contacts, (inspected, contacts)
 
+    channel_props = chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props['TargetID'] == name, channel_props
+
     future_props = chan.GetAll(
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert future_props['Requested'] == False
-    assert future_props['TargetID'] == name
     assert future_props['InitiatorID'] == ''
     assert future_props['InitiatorHandle'] == 0
 

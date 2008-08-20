@@ -12,6 +12,8 @@ from gabbletest import exec_test, make_result_iq
 
 text = 'org.freedesktop.Telepathy.Channel.Type.Text'
 sm = 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
+icaps = 'org.freedesktop.Telepathy.Connection.Interface.Capabilities'
+icaps_attr  = icaps + "/caps"
 basic_caps = [(2, text, 3, 0)]
 
 def make_presence(from_jid, type, status):
@@ -43,6 +45,8 @@ def test(q, bus, conn, stream):
 
     # no special capabilities
     assert conn.Capabilities.GetCapabilities([2]) == basic_caps
+    assert conn.Contacts.GetContactAttributes([2], [icaps], False) == { 2L:
+        { icaps + "/caps": basic_caps } }
 
     # send updated presence with Jingle audio/video caps info. we turn on both
     # audio and video at the same time to test that all of the capabilities are
@@ -87,6 +91,13 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
         args=[[(2, sm, 0, 3, 0, 3)]])
 
+    caps = conn.Contacts.GetContactAttributes([2], [icaps], False)
+    assert caps.keys() == [2L]
+    assert caps[2L].keys() == [icaps_attr]
+    assert len(caps[2L][icaps_attr]) == 2
+    assert basic_caps[0] in caps[2L][icaps_attr]
+    assert (2, sm, 3, 3) in caps[2L][icaps_attr]
+
     # send updated presence without video support
     presence = make_presence('bob@foo.com/Foo', None, 'hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
@@ -98,6 +109,13 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
         args=[[(2, sm, 3, 3, 3, 1)]])
 
+    caps = conn.Contacts.GetContactAttributes([2], [icaps], False)
+    assert caps.keys() == [2L]
+    assert caps[2L].keys() == [icaps_attr]
+    assert len(caps[2L][icaps_attr]) == 2
+    assert basic_caps[0] in caps[2L][icaps_attr]
+    assert (2, sm, 3, 1) in caps[2L][icaps_attr]
+
     # go offline
     presence = make_presence('bob@foo.com/Foo', 'unavailable', None)
     stream.send(presence)
@@ -105,6 +123,9 @@ def test(q, bus, conn, stream):
     # can't do audio calls any more
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
         args=[[(2, sm, 3, 0, 1, 0)]])
+
+    # Contact went offline, so caps are now unknown
+    assert conn.Contacts.GetContactAttributes([2], [icaps], False) == {}
 
     # regression test for fd.o #15198: getting caps of invalid handle crashed
     try:

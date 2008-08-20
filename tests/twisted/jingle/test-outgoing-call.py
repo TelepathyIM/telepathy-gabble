@@ -75,10 +75,9 @@ def test(q, bus, conn, stream):
             'TargetHandleType'] == 0
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
             0
+    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == ''
     assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
             'Requested'] == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
-            'TargetID'] == ''
     assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
             'InitiatorHandle'] == self_handle
     assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'

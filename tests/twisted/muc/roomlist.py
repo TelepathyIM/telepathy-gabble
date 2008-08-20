@@ -70,8 +70,8 @@ def test(q, bus, conn, stream):
             tp_name_prefix + '.Channel.Type.RoomList'
     assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 0
     assert props[tp_name_prefix + '.Channel.TargetHandle'] == 0
+    assert props[tp_name_prefix + '.Channel.TargetID'] == ''
     assert props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert props[tp_name_prefix + '.Channel.FUTURE.TargetID'] == ''
     assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
             == conn.GetSelfHandle()
     assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] \
@@ -139,8 +139,8 @@ def test(q, bus, conn, stream):
             tp_name_prefix + '.Channel.Type.RoomList'
     assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 0
     assert props[tp_name_prefix + '.Channel.TargetHandle'] == 0
+    assert props[tp_name_prefix + '.Channel.TargetID'] == ''
     assert props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert props[tp_name_prefix + '.Channel.FUTURE.TargetID'] == ''
     assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
             == conn.GetSelfHandle()
     assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] \

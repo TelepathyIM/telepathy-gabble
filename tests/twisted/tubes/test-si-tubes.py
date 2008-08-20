@@ -108,6 +108,7 @@ def test(q, bus, conn, stream):
     assert 'org.freedesktop.Telepathy.Channel.Interface.Group' not in \
             channel_props['Interfaces'], \
             channel_props['Interfaces']
+    assert channel_props['TargetID'] == 'bob@localhost'
 
     self_handle = conn.GetSelfHandle()
 
@@ -116,7 +117,6 @@ def test(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert future_props['Requested'] == True
-    assert future_props['TargetID'] == 'bob@localhost'
     assert future_props['InitiatorID'] == 'test@localhost'
     assert future_props['InitiatorHandle'] == self_handle
 

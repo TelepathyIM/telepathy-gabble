@@ -49,12 +49,16 @@ def test(q, bus, conn, stream):
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
 
+    channel_props = group_iface.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props['TargetID'] == '', channel_props
+
     # Exercise FUTURE properties
     future_props = group_iface.GetAll(
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert future_props['Requested'] == True
-    assert future_props['TargetID'] == ''
     assert future_props['InitiatorID'] == 'test@localhost'
     assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
 

@@ -22,6 +22,9 @@ There are no command-line options.
 .TP
 \fBGABBLE_LOGFILE\fR=\fIfilename\fR
 If set, debug output will go to the given file rather than to stderr.
+If \fB+\fR is prepended to the \fIfilename\fR (e.g.
+\fBGABBLE_LOGFILE=+gabble.log\fR), debug output will be appended
+to the file; otherwise, any existing file will be replaced.
 .TP
 \fBGABBLE_DEBUG\fR=\fItype\fR
 May be set to "all" for full debug output, or various undocumented options

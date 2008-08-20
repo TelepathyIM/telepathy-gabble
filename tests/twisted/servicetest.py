@@ -398,7 +398,8 @@ def make_connection(bus, event_func, name, proto, params):
     conn = ProxyWrapper(conn, tp_name_prefix + '.Connection',
         dict([
             (name, tp_name_prefix + '.Connection.Interface.' + name)
-            for name in ['Aliasing', 'Avatars', 'Capabilities', 'Presence']] +
+            for name in ['Aliasing', 'Avatars', 'Capabilities', 'Contacts',
+              'Presence']] +
         [('Peer', 'org.freedesktop.DBus.Peer')]))
 
     bus.add_signal_receiver(

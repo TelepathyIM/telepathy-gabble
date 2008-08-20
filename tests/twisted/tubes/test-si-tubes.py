@@ -36,19 +36,20 @@ class Echo(Protocol):
     def dataReceived(self, data):
         self.transport.write(data)
 
-def set_up_echo():
+def set_up_echo(name):
     factory = Factory()
     factory.protocol = Echo
     try:
-        os.remove(os.getcwd() + '/stream')
+        os.remove(os.getcwd() + '/stream' + name)
     except OSError, e:
         if e.errno != errno.ENOENT:
             raise
-    reactor.listenUNIX(os.getcwd() + '/stream', factory)
+    reactor.listenUNIX(os.getcwd() + '/stream' + name, factory)
 
 
 def test(q, bus, conn, stream):
-    set_up_echo()
+    set_up_echo("")
+    set_up_echo("2")
     conn.Connect()
 
     properties = conn.GetAll(
@@ -264,7 +265,7 @@ def test(q, bus, conn, stream):
     assert future_props['InitiatorID'] == 'test@localhost'
     assert future_props['InitiatorHandle'] == self_handle
 
-    # Unix socket
+    # Offer the tube, old API
     path = os.getcwd() + '/stream'
     call_async(q, tubes_iface, 'OfferStreamTube',
         'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
@@ -295,8 +296,8 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    # We offered a tube using the old tube API and with the new API, so there
-    # is 2 tubes. Check the new tube API works
+    # We offered a tube using the old tube API and created one with the new
+    # API, so there is 2 tubes. Check the new tube API works
     assert len(filter(lambda x:
                   x[1] == "org.freedesktop.Telepathy.Channel.Type.Tubes",
                   conn.ListChannels())) == 1
@@ -357,7 +358,40 @@ def test(q, bus, conn, stream):
     assert future_props['InitiatorID'] == 'test@localhost'
     assert future_props['InitiatorHandle'] == self_handle
 
+    # Offer the tube, new API
+    path2 = os.getcwd() + '/stream2'
+    call_async(q, tube_iface, 'OfferStreamTube',
+        0, dbus.ByteArray(path2), 0, "")
+
+    event = q.expect('stream-message')
+    message = event.stanza
+    tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
+        message)
+    if tube_nodes is None:
+        return False
+
+    assert len(tube_nodes) == 1
+    tube = tube_nodes[0]
+
+    assert tube['service'] == 'newecho'
+    assert tube['type'] == 'stream'
+    assert not tube.hasAttribute('initiator')
+    new_stream_tube_id = long(tube['id'])
+
+    #parameters not yet correctly implemented..
+    #params = {}
+    #parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
+    #for node in parameter_nodes:
+    #    assert node['name'] not in params
+    #    params[node['name']] = (node['type'], str(node))
+    #assert params == {'ay': ('bytes', 'aGVsbG8='),
+    #                  's': ('str', 'hello'),
+    #                  'i': ('int', '-123'),
+    #                  'u': ('uint', '123'),
+    #                 }
+
     # The CM is the server, so fake a client wanting to talk to it
+    # Old API tube
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
@@ -405,7 +439,57 @@ def test(q, bus, conn, stream):
         2,      # OPEN
         ) in tubes
 
+    # The CM is the server, so fake a client wanting to talk to it
+    # New API tube
+    iq = IQ(stream, 'set')
+    iq['to'] = 'test@localhost/Resource'
+    iq['from'] = 'bob@localhost/Bob'
+    si = iq.addElement((NS_SI, 'si'))
+    si['id'] = 'beta'
+    si['profile'] = NS_TUBES
+    feature = si.addElement((NS_FEATURE_NEG, 'feature'))
+    x = feature.addElement((NS_X_DATA, 'x'))
+    x['type'] = 'form'
+    field = x.addElement((None, 'field'))
+    field['var'] = 'stream-method'
+    field['type'] = 'list-single'
+    option = field.addElement((None, 'option'))
+    value = option.addElement((None, 'value'))
+    value.addContent(NS_IBB)
+
+    stream_node = si.addElement((NS_TUBES, 'stream'))
+    stream_node['tube'] = str(new_stream_tube_id)
+    stream.send(iq)
+
+    si_reply_event, _ = q.expect_many(
+            EventPattern('stream-iq', iq_type='result'),
+            EventPattern('dbus-signal', signal='TubeChannelStateChanged',
+                args=[2])) # 2 == OPEN
+    iq = si_reply_event.stanza
+    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI,
+        iq)[0]
+    value = xpath.queryForNodes('/si/feature/x/field/value', si)
+    assert len(value) == 1
+    proto = value[0]
+    assert str(proto) == NS_IBB
+    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
+    assert len(tube) == 1
+
+    q.expect('dbus-signal', signal='StreamTubeNewConnection',
+        args=[bob_handle])
+
+    tubes = tubes_iface.ListTubes(byte_arrays=True)
+    assert (
+        new_stream_tube_id,
+        self_handle,
+        1,      # Unix stream
+        'newecho',
+        {}, # sample_parameters, # FIXME: parameters should work too...
+        2,      # OPEN
+        ) in tubes, tubes
+
     # have the fake client open the stream
+    # Old tube API
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
@@ -436,6 +520,42 @@ def test(q, bus, conn, stream):
     assert ibb_data['sid'] == 'alpha'
     binary = base64.b64decode(str(ibb_data))
     assert binary == 'hello, world'
+
+    if not HAVE_DBUS_TUBES:
+        return
+
+    # have the fake client open the stream
+    # New tube API
+    iq = IQ(stream, 'set')
+    iq['to'] = 'test@localhost/Resource'
+    iq['from'] = 'bob@localhost/Bob'
+    open = iq.addElement((NS_IBB, 'open'))
+    open['sid'] = 'beta'
+    open['block-size'] = '4096'
+    stream.send(iq)
+
+    q.expect('stream-iq', iq_type='result')
+    # have the fake client send us some data
+    message = domish.Element(('jabber:client', 'message'))
+    message['to'] = 'test@localhost/Resource'
+    message['from'] = 'bob@localhost/Bob'
+    data_node = message.addElement((NS_IBB, 'data'))
+    data_node['sid'] = 'beta'
+    data_node['seq'] = '0'
+    data_node.addContent(base64.b64encode('hello, new world'))
+    stream.send(message)
+
+    event = q.expect('stream-message', to='bob@localhost/Bob')
+    message = event.stanza
+
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
+        message)
+    assert data_nodes is not None
+    assert len(data_nodes) == 1
+    ibb_data = data_nodes[0]
+    assert ibb_data['sid'] == 'beta'
+    binary = base64.b64decode(str(ibb_data))
+    assert binary == 'hello, new world'
 
     if not HAVE_DBUS_TUBES:
         return

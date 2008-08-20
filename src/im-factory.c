@@ -27,7 +27,6 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
-#include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 
@@ -40,14 +39,11 @@
 #include "im-channel.h"
 #include "text-mixin.h"
 
-static void gabble_im_factory_iface_init (gpointer, gpointer);
 static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleImFactory, gabble_im_factory, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
-      gabble_im_factory_iface_init));
+      channel_manager_iface_init));
 
 /* properties */
 enum
@@ -341,8 +337,6 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 
           DEBUG ("reopening channel with handle %u due to pending messages",
               contact_handle);
-          tp_channel_factory_iface_emit_new_channel (self,
-              (TpChannelIface *) chan, NULL);
           gabble_channel_manager_emit_new_channel (self,
               (GabbleExportableChannel *) chan, NULL);
         }
@@ -383,14 +377,11 @@ new_im_channel (GabbleImFactory *fac,
 
   DEBUG ("object path %s", object_path);
 
+  g_free (object_path);
+
   g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, fac);
 
   g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
-
-  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *) chan,
-      NULL);
-
-  g_free (object_path);
 
   if (request_token != NULL)
     request_tokens = g_slist_prepend (NULL, request_token);
@@ -473,9 +464,6 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
   struct _ForeachData *data = user_data;
   GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (value);
 
-  /* assert that it has both interfaces, for now */
-  g_assert (TP_IS_CHANNEL_IFACE (chan));
-
   data->func (chan, data->user_data);
 }
 
@@ -491,47 +479,6 @@ gabble_im_factory_foreach_channel (GabbleChannelManager *manager,
   data.func = func;
 
   g_hash_table_foreach (self->priv->channels, _foreach_slave, &data);
-}
-
-
-static TpChannelFactoryRequestStatus
-gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
-                                 const gchar *chan_type,
-                                 TpHandleType handle_type,
-                                 guint handle,
-                                 gpointer request,
-                                 TpChannelIface **ret,
-                                 GError **error)
-{
-  GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base_conn, TP_HANDLE_TYPE_CONTACT);
-  GabbleIMChannel *chan;
-  TpChannelFactoryRequestStatus status;
-
-  if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_TEXT))
-    return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
-
-  if (handle_type != TP_HANDLE_TYPE_CONTACT)
-    return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
-
-  if (!tp_handle_is_valid (contact_repo, handle, error))
-    return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
-
-  chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
-
-  status = TP_CHANNEL_FACTORY_REQUEST_STATUS_EXISTING;
-  if (!chan)
-    {
-      status = TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
-      chan = new_im_channel (fac, handle, base_conn->self_handle, request);
-    }
-
-  g_assert (chan);
-  *ret = TP_CHANNEL_IFACE (chan);
-  return status;
 }
 
 
@@ -648,23 +595,6 @@ gabble_im_factory_request_channel (GabbleChannelManager *manager,
 
   return gabble_im_factory_requestotron (self, request_token,
       request_properties, FALSE);
-}
-
-
-static void
-gabble_im_factory_iface_init (gpointer g_iface,
-                              gpointer iface_data)
-{
-  TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
-
-  klass->close_all =
-      (TpChannelFactoryIfaceProc) gabble_im_factory_close_all;
-  klass->request = gabble_im_factory_iface_request;
-
-  /* this function is basically the same for channel factory and channel
-   * manager, but with differently-typed pointers */
-  klass->foreach = (TpChannelFactoryIfaceForeachImpl)
-    gabble_im_factory_foreach_channel;
 }
 
 

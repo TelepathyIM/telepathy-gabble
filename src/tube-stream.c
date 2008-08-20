@@ -1012,6 +1012,7 @@ gabble_tube_stream_get_property (GObject *object,
         g_value_set_uint (value, priv->initiator);
         break;
       case PROP_SERVICE:
+        DEBUG ("get service: '%s' on tube %p", priv->service, object);
         g_value_set_string (value, priv->service);
         break;
       case PROP_PARAMETERS:
@@ -1122,6 +1123,10 @@ gabble_tube_stream_set_property (GObject *object,
         priv->initiator = g_value_get_uint (value);
         break;
       case PROP_SERVICE:
+        /* I don't mind the leak, it is a debug! */
+        DEBUG ("set service to '%s' (replace '%s' if any) on tube %p",
+            g_value_dup_string (value), priv->service, object);
+
         g_free (priv->service);
         priv->service = g_value_dup_string (value);
         break;

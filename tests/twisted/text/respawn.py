@@ -63,12 +63,16 @@ def test(q, bus, conn, stream):
     assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
             'InitiatorID'] == 'test@localhost'
 
+    channel_props = text_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props['TargetID'] == jid,\
+            (channel_props['TargetID'], jid)
+
     future_props = text_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert future_props['Requested'] == True
-    assert future_props['TargetID'] == jid,\
-            (future_props['TargetID'], jid)
     assert future_props['InitiatorHandle'] == self_handle,\
             (future_props['InitiatorHandle'], self_handle)
     assert future_props['InitiatorID'] == 'test@localhost',\
@@ -134,12 +138,16 @@ def test(q, bus, conn, stream):
 
     # it now behaves as if the message had initiated it
 
+    channel_props = text_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props['TargetID'] == jid,\
+            (channel_props['TargetID'], jid)
+
     future_props = text_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert future_props['Requested'] == False
-    assert future_props['TargetID'] == jid,\
-            (future_props['TargetID'], jid)
     assert future_props['InitiatorHandle'] == foo_handle,\
             (future_props['InitiatorHandle'], foo_handle)
     assert future_props['InitiatorID'] == 'foo@bar.com',\

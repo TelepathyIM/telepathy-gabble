@@ -2,6 +2,7 @@ tools_dir = $(top_srcdir)/tools
 
 EXTRA_DIST = \
     all.xml \
+    Channel_Bundle.xml \
     Channel_Future.xml \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \

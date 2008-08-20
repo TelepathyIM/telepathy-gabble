@@ -1041,7 +1041,7 @@ gabble_tube_stream_get_property (GObject *object,
                 TP_IFACE_CHANNEL, "TargetHandle",
                 TP_IFACE_CHANNEL, "TargetHandleType",
                 TP_IFACE_CHANNEL, "ChannelType",
-                GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
+                TP_IFACE_CHANNEL, "TargetID",
                 GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
                 GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
                 GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
@@ -1223,12 +1223,12 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       { "TargetHandleType", "handle-type", NULL },
       { "TargetHandle", "handle", NULL },
       { "ChannelType", "channel-type", NULL },
+      { "TargetID", "target-id", NULL },
       { "Interfaces", "interfaces", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "Requested", "requested", NULL },
-      { "TargetID", "target-id", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
       { NULL }

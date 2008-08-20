@@ -231,12 +231,12 @@ def test(q, bus, conn, stream):
     assert new_sig.args[0][0] in properties['Channels'], \
             (new_sig.args[0][0], properties['Channels'])
 
-    ## following
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
     tubes_iface = dbus.Interface(tubes_chan,
         tp_name_prefix + '.Channel.Type.Tubes')
 
     # Exercise basic Channel Properties from spec 0.17.7
+    # on the Channel.Type.Tubes channel
     channel_props = tubes_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
             dbus_interface='org.freedesktop.DBus.Properties')
@@ -256,6 +256,7 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
 
     # Exercise FUTURE properties
+    # on the Channel.Type.Tubes channel
     future_props = tubes_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
@@ -328,6 +329,33 @@ def test(q, bus, conn, stream):
 
     # 3 == Tube_Channel_State_Not_Offered
     assert tube_props.get("Status") == 3, tube_props
+
+    # Exercise basic Channel Properties from spec 0.17.7
+    # on the Channel.Type.StreamTube channel
+    channel_props = tube_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props.get('TargetHandle') == bob_handle,\
+            (channel_props.get('TargetHandle'), bob_handle)
+    assert channel_props.get('TargetHandleType') == 1,\
+            channel_props.get('TargetHandleType')
+    assert channel_props.get('ChannelType') == \
+            'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',\
+            channel_props.get('ChannelType')
+    assert 'Interfaces' in channel_props, channel_props
+    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' not in \
+            channel_props['Interfaces'], \
+            channel_props['Interfaces']
+    assert channel_props['TargetID'] == 'bob@localhost'
+
+    # Exercise FUTURE properties
+    # on the Channel.Type.StreamTube channel
+    future_props = tube_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.FUTURE',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['Requested'] == True
+    assert future_props['InitiatorID'] == 'test@localhost'
+    assert future_props['InitiatorHandle'] == self_handle
 
     # The CM is the server, so fake a client wanting to talk to it
     iq = IQ(stream, 'set')

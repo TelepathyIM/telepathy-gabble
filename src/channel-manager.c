@@ -224,9 +224,7 @@ gabble_channel_manager_emit_new_channel (gpointer instance,
  * @path: A channel's object-path
  *
  * Emit the #GabbleChannelManager::channel-closed signal indicating that
- * the given channel has been closed. (This is a convenient shortcut for
- * calling gabble_channel_manager_emit_channel_closed() with the
- * #GabbleExportableChannel:object-path property of @channel.)
+ * the channel at the given object path has been closed.
  */
 void
 gabble_channel_manager_emit_channel_closed (gpointer instance,
@@ -290,8 +288,7 @@ gabble_channel_manager_emit_request_already_satisfied (gpointer instance,
 /**
  * gabble_channel_manager_emit_request_failed:
  * @instance: An object implementing #GabbleChannelManager
- * @request_token: An opaque pointer representing the request that
- *  succeeded
+ * @request_token: An opaque pointer representing the request that failed
  * @domain: a #GError domain
  * @code: a #GError code appropriate for @domain
  * @message: the error message
@@ -314,10 +311,9 @@ gabble_channel_manager_emit_request_failed (gpointer instance,
 
 
 /**
- * gabble_channel_manager_emit_request_failed:
+ * gabble_channel_manager_emit_request_failed_printf:
  * @instance: An object implementing #GabbleChannelManager
- * @request_token: An opaque pointer representing the request that
- *  succeeded
+ * @request_token: An opaque pointer representing the request that failed
  * @domain: a #GError domain
  * @code: a #GError code appropriate for @domain
  * @format: a printf-style format string for the error message

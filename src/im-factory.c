@@ -62,6 +62,8 @@ struct _GabbleImFactoryPrivate
   LmMessageHandler *message_cb;
   GHashTable *channels;
 
+  gulong status_changed_id;
+
   gboolean dispose_has_run;
 };
 
@@ -98,10 +100,8 @@ gabble_im_factory_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   GabbleImFactory *self = GABBLE_IM_FACTORY (obj);
 
-  /* conn is guaranteed to live longer than the GabbleImFactory, so this
-   * never needs disconnecting */
-  g_signal_connect (self->priv->conn, "status-changed",
-      (GCallback) connection_status_changed_cb, obj);
+  self->priv->status_changed_id = g_signal_connect (self->priv->conn,
+      "status-changed", (GCallback) connection_status_changed_cb, obj);
 
   return obj;
 }
@@ -406,17 +406,31 @@ new_im_channel (GabbleImFactory *fac,
 }
 
 static void
-gabble_im_factory_close_all (GabbleImFactory *fac)
+gabble_im_factory_close_all (GabbleImFactory *self)
 {
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
-
-  DEBUG ("closing channels");
-
-  if (priv->channels)
+  if (self->priv->channels != NULL)
     {
-      GHashTable *tmp = priv->channels;
-      priv->channels = NULL;
+      GHashTable *tmp = self->priv->channels;
+
+      DEBUG ("closing channels");
+      self->priv->channels = NULL;
       g_hash_table_destroy (tmp);
+    }
+
+  if (self->priv->status_changed_id != 0)
+    {
+      g_signal_handler_disconnect (self->priv->conn,
+          self->priv->status_changed_id);
+      self->priv->status_changed_id = 0;
+    }
+
+  if (self->priv->message_cb != NULL)
+    {
+      DEBUG ("removing callbacks");
+      lm_connection_unregister_message_handler (self->priv->conn->lmconn,
+          self->priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
+      lm_message_handler_unref (self->priv->message_cb);
+      self->priv->message_cb = NULL;
     }
 }
 
@@ -427,8 +441,9 @@ connection_status_changed_cb (GabbleConnection *conn,
                               guint reason,
                               GabbleImFactory *self)
 {
-  if (status == TP_CONNECTION_STATUS_CONNECTING)
+  switch (status)
     {
+    case TP_CONNECTION_STATUS_CONNECTING:
       DEBUG ("adding callbacks");
       g_assert (self->priv->message_cb == NULL);
 
@@ -437,21 +452,11 @@ connection_status_changed_cb (GabbleConnection *conn,
       lm_connection_register_message_handler (self->priv->conn->lmconn,
           self->priv->message_cb, LM_MESSAGE_TYPE_MESSAGE,
           LM_HANDLER_PRIORITY_LAST);
-    }
-  else if (status == TP_CONNECTION_STATUS_DISCONNECTED)
-    {
-      gabble_im_factory_close_all (self);
+      break;
 
-      /* this can be called before we have ever been CONNECTING, so we need
-       * to guard it */
-      if (self->priv->message_cb != NULL)
-        {
-          DEBUG ("removing callbacks");
-          lm_connection_unregister_message_handler (self->priv->conn->lmconn,
-              self->priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
-          lm_message_handler_unref (self->priv->message_cb);
-          self->priv->message_cb = NULL;
-        }
+    case TP_CONNECTION_STATUS_DISCONNECTED:
+      gabble_im_factory_close_all (self);
+      break;
     }
 }
 

@@ -73,6 +73,7 @@ enum
 struct _GabblePrivateTubesFactoryPrivate
 {
   GabbleConnection *conn;
+  gulong status_changed_id;
   LmMessageHandler *msg_tube_cb;
 
   GHashTable *channels;
@@ -138,10 +139,8 @@ gabble_private_tubes_factory_constructor (GType type,
   lm_connection_register_message_handler (priv->conn->lmconn,
       priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
 
-  /* conn is guaranteed to live longer than the factory, so this
-   * never needs disconnecting */
-  g_signal_connect (priv->conn, "status-changed",
-      (GCallback) connection_status_changed_cb, obj);
+  self->priv->status_changed_id = g_signal_connect (self->priv->conn,
+      "status-changed", (GCallback) connection_status_changed_cb, obj);
 
   return obj;
 }
@@ -162,10 +161,6 @@ gabble_private_tubes_factory_dispose (GObject *object)
 
   gabble_private_tubes_factory_close_all (fac);
   g_assert (priv->channels == NULL);
-
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE);
-  lm_message_handler_unref (priv->msg_tube_cb);
 
   if (G_OBJECT_CLASS (gabble_private_tubes_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_private_tubes_factory_parent_class)->dispose (
@@ -338,16 +333,31 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
 {
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
-  GHashTable *tmp;
 
   DEBUG ("closing 1-1 tubes channels");
 
-  if (priv->channels == NULL)
-    return;
+  if (priv->status_changed_id != 0)
+    {
+      g_signal_handler_disconnect (priv->conn,
+          priv->status_changed_id);
+      priv->status_changed_id = 0;
+    }
 
-  tmp = priv->channels;
-  priv->channels = NULL;
-  g_hash_table_destroy (tmp);
+  if (priv->msg_tube_cb != NULL)
+    {
+      lm_connection_unregister_message_handler (priv->conn->lmconn,
+        priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE);
+      lm_message_handler_unref (priv->msg_tube_cb);
+      priv->msg_tube_cb = NULL;
+    }
+
+  if (priv->channels != NULL)
+    {
+      GHashTable *tmp = priv->channels;
+
+      priv->channels = NULL;
+      g_hash_table_destroy (tmp);
+    }
 }
 
 struct _ForeachData

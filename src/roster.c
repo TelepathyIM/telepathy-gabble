@@ -1779,8 +1779,8 @@ struct foreach_data {
 
 static void
 _gabble_roster_foreach_channel_helper (gpointer key,
-                                          gpointer value,
-                                          gpointer data)
+                                       gpointer value,
+                                       gpointer data)
 {
   GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (value);
   struct foreach_data *foreach = (struct foreach_data *) data;

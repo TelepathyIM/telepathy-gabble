@@ -62,6 +62,12 @@ def test(q, bus, conn, stream):
     assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
             'InitiatorID'] == 'test@localhost'
 
+    channel_props = text_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props['TargetID'] == jid,\
+            (channel_props['TargetID'], jid)
+
     future_props = text_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')

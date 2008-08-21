@@ -61,6 +61,7 @@ typedef struct _GabbleMediaFactoryPrivate GabbleMediaFactoryPrivate;
 struct _GabbleMediaFactoryPrivate
 {
   GabbleConnection *conn;
+  gulong status_changed_id;
   LmMessageHandler *jingle_cb;
   LmMessageHandler *jingle_info_cb;
 
@@ -681,7 +682,7 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
 
   DEBUG ("closing channels");
 
-  if (priv->channels)
+  if (priv->channels != NULL)
     {
       GPtrArray *tmp = priv->channels;
       guint i;
@@ -701,10 +702,33 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
       g_ptr_array_free (tmp, TRUE);
     }
 
-  if (priv->session_chans)
+  if (priv->session_chans != NULL)
     {
       g_hash_table_destroy (priv->session_chans);
       priv->session_chans = NULL;
+    }
+
+  if (priv->status_changed_id != 0)
+    {
+      g_signal_handler_disconnect (priv->conn,
+          priv->status_changed_id);
+      priv->status_changed_id = 0;
+    }
+
+  if (priv->jingle_cb != NULL)
+    {
+      DEBUG ("removing callbacks");
+      g_assert (priv->jingle_info_cb != NULL);
+
+      lm_connection_unregister_message_handler (priv->conn->lmconn,
+          priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
+      lm_message_handler_unref (priv->jingle_cb);
+      priv->jingle_cb = NULL;
+
+      lm_connection_unregister_message_handler (priv->conn->lmconn,
+          priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
+      lm_message_handler_unref (priv->jingle_info_cb);
+      priv->jingle_info_cb = NULL;
     }
 }
 
@@ -772,24 +796,6 @@ connection_status_changed_cb (GabbleConnection *conn,
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
       gabble_media_factory_close_all (self);
-
-      /* this can be called before we have ever been CONNECTING, so we need
-       * to guard it */
-      if (priv->jingle_cb != NULL)
-        {
-          DEBUG ("removing callbacks");
-          g_assert (priv->jingle_info_cb != NULL);
-
-          lm_connection_unregister_message_handler (priv->conn->lmconn,
-              priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
-          lm_message_handler_unref (priv->jingle_cb);
-          priv->jingle_cb = NULL;
-
-          lm_connection_unregister_message_handler (priv->conn->lmconn,
-              priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
-          lm_message_handler_unref (priv->jingle_info_cb);
-          priv->jingle_info_cb = NULL;
-        }
       break;
     }
 }
@@ -806,10 +812,8 @@ gabble_media_factory_constructed (GObject *object)
   if (chain_up != NULL)
     chain_up (object);
 
-  /* conn is guaranteed to live longer than the factory, so this
-   * never needs disconnecting */
-  g_signal_connect (priv->conn, "status-changed",
-      (GCallback) connection_status_changed_cb, object);
+  priv->status_changed_id = g_signal_connect (priv->conn,
+      "status-changed", (GCallback) connection_status_changed_cb, object);
 }
 
 

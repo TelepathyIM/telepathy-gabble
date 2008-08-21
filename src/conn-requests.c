@@ -970,6 +970,7 @@ conn_requests_requestotron (GabbleConnection *self,
       goto out;
     }
 
+  /* Handle type 0 cannot have a handle */
   if (target_handle_type == TP_HANDLE_TYPE_NONE && target_handle != 0)
     {
       GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
@@ -994,9 +995,6 @@ conn_requests_requestotron (GabbleConnection *self,
    * remove TargetID, add TargetHandle, and set
    * requested_properties = altered_properties (shadowing the original).
    * If handle normalization fails, raise an error */
-
-  /* Nonzero target handle types must have nonzero handles */
-  if (target_handle_type != TP_HANDLE_TYPE_NONE && target_handle == 0)
 
   switch (method)
     {

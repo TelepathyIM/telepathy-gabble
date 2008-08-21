@@ -60,6 +60,7 @@ enum
 struct _GabbleRoomlistManagerPrivate
 {
   GabbleConnection *conn;
+  gulong status_changed_id;
 
   guint next_channel_number;
   GPtrArray *channels;
@@ -83,6 +84,13 @@ static void
 gabble_roomlist_manager_close_all (GabbleRoomlistManager *self)
 {
   DEBUG ("%p", self);
+
+  if (self->priv->status_changed_id != 0)
+    {
+      g_signal_handler_disconnect (self->priv->conn,
+          self->priv->status_changed_id);
+      self->priv->status_changed_id = 0;
+    }
 
   if (self->priv->channels != NULL)
     {
@@ -200,10 +208,8 @@ gabble_roomlist_manager_constructed (GObject *object)
   if (chain_up != NULL)
     chain_up (object);
 
-  /* conn is guaranteed to live longer than the manager, so this
-   * never needs disconnecting */
-  g_signal_connect (self->priv->conn, "status-changed",
-      (GCallback) connection_status_changed_cb, self);
+  self->priv->status_changed_id = g_signal_connect (self->priv->conn,
+      "status-changed", (GCallback) connection_status_changed_cb, object);
 }
 
 

@@ -13,10 +13,12 @@ from servicetest import call_async, lazy, match, EventPattern
 def test(q, bus, conn, stream):
     conn.Connect()
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    _, event = q.expect_many(
+            EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+            EventPattern('stream-iq', to='localhost',
+                query_ns='http://jabber.org/protocol/disco#items'),
+            )
 
-    event = q.expect('stream-iq', to='localhost',
-        query_ns='http://jabber.org/protocol/disco#items')
     result = make_result_iq(stream, event.stanza)
     item = result.firstChildElement().addElement('item')
     item['jid'] = 'conf.localhost'

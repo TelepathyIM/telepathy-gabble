@@ -1,5 +1,6 @@
 exec-with-log.sh: exec-with-log.sh.in
-	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
+	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" \
+		-e "s|[@]abs_top_srcdir[@]|@abs_top_srcdir@|g" $< > $@
 	chmod +x $@
 
 %.conf: %.conf.in

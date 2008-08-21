@@ -27,11 +27,12 @@
 #include <string.h>
 
 #include <dbus/dbus-glib.h>
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/channel-factory-iface.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
+#include "channel-manager.h"
 #include "conn-aliasing.h"
 #include "connection.h"
 #include "debug.h"
@@ -68,6 +69,11 @@ struct _GabbleRosterPrivate
   GHashTable *list_channels;
   GHashTable *group_channels;
   GHashTable *items;
+
+  /* borrowed GabbleExportableChannel * => GSList of gpointer (request tokens)
+   * that will be satisfied when it's ready. The requests are in reverse
+   * chronological order */
+  GHashTable *queued_requests;
 
   gboolean roster_received;
   gboolean dispose_has_run;
@@ -109,8 +115,7 @@ struct _GabbleRosterItem
   GabbleRosterItemEdit *unsent_edits;
 };
 
-static void gabble_roster_factory_iface_init (gpointer g_iface,
-    gpointer iface_data);
+static void channel_manager_iface_init (gpointer, gpointer);
 static void gabble_roster_init (GabbleRoster *roster);
 static GObject * gabble_roster_constructor (GType type, guint n_props,
     GObjectConstructParam *props);
@@ -126,8 +131,8 @@ static void item_edit_free (GabbleRosterItemEdit *edits);
 static void gabble_roster_close_all (GabbleRoster *roster);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
-      gabble_roster_factory_iface_init));
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
+      channel_manager_iface_init));
 
 #define GABBLE_ROSTER_GET_PRIVATE(o) ((o)->priv)
 
@@ -184,6 +189,9 @@ gabble_roster_init (GabbleRoster *obj)
 
   priv->items = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) _gabble_roster_item_free);
+
+  priv->queued_requests = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, NULL);
 }
 
 void
@@ -205,6 +213,7 @@ gabble_roster_dispose (GObject *object)
   gabble_roster_close_all (self);
   g_assert (priv->group_channels == NULL);
   g_assert (priv->list_channels == NULL);
+  g_assert (priv->queued_requests == NULL);
 
   if (G_OBJECT_CLASS (gabble_roster_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_roster_parent_class)->dispose (object);
@@ -492,6 +501,10 @@ _gabble_roster_item_remove (GabbleRoster *roster,
   g_hash_table_remove (priv->items, GINT_TO_POINTER (handle));
   tp_handle_unref (contact_repo, handle);
 }
+
+/* FIXME: we have _get_channel, _create_channel, request_channel and
+ * create_channel - this is confusing, and surely we ought to be able to
+ * simplify the non-API code? */
 
 /* the TpHandleType must be GROUP or LIST */
 static GabbleRosterChannel *_gabble_roster_get_channel (GabbleRoster *,
@@ -826,6 +839,57 @@ DONE:
   return message;
 }
 
+
+static void
+gabble_roster_emit_new_channel (GabbleRoster *self,
+                                GabbleRosterChannel *channel)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (self);
+  GSList *requests_satisfied;
+
+  requests_satisfied = g_hash_table_lookup (priv->queued_requests, channel);
+  g_hash_table_steal (priv->queued_requests, channel);
+  requests_satisfied = g_slist_reverse (requests_satisfied);
+  gabble_channel_manager_emit_new_channel (self,
+      GABBLE_EXPORTABLE_CHANNEL (channel), requests_satisfied);
+  g_slist_free (requests_satisfied);
+}
+
+
+static void
+roster_channel_closed_cb (GabbleRosterChannel *channel,
+                          gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (user_data);
+  guint handle_type, handle;
+  GHashTable *channels;
+
+  DEBUG ("%p, channel %p", self, channel);
+
+  g_object_get (channel,
+      "handle-type", &handle_type,
+      "handle", &handle,
+      NULL);
+
+  g_assert (handle_type == TP_HANDLE_TYPE_LIST ||
+            handle_type == TP_HANDLE_TYPE_GROUP);
+
+  gabble_channel_manager_emit_channel_closed_for_object (self,
+      GABBLE_EXPORTABLE_CHANNEL (channel));
+
+  channels = (handle_type == TP_HANDLE_TYPE_LIST
+                          ? self->priv->list_channels
+                          : self->priv->group_channels);
+
+  if (channels != NULL)
+    {
+      DEBUG ("removing channel with handle (type %u) #%u", handle_type,
+          handle);
+      g_hash_table_remove (channels, GUINT_TO_POINTER (handle));
+    }
+}
+
+
 static GabbleRosterChannel *
 _gabble_roster_create_channel (GabbleRoster *roster,
                                guint handle_type,
@@ -869,6 +933,9 @@ _gabble_roster_create_channel (GabbleRoster *roster,
 
   DEBUG ("created %s", object_path);
 
+  g_signal_connect (chan, "closed", (GCallback) roster_channel_closed_cb,
+      roster);
+
   g_hash_table_insert (channels, GINT_TO_POINTER (handle), chan);
 
   if (priv->roster_received)
@@ -876,8 +943,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
       DEBUG ("roster already received, emitting signal for %s",
              object_path);
 
-      tp_channel_factory_iface_emit_new_channel (roster,
-          (TpChannelIface *) chan, NULL);
+      gabble_roster_emit_new_channel (roster, chan);
     }
   else
     {
@@ -933,6 +999,7 @@ struct _EmitOneData {
     guint handle_type;    /* must be GROUP or LIST */
 };
 
+
 static void
 _gabble_roster_emit_one (gpointer key,
                          gpointer value,
@@ -957,8 +1024,7 @@ _gabble_roster_emit_one (gpointer key,
       name);
 #endif
 
-  tp_channel_factory_iface_emit_new_channel (roster, (TpChannelIface *) chan,
-      NULL);
+  gabble_roster_emit_new_channel (roster, chan);
 }
 
 static void
@@ -1571,12 +1637,44 @@ OUT:
   return ret;
 }
 
+static gboolean
+cancel_queued_requests (gpointer k,
+                        gpointer v,
+                        gpointer d)
+{
+  GabbleRoster *self = GABBLE_ROSTER (d);
+  GSList *requests_satisfied = v;
+  GSList *iter;
+
+  requests_satisfied = g_slist_reverse (requests_satisfied);
+
+  for (iter = requests_satisfied; iter != NULL; iter = iter->next)
+    {
+      gabble_channel_manager_emit_request_failed (self,
+          iter->data, TP_ERRORS, TP_ERROR_DISCONNECTED,
+          "Unable to complete this channel request, we're disconnecting!");
+    }
+
+  g_slist_free (requests_satisfied);
+
+  return TRUE;
+}
+
+
 static void
 gabble_roster_close_all (GabbleRoster *self)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (self);
 
   DEBUG ("closing channels");
+
+  if (priv->queued_requests != NULL)
+    {
+      g_hash_table_foreach_steal (priv->queued_requests,
+          cancel_queued_requests, self);
+      g_hash_table_destroy (priv->queued_requests);
+      priv->queued_requests = NULL;
+    }
 
   if (priv->group_channels)
     {
@@ -1675,27 +1773,27 @@ gabble_roster_constructor (GType type, guint n_props,
 
 
 struct foreach_data {
-    TpChannelFunc func;
+    GabbleExportableChannelFunc func;
     gpointer data;
 };
 
 static void
-_gabble_roster_factory_iface_foreach_one (gpointer key,
-                                          gpointer value,
-                                          gpointer data)
+_gabble_roster_foreach_channel_helper (gpointer key,
+                                       gpointer value,
+                                       gpointer data)
 {
-  TpChannelIface *chan = TP_CHANNEL_IFACE (value);
+  GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (value);
   struct foreach_data *foreach = (struct foreach_data *) data;
 
   foreach->func (chan, foreach->data);
 }
 
 static void
-gabble_roster_factory_iface_foreach (TpChannelFactoryIface *iface,
-                                     TpChannelFunc func,
-                                     gpointer data)
+gabble_roster_foreach_channel (GabbleChannelManager *manager,
+                               GabbleExportableChannelFunc func,
+                               gpointer data)
 {
-  GabbleRoster *roster = GABBLE_ROSTER (iface);
+  GabbleRoster *roster = GABBLE_ROSTER (manager);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   struct foreach_data foreach;
 
@@ -1703,67 +1801,25 @@ gabble_roster_factory_iface_foreach (TpChannelFactoryIface *iface,
   foreach.data = data;
 
   g_hash_table_foreach (priv->group_channels,
-      _gabble_roster_factory_iface_foreach_one, &foreach);
+      _gabble_roster_foreach_channel_helper, &foreach);
   g_hash_table_foreach (priv->list_channels,
-      _gabble_roster_factory_iface_foreach_one, &foreach);
+      _gabble_roster_foreach_channel_helper, &foreach);
 }
 
-static TpChannelFactoryRequestStatus
-gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
-                                     const gchar *chan_type,
-                                     TpHandleType handle_type,
-                                     guint handle,
-                                     gpointer request,
-                                     TpChannelIface **ret,
-                                     GError **error)
-{
-  GabbleRoster *roster = GABBLE_ROSTER (iface);
-  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, handle_type);
-  gboolean created;
-  GabbleRosterChannel *chan;
-
-  if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
-    return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
-
-  if (handle_type != TP_HANDLE_TYPE_LIST &&
-      handle_type != TP_HANDLE_TYPE_GROUP)
-    return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
-
-  if (!tp_handle_is_valid (handle_repo, handle, NULL))
-    return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
-
-  /* disallow "deny" channels if we don't have google:roster support */
-  if (handle == GABBLE_LIST_HANDLE_DENY &&
-      handle_type == TP_HANDLE_TYPE_LIST &&
-      !(priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
-    return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
-
-  chan = _gabble_roster_get_channel (roster, handle_type, handle,
-      &created);
-  if (priv->roster_received)
-    {
-      *ret = TP_CHANNEL_IFACE (chan);
-      return created ? TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED
-                     : TP_CHANNEL_FACTORY_REQUEST_STATUS_EXISTING;
-    }
-  else
-    {
-      return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;
-    }
-}
 
 static void
-gabble_roster_factory_iface_init (gpointer g_iface,
-                                  gpointer iface_data)
+gabble_roster_associate_request (GabbleRoster *self,
+                                 GabbleRosterChannel *channel,
+                                 gpointer request)
 {
-  TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (self);
+  GSList *list = g_hash_table_lookup (priv->queued_requests, channel);
 
-  klass->close_all = (TpChannelFactoryIfaceProc) gabble_roster_close_all;
-  klass->foreach = gabble_roster_factory_iface_foreach;
-  klass->request = gabble_roster_factory_iface_request;
+  g_hash_table_steal (priv->queued_requests, channel);
+  list = g_slist_prepend (list, request);
+  g_hash_table_insert (priv->queued_requests, channel, list);
 }
+
 
 GabbleRoster *
 gabble_roster_new (GabbleConnection *conn)
@@ -2404,4 +2460,172 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   lm_message_unref (message);
 
   return ret;
+}
+
+
+static const gchar * const list_channel_required_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    NULL
+};
+static const gchar * const *group_channel_required_properties =
+    list_channel_required_properties;
+
+
+static const gchar * const list_channel_optional_properties[] = {
+    NULL
+};
+static const gchar * const *group_channel_optional_properties =
+    list_channel_optional_properties;
+
+
+static void
+gabble_roster_foreach_channel_class (GabbleChannelManager *manager,
+                                     GabbleChannelManagerChannelClassFunc func,
+                                     gpointer user_data)
+{
+  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) tp_g_value_slice_free);
+  GValue *value, *handle_type_value;
+
+  value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
+
+  handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  /* no uint value yet - we'll change it for each channel class */
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
+      handle_type_value);
+
+  g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_GROUP);
+  func (manager, table, group_channel_required_properties,
+      group_channel_optional_properties, user_data);
+
+  /* FIXME: should these actually be in RequestableChannelClasses? You can't
+   * usefully call CreateChannel on them, although EnsureChannel would be
+   * OK. */
+  /* FIXME: since we have a finite set of possible values for TargetHandle,
+   * should we enumerate them all as separate channel classes? */
+  g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_LIST);
+  func (manager, table, list_channel_required_properties,
+      list_channel_optional_properties, user_data);
+
+  g_hash_table_destroy (table);
+}
+
+
+static gboolean
+gabble_roster_request (GabbleRoster *self,
+                       gpointer request_token,
+                       GHashTable *request_properties,
+                       gboolean require_new)
+{
+  gboolean created;
+  GabbleRosterChannel *channel;
+  TpHandleType handle_type;
+  TpHandle handle;
+  GError *error = NULL;
+  TpHandleRepoIface *handle_repo;
+
+  if (tp_strdiff (tp_asv_get_string (request_properties,
+          TP_IFACE_CHANNEL ".ChannelType"),
+        TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
+    return FALSE;
+
+  handle_type = tp_asv_get_uint32 (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandleType", NULL);
+
+  if (handle_type != TP_HANDLE_TYPE_LIST &&
+      handle_type != TP_HANDLE_TYPE_GROUP)
+    return FALSE;
+
+  handle_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, handle_type);
+
+  handle = tp_asv_get_uint32 (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandle", NULL);
+
+  if (!tp_handle_is_valid (handle_repo, handle, &error))
+    goto error;
+
+  /* disallow "deny" channels if we don't have google:roster support */
+  if (handle_type == TP_HANDLE_TYPE_LIST &&
+      handle == GABBLE_LIST_HANDLE_DENY &&
+      !(self->priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
+    {
+      /* FIXME: should this be NotImplemented? */
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "This server does not have Google roster extensions, so there's "
+          "no deny list");
+      goto error;
+    }
+
+  channel = _gabble_roster_get_channel (self, handle_type, handle,
+      &created);
+
+  if (require_new && !created)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "That contact list has already been created (or requested)");
+      goto error;
+    }
+
+  if (self->priv->roster_received)
+    {
+      if (!created)
+        gabble_channel_manager_emit_request_already_satisfied (self,
+            request_token, GABBLE_EXPORTABLE_CHANNEL (channel));
+    }
+  else
+    {
+      gabble_roster_associate_request (self, channel, request_token);
+    }
+
+  return TRUE;
+
+error:
+  gabble_channel_manager_emit_request_failed (self, request_token,
+      error->domain, error->code, error->message);
+  g_error_free (error);
+  return TRUE;
+}
+
+
+static gboolean
+gabble_roster_create_channel (GabbleChannelManager *manager,
+                              gpointer request_token,
+                              GHashTable *request_properties)
+{
+  GabbleRoster *self = GABBLE_ROSTER (manager);
+
+  /* FIXME: the channel will come out with Requested=FALSE... is this
+   * reasonable? Or should we just deny all attempts to CreateChannel() on this
+   * factory? */
+
+  return gabble_roster_request (self, request_token, request_properties,
+      TRUE);
+}
+
+
+static gboolean
+gabble_roster_request_channel (GabbleChannelManager *manager,
+                               gpointer request_token,
+                               GHashTable *request_properties)
+{
+  GabbleRoster *self = GABBLE_ROSTER (manager);
+
+  return gabble_roster_request (self, request_token, request_properties,
+      FALSE);
+}
+
+
+static void
+channel_manager_iface_init (gpointer g_iface,
+                            gpointer iface_data)
+{
+  GabbleChannelManagerIface *iface = g_iface;
+
+  iface->foreach_channel = gabble_roster_foreach_channel;
+  iface->foreach_channel_class = gabble_roster_foreach_channel_class;
+  iface->request_channel = gabble_roster_request_channel;
+  iface->create_channel = gabble_roster_create_channel;
 }

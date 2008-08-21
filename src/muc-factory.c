@@ -62,6 +62,7 @@ typedef struct _GabbleMucFactoryPrivate GabbleMucFactoryPrivate;
 struct _GabbleMucFactoryPrivate
 {
   GabbleConnection *conn;
+  gulong status_changed_id;
 
   LmMessageHandler *message_cb;
   LmMessageHandler *presence_cb;
@@ -1013,16 +1014,23 @@ cancel_queued_requests (gpointer k,
 
 
 static void
-gabble_muc_factory_close_all (GabbleMucFactory *fac)
+gabble_muc_factory_close_all (GabbleMucFactory *self)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
 
   DEBUG ("closing channels");
+
+  if (priv->status_changed_id != 0)
+    {
+      g_signal_handler_disconnect (priv->conn,
+          priv->status_changed_id);
+      priv->status_changed_id = 0;
+    }
 
   if (priv->queued_requests != NULL)
     {
       g_hash_table_foreach_steal (priv->queued_requests,
-          cancel_queued_requests, fac);
+          cancel_queued_requests, self);
       g_hash_table_destroy (priv->queued_requests);
       priv->queued_requests = NULL;
     }
@@ -1045,6 +1053,22 @@ gabble_muc_factory_close_all (GabbleMucFactory *fac)
       GHashTable *tmp = priv->tubes_channels;
       priv->tubes_channels = NULL;
       g_hash_table_destroy (tmp);
+    }
+
+  if (priv->message_cb != NULL)
+    {
+      DEBUG ("removing callbacks");
+      g_assert (priv->presence_cb != NULL);
+
+      lm_connection_unregister_message_handler (priv->conn->lmconn,
+          priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
+      lm_message_handler_unref (priv->message_cb);
+      priv->message_cb = NULL;
+
+      lm_connection_unregister_message_handler (priv->conn->lmconn,
+          priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE);
+      lm_message_handler_unref (priv->presence_cb);
+      priv->presence_cb = NULL;
     }
 }
 
@@ -1080,24 +1104,6 @@ connection_status_changed_cb (GabbleConnection *conn,
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
       gabble_muc_factory_close_all (self);
-
-      /* this can be called before we have ever been CONNECTING, so we need
-       * to guard it */
-      if (priv->message_cb != NULL)
-        {
-          DEBUG ("removing callbacks");
-          g_assert (priv->presence_cb != NULL);
-
-          lm_connection_unregister_message_handler (priv->conn->lmconn,
-              priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
-          lm_message_handler_unref (priv->message_cb);
-          priv->message_cb = NULL;
-
-          lm_connection_unregister_message_handler (priv->conn->lmconn,
-              priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE);
-          lm_message_handler_unref (priv->presence_cb);
-          priv->presence_cb = NULL;
-        }
       break;
     }
 }
@@ -1112,10 +1118,8 @@ gabble_muc_factory_constructor (GType type, guint n_props,
   GabbleMucFactory *self = GABBLE_MUC_FACTORY (obj);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
 
-  /* conn is guaranteed to live longer than the factory, so this
-   * never needs disconnecting */
-  g_signal_connect (priv->conn, "status-changed",
-      (GCallback) connection_status_changed_cb, obj);
+  priv->status_changed_id = g_signal_connect (priv->conn,
+      "status-changed", (GCallback) connection_status_changed_cb, obj);
 
   return obj;
 }

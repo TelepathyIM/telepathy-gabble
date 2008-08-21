@@ -611,7 +611,7 @@ gabble_tube_dbus_set_property (GObject *object,
         priv->service = g_value_dup_string (value);
         break;
       case PROP_PARAMETERS:
-        priv->parameters = g_value_get_boxed (value);
+        priv->parameters = g_value_dup_boxed (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

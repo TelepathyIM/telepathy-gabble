@@ -20,6 +20,8 @@
 #include "config.h"
 #include "tube-iface.h"
 
+#include <telepathy-glib/gtypes.h>
+
 #include "connection.h"
 #include "util.h"
 
@@ -163,8 +165,7 @@ gabble_tube_iface_base_init (gpointer klass)
           "parameters",
           "parameters GHashTable",
           "GHashTable containing parameters of this tube object.",
-          G_TYPE_HASH_TABLE,
-          G_PARAM_CONSTRUCT_ONLY |
+          TP_HASH_TYPE_STRING_VARIANT_MAP,
           G_PARAM_READWRITE |
           G_PARAM_STATIC_NAME |
           G_PARAM_STATIC_NICK |

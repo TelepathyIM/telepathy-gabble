@@ -1596,9 +1596,6 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
 
   tube_id = generate_tube_id ();
 
-  parameters = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-      (GDestroyNotify) tp_g_value_slice_free);
-
   channel_type = tp_asv_get_string (request_properties,
             TP_IFACE_CHANNEL ".ChannelType");
 
@@ -1617,6 +1614,17 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
     }
   else
     g_assert_not_reached ();
+
+  parameters = tp_asv_get_boxed (request_properties,
+               GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
+               TP_HASH_TYPE_STRING_VARIANT_MAP);
+  if (parameters == NULL)
+    {
+      /* If it is not included in the request, the connection manager MUST
+       * consider the property to be empty. */
+      parameters = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+          (GDestroyNotify) tp_g_value_slice_free);
+    }
 
   DEBUG ("Request a tube channel with type='%s' and service='%s'",
       channel_type, service);

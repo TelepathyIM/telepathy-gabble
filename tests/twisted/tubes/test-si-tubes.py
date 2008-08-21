@@ -31,6 +31,13 @@ sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
+new_sample_parameters = dbus.Dictionary({
+    's': 'newhello',
+    'ay': dbus.ByteArray('newhello'),
+    'u': dbus.UInt32(123),
+    'i': dbus.Int32(-123),
+    }, signature='sv')
+
 
 class Echo(Protocol):
     def dataReceived(self, data):
@@ -180,6 +187,8 @@ def test(q, bus, conn, stream):
                 bob_handle,
              'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service':
                 "newecho",
+             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
+                dbus.Dictionary({'foo': 'bar'}, signature='sv'),
             });
 
     ret, old_sig, new_sig = q.expect_many(
@@ -321,13 +330,21 @@ def test(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert tube_props.get("Initiator") == self_handle
-    #print str(tube_props.get("Parameters"))
-    #assert tube_props.get("Parameters") == {'ay': ('bytes', 'aGVsbG8='),
-    #                  's': ('str', 'hello'),
-    #                  'i': ('int', '-123'),
-    #                  'u': ('uint', '123'),
-    #                 }
-
+    print str(tube_props.get("Parameters"))
+    assert tube_props.get("Parameters") == dbus.Dictionary(
+            {dbus.String(u'foo'): dbus.String(u'bar')},
+            signature=dbus.Signature('sv'))
+    # change the parameters
+    tube_chan.Set('org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
+            'Parameters', new_sample_parameters,
+            dbus_interface='org.freedesktop.DBus.Properties')
+    # check it is correctly changed
+    tube_props = tube_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties', byte_arrays=True)
+    assert tube_props.get("Parameters") == new_sample_parameters, \
+            tube_props.get("Parameters")
+    
     # 3 == Tube_Channel_State_Not_Offered
     assert tube_props.get("Status") == 3, tube_props
 
@@ -378,17 +395,33 @@ def test(q, bus, conn, stream):
     assert not tube.hasAttribute('initiator')
     new_stream_tube_id = long(tube['id'])
 
-    #parameters not yet correctly implemented..
-    #params = {}
-    #parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
-    #for node in parameter_nodes:
-    #    assert node['name'] not in params
-    #    params[node['name']] = (node['type'], str(node))
-    #assert params == {'ay': ('bytes', 'aGVsbG8='),
-    #                  's': ('str', 'hello'),
-    #                  'i': ('int', '-123'),
-    #                  'u': ('uint', '123'),
-    #                 }
+    params = {}
+    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
+    for node in parameter_nodes:
+        assert node['name'] not in params
+        params[node['name']] = (node['type'], str(node))
+    assert params == {'ay': ('bytes', 'bmV3aGVsbG8='),
+                      's': ('str', 'newhello'),
+                      'i': ('int', '-123'),
+                      'u': ('uint', '123'),
+                     }
+    # The new tube has been offered, the parameters cannot be changed anymore
+    # We need to use call_async to check the error
+    tube_prop_iface = dbus.Interface(tube_chan,
+        'org.freedesktop.DBus.Properties')
+    call_async(q, tube_prop_iface, 'Set',
+        'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
+            'Parameters', dbus.Dictionary(
+            {dbus.String(u'foo2'): dbus.String(u'bar2')},
+            signature=dbus.Signature('sv')),
+            dbus_interface='org.freedesktop.DBus.Properties')
+    set_error = q.expect('dbus-error')
+    # check it is *not* correctly changed
+    tube_props = tube_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties', byte_arrays=True)
+    assert tube_props.get("Parameters") == new_sample_parameters, \
+            tube_props.get("Parameters")
 
     # The CM is the server, so fake a client wanting to talk to it
     # Old API tube
@@ -484,7 +517,7 @@ def test(q, bus, conn, stream):
         self_handle,
         1,      # Unix stream
         'newecho',
-        {}, # sample_parameters, # FIXME: parameters should work too...
+        new_sample_parameters,
         2,      # OPEN
         ) in tubes, tubes
 

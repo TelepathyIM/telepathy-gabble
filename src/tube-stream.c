@@ -1216,6 +1216,38 @@ gabble_tube_stream_constructor (GType type,
   return obj;
 }
 
+static gboolean
+tube_iface_props_setter (GObject *object,
+                         GQuark interface,
+                         GQuark name,
+                         const GValue *value,
+                         gpointer setter_data,
+                         GError **error)
+{
+  GabbleTubeStream *self = GABBLE_TUBE_STREAM (object);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+
+  g_return_if_fail (interface ==
+      GABBLE_IFACE_QUARK_CHANNEL_INTERFACE_TUBE);
+
+  if (name != g_quark_from_static_string ("Parameters"))
+    {
+      g_object_set_property (object, setter_data, value);
+      return TRUE;
+    }
+
+  if (priv->state != GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED)
+  {
+    g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "Can change parameters only if the tube is not offered");
+    return FALSE;
+  }
+
+  priv->parameters = g_value_dup_boxed (value);
+
+  return TRUE;
+}
+
 static void
 gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
 {
@@ -1240,7 +1272,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   };
   static TpDBusPropertiesMixinPropImpl tube_iface_props[] = {
       { "Initiator", "initiator", NULL },
-      { "Parameters", "parameters", NULL },
+      { "Parameters", "parameters", "parameters" },
       { "Status", "state", NULL },
       { NULL }
   };
@@ -1262,7 +1294,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       },
       { GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
         tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
+        tube_iface_props_setter,
         tube_iface_props,
       },
       { NULL }

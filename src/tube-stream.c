@@ -1887,8 +1887,6 @@ stream_unix_tube_new_connection_cb (GabbleTubeStream *self,
                                     guint contact,
                                     gpointer user_data)
 {
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-
   gabble_svc_channel_type_stream_tube_emit_stream_tube_new_connection (self,
       contact);
 }

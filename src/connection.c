@@ -74,7 +74,10 @@ static guint disco_reply_timeout = 5000;
 
 static void conn_service_iface_init (gpointer, gpointer);
 static void capabilities_service_iface_init (gpointer, gpointer);
+static void gabble_conn_contact_caps_iface_init (gpointer, gpointer);
 static void conn_capabilities_fill_contact_attributes (GObject *obj,
+  const GArray *contacts, GHashTable *attributes_hash);
+static void conn_contact_capabilities_fill_contact_attributes (GObject *obj,
   const GArray *contacts, GHashTable *attributes_hash);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
@@ -102,6 +105,9 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       olpc_buddy_info_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_ACTIVITY_PROPERTIES,
       olpc_activity_properties_iface_init);
+    G_IMPLEMENT_INTERFACE
+      (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
+      gabble_conn_contact_caps_iface_init);
     )
 
 /* properties */
@@ -267,6 +273,10 @@ gabble_connection_constructor (GType type,
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
           conn_capabilities_fill_contact_attributes);
+
+  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
+      GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
+          conn_contact_capabilities_fill_contact_attributes);
 
   self->bytestream_factory = gabble_bytestream_factory_new (self);
 
@@ -2328,6 +2338,19 @@ gabble_connection_get_handle_capabilities (GabbleConnection *self,
 }
 
 
+/**
+ * gabble_connection_get_handle_contact_capabilities
+ *
+ * Add capabilities of handle to the given GPtrArray
+ */
+static void
+gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
+  TpHandle handle, GPtrArray *arr)
+{
+  /* TODO */
+}
+
+
 static void
 conn_capabilities_fill_contact_attributes (GObject *obj,
   const GArray *contacts, GHashTable *attributes_hash)
@@ -2354,6 +2377,42 @@ conn_capabilities_fill_contact_attributes (GObject *obj,
           tp_contacts_mixin_set_contact_attribute (attributes_hash,
             handle, TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES"/caps",
             val);
+
+          array = NULL;
+        }
+    }
+
+    if (array != NULL)
+      g_ptr_array_free (array, TRUE);
+}
+
+static void
+conn_contact_capabilities_fill_contact_attributes (GObject *obj,
+  const GArray *contacts, GHashTable *attributes_hash)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (obj);
+  guint i;
+  GPtrArray *array = NULL;
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      TpHandle handle = g_array_index (contacts, guint, i);
+
+      if (array == NULL)
+        array = g_ptr_array_new ();
+
+      gabble_connection_get_handle_contact_capabilities (self, handle, array);
+
+      if (array->len > 0)
+        {
+          GValue *val =  tp_g_value_slice_new (
+            GABBLE_ARRAY_TYPE_ENHANCED_CONTACT_CAPABILITY_LIST);
+
+          g_value_take_boxed (val, array);
+          tp_contacts_mixin_set_contact_attribute (attributes_hash,
+              handle,
+              GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES"/caps",
+              val);
 
           array = NULL;
         }
@@ -2414,6 +2473,66 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
       GValue monster = {0, };
 
       g_value_init (&monster, TP_STRUCT_TYPE_CONTACT_CAPABILITY);
+      g_value_take_boxed (&monster, g_ptr_array_index (ret, i));
+      g_value_unset (&monster);
+    }
+
+  g_ptr_array_free (ret, TRUE);
+}
+
+/**
+ * gabble_connection_get_contact_capabilities
+ *
+ * Implements D-Bus method GetContactCapabilities
+ * on interface
+ * org.freedesktop.Telepathy.Connection.Interface.ContactCapabilities
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+static void
+gabble_connection_get_contact_capabilities (
+    GabbleSvcConnectionInterfaceContactCapabilities *iface,
+    const GArray *handles,
+    DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  guint i;
+  GPtrArray *ret;
+  GError *error = NULL;
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
+  if (!tp_handles_are_valid (contact_handles, handles, TRUE, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  ret = g_ptr_array_new ();
+
+  for (i = 0; i < handles->len; i++)
+    {
+      TpHandle handle = g_array_index (handles, guint, i);
+
+      gabble_connection_get_handle_contact_capabilities (self, handle, ret);
+    }
+
+  gabble_svc_connection_interface_contact_capabilities_return_from_get_contact_capabilities
+      (context, ret);
+
+  for (i = 0; i < ret->len; i++)
+    {
+      GValue monster = {0, };
+
+      g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
       g_value_take_boxed (&monster, g_ptr_array_index (ret, i));
       g_value_unset (&monster);
     }
@@ -2865,6 +2984,20 @@ capabilities_service_iface_init (gpointer g_iface, gpointer iface_data)
     klass, gabble_connection_##x)
   IMPLEMENT(advertise_capabilities);
   IMPLEMENT(get_capabilities);
+#undef IMPLEMENT
+}
+
+static void
+gabble_conn_contact_caps_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  GabbleSvcConnectionInterfaceContactCapabilitiesClass *klass =
+    (GabbleSvcConnectionInterfaceContactCapabilitiesClass *) g_iface;
+
+#define IMPLEMENT(x) \
+    gabble_svc_connection_interface_contact_capabilities_implement_##x (\
+    klass, gabble_connection_##x)
+  IMPLEMENT(get_contact_capabilities);
+  /* TODO: publish own caps */
 #undef IMPLEMENT
 }
 

@@ -6,6 +6,7 @@ EXTRA_DIST = \
     Channel_Future.xml \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \
+    Connection_Interface_Contact_Capabilities.xml \
     Channel_Interface_Tube.xml \
     Channel_Type_DBus_Tube.xml \
     Channel_Type_Stream_Tube.xml

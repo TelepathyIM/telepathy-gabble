@@ -182,6 +182,8 @@ void
 gabble_presence_set_capabilities (GabblePresence *presence,
                                   const gchar *resource,
                                   GabblePresenceCapabilities caps,
+                                  GHashTable *stream_tube_caps,
+                                  GHashTable *dbus_tube_caps,
                                   guint serial)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);

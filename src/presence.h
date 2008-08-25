@@ -79,7 +79,8 @@ gboolean gabble_presence_update (GabblePresence *presence,
     const gchar *status_message, gint8 priority);
 
 void gabble_presence_set_capabilities (GabblePresence *presence,
-    const gchar *resource, GabblePresenceCapabilities caps, guint serial);
+    const gchar *resource, GabblePresenceCapabilities caps,
+    GHashTable *stream_tube_caps, GHashTable *dbus_tube_caps, guint serial);
 
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
     GabblePresenceCapabilities caps);

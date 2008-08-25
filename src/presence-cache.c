@@ -23,6 +23,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <glib.h>
 
 /* When five DIFFERENT guys report the same caps for a given bundle, it'll
  * be enough. But if only ONE guy use the verification string (XEP-0115 v1.5),
@@ -193,13 +194,16 @@ typedef struct _CapabilityInfo CapabilityInfo;
 struct _CapabilityInfo
 {
   GabblePresenceCapabilities caps;
+  GHashTable *stream_tube_caps;
+  GHashTable *dbus_tube_caps;
   TpIntSet *guys;
   guint trust;
 };
 
 static CapabilityInfo *
 capability_info_get (GabblePresenceCache *cache, const gchar *node,
-    GabblePresenceCapabilities caps)
+    GabblePresenceCapabilities caps, GHashTable *stream_tube_caps,
+    GHashTable *dbus_tube_caps)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   CapabilityInfo *info = g_hash_table_lookup (priv->capabilities, node);
@@ -209,6 +213,8 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node,
       info = g_slice_new0 (CapabilityInfo);
       info->caps = caps;
       info->guys = tp_intset_new ();
+      info->stream_tube_caps = stream_tube_caps;
+      info->dbus_tube_caps = dbus_tube_caps;
       g_hash_table_insert (priv->capabilities, g_strdup (node), info);
     }
 
@@ -225,9 +231,11 @@ capability_info_free (CapabilityInfo *info)
 static guint
 capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
         TpHandle handle, GabblePresenceCapabilities caps,
+        GHashTable *stream_tube_caps, GHashTable *dbus_tube_caps,
         guint trust_inc)
 {
-  CapabilityInfo *info = capability_info_get (cache, node, caps);
+  CapabilityInfo *info = capability_info_get (cache, node, caps,
+      stream_tube_caps, dbus_tube_caps);
 
   /* Detect inconsistency in reported caps */
   if (info->caps != caps)
@@ -708,6 +716,8 @@ _caps_disco_cb (GabbleDisco *disco,
   TpHandleRepoIface *contact_repo;
   gchar *full_jid = NULL;
   GabblePresenceCapabilities caps = 0;
+  GHashTable *stream_tube_caps;
+  GHashTable *dbus_tube_caps;
   guint trust, trust_inc;
   TpHandle handle = 0;
   gboolean bad_hash = FALSE;
@@ -767,6 +777,11 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
+  stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      NULL);
+  dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      NULL);
+
   for (child = query_result->children; NULL != child; child = child->next)
     {
       const gchar *var;
@@ -805,12 +820,33 @@ _caps_disco_cb (GabbleDisco *disco,
           !tp_strdiff (var, NS_OLPC_CURRENT_ACTIVITY "+notify") ||
           !tp_strdiff (var, NS_OLPC_ACTIVITY_PROPS "+notify"))
         caps |= PRESENCE_CAP_OLPC_1;
+      else if (g_str_has_prefix (var, NS_TUBES "/"))
+        {
+          /* http://telepathy.freedesktop.org/xmpp/tubes/$type/$service */
+          var += strlen (NS_TUBES "/");
+          if (g_str_has_prefix (var, "stream/"))
+            {
+              gchar *service;
+              var += strlen ("stream/");
+              service = g_strdup (var);
+              g_hash_table_insert (stream_tube_caps, service, service);
+            }
+          else if (g_str_has_prefix (var, "dbus/"))
+            {
+              gchar *service;
+              var += strlen ("dbus/");
+              service = g_strdup (var);
+              g_hash_table_insert (dbus_tube_caps, service, service);
+            }
+        }
     }
 
   handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
   if (handle == 0)
     {
       DEBUG ("Ignoring presence from invalid JID %s", jid);
+      g_hash_table_destroy (stream_tube_caps);
+      g_hash_table_destroy (dbus_tube_caps);
       goto OUT;
     }
 
@@ -829,6 +865,8 @@ _caps_disco_cb (GabbleDisco *disco,
   if (NULL == waiter_self)
     {
       DEBUG ("Ignoring non requested disco reply");
+      g_hash_table_destroy (stream_tube_caps);
+      g_hash_table_destroy (dbus_tube_caps);
       goto OUT;
     }
 
@@ -846,7 +884,8 @@ _caps_disco_cb (GabbleDisco *disco,
 
       if (g_str_equal (waiter_self->ver, computed_hash))
         {
-          trust = capability_info_recvd (cache, node, handle, caps, trust_inc);
+          trust = capability_info_recvd (cache, node, handle, caps,
+              stream_tube_caps, dbus_tube_caps, trust_inc);
         }
       else
         {
@@ -855,12 +894,21 @@ _caps_disco_cb (GabbleDisco *disco,
               "our hash '%s'.", waiter_self->ver, computed_hash);
           trust = 0;
           bad_hash = TRUE;
+          g_hash_table_destroy (stream_tube_caps);
+          g_hash_table_destroy (dbus_tube_caps);
         }
     }
   else
     {
       trust_inc = 1;
-      trust = capability_info_recvd (cache, node, handle, caps, trust_inc);
+      trust = capability_info_recvd (cache, node, handle, caps, NULL, NULL,
+          trust_inc);
+
+      /* Do not allow tubes caps if the contact does not observe XEP-0115
+       * version 1.5: we don't need to bother being compatible with both version
+       * 1.3 and tubes caps */
+      g_hash_table_destroy (stream_tube_caps);
+      g_hash_table_destroy (dbus_tube_caps);
     }
 
   for (i = waiters; NULL != i;)
@@ -888,7 +936,8 @@ _caps_disco_cb (GabbleDisco *disco,
                     "%d (save_caps %d)",
                     waiter->handle, handle, jid, caps, save_caps);
                 gabble_presence_set_capabilities (presence,
-                    waiter->resource,caps, waiter->serial);
+                    waiter->resource, caps, stream_tube_caps, dbus_tube_caps,
+                    waiter->serial);
                 DEBUG ("caps for %d (thanks to %d %s) now %d", waiter->handle,
                     handle, jid, presence->caps);
                 g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
@@ -968,7 +1017,7 @@ _process_caps_uri (GabblePresenceCache *cache,
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  info = capability_info_get (cache, uri, 0);
+  info = capability_info_get (cache, uri, 0, NULL, NULL);
 
   if (info->trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST
       || tp_intset_is_member (info->guys, handle))
@@ -983,7 +1032,7 @@ _process_caps_uri (GabblePresenceCache *cache,
       if (presence)
         {
           gabble_presence_set_capabilities (presence, resource, info->caps,
-              serial);
+              info->stream_tube_caps, info->dbus_tube_caps, serial);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
         }
       else
@@ -1454,7 +1503,7 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
 {
   CapabilityInfo *info;
 
-  info = capability_info_get (cache, node, 0);
+  info = capability_info_get (cache, node, 0, NULL, NULL);
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
   info->caps |= new_caps;
 }

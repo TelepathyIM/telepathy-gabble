@@ -2347,7 +2347,43 @@ static void
 gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
   TpHandle handle, GPtrArray *arr)
 {
-  /* TODO */
+  GValue monster = {0, };
+  GHashTable *fixed_properties;
+  GValue *channel_type_value;
+  GValue *target_handle_type_value;
+  gchar *text_allowed_properties[] =
+      {
+        TP_IFACE_CHANNEL ".TargetHandle",
+        NULL
+      };
+
+  g_assert (handle != 0);
+
+  g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
+  g_value_take_boxed (&monster,
+      dbus_g_type_specialized_construct (
+        GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY));
+
+  fixed_properties = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  /* assume text channel */
+  channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TEXT);
+  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".ChannelType",
+      channel_type_value);
+
+  target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
+  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".TargetHandleType",
+      target_handle_type_value);
+
+  dbus_g_type_struct_set (&monster,
+      0, fixed_properties,
+      1, text_allowed_properties,
+      G_MAXUINT);
+
+  g_ptr_array_add (arr, g_value_get_boxed (&monster));
 }
 
 
@@ -2509,7 +2545,7 @@ gabble_connection_get_contact_capabilities (
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
-  if (!tp_handles_are_valid (contact_handles, handles, TRUE, &error))
+  if (!tp_handles_are_valid (contact_handles, handles, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);

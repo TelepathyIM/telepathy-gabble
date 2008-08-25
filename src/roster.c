@@ -62,6 +62,7 @@ static guint signals[LAST_SIGNAL] = { 0 };
 struct _GabbleRosterPrivate
 {
   GabbleConnection *conn;
+  gulong status_changed_id;
 
   LmMessageHandler *iq_cb;
   LmMessageHandler *presence_cb;
@@ -1676,16 +1677,39 @@ gabble_roster_close_all (GabbleRoster *self)
       priv->queued_requests = NULL;
     }
 
-  if (priv->group_channels)
+  if (self->priv->status_changed_id != 0)
+    {
+      g_signal_handler_disconnect (self->priv->conn,
+          self->priv->status_changed_id);
+      self->priv->status_changed_id = 0;
+    }
+
+  if (priv->group_channels != NULL)
     {
       g_hash_table_destroy (priv->group_channels);
       priv->group_channels = NULL;
     }
 
-  if (priv->list_channels)
+  if (priv->list_channels != NULL)
     {
       g_hash_table_destroy (priv->list_channels);
       priv->list_channels = NULL;
+    }
+
+  if (self->priv->iq_cb != NULL)
+    {
+      DEBUG ("removing callbacks");
+      g_assert (self->priv->presence_cb != NULL);
+
+      lm_connection_unregister_message_handler (self->priv->conn->lmconn,
+          self->priv->iq_cb, LM_MESSAGE_TYPE_IQ);
+      lm_message_handler_unref (self->priv->iq_cb);
+      self->priv->iq_cb = NULL;
+
+      lm_connection_unregister_message_handler (self->priv->conn->lmconn,
+          self->priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE);
+      lm_message_handler_unref (self->priv->presence_cb);
+      self->priv->presence_cb = NULL;
     }
 }
 
@@ -1732,24 +1756,6 @@ connection_status_changed_cb (GabbleConnection *conn,
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
       gabble_roster_close_all (self);
-
-      /* this can be called before we have ever been CONNECTING, so we need
-       * to guard it */
-      if (self->priv->iq_cb != NULL)
-        {
-          DEBUG ("removing callbacks");
-          g_assert (self->priv->presence_cb != NULL);
-
-          lm_connection_unregister_message_handler (self->priv->conn->lmconn,
-              self->priv->iq_cb, LM_MESSAGE_TYPE_IQ);
-          lm_message_handler_unref (self->priv->iq_cb);
-          self->priv->iq_cb = NULL;
-
-          lm_connection_unregister_message_handler (self->priv->conn->lmconn,
-              self->priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE);
-          lm_message_handler_unref (self->priv->presence_cb);
-          self->priv->presence_cb = NULL;
-        }
       break;
     }
 }
@@ -1763,10 +1769,8 @@ gabble_roster_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   GabbleRoster *self = GABBLE_ROSTER (obj);
 
-  /* conn is guaranteed to live longer than the factory, so this
-   * never needs disconnecting */
-  g_signal_connect (self->priv->conn, "status-changed",
-      (GCallback) connection_status_changed_cb, obj);
+  self->priv->status_changed_id = g_signal_connect (self->priv->conn,
+      "status-changed", (GCallback) connection_status_changed_cb, obj);
 
   return obj;
 }

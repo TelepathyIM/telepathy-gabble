@@ -1,8 +1,8 @@
 /*
  * disco.c - Source for Gabble service discovery
  *
- * Copyright (C) 2006 Collabora Ltd.
- * Copyright (C) 2006 Nokia Corporation
+ * Copyright (C) 2006, 2008 Collabora Ltd.
+ * Copyright (C) 2006, 2008 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

@@ -845,7 +845,6 @@ get_requestables_foreach (GabbleChannelManager *manager,
   GValueArray *requestable = g_value_array_new (3);
   GValue *value;
   GPtrArray *allowed;
-  guint i = 0;
   const gchar * const *iter;
 
   allowed = g_ptr_array_new ();

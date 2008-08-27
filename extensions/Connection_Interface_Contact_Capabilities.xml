@@ -54,7 +54,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           <p>The handle zero MUST NOT be included in the request.</p>
         </tp:docstring>
       </arg>
-      <arg direction="out" type="a(a{sv}as)"
+      <arg direction="out" type="a(ua{sv}as)"
            tp:type="Enhanced_Contact_Capability[]">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of structures containing:
@@ -65,7 +65,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         </tp:docstring>
       </arg>
       <tp:docstring>
-        Returns an array of enhenced capabilities for the given contact handles.
+        Returns an array of enhanced capabilities for the given contact handles.
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
@@ -79,6 +79,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:possible-errors>
     </method>
 
+
     <tp:struct name="Enhanced_Contact_Capability" array-name="Enhanced_Contact_Capability_List">
       <tp:docstring>
         A struct representing a capability posessed by a contact,
@@ -89,6 +90,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         the request contains a property which does not belong to
         Fixed_Properties nor to Allowed_Properties, the request will fail.
       </tp:docstring>
+      <tp:member type="u" tp:type="Contact_Handle" name="Handle"/>
       <tp:member type="a{sv}" tp:type="String_Variant_Map"
                  name="Fixed_Properties">
         <tp:docstring>

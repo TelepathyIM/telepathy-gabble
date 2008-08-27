@@ -2379,8 +2379,9 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
       target_handle_type_value);
 
   dbus_g_type_struct_set (&monster,
-      0, fixed_properties,
-      1, text_allowed_properties,
+      0, handle,
+      1, fixed_properties,
+      2, text_allowed_properties,
       G_MAXUINT);
 
   g_hash_table_destroy (fixed_properties);

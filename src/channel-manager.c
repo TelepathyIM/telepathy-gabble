@@ -346,6 +346,21 @@ gabble_channel_manager_emit_request_failed_printf (gpointer instance,
 
 /* Virtual-method wrappers */
 
+void gabble_channel_manager_get_contact_capabilities (
+    GabbleChannelManager *manager,
+    TpHandle handle,
+    GPtrArray *arr)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerGetContactCapsFunc method = iface->get_contact_caps;
+
+  if (method != NULL)
+    {
+      method (manager, handle, arr);
+    }
+  /* ... else assume there is not caps for this kind of channels */
+}
 
 void
 gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,

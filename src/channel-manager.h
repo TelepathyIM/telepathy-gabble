@@ -24,6 +24,7 @@
 #define GABBLE_CHANNEL_MANAGER_H
 
 #include <glib-object.h>
+#include <telepathy-glib/handle.h>
 
 #include "exportable-channel.h"
 
@@ -48,6 +49,12 @@ typedef struct _GabbleChannelManagerIface GabbleChannelManagerIface;
 
 
 /* virtual methods */
+
+typedef void (*GabbleChannelManagerGetContactCapsFunc) (
+    GabbleChannelManager *manager, TpHandle handle, GPtrArray *arr);
+
+void gabble_channel_manager_get_contact_capabilities (
+    GabbleChannelManager *manager, TpHandle handle, GPtrArray *arr);
 
 typedef void (*GabbleChannelManagerForeachChannelFunc) (
     GabbleChannelManager *manager, GabbleExportableChannelFunc func,
@@ -86,6 +93,8 @@ gboolean gabble_channel_manager_request_channel (GabbleChannelManager *manager,
 
 struct _GabbleChannelManagerIface {
     GTypeInterface parent;
+
+    GabbleChannelManagerGetContactCapsFunc get_contact_caps;
 
     GabbleChannelManagerForeachChannelFunc foreach_channel;
 

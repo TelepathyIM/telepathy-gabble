@@ -2364,10 +2364,10 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
       dbus_g_type_specialized_construct (
         GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY));
 
+  /* assume text channel */
   fixed_properties = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
       (GDestroyNotify) tp_g_value_slice_free);
 
-  /* assume text channel */
   channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
   g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TEXT);
   g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".ChannelType",
@@ -2383,7 +2383,11 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
       1, text_allowed_properties,
       G_MAXUINT);
 
+  g_hash_table_destroy (fixed_properties);
+
   g_ptr_array_add (arr, g_value_get_boxed (&monster));
+
+  /* FIXME: each kind of caps should be filled by channel managers */
 }
 
 

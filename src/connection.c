@@ -2354,7 +2354,8 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
       GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
 
-      gabble_channel_manager_get_contact_capabilities (manager, handle, arr);
+      gabble_channel_manager_get_contact_capabilities (manager, self, handle,
+          arr);
     }
 }
 

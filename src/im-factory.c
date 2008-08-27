@@ -455,6 +455,7 @@ connection_status_changed_cb (GabbleConnection *conn,
 
 static void
 gabble_im_factory_get_contact_caps (GabbleChannelManager *manager,
+                                    GabbleConnection *conn,
                                     TpHandle handle,
                                     GPtrArray *arr)
 {

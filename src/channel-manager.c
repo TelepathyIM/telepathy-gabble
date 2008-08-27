@@ -348,6 +348,7 @@ gabble_channel_manager_emit_request_failed_printf (gpointer instance,
 
 void gabble_channel_manager_get_contact_capabilities (
     GabbleChannelManager *manager,
+    GabbleConnection *conn,
     TpHandle handle,
     GPtrArray *arr)
 {
@@ -357,7 +358,7 @@ void gabble_channel_manager_get_contact_capabilities (
 
   if (method != NULL)
     {
-      method (manager, handle, arr);
+      method (manager, conn, handle, arr);
     }
   /* ... else assume there is not caps for this kind of channels */
 }

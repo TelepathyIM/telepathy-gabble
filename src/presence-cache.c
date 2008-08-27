@@ -829,14 +829,14 @@ _caps_disco_cb (GabbleDisco *disco,
               gchar *service;
               var += strlen ("stream/");
               service = g_strdup (var);
-              g_hash_table_insert (stream_tube_caps, service, service);
+              g_hash_table_insert (stream_tube_caps, service, NULL);
             }
           else if (g_str_has_prefix (var, "dbus/"))
             {
               gchar *service;
               var += strlen ("dbus/");
               service = g_strdup (var);
-              g_hash_table_insert (dbus_tube_caps, service, service);
+              g_hash_table_insert (dbus_tube_caps, service, NULL);
             }
         }
     }
@@ -847,6 +847,8 @@ _caps_disco_cb (GabbleDisco *disco,
       DEBUG ("Ignoring presence from invalid JID %s", jid);
       g_hash_table_destroy (stream_tube_caps);
       g_hash_table_destroy (dbus_tube_caps);
+      stream_tube_caps = NULL;
+      dbus_tube_caps = NULL;
       goto OUT;
     }
 
@@ -867,6 +869,8 @@ _caps_disco_cb (GabbleDisco *disco,
       DEBUG ("Ignoring non requested disco reply");
       g_hash_table_destroy (stream_tube_caps);
       g_hash_table_destroy (dbus_tube_caps);
+      stream_tube_caps = NULL;
+      dbus_tube_caps = NULL;
       goto OUT;
     }
 
@@ -896,6 +900,8 @@ _caps_disco_cb (GabbleDisco *disco,
           bad_hash = TRUE;
           g_hash_table_destroy (stream_tube_caps);
           g_hash_table_destroy (dbus_tube_caps);
+          stream_tube_caps = NULL;
+          dbus_tube_caps = NULL;
         }
     }
   else
@@ -909,6 +915,8 @@ _caps_disco_cb (GabbleDisco *disco,
        * 1.3 and tubes caps */
       g_hash_table_destroy (stream_tube_caps);
       g_hash_table_destroy (dbus_tube_caps);
+      stream_tube_caps = NULL;
+      dbus_tube_caps = NULL;
     }
 
   for (i = waiters; NULL != i;)

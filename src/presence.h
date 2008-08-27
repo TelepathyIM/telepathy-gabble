@@ -56,6 +56,8 @@ typedef struct _GabblePresencePrivate GabblePresencePrivate;
 struct _GabblePresence {
     GObject parent;
     GabblePresenceCapabilities caps;
+    GHashTable *stream_tube_caps;
+    GHashTable *dbus_tube_caps;
     GabblePresenceId status;
     gchar *status_message;
     gchar *nickname;

@@ -79,6 +79,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:possible-errors>
     </method>
 
+    <signal name="ContactCapabilitiesChanged">
+      <arg name="caps" type="(a(ua{sv}as)a(ua{sv}as))" tp:type="Contact_Capability_Change">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          An struct containing:
+          <ul>
+            <li>the contact's removed capabilities</li>
+            <li>the contact's added capabilities</li>
+          </ul>
+        </tp:docstring>
+      </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Announce that there has been a change of capabilities on the
+          given handle.</p>
+      </tp:docstring>
+    </signal>
 
     <tp:struct name="Enhanced_Contact_Capability" array-name="Enhanced_Contact_Capability_List">
       <tp:docstring>
@@ -103,6 +118,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         </tp:docstring>
       </tp:member>
     </tp:struct>
+
+    <tp:struct name="Contact_Capability_Change" array-name="Contact_Capability_Change_List">
+      <tp:docstring>A struct representing a change to one of a contact's capabilities, as
+        seen in the ContactCapabilitiesChanged signal on the ContactCapabilities
+        interface.</tp:docstring>
+      <tp:member type="a(ua{sv}as)" tp:type="Enhanced_Contact_Capability[]"
+                 name="Removed_Capabilities"/>
+      <tp:member type="a(ua{sv}as)" tp:type="Enhanced_Contact_Capability[]"
+                 name="Added_Capabilities"/>
+    </tp:struct>
+
   </interface>
 </node>
 <!-- vim:set sw=2 sts=2 et ft=xml: -->

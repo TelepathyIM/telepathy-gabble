@@ -5,8 +5,8 @@ Receive presence and caps from contacts and check that GetContactCapabilities
 works correctly. Test:
 - no tube cap at all
 - one stream tube cap
-- TODO: one D-Bus tube cap
-- TODO: several of them
+- one D-Bus tube cap
+- several tube caps
 TODO: signals
 """
 
@@ -41,6 +41,39 @@ daap_fixed_properties = dbus.Dictionary({
         'daap'
     })
 daap_allowed_properties = dbus.Array([
+    'org.freedesktop.Telepathy.Channel.TargetHandle',
+    ])
+
+http_fixed_properties = dbus.Dictionary({
+    'org.freedesktop.Telepathy.Channel.TargetHandleType': 1L,
+    'org.freedesktop.Telepathy.Channel.ChannelType':
+        'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+    'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service':
+        'http'
+    })
+http_allowed_properties = dbus.Array([
+    'org.freedesktop.Telepathy.Channel.TargetHandle',
+    ])
+
+xiangqi_fixed_properties = dbus.Dictionary({
+    'org.freedesktop.Telepathy.Channel.TargetHandleType': 1L,
+    'org.freedesktop.Telepathy.Channel.ChannelType':
+        'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT',
+    'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName':
+        'com.example.Xiangqi'
+    })
+xiangqi_allowed_properties = dbus.Array([
+    'org.freedesktop.Telepathy.Channel.TargetHandle',
+    ])
+
+go_fixed_properties = dbus.Dictionary({
+    'org.freedesktop.Telepathy.Channel.TargetHandleType': 1L,
+    'org.freedesktop.Telepathy.Channel.ChannelType':
+        'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT',
+    'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName':
+        'com.example.Go'
+    })
+go_allowed_properties = dbus.Array([
     'org.freedesktop.Telepathy.Channel.TargetHandle',
     ])
 
@@ -140,6 +173,118 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
         (contact_handle, daap_fixed_properties, daap_allowed_properties)]
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == daap_caps, caps
+
+    # send presence with 1 D-Bus tube cap
+    presence = make_presence(contact, None, 'hello')
+    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
+    c['node'] = client
+    c['ver'] = '8/mwj7yF0K23YT6GurBXI1X4hd4='
+    c['hash'] = 'sha-1'
+    stream.send(presence)
+
+    # Gabble looks up our capabilities
+    event = q.expect('stream-iq', to=contact,
+        query_ns='http://jabber.org/protocol/disco#info')
+    query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
+    assert query_node.attributes['node'] == \
+        client + '#' + c['ver']
+
+    # send good reply
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    query['node'] = client + '#' + c['ver']
+    feature = query.addElement('feature')
+    feature['var'] = ns_tubes + '/dbus/com.example.Xiangqi'
+    stream.send(result)
+    sync_stream(q, stream)
+
+    #event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+
+    # xiangqi capabilities
+    xiangqi_caps = [
+        (contact_handle, text_fixed_properties, text_allowed_properties),
+        (contact_handle, xiangqi_fixed_properties, xiangqi_allowed_properties)]
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == xiangqi_caps, caps
+
+    # send presence with both D-Bus and stream tube caps
+    presence = make_presence(contact, None, 'hello')
+    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
+    c['node'] = client
+    c['ver'] = 'moS31cvk2kf9Zka4gb6ncj2VJCo='
+    c['hash'] = 'sha-1'
+    stream.send(presence)
+
+    # Gabble looks up our capabilities
+    event = q.expect('stream-iq', to=contact,
+        query_ns='http://jabber.org/protocol/disco#info')
+    query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
+    assert query_node.attributes['node'] == \
+        client + '#' + c['ver']
+
+    # send good reply
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    query['node'] = client + '#' + c['ver']
+    feature = query.addElement('feature')
+    feature['var'] = ns_tubes + '/dbus/com.example.Xiangqi'
+    feature = query.addElement('feature')
+    feature['var'] = ns_tubes + '/stream/daap'
+    stream.send(result)
+    sync_stream(q, stream)
+
+    #event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+
+    # daap + xiangqi capabilities
+    daap_xiangqi_caps = [
+        (contact_handle, text_fixed_properties, text_allowed_properties),
+        (contact_handle, daap_fixed_properties, daap_allowed_properties),
+        (contact_handle, xiangqi_fixed_properties, xiangqi_allowed_properties)]
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == daap_xiangqi_caps, caps
+
+    # send presence with 4 tube caps
+    presence = make_presence(contact, None, 'hello')
+    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
+    c['node'] = client
+    c['ver'] = '4uwiaJY110AjLEFSIeu4/mVJ8wc='
+    c['hash'] = 'sha-1'
+    stream.send(presence)
+
+    # Gabble looks up our capabilities
+    event = q.expect('stream-iq', to=contact,
+        query_ns='http://jabber.org/protocol/disco#info')
+    query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
+    assert query_node.attributes['node'] == \
+        client + '#' + c['ver']
+
+    # send good reply
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    query['node'] = client + '#' + c['ver']
+    feature = query.addElement('feature')
+    feature['var'] = ns_tubes + '/dbus/com.example.Xiangqi'
+    feature = query.addElement('feature')
+    feature['var'] = ns_tubes + '/dbus/com.example.Go'
+    feature = query.addElement('feature')
+    feature['var'] = ns_tubes + '/stream/daap'
+    feature = query.addElement('feature')
+    feature['var'] = ns_tubes + '/stream/http'
+    stream.send(result)
+    sync_stream(q, stream)
+
+    #event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+
+    # http + daap + xiangqi + go capabilities
+    all_tubes_caps = [
+        (contact_handle, text_fixed_properties, text_allowed_properties),
+        (contact_handle, daap_fixed_properties, daap_allowed_properties),
+        (contact_handle, http_fixed_properties, http_allowed_properties),
+        (contact_handle, xiangqi_fixed_properties,
+                xiangqi_allowed_properties),
+        (contact_handle, go_fixed_properties, go_allowed_properties)]
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == all_tubes_caps, caps
 
 
 def test(q, bus, conn, stream):

@@ -844,6 +844,22 @@ get_requestables_foreach (GabbleChannelManager *manager,
   GPtrArray *details = user_data;
   GValueArray *requestable = g_value_array_new (3);
   GValue *value;
+  GPtrArray *allowed;
+  const gchar * const *iter;
+
+  allowed = g_ptr_array_new ();
+
+  for (iter = required_properties;
+       iter != NULL && *iter != NULL;
+       iter++)
+    g_ptr_array_add (allowed, g_strdup (*iter));
+
+  for (iter = optional_properties;
+       iter != NULL && *iter != NULL;
+       iter++)
+    g_ptr_array_add (allowed, g_strdup (*iter));
+
+  g_ptr_array_add (allowed, NULL);
 
   g_value_array_append (requestable, NULL);
   value = g_value_array_get_nth (requestable, 0);
@@ -853,12 +869,7 @@ get_requestables_foreach (GabbleChannelManager *manager,
   g_value_array_append (requestable, NULL);
   value = g_value_array_get_nth (requestable, 1);
   g_value_init (value, G_TYPE_STRV);
-  g_value_set_boxed (value, required_properties);
-
-  g_value_array_append (requestable, NULL);
-  value = g_value_array_get_nth (requestable, 2);
-  g_value_init (value, G_TYPE_STRV);
-  g_value_set_boxed (value, optional_properties);
+  g_value_take_boxed (value, g_ptr_array_free (allowed, FALSE));
 
   g_ptr_array_add (details, requestable);
 }

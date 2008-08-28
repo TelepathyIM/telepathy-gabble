@@ -68,7 +68,6 @@ def test(q, bus, conn, stream):
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
              ['org.freedesktop.Telepathy.Channel.TargetHandle'],
-             []
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
     assert ({'org.freedesktop.Telepathy.Channel.ChannelType':

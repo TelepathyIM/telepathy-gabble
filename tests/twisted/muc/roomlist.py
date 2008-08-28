@@ -47,7 +47,6 @@ def test(q, bus, conn, stream):
                 tp_name_prefix + '.Channel.Type.RoomList',
              tp_name_prefix + '.Channel.TargetHandleType': 0,
              },
-             [],
              [tp_name_prefix + '.Channel.Type.RoomList.Server'],
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']

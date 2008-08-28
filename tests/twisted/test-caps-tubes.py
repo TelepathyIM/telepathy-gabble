@@ -2,12 +2,17 @@
 """
 Test tubes capabilities with Connection.Interface.ContactCapabilities.DRAFT
 Receive presence and caps from contacts and check that GetContactCapabilities
-works correctly. Test:
+works correctly. Also check that GetContactAttributes gives the same results.
+
+Test:
 - no tube cap at all
-- one stream tube cap
-- one D-Bus tube cap
-- several tube caps
-TODO: signals
+- 1 stream tube cap
+- 1 D-Bus tube cap
+- 1 stream tube + 1 D-Bus tube caps
+- 2 stream tube + 2 D-Bus tube caps
+
+TODO:
+- signals
 """
 
 import dbus
@@ -21,6 +26,7 @@ from gabbletest import exec_test, make_result_iq, sync_stream
 text_iface = 'org.freedesktop.Telepathy.Channel.Type.Text'
 caps_iface = 'org.freedesktop.Telepathy.' + \
              'Connection.Interface.ContactCapabilities.DRAFT'
+contacts_iface = 'org.freedesktop.Telepathy.Connection.Interface.Contacts'
 
 ns_tubes = 'http://telepathy.freedesktop.org/xmpp/tubes'
 
@@ -103,6 +109,7 @@ def presence_add_caps(presence, ver, client, hash=None):
 def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
 
     conn_caps_iface = dbus.Interface(conn, caps_iface)
+    conn_contacts_iface = dbus.Interface(conn, contacts_iface)
 
     # send presence with no tube cap
     presence = make_presence(contact, None, 'hello')
@@ -140,6 +147,11 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
             text_allowed_properties)]
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == basic_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [contact_handle], [caps_iface], False) \
+            [contact_handle][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
 
     # send presence with 1 stream tube cap
     presence = make_presence(contact, None, 'hello')
@@ -173,6 +185,11 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
         (contact_handle, daap_fixed_properties, daap_allowed_properties)]
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == daap_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [contact_handle], [caps_iface], False) \
+            [contact_handle][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
 
     # send presence with 1 D-Bus tube cap
     presence = make_presence(contact, None, 'hello')
@@ -206,6 +223,11 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
         (contact_handle, xiangqi_fixed_properties, xiangqi_allowed_properties)]
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == xiangqi_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [contact_handle], [caps_iface], False) \
+            [contact_handle][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
 
     # send presence with both D-Bus and stream tube caps
     presence = make_presence(contact, None, 'hello')
@@ -242,6 +264,11 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
         (contact_handle, xiangqi_fixed_properties, xiangqi_allowed_properties)]
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == daap_xiangqi_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [contact_handle], [caps_iface], False) \
+            [contact_handle][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
 
     # send presence with 4 tube caps
     presence = make_presence(contact, None, 'hello')
@@ -285,6 +312,11 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
         (contact_handle, go_fixed_properties, go_allowed_properties)]
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == all_tubes_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [contact_handle], [caps_iface], False) \
+            [contact_handle][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
 
 
 def test(q, bus, conn, stream):

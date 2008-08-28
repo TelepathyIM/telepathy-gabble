@@ -374,10 +374,9 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
   GHashTable *fixed_properties;
   GValue *channel_type_value;
   GValue *target_handle_type_value;
-  gchar *text_allowed_properties[] =
+  gchar *tube_allowed_properties[] =
       {
         TP_IFACE_CHANNEL ".TargetHandle",
-        GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
         NULL
       };
   GabblePresence *presence;
@@ -388,6 +387,12 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
   g_assert (handle != 0);
 
   presence = gabble_presence_cache_get (conn->presence_cache, handle);
+
+  if (presence == NULL)
+    return;
+
+  if (presence->stream_tube_caps == NULL)
+    return;
 
   g_hash_table_iter_init (&tube_caps_iter, presence->stream_tube_caps);
   while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy)) 
@@ -411,7 +416,7 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
       g_hash_table_insert (fixed_properties,
           TP_IFACE_CHANNEL ".TargetHandleType", target_handle_type_value);
 
-      target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+      target_handle_type_value = tp_g_value_slice_new (G_TYPE_STRING);
       g_value_set_string (target_handle_type_value, service);
       g_hash_table_insert (fixed_properties,
           GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
@@ -420,7 +425,7 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
       dbus_g_type_struct_set (&monster,
           0, handle,
           1, fixed_properties,
-          2, text_allowed_properties,
+          2, tube_allowed_properties,
           G_MAXUINT);
 
       g_hash_table_destroy (fixed_properties);

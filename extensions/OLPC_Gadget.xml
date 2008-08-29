@@ -172,9 +172,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:docstring>
     </signal>
 
+    <property name="ActivityGadgetAvailable" type="b" access="read">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>TRUE if the Gadget component managing activities was found on this connection.</p>
+      </tp:docstring>
+    </property>
+
+    <property name="BuddyGadgetAvailable" type="b" access="read">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>TRUE if the Gadget component managing buddies was found on this connection.</p>
+      </tp:docstring>
+    </property>
+
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An interface on connections to interact with the Gadget component.</p>
     </tp:docstring>
+
   </interface>
+
 </node>
 <!-- vim:set sw=2 sts=2 et ft=xml: -->

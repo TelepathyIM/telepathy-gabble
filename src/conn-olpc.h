@@ -64,6 +64,9 @@ LmHandlerResult conn_olpc_msg_cb (LmMessageHandler *handler,
 LmHandlerResult conn_olpc_presence_cb (LmMessageHandler *handler,
     LmConnection *connection, LmMessage *presence, gpointer user_data);
 
+void conn_olpc_gadget_propeties_getter (GObject *object, GQuark interface,
+    GQuark name, GValue *value, gpointer getter_data);
+
 void olpc_gadget_iface_init (gpointer g_iface, gpointer iface_data);
 
 #endif /* __CONN_OLPC_H__ */

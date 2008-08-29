@@ -4,7 +4,7 @@ test OLPC search activity
 
 import dbus
 
-from servicetest import call_async, EventPattern
+from servicetest import call_async, EventPattern, tp_name_prefix
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream, \
     elem
 
@@ -37,10 +37,23 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='localhost', query_ns=NS_DISCO_ITEMS))
 
     acknowledge_iq(stream, iq_event.stanza)
+
+    props = conn.GetAll(
+            'org.laptop.Telepathy.Gadget',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert props['ActivityGadgetAvailable'] == False
+    assert props['BuddyGadgetAvailable'] == False
+
     announce_gadget(q, stream, disco_event.stanza)
 
     q.expect_many(EventPattern('dbus-signal', signal='BuddyGadgetDiscovered'),
             EventPattern('dbus-signal', signal='ActivityGadgetDiscovered'))
+
+    props = conn.GetAll(
+            'org.laptop.Telepathy.Gadget',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert props['ActivityGadgetAvailable'] == True
+    assert props['BuddyGadgetAvailable'] == True
 
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
 

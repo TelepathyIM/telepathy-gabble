@@ -511,11 +511,21 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { "RequestableChannelClasses", NULL, NULL },
         { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
+        { "ActivityGadgetAvailable", NULL, NULL },
+        { "BuddyGadgetAvailable", NULL, NULL },
+        { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
         { GABBLE_IFACE_CONNECTION_INTERFACE_REQUESTS,
           gabble_conn_requests_get_dbus_property,
           NULL,
           requests_props,
+        },
+        { GABBLE_IFACE_OLPC_GADGET,
+          conn_olpc_gadget_propeties_getter,
+          NULL,
+          olpc_gadget_props,
         },
         { NULL }
   };

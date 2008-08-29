@@ -4432,6 +4432,29 @@ conn_olpc_presence_cb (LmMessageHandler *handler,
 }
 
 void
+conn_olpc_gadget_propeties_getter (GObject *object,
+                                   GQuark interface,
+                                   GQuark name,
+                                   GValue *value,
+                                   gpointer getter_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (object);
+
+  if (!tp_strdiff (g_quark_to_string (name), "ActivityGadgetAvailable"))
+    {
+      g_value_set_boolean (value, check_gadget_activity (conn, NULL));
+    }
+  else if (!tp_strdiff (g_quark_to_string (name), "BuddyGadgetAvailable"))
+    {
+      g_value_set_boolean (value, check_gadget_buddy (conn, NULL));
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+}
+
+void
 olpc_gadget_iface_init (gpointer g_iface,
                         gpointer iface_data)
 {

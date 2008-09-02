@@ -193,17 +193,20 @@ typedef struct _CapabilityInfo CapabilityInfo;
 
 struct _CapabilityInfo
 {
+  /* struct _CapabilityInfo can be allocated before receiving the contact's
+   * caps. In this case, caps_set is FALSE and set to TRUE when the caps are
+   * received */
+  gboolean caps_set;
   GabblePresenceCapabilities caps;
   GHashTable *stream_tube_caps;
   GHashTable *dbus_tube_caps;
+
   TpIntSet *guys;
   guint trust;
 };
 
 static CapabilityInfo *
-capability_info_get (GabblePresenceCache *cache, const gchar *node,
-    GabblePresenceCapabilities caps, GHashTable *stream_tube_caps,
-    GHashTable *dbus_tube_caps)
+capability_info_get (GabblePresenceCache *cache, const gchar *node)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   CapabilityInfo *info = g_hash_table_lookup (priv->capabilities, node);
@@ -211,10 +214,8 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node,
   if (NULL == info)
     {
       info = g_slice_new0 (CapabilityInfo);
-      info->caps = caps;
+      info->caps_set = FALSE;
       info->guys = tp_intset_new ();
-      info->stream_tube_caps = stream_tube_caps;
-      info->dbus_tube_caps = dbus_tube_caps;
       g_hash_table_insert (priv->capabilities, g_strdup (node), info);
     }
 
@@ -234,15 +235,21 @@ capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
         GHashTable *stream_tube_caps, GHashTable *dbus_tube_caps,
         guint trust_inc)
 {
-  CapabilityInfo *info = capability_info_get (cache, node, caps,
-      stream_tube_caps, dbus_tube_caps);
+  CapabilityInfo *info = capability_info_get (cache, node);
 
-  /* Detect inconsistency in reported caps */
-  if (info->caps != caps)
+  if (info->caps != caps || ! info->caps_set)
     {
+      /* The caps are not valid, either because we detected inconsistency
+       * between several contacts using the same node (when the hash is not
+       * used), or because this is the first caps report and the caps were
+       * never set.
+       */
       tp_intset_clear (info->guys);
       info->caps = caps;
+      info->stream_tube_caps = stream_tube_caps;
+      info->dbus_tube_caps = dbus_tube_caps;
       info->trust = 0;
+      info->caps_set = TRUE;
     }
 
   if (!tp_intset_is_member (info->guys, handle))
@@ -1025,7 +1032,7 @@ _process_caps_uri (GabblePresenceCache *cache,
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  info = capability_info_get (cache, uri, 0, NULL, NULL);
+  info = capability_info_get (cache, uri);
 
   if (info->trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST
       || tp_intset_is_member (info->guys, handle))
@@ -1511,7 +1518,7 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
 {
   CapabilityInfo *info;
 
-  info = capability_info_get (cache, node, 0, NULL, NULL);
+  info = capability_info_get (cache, node);
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
   info->caps |= new_caps;
 }

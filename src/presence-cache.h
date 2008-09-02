@@ -88,7 +88,7 @@ void gabble_presence_cache_free_specific_cache (
     GHashTable *per_channel_factory_caps);
 void gabble_presence_cache_copy_specific_cache (GHashTable **out,
     GHashTable *in);
-void gabble_presence_cache_update_specific_cache (GHashTable **out,
+void gabble_presence_cache_update_specific_cache (GHashTable *out,
     GHashTable *in);
 
 G_END_DECLS

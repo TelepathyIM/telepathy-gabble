@@ -365,7 +365,7 @@ void gabble_channel_manager_get_contact_capabilities (
 
 gpointer gabble_channel_manager_parse_capabilities (
     GabbleChannelManager *manager,
-    GabbleConnection *conn)
+    LmMessageNode *child)
 {
   GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
       manager);
@@ -373,7 +373,7 @@ gpointer gabble_channel_manager_parse_capabilities (
 
   if (method != NULL)
     {
-      return method (manager, conn);
+      return method (manager, child);
     }
   /* ... else assume there is not caps for this kind of channels */
   return NULL;

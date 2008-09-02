@@ -24,6 +24,7 @@
 #define GABBLE_CHANNEL_MANAGER_H
 
 #include <glib-object.h>
+#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/handle.h>
 
 #include "exportable-channel.h"
@@ -56,7 +57,7 @@ typedef void (*GabbleChannelManagerGetContactCapsFunc) (
     GPtrArray *arr);
 
 typedef gpointer (*GabbleChannelManagerParseCapsFunc) (
-    GabbleChannelManager *manager, GabbleConnection *conn);
+    GabbleChannelManager *manager, LmMessageNode *children);
 
 typedef void (*GabbleChannelManagerFreeCapsFunc) (
     GabbleChannelManager *manager, gpointer *specific_caps);
@@ -73,7 +74,7 @@ void gabble_channel_manager_get_contact_capabilities (
     GPtrArray *arr);
 
 gpointer gabble_channel_manager_parse_capabilities (
-    GabbleChannelManager *manager, GabbleConnection *conn);
+    GabbleChannelManager *manager, LmMessageNode *children);
 
 void gabble_channel_manager_free_capabilities (GabbleChannelManager *manager,
     gpointer *specific_caps);

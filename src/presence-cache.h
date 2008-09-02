@@ -84,6 +84,12 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
     const gchar *node, GabblePresenceCapabilities caps);
 void gabble_presence_cache_really_remove (GabblePresenceCache *cache,
     TpHandle handle);
+void gabble_presence_cache_free_specific_cache (
+    GHashTable *per_channel_factory_caps);
+void gabble_presence_cache_copy_specific_cache (GHashTable **out,
+    GHashTable *in);
+void gabble_presence_cache_update_specific_cache (GHashTable **out,
+    GHashTable *in);
 
 G_END_DECLS
 

@@ -363,6 +363,68 @@ void gabble_channel_manager_get_contact_capabilities (
   /* ... else assume there is not caps for this kind of channels */
 }
 
+gpointer gabble_channel_manager_parse_capabilities (
+    GabbleChannelManager *manager,
+    GabbleConnection *conn)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerParseCapsFunc method = iface->parse_caps;
+
+  if (method != NULL)
+    {
+      return method (manager, conn);
+    }
+  /* ... else assume there is not caps for this kind of channels */
+  return NULL;
+}
+
+void gabble_channel_manager_free_capabilities (GabbleChannelManager *manager,
+                                               gpointer *specific_caps)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerFreeCapsFunc method = iface->free_caps;
+
+  if (method != NULL)
+    {
+      method (manager, specific_caps);
+    }
+  /* ... else assume there is no need to free */
+}
+
+void gabble_channel_manager_copy_capabilities (GabbleChannelManager *manager,
+                                               gpointer *specific_caps_out,
+                                               gpointer specific_caps_in)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerCopyCapsFunc method = iface->copy_caps;
+
+  if (method != NULL)
+    {
+      method (manager, specific_caps_out, specific_caps_in);
+    }
+  else
+    *specific_caps_out = NULL;
+}
+
+void gabble_channel_manager_update_capabilities (
+    GabbleChannelManager *manager,
+    gpointer specific_caps_out,
+    gpointer specific_caps_in)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerCopyCapsFunc method = iface->update_caps;
+
+  if (method != NULL)
+    {
+      method (manager, specific_caps_out, specific_caps_in);
+    }
+  /* ... else, do what? */
+}
+
 void
 gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,
                                         GabbleExportableChannelFunc func,

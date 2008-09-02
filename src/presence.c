@@ -23,6 +23,7 @@
 
 #include <string.h>
 
+#include "channel-manager.h"
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "util.h"
@@ -42,6 +43,7 @@ struct _Resource {
     GabblePresenceCapabilities caps;
     GHashTable *stream_tube_caps;
     GHashTable *dbus_tube_caps;
+    GHashTable *per_channel_factory_caps;
     guint caps_serial;
     GabblePresenceId status;
     gchar *status_message;
@@ -57,11 +59,12 @@ struct _GabblePresencePrivate {
 static Resource *
 _resource_new (gchar *name)
 {
-  Resource *new = g_slice_new (Resource);
+  Resource *new = g_slice_new0 (Resource);
   new->name = name;
   new->caps = PRESENCE_CAP_NONE;
   new->stream_tube_caps = NULL;
   new->dbus_tube_caps = NULL;
+  new->per_channel_factory_caps = NULL;
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   new->priority = 0;
@@ -197,6 +200,7 @@ gabble_presence_set_capabilities (GabblePresence *presence,
                                   GabblePresenceCapabilities caps,
                                   GHashTable *stream_tube_caps,
                                   GHashTable *dbus_tube_caps,
+                                  GHashTable *per_channel_factory_caps,
                                   guint serial)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
@@ -204,13 +208,26 @@ gabble_presence_set_capabilities (GabblePresence *presence,
 
   presence->caps = 0;
   if (presence->stream_tube_caps != NULL)
-    g_hash_table_destroy (presence->stream_tube_caps);
+    {
+      g_hash_table_destroy (presence->stream_tube_caps);
+      presence->per_channel_factory_caps = NULL;
+    }
   if (presence->dbus_tube_caps != NULL)
-    g_hash_table_destroy (presence->dbus_tube_caps);
+    {
+      g_hash_table_destroy (presence->dbus_tube_caps);
+      presence->per_channel_factory_caps = NULL;
+    }
+  if (presence->per_channel_factory_caps != NULL)
+    {
+      gabble_presence_cache_free_specific_cache
+        (presence->per_channel_factory_caps);
+      presence->per_channel_factory_caps = NULL;
+    }
   presence->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, NULL);
   presence->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, NULL);
+  presence->per_channel_factory_caps = g_hash_table_new (NULL, NULL);
 
   DEBUG ("about to add caps %u to resource %s with serial %u", caps, resource,
     serial);
@@ -238,9 +255,21 @@ gabble_presence_set_capabilities (GabblePresence *presence,
               DEBUG ("resource %s caps now %u", resource, tmp->caps);
 
               if (tmp->stream_tube_caps != NULL)
-                g_hash_table_destroy (tmp->stream_tube_caps);
+                {
+                  g_hash_table_destroy (tmp->stream_tube_caps);
+                  tmp->stream_tube_caps = NULL;
+                }
               if (tmp->dbus_tube_caps != NULL)
-                g_hash_table_destroy (tmp->dbus_tube_caps);
+                {
+                  g_hash_table_destroy (tmp->dbus_tube_caps);
+                  tmp->dbus_tube_caps = NULL;
+                }
+              if (tmp->per_channel_factory_caps != NULL)
+                {
+                  gabble_presence_cache_free_specific_cache
+                      (tmp->per_channel_factory_caps);
+                  tmp->per_channel_factory_caps = NULL;
+                }
               tmp->stream_tube_caps = g_hash_table_new_full (g_str_hash,
                   g_str_equal, g_free, NULL);
               tmp->dbus_tube_caps = g_hash_table_new_full (g_str_hash,
@@ -251,6 +280,9 @@ gabble_presence_set_capabilities (GabblePresence *presence,
               if (dbus_tube_caps != NULL)
                 tp_g_hash_table_update (tmp->dbus_tube_caps,
                     dbus_tube_caps, g_strdup, NULL);
+              if (per_channel_factory_caps != NULL)
+                gabble_presence_cache_copy_specific_cache
+                    (&tmp->per_channel_factory_caps, per_channel_factory_caps);
             }
         }
 
@@ -263,6 +295,11 @@ gabble_presence_set_capabilities (GabblePresence *presence,
       if (tmp->dbus_tube_caps != NULL)
         tp_g_hash_table_update (presence->dbus_tube_caps,
             tmp->dbus_tube_caps, g_strdup, NULL);
+
+      if (tmp->per_channel_factory_caps != NULL)
+        gabble_presence_cache_update_specific_cache
+            (presence->per_channel_factory_caps,
+             tmp->per_channel_factory_caps);
     }
 
   DEBUG ("total caps now %u", presence->caps);

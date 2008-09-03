@@ -140,9 +140,9 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     feature = query.addElement('feature')
     feature['var'] = 'http://www.google.com/transport/p2p'
     stream.send(result)
-    sync_stream(q, stream)
 
-    #event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
+    print str(event.args)
 
     # no special capabilities
     basic_caps = [(contact_handle, text_fixed_properties,
@@ -177,9 +177,8 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     feature = query.addElement('feature')
     feature['var'] = ns_tubes + '/stream/daap'
     stream.send(result)
-    sync_stream(q, stream)
 
-    #event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
 
     # daap capabilities
     daap_caps = [
@@ -215,9 +214,8 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     feature = query.addElement('feature')
     feature['var'] = ns_tubes + '/dbus/com.example.Xiangqi'
     stream.send(result)
-    sync_stream(q, stream)
 
-    #event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
 
     # xiangqi capabilities
     xiangqi_caps = [
@@ -255,9 +253,8 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     feature = query.addElement('feature')
     feature['var'] = ns_tubes + '/stream/daap'
     stream.send(result)
-    sync_stream(q, stream)
 
-    #event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
 
     # daap + xiangqi capabilities
     daap_xiangqi_caps = [
@@ -300,9 +297,8 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     feature = query.addElement('feature')
     feature['var'] = ns_tubes + '/stream/http'
     stream.send(result)
-    sync_stream(q, stream)
 
-    #event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
 
     # http + daap + xiangqi + go capabilities
     all_tubes_caps = [
@@ -329,9 +325,8 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(presence)
 
     # Gabble does not look up our capabilities because of the cache
-    sync_stream(q, stream)
 
-    #event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
 
     # daap + xiangqi capabilities
     daap_xiangqi_caps = [

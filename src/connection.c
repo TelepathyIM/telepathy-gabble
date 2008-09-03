@@ -187,7 +187,7 @@ struct _GabbleConnectionPrivate
 
 static void connection_capabilities_update_cb (GabblePresenceCache *,
     TpHandle, GabblePresenceCapabilities, GabblePresenceCapabilities,
-    gpointer);
+    GHashTable *, GHashTable *, gpointer);
 
 static GPtrArray *
 _gabble_connection_create_channel_factories (TpBaseConnection *conn)
@@ -2130,15 +2130,52 @@ _emit_capabilities_changed (GabbleConnection *conn,
 }
 
 static void
+_emit_contact_capabilities_changed (GabbleConnection *conn,
+                                    TpHandle handle,
+                                    GHashTable *old_caps,
+                                    GHashTable *new_caps)
+{
+  GValueArray *arr = g_value_array_new (2);
+  GPtrArray *old_array;
+  GPtrArray *new_array;
+  GValue old = {0, };
+  GValue new = {0, };
+
+  DEBUG ("Called.");
+
+  old_array = g_ptr_array_new ();
+  new_array = g_ptr_array_new ();
+
+  g_value_init (&old, GABBLE_ARRAY_TYPE_ENHANCED_CONTACT_CAPABILITY_LIST);
+  g_value_init (&new, GABBLE_ARRAY_TYPE_ENHANCED_CONTACT_CAPABILITY_LIST);
+
+  g_value_set_boxed (&old, old_array);
+  g_value_set_boxed (&new, new_array);
+
+  g_value_array_append (arr, &old);
+  g_value_array_append (arr, &new);
+
+  gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
+      conn, arr);
+}
+
+static void
 connection_capabilities_update_cb (GabblePresenceCache *cache,
                                    TpHandle handle,
                                    GabblePresenceCapabilities old_caps,
                                    GabblePresenceCapabilities new_caps,
+                                   GHashTable *old_enhenced_caps,
+                                   GHashTable *new_enhenced_caps,
                                    gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  _emit_capabilities_changed (conn, handle, old_caps, new_caps);
+  if (old_caps != new_caps)
+    _emit_capabilities_changed (conn, handle, old_caps, new_caps);
+
+  if (old_enhenced_caps != NULL || new_enhenced_caps != NULL)
+    _emit_contact_capabilities_changed (conn, handle,
+                                        old_enhenced_caps, new_enhenced_caps);
 }
 
 /**
@@ -2248,8 +2285,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
           return;
         }
 
-      _emit_capabilities_changed (self, base->self_handle,
-          save_caps, caps);
+      _emit_capabilities_changed (self, base->self_handle, save_caps, caps);
     }
 
   tp_svc_connection_interface_capabilities_return_from_advertise_capabilities (

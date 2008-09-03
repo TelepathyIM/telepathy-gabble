@@ -327,8 +327,8 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    gabble_marshal_VOID__UINT_UINT_UINT, G_TYPE_NONE,
-    3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+    gabble_marshal_VOID__UINT_UINT_UINT_POINTER_POINTER, G_TYPE_NONE,
+    5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_POINTER, G_TYPE_POINTER);
   signals[AVATAR_UPDATE] = g_signal_new (
     "avatar-update",
     G_TYPE_FROM_CLASS (klass),
@@ -718,8 +718,12 @@ void
 gabble_presence_cache_free_specific_cache (
     GHashTable *per_channel_factory_caps)
 {
+  if (per_channel_factory_caps == NULL)
+    return;
+
   g_hash_table_foreach (per_channel_factory_caps, free_specific_caps_helper,
       NULL);
+  g_hash_table_destroy (per_channel_factory_caps);
 }
 
 static void
@@ -994,6 +998,10 @@ _caps_disco_cb (GabbleDisco *disco,
               if (presence)
               {
                 GabblePresenceCapabilities save_caps = presence->caps;
+                GHashTable *save_enhenced_caps =
+                    presence->per_channel_factory_caps;
+                presence->per_channel_factory_caps = NULL;
+
                 DEBUG ("setting caps for %d (thanks to %d %s) to "
                     "%d (save_caps %d)",
                     waiter->handle, handle, jid, caps, save_caps);
@@ -1002,7 +1010,9 @@ _caps_disco_cb (GabbleDisco *disco,
                 DEBUG ("caps for %d (thanks to %d %s) now %d", waiter->handle,
                     handle, jid, presence->caps);
                 g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-                  waiter->handle, save_caps, presence->caps);
+                  waiter->handle, save_caps, presence->caps,
+                  save_enhenced_caps, presence->per_channel_factory_caps);
+                gabble_presence_cache_free_specific_cache (save_enhenced_caps);
               }
             }
 
@@ -1165,6 +1175,7 @@ _process_caps (GabblePresenceCache *cache,
   GSList *uris, *i;
   GabblePresenceCachePrivate *priv;
   GabblePresenceCapabilities old_caps = 0;
+  GHashTable *old_enhenced_caps;
   guint serial;
   const gchar *hash, *ver;
 
@@ -1178,7 +1189,11 @@ _process_caps (GabblePresenceCache *cache,
   uris = _parse_cap_bundles (lm_node, &hash, &ver);
 
   if (presence)
+    {
       old_caps = presence->caps;
+      old_enhenced_caps = presence->per_channel_factory_caps;
+      presence->per_channel_factory_caps = NULL;
+    }
 
   for (i = uris; NULL != i; i = i->next)
     {
@@ -1188,17 +1203,15 @@ _process_caps (GabblePresenceCache *cache,
 
     }
 
-  if (presence && (old_caps != presence->caps))
+  if (presence)
     {
       DEBUG ("Emitting caps update: handle %u, old %u, new %u",
           handle, old_caps, presence->caps);
 
       g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-          handle, old_caps, presence->caps);
-    }
-  else if (!presence)
-    {
-      DEBUG ("No presence, not updating caps for %u", handle);
+          handle, old_caps, presence->caps, old_enhenced_caps,
+          presence->per_channel_factory_caps);
+      gabble_presence_cache_free_specific_cache (old_enhenced_caps);
     }
   else
     {
@@ -1470,6 +1483,7 @@ gabble_presence_cache_do_update (
   const gchar *jid;
   GabblePresence *presence;
   GabblePresenceCapabilities caps_before;
+  GHashTable *enhenced_caps_before;
   gboolean ret = FALSE;
 
   jid = tp_handle_inspect (contact_repo, handle);
@@ -1482,13 +1496,19 @@ gabble_presence_cache_do_update (
     presence = _cache_insert (cache, handle);
 
   caps_before = presence->caps;
+  enhenced_caps_before = presence->per_channel_factory_caps;
+  presence->per_channel_factory_caps = NULL;
 
   ret = gabble_presence_update (presence, resource, presence_id,
       status_message, priority);
 
   if (caps_before != presence->caps)
-    g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0, handle,
-        caps_before, presence->caps);
+    {
+      g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0, handle,
+          caps_before, presence->caps, enhenced_caps_before,
+          presence->per_channel_factory_caps);
+      gabble_presence_cache_free_specific_cache (enhenced_caps_before);
+    }
 
   return ret;
 }

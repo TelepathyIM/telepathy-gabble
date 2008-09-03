@@ -60,7 +60,7 @@ typedef gpointer (*GabbleChannelManagerParseCapsFunc) (
     GabbleChannelManager *manager, LmMessageNode *children);
 
 typedef void (*GabbleChannelManagerFreeCapsFunc) (
-    GabbleChannelManager *manager, gpointer *specific_caps);
+    GabbleChannelManager *manager, gpointer specific_caps);
 
 typedef void (*GabbleChannelManagerCopyCapsFunc) (
     GabbleChannelManager *manager, gpointer *specific_caps_out,
@@ -68,6 +68,11 @@ typedef void (*GabbleChannelManagerCopyCapsFunc) (
 
 typedef void (*GabbleChannelManagerUpdateCapsFunc) (
     GabbleChannelManager *manager, gpointer *specific_caps_out, gpointer specific_caps_in);
+
+typedef void (*GabbleChannelManagerGetCapChangesFunc) (
+    GabbleChannelManager *manager, TpHandle handle, gpointer specific_old_caps,
+    gpointer specific_new_caps, GPtrArray *added_array,
+    GPtrArray *removed_array);
 
 void gabble_channel_manager_get_contact_capabilities (
     GabbleChannelManager *manager, GabbleConnection *conn, TpHandle handle,
@@ -77,7 +82,7 @@ gpointer gabble_channel_manager_parse_capabilities (
     GabbleChannelManager *manager, LmMessageNode *children);
 
 void gabble_channel_manager_free_capabilities (GabbleChannelManager *manager,
-    gpointer *specific_caps);
+    gpointer specific_caps);
 
 void gabble_channel_manager_copy_capabilities (GabbleChannelManager *manager,
     gpointer *specific_caps_out, gpointer specific_caps_in);
@@ -85,6 +90,11 @@ void gabble_channel_manager_copy_capabilities (GabbleChannelManager *manager,
 void gabble_channel_manager_update_capabilities (
     GabbleChannelManager *manager, gpointer specific_caps_out,
     gpointer specific_caps_in);
+
+void gabble_channel_manager_get_capability_changes (
+    GabbleChannelManager *manager, TpHandle handle, gpointer specific_old_caps,
+    gpointer specific_new_caps, GPtrArray *added_array,
+    GPtrArray *removed_array);
 
 typedef void (*GabbleChannelManagerForeachChannelFunc) (
     GabbleChannelManager *manager, GabbleExportableChannelFunc func,
@@ -129,6 +139,7 @@ struct _GabbleChannelManagerIface {
     GabbleChannelManagerFreeCapsFunc free_caps;
     GabbleChannelManagerCopyCapsFunc copy_caps;
     GabbleChannelManagerUpdateCapsFunc update_caps;
+    GabbleChannelManagerGetCapChangesFunc get_cap_changes;
 
     GabbleChannelManagerForeachChannelFunc foreach_channel;
 

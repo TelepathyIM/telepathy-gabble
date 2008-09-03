@@ -331,8 +331,14 @@ gabble_presence_update (GabblePresence *presence,
           _resource_free (res);
           res = NULL;
 
-          /* recaulculate aggregate capability mask */
-
+          /* recalculate aggregate capability mask */
+          if (presence->per_channel_factory_caps != NULL)
+            {
+              gabble_presence_cache_free_specific_cache
+                (presence->per_channel_factory_caps);
+              presence->per_channel_factory_caps = NULL;
+            }
+          presence->per_channel_factory_caps = g_hash_table_new (NULL, NULL);
           presence->caps = 0;
 
           for (i = priv->resources; i; i = i->next)
@@ -340,6 +346,11 @@ gabble_presence_update (GabblePresence *presence,
               Resource *r = (Resource *) i->data;
 
               presence->caps |= r->caps;
+
+              if (r->per_channel_factory_caps != NULL)
+                gabble_presence_cache_update_specific_cache
+                    (presence->per_channel_factory_caps,
+                     r->per_channel_factory_caps);
             }
         }
     }

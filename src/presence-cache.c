@@ -741,8 +741,9 @@ gabble_presence_cache_copy_specific_cache (
     GHashTable **out, GHashTable *in)
 {
   *out = g_hash_table_new (NULL, NULL);
-  g_hash_table_foreach (in, copy_specific_caps_helper,
-      *out);
+  if (in != NULL)
+    g_hash_table_foreach (in, copy_specific_caps_helper,
+        *out);
 }
 
 static void
@@ -998,9 +999,9 @@ _caps_disco_cb (GabbleDisco *disco,
               if (presence)
               {
                 GabblePresenceCapabilities save_caps = presence->caps;
-                GHashTable *save_enhenced_caps =
-                    presence->per_channel_factory_caps;
-                presence->per_channel_factory_caps = NULL;
+                GHashTable *save_enhenced_caps;
+                gabble_presence_cache_copy_specific_cache (&save_enhenced_caps,
+                    presence->per_channel_factory_caps);
 
                 DEBUG ("setting caps for %d (thanks to %d %s) to "
                     "%d (save_caps %d)",
@@ -1191,8 +1192,8 @@ _process_caps (GabblePresenceCache *cache,
   if (presence)
     {
       old_caps = presence->caps;
-      old_enhenced_caps = presence->per_channel_factory_caps;
-      presence->per_channel_factory_caps = NULL;
+      gabble_presence_cache_copy_specific_cache (&old_enhenced_caps,
+          presence->per_channel_factory_caps);
     }
 
   for (i = uris; NULL != i; i = i->next)
@@ -1497,18 +1498,16 @@ gabble_presence_cache_do_update (
 
   caps_before = presence->caps;
   enhenced_caps_before = presence->per_channel_factory_caps;
-  presence->per_channel_factory_caps = NULL;
+  gabble_presence_cache_copy_specific_cache (&enhenced_caps_before,
+      presence->per_channel_factory_caps);
 
   ret = gabble_presence_update (presence, resource, presence_id,
       status_message, priority);
 
-  if (caps_before != presence->caps)
-    {
-      g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0, handle,
-          caps_before, presence->caps, enhenced_caps_before,
-          presence->per_channel_factory_caps);
-      gabble_presence_cache_free_specific_cache (enhenced_caps_before);
-    }
+  g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0, handle,
+      caps_before, presence->caps, enhenced_caps_before,
+      presence->per_channel_factory_caps);
+  gabble_presence_cache_free_specific_cache (enhenced_caps_before);
 
   return ret;
 }

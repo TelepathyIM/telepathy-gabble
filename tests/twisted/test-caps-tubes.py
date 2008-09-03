@@ -141,12 +141,15 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     feature['var'] = 'http://www.google.com/transport/p2p'
     stream.send(result)
 
-    event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
-    print str(event.args)
+    # no change in ContactCapabilities, so no signal ContactCapabilitiesChanged
+    sync_stream(q, stream)
 
     # no special capabilities
     basic_caps = [(contact_handle, text_fixed_properties,
             text_allowed_properties)]
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == basic_caps, caps
+    # test again, to check GetContactCapabilities does not have side effect
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == basic_caps, caps
     # check the Contacts interface give the same caps
@@ -179,11 +182,21 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(result)
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
+    removed = event.args[0][0]
+    added = event.args[0][1]
+    assert len(removed) == 0, removed
+    assert len(added) == 1, added
+    assert added[0][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'daap'
 
     # daap capabilities
     daap_caps = [
         (contact_handle, text_fixed_properties, text_allowed_properties),
         (contact_handle, daap_fixed_properties, daap_allowed_properties)]
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == daap_caps, caps
+    # test again, to check GetContactCapabilities does not have side effect
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == daap_caps, caps
     # check the Contacts interface give the same caps
@@ -216,11 +229,24 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(result)
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
+    removed = event.args[0][0]
+    added = event.args[0][1]
+    assert len(removed) == 1, removed
+    assert len(added) == 1, added
+    assert removed[0][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'daap'
+    assert added[0][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
+        == 'com.example.Xiangqi'
 
     # xiangqi capabilities
     xiangqi_caps = [
         (contact_handle, text_fixed_properties, text_allowed_properties),
         (contact_handle, xiangqi_fixed_properties, xiangqi_allowed_properties)]
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == xiangqi_caps, caps
+    # test again, to check GetContactCapabilities does not have side effect
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == xiangqi_caps, caps
     # check the Contacts interface give the same caps
@@ -255,12 +281,22 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(result)
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
+    removed = event.args[0][0]
+    added = event.args[0][1]
+    assert len(removed) == 0, removed
+    assert len(added) == 1, added
+    assert added[0][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'daap'
 
     # daap + xiangqi capabilities
     daap_xiangqi_caps = [
         (contact_handle, text_fixed_properties, text_allowed_properties),
         (contact_handle, daap_fixed_properties, daap_allowed_properties),
         (contact_handle, xiangqi_fixed_properties, xiangqi_allowed_properties)]
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == daap_xiangqi_caps, caps
+    # test again, to check GetContactCapabilities does not have side effect
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == daap_xiangqi_caps, caps
     # check the Contacts interface give the same caps
@@ -299,6 +335,16 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(result)
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
+    removed = event.args[0][0]
+    added = event.args[0][1]
+    assert len(removed) == 0, removed
+    assert len(added) == 2, added
+    assert added[0][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'http'
+    assert added[1][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
+        == 'com.example.Go'
 
     # http + daap + xiangqi + go capabilities
     all_tubes_caps = [
@@ -308,6 +354,9 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
         (contact_handle, xiangqi_fixed_properties,
                 xiangqi_allowed_properties),
         (contact_handle, go_fixed_properties, go_allowed_properties)]
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == all_tubes_caps, caps
+    # test again, to check GetContactCapabilities does not have side effect
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == all_tubes_caps, caps
     # check the Contacts interface give the same caps
@@ -327,12 +376,25 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     # Gabble does not look up our capabilities because of the cache
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
+    removed = event.args[0][0]
+    added = event.args[0][1]
+    assert len(removed) == 2, removed
+    assert len(added) == 0, added
+    assert removed[0][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'http'
+    assert removed[1][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
+        == 'com.example.Go'
 
     # daap + xiangqi capabilities
     daap_xiangqi_caps = [
         (contact_handle, text_fixed_properties, text_allowed_properties),
         (contact_handle, daap_fixed_properties, daap_allowed_properties),
         (contact_handle, xiangqi_fixed_properties, xiangqi_allowed_properties)]
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == daap_xiangqi_caps, caps
+    # test again, to check GetContactCapabilities does not have side effect
     caps = conn_caps_iface.GetContactCapabilities([contact_handle])
     assert caps == daap_xiangqi_caps, caps
     # check the Contacts interface give the same caps

@@ -2136,27 +2136,49 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
                                     GHashTable *new_caps)
 {
   GValueArray *arr = g_value_array_new (2);
-  GPtrArray *old_array;
-  GPtrArray *new_array;
-  GValue old = {0, };
-  GValue new = {0, };
+  GPtrArray *removed_array;
+  GPtrArray *added_array;
+  GValue removed = {0, };
+  GValue added = {0, };
+  guint i;
 
-  DEBUG ("Called.");
+  removed_array = g_ptr_array_new ();
+  added_array = g_ptr_array_new ();
 
-  old_array = g_ptr_array_new ();
-  new_array = g_ptr_array_new ();
+  for (i = 0; i < conn->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (conn->channel_managers, i));
+      gpointer per_channel_factory_caps_old = NULL;
+      gpointer per_channel_factory_caps_new = NULL;
 
-  g_value_init (&old, GABBLE_ARRAY_TYPE_ENHANCED_CONTACT_CAPABILITY_LIST);
-  g_value_init (&new, GABBLE_ARRAY_TYPE_ENHANCED_CONTACT_CAPABILITY_LIST);
+      if (old_caps != NULL)
+        per_channel_factory_caps_old = g_hash_table_lookup (old_caps, manager);
+      if (new_caps != NULL)
+        per_channel_factory_caps_new = g_hash_table_lookup (new_caps, manager);
 
-  g_value_set_boxed (&old, old_array);
-  g_value_set_boxed (&new, new_array);
+      gabble_channel_manager_get_capability_changes (manager, handle,
+          per_channel_factory_caps_old, per_channel_factory_caps_new,
+          added_array, removed_array);
+    }
 
-  g_value_array_append (arr, &old);
-  g_value_array_append (arr, &new);
+  g_value_init (&removed, GABBLE_ARRAY_TYPE_ENHANCED_CONTACT_CAPABILITY_LIST);
+  g_value_init (&added, GABBLE_ARRAY_TYPE_ENHANCED_CONTACT_CAPABILITY_LIST);
 
-  gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
-      conn, arr);
+  g_value_set_boxed (&removed, removed_array);
+  g_value_set_boxed (&added, added_array);
+
+  g_value_array_append (arr, &removed);
+  g_value_array_append (arr, &added);
+
+  /* Don't emit the D-Bus signal if there is no change */
+  if (added_array->len + removed_array->len > 0)
+    {
+      gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
+          conn, arr);
+    }
+
+  g_value_array_free (arr);
 }
 
 static void

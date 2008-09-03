@@ -373,14 +373,12 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
 }
 
 static void
-gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
-                                               GabbleConnection *conn,
-                                               TpHandle handle,
-                                               GPtrArray *arr)
+add_service_to_array (gchar *service,
+                      GPtrArray *arr,
+                      TpTubeType type,
+                      TpHandle handle)
 {
-  TubesCapabilities *caps;
-  GHashTable *stream_tube_caps;
-  GHashTable *dbus_tube_caps;
+  GValue monster = {0, };
   GHashTable *fixed_properties;
   GValue *channel_type_value;
   GValue *target_handle_type_value;
@@ -389,6 +387,63 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
         TP_IFACE_CHANNEL ".TargetHandle",
         NULL
       };
+
+  g_assert (type == TP_TUBE_TYPE_STREAM || type == TP_TUBE_TYPE_DBUS);
+
+  g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
+  g_value_take_boxed (&monster,
+      dbus_g_type_specialized_construct (
+        GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY));
+
+  fixed_properties = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
+  if (type == TP_TUBE_TYPE_STREAM)
+    g_value_set_static_string (channel_type_value,
+        GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
+  else
+    g_value_set_static_string (channel_type_value,
+        GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".ChannelType",
+      channel_type_value);
+
+  target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
+  g_hash_table_insert (fixed_properties,
+      TP_IFACE_CHANNEL ".TargetHandleType", target_handle_type_value);
+
+  target_handle_type_value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_string (target_handle_type_value, service);
+  if (type == TP_TUBE_TYPE_STREAM)
+    g_hash_table_insert (fixed_properties,
+        GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
+        target_handle_type_value);
+  else
+    g_hash_table_insert (fixed_properties,
+        GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName",
+        target_handle_type_value);
+
+  dbus_g_type_struct_set (&monster,
+      0, handle,
+      1, fixed_properties,
+      2, tube_allowed_properties,
+      G_MAXUINT);
+
+  g_hash_table_destroy (fixed_properties);
+
+  g_ptr_array_add (arr, g_value_get_boxed (&monster));
+}
+
+static void
+gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
+                                               GabbleConnection *conn,
+                                               TpHandle handle,
+                                               GPtrArray *arr)
+{
+  TubesCapabilities *caps;
+  GHashTable *stream_tube_caps;
+  GHashTable *dbus_tube_caps;
   GabblePresence *presence;
   GHashTableIter tube_caps_iter;
   gchar *service;
@@ -416,41 +471,7 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
       g_hash_table_iter_init (&tube_caps_iter, stream_tube_caps);
       while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy)) 
         {
-          GValue monster = {0, };
-          g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
-          g_value_take_boxed (&monster,
-              dbus_g_type_specialized_construct (
-                GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY));
-
-          fixed_properties = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-              (GDestroyNotify) tp_g_value_slice_free);
-
-          channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
-          g_value_set_static_string (channel_type_value,
-              GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
-          g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".ChannelType",
-              channel_type_value);
-
-          target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
-          g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
-          g_hash_table_insert (fixed_properties,
-              TP_IFACE_CHANNEL ".TargetHandleType", target_handle_type_value);
-
-          target_handle_type_value = tp_g_value_slice_new (G_TYPE_STRING);
-          g_value_set_string (target_handle_type_value, service);
-          g_hash_table_insert (fixed_properties,
-              GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
-              target_handle_type_value);
-
-          dbus_g_type_struct_set (&monster,
-              0, handle,
-              1, fixed_properties,
-              2, tube_allowed_properties,
-              G_MAXUINT);
-
-          g_hash_table_destroy (fixed_properties);
-
-          g_ptr_array_add (arr, g_value_get_boxed (&monster));
+          add_service_to_array (service, arr, TP_TUBE_TYPE_STREAM, handle);
         }
     }
 
@@ -459,41 +480,7 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
       g_hash_table_iter_init (&tube_caps_iter, dbus_tube_caps);
       while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy)) 
         {
-          GValue monster = {0, };
-          g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
-          g_value_take_boxed (&monster,
-              dbus_g_type_specialized_construct (
-                GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY));
-
-          fixed_properties = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-              (GDestroyNotify) tp_g_value_slice_free);
-
-          channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
-          g_value_set_static_string (channel_type_value,
-              GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
-          g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".ChannelType",
-              channel_type_value);
-
-          target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
-          g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
-          g_hash_table_insert (fixed_properties,
-              TP_IFACE_CHANNEL ".TargetHandleType", target_handle_type_value);
-
-          target_handle_type_value = tp_g_value_slice_new (G_TYPE_STRING);
-          g_value_set_string (target_handle_type_value, service);
-          g_hash_table_insert (fixed_properties,
-              GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName",
-              target_handle_type_value);
-
-          dbus_g_type_struct_set (&monster,
-              0, handle,
-              1, fixed_properties,
-              2, tube_allowed_properties,
-              G_MAXUINT);
-
-          g_hash_table_destroy (fixed_properties);
-
-          g_ptr_array_add (arr, g_value_get_boxed (&monster));
+          add_service_to_array (service, arr, TP_TUBE_TYPE_DBUS, handle);
         }
     }
 }
@@ -548,7 +535,7 @@ gabble_private_tubes_factory_parse_caps (
   return caps;
 }
 
-static gpointer
+static void
 gabble_private_tubes_factory_free_caps (
     GabbleChannelManager *manager,
     gpointer data)
@@ -596,8 +583,8 @@ gabble_private_tubes_factory_update_caps (
     gpointer *specific_caps_out,
     gpointer specific_caps_in)
 {
-  TubesCapabilities *caps_out = specific_caps_out;
-  TubesCapabilities *caps_in = specific_caps_in;
+  TubesCapabilities *caps_out = (TubesCapabilities *) specific_caps_out;
+  TubesCapabilities *caps_in = (TubesCapabilities *) specific_caps_in;
 
   if (caps_in == NULL)
     return;
@@ -606,6 +593,78 @@ gabble_private_tubes_factory_update_caps (
       caps_out->stream_tube_caps, g_strdup, NULL);
   tp_g_hash_table_update (caps_out->dbus_tube_caps,
       caps_out->dbus_tube_caps, g_strdup, NULL);
+}
+
+static void
+gabble_private_tubes_factory_get_cap_changes (
+    GabbleChannelManager *manager,
+    TpHandle handle,
+    gpointer specific_old_caps, 
+    gpointer specific_new_caps,
+    GPtrArray *added_array,
+    GPtrArray *removed_array)
+{
+  TubesCapabilities *old_caps = specific_old_caps;
+  TubesCapabilities *new_caps = specific_new_caps;
+  GHashTableIter tube_caps_iter;
+  gchar *service;
+  gpointer dummy;
+
+  if (old_caps != NULL)
+    {
+      g_hash_table_iter_init (&tube_caps_iter, old_caps->stream_tube_caps);
+      while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy)) 
+        {
+          gpointer key, value;
+          if (new_caps == NULL ||
+              !g_hash_table_lookup_extended (new_caps->stream_tube_caps,
+                  service, &key, &value))
+            {
+              add_service_to_array (service, removed_array,
+                  TP_TUBE_TYPE_STREAM, handle);
+            }
+        }
+      g_hash_table_iter_init (&tube_caps_iter, old_caps->dbus_tube_caps);
+      while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy)) 
+        {
+          gpointer key, value;
+          if (new_caps == NULL ||
+              !g_hash_table_lookup_extended (new_caps->dbus_tube_caps,
+                  service, &key, &value))
+            {
+              add_service_to_array (service, removed_array,
+                  TP_TUBE_TYPE_DBUS, handle);
+            }
+        }
+    }
+
+  if (new_caps != NULL)
+    {
+      g_hash_table_iter_init (&tube_caps_iter, new_caps->stream_tube_caps);
+      while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy)) 
+        {
+          gpointer key, value;
+          if (old_caps == NULL ||
+              !g_hash_table_lookup_extended (old_caps->stream_tube_caps,
+                  service, &key, &value))
+            {
+              add_service_to_array (service, added_array,
+                  TP_TUBE_TYPE_STREAM, handle);
+            }
+        }
+      g_hash_table_iter_init (&tube_caps_iter, new_caps->dbus_tube_caps);
+      while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy)) 
+        {
+          gpointer key, value;
+          if (old_caps == NULL ||
+              !g_hash_table_lookup_extended (old_caps->dbus_tube_caps,
+                  service, &key, &value))
+            {
+              add_service_to_array (service, added_array,
+                  TP_TUBE_TYPE_DBUS, handle);
+            }
+        }
+    }
 }
 
 struct _ForeachData
@@ -1033,6 +1092,7 @@ channel_manager_iface_init (gpointer g_iface,
   iface->free_caps = gabble_private_tubes_factory_free_caps;
   iface->copy_caps = gabble_private_tubes_factory_copy_caps;
   iface->update_caps = gabble_private_tubes_factory_update_caps;
+  iface->get_cap_changes = gabble_private_tubes_factory_get_cap_changes;
 
 
   iface->foreach_channel = gabble_private_tubes_factory_foreach_channel;

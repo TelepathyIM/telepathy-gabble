@@ -380,7 +380,7 @@ gpointer gabble_channel_manager_parse_capabilities (
 }
 
 void gabble_channel_manager_free_capabilities (GabbleChannelManager *manager,
-                                               gpointer *specific_caps)
+                                               gpointer specific_caps)
 {
   GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
       manager);
@@ -423,6 +423,26 @@ void gabble_channel_manager_update_capabilities (
       method (manager, specific_caps_out, specific_caps_in);
     }
   /* ... else, do what? */
+}
+
+void gabble_channel_manager_get_capability_changes (
+    GabbleChannelManager *manager,
+    TpHandle handle,
+    gpointer specific_old_caps,
+    gpointer specific_new_caps,
+    GPtrArray *added_array,
+    GPtrArray *removed_array)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerGetCapChangesFunc method = iface->get_cap_changes;
+
+  if (method != NULL)
+    {
+      method (manager, handle, specific_old_caps, specific_new_caps,
+          added_array, removed_array);
+    }
+  /* ... else, nothing to do */
 }
 
 void

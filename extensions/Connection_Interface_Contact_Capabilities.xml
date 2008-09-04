@@ -34,17 +34,54 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         channel type for that activity, and channel properties which can be
         requested.</p>
 
-      <!-- Not yet spec'ed
-
       <p>This interface also provides for user interfaces notifying the
         connection manager of what capabilities to advertise for the user. This
         is done by using the AdvertiseContactCapabilities method, and deals with
         the interface names of channel types and the channel properties values 
         pertaining to them which are implemented by available client
         processes.</p>
-        -->
 
     </tp:docstring>
+
+    <method name="AdvertiseContactCapabilities">
+      <arg direction="in" name="add" type="aa{sv}"
+           tp:type="String_Variant_Map[]">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          An array of channel classes to add to the list of what the connection
+          can handle
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="remove" type="aa{sv}"
+           tp:type="String_Variant_Map[]">
+        <tp:docstring>
+          An array of channel classes to remove from the list of what the
+          connection can handle
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="aa{sv}" tp:type="String_Variant_Map[]">
+        <tp:docstring>
+          An array of channel classes describing the current capabilities.
+        </tp:docstring>
+      </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Used by user interfaces to indicate which channel types they are able
+        to handle on this connection. Because these may be provided by
+        different client processes, this method accepts channel types to add
+        and remove from the set already advertised on this connection.</p>
+
+        <p>Upon a successful invocation of this method, the
+        ContactCapabilitiesChanged signal will be emitted for the user's own
+        handle (as returned by GetSelfHandle) by the connection manager to
+        indicate the changes that have been made.  This signal should also be
+        monitored to ensure that the set is kept accurate - for example, a
+        client may remove capabilities when it exits which are still provided
+        by another client.</p>
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+      </tp:possible-errors>
+    </method>
 
     <method name="GetContactCapabilities">
       <arg direction="in" name="handles" type="au" tp:type="Contact_Handle[]">

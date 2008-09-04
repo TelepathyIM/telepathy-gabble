@@ -2,9 +2,9 @@
 """
 Test tubes capabilities with Connection.Interface.ContactCapabilities.DRAFT
 Receive presence and caps from contacts and check that GetContactCapabilities
-works correctly. Also check that GetContactAttributes gives the same results.
+works correctly and that ContactCapabilitiesChanged is correctly received.
+Also check that GetContactAttributes gives the same results.
 
-Test:
 - no tube cap at all
 - 1 stream tube cap
 - 1 D-Bus tube cap
@@ -13,8 +13,6 @@ Test:
 - 1 stream tube + 1 D-Bus tube caps, again, to test whether the caps cache
   works with tubes
 
-TODO:
-- signals
 """
 
 import dbus

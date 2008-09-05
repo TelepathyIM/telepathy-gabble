@@ -836,16 +836,12 @@ gabble_media_factory_foreach_channel (GabbleChannelManager *manager,
 }
 
 
-static const gchar * const no_properties[] = {
-    NULL
-};
-
-static const gchar * const named_channel_required_properties[] = {
+static const gchar * const named_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     NULL
 };
 
-static const gchar * const anon_channel_optional_properties[] = {
+static const gchar * const anon_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",   /* must be 0 if given */
     NULL
 };
@@ -870,12 +866,10 @@ gabble_media_factory_foreach_channel_class (GabbleChannelManager *manager,
       handle_type_value);
 
   g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_NONE);
-  func (manager, table, no_properties,
-      anon_channel_optional_properties, user_data);
+  func (manager, table, anon_channel_allowed_properties, user_data);
 
   g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_CONTACT);
-  func (manager, table, named_channel_required_properties,
-      no_properties, user_data);
+  func (manager, table, named_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }

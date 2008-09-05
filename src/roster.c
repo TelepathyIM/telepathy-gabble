@@ -2467,19 +2467,13 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 }
 
 
-static const gchar * const list_channel_required_properties[] = {
+static const gchar * const list_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     NULL
 };
-static const gchar * const *group_channel_required_properties =
-    list_channel_required_properties;
+static const gchar * const *group_channel_allowed_properties =
+    list_channel_allowed_properties;
 
-
-static const gchar * const list_channel_optional_properties[] = {
-    NULL
-};
-static const gchar * const *group_channel_optional_properties =
-    list_channel_optional_properties;
 
 
 static void
@@ -2501,8 +2495,7 @@ gabble_roster_foreach_channel_class (GabbleChannelManager *manager,
       handle_type_value);
 
   g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_GROUP);
-  func (manager, table, group_channel_required_properties,
-      group_channel_optional_properties, user_data);
+  func (manager, table, group_channel_allowed_properties, user_data);
 
   /* FIXME: should these actually be in RequestableChannelClasses? You can't
    * usefully call CreateChannel on them, although EnsureChannel would be
@@ -2510,8 +2503,7 @@ gabble_roster_foreach_channel_class (GabbleChannelManager *manager,
   /* FIXME: since we have a finite set of possible values for TargetHandle,
    * should we enumerate them all as separate channel classes? */
   g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_LIST);
-  func (manager, table, list_channel_required_properties,
-      list_channel_optional_properties, user_data);
+  func (manager, table, list_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }

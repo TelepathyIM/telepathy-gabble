@@ -554,13 +554,8 @@ gabble_private_tubes_factory_iface_init (gpointer g_iface,
 }
 
 
-static const gchar * const tubes_channel_required_properties[] = {
+static const gchar * const tubes_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
-    NULL
-};
-
-
-static const gchar * const tubes_channel_optional_properties[] = {
     NULL
 };
 
@@ -585,8 +580,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, tubes_channel_required_properties,
-      tubes_channel_optional_properties, user_data);
+  func (manager, table, tubes_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }

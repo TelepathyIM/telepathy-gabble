@@ -1230,15 +1230,14 @@ gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
 }
 
 
-static const gchar * const muc_channel_required_properties[] = {
+static const gchar * const muc_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     NULL
 };
 
-static const gchar * const * muc_tubes_channel_required_properties =
-    muc_channel_required_properties;
+static const gchar * const * muc_tubes_channel_allowed_properties =
+    muc_channel_allowed_properties;
 
-static const gchar * const no_properties[] = { NULL };
 
 
 static void
@@ -1261,11 +1260,11 @@ gabble_muc_factory_foreach_channel_class (GabbleChannelManager *manager,
       handle_type_value);
 
   g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TEXT);
-  func (manager, table, muc_channel_required_properties, no_properties,
+  func (manager, table, muc_channel_allowed_properties,
       user_data);
 
   g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TUBES);
-  func (manager, table, muc_tubes_channel_required_properties, no_properties,
+  func (manager, table, muc_tubes_channel_allowed_properties,
       user_data);
 
   g_hash_table_destroy (table);

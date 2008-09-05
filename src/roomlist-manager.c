@@ -254,9 +254,7 @@ gabble_roomlist_manager_foreach_channel (GabbleChannelManager *manager,
 }
 
 
-static const gchar * const no_properties[] = { NULL };
-
-static const gchar * const roomlist_channel_optional_properties[] = {
+static const gchar * const roomlist_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL_TYPE_ROOM_LIST ".Server",
     NULL
 };
@@ -279,8 +277,7 @@ gabble_roomlist_manager_foreach_channel_class (GabbleChannelManager *manager,
   g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
 
-  func (manager, table, no_properties, roomlist_channel_optional_properties,
-      user_data);
+  func (manager, table, roomlist_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }

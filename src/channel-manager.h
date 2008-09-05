@@ -60,8 +60,7 @@ void gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,
 typedef void (*GabbleChannelManagerChannelClassFunc) (
     GabbleChannelManager *manager,
     GHashTable *fixed_properties,
-    const gchar * const *required_properties,
-    const gchar * const *optional_properties,
+    const gchar * const *allowed_properties,
     gpointer user_data);
 
 typedef void (*GabbleChannelManagerForeachChannelClassFunc) (

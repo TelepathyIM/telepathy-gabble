@@ -482,13 +482,8 @@ gabble_im_factory_foreach_channel (GabbleChannelManager *manager,
 }
 
 
-static const gchar * const im_channel_required_properties[] = {
+static const gchar * const im_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
-    NULL
-};
-
-
-static const gchar * const im_channel_optional_properties[] = {
     NULL
 };
 
@@ -512,8 +507,7 @@ gabble_im_factory_foreach_channel_class (GabbleChannelManager *manager,
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, im_channel_required_properties,
-      im_channel_optional_properties, user_data);
+  func (manager, table, im_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }

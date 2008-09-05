@@ -837,29 +837,12 @@ conn_requests_get_channel_details (GabbleConnection *self)
 static void
 get_requestables_foreach (GabbleChannelManager *manager,
                           GHashTable *fixed_properties,
-                          const gchar * const *required_properties,
-                          const gchar * const *optional_properties,
+                          const gchar * const *allowed_properties,
                           gpointer user_data)
 {
   GPtrArray *details = user_data;
-  GValueArray *requestable = g_value_array_new (3);
+  GValueArray *requestable = g_value_array_new (2);
   GValue *value;
-  GPtrArray *allowed;
-  const gchar * const *iter;
-
-  allowed = g_ptr_array_new ();
-
-  for (iter = required_properties;
-       iter != NULL && *iter != NULL;
-       iter++)
-    g_ptr_array_add (allowed, g_strdup (*iter));
-
-  for (iter = optional_properties;
-       iter != NULL && *iter != NULL;
-       iter++)
-    g_ptr_array_add (allowed, g_strdup (*iter));
-
-  g_ptr_array_add (allowed, NULL);
 
   g_value_array_append (requestable, NULL);
   value = g_value_array_get_nth (requestable, 0);
@@ -869,7 +852,7 @@ get_requestables_foreach (GabbleChannelManager *manager,
   g_value_array_append (requestable, NULL);
   value = g_value_array_get_nth (requestable, 1);
   g_value_init (value, G_TYPE_STRV);
-  g_value_take_boxed (value, g_ptr_array_free (allowed, FALSE));
+  g_value_set_boxed (value, allowed_properties);
 
   g_ptr_array_add (details, requestable);
 }
@@ -928,6 +911,8 @@ conn_requests_requestotron (GabbleConnection *self,
                             ChannelRequestMethod method,
                             DBusGMethodInvocation *context)
 {
+  TpBaseConnection *base_conn = (TpBaseConnection *) self;
+  TpHandleRepoIface *handles;
   guint i;
   ChannelRequest *request = NULL;
   GHashTable *altered_properties = NULL;
@@ -936,10 +921,11 @@ conn_requests_requestotron (GabbleConnection *self,
   gboolean suppress_handler;
   TpHandleType target_handle_type;
   TpHandle target_handle;
+  GValue *target_handle_value = NULL;
+  const gchar *target_id;
   gboolean valid;
 
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) self,
-      context);
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base_conn, context);
 
   type = tp_asv_get_string (requested_properties,
         TP_IFACE_CHANNEL ".ChannelType");
@@ -981,6 +967,9 @@ conn_requests_requestotron (GabbleConnection *self,
       goto out;
     }
 
+  target_id = tp_asv_get_string (requested_properties,
+      TP_IFACE_CHANNEL ".TargetID");
+
   /* Handle type 0 cannot have a handle */
   if (target_handle_type == TP_HANDLE_TYPE_NONE && target_handle != 0)
     {
@@ -991,21 +980,76 @@ conn_requests_requestotron (GabbleConnection *self,
       goto out;
     }
 
-  /* FIXME: when TargetID is officially supported, if it has
-   * target_handle_type == TP_HANDLE_TYPE_NONE and has a TargetID, raise
-   * an error */
+  /* Handle type 0 cannot have a target id */
+  if (target_handle_type == TP_HANDLE_TYPE_NONE && target_id != NULL)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "When TargetHandleType is NONE, TargetID must be omitted" };
 
-  /* FIXME: when TargetID is officially supported, if it has both a TargetID
-   * and a TargetHandle, raise an error */
+      dbus_g_method_return_error (context, &e);
+      goto out;
+    }
 
   /* FIXME: when InitiatorHandle, InitiatorID and Requested are officially
    * supported, if the request has any of them, raise an error */
 
-  /* FIXME: when TargetID is officially supported, if it has TargetID but
-   * no TargetHandle, copy requested_properties to altered_properties,
-   * remove TargetID, add TargetHandle, and set
-   * requested_properties = altered_properties (shadowing the original).
-   * If handle normalization fails, raise an error */
+  if (target_handle_type != TP_HANDLE_TYPE_NONE)
+    {
+      GError *error = NULL;
+
+      if ((target_handle == 0 && target_id == NULL) ||
+          (target_handle != 0 && target_id != NULL))
+        {
+          GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+            "Exactly one of TargetHandle and TargetID must be supplied" };
+
+          dbus_g_method_return_error (context, &e);
+          goto out;
+        }
+
+      handles = tp_base_connection_get_handles (base_conn, target_handle_type);
+
+      if (target_handle == 0)
+        {
+          /* Turn TargetID into TargetHandle */
+          target_handle = tp_handle_ensure (handles, target_id, NULL, &error);
+
+          if (target_handle == 0)
+            {
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+              goto out;
+            }
+
+          altered_properties = g_hash_table_new_full (g_str_hash, g_str_equal,
+              NULL, NULL);
+          tp_g_hash_table_update (altered_properties, requested_properties,
+              NULL, NULL);
+
+          target_handle_value = tp_g_value_slice_new (G_TYPE_UINT);
+          g_value_set_uint (target_handle_value, target_handle);
+          g_hash_table_insert (altered_properties,
+              TP_IFACE_CHANNEL ".TargetHandle", target_handle_value);
+
+          g_hash_table_remove (altered_properties,
+              TP_IFACE_CHANNEL ".TargetID");
+
+          requested_properties = altered_properties;
+        }
+      else
+        {
+          /* Check the supplied TargetHandle is valid */
+          if (!tp_handle_is_valid (handles, target_handle, &error))
+            {
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+              goto out;
+            }
+
+          tp_handle_ref (handles, target_handle);
+        }
+    }
+
 
   switch (method)
     {
@@ -1039,18 +1083,20 @@ conn_requests_requestotron (GabbleConnection *self,
     }
 
   /* Nobody accepted the request */
-    {
-      GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "Not implemented" };
+  tp_dbus_g_method_return_not_implemented (context);
 
-      dbus_g_method_return_error (context, &e);
-      g_ptr_array_remove (self->channel_requests, request);
-      channel_request_free (request);
-    }
+  request->context = NULL;
+  g_ptr_array_remove (self->channel_requests, request);
+  channel_request_free (request);
+
 
 out:
+  if (target_handle != 0)
+    tp_handle_unref (handles, target_handle);
   if (altered_properties != NULL)
     g_hash_table_destroy (altered_properties);
+  if (target_handle_value != NULL)
+    tp_g_value_slice_free (target_handle_value);
 
   return;
 }

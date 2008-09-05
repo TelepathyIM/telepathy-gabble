@@ -26,13 +26,13 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/util.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
-#include "channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "namespaces.h"
@@ -45,7 +45,7 @@ static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistManager, gabble_roomlist_manager,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init));
 
 
@@ -237,7 +237,7 @@ gabble_roomlist_manager_class_init (GabbleRoomlistManagerClass *klass)
 
 
 static void
-gabble_roomlist_manager_foreach_channel (GabbleChannelManager *manager,
+gabble_roomlist_manager_foreach_channel (TpChannelManager *manager,
                                          TpExportableChannelFunc foreach,
                                          gpointer user_data)
 {
@@ -261,8 +261,8 @@ static const gchar * const roomlist_channel_allowed_properties[] = {
 
 
 static void
-gabble_roomlist_manager_foreach_channel_class (GabbleChannelManager *manager,
-    GabbleChannelManagerChannelClassFunc func,
+gabble_roomlist_manager_foreach_channel_class (TpChannelManager *manager,
+    TpChannelManagerChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -289,7 +289,7 @@ roomlist_channel_closed_cb (GabbleRoomlistChannel *channel,
 {
   GabbleRoomlistManager *self = GABBLE_ROOMLIST_MANAGER (user_data);
 
-  gabble_channel_manager_emit_channel_closed_for_object (self,
+  tp_channel_manager_emit_channel_closed_for_object (self,
       TP_EXPORTABLE_CHANNEL (channel));
 
   if (self->priv->channels != NULL)
@@ -301,7 +301,7 @@ roomlist_channel_closed_cb (GabbleRoomlistChannel *channel,
 
 
 static gboolean
-gabble_roomlist_manager_handle_request (GabbleChannelManager *manager,
+gabble_roomlist_manager_handle_request (TpChannelManager *manager,
                                         gpointer request_token,
                                         GHashTable *request_properties,
                                         gboolean require_new)
@@ -365,7 +365,7 @@ gabble_roomlist_manager_handle_request (GabbleChannelManager *manager,
 
           if (good)
             {
-              gabble_channel_manager_emit_request_already_satisfied (self,
+              tp_channel_manager_emit_request_already_satisfied (self,
                   request_token, TP_EXPORTABLE_CHANNEL (channel));
               return TRUE;
             }
@@ -387,7 +387,7 @@ gabble_roomlist_manager_handle_request (GabbleChannelManager *manager,
   g_ptr_array_add (self->priv->channels, channel);
 
   request_tokens = g_slist_prepend (NULL, request_token);
-  gabble_channel_manager_emit_new_channel (self,
+  tp_channel_manager_emit_new_channel (self,
       TP_EXPORTABLE_CHANNEL (channel), request_tokens);
   g_slist_free (request_tokens);
 
@@ -396,7 +396,7 @@ gabble_roomlist_manager_handle_request (GabbleChannelManager *manager,
   return TRUE;
 
 error:
-  gabble_channel_manager_emit_request_failed (self, request_token,
+  tp_channel_manager_emit_request_failed (self, request_token,
       error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
@@ -404,7 +404,7 @@ error:
 
 
 static gboolean
-gabble_roomlist_manager_create_channel (GabbleChannelManager *manager,
+gabble_roomlist_manager_create_channel (TpChannelManager *manager,
                                         gpointer request_token,
                                         GHashTable *request_properties)
 {
@@ -414,7 +414,7 @@ gabble_roomlist_manager_create_channel (GabbleChannelManager *manager,
 
 
 static gboolean
-gabble_roomlist_manager_request_channel (GabbleChannelManager *manager,
+gabble_roomlist_manager_request_channel (TpChannelManager *manager,
                                          gpointer request_token,
                                          GHashTable *request_properties)
 {
@@ -427,7 +427,7 @@ static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
 {
-  GabbleChannelManagerIface *iface = g_iface;
+  TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_roomlist_manager_foreach_channel;
   iface->foreach_channel_class = gabble_roomlist_manager_foreach_channel_class;

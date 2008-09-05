@@ -27,13 +27,13 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/util.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
-#include "channel-manager.h"
 #include "connection.h"
 #include "conn-olpc.h"
 #include "debug.h"
@@ -48,7 +48,7 @@
 static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucFactory, gabble_muc_factory, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init));
 
 /* properties */
@@ -234,7 +234,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpHandle room_handle;
 
-  gabble_channel_manager_emit_channel_closed_for_object (fac,
+  tp_channel_manager_emit_channel_closed_for_object (fac,
       TP_EXPORTABLE_CHANNEL (chan));
 
   if (priv->text_channels != NULL)
@@ -271,7 +271,7 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpHandle room_handle;
 
-  gabble_channel_manager_emit_channel_closed_for_object (fac,
+  tp_channel_manager_emit_channel_closed_for_object (fac,
       TP_EXPORTABLE_CHANNEL (chan));
 
   if (priv->tubes_channels != NULL)
@@ -296,7 +296,7 @@ gabble_muc_factory_emit_new_channel (GabbleMucFactory *self,
   requests_satisfied = g_hash_table_lookup (priv->queued_requests, channel);
   g_hash_table_steal (priv->queued_requests, channel);
   requests_satisfied = g_slist_reverse (requests_satisfied);
-  gabble_channel_manager_emit_new_channel (self, channel, requests_satisfied);
+  tp_channel_manager_emit_new_channel (self, channel, requests_satisfied);
   g_slist_free (requests_satisfied);
 }
 
@@ -341,7 +341,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
 
   for (iter = requests_satisfied; iter != NULL; iter = iter->next)
     {
-      gabble_channel_manager_emit_request_failed (fac, iter->data,
+      tp_channel_manager_emit_request_failed (fac, iter->data,
           error->domain, error->code, error->message);
     }
 
@@ -359,7 +359,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
 
       for (iter = requests_satisfied; iter != NULL; iter = iter->next)
         {
-          gabble_channel_manager_emit_request_failed (fac, iter->data,
+          tp_channel_manager_emit_request_failed (fac, iter->data,
               error->domain, error->code, error->message);
         }
 
@@ -1002,7 +1002,7 @@ cancel_queued_requests (gpointer k,
 
   for (iter = requests_satisfied; iter != NULL; iter = iter->next)
     {
-      gabble_channel_manager_emit_request_failed (self,
+      tp_channel_manager_emit_request_failed (self,
           iter->data, TP_ERRORS, TP_ERROR_DISCONNECTED,
           "Unable to complete this channel request, we're disconnecting!");
     }
@@ -1141,7 +1141,7 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 }
 
 static void
-gabble_muc_factory_foreach_channel (GabbleChannelManager *manager,
+gabble_muc_factory_foreach_channel (TpChannelManager *manager,
                                     TpExportableChannelFunc foreach,
                                     gpointer user_data)
 {
@@ -1241,8 +1241,8 @@ static const gchar * const * muc_tubes_channel_allowed_properties =
 
 
 static void
-gabble_muc_factory_foreach_channel_class (GabbleChannelManager *manager,
-    GabbleChannelManagerChannelClassFunc func,
+gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
+    TpChannelManagerChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -1312,7 +1312,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
             }
           else
             {
-              gabble_channel_manager_emit_request_already_satisfied (self,
+              tp_channel_manager_emit_request_already_satisfied (self,
                   request_token, TP_EXPORTABLE_CHANNEL (text_chan));
             }
         }
@@ -1339,7 +1339,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
             }
           else
             {
-              gabble_channel_manager_emit_request_already_satisfied (self,
+              tp_channel_manager_emit_request_already_satisfied (self,
                   request_token, TP_EXPORTABLE_CHANNEL (tubes_chan));
             }
         }
@@ -1370,7 +1370,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
     }
 
 error:
-  gabble_channel_manager_emit_request_failed (self, request_token,
+  tp_channel_manager_emit_request_failed (self, request_token,
       error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
@@ -1378,7 +1378,7 @@ error:
 
 
 static gboolean
-gabble_muc_factory_create_channel (GabbleChannelManager *manager,
+gabble_muc_factory_create_channel (TpChannelManager *manager,
                                    gpointer request_token,
                                    GHashTable *request_properties)
 {
@@ -1390,7 +1390,7 @@ gabble_muc_factory_create_channel (GabbleChannelManager *manager,
 
 
 static gboolean
-gabble_muc_factory_request_channel (GabbleChannelManager *manager,
+gabble_muc_factory_request_channel (TpChannelManager *manager,
                                     gpointer request_token,
                                     GHashTable *request_properties)
 {
@@ -1405,7 +1405,7 @@ static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
 {
-  GabbleChannelManagerIface *iface = g_iface;
+  TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_muc_factory_foreach_channel;
   iface->foreach_channel_class = gabble_muc_factory_foreach_channel_class;

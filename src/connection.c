@@ -29,6 +29,7 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
@@ -46,7 +47,6 @@
 #include "bytestream-factory.h"
 #include "capabilities.h"
 #include "caps-hash.h"
-#include "channel-manager.h"
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
 #include "conn-presence.h"
@@ -1341,8 +1341,8 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   lm_message_unref (message);
 
   /* broadcast presence to MUCs */
-  gabble_channel_manager_foreach_channel (
-      GABBLE_CHANNEL_MANAGER (self->muc_factory),
+  tp_channel_manager_foreach_channel (
+      TP_CHANNEL_MANAGER (self->muc_factory),
       (TpExportableChannelFunc) gabble_muc_channel_send_presence, NULL);
 
   return ret;

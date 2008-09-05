@@ -27,12 +27,12 @@
 #include <string.h>
 
 #include <dbus/dbus-glib.h>
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
-#include "channel-manager.h"
 #include "conn-aliasing.h"
 #include "connection.h"
 #include "debug.h"
@@ -132,7 +132,7 @@ static void item_edit_free (GabbleRosterItemEdit *edits);
 static void gabble_roster_close_all (GabbleRoster *roster);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init));
 
 #define GABBLE_ROSTER_GET_PRIVATE(o) ((o)->priv)
@@ -851,7 +851,7 @@ gabble_roster_emit_new_channel (GabbleRoster *self,
   requests_satisfied = g_hash_table_lookup (priv->queued_requests, channel);
   g_hash_table_steal (priv->queued_requests, channel);
   requests_satisfied = g_slist_reverse (requests_satisfied);
-  gabble_channel_manager_emit_new_channel (self,
+  tp_channel_manager_emit_new_channel (self,
       TP_EXPORTABLE_CHANNEL (channel), requests_satisfied);
   g_slist_free (requests_satisfied);
 }
@@ -875,7 +875,7 @@ roster_channel_closed_cb (GabbleRosterChannel *channel,
   g_assert (handle_type == TP_HANDLE_TYPE_LIST ||
             handle_type == TP_HANDLE_TYPE_GROUP);
 
-  gabble_channel_manager_emit_channel_closed_for_object (self,
+  tp_channel_manager_emit_channel_closed_for_object (self,
       TP_EXPORTABLE_CHANNEL (channel));
 
   channels = (handle_type == TP_HANDLE_TYPE_LIST
@@ -1651,7 +1651,7 @@ cancel_queued_requests (gpointer k,
 
   for (iter = requests_satisfied; iter != NULL; iter = iter->next)
     {
-      gabble_channel_manager_emit_request_failed (self,
+      tp_channel_manager_emit_request_failed (self,
           iter->data, TP_ERRORS, TP_ERROR_DISCONNECTED,
           "Unable to complete this channel request, we're disconnecting!");
     }
@@ -1793,7 +1793,7 @@ _gabble_roster_foreach_channel_helper (gpointer key,
 }
 
 static void
-gabble_roster_foreach_channel (GabbleChannelManager *manager,
+gabble_roster_foreach_channel (TpChannelManager *manager,
                                TpExportableChannelFunc func,
                                gpointer data)
 {
@@ -2477,8 +2477,8 @@ static const gchar * const *group_channel_allowed_properties =
 
 
 static void
-gabble_roster_foreach_channel_class (GabbleChannelManager *manager,
-                                     GabbleChannelManagerChannelClassFunc func,
+gabble_roster_foreach_channel_class (TpChannelManager *manager,
+                                     TpChannelManagerChannelClassFunc func,
                                      gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -2568,7 +2568,7 @@ gabble_roster_request (GabbleRoster *self,
   if (self->priv->roster_received)
     {
       if (!created)
-        gabble_channel_manager_emit_request_already_satisfied (self,
+        tp_channel_manager_emit_request_already_satisfied (self,
             request_token, TP_EXPORTABLE_CHANNEL (channel));
     }
   else
@@ -2579,7 +2579,7 @@ gabble_roster_request (GabbleRoster *self,
   return TRUE;
 
 error:
-  gabble_channel_manager_emit_request_failed (self, request_token,
+  tp_channel_manager_emit_request_failed (self, request_token,
       error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
@@ -2587,7 +2587,7 @@ error:
 
 
 static gboolean
-gabble_roster_create_channel (GabbleChannelManager *manager,
+gabble_roster_create_channel (TpChannelManager *manager,
                               gpointer request_token,
                               GHashTable *request_properties)
 {
@@ -2603,7 +2603,7 @@ gabble_roster_create_channel (GabbleChannelManager *manager,
 
 
 static gboolean
-gabble_roster_request_channel (GabbleChannelManager *manager,
+gabble_roster_request_channel (TpChannelManager *manager,
                                gpointer request_token,
                                GHashTable *request_properties)
 {
@@ -2618,7 +2618,7 @@ static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
 {
-  GabbleChannelManagerIface *iface = g_iface;
+  TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_roster_foreach_channel;
   iface->foreach_channel_class = gabble_roster_foreach_channel_class;

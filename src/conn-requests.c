@@ -22,6 +22,7 @@
 #include "conn-requests.h"
 
 #include <telepathy-glib/channel-factory-iface.h>
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/gtypes.h>
@@ -32,7 +33,6 @@
 #include "extensions/extensions.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
-#include "channel-manager.h"
 #include "debug.h"
 
 
@@ -458,10 +458,10 @@ conn_requests_request_channel (TpSvcConnection *iface,
 
   for (i = 0; i < self->channel_managers->len; i++)
     {
-      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+      TpChannelManager *manager = TP_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
 
-      if (gabble_channel_manager_request_channel (manager, request,
+      if (tp_channel_manager_request_channel (manager, request,
             request_properties))
         return;
     }
@@ -754,10 +754,10 @@ conn_requests_list_channels (TpSvcConnection *iface,
 
   for (i = 0; i < self->channel_managers->len; i++)
     {
-      GabbleChannelManager *manager = g_ptr_array_index
+      TpChannelManager *manager = g_ptr_array_index
         (self->channel_managers, i);
 
-      gabble_channel_manager_foreach_channel (manager,
+      tp_channel_manager_foreach_channel (manager,
           list_channel_manager_foreach_one, values);
     }
 
@@ -823,10 +823,10 @@ conn_requests_get_channel_details (GabbleConnection *self)
 
   for (i = 0; i < self->channel_managers->len; i++)
     {
-      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+      TpChannelManager *manager = TP_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
 
-      gabble_channel_manager_foreach_channel (manager,
+      tp_channel_manager_foreach_channel (manager,
           manager_get_channel_details_foreach, details);
     }
 
@@ -835,7 +835,7 @@ conn_requests_get_channel_details (GabbleConnection *self)
 
 
 static void
-get_requestables_foreach (GabbleChannelManager *manager,
+get_requestables_foreach (TpChannelManager *manager,
                           GHashTable *fixed_properties,
                           const gchar * const *allowed_properties,
                           gpointer user_data)
@@ -867,10 +867,10 @@ conn_requests_get_requestables (GabbleConnection *self)
 
   for (i = 0; i < self->channel_managers->len; i++)
     {
-      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+      TpChannelManager *manager = TP_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
 
-      gabble_channel_manager_foreach_channel_class (manager,
+      tp_channel_manager_foreach_channel_class (manager,
           get_requestables_foreach, details);
     }
 
@@ -917,7 +917,7 @@ conn_requests_requestotron (GabbleConnection *self,
   ChannelRequest *request = NULL;
   GHashTable *altered_properties = NULL;
   const gchar *type;
-  GabbleChannelManagerRequestFunc func;
+  TpChannelManagerRequestFunc func;
   gboolean suppress_handler;
   TpHandleType target_handle_type;
   TpHandle target_handle;
@@ -1054,13 +1054,13 @@ conn_requests_requestotron (GabbleConnection *self,
   switch (method)
     {
     case METHOD_CREATE_CHANNEL:
-      func = gabble_channel_manager_create_channel;
+      func = tp_channel_manager_create_channel;
       suppress_handler = TRUE;
       break;
 
 #if 0
     case METHOD_ENSURE_CHANNEL:
-      func = gabble_channel_manager_ensure_channel;
+      func = tp_channel_manager_ensure_channel;
       suppress_handler = FALSE;
       break;
 #endif
@@ -1075,7 +1075,7 @@ conn_requests_requestotron (GabbleConnection *self,
 
   for (i = 0; i < self->channel_managers->len; i++)
     {
-      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+      TpChannelManager *manager = TP_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
 
       if (func (manager, request, requested_properties))
@@ -1184,13 +1184,13 @@ manager_new_channels_foreach (gpointer key,
 
 
 static void
-manager_new_channels_cb (GabbleChannelManager *manager,
+manager_new_channels_cb (TpChannelManager *manager,
                          GHashTable *channels,
                          GabbleConnection *self)
 {
   GPtrArray *array;
 
-  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (TP_IS_CHANNEL_MANAGER (manager));
   g_assert (GABBLE_IS_CONNECTION (self));
 
   array = g_ptr_array_sized_new (g_hash_table_size (channels));
@@ -1205,14 +1205,14 @@ manager_new_channels_cb (GabbleChannelManager *manager,
 
 
 static void
-manager_request_already_satisfied_cb (GabbleChannelManager *manager,
+manager_request_already_satisfied_cb (TpChannelManager *manager,
                                       gpointer request_token,
                                       TpExportableChannel *channel,
                                       GabbleConnection *self)
 {
   gchar *object_path;
 
-  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (TP_IS_CHANNEL_MANAGER (manager));
   g_assert (TP_IS_EXPORTABLE_CHANNEL (channel));
   g_assert (GABBLE_IS_CONNECTION (self));
 
@@ -1226,7 +1226,7 @@ manager_request_already_satisfied_cb (GabbleChannelManager *manager,
 
 
 static void
-manager_request_failed_cb (GabbleChannelManager *manager,
+manager_request_failed_cb (TpChannelManager *manager,
                            gpointer request_token,
                            guint domain,
                            gint code,
@@ -1235,7 +1235,7 @@ manager_request_failed_cb (GabbleChannelManager *manager,
 {
   GError error = { domain, code, message };
 
-  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (TP_IS_CHANNEL_MANAGER (manager));
   g_assert (domain > 0);
   g_assert (message != NULL);
   g_assert (GABBLE_IS_CONNECTION (self));
@@ -1245,11 +1245,11 @@ manager_request_failed_cb (GabbleChannelManager *manager,
 
 
 static void
-manager_channel_closed_cb (GabbleChannelManager *manager,
+manager_channel_closed_cb (TpChannelManager *manager,
                            const gchar *path,
                            GabbleConnection *self)
 {
-  g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
+  g_assert (TP_IS_CHANNEL_MANAGER (manager));
   g_assert (path != NULL);
   g_assert (GABBLE_IS_CONNECTION (self));
 
@@ -1285,7 +1285,7 @@ gabble_conn_requests_init (GabbleConnection *self)
 
   for (i = 0; i < self->channel_managers->len; i++)
     {
-      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+      TpChannelManager *manager = TP_CHANNEL_MANAGER (
           g_ptr_array_index (self->channel_managers, i));
 
       g_signal_connect (manager, "new-channels",

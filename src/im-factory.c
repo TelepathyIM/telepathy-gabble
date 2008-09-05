@@ -27,12 +27,12 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 
-#include "channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
@@ -42,7 +42,7 @@
 static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleImFactory, gabble_im_factory, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init));
 
 /* properties */
@@ -316,7 +316,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
       "channel-destroyed", &really_destroyed,
       NULL);
 
-  gabble_channel_manager_emit_channel_closed_for_object (self,
+  tp_channel_manager_emit_channel_closed_for_object (self,
       (TpExportableChannel *) chan);
 
   if (priv->channels != NULL)
@@ -337,7 +337,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 
           DEBUG ("reopening channel with handle %u due to pending messages",
               contact_handle);
-          gabble_channel_manager_emit_new_channel (self,
+          tp_channel_manager_emit_new_channel (self,
               (TpExportableChannel *) chan, NULL);
         }
     }
@@ -388,7 +388,7 @@ new_im_channel (GabbleImFactory *fac,
   else
     request_tokens = NULL;
 
-  gabble_channel_manager_emit_new_channel (fac,
+  tp_channel_manager_emit_new_channel (fac,
       (TpExportableChannel *) chan, request_tokens);
 
   g_slist_free (request_tokens);
@@ -468,7 +468,7 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 }
 
 static void
-gabble_im_factory_foreach_channel (GabbleChannelManager *manager,
+gabble_im_factory_foreach_channel (TpChannelManager *manager,
                                    TpExportableChannelFunc func,
                                    gpointer user_data)
 {
@@ -489,8 +489,8 @@ static const gchar * const im_channel_allowed_properties[] = {
 
 
 static void
-gabble_im_factory_foreach_channel_class (GabbleChannelManager *manager,
-    GabbleChannelManagerChannelClassFunc func,
+gabble_im_factory_foreach_channel_class (TpChannelManager *manager,
+    TpChannelManagerChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -556,12 +556,12 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
       goto error;
     }
 
-  gabble_channel_manager_emit_request_already_satisfied (self, request_token,
+  tp_channel_manager_emit_request_already_satisfied (self, request_token,
       channel);
   return TRUE;
 
 error:
-  gabble_channel_manager_emit_request_failed (self, request_token,
+  tp_channel_manager_emit_request_failed (self, request_token,
       error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
@@ -569,7 +569,7 @@ error:
 
 
 static gboolean
-gabble_im_factory_create_channel (GabbleChannelManager *manager,
+gabble_im_factory_create_channel (TpChannelManager *manager,
                                   gpointer request_token,
                                   GHashTable *request_properties)
 {
@@ -581,7 +581,7 @@ gabble_im_factory_create_channel (GabbleChannelManager *manager,
 
 
 static gboolean
-gabble_im_factory_request_channel (GabbleChannelManager *manager,
+gabble_im_factory_request_channel (TpChannelManager *manager,
                                    gpointer request_token,
                                    GHashTable *request_properties)
 {
@@ -596,7 +596,7 @@ static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
 {
-  GabbleChannelManagerIface *iface = g_iface;
+  TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_im_factory_foreach_channel;
   iface->foreach_channel_class = gabble_im_factory_foreach_channel_class;

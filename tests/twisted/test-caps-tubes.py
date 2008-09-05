@@ -1,9 +1,11 @@
 
 """
 Test tubes capabilities with Connection.Interface.ContactCapabilities.DRAFT
-Receive presence and caps from contacts and check that GetContactCapabilities
-works correctly and that ContactCapabilitiesChanged is correctly received.
-Also check that GetContactAttributes gives the same results.
+
+1. Receive presence and caps from contacts and check that
+GetContactCapabilities works correctly and that ContactCapabilitiesChanged is
+correctly received. Also check that GetContactAttributes gives the same
+results.
 
 - no tube cap at all
 - 1 stream tube cap
@@ -12,6 +14,20 @@ Also check that GetContactAttributes gives the same results.
 - 2 stream tube + 2 D-Bus tube caps
 - 1 stream tube + 1 D-Bus tube caps, again, to test whether the caps cache
   works with tubes
+
+2. Test SetSelfCapabilities and test that a presence stanza is sent to the
+contacts, test that the D-Bus signal ContactCapabilitiesChanged is fired for
+the self handle, ask Gabble for its caps with an iq request, check the reply
+is correct, and ask Gabble for its caps using D-Bus method
+GetContactCapabilities. Also check that GetContactAttributes gives the same
+results.
+
+- no tube cap at all
+- 1 stream tube cap
+- 1 D-Bus tube cap
+- 1 stream tube + 1 D-Bus tube caps
+- 2 stream tube + 2 D-Bus tube caps
+- 1 stream tube + 1 D-Bus tube caps, again, just for the fun
 
 """
 
@@ -106,7 +122,55 @@ def presence_add_caps(presence, ver, client, hash=None):
         c['hash'] = hash
     return presence
 
-def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
+def receive_presence_and_ask_caps(q, stream):
+    # receive presence stanza
+    event_stream, event_dbus = q.expect_many(
+            EventPattern('stream-presence'),
+            EventPattern('dbus-signal', signal='ContactCapabilitiesChanged')
+        )
+    signaled_caps = event_dbus.args[0]
+
+    c_nodes = xpath.queryForNodes('/presence/c', event_stream.stanza)
+    assert c_nodes is not None
+    assert len(c_nodes) == 1
+    hash = c_nodes[0].attributes['hash']
+    ver = c_nodes[0].attributes['ver']
+    node = c_nodes[0].attributes['node']
+    assert hash == 'sha-1'
+
+    # ask caps
+    request = """
+<iq from='fake_contact@jabber.org/resource' 
+    id='disco1'
+    to='gabble@jabber.org/resource' 
+    type='get'>
+  <query xmlns='http://jabber.org/protocol/disco#info'
+         node='""" + node + '#' + ver + """'/>
+</iq>
+"""
+    stream.send(request)
+
+    # receive caps
+    event = q.expect('stream-iq',
+        query_ns='http://jabber.org/protocol/disco#info')
+    caps_str = str(xpath.queryForNodes('/iq/query/feature', event.stanza))
+
+    return (event, caps_str, signaled_caps)
+
+def caps_contain(event, cap):
+    node = xpath.queryForNodes('/iq/query/feature[@var="%s"]'
+            % cap,
+            event.stanza)
+    if node is None:
+        return False
+    if len(node) != 1:
+        return False
+    var = node[0].attributes['var']
+    if var is None:
+        return False
+    return var == cap
+
+def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, client):
 
     conn_caps_iface = dbus.Interface(conn, caps_iface)
     conn_contacts_iface = dbus.Interface(conn, contacts_iface)
@@ -180,11 +244,9 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(result)
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
-    removed = event.args[0][0]
-    added = event.args[0][1]
-    assert len(removed) == 0, removed
-    assert len(added) == 1, added
-    assert added[0][1] \
+    signaled_caps = event.args[0]
+    assert len(signaled_caps) == 2, signaled_caps # basic caps + daap
+    assert signaled_caps[1][1] \
         ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
         == 'daap'
 
@@ -227,14 +289,9 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(result)
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
-    removed = event.args[0][0]
-    added = event.args[0][1]
-    assert len(removed) == 1, removed
-    assert len(added) == 1, added
-    assert removed[0][1] \
-        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
-        == 'daap'
-    assert added[0][1] \
+    signaled_caps = event.args[0]
+    assert len(signaled_caps) == 2, signaled_caps # basic caps + Xiangqi
+    assert signaled_caps[1][1] \
         ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
         == 'com.example.Xiangqi'
 
@@ -279,13 +336,14 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(result)
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
-    removed = event.args[0][0]
-    added = event.args[0][1]
-    assert len(removed) == 0, removed
-    assert len(added) == 1, added
-    assert added[0][1] \
+    signaled_caps = event.args[0]
+    assert len(signaled_caps) == 3, signaled_caps # basic caps + daap+xiangqi
+    assert signaled_caps[1][1] \
         ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
         == 'daap'
+    assert signaled_caps[2][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
+        == 'com.example.Xiangqi'
 
     # daap + xiangqi capabilities
     daap_xiangqi_caps = [
@@ -333,14 +391,18 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(result)
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
-    removed = event.args[0][0]
-    added = event.args[0][1]
-    assert len(removed) == 0, removed
-    assert len(added) == 2, added
-    assert added[0][1] \
+    signaled_caps = event.args[0]
+    assert len(signaled_caps) == 5, signaled_caps # basic caps + 4 tubes
+    assert signaled_caps[1][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'daap'
+    assert signaled_caps[2][1] \
         ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
         == 'http'
-    assert added[1][1] \
+    assert signaled_caps[3][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
+        == 'com.example.Xiangqi'
+    assert signaled_caps[4][1] \
         ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
         == 'com.example.Go'
 
@@ -374,16 +436,14 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
     # Gabble does not look up our capabilities because of the cache
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
-    removed = event.args[0][0]
-    added = event.args[0][1]
-    assert len(removed) == 2, removed
-    assert len(added) == 0, added
-    assert removed[0][1] \
+    signaled_caps = event.args[0]
+    assert len(signaled_caps) == 3, signaled_caps # basic caps + daap+xiangqi
+    assert signaled_caps[1][1] \
         ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
-        == 'http'
-    assert removed[1][1] \
+        == 'daap'
+    assert signaled_caps[2][1] \
         ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
-        == 'com.example.Go'
+        == 'com.example.Xiangqi'
 
     # daap + xiangqi capabilities
     daap_xiangqi_caps = [
@@ -401,6 +461,209 @@ def _test_tube_caps(q, bus, conn, stream, contact, contact_handle, client):
             [contact_handle][caps_iface + '/caps']
     assert caps_via_contacts_iface == caps, caps_via_contacts_iface
 
+def test_tube_caps_to_contact(q, bus, conn, stream):
+    basic_caps = [(1, text_fixed_properties,
+            text_allowed_properties)]
+    daap_caps = [
+        (1, text_fixed_properties, text_allowed_properties),
+        (1, daap_fixed_properties, daap_allowed_properties)]
+    xiangqi_caps = [
+        (1, text_fixed_properties, text_allowed_properties),
+        (1, xiangqi_fixed_properties, xiangqi_allowed_properties)]
+    daap_xiangqi_caps = [
+        (1, text_fixed_properties, text_allowed_properties),
+        (1, daap_fixed_properties, daap_allowed_properties),
+        (1, xiangqi_fixed_properties, xiangqi_allowed_properties)]
+    all_tubes_caps = [
+        (1, text_fixed_properties, text_allowed_properties),
+        (1, daap_fixed_properties, daap_allowed_properties),
+        (1, http_fixed_properties, http_allowed_properties),
+        (1, xiangqi_fixed_properties, xiangqi_allowed_properties),
+        (1, go_fixed_properties, go_allowed_properties)]
+
+    conn_caps_iface = dbus.Interface(conn, caps_iface)
+    conn_contacts_iface = dbus.Interface(conn, contacts_iface)
+
+    # Check our own caps
+    caps = conn_caps_iface.GetContactCapabilities([1])
+    assert caps == basic_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [1], [caps_iface], False) \
+            [1][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
+
+    # Advertise nothing
+    conn_caps_iface.SetSelfCapabilities([])
+
+    # Check our own caps
+    caps = conn_caps_iface.GetContactCapabilities([1])
+    assert len(caps) == 1
+    assert caps == basic_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [1], [caps_iface], False) \
+            [1][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
+
+    sync_stream(q, stream)
+
+    # Advertise daap
+    ret_caps = conn_caps_iface.SetSelfCapabilities(
+        [daap_fixed_properties])
+
+    # Expect Gabble to reply with the correct caps
+    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
+    assert caps_contain(event, ns_tubes) == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream/daap') == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream/http') == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus/com.example.Go') \
+            == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus/com.example.Xiangqi') \
+            == False, caps_str
+    assert len(signaled_caps) == 2, signaled_caps # basic caps + daap
+    assert signaled_caps[1][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'daap'
+
+    # Check our own caps
+    caps = conn_caps_iface.GetContactCapabilities([1])
+    assert len(caps) == 2
+    assert caps == daap_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [1], [caps_iface], False) \
+            [1][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
+
+    # Advertise xiangqi
+    ret_caps = conn_caps_iface.SetSelfCapabilities(
+        [xiangqi_fixed_properties])
+
+    # Expect Gabble to reply with the correct caps
+    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
+    assert caps_contain(event, ns_tubes) == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream/daap') == False, caps_str
+    assert caps_contain(event, ns_tubes + '/stream/http') == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus/com.example.Go') \
+            == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus/com.example.Xiangqi') \
+            == True, caps_str
+    assert len(signaled_caps) == 2, signaled_caps # basic caps + daap
+    assert signaled_caps[1][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
+        == 'com.example.Xiangqi'
+
+    # Check our own caps
+    caps = conn_caps_iface.GetContactCapabilities([1])
+    assert len(caps) == 2
+    assert caps == xiangqi_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [1], [caps_iface], False) \
+            [1][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
+
+    # Advertise daap + xiangqi
+    ret_caps = conn_caps_iface.SetSelfCapabilities(
+        [daap_fixed_properties, xiangqi_fixed_properties])
+
+    # Expect Gabble to reply with the correct caps
+    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
+    assert caps_contain(event, ns_tubes) == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream/daap') == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream/http') == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus/com.example.Go') \
+            == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus/com.example.Xiangqi') \
+            == True, caps_str
+    assert len(signaled_caps) == 3, signaled_caps # basic caps + daap+xiangqi
+    assert signaled_caps[1][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'daap'
+    assert signaled_caps[2][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
+        == 'com.example.Xiangqi'
+
+    # Check our own caps
+    caps = conn_caps_iface.GetContactCapabilities([1])
+    assert len(caps) == 3
+    assert caps == daap_xiangqi_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [1], [caps_iface], False) \
+            [1][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
+
+    # Advertise 4 tubes
+    ret_caps = conn_caps_iface.SetSelfCapabilities(
+        [daap_fixed_properties, http_fixed_properties,
+         go_fixed_properties, xiangqi_fixed_properties])
+
+    # Expect Gabble to reply with the correct caps
+    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
+    assert caps_contain(event, ns_tubes) == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream/daap') == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream/http') == True, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus/com.example.Go') \
+            == True, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus/com.example.Xiangqi') \
+            == True, caps_str
+    assert len(signaled_caps) == 5, signaled_caps # basic caps + 4 tubes
+    assert signaled_caps[1][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'daap'
+    assert signaled_caps[2][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'http'
+    assert signaled_caps[3][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
+        == 'com.example.Xiangqi'
+    assert signaled_caps[4][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
+        == 'com.example.Go'
+
+    # Check our own caps
+    caps = conn_caps_iface.GetContactCapabilities([1])
+    assert len(caps) == 5
+    assert caps == all_tubes_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [1], [caps_iface], False) \
+            [1][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
+
+    # Advertise daap + xiangqi
+    ret_caps = conn_caps_iface.SetSelfCapabilities(
+        [daap_fixed_properties, xiangqi_fixed_properties])
+
+    # Expect Gabble to reply with the correct caps
+    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
+    assert caps_contain(event, ns_tubes) == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream/daap') == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream/http') == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus/com.example.Go') \
+            == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus/com.example.Xiangqi') \
+            == True, caps_str
+    assert len(signaled_caps) == 3, signaled_caps # basic caps + daap+xiangqi
+    assert signaled_caps[1][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service'] \
+        == 'daap'
+    assert signaled_caps[2][1] \
+        ['org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName'] \
+        == 'com.example.Xiangqi'
+
+    # Check our own caps
+    caps = conn_caps_iface.GetContactCapabilities([1])
+    assert len(caps) == 3
+    assert caps == daap_xiangqi_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [1], [caps_iface], False) \
+            [1][caps_iface + '/caps']
+    assert caps_via_contacts_iface == caps, caps_via_contacts_iface
+
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -408,7 +671,10 @@ def test(q, bus, conn, stream):
 
     client = 'http://telepathy.freedesktop.org/fake-client'
 
-    _test_tube_caps(q, bus, conn, stream, 'bilbo1@foo.com/Foo', 2L, client)
+    test_tube_caps_from_contact(q, bus, conn, stream, 'bilbo1@foo.com/Foo',
+        2L, client)
+
+    test_tube_caps_to_contact(q, bus, conn, stream)
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

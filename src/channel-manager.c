@@ -363,6 +363,22 @@ void gabble_channel_manager_get_contact_capabilities (
   /* ... else assume there is not caps for this kind of channels */
 }
 
+void gabble_channel_manager_get_feature_list (
+    GabbleChannelManager *manager,
+    gpointer specific_caps,
+    GSList **features)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerGetFeatureListFunc method = iface->get_feature_list;
+
+  if (method != NULL)
+    {
+      method (manager, specific_caps, features);
+    }
+  /* ... else nothing to do */
+}
+
 gpointer gabble_channel_manager_parse_capabilities (
     GabbleChannelManager *manager,
     LmMessageNode *child)
@@ -425,22 +441,37 @@ void gabble_channel_manager_update_capabilities (
   /* ... else, do what? */
 }
 
-void gabble_channel_manager_get_capability_changes (
+gboolean gabble_channel_manager_capabilities_diff (
     GabbleChannelManager *manager,
     TpHandle handle,
     gpointer specific_old_caps,
-    gpointer specific_new_caps,
-    GPtrArray *added_array,
-    GPtrArray *removed_array)
+    gpointer specific_new_caps)
 {
   GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
       manager);
-  GabbleChannelManagerGetCapChangesFunc method = iface->get_cap_changes;
+  GabbleChannelManagerCapsDiffFunc method = iface->caps_diff;
 
   if (method != NULL)
     {
-      method (manager, handle, specific_old_caps, specific_new_caps,
-          added_array, removed_array);
+      return method (manager, handle, specific_old_caps, specific_new_caps);
+    }
+  /* ... else, nothing to do */
+  return FALSE;
+}
+
+void
+gabble_channel_manager_add_capability (GabbleChannelManager *manager,
+                                       GabbleConnection *conn,
+                                       TpHandle handle,
+                                       GHashTable *cap)
+{
+  GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (
+      manager);
+  GabbleChannelManagerAddCapFunc method = iface->add_cap;
+
+  if (method != NULL)
+    {
+      method (manager, conn, handle, cap);
     }
   /* ... else, nothing to do */
 }

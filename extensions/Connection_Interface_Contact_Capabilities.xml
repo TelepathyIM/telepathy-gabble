@@ -23,59 +23,44 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An interface for connections where it is possible to know what channel
-        types may be created before the request is made to the connection
+        classes may be created before the request is made to the connection
         object. Each capability represents a commitment by the connection
         manager that it will ordinarily be able to create a channel when given
-        a request with the given type and handle.</p>
+        a request with the properties defined by the channel class.</p>
 
       <p>Capabilities pertain to particular contact handles, and represent
-        activities such as having a text chat or a voice call with the user.
-        The activities are represented by the D-Bus interface name of the
-        channel type for that activity, and channel properties which can be
-        requested.</p>
+        activities such as having a text chat, a voice call with the user or a
+        stream tube of a defined type.</p>
 
       <p>This interface also provides for user interfaces notifying the
         connection manager of what capabilities to advertise for the user. This
-        is done by using the AdvertiseContactCapabilities method, and deals with
-        the interface names of channel types and the channel properties values 
-        pertaining to them which are implemented by available client
-        processes.</p>
+        is done by using the SetSelfCapabilities method, and deals with
+        channel properties values pertaining to them which are implemented by
+        available client processes.</p>
 
     </tp:docstring>
 
-    <method name="AdvertiseContactCapabilities">
-      <arg direction="in" name="add" type="aa{sv}"
+    <method name="SetSelfCapabilities">
+      <arg direction="in" name="caps" type="aa{sv}"
            tp:type="String_Variant_Map[]">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          An array of channel classes to add to the list of what the connection
-          can handle
-        </tp:docstring>
-      </arg>
-      <arg direction="in" name="remove" type="aa{sv}"
-           tp:type="String_Variant_Map[]">
-        <tp:docstring>
-          An array of channel classes to remove from the list of what the
+          An array of channel classes to replace to the list of what the
           connection can handle
         </tp:docstring>
       </arg>
-      <arg direction="out" type="aa{sv}" tp:type="String_Variant_Map[]">
-        <tp:docstring>
-          An array of channel classes describing the current capabilities.
-        </tp:docstring>
-      </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>Used by user interfaces to indicate which channel types they are able
-        to handle on this connection. Because these may be provided by
-        different client processes, this method accepts channel types to add
-        and remove from the set already advertised on this connection.</p>
+        <p>Used by user interfaces to indicate which channel classes they are
+        able to handle on this connection. It replaces the previous advertised
+        channel classes by the set given as parameter.</p>
+
+        <p>If a channel class is unknown by the connection manager, it is just
+        ignored. No error are returned in this case, and other known channel
+        class are added.</p>
 
         <p>Upon a successful invocation of this method, the
         ContactCapabilitiesChanged signal will be emitted for the user's own
         handle (as returned by GetSelfHandle) by the connection manager to
-        indicate the changes that have been made.  This signal should also be
-        monitored to ensure that the set is kept accurate - for example, a
-        client may remove capabilities when it exits which are still provided
-        by another client.</p>
+        indicate the changes that have been made.</p>
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
@@ -117,13 +102,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
     </method>
 
     <signal name="ContactCapabilitiesChanged">
-      <arg name="caps" type="(a(ua{sv}as)a(ua{sv}as))" tp:type="Contact_Capability_Change">
+      <arg name="caps" type="a(ua{sv}as)" tp:type="Enhanced_Contact_Capability[]">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          An struct containing:
-          <ul>
-            <li>the contact's removed capabilities</li>
-            <li>the contact's added capabilities</li>
-          </ul>
+          All the capabilities of the contact
         </tp:docstring>
       </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
@@ -143,7 +124,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         Fixed_Properties nor to Allowed_Properties, the request will fail.
       </tp:docstring>
       <tp:member type="u" tp:type="Contact_Handle" name="Handle"/>
-      <tp:member type="a{sv}" tp:type="String_Variant_Map"
+      <tp:member type="a{sv}" tp:type="Channel_Class"
                  name="Fixed_Properties">
         <tp:docstring>
           A dictionary mapping the channel properties to their values.

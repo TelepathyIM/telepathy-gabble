@@ -54,7 +54,8 @@ struct _Feature
  * Return a linked list of const Feature structs corresponding to the given
  * GabblePresenceCapabilities.
  */
-GSList *capabilities_get_features (GabblePresenceCapabilities caps);
+GSList *capabilities_get_features (GabblePresenceCapabilities caps,
+    GHashTable *per_channel_factory_caps);
 
 /*
  * capabilities_fill_cache

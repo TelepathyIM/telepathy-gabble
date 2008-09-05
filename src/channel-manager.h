@@ -56,6 +56,9 @@ typedef void (*GabbleChannelManagerGetContactCapsFunc) (
     GabbleChannelManager *manager, GabbleConnection *conn, TpHandle handle,
     GPtrArray *arr);
 
+typedef void (*GabbleChannelManagerGetFeatureListFunc) (
+    GabbleChannelManager *manager, gpointer specific_caps, GSList **features);
+
 typedef gpointer (*GabbleChannelManagerParseCapsFunc) (
     GabbleChannelManager *manager, LmMessageNode *children);
 
@@ -69,14 +72,21 @@ typedef void (*GabbleChannelManagerCopyCapsFunc) (
 typedef void (*GabbleChannelManagerUpdateCapsFunc) (
     GabbleChannelManager *manager, gpointer *specific_caps_out, gpointer specific_caps_in);
 
-typedef void (*GabbleChannelManagerGetCapChangesFunc) (
+typedef gboolean (*GabbleChannelManagerCapsDiffFunc) (
     GabbleChannelManager *manager, TpHandle handle, gpointer specific_old_caps,
-    gpointer specific_new_caps, GPtrArray *added_array,
-    GPtrArray *removed_array);
+    gpointer specific_new_caps);
+
+typedef void (*GabbleChannelManagerAddCapFunc) (
+    GabbleChannelManager *manager, GabbleConnection *conn, TpHandle handle,
+    GHashTable *cap);
+
 
 void gabble_channel_manager_get_contact_capabilities (
     GabbleChannelManager *manager, GabbleConnection *conn, TpHandle handle,
     GPtrArray *arr);
+
+void gabble_channel_manager_get_feature_list (
+    GabbleChannelManager *manager, gpointer specific_caps, GSList **features);
 
 gpointer gabble_channel_manager_parse_capabilities (
     GabbleChannelManager *manager, LmMessageNode *children);
@@ -91,10 +101,14 @@ void gabble_channel_manager_update_capabilities (
     GabbleChannelManager *manager, gpointer specific_caps_out,
     gpointer specific_caps_in);
 
-void gabble_channel_manager_get_capability_changes (
+gboolean gabble_channel_manager_capabilities_diff (
     GabbleChannelManager *manager, TpHandle handle, gpointer specific_old_caps,
-    gpointer specific_new_caps, GPtrArray *added_array,
-    GPtrArray *removed_array);
+    gpointer specific_new_caps);
+
+void gabble_channel_manager_add_capability (
+    GabbleChannelManager *manager, GabbleConnection *conn, TpHandle handle,
+    GHashTable *cap);
+
 
 typedef void (*GabbleChannelManagerForeachChannelFunc) (
     GabbleChannelManager *manager, GabbleExportableChannelFunc func,
@@ -135,11 +149,13 @@ struct _GabbleChannelManagerIface {
     GTypeInterface parent;
 
     GabbleChannelManagerGetContactCapsFunc get_contact_caps;
+    GabbleChannelManagerGetFeatureListFunc get_feature_list;
     GabbleChannelManagerParseCapsFunc parse_caps;
     GabbleChannelManagerFreeCapsFunc free_caps;
     GabbleChannelManagerCopyCapsFunc copy_caps;
     GabbleChannelManagerUpdateCapsFunc update_caps;
-    GabbleChannelManagerGetCapChangesFunc get_cap_changes;
+    GabbleChannelManagerCapsDiffFunc caps_diff;
+    GabbleChannelManagerAddCapFunc add_cap;
 
     GabbleChannelManagerForeachChannelFunc foreach_channel;
 

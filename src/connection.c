@@ -1517,7 +1517,8 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
   lm_message_node_set_attribute (identity, "type", "pc");
 
-  features = capabilities_get_features (self->self_presence->caps);
+  features = capabilities_get_features (self->self_presence->caps,
+      self->self_presence->per_channel_factory_caps);
 
   DEBUG ("caps now %u", self->self_presence->caps);
 
@@ -2129,21 +2130,37 @@ _emit_capabilities_changed (GabbleConnection *conn,
   g_ptr_array_free (caps_arr, TRUE);
 }
 
+/**
+ * gabble_connection_get_handle_contact_capabilities
+ *
+ * Add capabilities of handle to the given GPtrArray
+ */
+static void
+gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
+  TpHandle handle, GPtrArray *arr)
+{
+  guint i;
+
+  for (i = 0; i < self->channel_managers->len; i++)
+    {
+      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+          g_ptr_array_index (self->channel_managers, i));
+
+      gabble_channel_manager_get_contact_capabilities (manager, self, handle,
+          arr);
+    }
+}
+
+
 static void
 _emit_contact_capabilities_changed (GabbleConnection *conn,
                                     TpHandle handle,
                                     GHashTable *old_caps,
                                     GHashTable *new_caps)
 {
-  GValueArray *arr = g_value_array_new (2);
-  GPtrArray *removed_array;
-  GPtrArray *added_array;
-  GValue removed = {0, };
-  GValue added = {0, };
+  GPtrArray *ret;
+  gboolean diff = FALSE;
   guint i;
-
-  removed_array = g_ptr_array_new ();
-  added_array = g_ptr_array_new ();
 
   for (i = 0; i < conn->channel_managers->len; i++)
     {
@@ -2157,28 +2174,24 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
       if (new_caps != NULL)
         per_channel_factory_caps_new = g_hash_table_lookup (new_caps, manager);
 
-      gabble_channel_manager_get_capability_changes (manager, handle,
-          per_channel_factory_caps_old, per_channel_factory_caps_new,
-          added_array, removed_array);
+      if (gabble_channel_manager_capabilities_diff (manager, handle,
+          per_channel_factory_caps_old, per_channel_factory_caps_new))
+        {
+          diff = TRUE;
+          break;
+        }
     }
-
-  g_value_init (&removed, GABBLE_ARRAY_TYPE_ENHANCED_CONTACT_CAPABILITY_LIST);
-  g_value_init (&added, GABBLE_ARRAY_TYPE_ENHANCED_CONTACT_CAPABILITY_LIST);
-
-  g_value_set_boxed (&removed, removed_array);
-  g_value_set_boxed (&added, added_array);
-
-  g_value_array_append (arr, &removed);
-  g_value_array_append (arr, &added);
 
   /* Don't emit the D-Bus signal if there is no change */
-  if (added_array->len + removed_array->len > 0)
-    {
-      gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
-          conn, arr);
-    }
+  if (! diff)
+    return;
 
-  g_value_array_free (arr);
+  ret = g_ptr_array_new ();
+
+  gabble_connection_get_handle_contact_capabilities (conn, handle, ret);
+  gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
+      conn, ret);
+  g_ptr_array_free (ret, TRUE);
 }
 
 static void
@@ -2315,6 +2328,73 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   g_ptr_array_free (ret, TRUE);
 }
 
+/**
+ * gabble_connection_set_self_capabilities
+ *
+ * Implements D-Bus method SetSelfCapabilities
+ * on interface
+ * org.freedesktop.Telepathy.Connection.Interface.ContactCapabilities
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+static void
+gabble_connection_set_self_capabilities (
+    GabbleSvcConnectionInterfaceContactCapabilities *iface,
+    const GPtrArray *caps,
+    DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  guint i;
+  GabblePresence *pres = self->self_presence;
+  GHashTable *save_caps;
+  GError *error = NULL;
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
+  /* reset the caps, and fill with the given parameter but keep a backup for
+   * diffing: we don't want to emit a signal if nothing has changed */
+  save_caps = pres->per_channel_factory_caps;
+  pres->per_channel_factory_caps = NULL;
+
+  for (i = 0; i < caps->len; i++)
+    {
+      GHashTable *cap_to_add = g_ptr_array_index (caps, i);
+      guint j;
+
+      for (j = 0; j < self->channel_managers->len; j++)
+        {
+          GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+              g_ptr_array_index (self->channel_managers, j));
+
+          gabble_channel_manager_add_capability (manager, self,
+              base->self_handle, cap_to_add);
+        }
+    }
+
+  priv->caps_serial++;
+
+  if (!_gabble_connection_signal_own_presence (self, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      return;
+    }
+
+  _emit_contact_capabilities_changed (self, base->self_handle,
+                                      save_caps,
+                                      pres->per_channel_factory_caps);
+  gabble_presence_cache_free_specific_cache (save_caps);
+
+
+  gabble_svc_connection_interface_contact_capabilities_return_from_set_self_capabilities
+      (context);
+}
+
 static const gchar *assumed_caps[] =
 {
   TP_IFACE_CHANNEL_TYPE_TEXT,
@@ -2392,28 +2472,6 @@ gabble_connection_get_handle_capabilities (GabbleConnection *self,
           G_MAXUINT);
 
       g_ptr_array_add (arr, g_value_get_boxed (&monster));
-    }
-}
-
-
-/**
- * gabble_connection_get_handle_contact_capabilities
- *
- * Add capabilities of handle to the given GPtrArray
- */
-static void
-gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
-  TpHandle handle, GPtrArray *arr)
-{
-  guint i;
-
-  for (i = 0; i < self->channel_managers->len; i++)
-    {
-      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
-          g_ptr_array_index (self->channel_managers, i));
-
-      gabble_channel_manager_get_contact_capabilities (manager, self, handle,
-          arr);
     }
 }
 
@@ -3064,7 +3122,7 @@ gabble_conn_contact_caps_iface_init (gpointer g_iface, gpointer iface_data)
     gabble_svc_connection_interface_contact_capabilities_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(get_contact_capabilities);
-  /* TODO: publish own caps */
+  IMPLEMENT(set_self_capabilities);
 #undef IMPLEMENT
 }
 

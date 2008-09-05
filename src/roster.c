@@ -71,7 +71,7 @@ struct _GabbleRosterPrivate
   GHashTable *group_channels;
   GHashTable *items;
 
-  /* borrowed GabbleExportableChannel * => GSList of gpointer (request tokens)
+  /* borrowed TpExportableChannel * => GSList of gpointer (request tokens)
    * that will be satisfied when it's ready. The requests are in reverse
    * chronological order */
   GHashTable *queued_requests;
@@ -852,7 +852,7 @@ gabble_roster_emit_new_channel (GabbleRoster *self,
   g_hash_table_steal (priv->queued_requests, channel);
   requests_satisfied = g_slist_reverse (requests_satisfied);
   gabble_channel_manager_emit_new_channel (self,
-      GABBLE_EXPORTABLE_CHANNEL (channel), requests_satisfied);
+      TP_EXPORTABLE_CHANNEL (channel), requests_satisfied);
   g_slist_free (requests_satisfied);
 }
 
@@ -876,7 +876,7 @@ roster_channel_closed_cb (GabbleRosterChannel *channel,
             handle_type == TP_HANDLE_TYPE_GROUP);
 
   gabble_channel_manager_emit_channel_closed_for_object (self,
-      GABBLE_EXPORTABLE_CHANNEL (channel));
+      TP_EXPORTABLE_CHANNEL (channel));
 
   channels = (handle_type == TP_HANDLE_TYPE_LIST
                           ? self->priv->list_channels
@@ -1777,7 +1777,7 @@ gabble_roster_constructor (GType type, guint n_props,
 
 
 struct foreach_data {
-    GabbleExportableChannelFunc func;
+    TpExportableChannelFunc func;
     gpointer data;
 };
 
@@ -1786,7 +1786,7 @@ _gabble_roster_foreach_channel_helper (gpointer key,
                                        gpointer value,
                                        gpointer data)
 {
-  GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (value);
+  TpExportableChannel *chan = TP_EXPORTABLE_CHANNEL (value);
   struct foreach_data *foreach = (struct foreach_data *) data;
 
   foreach->func (chan, foreach->data);
@@ -1794,7 +1794,7 @@ _gabble_roster_foreach_channel_helper (gpointer key,
 
 static void
 gabble_roster_foreach_channel (GabbleChannelManager *manager,
-                               GabbleExportableChannelFunc func,
+                               TpExportableChannelFunc func,
                                gpointer data)
 {
   GabbleRoster *roster = GABBLE_ROSTER (manager);
@@ -2569,7 +2569,7 @@ gabble_roster_request (GabbleRoster *self,
     {
       if (!created)
         gabble_channel_manager_emit_request_already_satisfied (self,
-            request_token, GABBLE_EXPORTABLE_CHANNEL (channel));
+            request_token, TP_EXPORTABLE_CHANNEL (channel));
     }
   else
     {

@@ -25,7 +25,7 @@
 
 #include <glib-object.h>
 
-#include "exportable-channel.h"
+#include <telepathy-glib/exportable-channel.h>
 
 G_BEGIN_DECLS
 
@@ -50,11 +50,11 @@ typedef struct _GabbleChannelManagerIface GabbleChannelManagerIface;
 /* virtual methods */
 
 typedef void (*GabbleChannelManagerForeachChannelFunc) (
-    GabbleChannelManager *manager, GabbleExportableChannelFunc func,
+    GabbleChannelManager *manager, TpExportableChannelFunc func,
     gpointer user_data);
 
 void gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,
-    GabbleExportableChannelFunc func, gpointer user_data);
+    TpExportableChannelFunc func, gpointer user_data);
 
 
 typedef void (*GabbleChannelManagerChannelClassFunc) (
@@ -105,18 +105,18 @@ GType gabble_channel_manager_get_type (void);
 /* signal emission */
 
 void gabble_channel_manager_emit_new_channel (gpointer instance,
-    GabbleExportableChannel *channel, GSList *requests);
+    TpExportableChannel *channel, GSList *requests);
 void gabble_channel_manager_emit_new_channels (gpointer instance,
     GHashTable *channels);
 
 void gabble_channel_manager_emit_channel_closed (gpointer instance,
     const gchar *path);
 void gabble_channel_manager_emit_channel_closed_for_object (gpointer instance,
-    GabbleExportableChannel *channel);
+    TpExportableChannel *channel);
 
 void gabble_channel_manager_emit_request_already_satisfied (
     gpointer instance, gpointer request_token,
-    GabbleExportableChannel *channel);
+    TpExportableChannel *channel);
 
 void gabble_channel_manager_emit_request_failed (gpointer instance,
     gpointer request_token, GQuark domain, gint code, const gchar *message);

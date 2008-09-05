@@ -262,7 +262,7 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan,
   g_object_get (chan, "handle", &contact_handle, NULL);
 
   gabble_channel_manager_emit_channel_closed_for_object (self,
-      GABBLE_EXPORTABLE_CHANNEL (chan));
+      TP_EXPORTABLE_CHANNEL (chan));
 
   DEBUG ("removing tubes channel with handle %d", contact_handle);
 
@@ -321,7 +321,7 @@ new_tubes_channel (GabblePrivateTubesFactory *fac,
     request_tokens = NULL;
 
   gabble_channel_manager_emit_new_channel (fac,
-      GABBLE_EXPORTABLE_CHANNEL (chan), request_tokens);
+      TP_EXPORTABLE_CHANNEL (chan), request_tokens);
 
   g_slist_free (request_tokens);
 
@@ -362,7 +362,7 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
 
 struct _ForeachData
 {
-  GabbleExportableChannelFunc foreach;
+  TpExportableChannelFunc foreach;
   gpointer user_data;
 };
 
@@ -372,7 +372,7 @@ _foreach_slave (gpointer key,
                 gpointer user_data)
 {
   struct _ForeachData *data = (struct _ForeachData *) user_data;
-  GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (value);
+  TpExportableChannel *chan = TP_EXPORTABLE_CHANNEL (value);
 
   g_assert (TP_IS_CHANNEL_IFACE (chan));
 
@@ -381,7 +381,7 @@ _foreach_slave (gpointer key,
 
 static void
 gabble_private_tubes_factory_foreach_channel (GabbleChannelManager *manager,
-    GabbleExportableChannelFunc foreach,
+    TpExportableChannelFunc foreach,
     gpointer user_data)
 {
   GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (manager);
@@ -597,7 +597,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       base_conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   GError *error = NULL;
-  GabbleExportableChannel *channel;
+  TpExportableChannel *channel;
 
   if (tp_strdiff (tp_asv_get_string (request_properties,
           TP_IFACE_CHANNEL ".ChannelType"), TP_IFACE_CHANNEL_TYPE_TUBES))

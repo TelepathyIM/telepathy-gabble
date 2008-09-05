@@ -1343,7 +1343,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   /* broadcast presence to MUCs */
   gabble_channel_manager_foreach_channel (
       GABBLE_CHANNEL_MANAGER (self->muc_factory),
-      (GabbleExportableChannelFunc) gabble_muc_channel_send_presence, NULL);
+      (TpExportableChannelFunc) gabble_muc_channel_send_presence, NULL);
 
   return ret;
 }

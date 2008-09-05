@@ -317,7 +317,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
       NULL);
 
   gabble_channel_manager_emit_channel_closed_for_object (self,
-      (GabbleExportableChannel *) chan);
+      (TpExportableChannel *) chan);
 
   if (priv->channels != NULL)
     {
@@ -338,7 +338,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
           DEBUG ("reopening channel with handle %u due to pending messages",
               contact_handle);
           gabble_channel_manager_emit_new_channel (self,
-              (GabbleExportableChannel *) chan, NULL);
+              (TpExportableChannel *) chan, NULL);
         }
     }
 }
@@ -389,7 +389,7 @@ new_im_channel (GabbleImFactory *fac,
     request_tokens = NULL;
 
   gabble_channel_manager_emit_new_channel (fac,
-      (GabbleExportableChannel *) chan, request_tokens);
+      (TpExportableChannel *) chan, request_tokens);
 
   g_slist_free (request_tokens);
 
@@ -454,7 +454,7 @@ connection_status_changed_cb (GabbleConnection *conn,
 
 struct _ForeachData
 {
-  GabbleExportableChannelFunc func;
+  TpExportableChannelFunc func;
   gpointer user_data;
 };
 
@@ -462,14 +462,14 @@ static void
 _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 {
   struct _ForeachData *data = user_data;
-  GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (value);
+  TpExportableChannel *chan = TP_EXPORTABLE_CHANNEL (value);
 
   data->func (chan, data->user_data);
 }
 
 static void
 gabble_im_factory_foreach_channel (GabbleChannelManager *manager,
-                                   GabbleExportableChannelFunc func,
+                                   TpExportableChannelFunc func,
                                    gpointer user_data)
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
@@ -524,7 +524,7 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
       base_conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   GError *error = NULL;
-  GabbleExportableChannel *channel;
+  TpExportableChannel *channel;
 
   if (tp_strdiff (tp_asv_get_string (request_properties,
           TP_IFACE_CHANNEL ".ChannelType"), TP_IFACE_CHANNEL_TYPE_TEXT))

@@ -2501,7 +2501,7 @@ muc_factory_new_channel_cb (gpointer key,
                             gpointer data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
-  GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (key);
+  TpExportableChannel *chan = TP_EXPORTABLE_CHANNEL (key);
   ActivityInfo *info;
   TpHandle room_handle;
 

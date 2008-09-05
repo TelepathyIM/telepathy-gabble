@@ -24,8 +24,8 @@
 #include "channel-manager.h"
 
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/exportable-channel.h>
 
-#include "exportable-channel.h"
 #include "gabble-signals-marshal.h"
 
 enum {
@@ -53,7 +53,7 @@ channel_manager_base_init (gpointer klass)
        * GabbleChannelManager::new-channels:
        * @self: the channel manager
        * @channels: a #GHashTable where the keys are
-       *  #GabbleExportableChannel instances (hashed and compared
+       *  #TpExportableChannel instances (hashed and compared
        *  by g_direct_hash() and g_direct_equal()) and the values are
        *  linked lists (#GSList) of requests (opaque pointers) satisfied by
        *  these channels
@@ -76,7 +76,7 @@ channel_manager_base_init (gpointer klass)
        * @self: the channel manager
        * @request_token: opaque pointer supplied by the requester,
        *  representing a request
-       * @channel: the existing #GabbleExportableChannel that satisfies the
+       * @channel: the existing #TpExportableChannel that satisfies the
        *  request
        *
        * Emitted when a channel request is satisfied by an existing channel.
@@ -170,7 +170,7 @@ gabble_channel_manager_get_type (void)
  * gabble_channel_manager_emit_new_channels:
  * @instance: An object implementing #GabbleChannelManager
  * @channels: a #GHashTable where the keys are
- *  #GabbleExportableChannel instances (hashed and compared
+ *  #TpExportableChannel instances (hashed and compared
  *  by g_direct_hash() and g_direct_equal()) and the values are
  *  linked lists (#GSList) of requests (opaque pointers) satisfied by
  *  these channels
@@ -194,7 +194,7 @@ gabble_channel_manager_emit_new_channels (gpointer instance,
 /**
  * gabble_channel_manager_emit_new_channel:
  * @instance: An object implementing #GabbleChannelManager
- * @channel: A #GabbleExportableChannel
+ * @channel: A #TpExportableChannel
  *
  * Emit the #GabbleChannelManager::new-channels signal indicating that the
  * channel has been created. (This is a convenient shortcut for calling
@@ -202,13 +202,13 @@ gabble_channel_manager_emit_new_channels (gpointer instance,
  */
 void
 gabble_channel_manager_emit_new_channel (gpointer instance,
-                                         GabbleExportableChannel *channel,
+                                         TpExportableChannel *channel,
                                          GSList *requests)
 {
   GHashTable *channels;
 
   g_return_if_fail (GABBLE_IS_CHANNEL_MANAGER (instance));
-  g_return_if_fail (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+  g_return_if_fail (TP_IS_EXPORTABLE_CHANNEL (channel));
 
   channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, NULL);
@@ -240,20 +240,20 @@ gabble_channel_manager_emit_channel_closed (gpointer instance,
 /**
  * gabble_channel_manager_emit_channel_closed_for_object:
  * @instance: An object implementing #GabbleChannelManager
- * @channel: A #GabbleExportableChannel
+ * @channel: A #TpExportableChannel
  *
  * Emit the #GabbleChannelManager::channel-closed signal indicating that
  * the given channel has been closed. (This is a convenient shortcut for
  * calling gabble_channel_manager_emit_channel_closed() with the
- * #GabbleExportableChannel:object-path property of @channel.)
+ * #TpExportableChannel:object-path property of @channel.)
  */
 void
 gabble_channel_manager_emit_channel_closed_for_object (gpointer instance,
-    GabbleExportableChannel *channel)
+    TpExportableChannel *channel)
 {
   gchar *path;
 
-  g_return_if_fail (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+  g_return_if_fail (TP_IS_EXPORTABLE_CHANNEL (channel));
   g_object_get (channel,
       "object-path", &path,
       NULL);
@@ -275,9 +275,9 @@ gabble_channel_manager_emit_channel_closed_for_object (gpointer instance,
 void
 gabble_channel_manager_emit_request_already_satisfied (gpointer instance,
     gpointer request_token,
-    GabbleExportableChannel *channel)
+    TpExportableChannel *channel)
 {
-  g_return_if_fail (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+  g_return_if_fail (TP_IS_EXPORTABLE_CHANNEL (channel));
   g_return_if_fail (GABBLE_IS_CHANNEL_MANAGER (instance));
 
   g_signal_emit (instance, signals[S_REQUEST_ALREADY_SATISFIED], 0,
@@ -349,7 +349,7 @@ gabble_channel_manager_emit_request_failed_printf (gpointer instance,
 
 void
 gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,
-                                        GabbleExportableChannelFunc func,
+                                        TpExportableChannelFunc func,
                                         gpointer user_data)
 {
   GabbleChannelManagerIface *iface = GABBLE_CHANNEL_MANAGER_GET_INTERFACE (

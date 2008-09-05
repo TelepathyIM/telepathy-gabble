@@ -23,6 +23,7 @@
 
 #include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-connection.h>
@@ -33,7 +34,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 #include "channel-manager.h"
 #include "debug.h"
-#include "exportable-channel.h"
 
 
 static GValueArray *
@@ -54,9 +54,9 @@ get_channel_details (GObject *obj)
   g_value_take_boxed (value, object_path);
   object_path = NULL;
 
-  g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (obj) || TP_IS_CHANNEL_IFACE (obj));
+  g_assert (TP_IS_EXPORTABLE_CHANNEL (obj) || TP_IS_CHANNEL_IFACE (obj));
 
-  if (GABBLE_IS_EXPORTABLE_CHANNEL (obj))
+  if (TP_IS_EXPORTABLE_CHANNEL (obj))
     {
       g_object_get (obj,
           "channel-properties", &table,
@@ -260,7 +260,7 @@ satisfy_request (GabbleConnection *self,
         {
           GHashTable *properties;
 
-          g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+          g_assert (TP_IS_EXPORTABLE_CHANNEL (channel));
           g_object_get (channel,
               "channel-properties", &properties,
               NULL);
@@ -642,7 +642,7 @@ list_channel_factory_foreach_one (TpChannelIface *chan,
 
 
 static void
-exportable_channel_get_old_info (GabbleExportableChannel *channel,
+exportable_channel_get_old_info (TpExportableChannel *channel,
                                  gchar **object_path_out,
                                  gchar **channel_type_out,
                                  guint *handle_type_out,
@@ -700,7 +700,7 @@ exportable_channel_get_old_info (GabbleExportableChannel *channel,
 
 
 static void
-list_channel_manager_foreach_one (GabbleExportableChannel *channel,
+list_channel_manager_foreach_one (TpExportableChannel *channel,
                                   gpointer data)
 {
   GPtrArray *values = (GPtrArray *) data;
@@ -709,7 +709,7 @@ list_channel_manager_foreach_one (GabbleExportableChannel *channel,
   GValue *entry = tp_dbus_specialized_value_slice_new
       (TP_STRUCT_TYPE_CHANNEL_INFO);
 
-  g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+  g_assert (TP_IS_EXPORTABLE_CHANNEL (channel));
 
   exportable_channel_get_old_info (channel, &path, &type, &handle_type,
       &handle);
@@ -794,7 +794,7 @@ factory_get_channel_details_foreach (TpChannelIface *chan,
 
 
 static void
-manager_get_channel_details_foreach (GabbleExportableChannel *chan,
+manager_get_channel_details_foreach (TpExportableChannel *chan,
                                      gpointer data)
 {
   GPtrArray *details = data;
@@ -1136,7 +1136,7 @@ manager_new_channel (gpointer key,
                      gpointer value,
                      gpointer data)
 {
-  GabbleExportableChannel *channel = GABBLE_EXPORTABLE_CHANNEL (key);
+  TpExportableChannel *channel = TP_EXPORTABLE_CHANNEL (key);
   GSList *request_tokens = value;
   GabbleConnection *self = GABBLE_CONNECTION (data);
   gchar *object_path, *channel_type;
@@ -1207,13 +1207,13 @@ manager_new_channels_cb (GabbleChannelManager *manager,
 static void
 manager_request_already_satisfied_cb (GabbleChannelManager *manager,
                                       gpointer request_token,
-                                      GabbleExportableChannel *channel,
+                                      TpExportableChannel *channel,
                                       GabbleConnection *self)
 {
   gchar *object_path;
 
   g_assert (GABBLE_IS_CHANNEL_MANAGER (manager));
-  g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+  g_assert (TP_IS_EXPORTABLE_CHANNEL (channel));
   g_assert (GABBLE_IS_CONNECTION (self));
 
   g_object_get (channel,

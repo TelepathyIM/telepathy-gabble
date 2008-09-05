@@ -343,7 +343,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       if (chan_is_new)
         {
           gabble_channel_manager_emit_new_channel (fac,
-              GABBLE_EXPORTABLE_CHANNEL (chan), NULL);
+              TP_EXPORTABLE_CHANNEL (chan), NULL);
         }
     }
   else
@@ -461,7 +461,7 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
 
   gabble_channel_manager_emit_channel_closed_for_object (fac,
-      GABBLE_EXPORTABLE_CHANNEL (chan));
+      TP_EXPORTABLE_CHANNEL (chan));
 
   if (priv->channels != NULL)
     {
@@ -819,7 +819,7 @@ gabble_media_factory_constructed (GObject *object)
 
 static void
 gabble_media_factory_foreach_channel (GabbleChannelManager *manager,
-                                      GabbleExportableChannelFunc foreach,
+                                      TpExportableChannelFunc foreach,
                                       gpointer user_data)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (manager);
@@ -828,7 +828,7 @@ gabble_media_factory_foreach_channel (GabbleChannelManager *manager,
 
   for (i = 0; i < priv->channels->len; i++)
     {
-      GabbleExportableChannel *channel = GABBLE_EXPORTABLE_CHANNEL (
+      TpExportableChannel *channel = TP_EXPORTABLE_CHANNEL (
           g_ptr_array_index (priv->channels, i));
 
       foreach (channel, user_data);
@@ -950,7 +950,7 @@ gabble_media_factory_request_channel (GabbleChannelManager *manager,
 
   request_tokens = g_slist_prepend (NULL, request_token);
   gabble_channel_manager_emit_new_channel (self,
-      GABBLE_EXPORTABLE_CHANNEL (channel), request_tokens);
+      TP_EXPORTABLE_CHANNEL (channel), request_tokens);
   g_slist_free (request_tokens);
 
   return TRUE;

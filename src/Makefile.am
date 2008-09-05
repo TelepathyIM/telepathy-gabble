@@ -55,8 +55,6 @@ libgabble_convenience_la_our_sources = \
     disco.c \
     error.c \
     error.h \
-    exportable-channel.c \
-    exportable-channel.h \
     gabble.c \
     gabble.h \
     im-channel.h \

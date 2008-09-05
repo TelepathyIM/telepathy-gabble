@@ -25,6 +25,7 @@
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-generic.h>
@@ -36,7 +37,6 @@
 
 #include "connection.h"
 #include "debug.h"
-#include "exportable-channel.h"
 #include "roster.h"
 #include "util.h"
 
@@ -51,7 +51,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRosterChannel, gabble_roster_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_CONTACT_LIST, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 static const gchar *gabble_roster_channel_interfaces[] = {
@@ -248,7 +248,7 @@ gabble_roster_channel_get_property (GObject    *object,
       break;
     case PROP_CHANNEL_PROPERTIES:
       g_value_set_boxed (value,
-          gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+          tp_dbus_properties_mixin_make_properties_hash (object,
               TP_IFACE_CHANNEL, "TargetHandle",
               TP_IFACE_CHANNEL, "TargetHandleType",
               TP_IFACE_CHANNEL, "ChannelType",

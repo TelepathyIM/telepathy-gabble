@@ -91,9 +91,16 @@ struct _GabblePrivateTubesFactoryPrivate
 typedef struct _TubesCapabilities TubesCapabilities;
 struct _TubesCapabilities
 {
-  /* Service -> Feature */
+  /* this structure can store both contacts' caps (any handle) and self caps
+   * (self_handle). We use a hash table. The key is the service name. The value
+   * is NULL in case of contacts' caps or a Feature struct in case of self caps.
+   * The Feature struct is used to reply to XEP-0115 Entity Capabilities
+   * requests from contacts.
+   */
+
+  /* gchar *Service -> Feature *feature */
   GHashTable *stream_tube_caps;
-  /* ServiceName -> Feature */
+  /* gchar *ServiceName -> Feature *feature */
   GHashTable *dbus_tube_caps;
 };
 
@@ -525,9 +532,9 @@ gabble_private_tubes_factory_parse_caps (
 
   caps = g_new0 (TubesCapabilities, 1);
   caps->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, NULL);
+      g_free, g_free);
   caps->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, NULL);
+      g_free, g_free);
 
   for (child = children; NULL != child; child = child->next)
     {
@@ -595,12 +602,12 @@ gabble_private_tubes_factory_copy_caps (
   TubesCapabilities *caps_out = g_new0 (TubesCapabilities, 1);
 
   caps_out->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, NULL);
+      g_free, g_free);
   g_hash_table_foreach (caps_in->stream_tube_caps, copy_caps_helper,
       caps_out->stream_tube_caps);
 
   caps_out->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, NULL);
+      g_free, g_free);
   g_hash_table_foreach (caps_in->dbus_tube_caps, copy_caps_helper,
       caps_out->dbus_tube_caps);
 
@@ -731,9 +738,9 @@ gabble_private_tubes_factory_add_cap (GabbleChannelManager *manager,
     {
       caps = g_new0 (TubesCapabilities, 1);
       caps->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-          g_free, NULL);
+          g_free, g_free);
       caps->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-          g_free, NULL);
+          g_free, g_free);
       g_hash_table_insert (presence->per_channel_factory_caps, manager, caps);
     }
 
@@ -757,7 +764,6 @@ gabble_private_tubes_factory_add_cap (GabbleChannelManager *manager,
       feat->caps = 0;
       g_hash_table_insert (caps->dbus_tube_caps, service, feat);
     }
-  /* TODO: how to free the service? */
 }
 
 struct _ForeachData

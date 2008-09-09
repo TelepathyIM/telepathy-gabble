@@ -52,30 +52,38 @@ typedef struct _GabbleChannelManagerIface GabbleChannelManagerIface;
 
 /* virtual methods */
 
+/* TpChannelManager (GetContactCapabilities) */
 typedef void (*GabbleChannelManagerGetContactCapsFunc) (
     GabbleChannelManager *manager, GabbleConnection *conn, TpHandle handle,
     GPtrArray *arr);
 
+/* Gabble specific: send our caps, replying to disco request from contacts */
 typedef void (*GabbleChannelManagerGetFeatureListFunc) (
     GabbleChannelManager *manager, gpointer specific_caps, GSList **features);
 
+/* Gabble specific: parse caps stanza from contacts */
 typedef gpointer (*GabbleChannelManagerParseCapsFunc) (
     GabbleChannelManager *manager, LmMessageNode *children);
 
+/* Gabble specific */
 typedef void (*GabbleChannelManagerFreeCapsFunc) (
     GabbleChannelManager *manager, gpointer specific_caps);
 
+/* Gabble specific */
 typedef void (*GabbleChannelManagerCopyCapsFunc) (
     GabbleChannelManager *manager, gpointer *specific_caps_out,
     gpointer specific_caps_in);
 
+/* Gabble specific (merging resource caps) */
 typedef void (*GabbleChannelManagerUpdateCapsFunc) (
     GabbleChannelManager *manager, gpointer *specific_caps_out, gpointer specific_caps_in);
 
+/* Gabble specific */
 typedef gboolean (*GabbleChannelManagerCapsDiffFunc) (
     GabbleChannelManager *manager, TpHandle handle, gpointer specific_old_caps,
     gpointer specific_new_caps);
 
+/* TpChannelManager (SetSelfCapabilities) */
 typedef void (*GabbleChannelManagerAddCapFunc) (
     GabbleChannelManager *manager, GabbleConnection *conn, TpHandle handle,
     GHashTable *cap);

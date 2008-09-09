@@ -490,6 +490,7 @@ static const gchar * const im_channel_fixed_properties[] = {
 
 static const gchar * const im_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
     NULL
 };
 

@@ -836,8 +836,15 @@ gabble_media_factory_foreach_channel (TpChannelManager *manager,
 }
 
 
+static const gchar * const media_channel_fixed_properties[] = {
+    TP_IFACE_CHANNEL ".ChannelType",
+    TP_IFACE_CHANNEL ".TargetHandleType",
+    NULL
+};
+
 static const gchar * const named_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
     NULL
 };
 
@@ -922,6 +929,11 @@ gabble_media_factory_request_channel (TpChannelManager *manager,
           goto error;
         }
 
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              media_channel_fixed_properties, anon_channel_allowed_properties,
+              &error))
+        goto error;
+
       channel = new_media_channel (self, conn->self_handle);
       break;
 
@@ -929,6 +941,11 @@ gabble_media_factory_request_channel (TpChannelManager *manager,
       if (!tp_handle_is_valid (
             tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT),
             handle, &error))
+        goto error;
+
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              media_channel_fixed_properties, named_channel_allowed_properties,
+              &error))
         goto error;
 
       channel = new_media_channel (self, conn->self_handle);

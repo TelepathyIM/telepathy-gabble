@@ -1230,6 +1230,15 @@ gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
 }
 
 
+static const gchar * const muc_channel_fixed_properties[] = {
+    TP_IFACE_CHANNEL ".ChannelType",
+    TP_IFACE_CHANNEL ".TargetHandleType",
+    NULL
+};
+
+static const gchar * const * muc_tubes_channel_fixed_properties =
+    muc_channel_fixed_properties;
+
 static const gchar * const muc_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     NULL
@@ -1302,6 +1311,11 @@ gabble_muc_factory_request (GabbleMucFactory *self,
 
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT))
     {
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              muc_channel_fixed_properties, muc_channel_allowed_properties,
+              &error))
+        goto error;
+
       if (ensure_muc_channel (self, priv, handle, &text_chan))
         {
           if (require_new)
@@ -1326,6 +1340,12 @@ gabble_muc_factory_request (GabbleMucFactory *self,
     }
   else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
     {
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              muc_tubes_channel_fixed_properties,
+              muc_tubes_channel_allowed_properties,
+              &error))
+        goto error;
+
       tubes_chan = g_hash_table_lookup (priv->tubes_channels,
           GUINT_TO_POINTER (handle));
 

@@ -760,6 +760,12 @@ gabble_conn_aliasing_nickname_updated (GObject *object,
   g_value_unset (&entry);
   g_ptr_array_free (aliases, TRUE);
 
+  /* Check whether the roster has an entry for the handle and if so, set the
+   * roster alias so the vCard isn't fetched on every connect. */
+  if (signal_source < GABBLE_CONNECTION_ALIAS_FROM_ROSTER &&
+      gabble_roster_handle_has_entry (conn->roster, handle))
+    gabble_roster_handle_set_name (conn->roster, handle, alias, NULL);
+
 OUT:
   g_free (alias);
 }

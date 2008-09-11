@@ -2144,15 +2144,14 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
 
   for (i = 0; i < self->channel_managers->len; i++)
     {
-      GabbleCapsChannelManager *manager = GABBLE_CAPS_CHANNEL_MANAGER (
-          g_ptr_array_index (self->channel_managers, i));
+      gpointer manager = g_ptr_array_index (self->channel_managers, i);
 
       /* some channel managers does not implement the capability interface */
       if (!GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
         continue;
 
-      gabble_caps_channel_manager_get_contact_capabilities (manager, self,
-          handle, arr);
+      gabble_caps_channel_manager_get_contact_capabilities (
+          GABBLE_CAPS_CHANNEL_MANAGER (manager), self, handle, arr);
     }
 }
 
@@ -2169,8 +2168,7 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
 
   for (i = 0; i < conn->channel_managers->len; i++)
     {
-      GabbleCapsChannelManager *manager = GABBLE_CAPS_CHANNEL_MANAGER (
-          g_ptr_array_index (conn->channel_managers, i));
+      gpointer manager = g_ptr_array_index (conn->channel_managers, i);
       gpointer per_channel_factory_caps_old = NULL;
       gpointer per_channel_factory_caps_new = NULL;
 
@@ -2183,8 +2181,9 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
       if (new_caps != NULL)
         per_channel_factory_caps_new = g_hash_table_lookup (new_caps, manager);
 
-      if (gabble_caps_channel_manager_capabilities_diff (manager, handle,
-          per_channel_factory_caps_old, per_channel_factory_caps_new))
+      if (gabble_caps_channel_manager_capabilities_diff (
+            GABBLE_CAPS_CHANNEL_MANAGER (manager), handle,
+            per_channel_factory_caps_old, per_channel_factory_caps_new))
         {
           diff = TRUE;
           break;
@@ -2378,10 +2377,15 @@ gabble_connection_set_self_capabilities (
 
       for (j = 0; j < self->channel_managers->len; j++)
         {
-          GabbleCapsChannelManager *manager = GABBLE_CAPS_CHANNEL_MANAGER (
-              g_ptr_array_index (self->channel_managers, j));
+          gpointer manager = g_ptr_array_index (self->channel_managers, j);
 
-          gabble_caps_channel_manager_add_capability (manager, self,
+          /* some channel managers does not implement the capability interface
+           */
+          if (!GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
+            continue;
+
+          gabble_caps_channel_manager_add_capability (
+              GABBLE_CAPS_CHANNEL_MANAGER (manager), self,
               base->self_handle, cap_to_add);
         }
     }

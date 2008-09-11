@@ -69,7 +69,8 @@ capabilities_get_features (GabblePresenceCapabilities caps,
   if (per_channel_factory_caps != NULL)
     {
       g_hash_table_iter_init (&channel_manager_iter, per_channel_factory_caps);
-      while (g_hash_table_iter_next (&channel_manager_iter, &manager, &cap))
+      while (g_hash_table_iter_next (&channel_manager_iter,
+                 (gpointer *) &manager, &cap))
         {
           gabble_channel_manager_get_feature_list (manager, cap, &features);
         }

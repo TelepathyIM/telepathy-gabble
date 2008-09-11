@@ -458,7 +458,6 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
   GabblePresence *presence;
   GHashTableIter tube_caps_iter;
   gchar *service;
-  gpointer dummy;
 
   g_assert (handle != 0);
 
@@ -483,7 +482,8 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
   if (stream_tube_caps != NULL)
     {
       g_hash_table_iter_init (&tube_caps_iter, stream_tube_caps);
-      while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy))
+      while (g_hash_table_iter_next (&tube_caps_iter, (gpointer *) &service,
+            NULL))
         {
           add_service_to_array (service, arr, TP_TUBE_TYPE_STREAM, handle);
         }
@@ -492,7 +492,8 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
   if (dbus_tube_caps != NULL)
     {
       g_hash_table_iter_init (&tube_caps_iter, dbus_tube_caps);
-      while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy))
+      while (g_hash_table_iter_next (&tube_caps_iter, (gpointer *) &service,
+            NULL))
         {
           add_service_to_array (service, arr, TP_TUBE_TYPE_DBUS, handle);
         }
@@ -510,13 +511,15 @@ gabble_private_tubes_factory_get_feature_list (GabbleChannelManager *manager,
   Feature *feat;
 
   g_hash_table_iter_init (&iter, caps->stream_tube_caps);
-  while (g_hash_table_iter_next (&iter, &service, &feat))
+  while (g_hash_table_iter_next (&iter, (gpointer *) &service,
+        (gpointer *) &feat))
     {
       *features = g_slist_append (*features, (gpointer) feat);
     }
 
   g_hash_table_iter_init (&iter, caps->dbus_tube_caps);
-  while (g_hash_table_iter_next (&iter, &service, &feat))
+  while (g_hash_table_iter_next (&iter, (gpointer *) &service,
+        (gpointer *) &feat))
     {
       *features = g_slist_append (*features, (gpointer) feat);
     }
@@ -627,9 +630,9 @@ gabble_private_tubes_factory_update_caps (
     return;
 
   tp_g_hash_table_update (caps_out->stream_tube_caps,
-      caps_out->stream_tube_caps, g_strdup, NULL);
+      caps_out->stream_tube_caps, (GBoxedCopyFunc) g_strdup, NULL);
   tp_g_hash_table_update (caps_out->dbus_tube_caps,
-      caps_out->dbus_tube_caps, g_strdup, NULL);
+      caps_out->dbus_tube_caps, (GBoxedCopyFunc) g_strdup, NULL);
 }
 
 static gboolean
@@ -643,12 +646,12 @@ gabble_private_tubes_factory_caps_diff (
   TubesCapabilities *new_caps = specific_new_caps;
   GHashTableIter tube_caps_iter;
   gchar *service;
-  gpointer dummy;
 
   if (old_caps != NULL)
     {
       g_hash_table_iter_init (&tube_caps_iter, old_caps->stream_tube_caps);
-      while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy))
+      while (g_hash_table_iter_next (&tube_caps_iter, (gpointer *) &service,
+            NULL))
         {
           gpointer key, value;
           if (new_caps == NULL ||
@@ -659,7 +662,8 @@ gabble_private_tubes_factory_caps_diff (
             }
         }
       g_hash_table_iter_init (&tube_caps_iter, old_caps->dbus_tube_caps);
-      while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy))
+      while (g_hash_table_iter_next (&tube_caps_iter, (gpointer *) &service,
+            NULL))
         {
           gpointer key, value;
           if (new_caps == NULL ||
@@ -674,7 +678,8 @@ gabble_private_tubes_factory_caps_diff (
   if (new_caps != NULL)
     {
       g_hash_table_iter_init (&tube_caps_iter, new_caps->stream_tube_caps);
-      while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy))
+      while (g_hash_table_iter_next (&tube_caps_iter, (gpointer *) &service,
+            NULL))
         {
           gpointer key, value;
           if (old_caps == NULL ||
@@ -685,7 +690,8 @@ gabble_private_tubes_factory_caps_diff (
             }
         }
       g_hash_table_iter_init (&tube_caps_iter, new_caps->dbus_tube_caps);
-      while (g_hash_table_iter_next (&tube_caps_iter, &service, &dummy))
+      while (g_hash_table_iter_next (&tube_caps_iter, (gpointer *) &service,
+            NULL))
         {
           gpointer key, value;
           if (old_caps == NULL ||

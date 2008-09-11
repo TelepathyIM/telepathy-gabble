@@ -24,11 +24,8 @@
 #define GABBLE_CHANNEL_MANAGER_H
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
-#include <telepathy-glib/handle.h>
 
 #include "exportable-channel.h"
-#include "types.h"
 
 G_BEGIN_DECLS
 

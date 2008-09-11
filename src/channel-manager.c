@@ -346,6 +346,7 @@ gabble_channel_manager_emit_request_failed_printf (gpointer instance,
 
 /* Virtual-method wrappers */
 
+
 void
 gabble_channel_manager_foreach_channel (GabbleChannelManager *manager,
                                         GabbleExportableChannelFunc func,

@@ -1227,8 +1227,8 @@ tube_iface_props_setter (GObject *object,
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (object);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
-  g_return_if_fail (interface ==
-      GABBLE_IFACE_QUARK_CHANNEL_INTERFACE_TUBE);
+  g_return_val_if_fail (interface == GABBLE_IFACE_QUARK_CHANNEL_INTERFACE_TUBE,
+      FALSE);
 
   if (name != g_quark_from_static_string ("Parameters"))
     {

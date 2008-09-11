@@ -33,6 +33,8 @@ libgabble_convenience_la_our_sources = \
     capabilities.c \
     caps-hash.h \
     caps-hash.c \
+    caps-channel-manager.h \
+    caps-channel-manager.c \
     channel-manager.h \
     channel-manager.c \
     conn-aliasing.h \

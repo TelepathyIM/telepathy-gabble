@@ -37,6 +37,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
+#include "caps-channel-manager.h"
 #include "caps-hash.h"
 #include "channel-manager.h"
 #include "debug.h"
@@ -710,8 +711,8 @@ _parse_cap_bundles (
 static void
 free_specific_caps_helper (gpointer key, gpointer value, gpointer user_data)
 {
-  GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (key);
-  gabble_channel_manager_free_capabilities (manager, value);
+  GabbleCapsChannelManager *manager = GABBLE_CAPS_CHANNEL_MANAGER (key);
+  gabble_caps_channel_manager_free_capabilities (manager, value);
 }
 
 void
@@ -730,9 +731,9 @@ static void
 copy_specific_caps_helper (gpointer key, gpointer value, gpointer user_data)
 {
   GHashTable *table_out = user_data;
-  GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (key);
+  GabbleCapsChannelManager *manager = GABBLE_CAPS_CHANNEL_MANAGER (key);
   gpointer out;
-  gabble_channel_manager_copy_capabilities (manager, &out, value);
+  gabble_caps_channel_manager_copy_capabilities (manager, &out, value);
   g_hash_table_insert (table_out, key, out);
 }
 
@@ -750,18 +751,18 @@ static void
 update_specific_caps_helper (gpointer key, gpointer value, gpointer user_data)
 {
   GHashTable *table_out = user_data;
-  GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (key);
+  GabbleCapsChannelManager *manager = GABBLE_CAPS_CHANNEL_MANAGER (key);
   gpointer out;
 
   out = g_hash_table_lookup (table_out, key);
   if (out == NULL)
     {
-      gabble_channel_manager_copy_capabilities (manager, &out, value);
+      gabble_caps_channel_manager_copy_capabilities (manager, &out, value);
       g_hash_table_insert (table_out, key, out);
     }
   else
     {
-      gabble_channel_manager_update_capabilities (manager, out, value);
+      gabble_caps_channel_manager_update_capabilities (manager, out, value);
     }
 }
 
@@ -858,10 +859,10 @@ _caps_disco_cb (GabbleDisco *disco,
   for (j = 0; j < priv->conn->channel_managers->len; j++)
     {
       gpointer *factory_caps;
-      GabbleChannelManager *manager = GABBLE_CHANNEL_MANAGER (
+      GabbleCapsChannelManager *manager = GABBLE_CAPS_CHANNEL_MANAGER (
           g_ptr_array_index (priv->conn->channel_managers, j));
 
-      factory_caps = gabble_channel_manager_parse_capabilities
+      factory_caps = gabble_caps_channel_manager_parse_capabilities
           (manager, query_result->children);
       if (factory_caps != NULL)
         g_hash_table_insert (per_channel_factory_caps, manager, factory_caps);

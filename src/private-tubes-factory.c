@@ -35,6 +35,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
+#include "caps-channel-manager.h"
 #include "channel-manager.h"
 #include "capabilities.h"
 #include "connection.h"
@@ -59,12 +60,15 @@ static LmHandlerResult private_tubes_factory_msg_tube_cb (
 static void gabble_private_tubes_factory_iface_init (gpointer g_iface,
     gpointer iface_data);
 static void channel_manager_iface_init (gpointer, gpointer);
+static void caps_channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabblePrivateTubesFactory,
     gabble_private_tubes_factory,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
+      caps_channel_manager_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
         gabble_private_tubes_factory_iface_init));
 
@@ -446,10 +450,11 @@ add_service_to_array (gchar *service,
 }
 
 static void
-gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
-                                               GabbleConnection *conn,
-                                               TpHandle handle,
-                                               GPtrArray *arr)
+gabble_private_tubes_factory_get_contact_caps (
+    GabbleCapsChannelManager *manager,
+    GabbleConnection *conn,
+    TpHandle handle,
+    GPtrArray *arr)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TubesCapabilities *caps;
@@ -501,9 +506,10 @@ gabble_private_tubes_factory_get_contact_caps (GabbleChannelManager *manager,
 }
 
 static void
-gabble_private_tubes_factory_get_feature_list (GabbleChannelManager *manager,
-                                               gpointer specific_caps,
-                                               GSList **features)
+gabble_private_tubes_factory_get_feature_list (
+    GabbleCapsChannelManager *manager,
+    gpointer specific_caps,
+    GSList **features)
 {
   TubesCapabilities *caps = specific_caps;
   GHashTableIter iter;
@@ -527,7 +533,7 @@ gabble_private_tubes_factory_get_feature_list (GabbleChannelManager *manager,
 
 static gpointer
 gabble_private_tubes_factory_parse_caps (
-    GabbleChannelManager *manager,
+    GabbleCapsChannelManager *manager,
     LmMessageNode *children)
 {
   LmMessageNode *child;
@@ -577,7 +583,7 @@ gabble_private_tubes_factory_parse_caps (
 
 static void
 gabble_private_tubes_factory_free_caps (
-    GabbleChannelManager *manager,
+    GabbleCapsChannelManager *manager,
     gpointer data)
 {
  TubesCapabilities *caps = data;
@@ -597,7 +603,7 @@ copy_caps_helper (gpointer key, gpointer value, gpointer user_data)
 
 static void
 gabble_private_tubes_factory_copy_caps (
-    GabbleChannelManager *manager,
+    GabbleCapsChannelManager *manager,
     gpointer *specific_caps_out,
     gpointer specific_caps_in)
 {
@@ -619,7 +625,7 @@ gabble_private_tubes_factory_copy_caps (
 
 static void
 gabble_private_tubes_factory_update_caps (
-    GabbleChannelManager *manager,
+    GabbleCapsChannelManager *manager,
     gpointer *specific_caps_out,
     gpointer specific_caps_in)
 {
@@ -637,7 +643,7 @@ gabble_private_tubes_factory_update_caps (
 
 static gboolean
 gabble_private_tubes_factory_caps_diff (
-    GabbleChannelManager *manager,
+    GabbleCapsChannelManager *manager,
     TpHandle handle,
     gpointer specific_old_caps,
     gpointer specific_new_caps)
@@ -706,7 +712,7 @@ gabble_private_tubes_factory_caps_diff (
 }
 
 static void
-gabble_private_tubes_factory_add_cap (GabbleChannelManager *manager,
+gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
                                       GabbleConnection *conn,
                                       TpHandle handle,
                                       GHashTable *cap)
@@ -1192,6 +1198,19 @@ channel_manager_iface_init (gpointer g_iface,
 {
   GabbleChannelManagerIface *iface = g_iface;
 
+  iface->foreach_channel = gabble_private_tubes_factory_foreach_channel;
+  iface->foreach_channel_class =
+      gabble_private_tubes_factory_foreach_channel_class;
+  iface->create_channel = gabble_private_tubes_factory_create_channel;
+  iface->request_channel = gabble_private_tubes_factory_request_channel;
+}
+
+static void
+caps_channel_manager_iface_init (gpointer g_iface,
+                                 gpointer iface_data)
+{
+  GabbleCapsChannelManagerIface *iface = g_iface;
+
   iface->get_contact_caps = gabble_private_tubes_factory_get_contact_caps;
   iface->get_feature_list = gabble_private_tubes_factory_get_feature_list;
   iface->parse_caps = gabble_private_tubes_factory_parse_caps;
@@ -1200,11 +1219,4 @@ channel_manager_iface_init (gpointer g_iface,
   iface->update_caps = gabble_private_tubes_factory_update_caps;
   iface->caps_diff = gabble_private_tubes_factory_caps_diff;
   iface->add_cap = gabble_private_tubes_factory_add_cap;
-
-
-  iface->foreach_channel = gabble_private_tubes_factory_foreach_channel;
-  iface->foreach_channel_class =
-      gabble_private_tubes_factory_foreach_channel_class;
-  iface->create_channel = gabble_private_tubes_factory_create_channel;
-  iface->request_channel = gabble_private_tubes_factory_request_channel;
 }

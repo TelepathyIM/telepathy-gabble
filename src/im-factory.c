@@ -34,6 +34,7 @@
 
 #include "extensions/extensions.h"
 
+#include "caps-channel-manager.h"
 #include "channel-manager.h"
 #include "connection.h"
 #include "debug.h"
@@ -42,8 +43,11 @@
 #include "text-mixin.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
+static void caps_channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleImFactory, gabble_im_factory, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
+      caps_channel_manager_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init));
 
@@ -454,7 +458,7 @@ connection_status_changed_cb (GabbleConnection *conn,
 }
 
 static void
-gabble_im_factory_get_contact_caps (GabbleChannelManager *manager,
+gabble_im_factory_get_contact_caps (GabbleCapsChannelManager *manager,
                                     GabbleConnection *conn,
                                     TpHandle handle,
                                     GPtrArray *arr)
@@ -655,9 +659,17 @@ channel_manager_iface_init (gpointer g_iface,
 {
   GabbleChannelManagerIface *iface = g_iface;
 
-  iface->get_contact_caps = gabble_im_factory_get_contact_caps;
   iface->foreach_channel = gabble_im_factory_foreach_channel;
   iface->foreach_channel_class = gabble_im_factory_foreach_channel_class;
   iface->create_channel = gabble_im_factory_create_channel;
   iface->request_channel = gabble_im_factory_request_channel;
+}
+
+static void
+caps_channel_manager_iface_init (gpointer g_iface,
+                                 gpointer iface_data)
+{
+  GabbleCapsChannelManagerIface *iface = g_iface;
+
+  iface->get_contact_caps = gabble_im_factory_get_contact_caps;
 }

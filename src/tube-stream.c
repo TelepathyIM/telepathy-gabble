@@ -1554,7 +1554,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
       GABBLE_TUBE_CHANNEL_STATE_OPEN);
 
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
-  
+
   return TRUE;
 }
 

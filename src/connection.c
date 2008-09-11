@@ -95,8 +95,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       tp_presence_mixin_simple_presence_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       conn_presence_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_REQUESTS,
-      tp_base_connection_requests_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY_INFO,
       olpc_buddy_info_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_ACTIVITY_PROPERTIES,
@@ -668,8 +666,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   gabble_connection_class->properties_class.interfaces = NULL;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
-
-  tp_base_connection_register_requests_dbus_properties (object_class);
 
   tp_contacts_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleConnectionClass, contacts_class));

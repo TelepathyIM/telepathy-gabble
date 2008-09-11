@@ -81,7 +81,7 @@ _resource_free (Resource *resource)
         (resource->per_channel_factory_caps);
       resource->per_channel_factory_caps = NULL;
     }
-  
+
   g_slice_free (Resource, resource);
 }
 

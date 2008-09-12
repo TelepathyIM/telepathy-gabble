@@ -147,11 +147,9 @@ void gabble_caps_channel_manager_update_capabilities (
     GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
   GabbleCapsChannelManagerCopyCapsFunc method = iface->update_caps;
 
-  if (method != NULL)
-    {
-      method (caps_manager, specific_caps_out, specific_caps_in);
-    }
-  /* ... else, do what? */
+  /* cannot be called if not implemented */
+  g_assert (method != NULL);
+  method (caps_manager, specific_caps_out, specific_caps_in);
 }
 
 gboolean gabble_caps_channel_manager_capabilities_diff (

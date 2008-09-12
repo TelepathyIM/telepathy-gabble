@@ -22,8 +22,8 @@
 #include "presence.h"
 
 #include <string.h>
+#include <telepathy-glib/channel-manager.h>
 
-#include "channel-manager.h"
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "util.h"

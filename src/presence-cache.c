@@ -33,13 +33,13 @@
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include <dbus/dbus-glib.h>
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/intset.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include "caps-channel-manager.h"
 #include "caps-hash.h"
-#include "channel-manager.h"
 #include "debug.h"
 #include "disco.h"
 #include "gabble-signals-marshal.h"

@@ -24,9 +24,8 @@
 #include "caps-channel-manager.h"
 
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/channel-manager.h>
 
-#include "channel-manager.h"
-#include "exportable-channel.h"
 
 GType
 gabble_caps_channel_manager_get_type (void)
@@ -50,7 +49,7 @@ gabble_caps_channel_manager_get_type (void)
       type = g_type_register_static (G_TYPE_INTERFACE,
           "GabbleCapsChannelManager", &info, 0);
 
-      g_type_interface_add_prerequisite (type, GABBLE_TYPE_CHANNEL_MANAGER);
+      g_type_interface_add_prerequisite (type, TP_TYPE_CHANNEL_MANAGER);
     }
 
   return type;

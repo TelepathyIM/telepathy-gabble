@@ -25,9 +25,9 @@
 
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/handle.h>
 
-#include "exportable-channel.h"
 #include "types.h"
 
 G_BEGIN_DECLS

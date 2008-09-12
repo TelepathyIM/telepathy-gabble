@@ -24,9 +24,9 @@
 #include <loudmouth/loudmouth.h>
 
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/exportable-channel.h>
 
 #include "bytestream-iface.h"
-#include "exportable-channel.h"
 #include "muc-channel.h"
 #include "tube-iface.h"
 
@@ -70,7 +70,7 @@ GType gabble_tubes_channel_get_type (void);
                               GabbleTubesChannelClass))
 
 void gabble_tubes_channel_foreach (GabbleTubesChannel *self,
-    GabbleExportableChannelFunc foreach, gpointer user_data);
+    TpExportableChannelFunc foreach, gpointer user_data);
 
 GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
     gpointer request_token, GHashTable *request_properties,

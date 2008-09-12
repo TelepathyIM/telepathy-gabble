@@ -22,9 +22,9 @@
 #include "capabilities.h"
 
 #include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/channel-manager.h>
 
 #include "caps-channel-manager.h"
-#include "channel-manager.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "media-channel.h"

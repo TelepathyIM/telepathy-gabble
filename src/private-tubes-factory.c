@@ -1026,8 +1026,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, tubes_channel_required_properties,
-      tubes_channel_optional_properties, user_data);
+  func (manager, table, tubes_channel_allowed_properties, user_data);
 
   /* 1-1 Channel.Type.DBusTube */
   table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
@@ -1043,8 +1042,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, tubes_channel_required_properties,
-      tubes_channel_optional_properties, user_data);
+  func (manager, table, tubes_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -1062,7 +1060,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
   TpHandle handle;
   GError *error = NULL;
   const gchar *channel_type;
-  TpExportableChannel *channel;
+  GabbleTubesChannel *channel;
 
   channel_type = tp_asv_get_string (request_properties,
             TP_IFACE_CHANNEL ".ChannelType");
@@ -1112,7 +1110,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
         }
 
       tp_channel_manager_emit_request_already_satisfied (self,
-          request_token, GABBLE_EXPORTABLE_CHANNEL (channel));
+          request_token, TP_EXPORTABLE_CHANNEL (channel));
       return TRUE;
     }
   else
@@ -1140,15 +1138,15 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
           else
             request_tokens = NULL;
 
-          gabble_channel_manager_emit_new_channel (self,
-              GABBLE_EXPORTABLE_CHANNEL (new_channel), request_tokens);
+          tp_channel_manager_emit_new_channel (self,
+              TP_EXPORTABLE_CHANNEL (new_channel), request_tokens);
 
           g_slist_free (request_tokens);
         }
       else
         {
           tp_channel_manager_emit_request_already_satisfied (self,
-              request_token, GABBLE_EXPORTABLE_CHANNEL (channel));
+              request_token, TP_EXPORTABLE_CHANNEL (channel));
         }
 
       return TRUE;

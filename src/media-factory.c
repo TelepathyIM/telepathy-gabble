@@ -28,12 +28,12 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "media-channel.h"
@@ -47,7 +47,7 @@ static LmHandlerResult media_factory_jingle_cb (LmMessageHandler *,
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaFactory, gabble_media_factory,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init));
 
 /* properties */
@@ -342,8 +342,8 @@ media_factory_jingle_cb (LmMessageHandler *handler,
     {
       if (chan_is_new)
         {
-          gabble_channel_manager_emit_new_channel (fac,
-              GABBLE_EXPORTABLE_CHANNEL (chan), NULL);
+          tp_channel_manager_emit_new_channel (fac,
+              TP_EXPORTABLE_CHANNEL (chan), NULL);
         }
     }
   else
@@ -460,8 +460,8 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
 
-  gabble_channel_manager_emit_channel_closed_for_object (fac,
-      GABBLE_EXPORTABLE_CHANNEL (chan));
+  tp_channel_manager_emit_channel_closed_for_object (fac,
+      TP_EXPORTABLE_CHANNEL (chan));
 
   if (priv->channels != NULL)
     {
@@ -818,8 +818,8 @@ gabble_media_factory_constructed (GObject *object)
 
 
 static void
-gabble_media_factory_foreach_channel (GabbleChannelManager *manager,
-                                      GabbleExportableChannelFunc foreach,
+gabble_media_factory_foreach_channel (TpChannelManager *manager,
+                                      TpExportableChannelFunc foreach,
                                       gpointer user_data)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (manager);
@@ -828,7 +828,7 @@ gabble_media_factory_foreach_channel (GabbleChannelManager *manager,
 
   for (i = 0; i < priv->channels->len; i++)
     {
-      GabbleExportableChannel *channel = GABBLE_EXPORTABLE_CHANNEL (
+      TpExportableChannel *channel = TP_EXPORTABLE_CHANNEL (
           g_ptr_array_index (priv->channels, i));
 
       foreach (channel, user_data);
@@ -836,24 +836,27 @@ gabble_media_factory_foreach_channel (GabbleChannelManager *manager,
 }
 
 
-static const gchar * const no_properties[] = {
+static const gchar * const media_channel_fixed_properties[] = {
+    TP_IFACE_CHANNEL ".ChannelType",
+    TP_IFACE_CHANNEL ".TargetHandleType",
     NULL
 };
 
-static const gchar * const named_channel_required_properties[] = {
+static const gchar * const named_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
     NULL
 };
 
-static const gchar * const anon_channel_optional_properties[] = {
+static const gchar * const anon_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",   /* must be 0 if given */
     NULL
 };
 
 
 static void
-gabble_media_factory_foreach_channel_class (GabbleChannelManager *manager,
-    GabbleChannelManagerChannelClassFunc func,
+gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
+    TpChannelManagerChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -870,19 +873,17 @@ gabble_media_factory_foreach_channel_class (GabbleChannelManager *manager,
       handle_type_value);
 
   g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_NONE);
-  func (manager, table, no_properties,
-      anon_channel_optional_properties, user_data);
+  func (manager, table, anon_channel_allowed_properties, user_data);
 
   g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_CONTACT);
-  func (manager, table, named_channel_required_properties,
-      no_properties, user_data);
+  func (manager, table, named_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
 
 
 static gboolean
-gabble_media_factory_request_channel (GabbleChannelManager *manager,
+gabble_media_factory_request_channel (TpChannelManager *manager,
                                       gpointer request_token,
                                       GHashTable *request_properties)
 {
@@ -928,6 +929,11 @@ gabble_media_factory_request_channel (GabbleChannelManager *manager,
           goto error;
         }
 
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              media_channel_fixed_properties, anon_channel_allowed_properties,
+              &error))
+        goto error;
+
       channel = new_media_channel (self, conn->self_handle);
       break;
 
@@ -935,6 +941,11 @@ gabble_media_factory_request_channel (GabbleChannelManager *manager,
       if (!tp_handle_is_valid (
             tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT),
             handle, &error))
+        goto error;
+
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              media_channel_fixed_properties, named_channel_allowed_properties,
+              &error))
         goto error;
 
       channel = new_media_channel (self, conn->self_handle);
@@ -955,14 +966,14 @@ gabble_media_factory_request_channel (GabbleChannelManager *manager,
   g_assert (channel != NULL);
 
   request_tokens = g_slist_prepend (NULL, request_token);
-  gabble_channel_manager_emit_new_channel (self,
-      GABBLE_EXPORTABLE_CHANNEL (channel), request_tokens);
+  tp_channel_manager_emit_new_channel (self,
+      TP_EXPORTABLE_CHANNEL (channel), request_tokens);
   g_slist_free (request_tokens);
 
   return TRUE;
 
 error:
-  gabble_channel_manager_emit_request_failed (self, request_token,
+  tp_channel_manager_emit_request_failed (self, request_token,
       error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
@@ -973,7 +984,7 @@ static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
 {
-  GabbleChannelManagerIface *iface = g_iface;
+  TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_media_factory_foreach_channel;
   iface->foreach_channel_class = gabble_media_factory_foreach_channel_class;

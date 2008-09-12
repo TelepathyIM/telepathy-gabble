@@ -2116,12 +2116,13 @@ static void
 gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
   TpHandle handle, GPtrArray *arr)
 {
-  guint i;
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self);
+  TpChannelManagerIter iter;
+  TpChannelManager *manager;
 
-  for (i = 0; i < self->channel_managers->len; i++)
+  tp_base_connection_channel_manager_iter_init (&iter, base_conn);
+  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
     {
-      gpointer manager = g_ptr_array_index (self->channel_managers, i);
-
       /* some channel managers does not implement the capability interface */
       if (!GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
         continue;
@@ -2138,13 +2139,15 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
                                     GHashTable *old_caps,
                                     GHashTable *new_caps)
 {
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (conn);
+  TpChannelManagerIter iter;
+  TpChannelManager *manager;
   GPtrArray *ret;
   gboolean diff = FALSE;
-  guint i;
 
-  for (i = 0; i < conn->channel_managers->len; i++)
+  tp_base_connection_channel_manager_iter_init (&iter, base_conn);
+  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
     {
-      gpointer manager = g_ptr_array_index (conn->channel_managers, i);
       gpointer per_channel_factory_caps_old = NULL;
       gpointer per_channel_factory_caps_new = NULL;
 
@@ -2349,12 +2352,12 @@ gabble_connection_set_self_capabilities (
   for (i = 0; i < caps->len; i++)
     {
       GHashTable *cap_to_add = g_ptr_array_index (caps, i);
-      guint j;
+      TpChannelManagerIter iter;
+      TpChannelManager *manager;
 
-      for (j = 0; j < self->channel_managers->len; j++)
+      tp_base_connection_channel_manager_iter_init (&iter, base);
+      while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
         {
-          gpointer manager = g_ptr_array_index (self->channel_managers, j);
-
           /* some channel managers does not implement the capability interface
            */
           if (!GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))

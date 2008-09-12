@@ -795,10 +795,13 @@ _caps_disco_cb (GabbleDisco *disco,
   guint trust, trust_inc;
   TpHandle handle = 0;
   gboolean bad_hash = FALSE;
-  guint j;
+  TpBaseConnection *base_conn;
+  TpChannelManagerIter iter;
+  TpChannelManager *manager;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  base_conn = TP_BASE_CONNECTION (priv->conn);
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
@@ -856,10 +859,10 @@ _caps_disco_cb (GabbleDisco *disco,
   per_channel_factory_caps = g_hash_table_new (NULL, NULL);
 
   /* parsing for Connection.Interface.ContactCapabilities.DRAFT */
-  for (j = 0; j < priv->conn->channel_managers->len; j++)
+  tp_base_connection_channel_manager_iter_init (&iter, base_conn);
+  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
     {
       gpointer *factory_caps;
-      gpointer manager = g_ptr_array_index (priv->conn->channel_managers, j);
 
       /* some channel managers does not implement the capability interface */
       if (!GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))

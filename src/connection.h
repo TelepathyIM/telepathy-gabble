@@ -147,12 +147,6 @@ struct _GabbleConnection {
     /* outstanding avatar requests */
     GHashTable *avatar_requests;
 
-    /* temporary, for requestotron support */
-    GPtrArray *channel_factories;
-    GPtrArray *channel_managers;
-    GPtrArray *channel_requests;
-    gboolean has_tried_connection;
-
     GabbleConnectionPrivate *priv;
 };
 

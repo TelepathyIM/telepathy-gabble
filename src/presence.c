@@ -77,7 +77,7 @@ _resource_free (Resource *resource)
   g_free (resource->status_message);
   if (resource->per_channel_factory_caps != NULL)
     {
-      gabble_presence_cache_free_specific_cache
+      gabble_presence_cache_free_cache_entry
         (resource->per_channel_factory_caps);
       resource->per_channel_factory_caps = NULL;
     }
@@ -97,7 +97,7 @@ gabble_presence_finalize (GObject *object)
 
   if (presence->per_channel_factory_caps != NULL)
     {
-      gabble_presence_cache_free_specific_cache
+      gabble_presence_cache_free_cache_entry
         (presence->per_channel_factory_caps);
       presence->per_channel_factory_caps = NULL;
     }
@@ -208,7 +208,7 @@ gabble_presence_set_capabilities (GabblePresence *presence,
   presence->caps = 0;
   if (presence->per_channel_factory_caps != NULL)
     {
-      gabble_presence_cache_free_specific_cache
+      gabble_presence_cache_free_cache_entry
         (presence->per_channel_factory_caps);
       presence->per_channel_factory_caps = NULL;
     }
@@ -241,12 +241,12 @@ gabble_presence_set_capabilities (GabblePresence *presence,
 
               if (tmp->per_channel_factory_caps != NULL)
                 {
-                  gabble_presence_cache_free_specific_cache
+                  gabble_presence_cache_free_cache_entry
                       (tmp->per_channel_factory_caps);
                   tmp->per_channel_factory_caps = NULL;
                 }
               if (per_channel_factory_caps != NULL)
-                gabble_presence_cache_copy_specific_cache
+                gabble_presence_cache_copy_cache_entry
                     (&tmp->per_channel_factory_caps, per_channel_factory_caps);
             }
         }
@@ -254,7 +254,7 @@ gabble_presence_set_capabilities (GabblePresence *presence,
       presence->caps |= tmp->caps;
 
       if (tmp->per_channel_factory_caps != NULL)
-        gabble_presence_cache_update_specific_cache
+        gabble_presence_cache_update_cache_entry
             (presence->per_channel_factory_caps,
              tmp->per_channel_factory_caps);
     }
@@ -334,7 +334,7 @@ gabble_presence_update (GabblePresence *presence,
           /* recalculate aggregate capability mask */
           if (presence->per_channel_factory_caps != NULL)
             {
-              gabble_presence_cache_free_specific_cache
+              gabble_presence_cache_free_cache_entry
                 (presence->per_channel_factory_caps);
               presence->per_channel_factory_caps = NULL;
             }
@@ -348,7 +348,7 @@ gabble_presence_update (GabblePresence *presence,
               presence->caps |= r->caps;
 
               if (r->per_channel_factory_caps != NULL)
-                gabble_presence_cache_update_specific_cache
+                gabble_presence_cache_update_cache_entry
                     (presence->per_channel_factory_caps,
                      r->per_channel_factory_caps);
             }

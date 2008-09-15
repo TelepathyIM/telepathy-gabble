@@ -2391,7 +2391,7 @@ gabble_connection_set_self_capabilities (
   _emit_contact_capabilities_changed (self, base->self_handle,
                                       save_caps,
                                       pres->per_channel_factory_caps);
-  gabble_presence_cache_free_specific_cache (save_caps);
+  gabble_presence_cache_free_cache_entry (save_caps);
 
 
   gabble_svc_connection_interface_contact_capabilities_return_from_set_self_capabilities

@@ -202,7 +202,22 @@ struct _CapabilityInfo
   gboolean caps_set;
   GabblePresenceCapabilities caps;
 
-  /* channel factory -> specific caps */
+  /* key: GabbleCapsChannelFactory -> value: gpointer
+   *
+   * The type of the value depends on the GabbleCapsChannelFactory. It is an
+   * opaque pointer used by the channel manager to store the capabilities.
+   * Some channel manager do not need to store anything, in this case the
+   * value can just be NULL.
+   *
+   * Since the type of the value is not public, the value is allocated, copied
+   * and freed by helper functions on the GabbleCapsChannelManager interface.
+   *
+   * For example:
+   *   * GabblePrivateTubesFactory -> TubesCapabilities
+   *
+   * At the moment, only GabblePrivateTubesFactory use this mechanism to store
+   * the list of supported tube types (example: stream tube for daap).
+   */
   GHashTable *per_channel_factory_caps;
 
   TpIntSet *guys;

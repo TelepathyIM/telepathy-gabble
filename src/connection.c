@@ -2186,8 +2186,8 @@ connection_capabilities_update_cb (GabblePresenceCache *cache,
                                    TpHandle handle,
                                    GabblePresenceCapabilities old_caps,
                                    GabblePresenceCapabilities new_caps,
-                                   GHashTable *old_enhenced_caps,
-                                   GHashTable *new_enhenced_caps,
+                                   GHashTable *old_enhanced_caps,
+                                   GHashTable *new_enhanced_caps,
                                    gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
@@ -2195,9 +2195,9 @@ connection_capabilities_update_cb (GabblePresenceCache *cache,
   if (old_caps != new_caps)
     _emit_capabilities_changed (conn, handle, old_caps, new_caps);
 
-  if (old_enhenced_caps != NULL || new_enhenced_caps != NULL)
+  if (old_enhanced_caps != NULL || new_enhanced_caps != NULL)
     _emit_contact_capabilities_changed (conn, handle,
-                                        old_enhenced_caps, new_enhenced_caps);
+                                        old_enhanced_caps, new_enhanced_caps);
 }
 
 /**

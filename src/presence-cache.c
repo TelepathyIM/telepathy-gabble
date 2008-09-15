@@ -1007,8 +1007,8 @@ _caps_disco_cb (GabbleDisco *disco,
               if (presence)
               {
                 GabblePresenceCapabilities save_caps = presence->caps;
-                GHashTable *save_enhenced_caps;
-                gabble_presence_cache_copy_specific_cache (&save_enhenced_caps,
+                GHashTable *save_enhanced_caps;
+                gabble_presence_cache_copy_specific_cache (&save_enhanced_caps,
                     presence->per_channel_factory_caps);
 
                 DEBUG ("setting caps for %d (thanks to %d %s) to "
@@ -1020,8 +1020,8 @@ _caps_disco_cb (GabbleDisco *disco,
                     handle, jid, presence->caps);
                 g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
                   waiter->handle, save_caps, presence->caps,
-                  save_enhenced_caps, presence->per_channel_factory_caps);
-                gabble_presence_cache_free_specific_cache (save_enhenced_caps);
+                  save_enhanced_caps, presence->per_channel_factory_caps);
+                gabble_presence_cache_free_specific_cache (save_enhanced_caps);
               }
             }
 
@@ -1184,7 +1184,7 @@ _process_caps (GabblePresenceCache *cache,
   GSList *uris, *i;
   GabblePresenceCachePrivate *priv;
   GabblePresenceCapabilities old_caps = 0;
-  GHashTable *old_enhenced_caps;
+  GHashTable *old_enhanced_caps;
   guint serial;
   const gchar *hash, *ver;
 
@@ -1200,7 +1200,7 @@ _process_caps (GabblePresenceCache *cache,
   if (presence)
     {
       old_caps = presence->caps;
-      gabble_presence_cache_copy_specific_cache (&old_enhenced_caps,
+      gabble_presence_cache_copy_specific_cache (&old_enhanced_caps,
           presence->per_channel_factory_caps);
     }
 
@@ -1218,9 +1218,9 @@ _process_caps (GabblePresenceCache *cache,
           handle, old_caps, presence->caps);
 
       g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-          handle, old_caps, presence->caps, old_enhenced_caps,
+          handle, old_caps, presence->caps, old_enhanced_caps,
           presence->per_channel_factory_caps);
-      gabble_presence_cache_free_specific_cache (old_enhenced_caps);
+      gabble_presence_cache_free_specific_cache (old_enhanced_caps);
     }
   else
     {
@@ -1492,7 +1492,7 @@ gabble_presence_cache_do_update (
   const gchar *jid;
   GabblePresence *presence;
   GabblePresenceCapabilities caps_before;
-  GHashTable *enhenced_caps_before;
+  GHashTable *enhanced_caps_before;
   gboolean ret = FALSE;
 
   jid = tp_handle_inspect (contact_repo, handle);
@@ -1505,17 +1505,17 @@ gabble_presence_cache_do_update (
     presence = _cache_insert (cache, handle);
 
   caps_before = presence->caps;
-  enhenced_caps_before = presence->per_channel_factory_caps;
-  gabble_presence_cache_copy_specific_cache (&enhenced_caps_before,
+  enhanced_caps_before = presence->per_channel_factory_caps;
+  gabble_presence_cache_copy_specific_cache (&enhanced_caps_before,
       presence->per_channel_factory_caps);
 
   ret = gabble_presence_update (presence, resource, presence_id,
       status_message, priority);
 
   g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0, handle,
-      caps_before, presence->caps, enhenced_caps_before,
+      caps_before, presence->caps, enhanced_caps_before,
       presence->per_channel_factory_caps);
-  gabble_presence_cache_free_specific_cache (enhenced_caps_before);
+  gabble_presence_cache_free_specific_cache (enhanced_caps_before);
 
   return ret;
 }

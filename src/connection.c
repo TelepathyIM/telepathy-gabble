@@ -2544,12 +2544,6 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
  *
  * Implements D-Bus method GetCapabilities
  * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
 gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
@@ -2603,12 +2597,6 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
  * Implements D-Bus method GetContactCapabilities
  * on interface
  * org.freedesktop.Telepathy.Connection.Interface.ContactCapabilities
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
 gabble_connection_get_contact_capabilities (

@@ -54,7 +54,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
     </tp:docstring>
 
-    <method name="OfferDBusTube">
+    <method name="OfferDBusTube" tp:name-for-bindings="Offer_DBus_Tube">
       <tp:docstring>
         Offers a D-Bus tube providing the service specified.
       </tp:docstring>
@@ -74,7 +74,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <method name="AcceptDBusTube">
+    <method name="AcceptDBusTube" tp:name-for-bindings="Accept_DBus_Tube">
       <tp:docstring>
         Accept a D-Bus tube that's in the "local pending" state. The
         connection manager will attempt to open the tube. The tube remains in
@@ -97,7 +97,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <method name="GetDBusTubeAddress">
+    <method name="GetDBusTubeAddress"
+            tp:name-for-bindings="Get_DBus_Tube_Address">
       <tp:docstring>
         Return a string describing the address of the private bus.
       </tp:docstring>
@@ -120,7 +121,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <method name="GetDBusNames">
+    <method name="GetDBusNames" tp:name-for-bindings="Get_DBus_Names">
       <tp:docstring>
         For a multi-user (i.e. Handle_Type_Room) D-Bus tube, obtain a mapping
         between contact handles and their unique bus names on this tube.
@@ -145,7 +146,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <signal name="DBusNamesChanged">
+    <signal name="DBusNamesChanged" tp:name-for-bindings="DBus_Names_Changed">
       <tp:docstring>
         Emitted on a multi-user (i.e. Handle_Type_Room) D-Bus tube when a
         participant opens or closes the tube.
@@ -162,7 +163,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </arg>
     </signal>
 
-    <property name="ServiceName" type="s" access="read">
+    <property name="ServiceName" type="s" access="read"
+              tp:name-for-bindings="Service_Name">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>A string representing the service name that will be used over the
           tube. It should be a well-known D-Bus service name, of the form
@@ -170,7 +172,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         <p>When the tube is offered, the service name is transmitted to the
           other end.</p>
         <p>When requesting a channel with 
-          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.CreateChannel</tp:dbus-ref>,
+          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.CreateChannel</tp:dbus-ref>,
           this property MUST be included in the request.</p>
       </tp:docstring>
     </property>

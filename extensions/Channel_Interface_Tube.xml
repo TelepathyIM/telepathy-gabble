@@ -33,17 +33,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         HANDLE_TYPE_CONTACT and HANDLE_TYPE_ROOM.</p>
     </tp:docstring>
 
-    <property name="Initiator" type="u" tp:type="Contact_Handle" access="read">
+    <property name="Initiator" type="u" tp:type="Contact_Handle" access="read"
+              tp:name-for-bindings="Initiator">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Initiator handle.</p>
         <p>When requesting a channel with 
-          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.CreateChannel</tp:dbus-ref>,
+          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.CreateChannel</tp:dbus-ref>,
           this property MUST NOT be included in the request.</p>
       </tp:docstring>
     </property>
 
     <property name="Parameters" type="a{sv}" tp:type="String_Variant_Map"
-              access="readwrite">
+              access="readwrite" tp:name-for-bindings="Parameters">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Each tube has a dictionary of arbitrary parameters. Parameters are
           commonly used for bootstrap information. The allowable keys,
@@ -53,8 +54,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
           type 'i') and boolean (D-Bus type 'b').</p>
         <p>When the tube is offered, the parameters are transmitted to the
           other end.</p>
+        <p>Example of valid parameters:
+          <code>{'game name': 'go', 'board size': 19}</code></p>
         <p>When requesting a channel with 
-          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.CreateChannel</tp:dbus-ref>,
+          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.CreateChannel</tp:dbus-ref>,
           this property MAY be included in the request. If it is not included in
           the request, the connection manager MUST consider the property to be
           empty. This property MAY be changed after the channel creation when
@@ -63,11 +66,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:docstring>
     </property>
 
-    <property name="Status" type="u" tp:type="Tube_Channel_State" access="read">
+    <property name="Status" type="u" tp:type="Tube_Channel_State" access="read"
+              tp:name-for-bindings="Status">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Status of the tube in this channel.</p>
         <p>When requesting a channel with 
-          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.CreateChannel</tp:dbus-ref>,
+          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.CreateChannel</tp:dbus-ref>,
           this property MUST NOT be included in the request.</p>
       </tp:docstring>
     </property>
@@ -75,27 +79,36 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
     <tp:enum name="Tube_Channel_State" type="u">
       <tp:enumvalue suffix="Local_Pending" value="0">
         <tp:docstring>
-          The tube is waiting to be accepted/closed locally.
+          The initiator offered the tube. The tube is waiting to be
+          accepted/closed locally. If the client accepts the tube, the tube's
+          state will be Open.
         </tp:docstring>
       </tp:enumvalue>
       <tp:enumvalue suffix="Remote_Pending" value="1">
         <tp:docstring>
-          The tube is waiting to be accepted/closed remotely.
+          The tube is waiting to be accepted/closed remotely. If the
+          recipient accepts the tube, the tube's state will be Open.
         </tp:docstring>
       </tp:enumvalue>
       <tp:enumvalue suffix="Open" value="2">
         <tp:docstring>
-          The tube is open for traffic.
+          The initiator offered the tube and the recipient accepted it. The
+          tube is open for traffic. The tube's state stays in this state until
+          it is closed.
         </tp:docstring>
       </tp:enumvalue>
       <tp:enumvalue suffix="Not_Offered" value="3">
         <tp:docstring>
-          The tube is not yet offered.
+          The tube channel has been requested but the tube is not yet offered.
+          The client should offer the tube to the recipient and the tube's
+          state will be Remote_Pending. The method to offer the tube depend on
+          the tube type.
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>
 
-    <signal name="TubeChannelStateChanged">
+    <signal name="TubeChannelStateChanged"
+            tp:name-for-bindings="Tube_Channel_State_Changed">
       <tp:docstring>
         Emitted when the state of the tube channel changes.
       </tp:docstring>

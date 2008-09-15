@@ -2478,7 +2478,7 @@ conn_capabilities_fill_contact_attributes (GObject *obj,
 
   for (i = 0; i < contacts->len; i++)
     {
-      TpHandle handle = g_array_index (contacts, guint, i);
+      TpHandle handle = g_array_index (contacts, TpHandle, i);
 
       if (array == NULL)
         array = g_ptr_array_new ();
@@ -2513,7 +2513,7 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
 
   for (i = 0; i < contacts->len; i++)
     {
-      TpHandle handle = g_array_index (contacts, guint, i);
+      TpHandle handle = g_array_index (contacts, TpHandle, i);
 
       if (array == NULL)
         array = g_ptr_array_new ();
@@ -2577,7 +2577,7 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
 
   for (i = 0; i < handles->len; i++)
     {
-      TpHandle handle = g_array_index (handles, guint, i);
+      TpHandle handle = g_array_index (handles, TpHandle, i);
 
       gabble_connection_get_handle_capabilities (self, handle, ret);
     }
@@ -2637,7 +2637,7 @@ gabble_connection_get_contact_capabilities (
 
   for (i = 0; i < handles->len; i++)
     {
-      TpHandle handle = g_array_index (handles, guint, i);
+      TpHandle handle = g_array_index (handles, TpHandle, i);
 
       gabble_connection_get_handle_contact_capabilities (self, handle, ret);
     }

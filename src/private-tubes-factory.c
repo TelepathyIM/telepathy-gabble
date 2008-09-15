@@ -95,16 +95,29 @@ struct _GabblePrivateTubesFactoryPrivate
 typedef struct _TubesCapabilities TubesCapabilities;
 struct _TubesCapabilities
 {
-  /* this structure can store both contacts' caps (any handle) and self caps
-   * (self_handle). We use a hash table. The key is the service name. The value
-   * is NULL in case of contacts' caps or a Feature struct in case of self caps.
-   * The Feature struct is used to reply to XEP-0115 Entity Capabilities
-   * requests from contacts.
+  /* Stores the list of tubes supported by a contact. We use a hash table. The
+   * key is the service name and the value is NULL.
+   *
+   * It can also be used to store the list of tubes that Gabble advertises to
+   * support when Gabble replies to XEP-0115 Entity Capabilities requests. In
+   * this case, a Feature structure is associated with each tube type in order
+   * to be returned by gabble_private_tubes_factory_get_feature_list().
+   *
+   * So the value of the hash table is either NULL (if the variable is related
+   * to a contact handle), either a Feature structure (if the variable is
+   * related to the self_handle).
    */
 
-  /* gchar *Service -> Feature *feature */
+  /* gchar *Service -> NULL
+   *  or
+   * gchar *Service -> Feature *feature
+   */
   GHashTable *stream_tube_caps;
-  /* gchar *ServiceName -> Feature *feature */
+
+  /* gchar *ServiceName -> NULL
+   *  or
+   * gchar *ServiceName -> Feature *feature
+   */
   GHashTable *dbus_tube_caps;
 };
 

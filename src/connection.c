@@ -2144,6 +2144,7 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
   TpChannelManager *manager;
   GPtrArray *ret;
   gboolean diff = FALSE;
+  guint i;
 
   tp_base_connection_channel_manager_iter_init (&iter, base_conn);
   while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
@@ -2178,6 +2179,16 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
   gabble_connection_get_handle_contact_capabilities (conn, handle, ret);
   gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
       conn, ret);
+
+  for (i = 0; i < ret->len; i++)
+    {
+      GValue monster = {0, };
+
+      g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
+      g_value_take_boxed (&monster, g_ptr_array_index (ret, i));
+      g_value_unset (&monster);
+    }
+
   g_ptr_array_free (ret, TRUE);
 }
 

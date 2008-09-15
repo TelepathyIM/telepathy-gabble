@@ -36,8 +36,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         exist, the bundle <em>B</em> will also exist.</p>
     </tp:docstring>
 
-    <property name="Interfaces" type="as" access="read"
-      tp:type="DBus_Interface[]">
+    <property name="Interfaces" tp:name-for-bindings="Interfaces"
+      type="as" access="read" tp:type="DBus_Interface[]">
       <tp:docstring>
         A list of the extra interfaces provided by this channel bundle.
       </tp:docstring>

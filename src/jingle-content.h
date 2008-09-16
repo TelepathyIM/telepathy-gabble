@@ -1,0 +1,89 @@
+/*
+ * jingle-content.h - Header for GabbleJingleContent
+ * Copyright (C) 2008 Collabora Ltd.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+#ifndef __JINGLE_CONTENT_H__
+#define __JINGLE_CONTENT_H__
+
+#include <glib-object.h>
+#include <loudmouth/loudmouth.h>
+#include "gabble-types.h"
+#include "jingle-factory.h"
+
+G_BEGIN_DECLS
+
+typedef enum {
+  JINGLE_CONTENT_STATE_EMPTY = 0,
+  JINGLE_CONTENT_STATE_NEW,
+  JINGLE_CONTENT_STATE_SENT,
+  JINGLE_CONTENT_STATE_ACKNOWLEDGED,
+  JINGLE_CONTENT_STATE_REMOVING
+} JingleContentState;
+
+struct _JingleCandidate {
+  gchar *address;
+  int port;
+  int generation;
+
+  JingleTransportProtocol protocol;
+  int preference;
+  JingleCandidateType type;
+  gchar *username;
+  gchar *password;
+  int network;
+};
+
+typedef struct _GabbleJingleContentClass GabbleJingleContentClass;
+
+GType gabble_jingle_content_get_type (void);
+
+/* TYPE MACROS */
+#define GABBLE_TYPE_JINGLE_CONTENT \
+  (gabble_jingle_content_get_type ())
+#define GABBLE_JINGLE_CONTENT(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_JINGLE_CONTENT, \
+                              GabbleJingleContent))
+#define GABBLE_JINGLE_CONTENT_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_JINGLE_CONTENT, \
+                           GabbleJingleContentClass))
+#define GABBLE_IS_JINGLE_CONTENT(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_JINGLE_CONTENT))
+#define GABBLE_IS_JINGLE_CONTENT_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_JINGLE_CONTENT))
+#define GABBLE_JINGLE_CONTENT_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_JINGLE_CONTENT, \
+                              GabbleJingleContentClass))
+
+struct _GabbleJingleContentClass {
+    GObjectClass parent_class;
+};
+
+struct _GabbleJingleContent {
+    GObject parent;
+    gpointer priv;
+};
+
+void gabble_jingle_content_parse_add (GabbleJingleContent *c,
+    LmMessageNode *content_node, gboolean google_mode, GError **error);
+void gabble_jingle_content_update_senders (GabbleJingleContent *c,
+    LmMessageNode *content_node, GError **error);
+void gabble_jingle_content_produce_node (GabbleJingleContent *c,
+  LmMessageNode *parent, gboolean full);
+
+#endif /* __JINGLE_CONTENT_H__ */
+

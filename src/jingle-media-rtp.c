@@ -1,0 +1,520 @@
+/*
+ * jingle-media-rtp.c - Source for GabbleJingleMediaRtp
+ *
+ * Copyright (C) 2008 Collabora Ltd.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+#include "jingle-media-rtp.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <glib.h>
+
+#include <loudmouth/loudmouth.h>
+
+#define DEBUG_FLAG GABBLE_DEBUG_MEDIA
+
+#include "debug.h"
+#include "gabble-connection.h"
+#include "util.h"
+#include "namespaces.h"
+#include "jingle-factory.h"
+#include "jingle-session.h"
+#include "jingle-content.h"
+
+static void
+description_iface_init (gpointer g_iface, gpointer iface_data);
+
+G_DEFINE_TYPE_WITH_CODE (GabbleJingleMediaRtp,
+    gabble_jingle_media_rtp, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_JINGLE_DESCRIPTION_IFACE,
+        description_iface_init));
+
+/* signal enum */
+enum
+{
+  NEW_CANDIDATE,
+  LAST_SIGNAL
+};
+
+// static guint signals[LAST_SIGNAL] = {0};
+
+/* properties */
+enum
+{
+  PROP_CONNECTION,
+  PROP_SESSION,
+  PROP_CONTENT,
+  PROP_MEDIA_TYPE,
+  LAST_PROPERTY
+};
+
+typedef enum {
+  JINGLE_MEDIA_TYPE_NONE = -1,
+  JINGLE_MEDIA_TYPE_AUDIO = 0,
+  JINGLE_MEDIA_TYPE_VIDEO
+} JingleMediaType;
+
+typedef enum {
+  JINGLE_MEDIA_PROFILE_RTP_AVP,
+} JingleMediaProfile;
+
+typedef struct {
+  guchar id;
+  gchar *name;
+  guint clockrate;
+  guint channels;
+} JingleCodec;
+
+typedef struct _GabbleJingleMediaRtpPrivate GabbleJingleMediaRtpPrivate;
+struct _GabbleJingleMediaRtpPrivate
+{
+  GabbleConnection *conn;
+  GabbleJingleSession *session;
+  GabbleJingleContent *content;
+
+  GList *local_codecs;
+  // GList *remote_codecs;
+  JingleMediaType media_type;
+  gboolean dispose_has_run;
+};
+
+#define GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE(o)\
+  ((GabbleJingleMediaRtpPrivate*)((o)->priv))
+
+static void
+gabble_jingle_media_rtp_init (GabbleJingleMediaRtp *obj)
+{
+  GabbleJingleMediaRtpPrivate *priv =
+     G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_JINGLE_MEDIA_RTP,
+         GabbleJingleMediaRtpPrivate);
+  obj->priv = priv;
+
+  priv->dispose_has_run = FALSE;
+}
+
+static void
+_free_codecs (GList *codecs)
+{
+  while (codecs != NULL)
+    {
+      JingleCodec *p = (JingleCodec *) codecs->data;
+
+      g_free (p->name);
+      g_free (p);
+
+      codecs = g_list_remove (codecs, p);
+    }
+}
+
+static void
+gabble_jingle_media_rtp_dispose (GObject *object)
+{
+  GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
+  GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
+
+  if (priv->dispose_has_run)
+    return;
+
+  DEBUG ("dispose called");
+  priv->dispose_has_run = TRUE;
+
+  // _free_codecs (priv->remote_codecs);
+  // priv->remote_codecs = NULL;
+
+  _free_codecs (priv->local_codecs);
+  priv->local_codecs = NULL;
+
+  if (G_OBJECT_CLASS (gabble_jingle_media_rtp_parent_class)->dispose)
+    G_OBJECT_CLASS (gabble_jingle_media_rtp_parent_class)->dispose (object);
+}
+
+static void
+gabble_jingle_media_rtp_get_property (GObject *object,
+                                             guint property_id,
+                                             GValue *value,
+                                             GParamSpec *pspec)
+{
+  GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
+  GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
+
+  switch (property_id) {
+    case PROP_CONNECTION:
+      g_value_set_object (value, priv->conn);
+      break;
+    case PROP_SESSION:
+      g_value_set_object (value, priv->session);
+      break;
+    case PROP_CONTENT:
+      g_value_set_object (value, priv->content);
+      break;
+    case PROP_MEDIA_TYPE:
+      g_value_set_uint (value, priv->media_type);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+}
+
+static void
+gabble_jingle_media_rtp_set_property (GObject *object,
+                                             guint property_id,
+                                             const GValue *value,
+                                             GParamSpec *pspec)
+{
+  GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
+  GabbleJingleMediaRtpPrivate *priv =
+      GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
+
+  switch (property_id) {
+    case PROP_CONNECTION:
+      priv->conn = g_value_get_object (value);
+      break;
+    case PROP_SESSION:
+      priv->session = g_value_get_object (value);
+      break;
+    case PROP_CONTENT:
+      priv->content = g_value_get_object (value);
+      break;
+    case PROP_MEDIA_TYPE:
+      priv->media_type = g_value_get_uint (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+}
+
+static void
+gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
+{
+  GObjectClass *object_class = G_OBJECT_CLASS (cls);
+  GParamSpec *param_spec;
+
+  g_type_class_add_private (cls, sizeof (GabbleJingleMediaRtpPrivate));
+
+  object_class->get_property = gabble_jingle_media_rtp_get_property;
+  object_class->set_property = gabble_jingle_media_rtp_set_property;
+  object_class->dispose = gabble_jingle_media_rtp_dispose;
+
+  /* property definitions */
+  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
+                                    "Gabble connection object used for exchanging "
+                                    "messages.",
+                                    GABBLE_TYPE_CONNECTION,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
+                                    "The session using this transport object.",
+                                    GABBLE_TYPE_JINGLE_SESSION,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_SESSION, param_spec);
+
+  param_spec = g_param_spec_object ("content", "GabbleJingleContent object",
+                                    "Jingle content object using this transport.",
+                                    GABBLE_TYPE_JINGLE_CONTENT,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CONTENT, param_spec);
+
+  param_spec = g_param_spec_object ("content", "GabbleJingleContent object",
+                                    "Jingle content object using this transport.",
+                                    GABBLE_TYPE_JINGLE_CONTENT,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CONTENT, param_spec);
+
+  /* signal definitions */
+}
+
+static GabbleJingleDescriptionIface *
+new_description (GabbleJingleContent *content)
+{
+  GabbleJingleMediaRtp *self;
+  GabbleJingleSession *sess;
+  GabbleConnection *conn;
+
+  g_object_get (content, "connection", &conn,
+      "session", &sess, NULL);
+
+  self = g_object_new (GABBLE_TYPE_JINGLE_MEDIA_RTP,
+    "connection", conn,
+    "session", sess,
+    "content", content,
+    NULL);
+
+  return GABBLE_JINGLE_DESCRIPTION_IFACE (self);
+}
+
+#define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
+#define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
+#define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
+
+static void
+parse_description (GabbleJingleDescriptionIface *iface,
+    LmMessageNode *desc_node, GError **error)
+{
+  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (iface);
+  GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
+  JingleMediaType mtype = JINGLE_MEDIA_TYPE_NONE;
+  gboolean google_mode = FALSE;
+  GList *codecs = NULL;
+  LmMessageNode *node;
+
+  if (lm_message_node_has_namespace (desc_node, NS_JINGLE_RTP_TMP, NULL))
+    {
+      const gchar *type = lm_message_node_get_attribute (desc_node, "media");
+
+      if (type == NULL)
+        {
+          SET_BAD_REQ("missing required media type attribute");
+          return;
+        }
+
+      if (!tp_strdiff (type, "audio"))
+          mtype = JINGLE_MEDIA_TYPE_AUDIO;
+      else if (!tp_strdiff (type, "video"))
+          mtype = JINGLE_MEDIA_TYPE_VIDEO;
+    }
+  else if (lm_message_node_has_namespace (desc_node,
+        NS_JINGLE_DESCRIPTION_AUDIO, NULL))
+    {
+      mtype = JINGLE_MEDIA_TYPE_AUDIO;
+    }
+  else if (lm_message_node_has_namespace (desc_node,
+        NS_JINGLE_DESCRIPTION_VIDEO, NULL))
+    {
+      mtype = JINGLE_MEDIA_TYPE_VIDEO;
+    }
+  else if (lm_message_node_has_namespace (desc_node,
+        NS_GOOGLE_SESSION_PHONE, NULL))
+    {
+      mtype = JINGLE_MEDIA_TYPE_AUDIO;
+      google_mode = TRUE;
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
+  /* FIXME: we ignore "profile" attribute */
+
+  for (node = desc_node->children; node; node = node->next)
+    {
+      JingleCodec *p;
+      const char *txt;
+      guchar id;
+      const gchar *name;
+      guint clockrate, channels;
+
+      if (tp_strdiff (node->name, "payload-type"))
+          continue;
+
+      txt = lm_message_node_get_attribute (node, "id");
+      if (txt == NULL)
+          break;
+
+      id = atoi (txt);
+
+      name = lm_message_node_get_attribute (node, "name");
+      if (name == NULL)
+          name = "";
+
+      /* xep-0167 v0.22, gtalk libjingle 0.3/0.4 use "clockrate" */
+      txt = lm_message_node_get_attribute (node, "clockrate");
+      /* older jingle rtp used "rate" ? */
+      if (txt == NULL)
+          txt = lm_message_node_get_attribute (node, "rate");
+
+      if (txt != NULL)
+        {
+          clockrate = atoi (txt);
+        }
+      else
+        {
+          clockrate = 0;
+        }
+
+      txt = lm_message_node_get_attribute (node, "channels");
+      if (txt != NULL)
+        {
+          channels = atoi (txt);
+        }
+      else
+        {
+          channels = 1;
+        }
+
+      /* FIXME: do we need "bitrate" param? never seen it in use */
+
+      p = g_new0 (JingleCodec, 1);
+      p->id = id;
+      p->name = (gchar *) name;
+      p->clockrate = clockrate;
+      p->channels = channels;
+
+      codecs = g_list_append (codecs, p);
+    }
+
+  if (node != NULL)
+    {
+      /* rollback these */
+      while (codecs != NULL)
+        {
+          JingleCodec *p = codecs->data;
+
+          g_free (codecs->data);
+          codecs = g_list_remove (codecs, p);
+        }
+
+      SET_BAD_REQ ("invalid payload");
+      return;
+    }
+
+  priv->media_type = mtype;
+
+  g_signal_emit_by_name (priv->content, "remote-codecs", codecs);
+
+  /* append them to the known remote codecs */
+  // priv->remote_codecs = g_list_concat (priv->remote_codecs, codecs);
+}
+
+static void
+produce_node (GabbleJingleDescriptionIface *obj, LmMessageNode *content_node)
+{
+  GabbleJingleMediaRtp *desc =
+    GABBLE_JINGLE_MEDIA_RTP (obj);
+  GabbleJingleMediaRtpPrivate *priv =
+    GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (desc);
+  LmMessageNode *desc_node;
+  GList *li;
+  JingleDialect dialect;
+  const gchar *xmlns = NULL;
+
+  g_object_get (priv->session, "dialect", &dialect, NULL);
+
+  desc_node = lm_message_node_add_child (content_node, "description", NULL);
+
+  switch (dialect) {
+    case JINGLE_DIALECT_GTALK3:
+    case JINGLE_DIALECT_GTALK4:
+      g_assert (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO);
+      xmlns = NS_GOOGLE_SESSION_PHONE;
+      break;
+    case JINGLE_DIALECT_V015:
+      if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+          xmlns = NS_JINGLE_DESCRIPTION_AUDIO;
+      else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+          xmlns = NS_JINGLE_DESCRIPTION_VIDEO;
+      else
+          g_assert_not_reached ();
+      break;
+    case JINGLE_DIALECT_V026:
+      xmlns = "urn:xmpp:tmp:jingle:apps:rtp";
+      if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+          lm_message_node_set_attribute (desc_node, "media", "audio");
+      else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+          lm_message_node_set_attribute (desc_node, "media", "video");
+      else
+          g_assert_not_reached ();
+      break;
+    default:
+      g_assert_not_reached ();
+    }
+
+  lm_message_node_set_attribute (desc_node, "xmlns", xmlns);
+
+  for (li = priv->local_codecs; li; li = li->next)
+    {
+      LmMessageNode *pt_node;
+      gchar buf[16];
+      JingleCodec *p = li->data;
+
+      pt_node = lm_message_node_add_child (desc_node, "payload-type", NULL);
+
+      /* id: required */
+      sprintf (buf, "%d", p->id);
+      lm_message_node_set_attribute (pt_node, "id", buf);
+
+      /* name: optional */
+      if (*p->name != '\0')
+        {
+          lm_message_node_set_attribute (pt_node, "name", p->name);
+        }
+
+      /* clock rate: optional */
+      if (p->clockrate != 0)
+        {
+          const gchar *attname = "clockrate";
+
+          if (dialect == JINGLE_DIALECT_V015)
+              attname = "rate";
+
+          sprintf (buf, "%u", p->clockrate);
+          lm_message_node_set_attribute (pt_node, attname, buf);
+        }
+
+      if (p->channels != 0)
+        {
+          sprintf (buf, "%u", p->channels);
+          lm_message_node_set_attribute (pt_node, "channels", buf);
+        }
+    }
+}
+
+static void
+description_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  GabbleJingleDescriptionIfaceClass *klass = (GabbleJingleDescriptionIfaceClass *) g_iface;
+
+  klass->parse = parse_description;
+  klass->produce = produce_node;
+  // klass->add_codecs = add_codecs;
+}
+
+void
+jingle_media_rtp_register (GabbleJingleFactory *factory)
+{
+  /* Current (v0.25) Jingle draft URI */
+  gabble_jingle_factory_register_description (factory,
+      NS_JINGLE_RTP_TMP, new_description);
+
+  /* Old Jingle audio/video namespaces */
+  gabble_jingle_factory_register_description (factory,
+      NS_JINGLE_DESCRIPTION_AUDIO, new_description);
+
+  gabble_jingle_factory_register_description (factory,
+      NS_JINGLE_DESCRIPTION_VIDEO, new_description);
+
+  /* GTalk audio call namespace */
+  gabble_jingle_factory_register_description (factory,
+      NS_GOOGLE_SESSION_PHONE, new_description);
+}
+

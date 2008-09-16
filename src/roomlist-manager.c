@@ -254,6 +254,12 @@ gabble_roomlist_manager_foreach_channel (TpChannelManager *manager,
 }
 
 
+static const gchar * const roomlist_channel_fixed_properties[] = {
+    TP_IFACE_CHANNEL ".ChannelType",
+    TP_IFACE_CHANNEL ".TargetHandleType",
+    NULL
+};
+
 static const gchar * const roomlist_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL_TYPE_ROOM_LIST ".Server",
     NULL
@@ -328,6 +334,12 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
           "RoomList channels can't have a target handle");
       goto error;
     }
+
+  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+          roomlist_channel_fixed_properties,
+          roomlist_channel_allowed_properties,
+          &error))
+    goto error;
 
   server = tp_asv_get_string (request_properties,
       TP_IFACE_CHANNEL_TYPE_ROOM_LIST ".Server");

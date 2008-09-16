@@ -554,6 +554,12 @@ gabble_private_tubes_factory_iface_init (gpointer g_iface,
 }
 
 
+static const gchar * const tubes_channel_fixed_properties[] = {
+    TP_IFACE_CHANNEL ".ChannelType",
+    TP_IFACE_CHANNEL ".TargetHandleType",
+    NULL
+};
+
 static const gchar * const tubes_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     NULL
@@ -611,6 +617,11 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
 
   if (!tp_handle_is_valid (contact_repo, handle, &error))
+    goto error;
+
+  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+          tubes_channel_fixed_properties, tubes_channel_allowed_properties,
+          &error))
     goto error;
 
   /* Don't support opening a channel to our self handle */

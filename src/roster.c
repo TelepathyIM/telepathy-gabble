@@ -2467,6 +2467,14 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 }
 
 
+static const gchar * const list_channel_fixed_properties[] = {
+    TP_IFACE_CHANNEL ".ChannelType",
+    TP_IFACE_CHANNEL ".TargetHandleType",
+    NULL
+};
+static const gchar * const *group_channel_fixed_properties =
+    list_channel_fixed_properties;
+
 static const gchar * const list_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     NULL
@@ -2521,6 +2529,8 @@ gabble_roster_request (GabbleRoster *self,
   TpHandle handle;
   GError *error = NULL;
   TpHandleRepoIface *handle_repo;
+  const gchar * const *fixed;
+  const gchar * const *allowed;
 
   if (tp_strdiff (tp_asv_get_string (request_properties,
           TP_IFACE_CHANNEL ".ChannelType"),
@@ -2541,6 +2551,21 @@ gabble_roster_request (GabbleRoster *self,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
 
   if (!tp_handle_is_valid (handle_repo, handle, &error))
+    goto error;
+
+  if (handle_type == TP_HANDLE_TYPE_LIST)
+    {
+      fixed = list_channel_fixed_properties;
+      allowed = list_channel_allowed_properties;
+    }
+  else /* handle_type == TP_HANDLE_TYPE_GROUP */
+    {
+      fixed = group_channel_fixed_properties;
+      allowed = group_channel_allowed_properties;
+    }
+
+  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+          fixed, allowed, &error))
     goto error;
 
   /* disallow "deny" channels if we don't have google:roster support */

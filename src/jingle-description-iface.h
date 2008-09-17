@@ -22,7 +22,7 @@
 
 #include <glib-object.h>
 
-#include "gabble-types.h"
+#include "types.h"
 #include <loudmouth/loudmouth.h>
 
 G_BEGIN_DECLS

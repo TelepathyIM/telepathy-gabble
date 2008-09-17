@@ -29,13 +29,13 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "debug.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "util.h"
 #include "namespaces.h"
 #include "jingle-factory.h"
 #include "jingle-content.h"
 
-#include "gabble-media-session.h"
+#include "media-session.h"
 
 G_DEFINE_TYPE(GabbleJingleSession, gabble_jingle_session, G_TYPE_OBJECT);
 

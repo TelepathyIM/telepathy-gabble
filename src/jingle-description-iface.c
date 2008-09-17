@@ -18,7 +18,7 @@
  */
 
 #include "jingle-description-iface.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "jingle-session.h"
 #include <glib.h>
 

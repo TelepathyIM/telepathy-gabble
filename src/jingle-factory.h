@@ -22,7 +22,7 @@
 
 #include <glib-object.h>
 
-#include "gabble-types.h"
+#include "types.h"
 #include "jingle-transport-iface.h"
 #include "jingle-description-iface.h"
 

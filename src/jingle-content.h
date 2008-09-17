@@ -22,7 +22,7 @@
 
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
-#include "gabble-types.h"
+#include "types.h"
 #include "jingle-factory.h"
 
 G_BEGIN_DECLS

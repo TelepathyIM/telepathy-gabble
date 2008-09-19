@@ -40,7 +40,7 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     properties = conn.GetAll(
-            tp_name_prefix + '.Connection.Interface.Requests.DRAFT',
+            tp_name_prefix + '.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert properties.get('Channels') == [], properties['Channels']
     assert ({tp_name_prefix + '.Channel.ChannelType':
@@ -118,7 +118,7 @@ def test(q, bus, conn, stream):
     # FIXME: actually list the rooms!
 
     requestotron = dbus.Interface(conn,
-            tp_name_prefix + '.Connection.Interface.Requests.DRAFT')
+            tp_name_prefix + '.Connection.Interface.Requests')
     call_async(q, requestotron, 'CreateChannel',
             { tp_name_prefix + '.Channel.ChannelType':
                 tp_name_prefix + '.Channel.Type.RoomList',

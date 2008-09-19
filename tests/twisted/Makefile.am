@@ -12,6 +12,8 @@ TWISTED_TESTS = \
 	presence/presence.py \
 	roster/groups.py \
 	roster/groups-12791.py \
+	roster/request-never-answered.py \
+	roster/request-never-answered-2.py \
 	roster/test-google-roster.py \
 	roster/test-roster.py \
 	roster/test-roster-subscribe.py \
@@ -57,7 +59,6 @@ TWISTED_TESTS = \
 	connect/test-nonblocking-tls.py \
 	test-disco.py \
 	test-disco-no-reply.py \
-	test-group-race.py \
 	test-register.py \
 	test-set-status-idempotence.py
 

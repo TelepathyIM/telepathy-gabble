@@ -1,5 +1,5 @@
 """
-Exhibit a bug where RequestChannel times out when requesting a group channel
+Exhibit a bug where CreateChannel times out when requesting a group channel
 after the roster has been received.
 """
 
@@ -29,17 +29,31 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
     sync_dbus(bus, q, conn)
 
-    call_async(q, conn, 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.ContactList', HT_GROUP,
-        test_handle, True)
+    requestotron = dbus.Interface(conn,
+            'org.freedesktop.Telepathy.Connection.Interface.Requests')
+    call_async(q, requestotron, 'CreateChannel',
+            { 'org.freedesktop.Telepathy.Channel.ChannelType':
+                'org.freedesktop.Telepathy.Channel.Type.ContactList',
+              'org.freedesktop.Telepathy.Channel.TargetHandleType': HT_GROUP,
+              'org.freedesktop.Telepathy.Channel.TargetHandle': test_handle,
+              })
 
-    event = q.expect('dbus-signal', signal='NewChannel')
-    path, type, handle_type, handle, suppress_handler = event.args
-    assert handle_type == HT_GROUP, handle_type
-    assert handle == test_handle, (handle, test_handle)
+    event = q.expect('dbus-signal', signal='NewChannels')
+    path, props = event.args[0][0]
+    assert props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
+            'org.freedesktop.Telepathy.Channel.Type.ContactList', props
+    assert props['org.freedesktop.Telepathy.Channel.TargetHandleType'] ==\
+            HT_GROUP, props
+    assert props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
+            test_handle, props
+    assert props['org.freedesktop.Telepathy.Channel.TargetID'] ==\
+            'test', props
 
-    event = q.expect('dbus-return', method='RequestChannel')
-    assert event.value[0] == path, (event.args[0], path)
+    event = q.expect('dbus-return', method='CreateChannel')
+    ret_path, ret_props = event.value
+
+    assert ret_path == path, (ret_path, path)
+    assert ret_props == props, (ret_props, props)
 
 if __name__ == '__main__':
     exec_test(test)

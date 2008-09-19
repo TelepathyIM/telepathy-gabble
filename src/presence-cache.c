@@ -839,7 +839,7 @@ _caps_disco_cb (GabbleDisco *disco,
    * stanza. */
   if (!tp_strdiff (waiter_self->hash, "sha-1"))
     {
-      const gchar *computed_hash;
+      gchar *computed_hash;
       trust_inc = CAPABILITY_BUNDLE_ENOUGH_TRUST;
 
       computed_hash = caps_hash_compute_from_lm_node (query_result);
@@ -856,6 +856,8 @@ _caps_disco_cb (GabbleDisco *disco,
           trust = 0;
           bad_hash = TRUE;
         }
+
+      g_free (computed_hash);
     }
   else
     {

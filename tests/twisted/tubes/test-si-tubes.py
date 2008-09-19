@@ -162,7 +162,7 @@ def test(q, bus, conn, stream):
 
     # new requestotron
     requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT')
+            'org.freedesktop.Telepathy.Connection.Interface.Requests')
 
 #    call_async(q, requestotron, 'CreateChannel',
 #            {'org.freedesktop.Telepathy.Channel.ChannelType':
@@ -233,7 +233,7 @@ def test(q, bus, conn, stream):
             'test@localhost'
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
 
     assert new_sig.args[0][0] in properties['Channels'], \

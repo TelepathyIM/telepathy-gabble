@@ -1,3 +1,14 @@
+telepathy-gabble 0.7.UNRELEASED
+===============================
+
+Requirements:
+
+* telepathy-glib >= 0.7.15
+
+Enhancements:
+
+* Implement the Requests API introduced in spec 0.17.11
+
 telepathy-gabble 0.7.8 (2008-08-19)
 ===================================
 

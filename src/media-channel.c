@@ -435,7 +435,7 @@ gabble_media_channel_get_property (GObject    *object,
       g_value_set_boolean (value, priv->closed);
       break;
     case PROP_CHANNEL_PROPERTIES:
-      g_value_set_boxed (value,
+      g_value_take_boxed (value,
           tp_dbus_properties_mixin_make_properties_hash (object,
               TP_IFACE_CHANNEL, "TargetHandle",
               TP_IFACE_CHANNEL, "TargetHandleType",

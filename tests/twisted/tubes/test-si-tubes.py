@@ -67,15 +67,21 @@ def test(q, bus, conn, stream):
                 'org.freedesktop.Telepathy.Channel.Type.Tubes',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle'],
-             ) in properties.get('RequestableChannelClasses'),\
+             ['org.freedesktop.Telepathy.Channel.TargetHandle',
+              'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service',
+              'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters',
+             ]
+            ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
     assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle'],
-             ) in properties.get('RequestableChannelClasses'),\
+             ['org.freedesktop.Telepathy.Channel.TargetHandle',
+              'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service',
+              'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters',
+             ]
+            ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
     _, vcard_event, roster_event = q.expect_many(
@@ -162,7 +168,7 @@ def test(q, bus, conn, stream):
 
     # new requestotron
     requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT')
+            'org.freedesktop.Telepathy.Connection.Interface.Requests')
 
 #    call_async(q, requestotron, 'CreateChannel',
 #            {'org.freedesktop.Telepathy.Channel.ChannelType':
@@ -233,7 +239,7 @@ def test(q, bus, conn, stream):
             'test@localhost'
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
 
     assert new_sig.args[0][0] in properties['Channels'], \

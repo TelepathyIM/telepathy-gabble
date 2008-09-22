@@ -307,7 +307,7 @@ tube_dbus_open (GabbleTubeDBus *self)
       dbus_error_init (&error);
       priv->dbus_srv = dbus_server_listen (priv->dbus_srv_addr, &error);
 
-      if (priv->dbus_srv_addr != NULL)
+      if (priv->dbus_srv != NULL)
         break;
 
       DEBUG ("dbus_server_listen failed (try %u): %s: %s", i, error.name,
@@ -315,7 +315,7 @@ tube_dbus_open (GabbleTubeDBus *self)
       dbus_error_free (&error);
     }
 
-  if (priv->dbus_srv_addr == NULL)
+  if (priv->dbus_srv == NULL)
     {
       DEBUG ("all attempts failed. Close the tube");
       do_close (self);

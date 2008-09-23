@@ -208,7 +208,7 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 static gboolean _gabble_media_factory_sid_in_use (GabbleMediaFactory *fac,
     const gchar *sid);
 static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac,
-    TpHandle creator);
+    TpHandle creator, TpHandle maybe_peer);
 static void media_channel_closed_cb (GabbleMediaChannel *chan,
     gpointer user_data);
 
@@ -328,7 +328,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 
       DEBUG ("creating media channel");
 
-      chan = new_media_channel (fac, handle);
+      chan = new_media_channel (fac, handle, handle);
       chan_is_new = TRUE;
     }
 
@@ -486,7 +486,8 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
  */
 static GabbleMediaChannel *
 new_media_channel (GabbleMediaFactory *fac,
-                   TpHandle creator)
+                   TpHandle creator,
+                   TpHandle maybe_peer)
 {
   GabbleMediaFactoryPrivate *priv;
   TpBaseConnection *conn;
@@ -508,6 +509,7 @@ new_media_channel (GabbleMediaFactory *fac,
                        "factory", fac,
                        "object-path", object_path,
                        "creator", creator,
+                       "initial-peer", maybe_peer,
                        NULL);
 
   if (priv->stun_server != NULL)
@@ -934,7 +936,7 @@ gabble_media_factory_request_channel (TpChannelManager *manager,
               &error))
         goto error;
 
-      channel = new_media_channel (self, conn->self_handle);
+      channel = new_media_channel (self, conn->self_handle, 0);
       break;
 
     case TP_HANDLE_TYPE_CONTACT:
@@ -948,7 +950,7 @@ gabble_media_factory_request_channel (TpChannelManager *manager,
               &error))
         goto error;
 
-      channel = new_media_channel (self, conn->self_handle);
+      channel = new_media_channel (self, conn->self_handle, handle);
 
       if (!_gabble_media_channel_add_member ((GObject *) channel, handle,
             "", &error))

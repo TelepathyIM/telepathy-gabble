@@ -12,8 +12,8 @@ TWISTED_TESTS = \
 	presence/presence.py \
 	roster/groups.py \
 	roster/groups-12791.py \
-	roster/request-never-answered.py \
-	roster/request-never-answered-2.py \
+	roster/request-group-before-roster.py \
+	roster/request-group-after-roster.py \
 	roster/test-google-roster.py \
 	roster/test-roster.py \
 	roster/test-roster-subscribe.py \

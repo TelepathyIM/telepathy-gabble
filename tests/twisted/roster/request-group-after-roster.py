@@ -1,6 +1,6 @@
 """
-Exhibit a bug where CreateChannel times out when requesting a group channel
-after the roster has been received.
+Regression test for a bug where CreateChannel times out when requesting a group
+channel after the roster has been received.
 """
 
 import dbus

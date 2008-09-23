@@ -1,6 +1,6 @@
 """
-Exhibit a bug where RequestChannel times out when requesting a group channel
-if the roster hasn't been received at the time of the call.
+Regression test for a bug where RequestChannel times out when requesting a
+group channel if the roster hasn't been received at the time of the call.
 """
 
 import dbus

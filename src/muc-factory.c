@@ -27,13 +27,13 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/util.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
-#include "channel-manager.h"
 #include "connection.h"
 #include "conn-olpc.h"
 #include "debug.h"
@@ -48,7 +48,7 @@
 static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucFactory, gabble_muc_factory, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CHANNEL_MANAGER,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init));
 
 /* properties */
@@ -79,7 +79,7 @@ struct _GabbleMucFactoryPrivate
 
   /* Map from channels to the request-tokens of requests that they will satisfy
    * when they're ready.
-   * Borrowed GabbleExportableChannel => GSList of gpointer */
+   * Borrowed TpExportableChannel => GSList of gpointer */
   GHashTable *queued_requests;
 
   gboolean dispose_has_run;
@@ -234,8 +234,8 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpHandle room_handle;
 
-  gabble_channel_manager_emit_channel_closed_for_object (fac,
-      GABBLE_EXPORTABLE_CHANNEL (chan));
+  tp_channel_manager_emit_channel_closed_for_object (fac,
+      TP_EXPORTABLE_CHANNEL (chan));
 
   if (priv->text_channels != NULL)
     {
@@ -271,8 +271,8 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpHandle room_handle;
 
-  gabble_channel_manager_emit_channel_closed_for_object (fac,
-      GABBLE_EXPORTABLE_CHANNEL (chan));
+  tp_channel_manager_emit_channel_closed_for_object (fac,
+      TP_EXPORTABLE_CHANNEL (chan));
 
   if (priv->tubes_channels != NULL)
     {
@@ -288,7 +288,7 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
 
 static void
 gabble_muc_factory_emit_new_channel (GabbleMucFactory *self,
-                                     GabbleExportableChannel *channel)
+                                     TpExportableChannel *channel)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   GSList *requests_satisfied;
@@ -296,7 +296,7 @@ gabble_muc_factory_emit_new_channel (GabbleMucFactory *self,
   requests_satisfied = g_hash_table_lookup (priv->queued_requests, channel);
   g_hash_table_steal (priv->queued_requests, channel);
   requests_satisfied = g_slist_reverse (requests_satisfied);
-  gabble_channel_manager_emit_new_channel (self, channel, requests_satisfied);
+  tp_channel_manager_emit_new_channel (self, channel, requests_satisfied);
   g_slist_free (requests_satisfied);
 }
 
@@ -311,14 +311,14 @@ muc_ready_cb (GabbleMucChannel *chan,
 
   DEBUG ("chan=%p", chan);
 
-  gabble_muc_factory_emit_new_channel (fac, GABBLE_EXPORTABLE_CHANNEL (chan));
+  gabble_muc_factory_emit_new_channel (fac, TP_EXPORTABLE_CHANNEL (chan));
 
   tubes_chan = g_hash_table_lookup (priv->text_needed_for_tubes, chan);
   if (tubes_chan != NULL)
     {
       g_hash_table_remove (priv->text_needed_for_tubes, chan);
       gabble_muc_factory_emit_new_channel (fac,
-          GABBLE_EXPORTABLE_CHANNEL (tubes_chan));
+          TP_EXPORTABLE_CHANNEL (tubes_chan));
     }
 }
 
@@ -341,7 +341,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
 
   for (iter = requests_satisfied; iter != NULL; iter = iter->next)
     {
-      gabble_channel_manager_emit_request_failed (fac, iter->data,
+      tp_channel_manager_emit_request_failed (fac, iter->data,
           error->domain, error->code, error->message);
     }
 
@@ -359,7 +359,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
 
       for (iter = requests_satisfied; iter != NULL; iter = iter->next)
         {
-          gabble_channel_manager_emit_request_failed (fac, iter->data,
+          tp_channel_manager_emit_request_failed (fac, iter->data,
               error->domain, error->code, error->message);
         }
 
@@ -952,7 +952,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
           tubes_chan = new_tubes_channel (fac, room_handle, muc_chan,
               0);
           gabble_muc_factory_emit_new_channel (fac,
-              GABBLE_EXPORTABLE_CHANNEL (tubes_chan));
+              TP_EXPORTABLE_CHANNEL (tubes_chan));
         }
 
       handle = tp_handle_ensure (contact_repo, from,
@@ -981,7 +981,7 @@ gabble_muc_factory_associate_request (GabbleMucFactory *self,
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   GSList *list = g_hash_table_lookup (priv->queued_requests, channel);
 
-  g_assert (GABBLE_IS_EXPORTABLE_CHANNEL (channel));
+  g_assert (TP_IS_EXPORTABLE_CHANNEL (channel));
 
   g_hash_table_steal (priv->queued_requests, channel);
   list = g_slist_prepend (list, request);
@@ -1002,7 +1002,7 @@ cancel_queued_requests (gpointer k,
 
   for (iter = requests_satisfied; iter != NULL; iter = iter->next)
     {
-      gabble_channel_manager_emit_request_failed (self,
+      tp_channel_manager_emit_request_failed (self,
           iter->data, TP_ERRORS, TP_ERROR_DISCONNECTED,
           "Unable to complete this channel request, we're disconnecting!");
     }
@@ -1127,7 +1127,7 @@ gabble_muc_factory_constructor (GType type, guint n_props,
 
 struct _ForeachData
 {
-  GabbleExportableChannelFunc foreach;
+  TpExportableChannelFunc foreach;
   gpointer user_data;
 };
 
@@ -1135,14 +1135,14 @@ static void
 _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 {
   struct _ForeachData *data = (struct _ForeachData *) user_data;
-  GabbleExportableChannel *channel = GABBLE_EXPORTABLE_CHANNEL (value);
+  TpExportableChannel *channel = TP_EXPORTABLE_CHANNEL (value);
 
   data->foreach (channel, data->user_data);
 }
 
 static void
-gabble_muc_factory_foreach_channel (GabbleChannelManager *manager,
-                                    GabbleExportableChannelFunc foreach,
+gabble_muc_factory_foreach_channel (TpChannelManager *manager,
+                                    TpExportableChannelFunc foreach,
                                     gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (manager);
@@ -1230,20 +1230,28 @@ gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
 }
 
 
-static const gchar * const muc_channel_required_properties[] = {
+static const gchar * const muc_channel_fixed_properties[] = {
+    TP_IFACE_CHANNEL ".ChannelType",
+    TP_IFACE_CHANNEL ".TargetHandleType",
+    NULL
+};
+
+static const gchar * const * muc_tubes_channel_fixed_properties =
+    muc_channel_fixed_properties;
+
+static const gchar * const muc_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     NULL
 };
 
-static const gchar * const * muc_tubes_channel_required_properties =
-    muc_channel_required_properties;
+static const gchar * const * muc_tubes_channel_allowed_properties =
+    muc_channel_allowed_properties;
 
-static const gchar * const no_properties[] = { NULL };
 
 
 static void
-gabble_muc_factory_foreach_channel_class (GabbleChannelManager *manager,
-    GabbleChannelManagerChannelClassFunc func,
+gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
+    TpChannelManagerChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -1261,11 +1269,11 @@ gabble_muc_factory_foreach_channel_class (GabbleChannelManager *manager,
       handle_type_value);
 
   g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TEXT);
-  func (manager, table, muc_channel_required_properties, no_properties,
+  func (manager, table, muc_channel_allowed_properties,
       user_data);
 
   g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TUBES);
-  func (manager, table, muc_tubes_channel_required_properties, no_properties,
+  func (manager, table, muc_tubes_channel_allowed_properties,
       user_data);
 
   g_hash_table_destroy (table);
@@ -1303,6 +1311,11 @@ gabble_muc_factory_request (GabbleMucFactory *self,
 
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT))
     {
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              muc_channel_fixed_properties, muc_channel_allowed_properties,
+              &error))
+        goto error;
+
       if (ensure_muc_channel (self, priv, handle, &text_chan))
         {
           if (require_new)
@@ -1313,8 +1326,8 @@ gabble_muc_factory_request (GabbleMucFactory *self,
             }
           else
             {
-              gabble_channel_manager_emit_request_already_satisfied (self,
-                  request_token, GABBLE_EXPORTABLE_CHANNEL (text_chan));
+              tp_channel_manager_emit_request_already_satisfied (self,
+                  request_token, TP_EXPORTABLE_CHANNEL (text_chan));
             }
         }
       else
@@ -1327,6 +1340,12 @@ gabble_muc_factory_request (GabbleMucFactory *self,
     }
   else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
     {
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              muc_tubes_channel_fixed_properties,
+              muc_tubes_channel_allowed_properties,
+              &error))
+        goto error;
+
       tubes_chan = g_hash_table_lookup (priv->tubes_channels,
           GUINT_TO_POINTER (handle));
 
@@ -1340,8 +1359,8 @@ gabble_muc_factory_request (GabbleMucFactory *self,
             }
           else
             {
-              gabble_channel_manager_emit_request_already_satisfied (self,
-                  request_token, GABBLE_EXPORTABLE_CHANNEL (tubes_chan));
+              tp_channel_manager_emit_request_already_satisfied (self,
+                  request_token, TP_EXPORTABLE_CHANNEL (tubes_chan));
             }
         }
       else if (ensure_muc_channel (self, priv, handle, &text_chan))
@@ -1351,7 +1370,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
           gabble_muc_factory_associate_request (self, tubes_chan,
               request_token);
           gabble_muc_factory_emit_new_channel (self,
-              GABBLE_EXPORTABLE_CHANNEL (tubes_chan));
+              TP_EXPORTABLE_CHANNEL (tubes_chan));
         }
       else
         {
@@ -1371,7 +1390,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
     }
 
 error:
-  gabble_channel_manager_emit_request_failed (self, request_token,
+  tp_channel_manager_emit_request_failed (self, request_token,
       error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
@@ -1379,7 +1398,7 @@ error:
 
 
 static gboolean
-gabble_muc_factory_create_channel (GabbleChannelManager *manager,
+gabble_muc_factory_create_channel (TpChannelManager *manager,
                                    gpointer request_token,
                                    GHashTable *request_properties)
 {
@@ -1391,7 +1410,7 @@ gabble_muc_factory_create_channel (GabbleChannelManager *manager,
 
 
 static gboolean
-gabble_muc_factory_request_channel (GabbleChannelManager *manager,
+gabble_muc_factory_request_channel (TpChannelManager *manager,
                                     gpointer request_token,
                                     GHashTable *request_properties)
 {
@@ -1406,7 +1425,7 @@ static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
 {
-  GabbleChannelManagerIface *iface = g_iface;
+  TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_muc_factory_foreach_channel;
   iface->foreach_channel_class = gabble_muc_factory_foreach_channel_class;

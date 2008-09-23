@@ -884,10 +884,18 @@ gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
 }
 
 
+typedef enum
+{
+  METHOD_REQUEST,
+  METHOD_CREATE,
+} RequestMethod;
+
+
 static gboolean
-gabble_media_factory_request_channel (TpChannelManager *manager,
-                                      gpointer request_token,
-                                      GHashTable *request_properties)
+gabble_media_factory_requestotron (TpChannelManager *manager,
+                                   gpointer request_token,
+                                   GHashTable *request_properties,
+                                   RequestMethod method)
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
@@ -897,6 +905,35 @@ gabble_media_factory_request_channel (TpChannelManager *manager,
   GabbleMediaChannel *channel = NULL;
   GError *error = NULL;
   GSList *request_tokens;
+  gboolean require_target_handle;
+  gboolean add_peer_to_remote_pending;
+
+  /* Supported modes of operation:
+   * - RequestChannel(None, 0):
+   *     channel is anonymous;
+   *     caller uses RequestStreams to set the peer and start the call.
+   * - RequestChannel(Contact, n) where n != 0:
+   *     channel has TargetHandle=n;
+   *     n is in remote pending;
+   *     call is started when caller calls RequestStreams.
+   * - CreateChannel({THT: Contact, TH: n}):
+   *     channel has TargetHandle=n
+   *     n is not in the group interface at all
+   *     call is started when caller calls RequestStreams.
+   */
+  switch (method)
+    {
+    case METHOD_REQUEST:
+      require_target_handle = FALSE;
+      add_peer_to_remote_pending = TRUE;
+      break;
+    case METHOD_CREATE:
+      require_target_handle = TRUE;
+      add_peer_to_remote_pending = FALSE;
+      break;
+    default:
+      g_assert_not_reached ();
+    }
 
   if (tp_strdiff (tp_asv_get_string (request_properties,
           TP_IFACE_CHANNEL ".ChannelType"),
@@ -909,17 +946,6 @@ gabble_media_factory_request_channel (TpChannelManager *manager,
   handle = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
 
-  /* FIXME: which of these modes should we support for CreateChannel too?
-   *
-   * Options are:
-   * - (NONE, 0) [*]
-   * - (CONTACT, non-0), InitialStreams is mandatory
-   * - (CONTACT, non-0), InitialStreams is optional [*]
-   *
-   * Options [*] must be supported for RequestChannel, but need not be
-   * supported for CreateChannel since there is no backwards compatibility.
-   */
-
   switch (handle_type)
     {
     case TP_HANDLE_TYPE_NONE:
@@ -928,6 +954,14 @@ gabble_media_factory_request_channel (TpChannelManager *manager,
           g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "TargetHandle must be zero or omitted if TargetHandleType is "
               "NONE");
+          goto error;
+        }
+
+      if (require_target_handle)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+              "A valid Contact handle must be provided when requesting a media "
+              "channel");
           goto error;
         }
 
@@ -952,11 +986,14 @@ gabble_media_factory_request_channel (TpChannelManager *manager,
 
       channel = new_media_channel (self, conn->self_handle, handle);
 
-      if (!_gabble_media_channel_add_member ((GObject *) channel, handle,
-            "", &error))
+      if (add_peer_to_remote_pending)
         {
-          gabble_media_channel_close (channel);
-          goto error;
+          if (!_gabble_media_channel_add_member ((GObject *) channel, handle,
+                "", &error))
+            {
+              gabble_media_channel_close (channel);
+              goto error;
+            }
         }
 
       break;
@@ -982,6 +1019,26 @@ error:
 }
 
 
+static gboolean
+gabble_media_factory_request_channel (TpChannelManager *manager,
+                                      gpointer request_token,
+                                      GHashTable *request_properties)
+{
+  return gabble_media_factory_requestotron (manager, request_token,
+      request_properties, METHOD_REQUEST);
+}
+
+
+static gboolean
+gabble_media_factory_create_channel (TpChannelManager *manager,
+                                     gpointer request_token,
+                                     GHashTable *request_properties)
+{
+  return gabble_media_factory_requestotron (manager, request_token,
+      request_properties, METHOD_CREATE);
+}
+
+
 static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
@@ -991,9 +1048,5 @@ channel_manager_iface_init (gpointer g_iface,
   iface->foreach_channel = gabble_media_factory_foreach_channel;
   iface->foreach_channel_class = gabble_media_factory_foreach_channel_class;
   iface->request_channel = gabble_media_factory_request_channel;
-
-  /* FIXME: for the moment, CreateChannel is unsupported. We should
-   * decide on the preferred requestotron API for media channels -
-   * see _request_channel for possibilities */
-  iface->create_channel = NULL;
+  iface->create_channel = gabble_media_factory_create_channel;
 }

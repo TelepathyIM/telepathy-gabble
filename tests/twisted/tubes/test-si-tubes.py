@@ -53,16 +53,18 @@ def set_up_echo(name):
             raise
     reactor.listenUNIX(os.getcwd() + '/stream' + name, factory)
 
-
-def test(q, bus, conn, stream):
-    set_up_echo("")
-    set_up_echo("2")
-    conn.Connect()
-
+def check_properties(q, bus, conn, stream, channel_list=None):
     properties = conn.GetAll(
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert properties.get('Channels') == [], properties['Channels']
+
+    if channel_list == None:
+        assert properties.get('Channels') == [], properties['Channels']
+    else:
+        for i in channel_list:
+            assert i in properties['Channels'], \
+                (i, properties['Channels'])
+
     assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Tubes',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
@@ -83,6 +85,43 @@ def test(q, bus, conn, stream):
              ]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
+
+def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
+    assert old_sig[0] == chan_path
+    assert old_sig[1] == tp_name_prefix + '.Channel.Type.' + channel_type
+    assert old_sig[2] == 1         # contact handle
+    assert old_sig[3] == contact_handle
+    assert old_sig[4] == True      # suppress handler
+
+def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
+        contact_id, initiator_handle):
+    assert len(new_sig) == 1
+    assert len(new_sig[0]) == 1        # one channel
+    assert len(new_sig[0][0]) == 2     # two struct members
+    assert new_sig[0][0][0] == chan_path
+    emitted_props = new_sig[0][0][1]
+
+    assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
+            tp_name_prefix + '.Channel.Type.' + channel_type
+    assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 1
+    assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
+            contact_handle
+    assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
+            contact_id
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+            == initiator_handle
+    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] == \
+            'test@localhost'
+
+
+def test(q, bus, conn, stream):
+    set_up_echo("")
+    set_up_echo("2")
+
+    check_properties(q, bus, conn, stream)
+
+    conn.Connect()
 
     _, vcard_event, roster_event = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
@@ -134,37 +173,12 @@ def test(q, bus, conn, stream):
     assert len(ret.value) == 1
     chan_path = ret.value[0]
 
-    assert old_sig.args[0] == chan_path
-    assert old_sig.args[1] == tp_name_prefix + '.Channel.Type.Tubes'
-    assert old_sig.args[2] == 1         # contact handle
-    assert old_sig.args[3] == bob_handle
-    assert old_sig.args[4] == True      # suppress handler
+    check_NewChannel_signal(old_sig.args, "Tubes", chan_path, bob_handle)
+    check_NewChannels_signal(new_sig.args, "Tubes", chan_path,
+            bob_handle, 'bob@localhost', conn.GetSelfHandle())
 
-    assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1        # one channel
-    assert len(new_sig.args[0][0]) == 2     # two struct members
-    assert new_sig.args[0][0][0] == ret.value[0]
-    emitted_props = new_sig.args[0][0][1]
 
-    assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            tp_name_prefix + '.Channel.Type.Tubes'
-    assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 1
-    assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
-            bob_handle
-    assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
-            'bob@localhost'
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
-            == conn.GetSelfHandle()
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] == \
-            'test@localhost'
-
-    properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
-
-    assert new_sig.args[0][0] in properties['Channels'], \
-            (new_sig.args[0][0], properties['Channels'])
+    check_properties(q, bus, conn, stream, [new_sig.args[0][0]])
 
     # new requestotron
     requestotron = dbus.Interface(conn,
@@ -210,43 +224,13 @@ def test(q, bus, conn, stream):
     # of the Channel.Type.StreamTube object !
     assert chan_path != new_chan_path
 
-    print "new_chan_path = " + new_chan_path
-    print "chan_path = " + chan_path
+    check_NewChannel_signal(old_sig.args, "StreamTube.DRAFT", \
+            new_chan_path, bob_handle)
 
-    assert old_sig.args[0] == new_chan_path
-    assert old_sig.args[1] == tp_name_prefix + '.Channel.Type.StreamTube.DRAFT', old_sig.args[1]
-    assert old_sig.args[2] == 1         # contact handle
-    assert old_sig.args[3] == bob_handle
-    assert old_sig.args[4] == True      # suppress handler
+    check_NewChannels_signal(new_sig.args, "StreamTube.DRAFT", new_chan_path, \
+            bob_handle, 'bob@localhost', conn.GetSelfHandle())
 
-    assert len(new_sig.args) == 1
-    # one channel (the old-api channel was already existing)
-    assert len(new_sig.args[0]) == 1
-    # two struct members (o + a{sv})
-    assert len(new_sig.args[0][0]) == 2
-    # the new channel is in the first cell of the new_sig array
-    assert new_sig.args[0][0][0] == new_chan_path
-    emitted_props = new_sig.args[0][0][1]
-
-    assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            tp_name_prefix + '.Channel.Type.StreamTube.DRAFT'
-    assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 1
-    assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
-            bob_handle
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
-            'bob@localhost', emitted_props[tp_name_prefix + '.Channel.TargetID']
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
-            == conn.GetSelfHandle()
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] == \
-            'test@localhost'
-
-    properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
-
-    assert new_sig.args[0][0] in properties['Channels'], \
-            (new_sig.args[0][0], properties['Channels'])
+    check_properties(q, bus, conn, stream, [new_sig.args[0][0]])
 
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
     tubes_iface = dbus.Interface(tubes_chan,

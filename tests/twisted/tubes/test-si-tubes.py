@@ -220,8 +220,11 @@ def test(q, bus, conn, stream):
     assert old_sig.args[4] == True      # suppress handler
 
     assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1        # one channel
-    assert len(new_sig.args[0][0]) == 2     # two struct members
+    # one channel (the old-api channel was already existing)
+    assert len(new_sig.args[0]) == 1
+    # two struct members (o + a{sv})
+    assert len(new_sig.args[0][0]) == 2
+    # the new channel is in the first cell of the new_sig array
     assert new_sig.args[0][0][0] == new_chan_path
     emitted_props = new_sig.args[0][0][1]
 

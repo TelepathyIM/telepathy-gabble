@@ -20,6 +20,7 @@ TWISTED_TESTS = \
 	roster/test-save-alias-to-roster.py \
 	text/initiate.py \
 	text/initiate-requestotron.py \
+	text/ensure.py \
 	text/respawn.py \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \

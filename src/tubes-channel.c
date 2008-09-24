@@ -1626,6 +1626,10 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
           (GDestroyNotify) tp_g_value_slice_free);
     }
 
+  /* if the service property is missing, the requestotron rejects the request
+   */
+  g_assert (service != NULL);
+
   DEBUG ("Request a tube channel with type='%s' and service='%s'",
       channel_type, service);
 

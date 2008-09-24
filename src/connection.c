@@ -699,7 +699,6 @@ gabble_connection_dispose (GObject *object)
 
   g_assert ((base->status == TP_CONNECTION_STATUS_DISCONNECTED) ||
             (base->status == TP_INTERNAL_CONNECTION_STATUS_NEW));
-  g_assert (base->self_handle == 0);
 
   g_object_unref (self->bytestream_factory);
   self->bytestream_factory = NULL;

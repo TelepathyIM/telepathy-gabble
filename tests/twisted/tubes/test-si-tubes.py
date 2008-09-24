@@ -70,8 +70,6 @@ def check_properties(q, bus, conn, stream, channel_list=None):
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
              ['org.freedesktop.Telepathy.Channel.TargetHandle',
-              'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service',
-              'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters',
              ]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
@@ -80,8 +78,8 @@ def check_properties(q, bus, conn, stream, channel_list=None):
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
              ['org.freedesktop.Telepathy.Channel.TargetHandle',
-              'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service',
               'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters',
+              'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service',
              ]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
@@ -184,17 +182,31 @@ def test(q, bus, conn, stream):
     requestotron = dbus.Interface(conn,
             'org.freedesktop.Telepathy.Connection.Interface.Requests')
 
-#    call_async(q, requestotron, 'CreateChannel',
-#            {'org.freedesktop.Telepathy.Channel.ChannelType':
-#                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-#             'org.freedesktop.Telepathy.Channel.TargetHandleType':
-#                1,
-#             'org.freedesktop.Telepathy.Channel.TargetHandle':
-#                bob_handle
-#            });
-#    # some properties are missing in the request, we expect gabble to return
-#    # the relevent error
-#    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
+    call_async(q, requestotron, 'CreateChannel',
+            {'org.freedesktop.Telepathy.Channel.ChannelType':
+                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+             'org.freedesktop.Telepathy.Channel.TargetHandleType':
+                1,
+             'org.freedesktop.Telepathy.Channel.TargetHandle':
+                bob_handle,
+             'this.property.does.not.exist':
+                'this.value.should.not.exist'
+            });
+    # some properties are unknown in the request, we expect gabble to return
+    # the relevent error
+    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
+
+    call_async(q, requestotron, 'CreateChannel',
+            {'org.freedesktop.Telepathy.Channel.ChannelType':
+                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+             'org.freedesktop.Telepathy.Channel.TargetHandleType':
+                1,
+             'org.freedesktop.Telepathy.Channel.TargetHandle':
+                bob_handle
+            });
+    # some properties are missing in the request, we expect gabble to return
+    # the relevent error
+    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
 
     call_async(q, requestotron, 'CreateChannel',
             {'org.freedesktop.Telepathy.Channel.ChannelType':

@@ -1,5 +1,5 @@
 """
-Test text channel initiated by me, using Requests.
+Test text channel initiated by me, using Requests.EnsureChannel
 """
 
 import dbus
@@ -15,11 +15,11 @@ def test(q, bus, conn, stream):
 
     self_handle = conn.GetSelfHandle()
 
-    jid = 'foo@bar.com'
-    call_async(q, conn, 'RequestHandles', 1, [jid])
+    jids = ['foo@bar.com', 'truc@cafe.fr']
+    call_async(q, conn, 'RequestHandles', 1, jids)
 
     event = q.expect('dbus-return', method='RequestHandles')
-    foo_handle = event.value[0][0]
+    handles = event.value[0]
 
     properties = conn.GetAll(
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
@@ -38,13 +38,24 @@ def test(q, bus, conn, stream):
     requestotron = dbus.Interface(conn,
             'org.freedesktop.Telepathy.Connection.Interface.Requests')
 
+    test_ensure_ensure(q, requestotron, conn, self_handle, jids[0], handles[0])
+
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+
+
+def test_ensure_ensure(q, requestotron, conn, self_handle, jid, handle):
+    """
+    Test ensuring a non-existant channel twice.  The first call should succeed
+    with Yours=True; the subsequent call should succeed with Yours=False
+    """
 
     # Check that Ensuring a channel that doesn't exist succeeds
     call_async(q, requestotron, 'EnsureChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': foo_handle,
+              'org.freedesktop.Telepathy.Channel.TargetHandle': handle,
               })
 
     ret, old_sig, new_sig = q.expect_many(
@@ -65,7 +76,7 @@ def test(q, bus, conn, stream):
     assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'TargetHandleType'] == 1
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            foo_handle
+            handle
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == jid
     assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
             'Requested'] == True
@@ -81,7 +92,7 @@ def test(q, bus, conn, stream):
     assert old_ct == u'org.freedesktop.Telepathy.Channel.Type.Text'
     # check that handle type == contact handle
     assert old_ht == 1
-    assert old_h == foo_handle
+    assert old_h == handle
     # assert old_sh == True      # suppress handler
 
     assert len(new_sig.args) == 1
@@ -103,7 +114,7 @@ def test(q, bus, conn, stream):
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': foo_handle,
+              'org.freedesktop.Telepathy.Channel.TargetHandle': handle,
               })
     ret_ = q.expect('dbus-return', method='EnsureChannel')
 
@@ -116,8 +127,6 @@ def test(q, bus, conn, stream):
     assert path == path_, (path, path_)
     assert emitted_props == emitted_props_, (emitted_props, emitted_props_)
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
     exec_test(test)

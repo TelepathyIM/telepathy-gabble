@@ -53,7 +53,7 @@ def set_up_echo(name):
             raise
     reactor.listenUNIX(os.getcwd() + '/stream' + name, factory)
 
-def check_properties(q, bus, conn, stream, channel_list=None):
+def check_conn_properties(q, bus, conn, stream, channel_list=None):
     properties = conn.GetAll(
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
@@ -83,6 +83,38 @@ def check_properties(q, bus, conn, stream, channel_list=None):
              ]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
+
+def check_channel_properties(q, bus, conn, stream, channel, channel_type,
+        contact_handle, contact_id):
+    # Exercise basic Channel Properties from spec 0.17.7
+    # on the channel of type channel_type
+    channel_props = channel.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props.get('TargetHandle') == contact_handle,\
+            (channel_props.get('TargetHandle'), contact_handle)
+    assert channel_props.get('TargetHandleType') == 1,\
+            channel_props.get('TargetHandleType')
+    assert channel_props.get('ChannelType') == \
+            'org.freedesktop.Telepathy.Channel.Type.' + channel_type,\
+            channel_props.get('ChannelType')
+    assert 'Interfaces' in channel_props, channel_props
+    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' not in \
+            channel_props['Interfaces'], \
+            channel_props['Interfaces']
+    assert channel_props['TargetID'] == contact_id
+
+    self_handle = conn.GetSelfHandle()
+
+    # Exercise FUTURE properties
+    # on the channel of type channel_type
+    future_props = channel.GetAll(
+            'org.freedesktop.Telepathy.Channel.FUTURE',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['Requested'] == True
+    assert future_props['InitiatorID'] == 'test@localhost'
+    assert future_props['InitiatorHandle'] == self_handle
+
 
 def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
     assert old_sig[0] == chan_path
@@ -117,7 +149,7 @@ def test(q, bus, conn, stream):
     set_up_echo("")
     set_up_echo("2")
 
-    check_properties(q, bus, conn, stream)
+    check_conn_properties(q, bus, conn, stream)
 
     conn.Connect()
 
@@ -174,14 +206,16 @@ def test(q, bus, conn, stream):
     check_NewChannel_signal(old_sig.args, "Tubes", chan_path, bob_handle)
     check_NewChannels_signal(new_sig.args, "Tubes", chan_path,
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
+    old_tubes_channel_properties = new_sig.args[0][0]
 
-
-    check_properties(q, bus, conn, stream, [new_sig.args[0][0]])
+    check_conn_properties(q, bus, conn, stream, [old_tubes_channel_properties])
 
     # new requestotron
     requestotron = dbus.Interface(conn,
             'org.freedesktop.Telepathy.Connection.Interface.Requests')
 
+    # Try to CreateChannel with unknown properties
+    # Gabble must return an error
     call_async(q, requestotron, 'CreateChannel',
             {'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
@@ -192,10 +226,12 @@ def test(q, bus, conn, stream):
              'this.property.does.not.exist':
                 'this.value.should.not.exist'
             });
-    # some properties are unknown in the request, we expect gabble to return
-    # the relevent error
     ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
+    # CreateChannel failed, we expect no new channel
+    check_conn_properties(q, bus, conn, stream, [old_tubes_channel_properties])
 
+    # Try to CreateChannel with missing properties ("Service")
+    # Gabble must return an error
     call_async(q, requestotron, 'CreateChannel',
             {'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
@@ -204,10 +240,12 @@ def test(q, bus, conn, stream):
              'org.freedesktop.Telepathy.Channel.TargetHandle':
                 bob_handle
             });
-    # some properties are missing in the request, we expect gabble to return
-    # the relevent error
     ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
+    # CreateChannel failed, we expect no new channel
+    check_conn_properties(q, bus, conn, stream, [old_tubes_channel_properties])
 
+    # Try to CreateChannel with correct properties
+    # Gabble must succeed
     call_async(q, requestotron, 'CreateChannel',
             {'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
@@ -220,7 +258,6 @@ def test(q, bus, conn, stream):
              'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
                 dbus.Dictionary({'foo': 'bar'}, signature='sv'),
             });
-
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
         EventPattern('dbus-signal', signal='NewChannel'),
@@ -238,44 +275,19 @@ def test(q, bus, conn, stream):
 
     check_NewChannel_signal(old_sig.args, "StreamTube.DRAFT", \
             new_chan_path, bob_handle)
-
     check_NewChannels_signal(new_sig.args, "StreamTube.DRAFT", new_chan_path, \
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
+    stream_tube_channel_properties = new_sig.args[0][0]
 
-    check_properties(q, bus, conn, stream, [new_sig.args[0][0]])
+    check_conn_properties(q, bus, conn, stream,
+            [old_tubes_channel_properties, stream_tube_channel_properties])
 
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
     tubes_iface = dbus.Interface(tubes_chan,
         tp_name_prefix + '.Channel.Type.Tubes')
 
-    # Exercise basic Channel Properties from spec 0.17.7
-    # on the Channel.Type.Tubes channel
-    channel_props = tubes_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert channel_props.get('TargetHandle') == bob_handle,\
-            (channel_props.get('TargetHandle'), bob_handle)
-    assert channel_props.get('TargetHandleType') == 1,\
-            channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.Tubes',\
-            channel_props.get('ChannelType')
-    assert 'Interfaces' in channel_props, channel_props
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' not in \
-            channel_props['Interfaces'], \
-            channel_props['Interfaces']
-    assert channel_props['TargetID'] == 'bob@localhost'
-
-    self_handle = conn.GetSelfHandle()
-
-    # Exercise FUTURE properties
-    # on the Channel.Type.Tubes channel
-    future_props = tubes_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == self_handle
+    check_channel_properties(q, bus, conn, stream, tubes_chan, "Tubes",
+            bob_handle, "bob@localhost")
 
     # Offer the tube, old API
     path = os.getcwd() + '/stream'
@@ -332,6 +344,7 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
+    self_handle = conn.GetSelfHandle()
     assert tube_props.get("Initiator") == self_handle
     print str(tube_props.get("Parameters"))
     assert tube_props.get("Parameters") == dbus.Dictionary(
@@ -351,32 +364,10 @@ def test(q, bus, conn, stream):
     # 3 == Tube_Channel_State_Not_Offered
     assert tube_props.get("Status") == 3, tube_props
 
-    # Exercise basic Channel Properties from spec 0.17.7
-    # on the Channel.Type.StreamTube channel
-    channel_props = tube_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert channel_props.get('TargetHandle') == bob_handle,\
-            (channel_props.get('TargetHandle'), bob_handle)
-    assert channel_props.get('TargetHandleType') == 1,\
-            channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',\
-            channel_props.get('ChannelType')
-    assert 'Interfaces' in channel_props, channel_props
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' not in \
-            channel_props['Interfaces'], \
-            channel_props['Interfaces']
-    assert channel_props['TargetID'] == 'bob@localhost'
-
-    # Exercise FUTURE properties
-    # on the Channel.Type.StreamTube channel
-    future_props = tube_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == self_handle
+    check_channel_properties(q, bus, conn, stream, tubes_chan, "Tubes",
+            bob_handle, "bob@localhost")
+    check_channel_properties(q, bus, conn, stream, tube_chan,
+            "StreamTube.DRAFT", bob_handle, "bob@localhost")
 
     # Offer the tube, new API
     path2 = os.getcwd() + '/stream2'

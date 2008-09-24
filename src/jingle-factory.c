@@ -35,7 +35,8 @@
 #include "namespaces.h"
 #include "jingle-session.h"
 
-#include <loudmouth/loudmouth.h>
+#include "jingle-media-rtp.h"
+#include "jingle-transport-google.h"
 
 
 G_DEFINE_TYPE(GabbleJingleFactory, gabble_jingle_factory, G_TYPE_OBJECT);
@@ -74,7 +75,10 @@ static LmHandlerResult
 jingle_cb (LmMessageHandler *handler, LmConnection *lmconn,
     LmMessage *message, gpointer user_data);
 static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
-    const gchar *sid, TpHandle peer);
+    const gchar *sid, TpHandle peer, const gchar *peer_resource);
+
+static void session_terminated_cb (GabbleJingleSession *sess,
+    gboolean local_terminator, GabbleJingleFactory *fac);
 
 static void
 gabble_jingle_factory_init (GabbleJingleFactory *obj)
@@ -90,7 +94,7 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
   obj->transports = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, NULL);
 
-  obj->descriptions = g_hash_table_new_full (g_str_hash, g_str_equal,
+  obj->content_types = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, NULL);
 
   priv->jingle_cb = NULL;
@@ -114,11 +118,11 @@ gabble_jingle_factory_dispose (GObject *object)
   g_hash_table_destroy (priv->sessions);
   priv->sessions = NULL;
 
-  g_hash_table_destroy (fac->descriptions);
-  fac->descriptions = NULL;
+  g_hash_table_destroy (fac->content_types);
+  fac->content_types = NULL;
 
   g_hash_table_destroy (fac->transports);
-  fac->descriptions = NULL;
+  fac->transports = NULL;
 
   lm_connection_unregister_message_handler (priv->conn->lmconn,
       priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
@@ -184,6 +188,11 @@ gabble_jingle_factory_constructor (GType type,
   lm_connection_register_message_handler (priv->conn->lmconn,
       priv->jingle_cb, LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
 
+  // FIXME: better way to do it?
+
+  jingle_media_rtp_register (self);
+  jingle_transport_google_register (self);
+
   return obj;
 }
 
@@ -227,7 +236,6 @@ sid_in_use (GabbleJingleFactory *factory, const gchar *sid)
 static gchar *
 get_unique_sid (GabbleJingleFactory *factory)
 {
-  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (factory);
   guint32 val;
   gchar *sid = NULL;
   gboolean unique = FALSE;
@@ -242,8 +250,6 @@ get_unique_sid (GabbleJingleFactory *factory)
       unique = !sid_in_use (factory, sid);
     }
 
-  g_hash_table_insert (priv->sessions, sid, NULL);
-
   return sid;
 }
 
@@ -255,15 +261,8 @@ register_session (GabbleJingleFactory *factory,
   GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (factory);
   gchar *sid_copy;
 
-  if (sid == NULL)
-    {
-      sid_copy = get_unique_sid (factory);
-    }
-  else
-    {
-      sid_copy = g_strdup (sid);
-    }
-
+  sid_copy = g_strdup (sid);
+  g_assert (g_hash_table_lookup (priv->sessions, sid_copy) == NULL);
   g_hash_table_insert (priv->sessions, sid_copy, sess);
 }
 
@@ -304,7 +303,7 @@ jingle_cb (LmMessageHandler *handler,
   if (sess == NULL)
     {
       new_session = TRUE;
-      sess = create_session (self, sid, 0);
+      sess = create_session (self, sid, 0, NULL);
     }
 
   /* now act on the message */
@@ -321,7 +320,8 @@ jingle_cb (LmMessageHandler *handler,
     }
 
   /* on parse error */
-  g_object_unref (sess);
+  if (new_session)
+      _jingle_factory_unregister_session (self, sid);
 
 REQUEST_ERROR:
   _gabble_connection_send_iq_error (
@@ -339,17 +339,22 @@ REQUEST_ERROR:
  */
 static GabbleJingleSession *
 create_session (GabbleJingleFactory *fac,
-    const gchar *sid, TpHandle peer)
+    const gchar *sid, TpHandle peer, const gchar *peer_resource)
 {
   GabbleJingleFactoryPrivate *priv =
       GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
   GabbleJingleSession *sess;
-  gboolean local_initiator = TRUE;
+  gboolean local_initiator;
 
   if (sid != NULL)
     {
       g_assert (NULL == g_hash_table_lookup (priv->sessions, sid));
       local_initiator = FALSE;
+    }
+  else
+    {
+      sid = get_unique_sid (fac);
+      local_initiator = TRUE;
     }
 
   sess = g_object_new (GABBLE_TYPE_JINGLE_SESSION,
@@ -357,30 +362,49 @@ create_session (GabbleJingleFactory *fac,
                        "connection", priv->conn,
                        "local-initiator", local_initiator,
                        "peer", peer,
+                       "peer-resource", peer_resource,
                        NULL);
 
+  g_signal_connect (sess, "terminated",
+    (GCallback) session_terminated_cb, fac);
+
+  DEBUG ("new session %s @ %p created", sid, sess);
   register_session (fac, sid, sess);
   return sess;
 }
 
 GabbleJingleSession *
-gabble_jingle_factory_initiate_session (GabbleJingleFactory *fac,
-    TpHandle peer)
+gabble_jingle_factory_create_session (GabbleJingleFactory *fac,
+    TpHandle peer, const gchar *peer_resource)
 {
-  return create_session (fac, NULL, peer);
+  return create_session (fac, NULL, peer, peer_resource);
 }
 
 void
 gabble_jingle_factory_register_transport (GabbleJingleFactory *factory,
-    gchar *namespace, JingleTransportMaker maker)
+    gchar *namespace, GType transport_type)
 {
-  g_hash_table_insert (factory->transports, namespace, maker);
+  g_hash_table_insert (factory->transports, namespace,
+      GINT_TO_POINTER (transport_type));
 }
 
 void
-gabble_jingle_factory_register_description (GabbleJingleFactory *factory,
-    gchar *namespace, JingleDescriptionMaker maker)
+gabble_jingle_factory_register_content_type (GabbleJingleFactory *factory,
+    gchar *namespace, GType content_type)
 {
-  g_hash_table_insert (factory->descriptions, namespace, maker);
+  g_hash_table_insert (factory->content_types, namespace,
+      GINT_TO_POINTER (content_type));
+}
+
+static void
+session_terminated_cb (GabbleJingleSession *session,
+    gboolean local_terminator, GabbleJingleFactory *factory)
+{
+  const gchar *sid;
+  DEBUG ("removing terminated session");
+
+  g_object_get (session, "session-id", &sid, NULL);
+
+  _jingle_factory_unregister_session (factory, sid);
 }
 

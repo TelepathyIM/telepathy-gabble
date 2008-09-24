@@ -20,16 +20,17 @@
 #include "jingle-transport-iface.h"
 #include "connection.h"
 #include "jingle-session.h"
+#include "jingle-content.h"
 
 #include <glib.h>
 
 void
-gabble_jingle_transport_iface_parse (GabbleJingleTransportIface *self,
+gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *self,
     LmMessageNode *node, GError **error)
 {
   void (*virtual_method)(GabbleJingleTransportIface *, 
       LmMessageNode *, GError **) =
-    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->parse;
+    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->parse_candidates;
 
   g_assert (virtual_method != NULL);
   return virtual_method (self, node, error);
@@ -70,10 +71,10 @@ gabble_jingle_transport_iface_base_init (gpointer klass)
       GParamSpec *param_spec;
 
       param_spec = g_param_spec_object (
-          "connection",
-          "GabbleConnection object",
-          "Gabble connection object that owns this jingle transport object.",
-          GABBLE_TYPE_CONNECTION,
+          "content",
+          "GabbleJingleContent object",
+          "Jingle content that's using this jingle transport object.",
+          GABBLE_TYPE_JINGLE_CONTENT,
           G_PARAM_CONSTRUCT_ONLY |
           G_PARAM_READWRITE |
           G_PARAM_STATIC_NAME |
@@ -81,16 +82,30 @@ gabble_jingle_transport_iface_base_init (gpointer klass)
           G_PARAM_STATIC_BLURB);
       g_object_interface_install_property (klass, param_spec);
 
-      param_spec = g_param_spec_object (
-          "session",
-          "GabbleJingleSession object",
-          "Jingle session that's using this jingle transport object.",
-          GABBLE_TYPE_JINGLE_SESSION,
+      param_spec = g_param_spec_string (
+          "transport-ns",
+          "Transport namespace",
+          "Namespace identifying the transport type.",
+          NULL,
           G_PARAM_CONSTRUCT_ONLY |
           G_PARAM_READWRITE |
           G_PARAM_STATIC_NAME |
           G_PARAM_STATIC_NICK |
           G_PARAM_STATIC_BLURB);
+      g_object_interface_install_property (klass, param_spec);
+
+      param_spec = g_param_spec_uint (
+          "state",
+          "Connection state for the transport.",
+          "Enum specifying the connection state of the transport.",
+          JINGLE_TRANSPORT_STATE_DISCONNECTED,
+          JINGLE_TRANSPORT_STATE_CONNECTED,
+          JINGLE_TRANSPORT_STATE_DISCONNECTED,
+          G_PARAM_READWRITE |
+          G_PARAM_STATIC_NAME |
+          G_PARAM_STATIC_NICK |
+          G_PARAM_STATIC_BLURB);
+
       g_object_interface_install_property (klass, param_spec);
 
       initialized = TRUE;

@@ -24,6 +24,8 @@
 #include <loudmouth/loudmouth.h>
 #include "types.h"
 
+#include "jingle-content.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleJingleMediaRtpClass GabbleJingleMediaRtpClass;
@@ -48,11 +50,11 @@ GType gabble_jingle_media_rtp_get_type (void);
                               GabbleJingleMediaRtpClass))
 
 struct _GabbleJingleMediaRtpClass {
-    GObjectClass parent_class;
+    GabbleJingleContentClass parent_class;
 };
 
 struct _GabbleJingleMediaRtp {
-    GObject parent;
+    GabbleJingleContent parent;
     gpointer priv;
 };
 

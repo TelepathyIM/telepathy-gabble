@@ -88,7 +88,7 @@ class JingleTest:
 
     def get_remote_transports_dbus(self):
         return dbus.Array([
-            (dbus.UInt32(i), host, port, proto, subtype,
+            (dbus.UInt32(1 + i), host, port, proto, subtype,
                 profile, pref, transtype, user, pwd)
                 for i, (host, port, proto, subtype, profile,
                     pref, transtype, user, pwd)
@@ -152,6 +152,7 @@ class JingleTest:
         content = domish.Element((None, 'content'))
         content['creator'] = 'initiator'
         content['name'] = 'audio1'
+        content['senders'] = 'both'
 
         desc = domish.Element((desc_ns, 'description'))
         for codec, id, rate in self.audio_codecs:

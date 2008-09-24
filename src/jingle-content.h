@@ -71,11 +71,19 @@ GType gabble_jingle_content_get_type (void);
 
 struct _GabbleJingleContentClass {
     GObjectClass parent_class;
+
+    void  (*parse_description) (GabbleJingleContent *, LmMessageNode *,
+        GError **);
+    void  (*produce_description) (GabbleJingleContent *, LmMessageNode *);
 };
 
 struct _GabbleJingleContent {
     GObject parent;
     gpointer priv;
+
+    GabbleConnection *conn;
+    GabbleJingleFactory *factory;
+    GabbleJingleSession *session;
 };
 
 void gabble_jingle_content_parse_add (GabbleJingleContent *c,
@@ -84,6 +92,12 @@ void gabble_jingle_content_update_senders (GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error);
 void gabble_jingle_content_produce_node (GabbleJingleContent *c,
   LmMessageNode *parent, gboolean full);
+
+void gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li);
+gboolean gabble_jingle_content_is_ready (GabbleJingleContent *self);
+void gabble_jingle_content_set_local_codecs (GabbleJingleContent *content);
+void gabble_jingle_content_set_transport_state (GabbleJingleContent *content,
+    JingleTransportState state);
 
 #endif /* __JINGLE_CONTENT_H__ */
 

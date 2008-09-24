@@ -45,6 +45,8 @@
 #include "media-session.h"
 #include "namespaces.h"
 
+#include "jingle-content.h"
+
 static void stream_handler_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleMediaStream,
@@ -88,6 +90,7 @@ enum
   PROP_PLAYING,
   PROP_COMBINED_DIRECTION,
   PROP_LOCAL_HOLD,
+  PROP_CONTENT,
   LAST_PROPERTY
 };
 
@@ -95,6 +98,8 @@ enum
 
 struct _GabbleMediaStreamPrivate
 {
+  GabbleJingleContent *content;
+
   GabbleConnection *conn;
   GabbleMediaSession *session;
   GabbleMediaSessionMode mode;
@@ -245,6 +250,9 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_LOCAL_HOLD:
       g_value_set_boolean (value, priv->local_hold);
       break;
+    case PROP_CONTENT:
+      g_value_set_object (value, priv->content);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -288,7 +296,7 @@ gabble_media_stream_set_property (GObject      *object,
       priv->media_type = g_value_get_uint (value);
       break;
     case PROP_CONNECTION_STATE:
-      GMS_DEBUG_INFO (priv->session, "stream %s connection state %d",
+      DEBUG ("stream %s connection state %d",
           stream->name, stream->connection_state);
       stream->connection_state = g_value_get_uint (value);
       break;
@@ -302,7 +310,7 @@ gabble_media_stream_set_property (GObject      *object,
         {
           StreamSignallingState old = stream->signalling_state;
           stream->signalling_state = g_value_get_uint (value);
-          GMS_DEBUG_INFO (priv->session, "stream %s sig_state %d->%d",
+          DEBUG ("stream %s sig_state %d->%d",
               stream->name, old, stream->signalling_state);
           if (stream->signalling_state != old)
             push_native_candidates (stream);
@@ -318,6 +326,9 @@ gabble_media_stream_set_property (GObject      *object,
       break;
     case PROP_COMBINED_DIRECTION:
       stream->combined_direction = g_value_get_uint (value);
+      break;
+    case PROP_CONTENT:
+      priv->content = g_value_get_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -503,6 +514,15 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
       G_PARAM_READABLE |
       G_PARAM_STATIC_NAME | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NICK);
   g_object_class_install_property (object_class, PROP_LOCAL_HOLD, param_spec);
+
+  param_spec = g_param_spec_object ("content", "GabbleJingleContent object",
+                                    "Jingle content signalling this media stream.",
+                                    GABBLE_TYPE_JINGLE_CONTENT,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CONTENT, param_spec);
 
   /* signals not exported by D-Bus interface */
   signals[DESTROY] =
@@ -795,12 +815,14 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   guint component_id;
   const gchar *addr;
   GType candidate_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE;
+  JingleCandidate *c;
+  GList *li;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  g_object_get (priv->session, "state", &state, NULL);
+  g_object_get (priv->content->session, "state", &state, NULL);
 
   /* FIXME: maybe this should be an assertion in case the channel
    * isn't closed early enough right now? */
@@ -846,18 +868,28 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   component_id = g_value_get_uint (g_value_array_get_nth (transport, 0));
   if (component_id != 1)
     {
-      GMS_DEBUG_WARNING (priv->session,
-          "%s: ignoring native candidate non-1 component", G_STRFUNC);
+      DEBUG ("%s: ignoring native candidate non-1 component", G_STRFUNC);
       tp_svc_media_stream_handler_return_from_new_native_candidate (context);
       return;
     }
 
   g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 
-  GMS_DEBUG_INFO (priv->session,
-      "put 1 native candidate from stream-engine into cache");
+  DEBUG ("put 1 native candidate from stream-engine into cache");
 
-  push_native_candidates (self);
+  c = g_new0 (JingleCandidate, 1);
+  c->address = g_value_dup_string (g_value_array_get_nth (transport, 1));
+  c->port = g_value_get_uint (g_value_array_get_nth (transport, 2));
+  c->protocol = g_value_get_uint (g_value_array_get_nth (transport, 3));
+  c->preference = g_value_get_double (g_value_array_get_nth (transport, 6));
+  c->type = g_value_get_uint (g_value_array_get_nth (transport, 7));
+  c->username = g_value_dup_string (g_value_array_get_nth (transport, 8));
+  c->password = g_value_dup_string (g_value_array_get_nth (transport, 9));
+
+  li = g_list_prepend (NULL, c);
+  gabble_jingle_content_add_candidates (priv->content, li);
+
+  // FIXME: the above instead this: push_native_candidates (self);
 
   g_signal_emit (self, signals[NEW_NATIVE_CANDIDATE], 0,
                  candidate_id, transports);
@@ -886,7 +918,7 @@ gabble_media_stream_ready (TpSvcMediaStreamHandler *iface,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  GMS_DEBUG_INFO (priv->session, "ready called");
+  DEBUG ("ready called");
 
   g_object_set (self, "ready", TRUE, NULL);
 
@@ -918,16 +950,18 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  GMS_DEBUG_INFO (priv->session, "putting list of all %d locally supported "
+  DEBUG ("putting list of all %d locally supported "
                   "codecs from stream-engine into cache", codecs->len);
 
   g_value_set_boxed (&priv->native_codecs, codecs);
 
   g_object_set (self, "got-local-codecs", TRUE, NULL);
 
+  /* FIXME: actually set them :-) */
+  gabble_jingle_content_set_local_codecs (priv->content);
+
   tp_svc_media_stream_handler_return_from_set_local_codecs (context);
 }
-
 
 /**
  * gabble_media_stream_stream_state
@@ -941,9 +975,13 @@ gabble_media_stream_stream_state (TpSvcMediaStreamHandler *iface,
                                   DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-  g_assert (GABBLE_IS_MEDIA_STREAM (self));
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   g_object_set (self, "connection-state", connection_state, NULL);
+
+  /* FIXME: we're relying on 1:1 mapping between tp and jingle enums */
+  gabble_jingle_content_set_transport_state (priv->content,
+      connection_state);
 
   tp_svc_media_stream_handler_return_from_stream_state (context);
 }
@@ -1599,7 +1637,7 @@ push_playing (GabbleMediaStream *stream)
   if (!priv->ready)
     return;
 
-  GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamPlaying(%s)",
+  DEBUG ("stream %s emitting SetStreamPlaying(%s)",
       stream->name, stream->playing ? "true" : "false");
 
   tp_svc_media_stream_handler_emit_set_stream_playing (
@@ -1618,7 +1656,7 @@ push_sending (GabbleMediaStream *stream)
   if (!priv->ready)
     return;
 
-  GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamSending(%s)",
+  DEBUG ("stream %s emitting SetStreamSending(%s)",
       stream->name, priv->sending ? "true" : "false");
 
   tp_svc_media_stream_handler_emit_set_stream_sending (

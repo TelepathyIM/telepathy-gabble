@@ -57,18 +57,18 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION,
-  PROP_SESSION,
-  PROP_CONTENT,
+  PROP_CONTENT = 1,
+  PROP_TRANSPORT_NS,
+  PROP_STATE,
   LAST_PROPERTY
 };
 
 typedef struct _GabbleJingleTransportGooglePrivate GabbleJingleTransportGooglePrivate;
 struct _GabbleJingleTransportGooglePrivate
 {
-  GabbleConnection *conn;
-  GabbleJingleSession *session;
   GabbleJingleContent *content;
+  JingleTransportState state;
+  gchar *transport_ns;
 
   GList *local_candidates;
   // GList *remote_candidates;
@@ -127,6 +127,9 @@ gabble_jingle_transport_google_dispose (GObject *object)
   _free_candidates (priv->local_candidates);
   priv->local_candidates = NULL;
 
+  g_free (priv->transport_ns);
+  priv->transport_ns = NULL;
+
   if (G_OBJECT_CLASS (gabble_jingle_transport_google_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_transport_google_parent_class)->dispose (object);
 }
@@ -141,14 +144,14 @@ gabble_jingle_transport_google_get_property (GObject *object,
   GabbleJingleTransportGooglePrivate *priv = GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (trans);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
-      break;
-    case PROP_SESSION:
-      g_value_set_object (value, priv->session);
-      break;
     case PROP_CONTENT:
       g_value_set_object (value, priv->content);
+      break;
+    case PROP_TRANSPORT_NS:
+      g_value_set_string (value, priv->transport_ns);
+      break;
+    case PROP_STATE:
+      g_value_set_uint (value, priv->state);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -167,14 +170,15 @@ gabble_jingle_transport_google_set_property (GObject *object,
       GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (trans);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
-      break;
-    case PROP_SESSION:
-      priv->session = g_value_get_object (value);
-      break;
     case PROP_CONTENT:
       priv->content = g_value_get_object (value);
+      break;
+    case PROP_TRANSPORT_NS:
+      g_free (priv->transport_ns);
+      priv->transport_ns = g_value_dup_string (value);
+      break;
+    case PROP_STATE:
+      priv->state = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -195,25 +199,6 @@ gabble_jingle_transport_google_class_init (GabbleJingleTransportGoogleClass *cls
   object_class->dispose = gabble_jingle_transport_google_dispose;
 
   /* property definitions */
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object used for exchanging "
-                                    "messages.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
-                                    "The session using this transport object.",
-                                    GABBLE_TYPE_JINGLE_SESSION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_SESSION, param_spec);
-
   param_spec = g_param_spec_object ("content", "GabbleJingleContent object",
                                     "Jingle content object using this transport.",
                                     GABBLE_TYPE_JINGLE_CONTENT,
@@ -222,6 +207,27 @@ gabble_jingle_transport_google_class_init (GabbleJingleTransportGoogleClass *cls
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONTENT, param_spec);
+
+  param_spec = g_param_spec_string ("transport-ns", "Transport namespace",
+                                    "Namespace identifying the transport type.",
+                                    NULL,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_TRANSPORT_NS, param_spec);
+
+  param_spec = g_param_spec_uint ("state",
+                                  "Connection state for the transport.",
+                                  "Enum specifying the connection state of the transport.",
+                                  JINGLE_TRANSPORT_STATE_DISCONNECTED,
+                                  JINGLE_TRANSPORT_STATE_CONNECTED,
+                                  JINGLE_TRANSPORT_STATE_DISCONNECTED,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_NICK |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
   /* signal definitions */
   signals[NEW_CANDIDATES] = g_signal_new (
@@ -232,25 +238,6 @@ gabble_jingle_transport_google_class_init (GabbleJingleTransportGoogleClass *cls
     NULL, NULL,
     g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
-}
-
-static GabbleJingleTransportIface *
-new_transport (GabbleJingleContent *content)
-{
-  GabbleJingleTransportGoogle *self;
-  GabbleJingleSession *sess;
-  GabbleConnection *conn;
-
-  g_object_get (content, "connection", &conn,
-      "session", &sess, NULL);
-
-  self = g_object_new (GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE,
-    "connection", conn,
-    "session", sess,
-    "content", content,
-    NULL);
-
-  return GABBLE_JINGLE_TRANSPORT_IFACE (self);
 }
 
 #define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
@@ -277,13 +264,13 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       cnode = transport_node;
 
-      g_object_get (priv->session, "dialect", &dialect, NULL);
+      g_object_get (priv->content->session, "dialect", &dialect, NULL);
 
       if (dialect == JINGLE_DIALECT_GTALK4)
         {
           /* FIXME: do we need to do anything more than retransmit
            * local candidates and mode switch? */
-          g_object_set (priv->session, "dialect",
+          g_object_set (priv->content->session, "dialect",
               JINGLE_DIALECT_GTALK3, NULL);
 
           transmit_candidates (t, priv->local_candidates);
@@ -441,10 +428,10 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
   LmMessage *msg;
   LmMessageNode *trans_node, *sess_node;
 
-  msg = jingle_session_new_message (priv->session,
+  msg = gabble_jingle_session_new_message (priv->content->session,
     JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
 
-  g_object_get (priv->session, "dialect", &dialect, NULL);
+  g_object_get (priv->content->session, "dialect", &dialect, NULL);
 
   if (dialect == JINGLE_DIALECT_GTALK3)
     {
@@ -452,8 +439,8 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
     }
   else
     {
-      trans_node = lm_message_node_add_child (sess_node, "transport",
-        NS_GOOGLE_SESSION);
+      trans_node = lm_message_node_add_child (sess_node, "transport", NULL);
+      lm_message_node_set_attribute (trans_node, "xmlns", NS_GOOGLE_TRANSPORT_P2P);
     }
 
   for (li = candidates; li; li = li->next)
@@ -508,7 +495,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
           NULL);
     }
 
-  _gabble_connection_send (priv->conn, msg, NULL);
+  _gabble_connection_send (priv->content->conn, msg, NULL);
 }
 
 static void
@@ -531,6 +518,7 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   GabbleJingleTransportIfaceClass *klass = (GabbleJingleTransportIfaceClass *) g_iface;
 
   klass->parse_candidates = parse_candidates;
+  // FIXME: klass->produce = produce_candidates;
   klass->add_candidates = add_candidates;
 }
 
@@ -538,11 +526,12 @@ void
 jingle_transport_google_register (GabbleJingleFactory *factory)
 {
   /* GTalk libjingle0.3 dialect */
-  gabble_jingle_factory_register_transport (factory, NULL,
-      new_transport);
+  gabble_jingle_factory_register_transport (factory, "",
+      GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE);
 
   /* GTalk libjingle0.4 dialect */
   gabble_jingle_factory_register_transport (factory,
-      NS_GOOGLE_SESSION, new_transport);
+      NS_GOOGLE_TRANSPORT_P2P,
+      GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE);
 }
 

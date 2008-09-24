@@ -30,6 +30,7 @@
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-properties-interface.h>
+#include <telepathy-glib/svc-media-interfaces.h>
 
 #include "extensions/extensions.h"
 
@@ -45,11 +46,17 @@
 #include "presence-cache.h"
 #include "presence.h"
 
+#include "jingle-factory.h"
+#include "jingle-session.h"
+#include "jingle-content.h"
+#include "jingle-media-rtp.h"
+
 static void call_state_iface_init (gpointer, gpointer);
 static void channel_iface_init (gpointer, gpointer);
 static void hold_iface_init (gpointer, gpointer);
 static void media_signalling_iface_init (gpointer, gpointer);
 static void streamed_media_iface_init (gpointer, gpointer);
+static void session_handler_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
     G_TYPE_OBJECT,
@@ -69,6 +76,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
       tp_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_MEDIA_SESSION_HANDLER,
+      session_handler_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
@@ -82,6 +91,7 @@ static const gchar *gabble_media_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_HOLD,
     TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
     TP_IFACE_PROPERTIES_INTERFACE,
+    TP_IFACE_MEDIA_SESSION_HANDLER,
     NULL
 };
 
@@ -106,6 +116,7 @@ enum
   PROP_STUN_SERVER,
   PROP_STUN_PORT,
   PROP_GTALK_P2P_RELAY_TOKEN,
+  PROP_SESSION,
   LAST_PROPERTY
 };
 
@@ -134,7 +145,7 @@ struct _GabbleMediaChannelPrivate
   TpHandle creator;
 
   GabbleMediaFactory *factory;
-  GabbleMediaSession *session;
+  GabbleJingleSession *session;
   GPtrArray *streams;
 
   guint next_stream_id;
@@ -142,6 +153,7 @@ struct _GabbleMediaChannelPrivate
   TpLocalHoldState hold_state;
   TpLocalHoldStateReason hold_state_reason;
 
+  gboolean ready:1;
   gboolean closed:1;
   gboolean dispose_has_run:1;
 };
@@ -161,6 +173,148 @@ gabble_media_channel_init (GabbleMediaChannel *self)
   /* initialize properties mixin */
   tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
         GabbleMediaChannel, properties));
+}
+
+static void session_state_changed_cb (GabbleJingleSession *session,
+    GParamSpec *arg1, GabbleMediaChannel *channel);
+static void session_stream_added_cb (GabbleJingleSession *session,
+    GabbleMediaStream  *stream, GabbleMediaChannel *chan);
+static void session_terminated_cb (GabbleJingleSession *session,
+    gboolean local_terminator, gpointer user_data);
+
+
+static void
+_ensure_session (GabbleMediaChannel *chan,
+    TpHandle peer, const gchar *peer_resource, GError **error)
+{
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+
+  if (priv->session != NULL)
+    {
+      TpIntSet *set;
+      GList *contents, *li;
+
+      DEBUG ("%p: Latching onto incoming session %p", chan, priv->session);
+
+      /* make us local pending */
+      set = tp_intset_new ();
+      tp_intset_add (set, ((TpBaseConnection *) priv->conn)->self_handle);
+
+      tp_group_mixin_change_members (G_OBJECT (chan),
+          "", NULL, NULL, set, NULL, priv->session->peer, 0);
+
+      tp_intset_destroy (set);
+
+      /* and update flags accordingly */
+      tp_group_mixin_change_flags (G_OBJECT (chan),
+          TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+          0);
+
+      priv->streams = g_ptr_array_sized_new (1);
+
+      /* FIXME: put these in separate function and execute afterwards? */
+      /* For each supported content in the session, create accompanying MediaStream. */
+      contents = gabble_jingle_session_get_contents (priv->session);
+      for (li = contents; li; li = li->next)
+        {
+          GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (li->data);
+          if (G_OBJECT_TYPE (c) == GABBLE_TYPE_JINGLE_MEDIA_RTP)
+            {
+              GabbleMediaStream *stream;
+              gchar *name;
+              guint id = _gabble_media_channel_get_stream_id (chan);
+              gchar *object_path = g_strdup_printf ("%s/MediaStream%u",
+                  priv->object_path, id);
+
+              g_object_get (c, "name", &name, NULL);
+
+              stream = g_object_new (GABBLE_TYPE_MEDIA_STREAM,
+                  "object-path", object_path,
+                  "content", c,
+                  "name", name,
+                  NULL);
+
+              /* FIXME port functions to media chan from media session
+              g_signal_connect (stream, "notify::connection-state",
+                                (GCallback) stream_connection_state_changed_cb,
+                                session);
+              g_signal_connect (stream, "notify::got-local-codecs",
+                                (GCallback) stream_got_local_codecs_changed_cb,
+                                session);
+              */
+              g_ptr_array_add (priv->streams, stream);
+
+              /* fugly hack, clean it up! */
+              session_stream_added_cb (priv->session, stream, chan);
+
+              /* all of the streams are bidirectional from farsight's point of view, it's
+               * just in the signalling they change */
+              tp_svc_media_session_handler_emit_new_stream_handler (chan,
+                  object_path, id, TP_MEDIA_STREAM_TYPE_AUDIO, TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
+
+              g_free (object_path);
+
+              /*  FIXME copyypasted from media session
+              if (priv->ready) {
+                // _emit_new_stream (session, stream);
+              }A
+              */
+            }
+        }
+
+      g_list_free (contents);
+    }
+  else
+    {
+      GabblePresence *presence;
+#ifdef ENABLE_DEBUG
+      TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+      TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
+          conn, TP_HANDLE_TYPE_CONTACT);
+#endif
+
+      DEBUG ("%p: Creating new outgoing session", chan);
+
+      presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
+
+      if (presence == NULL)
+        {
+          DEBUG ("failed to add contact %d (%s) to media channel: "
+              "no presence available", peer,
+              tp_handle_inspect (contact_handles, peer));
+          goto NO_CAPS;
+        }
+
+      if ((_gabble_media_channel_caps_to_typeflags (presence->caps) &
+            (TP_CHANNEL_MEDIA_CAPABILITY_AUDIO |
+             TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)) == 0)
+        {
+          DEBUG ("failed to add contact %d (%s) to media channel: "
+              "caps %x aren't sufficient", peer,
+              tp_handle_inspect (contact_handles, peer),
+              presence->caps);
+          goto NO_CAPS;
+        }
+
+      priv->session = gabble_jingle_factory_create_session (
+          priv->conn->jingle_factory, peer, peer_resource);
+
+      priv->streams = g_ptr_array_sized_new (1);
+    }
+
+  g_signal_connect (priv->session, "terminated",
+    (GCallback) session_terminated_cb, chan);
+
+  /* FIXME is it complete? */
+  tp_svc_channel_interface_media_signalling_emit_new_session_handler (
+      G_OBJECT (chan), priv->object_path, "rtp");
+
+  return;
+
+NO_CAPS:
+  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      "handle %u has no media capabilities", peer);
+  return;
 }
 
 static GObject *
@@ -189,6 +343,11 @@ gabble_media_channel_constructor (GType type, guint n_props,
   tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
       contact_handles, conn->self_handle);
 
+  if (priv->session != NULL)
+      priv->creator = priv->session->peer;
+  else
+      priv->creator = conn->self_handle;
+
   /* automatically add creator to channel, but also ref them again (because
    * priv->creator is the InitiatorHandle) */
   g_assert (priv->creator != 0);
@@ -205,26 +364,26 @@ gabble_media_channel_constructor (GType type, guint n_props,
   tp_group_mixin_change_flags (obj,
       TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_PROPERTIES, 0);
 
+  /* act on incoming session */
+  if (priv->session != NULL)
+    {
+      _ensure_session (GABBLE_MEDIA_CHANNEL (obj), 0, NULL, NULL);
+    }
+
   return obj;
 }
 
-static void session_state_changed_cb (GabbleMediaSession *session,
-    GParamSpec *arg1, GabbleMediaChannel *channel);
-static void session_stream_added_cb (GabbleMediaSession *session,
-    GabbleMediaStream  *stream, GabbleMediaChannel *chan);
-static void session_terminated_cb (GabbleMediaSession *session,
-    guint terminator, guint reason, gpointer user_data);
 
 /**
  * create_session
  *
- * Creates a GabbleMediaSession object for given peer.
+ * Creates a GabbleJingleSession object for given peer.
  *
  * If sid is set to NULL a unique sid is generated and
  * the "initiator" property of the newly created
- * GabbleMediaSession is set to our own handle.
+ * GabbleJingleSession is set to our own handle.
  */
-static GabbleMediaSession *
+static GabbleJingleSession *
 create_session (GabbleMediaChannel *channel,
                 TpHandle peer,
                 const gchar *peer_resource,
@@ -232,7 +391,7 @@ create_session (GabbleMediaChannel *channel,
                 GError **error)
 {
   GabbleMediaChannelPrivate *priv;
-  GabbleMediaSession *session;
+  GabbleJingleSession *session;
   gchar *object_path;
   JingleInitiator initiator;
 
@@ -277,15 +436,18 @@ create_session (GabbleMediaChannel *channel,
           goto NO_CAPS;
         }
 
-      sid = _gabble_media_factory_allocate_sid (priv->factory, channel);
+      // FIXME sid = _gabble_media_factory_allocate_sid (priv->factory, channel);
+      sid = NULL;
+      g_assert_not_reached ();
     }
   else
     {
       initiator = INITIATOR_REMOTE;
-      _gabble_media_factory_register_sid (priv->factory, sid, channel);
+      g_assert_not_reached ();
+      // FIXME _gabble_media_factory_register_sid (priv->factory, sid, channel);
     }
 
-  session = g_object_new (GABBLE_TYPE_MEDIA_SESSION,
+  session = g_object_new (GABBLE_TYPE_JINGLE_SESSION,
                           "connection", priv->conn,
                           "media-channel", channel,
                           "object-path", object_path,
@@ -330,7 +492,7 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
                                                GError **error)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
-  GabbleMediaSession *session = priv->session;
+  GabbleJingleSession *session = priv->session;
   gboolean session_is_new = FALSE;
 
   /* If this assertion fails, create_session() would think we're the
@@ -363,6 +525,7 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
 
   g_object_ref (session);
 
+  /* TODO
   if (_gabble_media_session_handle_action (session, message, session_node,
         action, error))
     {
@@ -377,7 +540,9 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
 
       g_object_unref (session);
       return FALSE;
-    }
+    } */
+
+  return FALSE;
 }
 
 static void
@@ -446,6 +611,9 @@ gabble_media_channel_get_property (GObject    *object,
               GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
               NULL));
       break;
+    case PROP_SESSION:
+      g_value_set_object (value, priv->session);
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -497,6 +665,9 @@ gabble_media_channel_set_property (GObject     *object,
       break;
     case PROP_FACTORY:
       priv->factory = g_value_get_object (value);
+      break;
+    case PROP_SESSION:
+      priv->session = g_value_dup_object (value);
       break;
     default:
       param_name = g_param_spec_get_name (pspec);
@@ -660,6 +831,13 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   g_object_class_install_property (object_class, PROP_GTALK_P2P_RELAY_TOKEN,
       param_spec);
 
+  param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
+      "Jingle session associated with this media channel object.",
+      GABBLE_TYPE_JINGLE_SESSION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_SESSION, param_spec);
+
   tp_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),
       channel_property_signatures, NUM_CHAN_PROPS, NULL);
@@ -758,8 +936,9 @@ gabble_media_channel_close (GabbleMediaChannel *self)
 
   if (priv->session)
     {
+      /* TODO
       _gabble_media_session_terminate (priv->session, INITIATOR_LOCAL,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE); */
     }
 
   tp_svc_channel_emit_closed (self);
@@ -1028,9 +1207,10 @@ gabble_media_channel_remove_streams (TpSvcChannelTypeStreamedMedia *iface,
     }
 
   /* groovy, it's all good dude, let's remove them */
+  /* TODO
   if (stream_objs->len > 0)
     _gabble_media_session_remove_streams (priv->session, (GabbleMediaStream **)
-        stream_objs->pdata, stream_objs->len);
+        stream_objs->pdata, stream_objs->len); */
 
 OUT:
   g_ptr_array_free (stream_objs, TRUE);
@@ -1090,6 +1270,7 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
   /* streams with no session? I think not... */
   g_assert (priv->session != NULL);
 
+  /* TODO
   if (_gabble_media_session_request_stream_direction (priv->session, stream,
         stream_direction, &error))
     {
@@ -1100,7 +1281,7 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-    }
+    } */
 }
 
 
@@ -1138,8 +1319,8 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   if (priv->session == NULL)
     {
-      if (create_session (self, contact_handle, NULL, NULL, &error)
-          == NULL)
+      _ensure_session (self, contact_handle, NULL, &error);
+      if (error != NULL)
         {
           dbus_g_method_return_error (context, error);
           g_error_free (error);
@@ -1165,9 +1346,11 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   g_assert (priv->session != NULL);
 
+  /* TODO
   if (!_gabble_media_session_request_streams (priv->session, types, &streams,
         &error))
-    goto error;
+    goto error; */
+  streams = NULL;
 
   ret = make_stream_list (self, streams);
 
@@ -1265,7 +1448,7 @@ _gabble_media_channel_add_member (GObject *obj,
               0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
           /* signal acceptance */
-          _gabble_media_session_accept (priv->session);
+          gabble_jingle_session_accept (priv->session);
 
           return TRUE;
         }
@@ -1305,8 +1488,9 @@ gabble_media_channel_remove_member (GObject *obj,
       return FALSE;
     }
 
+  /* TODO
   _gabble_media_session_terminate (priv->session, INITIATOR_LOCAL,
-      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+      TP_CHANNEL_GROUP_CHANGE_REASON_NONE); */
 
   /* remove the member */
   set = tp_intset_new ();
@@ -1324,14 +1508,15 @@ gabble_media_channel_remove_member (GObject *obj,
 }
 
 static void
-session_terminated_cb (GabbleMediaSession *session,
-                       guint terminator,
-                       guint reason,
+session_terminated_cb (GabbleJingleSession *session,
+                       gboolean local_terminator,
                        gpointer user_data)
 {
   GabbleMediaChannel *channel = (GabbleMediaChannel *) user_data;
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
+  guint reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+  guint terminator;
   gchar *sid;
   JingleSessionState state;
   TpHandle peer;
@@ -1341,6 +1526,11 @@ session_terminated_cb (GabbleMediaSession *session,
                 "state", &state,
                 "peer", &peer,
                 NULL);
+
+  if (local_terminator)
+      terminator = mixin->self_handle;
+  else
+      terminator = peer;
 
   set = tp_intset_new ();
 
@@ -1358,7 +1548,7 @@ session_terminated_cb (GabbleMediaSession *session,
 
   /* free the session ID */
   g_object_get (priv->session, "session-id", &sid, NULL);
-  _gabble_media_factory_free_sid (priv->factory, sid);
+  // FIXME _gabble_media_factory_free_sid (priv->factory, sid);
   g_free (sid);
 
   /* unref streams */
@@ -1383,7 +1573,7 @@ session_terminated_cb (GabbleMediaSession *session,
 
 
 static void
-session_state_changed_cb (GabbleMediaSession *session,
+session_state_changed_cb (GabbleJingleSession *session,
                           GParamSpec *arg1,
                           GabbleMediaChannel *channel)
 {
@@ -1646,7 +1836,7 @@ stream_error_cb (GabbleMediaStream *stream,
                  const gchar *message,
                  GabbleMediaChannel *chan)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  // GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   guint id;
 
   /* emit signal */
@@ -1655,7 +1845,7 @@ stream_error_cb (GabbleMediaStream *stream,
       message);
 
   /* remove stream from session */
-  _gabble_media_session_remove_streams (priv->session, &stream, 1);
+  // TODO _gabble_media_session_remove_streams (priv->session, &stream, 1);
 }
 
 static void
@@ -1698,7 +1888,7 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
 }
 
 static void
-session_stream_added_cb (GabbleMediaSession *session,
+session_stream_added_cb (GabbleJingleSession *session,
                          GabbleMediaStream  *stream,
                          GabbleMediaChannel *chan)
 {
@@ -1727,6 +1917,7 @@ session_stream_added_cb (GabbleMediaSession *session,
   g_object_get (session, "peer", &handle, NULL);
   g_object_get (stream, "id", &id, "media-type", &type, NULL);
 
+  DEBUG ("emitting stream added");
   tp_svc_channel_type_streamed_media_emit_stream_added (
       chan, id, handle, type);
 
@@ -1880,6 +2071,81 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
   tp_svc_channel_interface_hold_return_from_request_hold (context);
 }
 
+static void
+gabble_media_channel_ready (TpSvcMediaSessionHandler *iface,
+                            DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  GabbleMediaChannelPrivate *priv =
+    GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+
+  if (!priv->ready)
+    {
+      // guint i;
+
+      priv->ready = TRUE;
+
+      /* FIXME 
+      for (i = 0; i < priv->streams->len; i++)
+        _emit_new_stream (self, g_ptr_array_index (priv->streams, i));
+        */
+    }
+
+  tp_svc_media_session_handler_return_from_ready (context);
+}
+
+static void
+gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
+                            guint errno,
+                            const gchar *message,
+                            DBusGMethodInvocation *context)
+{
+    // FIXME!
+#if 0 
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  GabbleMediaChannelPrivate *priv;
+  GPtrArray *tmp;
+  guint i;
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (self));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
+
+  GMS_DEBUG_INFO (self, "Media.SessionHandler::Error called, error %u (%s) -- "
+      "emitting error on each stream", errno, message);
+
+  if (priv->state == JS_STATE_ENDED)
+    {
+      tp_svc_media_session_handler_return_from_error (context);
+      return;
+    }
+  else if (priv->state == JS_STATE_PENDING_CREATED)
+    {
+      /* shortcut to prevent sending remove actions if we haven't sent an
+       * initiate yet */
+      g_object_set (self, "state", JS_STATE_ENDED, NULL);
+      tp_svc_media_session_handler_return_from_error (context);
+      return;
+    }
+
+  g_assert (priv->streams != NULL);
+
+  tmp = priv->streams;
+  priv->streams = NULL;
+
+  for (i = 0; i < tmp->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (tmp, i);
+
+      gabble_media_stream_error (stream, errno, message, NULL);
+    }
+
+  g_ptr_array_free (tmp, TRUE);
+#endif
+
+  tp_svc_media_session_handler_return_from_error (context);
+}
+
 
 static void
 channel_iface_init (gpointer g_iface, gpointer iface_data)
@@ -1944,5 +2210,18 @@ hold_iface_init (gpointer g_iface,
     klass, gabble_media_channel_##x)
   IMPLEMENT(get_hold_state);
   IMPLEMENT(request_hold);
+#undef IMPLEMENT
+}
+
+static void
+session_handler_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcMediaSessionHandlerClass *klass =
+    (TpSvcMediaSessionHandlerClass *) g_iface;
+
+#define IMPLEMENT(x) tp_svc_media_session_handler_implement_##x (\
+    klass, gabble_media_channel_##x)
+  IMPLEMENT(error);
+  IMPLEMENT(ready);
 #undef IMPLEMENT
 }

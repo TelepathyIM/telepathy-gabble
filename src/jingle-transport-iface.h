@@ -27,13 +27,20 @@
 
 G_BEGIN_DECLS
 
+typedef enum
+{
+  JINGLE_TRANSPORT_STATE_DISCONNECTED,
+  JINGLE_TRANSPORT_STATE_CONNECTING,
+  JINGLE_TRANSPORT_STATE_CONNECTED
+} JingleTransportState;
+
 typedef struct _GabbleJingleTransportIface GabbleJingleTransportIface;
 typedef struct _GabbleJingleTransportIfaceClass GabbleJingleTransportIfaceClass;
 
 struct _GabbleJingleTransportIfaceClass {
   GTypeInterface parent;
 
-  void (*parse) (GabbleJingleTransportIface *,
+  void (*parse_candidates) (GabbleJingleTransportIface *,
     LmMessageNode *, GError **);
   void (*produce) (GabbleJingleTransportIface *,
     LmMessageNode *);
@@ -55,7 +62,8 @@ GType gabble_jingle_transport_iface_get_type (void);
   (G_TYPE_INSTANCE_GET_INTERFACE ((obj), GABBLE_TYPE_JINGLE_TRANSPORT_IFACE,\
                               GabbleJingleTransportIfaceClass))
 
-void gabble_jingle_transport_iface_parse (GabbleJingleTransportIface *, LmMessageNode *, GError **);
+void gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *,
+    LmMessageNode *, GError **);
 void gabble_jingle_transport_iface_produce (GabbleJingleTransportIface *, LmMessageNode *);
 void gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *, GList *);
 

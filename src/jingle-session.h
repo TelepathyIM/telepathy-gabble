@@ -55,6 +55,8 @@ struct _GabbleJingleSessionClass {
 struct _GabbleJingleSession {
     GObject parent;
     gpointer priv;
+
+    TpHandle peer;
 };
 
 const gchar *gabble_jingle_session_parse (GabbleJingleSession *sess,
@@ -67,6 +69,17 @@ gint _string_to_enum (const gchar **table, const gchar *val);
 
 void gabble_jingle_session_accept (GabbleJingleSession *sess);
 void gabble_jingle_session_terminate (GabbleJingleSession *sess);
+void gabble_jingle_session_remove_content (GabbleJingleSession *sess,
+    const gchar *content_name);
+void gabble_jingle_session_change_direction (GabbleJingleSession *sess,
+    const gchar *content_name, JingleContentSenders senders);
+
+gboolean
+gabble_jingle_session_add_content (GabbleJingleSession *sess, const gchar *name,
+    const gchar *content_ns, const gchar *transport_ns);
+
+GType gabble_jingle_session_get_content_type (GabbleJingleSession *);
+GList *gabble_jingle_session_get_contents (GabbleJingleSession *sess);
 
 #endif /* __JINGLE_SESSION_H__ */
 

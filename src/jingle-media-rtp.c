@@ -18,6 +18,10 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/* Media/RTP content type deals with audio/video content, ie. jingle calls. It
+ * supports standard Jingle drafts (v0.15, v0.26) and Google's jingle variants
+ * (libjingle 0.3/0.4). */
+
 #include "jingle-media-rtp.h"
 
 #include <stdio.h>
@@ -37,29 +41,21 @@
 #include "jingle-session.h"
 #include "jingle-content.h"
 
-static void
-description_iface_init (gpointer g_iface, gpointer iface_data);
-
-G_DEFINE_TYPE_WITH_CODE (GabbleJingleMediaRtp,
-    gabble_jingle_media_rtp, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_JINGLE_DESCRIPTION_IFACE,
-        description_iface_init));
+G_DEFINE_TYPE (GabbleJingleMediaRtp,
+    gabble_jingle_media_rtp, GABBLE_TYPE_JINGLE_CONTENT);
 
 /* signal enum */
 enum
 {
-  NEW_CANDIDATE,
+  REMOTE_CODECS,
   LAST_SIGNAL
 };
 
-// static guint signals[LAST_SIGNAL] = {0};
+static guint signals[LAST_SIGNAL] = {0};
 
 /* properties */
 enum
 {
-  PROP_CONNECTION,
-  PROP_SESSION,
-  PROP_CONTENT,
   PROP_MEDIA_TYPE,
   LAST_PROPERTY
 };
@@ -84,10 +80,6 @@ typedef struct {
 typedef struct _GabbleJingleMediaRtpPrivate GabbleJingleMediaRtpPrivate;
 struct _GabbleJingleMediaRtpPrivate
 {
-  GabbleConnection *conn;
-  GabbleJingleSession *session;
-  GabbleJingleContent *content;
-
   GList *local_codecs;
   // GList *remote_codecs;
   JingleMediaType media_type;
@@ -104,7 +96,6 @@ gabble_jingle_media_rtp_init (GabbleJingleMediaRtp *obj)
      G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_JINGLE_MEDIA_RTP,
          GabbleJingleMediaRtpPrivate);
   obj->priv = priv;
-
   priv->dispose_has_run = FALSE;
 }
 
@@ -154,15 +145,6 @@ gabble_jingle_media_rtp_get_property (GObject *object,
   GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
-      break;
-    case PROP_SESSION:
-      g_value_set_object (value, priv->session);
-      break;
-    case PROP_CONTENT:
-      g_value_set_object (value, priv->content);
-      break;
     case PROP_MEDIA_TYPE:
       g_value_set_uint (value, priv->media_type);
       break;
@@ -183,15 +165,6 @@ gabble_jingle_media_rtp_set_property (GObject *object,
       GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
-      break;
-    case PROP_SESSION:
-      priv->session = g_value_get_object (value);
-      break;
-    case PROP_CONTENT:
-      priv->content = g_value_get_object (value);
-      break;
     case PROP_MEDIA_TYPE:
       priv->media_type = g_value_get_uint (value);
       break;
@@ -202,10 +175,17 @@ gabble_jingle_media_rtp_set_property (GObject *object,
 }
 
 static void
+parse_description (GabbleJingleContent *content, LmMessageNode *desc_node,
+    GError **error);
+static void produce_description (GabbleJingleContent *obj,
+    LmMessageNode *content_node);
+
+static void
 gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (cls);
-  GParamSpec *param_spec;
+  GabbleJingleContentClass *content_class = GABBLE_JINGLE_CONTENT_CLASS (cls);
+  // GParamSpec *param_spec;
 
   g_type_class_add_private (cls, sizeof (GabbleJingleMediaRtpPrivate));
 
@@ -213,64 +193,15 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
   object_class->set_property = gabble_jingle_media_rtp_set_property;
   object_class->dispose = gabble_jingle_media_rtp_dispose;
 
-  /* property definitions */
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object used for exchanging "
-                                    "messages.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
-                                    "The session using this transport object.",
-                                    GABBLE_TYPE_JINGLE_SESSION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_SESSION, param_spec);
-
-  param_spec = g_param_spec_object ("content", "GabbleJingleContent object",
-                                    "Jingle content object using this transport.",
-                                    GABBLE_TYPE_JINGLE_CONTENT,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONTENT, param_spec);
-
-  param_spec = g_param_spec_object ("content", "GabbleJingleContent object",
-                                    "Jingle content object using this transport.",
-                                    GABBLE_TYPE_JINGLE_CONTENT,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONTENT, param_spec);
+  content_class->parse_description = parse_description;
+  content_class->produce_description = produce_description;
 
   /* signal definitions */
-}
 
-static GabbleJingleDescriptionIface *
-new_description (GabbleJingleContent *content)
-{
-  GabbleJingleMediaRtp *self;
-  GabbleJingleSession *sess;
-  GabbleConnection *conn;
-
-  g_object_get (content, "connection", &conn,
-      "session", &sess, NULL);
-
-  self = g_object_new (GABBLE_TYPE_JINGLE_MEDIA_RTP,
-    "connection", conn,
-    "session", sess,
-    "content", content,
-    NULL);
-
-  return GABBLE_JINGLE_DESCRIPTION_IFACE (self);
+  signals[REMOTE_CODECS] = g_signal_new ("remote-codecs",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
+        G_TYPE_NONE, 1, G_TYPE_POINTER);
 }
 
 #define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
@@ -278,10 +209,10 @@ new_description (GabbleJingleContent *content)
 #define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
 
 static void
-parse_description (GabbleJingleDescriptionIface *iface,
+parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error)
 {
-  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (iface);
+  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
   GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
   JingleMediaType mtype = JINGLE_MEDIA_TYPE_NONE;
   gboolean google_mode = FALSE;
@@ -380,6 +311,9 @@ parse_description (GabbleJingleDescriptionIface *iface,
       p->clockrate = clockrate;
       p->channels = channels;
 
+      DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",
+          p->id, p->name, p->clockrate, p->channels);
+
       codecs = g_list_append (codecs, p);
     }
 
@@ -400,17 +334,18 @@ parse_description (GabbleJingleDescriptionIface *iface,
 
   priv->media_type = mtype;
 
-  g_signal_emit_by_name (priv->content, "remote-codecs", codecs);
+  g_signal_emit (self, signals[REMOTE_CODECS], 0, codecs);
 
   /* append them to the known remote codecs */
   // priv->remote_codecs = g_list_concat (priv->remote_codecs, codecs);
 }
 
 static void
-produce_node (GabbleJingleDescriptionIface *obj, LmMessageNode *content_node)
+produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 {
   GabbleJingleMediaRtp *desc =
     GABBLE_JINGLE_MEDIA_RTP (obj);
+  GabbleJingleSession *sess;
   GabbleJingleMediaRtpPrivate *priv =
     GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (desc);
   LmMessageNode *desc_node;
@@ -418,7 +353,10 @@ produce_node (GabbleJingleDescriptionIface *obj, LmMessageNode *content_node)
   JingleDialect dialect;
   const gchar *xmlns = NULL;
 
-  g_object_get (priv->session, "dialect", &dialect, NULL);
+  g_object_get (obj, "session", &sess, NULL);
+  g_object_get (sess, "dialect", &dialect, NULL);
+
+  DEBUG ("using content node %p", content_node);
 
   desc_node = lm_message_node_add_child (content_node, "description", NULL);
 
@@ -489,32 +427,36 @@ produce_node (GabbleJingleDescriptionIface *obj, LmMessageNode *content_node)
     }
 }
 
+/*
 static void
-description_iface_init (gpointer g_iface, gpointer iface_data)
+content_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleJingleDescriptionIfaceClass *klass = (GabbleJingleDescriptionIfaceClass *) g_iface;
+  GabbleJingleContentClass *klass = (GabbleJingleContentClass *) g_iface;
 
-  klass->parse = parse_description;
-  klass->produce = produce_node;
-  // klass->add_codecs = add_codecs;
+  klass->parse_description = parse_description;
+  klass->produce_description = produce_node;
 }
+*/
 
 void
 jingle_media_rtp_register (GabbleJingleFactory *factory)
 {
   /* Current (v0.25) Jingle draft URI */
-  gabble_jingle_factory_register_description (factory,
-      NS_JINGLE_RTP_TMP, new_description);
+  gabble_jingle_factory_register_content_type (factory,
+      NS_JINGLE_RTP_TMP, GABBLE_TYPE_JINGLE_MEDIA_RTP);
 
   /* Old Jingle audio/video namespaces */
-  gabble_jingle_factory_register_description (factory,
-      NS_JINGLE_DESCRIPTION_AUDIO, new_description);
+  gabble_jingle_factory_register_content_type (factory,
+      NS_JINGLE_DESCRIPTION_AUDIO,
+      GABBLE_TYPE_JINGLE_MEDIA_RTP);
 
-  gabble_jingle_factory_register_description (factory,
-      NS_JINGLE_DESCRIPTION_VIDEO, new_description);
+  gabble_jingle_factory_register_content_type (factory,
+      NS_JINGLE_DESCRIPTION_VIDEO,
+      GABBLE_TYPE_JINGLE_MEDIA_RTP);
 
   /* GTalk audio call namespace */
-  gabble_jingle_factory_register_description (factory,
-      NS_GOOGLE_SESSION_PHONE, new_description);
+  gabble_jingle_factory_register_content_type (factory,
+      NS_GOOGLE_SESSION_PHONE,
+      GABBLE_TYPE_JINGLE_MEDIA_RTP);
 }
 

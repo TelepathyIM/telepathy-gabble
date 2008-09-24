@@ -115,27 +115,27 @@ struct _GabbleJingleFactoryClass {
     GObjectClass parent_class;
 };
 
-typedef GabbleJingleTransportIface * (*JingleTransportMaker) (GabbleJingleContent *c);
-typedef GabbleJingleDescriptionIface * (*JingleDescriptionMaker) (GabbleJingleContent *c);
+typedef GabbleJingleContent * (*JingleContentMaker) (GabbleJingleSession *);
+typedef GabbleJingleTransportIface * (*JingleTransportMaker) (GabbleJingleContent *);
 
 struct _GabbleJingleFactory {
     GObject parent;
 
-    GHashTable *descriptions;
+    GHashTable *content_types;
     GHashTable *transports;
 
     gpointer priv;
 };
 
+void gabble_jingle_factory_register_content_type (GabbleJingleFactory *factory,
+    gchar *namespace, GType content_type);
 void gabble_jingle_factory_register_transport (GabbleJingleFactory *factory,
-    gchar *namespace, JingleTransportMaker maker);
-void gabble_jingle_factory_register_description (GabbleJingleFactory *factory,
-    gchar *namespace, JingleDescriptionMaker maker);
+    gchar *namespace, GType transport_type);
 void _jingle_factory_unregister_session (GabbleJingleFactory *factory,
     const gchar *sid);
 
-GabbleJingleSession *gabble_jingle_factory_initiate_session (GabbleJingleFactory
-    *fac, TpHandle peer);
+GabbleJingleSession *gabble_jingle_factory_create_session (GabbleJingleFactory
+    *fac, TpHandle peer, const gchar *peer_resource);
 
 G_END_DECLS;
 

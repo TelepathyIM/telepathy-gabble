@@ -40,6 +40,14 @@ typedef struct _GabbleBytestreamFactory GabbleBytestreamFactory;
 typedef struct _GabblePrivateTubesFactory GabblePrivateTubesFactory;
 typedef struct _GabbleRequestPipeline GabbleRequestPipeline;
 
+typedef struct _GabbleJingleFactory GabbleJingleFactory;
+typedef struct _GabbleJingleSession GabbleJingleSession;
+typedef struct _GabbleJingleContent GabbleJingleContent;
+typedef struct _GabbleJingleTransportGoogle GabbleJingleTransportGoogle;
+typedef struct _GabbleJingleMediaRtp GabbleJingleMediaRtp;
+
+typedef struct _JingleCandidate JingleCandidate;
+
 typedef enum {
     INITIATOR_INVALID = -1,
     INITIATOR_LOCAL = 0,

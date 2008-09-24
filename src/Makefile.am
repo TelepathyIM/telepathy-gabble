@@ -108,7 +108,15 @@ libgabble_convenience_la_our_sources = \
     util.h \
     util.c \
     vcard-manager.h \
-    vcard-manager.c
+    vcard-manager.c \
+    jingle-content.c \
+    jingle-description-iface.c \
+    jingle-factory.c \
+    jingle-media-rtp.c \
+    jingle-session.c \
+    jingle-transport-google.c \
+    jingle-transport-iface.c
+
 
 # we don't want to subject third-party source to whitespace removal -
 # it's more useful to keep it a verbatim copy

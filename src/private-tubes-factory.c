@@ -684,6 +684,18 @@ gabble_private_tubes_factory_request_channel (TpChannelManager *manager,
 }
 
 
+static gboolean
+gabble_private_tubes_factory_ensure_channel (TpChannelManager *manager,
+                                             gpointer request_token,
+                                             GHashTable *request_properties)
+{
+  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (manager);
+
+  return gabble_private_tubes_factory_requestotron (self, request_token,
+      request_properties, FALSE);
+}
+
+
 static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
@@ -695,4 +707,5 @@ channel_manager_iface_init (gpointer g_iface,
       gabble_private_tubes_factory_foreach_channel_class;
   iface->create_channel = gabble_private_tubes_factory_create_channel;
   iface->request_channel = gabble_private_tubes_factory_request_channel;
+  iface->ensure_channel = gabble_private_tubes_factory_ensure_channel;
 }

@@ -31,6 +31,7 @@ TWISTED_TESTS = \
 	tubes/test-muc-offer-dbus-tube.py \
 	tubes/test-muc-offer-stream-tube-ibb.py \
 	tubes/test-si-tubes.py \
+	tubes/ensure-si-tube.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \

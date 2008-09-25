@@ -2653,6 +2653,18 @@ gabble_roster_request_channel (TpChannelManager *manager,
 }
 
 
+static gboolean
+gabble_roster_ensure_channel (TpChannelManager *manager,
+                              gpointer request_token,
+                              GHashTable *request_properties)
+{
+  GabbleRoster *self = GABBLE_ROSTER (manager);
+
+  return gabble_roster_request (self, request_token, request_properties,
+      FALSE);
+}
+
+
 static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
@@ -2663,4 +2675,5 @@ channel_manager_iface_init (gpointer g_iface,
   iface->foreach_channel_class = gabble_roster_foreach_channel_class;
   iface->request_channel = gabble_roster_request_channel;
   iface->create_channel = gabble_roster_create_channel;
+  iface->ensure_channel = gabble_roster_ensure_channel;
 }

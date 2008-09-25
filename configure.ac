@@ -10,7 +10,7 @@ AC_PREREQ([2.59])
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [7])
 m4_define([gabble_micro_version], [8])
-m4_define([gabble_nano_version], [0])
+m4_define([gabble_nano_version], [1])
 
 # Some magic
 m4_define([gabble_base_version],
@@ -132,7 +132,7 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 0.95, dbus-glib-1 >= 0.73])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.7.14])
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.7.15])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)

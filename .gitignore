@@ -49,6 +49,7 @@ src/telepathy-gabble
 src/write-mgr-file
 stamp-h1
 tags
+cscope.out
 telepathy-gabble-0*
 tests/org.freedesktop.Telepathy.ConnectionManager.gabble.service
 tests/test-base64

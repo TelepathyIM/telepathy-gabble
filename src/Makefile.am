@@ -33,8 +33,6 @@ libgabble_convenience_la_our_sources = \
     capabilities.c \
     caps-hash.h \
     caps-hash.c \
-    channel-manager.h \
-    channel-manager.c \
     conn-aliasing.h \
     conn-aliasing.c \
     conn-avatars.h \
@@ -43,8 +41,6 @@ libgabble_convenience_la_our_sources = \
     conn-olpc.c \
     conn-presence.h \
     conn-presence.c \
-    conn-requests.h \
-    conn-requests.c \
     connection.h \
     connection.c \
     connection-manager.h \
@@ -55,8 +51,6 @@ libgabble_convenience_la_our_sources = \
     disco.c \
     error.c \
     error.h \
-    exportable-channel.c \
-    exportable-channel.h \
     gabble.c \
     gabble.h \
     im-channel.h \

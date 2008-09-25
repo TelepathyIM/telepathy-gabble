@@ -23,12 +23,12 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/util.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_OLPC
 
 #include "debug.h"
-#include "channel-manager.h"
 #include "connection.h"
 #include "muc-channel.h"
 #include "presence-cache.h"
@@ -2833,7 +2833,7 @@ muc_factory_new_channel_cb (gpointer key,
                             gpointer data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
-  GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (key);
+  TpExportableChannel *chan = TP_EXPORTABLE_CHANNEL (key);
   GabbleOlpcActivity *activity;
   TpHandle room_handle;
 
@@ -3701,7 +3701,7 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed_cb), NULL);
 
-  g_signal_connect (GABBLE_CHANNEL_MANAGER (conn->muc_factory), "new-channels",
+  g_signal_connect (TP_CHANNEL_MANAGER (conn->muc_factory), "new-channels",
       G_CALLBACK (muc_factory_new_channels_cb), conn);
 
   g_signal_connect (conn->disco, "item-found",

@@ -52,7 +52,7 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert properties.get('Channels') == [], properties['Channels']
     assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
@@ -139,7 +139,7 @@ def test(q, bus, conn, stream):
             'test@localhost'
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
 
     assert new_sig.args[0][0] in properties['Channels'], \

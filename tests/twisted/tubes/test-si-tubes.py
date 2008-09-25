@@ -85,7 +85,7 @@ def check_conn_properties(q, bus, conn, stream, channel_list=None):
                      properties['RequestableChannelClasses']
 
 def check_channel_properties(q, bus, conn, stream, channel, channel_type,
-        contact_handle, contact_id):
+        contact_handle, contact_id, state=None):
     # Exercise basic Channel Properties from spec 0.17.7
     # on the channel of type channel_type
     channel_props = channel.GetAll(
@@ -103,6 +103,18 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
             channel_props['Interfaces'], \
             channel_props['Interfaces']
     assert channel_props['TargetID'] == contact_id
+
+    if channel_type == "Tubes":
+        assert state is None
+    else:
+        assert state is not None
+        tube_props = channel.GetAll(
+                'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
+                dbus_interface='org.freedesktop.DBus.Properties')
+        assert tube_props['Status'] == state
+        # no strict check but at least check the properties exist
+        assert tube_props['Parameters'] is not None
+        assert tube_props['Initiator'] is not None
 
     self_handle = conn.GetSelfHandle()
 
@@ -367,7 +379,7 @@ def test(q, bus, conn, stream):
     check_channel_properties(q, bus, conn, stream, tubes_chan, "Tubes",
             bob_handle, "bob@localhost")
     check_channel_properties(q, bus, conn, stream, tube_chan,
-            "StreamTube.DRAFT", bob_handle, "bob@localhost")
+            "StreamTube.DRAFT", bob_handle, "bob@localhost", 3)
 
     # Offer the tube, new API
     path2 = os.getcwd() + '/stream2'

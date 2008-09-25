@@ -888,6 +888,7 @@ typedef enum
 {
   METHOD_REQUEST,
   METHOD_CREATE,
+  METHOD_ENSURE,
 } RequestMethod;
 
 
@@ -920,6 +921,10 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
    *     channel has TargetHandle=n
    *     n is not in the group interface at all
    *     call is started when caller calls RequestStreams.
+   * - EnsureChannel({THT: Contact, TH: n}):
+   *     look for a channel whose peer is n, and return that if found with
+   *       whatever properties and group membership it has;
+   *     otherwise the same as into CreateChannel
    */
   switch (method)
     {
@@ -928,6 +933,7 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
       add_peer_to_remote_pending = TRUE;
       break;
     case METHOD_CREATE:
+    case METHOD_ENSURE:
       require_target_handle = TRUE;
       add_peer_to_remote_pending = FALSE;
       break;
@@ -984,6 +990,25 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
               &error))
         goto error;
 
+      if (method == METHOD_ENSURE)
+        {
+          guint i;
+          TpHandle peer = 0;
+
+          for (i = 0; i < priv->channels->len; i++)
+            {
+              channel = g_ptr_array_index (priv->channels, i);
+              g_object_get (channel, "peer", &peer, NULL);
+
+              if (peer == handle)
+                {
+                  tp_channel_manager_emit_request_already_satisfied (self,
+                      request_token, TP_EXPORTABLE_CHANNEL (channel));
+                  return TRUE;
+                }
+            }
+        }
+
       channel = new_media_channel (self, conn->self_handle, handle);
 
       if (add_peer_to_remote_pending)
@@ -1039,6 +1064,16 @@ gabble_media_factory_create_channel (TpChannelManager *manager,
 }
 
 
+static gboolean
+gabble_media_factory_ensure_channel (TpChannelManager *manager,
+                                     gpointer request_token,
+                                     GHashTable *request_properties)
+{
+  return gabble_media_factory_requestotron (manager, request_token,
+      request_properties, METHOD_ENSURE);
+}
+
+
 static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
@@ -1049,4 +1084,5 @@ channel_manager_iface_init (gpointer g_iface,
   iface->foreach_channel_class = gabble_media_factory_foreach_channel_class;
   iface->request_channel = gabble_media_factory_request_channel;
   iface->create_channel = gabble_media_factory_create_channel;
+  iface->ensure_channel = gabble_media_factory_ensure_channel;
 }

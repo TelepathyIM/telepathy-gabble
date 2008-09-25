@@ -53,6 +53,7 @@ TWISTED_TESTS = \
 	jingle/test-outgoing-call-deprecated2.py \
 	jingle/test-outgoing-call-requestotron.py \
 	jingle/test-outgoing-call-rejected.py \
+	jingle/test-outgoing-call-ensure.py \
 	test-capabilities.py \
 	test-caps-cache.py \
 	test-caps-hash.py \

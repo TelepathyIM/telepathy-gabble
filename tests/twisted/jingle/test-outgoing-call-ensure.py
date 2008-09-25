@@ -1,7 +1,7 @@
 
 """
-Test making outgoing call using CreateChannel. This tests the happy scenario
-when the remote party accepts the call.
+Test making outgoing calls using EnsureChannel, and retrieving existing calls
+using EnsureChannel.
 """
 
 from gabbletest import exec_test, make_result_iq, sync_stream

@@ -94,6 +94,7 @@ enum
   PROP_HANDLE,
   PROP_TARGET_ID,
   PROP_INITIAL_PEER,
+  PROP_PEER,
   PROP_REQUESTED,
   PROP_CONNECTION,
   PROP_CREATOR,
@@ -435,6 +436,20 @@ gabble_media_channel_get_property (GObject    *object,
         }
 
       break;
+    case PROP_PEER:
+      {
+        TpHandle peer = 0;
+
+        if (priv->initial_peer != 0)
+          peer = priv->initial_peer;
+        else if (priv->session != NULL)
+          g_object_get (priv->session,
+              "peer", &peer,
+              NULL);
+
+        g_value_set_uint (value, peer);
+        break;
+      }
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
@@ -625,6 +640,15 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_INITIAL_PEER, param_spec);
+
+  param_spec = g_param_spec_uint ("peer", "Other participant",
+      "The TpHandle representing the other participant in the channel if "
+      "currently known; 0 if this is an anonymous channel on which "
+      "RequestStreams  has not yet been called.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this media channel object.",

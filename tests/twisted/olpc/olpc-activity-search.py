@@ -11,7 +11,7 @@ from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 from util import (announce_gadget, request_random_activity_view,
     answer_error_to_pubsub_request, send_reply_to_activity_view_request,
-    parse_properties)
+    parse_properties, properties_to_xml)
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -224,19 +224,15 @@ def test(q, bus, conn, stream):
     activity['id'] = 'activity4'
     activity['room'] = 'room4@conference.localhost'
     properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#DDEEDD,#EEDDEE')
+    for node in properties_to_xml({'color': ('str', '#DDEEDD,#EEDDEE')}):
+        properties.addChild(node)
     buddy = activity.addElement((None, 'buddy'))
     buddy['jid'] = 'fernand@localhost'
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
+    for node in properties_to_xml({'color': ('str', '#AABBAA,#BBAABB')}):
+        properties.addChild(node)
     buddy = activity.addElement((None, 'buddy'))
     buddy['jid'] = 'jean@localhost'
-    property.addContent('#AABBAA,#BBAABB')
     amp = message.addElement((NS_AMP, 'amp'))
     rule = amp.addElement((None, 'rule'))
     rule['condition'] = 'deliver-at'
@@ -296,14 +292,9 @@ def test(q, bus, conn, stream):
     change['room'] = 'room1@conference.localhost'
     change['id'] = '0'
     properties = change.addElement((NS_OLPC_ACTIVITY_PROPS, 'properties'))
-    property = properties.addElement((None, 'property'))
-    property['type'] = 'str'
-    property['name'] = 'tags'
-    property.addContent('game')
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#AABBAA,#BBAABB')
+    for node in properties_to_xml({'tags': ('str', 'game'), \
+            'color': ('str', '#AABBAA,#BBAABB')}):
+        properties.addChild(node)
 
     amp = message.addElement((NS_AMP, 'amp'))
     rule = amp.addElement((None, 'rule'))
@@ -331,10 +322,8 @@ def test(q, bus, conn, stream):
     joined = activity.addElement((None, 'joined'))
     joined['jid'] = 'marcel@localhost'
     properties = joined.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#CCCCCC,#DDDDDD')
+    for node in properties_to_xml({'color': ('str', '#CCCCCC,#DDDDDD')}):
+        properties.addChild(node)
 
     amp = message.addElement((NS_AMP, 'amp'))
     rule = amp.addElement((None, 'rule'))

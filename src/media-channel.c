@@ -93,6 +93,8 @@ enum
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
   PROP_TARGET_ID,
+  PROP_INITIAL_PEER,
+  PROP_PEER,
   PROP_REQUESTED,
   PROP_CONNECTION,
   PROP_CREATOR,
@@ -132,6 +134,7 @@ struct _GabbleMediaChannelPrivate
   GabbleConnection *conn;
   gchar *object_path;
   TpHandle creator;
+  TpHandle initial_peer;
 
   GabbleMediaFactory *factory;
   GabbleMediaSession *session;
@@ -400,14 +403,53 @@ gabble_media_channel_get_property (GObject    *object,
       g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
       break;
     case PROP_HANDLE_TYPE:
-      g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
+      /* This is used to implement TargetHandleType, which is immutable.  If
+       * the peer was known at channel-creation time, this will be Contact;
+       * otherwise, it must be None even if we subsequently learn who the peer
+       * is.
+       */
+      if (priv->initial_peer != 0)
+        g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+      else
+        g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
       break;
+    case PROP_INITIAL_PEER:
     case PROP_HANDLE:
-      g_value_set_uint (value, 0);
+      /* As above: TargetHandle is immutable, so non-0 only if the peer handle
+       * was known at creation time.
+       */
+      g_value_set_uint (value, priv->initial_peer);
       break;
     case PROP_TARGET_ID:
-      g_value_set_static_string (value, "");
+      /* As above. */
+      if (priv->initial_peer != 0)
+        {
+          TpHandleRepoIface *repo = tp_base_connection_get_handles (
+              base_conn, TP_HANDLE_TYPE_CONTACT);
+          const gchar *target_id = tp_handle_inspect (repo, priv->initial_peer);
+
+          g_value_set_string (value, target_id);
+        }
+      else
+        {
+          g_value_set_static_string (value, "");
+        }
+
       break;
+    case PROP_PEER:
+      {
+        TpHandle peer = 0;
+
+        if (priv->initial_peer != 0)
+          peer = priv->initial_peer;
+        else if (priv->session != NULL)
+          g_object_get (priv->session,
+              "peer", &peer,
+              NULL);
+
+        g_value_set_uint (value, peer);
+        break;
+      }
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
@@ -498,6 +540,9 @@ gabble_media_channel_set_property (GObject     *object,
     case PROP_FACTORY:
       priv->factory = g_value_get_object (value);
       break;
+    case PROP_INITIAL_PEER:
+      priv->initial_peer = g_value_get_uint (value);
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -586,6 +631,24 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       G_PARAM_READABLE |
       G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
+
+  param_spec = g_param_spec_uint ("initial-peer", "Other participant",
+      "The TpHandle representing the other participant in the channel if known "
+      "at construct-time; 0 if the other participant was unknown at the time "
+      "of channel creation",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_INITIAL_PEER, param_spec);
+
+  param_spec = g_param_spec_uint ("peer", "Other participant",
+      "The TpHandle representing the other participant in the channel if "
+      "currently known; 0 if this is an anonymous channel on which "
+      "RequestStreams  has not yet been called.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this media channel object.",

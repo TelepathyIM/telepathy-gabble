@@ -1,5 +1,6 @@
 TWISTED_TESTS = \
 	muc/roomlist.py \
+	muc/test-ensure.py \
 	muc/test-muc-alias.py \
 	muc/test-muc-invitation.py \
 	muc/test-muc-ownership.py \
@@ -17,6 +18,7 @@ TWISTED_TESTS = \
 	olpc/gadget-publish.py \
 	olpc/gadget-restarted.py \
 	presence/presence.py \
+	roster/ensure.py \
 	roster/groups.py \
 	roster/groups-12791.py \
 	roster/request-group-before-roster.py \
@@ -27,6 +29,7 @@ TWISTED_TESTS = \
 	roster/test-save-alias-to-roster.py \
 	text/initiate.py \
 	text/initiate-requestotron.py \
+	text/ensure.py \
 	text/respawn.py \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
@@ -36,6 +39,7 @@ TWISTED_TESTS = \
 	tubes/test-muc-offer-dbus-tube.py \
 	tubes/test-muc-offer-stream-tube-ibb.py \
 	tubes/test-si-tubes.py \
+	tubes/ensure-si-tube.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \
@@ -56,7 +60,9 @@ TWISTED_TESTS = \
 	jingle/test-outgoing-call.py \
 	jingle/test-outgoing-call-deprecated.py \
 	jingle/test-outgoing-call-deprecated2.py \
+	jingle/test-outgoing-call-requestotron.py \
 	jingle/test-outgoing-call-rejected.py \
+	jingle/test-outgoing-call-ensure.py \
 	test-capabilities.py \
 	test-caps-cache.py \
 	test-caps-hash.py \

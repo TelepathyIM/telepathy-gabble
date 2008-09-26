@@ -10,7 +10,8 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 from util import (announce_gadget, request_random_activity_view,
-    answer_error_to_pubsub_request, send_reply_to_activity_view_request)
+    answer_error_to_pubsub_request, send_reply_to_activity_view_request,
+    parse_properties)
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -135,16 +136,14 @@ def test(q, bus, conn, stream):
             query_ns=NS_OLPC_ACTIVITY),
         EventPattern('dbus-return', method='SearchActivitiesByProperties'))
 
-    properties = xpath.queryForNodes('/iq/view/activity/properties/property',
+    properties_nodes = xpath.queryForNodes('/iq/view/activity/properties',
             iq_event.stanza)
+    props = parse_properties(properties_nodes[0])
+    assert props == {'color': ('str', '#AABBCC,#001122')}
+
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == '1'
-    assert len(properties) == 1
-    property = properties[0]
-    assert property['type'] == 'str'
-    assert property['name'] == 'color'
-    assert property.children == ['#AABBCC,#001122']
 
     send_reply_to_activity_view_request(stream, iq_event.stanza,
             [('activity2', 'room2@conference.localhost',

@@ -2384,6 +2384,7 @@ gabble_connection_set_self_capabilities (
 
   if (!_gabble_connection_signal_own_presence (self, &error))
     {
+      gabble_presence_cache_free_cache_entry (save_caps);
       dbus_g_method_return_error (context, error);
       return;
     }

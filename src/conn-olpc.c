@@ -400,7 +400,7 @@ get_properties_reply_cb (GabbleConnection *conn,
       buddy = lm_message_node_get_attribute (sent_msg->node, "to");
       g_assert (buddy != NULL);
 
-      DEBUG ("PEP query failed. Let's try to search this buddy");
+      DEBUG ("PEP query failed. Let's try to search this buddy.");
       get_buddy_properties_from_search (conn, buddy, context);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
@@ -2932,14 +2932,14 @@ buddy_changed (GabbleConnection *conn,
   jid = lm_message_node_get_attribute (change, "jid");
   if (jid == NULL)
     {
-      DEBUG ("No jid attribute in change message. Discard");
+      DEBUG ("No jid attribute in change message. Discarding");
       return;
     }
 
   id_str = lm_message_node_get_attribute (change, "id");
   if (id_str == NULL)
     {
-      DEBUG ("No view ID attribute in change message. Discard");
+      DEBUG ("No view ID attribute in change message. Discarding");
       return;
     }
 
@@ -2954,7 +2954,7 @@ buddy_changed (GabbleConnection *conn,
   handle = tp_handle_lookup (contact_repo, jid, NULL, NULL);
   if (handle == 0)
     {
-      DEBUG ("Invalid jid: %s. Discard", jid);
+      DEBUG ("Invalid jid: %s. Discarding", jid);
       return;
     }
 

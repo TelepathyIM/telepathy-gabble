@@ -1382,11 +1382,13 @@ extract_current_activity (GabbleConnection *conn,
   if (node == NULL)
     return NULL;
 
+  /* For some weird reasons, the PEP protocol use "type" for the activity ID.
+   * We can't change that without breaking compatibility but if there is no
+   * "type" attribute then we can use the "id" one.
+   * The Gadget protocol use "id" instead of "type". */
   id = lm_message_node_get_attribute (node, "type");
   if (id == NULL)
     {
-      /* This attribute should be called "id" and not "type". Gadget uses the
-       * right name. */
       id = lm_message_node_get_attribute (node, "id");
     }
 

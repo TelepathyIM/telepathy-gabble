@@ -10,7 +10,8 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 
-from util import announce_gadget, properties_to_xml, parse_properties
+from util import (announce_gadget, properties_to_xml, parse_properties,
+    create_gadget_message)
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -138,10 +139,7 @@ def test(q, bus, conn, stream):
     assert props == {'color': '#005FE4,#00A0FF'}
 
     # Bob changed his properties
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'test@localhost'
-    message['type'] = 'notice'
+    message = create_gadget_message("test@localhost")
 
     change = message.addElement((NS_OLPC_BUDDY, 'change'))
     change['jid'] = 'bob@localhost'
@@ -149,11 +147,7 @@ def test(q, bus, conn, stream):
     properties = change.addElement((NS_OLPC_BUDDY_PROPS, 'properties'))
     for node in properties_to_xml({'color': ('str', '#FFFFFF,#AAAAAA')}):
         properties.addChild(node)
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
+
     stream.send(message)
 
     event = q.expect('dbus-signal', signal='PropertiesChanged',
@@ -209,10 +203,8 @@ def test(q, bus, conn, stream):
     assert props == {'color': '#AABBCC,#001122'}
 
     # add a buddy to view 0
-    message = domish.Element((None, 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'alice@localhost'
-    message['type'] = 'notice'
+    message = create_gadget_message("test@localhost")
+
     added = message.addElement((NS_OLPC_BUDDY, 'added'))
     added['id'] = '0'
     buddy = added.addElement((None, 'buddy'))
@@ -220,11 +212,7 @@ def test(q, bus, conn, stream):
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#000000,#AAAAAA')}):
         properties.addChild(node)
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
+
     stream.send(message)
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
@@ -240,19 +228,13 @@ def test(q, bus, conn, stream):
             'oscar@localhost']
 
     # remove a buddy from view 0
-    message = domish.Element((None, 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'alice@localhost'
-    message['type'] = 'notice'
+    message = create_gadget_message("test@localhost")
+
     added = message.addElement((NS_OLPC_BUDDY, 'removed'))
     added['id'] = '0'
     buddy = added.addElement((None, 'buddy'))
     buddy['jid'] = 'bob@localhost'
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
+
     stream.send(message)
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')

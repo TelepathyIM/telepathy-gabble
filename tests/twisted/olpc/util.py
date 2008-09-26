@@ -211,3 +211,16 @@ def xpath_query(query, elem):
         return []
     else:
         return nodes
+
+def create_gadget_message(to):
+    message = domish.Element((None, 'message'))
+    message['from'] = 'gadget.localhost'
+    message['to'] = to
+    message['type'] = 'notice'
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+
+    return message

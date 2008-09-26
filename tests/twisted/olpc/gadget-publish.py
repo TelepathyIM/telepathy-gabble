@@ -41,8 +41,7 @@ def test(q, bus, conn, stream):
     props = conn.GetAll(
             'org.laptop.Telepathy.Gadget',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert props['ActivityGadgetAvailable'] == False
-    assert props['BuddyGadgetAvailable'] == False
+    assert props['GadgetAvailable'] == False
 
     announce_gadget(q, stream, disco_event.stanza)
 
@@ -51,8 +50,7 @@ def test(q, bus, conn, stream):
     props = conn.GetAll(
             'org.laptop.Telepathy.Gadget',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert props['ActivityGadgetAvailable'] == True
-    assert props['BuddyGadgetAvailable'] == True
+    assert props['GadgetAvailable'] == True
 
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
 

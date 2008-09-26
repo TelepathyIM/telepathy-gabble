@@ -509,8 +509,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       GABBLE_IFACE_OLPC_GADGET,
       NULL };
   static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
-        { "ActivityGadgetAvailable", NULL, NULL },
-        { "BuddyGadgetAvailable", NULL, NULL },
+        { "GadgetAvailable", NULL, NULL },
         { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {

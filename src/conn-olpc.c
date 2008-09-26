@@ -4456,13 +4456,10 @@ conn_olpc_gadget_propeties_getter (GObject *object,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (object);
 
-  if (!tp_strdiff (g_quark_to_string (name), "ActivityGadgetAvailable"))
+  if (!tp_strdiff (g_quark_to_string (name), "GadgetAvailable"))
     {
-      g_value_set_boolean (value, check_gadget_activity (conn, NULL));
-    }
-  else if (!tp_strdiff (g_quark_to_string (name), "BuddyGadgetAvailable"))
-    {
-      g_value_set_boolean (value, check_gadget_buddy (conn, NULL));
+      g_value_set_boolean (value, check_gadget_activity (conn, NULL) ||
+          check_gadget_buddy (conn, NULL));
     }
   else
     {

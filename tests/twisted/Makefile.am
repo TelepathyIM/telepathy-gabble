@@ -5,10 +5,17 @@ TWISTED_TESTS = \
 	muc/test-muc-ownership.py \
 	muc/test-muc-properties.py \
 	muc/test-muc.py \
+	olpc/olpc-activity-search.py \
+	olpc/current-activity.py \
 	olpc/olpc-muc-invitation.py \
 	olpc/olpc-muc-prop-change.py \
 	olpc/test-olpc-bundle.py \
 	olpc/test-olpc-set-props-preload.py \
+	olpc/change-notifications.py \
+	olpc/olpc-buddy-search.py \
+	olpc/gadget-invite.py \
+	olpc/gadget-publish.py \
+	olpc/gadget-restarted.py \
 	presence/presence.py \
 	roster/groups.py \
 	roster/groups-12791.py \

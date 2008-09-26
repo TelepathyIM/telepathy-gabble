@@ -48,14 +48,26 @@ void gabble_connection_connected_olpc (GabbleConnection *conn);
 void
 olpc_activity_properties_iface_init (gpointer g_iface, gpointer iface_data);
 
-void
-conn_olpc_activity_properties_init (GabbleConnection *conn);
+void conn_olpc_activity_properties_init (GabbleConnection *conn);
+
+void conn_olpc_activity_properties_dispose (GabbleConnection *conn);
 
 gboolean conn_olpc_process_activity_properties_message (GabbleConnection *conn,
     LmMessage *msg, const gchar *from);
 
 gboolean conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
     LmMessage *msg, const gchar *from);
+
+LmHandlerResult conn_olpc_msg_cb (LmMessageHandler *handler,
+    LmConnection *connection, LmMessage *message, gpointer user_data);
+
+LmHandlerResult conn_olpc_presence_cb (LmMessageHandler *handler,
+    LmConnection *connection, LmMessage *presence, gpointer user_data);
+
+void conn_olpc_gadget_propeties_getter (GObject *object, GQuark interface,
+    GQuark name, GValue *value, gpointer getter_data);
+
+void olpc_gadget_iface_init (gpointer g_iface, gpointer iface_data);
 
 #endif /* __CONN_OLPC_H__ */
 

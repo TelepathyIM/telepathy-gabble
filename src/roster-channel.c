@@ -457,44 +457,6 @@ gabble_roster_channel_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_roster_channel_parent_class)->finalize (object);
 }
 
-
-static gboolean
-_gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
-                                      LmMessageSubType sub_type,
-                                      TpHandle handle,
-                                      const gchar *status,
-                                      GError **error)
-{
-  GabbleRosterChannelPrivate *priv;
-  TpBaseConnection *conn;
-  TpHandleRepoIface *repo;
-  const char *contact;
-  LmMessage *message;
-  gboolean result;
-
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
-  conn = (TpBaseConnection *) priv->conn;
-  repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
-  contact = tp_handle_inspect (repo, handle);
-
-  message = lm_message_new_with_sub_type (contact,
-      LM_MESSAGE_TYPE_PRESENCE,
-      sub_type);
-
-  if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
-    lm_message_node_add_own_nick (message->node, priv->conn);
-
-  if (status != NULL && status[0] != '\0')
-    lm_message_node_add_child (message->node, "status", status);
-
-  result = _gabble_connection_send (priv->conn, message, error);
-
-  lm_message_unref (message);
-
-  return result;
-}
-
-
 /**
  * _gabble_roster_channel_add_member_cb
  *
@@ -511,6 +473,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
 #ifdef ENABLE_DEBUG
   TpHandleRepoIface *handle_repo, *contact_repo;
 #endif
+  const gchar *contact_id;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
 #ifdef ENABLE_DEBUG
@@ -520,9 +483,11 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 #endif
 
+  contact_id = tp_handle_inspect (contact_repo, handle);
+
   DEBUG ("called on %s with handle %u (%s) \"%s\"",
       tp_handle_inspect (handle_repo, priv->handle), handle,
-      tp_handle_inspect (contact_repo, handle), message);
+      contact_id, message);
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)
     {
@@ -539,8 +504,8 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   else if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
       /* send <presence type="subscribed"> */
-      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
-          LM_MESSAGE_SUB_TYPE_SUBSCRIBED, handle, message, error);
+      ret = gabble_connection_send_presence (priv->conn,
+          LM_MESSAGE_SUB_TYPE_SUBSCRIBED, contact_id, message, error);
     }
   /* subscribe list */
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
@@ -549,8 +514,8 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
       gabble_roster_handle_add (priv->conn->roster, handle, NULL);
 
       /* send <presence type="subscribe"> */
-      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
-          LM_MESSAGE_SUB_TYPE_SUBSCRIBE, handle, message, error);
+      ret = gabble_connection_send_presence (priv->conn,
+          LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, message, error);
     }
   /* deny list */
   else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
@@ -585,6 +550,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   TpHandleRepoIface *handle_repo, *contact_repo;
 #endif
   gboolean ret = FALSE;
+  const gchar *contact_id;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
 #ifdef ENABLE_DEBUG
@@ -593,9 +559,11 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
 #endif
 
+  contact_id = tp_handle_inspect (contact_repo, handle);
+
   DEBUG ("called on %s with handle %u (%s) \"%s\"",
       tp_handle_inspect (handle_repo, priv->handle), handle,
-      tp_handle_inspect (contact_repo, handle), message);
+      contact_id, message);
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)
     {
@@ -612,8 +580,8 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   else if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
       /* send <presence type="unsubscribed"> */
-      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, handle, message, error);
+      ret = gabble_connection_send_presence (priv->conn,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, message, error);
 
       /* remove it from local_pending here, because roster callback doesn't
          know if it can (subscription='none' is used both during request and
@@ -633,8 +601,8 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
       /* send <presence type="unsubscribe"> */
-      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, handle, message, error);
+      ret = gabble_connection_send_presence (priv->conn,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, message, error);
     }
   /* known list */
   else if (GABBLE_LIST_HANDLE_KNOWN == priv->handle)

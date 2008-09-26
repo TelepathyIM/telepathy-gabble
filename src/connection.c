@@ -106,6 +106,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
     G_IMPLEMENT_INTERFACE
       (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
       gabble_conn_contact_caps_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_GADGET,
+      olpc_gadget_iface_init);
     )
 
 /* properties */
@@ -140,7 +142,9 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
   LmMessageHandler *stream_error_cb;
-  LmMessageHandler *msg_cb;
+  LmMessageHandler *pubsub_msg_cb;
+  LmMessageHandler *olpc_msg_cb;
+  LmMessageHandler *olpc_presence_cb;
 
   /* connection properties */
   gchar *connect_server;
@@ -512,7 +516,20 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
       TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
       TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
+      GABBLE_IFACE_OLPC_GADGET,
       NULL };
+  static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
+        { "GadgetAvailable", NULL, NULL },
+        { NULL }
+  };
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+        { GABBLE_IFACE_OLPC_GADGET,
+          conn_olpc_gadget_propeties_getter,
+          NULL,
+          olpc_gadget_props,
+        },
+        { NULL }
+  };
 
   DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
 
@@ -673,7 +690,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  gabble_connection_class->properties_class.interfaces = NULL;
+  gabble_connection_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
 
@@ -709,7 +726,6 @@ gabble_connection_dispose (GObject *object)
 
   g_assert ((base->status == TP_CONNECTION_STATUS_DISCONNECTED) ||
             (base->status == TP_INTERNAL_CONNECTION_STATUS_NEW));
-  g_assert (base->self_handle == 0);
 
   g_object_unref (self->bytestream_factory);
   self->bytestream_factory = NULL;
@@ -736,9 +752,7 @@ gabble_connection_dispose (GObject *object)
   g_object_unref (self->presence_cache);
   self->presence_cache = NULL;
 
-  g_hash_table_destroy (self->olpc_activities_info);
-  g_hash_table_destroy (self->olpc_pep_activities);
-  g_hash_table_destroy (self->olpc_invited_activities);
+  conn_olpc_activity_properties_dispose (self);
 
   g_hash_table_destroy (self->avatar_requests);
 
@@ -748,7 +762,9 @@ gabble_connection_dispose (GObject *object)
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->stream_error_cb == NULL);
-  g_assert (priv->msg_cb == NULL);
+  g_assert (priv->pubsub_msg_cb == NULL);
+  g_assert (priv->olpc_msg_cb == NULL);
+  g_assert (priv->olpc_presence_cb == NULL);
 
   /*
    * The Loudmouth connection can't be unref'd immediately because this
@@ -1058,7 +1074,9 @@ connect_callbacks (TpBaseConnection *base)
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->stream_error_cb == NULL);
-  g_assert (priv->msg_cb == NULL);
+  g_assert (priv->pubsub_msg_cb == NULL);
+  g_assert (priv->olpc_msg_cb == NULL);
+  g_assert (priv->olpc_presence_cb == NULL);
 
   priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
                                               conn, NULL);
@@ -1078,11 +1096,23 @@ connect_callbacks (TpBaseConnection *base)
                                           LM_MESSAGE_TYPE_STREAM_ERROR,
                                           LM_HANDLER_PRIORITY_LAST);
 
-  priv->msg_cb = lm_message_handler_new (pubsub_msg_event_cb,
+  priv->pubsub_msg_cb = lm_message_handler_new (pubsub_msg_event_cb,
                                             conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->msg_cb,
+  lm_connection_register_message_handler (conn->lmconn, priv->pubsub_msg_cb,
                                           LM_MESSAGE_TYPE_MESSAGE,
                                           LM_HANDLER_PRIORITY_FIRST);
+
+  priv->olpc_msg_cb = lm_message_handler_new (conn_olpc_msg_cb,
+                                            conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->olpc_msg_cb,
+                                          LM_MESSAGE_TYPE_MESSAGE,
+                                          LM_HANDLER_PRIORITY_FIRST);
+
+  priv->olpc_presence_cb = lm_message_handler_new (conn_olpc_presence_cb,
+      conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->olpc_presence_cb,
+                                          LM_MESSAGE_TYPE_PRESENCE,
+                                          LM_HANDLER_PRIORITY_NORMAL);
 }
 
 static void
@@ -1094,7 +1124,9 @@ disconnect_callbacks (TpBaseConnection *base)
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
   g_assert (priv->stream_error_cb != NULL);
-  g_assert (priv->msg_cb != NULL);
+  g_assert (priv->pubsub_msg_cb != NULL);
+  g_assert (priv->olpc_msg_cb != NULL);
+  g_assert (priv->olpc_presence_cb != NULL);
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->iq_disco_cb,
                                             LM_MESSAGE_TYPE_IQ);
@@ -1111,10 +1143,20 @@ disconnect_callbacks (TpBaseConnection *base)
   lm_message_handler_unref (priv->stream_error_cb);
   priv->stream_error_cb = NULL;
 
-  lm_connection_unregister_message_handler (conn->lmconn, priv->msg_cb,
+  lm_connection_unregister_message_handler (conn->lmconn, priv->pubsub_msg_cb,
                                             LM_MESSAGE_TYPE_MESSAGE);
-  lm_message_handler_unref (priv->msg_cb);
-  priv->msg_cb = NULL;
+  lm_message_handler_unref (priv->pubsub_msg_cb);
+  priv->pubsub_msg_cb = NULL;
+
+  lm_connection_unregister_message_handler (conn->lmconn, priv->olpc_msg_cb,
+                                            LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_handler_unref (priv->olpc_msg_cb);
+  priv->olpc_msg_cb = NULL;
+
+  lm_connection_unregister_message_handler (conn->lmconn,
+      priv->olpc_presence_cb, LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_handler_unref (priv->olpc_presence_cb);
+  priv->olpc_presence_cb = NULL;
 }
 
 /**
@@ -3074,6 +3116,33 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
       if (!_gabble_connection_signal_own_presence (self, &error))
         DEBUG ("error sending presence: %s", error->message);
     }
+}
+
+gboolean
+gabble_connection_send_presence (GabbleConnection *conn,
+                                 LmMessageSubType sub_type,
+                                 const gchar *contact,
+                                 const gchar *status,
+                                 GError **error)
+{
+  LmMessage *message;
+  gboolean result;
+
+  message = lm_message_new_with_sub_type (contact,
+      LM_MESSAGE_TYPE_PRESENCE,
+      sub_type);
+
+  if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
+    lm_message_node_add_own_nick (message->node, conn);
+
+  if (status != NULL && status[0] != '\0')
+    lm_message_node_add_child (message->node, "status", status);
+
+  result = _gabble_connection_send (conn, message, error);
+
+  lm_message_unref (message);
+
+  return result;
 }
 
 /* We reimplement RequestHandles to be able to do async validation on

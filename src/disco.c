@@ -39,9 +39,19 @@
 #include "error.h"
 #include "namespaces.h"
 #include "util.h"
+#include "gabble-signals-marshal.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
 #define DISCO_PIPELINE_SIZE 10
+
+/* signals */
+enum
+{
+  ITEM_FOUND,
+  LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = {0};
 
 /* Properties */
 enum
@@ -126,6 +136,15 @@ gabble_disco_class_init (GabbleDiscoClass *gabble_disco_class)
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  signals[ITEM_FOUND] =
+    g_signal_new ("item-found",
+                  G_OBJECT_CLASS_TYPE (gabble_disco_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_marshal_VOID__POINTER,
+                  G_TYPE_NONE, 1, G_TYPE_POINTER);
 }
 
 static void
@@ -851,6 +870,8 @@ services_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
       my_item->features);
 
   priv->service_cache = g_slist_prepend (priv->service_cache, my_item);
+
+  g_signal_emit (G_OBJECT (disco), signals[ITEM_FOUND], 0, my_item);
 }
 
 static void

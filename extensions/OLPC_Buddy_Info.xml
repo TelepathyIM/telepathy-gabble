@@ -77,9 +77,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:docstring>
     </signal>
 
+
+   <tp:struct name="Activity" array-name="Activity_List">
+      <tp:docstring>A struct containing:
+          <ul>
+            <li>the identifier of the activity</li>
+            <li>the room handle of the activity channel</li>
+          </ul>
+        </tp:docstring>
+      <tp:member type="s" name="id"/>
+      <tp:member type="u" tp:type="Room_Handle" name="room"/>
+    </tp:struct>
+
     <method name="SetActivities">
-      <arg direction="in" name="activities" type="a(su)">
-        <tp:docstring>
+      <arg direction="in" name="activities" type="a(su)" tp:type="Activity[]">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of structs containing:
           <ul>
             <li>the identifier of the activity</li>
@@ -102,8 +114,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
           An integer handle for the contact whose activities are to be returned
         </tp:docstring>
       </arg>
-      <arg direction="out" name="activities" type="a(su)">
-        <tp:docstring>
+      <arg direction="out" name="activities" type="a(su)" tp:type="Activity[]">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of structs containing:
           <ul>
             <li>the identifier of the activity</li>
@@ -126,8 +138,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
           An integer handle representing the contact
         </tp:docstring>
       </arg>
-      <arg name="activities" type="a(su)">
-        <tp:docstring>
+      <arg name="activities" type="a(su)" tp:type="Activity[]">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of structs containing:
           <ul>
             <li>the identifier of the activity</li>

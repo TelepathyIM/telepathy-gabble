@@ -7,16 +7,16 @@ ulimit -c unlimited
 exec >> gabble-testing.log 2>&1
 
 if test -n "$GABBLE_TEST_VALGRIND"; then
-	export G_DEBUG=${G_DEBUG:+"${G_DEBUG},"}gc-friendly
-	export G_SLICE=always-malloc
-	GABBLE_WRAPPER="valgrind --leak-check=full --num-callers=20"
-	GABBLE_WRAPPER="$GABBLE_WRAPPER --show-reachable=yes"
-	GABBLE_WRAPPER="$GABBLE_WRAPPER --gen-suppressions=all"
-	GABBLE_WRAPPER="$GABBLE_WRAPPER --child-silent-after-fork=yes"
-	GABBLE_WRAPPER="$GABBLE_WRAPPER --suppressions=@abs_top_srcdir@/tests/twisted/tools/tp-glib.supp"
+        export G_DEBUG=${G_DEBUG:+"${G_DEBUG},"}gc-friendly
+        export G_SLICE=always-malloc
+        GABBLE_WRAPPER="valgrind --leak-check=full --num-callers=20"
+        GABBLE_WRAPPER="$GABBLE_WRAPPER --show-reachable=yes"
+        GABBLE_WRAPPER="$GABBLE_WRAPPER --gen-suppressions=all"
+        GABBLE_WRAPPER="$GABBLE_WRAPPER --child-silent-after-fork=yes"
+        GABBLE_WRAPPER="$GABBLE_WRAPPER --suppressions=@abs_top_srcdir@/tests/twisted/tools/tp-glib.supp"
 elif test -n "$GABBLE_TEST_REFDBG"; then
         export REFDBG_OPTIONS="btnum=10"
-	GABBLE_WRAPPER="refdbg"
+        GABBLE_WRAPPER="refdbg"
 fi
 
 exec $GABBLE_WRAPPER ../telepathy-gabble-debug

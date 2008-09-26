@@ -98,7 +98,8 @@ EXTRA_DIST = \
 	$(TWISTED_TESTS) \
 	gabbletest.py \
 	servicetest.py \
-	jingle/jingletest.py
+	jingle/jingletest.py \
+	olpc/util.py
 
 noinst_PROGRAMS = \
 	telepathy-gabble-debug

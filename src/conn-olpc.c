@@ -39,6 +39,13 @@
 #include "olpc-view.h"
 #include "olpc-activity.h"
 
+/* FIXME: At some point we should audit this code to check which assumptions
+ * it does about buddy and activity and if they are still relevant.
+ * For example, we currently allow the creation of activity objects which
+ * don't have an ID. I'm not sure that really make sense.
+ * Or at some place in the code, we allow user to change the ID of an existing
+ * activity object which is probably bong too. */
+
 static gboolean
 update_activities_properties (GabbleConnection *conn, const gchar *contact,
     LmMessage *msg);

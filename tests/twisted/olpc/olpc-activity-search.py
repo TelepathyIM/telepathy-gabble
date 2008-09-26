@@ -9,8 +9,8 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
-from util import announce_gadget, request_random_activity_view,\
-    answer_error_to_pubsub_request, send_reply_to_activity_view_request
+from util import (announce_gadget, request_random_activity_view,
+    answer_error_to_pubsub_request, send_reply_to_activity_view_request)
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"

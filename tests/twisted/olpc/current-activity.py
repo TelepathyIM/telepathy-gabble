@@ -10,9 +10,9 @@ from twisted.words.protocols.jabber.client import IQ
 
 from twisted.words.xish import domish, xpath
 
-from util import announce_gadget, send_buddy_changed_current_act_msg,\
-    answer_to_current_act_pubsub_request, answer_error_to_pubsub_request,\
-    send_gadget_current_activity_changed_msg, request_random_activity_view
+from util import (announce_gadget, send_buddy_changed_current_act_msg,
+    answer_to_current_act_pubsub_request, answer_error_to_pubsub_request,
+    send_gadget_current_activity_changed_msg, request_random_activity_view)
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"

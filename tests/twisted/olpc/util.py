@@ -19,6 +19,8 @@ NS_AMP = "http://jabber.org/protocol/amp"
 NS_STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"
 
 # Copied from Gadget
+valid_types = ['str', 'int', 'uint', 'bool', 'bytes']
+
 def parse_properties(elems):
     properties = {}
 
@@ -200,3 +202,12 @@ def request_random_activity_view(q, stream, conn, max, id, activities):
     send_reply_to_activity_view_request(stream, iq_event.stanza, activities)
 
     return return_event.value[0]
+
+# copied from Gadget
+def xpath_query(query, elem):
+    nodes = xpath.queryForNodes(query, elem)
+
+    if nodes is None:
+        return []
+    else:
+        return nodes

@@ -11,7 +11,7 @@ from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 from util import (announce_gadget, request_random_activity_view,
     answer_error_to_pubsub_request, send_reply_to_activity_view_request,
-    parse_properties, properties_to_xml, create_gadget_message)
+    parse_properties, properties_to_xml, create_gadget_message, close_view)
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -33,16 +33,6 @@ def check_view(view, conn, activities, buddies):
 
     handles = view.GetBuddies()
     assert sorted(conn.InspectHandles(1, handles)) == sorted(buddies)
-
-def close_view(q, view_iface, id):
-    call_async(q, view_iface, 'Close')
-    event, _, _ = q.expect_many(
-        EventPattern('stream-message', to='gadget.localhost'),
-        EventPattern('dbus-signal', signal='Closed'),
-        EventPattern('dbus-return', method='Close'))
-    close = xpath.queryForNodes('/message/close', event.stanza)
-    assert len(close) == 1
-    assert close[0]['id'] == id
 
 def test(q, bus, conn, stream):
     conn.Connect()

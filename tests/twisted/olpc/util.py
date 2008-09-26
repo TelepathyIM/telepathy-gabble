@@ -203,6 +203,16 @@ def request_random_activity_view(q, stream, conn, max, id, activities):
 
     return return_event.value[0]
 
+def close_view(q, view_iface, id):
+    call_async(q, view_iface, 'Close')
+    event, _, _ = q.expect_many(
+        EventPattern('stream-message', to='gadget.localhost'),
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-return', method='Close'))
+    close = xpath.queryForNodes('/message/close', event.stanza)
+    assert len(close) == 1
+    assert close[0]['id'] == id
+
 # copied from Gadget
 def xpath_query(query, elem):
     nodes = xpath.queryForNodes(query, elem)

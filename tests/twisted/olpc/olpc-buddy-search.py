@@ -11,7 +11,7 @@ from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 
 from util import (announce_gadget, properties_to_xml, parse_properties,
-    create_gadget_message)
+    create_gadget_message, close_view)
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -286,31 +286,13 @@ def test(q, bus, conn, stream):
             'tom@localhost']
 
     # close view 0
-    call_async(q, view0_iface, 'Close')
-    event, _ = q.expect_many(
-        EventPattern('stream-message', to='gadget.localhost'),
-        EventPattern('dbus-return', method='Close'))
-    close = xpath.queryForNodes('/message/close', event.stanza)
-    assert len(close) == 1
-    assert close[0]['id'] == '0'
+    close_view(q, view0_iface, '0')
 
     # close view 1
-    call_async(q, view1_iface, 'Close')
-    event, _ = q.expect_many(
-        EventPattern('stream-message', to='gadget.localhost'),
-        EventPattern('dbus-return', method='Close'))
-    close = xpath.queryForNodes('/message/close', event.stanza)
-    assert len(close) == 1
-    assert close[0]['id'] == '1'
+    close_view(q, view1_iface, '1')
 
     # close view 2
-    call_async(q, view2_iface, 'Close')
-    event, _ = q.expect_many(
-        EventPattern('stream-message', to='gadget.localhost'),
-        EventPattern('dbus-return', method='Close'))
-    close = xpath.queryForNodes('/message/close', event.stanza)
-    assert len(close) == 1
-    assert close[0]['id'] == '2'
+    close_view(q, view2_iface, '2')
 
 if __name__ == '__main__':
     exec_test(test)

@@ -10,7 +10,7 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 
-from util import announce_gadget
+from util import announce_gadget, properties_to_xml, parse_properties
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -77,10 +77,8 @@ def test(q, bus, conn, stream):
     buddy = query.addElement((None, "buddy"))
     buddy['jid'] = 'bob@localhost'
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#005FE4,#00A0FF')
+    for node in properties_to_xml({'color': ('str', '#005FE4,#00A0FF')}):
+        properties.addChild(node)
     stream.send(reply)
 
     event = q.expect('dbus-return', method='GetProperties')
@@ -111,17 +109,13 @@ def test(q, bus, conn, stream):
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'charles@localhost'
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#AAAAAA,#BBBBBB')
+    for node in properties_to_xml({'color': ('str', '#AAAAAA,#BBBBBB')}):
+        properties.addChild(node)
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'bob@localhost'
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#005FE4,#00A0FF')
+    for node in properties_to_xml({'color': ('str', '#005FE4,#00A0FF')}):
+        properties.addChild(node)
     stream.send(reply)
 
     view_path = return_event.value[0]
@@ -153,10 +147,8 @@ def test(q, bus, conn, stream):
     change['jid'] = 'bob@localhost'
     change['id'] = '0'
     properties = change.addElement((NS_OLPC_BUDDY_PROPS, 'properties'))
-    property = properties.addElement((None, 'property'))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#FFFFFF,#AAAAAA')
+    for node in properties_to_xml({'color': ('str', '#FFFFFF,#AAAAAA')}):
+        properties.addChild(node)
     amp = message.addElement((NS_AMP, 'amp'))
     rule = amp.addElement((None, 'rule'))
     rule['condition'] = 'deliver-at'
@@ -179,16 +171,14 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
         EventPattern('dbus-return', method='SearchBuddiesByProperties'))
 
-    properties = xpath.queryForNodes('/iq/view/buddy/properties/property',
+    properties_node = xpath.queryForNodes('/iq/view/buddy/properties',
             iq_event.stanza)
+    props = parse_properties(properties_node[0])
+    assert props == {'color': ('str', '#AABBCC,#001122')}
+
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == '1'
-    assert len(properties) == 1
-    property = properties[0]
-    assert property['type'] == 'str'
-    assert property['name'] == 'color'
-    assert property.children == ['#AABBCC,#001122']
 
     # reply to request
     reply = make_result_iq(stream, iq_event.stanza)
@@ -198,10 +188,8 @@ def test(q, bus, conn, stream):
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'charles@localhost'
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#AABBCC,#001122')
+    for node in properties_to_xml({'color': ('str', '#AABBCC,#001122')}):
+        properties.addChild(node)
     stream.send(reply)
 
     view_path = return_event.value[0]
@@ -230,10 +218,8 @@ def test(q, bus, conn, stream):
     buddy = added.addElement((None, 'buddy'))
     buddy['jid'] = 'oscar@localhost'
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#000000,#AAAAAA')
+    for node in properties_to_xml({'color': ('str', '#000000,#AAAAAA')}):
+        properties.addChild(node)
     amp = message.addElement((NS_AMP, 'amp'))
     rule = amp.addElement((None, 'rule'))
     rule['condition'] = 'deliver-at'

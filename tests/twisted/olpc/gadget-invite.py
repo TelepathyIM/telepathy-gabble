@@ -70,8 +70,7 @@ def test(q, bus, conn, stream):
     act_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
     buddy_info_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
 
-    q.expect_many(EventPattern('dbus-signal', signal='BuddyGadgetDiscovered'),
-            EventPattern('dbus-signal', signal='ActivityGadgetDiscovered'))
+    q.expect('dbus-signal', signal='GadgetDiscovered')
 
     # join a room
     room_handle, room_path = join_channel('myroom@conference.localhost',

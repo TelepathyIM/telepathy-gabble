@@ -46,8 +46,7 @@ def test(q, bus, conn, stream):
 
     announce_gadget(q, stream, disco_event.stanza)
 
-    q.expect_many(EventPattern('dbus-signal', signal='BuddyGadgetDiscovered'),
-            EventPattern('dbus-signal', signal='ActivityGadgetDiscovered'))
+    q.expect('dbus-signal', signal='GadgetDiscovered')
 
     props = conn.GetAll(
             'org.laptop.Telepathy.Gadget',

@@ -160,15 +160,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <signal name="BuddyGadgetDiscovered">
+    <signal name="GadgetDiscovered">
       <tp:docstring>
-        Signal emitted when CM discovers the Gadget component managing buddies.
-      </tp:docstring>
-    </signal>
-
-    <signal name="ActivityGadgetDiscovered">
-      <tp:docstring>
-        Signal emitted when CM discovers the Gadget component managing activities.
+        Signal emitted when CM discovers the Gadget component.
       </tp:docstring>
     </signal>
 

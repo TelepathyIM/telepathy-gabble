@@ -3641,6 +3641,8 @@ disco_item_found_cb (GabbleDisco *disco,
                      GabbleDiscoItem *item,
                      GabbleConnection *conn)
 {
+  gboolean gadget_discovered = FALSE;
+
   if (tp_strdiff (item->category, "collaboration") ||
       tp_strdiff (item->type, "gadget"))
     return;
@@ -3650,14 +3652,19 @@ disco_item_found_cb (GabbleDisco *disco,
   if (g_hash_table_lookup_extended (item->features, NS_OLPC_BUDDY, NULL, NULL))
     {
       DEBUG ("buddy gadget discovered");
-      gabble_svc_olpc_gadget_emit_buddy_gadget_discovered (conn);
+      gadget_discovered = TRUE;
     }
 
   if (g_hash_table_lookup_extended (item->features, NS_OLPC_ACTIVITY, NULL,
         NULL))
     {
       DEBUG ("activity gadget discovered");
-      gabble_svc_olpc_gadget_emit_activity_gadget_discovered (conn);
+      gadget_discovered = TRUE;
+    }
+
+  if (gadget_discovered)
+    {
+      gabble_svc_olpc_gadget_emit_gadget_discovered (conn);
     }
 }
 

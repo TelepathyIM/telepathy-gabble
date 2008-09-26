@@ -44,6 +44,19 @@ def close_view(q, view_iface, id):
     assert len(close) == 1
     assert close[0]['id'] == id
 
+def create_gadget_message(to):
+    message = domish.Element((None, 'message'))
+    message['from'] = 'gadget.localhost'
+    message['to'] = to
+    message['type'] = 'notice'
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+
+    return message
+
 def test(q, bus, conn, stream):
     conn.Connect()
 
@@ -214,10 +227,8 @@ def test(q, bus, conn, stream):
     assert sorted(act) == [('activity3', handles['room3'])]
 
     # add activity 4 to view 0
-    message = domish.Element((None, 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'alice@localhost'
-    message['type'] = 'notice'
+    message = create_gadget_message('alice@localhost')
+
     added = message.addElement((NS_OLPC_ACTIVITY, 'added'))
     added['id'] = '0'
     activity = added.addElement((None, 'activity'))
@@ -233,11 +244,7 @@ def test(q, bus, conn, stream):
         properties.addChild(node)
     buddy = activity.addElement((None, 'buddy'))
     buddy['jid'] = 'jean@localhost'
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
+
     stream.send(message)
 
     ## Current views ##
@@ -282,10 +289,7 @@ def test(q, bus, conn, stream):
     assert props == {'color': '#DDEEDD,#EEDDEE'}
 
     # Gadget informs us about an activity properties change
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'alice@localhost'
-    message['type'] = 'notice'
+    message = create_gadget_message('alice@localhost')
 
     change = message.addElement((NS_OLPC_ACTIVITY, 'change'))
     change['activity'] = 'activity1'
@@ -296,11 +300,6 @@ def test(q, bus, conn, stream):
             'color': ('str', '#AABBAA,#BBAABB')}):
         properties.addChild(node)
 
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
     stream.send(message)
 
     q.expect('dbus-signal', signal='ActivityPropertiesChanged',
@@ -311,10 +310,7 @@ def test(q, bus, conn, stream):
     assert props == {'tags': 'game', 'color': '#AABBAA,#BBAABB'}
 
     # Marcel joined activity 1
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'alice@localhost'
-    message['type'] = 'notice'
+    message = create_gadget_message('alice@localhost')
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
@@ -325,11 +321,6 @@ def test(q, bus, conn, stream):
     for node in properties_to_xml({'color': ('str', '#CCCCCC,#DDDDDD')}):
         properties.addChild(node)
 
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
     stream.send(message)
 
     ## Current views ##
@@ -356,10 +347,7 @@ def test(q, bus, conn, stream):
             'marcel@localhost'])
 
     # Marcel left activity 1
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'alice@localhost'
-    message['type'] = 'notice'
+    message = create_gadget_message('alice@localhost')
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
@@ -367,11 +355,6 @@ def test(q, bus, conn, stream):
     left = activity.addElement((None, 'left'))
     left['jid'] = 'marcel@localhost'
 
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
     stream.send(message)
 
     ## Current views ##
@@ -392,10 +375,7 @@ def test(q, bus, conn, stream):
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
     # Jean left activity 1
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'alice@localhost'
-    message['type'] = 'notice'
+    message = create_gadget_message('alice@localhost')
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
@@ -403,11 +383,6 @@ def test(q, bus, conn, stream):
     left = activity.addElement((None, 'left'))
     left['jid'] = 'jean@localhost'
 
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
     stream.send(message)
 
     ## Current views ##
@@ -425,20 +400,14 @@ def test(q, bus, conn, stream):
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
     # remove activity 1 from view 0
-    message = domish.Element((None, 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'alice@localhost'
-    message['type'] = 'notice'
+    message = create_gadget_message('alice@localhost')
+
     removed = message.addElement((NS_OLPC_ACTIVITY, 'removed'))
     removed['id'] = '0'
     activity = removed.addElement((None, 'activity'))
     activity['id'] = 'activity1'
     activity['room'] = 'room1@conference.localhost'
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
+
     stream.send(message)
 
     ## Current views ##

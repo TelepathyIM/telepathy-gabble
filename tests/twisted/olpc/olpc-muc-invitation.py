@@ -30,6 +30,7 @@ def test(q, bus, conn, stream):
     # initially, Bob has no activities
     assert event.value == ([],)
 
+    # Bob sends an activity properties message
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'bob@localhost'
     message['to'] = 'test@localhost'
@@ -48,6 +49,16 @@ def test(q, bus, conn, stream):
 
     stream.send(message)
 
+    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
+    chat_handle, props = event.args
+    assert props == {'color': '#ffff00,#00ffff', 'private' : True}
+
+    event = q.expect('dbus-signal', signal='ActivitiesChanged')
+    bob_handle, acts = event.args
+    assert len(acts) == 1
+    assert acts[0] == ('foo_id', chat_handle)
+
+    # Bobs invites us to the activity
     message = domish.Element((None, 'message'))
     message['from'] = 'chat@conf.localhost'
     message['to'] = 'test@localhost'
@@ -138,6 +149,10 @@ def test(q, bus, conn, stream):
     call_async(q, act_prop_iface, 'SetProperties',
         room_handle, {'color': '#ffff00,#00ffff', 'private': True})
 
+    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
+    chat_handle, props = event.args
+    assert props == {'color': '#ffff00,#00ffff', 'private' : True}
+
     q.expect('dbus-return', method='SetProperties')
     # Test sending an invitation
     alice_handle = conn.RequestHandles(1,
@@ -212,6 +227,10 @@ def test(q, bus, conn, stream):
             assert False, 'Unexpected property %s' % p['name']
     assert 'color' in seen, seen
     assert 'private' in seen, seen
+
+    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
+    chat_handle, props = event.args
+    assert props == {'color': '#f00baa,#f00baa', 'private' : True}
 
     q.expect('dbus-return', method='SetProperties')
 

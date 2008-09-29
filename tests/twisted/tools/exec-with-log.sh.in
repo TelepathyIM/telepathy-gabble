@@ -19,4 +19,5 @@ elif test -n "$GABBLE_TEST_REFDBG"; then
         GABBLE_WRAPPER="refdbg"
 fi
 
-exec $GABBLE_WRAPPER ../telepathy-gabble-debug
+exec ../../../libtool --mode=execute $GABBLE_WRAPPER ../telepathy-gabble-debug
+

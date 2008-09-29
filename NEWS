@@ -1,10 +1,18 @@
-telepathy-gabble 0.7.9 (UNRELEASED)
+telepathy-gabble 0.7.9 (2008-09-29)
 ===================================
+
+The "danger! danger!" release.
+
+Our unstable-branch releases are usually pretty stable in practice, but we've
+just merged 10 months' OLPC work and some fairly fundamental internal changes,
+so you might want to restrict this one to experimental distributions like
+Debian experimental and Fedora rawhide for now. We'll do a 0.7.10 release
+once it's had some more testing.
 
 Requirements:
 
 * telepathy-glib >= 0.7.16
-* GLib 2.16
+* GLib >= 2.16
 
 Enhancements:
 

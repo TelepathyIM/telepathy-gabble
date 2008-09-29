@@ -18,6 +18,7 @@ def test(q, bus, conn, stream):
     handles['bob'] = conn.RequestHandles(1, ['bob@localhost'])[0]
 
     buddy_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
+    act_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
     call_async(q, buddy_iface, 'GetActivities', handles['bob'])
 
     event = q.expect('stream-iq', iq_type='get', to='bob@localhost')
@@ -60,6 +61,9 @@ def test(q, bus, conn, stream):
     assert len(acts) == 1
     assert acts[0] == ('foo_id', handles['chat'])
 
+    props = act_prop_iface.GetProperties(handles['chat'])
+    assert props == {'color': '#ffff00,#00ffff', 'private' : True}
+
     # Bobs invites us to the activity
     message = domish.Element((None, 'message'))
     message['from'] = 'chat@conf.localhost'
@@ -98,7 +102,6 @@ def test(q, bus, conn, stream):
     assert handles['chat_self'] == local_pending[0]
 
     # by now, we should have picked up the extra activity properties
-    buddy_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     call_async(q, buddy_iface, 'GetActivities', handles['bob'])
 
     event = q.expect('stream-iq', iq_type='get', to='bob@localhost')
@@ -145,7 +148,6 @@ def test(q, bus, conn, stream):
     stream.send(event.stanza)
 
     q.expect('dbus-return', method='SetActivities')
-    act_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
     call_async(q, act_prop_iface, 'SetProperties',
         handles['chat'], {'color': '#ffff00,#00ffff', 'private': True})
 

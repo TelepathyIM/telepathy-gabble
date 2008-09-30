@@ -335,8 +335,6 @@ def exec_test_deferred (fun, params, protocol=None, timeout=None):
             # exited and refdbg can generates its report
             time.sleep(5.5)
 
-        # second call destroys object
-        conn.Disconnect()
     except dbus.DBusException, e:
         pass
 

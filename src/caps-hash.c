@@ -358,7 +358,7 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
 {
   GabblePresence *presence = self->self_presence;
   GSList *features_list = capabilities_get_features (presence->caps,
-      presence->per_channel_factory_caps);
+      presence->per_channel_manager_caps);
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = g_ptr_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();

@@ -186,7 +186,7 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
                                     "Gabble connection object that owns this "
-                                    "IM channel factory object.",
+                                    "IM channel manager object.",
                                     GABBLE_TYPE_CONNECTION,
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_READWRITE |

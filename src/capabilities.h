@@ -55,7 +55,7 @@ struct _Feature
  * GabblePresenceCapabilities.
  */
 GSList *capabilities_get_features (GabblePresenceCapabilities caps,
-    GHashTable *per_channel_factory_caps);
+    GHashTable *per_channel_manager_caps);
 
 /*
  * capabilities_fill_cache

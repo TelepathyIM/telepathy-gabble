@@ -57,7 +57,7 @@ static const Feature self_advertised_features[] =
 
 GSList *
 capabilities_get_features (GabblePresenceCapabilities caps,
-                           GHashTable *per_channel_factory_caps)
+                           GHashTable *per_channel_manager_caps)
 {
   GHashTableIter channel_manager_iter;
   GabbleCapsChannelManager *manager;
@@ -69,9 +69,9 @@ capabilities_get_features (GabblePresenceCapabilities caps,
     if ((i->caps & caps) == i->caps)
       features = g_slist_append (features, (gpointer) i);
 
-  if (per_channel_factory_caps != NULL)
+  if (per_channel_manager_caps != NULL)
     {
-      g_hash_table_iter_init (&channel_manager_iter, per_channel_factory_caps);
+      g_hash_table_iter_init (&channel_manager_iter, per_channel_manager_caps);
       while (g_hash_table_iter_next (&channel_manager_iter,
                  (gpointer *) &manager, &cap))
         {

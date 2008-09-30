@@ -264,7 +264,7 @@ gabble_private_tubes_factory_class_init (
   param_spec = g_param_spec_object (
       "connection",
       "GabbleConnection object",
-      "Gabble connection object that owns this Tubes channel factory object.",
+      "Gabble connection object that owns this Tubes channel manager object.",
       GABBLE_TYPE_CONNECTION,
       G_PARAM_CONSTRUCT_ONLY |
       G_PARAM_READWRITE |
@@ -480,10 +480,10 @@ gabble_private_tubes_factory_get_contact_caps (
   if (presence == NULL)
     return;
 
-  if (presence->per_channel_factory_caps == NULL)
+  if (presence->per_channel_manager_caps == NULL)
     return;
 
-  caps = g_hash_table_lookup (presence->per_channel_factory_caps, manager);
+  caps = g_hash_table_lookup (presence->per_channel_manager_caps, manager);
   if (caps == NULL)
     return;
 
@@ -748,10 +748,10 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
 
   g_assert (presence != NULL);
 
-  if (presence->per_channel_factory_caps == NULL)
-    presence->per_channel_factory_caps = g_hash_table_new (NULL, NULL);
+  if (presence->per_channel_manager_caps == NULL)
+    presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
 
-  caps = g_hash_table_lookup (presence->per_channel_factory_caps, manager);
+  caps = g_hash_table_lookup (presence->per_channel_manager_caps, manager);
   if (caps == NULL)
     {
       caps = g_new0 (TubesCapabilities, 1);
@@ -759,7 +759,7 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
           g_free, g_free);
       caps->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
           g_free, g_free);
-      g_hash_table_insert (presence->per_channel_factory_caps, manager, caps);
+      g_hash_table_insert (presence->per_channel_manager_caps, manager, caps);
     }
 
   if (!tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))

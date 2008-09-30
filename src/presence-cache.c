@@ -218,7 +218,7 @@ struct _CapabilityInfo
    * At the moment, only GabblePrivateTubesFactory use this mechanism to store
    * the list of supported tube types (example: stream tube for daap).
    */
-  GHashTable *per_channel_factory_caps;
+  GHashTable *per_channel_manager_caps;
 
   TpIntSet *guys;
   guint trust;
@@ -251,7 +251,7 @@ capability_info_free (CapabilityInfo *info)
 static guint
 capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
         TpHandle handle, GabblePresenceCapabilities caps,
-        GHashTable *per_channel_factory_caps, guint trust_inc)
+        GHashTable *per_channel_manager_caps, guint trust_inc)
 {
   CapabilityInfo *info = capability_info_get (cache, node);
 
@@ -264,7 +264,7 @@ capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
        */
       tp_intset_clear (info->guys);
       info->caps = caps;
-      info->per_channel_factory_caps = per_channel_factory_caps;
+      info->per_channel_manager_caps = per_channel_manager_caps;
       info->trust = 0;
       info->caps_set = TRUE;
     }
@@ -732,14 +732,14 @@ free_caps_helper (gpointer key, gpointer value, gpointer user_data)
 
 void
 gabble_presence_cache_free_cache_entry (
-    GHashTable *per_channel_factory_caps)
+    GHashTable *per_channel_manager_caps)
 {
-  if (per_channel_factory_caps == NULL)
+  if (per_channel_manager_caps == NULL)
     return;
 
-  g_hash_table_foreach (per_channel_factory_caps, free_caps_helper,
+  g_hash_table_foreach (per_channel_manager_caps, free_caps_helper,
       NULL);
-  g_hash_table_destroy (per_channel_factory_caps);
+  g_hash_table_destroy (per_channel_manager_caps);
 }
 
 static void
@@ -806,7 +806,7 @@ _caps_disco_cb (GabbleDisco *disco,
   TpHandleRepoIface *contact_repo;
   gchar *full_jid = NULL;
   GabblePresenceCapabilities caps = 0;
-  GHashTable *per_channel_factory_caps;
+  GHashTable *per_channel_manager_caps;
   guint trust, trust_inc;
   TpHandle handle = 0;
   gboolean bad_hash = FALSE;
@@ -871,7 +871,7 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  per_channel_factory_caps = g_hash_table_new (NULL, NULL);
+  per_channel_manager_caps = g_hash_table_new (NULL, NULL);
 
   /* parsing for Connection.Interface.ContactCapabilities.DRAFT */
   tp_base_connection_channel_manager_iter_init (&iter, base_conn);
@@ -885,7 +885,7 @@ _caps_disco_cb (GabbleDisco *disco,
       factory_caps = gabble_caps_channel_manager_parse_capabilities
           (GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result->children);
       if (factory_caps != NULL)
-        g_hash_table_insert (per_channel_factory_caps,
+        g_hash_table_insert (per_channel_manager_caps,
             GABBLE_CAPS_CHANNEL_MANAGER (manager), factory_caps);
     }
 
@@ -934,8 +934,8 @@ _caps_disco_cb (GabbleDisco *disco,
   if (handle == 0)
     {
       DEBUG ("Ignoring presence from invalid JID %s", jid);
-      gabble_presence_cache_free_cache_entry (per_channel_factory_caps);
-      per_channel_factory_caps = NULL;
+      gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
+      per_channel_manager_caps = NULL;
       goto OUT;
     }
 
@@ -954,8 +954,8 @@ _caps_disco_cb (GabbleDisco *disco,
   if (NULL == waiter_self)
     {
       DEBUG ("Ignoring non requested disco reply");
-      gabble_presence_cache_free_cache_entry (per_channel_factory_caps);
-      per_channel_factory_caps = NULL;
+      gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
+      per_channel_manager_caps = NULL;
       goto OUT;
     }
 
@@ -974,7 +974,7 @@ _caps_disco_cb (GabbleDisco *disco,
       if (g_str_equal (waiter_self->ver, computed_hash))
         {
           trust = capability_info_recvd (cache, node, handle, caps,
-              per_channel_factory_caps, trust_inc);
+              per_channel_manager_caps, trust_inc);
         }
       else
         {
@@ -983,8 +983,8 @@ _caps_disco_cb (GabbleDisco *disco,
               "our hash '%s'.", waiter_self->ver, computed_hash);
           trust = 0;
           bad_hash = TRUE;
-          gabble_presence_cache_free_cache_entry (per_channel_factory_caps);
-          per_channel_factory_caps = NULL;
+          gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
+          per_channel_manager_caps = NULL;
         }
 
       g_free (computed_hash);
@@ -998,8 +998,8 @@ _caps_disco_cb (GabbleDisco *disco,
       /* Do not allow tubes caps if the contact does not observe XEP-0115
        * version 1.5: we don't need to bother being compatible with both version
        * 1.3 and tubes caps */
-      gabble_presence_cache_free_cache_entry (per_channel_factory_caps);
-      per_channel_factory_caps = NULL;
+      gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
+      per_channel_manager_caps = NULL;
     }
 
   for (i = waiters; NULL != i;)
@@ -1025,18 +1025,18 @@ _caps_disco_cb (GabbleDisco *disco,
                 GabblePresenceCapabilities save_caps = presence->caps;
                 GHashTable *save_enhanced_caps;
                 gabble_presence_cache_copy_cache_entry (&save_enhanced_caps,
-                    presence->per_channel_factory_caps);
+                    presence->per_channel_manager_caps);
 
                 DEBUG ("setting caps for %d (thanks to %d %s) to "
                     "%d (save_caps %d)",
                     waiter->handle, handle, jid, caps, save_caps);
                 gabble_presence_set_capabilities (presence, waiter->resource,
-                    caps, per_channel_factory_caps, waiter->serial);
+                    caps, per_channel_manager_caps, waiter->serial);
                 DEBUG ("caps for %d (thanks to %d %s) now %d", waiter->handle,
                     handle, jid, presence->caps);
                 g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
                   waiter->handle, save_caps, presence->caps,
-                  save_enhanced_caps, presence->per_channel_factory_caps);
+                  save_enhanced_caps, presence->per_channel_manager_caps);
                 gabble_presence_cache_free_cache_entry (save_enhanced_caps);
               }
             }
@@ -1129,7 +1129,7 @@ _process_caps_uri (GabblePresenceCache *cache,
       if (presence)
         {
           gabble_presence_set_capabilities (presence, resource,
-              info->caps, info->per_channel_factory_caps, serial);
+              info->caps, info->per_channel_manager_caps, serial);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
         }
       else
@@ -1217,7 +1217,7 @@ _process_caps (GabblePresenceCache *cache,
     {
       old_caps = presence->caps;
       gabble_presence_cache_copy_cache_entry (&old_enhanced_caps,
-          presence->per_channel_factory_caps);
+          presence->per_channel_manager_caps);
     }
 
   for (i = uris; NULL != i; i = i->next)
@@ -1235,7 +1235,7 @@ _process_caps (GabblePresenceCache *cache,
 
       g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
           handle, old_caps, presence->caps, old_enhanced_caps,
-          presence->per_channel_factory_caps);
+          presence->per_channel_manager_caps);
       gabble_presence_cache_free_cache_entry (old_enhanced_caps);
     }
   else
@@ -1521,16 +1521,16 @@ gabble_presence_cache_do_update (
     presence = _cache_insert (cache, handle);
 
   caps_before = presence->caps;
-  enhanced_caps_before = presence->per_channel_factory_caps;
+  enhanced_caps_before = presence->per_channel_manager_caps;
   gabble_presence_cache_copy_cache_entry (&enhanced_caps_before,
-      presence->per_channel_factory_caps);
+      presence->per_channel_manager_caps);
 
   ret = gabble_presence_update (presence, resource, presence_id,
       status_message, priority);
 
   g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0, handle,
       caps_before, presence->caps, enhanced_caps_before,
-      presence->per_channel_factory_caps);
+      presence->per_channel_manager_caps);
   gabble_presence_cache_free_cache_entry (enhanced_caps_before);
 
   return ret;

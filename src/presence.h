@@ -56,7 +56,7 @@ typedef struct _GabblePresencePrivate GabblePresencePrivate;
 struct _GabblePresence {
     GObject parent;
     GabblePresenceCapabilities caps;
-    GHashTable *per_channel_factory_caps;
+    GHashTable *per_channel_manager_caps;
     GabblePresenceId status;
     gchar *status_message;
     gchar *nickname;
@@ -81,7 +81,7 @@ gboolean gabble_presence_update (GabblePresence *presence,
 
 void gabble_presence_set_capabilities (GabblePresence *presence,
     const gchar *resource, GabblePresenceCapabilities caps,
-    GHashTable *per_channel_factory_caps, guint serial);
+    GHashTable *per_channel_manager_caps, guint serial);
 
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
     GabblePresenceCapabilities caps);

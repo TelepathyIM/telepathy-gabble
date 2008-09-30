@@ -1537,7 +1537,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   lm_message_node_set_attribute (identity, "type", "pc");
 
   features = capabilities_get_features (self->self_presence->caps,
-      self->self_presence->per_channel_factory_caps);
+      self->self_presence->per_channel_manager_caps);
 
   DEBUG ("caps now %u", self->self_presence->caps);
 
@@ -2205,20 +2205,20 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
   tp_base_connection_channel_manager_iter_init (&iter, base_conn);
   while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
     {
-      gpointer per_channel_factory_caps_old = NULL;
-      gpointer per_channel_factory_caps_new = NULL;
+      gpointer per_channel_manager_caps_old = NULL;
+      gpointer per_channel_manager_caps_new = NULL;
 
       /* all channel managers must implement the capability interface */
       g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
       if (old_caps != NULL)
-        per_channel_factory_caps_old = g_hash_table_lookup (old_caps, manager);
+        per_channel_manager_caps_old = g_hash_table_lookup (old_caps, manager);
       if (new_caps != NULL)
-        per_channel_factory_caps_new = g_hash_table_lookup (new_caps, manager);
+        per_channel_manager_caps_new = g_hash_table_lookup (new_caps, manager);
 
       if (gabble_caps_channel_manager_capabilities_diff (
             GABBLE_CAPS_CHANNEL_MANAGER (manager), handle,
-            per_channel_factory_caps_old, per_channel_factory_caps_new))
+            per_channel_manager_caps_old, per_channel_manager_caps_new))
         {
           diff = TRUE;
           break;
@@ -2403,8 +2403,8 @@ gabble_connection_set_self_capabilities (
 
   /* reset the caps, and fill with the given parameter but keep a backup for
    * diffing: we don't want to emit a signal if nothing has changed */
-  save_caps = pres->per_channel_factory_caps;
-  pres->per_channel_factory_caps = NULL;
+  save_caps = pres->per_channel_manager_caps;
+  pres->per_channel_manager_caps = NULL;
 
   for (i = 0; i < caps->len; i++)
     {
@@ -2435,7 +2435,7 @@ gabble_connection_set_self_capabilities (
 
   _emit_contact_capabilities_changed (self, base->self_handle,
                                       save_caps,
-                                      pres->per_channel_factory_caps);
+                                      pres->per_channel_manager_caps);
   gabble_presence_cache_free_cache_entry (save_caps);
 
 

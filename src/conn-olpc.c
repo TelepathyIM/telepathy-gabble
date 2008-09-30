@@ -2499,6 +2499,10 @@ revoke_invitations (GabbleConnection *conn,
   TpHandleSet *invitees = g_object_get_qdata ((GObject *) chan,
       invitees_quark ());
 
+  if (activity->id == NULL)
+    /* this is not a real OLPC activity */
+    return TRUE;
+
   if (invitees != NULL && tp_handle_set_size (invitees) > 0)
     {
       LmMessage *msg = lm_message_new (NULL, LM_MESSAGE_TYPE_MESSAGE);

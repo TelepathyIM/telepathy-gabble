@@ -2173,6 +2173,22 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
     }
 }
 
+static void
+gabble_free_enhanced_contact_capabilities (GPtrArray *caps)
+{
+  guint i;
+
+  for (i = 0; i < caps->len; i++)
+    {
+      GValue monster = {0, };
+
+      g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
+      g_value_take_boxed (&monster, g_ptr_array_index (caps, i));
+      g_value_unset (&monster);
+    }
+
+  g_ptr_array_free (caps, TRUE);
+}
 
 static void
 _emit_contact_capabilities_changed (GabbleConnection *conn,
@@ -2185,7 +2201,6 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
   TpChannelManager *manager;
   GPtrArray *ret;
   gboolean diff = FALSE;
-  guint i;
 
   tp_base_connection_channel_manager_iter_init (&iter, base_conn);
   while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
@@ -2220,16 +2235,7 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
   gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
       conn, ret);
 
-  for (i = 0; i < ret->len; i++)
-    {
-      GValue monster = {0, };
-
-      g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
-      g_value_take_boxed (&monster, g_ptr_array_index (ret, i));
-      g_value_unset (&monster);
-    }
-
-  g_ptr_array_free (ret, TRUE);
+  gabble_free_enhanced_contact_capabilities (ret);
 }
 
 static void
@@ -2683,16 +2689,7 @@ gabble_connection_get_contact_capabilities (
   gabble_svc_connection_interface_contact_capabilities_return_from_get_contact_capabilities
       (context, ret);
 
-  for (i = 0; i < ret->len; i++)
-    {
-      GValue monster = {0, };
-
-      g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
-      g_value_take_boxed (&monster, g_ptr_array_index (ret, i));
-      g_value_unset (&monster);
-    }
-
-  g_ptr_array_free (ret, TRUE);
+  gabble_free_enhanced_contact_capabilities (ret);
 }
 
 

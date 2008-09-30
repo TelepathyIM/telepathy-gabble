@@ -7,6 +7,7 @@ import base64
 import os
 import sha
 import sys
+import time
 
 import servicetest
 import twisted
@@ -328,8 +329,12 @@ def exec_test_deferred (fun, params, protocol=None, timeout=None):
             d.addBoth((lambda *args: os._exit(1)))
 
         conn.Disconnect()
-        # second call destroys object
-        conn.Disconnect()
+
+        if 'GABBLE_TEST_REFDBG' in os.environ:
+            # we have to wait that Gabble timeouts so the process is properly
+            # exited and refdbg can generates its report
+            time.sleep(5.5)
+
     except dbus.DBusException, e:
         pass
 

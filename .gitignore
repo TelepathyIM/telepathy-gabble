@@ -63,4 +63,5 @@ tests/twisted/telepathy-gabble-debug
 tests/twisted/tools/*.service
 tests/twisted/tools/exec-with-log.sh
 tests/twisted/tools/gabble-testing.log
+tests/twisted/tools/refdbg.log
 tests/twisted/tools/tmp-session-bus.conf

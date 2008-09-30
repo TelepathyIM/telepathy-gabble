@@ -165,6 +165,22 @@ def test(q, bus, conn, stream):
 
     # FIXME: actually list the rooms!
 
+
+    call_async(q, requestotron, 'EnsureChannel',
+            { tp_name_prefix + '.Channel.ChannelType':
+                tp_name_prefix + '.Channel.Type.RoomList',
+              tp_name_prefix + '.Channel.TargetHandleType': 0,
+              tp_name_prefix + '.Channel.Type.RoomList.Server':
+                'conference.example.net',
+              })
+
+    ret = q.expect('dbus-return', method='EnsureChannel')
+    yours, ensured_path, ensured_props = ret.value
+
+    assert not yours
+    assert ensured_path == path2, (ensured_path, path2)
+
+
     conn.Disconnect()
 
     q.expect_many(

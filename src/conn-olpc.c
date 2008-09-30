@@ -576,22 +576,6 @@ gabble_connection_connected_olpc (GabbleConnection *conn)
     }
 }
 
-#ifndef HAS_G_HASH_TABLE_REMOVE_ALL
-static gboolean
-_hash_table_remove_yes (gpointer key, gpointer value, gpointer user_data)
-{
-  return TRUE;
-}
-
-static void
-our_g_hash_table_remove_all (GHashTable *table)
-{
-  g_hash_table_foreach_remove (table, _hash_table_remove_yes, NULL);
-}
-
-#define g_hash_table_remove_all our_g_hash_table_remove_all
-#endif
-
 static void
 olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
                                 GHashTable *properties,

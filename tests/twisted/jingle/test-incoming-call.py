@@ -67,11 +67,12 @@ def test(q, bus, conn, stream):
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
 
     # Exercise channel properties
-    future_props = media_chan.GetAll(
+    channel_props = media_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['TargetHandle'] == 0
-    assert future_props['TargetHandleType'] == 0
+    assert channel_props['TargetHandle'] == remote_handle
+    assert channel_props['TargetHandleType'] == 1
+    assert channel_props['TargetID'] == 'foo@bar.com'
 
     # Exercise FUTURE properties
     future_props = media_chan.GetAll(

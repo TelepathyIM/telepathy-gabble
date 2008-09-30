@@ -435,6 +435,16 @@ gabble_roomlist_manager_request_channel (TpChannelManager *manager,
 }
 
 
+static gboolean
+gabble_roomlist_manager_ensure_channel (TpChannelManager *manager,
+                                        gpointer request_token,
+                                        GHashTable *request_properties)
+{
+  return gabble_roomlist_manager_handle_request (manager, request_token,
+      request_properties, FALSE);
+}
+
+
 static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
@@ -445,4 +455,5 @@ channel_manager_iface_init (gpointer g_iface,
   iface->foreach_channel_class = gabble_roomlist_manager_foreach_channel_class;
   iface->request_channel = gabble_roomlist_manager_request_channel;
   iface->create_channel = gabble_roomlist_manager_create_channel;
+  iface->ensure_channel = gabble_roomlist_manager_ensure_channel;
 }

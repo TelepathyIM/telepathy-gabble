@@ -9,7 +9,7 @@ AC_PREREQ([2.59])
 
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [7])
-m4_define([gabble_micro_version], [8])
+m4_define([gabble_micro_version], [9])
 m4_define([gabble_nano_version], [1])
 
 # Some magic
@@ -112,16 +112,10 @@ dnl Endianness (for the sha1 implementation)
 AC_C_BIGENDIAN
 
 dnl Check for Glib 
-PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.10, gobject-2.0 >= 2.10])
+PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16, gobject-2.0 >= 2.16])
 
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
-
-dnl May be removed if we depend on glib-2.0 >= 2.12
-AC_CHECK_LIB(glib-2.0, g_hash_table_remove_all,
-  [ AC_DEFINE(HAS_G_HASH_TABLE_REMOVE_ALL, [],
-    [Whether g_hash_table_remove_all() function is provided by GLib]) ],
-  [], [$GLIB_LIBS])
 
 GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
@@ -132,7 +126,7 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 0.95, dbus-glib-1 >= 0.73])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.7.15])
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.7.16])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)

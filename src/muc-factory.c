@@ -1421,6 +1421,18 @@ gabble_muc_factory_request_channel (TpChannelManager *manager,
 }
 
 
+static gboolean
+gabble_muc_factory_ensure_channel (TpChannelManager *manager,
+                                    gpointer request_token,
+                                    GHashTable *request_properties)
+{
+  GabbleMucFactory *self = GABBLE_MUC_FACTORY (manager);
+
+  return gabble_muc_factory_request (self, request_token, request_properties,
+      FALSE);
+}
+
+
 static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
@@ -1431,4 +1443,5 @@ channel_manager_iface_init (gpointer g_iface,
   iface->foreach_channel_class = gabble_muc_factory_foreach_channel_class;
   iface->request_channel = gabble_muc_factory_request_channel;
   iface->create_channel = gabble_muc_factory_create_channel;
+  iface->ensure_channel = gabble_muc_factory_ensure_channel;
 }

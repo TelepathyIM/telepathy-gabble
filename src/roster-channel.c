@@ -471,18 +471,20 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   GabbleRosterChannelPrivate *priv;
   gboolean ret = FALSE;
 #ifdef ENABLE_DEBUG
-  TpHandleRepoIface *handle_repo, *contact_repo;
+  TpHandleRepoIface *handle_repo;
 #endif
+  TpHandleRepoIface *contact_repo;
   const gchar *contact_id;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
+
 #ifdef ENABLE_DEBUG
   handle_repo = tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
       priv->handle_type);
-  contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 #endif
 
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   contact_id = tp_handle_inspect (contact_repo, handle);
 
   DEBUG ("called on %s with handle %u (%s) \"%s\"",
@@ -545,19 +547,20 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
                                          GError **error)
 {
   GabbleRosterChannelPrivate *priv;
-#ifdef ENABLE_DEBUG
   TpBaseConnection *conn;
-  TpHandleRepoIface *handle_repo, *contact_repo;
+  TpHandleRepoIface *contact_repo;
+#ifdef ENABLE_DEBUG
+  TpHandleRepoIface *handle_repo;
 #endif
   gboolean ret = FALSE;
   const gchar *contact_id;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
-#ifdef ENABLE_DEBUG
   conn = (TpBaseConnection *) priv->conn;
+#ifdef ENABLE_DEBUG
   handle_repo = tp_base_connection_get_handles (conn, priv->handle_type);
-  contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
 #endif
+  contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
 
   contact_id = tp_handle_inspect (contact_repo, handle);
 

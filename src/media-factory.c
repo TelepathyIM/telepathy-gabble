@@ -34,6 +34,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
+#include "caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "media-channel.h"
@@ -48,7 +49,8 @@ static LmHandlerResult media_factory_jingle_cb (LmMessageHandler *,
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaFactory, gabble_media_factory,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init));
+      channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
 /* properties */
 enum

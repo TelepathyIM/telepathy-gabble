@@ -33,6 +33,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
+#include "caps-channel-manager.h"
 #include "conn-aliasing.h"
 #include "connection.h"
 #include "debug.h"
@@ -133,7 +134,8 @@ static void gabble_roster_close_all (GabbleRoster *roster);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init));
+      channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
 #define GABBLE_ROSTER_GET_PRIVATE(o) ((o)->priv)
 

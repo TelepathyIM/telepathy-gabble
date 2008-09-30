@@ -34,6 +34,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
+#include "caps-channel-manager.h"
 #include "connection.h"
 #include "conn-olpc.h"
 #include "debug.h"
@@ -49,7 +50,8 @@ static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucFactory, gabble_muc_factory, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init));
+      channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
 /* properties */
 enum

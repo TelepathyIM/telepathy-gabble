@@ -2165,9 +2165,8 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
   tp_base_connection_channel_manager_iter_init (&iter, base_conn);
   while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
     {
-      /* some channel managers does not implement the capability interface */
-      if (!GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
-        continue;
+      /* all channel managers must implement the capability interface */
+      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
       gabble_caps_channel_manager_get_contact_capabilities (
           GABBLE_CAPS_CHANNEL_MANAGER (manager), self, handle, arr);
@@ -2194,9 +2193,8 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
       gpointer per_channel_factory_caps_old = NULL;
       gpointer per_channel_factory_caps_new = NULL;
 
-      /* some channel managers does not implement the capability interface */
-      if (!GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
-        continue;
+      /* all channel managers must implement the capability interface */
+      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
       if (old_caps != NULL)
         per_channel_factory_caps_old = g_hash_table_lookup (old_caps, manager);
@@ -2411,10 +2409,8 @@ gabble_connection_set_self_capabilities (
       tp_base_connection_channel_manager_iter_init (&iter, base);
       while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
         {
-          /* some channel managers does not implement the capability interface
-           */
-          if (!GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
-            continue;
+          /* all channel managers must implement the capability interface */
+          g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
           gabble_caps_channel_manager_add_capability (
               GABBLE_CAPS_CHANNEL_MANAGER (manager), self,

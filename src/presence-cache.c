@@ -879,9 +879,8 @@ _caps_disco_cb (GabbleDisco *disco,
     {
       gpointer *factory_caps;
 
-      /* some channel managers does not implement the capability interface */
-      if (!GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
-        continue;
+      /* all channel managers must implement the capability interface */
+      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
       factory_caps = gabble_caps_channel_manager_parse_capabilities
           (GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result->children);

@@ -136,5 +136,11 @@ def test(q, bus, conn, stream):
     members = muc_group.GetMembers()
     assert conn.InspectHandles(1, members) == ['myroom@conference.localhost/test']
 
+    conn.Disconnect()
+
+    # PEP activity update
+    event = q.expect('stream-iq')
+    acknowledge_iq(stream, event.stanza)
+
 if __name__ == '__main__':
     exec_test(test)

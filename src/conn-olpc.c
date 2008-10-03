@@ -36,7 +36,6 @@
 #include "pubsub.h"
 #include "disco.h"
 #include "util.h"
-#include "olpc-view.h"
 #include "olpc-activity.h"
 
 /* FIXME: At some point we should audit this code to check which assumptions
@@ -421,6 +420,7 @@ get_properties_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+#if 0
 static gboolean
 find_view_having_properties_for_buddy (gpointer id,
                                        gpointer value,
@@ -445,6 +445,7 @@ find_buddy_properties_from_views (GabbleConnection *conn,
 
   return gabble_olpc_view_get_buddy_properties (view, buddy);
 }
+#endif
 
 static void
 olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
@@ -454,7 +455,9 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   const gchar *jid;
+#if 0
   GHashTable *properties;
+#endif
 
   DEBUG ("called");
 
@@ -465,6 +468,7 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   /* First check if we can find properties in a buddy view */
   /* FIXME: Maybe we should first try the PEP node as we do for buddy
    * activities ? */
+#if 0
   properties = find_buddy_properties_from_views (conn, contact);
   if (properties != NULL)
     {
@@ -472,6 +476,7 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
           properties);
       return;
     }
+#endif
 
   /* Then try to query the PEP node */
   jid = inspect_contact (base, context, contact);
@@ -914,6 +919,7 @@ check_activity_properties (GabbleConnection *conn,
     }
 }
 
+#if 0
 struct find_activities_of_buddy_ctx
 {
   TpHandle buddy;
@@ -1004,6 +1010,7 @@ return_buddy_activities_from_views (GabbleConnection *conn,
 
   free_activities (activities);
 }
+#endif
 
 static LmHandlerResult
 get_activities_reply_cb (GabbleConnection *conn,
@@ -1041,8 +1048,10 @@ get_activities_reply_cb (GabbleConnection *conn,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
+#if 0
       DEBUG ("Failed to query PEP node. Compute activities list using views");
       return_buddy_activities_from_views (conn, from_handle, context);
+#endif
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
@@ -2910,6 +2919,7 @@ connection_presence_do_update (GabblePresenceCache *cache,
     }
 }
 
+#if 0
 static void
 buddy_changed (GabbleConnection *conn,
                LmMessageNode *change)
@@ -3536,6 +3546,7 @@ activity_membership_change (GabbleConnection *conn,
 
   tp_handle_unref (room_repo, handle);
 }
+#endif
 
 LmHandlerResult
 conn_olpc_msg_cb (LmMessageHandler *handler,
@@ -3545,7 +3556,9 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   const gchar *from;
+#if 0
   LmMessageNode *node;
+#endif
 
   from = lm_message_node_get_attribute (message->node, "from");
   if (from == NULL)
@@ -3558,6 +3571,7 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
       tp_strdiff (from, conn->olpc_gadget_activity))
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
+#if 0
   for (node = message->node->children; node != NULL; node = node->next)
     {
       const gchar *ns;
@@ -3600,6 +3614,7 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
           activity_membership_change (conn, node);
         }
     }
+#endif
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -3753,6 +3768,7 @@ olpc_activity_properties_iface_init (gpointer g_iface,
 #undef IMPLEMENT
 }
 
+#if 0
 static void
 view_closed_cb (GabbleOlpcView *view,
                 GabbleConnection *conn)
@@ -4308,6 +4324,7 @@ olpc_gadget_search_activities_by_participants (GabbleSvcOLPCGadget *iface,
   g_free (object_path);
   lm_message_unref (query);
 }
+#endif
 
 static gboolean
 send_presence_to_gadget (GabbleConnection *conn,
@@ -4367,6 +4384,7 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
   gabble_svc_olpc_gadget_return_from_publish (context);
 }
 
+#if 0
 static gboolean
 close_view_foreach (gpointer key,
                     GabbleOlpcView *view,
@@ -4386,6 +4404,7 @@ close_all_views (GabbleConnection *conn)
   g_hash_table_foreach_remove (conn->olpc_views, (GHRFunc) close_view_foreach,
       conn);
 }
+#endif
 
 LmHandlerResult
 conn_olpc_presence_cb (LmMessageHandler *handler,
@@ -4440,12 +4459,14 @@ conn_olpc_presence_cb (LmMessageHandler *handler,
             }
         }
     }
+#if 0
   else if (sub_type == LM_MESSAGE_SUB_TYPE_NOT_SET ||
       sub_type == LM_MESSAGE_SUB_TYPE_AVAILABLE)
     {
       DEBUG ("Got presence from Gadget. Close open views if any");
       close_all_views (conn);
     }
+#endif
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -4478,12 +4499,6 @@ olpc_gadget_iface_init (gpointer g_iface,
 
 #define IMPLEMENT(x) gabble_svc_olpc_gadget_implement_##x (\
     klass, olpc_gadget_##x)
-  IMPLEMENT(request_random_buddies);
-  IMPLEMENT(search_buddies_by_properties);
-  IMPLEMENT(search_buddies_by_alias);
-  IMPLEMENT(request_random_activities);
-  IMPLEMENT(search_activities_by_properties);
-  IMPLEMENT(search_activities_by_participants);
   IMPLEMENT(publish);
 #undef IMPLEMENT
 }

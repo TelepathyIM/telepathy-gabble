@@ -21,131 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     <tp:requires interface="org.laptop.Telepathy.BuddyInfo"/>
     <tp:requires interface="org.laptop.Telepathy.ActivityProperties"/>
 
-    <method name="SearchBuddiesByProperties">
-      <arg direction="in" name="properties" type="a{sv}">
-        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          A buddy properties dictionary as described on
-          <code>org.laptop.Telepathy.BuddyInfo</code>.
-        </tp:docstring>
-      </arg>
-      <arg direction="out" name="view" type="o">
-        <tp:docstring>
-          The D-Bus object path for the view created 
-        </tp:docstring>
-      </arg>
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>Search for buddies having the given properties.</p>
-        <p>Returns a <code>org.laptop.Telepathy.View</code> object containing
-           the buddies found (FIXME: and their activities?)</p>
-      </tp:docstring>
-      <tp:possible-errors>
-        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
-      </tp:possible-errors>
-    </method>
-
-    <method name="SearchBuddiesByAlias">
-      <arg direction="in" name="alias" type="s">
-        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          The alias to search for
-        </tp:docstring>
-      </arg>
-      <arg direction="out" name="view" type="o">
-        <tp:docstring>
-          The D-Bus object path for the view created
-        </tp:docstring>
-      </arg>
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>Search for buddies having the given alias.</p>
-        <p>Returns a <code>org.laptop.Telepathy.View</code> object containing
-           the buddies found (FIXME: and their activities?)</p>
-      </tp:docstring>
-    </method>
-
-    <method name="RequestRandomBuddies">
-      <arg direction="in" name="max" type="u">
-         <tp:docstring>
-          The maximum of random buddies to look for.
-        </tp:docstring>
-      </arg>
-      <arg direction="out" name="view" type="o">
-        <tp:docstring>
-          The D-Bus object path for the view created 
-        </tp:docstring>
-      </arg>
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>Request random buddies.</p>
-        <p>Returns a <code>org.laptop.Telepathy.View</code> object containing the
-           random buddies returned (FIXME: and their activities?).</p>
-      </tp:docstring>
-      <tp:possible-errors>
-        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
-      </tp:possible-errors>
-    </method>
-
-    <method name="SearchActivitiesByProperties">
-      <arg direction="in" name="properties" type="a{sv}">
-        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          An activity properties dictionary as described on
-          <code>org.laptop.Telepathy.ActivityProperties</code>.
-        </tp:docstring>
-      </arg>
-      <arg direction="out" name="view" type="o">
-        <tp:docstring>
-          The D-Bus object path for the view created 
-        </tp:docstring>
-      </arg>
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>Search for activities having the given properties.</p>
-        <p>Returns a <code>org.laptop.Telepathy.View</code> object containing
-           the activities found and their participants</p>
-      </tp:docstring>
-      <tp:possible-errors>
-        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
-      </tp:possible-errors>
-    </method>
-
-    <method name="RequestRandomActivities">
-      <arg direction="in" name="max" type="u">
-         <tp:docstring>
-          The maximum of random activities to look for.
-        </tp:docstring>
-      </arg>
-      <arg direction="out" name="view" type="o">
-        <tp:docstring>
-          The D-Bus object path for the view created 
-        </tp:docstring>
-      </arg>
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>Request random activities.</p>
-        <p>Returns a <code>org.laptop.Telepathy.View</code> object representing the
-           random activities returned and their participants.</p>
-      </tp:docstring>
-      <tp:possible-errors>
-        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
-      </tp:possible-errors>
-    </method>
-
-    <method name="SearchActivitiesByParticipants">
-      <arg direction="in" name="participants" type="au">
-         <tp:docstring>
-          The handles of the participants
-        </tp:docstring>
-      </arg>
-      <arg direction="out" name="view" type="o">
-        <tp:docstring>
-          The D-Bus object path for the view created 
-        </tp:docstring>
-      </arg>
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>Search for activities having the given participants.</p>
-        <p>Returns a <code>org.laptop.Telepathy.View</code> object containing
-           the activities found and their participants</p>
-      </tp:docstring>
-      <tp:possible-errors>
-        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
-      </tp:possible-errors>
-    </method>
-
     <method name="Publish">
       <arg direction="in" name="publish" type="b">
          <tp:docstring>
@@ -173,7 +48,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     </property>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-      <p>An interface on connections to interact with the Gadget component.</p>
+      <p>An interface on connections to interact with the Gadget component. Buddies and activities searches
+        are performed by requesting org.laptop.Telepathy.Channel.Type.BuddyView and
+        org.laptop.Telepathy.Channel.Type.ActivityView using the
+        org.freedesktop.Telepathy.Connection.Interface.Requests interface.
+      </p>
     </tp:docstring>
 
   </interface>

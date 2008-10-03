@@ -7,7 +7,9 @@ EXTRA_DIST = \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \
     OLPC_Gadget.xml \
-    OLPC_View.xml
+    OLPC_Channel_Interface_View.xml \
+    OLPC_Channel_Type_BuddyView.xml \
+    OLPC_Channel_Type_ActivityView.xml
 
 noinst_LTLIBRARIES = libgabble-extensions.la
 

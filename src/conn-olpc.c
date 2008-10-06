@@ -1350,6 +1350,7 @@ add_activity_info_in_set (GabbleConnection *conn,
    * activity already existed */
   g_assert (!tp_handle_set_is_member (activities_set, room_handle));
 
+  /* the set owns the ref of the newly created activity */
   tp_handle_set_add (activities_set, room_handle);
 
   return activity;
@@ -1368,7 +1369,6 @@ extract_current_activity (GabbleConnection *conn,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle room_handle, contact_handle;
-  gboolean created = FALSE;
 
   if (node == NULL)
     return NULL;
@@ -1410,7 +1410,6 @@ extract_current_activity (GabbleConnection *conn,
       activity = add_activity_info_in_set (conn, room_handle, contact,
           conn->olpc_pep_activities);
       g_object_set (activity, "id", id, NULL);
-      created = TRUE;
     }
 
   tp_handle_unref (room_repo, room_handle);
@@ -1419,10 +1418,7 @@ extract_current_activity (GabbleConnection *conn,
   if (activity != NULL)
     {
       g_hash_table_insert (conn->olpc_current_act,
-          GUINT_TO_POINTER (contact_handle), activity);
-
-      if (!created)
-        g_object_ref (activity);
+          GUINT_TO_POINTER (contact_handle), g_object_ref (activity));
     }
   else
     {
@@ -2498,6 +2494,10 @@ revoke_invitations (GabbleConnection *conn,
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleSet *invitees = g_object_get_qdata ((GObject *) chan,
       invitees_quark ());
+
+  if (activity->id == NULL)
+    /* this is not a real OLPC activity */
+    return TRUE;
 
   if (invitees != NULL && tp_handle_set_size (invitees) > 0)
     {
@@ -3711,12 +3711,31 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
       G_CALLBACK (connection_presences_updated_cb), conn);
 }
 
+static void
+unref_activities_in_each_set (TpHandle handle,
+                            TpHandleSet *set,
+                            GabbleConnection *conn)
+{
+  if (set != NULL)
+    {
+      tp_handle_set_foreach (set,
+          decrement_contacts_activities_set_foreach, conn);
+    }
+}
+
 void
 conn_olpc_activity_properties_dispose (GabbleConnection *self)
 {
   g_hash_table_destroy (self->olpc_current_act);
+
+  g_hash_table_foreach (self->olpc_pep_activities,
+      (GHFunc) unref_activities_in_each_set, self);
   g_hash_table_destroy (self->olpc_pep_activities);
+
+  g_hash_table_foreach (self->olpc_invited_activities,
+      (GHFunc) unref_activities_in_each_set, self);
   g_hash_table_destroy (self->olpc_invited_activities);
+
   g_hash_table_destroy (self->olpc_views);
   g_hash_table_destroy (self->olpc_activities_info);
 }

@@ -1145,6 +1145,12 @@ gabble_muc_channel_dispose (GObject *object)
   clear_join_timer (self);
   clear_poll_timer (self);
 
+  if (!priv->closed)
+    {
+      priv->closed = TRUE;
+      tp_svc_channel_emit_closed (self);
+    }
+
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
 }

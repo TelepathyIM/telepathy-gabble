@@ -79,7 +79,8 @@ def test(q, bus, conn, stream):
     call_async (q, buddy_info_iface, 'SetActivities', [("roomid", room_handle)])
 
     # pubsub activity iq
-    event = q.expect('stream-iq')
+    event = q.expect('stream-iq', iq_type='set', query_name='pubsub',
+        query_ns=NS_PUBSUB)
     acknowledge_iq(stream, event.stanza)
 
     event = q.expect('dbus-return', method='SetActivities')
@@ -134,6 +135,12 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
     members = muc_group.GetMembers()
     assert conn.InspectHandles(1, members) == ['myroom@conference.localhost/test']
+
+    conn.Disconnect()
+
+    # PEP activity update
+    event = q.expect('stream-iq')
+    acknowledge_iq(stream, event.stanza)
 
 if __name__ == '__main__':
     exec_test(test)

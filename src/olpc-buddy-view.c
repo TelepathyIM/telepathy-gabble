@@ -17,7 +17,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "olpc-view.h"
+#include "olpc-buddy-view.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -81,7 +81,7 @@ static void view_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (
     GabbleOlpcView, gabble_olpc_view, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_VIEW,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_CHANNEL_TYPE_BUDDYVIEW,
       view_iface_init));
 
 #define GABBLE_OLPC_VIEW_GET_PRIVATE(obj) \
@@ -337,6 +337,7 @@ gabble_olpc_view_new (GabbleConnection *conn,
       NULL);
 }
 
+#if 0
 static void
 olpc_view_get_buddies (GabbleSvcOLPCView *iface,
                        DBusGMethodInvocation *context)
@@ -351,6 +352,7 @@ olpc_view_get_buddies (GabbleSvcOLPCView *iface,
 
   g_array_free (buddies, TRUE);
 }
+#endif
 
 static void
 add_activity_to_array (TpHandle handle,
@@ -381,6 +383,7 @@ free_activities_array (GPtrArray *activities)
   g_ptr_array_free (activities, TRUE);
 }
 
+#if 0
 static void
 olpc_view_get_activities (GabbleSvcOLPCView *iface,
                           DBusGMethodInvocation *context)
@@ -398,6 +401,7 @@ olpc_view_get_activities (GabbleSvcOLPCView *iface,
 
   free_activities_array (activities);
 }
+#endif
 
 static void
 buddy_left_activities_foreach (TpHandleSet *set,
@@ -414,6 +418,7 @@ buddy_left_activities_foreach (TpHandleSet *set,
       0, buddy);
 }
 
+#if 0
 static void
 olpc_view_close (GabbleSvcOLPCView *iface,
                  DBusGMethodInvocation *context)
@@ -429,6 +434,7 @@ olpc_view_close (GabbleSvcOLPCView *iface,
 
   gabble_svc_olpc_view_return_from_close (context);
 }
+#endif
 
 gboolean
 gabble_olpc_view_close (GabbleOlpcView *self,
@@ -479,7 +485,7 @@ gabble_olpc_view_close (GabbleOlpcView *self,
 
   g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
 
-  gabble_svc_olpc_view_emit_closed (self);
+  //gabble_svc_olpc_view_emit_closed (self);
 
   return TRUE;
 }
@@ -551,7 +557,7 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
         }
     }
 
-  gabble_svc_olpc_view_emit_buddies_changed (self, buddies, empty);
+  //gabble_svc_olpc_view_emit_buddies_changed (self, buddies, empty);
 
   for (i = 0; i < buddies_changed->len; i++)
     {
@@ -593,7 +599,7 @@ gabble_olpc_view_remove_buddies (GabbleOlpcView *self,
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   removed = tp_handle_set_to_array (buddies);
 
-  gabble_svc_olpc_view_emit_buddies_changed (self, empty, removed);
+  //gabble_svc_olpc_view_emit_buddies_changed (self, empty, removed);
 
   g_array_free (empty, TRUE);
   g_array_free (removed, TRUE);
@@ -647,7 +653,7 @@ gabble_olpc_view_add_activities (GabbleOlpcView *self,
 
   empty = g_ptr_array_new ();
 
-  gabble_svc_olpc_view_emit_activities_changed (self, added, empty);
+  //gabble_svc_olpc_view_emit_activities_changed (self, added, empty);
 
   free_activities_array (added);
   g_ptr_array_free (empty, TRUE);
@@ -733,7 +739,7 @@ gabble_olpc_view_remove_activities (GabbleOlpcView *self,
       tp_handle_set_destroy (ctx.removed);
     }
 
-  gabble_svc_olpc_view_emit_activities_changed (self, empty, removed);
+  //gabble_svc_olpc_view_emit_activities_changed (self, empty, removed);
 
   free_activities_array (removed);
   g_ptr_array_free (empty, TRUE);
@@ -838,6 +844,7 @@ static void
 view_iface_init (gpointer g_iface,
                  gpointer iface_data)
 {
+#if 0
   GabbleSvcOLPCViewClass *klass = g_iface;
 
 #define IMPLEMENT(x) gabble_svc_olpc_view_implement_##x (\
@@ -846,4 +853,5 @@ view_iface_init (gpointer g_iface,
   IMPLEMENT(get_activities);
   IMPLEMENT(close);
 #undef IMPLEMENT
+#endif
 }

@@ -1,5 +1,5 @@
 /*
- * olpc-view.h - Header for GabbleOlpcView
+ * olpc-buddy-view.h - Header for GabbleOlpcView
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -70,6 +70,8 @@ GType gabble_olpc_view_get_type (void);
 GabbleOlpcView * gabble_olpc_view_new (GabbleConnection *conn,
     GabbleOlpcViewType type, guint id);
 
+/* FIXME: fix method names */
+/* FIXME: most of this should be moved to an abstract class */
 void gabble_olpc_view_add_buddies (GabbleOlpcView *self,
     GArray *handles, GPtrArray *buddies_properties, TpHandle room);
 

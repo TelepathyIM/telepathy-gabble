@@ -29,18 +29,12 @@
 
 G_BEGIN_DECLS
 
-typedef enum
-{
-  GABBLE_OLPC_VIEW_TYPE_BUDDY,
-  GABBLE_OLPC_VIEW_TYPE_ACTIVITY,
-  NUM_GABBLE_OLPC_VIEW_TYPE
-} GabbleOlpcViewType;
-
-typedef struct _GabbleOlpcView GabbleOlpcView;
 typedef struct _GabbleOlpcViewClass GabbleOlpcViewClass;
 
 struct _GabbleOlpcViewClass {
   GObjectClass parent_class;
+
+  TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleOlpcView {
@@ -67,8 +61,12 @@ GType gabble_olpc_view_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_OLPC_VIEW,\
                               GabbleOlpcViewClass))
 
-GabbleOlpcView * gabble_olpc_view_new (GabbleConnection *conn,
-    GabbleOlpcViewType type, guint id);
+GabbleOlpcView * gabble_olpc_buddy_view_new (GabbleConnection *conn,
+    const gchar *object_path, guint id, guint max_size, GHashTable *properties,
+    const gchar *alias);
+
+gboolean gabble_olpc_buddy_view_send_request (GabbleOlpcView *view,
+    GError **error);
 
 /* FIXME: fix method names */
 /* FIXME: most of this should be moved to an abstract class */
@@ -95,8 +93,6 @@ GPtrArray * gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
 
 void gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
     GArray *buddies, TpHandle room);
-
-gboolean gabble_olpc_view_close (GabbleOlpcView *self, GError **error);
 
 G_END_DECLS
 

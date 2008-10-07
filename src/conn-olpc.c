@@ -455,9 +455,7 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   const gchar *jid;
-#if 0
   GHashTable *properties;
-#endif
 
   DEBUG ("called");
 
@@ -468,15 +466,14 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   /* First check if we can find properties in a buddy view */
   /* FIXME: Maybe we should first try the PEP node as we do for buddy
    * activities ? */
-#if 0
-  properties = find_buddy_properties_from_views (conn, contact);
+  properties = gabble_olpc_gadget_manager_find_buddy_properties_from_views (
+      conn->olpc_gadget_manager, contact);
   if (properties != NULL)
     {
       gabble_svc_olpc_buddy_info_return_from_get_properties (context,
           properties);
       return;
     }
-#endif
 
   /* Then try to query the PEP node */
   jid = inspect_contact (base, context, contact);
@@ -2919,7 +2916,6 @@ connection_presence_do_update (GabblePresenceCache *cache,
     }
 }
 
-#if 0
 static void
 buddy_changed (GabbleConnection *conn,
                LmMessageNode *change)
@@ -2947,7 +2943,7 @@ buddy_changed (GabbleConnection *conn,
     }
 
   id = strtoul (id_str, NULL, 10);
-  view = g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id));
+  view = gabble_olpc_gadget_manager_get_view (conn->olpc_gadget_manager, id);
   if (view == NULL)
     {
       DEBUG ("No active view with ID %u", id);
@@ -3003,6 +2999,7 @@ buddy_changed (GabbleConnection *conn,
     }
 }
 
+#if 0
 static void
 activity_changed (GabbleConnection *conn,
                   LmMessageNode *change)
@@ -3026,6 +3023,7 @@ activity_changed (GabbleConnection *conn,
         }
     }
 }
+#endif
 
 static gboolean
 populate_buddies_from_nodes (GabbleConnection *conn,
@@ -3088,6 +3086,7 @@ populate_buddies_from_nodes (GabbleConnection *conn,
   return TRUE;
 }
 
+#if 0
 static gboolean
 add_activities_to_view_from_node (GabbleConnection *conn,
                                   GabbleOlpcView *view,
@@ -3254,10 +3253,11 @@ activity_added (GabbleConnection *conn,
 
   add_activities_to_view_from_node (conn, view, added);
 }
+#endif
 
 /* if activity is not zero, buddies are associated with the given
  * activity room */
-static gboolean
+gboolean
 add_buddies_to_view_from_node (GabbleConnection *conn,
                                GabbleOlpcView *view,
                                LmMessageNode *node,
@@ -3325,7 +3325,8 @@ buddy_added (GabbleConnection *conn,
     return;
 
   id = strtoul (id_str, NULL, 10);
-  view = g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id));
+  view = gabble_olpc_gadget_manager_get_view (
+      conn->olpc_gadget_manager, id);
   if (view == NULL)
     {
       DEBUG ("no view with ID %u", id);
@@ -3389,7 +3390,9 @@ buddy_removed (GabbleConnection *conn,
     return;
 
   id = strtoul (id_str, NULL, 10);
-  view = g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id));
+
+  view = gabble_olpc_gadget_manager_get_view (
+      conn->olpc_gadget_manager, id);
   if (view == NULL)
     {
       DEBUG ("no view with ID %u", id);
@@ -3399,6 +3402,7 @@ buddy_removed (GabbleConnection *conn,
   remove_buddies_from_view_from_node (conn, view, removed);
 }
 
+#if 0
 static gboolean
 remove_activities_from_view_from_node (GabbleConnection *conn,
                                        GabbleOlpcView *view,
@@ -3556,9 +3560,7 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   const gchar *from;
-#if 0
   LmMessageNode *node;
-#endif
 
   from = lm_message_node_get_attribute (message->node, "from");
   if (from == NULL)
@@ -3571,7 +3573,6 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
       tp_strdiff (from, conn->olpc_gadget_activity))
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-#if 0
   for (node = message->node->children; node != NULL; node = node->next)
     {
       const gchar *ns;
@@ -3583,11 +3584,13 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
         {
           buddy_changed (conn, node);
         }
+#if 0
       else if (!tp_strdiff (node->name, "change") &&
           !tp_strdiff (ns, NS_OLPC_ACTIVITY))
         {
           activity_changed (conn, node);
         }
+#endif
       else if (!tp_strdiff (node->name, "added") &&
           !tp_strdiff (ns, NS_OLPC_BUDDY))
         {
@@ -3598,6 +3601,7 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
         {
           buddy_removed (conn, node);
         }
+#if 0
       else if (!tp_strdiff (node->name, "added") &&
           !tp_strdiff (ns, NS_OLPC_ACTIVITY))
         {
@@ -3613,8 +3617,8 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
         {
           activity_membership_change (conn, node);
         }
-    }
 #endif
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -3769,15 +3773,11 @@ olpc_activity_properties_iface_init (gpointer g_iface,
 }
 
 #if 0
-static void
-view_closed_cb (GabbleOlpcView *view,
-                GabbleConnection *conn)
-{
-  guint id;
 
-  g_object_get (view, "id", &id, NULL);
-  g_hash_table_remove (conn->olpc_views, GUINT_TO_POINTER (id));
-}
+/* FIXME: connect this
+  g_signal_connect (view, "buddy-activities-changed",
+      G_CALLBACK (buddy_activities_changed_cb), conn);
+*/
 
 static void
 buddy_activities_changed_cb (GabbleOlpcView *view,
@@ -3794,273 +3794,6 @@ buddy_activities_changed_cb (GabbleOlpcView *view,
       activities);
 
   free_activities (activities);
-}
-
-static GabbleOlpcView *
-create_view (GabbleConnection *conn,
-             GabbleOlpcViewType type)
-{
-  guint id;
-  GabbleOlpcView *view;
-
-  /* Look for a free ID */
-  for (id = 0; id < G_MAXUINT &&
-      g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id))
-      != NULL; id++);
-
-  if (id == G_MAXUINT)
-    {
-      /* All the ID's are allocated */
-      DEBUG ("All the view ID's are already used!");
-      return NULL;
-    }
-
-  view = gabble_olpc_view_new (conn, type, id);
-  g_hash_table_insert (conn->olpc_views, GUINT_TO_POINTER (id), view);
-
-  g_signal_connect (view, "closed_", G_CALLBACK (view_closed_cb), conn);
-
-  g_signal_connect (view, "buddy-activities-changed",
-      G_CALLBACK (buddy_activities_changed_cb), conn);
-
-  return view;
-}
-
-static LmHandlerResult
-buddy_view_query_result_cb (GabbleConnection *conn,
-                            LmMessage *sent_msg,
-                            LmMessage *reply_msg,
-                            GObject *_view,
-                            gpointer user_data)
-{
-  LmMessageNode *view_node;
-  GabbleOlpcView *view = GABBLE_OLPC_VIEW (_view);
-
-  view_node = lm_message_node_get_child_with_namespace (reply_msg->node,
-      "view", NS_OLPC_BUDDY);
-  if (view_node == NULL)
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-
-  add_buddies_to_view_from_node (conn, view, view_node, "buddy", 0);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
-static void
-olpc_gadget_request_random_buddies (GabbleSvcOLPCGadget *iface,
-                                    guint max,
-                                    DBusGMethodInvocation *context)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  LmMessage *query;
-  gchar *max_str, *id_str;
-  gchar *object_path;
-  guint id;
-  GabbleOlpcView *view;
-
-  if (!check_gadget_buddy (conn, context))
-    return;
-
-  if (max == 0)
-    {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-        "max have to be greater than 0" };
-
-      DEBUG ("%s", error.message);
-      dbus_g_method_return_error (context, &error);
-      return;
-    }
-
-  view = create_view (conn, GABBLE_OLPC_VIEW_TYPE_BUDDY);
-  if (view == NULL)
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "can't create view" };
-
-      DEBUG ("%s", error.message);
-      dbus_g_method_return_error (context, &error);
-      return;
-    }
-
-  g_object_get (view,
-      "id", &id,
-      "object-path", &object_path,
-      NULL);
-
-  max_str = g_strdup_printf ("%u", max);
-  id_str = g_strdup_printf ("%u", id);
-
-  query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
-      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-      '(', "view", "",
-          '@', "xmlns", NS_OLPC_BUDDY,
-          '@', "id", id_str,
-          '(', "random", "",
-            '@', "max", max_str,
-          ')',
-      ')',
-      NULL);
-
-  g_free (max_str);
-  g_free (id_str);
-
-  if (!_gabble_connection_send_with_reply (conn, query,
-        buddy_view_query_result_cb, G_OBJECT (view), NULL, NULL))
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "Failed to send buddy search query to server" };
-
-      DEBUG ("%s", error.message);
-      dbus_g_method_return_error (context, &error);
-      lm_message_unref (query);
-      g_free (object_path);
-      return;
-    }
-
-  gabble_svc_olpc_gadget_return_from_request_random_buddies (context,
-      object_path);
-
-  g_free (object_path);
-  lm_message_unref (query);
-}
-
-static void
-olpc_gadget_search_buddies_by_properties (GabbleSvcOLPCGadget *iface,
-                                          GHashTable *properties,
-                                          DBusGMethodInvocation *context)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  LmMessage *query;
-  LmMessageNode *properties_node;
-  gchar *id_str;
-  gchar *object_path;
-  guint id;
-  GabbleOlpcView *view;
-
-  if (!check_gadget_buddy (conn, context))
-    return;
-
-  view = create_view (conn, GABBLE_OLPC_VIEW_TYPE_BUDDY);
-  if (view == NULL)
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "can't create view" };
-
-      DEBUG ("%s", error.message);
-      dbus_g_method_return_error (context, &error);
-      return;
-    }
-
-  g_object_get (view,
-      "id", &id,
-      "object-path", &object_path,
-      NULL);
-
-  id_str = g_strdup_printf ("%u", id);
-
-  query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
-      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-      '(', "view", "",
-          '@', "xmlns", NS_OLPC_BUDDY,
-          '@', "id", id_str,
-          '(', "buddy", "",
-            '(', "properties", "",
-              '*', &properties_node,
-              '@', "xmlns", NS_OLPC_BUDDY_PROPS,
-            ')',
-          ')',
-      ')',
-      NULL);
-
-  g_free (id_str);
-
-  lm_message_node_add_children_from_properties (properties_node, properties,
-      "property");
-
-  if (!_gabble_connection_send_with_reply (conn, query,
-        buddy_view_query_result_cb, G_OBJECT (view), NULL, NULL))
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "Failed to send buddy search query to server" };
-
-      DEBUG ("%s", error.message);
-      dbus_g_method_return_error (context, &error);
-      lm_message_unref (query);
-      g_free (object_path);
-      return;
-    }
-
-  gabble_svc_olpc_gadget_return_from_search_buddies_by_properties (context,
-      object_path);
-
-  g_free (object_path);
-  lm_message_unref (query);
-}
-
-static void
-olpc_gadget_search_buddies_by_alias (GabbleSvcOLPCGadget *iface,
-                                     const gchar *alias,
-                                     DBusGMethodInvocation *context)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  LmMessage *query;
-  gchar *id_str;
-  gchar *object_path;
-  guint id;
-  GabbleOlpcView *view;
-
-  if (!check_gadget_buddy (conn, context))
-    return;
-
-  view = create_view (conn, GABBLE_OLPC_VIEW_TYPE_BUDDY);
-  if (view == NULL)
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "can't create view" };
-
-      DEBUG ("%s", error.message);
-      dbus_g_method_return_error (context, &error);
-      return;
-    }
-
-  g_object_get (view,
-      "id", &id,
-      "object-path", &object_path,
-      NULL);
-
-  id_str = g_strdup_printf ("%u", id);
-
-  query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
-      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-      '(', "view", "",
-          '@', "xmlns", NS_OLPC_BUDDY,
-          '@', "id", id_str,
-          '(', "buddy", "",
-            '@', "alias", alias,
-          ')',
-      ')',
-      NULL);
-
-  g_free (id_str);
-
-  if (!_gabble_connection_send_with_reply (conn, query,
-        buddy_view_query_result_cb, G_OBJECT (view), NULL, NULL))
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "Failed to send buddy search query to server" };
-
-      DEBUG ("%s", error.message);
-      dbus_g_method_return_error (context, &error);
-      lm_message_unref (query);
-      g_free (object_path);
-      return;
-    }
-
-  gabble_svc_olpc_gadget_return_from_search_buddies_by_alias (context,
-      object_path);
-
-  g_free (object_path);
-  lm_message_unref (query);
 }
 
 static LmHandlerResult
@@ -4464,6 +4197,7 @@ conn_olpc_presence_cb (LmMessageHandler *handler,
       sub_type == LM_MESSAGE_SUB_TYPE_AVAILABLE)
     {
       DEBUG ("Got presence from Gadget. Close open views if any");
+      /* FIXME: gabble_olpc_gadget_manager_close_all_views (); */
       close_all_views (conn);
     }
 #endif

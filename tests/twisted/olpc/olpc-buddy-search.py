@@ -2,10 +2,6 @@
 test OLPC search buddy
 """
 
-print "FIXME: olpc/olpc-buddy-search.py disabled during requestotronification of the view API"
-# exiting 77 causes automake to consider the test to have been skipped
-raise SystemExit(77)
-
 import dbus
 
 from servicetest import call_async, EventPattern
@@ -28,8 +24,10 @@ NS_PUBSUB = "http://jabber.org/protocol/pubsub"
 NS_DISCO_INFO = "http://jabber.org/protocol/disco#info"
 NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
 
-
 NS_AMP = "http://jabber.org/protocol/amp"
+
+tp_name_prefix = 'org.freedesktop.Telepathy'
+olpc_name_prefix = 'org.laptop.Telepathy'
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -45,6 +43,7 @@ def test(q, bus, conn, stream):
 
     buddy_info_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
+    requests_iface = dbus.Interface(conn, tp_name_prefix + '.Connection.Interface.Requests')
 
     call_async(q, conn, 'RequestHandles', 1, ['bob@localhost'])
 
@@ -91,17 +90,35 @@ def test(q, bus, conn, stream):
 
     assert props == {'color': '#005FE4,#00A0FF' }
 
+    # check if we can request Buddy views
+    properties = conn.GetAll(
+        'org.freedesktop.Telepathy.Connection.Interface.Requests',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert ({tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView'},
+
+            [olpc_name_prefix + '.Channel.Interface.View.MaxSize',
+             olpc_name_prefix + '.Channel.Type.BuddyView.Properties',
+             olpc_name_prefix + '.Channel.Type.BuddyView.Alias'],
+         ) in properties.get('RequestableChannelClasses'),\
+                 properties['RequestableChannelClasses']
+
     # request 3 random buddies
-    call_async(q, gadget_iface, 'RequestRandomBuddies', 3)
+    call_async(q, requests_iface, 'CreateChannel',
+        { tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView',
+          olpc_name_prefix + '.Channel.Interface.View.MaxSize': 3
+          })
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
             query_ns=NS_OLPC_BUDDY),
-        EventPattern('dbus-return', method='RequestRandomBuddies'))
+        EventPattern('dbus-return', method='CreateChannel'))
 
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
-    assert view['id'] == '0'
+    assert view['id'] == '1'
     random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
     assert len(random) == 1
     assert random[0]['max'] == '3'
@@ -125,7 +142,7 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view0 = bus.get_object(conn.bus_name, view_path)
-    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
+    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.Channel.Type.BuddyView')
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -147,7 +164,7 @@ def test(q, bus, conn, stream):
 
     change = message.addElement((NS_OLPC_BUDDY, 'change'))
     change['jid'] = 'bob@localhost'
-    change['id'] = '0'
+    change['id'] = '1'
     properties = change.addElement((NS_OLPC_BUDDY_PROPS, 'properties'))
     for node in properties_to_xml({'color': ('str', '#FFFFFF,#AAAAAA')}):
         properties.addChild(node)
@@ -162,13 +179,19 @@ def test(q, bus, conn, stream):
     assert props == {'color': '#FFFFFF,#AAAAAA'}
 
     # buddy search
-    props = {'color': '#AABBCC,#001122'}
-    call_async(q, gadget_iface, 'SearchBuddiesByProperties', props)
+    props = dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    call_async(q, requests_iface, 'CreateChannel',
+        { tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView',
+          olpc_name_prefix + '.Channel.Interface.View.MaxSize': 10,
+          olpc_name_prefix + '.Channel.Type.BuddyView.Properties': props
+          })
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
-        EventPattern('dbus-return', method='SearchBuddiesByProperties'))
+        EventPattern('dbus-return', method='CreateChannel'))
 
+    print iq_event.stanza.toXml()
     properties_node = xpath.queryForNodes('/iq/view/buddy/properties',
             iq_event.stanza)
     props = parse_properties(properties_node[0])
@@ -176,7 +199,7 @@ def test(q, bus, conn, stream):
 
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
-    assert view['id'] == '1'
+    assert view['id'] == '2'
 
     # reply to request
     reply = make_result_iq(stream, iq_event.stanza)
@@ -192,7 +215,7 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view1 = bus.get_object(conn.bus_name, view_path)
-    view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.View')
+    view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.Channel.Type.BuddyView')
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -210,7 +233,7 @@ def test(q, bus, conn, stream):
     message = create_gadget_message("test@localhost")
 
     added = message.addElement((NS_OLPC_BUDDY, 'added'))
-    added['id'] = '0'
+    added['id'] = '1'
     buddy = added.addElement((None, 'buddy'))
     buddy['jid'] = 'oscar@localhost'
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
@@ -226,7 +249,10 @@ def test(q, bus, conn, stream):
     handle = added[0]
     assert conn.InspectHandles(1, added)[0] == 'oscar@localhost'
 
-    members = view0_iface.GetBuddies()
+    members = view0.Get(olpc_name_prefix + '.Channel.Interface.View',
+        'Buddies',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['bob@localhost', 'charles@localhost',
             'oscar@localhost']
@@ -235,7 +261,7 @@ def test(q, bus, conn, stream):
     message = create_gadget_message("test@localhost")
 
     added = message.addElement((NS_OLPC_BUDDY, 'removed'))
-    added['id'] = '0'
+    added['id'] = '1'
     buddy = added.addElement((None, 'buddy'))
     buddy['jid'] = 'bob@localhost'
 
@@ -248,21 +274,29 @@ def test(q, bus, conn, stream):
     handle = removed[0]
     assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
 
-    members = view0_iface.GetBuddies()
+    members = view0.Get(olpc_name_prefix + '.Channel.Interface.View',
+        'Buddies',
+        dbus_interface='org.freedesktop.DBus.Properties')
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['charles@localhost', 'oscar@localhost']
 
     # test alias search
-    call_async(q, gadget_iface, 'SearchBuddiesByAlias', "tom")
+    call_async(q, requests_iface, 'CreateChannel',
+        { tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView',
+          olpc_name_prefix + '.Channel.Interface.View.MaxSize': 10,
+          olpc_name_prefix + '.Channel.Type.BuddyView.Alias': 'tom'
+          })
+
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
             query_ns=NS_OLPC_BUDDY),
-        EventPattern('dbus-return', method='SearchBuddiesByAlias'))
+        EventPattern('dbus-return', method='CreateChannel'))
 
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
-    assert view['id'] == '2'
+    assert view['id'] == '3'
     buddy = xpath.queryForNodes('/iq/view/buddy', iq_event.stanza)
     assert len(buddy) == 1
     assert buddy[0]['alias'] == 'tom'
@@ -289,14 +323,16 @@ def test(q, bus, conn, stream):
     assert sorted(conn.InspectHandles(1, added)) == ['thomas@localhost',
             'tom@localhost']
 
+    # FIXME: change view number
+
     # close view 0
-    close_view(q, view0_iface, '0')
+    close_view(q, view0, '1')
 
     # close view 1
-    close_view(q, view1_iface, '1')
+    close_view(q, view1, '2')
 
     # close view 2
-    close_view(q, view2_iface, '2')
+    close_view(q, view2, '3')
 
 if __name__ == '__main__':
     exec_test(test)

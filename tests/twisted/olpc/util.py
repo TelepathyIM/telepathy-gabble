@@ -203,8 +203,9 @@ def request_random_activity_view(q, stream, conn, max, id, activities):
 
     return return_event.value[0]
 
-def close_view(q, view_iface, id):
-    call_async(q, view_iface, 'Close')
+def close_view(q, view, id):
+    chan_iface = dbus.Interface(view, 'org.freedesktop.Telepathy.Channel')
+    call_async(q, chan_iface, 'Close')
     event, _, _ = q.expect_many(
         EventPattern('stream-message', to='gadget.localhost'),
         EventPattern('dbus-signal', signal='Closed'),

@@ -330,6 +330,8 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
       goto error;
     }
 
+  /* TODO: check if Gadget is available */
+
   properties = tp_asv_get_boxed (request_properties,
       GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW ".Properties",
       TP_HASH_TYPE_STRING_VARIANT_MAP);

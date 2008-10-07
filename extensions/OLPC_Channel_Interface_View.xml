@@ -51,7 +51,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:docstring>
     </signal>
 
-    <property name="Size" type="u" access="read"
+    <property name="MaxSize" type="u" access="read"
               tp:name-for-bindings="Size">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>The maximum number of elements that Gadget has to return to the search request.</p>

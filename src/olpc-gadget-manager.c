@@ -322,6 +322,14 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
       goto error;
     }
 
+  if (max_size == 0)
+    {
+
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "max have to be greater than 0");
+      goto error;
+    }
+
   properties = tp_asv_get_boxed (request_properties,
       GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW ".Properties",
       TP_HASH_TYPE_STRING_VARIANT_MAP);

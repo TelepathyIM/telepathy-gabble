@@ -141,8 +141,7 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     view_path = return_event.value[0]
-    view0 = bus.get_object(conn.bus_name, view_path)
-    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.Channel.Type.BuddyView')
+    view1 = bus.get_object(conn.bus_name, view_path)
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -213,8 +212,7 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     view_path = return_event.value[0]
-    view1 = bus.get_object(conn.bus_name, view_path)
-    view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.Channel.Type.BuddyView')
+    view2 = bus.get_object(conn.bus_name, view_path)
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -248,7 +246,7 @@ def test(q, bus, conn, stream):
     handle = added[0]
     assert conn.InspectHandles(1, added)[0] == 'oscar@localhost'
 
-    members = view0.Get(olpc_name_prefix + '.Channel.Interface.View',
+    members = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Buddies',
         dbus_interface='org.freedesktop.DBus.Properties')
 
@@ -273,7 +271,7 @@ def test(q, bus, conn, stream):
     handle = removed[0]
     assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
 
-    members = view0.Get(olpc_name_prefix + '.Channel.Interface.View',
+    members = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Buddies',
         dbus_interface='org.freedesktop.DBus.Properties')
     members = sorted(conn.InspectHandles(1, members))
@@ -312,8 +310,7 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     view_path = return_event.value[0]
-    view2 = bus.get_object(conn.bus_name, view_path)
-    view2_iface = dbus.Interface(view2, 'org.laptop.Telepathy.View')
+    view3 = bus.get_object(conn.bus_name, view_path)
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -322,16 +319,14 @@ def test(q, bus, conn, stream):
     assert sorted(conn.InspectHandles(1, added)) == ['thomas@localhost',
             'tom@localhost']
 
-    # FIXME: change view number
-
     # close view 0
-    close_view(q, view0, '1')
+    close_view(q, view1, '1')
 
     # close view 1
-    close_view(q, view1, '2')
+    close_view(q, view2, '2')
 
     # close view 2
-    close_view(q, view2, '3')
+    close_view(q, view3, '3')
 
 if __name__ == '__main__':
     exec_test(test)

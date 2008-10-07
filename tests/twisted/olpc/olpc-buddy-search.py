@@ -191,7 +191,6 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
         EventPattern('dbus-return', method='CreateChannel'))
 
-    print iq_event.stanza.toXml()
     properties_node = xpath.queryForNodes('/iq/view/buddy/properties',
             iq_event.stanza)
     props = parse_properties(properties_node[0])

@@ -99,6 +99,19 @@ gabble_olpc_buddy_view_dispose (GObject *object)
 }
 
 static void
+gabble_olpc_buddy_view_finalize (GObject *object)
+{
+  GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (object);
+  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+
+  g_hash_table_destroy (priv->properties);
+  g_free (priv->alias);
+
+  if (G_OBJECT_CLASS (gabble_olpc_buddy_view_parent_class)->finalize)
+    G_OBJECT_CLASS (gabble_olpc_buddy_view_parent_class)->finalize (object);
+}
+
+static void
 gabble_olpc_buddy_view_get_property (GObject *object,
                                guint property_id,
                                GValue *value,
@@ -312,6 +325,7 @@ gabble_olpc_buddy_view_class_init (
       sizeof (GabbleOlpcBuddyViewPrivate));
 
   object_class->dispose = gabble_olpc_buddy_view_dispose;
+  object_class->finalize = gabble_olpc_buddy_view_finalize;
 
   view_class->create_close_msg = gabble_olpc_buddy_view_create_close_msg;
   view_class->create_request = gabble_olpc_buddy_view_create_request;

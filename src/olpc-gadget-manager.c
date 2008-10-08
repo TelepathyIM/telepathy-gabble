@@ -277,61 +277,53 @@ olpc_gadget_channel_closed_cb (GabbleOlpcView *channel,
     }
 }
 
-static gboolean
-gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
-                                           gpointer request_token,
-                                           GHashTable *request_properties)
+static GabbleOlpcView *
+create_buddy_view_channel (GabbleOlpcGadgetManager *self,
+                           GHashTable *request_properties,
+                           GError **error)
 {
-  GabbleOlpcGadgetManager *self = GABBLE_OLPC_GADGET_MANAGER (manager);
   TpBaseConnection *conn = (TpBaseConnection *) self->priv->conn;
-  GabbleOlpcView *channel = NULL;
-  GError *error = NULL;
-  GSList *request_tokens;
-  gchar *object_path;
+  GabbleOlpcView *channel;
   guint max_size;
+  gboolean valid;
+  gchar *object_path;
   const gchar *alias;
   GHashTable *properties;
-  gboolean valid;
 
-  if (tp_strdiff (tp_asv_get_string (request_properties,
-          TP_IFACE_CHANNEL ".ChannelType"),
-        GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW))
-    return FALSE;
+  /* TODO: check if Gadget is available */
 
   if ((tp_asv_get_uint32 (request_properties,
        TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0) ||
       (tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL) != 0))
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Views channels can't have a target handle");
-      goto error;
+      return NULL;
     }
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
           olpc_gadget_channel_fixed_properties,
           olpc_gadget_channel_allowed_properties,
-          &error))
-    goto error;
+          error))
+    return NULL;
 
   max_size = tp_asv_get_uint32 (request_properties,
       GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW ".MaxSize", &valid);
   if (!valid)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "MaxSize property is mandatory");
-      goto error;
+      return NULL;
     }
 
   if (max_size == 0)
     {
 
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "max have to be greater than 0");
-      goto error;
+      return NULL;
     }
-
-  /* TODO: check if Gadget is available */
 
   properties = tp_asv_get_boxed (request_properties,
       GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW ".Properties",
@@ -347,7 +339,41 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
         object_path, self->priv->next_view_number, max_size, properties,
         alias));
 
-  g_assert (channel != NULL);
+  g_free (object_path);
+
+  return channel;
+}
+
+static gboolean
+gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
+                                           gpointer request_token,
+                                           GHashTable *request_properties)
+{
+  GabbleOlpcGadgetManager *self = GABBLE_OLPC_GADGET_MANAGER (manager);
+  GabbleOlpcView *channel = NULL;
+  GError *error = NULL;
+  GSList *request_tokens;
+
+  if (!tp_strdiff (tp_asv_get_string (request_properties,
+          TP_IFACE_CHANNEL ".ChannelType"),
+        GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW))
+    {
+      channel = create_buddy_view_channel (self, request_properties, &error);
+    }
+  else
+    {
+      return FALSE;
+    }
+
+  if (channel == NULL)
+    {
+      /* Something went wrong */
+      tp_channel_manager_emit_request_failed (self, request_token,
+          error->domain, error->code, error->message);
+      g_error_free (error);
+      return TRUE;
+    }
+
   g_signal_connect (channel, "closed",
       (GCallback) olpc_gadget_channel_closed_cb, self);
   g_hash_table_insert (self->priv->channels,
@@ -358,17 +384,9 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
       TP_EXPORTABLE_CHANNEL (channel), request_tokens);
   g_slist_free (request_tokens);
 
-  g_free (object_path);
-
   /* FIXME: raise a D-Bus error if failed */
   gabble_olpc_view_send_request (channel, NULL);
 
-  return TRUE;
-
-error:
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
-  g_error_free (error);
   return TRUE;
 }
 

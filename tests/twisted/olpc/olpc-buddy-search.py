@@ -141,7 +141,11 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     view_path = return_event.value[0]
+    props = return_event.value[1]
     view1 = bus.get_object(conn.bus_name, view_path)
+
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Properties'] == {}
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == ''
 
     # check org.freedesktop.Telepathy.Channel D-Bus properties
     props = view1.GetAll(
@@ -238,7 +242,11 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     view_path = return_event.value[0]
+    props = return_event.value[1]
     view2 = bus.get_object(conn.bus_name, view_path)
+
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Properties'] == dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == ''
 
     # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
     props = view2.GetAll(
@@ -344,7 +352,11 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     view_path = return_event.value[0]
+    props = return_event.value[1]
     view3 = bus.get_object(conn.bus_name, view_path)
+
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Properties'] == {}
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == 'tom'
 
     # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
     props = view3.GetAll(

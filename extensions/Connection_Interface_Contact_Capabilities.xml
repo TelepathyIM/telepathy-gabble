@@ -79,8 +79,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           <p>The handle zero MUST NOT be included in the request.</p>
         </tp:docstring>
       </arg>
-      <arg direction="out" type="a(ua{sv}as)"
-           tp:type="Enhanced_Contact_Capability[]">
+      <!-- There was a bug in dbus-glib that prevent to use the right type:
+           Instead of a{ua(a{sv}as)}, we used a(ua{sv}as) as a workaround.
+           See http://bugs.freedesktop.org/show_bug.cgi?id=17329
+           Now there is a fix, so we don't use the workaround anymore.
+        -->
+      <arg direction="out" type="a{ua(a{sv}as)}"
+           tp:type="Contact_Handle_Enhanced_Contact_Capability_Map">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of structures containing:
           <ul>
@@ -104,7 +109,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <signal name="ContactCapabilitiesChanged"
             tp:name-for-bindings="Contact_Capabilities_Changed">
-      <arg name="caps" type="a(ua{sv}as)" tp:type="Enhanced_Contact_Capability[]">
+      <arg name="handle" type="u" tp:type="Contact_Handle">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>A contact handle.</p>
+        </tp:docstring>
+      </arg>
+      <arg name="caps" type="a(a{sv}as)"
+           tp:type="Enhanced_Contact_Capability[]">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           All the capabilities of the contact
         </tp:docstring>
@@ -115,7 +126,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </signal>
 
-    <tp:struct name="Enhanced_Contact_Capability" array-name="Enhanced_Contact_Capability_List">
+    <tp:struct name="Enhanced_Contact_Capability"
+               array-name="Enhanced_Contact_Capability_List">
       <tp:docstring>
         A struct representing a capability posessed by a contact,
         as returned by GetContactCapabilities on the ContactCapabilities
@@ -125,7 +137,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         the request contains a property which does not belong to
         Fixed_Properties nor to Allowed_Properties, the request will fail.
       </tp:docstring>
-      <tp:member type="u" tp:type="Contact_Handle" name="Handle"/>
       <tp:member type="a{sv}" tp:type="Channel_Class"
                  name="Fixed_Properties">
         <tp:docstring>
@@ -139,15 +150,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:member>
     </tp:struct>
 
-    <tp:struct name="Contact_Capability_Change" array-name="Contact_Capability_Change_List">
-      <tp:docstring>A struct representing a change to one of a contact's capabilities, as
-        seen in the ContactCapabilitiesChanged signal on the ContactCapabilities
-        interface.</tp:docstring>
-      <tp:member type="a(ua{sv}as)" tp:type="Enhanced_Contact_Capability[]"
-                 name="Removed_Capabilities"/>
-      <tp:member type="a(ua{sv}as)" tp:type="Enhanced_Contact_Capability[]"
-                 name="Added_Capabilities"/>
-    </tp:struct>
+  <tp:mapping name="Contact_Handle_Enhanced_Contact_Capability_Map"
+              array-name="Contact_Handle_Enhanced_Contact_Capability_Map_List">
+    <tp:docstring>A mapping from contact handle to their capabilities.
+    </tp:docstring>
+    <tp:member type="u" name="Key" tp:type="Contact_Handle">
+      <tp:docstring>
+        A contact handle.
+      </tp:docstring>
+    </tp:member>
+    <tp:member type="a(a{sv}as)" name="Value"
+               tp:type="Enhanced_Contact_Capability[]">
+      <tp:docstring>
+        The contact capabilities.
+      </tp:docstring>
+    </tp:member>
+  </tp:mapping>
 
   </interface>
 </node>

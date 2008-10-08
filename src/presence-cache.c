@@ -244,6 +244,8 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node)
 static void
 capability_info_free (CapabilityInfo *info)
 {
+  gabble_presence_cache_free_cache_entry (info->per_channel_manager_caps);
+  info->per_channel_manager_caps = NULL;
   tp_intset_destroy (info->guys);
   g_slice_free (CapabilityInfo, info);
 }

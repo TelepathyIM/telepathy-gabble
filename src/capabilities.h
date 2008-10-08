@@ -44,7 +44,7 @@ struct _Feature
     FEATURE_OPTIONAL,
     FEATURE_BUNDLE_COMPAT   /* just for voice-v1 */
   } feature_type;
-  const gchar *ns;
+  gchar *ns;
   GabblePresenceCapabilities caps;
 };
 

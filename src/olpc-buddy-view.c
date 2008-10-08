@@ -181,8 +181,6 @@ gabble_olpc_buddy_view_constructor (GType type,
   priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (GABBLE_OLPC_BUDDY_VIEW (obj));
   conn = (TpBaseConnection *) view->conn;
 
-  view->object_path = g_strdup_printf ("%s/OlpcBuddyView%u",
-      conn->object_path, view->id);
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, view->object_path, obj);
 

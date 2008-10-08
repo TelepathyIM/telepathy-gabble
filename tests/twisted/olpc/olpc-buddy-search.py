@@ -143,8 +143,31 @@ def test(q, bus, conn, stream):
     view_path = return_event.value[0]
     view1 = bus.get_object(conn.bus_name, view_path)
 
-    # TODO: check the values of most the D-Bus properties (including
-    # Interfaces)
+    # check org.freedesktop.Telepathy.Channel D-Bus properties
+    props = view1.GetAll(
+        'org.freedesktop.Telepathy.Channel',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['ChannelType'] == 'org.laptop.Telepathy.Channel.Type.BuddyView'
+    assert 'org.laptop.Telepathy.Channel.Interface.View' in props['Interfaces']
+    assert props['TargetHandle'] == 0
+    assert props['TargetID'] == ''
+    assert props['TargetHandleType'] == 0
+
+    # check org.laptop.Telepathy.Channel.Interface.View D-Bus properties
+    props = view1.GetAll(
+        'org.laptop.Telepathy.Channel.Interface.View',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['MaxSize'] == 3
+
+    # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
+    props = view1.GetAll(
+        'org.laptop.Telepathy.Channel.Type.BuddyView',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['Properties'] == {}
+    assert props['Alias'] == ''
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -216,6 +239,14 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view2 = bus.get_object(conn.bus_name, view_path)
+
+    # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
+    props = view2.GetAll(
+        'org.laptop.Telepathy.Channel.Type.BuddyView',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['Properties'] == {'color': '#AABBCC,#001122'}
+    assert props['Alias'] == ''
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -314,6 +345,14 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view3 = bus.get_object(conn.bus_name, view_path)
+
+    # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
+    props = view3.GetAll(
+        'org.laptop.Telepathy.Channel.Type.BuddyView',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['Properties'] == {}
+    assert props['Alias'] == 'tom'
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args

@@ -34,6 +34,8 @@ typedef struct _GabbleOlpcBuddyViewClass GabbleOlpcBuddyViewClass;
 
 struct _GabbleOlpcBuddyViewClass {
   GabbleOlpcViewClass parent_class;
+
+  TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleOlpcBuddyView {

@@ -293,8 +293,6 @@ gabble_olpc_buddy_view_class_init (
   GabbleOlpcViewClass *view_class = GABBLE_OLPC_VIEW_CLASS (
       gabble_olpc_buddy_view_class);
   GParamSpec *param_spec;
-  /* FIXME: Implement these props ! */
-  /*
   static TpDBusPropertiesMixinPropImpl buddy_view_props[] = {
       { "Properties", "view-properties", NULL },
       { "Alias", "alias", NULL },
@@ -308,7 +306,6 @@ gabble_olpc_buddy_view_class_init (
       },
       { NULL }
   };
-  */
 
   object_class->get_property = gabble_olpc_buddy_view_get_property;
   object_class->set_property = gabble_olpc_buddy_view_set_property;
@@ -339,12 +336,9 @@ gabble_olpc_buddy_view_class_init (
       param_spec);
 
 
-  /* FIXME: how am I suppose to do that with inheritance ? */
-  /*
   gabble_olpc_buddy_view_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleOlpcBuddyViewClass, dbus_props_class));
-      */
 }
 
 GabbleOlpcBuddyView *

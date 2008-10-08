@@ -222,12 +222,13 @@ gabble_olpc_gadget_manager_foreach_channel (TpChannelManager *manager,
 }
 
 
-static const gchar * const olpc_gadget_channel_fixed_properties[] = {
+static const gchar * const olpc_gadget_channel_view_fixed_properties[] = {
     TP_IFACE_CHANNEL ".ChannelType",
     NULL
 };
 
-static const gchar * const olpc_gadget_channel_allowed_properties[] = {
+static const gchar * const olpc_gadget_channel_buddy_view_allowed_properties[] =
+{
     GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW ".MaxSize",
     GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW ".Properties",
     GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW ".Alias",
@@ -248,7 +249,8 @@ gabble_olpc_gadget_manager_foreach_channel_class (TpChannelManager *manager,
   g_value_set_static_string (value, GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
 
-  func (manager, table, olpc_gadget_channel_allowed_properties, user_data);
+  func (manager, table, olpc_gadget_channel_buddy_view_allowed_properties,
+      user_data);
 
   g_hash_table_destroy (table);
 }
@@ -303,8 +305,8 @@ create_buddy_view_channel (GabbleOlpcGadgetManager *self,
     }
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
-          olpc_gadget_channel_fixed_properties,
-          olpc_gadget_channel_allowed_properties,
+          olpc_gadget_channel_view_fixed_properties,
+          olpc_gadget_channel_buddy_view_allowed_properties,
           error))
     return NULL;
 

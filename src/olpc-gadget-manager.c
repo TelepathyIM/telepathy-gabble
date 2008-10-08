@@ -103,6 +103,7 @@ gabble_olpc_gadget_manager_close_all (GabbleOlpcGadgetManager *self)
           g_object_unref (channel);
         }
 
+      g_hash_table_destroy (self->priv->channels);
       self->priv->channels = NULL;
     }
 }

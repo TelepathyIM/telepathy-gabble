@@ -23,7 +23,7 @@
 #include <glib-object.h>
 #include <telepathy-glib/handle.h>
 
-#include "olpc-buddy-view.h"
+#include "olpc-view.h"
 
 G_BEGIN_DECLS
 

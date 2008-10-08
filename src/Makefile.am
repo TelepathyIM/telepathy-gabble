@@ -75,6 +75,8 @@ libgabble_convenience_la_SOURCES = \
     olpc-buddy-view.c \
     olpc-gadget-manager.h \
     olpc-gadget-manager.c \
+    olpc-view.h \
+    olpc-view.c \
     pubsub.h \
     pubsub.c \
     presence.h \

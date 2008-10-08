@@ -1,5 +1,5 @@
 /*
- * olpc-buddy-view.h - Header for GabbleOlpcView
+ * olpc-buddy-view.h - Header for GabbleOlpcBuddyView
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -17,83 +17,53 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_OLPC_VIEW_H__
-#define __GABBLE_OLPC_VIEW_H__
+#ifndef __GABBLE_OLPC_BUDDY_VIEW_H__
+#define __GABBLE_OLPC_BUDDY_VIEW_H__
 
 #include <glib-object.h>
 
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/handle-repo.h>
 
-#include "connection.h"
+#include "olpc-view.h"
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleOlpcViewClass GabbleOlpcViewClass;
+typedef struct _GabbleOlpcBuddyView GabbleOlpcBuddyView;
+typedef struct _GabbleOlpcBuddyViewClass GabbleOlpcBuddyViewClass;
 
-struct _GabbleOlpcViewClass {
-  GObjectClass parent_class;
-
-  TpDBusPropertiesMixinClass dbus_props_class;
+struct _GabbleOlpcBuddyViewClass {
+  GabbleOlpcViewClass parent_class;
 };
 
-struct _GabbleOlpcView {
-  GObject parent;
+struct _GabbleOlpcBuddyView {
+  GabbleOlpcView parent;
 
   gpointer priv;
 };
 
-GType gabble_olpc_view_get_type (void);
+GType gabble_olpc_buddy_view_get_type (void);
 
 /* TYPE MACROS */
-#define GABBLE_TYPE_OLPC_VIEW \
-  (gabble_olpc_view_get_type ())
-#define GABBLE_OLPC_VIEW(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_OLPC_VIEW, GabbleOlpcView))
-#define GABBLE_OLPC_VIEW_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_OLPC_VIEW,\
-                           GabbleOlpcViewClass))
-#define GABBLE_IS_OLPC_VIEW(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_OLPC_VIEW))
-#define GABBLE_IS_OLPC_VIEW_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_OLPC_VIEW))
-#define GABBLE_OLPC_VIEW_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_OLPC_VIEW,\
-                              GabbleOlpcViewClass))
+#define GABBLE_TYPE_OLPC_BUDDY_VIEW \
+  (gabble_olpc_buddy_view_get_type ())
+#define GABBLE_OLPC_BUDDY_VIEW(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_OLPC_BUDDY_VIEW, GabbleOlpcBuddyView))
+#define GABBLE_OLPC_BUDDY_VIEW_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_OLPC_BUDDY_VIEW,\
+                           GabbleOlpcBuddyViewClass))
+#define GABBLE_IS_OLPC_BUDDY_VIEW(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_OLPC_BUDDY_VIEW))
+#define GABBLE_IS_OLPC_BUDDY_VIEW_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_OLPC_BUDDY_VIEW))
+#define GABBLE_OLPC_BUDDY_VIEW_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_OLPC_BUDDY_VIEW,\
+                              GabbleOlpcBuddyViewClass))
 
-GabbleOlpcView * gabble_olpc_buddy_view_new (GabbleConnection *conn,
+GabbleOlpcBuddyView * gabble_olpc_buddy_view_new (GabbleConnection *conn,
     const gchar *object_path, guint id, guint max_size, GHashTable *properties,
     const gchar *alias);
 
-gboolean gabble_olpc_buddy_view_send_request (GabbleOlpcView *view,
-    GError **error);
-
-/* FIXME: fix method names */
-/* FIXME: most of this should be moved to an abstract class */
-void gabble_olpc_view_add_buddies (GabbleOlpcView *self,
-    GArray *handles, GPtrArray *buddies_properties, TpHandle room);
-
-void gabble_olpc_view_remove_buddies (GabbleOlpcView *self,
-    TpHandleSet *handles);
-
-gboolean gabble_olpc_view_set_buddy_properties (GabbleOlpcView *self,
-    TpHandle buddy, GHashTable *properties);
-
-GHashTable * gabble_olpc_view_get_buddy_properties (GabbleOlpcView *self,
-    TpHandle buddy);
-
-void gabble_olpc_view_add_activities (GabbleOlpcView *self,
-    GHashTable *activities);
-
-void gabble_olpc_view_remove_activities (GabbleOlpcView *self,
-    TpHandleSet *rooms);
-
-GPtrArray * gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
-    TpHandle buddy);
-
-void gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
-    GArray *buddies, TpHandle room);
-
 G_END_DECLS
 
-#endif /* #ifndef __GABBLE_OLPC_VIEW_H__ */
+#endif /* #ifndef __GABBLE_OLPC_BUDDY_VIEW_H__ */

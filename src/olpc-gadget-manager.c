@@ -342,8 +342,10 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
   object_path = g_strdup_printf ("%s/OlpcBuddyViewChannel%u", conn->object_path,
       self->priv->next_view_number++);
 
-  channel = gabble_olpc_buddy_view_new (self->priv->conn, object_path,
-      self->priv->next_view_number, max_size, properties, alias);
+  channel = GABBLE_OLPC_VIEW (gabble_olpc_buddy_view_new (self->priv->conn,
+        object_path, self->priv->next_view_number, max_size, properties,
+        alias));
+
   g_assert (channel != NULL);
   g_signal_connect (channel, "closed",
       (GCallback) olpc_gadget_channel_closed_cb, self);
@@ -358,7 +360,7 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
   g_free (object_path);
 
   /* FIXME: raise a D-Bus error if failed */
-  gabble_olpc_buddy_view_send_request (channel, NULL);
+  gabble_olpc_view_send_request (channel, NULL);
 
   return TRUE;
 

@@ -143,6 +143,9 @@ def test(q, bus, conn, stream):
     view_path = return_event.value[0]
     view1 = bus.get_object(conn.bus_name, view_path)
 
+    # TODO: check the values of most the D-Bus properties (including
+    # Interfaces)
+
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
     assert removed == []

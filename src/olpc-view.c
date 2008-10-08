@@ -269,19 +269,7 @@ gabble_olpc_view_get_property (GObject *object,
         g_value_set_boolean (value, priv->closed);
         break;
       case PROP_CHANNEL_PROPERTIES:
-        g_value_take_boxed (value,
-            tp_dbus_properties_mixin_make_properties_hash (object,
-                TP_IFACE_CHANNEL, "TargetHandle",
-                TP_IFACE_CHANNEL, "TargetHandleType",
-                TP_IFACE_CHANNEL, "ChannelType",
-                TP_IFACE_CHANNEL, "TargetID",
-                GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
-                GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
-                GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
-                GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW, "MaxSize",
-                GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW, "Buddies",
-                GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW, "Activities",
-                NULL));
+        /* This property has to be implemented in the concrete classes */
         break;
       case PROP_CONNECTION:
         g_value_set_object (value, self->conn);

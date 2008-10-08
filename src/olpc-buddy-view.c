@@ -48,6 +48,8 @@ enum
   PROP_VIEW_PROPERTIES = 1,
   PROP_ALIAS,
 
+  PROP_CHANNEL_PROPERTIES,
+
   LAST_PROPERTY
 };
 
@@ -107,8 +109,6 @@ gabble_olpc_buddy_view_get_property (GObject *object,
 
   switch (property_id)
     {
-       /* FIXME: we should return the BuddyInfo specific props */
-#if 0
       case PROP_CHANNEL_PROPERTIES:
         g_value_take_boxed (value,
             tp_dbus_properties_mixin_make_properties_hash (object,
@@ -126,7 +126,6 @@ gabble_olpc_buddy_view_get_property (GObject *object,
                 GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW, "Alias",
                 NULL));
         break;
-#endif
       case PROP_VIEW_PROPERTIES:
         g_value_set_boxed (value, priv->properties);
         break;
@@ -318,6 +317,9 @@ gabble_olpc_buddy_view_class_init (
 
   view_class->create_close_msg = gabble_olpc_buddy_view_create_close_msg;
   view_class->create_request = gabble_olpc_buddy_view_create_request;
+
+  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
+      "channel-properties");
 
   param_spec = g_param_spec_boxed ("view-properties", "View's search properties",
       "The buddy properties Gadget should look for",

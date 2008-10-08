@@ -284,7 +284,6 @@ gabble_olpc_view_get_property (GObject *object,
         g_value_take_boxed (value, tp_handle_set_to_array (priv->buddies));
         break;
       case PROP_ACTIVITIES:
-        /* TODO: is that leak free ? */
         g_value_take_boxed (value, create_activities_array (self));
         break;
       default:
@@ -602,7 +601,6 @@ gabble_olpc_buddy_view_close (TpSvcChannel *iface,
     }
   else
     {
-      /* FIXME: set closed */
       if (!do_close (self, &error))
         {
           dbus_g_method_return_error (context, error);

@@ -643,6 +643,10 @@ activity_disposed_cb (gpointer _conn,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (_conn);
 
+  if (conn->olpc_activities_info == NULL)
+    /* We are disposing */
+    return;
+
   g_hash_table_foreach_remove (conn->olpc_activities_info,
       remove_activity, activity);
 }
@@ -3669,16 +3673,20 @@ void
 conn_olpc_activity_properties_dispose (GabbleConnection *self)
 {
   g_hash_table_destroy (self->olpc_current_act);
+  self->olpc_current_act = NULL;
 
   g_hash_table_foreach (self->olpc_pep_activities,
       (GHFunc) unref_activities_in_each_set, self);
   g_hash_table_destroy (self->olpc_pep_activities);
+  self->olpc_pep_activities = NULL;
 
   g_hash_table_foreach (self->olpc_invited_activities,
       (GHFunc) unref_activities_in_each_set, self);
   g_hash_table_destroy (self->olpc_invited_activities);
+  self->olpc_invited_activities = NULL;
 
   g_hash_table_destroy (self->olpc_activities_info);
+  self->olpc_activities_info = NULL;
 }
 
 void

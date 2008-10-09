@@ -439,7 +439,7 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   /* First check if we can find properties in a buddy view */
   /* FIXME: Maybe we should first try the PEP node as we do for buddy
    * activities ? */
-  properties = gabble_olpc_gadget_manager_find_buddy_properties_from_views (
+  properties = gabble_olpc_gadget_manager_find_buddy_properties (
       conn->olpc_gadget_manager, contact);
   if (properties != NULL)
     {

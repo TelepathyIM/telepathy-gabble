@@ -545,7 +545,7 @@ find_view_having_properties_for_buddy (gpointer id,
 }
 
 GHashTable *
-gabble_olpc_gadget_manager_find_buddy_properties_from_views (
+gabble_olpc_gadget_manager_find_buddy_properties (
     GabbleOlpcGadgetManager *self,
     TpHandle buddy)
 {

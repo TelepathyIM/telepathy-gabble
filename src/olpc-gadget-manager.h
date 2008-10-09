@@ -59,8 +59,7 @@ GType gabble_olpc_gadget_manager_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_OLPC_GADGET_MANAGER,\
                               GabbleOlpcGadgetManagerClass))
 
-/* TODO: remove the _from_views */
-GHashTable * gabble_olpc_gadget_manager_find_buddy_properties_from_views (
+GHashTable * gabble_olpc_gadget_manager_find_buddy_properties (
     GabbleOlpcGadgetManager *self, TpHandle buddy);
 
 GabbleOlpcView * gabble_olpc_gadget_manager_get_view (

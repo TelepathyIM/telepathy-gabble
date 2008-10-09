@@ -359,6 +359,8 @@ gabble_olpc_activity_view_send_request (GabbleOlpcView *view,
         buddy = lm_message_node_add_child (activity_node, "buddy", "");
         lm_message_node_set_attribute (buddy, "jid", jid);
       }
+
+      g_array_free (participants, TRUE);
     }
   else
     {

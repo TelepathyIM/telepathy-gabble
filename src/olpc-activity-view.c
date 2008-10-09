@@ -284,7 +284,6 @@ activity_view_query_result_cb (GabbleConnection *conn,
   if (view_node == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  /* FIXME: make sense to call this conn-olpc function ? */
   add_activities_to_view_from_node (conn, view, view_node);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

@@ -252,7 +252,6 @@ buddy_view_query_result_cb (GabbleConnection *conn,
   if (view_node == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  /* FIXME: make sense to call this conn-olpc function ? */
   add_buddies_to_view_from_node (conn, self, view_node, "buddy", 0);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

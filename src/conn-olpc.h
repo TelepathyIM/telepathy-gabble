@@ -72,6 +72,9 @@ gboolean add_buddies_to_view_from_node (GabbleConnection *conn,
     GabbleOlpcView *view, LmMessageNode *node, const gchar *node_name,
     TpHandle activity);
 
+gboolean add_activities_to_view_from_node (GabbleConnection *conn,
+    GabbleOlpcView *view, LmMessageNode *node);
+
 void olpc_gadget_iface_init (gpointer g_iface, gpointer iface_data);
 
 #endif /* __CONN_OLPC_H__ */

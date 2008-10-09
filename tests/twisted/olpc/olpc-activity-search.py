@@ -2,10 +2,6 @@
 test OLPC search activity
 """
 
-print "FIXME: olpc/olpc-activity-search.py disabled during requestotronification of the view API"
-# exiting 77 causes automake to consider the test to have been skipped
-raise SystemExit(77)
-
 import dbus
 
 from servicetest import call_async, EventPattern
@@ -31,11 +27,19 @@ NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
 NS_AMP = "http://jabber.org/protocol/amp"
 NS_STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"
 
+tp_name_prefix = 'org.freedesktop.Telepathy'
+olpc_name_prefix = 'org.laptop.Telepathy'
+
 def check_view(view, conn, activities, buddies):
-    act = view.GetActivities()
+    act = view.Get(olpc_name_prefix + '.Channel.Interface.View',
+        'Activities',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
     assert sorted(act) == sorted(activities)
 
-    handles = view.GetBuddies()
+    handles = view.Get(olpc_name_prefix + '.Channel.Interface.View',
+        'Buddies',
+        dbus_interface='org.freedesktop.DBus.Properties')
     assert sorted(conn.InspectHandles(1, handles)) == sorted(buddies)
 
 def test(q, bus, conn, stream):
@@ -56,18 +60,60 @@ def test(q, bus, conn, stream):
             'org.laptop.Telepathy.ActivityProperties')
     buddy_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
+    requests_iface = dbus.Interface(conn, tp_name_prefix + '.Connection.Interface.Requests')
 
     sync_stream(q, stream)
 
+    # TODO: change view var name
+
+    # check if we can request Activity views
+    properties = conn.GetAll(
+        'org.freedesktop.Telepathy.Connection.Interface.Requests',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert ({tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.ActivityView'},
+
+            [olpc_name_prefix + '.Channel.Interface.View.MaxSize',
+             olpc_name_prefix + '.Channel.Type.ActivityView.Properties',
+             olpc_name_prefix + '.Channel.Type.ActivityView.Participants'],
+         ) in properties.get('RequestableChannelClasses'),\
+                 properties['RequestableChannelClasses']
+
     # request 3 random activities (view 0)
-    view_path = request_random_activity_view(q, stream, conn, 3, '0',
+    view_path = request_random_activity_view(q, stream, conn, 3, '1',
             [('activity1', 'room1@conference.localhost',
                 {'color': ('str', '#005FE4,#00A0FF')},
                 [('lucien@localhost', {'color': ('str', '#AABBCC,#CCBBAA')}),
                  ('jean@localhost', {})]),])
 
     view0 = bus.get_object(conn.bus_name, view_path)
-    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
+
+    # check org.freedesktop.Telepathy.Channel D-Bus properties
+    props = view0.GetAll(
+        'org.freedesktop.Telepathy.Channel',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['ChannelType'] == 'org.laptop.Telepathy.Channel.Type.ActivityView'
+    assert 'org.laptop.Telepathy.Channel.Interface.View' in props['Interfaces']
+    assert props['TargetHandle'] == 0
+    assert props['TargetID'] == ''
+    assert props['TargetHandleType'] == 0
+
+    # check org.laptop.Telepathy.Channel.Interface.View D-Bus properties
+    props = view0.GetAll(
+        'org.laptop.Telepathy.Channel.Interface.View',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['MaxSize'] == 3
+
+    # check org.laptop.Telepathy.Channel.Type.ActivityView D-Bus properties
+    props = view0.GetAll(
+        'org.laptop.Telepathy.Channel.Type.ActivityView',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['Properties'] == {}
+    assert props['Participants'] == []
 
     ## Current views ##
     # view 0: activity 1 (with: Lucien, Jean)
@@ -82,7 +128,7 @@ def test(q, bus, conn, stream):
     assert props == {'color': '#005FE4,#00A0FF'}
 
     q.expect('dbus-signal', signal='ActivitiesChanged',
-            interface='org.laptop.Telepathy.View',
+            interface='org.laptop.Telepathy.Channel.Interface.View',
             args=[[('activity1', handles['room1'])], []])
 
     # participants are added to view
@@ -99,7 +145,7 @@ def test(q, bus, conn, stream):
             args=[handles['jean'], [('activity1', handles['room1'])]]))
 
     # check activities and buddies in view
-    check_view(view0_iface, conn, [('activity1', handles['room1'])],
+    check_view(view0, conn, [('activity1', handles['room1'])],
             ['lucien@localhost', 'jean@localhost'])
 
     # we can now get activity properties
@@ -122,13 +168,19 @@ def test(q, bus, conn, stream):
             value=([('activity1', handles['room1'])],))
 
     # activity search by properties (view 1)
-    props = {'color': '#AABBCC,#001122'}
-    call_async(q, gadget_iface, 'SearchActivitiesByProperties', props)
+    props = dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+
+    call_async(q, requests_iface, 'CreateChannel',
+        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+            'org.laptop.Telepathy.Channel.Type.ActivityView',
+            'org.laptop.Telepathy.Channel.Interface.View.MaxSize': 5,
+            'org.laptop.Telepathy.Channel.Type.ActivityView.Properties': props,
+          })
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
             query_ns=NS_OLPC_ACTIVITY),
-        EventPattern('dbus-return', method='SearchActivitiesByProperties'))
+        EventPattern('dbus-return', method='CreateChannel'))
 
     properties_nodes = xpath.queryForNodes('/iq/view/activity/properties',
             iq_event.stanza)
@@ -137,7 +189,7 @@ def test(q, bus, conn, stream):
 
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
-    assert view['id'] == '1'
+    assert view['id'] == '2'
 
     send_reply_to_activity_view_request(stream, iq_event.stanza,
             [('activity2', 'room2@conference.localhost',
@@ -149,7 +201,11 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view1 = bus.get_object(conn.bus_name, view_path)
-    view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.View')
+
+    props = return_event.value[1]
+    assert props['org.laptop.Telepathy.Channel.Type.ActivityView.Properties'] == \
+            {'color': '#AABBCC,#001122'}
+    assert props['org.laptop.Telepathy.Channel.Type.ActivityView.Participants'] == []
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
     handles['room2'], props = event.args
@@ -157,27 +213,38 @@ def test(q, bus, conn, stream):
     assert props == {'color': '#AABBCC,#001122'}
 
     q.expect('dbus-signal', signal='ActivitiesChanged',
-            interface='org.laptop.Telepathy.View',
+            interface='org.laptop.Telepathy.Channel.Interface.View',
             args=[[('activity2', handles['room2'])], []])
 
-    act = view1.GetActivities()
+    act = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
+        'Activities',
+        dbus_interface='org.freedesktop.DBus.Properties')
     assert sorted(act) == [('activity2', handles['room2'])]
 
-    assert view1_iface.GetBuddies() == []
+    buddies = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
+        'Buddies',
+        dbus_interface='org.freedesktop.DBus.Properties')
+    assert buddies == []
 
     # activity search by participants (view 2)
     participants = conn.RequestHandles(1, ["alice@localhost", "bob@localhost"])
-    call_async(q, gadget_iface, 'SearchActivitiesByParticipants', participants)
+
+    call_async(q, requests_iface, 'CreateChannel',
+        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+            'org.laptop.Telepathy.Channel.Type.ActivityView',
+            'org.laptop.Telepathy.Channel.Interface.View.MaxSize': 5,
+            'org.laptop.Telepathy.Channel.Type.ActivityView.Participants': participants,
+          })
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
             query_ns=NS_OLPC_ACTIVITY),
-        EventPattern('dbus-return', method='SearchActivitiesByParticipants'))
+        EventPattern('dbus-return', method='CreateChannel'))
 
     buddies = xpath.queryForNodes('/iq/view/activity/buddy', iq_event.stanza)
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
-    assert view['id'] == '2'
+    assert view['id'] == '3'
     assert len(buddies) == 2
     assert (buddies[0]['jid'], buddies[1]['jid']) == ('alice@localhost',
             'bob@localhost')
@@ -193,7 +260,6 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view2 = bus.get_object(conn.bus_name, view_path)
-    view2_iface = dbus.Interface(view2, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
     handles['room3'], props = event.args
@@ -201,17 +267,19 @@ def test(q, bus, conn, stream):
     assert props == {'color': '#AABBCC,#001122'}
 
     q.expect('dbus-signal', signal='ActivitiesChanged',
-            interface='org.laptop.Telepathy.View',
+            interface='org.laptop.Telepathy.Channel.Interface.View',
             args=[[('activity3', handles['room3'])], []])
 
-    act = view2.GetActivities()
+    act = view2.Get(olpc_name_prefix + '.Channel.Interface.View',
+        'Activities',
+        dbus_interface='org.freedesktop.DBus.Properties')
     assert sorted(act) == [('activity3', handles['room3'])]
 
     # add activity 4 to view 0
     message = create_gadget_message('alice@localhost')
 
     added = message.addElement((NS_OLPC_ACTIVITY, 'added'))
-    added['id'] = '0'
+    added['id'] = '1'
     activity = added.addElement((None, 'activity'))
     activity['id'] = 'activity4'
     activity['room'] = 'room4@conference.localhost'
@@ -238,7 +306,7 @@ def test(q, bus, conn, stream):
 
     # activity is added
     event = q.expect('dbus-signal', signal='ActivitiesChanged',
-            interface='org.laptop.Telepathy.View')
+            interface='org.laptop.Telepathy.Channel.Interface.View')
     added, removed = event.args
     assert len(added) == 1
     id, handles['room4'] = added[0]
@@ -261,7 +329,7 @@ def test(q, bus, conn, stream):
                 ('activity4', handles['room4'])]]))
 
     # check activities and buddies in view
-    check_view(view0_iface, conn, [
+    check_view(view0, conn, [
         ('activity1', handles['room1']), ('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
@@ -275,7 +343,7 @@ def test(q, bus, conn, stream):
     change = message.addElement((NS_OLPC_ACTIVITY, 'change'))
     change['activity'] = 'activity1'
     change['room'] = 'room1@conference.localhost'
-    change['id'] = '0'
+    change['id'] = '1'
     properties = change.addElement((NS_OLPC_ACTIVITY_PROPS, 'properties'))
     for node in properties_to_xml({'tags': ('str', 'game'), \
             'color': ('str', '#AABBAA,#BBAABB')}):
@@ -295,7 +363,7 @@ def test(q, bus, conn, stream):
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
-    activity['view'] = '0'
+    activity['view'] = '1'
     joined = activity.addElement((None, 'joined'))
     joined['jid'] = 'marcel@localhost'
     properties = joined.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
@@ -322,7 +390,7 @@ def test(q, bus, conn, stream):
                 args=[handles['marcel'], [('activity1', handles['room1'])]]))
 
     # check activities and buddies in view
-    check_view(view0_iface, conn, [
+    check_view(view0, conn, [
         ('activity1', handles['room1']),('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost',
             'marcel@localhost'])
@@ -332,7 +400,7 @@ def test(q, bus, conn, stream):
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
-    activity['view'] = '0'
+    activity['view'] = '1'
     left = activity.addElement((None, 'left'))
     left['jid'] = 'marcel@localhost'
 
@@ -351,7 +419,7 @@ def test(q, bus, conn, stream):
                 args=[handles['marcel'], []]))
 
     # check activities and buddies in view
-    check_view(view0_iface, conn, [
+    check_view(view0, conn, [
         ('activity1', handles['room1']),('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
@@ -360,7 +428,7 @@ def test(q, bus, conn, stream):
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
-    activity['view'] = '0'
+    activity['view'] = '1'
     left = activity.addElement((None, 'left'))
     left['jid'] = 'jean@localhost'
 
@@ -376,7 +444,7 @@ def test(q, bus, conn, stream):
             args=[handles['jean'], [('activity4', handles['room4'])]])
 
     # Jean wasn't removed from the view as he is still in activity 4
-    check_view(view0_iface, conn, [
+    check_view(view0, conn, [
         ('activity1', handles['room1']),('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
@@ -384,7 +452,7 @@ def test(q, bus, conn, stream):
     message = create_gadget_message('alice@localhost')
 
     removed = message.addElement((NS_OLPC_ACTIVITY, 'removed'))
-    removed['id'] = '0'
+    removed['id'] = '1'
     activity = removed.addElement((None, 'activity'))
     activity['id'] = 'activity1'
     activity['room'] = 'room1@conference.localhost'
@@ -402,19 +470,19 @@ def test(q, bus, conn, stream):
                 args=[[], [handles['lucien']]]),
     # activity is removed from the view
             EventPattern('dbus-signal', signal='ActivitiesChanged',
-                interface='org.laptop.Telepathy.View',
+                interface='org.laptop.Telepathy.Channel.Interface.View',
                 args=[[], [('activity1', handles['room1'])]]),
             EventPattern('dbus-signal', signal='ActivitiesChanged',
                 interface='org.laptop.Telepathy.BuddyInfo',
                 args=[handles['lucien'], []]))
 
     # check activities and buddies in view
-    check_view(view0_iface, conn, [
+    check_view(view0, conn, [
         ('activity4', handles['room4'])],
         ['fernand@localhost', 'jean@localhost'])
 
     # close view 0
-    call_async(q, view0_iface, 'Close')
+    call_async(q, view0, 'Close')
     event_msg, _, _, _ = q.expect_many(
         EventPattern('stream-message', to='gadget.localhost'),
         EventPattern('dbus-return', method='Close'),
@@ -428,13 +496,13 @@ def test(q, bus, conn, stream):
 
     close = xpath.queryForNodes('/message/close', event_msg.stanza)
     assert len(close) == 1
-    assert close[0]['id'] == '0'
+    assert close[0]['id'] == '1'
 
     # close view 1
-    close_view(q, view1_iface, '1')
+    close_view(q, view1, '2')
 
     # close view 2
-    close_view(q, view2_iface, '2')
+    close_view(q, view2, '3')
 
 if __name__ == '__main__':
     exec_test(test)

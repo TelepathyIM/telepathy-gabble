@@ -39,6 +39,8 @@
 #include "connection.h"
 #include "debug.h"
 #include "namespaces.h"
+#include "olpc-activity.h"
+#include "olpc-activity-view.h"
 #include "olpc-buddy-view.h"
 #include "util.h"
 
@@ -235,21 +237,42 @@ static const gchar * const olpc_gadget_channel_buddy_view_allowed_properties[] =
     NULL
 };
 
+static const gchar * const olpc_gadget_channel_activity_view_allowed_properties[] =
+{
+    GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW ".MaxSize",
+    GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW ".Properties",
+    GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW ".Participants",
+    NULL
+};
 
 static void
 gabble_olpc_gadget_manager_foreach_channel_class (TpChannelManager *manager,
     TpChannelManagerChannelClassFunc func,
     gpointer user_data)
 {
-  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) tp_g_value_slice_free);
+  GHashTable *table;
   GValue *value;
 
+  /* BuddyView */
+  table = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) tp_g_value_slice_free);
   value = tp_g_value_slice_new (G_TYPE_STRING);
   g_value_set_static_string (value, GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
 
   func (manager, table, olpc_gadget_channel_buddy_view_allowed_properties,
+      user_data);
+
+  g_hash_table_destroy (table);
+
+  /* ActivityView */
+  table = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) tp_g_value_slice_free);
+  value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (value, GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
+
+  func (manager, table, olpc_gadget_channel_activity_view_allowed_properties,
       user_data);
 
   g_hash_table_destroy (table);
@@ -346,6 +369,74 @@ create_buddy_view_channel (GabbleOlpcGadgetManager *self,
   return channel;
 }
 
+static GabbleOlpcView *
+create_activity_view_channel (GabbleOlpcGadgetManager *self,
+                              GHashTable *request_properties,
+                              GError **error)
+{
+  TpBaseConnection *conn = (TpBaseConnection *) self->priv->conn;
+  GabbleOlpcView *channel;
+  guint max_size;
+  gboolean valid;
+  gchar *object_path;
+  GHashTable *properties;
+  GArray *participants;
+
+  /* TODO: check if Gadget is available */
+
+  if ((tp_asv_get_uint32 (request_properties,
+       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0) ||
+      (tp_asv_get_uint32 (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandle", NULL) != 0))
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Views channels can't have a target handle");
+      return NULL;
+    }
+
+  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+          olpc_gadget_channel_view_fixed_properties,
+          olpc_gadget_channel_activity_view_allowed_properties,
+          error))
+    return NULL;
+
+  max_size = tp_asv_get_uint32 (request_properties,
+      GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW ".MaxSize", &valid);
+  if (!valid)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "MaxSize property is mandatory");
+      return NULL;
+    }
+
+  if (max_size == 0)
+    {
+
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "max have to be greater than 0");
+      return NULL;
+    }
+
+  properties = tp_asv_get_boxed (request_properties,
+      GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW ".Properties",
+      TP_HASH_TYPE_STRING_VARIANT_MAP);
+
+  participants = tp_asv_get_boxed (request_properties,
+      GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW ".Participants",
+      GABBLE_ARRAY_TYPE_HANDLE);
+
+  object_path = g_strdup_printf ("%s/OlpcActivityViewChannel%u",
+      conn->object_path, self->priv->next_view_number++);
+
+  channel = GABBLE_OLPC_VIEW (gabble_olpc_activity_view_new (self->priv->conn,
+        object_path, self->priv->next_view_number, max_size, properties,
+        participants));
+
+  g_free (object_path);
+
+  return channel;
+}
+
 static gboolean
 gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
                                            gpointer request_token,
@@ -361,6 +452,12 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
         GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW))
     {
       channel = create_buddy_view_channel (self, request_properties, &error);
+    }
+  else if (!tp_strdiff (tp_asv_get_string (request_properties,
+          TP_IFACE_CHANNEL ".ChannelType"),
+        GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW))
+    {
+      channel = create_activity_view_channel (self, request_properties, &error);
     }
   else
     {
@@ -467,4 +564,82 @@ gabble_olpc_gadget_manager_get_view (GabbleOlpcGadgetManager *self,
                                      guint id)
 {
   return g_hash_table_lookup (self->priv->channels, GUINT_TO_POINTER (id));
+}
+
+struct find_activities_of_buddy_ctx
+{
+  TpHandle buddy;
+  GHashTable *activities;
+};
+
+static void
+find_activities_of_buddy (TpHandle contact,
+                          GabbleOlpcView *view,
+                          struct find_activities_of_buddy_ctx *ctx)
+{
+  GPtrArray *act;
+  guint i;
+
+  act = gabble_olpc_view_get_buddy_activities (view, ctx->buddy);
+
+  for (i = 0; i < act->len; i++)
+    {
+      GabbleOlpcActivity *activity;
+
+      activity = g_ptr_array_index (act, i);
+      g_hash_table_insert (ctx->activities, GUINT_TO_POINTER (activity->room),
+          activity);
+    }
+
+  g_ptr_array_free (act, TRUE);
+}
+
+static void
+copy_activity_to_array (TpHandle room,
+                        GabbleOlpcActivity *activity,
+                        GPtrArray *activities)
+{
+  GValue gvalue = { 0 };
+
+  if (activity->id == NULL)
+  {
+    DEBUG ("... activity #%u has no ID, skipping", room);
+    return;
+  }
+
+  g_value_init (&gvalue, GABBLE_STRUCT_TYPE_ACTIVITY);
+  g_value_take_boxed (&gvalue, dbus_g_type_specialized_construct
+      (GABBLE_STRUCT_TYPE_ACTIVITY));
+  dbus_g_type_struct_set (&gvalue,
+      0, activity->id,
+      1, activity->room,
+      G_MAXUINT);
+  DEBUG ("... activity #%u (ID %s)",
+      activity->room, activity->id);
+  g_ptr_array_add (activities, g_value_get_boxed (&gvalue));
+}
+
+GPtrArray *
+gabble_olpc_gadget_manager_find_buddy_activities (GabbleOlpcGadgetManager *self,
+                                                  TpHandle contact)
+{
+  GPtrArray *result;
+  struct find_activities_of_buddy_ctx ctx;
+
+  result = g_ptr_array_new ();
+
+  /* We use a hash table first so we won't add twice the same activity */
+  ctx.activities = g_hash_table_new (g_direct_hash, g_direct_equal);
+  ctx.buddy = contact;
+
+  g_hash_table_foreach (self->priv->channels, (GHFunc) find_activities_of_buddy,
+      &ctx);
+
+  /* Now compute the result array using the hash table */
+  g_hash_table_foreach (ctx.activities, (GHFunc) copy_activity_to_array,
+      result);
+
+  g_hash_table_destroy (ctx.activities);
+
+  return result;
 }

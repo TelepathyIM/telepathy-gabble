@@ -110,7 +110,7 @@ G_DEFINE_TYPE_WITH_CODE (
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
     );
 
-static const gchar *gabble_olpc_buddy_view_interfaces[] = {
+static const gchar *gabble_olpc_view_interfaces[] = {
     GABBLE_IFACE_CHANNEL_FUTURE,
     GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW,
     NULL
@@ -259,7 +259,7 @@ gabble_olpc_view_get_property (GObject *object,
         g_value_set_boolean (value, TRUE);
         break;
      case PROP_INTERFACES:
-        g_value_set_boxed (value, gabble_olpc_buddy_view_interfaces);
+        g_value_set_boxed (value, gabble_olpc_view_interfaces);
         break;
       case PROP_CHANNEL_DESTROYED:
         g_value_set_boolean (value, priv->closed);
@@ -578,14 +578,14 @@ do_close (GabbleOlpcView *self,
 }
 
 /**
- * gabble_olpc_buddy_view_close
+ * gabble_olpc_view_close
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
  */
 static void
-gabble_olpc_buddy_view_close (TpSvcChannel *iface,
-                              DBusGMethodInvocation *context)
+gabble_olpc_view_close (TpSvcChannel *iface,
+                        DBusGMethodInvocation *context)
 {
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
@@ -608,44 +608,44 @@ gabble_olpc_buddy_view_close (TpSvcChannel *iface,
 }
 
 /**
- * gabble_olpc_buddy_view_get_channel_type
+ * gabble_olpc_view_get_channel_type
  *
  * Implements D-Bus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
  */
 static void
-gabble_olpc_buddy_view_get_channel_type (TpSvcChannel *iface,
-                                         DBusGMethodInvocation *context)
+gabble_olpc_view_get_channel_type (TpSvcChannel *iface,
+                                   DBusGMethodInvocation *context)
 {
   tp_svc_channel_return_from_get_channel_type (context,
       GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW);
 }
 
 /**
- * gabble_olpc_buddy_view_get_handle
+ * gabble_olpc_view_get_handle
  *
  * Implements D-Bus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
  */
 static void
-gabble_olpc_buddy_view_get_handle (TpSvcChannel *iface,
-                                   DBusGMethodInvocation *context)
+gabble_olpc_view_get_handle (TpSvcChannel *iface,
+                             DBusGMethodInvocation *context)
 {
   tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_NONE, 0);
 }
 
 /**
- * gabble_olpc_buddy_view_get_interfaces
+ * gabble_olpc_view_get_interfaces
  *
  * Implements D-Bus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
  */
 static void
-gabble_olpc_buddy_view_get_interfaces (TpSvcChannel *iface,
-                                       DBusGMethodInvocation *context)
+gabble_olpc_view_get_interfaces (TpSvcChannel *iface,
+                                 DBusGMethodInvocation *context)
 {
   tp_svc_channel_return_from_get_interfaces (context,
-      gabble_olpc_buddy_view_interfaces);
+      gabble_olpc_view_interfaces);
 }
 
 /* If room is not zero, these buddies are associated with the activity
@@ -1016,7 +1016,7 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
   TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_implement_##x (\
-    klass, gabble_olpc_buddy_view_##x)
+    klass, gabble_olpc_view_##x)
   IMPLEMENT(close);
   IMPLEMENT(get_channel_type);
   IMPLEMENT(get_handle);

@@ -377,7 +377,8 @@ gabble_olpc_buddy_view_class_init (
   g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
       "channel-properties");
 
-  param_spec = g_param_spec_boxed ("view-properties", "View's search properties",
+  param_spec = g_param_spec_boxed ("view-properties",
+      "View's search properties",
       "The buddy properties Gadget should look for",
       TP_HASH_TYPE_STRING_VARIANT_MAP,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |

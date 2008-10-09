@@ -88,7 +88,8 @@ static void
 gabble_olpc_activity_view_dispose (GObject *object)
 {
   GabbleOlpcActivityView *self = GABBLE_OLPC_ACTIVITY_VIEW (object);
-  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (
+      self);
 
   if (priv->dispose_has_run)
     return;
@@ -103,7 +104,8 @@ static void
 gabble_olpc_activity_view_finalize (GObject *object)
 {
   GabbleOlpcActivityView *self = GABBLE_OLPC_ACTIVITY_VIEW (object);
-  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (
+      self);
 
   g_hash_table_destroy (priv->properties);
   tp_handle_set_destroy (priv->participants);
@@ -119,7 +121,8 @@ gabble_olpc_activity_view_get_property (GObject *object,
                                         GParamSpec *pspec)
 {
   GabbleOlpcActivityView *self = GABBLE_OLPC_ACTIVITY_VIEW (object);
-  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (
+      self);
 
   switch (property_id)
     {
@@ -163,7 +166,8 @@ gabble_olpc_activity_view_set_property (GObject *object,
                                         GParamSpec *pspec)
 {
   GabbleOlpcActivityView *self = GABBLE_OLPC_ACTIVITY_VIEW (object);
-  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (
+      self);
 
   switch (property_id)
     {
@@ -224,7 +228,8 @@ gabble_olpc_activity_view_constructor (GType type,
 
   view = GABBLE_OLPC_VIEW (obj);
 
-  priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (GABBLE_OLPC_ACTIVITY_VIEW (obj));
+  priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (GABBLE_OLPC_ACTIVITY_VIEW (
+        obj));
   conn = (TpBaseConnection *) view->conn;
 
   bus = tp_get_bus ();
@@ -433,7 +438,8 @@ gabble_olpc_activity_view_class_init (
   g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
       "channel-properties");
 
-  param_spec = g_param_spec_boxed ("view-properties", "View's search properties",
+  param_spec = g_param_spec_boxed ("view-properties",
+      "View's search properties",
       "The activity properties Gadget should look for",
       TP_HASH_TYPE_STRING_VARIANT_MAP,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
@@ -441,7 +447,8 @@ gabble_olpc_activity_view_class_init (
   g_object_class_install_property (object_class, PROP_VIEW_PROPERTIES,
       param_spec);
 
-  param_spec = g_param_spec_boxed ("participants", "View's search participants",
+  param_spec = g_param_spec_boxed ("participants",
+      "View's search participants",
       "The activity participants Gadget should look for",
       GABBLE_ARRAY_TYPE_HANDLE,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
@@ -449,7 +456,8 @@ gabble_olpc_activity_view_class_init (
   g_object_class_install_property (object_class, PROP_PARTICIPANTS,
       param_spec);
 
-  gabble_olpc_activity_view_class->dbus_props_class.interfaces = prop_interfaces;
+  gabble_olpc_activity_view_class->dbus_props_class.interfaces = \
+      prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleOlpcActivityViewClass, dbus_props_class));
 }

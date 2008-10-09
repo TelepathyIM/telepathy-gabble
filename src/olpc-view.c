@@ -577,15 +577,21 @@ do_close (GabbleOlpcView *self,
   return TRUE;
 }
 
+void
+gabble_olpc_view_close (GabbleOlpcView *self)
+{
+  do_close (self, NULL);
+}
+
 /**
- * gabble_olpc_view_close
+ * gabble_olpc_view_close_dbus
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
  */
 static void
-gabble_olpc_view_close (TpSvcChannel *iface,
-                        DBusGMethodInvocation *context)
+gabble_olpc_view_close_dbus (TpSvcChannel *iface,
+                             DBusGMethodInvocation *context)
 {
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
@@ -1015,11 +1021,11 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
 
-#define IMPLEMENT(x) tp_svc_channel_implement_##x (\
-    klass, gabble_olpc_view_##x)
-  IMPLEMENT(close);
-  IMPLEMENT(get_channel_type);
-  IMPLEMENT(get_handle);
-  IMPLEMENT(get_interfaces);
+#define IMPLEMENT(x,suffix) tp_svc_channel_implement_##x (\
+    klass, gabble_olpc_view_##x##suffix)
+  IMPLEMENT(close,_dbus);
+  IMPLEMENT(get_channel_type,);
+  IMPLEMENT(get_handle,);
+  IMPLEMENT(get_interfaces,);
 #undef IMPLEMENT
 }

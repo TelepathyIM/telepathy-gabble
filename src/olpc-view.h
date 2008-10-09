@@ -100,6 +100,8 @@ GPtrArray * gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
 void gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
     GArray *buddies, TpHandle room);
 
+void gabble_olpc_view_close (GabbleOlpcView *self);
+
 #define GABBLE_ARRAY_TYPE_HANDLE (dbus_g_type_get_collection ("GArray", \
     G_TYPE_UINT))
 

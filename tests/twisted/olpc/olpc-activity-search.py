@@ -87,10 +87,10 @@ def test(q, bus, conn, stream):
                 [('lucien@localhost', {'color': ('str', '#AABBCC,#CCBBAA')}),
                  ('jean@localhost', {})]),])
 
-    view0 = bus.get_object(conn.bus_name, view_path)
+    view1 = bus.get_object(conn.bus_name, view_path)
 
     # check org.freedesktop.Telepathy.Channel D-Bus properties
-    props = view0.GetAll(
+    props = view1.GetAll(
         'org.freedesktop.Telepathy.Channel',
         dbus_interface='org.freedesktop.DBus.Properties')
 
@@ -101,14 +101,14 @@ def test(q, bus, conn, stream):
     assert props['TargetHandleType'] == 0
 
     # check org.laptop.Telepathy.Channel.Interface.View D-Bus properties
-    props = view0.GetAll(
+    props = view1.GetAll(
         'org.laptop.Telepathy.Channel.Interface.View',
         dbus_interface='org.freedesktop.DBus.Properties')
 
     assert props['MaxSize'] == 3
 
     # check org.laptop.Telepathy.Channel.Type.ActivityView D-Bus properties
-    props = view0.GetAll(
+    props = view1.GetAll(
         'org.laptop.Telepathy.Channel.Type.ActivityView',
         dbus_interface='org.freedesktop.DBus.Properties')
 
@@ -116,7 +116,7 @@ def test(q, bus, conn, stream):
     assert props['Participants'] == []
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien, Jean)
+    # view 1: activity 1 (with: Lucien, Jean)
 
     handles['lucien'], handles['jean'] = \
             conn.RequestHandles(1, ['lucien@localhost', 'jean@localhost'])
@@ -145,7 +145,7 @@ def test(q, bus, conn, stream):
             args=[handles['jean'], [('activity1', handles['room1'])]]))
 
     # check activities and buddies in view
-    check_view(view0, conn, [('activity1', handles['room1'])],
+    check_view(view1, conn, [('activity1', handles['room1'])],
             ['lucien@localhost', 'jean@localhost'])
 
     # we can now get activity properties
@@ -196,11 +196,11 @@ def test(q, bus, conn, stream):
                 {'color': ('str', '#AABBCC,#001122')}, [])])
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien, Jean)
-    # view 1: activity 2
+    # view 1: activity 1 (with: Lucien, Jean)
+    # view 2: activity 2
 
     view_path = return_event.value[0]
-    view1 = bus.get_object(conn.bus_name, view_path)
+    view2 = bus.get_object(conn.bus_name, view_path)
 
     props = return_event.value[1]
     assert props['org.laptop.Telepathy.Channel.Type.ActivityView.Properties'] == \
@@ -216,12 +216,12 @@ def test(q, bus, conn, stream):
             interface='org.laptop.Telepathy.Channel.Interface.View',
             args=[[('activity2', handles['room2'])], []])
 
-    act = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
+    act = view2.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Activities',
         dbus_interface='org.freedesktop.DBus.Properties')
     assert sorted(act) == [('activity2', handles['room2'])]
 
-    buddies = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
+    buddies = view2.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Buddies',
         dbus_interface='org.freedesktop.DBus.Properties')
     assert buddies == []
@@ -254,12 +254,12 @@ def test(q, bus, conn, stream):
                 {'color': ('str', '#AABBCC,#001122')}, [])])
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien, Jean)
-    # view 1: activity 2
-    # view 2: activity 3
+    # view 1: activity 1 (with: Lucien, Jean)
+    # view 2: activity 2
+    # view 3: activity 3
 
     view_path = return_event.value[0]
-    view2 = bus.get_object(conn.bus_name, view_path)
+    view3 = bus.get_object(conn.bus_name, view_path)
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
     handles['room3'], props = event.args
@@ -270,7 +270,7 @@ def test(q, bus, conn, stream):
             interface='org.laptop.Telepathy.Channel.Interface.View',
             args=[[('activity3', handles['room3'])], []])
 
-    act = view2.Get(olpc_name_prefix + '.Channel.Interface.View',
+    act = view3.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Activities',
         dbus_interface='org.freedesktop.DBus.Properties')
     assert sorted(act) == [('activity3', handles['room3'])]
@@ -297,9 +297,9 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien, Jean), activity 4 (with: Fernand, Jean)
-    # view 1: activity 2
-    # view 2: activity 3
+    # view 1: activity 1 (with: Lucien, Jean), activity 4 (with: Fernand, Jean)
+    # view 2: activity 2
+    # view 3: activity 3
     # participants are added to view
 
     handles['fernand'] = conn.RequestHandles(1, ['fernand@localhost',])[0]
@@ -329,7 +329,7 @@ def test(q, bus, conn, stream):
                 ('activity4', handles['room4'])]]))
 
     # check activities and buddies in view
-    check_view(view0, conn, [
+    check_view(view1, conn, [
         ('activity1', handles['room1']), ('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
@@ -373,10 +373,10 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien, Jean, Marcel), activity 4 (with
+    # view 1: activity 1 (with: Lucien, Jean, Marcel), activity 4 (with
     # Fernand, Jean)
-    # view 1: activity 2
-    # view 2: activity 3
+    # view 2: activity 2
+    # view 3: activity 3
 
     handles['marcel'] = conn.RequestHandles(1, ['marcel@localhost',])[0]
 
@@ -390,7 +390,7 @@ def test(q, bus, conn, stream):
                 args=[handles['marcel'], [('activity1', handles['room1'])]]))
 
     # check activities and buddies in view
-    check_view(view0, conn, [
+    check_view(view1, conn, [
         ('activity1', handles['room1']),('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost',
             'marcel@localhost'])
@@ -407,9 +407,9 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien, Jean), activity 4 (with Fernand, Jean)
-    # view 1: activity 2
-    # view 2: activity 3
+    # view 1: activity 1 (with: Lucien, Jean), activity 4 (with Fernand, Jean)
+    # view 2: activity 2
+    # view 3: activity 3
 
     q.expect_many(
             EventPattern('dbus-signal', signal='BuddiesChanged',
@@ -419,7 +419,7 @@ def test(q, bus, conn, stream):
                 args=[handles['marcel'], []]))
 
     # check activities and buddies in view
-    check_view(view0, conn, [
+    check_view(view1, conn, [
         ('activity1', handles['room1']),('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
@@ -435,16 +435,16 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien), activity 4 (with Fernand, Jean)
-    # view 1: activity 2
-    # view 2: activity 3
+    # view 1: activity 1 (with: Lucien), activity 4 (with Fernand, Jean)
+    # view 2: activity 2
+    # view 3: activity 3
 
     q.expect('dbus-signal', signal='ActivitiesChanged',
             interface='org.laptop.Telepathy.BuddyInfo',
             args=[handles['jean'], [('activity4', handles['room4'])]])
 
     # Jean wasn't removed from the view as he is still in activity 4
-    check_view(view0, conn, [
+    check_view(view1, conn, [
         ('activity1', handles['room1']),('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
@@ -460,9 +460,9 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 4 (with Jean, Fernand)
-    # view 1: activity 2
-    # view 2: activity 3
+    # view 1: activity 4 (with Jean, Fernand)
+    # view 2: activity 2
+    # view 3: activity 3
 
     q.expect_many(
     # participants are removed from the view
@@ -477,12 +477,12 @@ def test(q, bus, conn, stream):
                 args=[handles['lucien'], []]))
 
     # check activities and buddies in view
-    check_view(view0, conn, [
+    check_view(view1, conn, [
         ('activity4', handles['room4'])],
         ['fernand@localhost', 'jean@localhost'])
 
     # close view 0
-    call_async(q, view0, 'Close')
+    call_async(q, view1, 'Close')
     event_msg, _, _, _ = q.expect_many(
         EventPattern('stream-message', to='gadget.localhost'),
         EventPattern('dbus-return', method='Close'),
@@ -498,11 +498,9 @@ def test(q, bus, conn, stream):
     assert len(close) == 1
     assert close[0]['id'] == '1'
 
-    # close view 1
-    close_view(q, view1, '2')
+    close_view(q, view2, '2')
 
-    # close view 2
-    close_view(q, view2, '3')
+    close_view(q, view3, '3')
 
 if __name__ == '__main__':
     exec_test(test)

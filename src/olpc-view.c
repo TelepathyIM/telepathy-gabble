@@ -42,9 +42,6 @@
 #include "namespaces.h"
 #include "util.h"
 
-#define GABBLE_ARRAY_TYPE_HANDLE (dbus_g_type_get_collection ("GArray", \
-    G_TYPE_UINT))
-
 /* signals */
 enum
 {

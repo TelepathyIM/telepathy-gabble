@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:docstring>
     </property>
 
-    <property name="Participants" type="a(su)" access="read"
+    <property name="Participants" type="au" access="read"
               tp:name-for-bindings="Participants">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>If set when requesting the channel, Gadget will search for activities

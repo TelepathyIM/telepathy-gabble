@@ -3701,13 +3701,6 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
   conn->olpc_invited_activities = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) tp_handle_set_destroy);
 
-  /* Active views
-   *
-   * view id guint => GabbleOlpcView
-   */
-  conn->olpc_views = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, (GDestroyNotify) g_object_unref);
-
   /* Current activity
    *
    * contact TpHandle => reffed GabbleOlpcActivity
@@ -3757,7 +3750,6 @@ conn_olpc_activity_properties_dispose (GabbleConnection *self)
       (GHFunc) unref_activities_in_each_set, self);
   g_hash_table_destroy (self->olpc_invited_activities);
 
-  g_hash_table_destroy (self->olpc_views);
   g_hash_table_destroy (self->olpc_activities_info);
 }
 

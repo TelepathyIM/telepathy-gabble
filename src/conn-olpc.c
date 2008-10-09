@@ -3760,28 +3760,6 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
   gabble_svc_olpc_gadget_return_from_publish (context);
 }
 
-#if 0
-static gboolean
-close_view_foreach (gpointer key,
-                    GabbleOlpcView *view,
-                    GabbleConnection *conn)
-{
-  g_signal_handlers_disconnect_by_func (view, G_CALLBACK (view_closed_cb),
-      conn);
-
-  gabble_olpc_view_close (view, NULL);
-
-  return TRUE;
-}
-
-static void
-close_all_views (GabbleConnection *conn)
-{
-  g_hash_table_foreach_remove (conn->olpc_views, (GHRFunc) close_view_foreach,
-      conn);
-}
-#endif
-
 LmHandlerResult
 conn_olpc_presence_cb (LmMessageHandler *handler,
                        LmConnection *connection,
@@ -3835,15 +3813,12 @@ conn_olpc_presence_cb (LmMessageHandler *handler,
             }
         }
     }
-#if 0
   else if (sub_type == LM_MESSAGE_SUB_TYPE_NOT_SET ||
       sub_type == LM_MESSAGE_SUB_TYPE_AVAILABLE)
     {
       DEBUG ("Got presence from Gadget. Close open views if any");
-      /* FIXME: gabble_olpc_gadget_manager_close_all_views (); */
-      close_all_views (conn);
+      gabble_olpc_gadget_manager_close_all_views (conn->olpc_gadget_manager);
     }
-#endif
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

@@ -237,8 +237,30 @@ gabble_olpc_buddy_view_create_close_msg (GabbleOlpcView *view)
   return msg;
 }
 
-static LmMessage *
-gabble_olpc_buddy_view_create_request (GabbleOlpcView *view)
+static LmHandlerResult
+buddy_view_query_result_cb (GabbleConnection *conn,
+                            LmMessage *sent_msg,
+                            LmMessage *reply_msg,
+                            GObject *_view,
+                            gpointer user_data)
+{
+  LmMessageNode *view_node;
+  GabbleOlpcView *self = GABBLE_OLPC_VIEW (_view);
+
+  view_node = lm_message_node_get_child_with_namespace (reply_msg->node,
+      "view", NS_OLPC_BUDDY);
+  if (view_node == NULL)
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  /* FIXME: make sense to call this conn-olpc function ? */
+  add_buddies_to_view_from_node (conn, self, view_node, "buddy", 0);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static gboolean
+gabble_olpc_buddy_view_send_request (GabbleOlpcView *view,
+                                     GError **error)
 {
   GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (view);
   GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
@@ -301,7 +323,19 @@ gabble_olpc_buddy_view_create_request (GabbleOlpcView *view)
   g_free (max_str);
   g_free (id_str);
 
-  return query;
+  if (!_gabble_connection_send_with_reply (view->conn, query,
+      buddy_view_query_result_cb, G_OBJECT (self), NULL, NULL))
+  {
+    g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      "Failed to send buddy search query to server");
+
+    DEBUG ("Failed to send buddy search query to server");
+    lm_message_unref (query);
+    return FALSE;
+  }
+
+  lm_message_unref (query);
+  return TRUE;
 }
 
 static void
@@ -337,7 +371,7 @@ gabble_olpc_buddy_view_class_init (
   object_class->finalize = gabble_olpc_buddy_view_finalize;
 
   view_class->create_close_msg = gabble_olpc_buddy_view_create_close_msg;
-  view_class->create_request = gabble_olpc_buddy_view_create_request;
+  view_class->send_request = gabble_olpc_buddy_view_send_request;
 
   g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
       "channel-type");

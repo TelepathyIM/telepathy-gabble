@@ -1002,52 +1002,12 @@ gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
   tp_handle_set_destroy (removed);
 }
 
-static LmHandlerResult
-buddy_view_query_result_cb (GabbleConnection *conn,
-                            LmMessage *sent_msg,
-                            LmMessage *reply_msg,
-                            GObject *_view,
-                            gpointer user_data)
-{
-  LmMessageNode *view_node;
-  GabbleOlpcView *self = GABBLE_OLPC_VIEW (_view);
-
-  view_node = lm_message_node_get_child_with_namespace (reply_msg->node,
-      "view", NS_OLPC_BUDDY);
-  if (view_node == NULL)
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-
-  /* FIXME: make sense to call this conn-olpc function ? */
-  add_buddies_to_view_from_node (conn, self, view_node, "buddy", 0);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
 gboolean
 gabble_olpc_view_send_request (GabbleOlpcView *self,
                                GError **error)
 
 {
-  LmMessage *query;
-
-  query = GABBLE_OLPC_VIEW_GET_CLASS (self)->create_request (self);
-  if (query == NULL)
-    return FALSE;
-
-  if (!_gabble_connection_send_with_reply (self->conn, query,
-        buddy_view_query_result_cb, G_OBJECT (self), NULL, NULL))
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "Failed to send buddy search query to server");
-
-      DEBUG ("Failed to send buddy search query to server");
-      lm_message_unref (query);
-      return FALSE;
-    }
-
-  lm_message_unref (query);
-
-  return TRUE;
+  return GABBLE_OLPC_VIEW_GET_CLASS (self)->send_request (self, error);
 }
 
 static void

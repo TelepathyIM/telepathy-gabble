@@ -38,7 +38,9 @@ struct _GabbleOlpcViewClass {
 
   /* private abstract methods */
   LmMessage * (*create_close_msg) (GabbleOlpcView *self);
-  LmMessage * (*create_request) (GabbleOlpcView *self);
+
+  /* public abstract methods */
+  gboolean (*send_request) (GabbleOlpcView *view, GError **error);
 };
 
 struct _GabbleOlpcView {

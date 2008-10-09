@@ -164,23 +164,6 @@ check_gadget_buddy (GabbleConnection *conn,
   return FALSE;
 }
 
-static gboolean
-check_gadget_activity (GabbleConnection *conn,
-                       DBusGMethodInvocation *context)
-{
-  GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-    "Server does not provide Gadget Activity service" };
-
-  if (conn->olpc_gadget_activity != NULL)
-    return TRUE;
-
-  DEBUG ("%s", error.message);
-  if (context != NULL)
-    dbus_g_method_return_error (context, &error);
-
-  return FALSE;
-}
-
 /* context may be NULL, since this may be called in response to becoming
  * connected.
  */
@@ -1709,7 +1692,7 @@ static gboolean
 invite_gadget (GabbleConnection *conn,
                GabbleMucChannel *muc)
 {
-  if (!check_gadget_activity (conn, NULL))
+  if (conn->olpc_gadget_activity == NULL)
     return FALSE;
 
   DEBUG ("Activity becomes public. Invite gadget to it");
@@ -3810,8 +3793,8 @@ conn_olpc_gadget_propeties_getter (GObject *object,
 
   if (!tp_strdiff (g_quark_to_string (name), "GadgetAvailable"))
     {
-      g_value_set_boolean (value, check_gadget_activity (conn, NULL) ||
-          check_gadget_buddy (conn, NULL));
+      g_value_set_boolean (value, (conn->olpc_gadget_buddy != NULL) ||
+          (conn->olpc_gadget_activity != NULL));
     }
   else
     {

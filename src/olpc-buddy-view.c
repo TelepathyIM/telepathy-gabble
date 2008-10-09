@@ -48,6 +48,7 @@ enum
   PROP_VIEW_PROPERTIES = 1,
   PROP_ALIAS,
 
+  PROP_CHANNEL_TYPE,
   PROP_CHANNEL_PROPERTIES,
 
   LAST_PROPERTY
@@ -122,6 +123,10 @@ gabble_olpc_buddy_view_get_property (GObject *object,
 
   switch (property_id)
     {
+      case PROP_CHANNEL_TYPE:
+        g_value_set_static_string (value,
+            GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW);
+        break;
       case PROP_CHANNEL_PROPERTIES:
         g_value_take_boxed (value,
             tp_dbus_properties_mixin_make_properties_hash (object,
@@ -162,6 +167,10 @@ gabble_olpc_buddy_view_set_property (GObject *object,
 
   switch (property_id)
     {
+      case PROP_CHANNEL_TYPE:
+        /* these properties are writable in the interface, but not actually
+         * meaningfully changeable on this channel, so we do nothing */
+        break;
       case PROP_VIEW_PROPERTIES:
         priv->properties = g_value_dup_boxed (value);
         break;
@@ -330,6 +339,8 @@ gabble_olpc_buddy_view_class_init (
   view_class->create_close_msg = gabble_olpc_buddy_view_create_close_msg;
   view_class->create_request = gabble_olpc_buddy_view_create_request;
 
+  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
+      "channel-type");
   g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
       "channel-properties");
 

@@ -233,8 +233,7 @@ gabble_olpc_view_get_property (GObject *object,
         g_value_set_string (value, self->object_path);
         break;
       case PROP_CHANNEL_TYPE:
-        g_value_set_static_string (value,
-            GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW);
+        /* This property has to be implemented in the concrete classes */
         break;
       case PROP_HANDLE_TYPE:
         g_value_set_uint (value, TP_HANDLE_TYPE_NONE);

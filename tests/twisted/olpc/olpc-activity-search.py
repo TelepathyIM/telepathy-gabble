@@ -54,13 +54,23 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='localhost', query_ns=NS_DISCO_ITEMS))
 
     acknowledge_iq(stream, iq_event.stanza)
-    announce_gadget(q, stream, disco_event.stanza)
 
     activity_prop_iface = dbus.Interface(conn,
             'org.laptop.Telepathy.ActivityProperties')
     buddy_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
     requests_iface = dbus.Interface(conn, tp_name_prefix + '.Connection.Interface.Requests')
+
+    # Gadget was not announced yet
+    call_async(q, requests_iface, 'CreateChannel',
+        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+            'org.laptop.Telepathy.Channel.Type.ActivityView',
+            'org.laptop.Telepathy.Channel.Interface.View.MaxSize': 5,
+          })
+
+    event = q.expect('dbus-error', method='CreateChannel')
+
+    announce_gadget(q, stream, disco_event.stanza)
 
     sync_stream(q, stream)
 

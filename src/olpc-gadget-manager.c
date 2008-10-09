@@ -301,7 +301,12 @@ create_buddy_view_channel (GabbleOlpcGadgetManager *self,
   const gchar *alias;
   GHashTable *properties;
 
-  /* TODO: check if Gadget is available */
+  if (self->priv->conn->olpc_gadget_buddy == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Gadget is not available");
+      return NULL;
+    }
 
   if ((tp_asv_get_uint32 (request_properties,
        TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0) ||
@@ -368,7 +373,12 @@ create_activity_view_channel (GabbleOlpcGadgetManager *self,
   GHashTable *properties;
   GArray *participants;
 
-  /* TODO: check if Gadget is available */
+  if (self->priv->conn->olpc_gadget_activity == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Gadget is not available");
+      return NULL;
+    }
 
   if ((tp_asv_get_uint32 (request_properties,
        TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0) ||

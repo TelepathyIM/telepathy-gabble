@@ -152,22 +152,6 @@ gabble_olpc_gadget_manager_set_property (GObject *object,
     }
 }
 
-
-/* TODO: remove if useless */
-static void
-gabble_olpc_gadget_manager_constructed (GObject *object)
-{
-  GabbleOlpcGadgetManager *self = GABBLE_OLPC_GADGET_MANAGER (object);
-  void (*chain_up) (GObject *) =
-      G_OBJECT_CLASS (gabble_olpc_gadget_manager_parent_class)->constructed;
-
-  DEBUG ("%p", self);
-
-  if (chain_up != NULL)
-    chain_up (object);
-}
-
-
 static void
 gabble_olpc_gadget_manager_class_init (GabbleOlpcGadgetManagerClass *klass)
 {
@@ -176,7 +160,6 @@ gabble_olpc_gadget_manager_class_init (GabbleOlpcGadgetManagerClass *klass)
 
   g_type_class_add_private (klass, sizeof (GabbleOlpcGadgetManagerPrivate));
 
-  object_class->constructed = gabble_olpc_gadget_manager_constructed;
   object_class->dispose = gabble_olpc_gadget_manager_dispose;
 
   object_class->get_property = gabble_olpc_gadget_manager_get_property;

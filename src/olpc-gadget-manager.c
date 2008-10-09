@@ -91,20 +91,6 @@ gabble_olpc_gadget_manager_close_all (GabbleOlpcGadgetManager *self)
 
   if (self->priv->channels != NULL)
     {
-      GHashTableIter iter;
-      gpointer key, value;
-
-      g_hash_table_iter_init (&iter, self->priv->channels);
-      while (g_hash_table_iter_next (&iter, &key, &value))
-        {
-          GabbleOlpcView *channel = GABBLE_OLPC_VIEW (value);
-
-          DEBUG ("Channel's refcount is %u before unref",
-              G_OBJECT (channel)->ref_count);
-
-          g_object_unref (channel);
-        }
-
       g_hash_table_destroy (self->priv->channels);
       self->priv->channels = NULL;
     }

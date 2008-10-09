@@ -459,6 +459,15 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
       return TRUE;
     }
 
+  if (!gabble_olpc_view_send_request (channel, &error))
+    {
+      DEBUG ("view_send_request failed: %s", error->message);
+      tp_channel_manager_emit_request_failed (self, request_token,
+          error->domain, error->code, error->message);
+      g_error_free (error);
+      return TRUE;
+    }
+
   g_signal_connect (channel, "closed",
       (GCallback) olpc_gadget_channel_closed_cb, self);
   g_hash_table_insert (self->priv->channels,
@@ -468,9 +477,6 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
   tp_channel_manager_emit_new_channel (self,
       TP_EXPORTABLE_CHANNEL (channel), request_tokens);
   g_slist_free (request_tokens);
-
-  /* FIXME: raise a D-Bus error if failed */
-  gabble_olpc_view_send_request (channel, NULL);
 
   return TRUE;
 }

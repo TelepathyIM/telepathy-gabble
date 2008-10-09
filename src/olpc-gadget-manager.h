@@ -68,6 +68,8 @@ GabbleOlpcView * gabble_olpc_gadget_manager_get_view (
 GPtrArray * gabble_olpc_gadget_manager_find_buddy_activities (
     GabbleOlpcGadgetManager *self, TpHandle contact);
 
+void gabble_olpc_gadget_manager_close_all_views (GabbleOlpcGadgetManager *self);
+
 G_END_DECLS
 
 #endif

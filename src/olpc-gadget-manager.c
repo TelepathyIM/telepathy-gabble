@@ -629,3 +629,26 @@ gabble_olpc_gadget_manager_find_buddy_activities (GabbleOlpcGadgetManager *self,
 
   return result;
 }
+
+void
+gabble_olpc_gadget_manager_close_all_views (GabbleOlpcGadgetManager *self)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&iter, self->priv->channels);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      GabbleOlpcView *view = GABBLE_OLPC_VIEW (value);
+
+      /* disconnect the signal as we can't modify the hash table
+       * while we are iterating over it */
+      g_signal_handlers_disconnect_by_func (view,
+          G_CALLBACK (olpc_gadget_channel_closed_cb), self);
+
+      gabble_olpc_view_close (view);
+
+      /* remove the channel from the hash table */
+      g_hash_table_iter_remove (&iter);
+    }
+}

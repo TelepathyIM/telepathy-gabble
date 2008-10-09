@@ -151,58 +151,34 @@ static gboolean
 check_gadget_buddy (GabbleConnection *conn,
                     DBusGMethodInvocation *context)
 {
-  const GabbleDiscoItem *item;
+  GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+    "Server does not provide Gadget Buddy service" };
 
   if (conn->olpc_gadget_buddy != NULL)
     return TRUE;
 
-  item = gabble_disco_service_find (conn->disco, "collaboration", "gadget",
-      NS_OLPC_BUDDY);
+  DEBUG ("%s", error.message);
+  if (context != NULL)
+    dbus_g_method_return_error (context, &error);
 
-  if (item != NULL)
-    conn->olpc_gadget_buddy = item->jid;
-
-  if (conn->olpc_gadget_buddy == NULL)
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "Server does not provide Gadget Buddy service" };
-
-      DEBUG ("%s", error.message);
-      if (context != NULL)
-        dbus_g_method_return_error (context, &error);
-      return FALSE;
-    }
-
-  return TRUE;
+  return FALSE;
 }
 
 static gboolean
 check_gadget_activity (GabbleConnection *conn,
                        DBusGMethodInvocation *context)
 {
-  const GabbleDiscoItem *item;
+  GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+    "Server does not provide Gadget Activity service" };
 
   if (conn->olpc_gadget_activity != NULL)
     return TRUE;
 
-  item = gabble_disco_service_find (conn->disco, "collaboration", "gadget",
-      NS_OLPC_ACTIVITY);
+  DEBUG ("%s", error.message);
+  if (context != NULL)
+    dbus_g_method_return_error (context, &error);
 
-  if (item != NULL)
-    conn->olpc_gadget_activity = item->jid;
-
-  if (conn->olpc_gadget_activity == NULL)
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "Server does not provide Gadget Activity service" };
-
-      DEBUG ("%s", error.message);
-      if (context != NULL)
-        dbus_g_method_return_error (context, &error);
-      return FALSE;
-    }
-
-  return TRUE;
+  return FALSE;
 }
 
 /* context may be NULL, since this may be called in response to becoming

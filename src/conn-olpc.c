@@ -3656,6 +3656,7 @@ disco_item_found_cb (GabbleDisco *disco,
     {
       DEBUG ("buddy gadget discovered");
       gadget_discovered = TRUE;
+      conn->olpc_gadget_buddy = item->jid;
     }
 
   if (g_hash_table_lookup_extended (item->features, NS_OLPC_ACTIVITY, NULL,
@@ -3663,6 +3664,7 @@ disco_item_found_cb (GabbleDisco *disco,
     {
       DEBUG ("activity gadget discovered");
       gadget_discovered = TRUE;
+      conn->olpc_gadget_activity = item->jid;
     }
 
   if (gadget_discovered)

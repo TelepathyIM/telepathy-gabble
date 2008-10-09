@@ -48,10 +48,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     </property>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-      <p>An interface on connections to interact with the Gadget component. Buddies and activities searches
-        are performed by requesting org.laptop.Telepathy.Channel.Type.BuddyView and
-        org.laptop.Telepathy.Channel.Type.ActivityView using the
-        org.freedesktop.Telepathy.Connection.Interface.Requests interface.
+      <p>An interface on connections to interact with the Gadget component. Buddy and activity searches
+        are performed by requesting
+        <tp:dbus-ref namespace="org.laptop.Telepathy.Channel.Type">BuddyView</tp:dbus-ref> and
+        <tp:dbus-ref namespace="org.laptop.Telepathy.Channel.Type">ActivityView</tp:dbus-ref>
+        using the
+        <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests</tp:dbus-ref>
+        interface.
       </p>
     </tp:docstring>
 

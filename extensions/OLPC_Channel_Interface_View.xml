@@ -82,14 +82,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An interface for channels representing the result of a Gadget search.</p>
       <p>Buddy properties changes are notified on the Connection object using the
-        <code>org.laptop.Telepathy.BuddyInfo</code> interface while the view object
+        <tp:dbus-ref namespace="org.laptop.Telepathy">BuddyInfo</tp:dbus-ref>
+        interface while the view object
         is alive.</p>
       <p>Activity properties changes are notified on the Connection object using the
-        <code>org.laptop.Telepathy.ActivityProperties</code> interface while the view object
-        is alive.</p>
+        <tp:dbus-ref namespace="org.laptop.Telepathy">ActivityProperties</tp:dbus-ref>
+        interface while the view object is alive.</p>
       <p>Activities membership is notified on the Connection object using the
-        <code>org.laptop.Telepathy.BuddyInfo</code> properties while the view object
-        is alive.</p>
+        <tp:dbus-ref namespace="org.laptop.Telepathy">BuddyInfo</tp:dbus-ref>
+        properties while the view object is alive.</p>
     </tp:docstring>
   </interface>
 </node>

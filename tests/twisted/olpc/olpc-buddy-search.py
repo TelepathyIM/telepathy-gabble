@@ -395,5 +395,14 @@ def test(q, bus, conn, stream):
     # close view 2
     close_view(q, view3, '3')
 
+    # View request without MaxSize property
+    call_async(q, requests_iface, 'CreateChannel',
+        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+            'org.laptop.Telepathy.Channel.Type.BuddyView',
+          })
+
+    event = q.expect('dbus-error', method='CreateChannel')
+    assert event.error.get_dbus_name() == 'org.freedesktop.Telepathy.Errors.InvalidArgument'
+
 if __name__ == '__main__':
     exec_test(test)

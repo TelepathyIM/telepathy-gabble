@@ -65,7 +65,7 @@ struct _GabbleOlpcActivityViewPrivate
 
 G_DEFINE_TYPE_WITH_CODE (
     GabbleOlpcActivityView, gabble_olpc_activity_view, GABBLE_TYPE_OLPC_VIEW,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_CHANNEL_TYPE_ACTIVITYVIEW,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW,
       NULL);
     );
 
@@ -128,7 +128,7 @@ gabble_olpc_activity_view_get_property (GObject *object,
     {
       case PROP_CHANNEL_TYPE:
         g_value_set_static_string (value,
-            GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW);
+            GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW);
         break;
       case PROP_CHANNEL_PROPERTIES:
         g_value_take_boxed (value,
@@ -143,8 +143,8 @@ gabble_olpc_activity_view_get_property (GObject *object,
                 GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW, "MaxSize",
                 GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW, "Buddies",
                 GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW, "Activities",
-                GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW, "Properties",
-                GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW, "Participants",
+                GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW, "Properties",
+                GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW, "Participants",
                 NULL));
         break;
       case PROP_VIEW_PROPERTIES:
@@ -412,7 +412,7 @@ gabble_olpc_activity_view_class_init (
       { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW,
+      { GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         activity_view_props,

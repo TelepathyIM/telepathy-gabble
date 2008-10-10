@@ -201,16 +201,16 @@ static const gchar * const olpc_gadget_channel_view_fixed_properties[] = {
 static const gchar * const olpc_gadget_channel_buddy_view_allowed_properties[] =
 {
     GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW ".MaxSize",
-    GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW ".Properties",
-    GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW ".Alias",
+    GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW ".Properties",
+    GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW ".Alias",
     NULL
 };
 
 static const gchar * const olpc_gadget_channel_activity_view_allowed_properties[] =
 {
     GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW ".MaxSize",
-    GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW ".Properties",
-    GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW ".Participants",
+    GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW ".Properties",
+    GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW ".Participants",
     NULL
 };
 
@@ -226,7 +226,7 @@ gabble_olpc_gadget_manager_foreach_channel_class (TpChannelManager *manager,
   table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) tp_g_value_slice_free);
   value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW);
+  g_value_set_static_string (value, GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
 
   func (manager, table, olpc_gadget_channel_buddy_view_allowed_properties,
@@ -238,7 +238,8 @@ gabble_olpc_gadget_manager_foreach_channel_class (TpChannelManager *manager,
   table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) tp_g_value_slice_free);
   value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW);
+  g_value_set_static_string (value,
+      GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
 
   func (manager, table, olpc_gadget_channel_activity_view_allowed_properties,
@@ -325,11 +326,11 @@ create_buddy_view_channel (GabbleOlpcGadgetManager *self,
     }
 
   properties = tp_asv_get_boxed (request_properties,
-      GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW ".Properties",
+      GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW ".Properties",
       TP_HASH_TYPE_STRING_VARIANT_MAP);
 
   alias = tp_asv_get_string (request_properties,
-      GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW ".Alias");
+      GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW ".Alias");
 
   object_path = g_strdup_printf ("%s/OlpcBuddyViewChannel%u", conn->object_path,
       self->priv->next_view_number++);
@@ -397,11 +398,11 @@ create_activity_view_channel (GabbleOlpcGadgetManager *self,
     }
 
   properties = tp_asv_get_boxed (request_properties,
-      GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW ".Properties",
+      GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW ".Properties",
       TP_HASH_TYPE_STRING_VARIANT_MAP);
 
   participants = tp_asv_get_boxed (request_properties,
-      GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW ".Participants",
+      GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW ".Participants",
       GABBLE_ARRAY_TYPE_HANDLE);
 
   object_path = g_strdup_printf ("%s/OlpcActivityViewChannel%u",
@@ -428,13 +429,13 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
 
   if (!tp_strdiff (tp_asv_get_string (request_properties,
           TP_IFACE_CHANNEL ".ChannelType"),
-        GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW))
+        GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW))
     {
       channel = create_buddy_view_channel (self, request_properties, &error);
     }
   else if (!tp_strdiff (tp_asv_get_string (request_properties,
           TP_IFACE_CHANNEL ".ChannelType"),
-        GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITYVIEW))
+        GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW))
     {
       channel = create_activity_view_channel (self, request_properties, &error);
     }

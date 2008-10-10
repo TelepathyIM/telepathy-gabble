@@ -614,7 +614,7 @@ gabble_olpc_view_get_channel_type (TpSvcChannel *iface,
                                    DBusGMethodInvocation *context)
 {
   tp_svc_channel_return_from_get_channel_type (context,
-      GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW);
+      GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW);
 }
 
 /**

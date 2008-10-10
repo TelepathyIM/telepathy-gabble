@@ -65,7 +65,7 @@ struct _GabbleOlpcBuddyViewPrivate
 
 G_DEFINE_TYPE_WITH_CODE (
     GabbleOlpcBuddyView, gabble_olpc_buddy_view, GABBLE_TYPE_OLPC_VIEW,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_CHANNEL_TYPE_BUDDYVIEW,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_CHANNEL_TYPE_BUDDY_VIEW,
       NULL);
     );
 
@@ -125,7 +125,7 @@ gabble_olpc_buddy_view_get_property (GObject *object,
     {
       case PROP_CHANNEL_TYPE:
         g_value_set_static_string (value,
-            GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW);
+            GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW);
         break;
       case PROP_CHANNEL_PROPERTIES:
         g_value_take_boxed (value,
@@ -140,8 +140,8 @@ gabble_olpc_buddy_view_get_property (GObject *object,
                 GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW, "MaxSize",
                 GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW, "Buddies",
                 GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW, "Activities",
-                GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW, "Properties",
-                GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW, "Alias",
+                GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW, "Properties",
+                GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW, "Alias",
                 NULL));
         break;
       case PROP_VIEW_PROPERTIES:
@@ -351,7 +351,7 @@ gabble_olpc_buddy_view_class_init (
       { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDYVIEW,
+      { GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         buddy_view_props,

@@ -125,6 +125,9 @@ def test(q, bus, conn, stream):
     assert props['Properties'] == {}
     assert props['Participants'] == []
 
+    assert view1.GetChannelType(dbus_interface='org.freedesktop.Telepathy.Channel') ==\
+            'org.laptop.Telepathy.Channel.Type.ActivityView'
+
     ## Current views ##
     # view 1: activity 1 (with: Lucien, Jean)
 

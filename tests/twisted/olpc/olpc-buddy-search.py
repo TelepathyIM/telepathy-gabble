@@ -183,6 +183,9 @@ def test(q, bus, conn, stream):
     assert props['Properties'] == {}
     assert props['Alias'] == ''
 
+    assert view1.GetChannelType(dbus_interface='org.freedesktop.Telepathy.Channel') ==\
+            'org.laptop.Telepathy.Channel.Type.BuddyView'
+
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
     assert removed == []

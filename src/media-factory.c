@@ -851,7 +851,6 @@ static const gchar * const named_channel_allowed_properties[] = {
 };
 
 static const gchar * const anon_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",   /* must be 0 if given */
     NULL
 };
 

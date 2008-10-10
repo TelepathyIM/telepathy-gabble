@@ -158,7 +158,6 @@ def test(q, bus, conn, stream):
     stream_handler.StreamState(2)
 
     e = q.expect('stream-iq')
-    print e.iq_type, e.stanza
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-initiate'
     stream.send(gabbletest.make_result_iq(stream, e.stanza))

@@ -41,7 +41,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       <p>The result of the search is available in the Buddies property
         of the channel. The Activities property should stay empty.</p>
       <p>If no search criteria is defined then Gadget will return
-        random buddies, up to the size of the view channel.</p>
+        random buddies, up to the max size of the view channel.</p>
     </tp:docstring>
   </interface>
 </node>

@@ -42,7 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
         and the participants of these activities are stored in the
         Buddies property of this channel.</p>
       <p>If no search criteria is defined then Gadget will return
-        random activities, up to the size of the view channel.</p>
+        random activities, up to the max size of the view channel.</p>
     </tp:docstring>
   </interface>
 </node>

@@ -2491,6 +2491,7 @@ static const gchar * const *group_channel_fixed_properties =
 
 static const gchar * const list_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
     NULL
 };
 static const gchar * const *group_channel_allowed_properties =

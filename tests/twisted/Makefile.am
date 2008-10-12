@@ -90,7 +90,8 @@ TWISTED_TESTS = \
 	test-disco.py \
 	test-disco-no-reply.py \
 	test-register.py \
-	test-set-status-idempotence.py
+	test-set-status-idempotence.py \
+        test-location.py
 
 TESTS =
 

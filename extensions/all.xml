@@ -78,6 +78,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   <!-- use types from Connection_Interface_Contact_Capabilities -->
   <tp:external-type name="Requestable_Channel_Class" type="(a{sv}as)"
     from="Telepathy specification"/>
+
+  <!-- for localisation -->
+  <tp:external-type name="Rich_Presence_Access_Control_Type" type="u"
+    from="Telepathy specification"/>
+  <tp:external-type name="Rich_Presence_Access_Control" type="(uv)"
+    from="Telepathy specification"/>
+  <tp:external-type name="Unix_Timestamp" type="u"
+    from="Telepathy specification"/>
+
 </tp:generic-types>
 
 </tp:spec>

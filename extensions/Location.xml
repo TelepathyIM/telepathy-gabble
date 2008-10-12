@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<node name="/Connection_Interface_Location"
+<node name="/Location"
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <tp:copyright>Copyright (C) 2008 Collabora Ltd.</tp:copyright>
   <tp:copyright>Copyright (C) 2008 Nokia Corporation</tp:copyright>

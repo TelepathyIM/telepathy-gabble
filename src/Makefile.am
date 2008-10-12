@@ -33,6 +33,8 @@ libgabble_convenience_la_SOURCES = \
     conn-aliasing.c \
     conn-avatars.h \
     conn-avatars.c \
+    conn-location.h \
+    conn-location.c \
     conn-olpc.h \
     conn-olpc.c \
     conn-presence.h \

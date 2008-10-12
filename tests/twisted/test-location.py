@@ -1,4 +1,3 @@
-
 from gabbletest import exec_test, make_result_iq
 from servicetest import call_async
 
@@ -6,7 +5,7 @@ def test(q, bus, conn, stream):
     # hack
     import dbus
     conn.interfaces['Location'] = \
-        dbus.Interface(conn, 'org.freedesktop.Telepathy.Location')
+        dbus.Interface(conn, 'org.freedesktop.Telepathy.Connection.Interface.Location.DRAFT')
 
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
@@ -22,9 +21,8 @@ def test(q, bus, conn, stream):
         query_ns='http://jabber.org/protocol/pubsub')
 
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
-    call_async(q, conn.Location, 'GetLocations', [handle])
+    call_async(q, conn.Location, 'RequestLocations', [handle])
 
-    # XXX this is made up
     event = q.expect('stream-iq', iq_type='get',
         query_ns='http://jabber.org/protocol/pubsub')
     result = make_result_iq(stream, event.stanza)
@@ -35,7 +33,7 @@ def test(q, bus, conn, stream):
     geoloc.addElement('lon', content='5.678')
     stream.send(result)
 
-    q.expect('dbus-return', method='GetLocations')
+    q.expect('dbus-return', method='RequestLocations')
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

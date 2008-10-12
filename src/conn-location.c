@@ -35,7 +35,7 @@ validate_contacts (TpBaseConnection *base,
 {
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
-  GError *error;
+  GError *error = NULL;
 
   if (!tp_handles_are_valid (contact_handles, contacts, TRUE, &error))
     {

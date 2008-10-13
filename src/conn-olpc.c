@@ -2799,6 +2799,7 @@ buddy_changed (GabbleConnection *conn,
 
   id = strtoul (id_str, NULL, 10);
   view = gabble_olpc_gadget_manager_get_view (conn->olpc_gadget_manager, id);
+
   if (view == NULL)
     {
       DEBUG ("No active view with ID %u", id);
@@ -3096,8 +3097,8 @@ activity_added (GabbleConnection *conn,
     return;
 
   id = strtoul (id_str, NULL, 10);
-  view = gabble_olpc_gadget_manager_get_view (
-      conn->olpc_gadget_manager, id);
+  view = gabble_olpc_gadget_manager_get_view (conn->olpc_gadget_manager, id);
+
   if (view == NULL)
     {
       DEBUG ("no view with ID %u", id);
@@ -3177,8 +3178,8 @@ buddy_added (GabbleConnection *conn,
     return;
 
   id = strtoul (id_str, NULL, 10);
-  view = gabble_olpc_gadget_manager_get_view (
-      conn->olpc_gadget_manager, id);
+  view = gabble_olpc_gadget_manager_get_view (conn->olpc_gadget_manager, id);
+
   if (view == NULL)
     {
       DEBUG ("no view with ID %u", id);
@@ -3242,9 +3243,8 @@ buddy_removed (GabbleConnection *conn,
     return;
 
   id = strtoul (id_str, NULL, 10);
+  view = gabble_olpc_gadget_manager_get_view (conn->olpc_gadget_manager, id);
 
-  view = gabble_olpc_gadget_manager_get_view (
-      conn->olpc_gadget_manager, id);
   if (view == NULL)
     {
       DEBUG ("no view with ID %u", id);
@@ -3307,8 +3307,8 @@ activity_removed (GabbleConnection *conn,
     return;
 
   id = strtoul (id_str, NULL, 10);
-  view = gabble_olpc_gadget_manager_get_view (
-      conn->olpc_gadget_manager, id);
+  view = gabble_olpc_gadget_manager_get_view (conn->olpc_gadget_manager, id);
+
   if (view == NULL)
     {
       DEBUG ("no view with ID %u", id);
@@ -3372,8 +3372,8 @@ activity_membership_change (GabbleConnection *conn,
     return;
 
   id = strtoul (id_str, NULL, 10);
-  view = gabble_olpc_gadget_manager_get_view (
-      conn->olpc_gadget_manager, id);
+  view = gabble_olpc_gadget_manager_get_view (conn->olpc_gadget_manager, id);
+
   if (view == NULL)
     {
       DEBUG ("no view with ID %u", id);

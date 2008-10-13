@@ -534,7 +534,6 @@ def test(q, bus, conn, stream):
             'org.laptop.Telepathy.Channel.Type.ActivityView.Participants': participants,
           })
 
-
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
         EventPattern('dbus-return', method='CreateChannel'))
@@ -558,10 +557,10 @@ def test(q, bus, conn, stream):
     props = return_event.value[1]
     view4 = bus.get_object(conn.bus_name, view_path)
 
-    assert props['org.laptop.Telepathy.Channel.Type.ActivityView.Properties'] == dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    assert props['org.laptop.Telepathy.Channel.Type.ActivityView.Properties'] == \
+            dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
     assert conn.InspectHandles(1, props['org.laptop.Telepathy.Channel.Type.ActivityView.Participants']) == \
             ["alice@localhost", "bob@localhost"]
-
 
 if __name__ == '__main__':
     exec_test(test)

@@ -417,8 +417,6 @@ def test(q, bus, conn, stream):
     assert view['id'] == '4'
     assert view['size'] == '5'
 
-    print iq_event.stanza.toXml()
-
     properties_node = xpath.queryForNodes('/iq/view/buddy/properties',
             iq_event.stanza)
     props = parse_properties(properties_node[0])

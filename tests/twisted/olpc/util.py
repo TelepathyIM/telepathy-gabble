@@ -199,9 +199,8 @@ def request_random_activity_view(q, stream, conn, max, id, activities):
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == id
+    assert view['size'] == str(max)
     random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
-    assert len(random) == 1
-    assert random[0]['max'] == str(max)
 
     send_reply_to_activity_view_request(stream, iq_event.stanza, activities)
 

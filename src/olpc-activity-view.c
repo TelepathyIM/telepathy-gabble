@@ -373,9 +373,7 @@ gabble_olpc_activity_view_send_request (GabbleOlpcView *view,
           '(', "view", "",
               '@', "xmlns", NS_OLPC_ACTIVITY,
               '@', "id", id_str,
-              '(', "random", "",
-                '@', "max", max_str,
-              ')',
+              '@', "size", max_str,
           ')',
           NULL);
     }

@@ -522,6 +522,46 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-error', method='CreateChannel')
     assert event.error.get_dbus_name() == 'org.freedesktop.Telepathy.Errors.InvalidArgument'
 
+    # test participants and properties search
+    props = dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    participants = conn.RequestHandles(1, ["alice@localhost", "bob@localhost"])
+
+    call_async(q, requests_iface, 'CreateChannel',
+        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+            'org.laptop.Telepathy.Channel.Type.ActivityView',
+            'org.laptop.Telepathy.Channel.Interface.View.MaxSize': 5,
+            'org.laptop.Telepathy.Channel.Type.ActivityView.Properties': props,
+            'org.laptop.Telepathy.Channel.Type.ActivityView.Participants': participants,
+          })
+
+
+    iq_event, return_event = q.expect_many(
+        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
+        EventPattern('dbus-return', method='CreateChannel'))
+
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == '4'
+    assert view['size'] == '5'
+
+    properties_nodes = xpath.queryForNodes('/iq/view/activity/properties',
+            iq_event.stanza)
+    props = parse_properties(properties_nodes[0])
+    assert props == {'color': ('str', '#AABBCC,#001122')}
+
+    buddies = xpath.queryForNodes('/iq/view/activity/buddy', iq_event.stanza)
+    assert len(buddies) == 2
+    assert (buddies[0]['jid'], buddies[1]['jid']) == ('alice@localhost',
+            'bob@localhost')
+
+    view_path = return_event.value[0]
+    props = return_event.value[1]
+    view4 = bus.get_object(conn.bus_name, view_path)
+
+    assert props['org.laptop.Telepathy.Channel.Type.ActivityView.Properties'] == dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    assert conn.InspectHandles(1, props['org.laptop.Telepathy.Channel.Type.ActivityView.Participants']) == \
+            ["alice@localhost", "bob@localhost"]
+
 
 if __name__ == '__main__':
     exec_test(test)

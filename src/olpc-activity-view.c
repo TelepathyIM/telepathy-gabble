@@ -302,54 +302,44 @@ gabble_olpc_activity_view_send_request (GabbleOlpcView *view,
   GabbleOlpcActivityViewPrivate *priv = \
       GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (self);
   LmMessage *query;
+  LmMessageNode *activity_node;
   gchar *max_str, *id_str;
 
   max_str = g_strdup_printf ("%u", view->max_size);
   id_str = g_strdup_printf ("%u", view->id);
 
-  /* TODO: Implement multi criterias properties */
-  /* TODO: Always use the max_size argument */
+  query = lm_message_build_with_sub_type (view->conn->olpc_gadget_activity,
+      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
+      '(', "view", "",
+          '@', "xmlns", NS_OLPC_ACTIVITY,
+          '@', "id", id_str,
+          '@', "size", max_str,
+          '(', "activity", "",
+            '*', &activity_node,
+          ')',
+      ')', NULL);
+
+  /* ActivityView.Properties */
   if (g_hash_table_size (priv->properties) != 0)
     {
       LmMessageNode *properties_node;
 
-      query = lm_message_build_with_sub_type (view->conn->olpc_gadget_activity,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-          '(', "view", "",
-              '@', "xmlns", NS_OLPC_ACTIVITY,
-              '@', "id", id_str,
-              '@', "size", max_str,
-              '(', "activity", "",
-                '(', "properties", "",
-                  '*', &properties_node,
-                  '@', "xmlns", NS_OLPC_ACTIVITY_PROPS,
-                ')',
-              ')',
-          ')',
+      properties_node = lm_message_node_add_child (activity_node, "properties",
           NULL);
+      lm_message_node_set_attribute (properties_node, "xmlns",
+          NS_OLPC_ACTIVITY_PROPS);
 
       lm_message_node_add_children_from_properties (properties_node,
           priv->properties, "property");
     }
-  else if (tp_handle_set_size (priv->participants) != 0)
+
+  /* ActivityView.Participants */
+  if (tp_handle_set_size (priv->participants) != 0)
     {
-      LmMessageNode *activity_node;
       GArray *participants;
       TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
           TP_BASE_CONNECTION (view->conn), TP_HANDLE_TYPE_CONTACT);
       guint i;
-
-      query = lm_message_build_with_sub_type (view->conn->olpc_gadget_activity,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-          '(', "view", "",
-              '@', "xmlns", NS_OLPC_ACTIVITY,
-              '@', "id", id_str,
-              '@', "size", max_str,
-              '(', "activity", "",
-                '*', &activity_node,
-              ')',
-          ')',
-          NULL);
 
       /* For easier iteration */
       participants = tp_handle_set_to_array (priv->participants);
@@ -367,17 +357,6 @@ gabble_olpc_activity_view_send_request (GabbleOlpcView *view,
       }
 
       g_array_free (participants, TRUE);
-    }
-  else
-    {
-      query = lm_message_build_with_sub_type (view->conn->olpc_gadget_activity,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-          '(', "view", "",
-              '@', "xmlns", NS_OLPC_ACTIVITY,
-              '@', "id", id_str,
-              '@', "size", max_str,
-          ')',
-          NULL);
     }
 
   g_free (max_str);

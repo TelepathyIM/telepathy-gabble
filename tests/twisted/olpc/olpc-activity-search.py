@@ -90,7 +90,7 @@ def test(q, bus, conn, stream):
          ) in properties.get('RequestableChannelClasses'),\
                  properties['RequestableChannelClasses']
 
-    # request 3 random activities (view 0)
+    # request 3 random activities (view 1)
     view_path = request_random_activity_view(q, stream, conn, 3, '1',
             [('activity1', 'room1@conference.localhost',
                 {'color': ('str', '#005FE4,#00A0FF')},
@@ -180,7 +180,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-return', method='GetActivities',
             value=([('activity1', handles['room1'])],))
 
-    # activity search by properties (view 1)
+    # activity search by properties (view 2)
     props = dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
 
     call_async(q, requests_iface, 'CreateChannel',
@@ -239,7 +239,7 @@ def test(q, bus, conn, stream):
         dbus_interface='org.freedesktop.DBus.Properties')
     assert buddies == []
 
-    # activity search by participants (view 2)
+    # activity search by participants (view 3)
     participants = conn.RequestHandles(1, ["alice@localhost", "bob@localhost"])
 
     call_async(q, requests_iface, 'CreateChannel',
@@ -288,7 +288,7 @@ def test(q, bus, conn, stream):
         dbus_interface='org.freedesktop.DBus.Properties')
     assert sorted(act) == [('activity3', handles['room3'])]
 
-    # add activity 4 to view 0
+    # add activity 4 to view 1
     message = create_gadget_message('alice@localhost')
 
     added = message.addElement((NS_OLPC_ACTIVITY, 'added'))
@@ -461,7 +461,7 @@ def test(q, bus, conn, stream):
         ('activity1', handles['room1']),('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
-    # remove activity 1 from view 0
+    # remove activity 1 from view 1
     message = create_gadget_message('alice@localhost')
 
     removed = message.addElement((NS_OLPC_ACTIVITY, 'removed'))
@@ -494,7 +494,7 @@ def test(q, bus, conn, stream):
         ('activity4', handles['room4'])],
         ['fernand@localhost', 'jean@localhost'])
 
-    # close view 0
+    # close view 1
     call_async(q, view1, 'Close')
     event_msg, _, _, _ = q.expect_many(
         EventPattern('stream-message', to='gadget.localhost'),

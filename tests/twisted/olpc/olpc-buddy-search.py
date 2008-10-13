@@ -281,7 +281,7 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
     assert props == {'color': '#AABBCC,#001122'}
 
-    # add a buddy to view 0
+    # add a buddy to view 1
     message = create_gadget_message("test@localhost")
 
     added = message.addElement((NS_OLPC_BUDDY, 'added'))
@@ -309,7 +309,7 @@ def test(q, bus, conn, stream):
     assert sorted(members) == ['bob@localhost', 'charles@localhost',
             'oscar@localhost']
 
-    # remove a buddy from view 0
+    # remove a buddy from view 1
     message = create_gadget_message("test@localhost")
 
     added = message.addElement((NS_OLPC_BUDDY, 'removed'))
@@ -386,13 +386,10 @@ def test(q, bus, conn, stream):
     assert sorted(conn.InspectHandles(1, added)) == ['thomas@localhost',
             'tom@localhost']
 
-    # close view 0
     close_view(q, view1, '1')
 
-    # close view 1
     close_view(q, view2, '2')
 
-    # close view 2
     close_view(q, view3, '3')
 
     # View request without MaxSize property

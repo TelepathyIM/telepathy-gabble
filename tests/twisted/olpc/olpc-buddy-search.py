@@ -126,9 +126,7 @@ def test(q, bus, conn, stream):
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == '1'
-    random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
-    assert len(random) == 1
-    assert random[0]['max'] == '3'
+    assert view['size'] == '3'
 
     # reply to random query
     reply = make_result_iq(stream, iq_event.stanza)

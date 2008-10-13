@@ -70,7 +70,7 @@ struct _GabbleJingleFactoryPrivate
 };
 
 #define GABBLE_JINGLE_FACTORY_GET_PRIVATE(o)\
-  ((GabbleJingleFactoryPrivate*)((o)->priv))
+  ((GabbleJingleFactoryPrivate *) ((o)->priv))
 
 static LmHandlerResult
 jingle_cb (LmMessageHandler *handler, LmConnection *lmconn,

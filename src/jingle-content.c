@@ -79,7 +79,7 @@ struct _GabbleJingleContentPrivate
 };
 
 #define GABBLE_JINGLE_CONTENT_GET_PRIVATE(o)\
-  ((GabbleJingleContentPrivate*)((o)->priv))
+  ((GabbleJingleContentPrivate *) ((o)->priv))
 
 /* lookup tables */
 

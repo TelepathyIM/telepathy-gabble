@@ -81,7 +81,7 @@ struct _GabbleJingleSessionPrivate
 };
 
 #define GABBLE_JINGLE_SESSION_GET_PRIVATE(o)\
-  ((GabbleJingleSessionPrivate*)((o)->priv))
+  ((GabbleJingleSessionPrivate *) ((o)->priv))
 
 /* lookup tables */
 
@@ -151,7 +151,7 @@ gabble_jingle_session_dispose (GObject *object)
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (object);
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (priv->dispose_has_run)
     return;
@@ -477,7 +477,7 @@ _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
     }
 }
 
-static void content_ready_cb (GabbleJingleContent *c, 
+static void content_ready_cb (GabbleJingleContent *c,
     GParamSpec *arg, GabbleJingleSession *sess);
 
 static void
@@ -541,7 +541,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
   g_signal_connect (c, "notify::ready",
       (GCallback) content_ready_cb, sess);
 
-  gabble_jingle_content_parse_add (c, content_node, 
+  gabble_jingle_content_parse_add (c, content_node,
     ((priv->dialect == JINGLE_DIALECT_GTALK3) ||
     (priv->dialect == JINGLE_DIALECT_GTALK4)), error);
 
@@ -1000,7 +1000,7 @@ get_jid_for_contact (GabbleJingleSession *session,
   g_assert (GABBLE_IS_JINGLE_SESSION (session));
 
   priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (session);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
   self = conn->self_handle;
@@ -1393,7 +1393,7 @@ gabble_jingle_session_get_contents (GabbleJingleSession *sess)
 }
 
 static void
-content_ready_cb (GabbleJingleContent *c, 
+content_ready_cb (GabbleJingleContent *c,
     GParamSpec *arg, GabbleJingleSession *sess)
 {
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);

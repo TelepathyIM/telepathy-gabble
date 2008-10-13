@@ -81,7 +81,7 @@ struct _GabbleJingleMediaRtpPrivate
 };
 
 #define GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE(o)\
-  ((GabbleJingleMediaRtpPrivate*)((o)->priv))
+  ((GabbleJingleMediaRtpPrivate *) ((o)->priv))
 
 static void
 gabble_jingle_media_rtp_init (GabbleJingleMediaRtp *obj)

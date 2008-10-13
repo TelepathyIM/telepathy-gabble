@@ -28,7 +28,7 @@ void
 gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *self,
     LmMessageNode *node, GError **error)
 {
-  void (*virtual_method)(GabbleJingleTransportIface *, 
+  void (*virtual_method)(GabbleJingleTransportIface *,
       LmMessageNode *, GError **) =
     GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->parse_candidates;
 
@@ -40,7 +40,7 @@ void
 gabble_jingle_transport_iface_produce (GabbleJingleTransportIface *self,
     LmMessageNode *node)
 {
-  void (*virtual_method)(GabbleJingleTransportIface *, 
+  void (*virtual_method)(GabbleJingleTransportIface *,
       LmMessageNode *) =
     GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->produce;
 
@@ -52,7 +52,7 @@ void
 gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *self,
     GList *candidates)
 {
-  void (*virtual_method)(GabbleJingleTransportIface *, 
+  void (*virtual_method)(GabbleJingleTransportIface *,
       GList *) =
     GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->add_candidates;
 

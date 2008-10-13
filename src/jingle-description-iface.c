@@ -26,7 +26,7 @@ void
 gabble_jingle_description_iface_produce (GabbleJingleDescriptionIface *self,
     LmMessageNode *node)
 {
-  void (*virtual_method)(GabbleJingleDescriptionIface *, 
+  void (*virtual_method)(GabbleJingleDescriptionIface *,
       LmMessageNode *) =
     GABBLE_JINGLE_DESCRIPTION_IFACE_GET_CLASS (self)->produce;
 
@@ -38,7 +38,7 @@ void
 gabble_jingle_description_iface_parse (GabbleJingleDescriptionIface *self,
     LmMessageNode *node, GError **error)
 {
-  void (*virtual_method)(GabbleJingleDescriptionIface *, 
+  void (*virtual_method)(GabbleJingleDescriptionIface *,
       LmMessageNode *, GError **) =
     GABBLE_JINGLE_DESCRIPTION_IFACE_GET_CLASS (self)->parse;
 

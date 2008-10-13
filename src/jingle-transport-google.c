@@ -82,7 +82,7 @@ struct _GabbleJingleTransportGooglePrivate
 };
 
 #define GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE(o)\
-  ((GabbleJingleTransportGooglePrivate*)((o)->priv))
+  ((GabbleJingleTransportGooglePrivate *) ((o)->priv))
 
 static void transmit_candidates (GabbleJingleTransportGoogle *transport,
     GList *candidates);

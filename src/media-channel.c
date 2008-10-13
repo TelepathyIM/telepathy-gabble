@@ -1287,10 +1287,10 @@ _gabble_media_channel_request_streams (GabbleMediaChannel *chan,
         }
     }
 
-  g_object_get(priv->session, "dialect", &dialect, NULL);
+  g_object_get (priv->session, "dialect", &dialect, NULL);
 
   /* existing call; the recipient and the mode has already been decided */
-  if (dialect != JINGLE_DIALECT_ERROR) 
+  if (dialect != JINGLE_DIALECT_ERROR)
     {
       g_assert_not_reached ();
 

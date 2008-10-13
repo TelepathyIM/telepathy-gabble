@@ -41,7 +41,6 @@
 #include "debug.h"
 #include "gabble-signals-marshal.h"
 #include "media-channel.h"
-#include "media-session-enumtypes.h"
 #include "namespaces.h"
 
 #include "jingle-content.h"

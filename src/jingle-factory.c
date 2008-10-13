@@ -63,6 +63,7 @@ struct _GabbleJingleFactoryPrivate
 {
   GabbleConnection *conn;
   LmMessageHandler *jingle_cb;
+  LmMessageHandler *jingle_info_cb;
   GHashTable *sessions;
 
   gboolean dispose_has_run;
@@ -79,6 +80,9 @@ static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
 
 static void session_terminated_cb (GabbleJingleSession *sess,
     gboolean local_terminator, GabbleJingleFactory *fac);
+
+static void connection_status_changed_cb (GabbleConnection *conn,
+    guint status, guint reason, GabbleJingleFactory *self);
 
 static void
 gabble_jingle_factory_init (GabbleJingleFactory *obj)
@@ -103,6 +107,144 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
   priv->dispose_has_run = FALSE;
 }
 
+/*
+ * jingle_info_cb
+ *
+ * Called by loudmouth when we get an incoming <iq>. This handler
+ * is concerned only with Jingle info queries.
+ */
+static LmHandlerResult
+jingle_info_cb (LmMessageHandler *handler,
+                LmConnection *lmconn,
+                LmMessage *message,
+                gpointer user_data)
+{
+  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (user_data);
+  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
+  LmMessageSubType sub_type;
+  LmMessageNode *query_node, *node;
+
+  query_node = lm_message_node_get_child_with_namespace (message->node,
+      "query", NS_GOOGLE_JINGLE_INFO);
+
+  if (query_node == NULL)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  sub_type = lm_message_get_sub_type (message);
+
+  if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      GabbleXmppError xmpp_error = XMPP_ERROR_UNDEFINED_CONDITION;
+
+      node = lm_message_node_get_child (message->node, "error");
+      if (node != NULL)
+        {
+          xmpp_error = gabble_xmpp_error_from_node (node);
+        }
+
+      DEBUG ("jingle info error: %s", gabble_xmpp_error_string (xmpp_error));
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
+      sub_type != LM_MESSAGE_SUB_TYPE_SET)
+    {
+      DEBUG ("jingle info: unexpected IQ type, ignoring");
+
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  if (fac->get_stun_from_jingle)
+    node = lm_message_node_get_child (query_node, "stun");
+  else
+    node = NULL;
+
+  if (node != NULL)
+    {
+      node = lm_message_node_get_child (node, "server");
+
+      if (node != NULL)
+        {
+          const gchar *server;
+          const gchar *port;
+
+          server = lm_message_node_get_attribute (node, "host");
+          port = lm_message_node_get_attribute (node, "udp");
+
+          if (server != NULL)
+            {
+              DEBUG ("jingle info: got stun server %s", server);
+              g_free (fac->stun_server);
+              fac->stun_server = g_strdup (server);
+            }
+
+          if (port != NULL)
+            {
+              DEBUG ("jingle info: got stun port %s", port);
+              fac->stun_port = atoi (port);
+            }
+        }
+    }
+
+  node = lm_message_node_get_child (query_node, "relay");
+
+  if (node != NULL)
+    {
+      node = lm_message_node_get_child (node, "token");
+
+      if (node != NULL)
+        {
+          const gchar *token;
+
+          token = lm_message_node_get_value (node);
+
+          if (token != NULL)
+            {
+              DEBUG ("jingle info: got relay token %s", token);
+              g_free (fac->relay_token);
+              fac->relay_token = g_strdup (token);
+            }
+        }
+    }
+
+  if (sub_type == LM_MESSAGE_SUB_TYPE_SET)
+    {
+      _gabble_connection_acknowledge_set_iq (priv->conn, message);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+jingle_info_send_request (GabbleJingleFactory *fac)
+{
+  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
+  TpBaseConnection *base = (TpBaseConnection *) priv->conn;
+  LmMessage *msg;
+  LmMessageNode *node;
+  const gchar *jid;
+  GError *error = NULL;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  jid = tp_handle_inspect (contact_handles, base->self_handle);
+  msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_GET);
+
+  node = lm_message_node_add_child (msg->node, "query", NULL);
+  lm_message_node_set_attribute (node, "xmlns", NS_GOOGLE_JINGLE_INFO);
+
+  if (!_gabble_connection_send (priv->conn, msg, &error))
+    {
+      DEBUG ("jingle info send failed: %s\n", error->message);
+      g_error_free (error);
+    }
+
+  lm_message_unref (msg);
+}
+
+
 static void
 gabble_jingle_factory_dispose (GObject *object)
 {
@@ -126,6 +268,11 @@ gabble_jingle_factory_dispose (GObject *object)
 
   lm_connection_unregister_message_handler (priv->conn->lmconn,
       priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
+  lm_connection_unregister_message_handler (priv->conn->lmconn,
+      priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
+
+  g_free (fac->stun_server);
+  g_free (fac->relay_token);
 
   if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose (object);
@@ -184,11 +331,9 @@ gabble_jingle_factory_constructor (GType type,
   self = GABBLE_JINGLE_FACTORY (obj);
   priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (self);
 
-  priv->jingle_cb = lm_message_handler_new (jingle_cb, self, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn,
-      priv->jingle_cb, LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
-
-  // FIXME: better way to do it?
+  // FIXME: why was this in _constructed in media factory?
+  g_signal_connect (priv->conn,
+      "status-changed", (GCallback) connection_status_changed_cb, self);
 
   jingle_media_rtp_register (self);
   jingle_transport_google_register (self);
@@ -223,6 +368,70 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
         0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
         G_TYPE_NONE, 1, G_TYPE_POINTER);
 }
+
+static void
+connection_status_changed_cb (GabbleConnection *conn,
+                              guint status,
+                              guint reason,
+                              GabbleJingleFactory *self)
+{
+  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (self);
+
+  switch (status)
+    {
+    case TP_CONNECTION_STATUS_CONNECTING:
+      g_assert (priv->conn != NULL);
+      g_assert (priv->conn->lmconn != NULL);
+
+      DEBUG ("adding callbacks");
+      g_assert (priv->jingle_cb == NULL);
+      g_assert (priv->jingle_info_cb == NULL);
+
+      priv->jingle_cb = lm_message_handler_new (jingle_cb,
+          self, NULL);
+      lm_connection_register_message_handler (priv->conn->lmconn,
+          priv->jingle_cb, LM_MESSAGE_TYPE_IQ,
+          LM_HANDLER_PRIORITY_NORMAL);
+
+      priv->jingle_info_cb = lm_message_handler_new (
+          jingle_info_cb, self, NULL);
+      lm_connection_register_message_handler (priv->conn->lmconn,
+          priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ,
+          LM_HANDLER_PRIORITY_NORMAL);
+
+      break;
+
+    case TP_CONNECTION_STATUS_CONNECTED:
+        {
+          gchar *stun_server = NULL;
+          guint stun_port = 0;
+
+          g_object_get (priv->conn,
+              "stun-server", &stun_server,
+              "stun-port", &stun_port,
+              NULL);
+
+          if (stun_server == NULL)
+            {
+              self->get_stun_from_jingle = TRUE;
+            }
+          else
+            {
+              g_free (self->stun_server);
+              self->stun_server = stun_server;
+              self->stun_port = stun_port;
+            }
+
+          if (priv->conn->features &
+              GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
+            {
+              jingle_info_send_request (self);
+            }
+        }
+      break;
+    }
+}
+
 
 static gboolean
 sid_in_use (GabbleJingleFactory *factory, const gchar *sid)
@@ -315,6 +524,9 @@ jingle_cb (LmMessageHandler *handler,
         {
           g_signal_emit (self, signals[NEW_SESSION], 0, sess);
         }
+
+      /* all went well, we can acknowledge the IQ */
+      _gabble_connection_acknowledge_set_iq (priv->conn, msg);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }

@@ -42,10 +42,11 @@
 #include "gabble-signals-marshal.h"
 #include "media-channel.h"
 #include "media-session-enumtypes.h"
-#include "media-session.h"
 #include "namespaces.h"
 
 #include "jingle-content.h"
+#include "jingle-session.h"
+#include "jingle-media-rtp.h"
 
 static void stream_handler_iface_init (gpointer, gpointer);
 
@@ -101,7 +102,7 @@ struct _GabbleMediaStreamPrivate
   GabbleJingleContent *content;
 
   GabbleConnection *conn;
-  GabbleMediaSession *session;
+  gpointer session;
   GabbleMediaSessionMode mode;
   gchar *object_path;
   guint id;
@@ -140,11 +141,15 @@ static const char *tp_transports[] = {
 #endif
 #endif
 
-static void push_native_candidates (GabbleMediaStream *stream);
 static void push_remote_codecs (GabbleMediaStream *stream);
 static void push_remote_candidates (GabbleMediaStream *stream);
 static void push_playing (GabbleMediaStream *stream);
 static void push_sending (GabbleMediaStream *stream);
+
+static void new_remote_candidates_cb (GabbleJingleContent *content,
+    GList *clist, GabbleMediaStream *stream);
+static void new_remote_codecs_cb (GabbleJingleContent *content,
+    GList *clist, GabbleMediaStream *stream);
 
 static void
 gabble_media_stream_init (GabbleMediaStream *self)
@@ -215,7 +220,7 @@ gabble_media_stream_get_property (GObject    *object,
       g_value_set_string (value, priv->object_path);
       break;
     case PROP_MODE:
-      g_value_set_enum (value, priv->mode);
+      g_value_set_uint (value, priv->mode);
       break;
     case PROP_NAME:
       g_value_set_string (value, stream->name);
@@ -280,7 +285,7 @@ gabble_media_stream_set_property (GObject      *object,
       priv->object_path = g_value_dup_string (value);
       break;
     case PROP_MODE:
-      priv->mode = g_value_get_enum (value);
+      priv->mode = g_value_get_uint (value);
       break;
     case PROP_NAME:
       g_free (stream->name);
@@ -312,8 +317,10 @@ gabble_media_stream_set_property (GObject      *object,
           stream->signalling_state = g_value_get_uint (value);
           DEBUG ("stream %s sig_state %d->%d",
               stream->name, old, stream->signalling_state);
+          /* FIXME 
           if (stream->signalling_state != old)
             push_native_candidates (stream);
+            */
         }
       break;
     case PROP_PLAYING:
@@ -328,7 +335,23 @@ gabble_media_stream_set_property (GObject      *object,
       stream->combined_direction = g_value_get_uint (value);
       break;
     case PROP_CONTENT:
+      g_assert (priv->content == NULL);
+
       priv->content = g_value_get_object (value);
+
+      DEBUG ("connecting to content %p signals", priv->content);
+      g_signal_connect (priv->content, "new-candidates",
+          (GCallback) new_remote_candidates_cb, stream);
+
+      /* we need this also, if we're the initiator of the stream
+       * (so remote codecs arrive later) */
+      g_signal_connect (priv->content, "remote-codecs",
+          (GCallback) new_remote_codecs_cb, stream);
+
+      /* we can immediately get the codecs if we're responder */
+      new_remote_codecs_cb (priv->content,
+          gabble_jingle_media_rtp_get_remote_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content)),
+          stream);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -373,7 +396,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   param_spec = g_param_spec_object ("media-session",
       "GabbleMediaSession object",
       "Gabble media session object that owns this media stream object.",
-      GABBLE_TYPE_MEDIA_SESSION,
+      GABBLE_TYPE_JINGLE_SESSION,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_SESSION,
@@ -389,11 +412,10 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
 
-  param_spec = g_param_spec_enum ("mode", "Signalling mode",
+  param_spec = g_param_spec_uint ("mode", "Signalling mode",
                                   "Which signalling mode used to control the "
                                   "stream.",
-                                  gabble_media_session_mode_get_type (),
-                                  MODE_JINGLE,
+                                  0, G_MAXUINT, MODE_JINGLE, // FIXME
                                   G_PARAM_CONSTRUCT_ONLY |
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
@@ -612,6 +634,13 @@ gabble_media_stream_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_media_stream_parent_class)->finalize (object);
 }
 
+typedef struct {
+  guchar id;
+  gchar *name;
+  guint clockrate;
+  guint channels;
+} JingleCodec;
+
 /**
  * gabble_media_stream_codec_choice
  *
@@ -646,8 +675,7 @@ gabble_media_stream_error (GabbleMediaStream *self,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  GMS_DEBUG_WARNING (priv->session,
-      "Media.StreamHandler::Error called, error %u (%s) -- emitting signal",
+  DEBUG ( "Media.StreamHandler::Error called, error %u (%s) -- emitting signal",
       errno, message);
 
   g_signal_emit (self, signals[ERROR], 0, errno, message);
@@ -849,7 +877,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
       GError only_one = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "google p2p "
           "connections only support the concept of one transport per "
           "candidate" };
-      GMS_DEBUG_WARNING (priv->session, "%s: number of transports was not 1; "
+      DEBUG ("%s: number of transports was not 1; "
           "rejecting", G_STRFUNC);
       dbus_g_method_return_error (context, &only_one);
       return;
@@ -859,8 +887,11 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   addr = g_value_get_string (g_value_array_get_nth (transport, 1));
   if (!strcmp (addr, "127.0.0.1"))
     {
+      DEBUG ("ignoring native localhost candidate");
+      /*
       GMS_DEBUG_WARNING (priv->session,
-          "%s: ignoring native localhost candidate", G_STRFUNC);
+          "%s: ignoring native localhost candidate", G_STRFUNC); */
+
       tp_svc_media_stream_handler_return_from_new_native_candidate (context);
       return;
     }
@@ -920,17 +951,23 @@ gabble_media_stream_ready (TpSvcMediaStreamHandler *iface,
 
   DEBUG ("ready called");
 
-  g_object_set (self, "ready", TRUE, NULL);
+  if (priv->ready == FALSE)
+    {
+      g_object_set (self, "ready", TRUE, NULL);
 
-  push_remote_codecs (self);
-  push_remote_candidates (self);
-  push_playing (self);
-  push_sending (self);
+      push_remote_codecs (self);
+      push_remote_candidates (self);
+      push_playing (self);
+      push_sending (self);
+    }
+  else
+    {
+      DEBUG ("Ready called twice, running plain SetLocalCodecs instead");
+    }
 
   /* set_local_codecs and ready return the same thing, so we can do... */
   gabble_media_stream_set_local_codecs (iface, codecs, context);
 }
-
 
 /**
  * gabble_media_stream_set_local_codecs
@@ -945,6 +982,9 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
+  GList *li = NULL;
+  JingleCodec *c;
+  guint i;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
@@ -957,8 +997,38 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
 
   g_object_set (self, "got-local-codecs", TRUE, NULL);
 
-  /* FIXME: actually set them :-) */
-  gabble_jingle_content_set_local_codecs (priv->content);
+  for (i = 0; i < codecs->len; i++)
+    {
+      GType codec_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CODEC;
+
+      GValue codec = { 0, };
+      guint id, clock_rate, channels;
+      gchar *name;
+      GHashTable *params;
+
+      g_value_init (&codec, codec_struct_type);
+      g_value_set_static_boxed (&codec, g_ptr_array_index (codecs, i));
+
+      dbus_g_type_struct_get (&codec,
+          0, &id,
+          1, &name,
+          3, &clock_rate,
+          4, &channels,
+          5, &params,
+          G_MAXUINT);
+
+      c = g_new0 (JingleCodec, 1);
+
+      c->id = id;
+      c->name = g_strdup (name);
+      c->clockrate = clock_rate;
+      c->channels = channels;
+
+      DEBUG ("adding codec %s (%u %u %u)", c->name, c->id, c->clockrate, c->channels);
+      li = g_list_append (li, c);
+    }
+
+  jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content), li);
 
   tp_svc_media_stream_handler_return_from_set_local_codecs (context);
 }
@@ -1005,7 +1075,7 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  GMS_DEBUG_INFO (priv->session, "got codec intersection containing %d "
+  DEBUG ("got codec intersection containing %d "
                   "codecs from stream-engine", codecs->len);
 
   /* store the intersection for later on */
@@ -1016,6 +1086,7 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
   tp_svc_media_stream_handler_return_from_supported_codecs (context);
 }
 
+#if 0
 static LmHandlerResult
 candidates_msg_reply_cb (GabbleConnection *conn,
                          LmMessage *sent_msg,
@@ -1030,12 +1101,15 @@ candidates_msg_reply_cb (GabbleConnection *conn,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
+  /* FIXME 
   MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (priv->session,
-      "candidates failed");
+      "candidates failed"); */
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
+#endif
 
+#if 0
 static void
 _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
                          GValueArray *candidate)
@@ -1142,7 +1216,9 @@ out:
   g_free (port_str);
   g_free (pref_str);
 }
+#endif
 
+#if 0
 static LmMessage *
 _gabble_media_stream_message_new (GabbleMediaStream *stream,
                                   const gchar *action,
@@ -1161,8 +1237,9 @@ _gabble_media_stream_message_new (GabbleMediaStream *stream,
 
   return msg;
 }
+#endif
 
-
+#if 0
 static void
 push_candidate (GabbleMediaStream *stream, GValueArray *candidate)
 {
@@ -1196,7 +1273,9 @@ push_candidate (GabbleMediaStream *stream, GValueArray *candidate)
   /* clean up */
   lm_message_unref (msg);
 }
+#endif
 
+#if 0
 static void
 push_native_candidates (GabbleMediaStream *stream)
 {
@@ -1222,6 +1301,7 @@ push_native_candidates (GabbleMediaStream *stream)
   g_value_take_boxed (&priv->native_candidates,
     dbus_g_type_specialized_construct (candidate_list_type));
 }
+#endif
 
 void
 _gabble_media_stream_close (GabbleMediaStream *stream)
@@ -1239,6 +1319,7 @@ _gabble_media_stream_close (GabbleMediaStream *stream)
     }
 }
 
+#if 0
 gboolean
 _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
                                          LmMessage *message,
@@ -1344,6 +1425,56 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
 
   return TRUE;
 }
+#endif
+
+static void
+new_remote_codecs_cb (GabbleJingleContent *content,
+    GList *clist, GabbleMediaStream *stream)
+{
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+  GList *li;
+  GPtrArray *codecs;
+  GType codec_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CODEC;
+
+  DEBUG ("called");
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (stream));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+
+  codecs = g_value_get_boxed (&priv->remote_codecs);
+
+  g_assert (codecs->len == 0);
+
+  for (li = clist; li; li = li->next)
+    {
+      GValue codec = { 0, };
+      JingleCodec *c = li->data;
+
+      g_value_init (&codec, codec_struct_type);
+      g_value_take_boxed (&codec,
+          dbus_g_type_specialized_construct (codec_struct_type));
+
+      DEBUG ("new remote codec: %u '%s' %u %u %u",
+          c->id, c->name, priv->media_type, c->clockrate, c->channels);
+
+      dbus_g_type_struct_set (&codec,
+          0, c->id,
+          1, c->name,
+          2, priv->media_type,
+          3, c->clockrate,
+          4, c->channels,
+          5, g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free),
+          G_MAXUINT);
+
+      g_ptr_array_add (codecs, g_value_get_boxed (&codec));
+    }
+
+  DEBUG ("pushing remote codecs");
+
+  push_remote_codecs (stream);
+}
+
 
 static void
 push_remote_codecs (GabbleMediaStream *stream)
@@ -1364,7 +1495,7 @@ push_remote_codecs (GabbleMediaStream *stream)
   if (codecs->len == 0)
     return;
 
-  GMS_DEBUG_EVENT (priv->session, "passing %d remote codecs to stream-engine",
+  DEBUG ("passing %d remote codecs to stream-engine",
                    codecs->len);
 
   tp_svc_media_stream_handler_emit_set_remote_codecs (stream, codecs);
@@ -1373,6 +1504,73 @@ push_remote_codecs (GabbleMediaStream *stream)
       dbus_g_type_specialized_construct (codec_list_type));
 }
 
+static void
+new_remote_candidates_cb (GabbleJingleContent *content,
+    GList *clist, GabbleMediaStream *stream)
+{
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+  GPtrArray *candidates;
+  GList *li;
+
+  candidates = g_value_get_boxed (&priv->remote_candidates);
+
+  DEBUG ("got new remote candidates");
+
+  for (li = clist; li; li = li->next)
+    {
+      gchar *candidate_id;
+      GValue candidate = { 0, };
+      GPtrArray *transports;
+      GValue transport = { 0, };
+      JingleCandidate *c = li->data;
+      GType transport_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_TRANSPORT;
+      GType candidate_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE;
+
+      g_value_init (&transport, transport_struct_type);
+      g_value_take_boxed (&transport,
+          dbus_g_type_specialized_construct (transport_struct_type));
+
+      dbus_g_type_struct_set (&transport,
+          0, 1,         /* component number */
+          1, c->address,
+          2, c->port,
+          3, c->protocol == JINGLE_TRANSPORT_PROTOCOL_UDP ? 0 : 1,
+          4, "RTP",
+          5, "AVP",
+          6, c->preference,
+          7, c->type, /* FIXME: we're relying on 1:1 tp/jingle candidate type enums */
+          8, c->username,
+          9, c->password,
+          G_MAXUINT);
+
+      transports = g_ptr_array_sized_new (1);
+      g_ptr_array_add (transports, g_value_get_boxed (&transport));
+
+      g_value_init (&candidate, candidate_struct_type);
+      g_value_take_boxed (&candidate,
+          dbus_g_type_specialized_construct (candidate_struct_type));
+
+      /* FIXME: is this naming scheme sensible? */
+      candidate_id = g_strdup_printf ("R%d", ++priv->remote_candidate_count);
+
+      dbus_g_type_struct_set (&candidate,
+          0, candidate_id,
+          1, transports,
+          G_MAXUINT);
+
+      g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
+    }
+
+  push_remote_candidates (stream);
+
+  while (clist != NULL)
+    {
+      g_free (clist->data);
+      clist = clist->next;
+    }
+}
+
+#if 0
 gboolean
 _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
                                              LmMessage *message,
@@ -1583,6 +1781,7 @@ FAILURE:
 
   return FALSE;
 }
+#endif
 
 static void
 push_remote_candidates (GabbleMediaStream *stream)
@@ -1614,8 +1813,11 @@ push_remote_candidates (GabbleMediaStream *stream)
       candidate_id = g_value_get_string (g_value_array_get_nth (candidate, 0));
       transports = g_value_get_boxed (g_value_array_get_nth (candidate, 1));
 
+      DEBUG ("passing 1 remote candidate to stream engine: %s", candidate_id);
+      /*
       GMS_DEBUG_EVENT (priv->session, "passing 1 remote candidate "
                        "to stream-engine");
+                       */
 
       tp_svc_media_stream_handler_emit_add_remote_candidate (
           stream, candidate_id, transports);
@@ -1683,10 +1885,12 @@ typedef struct {
     LmMessageNode *pt_node;
 } CodecParamsFromTpContext;
 
+#if 0
 static const gchar *video_codec_params[] = {
   "x", "y", "width", "height", "layer", "transparent",
 };
 
+// FIXME - we need to have extended params for video stream
 static void
 codec_params_from_tp_foreach (gpointer key, gpointer value, gpointer user_data)
 {
@@ -1720,7 +1924,9 @@ codec_params_from_tp_foreach (gpointer key, gpointer value, gpointer user_data)
       (priv->mode == MODE_JINGLE) ? "jingle" : "google",
       (priv->media_type == TP_MEDIA_STREAM_TYPE_AUDIO) ? "audio" : "video");
 }
+#endif
 
+#if 0
 LmMessageNode *
 _gabble_media_stream_add_content_node (GabbleMediaStream *stream,
                                        LmMessageNode *session_node)
@@ -1851,6 +2057,7 @@ _gabble_media_stream_content_node_add_transport (GabbleMediaStream *stream,
 
   return node;
 }
+#endif
 
 void
 _gabble_media_stream_update_sending (GabbleMediaStream *stream,

@@ -71,6 +71,12 @@ struct _GabbleJingleTransportGooglePrivate
   gchar *transport_ns;
 
   GList *local_candidates;
+
+  /* A pointer into "local_candidates" list to mark the
+   * candidates that are still not transmitted, or NULL
+   * if all of them are transmitted. */
+
+  GList *pending_candidates;
   // GList *remote_candidates;
   gboolean dispose_has_run;
 };
@@ -236,7 +242,7 @@ gabble_jingle_transport_google_class_init (GabbleJingleTransportGoogleClass *cls
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_POINTER);
+    g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
 }
 
@@ -248,21 +254,18 @@ static void
 parse_candidates (GabbleJingleTransportIface *obj,
     LmMessageNode *transport_node, GError **error)
 {
-  GabbleJingleTransportGoogle *t = GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
-  GabbleJingleTransportGooglePrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (t);
+//  GabbleJingleTransportGoogle *t = GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
+//  GabbleJingleTransportGooglePrivate *priv =
+//    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (t);
   GList *candidates = NULL;
+  LmMessageNode *node;
 
-  LmMessageNode *cnode, *node;
+  DEBUG ("called");
 
-  /* special-case for GTalk libjingle0.3 */
-  cnode = lm_message_node_get_child (transport_node, "candidate");
-
-  if (cnode == NULL)
+#if 0
+  if (!tp_strdiff (transport_node->name, "candidate"))
     {
       JingleDialect dialect;
-
-      cnode = transport_node;
 
       g_object_get (priv->content->session, "dialect", &dialect, NULL);
 
@@ -276,8 +279,9 @@ parse_candidates (GabbleJingleTransportIface *obj,
           transmit_candidates (t, priv->local_candidates);
         }
     }
+#endif
 
-  for (node = cnode->children; node; node = node->next)
+  for (node = transport_node->children; node; node = node->next)
     {
       const gchar *name, *address, *user, *pass, *str;
       guint port, net, gen;
@@ -285,6 +289,8 @@ parse_candidates (GabbleJingleTransportIface *obj,
       JingleTransportProtocol proto;
       JingleCandidateType ctype;
       JingleCandidate *c;
+
+      DEBUG ("Parsing node %s", node->name);
 
       if (tp_strdiff (node->name, "candidate"))
           continue;
@@ -296,6 +302,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       address = lm_message_node_get_attribute (node, "address");
       if (address == NULL)
           break;
+      DEBUG ("AAA");
 
       str = lm_message_node_get_attribute (node, "port");
       if (str == NULL)
@@ -330,6 +337,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       else
         {
           /* unknown protocol */
+          DEBUG ("unknown protocol: %s", str);
           break;
         }
 
@@ -349,7 +357,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
         }
       else if (!tp_strdiff (str, "stun"))
         {
-          ctype = JINGLE_CANDIDATE_TYPE_DERIVED;
+          ctype = JINGLE_CANDIDATE_TYPE_STUN;
         }
       else if (!tp_strdiff (str, "relay"))
         {
@@ -358,9 +366,11 @@ parse_candidates (GabbleJingleTransportIface *obj,
       else
         {
           /* unknown candidate type */
+          DEBUG ("unknown candidate type: %s", str);
           break;
         }
 
+      DEBUG ("XXX");
       user = lm_message_node_get_attribute (node, "username");
       if (user == NULL)
           break;
@@ -373,6 +383,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (str == NULL)
           break;
       net = atoi (str);
+      DEBUG ("YYY");
 
       str = lm_message_node_get_attribute (node, "generation");
       if (str == NULL)
@@ -391,11 +402,13 @@ parse_candidates (GabbleJingleTransportIface *obj,
       c->network = net;
       c->generation = gen;
 
+      DEBUG ("all well, adding candidate %s:%d!", c->address, c->port);
       candidates = g_list_append (candidates, c);
     }
 
   if (node != NULL)
     {
+      DEBUG ("not all nodes were processed, reporting error");
       /* rollback these */
       while (candidates != NULL)
         {
@@ -409,7 +422,9 @@ parse_candidates (GabbleJingleTransportIface *obj,
       return;
     }
 
-  g_signal_emit_by_name (priv->content, "remote-candidates", candidates);
+  DEBUG ("emitting %d new remote candidates", g_list_length (candidates));
+
+  g_signal_emit (obj, signals[NEW_CANDIDATES], 0, candidates);
 
   /* append them to the known remote candidates */
 
@@ -437,10 +452,26 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
     {
       trans_node = sess_node;
     }
-  else
+  else if (dialect == JINGLE_DIALECT_GTALK4)
     {
       trans_node = lm_message_node_add_child (sess_node, "transport", NULL);
       lm_message_node_set_attribute (trans_node, "xmlns", NS_GOOGLE_TRANSPORT_P2P);
+    }
+  else
+    {
+      const gchar *cname, *cns;
+
+      g_object_get (GABBLE_JINGLE_CONTENT (priv->content),
+          "name", &cname, "content-ns", &cns, NULL);
+
+      /* we need the <content> ... */
+      trans_node = lm_message_node_add_child (sess_node, "content", NULL);
+      lm_message_node_set_attribute (trans_node, "xmlns", cns);
+      lm_message_node_set_attribute (trans_node, "name", cname);
+
+      /* .. and the <transport> node */
+      trans_node = lm_message_node_add_child (trans_node, "transport", NULL);
+      lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
     }
 
   for (li = candidates; li; li = li->next)
@@ -450,14 +481,14 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
       LmMessageNode *cnode;
 
       sprintf (port_str, "%d", c->port);
-      sprintf (pref_str, "%d", c->preference);
+      sprintf (pref_str, "%lf", c->preference);
 
       switch (c->type) {
         case JINGLE_CANDIDATE_TYPE_LOCAL:
           type_str = "local";
           break;
-        case JINGLE_CANDIDATE_TYPE_DERIVED:
-          type_str = "derived";
+        case JINGLE_CANDIDATE_TYPE_STUN:
+          type_str = "stun";
           break;
         case JINGLE_CANDIDATE_TYPE_RELAY:
           type_str = "relay";
@@ -488,6 +519,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
           "password", c->password,
           "preference", pref_str,
           "protocol", proto_str,
+          "type", type_str,
 
           "name", "rtp",
           "network", "0",
@@ -505,12 +537,48 @@ add_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
     GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
   GabbleJingleTransportGooglePrivate *priv =
     GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
+  gboolean ready;
 
-  transmit_candidates (transport, new_candidates);
+  g_object_get (priv->content, "ready", &ready, NULL);
+
+  if (ready) {
+      DEBUG ("content ready, transmitting new candidates");
+      transmit_candidates (transport, new_candidates);
+      priv->pending_candidates = NULL;
+  } else {
+      DEBUG ("content not ready, not transmitting candidates");
+
+      /* if we already have pending candidates, the new ones will
+       * be in the local_candidates list after them. but these
+       * are the first pending ones, we must mark them. */
+      if (priv->pending_candidates == NULL)
+        priv->pending_candidates = new_candidates;
+  }
 
   priv->local_candidates = g_list_concat (priv->local_candidates,
       new_candidates);
 }
+
+static void
+retransmit_candidates (GabbleJingleTransportIface *obj)
+{
+  GabbleJingleTransportGoogle *transport =
+    GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
+  GabbleJingleTransportGooglePrivate *priv =
+    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
+  gboolean ready;
+
+  g_object_get (priv->content, "ready", &ready, NULL);
+
+  g_assert (ready);
+
+  /* now transmit all pending candidates */
+  if (priv->pending_candidates != NULL) {
+      transmit_candidates (transport, priv->pending_candidates);
+      priv->pending_candidates = NULL;
+  }
+}
+
 
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data)
@@ -520,6 +588,7 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   klass->parse_candidates = parse_candidates;
   // FIXME: klass->produce = produce_candidates;
   klass->add_candidates = add_candidates;
+  klass->retransmit_candidates = retransmit_candidates;
 }
 
 void

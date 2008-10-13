@@ -28,6 +28,12 @@
 G_BEGIN_DECLS
 
 typedef enum {
+  JINGLE_MEDIA_TYPE_NONE = 0,
+  JINGLE_MEDIA_TYPE_AUDIO,
+  JINGLE_MEDIA_TYPE_VIDEO
+} JingleMediaType;
+
+typedef enum {
   JINGLE_CONTENT_STATE_EMPTY = 0,
   JINGLE_CONTENT_STATE_NEW,
   JINGLE_CONTENT_STATE_SENT,
@@ -41,7 +47,7 @@ struct _JingleCandidate {
   int generation;
 
   JingleTransportProtocol protocol;
-  int preference;
+  gdouble preference;
   JingleCandidateType type;
   gchar *username;
   gchar *password;
@@ -92,10 +98,14 @@ void gabble_jingle_content_update_senders (GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error);
 void gabble_jingle_content_produce_node (GabbleJingleContent *c,
   LmMessageNode *parent, gboolean full);
+void gabble_jingle_content_parse_accept (GabbleJingleContent *c,
+  LmMessageNode *content_node, gboolean google_mode, GError **error);
 
+void gabble_jingle_content_parse_transport_info (GabbleJingleContent *self,
+  LmMessageNode *trans_node, GError **error);
 void gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li);
-gboolean gabble_jingle_content_is_ready (GabbleJingleContent *self);
-void gabble_jingle_content_set_local_codecs (GabbleJingleContent *content);
+gboolean gabble_jingle_content_is_ready (GabbleJingleContent *self, gboolean for_acceptance);
+void gabble_jingle_content_set_local_codecs (GabbleJingleContent *content, GList *li);
 void gabble_jingle_content_set_transport_state (GabbleJingleContent *content,
     JingleTransportState state);
 

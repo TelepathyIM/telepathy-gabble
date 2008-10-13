@@ -1,9 +1,7 @@
 BUILT_SOURCES = \
     gabble-signals-marshal.h \
     gabble-signals-marshal.c \
-    gabble-signals-marshal.list \
-    media-session-enumtypes.h \
-    media-session-enumtypes.c
+    gabble-signals-marshal.list
 
 CLEANFILES = $(BUILT_SOURCES)
 
@@ -65,8 +63,6 @@ libgabble_convenience_la_our_sources = \
     im-factory.c \
     media-channel.h \
     media-channel.c \
-    media-session.h \
-    media-session.c \
     media-stream.h \
     media-stream.c \
     media-factory.h \

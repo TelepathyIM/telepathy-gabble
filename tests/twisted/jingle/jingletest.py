@@ -190,7 +190,8 @@ class JingleTest:
 
         content = domish.Element((None, 'content'))
         content['creator'] = 'initiator'
-        content['name'] = 'audio1'
+        content['name'] = 'stream1'
+        content['senders'] = 'both'
         jingle.addChild(content)
 
         desc = domish.Element(("http://jabber.org/protocol/jingle/description/audio", 'description'))

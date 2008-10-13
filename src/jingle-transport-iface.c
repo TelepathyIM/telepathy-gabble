@@ -60,6 +60,16 @@ gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *self,
   virtual_method (self, candidates);
 }
 
+void
+gabble_jingle_transport_iface_retransmit_candidates (GabbleJingleTransportIface *self)
+{
+  void (*virtual_method)(GabbleJingleTransportIface *) =
+    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->retransmit_candidates;
+
+  g_assert (virtual_method != NULL);
+  virtual_method (self);
+}
+
 
 static void
 gabble_jingle_transport_iface_base_init (gpointer klass)

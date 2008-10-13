@@ -59,18 +59,18 @@ def test(q, bus, conn, stream):
 
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
 
-    # S-E gets notified about a newly-created stream
-    e = q.expect('dbus-signal', signal='NewStreamHandler')
-
-    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
-
-
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
 
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
+
+
+    # S-E gets notified about a newly-created stream
+    e = q.expect('dbus-signal', signal='NewStreamHandler')
+
+    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
 
     """
     # Exercise channel properties

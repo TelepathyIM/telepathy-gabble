@@ -25,7 +25,25 @@
 #include "types.h"
 #include "jingle-factory.h"
 
+#include "jingle-content.h"
+
 G_BEGIN_DECLS
+
+typedef enum
+{
+  MODE_GOOGLE,
+  MODE_JINGLE
+} GabbleMediaSessionMode;
+
+typedef enum {
+    JS_STATE_INVALID = -1,
+    JS_STATE_PENDING_CREATED = 0,
+    JS_STATE_PENDING_INITIATE_SENT,
+    JS_STATE_PENDING_INITIATED,
+    JS_STATE_PENDING_ACCEPT_SENT,
+    JS_STATE_ACTIVE,
+    JS_STATE_ENDED
+} JingleSessionState;
 
 typedef struct _GabbleJingleSessionClass GabbleJingleSessionClass;
 
@@ -74,8 +92,8 @@ void gabble_jingle_session_remove_content (GabbleJingleSession *sess,
 void gabble_jingle_session_change_direction (GabbleJingleSession *sess,
     const gchar *content_name, JingleContentSenders senders);
 
-gboolean
-gabble_jingle_session_add_content (GabbleJingleSession *sess, const gchar *name,
+GabbleJingleContent *
+gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mtype,
     const gchar *content_ns, const gchar *transport_ns);
 
 GType gabble_jingle_session_get_content_type (GabbleJingleSession *);

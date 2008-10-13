@@ -62,6 +62,7 @@ typedef enum {
   JINGLE_ACTION_SESSION_INITIATE,
   JINGLE_ACTION_SESSION_TERMINATE,
   JINGLE_ACTION_TRANSPORT_INFO,
+  JINGLE_ACTION_TRANSPORT_ACCEPT,
 } JingleAction;
 
 typedef enum {
@@ -85,7 +86,6 @@ typedef enum {
 
 typedef enum {
   JINGLE_CANDIDATE_TYPE_LOCAL,
-  JINGLE_CANDIDATE_TYPE_DERIVED,
   JINGLE_CANDIDATE_TYPE_STUN,
   JINGLE_CANDIDATE_TYPE_RELAY
 } JingleCandidateType;
@@ -123,6 +123,11 @@ struct _GabbleJingleFactory {
 
     GHashTable *content_types;
     GHashTable *transports;
+
+    gboolean get_stun_from_jingle;
+    gchar *stun_server;
+    guint16 stun_port;
+    gchar *relay_token;
 
     gpointer priv;
 };

@@ -70,11 +70,6 @@ struct _GabbleMediaFactoryPrivate
 
   GHashTable *session_chans;
 
-  gboolean get_stun_from_jingle;
-  gchar *stun_server;
-  guint16 stun_port;
-  gchar *relay_token;
-
   gboolean dispose_has_run;
 };
 
@@ -122,9 +117,6 @@ gabble_media_factory_dispose (GObject *object)
       g_hash_table_destroy (priv->session_chans);
       priv->session_chans = NULL;
     }
-
-  g_free (priv->stun_server);
-  g_free (priv->relay_token);
 
   if (G_OBJECT_CLASS (gabble_media_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_factory_parent_class)->dispose (object);
@@ -276,20 +268,6 @@ new_media_channel (GabbleMediaFactory *fac,
                        "session", sess,
                        NULL);
 
-  if (priv->stun_server != NULL)
-    {
-      g_object_set ((GObject *) chan, "stun-server", priv->stun_server, NULL);
-
-      if (priv->stun_port != 0)
-        g_object_set ((GObject *) chan, "stun-port", priv->stun_port, NULL);
-    }
-
-  if (priv->relay_token != NULL)
-    {
-      g_object_set ((GObject *) chan, "gtalk-p2p-relay-token",
-          priv->relay_token, NULL);
-    }
-
   DEBUG ("object path %s", object_path);
 
   g_signal_connect (chan, "closed", (GCallback) media_channel_closed_cb, fac);
@@ -371,6 +349,7 @@ connection_status_changed_cb (GabbleConnection *conn,
           G_CALLBACK (new_jingle_session_cb), self);
       break;
 
+#if 0
     case TP_CONNECTION_STATUS_CONNECTED:
         {
           gchar *stun_server = NULL;
@@ -399,6 +378,7 @@ connection_status_changed_cb (GabbleConnection *conn,
             }
         }
       break;
+#endif
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
       gabble_media_factory_close_all (self);

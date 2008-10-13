@@ -56,15 +56,9 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_MEDIA_TYPE,
+  PROP_MEDIA_TYPE = 1,
   LAST_PROPERTY
 };
-
-typedef enum {
-  JINGLE_MEDIA_TYPE_NONE = -1,
-  JINGLE_MEDIA_TYPE_AUDIO = 0,
-  JINGLE_MEDIA_TYPE_VIDEO
-} JingleMediaType;
 
 typedef enum {
   JINGLE_MEDIA_PROFILE_RTP_AVP,
@@ -81,7 +75,7 @@ typedef struct _GabbleJingleMediaRtpPrivate GabbleJingleMediaRtpPrivate;
 struct _GabbleJingleMediaRtpPrivate
 {
   GList *local_codecs;
-  // GList *remote_codecs;
+  GList *remote_codecs;
   JingleMediaType media_type;
   gboolean dispose_has_run;
 };
@@ -125,8 +119,8 @@ gabble_jingle_media_rtp_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  // _free_codecs (priv->remote_codecs);
-  // priv->remote_codecs = NULL;
+  _free_codecs (priv->remote_codecs);
+  priv->remote_codecs = NULL;
 
   _free_codecs (priv->local_codecs);
   priv->local_codecs = NULL;
@@ -185,7 +179,7 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (cls);
   GabbleJingleContentClass *content_class = GABBLE_JINGLE_CONTENT_CLASS (cls);
-  // GParamSpec *param_spec;
+  GParamSpec *param_spec;
 
   g_type_class_add_private (cls, sizeof (GabbleJingleMediaRtpPrivate));
 
@@ -195,6 +189,13 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 
   content_class->parse_description = parse_description;
   content_class->produce_description = produce_description;
+
+  param_spec = g_param_spec_uint ("media-type", "RTP media type",
+      "Media type.",
+      JINGLE_MEDIA_TYPE_NONE, G_MAXUINT32, JINGLE_MEDIA_TYPE_NONE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
   /* signal definitions */
 
@@ -307,7 +308,7 @@ parse_description (GabbleJingleContent *content,
 
       p = g_new0 (JingleCodec, 1);
       p->id = id;
-      p->name = (gchar *) name;
+      p->name = g_strdup (name);
       p->clockrate = clockrate;
       p->channels = channels;
 
@@ -334,10 +335,11 @@ parse_description (GabbleJingleContent *content,
 
   priv->media_type = mtype;
 
+  DEBUG ("emitting remote-codecs signal");
   g_signal_emit (self, signals[REMOTE_CODECS], 0, codecs);
 
   /* append them to the known remote codecs */
-  // priv->remote_codecs = g_list_concat (priv->remote_codecs, codecs);
+  priv->remote_codecs = g_list_concat (priv->remote_codecs, codecs);
 }
 
 static void
@@ -427,16 +429,18 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
     }
 }
 
-/*
-static void
-content_iface_init (gpointer g_iface, gpointer iface_data)
+void
+jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
 {
-  GabbleJingleContentClass *klass = (GabbleJingleContentClass *) g_iface;
+  GabbleJingleMediaRtpPrivate *priv =
+    GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
 
-  klass->parse_description = parse_description;
-  klass->produce_description = produce_node;
+  DEBUG ("adding new local codecs, yippie");
+
+  priv->local_codecs = g_list_concat (priv->local_codecs, codecs);
+
+  g_object_set (self, "ready", TRUE, NULL);
 }
-*/
 
 void
 jingle_media_rtp_register (GabbleJingleFactory *factory)
@@ -458,5 +462,18 @@ jingle_media_rtp_register (GabbleJingleFactory *factory)
   gabble_jingle_factory_register_content_type (factory,
       NS_GOOGLE_SESSION_PHONE,
       GABBLE_TYPE_JINGLE_MEDIA_RTP);
+}
+
+/* We can't get remote codecs when they're signalled, because
+ * the signal is emitted immediately upon JingleContent creation,
+ * and parsing, which is before a corresponding MediaStream is
+ * created. */
+GList *
+gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self)
+{
+  GabbleJingleMediaRtpPrivate *priv =
+    GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
+
+  return priv->remote_codecs;
 }
 

@@ -567,10 +567,16 @@ retransmit_candidates (GabbleJingleTransportIface *obj)
   GabbleJingleTransportGooglePrivate *priv =
     GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
   gboolean ready;
+  JingleSessionState state;
 
   g_object_get (priv->content, "ready", &ready, NULL);
+  g_object_get (priv->content->session, "state", &state, NULL);
 
   g_assert (ready);
+
+  if (state < JS_STATE_PENDING_INITIATE_SENT)
+    {
+    }
 
   /* now transmit all pending candidates */
   if (priv->pending_candidates != NULL) {

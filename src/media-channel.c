@@ -1101,7 +1101,7 @@ _pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
       gabble_presence_resource_has_caps (presence, resource,
           PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO))
     {
-      return NS_JINGLE_DESCRIPTION_VIDEO;
+      return NS_JINGLE_DESCRIPTION_AUDIO;
     }
   if ((type == JINGLE_MEDIA_TYPE_AUDIO) &&
       gabble_presence_resource_has_caps (presence, resource,

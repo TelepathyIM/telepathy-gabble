@@ -230,6 +230,7 @@ gabble_jingle_content_set_property (GObject *object,
       break;
     case PROP_STATE:
       priv->state = g_value_get_uint (value);
+      DEBUG ("setting content state to %u", priv->state);
       break;
     case PROP_READY:
       DEBUG ("setting content ready from %u to %u",
@@ -315,7 +316,7 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
 
   param_spec = g_param_spec_uint ("senders", "Stream senders",
                                   "Valid senders for the stream.",
-                                  0, G_MAXUINT32, JINGLE_CONTENT_STATE_NEW,
+                                  0, G_MAXUINT32, JINGLE_CONTENT_SENDERS_NONE,
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
@@ -327,7 +328,7 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STATE, param_spec);
+  g_object_class_install_property (object_class, PROP_SENDERS, param_spec);
 
   param_spec = g_param_spec_boolean ("ready", "Ready?",
                                      "A boolean signifying whether media for "

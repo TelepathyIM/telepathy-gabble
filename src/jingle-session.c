@@ -1036,6 +1036,8 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
 
   DEBUG ("creating new message to peer: %s", priv->peer_jid);
 
+  g_assert ((action == JINGLE_ACTION_SESSION_INITIATE) || (priv->state > JS_STATE_PENDING_CREATED));
+
   /* possibly this is the first message in an outgoing session,
    * meaning that we have to set up initiator */
   if (priv->initiator == NULL) {
@@ -1115,8 +1117,10 @@ _try_session_accept_fill (gpointer key, gpointer data, gpointer user_data)
 
   g_object_get (c, "state", &state, NULL);
 
+  DEBUG ("considering whether to add content node, state = %u", state);
+
   /* we only want to acknowledge newly added contents */
-  if (state == JINGLE_CONTENT_STATE_NEW)
+  if (state == JINGLE_CONTENT_STATE_EMPTY)
     gabble_jingle_content_produce_node (c, sess_node, TRUE);
 }
 
@@ -1139,7 +1143,7 @@ try_session_accept (GabbleJingleSession *sess)
   if (!priv->locally_accepted)
       return;
 
-  g_hash_table_foreach (priv->contents, _check_content_for_acceptance, &content_ready);
+  g_hash_table_foreach (priv->initial_contents, _check_content_for_acceptance, &content_ready);
 
   if (!content_ready)
       return;
@@ -1147,7 +1151,7 @@ try_session_accept (GabbleJingleSession *sess)
   msg = gabble_jingle_session_new_message (sess, JINGLE_ACTION_SESSION_ACCEPT,
       &sess_node);
 
-  g_hash_table_foreach (priv->contents, _try_session_accept_fill, sess_node);
+  g_hash_table_foreach (priv->initial_contents, _try_session_accept_fill, sess_node);
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
@@ -1298,15 +1302,20 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
 
   /* FIXME BUG: for session acceptance, we should only consider
    * contents with disposition != "session". we'll burn that bridge
-   * when we come to it. */
+   * when we come to it. Here we assume all the contents added before
+   * an initiation message has been sent are initial contents. */
+  if (priv->state == JS_STATE_PENDING_CREATED)
+      g_hash_table_insert (priv->initial_contents, name, GUINT_TO_POINTER (TRUE));
 
-  if (priv->dialect >= JINGLE_DIALECT_V026)
+  /* Try to signal content-add if needed. */
+  if ((priv->state == JS_STATE_ACTIVE) ||
+      ((priv->state >= JS_STATE_PENDING_INITIATE_SENT) &&
+          (priv->dialect >= JINGLE_DIALECT_V026)))
     {
-      /* In 0.30 onwards, content-add is ok in PENDING state, so */
       LmMessage *msg;
       LmMessageNode *sess_node;
 
-      msg = gabble_jingle_session_new_message (sess, JINGLE_ACTION_SESSION_ACCEPT,
+      msg = gabble_jingle_session_new_message (sess, JINGLE_ACTION_CONTENT_ADD,
           &sess_node);
       gabble_jingle_content_produce_node (c, sess_node, TRUE);
       _gabble_connection_send (priv->conn, msg, NULL);

@@ -199,6 +199,7 @@ def test(q, bus, conn, stream):
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == '2'
+    assert view['size'] == '5'
 
     send_reply_to_activity_view_request(stream, iq_event.stanza,
             [('activity2', 'room2@conference.localhost',
@@ -254,6 +255,7 @@ def test(q, bus, conn, stream):
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == '3'
+    assert view['size'] == '5'
     assert len(buddies) == 2
     assert (buddies[0]['jid'], buddies[1]['jid']) == ('alice@localhost',
             'bob@localhost')

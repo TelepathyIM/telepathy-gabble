@@ -236,6 +236,7 @@ def test(q, bus, conn, stream):
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == '2'
+    assert view['size'] == '10'
 
     # reply to request
     reply = make_result_iq(stream, iq_event.stanza)
@@ -344,6 +345,7 @@ def test(q, bus, conn, stream):
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == '3'
+    assert view['size'] == '10'
     buddy = xpath.queryForNodes('/iq/view/buddy', iq_event.stanza)
     assert len(buddy) == 1
     assert buddy[0]['alias'] == 'tom'

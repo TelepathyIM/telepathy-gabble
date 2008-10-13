@@ -72,8 +72,6 @@ def test(q, bus, conn, stream):
     announce_gadget(q, stream, disco_event.stanza)
     sync_stream(q, stream)
 
-    # TODO: change view var name
-
     # check if we can request Activity views
     properties = conn.GetAll(
         'org.freedesktop.Telepathy.Connection.Interface.Requests',

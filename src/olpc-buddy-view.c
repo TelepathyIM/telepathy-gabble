@@ -264,59 +264,41 @@ gabble_olpc_buddy_view_send_request (GabbleOlpcView *view,
   GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (view);
   GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
   LmMessage *query;
+  LmMessageNode *buddy_node;
   gchar *max_str, *id_str;
 
   max_str = g_strdup_printf ("%u", view->max_size);
   id_str = g_strdup_printf ("%u", view->id);
 
-  /* TODO: Implement multi criterias properties */
-  /* TODO: Always use the max_size argument */
+  query = lm_message_build_with_sub_type (view->conn->olpc_gadget_buddy,
+    LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
+    '(', "view", "",
+        '@', "xmlns", NS_OLPC_BUDDY,
+        '@', "id", id_str,
+        '@', "size", max_str,
+        '(', "buddy", "",
+          '*', &buddy_node,
+        ')',
+    ')', NULL);
+
+  /* BuddyView.Properties */
   if (g_hash_table_size (priv->properties) != 0)
     {
       LmMessageNode *properties_node;
 
-      query = lm_message_build_with_sub_type (view->conn->olpc_gadget_buddy,
-        LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-        '(', "view", "",
-            '@', "xmlns", NS_OLPC_BUDDY,
-            '@', "id", id_str,
-            '@', "size", max_str,
-            '(', "buddy", "",
-              '(', "properties", "",
-                '*', &properties_node,
-                '@', "xmlns", NS_OLPC_BUDDY_PROPS,
-              ')',
-            ')',
-        ')',
-        NULL);
+      properties_node = lm_message_node_add_child (buddy_node, "properties",
+          NULL);
+      lm_message_node_set_attribute (properties_node, "xmlns",
+          NS_OLPC_BUDDY_PROPS);
 
       lm_message_node_add_children_from_properties (properties_node,
           priv->properties, "property");
     }
-  else if (priv->alias != NULL)
+
+  /* BuddyView.Alias */
+  if (priv->alias != NULL)
     {
-      query = lm_message_build_with_sub_type (view->conn->olpc_gadget_buddy,
-        LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-        '(', "view", "",
-            '@', "xmlns", NS_OLPC_BUDDY,
-            '@', "id", id_str,
-            '@', "size", max_str,
-            '(', "buddy", "",
-              '@', "alias", priv->alias,
-            ')',
-        ')',
-        NULL);
-    }
-  else
-    {
-      query = lm_message_build_with_sub_type (view->conn->olpc_gadget_buddy,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-          '(', "view", "",
-              '@', "xmlns", NS_OLPC_BUDDY,
-              '@', "id", id_str,
-              '@', "size", max_str,
-          ')',
-          NULL);
+      lm_message_node_set_attribute (buddy_node, "alias", priv->alias);
     }
 
   g_free (max_str);

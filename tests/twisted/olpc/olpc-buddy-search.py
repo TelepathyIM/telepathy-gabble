@@ -398,5 +398,42 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-error', method='CreateChannel')
     assert event.error.get_dbus_name() == 'org.freedesktop.Telepathy.Errors.InvalidArgument'
 
+    # test alias and properties search
+    props = dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    call_async(q, requests_iface, 'CreateChannel',
+        { tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView',
+          olpc_name_prefix + '.Channel.Interface.View.MaxSize': 5,
+          olpc_name_prefix + '.Channel.Type.BuddyView.Properties': props,
+          olpc_name_prefix + '.Channel.Type.BuddyView.Alias': 'jean'
+          })
+
+    iq_event, return_event = q.expect_many(
+        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
+        EventPattern('dbus-return', method='CreateChannel'))
+
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == '4'
+    assert view['size'] == '5'
+
+    print iq_event.stanza.toXml()
+
+    properties_node = xpath.queryForNodes('/iq/view/buddy/properties',
+            iq_event.stanza)
+    props = parse_properties(properties_node[0])
+    assert props == {'color': ('str', '#AABBCC,#001122')}
+
+    buddy = xpath.queryForNodes('/iq/view/buddy', iq_event.stanza)
+    assert len(buddy) == 1
+    assert buddy[0]['alias'] == 'jean'
+
+    view_path = return_event.value[0]
+    props = return_event.value[1]
+    view4 = bus.get_object(conn.bus_name, view_path)
+
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Properties'] == dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == 'jean'
+
 if __name__ == '__main__':
     exec_test(test)

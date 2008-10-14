@@ -475,37 +475,6 @@ gabble_olpc_gadget_manager_handle_request (TpChannelManager *manager,
   return TRUE;
 }
 
-
-static gboolean
-gabble_olpc_gadget_manager_create_channel (TpChannelManager *manager,
-                                        gpointer request_token,
-                                        GHashTable *request_properties)
-{
-  return gabble_olpc_gadget_manager_handle_request (manager, request_token,
-      request_properties);
-}
-
-
-static gboolean
-gabble_olpc_gadget_manager_request_channel (TpChannelManager *manager,
-                                         gpointer request_token,
-                                         GHashTable *request_properties)
-{
-  return gabble_olpc_gadget_manager_handle_request (manager, request_token,
-      request_properties);
-}
-
-
-static gboolean
-gabble_olpc_gadget_manager_ensure_channel (TpChannelManager *manager,
-                                        gpointer request_token,
-                                        GHashTable *request_properties)
-{
-  return gabble_olpc_gadget_manager_handle_request (manager, request_token,
-      request_properties);
-}
-
-
 static void
 channel_manager_iface_init (gpointer g_iface,
                             gpointer iface_data)
@@ -514,9 +483,9 @@ channel_manager_iface_init (gpointer g_iface,
 
   iface->foreach_channel = gabble_olpc_gadget_manager_foreach_channel;
   iface->foreach_channel_class = gabble_olpc_gadget_manager_foreach_channel_class;
-  iface->request_channel = gabble_olpc_gadget_manager_request_channel;
-  iface->create_channel = gabble_olpc_gadget_manager_create_channel;
-  iface->ensure_channel = gabble_olpc_gadget_manager_ensure_channel;
+  iface->request_channel = gabble_olpc_gadget_manager_handle_request;
+  iface->create_channel = gabble_olpc_gadget_manager_handle_request;
+  iface->ensure_channel = gabble_olpc_gadget_manager_handle_request;
 }
 
 static gboolean

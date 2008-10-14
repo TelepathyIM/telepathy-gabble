@@ -557,10 +557,10 @@ copy_activity_to_array (TpHandle room,
   GValue gvalue = { 0 };
 
   if (activity->id == NULL)
-  {
-    DEBUG ("... activity #%u has no ID, skipping", room);
-    return;
-  }
+    {
+      DEBUG ("... activity #%u has no ID, skipping", room);
+      return;
+    }
 
   g_value_init (&gvalue, GABBLE_STRUCT_TYPE_ACTIVITY);
   g_value_take_boxed (&gvalue, dbus_g_type_specialized_construct

@@ -603,6 +603,8 @@ gabble_media_stream_dispose (GObject *object)
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (object);
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
+  DEBUG ("called");
+
   if (priv->dispose_has_run)
     return;
 

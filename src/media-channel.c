@@ -1670,6 +1670,8 @@ session_terminated_cb (GabbleJingleSession *session,
     {
       GPtrArray *tmp = priv->streams;
 
+      DEBUG ("unreffing streams");
+
       /* move priv->streams aside so that the stream_close_cb
        * doesn't double unref */
       priv->streams = NULL;
@@ -2098,8 +2100,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
                     session);
   */
 
-  /* keep track of the stream */
-  g_object_ref (stream);
+  /* we will own the only reference to this stream */
   g_ptr_array_add (priv->streams, stream);
 
   g_signal_connect (stream, "close",
@@ -2131,7 +2132,10 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
       /* all of the streams are bidirectional from farsight's point of view, it's
        * just in the signalling they change */
       tp_svc_media_session_handler_emit_new_stream_handler (chan,
-        object_path, id, TP_MEDIA_STREAM_TYPE_AUDIO, TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
+        object_path, id,
+        type == JINGLE_MEDIA_TYPE_AUDIO ?
+          TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO,
+        TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
     }
 
   g_free (object_path);

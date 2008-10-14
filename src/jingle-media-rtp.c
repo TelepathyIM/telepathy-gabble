@@ -256,6 +256,8 @@ parse_description (GabbleJingleContent *content,
       g_assert_not_reached ();
     }
 
+  DEBUG ("detected media type %u", mtype);
+
   /* FIXME: we ignore "profile" attribute */
 
   for (node = desc_node->children; node; node = node->next)
@@ -435,11 +437,11 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
   GabbleJingleMediaRtpPrivate *priv =
     GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
 
-  DEBUG ("adding new local codecs, yippie");
+  DEBUG ("adding new local codecs");
 
   priv->local_codecs = g_list_concat (priv->local_codecs, codecs);
 
-  g_object_set (self, "ready", TRUE, NULL);
+  _gabble_jingle_content_set_media_ready (GABBLE_JINGLE_CONTENT (self));
 }
 
 void

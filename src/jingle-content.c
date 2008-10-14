@@ -66,6 +66,7 @@ struct _GabbleJingleContentPrivate
   gchar *name;
   gchar *creator;
   gboolean created_by_initiator;
+  gboolean created_by_us;
   JingleContentState state;
   JingleContentSenders senders;
   gboolean ready;
@@ -74,6 +75,9 @@ struct _GabbleJingleContentPrivate
   gchar *transport_ns;
 
   GabbleJingleTransportIface *transport;
+
+  gboolean media_ready;
+  gboolean transport_ready;
 
   gboolean dispose_has_run;
 };
@@ -105,6 +109,9 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
 
   priv->state = JINGLE_CONTENT_STATE_EMPTY;
   priv->created_by_initiator = TRUE;
+  priv->created_by_us = TRUE;
+  priv->media_ready = FALSE;
+  priv->transport_ready = FALSE;
   priv->dispose_has_run = FALSE;
 
   obj->conn = NULL;
@@ -216,7 +223,6 @@ gabble_jingle_content_set_property (GObject *object,
 
           g_signal_connect (priv->transport, "new-candidates",
               (GCallback) new_transport_candidates_cb, self);
-
       }
       break;
     case PROP_NAME:
@@ -320,15 +326,15 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STATE, param_spec);
+  g_object_class_install_property (object_class, PROP_SENDERS, param_spec);
 
   param_spec = g_param_spec_uint ("state", "Content state",
                                   "The current state that the content is in.",
-                                  0, G_MAXUINT32, JINGLE_CONTENT_STATE_NEW,
+                                  0, G_MAXUINT32, JINGLE_CONTENT_STATE_EMPTY,
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_SENDERS, param_spec);
+  g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
   param_spec = g_param_spec_boolean ("ready", "Ready?",
                                      "A boolean signifying whether media for "
@@ -341,14 +347,13 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
 
   /* signal definitions */
 
-  signals[READY] =
-    g_signal_new ("ready",
-                  G_OBJECT_CLASS_TYPE (cls),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
+  signals[READY] = g_signal_new ("ready",
+    G_OBJECT_CLASS_TYPE (cls),
+    G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+    0,
+    NULL, NULL,
+    g_cclosure_marshal_VOID__VOID,
+    G_TYPE_NONE, 0);
 
   signals[NEW_CANDIDATES] = g_signal_new (
     "new-candidates",
@@ -463,6 +468,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
       priv->transport_ns = g_strdup (ns);
     }
 
+  priv->created_by_us = FALSE;
   priv->created_by_initiator = (!tp_strdiff (creator, "initiator"));
   priv->senders = _string_to_enum (content_senders_table, senders);
   if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
@@ -640,28 +646,79 @@ gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
   gabble_jingle_transport_iface_add_candidates (priv->transport, li);
 }
 
+/* Returns whether the content is ready to be signalled (initiated, for local
+ * streams, or acknowledged, for remote streams. */
 gboolean
-gabble_jingle_content_is_ready (GabbleJingleContent *self, gboolean for_acceptance)
+gabble_jingle_content_is_ready (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
-  JingleTransportState state;
 
-  /* Content is ready for initiatiation the moment the media using it is ready
-   * (ie. has local codecs). But in order to accept it, it must also be
-   * connected. */
+  /* If it's created by us, media ready and not signalled,
+   * it's ready to be added. */
+  if (priv->created_by_us && priv->media_ready &&
+      (priv->state == JINGLE_CONTENT_STATE_EMPTY))
+          return TRUE;
 
-  /* if local codecs are not set, we're definitely not ready */
-  if (!priv->ready)
-      return FALSE;
+  /* If it's created by peer, media and transports ready,
+   * and not acknowledged yet, it's ready for acceptance. */
+  if (!priv->created_by_us && priv->media_ready && priv->transport_ready &&
+      (priv->state == JINGLE_CONTENT_STATE_NEW))
+          return TRUE;
 
-  /* we are okay for signalling content-add/session-initiate */
-  if (!for_acceptance)
-      return TRUE;
+  return FALSE;
+}
 
-  g_object_get (priv->transport, "state", &state, NULL);
+static void
+try_content_add_or_accept (GabbleJingleContent *self)
+{
+  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  LmMessage *msg;
+  LmMessageNode *sess_node;
+  JingleAction action = JINGLE_ACTION_UNKNOWN;
+  JingleContentState new_state = JINGLE_CONTENT_STATE_EMPTY;
 
-  /* we are even okay for accepting content/session, hooray */
-  return (state == JINGLE_TRANSPORT_STATE_CONNECTED);
+  /* FIXME: we should only do this if the content-disposition != "session"
+   * so we ignore it for now */
+  DEBUG ("called, but doing nothing for now");
+  return;
+
+  if (!gabble_jingle_content_is_ready (self))
+      return;
+
+  if (priv->created_by_us)
+    {
+      /* TODO: set a timer for acknowledgement */
+      action = JINGLE_ACTION_CONTENT_ADD;
+      new_state = JINGLE_CONTENT_STATE_SENT;
+    }
+  else
+    {
+      action = JINGLE_ACTION_CONTENT_ACCEPT;
+      new_state = JINGLE_CONTENT_STATE_ACKNOWLEDGED;
+    }
+
+  msg = gabble_jingle_session_new_message (self->session,
+      action, &sess_node);
+  gabble_jingle_content_produce_node (self, sess_node, TRUE);
+  _gabble_connection_send (self->conn, msg, NULL);
+  lm_message_unref (msg);
+
+  priv->state = new_state;
+  g_object_notify (G_OBJECT (self), "state");
+}
+
+/* Called by a subclass when the media is ready (e.g. we got local codecs) */
+void
+_gabble_jingle_content_set_media_ready (GabbleJingleContent *self)
+{
+  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+
+  priv->media_ready = TRUE;
+  try_content_add_or_accept (self);
+
+  /* FIXME we abuse this to signal to session that we might be ready */
+  g_object_notify (G_OBJECT (self), "ready");
+
 }
 
 void
@@ -672,8 +729,33 @@ gabble_jingle_content_set_transport_state (GabbleJingleContent *self,
 
   g_object_set (priv->transport, "state", state, NULL);
 
-  /* FIXME: refactor this to use _is_ready, if neccessary 
-  if ((state == JINGLE_TRANSPORT_STATE_CONNECTED) && (priv->ready))
-      g_object_notify (G_OBJECT (self), "ready"); */
+  if (state == JINGLE_TRANSPORT_STATE_CONNECTED)
+    {
+      priv->transport_ready = TRUE;
+      try_content_add_or_accept (self);
+    }
+
+  /* FIXME we abuse this to signal to session that we might be ready */
+  g_object_notify (G_OBJECT (self), "ready");
+
 }
 
+void
+gabble_jingle_content_accept (GabbleJingleContent *c)
+{
+  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  LmMessage *msg;
+  LmMessageNode *sess_node;
+
+  g_assert (!priv->created_by_us);
+  g_assert (gabble_jingle_content_is_ready (c));
+
+  msg = gabble_jingle_session_new_message (c->session,
+      JINGLE_ACTION_CONTENT_ACCEPT, &sess_node);
+
+  gabble_jingle_content_produce_node (c, sess_node, TRUE);
+  _gabble_connection_send (c->conn, msg, NULL);
+  lm_message_unref (msg);
+
+  g_object_set (c, "state", JINGLE_CONTENT_STATE_ACKNOWLEDGED, NULL);
+}

@@ -104,10 +104,11 @@ void gabble_jingle_content_parse_accept (GabbleJingleContent *c,
 void gabble_jingle_content_parse_transport_info (GabbleJingleContent *self,
   LmMessageNode *trans_node, GError **error);
 void gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li);
-gboolean gabble_jingle_content_is_ready (GabbleJingleContent *self, gboolean for_acceptance);
-void gabble_jingle_content_set_local_codecs (GabbleJingleContent *content, GList *li);
+void _gabble_jingle_content_set_media_ready (GabbleJingleContent *self);
+gboolean gabble_jingle_content_is_ready (GabbleJingleContent *self);
 void gabble_jingle_content_set_transport_state (GabbleJingleContent *content,
     JingleTransportState state);
+void gabble_jingle_content_accept (GabbleJingleContent *c);
 
 #endif /* __JINGLE_CONTENT_H__ */
 

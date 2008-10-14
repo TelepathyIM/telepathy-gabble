@@ -537,16 +537,19 @@ add_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
     GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
   GabbleJingleTransportGooglePrivate *priv =
     GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
-  gboolean ready;
+  JingleContentState state;
 
-  g_object_get (priv->content, "ready", &ready, NULL);
+  g_object_get (priv->content, "state", &state, NULL);
 
-  if (ready) {
-      DEBUG ("content ready, transmitting new candidates");
+  if (state > JINGLE_CONTENT_STATE_EMPTY)
+    {
+      DEBUG ("content already signalled, transmitting candidates");
       transmit_candidates (transport, new_candidates);
       priv->pending_candidates = NULL;
-  } else {
-      DEBUG ("content not ready, not transmitting candidates");
+    }
+  else
+    {
+      DEBUG ("content not signalled yet, waiting with candidates");
 
       /* if we already have pending candidates, the new ones will
        * be in the local_candidates list after them. but these

@@ -69,9 +69,7 @@ def test(q, bus, conn, stream):
           })
 
     event = q.expect('dbus-error', method='CreateChannel')
-
     announce_gadget(q, stream, disco_event.stanza)
-
     sync_stream(q, stream)
 
     # TODO: change view var name

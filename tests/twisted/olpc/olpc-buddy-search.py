@@ -52,9 +52,7 @@ def test(q, bus, conn, stream):
           })
 
     event = q.expect('dbus-error', method='CreateChannel')
-
     announce_gadget(q, stream, disco_event.stanza)
-
     call_async(q, conn, 'RequestHandles', 1, ['bob@localhost'])
 
     event = q.expect('dbus-return', method='RequestHandles')
@@ -107,7 +105,6 @@ def test(q, bus, conn, stream):
 
     assert ({tp_name_prefix + '.Channel.ChannelType':
             olpc_name_prefix + '.Channel.Type.BuddyView'},
-
             [olpc_name_prefix + '.Channel.Interface.View.MaxSize',
              olpc_name_prefix + '.Channel.Type.BuddyView.Properties',
              olpc_name_prefix + '.Channel.Type.BuddyView.Alias'],

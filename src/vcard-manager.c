@@ -218,14 +218,13 @@ gabble_vcard_manager_class_init (GabbleVCardManagerClass *cls)
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this vCard lookup helper object.",
       GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_boolean ("have-self-avatar", "Have our own avatar",
       "TRUE after the local user's own vCard has been retrieved in order to "
       "get their initial avatar.", FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_HAVE_SELF_AVATAR,
       param_spec);
 

@@ -118,10 +118,12 @@ def test(q, bus, conn, stream):
           olpc_name_prefix + '.Channel.Interface.View.MaxSize': 3
           })
 
-    iq_event, return_event = q.expect_many(
+    iq_event, return_event, new_channels_event, new_channel_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
             query_ns=NS_OLPC_BUDDY),
-        EventPattern('dbus-return', method='CreateChannel'))
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'))
 
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
@@ -148,6 +150,17 @@ def test(q, bus, conn, stream):
     view_path = return_event.value[0]
     props = return_event.value[1]
     view1 = bus.get_object(conn.bus_name, view_path)
+
+    # check NewChannels arg
+    channels = new_channels_event.args[0]
+    assert len(channels) == 1
+    chan, props_ = channels[0]
+    assert chan == view_path
+    assert props == props_
+
+    # check NewChannel arg
+    chan = new_channel_event.args[0]
+    assert chan == view_path
 
     assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Properties'] == {}
     assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == ''

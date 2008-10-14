@@ -54,20 +54,13 @@ def test(q, bus, conn, stream):
     assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.FUTURE' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
     assert channel_props['TargetID'] == jid,\
             (channel_props['TargetID'], jid)
-
-    future_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorHandle'] == self_handle,\
-            (future_props['InitiatorHandle'], self_handle)
-    assert future_props['InitiatorID'] == 'test@localhost',\
-            future_props['InitiatorID']
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorHandle'] == self_handle,\
+            (channel_props['InitiatorHandle'], self_handle)
+    assert channel_props['InitiatorID'] == 'test@localhost',\
+            channel_props['InitiatorID']
 
     dbus.Interface(text_chan,
         u'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'hey')

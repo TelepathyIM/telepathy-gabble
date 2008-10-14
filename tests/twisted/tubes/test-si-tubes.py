@@ -134,10 +134,10 @@ def test(q, bus, conn, stream):
             bob_handle
     assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
             'bob@localhost'
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+    assert emitted_props[tp_name_prefix + '.Channel.Requested'] == True
+    assert emitted_props[tp_name_prefix + '.Channel.InitiatorHandle'] \
             == conn.GetSelfHandle()
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] == \
+    assert emitted_props[tp_name_prefix + '.Channel.InitiatorID'] == \
             'test@localhost'
 
     properties = conn.GetAll(
@@ -170,13 +170,9 @@ def test(q, bus, conn, stream):
 
     self_handle = conn.GetSelfHandle()
 
-    # Exercise FUTURE properties
-    future_props = tubes_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == self_handle
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == self_handle
 
     # Unix socket
     path = os.getcwd() + '/stream'

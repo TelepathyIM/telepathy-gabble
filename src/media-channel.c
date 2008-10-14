@@ -32,8 +32,6 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-properties-interface.h>
 
-#include "extensions/extensions.h"
-
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
@@ -54,7 +52,6 @@ static void streamed_media_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CALL_STATE,
       call_state_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
@@ -77,7 +74,6 @@ static const gchar *gabble_media_channel_interfaces[] = {
     appear in GetInterfaces' output to avoid confusing clients
     TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
     */
-    GABBLE_IFACE_CHANNEL_FUTURE,
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_HOLD,
     TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
@@ -483,9 +479,9 @@ gabble_media_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "TargetHandleType",
               TP_IFACE_CHANNEL, "ChannelType",
               TP_IFACE_CHANNEL, "TargetID",
-              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
-              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
-              GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+              TP_IFACE_CHANNEL, "InitiatorHandle",
+              TP_IFACE_CHANNEL, "InitiatorID",
+              TP_IFACE_CHANNEL, "Requested",
               NULL));
       break;
     default:
@@ -577,9 +573,6 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       { "TargetID", "target-id", NULL },
       { "ChannelType", "channel-type", NULL },
       { "Interfaces", "interfaces", NULL },
-      { NULL }
-  };
-  static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "Requested", "requested", NULL },
       { "InitiatorHandle", "creator", NULL },
       { "InitiatorID", "creator-id", NULL },
@@ -590,11 +583,6 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
-      },
-      { GABBLE_IFACE_CHANNEL_FUTURE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        future_props,
       },
       { NULL }
   };

@@ -172,11 +172,11 @@ def check_props(props, self_handle, handle, jid):
     assert props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
             handle
     assert props['org.freedesktop.Telepathy.Channel.TargetID'] == jid
-    assert props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert props['org.freedesktop.Telepathy.Channel.'
             'Requested'] == True
-    assert props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert props['org.freedesktop.Telepathy.Channel.'
             'InitiatorHandle'] == self_handle
-    assert props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert props['org.freedesktop.Telepathy.Channel.'
             'InitiatorID'] == 'test@localhost'
 
 

@@ -86,12 +86,12 @@ def test(q, bus, conn, stream):
             handle
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] ==\
             'foo@bar.com', emitted_props
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
-            'Requested'] == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
-            'InitiatorHandle'] == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
-            'InitiatorID'] == 'test@localhost'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.Requested'] \
+            == True
+    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorHandle'] \
+            == self_handle
+    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorID'] \
+            == 'test@localhost'
 
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
@@ -121,14 +121,9 @@ def test(q, bus, conn, stream):
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
     assert channel_props['TargetID'] == 'foo@bar.com', channel_props
-
-    # Exercise FUTURE properties
-    future_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = group_iface.GetAll(

@@ -33,8 +33,6 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-generic.h>
 
-#include "extensions/extensions.h"
-
 #define DEBUG_FLAG GABBLE_DEBUG_ROOMLIST
 
 #include "connection.h"
@@ -51,7 +49,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_ROOM_LIST,
       roomlist_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
@@ -59,7 +56,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
     );
 
 static const gchar *gabble_roomlist_channel_interfaces[] = {
-    GABBLE_IFACE_CHANNEL_FUTURE,
     NULL
 };
 
@@ -200,9 +196,9 @@ gabble_roomlist_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "TargetHandleType",
               TP_IFACE_CHANNEL, "ChannelType",
               TP_IFACE_CHANNEL, "TargetID",
-              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
-              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
-              GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+              TP_IFACE_CHANNEL, "InitiatorHandle",
+              TP_IFACE_CHANNEL, "InitiatorID",
+              TP_IFACE_CHANNEL, "Requested",
               TP_IFACE_CHANNEL_TYPE_ROOM_LIST, "Server",
               NULL));
       break;
@@ -277,16 +273,13 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
       { "TargetID", "target-id", NULL },
       { "ChannelType", "channel-type", NULL },
       { "Interfaces", "interfaces", NULL },
+      { "Requested", "requested", NULL },
+      { "InitiatorHandle", "initiator-handle", NULL },
+      { "InitiatorID", "initiator-id", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl roomlist_props[] = {
       { "Server", "conference-server", NULL },
-      { NULL }
-  };
-  static TpDBusPropertiesMixinPropImpl future_props[] = {
-      { "Requested", "requested", NULL },
-      { "InitiatorHandle", "initiator-handle", NULL },
-      { "InitiatorID", "initiator-id", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
@@ -299,11 +292,6 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         roomlist_props,
-      },
-      { GABBLE_IFACE_CHANNEL_FUTURE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        future_props,
       },
       { NULL }
   };

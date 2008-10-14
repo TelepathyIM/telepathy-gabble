@@ -55,11 +55,11 @@ def test(q, bus, conn, stream):
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
             foo_handle
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == jid
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'Requested'] == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'InitiatorHandle'] == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'InitiatorID'] == 'test@localhost'
 
     channel_props = text_chan.GetAll(
@@ -67,15 +67,11 @@ def test(q, bus, conn, stream):
             dbus_interface='org.freedesktop.DBus.Properties')
     assert channel_props['TargetID'] == jid,\
             (channel_props['TargetID'], jid)
-
-    future_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorHandle'] == self_handle,\
-            (future_props['InitiatorHandle'], self_handle)
-    assert future_props['InitiatorID'] == 'test@localhost',\
-            future_props['InitiatorID']
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorHandle'] == self_handle,\
+            (channel_props['InitiatorHandle'], self_handle)
+    assert channel_props['InitiatorID'] == 'test@localhost',\
+            channel_props['InitiatorID']
 
     text_iface.Send(0, 'hey')
 
@@ -142,15 +138,11 @@ def test(q, bus, conn, stream):
             dbus_interface='org.freedesktop.DBus.Properties')
     assert channel_props['TargetID'] == jid,\
             (channel_props['TargetID'], jid)
-
-    future_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == False
-    assert future_props['InitiatorHandle'] == foo_handle,\
-            (future_props['InitiatorHandle'], foo_handle)
-    assert future_props['InitiatorID'] == 'foo@bar.com',\
-            future_props['InitiatorID']
+    assert channel_props['Requested'] == False
+    assert channel_props['InitiatorHandle'] == foo_handle,\
+            (channel_props['InitiatorHandle'], foo_handle)
+    assert channel_props['InitiatorID'] == 'foo@bar.com',\
+            channel_props['InitiatorID']
 
     # the message is still there
 

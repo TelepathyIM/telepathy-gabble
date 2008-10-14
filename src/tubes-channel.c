@@ -40,8 +40,6 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-generic.h>
 
-#include "extensions/extensions.h"
-
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
 #include "bytestream-factory.h"
@@ -66,7 +64,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubesChannel, gabble_tubes_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TUBES, tubes_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
         tp_external_group_mixin_iface_init);
@@ -78,7 +75,6 @@ static const gchar *gabble_tubes_channel_interfaces[] = {
     /* If more interfaces are added, either keep Group as the first, or change
      * the implementations of gabble_tubes_channel_get_interfaces () and
      * gabble_tubes_channel_get_property () too */
-    GABBLE_IFACE_CHANNEL_FUTURE,
     NULL
 };
 
@@ -276,9 +272,9 @@ gabble_tubes_channel_get_property (GObject *object,
                 TP_IFACE_CHANNEL, "TargetHandleType",
                 TP_IFACE_CHANNEL, "ChannelType",
                 TP_IFACE_CHANNEL, "TargetID",
-                GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
-                GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
-                GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+                TP_IFACE_CHANNEL, "InitiatorHandle",
+                TP_IFACE_CHANNEL, "InitiatorID",
+                TP_IFACE_CHANNEL, "Requested",
                 NULL));
         break;
       default:
@@ -2454,9 +2450,6 @@ gabble_tubes_channel_class_init (
       { "TargetID", "target-id", NULL },
       { "ChannelType", "channel-type", NULL },
       { "Interfaces", "interfaces", NULL },
-      { NULL }
-  };
-  static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "Requested", "requested", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
@@ -2467,11 +2460,6 @@ gabble_tubes_channel_class_init (
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
-      },
-      { GABBLE_IFACE_CHANNEL_FUTURE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        future_props,
       },
       { NULL }
   };

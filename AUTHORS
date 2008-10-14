@@ -9,10 +9,3 @@ Ole André Ravnaas <ole.andre.ravnaas@collabora.co.uk>
 Olli Salli <olli.salli@collabora.co.uk>
 Sjoerd Simons <sjoerd@luon.net>
 Rob Taylor <rob.taylor@collabora.co.uk>
-
-The Gabble source distribution includes the following third-party code:
-
-* src/libmd5-rfc by L. Peter Deutsch <ghost@aladdin.com>, taken from
-  <http://sourceforge.net/projects/libmd5-rfc/>
-* src/sha1 by Allan Saddi <allan@saddi.com>, taken from
-  sha v1.0.4 <http://sourceforge.net/projects/sha/>

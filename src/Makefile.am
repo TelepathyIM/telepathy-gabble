@@ -16,8 +16,7 @@ dbus_tube_sources = \
     tube-dbus.c
 endif
 
-# These are the bits we wrote, so we can be really strict about coding style
-libgabble_convenience_la_our_sources = \
+libgabble_convenience_la_SOURCES = \
     $(dbus_tube_sources) \
     base64.h \
     base64.c \
@@ -107,15 +106,6 @@ libgabble_convenience_la_our_sources = \
     util.c \
     vcard-manager.h \
     vcard-manager.c
-
-# we don't want to subject third-party source to whitespace removal -
-# it's more useful to keep it a verbatim copy
-libgabble_convenience_la_SOURCES = \
-    libmd5-rfc/md5.c \
-    libmd5-rfc/md5.h \
-    sha1/sha1.h \
-    sha1/sha1.c \
-    $(libgabble_convenience_la_our_sources)
 
 libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la

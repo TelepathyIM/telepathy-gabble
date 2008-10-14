@@ -127,9 +127,7 @@ gabble_olpc_view_init (GabbleOlpcView *self)
       GABBLE_TYPE_OLPC_VIEW, GabbleOlpcViewPrivate);
 
   self->priv = priv;
-
   priv->closed = FALSE;
-
   priv->dispose_has_run = FALSE;
 }
 
@@ -561,7 +559,6 @@ do_close (GabbleOlpcView *self,
       (TpHandleSetMemberFunc) buddy_left_activities_foreach, self);
 
   priv->closed = TRUE;
-
   tp_svc_channel_emit_closed (self);
 
   return TRUE;

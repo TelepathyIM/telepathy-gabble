@@ -32,7 +32,7 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/util.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_MUC
+#define DEBUG_FLAG GABBLE_DEBUG_OLPC
 
 #include <extensions/extensions.h>
 

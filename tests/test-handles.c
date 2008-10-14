@@ -32,14 +32,20 @@ test_handles (guint handle_type)
 
   /* Handle zero is never valid */
   g_assert (tp_handle_is_valid (tp_repo, 0, &error) == FALSE);
-  g_assert (error->code == TP_ERROR_INVALID_ARGUMENT);
+  /* this should probably be InvalidHandle, but it was InvalidArgument in
+   * older telepathy-glib */
+  g_assert (error->code == TP_ERROR_INVALID_ARGUMENT ||
+      error->code == TP_ERROR_INVALID_HANDLE);
 
   g_error_free (error);
   error = NULL;
 
   /* Properly return error when handle isn't in the repo */
   g_assert (tp_handle_is_valid (tp_repo, 65536, &error) == FALSE);
-  g_assert (error->code == TP_ERROR_INVALID_ARGUMENT);
+  /* this should really be InvalidHandle, but it was InvalidArgument in
+   * older telepathy-glib */
+  g_assert (error->code == TP_ERROR_INVALID_ARGUMENT ||
+      error->code == TP_ERROR_INVALID_HANDLE);
 
   g_error_free (error);
   error = NULL;

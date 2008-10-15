@@ -141,8 +141,9 @@ struct _GabbleMediaChannelPrivate
   TpLocalHoldState hold_state;
   TpLocalHoldStateReason hold_state_reason;
 
-  gboolean closed:1;
-  gboolean dispose_has_run:1;
+  /* These are really booleans, but gboolean is signed. Thanks, GLib */
+  unsigned closed:1;
+  unsigned dispose_has_run:1;
 };
 
 #define GABBLE_MEDIA_CHANNEL_GET_PRIVATE(obj) (obj->priv)

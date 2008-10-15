@@ -43,9 +43,30 @@ def test(q, bus, conn, stream):
     buddy_info_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
     requests_iface = dbus.Interface(conn, tp_name_prefix + '.Connection.Interface.Requests')
+    simple_presence_iface = dbus.Interface(conn, tp_name_prefix + '.Connection.Interface.SimplePresence')
 
     announce_gadget(q, stream, disco_event.stanza)
     sync_stream(q, stream)
+
+    # receive presence from Charles
+    presence = domish.Element((None, 'presence'))
+    presence['from'] = 'charles@localhost'
+    show = presence.addElement((None, 'show'))
+    show.addContent('dnd')
+    status = presence.addElement((None, 'status'))
+    status.addContent('Hacking on Sugar')
+    stream.send(presence)
+
+    event, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='PresencesChanged'),
+        EventPattern('dbus-signal', signal='PresenceUpdate'))
+
+    handles = {}
+    handles['bob'], handles['charles'] = conn.RequestHandles(1, ['bob@localhost', 'charles@localhost'])
+
+    presence = event.args[0]
+    # Connection_Presence_Type_Busy = 6
+    assert presence[handles['charles']] == (6, 'dnd', 'Hacking on Sugar')
 
     # request 3 random buddies
     call_async(q, requests_iface, 'CreateChannel',
@@ -85,13 +106,15 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('dbus-signal', signal='PresenceUpdate'))
 
-    handles = {}
-    handles['bob'], handles['charles'] = conn.RequestHandles(1, ['bob@localhost', 'charles@localhost'])
-
+    # Only Bob's presence is changed as we received a presence from Charles
     presence = event.args[0]
     # Connection_Presence_Type_Available = 2
     assert presence[handles['bob']] == (2, 'available', '')
-    assert presence[handles['charles']] == (2, 'available', '')
+    assert len(presence) == 1
+
+    # Charles's presence didn't change
+    presence = simple_presence_iface.GetPresences([handles['charles']])
+    assert presence[handles['charles']] == (6, 'dnd', 'Hacking on Sugar')
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -102,12 +125,10 @@ def test(q, bus, conn, stream):
 
     # remove bob from view
     message = create_gadget_message("test@localhost")
-
     added = message.addElement((NS_OLPC_BUDDY, 'removed'))
     added['id'] = '1'
     buddy = added.addElement((None, 'buddy'))
     buddy['jid'] = 'bob@localhost'
-
     stream.send(message)
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')

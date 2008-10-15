@@ -168,9 +168,8 @@ gabble_jingle_media_rtp_set_property (GObject *object,
   }
 }
 
-static void
-parse_description (GabbleJingleContent *content, LmMessageNode *desc_node,
-    GError **error);
+static void parse_description (GabbleJingleContent *content,
+    LmMessageNode *desc_node, GError **error);
 static void produce_description (GabbleJingleContent *obj,
     LmMessageNode *content_node);
 

@@ -62,6 +62,7 @@ struct _GabblePresence {
     gchar *avatar_sha1;
     gboolean keep_unavailable;
     GabblePresencePrivate *priv;
+    guint olpc_views;
 };
 
 typedef struct _GabblePresenceClass GabblePresenceClass;

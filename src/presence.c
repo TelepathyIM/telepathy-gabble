@@ -50,6 +50,7 @@ struct _Resource {
 struct _GabblePresencePrivate {
     gchar *no_resource_status_message;
     GSList *resources;
+    guint olpc_views;
 };
 
 static Resource *
@@ -462,4 +463,41 @@ gabble_presence_dump (GabblePresence *presence)
     g_string_append_printf (ret, "  (none)\n");
 
   return g_string_free (ret, FALSE);
+}
+
+gboolean
+gabble_presence_added_to_view (GabblePresence *self)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (self);
+
+  priv->olpc_views++;
+
+  if (priv->olpc_views > 1)
+    /* That's not the version view associated with this presence so
+     * that doesn't change anything */
+    return FALSE;
+
+  if (self->status > GABBLE_PRESENCE_HIDDEN)
+    /* We already have a better presence */
+    return FALSE;
+
+  return TRUE;
+}
+
+gboolean
+gabble_presence_removed_from_view (GabblePresence *self)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (self);
+
+  priv->olpc_views--;
+
+  if (priv->olpc_views > 0)
+    /* We are still in at least one view */
+    return FALSE;
+
+  if (self->status > GABBLE_PRESENCE_HIDDEN)
+    /* We still have a better presence */
+    return FALSE;
+
+  return TRUE;
 }

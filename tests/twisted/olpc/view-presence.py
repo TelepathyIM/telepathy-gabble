@@ -141,5 +141,19 @@ def test(q, bus, conn, stream):
     # Connection_Presence_Type_Offline = 1
     assert presence[handles['bob']] == (1, 'offline', '')
 
+    # remove charles from view
+    message = create_gadget_message("test@localhost")
+    added = message.addElement((NS_OLPC_BUDDY, 'removed'))
+    added['id'] = '1'
+    buddy = added.addElement((None, 'buddy'))
+    buddy['jid'] = 'charles@localhost'
+    stream.send(message)
+
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+
+    # Charles's presence didn't change
+    presence = simple_presence_iface.GetPresences([handles['charles']])
+    assert presence[handles['charles']] == (6, 'dnd', 'Hacking on Sugar')
+
 if __name__ == '__main__':
     exec_test(test)

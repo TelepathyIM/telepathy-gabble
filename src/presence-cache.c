@@ -1497,11 +1497,8 @@ gabble_presence_cache_contacts_added_to_olpc_view (GabblePresenceCache *self,
           presence = _cache_insert (self, handle);
         }
 
-      presence->olpc_views++;
-
-      if (presence->status <= GABBLE_PRESENCE_HIDDEN)
+      if (gabble_presence_added_to_view (presence))
         {
-          presence->status = GABBLE_PRESENCE_AVAILABLE;
           g_array_append_val (changed, handle);
         }
     }
@@ -1540,13 +1537,8 @@ gabble_presence_cache_contacts_removed_from_olpc_view (
           presence = _cache_insert (self, handle);
         }
 
-      presence->olpc_views--;
-
-      if (presence->olpc_views == 0)
+      if (gabble_presence_removed_from_view (presence))
         {
-          presence->status = GABBLE_PRESENCE_OFFLINE;
-          /* FIXME: don't do that if we have a presence */
-          /* FIXME: set OFFLINE or unknown depending the roster status */
           g_array_append_val (changed, handle);
         }
     }

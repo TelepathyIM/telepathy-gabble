@@ -62,7 +62,6 @@ struct _GabblePresence {
     gchar *avatar_sha1;
     gboolean keep_unavailable;
     GabblePresencePrivate *priv;
-    guint olpc_views;
 };
 
 typedef struct _GabblePresenceClass GabblePresenceClass;
@@ -92,6 +91,9 @@ gboolean gabble_presence_resource_has_caps (GabblePresence *presence,
 LmMessage *gabble_presence_as_message (GabblePresence *presence,
     const gchar *to);
 gchar *gabble_presence_dump (GabblePresence *presence);
+
+gboolean gabble_presence_added_to_view (GabblePresence *presence);
+gboolean gabble_presence_removed_from_view (GabblePresence *presence);
 
 G_END_DECLS
 

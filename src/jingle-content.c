@@ -478,7 +478,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
     }
 
   parse_description (c, desc_node, error);
-  if (*error)
+  if (*error != NULL)
       return;
 
   DEBUG ("content creating new transport type %s", g_type_name (transport_type));
@@ -550,7 +550,7 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
     }
 
   parse_description (c, desc_node, error);
-  if (*error)
+  if (*error != NULL)
       return;
 
   // FIXME: this overlaps with _update_senders, maybe merge?

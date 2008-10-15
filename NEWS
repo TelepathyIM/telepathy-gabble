@@ -27,6 +27,9 @@ Fixes:
 
 * Some bugfixes in the OLPC code
 
+* Use unsigned for booleans in bitfields (gboolean is signed, so
+  "gboolean foo:1" is not portable)
+
 telepathy-gabble 0.7.9 (2008-09-29)
 ===================================
 

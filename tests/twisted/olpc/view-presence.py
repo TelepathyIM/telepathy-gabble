@@ -29,6 +29,15 @@ NS_AMP = "http://jabber.org/protocol/amp"
 tp_name_prefix = 'org.freedesktop.Telepathy'
 olpc_name_prefix = 'org.laptop.Telepathy'
 
+def send_presence(stream, from_, type, msg):
+    presence = domish.Element((None, 'presence'))
+    presence['from'] = from_
+    show = presence.addElement((None, 'show'))
+    show.addContent(type)
+    status = presence.addElement((None, 'status'))
+    status.addContent(msg)
+    stream.send(presence)
+
 def test(q, bus, conn, stream):
     conn.Connect()
 
@@ -49,20 +58,15 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     # receive presence from Charles
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'charles@localhost'
-    show = presence.addElement((None, 'show'))
-    show.addContent('dnd')
-    status = presence.addElement((None, 'status'))
-    status.addContent('Hacking on Sugar')
-    stream.send(presence)
+    send_presence(stream, 'charles@localhost', 'dnd', 'Hacking on Sugar')
 
     event, _ = q.expect_many(
         EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('dbus-signal', signal='PresenceUpdate'))
 
     handles = {}
-    handles['bob'], handles['charles'] = conn.RequestHandles(1, ['bob@localhost', 'charles@localhost'])
+    handles['bob'], handles['charles'], handles['damien'] = conn.RequestHandles(1, ['bob@localhost', 'charles@localhost',
+        'damien@localhost'])
 
     presence = event.args[0]
     # Connection_Presence_Type_Busy = 6
@@ -96,6 +100,8 @@ def test(q, bus, conn, stream):
     buddy['jid'] = 'charles@localhost'
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'bob@localhost'
+    buddy = view.addElement((None, "buddy"))
+    buddy['jid'] = 'damien@localhost'
     stream.send(reply)
 
     view_path = return_event.value[0]
@@ -106,22 +112,18 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('dbus-signal', signal='PresenceUpdate'))
 
-    # Only Bob's presence is changed as we received a presence from Charles
+    # Only Bob and Damien presences are changed as we received a presence from Charles
     presence = event.args[0]
+    assert len(presence) == 2
     # Connection_Presence_Type_Available = 2
     assert presence[handles['bob']] == (2, 'available', '')
-    assert len(presence) == 1
+    assert presence[handles['damien']] == (2, 'available', '')
 
     # Charles's presence didn't change
     presence = simple_presence_iface.GetPresences([handles['charles']])
     assert presence[handles['charles']] == (6, 'dnd', 'Hacking on Sugar')
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
-    added, removed = event.args
-    assert removed == []
-    assert len(added) == 2
-    assert sorted(conn.InspectHandles(1, added)) == ['bob@localhost',
-            'charles@localhost']
 
     # remove bob from view
     message = create_gadget_message("test@localhost")
@@ -154,6 +156,32 @@ def test(q, bus, conn, stream):
     # Charles's presence didn't change
     presence = simple_presence_iface.GetPresences([handles['charles']])
     assert presence[handles['charles']] == (6, 'dnd', 'Hacking on Sugar')
+
+    # we receive a presence from Dambien
+    send_presence(stream, 'damien@localhost', 'away', 'Watching pr0n')
+
+    # presence is properly changed
+    event, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='PresencesChanged'),
+        EventPattern('dbus-signal', signal='PresenceUpdate'))
+
+    presence = event.args[0]
+    # Connection_Presence_Type_Away = 3
+    assert presence[handles['damien']] == (3, 'away', 'Watching pr0n')
+
+    # remove Damien from view
+    message = create_gadget_message("test@localhost")
+    added = message.addElement((NS_OLPC_BUDDY, 'removed'))
+    added['id'] = '1'
+    buddy = added.addElement((None, 'buddy'))
+    buddy['jid'] = 'damien@localhost'
+    stream.send(message)
+
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+
+    # Damien's presence didn't change
+    presence = simple_presence_iface.GetPresences([handles['damien']])
+    assert presence[handles['damien']] == (3, 'away', 'Watching pr0n')
 
 if __name__ == '__main__':
     exec_test(test)

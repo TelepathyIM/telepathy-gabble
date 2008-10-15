@@ -1540,6 +1540,7 @@ gabble_presence_cache_contacts_removed_from_olpc_view (
       if (gabble_presence_removed_from_view (presence))
         {
           g_array_append_val (changed, handle);
+          gabble_presence_cache_maybe_remove (self, handle);
         }
     }
 

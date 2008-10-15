@@ -140,8 +140,8 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='PresenceUpdate'))
 
     presence = event.args[0]
-    # Connection_Presence_Type_Offline = 1
-    assert presence[handles['bob']] == (1, 'offline', '')
+    # Connection_Presence_Type_Unknown = 7
+    assert presence[handles['bob']] == (7, 'unknown', '')
 
     # remove charles from view
     message = create_gadget_message("test@localhost")

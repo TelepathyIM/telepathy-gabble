@@ -61,8 +61,6 @@ enum
   PROP_HANDLE,
   PROP_TARGET_ID,
   PROP_HANDLE_TYPE,
-
-  /* org.freedesktop.Telepathy.Channel.FUTURE D-Bus properties */
   PROP_REQUESTED,
   PROP_INITIATOR_HANDLE,
   PROP_INITIATOR_ID,
@@ -105,13 +103,11 @@ G_DEFINE_TYPE_WITH_CODE (
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_CHANNEL_INTERFACE_VIEW, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
     );
 
 static const gchar *gabble_olpc_view_interfaces[] = {
-    GABBLE_IFACE_CHANNEL_FUTURE,
     GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW,
     NULL
 };
@@ -366,9 +362,6 @@ gabble_olpc_view_class_init (GabbleOlpcViewClass *gabble_olpc_view_class)
       { "TargetID", "target-id", NULL },
       { "ChannelType", "channel-type", NULL },
       { "Interfaces", "interfaces", NULL },
-      { NULL }
-  };
-  static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "Requested", "requested", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
@@ -385,11 +378,6 @@ gabble_olpc_view_class_init (GabbleOlpcViewClass *gabble_olpc_view_class)
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
-      },
-      { GABBLE_IFACE_CHANNEL_FUTURE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        future_props,
       },
       { GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW,
         tp_dbus_properties_mixin_getter_gobject_properties,

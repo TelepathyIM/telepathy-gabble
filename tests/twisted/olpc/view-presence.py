@@ -30,12 +30,6 @@ tp_name_prefix = 'org.freedesktop.Telepathy'
 olpc_name_prefix = 'org.laptop.Telepathy'
 
 def send_presence(stream, from_, type, msg):
-    #presence = domish.Element((None, 'presence'))
-    #presence['from'] = from_
-    #show = presence.addElement((None, 'show'))
-    #show.addContent(type)
-    #status = presence.addElement((None, 'status'))
-    #status.addContent(msg)
     presence = elem('presence', from_=from_)(
         elem('show')(unicode(type)),
         elem('status')(unicode(msg)))
@@ -76,8 +70,8 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='PresenceUpdate'))
 
     handles = {}
-    handles['bob'], handles['charles'], handles['damien'] = conn.RequestHandles(1, ['bob@localhost', 'charles@localhost',
-        'damien@localhost'])
+    handles['bob'], handles['charles'], handles['damien'], handles['eric'] = conn.RequestHandles(1,
+        ['bob@localhost', 'charles@localhost', 'damien@localhost', 'eric@localhost'])
 
     presence = event.args[0]
     # Connection_Presence_Type_Busy = 6
@@ -113,6 +107,8 @@ def test(q, bus, conn, stream):
     buddy['jid'] = 'bob@localhost'
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'damien@localhost'
+    buddy = view.addElement((None, "buddy"))
+    buddy['jid'] = 'eric@localhost'
     stream.send(reply)
 
     view_path = return_event.value[0]
@@ -125,10 +121,11 @@ def test(q, bus, conn, stream):
 
     # Only Bob and Damien presences are changed as we received a presence from Charles
     presence = event.args[0]
-    assert len(presence) == 2
+    assert len(presence) == 3
     # Connection_Presence_Type_Available = 2
     assert presence[handles['bob']] == (2, 'available', '')
     assert presence[handles['damien']] == (2, 'available', '')
+    assert presence[handles['eric']] == (2, 'available', '')
 
     # Charles's presence didn't change
     presence = simple_presence_iface.GetPresences([handles['charles']])
@@ -175,6 +172,18 @@ def test(q, bus, conn, stream):
     # Damien's presence didn't change
     presence = simple_presence_iface.GetPresences([handles['damien']])
     assert presence[handles['damien']] == (3, 'away', 'Watching pr0n')
+
+    # close view 1
+    view1.Close(dbus_interface='org.freedesktop.Telepathy.Channel')
+
+    # Eric's presence is changed as it's not in the view anymore
+    event, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='PresencesChanged'),
+        EventPattern('dbus-signal', signal='PresenceUpdate'))
+
+    presence = event.args[0]
+    # Connection_Presence_Type_Unknown = 7
+    assert presence[handles['eric']] == (7, 'unknown', '')
 
 if __name__ == '__main__':
     exec_test(test)

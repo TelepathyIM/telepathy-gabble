@@ -543,6 +543,9 @@ do_close (GabbleOlpcView *self,
 
   lm_message_unref (msg);
 
+  gabble_presence_cache_contacts_removed_from_olpc_view (
+      self->conn->presence_cache, priv->buddies);
+
   /* Claim that all the buddies left their activities */
   tp_handle_set_foreach (priv->buddies,
       (TpHandleSetMemberFunc) buddy_left_activities_foreach, self);

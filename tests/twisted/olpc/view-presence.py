@@ -11,7 +11,7 @@ from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 
 from util import (announce_gadget, properties_to_xml, parse_properties,
-    create_gadget_message, close_view)
+    create_gadget_message, close_view, elem)
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -30,12 +30,15 @@ tp_name_prefix = 'org.freedesktop.Telepathy'
 olpc_name_prefix = 'org.laptop.Telepathy'
 
 def send_presence(stream, from_, type, msg):
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = from_
-    show = presence.addElement((None, 'show'))
-    show.addContent(type)
-    status = presence.addElement((None, 'status'))
-    status.addContent(msg)
+    #presence = domish.Element((None, 'presence'))
+    #presence['from'] = from_
+    #show = presence.addElement((None, 'show'))
+    #show.addContent(type)
+    #status = presence.addElement((None, 'status'))
+    #status.addContent(msg)
+    presence = elem('presence', from_=from_)(
+        elem('show')(unicode(type)),
+        elem('status')(unicode(msg)))
     stream.send(presence)
 
 def remove_buddy_from_view(stream, id, jid):

@@ -38,6 +38,14 @@ def send_presence(stream, from_, type, msg):
     status.addContent(msg)
     stream.send(presence)
 
+def remove_buddy_from_view(stream, id, jid):
+    message = create_gadget_message("test@localhost")
+    added = message.addElement((NS_OLPC_BUDDY, 'removed'))
+    added['id'] = id
+    buddy = added.addElement((None, 'buddy'))
+    buddy['jid'] = jid
+    stream.send(message)
+
 def test(q, bus, conn, stream):
     conn.Connect()
 
@@ -126,13 +134,7 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='BuddiesChanged')
 
     # remove bob from view
-    message = create_gadget_message("test@localhost")
-    added = message.addElement((NS_OLPC_BUDDY, 'removed'))
-    added['id'] = '1'
-    buddy = added.addElement((None, 'buddy'))
-    buddy['jid'] = 'bob@localhost'
-    stream.send(message)
-
+    remove_buddy_from_view(stream, '1', 'bob@localhost')
     event = q.expect('dbus-signal', signal='BuddiesChanged')
 
     event, _ = q.expect_many(
@@ -144,13 +146,7 @@ def test(q, bus, conn, stream):
     assert presence[handles['bob']] == (7, 'unknown', '')
 
     # remove charles from view
-    message = create_gadget_message("test@localhost")
-    added = message.addElement((NS_OLPC_BUDDY, 'removed'))
-    added['id'] = '1'
-    buddy = added.addElement((None, 'buddy'))
-    buddy['jid'] = 'charles@localhost'
-    stream.send(message)
-
+    remove_buddy_from_view(stream, '1', 'charles@localhost')
     event = q.expect('dbus-signal', signal='BuddiesChanged')
 
     # Charles's presence didn't change
@@ -170,13 +166,7 @@ def test(q, bus, conn, stream):
     assert presence[handles['damien']] == (3, 'away', 'Watching pr0n')
 
     # remove Damien from view
-    message = create_gadget_message("test@localhost")
-    added = message.addElement((NS_OLPC_BUDDY, 'removed'))
-    added['id'] = '1'
-    buddy = added.addElement((None, 'buddy'))
-    buddy['jid'] = 'damien@localhost'
-    stream.send(message)
-
+    remove_buddy_from_view(stream, '1', 'damien@localhost')
     event = q.expect('dbus-signal', signal='BuddiesChanged')
 
     # Damien's presence didn't change

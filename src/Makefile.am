@@ -64,6 +64,8 @@ libgabble_convenience_la_SOURCES = \
     media-stream.c \
     media-factory.h \
     media-factory.c \
+    message-util.h \
+    message-util.c \
     muc-channel.h \
     muc-channel.c \
     muc-factory.h \

@@ -38,26 +38,33 @@
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
+#include "message-util.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "roster.h"
 
 static void channel_iface_init (gpointer, gpointer);
-static void text_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT, text_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
+      tp_message_mixin_text_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MESSAGES,
+      tp_message_mixin_messages_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init));
 
+static void _gabble_im_channel_send_message (GObject *object,
+    TpMessage *message, TpMessageSendingFlags flags);
+
 static const gchar *gabble_im_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
+    TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
     NULL
 };
 
@@ -90,6 +97,7 @@ struct _GabbleIMChannelPrivate
   TpHandle initiator;
 
   gchar *peer_jid;
+  gboolean send_nick;
 
   gboolean closed;
   gboolean dispose_has_run;
@@ -106,6 +114,8 @@ gabble_im_channel_init (GabbleIMChannel *self)
   self->priv = priv;
 }
 
+#define NUM_SUPPORTED_MESSAGE_TYPES 3
+
 static GObject *
 gabble_im_channel_constructor (GType type, guint n_props,
                                GObjectConstructParam *props)
@@ -114,8 +124,15 @@ gabble_im_channel_constructor (GType type, guint n_props,
   GabbleIMChannelPrivate *priv;
   TpBaseConnection *conn;
   DBusGConnection *bus;
-  gboolean send_nick;
   TpHandleRepoIface *contact_handles;
+
+  TpChannelTextMessageType types[NUM_SUPPORTED_MESSAGE_TYPES] = {
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
+  };
+
+  const gchar * const *supported_content_types = { NULL };
 
   obj = G_OBJECT_CLASS (gabble_im_channel_parent_class)->
            constructor (type, n_props, props);
@@ -137,18 +154,15 @@ gabble_im_channel_constructor (GType type, guint n_props,
 
   if (gabble_roster_handle_get_subscription (priv->conn->roster, priv->handle)
         & GABBLE_ROSTER_SUBSCRIPTION_FROM)
-    send_nick = FALSE;
+    priv->send_nick = FALSE;
   else
-    send_nick = TRUE;
+    priv->send_nick = TRUE;
 
-  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, text),
-      contact_handles, send_nick);
+  tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, message_mixin),
+      conn);
 
-  tp_text_mixin_set_message_types (obj,
-      TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
-      TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
-      TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
-      G_MAXUINT);
+  tp_message_mixin_implement_sending (obj, _gabble_im_channel_send_message,
+      NUM_SUPPORTED_MESSAGE_TYPES, types, 0, supported_content_types);
 
   return obj;
 }
@@ -356,12 +370,11 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
 
-  tp_text_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
-
   gabble_im_channel_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleIMChannelClass, dbus_props_class));
+
+  tp_message_mixin_init_dbus_properties (object_class);
 }
 
 static void
@@ -405,10 +418,8 @@ gabble_im_channel_dispose (GObject *object)
           {
           /* Set the chat state of the channel on gone
            * (Channel.Interface.ChatState) */
-          gabble_text_mixin_send (G_OBJECT (self),
-              TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0,
-              TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL, priv->conn,
-              FALSE /* emit_signal */, NULL);
+          gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
+              0, TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL);
           }
 
         tp_svc_channel_emit_closed (self);
@@ -439,10 +450,40 @@ gabble_im_channel_finalize (GObject *object)
   g_free (priv->object_path);
   g_free (priv->peer_jid);
 
-  tp_text_mixin_finalize (object);
+  tp_message_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_im_channel_parent_class)->finalize (object);
 }
+
+
+static void
+_gabble_im_channel_send_message (GObject *object,
+                                 TpMessage *message,
+                                 TpMessageSendingFlags flags)
+{
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
+  GabbleIMChannelPrivate *priv;
+  GabblePresence *presence;
+  gint state = -1;
+
+  g_assert (GABBLE_IS_IM_CHANNEL (self));
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+
+  presence = gabble_presence_cache_get (priv->conn->presence_cache,
+      priv->handle);
+
+  if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
+    {
+      state = TP_CHANNEL_CHAT_STATE_ACTIVE;
+    }
+
+  gabble_message_util_send_message (object, priv->conn, message, 0, state,
+      priv->peer_jid, priv->send_nick);
+
+  if (priv->send_nick)
+    priv->send_nick = FALSE;
+}
+
 
 /**
  * _gabble_im_channel_receive
@@ -457,6 +498,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
                             const char *text)
 {
   GabbleIMChannelPrivate *priv;
+  TpMessage *msg;
 
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
@@ -468,10 +510,25 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
       priv->peer_jid = g_strdup (from);
     }
 
-  if (timestamp == 0)
-      timestamp = time (NULL);
+  msg = tp_message_new ((TpBaseConnection *) priv->conn, 2, 2);
 
-  tp_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
+  /* Header */
+  if (type != TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL)
+    tp_message_set_uint32 (msg, 0, "message-type", type);
+
+  if (timestamp != 0)
+    tp_message_set_uint64 (msg, 0, "message-sent", timestamp);
+
+  tp_message_set_uint64 (msg, 0, "message-received", time (NULL));
+  tp_message_set_handle (msg, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
+      sender);
+
+  /* Body */
+  tp_message_set_string (msg, 1, "type", "text/plain");
+  tp_message_set_string (msg, 1, "content", text);
+
+
+  tp_message_mixin_take_received (G_OBJECT (chan), msg);
 }
 
 /**
@@ -528,7 +585,7 @@ gabble_im_channel_close (TpSvcChannel *iface,
       /* The IM factory will resurrect the channel if we have pending
        * messages. When we're resurrected, we want the initiator
        * to be the contact who sent us those messages, if it isn't already */
-      if (tp_text_mixin_has_pending_messages ((GObject *) self, NULL))
+      if (tp_message_mixin_has_pending_messages ((GObject *) self, NULL))
         {
           DEBUG ("Not really closing, I still have pending messages");
 
@@ -556,12 +613,10 @@ gabble_im_channel_close (TpSvcChannel *iface,
 
       if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
         {
-          /* Set the chat state of the channel on gone
+          /* Set the chat state of the channel to gone
            * (Channel.Interface.ChatState) */
-          gabble_text_mixin_send (G_OBJECT (self),
-              TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0,
-              TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL, priv->conn,
-              FALSE /* emit_signal */, NULL);
+          gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
+              0, TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL);
         }
     }
 
@@ -621,48 +676,6 @@ gabble_im_channel_get_interfaces (TpSvcChannel *iface,
 
 
 /**
- * gabble_im_channel_send
- *
- * Implements D-Bus method Send
- * on interface org.freedesktop.Telepathy.Channel.Type.Text
- */
-static void
-gabble_im_channel_send (TpSvcChannelTypeText *iface,
-                        guint type,
-                        const gchar *text,
-                        DBusGMethodInvocation *context)
-{
-  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
-  GabbleIMChannelPrivate *priv;
-  GabblePresence *presence;
-  gint state = -1;
-  GError *error = NULL;
-
-  g_assert (GABBLE_IS_IM_CHANNEL (self));
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
-
-  presence = gabble_presence_cache_get (priv->conn->presence_cache,
-      priv->handle);
-
-  if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
-    {
-      state = TP_CHANNEL_CHAT_STATE_ACTIVE;
-    }
-
-  if (!gabble_text_mixin_send (G_OBJECT (self), type, 0,
-      state, priv->peer_jid, text, priv->conn,
-      TRUE /* emit_signal */, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-
-      return;
-    }
-
-  tp_svc_channel_type_text_return_from_send (context);
-}
-
-/**
  * gabble_im_channel_set_chat_state
  *
  * Implements D-Bus method SetChatState
@@ -703,9 +716,9 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
               "you may not explicitly set the Gone state");
         }
 
-      if (error != NULL || !gabble_text_mixin_send (G_OBJECT (self),
-          TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0, state, priv->peer_jid, NULL,
-          priv->conn, FALSE /* emit_signal */, &error))
+      if (error != NULL ||
+          !gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
+              0, state, priv->peer_jid, &error))
         {
           dbus_g_method_return_error (context, error);
           g_error_free (error);
@@ -732,18 +745,6 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(get_channel_type);
   IMPLEMENT(get_handle);
   IMPLEMENT(get_interfaces);
-#undef IMPLEMENT
-}
-
-static void
-text_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *) g_iface;
-
-  tp_text_mixin_iface_init (g_iface, iface_data);
-#define IMPLEMENT(x) tp_svc_channel_type_text_implement_##x (\
-    klass, gabble_im_channel_##x)
-  IMPLEMENT(send);
 #undef IMPLEMENT
 }
 

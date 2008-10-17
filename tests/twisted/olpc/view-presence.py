@@ -69,9 +69,10 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('dbus-signal', signal='PresenceUpdate'))
 
-    handles = {}
-    handles['bob'], handles['charles'], handles['damien'], handles['eric'] = conn.RequestHandles(1,
-        ['bob@localhost', 'charles@localhost', 'damien@localhost', 'eric@localhost'])
+    # get contacts handles
+    contacts = ['bob', 'charles', 'damien', 'eric', 'fred']
+    tmp = conn.RequestHandles(1, map(lambda x: "%s@localhost" % x, contacts))
+    handles = dict(zip(contacts, tmp))
 
     presence = event.args[0]
     # Connection_Presence_Type_Busy = 6
@@ -109,6 +110,8 @@ def test(q, bus, conn, stream):
     buddy['jid'] = 'damien@localhost'
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'eric@localhost'
+    buddy = view.addElement((None, "buddy"))
+    buddy['jid'] = 'fred@localhost'
     stream.send(reply)
 
     view_path = return_event.value[0]
@@ -121,11 +124,12 @@ def test(q, bus, conn, stream):
 
     # Only Bob and Damien presences are changed as we received a presence from Charles
     presence = event.args[0]
-    assert len(presence) == 3
+    assert len(presence) == 4
     # Connection_Presence_Type_Available = 2
     assert presence[handles['bob']] == (2, 'available', '')
     assert presence[handles['damien']] == (2, 'available', '')
     assert presence[handles['eric']] == (2, 'available', '')
+    assert presence[handles['fred']] == (2, 'available', '')
 
     # Charles's presence didn't change
     presence = simple_presence_iface.GetPresences([handles['charles']])
@@ -173,6 +177,49 @@ def test(q, bus, conn, stream):
     presence = simple_presence_iface.GetPresences([handles['damien']])
     assert presence[handles['damien']] == (3, 'away', 'Watching pr0n')
 
+    # request a second view
+    call_async(q, requests_iface, 'CreateChannel',
+        { tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView',
+          olpc_name_prefix + '.Channel.Interface.View.MaxSize': 1
+          })
+
+    iq_event, return_event, new_channels_event, new_channel_event = q.expect_many(
+        EventPattern('stream-iq', to='gadget.localhost',
+            query_ns=NS_OLPC_BUDDY),
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'))
+
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == '2'
+    assert view['size'] == '1'
+
+    # reply to random query
+    reply = make_result_iq(stream, iq_event.stanza)
+    reply['from'] = 'gadget.localhost'
+    reply['to'] = 'alice@localhost'
+    view = xpath.queryForNodes('/iq/view', reply)[0]
+    buddy = view.addElement((None, "buddy"))
+    buddy['jid'] = 'fred@localhost'
+    stream.send(reply)
+
+    view_path = return_event.value[0]
+    props = return_event.value[1]
+    view2 = bus.get_object(conn.bus_name, view_path)
+
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+
+    # Fred is the only buddy in this view
+    buddies = view2.Get('org.laptop.Telepathy.Channel.Interface.View', 'Buddies',
+        dbus_interface='org.freedesktop.DBus.Properties')
+    assert buddies == [handles['fred']]
+
+    # ... and his presence didn't change
+    presence = simple_presence_iface.GetPresences([handles['fred']])
+    assert presence[handles['fred']] == (2, 'available', '')
+
     # close view 1
     view1.Close(dbus_interface='org.freedesktop.Telepathy.Channel')
 
@@ -184,6 +231,22 @@ def test(q, bus, conn, stream):
     presence = event.args[0]
     # Connection_Presence_Type_Unknown = 7
     assert presence[handles['eric']] == (7, 'unknown', '')
+
+    # but not the presence of Fred as he's still in view2
+    presence = simple_presence_iface.GetPresences([handles['fred']])
+    assert presence[handles['fred']] == (2, 'available', '')
+
+    # close view 2
+    view2.Close(dbus_interface='org.freedesktop.Telepathy.Channel')
+
+   # and now Fred is offline
+    event, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='PresencesChanged'),
+        EventPattern('dbus-signal', signal='PresenceUpdate'))
+
+    presence = event.args[0]
+    # Connection_Presence_Type_Unknown = 7
+    assert presence[handles['fred']] == (7, 'unknown', '')
 
 if __name__ == '__main__':
     exec_test(test)

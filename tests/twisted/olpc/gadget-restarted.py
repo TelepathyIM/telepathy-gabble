@@ -47,7 +47,7 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     # request 3 random activities (view 0)
-    view_path = request_random_activity_view(q, stream, conn, 3, '0',
+    view_path = request_random_activity_view(q, stream, conn, 3, '1',
             [('activity1', 'room1@conference.localhost',
                 {'color': ('str', '#005FE4,#00A0FF')},
                 [('lucien@localhost', {'color': ('str', '#AABBCC,#CCBBAA')}),
@@ -60,7 +60,7 @@ def test(q, bus, conn, stream):
     presence = elem('presence', from_='gadget.localhost', to='test@localhost')
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='Closed', interface='org.laptop.Telepathy.View')
+    q.expect('dbus-signal', signal='Closed', interface='org.freedesktop.Telepathy.Channel')
 
 if __name__ == '__main__':
     exec_test(test)

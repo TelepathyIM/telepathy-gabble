@@ -266,11 +266,7 @@ gabble_private_tubes_factory_class_init (
       "GabbleConnection object",
       "Gabble connection object that owns this Tubes channel manager object.",
       GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
 }
@@ -988,6 +984,7 @@ static const gchar * const stream_tube_channel_allowed_properties[] = {
 };
 static const gchar * const dbus_tube_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
     GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
     GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName",
     NULL

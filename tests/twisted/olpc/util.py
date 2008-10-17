@@ -183,28 +183,36 @@ def send_reply_to_activity_view_request(stream, stanza, activities):
     stream.send(reply)
 
 def request_random_activity_view(q, stream, conn, max, id, activities):
-    gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
+    requests_iface = dbus.Interface(conn, 'org.freedesktop.Telepathy.Connection.Interface.Requests')
 
-    call_async(q, gadget_iface, 'RequestRandomActivities', max)
+    call_async(q, requests_iface, 'CreateChannel',
+        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+            'org.laptop.Telepathy.Channel.Type.ActivityView',
+            'org.laptop.Telepathy.Channel.Interface.View.MaxSize': max
+          })
 
     iq_event, return_event = q.expect_many(
     EventPattern('stream-iq', to='gadget.localhost',
         query_ns=NS_OLPC_ACTIVITY),
-    EventPattern('dbus-return', method='RequestRandomActivities'))
+    EventPattern('dbus-return', method='CreateChannel'))
 
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == id
+    assert view['size'] == str(max)
     random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
-    assert len(random) == 1
-    assert random[0]['max'] == str(max)
 
     send_reply_to_activity_view_request(stream, iq_event.stanza, activities)
 
+    props = return_event.value[1]
+    assert props['org.laptop.Telepathy.Channel.Type.ActivityView.Properties'] == {}
+    assert props['org.laptop.Telepathy.Channel.Type.ActivityView.Participants'] == []
+
     return return_event.value[0]
 
-def close_view(q, view_iface, id):
-    call_async(q, view_iface, 'Close')
+def close_view(q, view, id):
+    chan_iface = dbus.Interface(view, 'org.freedesktop.Telepathy.Channel')
+    call_async(q, chan_iface, 'Close')
     event, _, _ = q.expect_many(
         EventPattern('stream-message', to='gadget.localhost'),
         EventPattern('dbus-signal', signal='Closed'),

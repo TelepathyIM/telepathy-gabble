@@ -37,7 +37,6 @@
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "presence.h"
-#include "sha1/sha1.h"
 #include "util.h"
 
 typedef struct _DataFormField DataFormField;

@@ -61,7 +61,9 @@ def test(q, bus, conn, stream):
                 'org.freedesktop.Telepathy.Channel.Type.Tubes',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle'],
+             ['org.freedesktop.Telepathy.Channel.TargetHandle',
+              'org.freedesktop.Telepathy.Channel.TargetID',
+             ]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 

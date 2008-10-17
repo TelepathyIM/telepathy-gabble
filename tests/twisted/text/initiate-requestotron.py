@@ -59,11 +59,11 @@ def test(q, bus, conn, stream):
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
             foo_handle
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == jid
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'Requested'] == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'InitiatorHandle'] == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'InitiatorID'] == 'test@localhost'
 
     assert old_sig.args[0] == ret.value[0]

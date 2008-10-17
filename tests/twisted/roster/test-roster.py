@@ -49,14 +49,9 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
     assert channel_props['TargetID'] == name, channel_props
-
-    # Exercise FUTURE properties
-    future_props = chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == False
-    assert future_props['InitiatorID'] == ''
-    assert future_props['InitiatorHandle'] == 0
+    assert channel_props['Requested'] == False
+    assert channel_props['InitiatorID'] == ''
+    assert channel_props['InitiatorHandle'] == 0
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = chan.GetAll(

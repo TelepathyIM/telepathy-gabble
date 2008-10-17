@@ -84,13 +84,13 @@ def test(q, bus, conn, stream):
 
     # request a activity view containing only Bob and one
     # activity in it.
-    request_random_activity_view(q, stream, conn, 1, '0',
+    request_random_activity_view(q, stream, conn, 1, '1',
         [('activity3', 'room3@conference.localhost', {},
             [('bob@localhost', {}),]),])
 
     # Gadget sends us a current-activity change concerning a
     # known activity
-    send_gadget_current_activity_changed_msg(stream, 'bob@localhost', '0',
+    send_gadget_current_activity_changed_msg(stream, 'bob@localhost', '1',
         'activity3', 'room3@conference.localhost')
 
     # Gadget notifies us about the change
@@ -108,7 +108,7 @@ def test(q, bus, conn, stream):
 
     # Gadget sends us a current-activity change concerning an
     # unknown activity
-    send_gadget_current_activity_changed_msg(stream, 'bob@localhost', '0',
+    send_gadget_current_activity_changed_msg(stream, 'bob@localhost', '1',
         'activity4', 'room4@conference.localhost')
 
     # Gadget changed Alice's current-activity to none as it doesn't

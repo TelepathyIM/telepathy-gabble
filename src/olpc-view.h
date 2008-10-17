@@ -1,5 +1,5 @@
 /*
- * olpc-view.h - Header for GabbleOlpcView
+ * olpc-buddy-view.h - Header for GabbleOlpcView
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -29,22 +29,28 @@
 
 G_BEGIN_DECLS
 
-typedef enum
-{
-  GABBLE_OLPC_VIEW_TYPE_BUDDY,
-  GABBLE_OLPC_VIEW_TYPE_ACTIVITY,
-  NUM_GABBLE_OLPC_VIEW_TYPE
-} GabbleOlpcViewType;
-
-typedef struct _GabbleOlpcView GabbleOlpcView;
 typedef struct _GabbleOlpcViewClass GabbleOlpcViewClass;
 
 struct _GabbleOlpcViewClass {
   GObjectClass parent_class;
+
+  TpDBusPropertiesMixinClass dbus_props_class;
+
+  /* private abstract methods */
+  LmMessage * (*create_close_msg) (GabbleOlpcView *self);
+
+  /* public abstract methods */
+  gboolean (*send_request) (GabbleOlpcView *view, GError **error);
 };
 
 struct _GabbleOlpcView {
   GObject parent;
+
+  /* protected variables */
+  gchar *object_path;
+  GabbleConnection *conn;
+  guint id;
+  guint max_size;
 
   gpointer priv;
 };
@@ -67,8 +73,8 @@ GType gabble_olpc_view_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_OLPC_VIEW,\
                               GabbleOlpcViewClass))
 
-GabbleOlpcView * gabble_olpc_view_new (GabbleConnection *conn,
-    GabbleOlpcViewType type, guint id);
+gboolean gabble_olpc_view_send_request (GabbleOlpcView *view,
+    GError **error);
 
 void gabble_olpc_view_add_buddies (GabbleOlpcView *self,
     GArray *handles, GPtrArray *buddies_properties, TpHandle room);
@@ -94,7 +100,10 @@ GPtrArray * gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
 void gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
     GArray *buddies, TpHandle room);
 
-gboolean gabble_olpc_view_close (GabbleOlpcView *self, GError **error);
+void gabble_olpc_view_close (GabbleOlpcView *self);
+
+#define GABBLE_ARRAY_TYPE_HANDLE (dbus_g_type_get_collection ("GArray", \
+    G_TYPE_UINT))
 
 G_END_DECLS
 

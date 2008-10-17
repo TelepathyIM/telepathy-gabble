@@ -73,14 +73,9 @@ def test(q, bus, conn, stream):
     assert channel_props['TargetHandle'] == remote_handle
     assert channel_props['TargetHandleType'] == 1
     assert channel_props['TargetID'] == 'foo@bar.com'
-
-    # Exercise FUTURE properties
-    future_props = media_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['TargetID'] == ''
-    assert future_props['InitiatorID'] == 'foo@bar.com'
-    assert future_props['InitiatorHandle'] == remote_handle
+    assert channel_props['InitiatorID'] == 'foo@bar.com'
+    assert channel_props['InitiatorHandle'] == remote_handle
+    assert channel_props['Requested'] == False
 
     media_chan.AddMembers([dbus.UInt32(1)], 'accepted')
 

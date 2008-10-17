@@ -70,6 +70,7 @@ def check_conn_properties(q, bus, conn, stream, channel_list=None):
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
              ['org.freedesktop.Telepathy.Channel.TargetHandle',
+              'org.freedesktop.Telepathy.Channel.TargetID',
              ]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
@@ -78,6 +79,7 @@ def check_conn_properties(q, bus, conn, stream, channel_list=None):
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
              ['org.freedesktop.Telepathy.Channel.TargetHandle',
+              'org.freedesktop.Telepathy.Channel.TargetID',
               'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters',
               'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service',
              ]
@@ -103,6 +105,9 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
             channel_props['Interfaces'], \
             channel_props['Interfaces']
     assert channel_props['TargetID'] == contact_id
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == self_handle
 
     if channel_type == "Tubes":
         assert state is None
@@ -117,16 +122,6 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         assert tube_props['Initiator'] is not None
 
     self_handle = conn.GetSelfHandle()
-
-    # Exercise FUTURE properties
-    # on the channel of type channel_type
-    future_props = channel.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == self_handle
-
 
 def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
     assert old_sig[0] == chan_path
@@ -150,10 +145,10 @@ def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
             contact_handle
     assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
             contact_id
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+    assert emitted_props[tp_name_prefix + '.Channel.Requested'] == True
+    assert emitted_props[tp_name_prefix + '.Channel.InitiatorHandle'] \
             == initiator_handle
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] == \
+    assert emitted_props[tp_name_prefix + '.Channel.InitiatorID'] == \
             'test@localhost'
 
 

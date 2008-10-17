@@ -34,7 +34,6 @@
 #include "presence.h"
 #include "presence-cache.h"
 #include "namespaces.h"
-#include "sha1/sha1.h"
 #include "vcard-manager.h"
 #include "util.h"
 

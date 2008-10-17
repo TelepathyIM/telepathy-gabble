@@ -72,10 +72,10 @@ def test(q, bus, conn, stream):
     assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 0
     assert props[tp_name_prefix + '.Channel.TargetHandle'] == 0
     assert props[tp_name_prefix + '.Channel.TargetID'] == ''
-    assert props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+    assert props[tp_name_prefix + '.Channel.Requested'] == True
+    assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
             == conn.GetSelfHandle()
-    assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] \
+    assert props[tp_name_prefix + '.Channel.InitiatorID'] \
             == 'test@localhost'
     assert props[tp_name_prefix + '.Channel.Type.RoomList.Server'] == \
             'conf.localhost'
@@ -98,17 +98,9 @@ def test(q, bus, conn, stream):
     assert channel_props.get('ChannelType') == \
             tp_name_prefix + '.Channel.Type.RoomList',\
             channel_props.get('ChannelType')
-    assert 'Interfaces' in channel_props
-    assert tp_name_prefix + '.Channel.FUTURE' in \
-            channel_props['Interfaces']
-
-    # Exercise FUTURE properties
-    future_props = chan.GetAll(
-            tp_name_prefix + '.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     assert chan.Get(
             tp_name_prefix + '.Channel.Type.RoomList', 'Server',
@@ -141,10 +133,10 @@ def test(q, bus, conn, stream):
     assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 0
     assert props[tp_name_prefix + '.Channel.TargetHandle'] == 0
     assert props[tp_name_prefix + '.Channel.TargetID'] == ''
-    assert props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+    assert props[tp_name_prefix + '.Channel.Requested'] == True
+    assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
             == conn.GetSelfHandle()
-    assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] \
+    assert props[tp_name_prefix + '.Channel.InitiatorID'] \
             == 'test@localhost'
     assert props[tp_name_prefix + '.Channel.Type.RoomList.Server'] == \
             'conference.example.net'

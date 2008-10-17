@@ -93,11 +93,11 @@ def test(q, bus, conn, stream):
             handle
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] ==\
             'foo@bar.com', emitted_props
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'Requested'] == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'InitiatorHandle'] == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'InitiatorID'] == 'test@localhost'
 
 
@@ -157,12 +157,12 @@ def test(q, bus, conn, stream):
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
             0
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == ''
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
-            'Requested'] == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
-            'InitiatorHandle'] == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
-            'InitiatorID'] == 'test@localhost'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.Requested']\
+            == True
+    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorHandle']\
+            == self_handle
+    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorID'] \
+            == 'test@localhost'
 
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
 

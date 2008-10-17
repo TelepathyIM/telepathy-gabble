@@ -60,6 +60,7 @@
 #include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
+#include "olpc-gadget-manager.h"
 #include "presence-cache.h"
 #include "presence.h"
 #include "pubsub.h"
@@ -225,6 +226,11 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
       g_object_new (GABBLE_TYPE_MEDIA_FACTORY,
         "connection", self,
         NULL));
+
+  self->olpc_gadget_manager = g_object_new (GABBLE_TYPE_OLPC_GADGET_MANAGER,
+      "connection", self,
+      NULL);
+  g_ptr_array_add (channel_managers, self->olpc_gadget_manager);
 
   return channel_managers;
 }

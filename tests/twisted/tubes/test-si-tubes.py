@@ -107,7 +107,8 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
     assert channel_props['TargetID'] == contact_id
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == self_handle
+    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
+
 
     if channel_type == "Tubes":
         assert state is None
@@ -120,8 +121,6 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         # no strict check but at least check the properties exist
         assert tube_props['Parameters'] is not None
         assert tube_props['Initiator'] is not None
-
-    self_handle = conn.GetSelfHandle()
 
 def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
     assert old_sig[0] == chan_path

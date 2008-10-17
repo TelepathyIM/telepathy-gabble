@@ -65,8 +65,9 @@ sha1_bin (const gchar *bytes,
 
   g_assert (g_checksum_type_get_length (G_CHECKSUM_SHA1) == SHA1_HASH_SIZE);
   g_checksum_update (checksum, (const guchar *) bytes, len);
-  g_checksum_get_digest (checksum, out, &len);
+  g_checksum_get_digest (checksum, out, &out_len);
   g_assert (out_len == SHA1_HASH_SIZE);
+  g_checksum_free (checksum);
 }
 
 static void

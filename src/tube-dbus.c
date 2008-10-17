@@ -428,7 +428,11 @@ gabble_tube_dbus_dispose (GObject *object)
     }
 
   if (priv->dbus_srv)
-    dbus_server_unref (priv->dbus_srv);
+    {
+      dbus_server_disconnect (priv->dbus_srv);
+      dbus_server_unref (priv->dbus_srv);
+      priv->dbus_srv = NULL;
+    }
 
   if (priv->socket_path != NULL)
     {

@@ -63,7 +63,7 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     # receive presence from Charles
-    send_presence(stream, 'charles@localhost', 'dnd', 'Hacking on Sugar')
+    send_presence(stream, 'charles@localhost/Telepathy', 'dnd', 'Hacking on Sugar')
 
     event, _ = q.expect_many(
         EventPattern('dbus-signal', signal='PresencesChanged'),

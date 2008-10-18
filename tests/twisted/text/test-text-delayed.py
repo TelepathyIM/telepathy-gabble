@@ -8,6 +8,7 @@ import datetime
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
+from servicetest import EventPattern
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -31,10 +32,25 @@ def test(q, bus, conn, stream):
     jid = conn.InspectHandles(1, [event.args[3]])[0]
     assert jid == 'foo@bar.com'
 
-    event = q.expect('dbus-signal', signal='Received')
-    assert (str(datetime.datetime.utcfromtimestamp(event.args[1]))
+    received, message_received = q.expect_many(
+        EventPattern('dbus-signal', signal='Received'),
+        EventPattern('dbus-signal', signal='MessageReceived'),
+        )
+
+    assert (str(datetime.datetime.utcfromtimestamp(received.args[1]))
         == '2007-05-17 16:15:01')
-    assert event.args[5] == 'hello'
+    assert received.args[5] == 'hello'
+
+    message = message_received.args[0]
+    header = message[0]
+    message_sent_timestamp = header['message-sent']
+    assert str(datetime.datetime.utcfromtimestamp(message_sent_timestamp)
+        == '2007-05-17 16:15:01'), headers
+    message_received_timestamp = header['message-received']
+    assert message_received_timestamp > message_sent_timestamp, headers
+
+    assert message[1]['content'] == 'hello', message
+
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

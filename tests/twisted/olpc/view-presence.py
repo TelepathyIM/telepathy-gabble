@@ -12,19 +12,7 @@ from twisted.words.protocols.jabber.client import IQ
 
 from util import (announce_gadget, properties_to_xml, parse_properties,
     create_gadget_message, close_view, elem)
-
-NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
-NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
-NS_OLPC_CURRENT_ACTIVITY = "http://laptop.org/xmpp/current-activity"
-NS_OLPC_ACTIVITY_PROPS = "http://laptop.org/xmpp/activity-properties"
-NS_OLPC_BUDDY = "http://laptop.org/xmpp/buddy"
-NS_OLPC_ACTIVITY = "http://laptop.org/xmpp/activity"
-
-NS_PUBSUB = "http://jabber.org/protocol/pubsub"
-NS_DISCO_INFO = "http://jabber.org/protocol/disco#info"
-NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
-
-NS_AMP = "http://jabber.org/protocol/amp"
+import ns
 
 tp_name_prefix = 'org.freedesktop.Telepathy'
 olpc_name_prefix = 'org.laptop.Telepathy'
@@ -37,7 +25,7 @@ def send_presence(stream, from_, type, msg):
 
 def remove_buddy_from_view(stream, id, jid):
     message = create_gadget_message("test@localhost")
-    added = message.addElement((NS_OLPC_BUDDY, 'removed'))
+    added = message.addElement((ns.OLPC_BUDDY, 'removed'))
     added['id'] = id
     buddy = added.addElement((None, 'buddy'))
     buddy['jid'] = jid
@@ -50,7 +38,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
-        EventPattern('stream-iq', to='localhost', query_ns=NS_DISCO_ITEMS))
+        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
 
     acknowledge_iq(stream, iq_event.stanza)
 
@@ -87,7 +75,7 @@ def test(q, bus, conn, stream):
 
     iq_event, return_event, new_channels_event, new_channel_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_BUDDY),
+            query_ns=ns.OLPC_BUDDY),
         EventPattern('dbus-return', method='CreateChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         EventPattern('dbus-signal', signal='NewChannel'))
@@ -186,7 +174,7 @@ def test(q, bus, conn, stream):
 
     iq_event, return_event, new_channels_event, new_channel_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_BUDDY),
+            query_ns=ns.OLPC_BUDDY),
         EventPattern('dbus-return', method='CreateChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         EventPattern('dbus-signal', signal='NewChannel'))

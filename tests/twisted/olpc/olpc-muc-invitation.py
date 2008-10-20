@@ -8,6 +8,7 @@ from twisted.words.xish import domish, xpath
 
 from gabbletest import go, make_result_iq, exec_test
 from servicetest import call_async, EventPattern
+import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -37,7 +38,7 @@ def test(q, bus, conn, stream):
     message['from'] = 'bob@localhost'
     message['to'] = 'test@localhost'
     properties = message.addElement(
-        ('http://laptop.org/xmpp/activity-properties', 'properties'))
+        (ns.OLPC_ACTIVITY_PROPS, 'properties'))
     properties['room'] = 'chat@conf.localhost'
     properties['activity'] = 'foo_id'
     property = properties.addElement((None, 'property'))
@@ -68,7 +69,7 @@ def test(q, bus, conn, stream):
     message = domish.Element((None, 'message'))
     message['from'] = 'chat@conf.localhost'
     message['to'] = 'test@localhost'
-    x = message.addElement(('http://jabber.org/protocol/muc#user', 'x'))
+    x = message.addElement((ns.MUC_USER, 'x'))
     invite = x.addElement((None, 'invite'))
     invite['from'] = 'bob@localhost'
     reason = invite.addElement((None, 'reason'))
@@ -130,7 +131,7 @@ def test(q, bus, conn, stream):
     # Send presence for own membership of room.
     presence = domish.Element((None, 'presence'))
     presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
+    x = presence.addElement((ns.MUC_USER, 'x'))
     item = x.addElement('item')
     item['affiliation'] = 'owner'
     item['role'] = 'moderator'
@@ -168,7 +169,7 @@ def test(q, bus, conn, stream):
 
     properties = xpath.queryForNodes('/message/properties', message)
     assert (properties is not None and len(properties) == 1), repr(properties)
-    assert properties[0].uri == 'http://laptop.org/xmpp/activity-properties'
+    assert properties[0].uri == ns.OLPC_ACTIVITY_PROPS
     assert properties[0]['room'] == 'chat@conf.localhost'
     assert properties[0]['activity'] == 'foo_id'
 
@@ -193,7 +194,7 @@ def test(q, bus, conn, stream):
 
     x = xpath.queryForNodes('/message/x', message)
     assert (x is not None and len(x) == 1), repr(x)
-    assert x[0].uri == 'http://jabber.org/protocol/muc#user'
+    assert x[0].uri == ns.MUC_USER
 
     invites = xpath.queryForNodes('/x/invite', x[0])
     assert (invites is not None and len(invites) == 1), repr(invites)
@@ -211,7 +212,7 @@ def test(q, bus, conn, stream):
 
     properties = xpath.queryForNodes('/message/properties', message)
     assert (properties is not None and len(properties) == 1), repr(properties)
-    assert properties[0].uri == 'http://laptop.org/xmpp/activity-properties'
+    assert properties[0].uri == ns.OLPC_ACTIVITY_PROPS
     assert properties[0]['room'] == 'chat@conf.localhost'
     assert properties[0]['activity'] == 'foo_id'
 

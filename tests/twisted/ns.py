@@ -1,6 +1,8 @@
 AMP = "http://jabber.org/protocol/amp"
 DISCO_INFO = "http://jabber.org/protocol/disco#info"
 DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
+MUC = 'http://jabber.org/protocol/muc'
+MUC_USER = '%s#user' % MUC
 OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
 OLPC_ACTIVITIES_NOTIFY = "%s+notify" % OLPC_ACTIVITIES
 OLPC_ACTIVITY = "http://laptop.org/xmpp/activity"

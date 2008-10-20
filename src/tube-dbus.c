@@ -416,18 +416,18 @@ gabble_tube_dbus_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->bytestream)
+  if (priv->bytestream != NULL)
     {
       gabble_bytestream_iface_close (priv->bytestream, NULL);
     }
 
-  if (priv->dbus_conn)
+  if (priv->dbus_conn != NULL)
     {
       dbus_connection_close (priv->dbus_conn);
       dbus_connection_unref (priv->dbus_conn);
     }
 
-  if (priv->dbus_srv)
+  if (priv->dbus_srv != NULL)
     {
       dbus_server_disconnect (priv->dbus_srv);
       dbus_server_unref (priv->dbus_srv);

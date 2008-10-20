@@ -26,12 +26,12 @@ def test(q, bus, conn, stream):
     m['from'] = 'alice@jabber.laptop.org'
     m['id'] = '1'
     query = m.addElement('query')
-    query['xmlns'] = 'http://jabber.org/protocol/disco#info'
+    query['xmlns'] = ns.DISCO_INFO
     stream.send(m)
 
     # wait for disco response
     event = q.expect('stream-iq', iq_type='result',
-            query_ns='http://jabber.org/protocol/disco#info',
+            query_ns=ns.DISCO_INFO,
             to='alice@jabber.laptop.org')
 
     features = set([str(f['var']) for f in xpath.queryForNodes('/iq/query/feature',
@@ -56,12 +56,12 @@ def test(q, bus, conn, stream):
     m['from'] = 'alice@jabber.laptop.org'
     m['id'] = '2'
     query = m.addElement('query')
-    query['xmlns'] = 'http://jabber.org/protocol/disco#info'
+    query['xmlns'] = ns.DISCO_INFO
     stream.send(m)
 
     # wait for disco response
     event = q.expect('stream-iq', iq_type='result',
-        query_ns='http://jabber.org/protocol/disco#info',
+        query_ns=ns.DISCO_INFO,
         to='alice@jabber.laptop.org')
     assert event.stanza['id'] == '2'
 

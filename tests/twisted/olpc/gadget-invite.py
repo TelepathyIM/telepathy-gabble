@@ -11,26 +11,13 @@ from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 
 from util import announce_gadget
-
-NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
-NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
-NS_OLPC_CURRENT_ACTIVITY = "http://laptop.org/xmpp/current-activity"
-NS_OLPC_ACTIVITY_PROPS = "http://laptop.org/xmpp/activity-properties"
-NS_OLPC_BUDDY = "http://laptop.org/xmpp/buddy"
-NS_OLPC_ACTIVITY = "http://laptop.org/xmpp/activity"
-
-NS_PUBSUB = "http://jabber.org/protocol/pubsub"
-NS_DISCO_INFO = "http://jabber.org/protocol/disco#info"
-NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
-
-
-NS_AMP = "http://jabber.org/protocol/amp"
+import ns
 
 def join_channel(name, q, conn, stream):
     call_async(q, conn, 'RequestHandles', 2, [name])
 
     # announce conference service
-    event = q.expect('stream-iq', to='conference.localhost', query_ns=NS_DISCO_INFO)
+    event = q.expect('stream-iq', to='conference.localhost', query_ns=ns.DISCO_INFO)
     reply = make_result_iq(stream, event.stanza)
     feature = reply.firstChildElement().addElement('feature')
     feature['var'] = 'http://jabber.org/protocol/muc'
@@ -62,7 +49,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
-        EventPattern('stream-iq', to='localhost', query_ns=NS_DISCO_ITEMS))
+        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
 
     acknowledge_iq(stream, iq_event.stanza)
     announce_gadget(q, stream, disco_event.stanza)
@@ -80,7 +67,7 @@ def test(q, bus, conn, stream):
 
     # pubsub activity iq
     event = q.expect('stream-iq', iq_type='set', query_name='pubsub',
-        query_ns=NS_PUBSUB)
+        query_ns=ns.PUBSUB)
     acknowledge_iq(stream, event.stanza)
 
     event = q.expect('dbus-return', method='SetActivities')

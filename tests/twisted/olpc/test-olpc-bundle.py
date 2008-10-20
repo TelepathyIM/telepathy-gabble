@@ -6,14 +6,10 @@ from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
+import ns
 
-NS_OLPC_BUDDY_PROPS_NOTIFY = "http://laptop.org/xmpp/buddy-properties+notify"
-NS_OLPC_ACTIVITIES_NOTIFY = "http://laptop.org/xmpp/activities+notify"
-NS_OLPC_CURRENT_ACTIVITY_NOTIFY = "http://laptop.org/xmpp/current-activity+notify"
-NS_OLPC_ACTIVITY_PROPS_NOTIFY = "http://laptop.org/xmpp/activity-properties+notify"
-
-olpc_features = set([NS_OLPC_BUDDY_PROPS_NOTIFY, NS_OLPC_ACTIVITIES_NOTIFY,
-        NS_OLPC_CURRENT_ACTIVITY_NOTIFY, NS_OLPC_ACTIVITY_PROPS_NOTIFY])
+olpc_features = set([ns.OLPC_BUDDY_PROPS_NOTIFY, ns.OLPC_ACTIVITIES_NOTIFY,
+        ns.OLPC_CURRENT_ACTIVITY_NOTIFY, ns.OLPC_ACTIVITY_PROPS_NOTIFY])
 
 def test(q, bus, conn, stream):
     conn.Connect()

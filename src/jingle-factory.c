@@ -72,9 +72,8 @@ struct _GabbleJingleFactoryPrivate
 #define GABBLE_JINGLE_FACTORY_GET_PRIVATE(o)\
   ((GabbleJingleFactoryPrivate *) ((o)->priv))
 
-static LmHandlerResult
-jingle_cb (LmMessageHandler *handler, LmConnection *lmconn,
-    LmMessage *message, gpointer user_data);
+static LmHandlerResult jingle_cb (LmMessageHandler *handler,
+    LmConnection *lmconn, LmMessage *message, gpointer user_data);
 static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     const gchar *sid, TpHandle peer, const gchar *peer_resource);
 

@@ -482,7 +482,7 @@ _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
       c = g_hash_table_lookup (priv->contents, name);
 
       func (sess, c, content_node, error);
-      if (*error)
+      if (*error != NULL)
         return;
     }
 }
@@ -499,7 +499,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
   GType content_type = 0;
   const gchar *content_ns = NULL;
 
-  if (desc_node)
+  if (desc_node != NULL)
     {
       content_ns = lm_message_node_get_attribute (desc_node, "xmlns");
       content_type =
@@ -554,7 +554,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
     ((priv->dialect == JINGLE_DIALECT_GTALK3) ||
     (priv->dialect == JINGLE_DIALECT_GTALK4)), error);
 
-  if (*error)
+  if (*error != NULL)
     {
       g_object_unref (c);
       return;
@@ -609,7 +609,7 @@ _each_content_modify (GabbleJingleSession *sess, GabbleJingleContent *c,
 
   gabble_jingle_content_update_senders (c, content_node, error);
 
-  if (*error)
+  if (*error != NULL)
     return;
 }
 
@@ -619,7 +619,7 @@ _each_content_replace (GabbleJingleSession *sess, GabbleJingleContent *c,
 {
   _each_content_remove (sess, c, content_node, error);
 
-  if (*error)
+  if (*error != NULL)
     return;
 
   _each_content_add (sess, c, content_node, error);
@@ -749,7 +749,7 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
       _foreach_content (sess, node, _each_content_accept, error);
     }
 
-  if (*error)
+  if (*error != NULL)
       return;
 
   set_state (sess, JS_STATE_ACTIVE);
@@ -997,7 +997,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
 
   jingle_state_machine_dance (sess, action, session_node, error);
 
-  if (*error)
+  if (*error != NULL)
     return NULL;
 
   return sid;

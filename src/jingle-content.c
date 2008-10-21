@@ -526,7 +526,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
     }
 
   parse_description (c, desc_node, error);
-  if (*error)
+  if (*error != NULL)
       return;
 
   disposition = lm_message_node_get_attribute (content_node, "disposition");
@@ -611,7 +611,7 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
     }
 
   parse_description (c, desc_node, error);
-  if (*error)
+  if (*error != NULL)
       return;
 
   g_object_notify ((GObject *) c, "senders");

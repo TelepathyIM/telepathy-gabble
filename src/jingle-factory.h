@@ -116,9 +116,6 @@ struct _GabbleJingleFactoryClass {
     GObjectClass parent_class;
 };
 
-typedef GabbleJingleContent * (*JingleContentMaker) (GabbleJingleSession *);
-typedef GabbleJingleTransportIface * (*JingleTransportMaker) (GabbleJingleContent *);
-
 struct _GabbleJingleFactory {
     GObject parent;
 

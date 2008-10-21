@@ -253,6 +253,9 @@ parse_description (GabbleJingleContent *content,
     }
   else
     {
+      /* If we get here, namespace in use is not one of
+       * namespaces we signed up with, so obviously a bug
+       * somewhere. */
       g_assert_not_reached ();
     }
 
@@ -364,31 +367,33 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 
   desc_node = lm_message_node_add_child (content_node, "description", NULL);
 
-  switch (dialect) {
-    case JINGLE_DIALECT_GTALK3:
-    case JINGLE_DIALECT_GTALK4:
-      g_assert (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO);
-      xmlns = NS_GOOGLE_SESSION_PHONE;
-      break;
-    case JINGLE_DIALECT_V015:
-      if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
-          xmlns = NS_JINGLE_DESCRIPTION_AUDIO;
-      else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
-          xmlns = NS_JINGLE_DESCRIPTION_VIDEO;
-      else
-          g_assert_not_reached ();
-      break;
-    case JINGLE_DIALECT_V026:
-      xmlns = "urn:xmpp:tmp:jingle:apps:rtp";
-      if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
-          lm_message_node_set_attribute (desc_node, "media", "audio");
-      else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
-          lm_message_node_set_attribute (desc_node, "media", "video");
-      else
-          g_assert_not_reached ();
-      break;
-    default:
-      g_assert_not_reached ();
+  switch (dialect)
+    {
+      case JINGLE_DIALECT_GTALK3:
+      case JINGLE_DIALECT_GTALK4:
+        g_assert (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO);
+        xmlns = NS_GOOGLE_SESSION_PHONE;
+        break;
+      case JINGLE_DIALECT_V015:
+        if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+            xmlns = NS_JINGLE_DESCRIPTION_AUDIO;
+        else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+            xmlns = NS_JINGLE_DESCRIPTION_VIDEO;
+        else
+          {
+            DEBUG ("unknown media type %u", priv->media_type);
+            xmlns = "";
+          }
+        break;
+      default:
+        xmlns = "urn:xmpp:tmp:jingle:apps:rtp";
+        if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+            lm_message_node_set_attribute (desc_node, "media", "audio");
+        else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+            lm_message_node_set_attribute (desc_node, "media", "video");
+        else
+            g_assert_not_reached ();
+        break;
     }
 
   lm_message_node_set_attribute (desc_node, "xmlns", xmlns);

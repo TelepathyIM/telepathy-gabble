@@ -77,7 +77,7 @@ struct _GabbleJingleTransportGooglePrivate
    * if all of them are transmitted. */
 
   GList *pending_candidates;
-  // GList *remote_candidates;
+  GList *remote_candidates;
   gboolean dispose_has_run;
 };
 
@@ -127,8 +127,8 @@ gabble_jingle_transport_google_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  // _free_candidates (priv->remote_candidates); // FIXME: huge bug, malloc/free hell
-  // priv->remote_candidates = NULL;
+  _free_candidates (priv->remote_candidates); // FIXME: huge bug, malloc/free hell
+  priv->remote_candidates = NULL;
 
   _free_candidates (priv->local_candidates);
   priv->local_candidates = NULL;
@@ -254,15 +254,16 @@ static void
 parse_candidates (GabbleJingleTransportIface *obj,
     LmMessageNode *transport_node, GError **error)
 {
-//  GabbleJingleTransportGoogle *t = GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
-//  GabbleJingleTransportGooglePrivate *priv =
-//    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (t);
+  GabbleJingleTransportGoogle *t = GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
+  GabbleJingleTransportGooglePrivate *priv =
+    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (t);
   GList *candidates = NULL;
   LmMessageNode *node;
 
   DEBUG ("called");
 
 #if 0
+  // FIXME do we need this?
   if (!tp_strdiff (transport_node->name, "candidate"))
     {
       JingleDialect dialect;
@@ -392,13 +393,13 @@ parse_candidates (GabbleJingleTransportIface *obj,
       gen = atoi (str);
 
       c = g_new0 (JingleCandidate, 1);
-      c->address = (gchar *) address;
+      c->address = g_strdup (address);
       c->port = port;
       c->protocol = proto;
       c->preference = pref;
       c->type = ctype;
-      c->username = (gchar *) user;
-      c->password = (gchar *) pass;
+      c->username = g_strdup (user);
+      c->password = g_strdup (pass);
       c->network = net;
       c->generation = gen;
 
@@ -430,7 +431,8 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
   /* OK this sucks, do we really need to save it? if we want to save it we
    * can't borrow the strings, malloc hell ensues */
-  // priv->remote_candidates = g_list_concat (priv->remote_candidates, candidates);
+  /* we need to free the fields, make a custom function for it */
+  priv->remote_candidates = g_list_concat (priv->remote_candidates, candidates);
 }
 
 static void
@@ -569,17 +571,6 @@ retransmit_candidates (GabbleJingleTransportIface *obj)
     GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
   GabbleJingleTransportGooglePrivate *priv =
     GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
-  gboolean ready;
-  JingleSessionState state;
-
-  g_object_get (priv->content, "ready", &ready, NULL);
-  g_object_get (priv->content->session, "state", &state, NULL);
-
-  g_assert (ready);
-
-  if (state < JS_STATE_PENDING_INITIATE_SENT)
-    {
-    }
 
   /* now transmit all pending candidates */
   if (priv->pending_candidates != NULL) {
@@ -588,6 +579,16 @@ retransmit_candidates (GabbleJingleTransportIface *obj)
   }
 }
 
+static GList *
+get_remote_candidates (GabbleJingleTransportIface *iface)
+{
+  GabbleJingleTransportGoogle *transport =
+    GABBLE_JINGLE_TRANSPORT_GOOGLE (iface);
+  GabbleJingleTransportGooglePrivate *priv =
+    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
+
+  return priv->remote_candidates;
+}
 
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data)
@@ -598,6 +599,7 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   // FIXME: klass->produce = produce_candidates;
   klass->add_candidates = add_candidates;
   klass->retransmit_candidates = retransmit_candidates;
+  klass->get_remote_candidates = get_remote_candidates;
 }
 
 void

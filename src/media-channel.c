@@ -26,18 +26,16 @@
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-properties-interface.h>
 
-#include "extensions/extensions.h"
-
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
 #include "debug.h"
-#include "exportable-channel.h"
 #include "media-factory.h"
 #include "media-session.h"
 #include "media-session.h"
@@ -54,7 +52,6 @@ static void streamed_media_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CALL_STATE,
       call_state_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
@@ -69,7 +66,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
       tp_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 static const gchar *gabble_media_channel_interfaces[] = {
@@ -77,7 +74,6 @@ static const gchar *gabble_media_channel_interfaces[] = {
     appear in GetInterfaces' output to avoid confusing clients
     TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
     */
-    GABBLE_IFACE_CHANNEL_FUTURE,
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_HOLD,
     TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
@@ -93,6 +89,8 @@ enum
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
   PROP_TARGET_ID,
+  PROP_INITIAL_PEER,
+  PROP_PEER,
   PROP_REQUESTED,
   PROP_CONNECTION,
   PROP_CREATOR,
@@ -132,6 +130,7 @@ struct _GabbleMediaChannelPrivate
   GabbleConnection *conn;
   gchar *object_path;
   TpHandle creator;
+  TpHandle initial_peer;
 
   GabbleMediaFactory *factory;
   GabbleMediaSession *session;
@@ -142,8 +141,9 @@ struct _GabbleMediaChannelPrivate
   TpLocalHoldState hold_state;
   TpLocalHoldStateReason hold_state_reason;
 
-  gboolean closed:1;
-  gboolean dispose_has_run:1;
+  /* These are really booleans, but gboolean is signed. Thanks, GLib */
+  unsigned closed:1;
+  unsigned dispose_has_run:1;
 };
 
 #define GABBLE_MEDIA_CHANNEL_GET_PRIVATE(obj) (obj->priv)
@@ -400,14 +400,53 @@ gabble_media_channel_get_property (GObject    *object,
       g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
       break;
     case PROP_HANDLE_TYPE:
-      g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
+      /* This is used to implement TargetHandleType, which is immutable.  If
+       * the peer was known at channel-creation time, this will be Contact;
+       * otherwise, it must be None even if we subsequently learn who the peer
+       * is.
+       */
+      if (priv->initial_peer != 0)
+        g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+      else
+        g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
       break;
+    case PROP_INITIAL_PEER:
     case PROP_HANDLE:
-      g_value_set_uint (value, 0);
+      /* As above: TargetHandle is immutable, so non-0 only if the peer handle
+       * was known at creation time.
+       */
+      g_value_set_uint (value, priv->initial_peer);
       break;
     case PROP_TARGET_ID:
-      g_value_set_static_string (value, "");
+      /* As above. */
+      if (priv->initial_peer != 0)
+        {
+          TpHandleRepoIface *repo = tp_base_connection_get_handles (
+              base_conn, TP_HANDLE_TYPE_CONTACT);
+          const gchar *target_id = tp_handle_inspect (repo, priv->initial_peer);
+
+          g_value_set_string (value, target_id);
+        }
+      else
+        {
+          g_value_set_static_string (value, "");
+        }
+
       break;
+    case PROP_PEER:
+      {
+        TpHandle peer = 0;
+
+        if (priv->initial_peer != 0)
+          peer = priv->initial_peer;
+        else if (priv->session != NULL)
+          g_object_get (priv->session,
+              "peer", &peer,
+              NULL);
+
+        g_value_set_uint (value, peer);
+        break;
+      }
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
@@ -435,15 +474,15 @@ gabble_media_channel_get_property (GObject    *object,
       g_value_set_boolean (value, priv->closed);
       break;
     case PROP_CHANNEL_PROPERTIES:
-      g_value_set_boxed (value,
-          gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+      g_value_take_boxed (value,
+          tp_dbus_properties_mixin_make_properties_hash (object,
               TP_IFACE_CHANNEL, "TargetHandle",
               TP_IFACE_CHANNEL, "TargetHandleType",
               TP_IFACE_CHANNEL, "ChannelType",
-              GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
-              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
-              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
-              GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+              TP_IFACE_CHANNEL, "TargetID",
+              TP_IFACE_CHANNEL, "InitiatorHandle",
+              TP_IFACE_CHANNEL, "InitiatorID",
+              TP_IFACE_CHANNEL, "Requested",
               NULL));
       break;
     default:
@@ -498,6 +537,9 @@ gabble_media_channel_set_property (GObject     *object,
     case PROP_FACTORY:
       priv->factory = g_value_get_object (value);
       break;
+    case PROP_INITIAL_PEER:
+      priv->initial_peer = g_value_get_uint (value);
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -529,13 +571,10 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   static TpDBusPropertiesMixinPropImpl channel_props[] = {
       { "TargetHandleType", "handle-type", NULL },
       { "TargetHandle", "handle", NULL },
+      { "TargetID", "target-id", NULL },
       { "ChannelType", "channel-type", NULL },
       { "Interfaces", "interfaces", NULL },
-      { NULL }
-  };
-  static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "Requested", "requested", NULL },
-      { "TargetID", "target-id", NULL },
       { "InitiatorHandle", "creator", NULL },
       { "InitiatorID", "creator-id", NULL },
       { NULL }
@@ -545,11 +584,6 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
-      },
-      { GABBLE_IFACE_CHANNEL_FUTURE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        future_props,
       },
       { NULL }
   };
@@ -583,80 +617,85 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   param_spec = g_param_spec_string ("target-id", "Target JID",
       "Currently empty, because this channel always has handle 0.",
       NULL,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
+
+  param_spec = g_param_spec_uint ("initial-peer", "Other participant",
+      "The TpHandle representing the other participant in the channel if known "
+      "at construct-time; 0 if the other participant was unknown at the time "
+      "of channel creation",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIAL_PEER, param_spec);
+
+  param_spec = g_param_spec_uint ("peer", "Other participant",
+      "The TpHandle representing the other participant in the channel if "
+      "currently known; 0 if this is an anonymous channel on which "
+      "RequestStreams  has not yet been called.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this media channel object.",
       GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_uint ("creator", "Channel creator",
       "The TpHandle representing the contact who created the channel.",
       0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CREATOR, param_spec);
 
   param_spec = g_param_spec_string ("creator-id", "Creator bare JID",
       "The bare JID obtained by inspecting the creator handle.",
       NULL,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CREATOR_ID, param_spec);
 
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_object ("factory", "GabbleMediaFactory object",
       "The factory that created this object.",
       GABBLE_TYPE_MEDIA_FACTORY,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_FACTORY, param_spec);
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
       "Additional Channel.Interface.* interfaces",
       G_TYPE_STRV,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_string ("nat-traversal", "NAT traversal",
       "NAT traversal mechanism.",
       "gtalk-p2p",
-      G_PARAM_CONSTRUCT | G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_NAT_TRAVERSAL,
       param_spec);
 
   param_spec = g_param_spec_string ("stun-server", "STUN server",
       "IP or address of STUN server.",
       NULL,
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STUN_SERVER, param_spec);
 
   param_spec = g_param_spec_uint ("stun-port", "STUN port",
       "UDP port of STUN server.",
       0, G_MAXUINT16, 0,
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STUN_PORT, param_spec);
 
   param_spec = g_param_spec_string ("gtalk-p2p-relay-token",
       "GTalk P2P Relay Token",
       "Magic token to authenticate with the Google Talk relay server.",
       NULL,
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_GTALK_P2P_RELAY_TOKEN,
       param_spec);
 

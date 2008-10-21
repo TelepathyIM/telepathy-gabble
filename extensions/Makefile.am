@@ -2,9 +2,14 @@ tools_dir = $(top_srcdir)/tools
 
 EXTRA_DIST = \
     all.xml \
+    Channel_Bundle.xml \
     Channel_Future.xml \
     OLPC_Activity_Properties.xml \
-    OLPC_Buddy_Info.xml
+    OLPC_Buddy_Info.xml \
+    OLPC_Gadget.xml \
+    OLPC_Channel_Interface_View.xml \
+    OLPC_Channel_Type_BuddyView.xml \
+    OLPC_Channel_Type_ActivityView.xml
 
 noinst_LTLIBRARIES = libgabble-extensions.la
 

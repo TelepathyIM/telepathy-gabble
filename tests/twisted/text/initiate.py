@@ -31,11 +31,13 @@ def test(q, bus, conn, stream):
 
     text_chan = bus.get_object(conn.bus_name, ret.value[0])
 
-    assert sig.args[0] == ret.value[0]
-    assert sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
+    assert sig.args[0] == ret.value[0], \
+            (sig.args[0], ret.value[0])
+    assert sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text',\
+            sig.args[1]
     # check that handle type == contact handle
-    assert sig.args[2] == 1
-    assert sig.args[3] == foo_handle
+    assert sig.args[2] == 1, sig.args[1]
+    assert sig.args[3] == foo_handle, (sig.args[3], foo_handle)
     assert sig.args[4] == True      # suppress handler
 
     # Exercise basic Channel Properties from spec 0.17.7
@@ -52,20 +54,13 @@ def test(q, bus, conn, stream):
     assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.FUTURE' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-
-    future_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['TargetID'] == jid,\
-            (future_props['TargetID'], jid)
-    assert future_props['InitiatorHandle'] == self_handle,\
-            (future_props['InitiatorHandle'], self_handle)
-    assert future_props['InitiatorID'] == 'test@localhost',\
-            future_props['InitiatorID']
+    assert channel_props['TargetID'] == jid,\
+            (channel_props['TargetID'], jid)
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorHandle'] == self_handle,\
+            (channel_props['InitiatorHandle'], self_handle)
+    assert channel_props['InitiatorID'] == 'test@localhost',\
+            channel_props['InitiatorID']
 
     dbus.Interface(text_chan,
         u'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'hey')

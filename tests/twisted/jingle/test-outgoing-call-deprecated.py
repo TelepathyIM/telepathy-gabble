@@ -49,14 +49,15 @@ def test(q, bus, conn, stream):
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
 
-    # Exercise FUTURE properties
-    future_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
+    channel_props = group_iface.GetAll(
+            'org.freedesktop.Telepathy.Channel',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['TargetID'] == ''
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['TargetHandleType'] == 1, channel_props
+    assert channel_props['TargetHandle'] == handle, channel_props
+    assert channel_props['TargetID'] == 'foo@bar.com', channel_props
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -77,7 +78,6 @@ def test(q, bus, conn, stream):
     stream_handler.StreamState(2)
 
     e = q.expect('stream-iq')
-    print e.iq_type, e.stanza
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-initiate'
     stream.send(gabbletest.make_result_iq(stream, e.stanza))

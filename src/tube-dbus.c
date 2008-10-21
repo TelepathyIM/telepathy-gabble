@@ -320,7 +320,7 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
       dbus_error_init (&error);
       priv->dbus_srv = dbus_server_listen (priv->dbus_srv_addr, &error);
 
-      if (priv->dbus_srv_addr != NULL)
+      if (priv->dbus_srv != NULL)
         break;
 
       DEBUG ("dbus_server_listen failed (try %u): %s: %s", i, error.name,
@@ -328,7 +328,7 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
       dbus_error_free (&error);
     }
 
-  if (priv->dbus_srv_addr == NULL)
+  if (priv->dbus_srv == NULL)
     {
       DEBUG ("all attempts failed. Close the tube");
       do_close (self);
@@ -444,19 +444,23 @@ gabble_tube_dbus_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->bytestream)
+  if (priv->bytestream != NULL)
     {
       gabble_bytestream_iface_close (priv->bytestream, NULL);
     }
 
-  if (priv->dbus_conn)
+  if (priv->dbus_conn != NULL)
     {
       dbus_connection_close (priv->dbus_conn);
       dbus_connection_unref (priv->dbus_conn);
     }
 
-  if (priv->dbus_srv)
-    dbus_server_unref (priv->dbus_srv);
+  if (priv->dbus_srv != NULL)
+    {
+      dbus_server_disconnect (priv->dbus_srv);
+      dbus_server_unref (priv->dbus_srv);
+      priv->dbus_srv = NULL;
+    }
 
   if (priv->socket_path != NULL)
     {

@@ -28,8 +28,9 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-manager.h>
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/channel-factory-iface.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -40,15 +41,14 @@
 #include "text-mixin.h"
 #include "util.h"
 
-static void gabble_media_factory_iface_init (gpointer g_iface,
-    gpointer iface_data);
+static void channel_manager_iface_init (gpointer, gpointer);
 static LmHandlerResult media_factory_jingle_cb (LmMessageHandler *,
     LmConnection *, LmMessage *, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaFactory, gabble_media_factory,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
-      gabble_media_factory_iface_init));
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
+      channel_manager_iface_init));
 
 /* properties */
 enum
@@ -61,6 +61,7 @@ typedef struct _GabbleMediaFactoryPrivate GabbleMediaFactoryPrivate;
 struct _GabbleMediaFactoryPrivate
 {
   GabbleConnection *conn;
+  gulong status_changed_id;
   LmMessageHandler *jingle_cb;
   LmMessageHandler *jingle_info_cb;
 
@@ -193,13 +194,9 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
   object_class->set_property = gabble_media_factory_set_property;
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object that owns this "
-                                    "media channel factory object.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Gabble connection object that owns this media channel factory object.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
 }
@@ -207,7 +204,7 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 static gboolean _gabble_media_factory_sid_in_use (GabbleMediaFactory *fac,
     const gchar *sid);
 static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac,
-    TpHandle creator);
+    TpHandle creator, TpHandle maybe_peer);
 static void media_channel_closed_cb (GabbleMediaChannel *chan,
     gpointer user_data);
 
@@ -327,7 +324,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 
       DEBUG ("creating media channel");
 
-      chan = new_media_channel (fac, handle);
+      chan = new_media_channel (fac, handle, handle);
       chan_is_new = TRUE;
     }
 
@@ -340,8 +337,10 @@ media_factory_jingle_cb (LmMessageHandler *handler,
         sid, message, session_node, action, &error))
     {
       if (chan_is_new)
-        tp_channel_factory_iface_emit_new_channel (fac,
-            (TpChannelIface *) chan, NULL);
+        {
+          tp_channel_manager_emit_new_channel (fac,
+              TP_EXPORTABLE_CHANNEL (chan), NULL);
+        }
     }
   else
     {
@@ -457,7 +456,10 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
 
-  if (priv->channels)
+  tp_channel_manager_emit_channel_closed_for_object (fac,
+      TP_EXPORTABLE_CHANNEL (chan));
+
+  if (priv->channels != NULL)
     {
       DEBUG ("removing media channel %p with ref count %d",
           chan, G_OBJECT (chan)->ref_count);
@@ -466,7 +468,7 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
       g_object_unref (chan);
     }
 
-  if (priv->session_chans)
+  if (priv->session_chans != NULL)
     {
       g_hash_table_foreach_remove (priv->session_chans, _remove_sid_mapping,
           chan);
@@ -480,7 +482,8 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
  */
 static GabbleMediaChannel *
 new_media_channel (GabbleMediaFactory *fac,
-                   TpHandle creator)
+                   TpHandle creator,
+                   TpHandle maybe_peer)
 {
   GabbleMediaFactoryPrivate *priv;
   TpBaseConnection *conn;
@@ -502,6 +505,7 @@ new_media_channel (GabbleMediaFactory *fac,
                        "factory", fac,
                        "object-path", object_path,
                        "creator", creator,
+                       "initial-peer", maybe_peer,
                        NULL);
 
   if (priv->stun_server != NULL)
@@ -676,7 +680,7 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
 
   DEBUG ("closing channels");
 
-  if (priv->channels)
+  if (priv->channels != NULL)
     {
       GPtrArray *tmp = priv->channels;
       guint i;
@@ -696,10 +700,33 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
       g_ptr_array_free (tmp, TRUE);
     }
 
-  if (priv->session_chans)
+  if (priv->session_chans != NULL)
     {
       g_hash_table_destroy (priv->session_chans);
       priv->session_chans = NULL;
+    }
+
+  if (priv->status_changed_id != 0)
+    {
+      g_signal_handler_disconnect (priv->conn,
+          priv->status_changed_id);
+      priv->status_changed_id = 0;
+    }
+
+  if (priv->jingle_cb != NULL)
+    {
+      DEBUG ("removing callbacks");
+      g_assert (priv->jingle_info_cb != NULL);
+
+      lm_connection_unregister_message_handler (priv->conn->lmconn,
+          priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
+      lm_message_handler_unref (priv->jingle_cb);
+      priv->jingle_cb = NULL;
+
+      lm_connection_unregister_message_handler (priv->conn->lmconn,
+          priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
+      lm_message_handler_unref (priv->jingle_info_cb);
+      priv->jingle_info_cb = NULL;
     }
 }
 
@@ -767,24 +794,6 @@ connection_status_changed_cb (GabbleConnection *conn,
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
       gabble_media_factory_close_all (self);
-
-      /* this can be called before we have ever been CONNECTING, so we need
-       * to guard it */
-      if (priv->jingle_cb != NULL)
-        {
-          DEBUG ("removing callbacks");
-          g_assert (priv->jingle_info_cb != NULL);
-
-          lm_connection_unregister_message_handler (priv->conn->lmconn,
-              priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
-          lm_message_handler_unref (priv->jingle_cb);
-          priv->jingle_cb = NULL;
-
-          lm_connection_unregister_message_handler (priv->conn->lmconn,
-              priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
-          lm_message_handler_unref (priv->jingle_info_cb);
-          priv->jingle_info_cb = NULL;
-        }
       break;
     }
 }
@@ -801,85 +810,274 @@ gabble_media_factory_constructed (GObject *object)
   if (chain_up != NULL)
     chain_up (object);
 
-  /* conn is guaranteed to live longer than the factory, so this
-   * never needs disconnecting */
-  g_signal_connect (priv->conn, "status-changed",
-      (GCallback) connection_status_changed_cb, object);
+  priv->status_changed_id = g_signal_connect (priv->conn,
+      "status-changed", (GCallback) connection_status_changed_cb, object);
 }
 
 
 static void
-gabble_media_factory_iface_foreach (TpChannelFactoryIface *iface,
-                                    TpChannelFunc foreach,
-                                    gpointer user_data)
+gabble_media_factory_foreach_channel (TpChannelManager *manager,
+                                      TpExportableChannelFunc foreach,
+                                      gpointer user_data)
 {
-  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
+  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (manager);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
   guint i;
 
   for (i = 0; i < priv->channels->len; i++)
     {
-      foreach (TP_CHANNEL_IFACE (g_ptr_array_index (priv->channels, i)),
-          user_data);
+      TpExportableChannel *channel = TP_EXPORTABLE_CHANNEL (
+          g_ptr_array_index (priv->channels, i));
+
+      foreach (channel, user_data);
     }
 }
 
-static TpChannelFactoryRequestStatus
-gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
-                                    const gchar *chan_type,
-                                    TpHandleType handle_type,
-                                    guint handle,
-                                    gpointer request,
-                                    TpChannelIface **ret,
-                                    GError **error)
-{
-  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  GabbleMediaChannel *chan = NULL;
 
-  if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
-    return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
+static const gchar * const media_channel_fixed_properties[] = {
+    TP_IFACE_CHANNEL ".ChannelType",
+    TP_IFACE_CHANNEL ".TargetHandleType",
+    NULL
+};
 
-  if (handle_type == 0)
-    {
-      /* create an empty channel */
-      chan = new_media_channel (fac, conn->self_handle);
-    }
-  else if (handle_type == TP_HANDLE_TYPE_CONTACT)
-    {
-      chan = new_media_channel (fac, conn->self_handle);
+static const gchar * const named_channel_allowed_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
+    NULL
+};
 
-      if (!_gabble_media_channel_add_member ((GObject *) chan, handle, "",
-            error))
-        {
-          gabble_media_channel_close (chan);
+static const gchar * const anon_channel_allowed_properties[] = {
+    NULL
+};
 
-          return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
-        }
-    }
-  else
-    {
-      return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
-    }
-
-  g_assert (chan != NULL);
-  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *) chan,
-      request);
-
-  *ret = TP_CHANNEL_IFACE (chan);
-  return TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
-}
 
 static void
-gabble_media_factory_iface_init (gpointer g_iface,
-                              gpointer iface_data)
+gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
+    TpChannelManagerChannelClassFunc func,
+    gpointer user_data)
 {
-  TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
+  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) tp_g_value_slice_free);
+  GValue *value, *handle_type_value;
 
-  klass->close_all =
-      (TpChannelFactoryIfaceProc) gabble_media_factory_close_all;
-  klass->foreach = gabble_media_factory_iface_foreach;
-  klass->request = gabble_media_factory_iface_request;
+  value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
+
+  handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  /* no uint value yet - we'll change it for each channel class */
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
+      handle_type_value);
+
+  g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_NONE);
+  func (manager, table, anon_channel_allowed_properties, user_data);
+
+  g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_CONTACT);
+  func (manager, table, named_channel_allowed_properties, user_data);
+
+  g_hash_table_destroy (table);
 }
 
+
+typedef enum
+{
+  METHOD_REQUEST,
+  METHOD_CREATE,
+  METHOD_ENSURE,
+} RequestMethod;
+
+
+static gboolean
+gabble_media_factory_requestotron (TpChannelManager *manager,
+                                   gpointer request_token,
+                                   GHashTable *request_properties,
+                                   RequestMethod method)
+{
+  GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
+  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  TpHandleType handle_type;
+  TpHandle handle;
+  GabbleMediaChannel *channel = NULL;
+  GError *error = NULL;
+  GSList *request_tokens;
+  gboolean require_target_handle;
+  gboolean add_peer_to_remote_pending;
+
+  /* Supported modes of operation:
+   * - RequestChannel(None, 0):
+   *     channel is anonymous;
+   *     caller uses RequestStreams to set the peer and start the call.
+   * - RequestChannel(Contact, n) where n != 0:
+   *     channel has TargetHandle=n;
+   *     n is in remote pending;
+   *     call is started when caller calls RequestStreams.
+   * - CreateChannel({THT: Contact, TH: n}):
+   *     channel has TargetHandle=n
+   *     n is not in the group interface at all
+   *     call is started when caller calls RequestStreams.
+   * - EnsureChannel({THT: Contact, TH: n}):
+   *     look for a channel whose peer is n, and return that if found with
+   *       whatever properties and group membership it has;
+   *     otherwise the same as into CreateChannel
+   */
+  switch (method)
+    {
+    case METHOD_REQUEST:
+      require_target_handle = FALSE;
+      add_peer_to_remote_pending = TRUE;
+      break;
+    case METHOD_CREATE:
+    case METHOD_ENSURE:
+      require_target_handle = TRUE;
+      add_peer_to_remote_pending = FALSE;
+      break;
+    default:
+      g_assert_not_reached ();
+    }
+
+  if (tp_strdiff (tp_asv_get_string (request_properties,
+          TP_IFACE_CHANNEL ".ChannelType"),
+        TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
+    return FALSE;
+
+  handle_type = tp_asv_get_uint32 (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandleType", NULL);
+
+  handle = tp_asv_get_uint32 (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandle", NULL);
+
+  switch (handle_type)
+    {
+    case TP_HANDLE_TYPE_NONE:
+      if (handle != 0)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "TargetHandle must be zero or omitted if TargetHandleType is "
+              "NONE");
+          goto error;
+        }
+
+      if (require_target_handle)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+              "A valid Contact handle must be provided when requesting a media "
+              "channel");
+          goto error;
+        }
+
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              media_channel_fixed_properties, anon_channel_allowed_properties,
+              &error))
+        goto error;
+
+      channel = new_media_channel (self, conn->self_handle, 0);
+      break;
+
+    case TP_HANDLE_TYPE_CONTACT:
+      if (!tp_handle_is_valid (
+            tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT),
+            handle, &error))
+        goto error;
+
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              media_channel_fixed_properties, named_channel_allowed_properties,
+              &error))
+        goto error;
+
+      if (method == METHOD_ENSURE)
+        {
+          guint i;
+          TpHandle peer = 0;
+
+          for (i = 0; i < priv->channels->len; i++)
+            {
+              channel = g_ptr_array_index (priv->channels, i);
+              g_object_get (channel, "peer", &peer, NULL);
+
+              if (peer == handle)
+                {
+                  tp_channel_manager_emit_request_already_satisfied (self,
+                      request_token, TP_EXPORTABLE_CHANNEL (channel));
+                  return TRUE;
+                }
+            }
+        }
+
+      channel = new_media_channel (self, conn->self_handle, handle);
+
+      if (add_peer_to_remote_pending)
+        {
+          if (!_gabble_media_channel_add_member ((GObject *) channel, handle,
+                "", &error))
+            {
+              gabble_media_channel_close (channel);
+              goto error;
+            }
+        }
+
+      break;
+
+    default:
+      return FALSE;
+    }
+
+  g_assert (channel != NULL);
+
+  request_tokens = g_slist_prepend (NULL, request_token);
+  tp_channel_manager_emit_new_channel (self,
+      TP_EXPORTABLE_CHANNEL (channel), request_tokens);
+  g_slist_free (request_tokens);
+
+  return TRUE;
+
+error:
+  tp_channel_manager_emit_request_failed (self, request_token,
+      error->domain, error->code, error->message);
+  g_error_free (error);
+  return TRUE;
+}
+
+
+static gboolean
+gabble_media_factory_request_channel (TpChannelManager *manager,
+                                      gpointer request_token,
+                                      GHashTable *request_properties)
+{
+  return gabble_media_factory_requestotron (manager, request_token,
+      request_properties, METHOD_REQUEST);
+}
+
+
+static gboolean
+gabble_media_factory_create_channel (TpChannelManager *manager,
+                                     gpointer request_token,
+                                     GHashTable *request_properties)
+{
+  return gabble_media_factory_requestotron (manager, request_token,
+      request_properties, METHOD_CREATE);
+}
+
+
+static gboolean
+gabble_media_factory_ensure_channel (TpChannelManager *manager,
+                                     gpointer request_token,
+                                     GHashTable *request_properties)
+{
+  return gabble_media_factory_requestotron (manager, request_token,
+      request_properties, METHOD_ENSURE);
+}
+
+
+static void
+channel_manager_iface_init (gpointer g_iface,
+                            gpointer iface_data)
+{
+  TpChannelManagerIface *iface = g_iface;
+
+  iface->foreach_channel = gabble_media_factory_foreach_channel;
+  iface->foreach_channel_class = gabble_media_factory_foreach_channel_class;
+  iface->request_channel = gabble_media_factory_request_channel;
+  iface->create_channel = gabble_media_factory_create_channel;
+  iface->ensure_channel = gabble_media_factory_ensure_channel;
+}

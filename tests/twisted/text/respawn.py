@@ -24,9 +24,10 @@ def test(q, bus, conn, stream):
     call_async(q, conn, 'RequestChannel',
         'org.freedesktop.Telepathy.Channel.Type.Text', 1, foo_handle, True)
 
-    ret, sig = q.expect_many(
+    ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
         EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
         )
 
     text_chan = bus.get_object(conn.bus_name, ret.value[0])
@@ -35,23 +36,42 @@ def test(q, bus, conn, stream):
     text_iface = dbus.Interface(text_chan,
             'org.freedesktop.Telepathy.Channel.Type.Text')
 
-    assert sig.args[0] == ret.value[0]
-    assert sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
+    assert old_sig.args[0] == ret.value[0]
+    assert old_sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
     # check that handle type == contact handle
-    assert sig.args[2] == 1
-    assert sig.args[3] == foo_handle
-    assert sig.args[4] == True      # suppress handler
+    assert old_sig.args[2] == 1
+    assert old_sig.args[3] == foo_handle
+    assert old_sig.args[4] == True      # suppress handler
 
-    future_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
+    assert len(new_sig.args) == 1
+    assert len(new_sig.args[0]) == 1        # one channel
+    assert len(new_sig.args[0][0]) == 2     # two struct members
+    assert new_sig.args[0][0][0] == ret.value[0]
+    emitted_props = new_sig.args[0][0][1]
+    assert emitted_props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
+            'org.freedesktop.Telepathy.Channel.Type.Text'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
+            'TargetHandleType'] == 1
+    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
+            foo_handle
+    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == jid
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
+            'Requested'] == True
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
+            'InitiatorHandle'] == self_handle
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
+            'InitiatorID'] == 'test@localhost'
+
+    channel_props = text_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['TargetID'] == jid,\
-            (future_props['TargetID'], jid)
-    assert future_props['InitiatorHandle'] == self_handle,\
-            (future_props['InitiatorHandle'], self_handle)
-    assert future_props['InitiatorID'] == 'test@localhost',\
-            future_props['InitiatorID']
+    assert channel_props['TargetID'] == jid,\
+            (channel_props['TargetID'], jid)
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorHandle'] == self_handle,\
+            (channel_props['InitiatorHandle'], self_handle)
+    assert channel_props['InitiatorID'] == 'test@localhost',\
+            channel_props['InitiatorID']
 
     text_iface.Send(0, 'hey')
 
@@ -93,9 +113,14 @@ def test(q, bus, conn, stream):
 
     call_async(q, chan_iface, 'Close')
 
-    event = q.expect('dbus-signal', signal='Closed')
-    assert tp_path_prefix + event.path == text_chan.object_path,\
-            (tp_path_prefix + event.path, text_chan.object_path)
+    old, new = q.expect_many(
+            EventPattern('dbus-signal', signal='Closed'),
+            EventPattern('dbus-signal', signal='ChannelClosed'),
+            )
+    assert tp_path_prefix + old.path == text_chan.object_path,\
+            (tp_path_prefix + old.path, text_chan.object_path)
+    assert new.args[0] == text_chan.object_path,\
+            (new.args[0], text_chan.object_path)
 
     event = q.expect('dbus-signal', signal='NewChannel')
     assert event.args[0] == text_chan.object_path
@@ -108,16 +133,16 @@ def test(q, bus, conn, stream):
 
     # it now behaves as if the message had initiated it
 
-    future_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
+    channel_props = text_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == False
-    assert future_props['TargetID'] == jid,\
-            (future_props['TargetID'], jid)
-    assert future_props['InitiatorHandle'] == foo_handle,\
-            (future_props['InitiatorHandle'], foo_handle)
-    assert future_props['InitiatorID'] == 'foo@bar.com',\
-            future_props['InitiatorID']
+    assert channel_props['TargetID'] == jid,\
+            (channel_props['TargetID'], jid)
+    assert channel_props['Requested'] == False
+    assert channel_props['InitiatorHandle'] == foo_handle,\
+            (channel_props['InitiatorHandle'], foo_handle)
+    assert channel_props['InitiatorID'] == 'foo@bar.com',\
+            channel_props['InitiatorID']
 
     # the message is still there
 

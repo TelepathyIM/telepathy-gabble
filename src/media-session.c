@@ -425,85 +425,56 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
   object_class->finalize = gabble_media_session_finalize;
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object that owns this "
-                                    "media session's channel.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Gabble connection object that owns this media session's channel.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_object ("media-channel",
       "GabbleMediaChannel object",
       "Gabble media channel object that owns this media session object.",
       GABBLE_TYPE_MEDIA_CHANNEL,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MEDIA_CHANNEL,
       param_spec);
 
   param_spec = g_param_spec_string ("object-path", "D-Bus object path",
-                                    "The D-Bus object path used for this "
-                                    "object on the bus.",
-                                    NULL,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "The D-Bus object path used for this object on the bus.", NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
 
   param_spec = g_param_spec_string ("session-id", "Session ID",
-                                    "A unique session identifier used "
-                                    "throughout all communication.",
-                                    NULL,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "A unique session identifier used throughout all communication.",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SESSION_ID, param_spec);
 
   param_spec = g_param_spec_uint ("initiator", "Session initiator",
-                                  "An enum signifying which end initiated "
-                                  "the session.",
-                                  INITIATOR_LOCAL,
-                                  INITIATOR_REMOTE,
-                                  INITIATOR_LOCAL,
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "An enum signifying which end initiated the session.",
+      INITIATOR_LOCAL, INITIATOR_REMOTE, INITIATOR_LOCAL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIATOR, param_spec);
 
   param_spec = g_param_spec_uint ("peer", "Session peer",
-                                  "The TpHandle representing the contact "
-                                  "with whom this session communicates.",
-                                  0, G_MAXUINT32, 0,
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "The TpHandle representing the contact with whom this session "
+          "communicates.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
   param_spec = g_param_spec_string ("peer-resource",
-                                    "Session peer's resource",
-                                    "The resource of the contact "
-                                    "with whom this session communicates, "
-                                    "if applicable",
-                                    NULL,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_WRITABLE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "Session peer's resource",
+      "The resource of the contact with whom this session communicates, "
+          "if applicable",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
                                    param_spec);
 
   param_spec = g_param_spec_uint ("state", "Session state",
-                                  "The current state that the session is in.",
-                                  0, G_MAXUINT32, 0,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "The current state that the session is in.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
   signals[STREAM_ADDED] =

@@ -1,4 +1,3 @@
-
 """
 Test basic roster functionality.
 """
@@ -6,10 +5,15 @@ Test basic roster functionality.
 import dbus
 
 from gabbletest import exec_test
+from servicetest import EventPattern, tp_name_prefix
 
 def _expect_contact_list_channel(q, bus, conn, name, contacts):
-    event = q.expect('dbus-signal', signal='NewChannel')
-    path, type, handle_type, handle, suppress_handler = event.args
+    old_signal, new_signal = q.expect_many(
+            EventPattern('dbus-signal', signal='NewChannel'),
+            EventPattern('dbus-signal', signal='NewChannels'),
+            )
+
+    path, type, handle_type, handle, suppress_handler = old_signal.args
 
     assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList'
     assert conn.InspectHandles(handle_type, [handle])[0] == name
@@ -18,6 +22,17 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
     members = group_iface.GetMembers()
     assert conn.InspectHandles(1, members) == contacts
+
+    assert len(new_signal.args) == 1
+    assert len(new_signal.args[0]) == 1         # one channel
+    assert len(new_signal.args[0][0]) == 2      # two struct members
+    assert new_signal.args[0][0][0] == path
+
+    emitted_props = new_signal.args[0][0][1]
+    assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
+            tp_name_prefix + '.Channel.Type.ContactList'
+    assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 3
+    assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] == handle
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = chan.GetAll(
@@ -33,15 +48,10 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
     assert 'org.freedesktop.Telepathy.Channel.Interface.Group' in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-
-    # Exercise FUTURE properties
-    future_props = chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == False
-    assert future_props['TargetID'] == name
-    assert future_props['InitiatorID'] == ''
-    assert future_props['InitiatorHandle'] == 0
+    assert channel_props['TargetID'] == name, channel_props
+    assert channel_props['Requested'] == False
+    assert channel_props['InitiatorID'] == ''
+    assert channel_props['InitiatorHandle'] == 0
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = chan.GetAll(

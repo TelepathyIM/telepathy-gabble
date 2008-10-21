@@ -5,7 +5,8 @@ when the remote party accepts the call.
 """
 
 from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix
+from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
+        call_async, EventPattern
 from twisted.words.xish import domish
 import jingletest
 import gabbletest
@@ -23,10 +24,13 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
+
     q.expect('stream-authenticated')
     q.expect('dbus-signal', signal='PresenceUpdate',
         args=[{1L: (0L, {u'available': {}})}])
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+
+    self_handle = conn.GetSelfHandle()
 
     # We need remote end's presence for capabilities
     jt.send_remote_presence()
@@ -42,9 +46,42 @@ def test(q, bus, conn, stream):
 
     handle = conn.RequestHandles(1, [jt.remote_jid])[0]
 
-    path = conn.RequestChannel(
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-        0, 0, True)
+    call_async(q, conn, 'RequestChannel',
+        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia', 0, 0, True)
+
+    ret, old_sig, new_sig = q.expect_many(
+        EventPattern('dbus-return', method='RequestChannel'),
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
+        )
+
+    path = ret.value[0]
+    assert old_sig.args[0] == path, (old_sig.args[0], path)
+    assert old_sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',\
+            old_sig.args[1]
+    assert old_sig.args[2] == 0, sig.args[2]
+    assert old_sig.args[3] == 0, sig.args[3]
+    assert old_sig.args[4] == True      # suppress handler
+
+    assert len(new_sig.args) == 1
+    assert len(new_sig.args[0]) == 1        # one channel
+    assert len(new_sig.args[0][0]) == 2     # two struct members
+    assert new_sig.args[0][0][0] == path
+    emitted_props = new_sig.args[0][0][1]
+
+    assert emitted_props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
+            'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
+            'TargetHandleType'] == 0
+    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
+            0
+    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == ''
+    assert emitted_props['org.freedesktop.Telepathy.Channel.Requested'] \
+            == True
+    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorHandle'] \
+            == self_handle
+    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorID'] \
+            == 'test@localhost'
 
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
@@ -73,15 +110,10 @@ def test(q, bus, conn, stream):
     assert 'org.freedesktop.Telepathy.Channel.Interface.Hold' in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-
-    # Exercise FUTURE properties
-    future_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['TargetID'] == ''
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['TargetID'] == '', channel_props
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = group_iface.GetAll(
@@ -121,7 +153,6 @@ def test(q, bus, conn, stream):
     stream_handler.StreamState(2)
 
     e = q.expect('stream-iq')
-    print e.iq_type, e.stanza
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-initiate'
     stream.send(gabbletest.make_result_iq(stream, e.stanza))

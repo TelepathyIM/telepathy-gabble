@@ -89,18 +89,10 @@ def test(q, bus, conn, stream):
     assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.FUTURE' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-
-    # Exercise FUTURE properties
-    future_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['TargetID'] == 'chat@conf.localhost'
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = text_chan.GetAll(

@@ -280,13 +280,9 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
   object_class->set_property = gabble_presence_cache_set_property;
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object that owns this "
-                                    "presence cache.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Gabble connection object that owns this presence cache.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class,
                                    PROP_CONNECTION,
                                    param_spec);
@@ -839,7 +835,7 @@ _caps_disco_cb (GabbleDisco *disco,
    * stanza. */
   if (!tp_strdiff (waiter_self->hash, "sha-1"))
     {
-      const gchar *computed_hash;
+      gchar *computed_hash;
       trust_inc = CAPABILITY_BUNDLE_ENOUGH_TRUST;
 
       computed_hash = caps_hash_compute_from_lm_node (query_result);
@@ -856,6 +852,8 @@ _caps_disco_cb (GabbleDisco *disco,
           trust = 0;
           bad_hash = TRUE;
         }
+
+      g_free (computed_hash);
     }
   else
     {

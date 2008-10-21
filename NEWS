@@ -1,3 +1,116 @@
+telepathy-gabble 0.7.11 (UNRELEASED)
+====================================
+
+Requirements:
+
+Enhancements:
+
+Fixes:
+
+telepathy-gabble 0.7.10 (2008-10-15)
+====================================
+
+The "high voltage" release.
+
+Requirements:
+
+* telepathy-glib >= 0.7.17
+
+Enhancements:
+
+* Implement the newly official Requested, InitiatorHandle and InitiatorID
+  properties introduced in spec 0.17.13
+
+* fd.o #16922: stop shipping MD5 and SHA-1 implementations, and use GChecksum
+  instead, since we need GLib 2.16 anyway
+
+* Add support for running tests with GObject refdbg enabled
+
+Fixes:
+
+* Add TargetID to allowed properties when requesting channels
+
+* test-handles: stop asserting that the wrong error (InvalidArgument) will be
+  raised, and accept the correct error (InvalidHandle) too, since this was
+  fixed in telepathy-glib
+
+* Some bugfixes in the OLPC code
+
+* Use unsigned for booleans in bitfields (gboolean is signed, so
+  "gboolean foo:1" is not portable)
+
+telepathy-gabble 0.7.9 (2008-09-29)
+===================================
+
+The "danger! danger!" release.
+
+Our unstable-branch releases are usually pretty stable in practice, but we've
+just merged 10 months' OLPC work and some fairly fundamental internal changes,
+so you might want to restrict this one to experimental distributions like
+Debian experimental and Fedora rawhide for now. We'll do a 0.7.10 release
+once it's had some more testing.
+
+Requirements:
+
+* telepathy-glib >= 0.7.16
+* GLib >= 2.16
+
+Enhancements:
+
+* Implement the Requests API introduced in spec 0.17.11 and extended in 0.17.12
+
+* Save contacts' aliases into the roster for massive bandwidth savings (in
+  conjunction with avatar caching, this should mean we don't have to fetch
+  everyone's vCard every time we connect to the server)
+
+* Merge support for the "gadget", an OLPC-specific server component that
+  supports browsing for buddies and activities
+
+* When running tests under valgrind, use the same options as in telepathy-glib
+
+telepathy-gabble 0.7.8 (2008-08-19)
+===================================
+
+The "Hildesheim Flugplatz" release.
+
+telepathy-gabble is now maintained in git instead of darcs. See README for
+details.
+
+Requirements:
+
+* telepathy-glib >= 0.7.14
+* To build from git, automake 1.9 (although 0.7.7 actually required this too)
+
+Enhancements:
+
+* Implement the Contacts interface for bulk contact-handle inspection
+
+* Implement spec 0.17.9 (add the TargetID property to all channels)
+
+* Start to port channel factories away from TpChannelFactoryIface in
+  preparation for implementing the Requests API
+
+* Add a simple smoke-test for SimplePresence
+
+* Use tp_debug_divert_messages() rather than our own copy of it, since we
+  now depend on a new enough telepathy-glib anyway
+
+Fixes:
+
+* Obey the Telepathy spec by giving 'dnd' presence type Presence_Type_Busy
+  and not Presence_Type_Away
+
+* Fix the test suite so test failure causes a nonzero exit status
+  (regression in 0.7.7)
+
+* Fix test-si-tubes and test-disco to run the test all the way through
+  (regression in 0.7.7)
+
+* Use the pedantically correct marshaller for a GArray, since GObject 2.17
+  actually checks for POINTER vs BOXED (regression in 0.7.7)
+
+* Remove unconditional debug messages in a few places
+
 telepathy-gabble 0.7.7 (2008-07-31)
 ===================================
 
@@ -9,7 +122,7 @@ Requirements:
 
 Enhancements:
 
-* Implement XEP-0115 version 1.5 (hashed capabilities)
+* fd.o #15798: Implement XEP-0115 version 1.5 (hashed capabilities)
 
 * Implement Channel and Group properties on all channels, for round-trip
   reduction if used with a recent client

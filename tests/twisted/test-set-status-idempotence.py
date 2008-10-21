@@ -8,6 +8,8 @@ import dbus
 from servicetest import EventPattern
 from gabbletest import exec_test
 
+ispresence = u'org.freedesktop.Telepathy.Connection.Interface.SimplePresence'
+
 def test_presence(q, bus, conn, stream):
     conn.Connect()
 
@@ -29,8 +31,7 @@ def test_simple_presence(q, bus, conn, stream):
 
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    iface = dbus.Interface (conn,
-        u'org.freedesktop.Telepathy.Connection.Interface.SimplePresence')
+    iface = dbus.Interface (conn, ispresence)
     run_test(q, bus, conn, stream,
       (lambda status, message = "": iface.SetPresence (status, message)))
 
@@ -45,6 +46,8 @@ def run_test(q, bus, conn, stream, set_status_func):
         EventPattern('stream-presence'))
     assert signal.args == [{1L: (0L, {u'away': {u'message': u'gone'}})}]
     assert simple_signal.args == [{1L: (3L, u'away',  u'gone')}]
+    assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
+      { ispresence + "/presence": (3L, u'away', u'gone') }}
 
     children = list(presence.stanza.elements())
     assert children[0].name == 'show'
@@ -55,6 +58,8 @@ def run_test(q, bus, conn, stream, set_status_func):
     # Set presence a second time. Since this call is redundant, there should
     # be no PresenceUpdate or <presence> sent to the server.
     set_status_func('away', 'gone')
+    assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
+      { ispresence + "/presence": (3L, u'away', u'gone') }}
 
     # Set presence a third time. This call is not redundant, and should
     # generate a signal/message.
@@ -70,6 +75,8 @@ def run_test(q, bus, conn, stream, set_status_func):
     children = list(presence.stanza.elements())
     assert children[0].name == 'status'
     assert str(children[0]) == 'yo'
+    assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
+      { ispresence + "/presence": (2L, u'available', u'yo') }}
 
     # call SetPresence with no optional arguments, as this used to cause a
     # crash in tp-glib
@@ -81,6 +88,8 @@ def run_test(q, bus, conn, stream, set_status_func):
         EventPattern('stream-presence'))
     assert signal.args == [{1L: (0L, {u'available': {}})}]
     assert simple_signal.args == [{1L: (2L, u'available',  u'')}]
+    assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
+      { ispresence + "/presence": (2L, u'available', u'') }}
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

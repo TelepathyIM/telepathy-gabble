@@ -265,11 +265,6 @@ gabble_jingle_factory_dispose (GObject *object)
   g_hash_table_destroy (fac->transports);
   fac->transports = NULL;
 
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
-
   g_free (fac->stun_server);
   g_free (fac->relay_token);
 
@@ -426,6 +421,19 @@ connection_status_changed_cb (GabbleConnection *conn,
             {
               jingle_info_send_request (self);
             }
+        }
+      break;
+
+    case TP_CONNECTION_STATUS_DISCONNECTED:
+      if (priv->jingle_cb != NULL)
+        {
+          lm_connection_unregister_message_handler (priv->conn->lmconn,
+              priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
+          lm_connection_unregister_message_handler (priv->conn->lmconn,
+              priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
+
+          priv->jingle_cb = NULL;
+          priv->jingle_info_cb = NULL;
         }
       break;
     }

@@ -223,7 +223,8 @@ gabble_jingle_content_set_property (GObject *object,
       /* We can't switch transports. */
       g_assert (priv->transport == NULL);
 
-      if (priv->transport_ns != NULL) {
+      if (priv->transport_ns != NULL)
+        {
           GType transport_type = GPOINTER_TO_INT (
               g_hash_table_lookup (self->conn->jingle_factory->transports,
                   priv->transport_ns));
@@ -237,7 +238,7 @@ gabble_jingle_content_set_property (GObject *object,
 
           g_signal_connect (priv->transport, "new-candidates",
               (GCallback) new_transport_candidates_cb, self);
-      }
+        }
       break;
     case PROP_NAME:
       /* can't rename */
@@ -486,10 +487,11 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   else
     {
       /* senders weren't mandatory back then */
-      if (dialect == JINGLE_DIALECT_V015) {
-        DEBUG ("old gabble detected, settings senders = both");
-        senders = "both";
-      }
+      if (dialect == JINGLE_DIALECT_V015)
+        {
+          DEBUG ("old gabble detected, settings senders = both");
+          senders = "both";
+        }
 
       if ((trans_node == NULL) || (creator == NULL) || (name == NULL) || (senders == NULL))
         {
@@ -582,17 +584,18 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
   const gchar *senders;
   LmMessageNode *trans_node, *desc_node;
+  JingleDialect dialect;
 
   desc_node = lm_message_node_get_child (content_node, "description");
   trans_node = lm_message_node_get_child (content_node, "transport");
   senders = lm_message_node_get_attribute (content_node, "senders");
 
+  g_object_get (c->session, "dialect", &dialect, NULL);
+
+  /* FIXME: if we examine dialect manually, we don't need google_modeparamflag */
   if (google_mode)
     {
       DEBUG ("parsing content-accept in google mode");
-
-      if (senders == NULL)
-          senders = "both";
 
       if (trans_node == NULL)
         {
@@ -602,12 +605,20 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
         }
     }
 
-  DEBUG ("changing senders from %s to %s", _enum_to_string(content_senders_table, priv->senders), senders);
-  priv->senders = _string_to_enum (content_senders_table, senders);
-  if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
+  /* GTalk mode and old Gabble both don't really mind this */
+  if (dialect <= JINGLE_DIALECT_V015)
     {
-      SET_BAD_REQ ("invalid content senders");
-      return;
+      DEBUG ("gtalk or old gabble detected, settings senders = both");
+    }
+  else
+    {
+      DEBUG ("changing senders from %s to %s", _enum_to_string(content_senders_table, priv->senders), senders);
+      priv->senders = _string_to_enum (content_senders_table, senders);
+      if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
+        {
+          SET_BAD_REQ ("invalid content senders");
+          return;
+        }
     }
 
   parse_description (c, desc_node, error);

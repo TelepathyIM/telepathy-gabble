@@ -74,4 +74,14 @@
 #define NS_X_CONFERENCE         "jabber:x:conference"
 #define NS_XMPP_STANZAS         "urn:ietf:params:xml:ns:xmpp-stanzas"
 
+#define NS_JINGLE015            "http://jabber.org/protocol/jingle"
+#define NS_JINGLE026            "urn:xmpp:tmp:jingle"
+#define NS_GOOGLE_SESSION       "http://www.google.com/session"
+#define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
+#define NS_GOOGLE_TRANSPORT_P2P "http://www.google.com/transport/p2p"
+#define NS_JINGLE_TMP           "urn:xmpp:tmp:jingle"
+#define NS_JINGLE_RTP_TMP       "urn:xmpp:tmp:jingle:apps:rtp"
+#define NS_JINGLE_TRANSPORT_RAWUDP \
+  "http://jabber.org/protocol/jingle/transport/rawudp"
+
 #endif /* __GABBLE_NAMESPACES__H__ */

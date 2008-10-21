@@ -33,6 +33,7 @@
 #include "error.h"
 #include "muc-factory.h"
 #include "olpc-gadget-manager.h"
+#include "jingle-factory.h"
 
 G_BEGIN_DECLS
 
@@ -156,6 +157,9 @@ struct _GabbleConnection {
 
     /* outstanding avatar requests */
     GHashTable *avatar_requests;
+
+    /* jingle factory */
+    GabbleJingleFactory *jingle_factory;
 
     /* temporary, for requestotron support */
     GPtrArray *channel_factories;

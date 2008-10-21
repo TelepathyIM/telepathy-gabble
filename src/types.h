@@ -43,6 +43,14 @@ typedef struct _GabbleOlpcView GabbleOlpcView;
 typedef struct _GabbleOlpcGadgetManager GabbleOlpcGadgetManager;
 
 
+typedef struct _GabbleJingleFactory GabbleJingleFactory;
+typedef struct _GabbleJingleSession GabbleJingleSession;
+typedef struct _GabbleJingleContent GabbleJingleContent;
+typedef struct _GabbleJingleTransportGoogle GabbleJingleTransportGoogle;
+typedef struct _GabbleJingleMediaRtp GabbleJingleMediaRtp;
+
+typedef struct _JingleCandidate JingleCandidate;
+
 typedef enum {
     INITIATOR_INVALID = -1,
     INITIATOR_LOCAL = 0,
@@ -62,7 +70,11 @@ typedef enum {
     PRESENCE_CAP_IBB = 1 << 8,
     PRESENCE_CAP_SI_TUBES = 1 << 9,
     PRESENCE_CAP_FILE_TRANSFER = 1 << 10,
-    PRESENCE_CAP_OLPC_1 = 1 << 11
+    PRESENCE_CAP_OLPC_1 = 1 << 11,
+    PRESENCE_CAP_JINGLE_RTP_TMP = 1 << 12,
+    PRESENCE_CAP_JINGLE_TMP = 1 << 13,
+    PRESENCE_CAP_JINGLE_TRANSPORT_ICE = 1 << 14,
+    PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP = 1 << 15,
 } GabblePresenceCapabilities;
 
 G_END_DECLS

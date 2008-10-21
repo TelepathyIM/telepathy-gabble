@@ -34,6 +34,16 @@ def make_result_iq(stream, iq):
 def acknowledge_iq(stream, iq):
     stream.send(make_result_iq(stream, iq))
 
+def send_error_reply(stream, iq):
+    result = IQ(stream, "error")
+    result["id"] = iq["id"]
+    query = iq.firstChildElement()
+
+    if query:
+        result.addElement((query.uri, query.name))
+
+    stream.send(result)
+
 def sync_stream(q, stream):
     """Used to ensure that Gabble has processed all stanzas sent to it."""
 

@@ -801,6 +801,14 @@ _caps_disco_cb (GabbleDisco *disco,
           !tp_strdiff (var, NS_OLPC_CURRENT_ACTIVITY "+notify") ||
           !tp_strdiff (var, NS_OLPC_ACTIVITY_PROPS "+notify"))
         caps |= PRESENCE_CAP_OLPC_1;
+      else if (!tp_strdiff (var, NS_JINGLE_RTP_TMP))
+        caps |= PRESENCE_CAP_JINGLE_RTP_TMP;
+      else if (!tp_strdiff (var, NS_JINGLE_TMP))
+        caps |= PRESENCE_CAP_JINGLE_TMP;
+      else if (!tp_strdiff (var, NS_JINGLE_TRANSPORT_ICE))
+        caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICE;
+      else if (!tp_strdiff (var, NS_JINGLE_TRANSPORT_RAWUDP))
+        caps |= PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP;
     }
 
   handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);

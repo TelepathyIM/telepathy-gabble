@@ -70,7 +70,7 @@ struct _GabbleJingleContentPrivate
   gboolean created_by_us;
   JingleContentState state;
   JingleContentSenders senders;
-  gboolean ready;
+  // gboolean ready;
 
   gchar *content_ns;
   gchar *transport_ns;
@@ -178,10 +178,13 @@ gabble_jingle_content_get_property (GObject *object,
       break;
     case PROP_READY:
       g_assert_not_reached ();
-      g_value_set_boolean (value, priv->ready);
+      // g_value_set_boolean (value, priv->ready);
       break;
     case PROP_CONTENT_NS:
       g_value_set_string (value, priv->content_ns);
+      break;
+    case PROP_TRANSPORT_NS:
+      g_value_set_string (value, priv->transport_ns);
       break;
     case PROP_DISPOSITION:
       g_value_set_string (value, priv->disposition);
@@ -227,6 +230,8 @@ gabble_jingle_content_set_property (GObject *object,
 
           g_assert (transport_type != 0);
 
+          DEBUG ("using transport: %s", priv->transport_ns);
+
           priv->transport = g_object_new (transport_type,
               "content", self, "transport-ns", priv->transport_ns, NULL);
 
@@ -249,6 +254,7 @@ gabble_jingle_content_set_property (GObject *object,
       break;
     case PROP_READY:
       g_assert_not_reached ();
+#if 0
       DEBUG ("setting content ready from %u to %u",
           priv->ready, g_value_get_boolean (value));
 
@@ -259,7 +265,7 @@ gabble_jingle_content_set_property (GObject *object,
         }
 
       priv->ready = g_value_get_boolean (value);
-
+#endif
       break;
     case PROP_DISPOSITION:
       g_assert (priv->disposition == NULL);
@@ -323,7 +329,6 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
   param_spec = g_param_spec_string ("transport-ns", "Transport namespace",
                                     "Namespace identifying the transport type.",
                                     NULL,
-                                    G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
@@ -347,6 +352,9 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
+/* Note: we now have media_ready and transport_ready internal flags for this
+ */
+#if 0
   param_spec = g_param_spec_boolean ("ready", "Ready?",
                                      "A boolean signifying whether media for "
                                      "this content is ready to be signalled.",
@@ -355,6 +363,7 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
                                      G_PARAM_STATIC_NAME |
                                      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_READY, param_spec);
+#endif
 
   param_spec = g_param_spec_string ("disposition", "Content disposition",
                                     "Distinguishes between 'session' and other "
@@ -424,8 +433,7 @@ send_gtalk4_transport_accept (gpointer user_data)
   tnode = lm_message_node_add_child (sess_node, "transport", NULL);
   lm_message_node_set_attribute (tnode, "xmlns", priv->transport_ns);
 
-  _gabble_connection_send (c->conn, msg, NULL);
-  lm_message_unref (msg);
+  gabble_jingle_session_send (c->session, msg, NULL);
 
   return FALSE;
 }
@@ -606,7 +614,6 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   if (*error)
       return;
 
-  // FIXME: this overlaps with _update_senders, maybe merge?
   g_object_notify ((GObject *) c, "senders");
 
   // If all went well, it means the content is finally ackd
@@ -747,8 +754,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
   msg = gabble_jingle_session_new_message (self->session,
       action, &sess_node);
   gabble_jingle_content_produce_node (self, sess_node, TRUE);
-  _gabble_connection_send (self->conn, msg, NULL);
-  lm_message_unref (msg);
+  gabble_jingle_session_send (self->session, msg, NULL);
 
   priv->state = new_state;
   g_object_notify (G_OBJECT (self), "state");
@@ -758,25 +764,33 @@ static void
 _maybe_ready (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  JingleSessionState state;
 
   if (!gabble_jingle_content_is_ready (self))
       return;
 
   DEBUG ("called, and is ready");
 
-  if (!tp_strdiff (priv->disposition, "session"))
+  /* If content disposition is session and session
+   * is not yet acknowledged/active, we signall
+   * the readiness to the session and let it take
+   * care of it. Otherwise, we can deal with it
+   * ourselves. */
+
+  g_object_get (self->session, "state", &state, NULL);
+
+  DEBUG ("session state == %d", state);
+
+  if (!tp_strdiff (priv->disposition, "session") &&
+      (state < JS_STATE_PENDING_ACCEPT_SENT))
     {
-      DEBUG ("disposition == 'session' signalling");
+      DEBUG ("disposition == 'session' and session not active, signalling");
       /* Notify the session that we're ready for
        * session-initiate/session-accept */
       g_signal_emit (self, signals[READY], 0);
     }
   else
     {
-      JingleSessionState state;
-
-      g_object_get (self->session, "state", &state, NULL);
-
       if (state >= JS_STATE_PENDING_INITIATE_SENT)
         {
           DEBUG ("disposition != 'session', sending add/accept");
@@ -785,7 +799,8 @@ _maybe_ready (GabbleJingleContent *self)
         {
           /* non session-disposition content ready without session
            * being initiated at all? */
-          g_assert_not_reached ();
+          DEBUG ("session not initiated yet, ignoring non-session ready content");
+          return;
         }
     }
 
@@ -834,8 +849,7 @@ gabble_jingle_content_accept (GabbleJingleContent *c)
       JINGLE_ACTION_CONTENT_ACCEPT, &sess_node);
 
   gabble_jingle_content_produce_node (c, sess_node, TRUE);
-  _gabble_connection_send (c->conn, msg, NULL);
-  lm_message_unref (msg);
+  gabble_jingle_session_send (c->session, msg, NULL);
 
   g_object_set (c, "state", JINGLE_CONTENT_STATE_ACKNOWLEDGED, NULL);
 }
@@ -848,4 +862,31 @@ gabble_jingle_content_get_remote_candidates (GabbleJingleContent *c)
   return gabble_jingle_transport_iface_get_remote_candidates (priv->transport);
 }
 
+gboolean
+gabble_jingle_content_change_direction (GabbleJingleContent *c,
+    JingleContentSenders senders)
+{
+  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  LmMessage *msg;
+  LmMessageNode *sess_node;
+  JingleDialect dialect;
+
+  g_object_get (c->session, "dialect", &dialect, NULL);
+
+  if (dialect <= JINGLE_DIALECT_GTALK4)
+    {
+      DEBUG ("ignoring direction change request for GTalk stream");
+      return FALSE;
+    }
+
+  priv->senders = senders;
+
+  msg = gabble_jingle_session_new_message (c->session,
+      JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
+  gabble_jingle_content_produce_node (c, sess_node, FALSE); 
+  gabble_jingle_session_send (c->session, msg, NULL);
+
+  /* FIXME: actually check whether remote end accepts our content-modify */
+  return TRUE;
+}
 

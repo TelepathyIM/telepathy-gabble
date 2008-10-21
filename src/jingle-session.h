@@ -88,9 +88,7 @@ gint _string_to_enum (const gchar **table, const gchar *val);
 void gabble_jingle_session_accept (GabbleJingleSession *sess);
 void gabble_jingle_session_terminate (GabbleJingleSession *sess);
 void gabble_jingle_session_remove_content (GabbleJingleSession *sess,
-    const gchar *content_name);
-void gabble_jingle_session_change_direction (GabbleJingleSession *sess,
-    const gchar *content_name, JingleContentSenders senders);
+    GabbleJingleContent *c);
 
 GabbleJingleContent *
 gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mtype,
@@ -98,6 +96,12 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
 
 GType gabble_jingle_session_get_content_type (GabbleJingleSession *);
 GList *gabble_jingle_session_get_contents (GabbleJingleSession *sess);
+
+typedef void (*JingleReplyHandler) (GabbleJingleSession *, gboolean success,
+    LmMessage *reply);
+void gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
+    JingleReplyHandler cb);
+
 
 #endif /* __JINGLE_SESSION_H__ */
 

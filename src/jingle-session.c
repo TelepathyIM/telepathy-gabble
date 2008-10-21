@@ -74,15 +74,13 @@ struct _GabbleJingleSessionPrivate
    * Table owns references to these objects. */
   GHashTable *contents;
 
-  /* Table of initial content objects keyed by name.
-   * Any object in this table has to appear in contents
-   * also. This table just borrows the references. */
-  GHashTable *initial_contents;
   JingleDialect dialect;
   JingleState state;
   gchar *sid;
 
   gboolean locally_accepted;
+
+  guint timer_id;
 
   gboolean dispose_has_run;
 };
@@ -98,6 +96,7 @@ static const gchar *action_table[] = {
   "content-modify",
   "content-remove",
   "content-replace",
+  "content-reject",
   "session-accept",
   "session-info",
   "session-initiate",
@@ -107,12 +106,14 @@ static const gchar *action_table[] = {
   NULL
 };
 
+#define DEFAULT_SESSION_TIMEOUT 6000
+
 typedef struct {
   JingleState state;
   JingleAction *actions;
 } JingleStateActions;
 
-static JingleAction allowed_actions[6][8] = {
+static JingleAction allowed_actions[6][10] = {
   /* JS_STATE_PENDING_CREATED */
   { JINGLE_ACTION_SESSION_INITIATE, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_INITIATE_SENT */
@@ -121,7 +122,7 @@ static JingleAction allowed_actions[6][8] = {
     JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_INITIATED */
   { JINGLE_ACTION_SESSION_ACCEPT, JINGLE_ACTION_SESSION_TERMINATE,
-    JINGLE_ACTION_TRANSPORT_INFO,
+    JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_CONTENT_REJECT,
     JINGLE_ACTION_CONTENT_MODIFY, JINGLE_ACTION_CONTENT_ACCEPT,
     JINGLE_ACTION_CONTENT_REMOVE, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_ACCEPT_SENT */
@@ -129,6 +130,7 @@ static JingleAction allowed_actions[6][8] = {
   /* JS_STATE_ACTIVE */
   { JINGLE_ACTION_CONTENT_MODIFY, JINGLE_ACTION_CONTENT_ADD,
     JINGLE_ACTION_CONTENT_REMOVE, JINGLE_ACTION_CONTENT_REPLACE,
+    JINGLE_ACTION_CONTENT_ACCEPT, JINGLE_ACTION_CONTENT_REJECT,
     JINGLE_ACTION_SESSION_INFO, JINGLE_ACTION_TRANSPORT_INFO,
     JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_ENDED */
@@ -145,11 +147,10 @@ gabble_jingle_session_init (GabbleJingleSession *obj)
 
   priv->contents = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_object_unref);
-  priv->initial_contents = g_hash_table_new_full (g_str_hash,
-      g_str_equal, g_free, NULL);
 
   priv->state = JS_STATE_PENDING_CREATED;
   priv->locally_accepted = FALSE;
+  priv->timer_id = 0;
   priv->dispose_has_run = FALSE;
 }
 
@@ -167,8 +168,9 @@ gabble_jingle_session_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  g_hash_table_destroy (priv->initial_contents);
-  priv->initial_contents = NULL;
+  g_assert ((priv->state == JS_STATE_PENDING_CREATED) ||
+      (priv->state == JS_STATE_ENDED));
+  g_assert (priv->timer_id == 0);
 
   g_hash_table_destroy (priv->contents);
   priv->contents = NULL;
@@ -641,15 +643,6 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
 }
 
 static void
-_mark_each_initial_content (gpointer key, gpointer data, gpointer user_data)
-{
-  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
-
-  g_hash_table_insert (priv->initial_contents, key, data);
-}
-
-static void
 on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
   GError **error)
 {
@@ -676,11 +669,9 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
 
   if (*error == NULL)
     {
-      DEBUG ("marking all newly defined contents as initial contents");
-
-      /* mark all newly defined contents as initial contents */
-      g_hash_table_foreach (priv->contents,
-          _mark_each_initial_content, sess);
+      /* FIXME: contents defined here should always have "session" content
+       * disposition; resolve this as soon as the proper procedure is defined
+       * in XEP-0166. */
 
       set_state (sess, JS_STATE_PENDING_INITIATED);
     }
@@ -704,7 +695,14 @@ static void
 on_content_remove (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
+  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+
   _foreach_content (sess, node, _each_content_remove, error);
+
+  if (g_hash_table_size (priv->contents) == 0)
+    {
+      gabble_jingle_session_terminate (sess);
+    }
 }
 
 static void
@@ -715,11 +713,20 @@ on_content_replace (GabbleJingleSession *sess, LmMessageNode *node,
 }
 
 static void
+on_content_reject (GabbleJingleSession *sess, LmMessageNode *node,
+    GError **error)
+{
+  /* FIXME: reject is different from remove - remove is for
+   * acknowledged contents, reject is for pending; but the result
+   * is the same. */
+  _foreach_content (sess, node, _each_content_remove, error);
+}
+
+static void
 on_content_accept (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  // FIXME
-  // _foreach_content (sess, node, _each_content_replace, error);
+  _foreach_content (sess, node, _each_content_accept, error);
 }
 
 static void
@@ -754,7 +761,6 @@ on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
 {
   DEBUG ("remote end terminates the session");
   set_state (sess, JS_STATE_ENDED);
-  g_signal_emit (sess, signals[TERMINATED], 0, FALSE);
 }
 
 static void
@@ -819,6 +825,7 @@ static HandlerFunc handlers[] = {
   on_content_modify,
   on_content_remove,
   on_content_replace,
+  on_content_reject,
   on_session_accept, /* jingle_on_session_accept */
   NULL, /* jingle_on_session_info */
   on_session_initiate,
@@ -1065,25 +1072,25 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
 
   iq_node = lm_message_get_node (msg);
 
-  switch (priv->dialect) {
-    case JINGLE_DIALECT_V026:
-      el = "jingle";
-      ns = NS_JINGLE026;
-      break;
-    case JINGLE_DIALECT_V015:
-      el = "jingle";
-      ns = NS_JINGLE015;
-      break;
-    case JINGLE_DIALECT_GTALK3:
-    case JINGLE_DIALECT_GTALK4:
-      el = "session";
-      ns = NS_GOOGLE_SESSION;
-      gtalk_mode = TRUE;
-      break;
-    case JINGLE_DIALECT_ERROR:
-      g_assert_not_reached ();
-
-  }
+  switch (priv->dialect)
+    {
+      case JINGLE_DIALECT_V015:
+        el = "jingle";
+        ns = NS_JINGLE015;
+        break;
+      case JINGLE_DIALECT_GTALK3:
+      case JINGLE_DIALECT_GTALK4:
+        el = "session";
+        ns = NS_GOOGLE_SESSION;
+        gtalk_mode = TRUE;
+        break;
+      case JINGLE_DIALECT_ERROR:
+        g_assert_not_reached ();
+      default:
+        el = "jingle";
+        ns = NS_JINGLE026;
+        break;
+    }
 
   session_node = lm_message_node_add_child (iq_node, el, NULL);
   lm_message_node_set_attributes (session_node,
@@ -1094,42 +1101,52 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
         produce_action (action, priv->dialect),
       NULL);
 
-  *sess_node = session_node;
+  if (sess_node != NULL)
+      *sess_node = session_node;
 
   return msg;
 }
 
-static void
-_check_content_for_acceptance (gpointer key, gpointer data, gpointer user_data)
-{
-  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (data);
-  gboolean *is_ready = (gboolean *) user_data;
+typedef void (*ContentMapperFunc) (GabbleJingleSession *sess,
+    GabbleJingleContent *c, gpointer user_data);
 
-  /* TODO: content knows whether we are the creator (different
-   * rules for readiness for initiate/accept) */
-  *is_ready = gabble_jingle_content_is_ready (c);
+static void
+_map_initial_contents (GabbleJingleSession *sess, ContentMapperFunc mapper,
+    gpointer user_data)
+{
+  GList *li;
+  GList *contents = gabble_jingle_session_get_contents (sess);
+
+  for (li = contents; li; li = li->next)
+    {
+      const gchar *disposition;
+      GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (li->data);
+
+      g_object_get (c, "disposition", &disposition, NULL);
+
+      if (!tp_strdiff (disposition, "session"))
+        {
+          mapper (sess, c, user_data);
+        }
+    }
+
+  g_list_free (contents);
 }
 
 static void
-_check_content_for_initiation (gpointer key, gpointer data, gpointer user_data)
+_check_content_ready (GabbleJingleSession *sess,
+    GabbleJingleContent *c, gpointer user_data)
 {
-  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (data);
-  gboolean *is_ready = (gboolean *) user_data;
-
-  *is_ready = gabble_jingle_content_is_ready (c);
-  DEBUG ("content %p reported readiness: %u", c, *is_ready);
-
+  * ((gboolean *) user_data) = gabble_jingle_content_is_ready (c);
 }
 
 static void
-_try_session_accept_fill (gpointer key, gpointer data, gpointer user_data)
+_fill_content (GabbleJingleSession *sess,
+    GabbleJingleContent *c, gpointer user_data)
 {
-  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (data);
   LmMessageNode *sess_node = user_data;
   JingleContentState state;
 
-  /* We can safely add every content, because we're only
-   * considering the initial ones anyways. */
   gabble_jingle_content_produce_node (c, sess_node, TRUE);
 
   g_object_get (c, "state", &state, NULL);
@@ -1145,90 +1162,135 @@ _try_session_accept_fill (gpointer key, gpointer data, gpointer user_data)
   else
     {
       DEBUG ("weird, content %p is in stata %u", c, state);
+      g_assert_not_reached ();
     }
 }
 
-static void
-try_session_accept (GabbleJingleSession *sess)
+static LmHandlerResult
+_process_reply (GabbleConnection *conn,
+    LmMessage *sent, LmMessage *reply, GObject *obj, gpointer user_data)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
-  LmMessage *msg;
-  LmMessageNode *sess_node;
-  gboolean content_ready = TRUE;
+  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (obj);
+  JingleReplyHandler handler = user_data;
 
-  g_assert (g_hash_table_size (priv->initial_contents) > 0);
-
-  if (priv->state != JS_STATE_PENDING_INITIATED)
+  if (lm_message_get_sub_type (reply) == LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      DEBUG ("session is in state %u, won't try to accept", priv->state);
-      return;
+      handler (sess, TRUE, reply);
+    }
+  else
+    {
+      handler (sess, FALSE, reply);
     }
 
-  if (!priv->locally_accepted)
-      return;
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
 
-  g_hash_table_foreach (priv->initial_contents, _check_content_for_acceptance, &content_ready);
+void
+gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
+    JingleReplyHandler cb)
+{
+  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
 
-  if (!content_ready)
-      return;
-
-  msg = gabble_jingle_session_new_message (sess, JINGLE_ACTION_SESSION_ACCEPT,
-      &sess_node);
-
-  g_hash_table_foreach (priv->initial_contents, _try_session_accept_fill, sess_node);
-
-  _gabble_connection_send (priv->conn, msg, NULL);
+  if (cb != NULL)
+    {
+      DEBUG ("sending with reply %p", cb);
+      _gabble_connection_send_with_reply (priv->conn, msg,
+          _process_reply, G_OBJECT (sess), cb, NULL);
+    }
+  else
+    {
+      _gabble_connection_send (priv->conn, msg, NULL);
+    }
 
   lm_message_unref (msg);
-
-  set_state (sess, JS_STATE_ACTIVE);
 }
 
 static void
-try_session_initiate (GabbleJingleSession *sess)
+_on_initiate_reply (GabbleJingleSession *sess, gboolean success,
+    LmMessage *reply)
+{
+  if (success)
+      set_state (sess, JS_STATE_PENDING_INITIATED);
+  else
+      set_state (sess, JS_STATE_ENDED);
+}
+
+static void
+_on_accept_reply (GabbleJingleSession *sess, gboolean success,
+    LmMessage *reply)
+{
+  /* FIXME: clear session timeout timer here */
+
+  if (success)
+      set_state (sess, JS_STATE_ACTIVE);
+  else
+      set_state (sess, JS_STATE_ENDED);
+}
+
+static gboolean
+timeout_session (gpointer data)
+{
+  GabbleJingleSession *session = data;
+
+  DEBUG ("session timed out");
+
+  /* FIXME: distinguish between different cases; we somehow need to
+   * signal this to media channel - parameter to TERMINATED perhaps?*/
+
+  gabble_jingle_session_terminate (session);
+  return FALSE;
+}
+
+static void
+try_session_initiate_or_accept (GabbleJingleSession *sess)
 {
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
   LmMessage *msg;
   LmMessageNode *sess_node;
-  gboolean content_ready = TRUE;
+  gboolean contents_ready = TRUE;
+  JingleAction action;
+  JingleSessionState new_state;
+  JingleReplyHandler handler;
 
+  /* If there are no contents yet, we shouldn't have been called at all. */
   g_assert (g_hash_table_size (priv->contents) > 0);
 
-  if (priv->state != JS_STATE_PENDING_CREATED)
+  if (priv->local_initiator)
     {
-      DEBUG ("session is in state %u, won't try to initiate", priv->state);
-      return;
+      if (priv->state != JS_STATE_PENDING_CREATED)
+        {
+          DEBUG ("session is in state %u, won't try to initiate", priv->state);
+          return;
+        }
+
+      action = JINGLE_ACTION_SESSION_INITIATE;
+      new_state = JS_STATE_PENDING_INITIATE_SENT;
+      handler = _on_initiate_reply;
+
+      /* FIXME: set session timeout timer here */
+    }
+  else
+    {
+      if (priv->state != JS_STATE_PENDING_INITIATED)
+        {
+          DEBUG ("session is in state %u, won't try to accept", priv->state);
+          return;
+        }
+
+      action = JINGLE_ACTION_SESSION_ACCEPT;
+      new_state = JS_STATE_PENDING_ACCEPT_SENT;
+      handler = _on_accept_reply;
     }
 
-  g_hash_table_foreach (priv->contents, _check_content_for_initiation, &content_ready);
+  _map_initial_contents (sess, _check_content_ready, &contents_ready);
 
-  if (!content_ready)
+  if (!contents_ready)
       return;
 
-  msg = gabble_jingle_session_new_message (sess, JINGLE_ACTION_SESSION_INITIATE,
-      &sess_node);
-
-  g_hash_table_foreach (priv->contents, _try_session_accept_fill, sess_node);
-
-  _gabble_connection_send (priv->conn, msg, NULL);
-
-  lm_message_unref (msg);
-
-  set_state (sess, JS_STATE_PENDING_INITIATE_SENT);
-}
-
-static void
-content_accept (GabbleJingleSession *sess, GabbleJingleContent *c)
-{
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
-
-  if (priv->state < JS_STATE_PENDING_INITIATE_SENT)
-    {
-      DEBUG ("session is in state %u, won't try to accept content", priv->state);
-      return;
-    }
-
-  gabble_jingle_content_accept (c);
+  msg = gabble_jingle_session_new_message (sess, action, &sess_node);
+  _map_initial_contents (sess, _fill_content, sess_node);
+  gabble_jingle_session_send (sess, msg, handler);
+  set_state (sess, new_state);
 }
 
 static void
@@ -1236,9 +1298,28 @@ set_state (GabbleJingleSession *sess, JingleState state)
 {
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
 
+  DEBUG ("Setting state of JingleSession: %p (priv = %p) from %u to %u", sess, priv, priv->state, state);
+
   priv->state = state;
-  DEBUG ("Setting state of JingleSession: %p (priv = %p), state = %u", sess, priv, priv->state);
   g_object_notify (G_OBJECT (sess), "state");
+
+  /* if we or peer just initiated the session, set the session timer */
+  if ((priv->local_initiator && (state == JS_STATE_PENDING_INITIATE_SENT)) ||
+      (!priv->local_initiator && (state == JS_STATE_PENDING_INITIATED)))
+    {
+      g_assert (priv->timer_id == 0);
+      priv->timer_id = g_timeout_add (DEFAULT_SESSION_TIMEOUT,
+        timeout_session, sess);
+    }
+  /* if we're active or ended, we can clear the timer */
+  else if ((state >= JS_STATE_ACTIVE) && (priv->timer_id != 0))
+    {
+      g_source_remove (priv->timer_id);
+      priv->timer_id = 0;
+    }
+
+  if (state == JS_STATE_ENDED)
+      g_signal_emit (sess, signals[TERMINATED], 0, FALSE);
 }
 
 void
@@ -1248,22 +1329,15 @@ gabble_jingle_session_accept (GabbleJingleSession *sess)
 
   priv->locally_accepted = TRUE;
 
-  try_session_accept (sess);
+  try_session_initiate_or_accept (sess);
 }
 
 void
 gabble_jingle_session_terminate (GabbleJingleSession *sess)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
-  LmMessage *msg;
-  LmMessageNode *sess_node;
-
-  msg = gabble_jingle_session_new_message (sess, JINGLE_ACTION_SESSION_TERMINATE,
-      &sess_node);
-
-  _gabble_connection_send (priv->conn, msg, NULL);
-
-  lm_message_unref (msg);
+  gabble_jingle_session_send (sess,
+      gabble_jingle_session_new_message (sess, JINGLE_ACTION_SESSION_TERMINATE,
+          NULL), NULL);
 
   /* NOTE: on "terminated", jingle factory and media channel will unref
    * it, bringing refcount to 0, so dispose will be called, and it
@@ -1271,31 +1345,35 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess)
 
   DEBUG ("we are terminating this session");
   set_state (sess, JS_STATE_ENDED);
-  g_signal_emit (sess, signals[TERMINATED], 0, FALSE);
 }
 
 void
 gabble_jingle_session_remove_content (GabbleJingleSession *sess,
-    const gchar *content_name)
+    GabbleJingleContent *c)
 {
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
-  GabbleJingleContent *c = g_hash_table_lookup (priv->contents, content_name);
+  const gchar *content_name;
   LmMessage *msg;
   LmMessageNode *sess_node;
 
-  g_return_if_fail (c != NULL);
+  g_object_get (c, "name", &content_name, NULL);
+
+  DEBUG ("removing content '%s'", content_name);
 
   msg = gabble_jingle_session_new_message (sess, JINGLE_ACTION_CONTENT_REMOVE,
       &sess_node);
-
-  g_assert (msg != NULL);
-
   gabble_jingle_content_produce_node (c, sess_node, FALSE);
-  /* FIXME: actually send it, mark it as in removal, etc */
+  gabble_jingle_session_send (sess, msg, NULL);
 
-  /* FIXME: emit a 'content-removed' signal */
-  /* This should g_object_unref the content */
+  /* FIXME: emit a 'content-removed' signal, mark it as in removal? */
+  /* When we and MediaChannel unref the object, it should get disposed */
   g_hash_table_remove (priv->contents, content_name);
+
+  /* If that was the last one, we can terminate the session */
+  if (g_hash_table_size (priv->contents) == 0)
+    {
+      gabble_jingle_session_terminate (sess);
+    }
 }
 
 GabbleJingleContent *
@@ -1332,64 +1410,13 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
                     "senders", JINGLE_CONTENT_SENDERS_BOTH,
                     NULL);
 
-  DEBUG ("here");
-
   g_signal_connect (c, "ready",
       (GCallback) content_ready_cb, sess);
 
   g_hash_table_insert (priv->contents, g_strdup (name), c);
-
   g_signal_emit (sess, signals[NEW_CONTENT], 0, c);
 
-  /* FIXME BUG: for session acceptance, we should only consider
-   * contents with disposition != "session". we'll burn that bridge
-   * when we come to it. Here we assume all the contents added before
-   * an initiation message has been sent are initial contents. */
-  if (priv->state == JS_STATE_PENDING_CREATED)
-      g_hash_table_insert (priv->initial_contents, name, c);
-
-  /* Try to signal content-add if needed. */
-  if ((priv->state == JS_STATE_ACTIVE) ||
-      ((priv->state >= JS_STATE_PENDING_INITIATE_SENT) &&
-          (priv->dialect >= JINGLE_DIALECT_V026)))
-    {
-      LmMessage *msg;
-      LmMessageNode *sess_node;
-
-      msg = gabble_jingle_session_new_message (sess, JINGLE_ACTION_CONTENT_ADD,
-          &sess_node);
-      gabble_jingle_content_produce_node (c, sess_node, TRUE);
-      _gabble_connection_send (priv->conn, msg, NULL);
-      lm_message_unref (msg);
-
-      DEBUG ("setting jingle cotnent state to sent");
-      g_object_set (c, "state", JINGLE_CONTENT_STATE_SENT, NULL);
-    }
-
   return c;
-}
-
-void
-gabble_jingle_session_change_direction (GabbleJingleSession *sess,
-    const gchar *content_name, JingleContentSenders senders)
-{
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
-  GabbleJingleContent *c = g_hash_table_lookup (priv->contents, content_name);
-  LmMessage *msg;
-  LmMessageNode *sess_node;
-
-  g_return_if_fail (c != NULL);
-
-  g_object_set (c, "senders", senders, NULL);
-
-  msg = gabble_jingle_session_new_message (sess, JINGLE_ACTION_CONTENT_MODIFY,
-      &sess_node);
-
-  g_assert (msg != NULL);
-
-  gabble_jingle_content_produce_node (c, sess_node, FALSE);
-
-  /* FIXME: send the message, mark the nodes as pending change, etc */
 }
 
 /* Get any content. Either we're in google mode (so we only have one content
@@ -1438,40 +1465,18 @@ static void
 content_ready_cb (GabbleJingleContent *c, gpointer user_data)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
-  const gchar *name;
+  const gchar *disposition;
 
   DEBUG ("called");
 
-  g_object_get (c, "name", &name, NULL);
+  /* FIXME: we rely on the fact that JingleContent only signals
+   * "ready" on session contents; this is wrong, session contents
+   * added/accepted *after* session-accept are handled the same
+   * as early media */
+  g_object_get (c, "disposition", &disposition, NULL);
+  g_assert (!tp_strdiff (disposition, "session"));
 
-  if (g_hash_table_lookup (priv->initial_contents, name))
-    {
-      DEBUG ("it's one of the initial contents");
-      /* it's one of the contents from session-initiate */
-      if (priv->local_initiator)
-        {
-          DEBUG ("local initiator, i'm going to try to initiate");
-          try_session_initiate (sess);
-        }
-      else
-        {
-          DEBUG ("remote initiator, i'm going to try to accept");
-          try_session_accept (sess);
-        }
-    }
-  else
-    {
-      /* FIXME: we're assuming the content wasn't
-       * created by us (we should invent content property
-       * that says this, instead of assuming anything) */
-      if (gabble_jingle_content_is_ready (c))
-        {
-          /* FIXME: content can figure out it needs to accept itself,
-           * it should be handled automatically */
-          content_accept (sess, c);
-        }
-    }
+  try_session_initiate_or_accept (sess);
 }
 
 

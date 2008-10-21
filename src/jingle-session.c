@@ -117,6 +117,7 @@ static JingleAction allowed_actions[6][8] = {
   { JINGLE_ACTION_SESSION_INITIATE, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_INITIATE_SENT */
   { JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_SESSION_ACCEPT,
+    JINGLE_ACTION_TRANSPORT_ACCEPT, /* required for GTalk4 */
     JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_INITIATED */
   { JINGLE_ACTION_SESSION_ACCEPT, JINGLE_ACTION_SESSION_TERMINATE,
@@ -166,11 +167,11 @@ gabble_jingle_session_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  g_hash_table_destroy (priv->contents);
-  priv->contents = NULL;
-
   g_hash_table_destroy (priv->initial_contents);
   priv->initial_contents = NULL;
+
+  g_hash_table_destroy (priv->contents);
+  priv->contents = NULL;
 
   if (sess->peer)
     {
@@ -484,8 +485,7 @@ _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
     }
 }
 
-static void content_ready_cb (GabbleJingleContent *c,
-    GParamSpec *arg, GabbleJingleSession *sess);
+static void content_ready_cb (GabbleJingleContent *c, gpointer user_data);
 
 static void
 _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
@@ -545,7 +545,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
                     "content-ns", content_ns,
                     NULL);
 
-  g_signal_connect (c, "notify::ready",
+  g_signal_connect (c, "ready",
       (GCallback) content_ready_cb, sess);
 
   gabble_jingle_content_parse_add (c, content_node,
@@ -1126,10 +1126,26 @@ _try_session_accept_fill (gpointer key, gpointer data, gpointer user_data)
 {
   GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (data);
   LmMessageNode *sess_node = user_data;
+  JingleContentState state;
 
   /* We can safely add every content, because we're only
    * considering the initial ones anyways. */
   gabble_jingle_content_produce_node (c, sess_node, TRUE);
+
+  g_object_get (c, "state", &state, NULL);
+
+  if (state == JINGLE_CONTENT_STATE_EMPTY)
+    {
+      g_object_set (c, "state", JINGLE_CONTENT_STATE_SENT, NULL);
+    }
+  else if (state == JINGLE_CONTENT_STATE_NEW)
+    {
+      g_object_set (c, "state", JINGLE_CONTENT_STATE_ACKNOWLEDGED, NULL);
+    }
+  else
+    {
+      DEBUG ("weird, content %p is in stata %u", c, state);
+    }
 }
 
 static void
@@ -1312,12 +1328,13 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
                     "content-ns", content_ns,
                     "transport-ns", transport_ns,
                     "name", name,
+                    "disposition", "session",
                     "senders", JINGLE_CONTENT_SENDERS_BOTH,
                     NULL);
 
   DEBUG ("here");
 
-  g_signal_connect (c, "notify::ready",
+  g_signal_connect (c, "ready",
       (GCallback) content_ready_cb, sess);
 
   g_hash_table_insert (priv->contents, g_strdup (name), c);
@@ -1418,9 +1435,9 @@ gabble_jingle_session_get_contents (GabbleJingleSession *sess)
 }
 
 static void
-content_ready_cb (GabbleJingleContent *c,
-    GParamSpec *arg, GabbleJingleSession *sess)
+content_ready_cb (GabbleJingleContent *c, gpointer user_data)
 {
+  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
   const gchar *name;
 

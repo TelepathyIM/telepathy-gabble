@@ -109,6 +109,7 @@ gboolean gabble_jingle_content_is_ready (GabbleJingleContent *self);
 void gabble_jingle_content_set_transport_state (GabbleJingleContent *content,
     JingleTransportState state);
 void gabble_jingle_content_accept (GabbleJingleContent *c);
+GList *gabble_jingle_content_get_remote_candidates (GabbleJingleContent *c);
 
 #endif /* __JINGLE_CONTENT_H__ */
 

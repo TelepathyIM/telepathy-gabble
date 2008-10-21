@@ -349,37 +349,6 @@ connection_status_changed_cb (GabbleConnection *conn,
           G_CALLBACK (new_jingle_session_cb), self);
       break;
 
-#if 0
-    case TP_CONNECTION_STATUS_CONNECTED:
-        {
-          gchar *stun_server = NULL;
-          guint stun_port = 0;
-
-          g_object_get (priv->conn,
-              "stun-server", &stun_server,
-              "stun-port", &stun_port,
-              NULL);
-
-          if (stun_server == NULL)
-            {
-              priv->get_stun_from_jingle = TRUE;
-            }
-          else
-            {
-              g_free (priv->stun_server);
-              priv->stun_server = stun_server;
-              priv->stun_port = stun_port;
-            }
-
-          if (priv->conn->features &
-              GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
-            {
-              // FIXME: jingle_info_send_request (self);
-            }
-        }
-      break;
-#endif
-
     case TP_CONNECTION_STATUS_DISCONNECTED:
       gabble_media_factory_close_all (self);
       break;

@@ -107,6 +107,8 @@ void _gabble_media_stream_close (GabbleMediaStream *close);
 void _gabble_media_stream_update_sending (GabbleMediaStream *stream,
     gboolean start_sending);
 void gabble_media_stream_hold (GabbleMediaStream *stream, gboolean hold);
+gboolean gabble_media_stream_change_direction (GabbleMediaStream *stream,
+    guint requested_dir, GError **error);
 
 G_END_DECLS
 

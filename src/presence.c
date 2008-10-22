@@ -240,6 +240,38 @@ _find_resource (GabblePresence *presence, const gchar *resource)
   return NULL;
 }
 
+static void
+aggregate_resources (GabblePresence *presence)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GSList *i;
+  guint8 prio;
+
+  /* select the most preferable Resource and update presence->* based on our
+   * choice */
+  presence->caps = 0;
+  presence->status = GABBLE_PRESENCE_OFFLINE;
+
+  prio = -128;
+
+  for (i = priv->resources; NULL != i; i = i->next)
+    {
+      Resource *r = (Resource *) i->data;
+
+      presence->caps |= r->caps;
+
+      /* trump existing status & message if it's more present
+       * or has the same presence and a higher priority */
+      if (r->status > presence->status ||
+          (r->status == presence->status && r->priority > prio))
+        {
+          presence->status = r->status;
+          presence->status_message = r->status_message;
+          prio = r->priority;
+        }
+    }
+}
+
 gboolean
 gabble_presence_update (GabblePresence *presence,
                         const gchar *resource,
@@ -252,7 +284,6 @@ gabble_presence_update (GabblePresence *presence,
   GabblePresenceId old_status;
   gchar *old_status_message;
   GSList *i;
-  guint8 prio;
   gboolean ret = FALSE;
 
   /* save our current state */
@@ -335,24 +366,7 @@ gabble_presence_update (GabblePresence *presence,
    * keeping around just because it has a message on it */
   presence->status_message = res ? res->status_message : NULL;
 
-  prio = -128;
-
-  for (i = priv->resources; NULL != i; i = i->next)
-    {
-      Resource *r = (Resource *) i->data;
-
-      presence->caps |= r->caps;
-
-      /* trump existing status & message if it's more present
-       * or has the same presence and a higher priority */
-      if (r->status > presence->status ||
-          (r->status == presence->status && r->priority > prio))
-        {
-          presence->status = r->status;
-          presence->status_message = r->status_message;
-          prio = r->priority;
-        }
-    }
+  aggregate_resources (presence);
 
 OUT:
   /* detect changes */

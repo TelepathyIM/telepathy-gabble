@@ -12,8 +12,8 @@
    Memcheck:Leak
    fun:malloc
    fun:dbus_malloc
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
    fun:dbus_g_bus_get
    fun:tp_get_bus
 }
@@ -23,13 +23,13 @@
    Memcheck:Leak
    fun:calloc
    fun:dbus_malloc0
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
    fun:dbus_g_bus_get
    fun:tp_get_bus
 }
@@ -39,17 +39,17 @@
    Memcheck:Leak
    fun:realloc
    fun:dbus_realloc
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
-   obj:/usr/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
+   obj:*/lib/libdbus-1.so.*
    fun:dbus_g_bus_get
    fun:tp_get_bus
 }

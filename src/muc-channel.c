@@ -29,11 +29,10 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/debug-ansi.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
-
-#include "extensions/extensions.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 #include "connection.h"
@@ -41,7 +40,6 @@
 #include "debug.h"
 #include "disco.h"
 #include "error.h"
-#include "exportable-channel.h"
 #include "namespaces.h"
 #include "presence.h"
 #include "util.h"
@@ -64,7 +62,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL,
       channel_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
       tp_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
@@ -73,14 +70,13 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
       password_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
       text_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init)
     )
 
 static const gchar *gabble_muc_channel_interfaces[] = {
-    GABBLE_IFACE_CHANNEL_FUTURE,
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
     TP_IFACE_PROPERTIES_INTERFACE,
@@ -246,12 +242,11 @@ struct _GabbleMucChannelPrivate
 
   TpPropertiesContext *properties_ctx;
 
-  gboolean ready:1;
+  unsigned ready:1;
+  unsigned closed:1;
+  unsigned dispose_has_run:1;
+  unsigned invited:1;
 
-  gboolean closed:1;
-  gboolean dispose_has_run:1;
-
-  gboolean invited:1;
   gchar *invitation_message;
 
   /* Aggregate all presences when joining the chatroom */
@@ -851,15 +846,15 @@ gabble_muc_channel_get_property (GObject    *object,
       g_value_set_boolean (value, priv->closed);
       break;
     case PROP_CHANNEL_PROPERTIES:
-      g_value_set_boxed (value,
-          gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+      g_value_take_boxed (value,
+          tp_dbus_properties_mixin_make_properties_hash (object,
               TP_IFACE_CHANNEL, "TargetHandle",
               TP_IFACE_CHANNEL, "TargetHandleType",
               TP_IFACE_CHANNEL, "ChannelType",
               TP_IFACE_CHANNEL, "TargetID",
-              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
-              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
-              GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+              TP_IFACE_CHANNEL, "InitiatorHandle",
+              TP_IFACE_CHANNEL, "InitiatorID",
+              TP_IFACE_CHANNEL, "Requested",
               NULL));
       break;
     default:
@@ -941,9 +936,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       { "TargetID", "target-id", NULL },
       { "ChannelType", "channel-type", NULL },
       { "Interfaces", "interfaces", NULL },
-      { NULL }
-  };
-  static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "Requested", "requested", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
@@ -954,11 +946,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
-      },
-      { GABBLE_IFACE_CHANNEL_FUTURE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        future_props,
       },
       { NULL }
   };
@@ -989,66 +976,52 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       "channel-properties");
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object that owns this "
-                                    "MUC channel object.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Gabble connection object that owns this MUC channel object.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_uint ("state", "Channel state",
-                                  "The current state that the channel is in.",
-                                  0, G_MAXUINT32, 0,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_NICK |
-                                  G_PARAM_STATIC_BLURB);
+      "The current state that the channel is in.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
   param_spec = g_param_spec_boolean ("invited", "Invited?",
       "Whether the user has been invited to the channel.", FALSE,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE | G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INVITED, param_spec);
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
       "Additional Channel.Interface.* interfaces",
       G_TYPE_STRV,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_string ("target-id", "MUC's JID",
       "The string obtained by inspecting the MUC's handle",
       NULL,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
 
   param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
       "The contact who initiated the channel",
       0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
       param_spec);
 
   param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
       "The string obtained by inspecting the initiator-handle",
       NULL,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
 
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_string ("invitation-message",
@@ -1056,8 +1029,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       "The message we were sent when invited; NULL if not invited or if "
       "already processed",
       NULL,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INVITATION_MESSAGE,
       param_spec);
 
@@ -1085,8 +1057,8 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  g_cclosure_marshal_VOID__UINT,
-                  G_TYPE_NONE, 1, G_TYPE_UINT);
+                  g_cclosure_marshal_VOID__STRING,
+                  G_TYPE_NONE, 1, G_TYPE_STRING);
 
   signals[CONTACT_JOIN] =
     g_signal_new ("contact-join",
@@ -1144,6 +1116,12 @@ gabble_muc_channel_dispose (GObject *object)
 
   clear_join_timer (self);
   clear_poll_timer (self);
+
+  if (!priv->closed)
+    {
+      priv->closed = TRUE;
+      tp_svc_channel_emit_closed (self);
+    }
 
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
@@ -1331,15 +1309,11 @@ channel_state_changed (GabbleMucChannel *chan,
 
   if (new_state == MUC_STATE_JOINED || new_state == MUC_STATE_AUTH)
     {
-      TpBaseConnection *base = (TpBaseConnection *) priv->conn;
-
       if (!priv->ready)
         {
           g_signal_emit (chan, signals[READY], 0);
           priv->ready = TRUE;
         }
-
-      g_signal_emit (chan, signals[CONTACT_JOIN], 0, base->self_handle);
     }
 }
 
@@ -1873,6 +1847,15 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   role = lm_message_node_get_attribute (item_node, "role");
   affil = lm_message_node_get_attribute (item_node, "affiliation");
   owner_jid = lm_message_node_get_attribute (item_node, "jid");
+
+  /* We special case OLPC Gadget as activities doesn't have to see it as
+   * a member of the room. */
+  if (owner_jid != NULL &&
+      !tp_strdiff (owner_jid, priv->conn->olpc_gadget_activity))
+    {
+      DEBUG ("Don't add Gadget's inspector as member");
+      return;
+    }
 
   /* update channel members according to presence */
   set = tp_intset_new ();
@@ -2490,6 +2473,41 @@ gabble_muc_channel_send (TpSvcChannelTypeText *iface,
   tp_svc_channel_type_text_return_from_send (context);
 }
 
+gboolean
+gabble_muc_channel_send_invite (GabbleMucChannel *self,
+                                const gchar *jid,
+                                const gchar *message,
+                                GError **error)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  LmMessage *msg;
+  LmMessageNode *x_node, *invite_node;
+  gboolean result;
+
+  g_signal_emit (self, signals[PRE_INVITE], 0, jid);
+
+  msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
+
+  x_node = lm_message_node_add_child (msg->node, "x", NULL);
+  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC_USER);
+
+  invite_node = lm_message_node_add_child (x_node, "invite", NULL);
+
+  lm_message_node_set_attribute (invite_node, "to", jid);
+
+  if (*message != '\0')
+    {
+      lm_message_node_add_child (invite_node, "reason", message);
+    }
+
+  DEBUG ("sending MUC invitation for room %s to contact %s with reason "
+      "\"%s\"", priv->jid, jid, message);
+
+  result = _gabble_connection_send (priv->conn, msg, error);
+  lm_message_unref (msg);
+
+  return result;
+}
 
 static gboolean
 gabble_muc_channel_add_member (GObject *obj,
@@ -2497,14 +2515,10 @@ gabble_muc_channel_add_member (GObject *obj,
                                const gchar *message,
                                GError **error)
 {
-  GabbleMucChannelPrivate *priv;
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   TpGroupMixin *mixin;
   const gchar *jid;
-  LmMessage *msg;
-  LmMessageNode *x_node, *invite_node;
-  gboolean result;
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (GABBLE_MUC_CHANNEL (obj));
 
   mixin = TP_GROUP_MIXIN (obj);
 
@@ -2513,6 +2527,7 @@ gabble_muc_channel_add_member (GObject *obj,
       TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
       TpIntSet *set_remove_members, *set_remote_pending;
       GArray *arr_members;
+      gboolean result;
 
       /* are we already a member or in remote pending? */
       if (tp_handle_set_is_member (mixin->members, handle) ||
@@ -2551,7 +2566,7 @@ gabble_muc_channel_add_member (GObject *obj,
       tp_intset_destroy (set_remote_pending);
 
       /* seek to enter the room */
-      result = send_join_request (GABBLE_MUC_CHANNEL (obj), NULL, error);
+      result = send_join_request (self, NULL, error);
 
       g_object_set (obj, "state",
                     (result) ? MUC_STATE_INITIATED : MUC_STATE_ENDED,
@@ -2572,31 +2587,9 @@ gabble_muc_channel_add_member (GObject *obj,
       return FALSE;
     }
 
-  g_signal_emit (obj, signals[PRE_INVITE], 0, handle);
+  jid = tp_handle_inspect (TP_GROUP_MIXIN (self)->handle_repo, handle);
 
-  msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
-
-  x_node = lm_message_node_add_child (msg->node, "x", NULL);
-  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC_USER);
-
-  invite_node = lm_message_node_add_child (x_node, "invite", NULL);
-
-  jid = tp_handle_inspect (TP_GROUP_MIXIN (obj)->handle_repo, handle);
-
-  lm_message_node_set_attribute (invite_node, "to", jid);
-
-  if (*message != '\0')
-    {
-      lm_message_node_add_child (invite_node, "reason", message);
-    }
-
-  DEBUG ("sending MUC invitation for room %s to contact %u (%s) with reason "
-      "\"%s\"", priv->jid, handle, jid, message);
-
-  result = _gabble_connection_send (priv->conn, msg, error);
-  lm_message_unref (msg);
-
-  return result;
+  return gabble_muc_channel_send_invite (self, jid, message, error);
 }
 
 static LmHandlerResult

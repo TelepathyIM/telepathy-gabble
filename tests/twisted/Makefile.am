@@ -1,22 +1,35 @@
 TWISTED_TESTS = \
 	muc/roomlist.py \
+	muc/test-ensure.py \
 	muc/test-muc-alias.py \
 	muc/test-muc-invitation.py \
 	muc/test-muc-ownership.py \
 	muc/test-muc-properties.py \
 	muc/test-muc.py \
+	olpc/olpc-activity-search.py \
+	olpc/current-activity.py \
 	olpc/olpc-muc-invitation.py \
 	olpc/olpc-muc-prop-change.py \
 	olpc/test-olpc-bundle.py \
 	olpc/test-olpc-set-props-preload.py \
+	olpc/change-notifications.py \
+	olpc/olpc-buddy-search.py \
+	olpc/gadget-invite.py \
+	olpc/gadget-publish.py \
+	olpc/gadget-restarted.py \
 	presence/presence.py \
+	roster/ensure.py \
 	roster/groups.py \
 	roster/groups-12791.py \
+	roster/request-group-before-roster.py \
+	roster/request-group-after-roster.py \
 	roster/test-google-roster.py \
 	roster/test-roster.py \
 	roster/test-roster-subscribe.py \
+	roster/test-save-alias-to-roster.py \
 	text/initiate.py \
 	text/initiate-requestotron.py \
+	text/ensure.py \
 	text/respawn.py \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
@@ -26,6 +39,7 @@ TWISTED_TESTS = \
 	tubes/test-muc-offer-dbus-tube.py \
 	tubes/test-muc-offer-stream-tube-ibb.py \
 	tubes/test-si-tubes.py \
+	tubes/ensure-si-tube.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \
@@ -46,7 +60,9 @@ TWISTED_TESTS = \
 	jingle/test-outgoing-call.py \
 	jingle/test-outgoing-call-deprecated.py \
 	jingle/test-outgoing-call-deprecated2.py \
+	jingle/test-outgoing-call-requestotron.py \
 	jingle/test-outgoing-call-rejected.py \
+	jingle/test-outgoing-call-ensure.py \
 	test-capabilities.py \
 	test-caps-cache.py \
 	test-caps-hash.py \
@@ -56,7 +72,6 @@ TWISTED_TESTS = \
 	connect/test-nonblocking-tls.py \
 	test-disco.py \
 	test-disco-no-reply.py \
-	test-group-race.py \
 	test-register.py \
 	test-set-status-idempotence.py
 
@@ -83,7 +98,9 @@ EXTRA_DIST = \
 	$(TWISTED_TESTS) \
 	gabbletest.py \
 	servicetest.py \
-	jingle/jingletest.py
+	jingle/jingletest.py \
+	ns.py \
+	olpc/util.py
 
 noinst_PROGRAMS = \
 	telepathy-gabble-debug

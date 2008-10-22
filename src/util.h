@@ -30,16 +30,14 @@
 #include <loudmouth/loudmouth.h>
 
 #include "types.h"
-#include "sha1/sha1.h"
 
-/* In case we're building with GLib < 2.13. */
-#ifndef G_PARAM_STATIC_STRINGS
-#define G_PARAM_STATIC_STRINGS \
-    (G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB)
-#endif
-
+/* Guarantees that the resulting hash is in lower-case */
 gchar *sha1_hex (const gchar *bytes, guint len);
+
+/* A SHA1 digest is 20 bytes long */
+#define SHA1_HASH_SIZE 20
 void sha1_bin (const gchar *bytes, guint len, guchar out[SHA1_HASH_SIZE]);
+
 void lm_message_node_add_own_nick (LmMessageNode *node,
     GabbleConnection *conn);
 void lm_message_node_unlink (LmMessageNode *orphan);

@@ -22,19 +22,21 @@ def test(q, bus, conn, stream):
     foo_handle = event.value[0][0]
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert properties.get('Channels') == [], properties['Channels']
     assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle'],
+             ['org.freedesktop.Telepathy.Channel.TargetHandle',
+              'org.freedesktop.Telepathy.Channel.TargetID'
+             ],
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
     requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT')
+            'org.freedesktop.Telepathy.Connection.Interface.Requests')
     call_async(q, requestotron, 'CreateChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
@@ -57,11 +59,11 @@ def test(q, bus, conn, stream):
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
             foo_handle
     assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == jid
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'Requested'] == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'InitiatorHandle'] == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.FUTURE.'
+    assert emitted_props['org.freedesktop.Telepathy.Channel.'
             'InitiatorID'] == 'test@localhost'
 
     assert old_sig.args[0] == ret.value[0]
@@ -78,7 +80,7 @@ def test(q, bus, conn, stream):
     assert new_sig.args[0][0][1] == ret.value[1]
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
 
     assert new_sig.args[0][0] in properties['Channels'], \

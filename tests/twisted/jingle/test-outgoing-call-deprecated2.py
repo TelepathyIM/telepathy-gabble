@@ -53,14 +53,9 @@ def test(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Channel',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert channel_props['TargetID'] == '', channel_props
-
-    # Exercise FUTURE properties
-    future_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     group_iface.AddMembers([handle], 'deprecated API')
 
@@ -83,7 +78,6 @@ def test(q, bus, conn, stream):
     stream_handler.StreamState(2)
 
     e = q.expect('stream-iq')
-    print e.iq_type, e.stanza
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-initiate'
     stream.send(gabbletest.make_result_iq(stream, e.stanza))

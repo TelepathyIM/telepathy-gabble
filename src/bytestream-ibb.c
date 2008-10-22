@@ -300,11 +300,7 @@ gabble_bytestream_ibb_class_init (
       "Peer resource",
       "the resource used by the remote peer during the SI, if any",
       NULL,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
       param_spec);
 
@@ -313,10 +309,7 @@ gabble_bytestream_ibb_class_init (
       "stream init ID",
       "the iq ID of the SI request, if any",
       NULL,
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STREAM_INIT_ID,
       param_spec);
 
@@ -325,11 +318,7 @@ gabble_bytestream_ibb_class_init (
       "block size",
       "Maximum data sent using one stanza as described in XEP-0047",
       0, G_MAXUINT32, 4096,
-      G_PARAM_CONSTRUCT |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_BLOCK_SIZE,
       param_spec);
 

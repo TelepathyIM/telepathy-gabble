@@ -8,16 +8,19 @@ from twisted.words.xish import domish, xpath
 
 from gabbletest import go, make_result_iq, exec_test
 from servicetest import call_async, EventPattern
+import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()
 
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
+    handles = {}
+    handles['bob'] = conn.RequestHandles(1, ['bob@localhost'])[0]
 
     buddy_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
-    call_async(q, buddy_iface, 'GetActivities', bob_handle)
+    act_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
+    call_async(q, buddy_iface, 'GetActivities', handles['bob'])
 
     event = q.expect('stream-iq', iq_type='get', to='bob@localhost')
     # Bob has no activities
@@ -30,11 +33,12 @@ def test(q, bus, conn, stream):
     # initially, Bob has no activities
     assert event.value == ([],)
 
+    # Bob sends an activity properties message
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'bob@localhost'
     message['to'] = 'test@localhost'
     properties = message.addElement(
-        ('http://laptop.org/xmpp/activity-properties', 'properties'))
+        (ns.OLPC_ACTIVITY_PROPS, 'properties'))
     properties['room'] = 'chat@conf.localhost'
     properties['activity'] = 'foo_id'
     property = properties.addElement((None, 'property'))
@@ -48,10 +52,24 @@ def test(q, bus, conn, stream):
 
     stream.send(message)
 
+    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
+    handles['chat'], props = event.args
+    assert props == {'color': '#ffff00,#00ffff', 'private' : True}
+
+    event = q.expect('dbus-signal', signal='ActivitiesChanged')
+    assert event.args[0] == handles['bob']
+    acts = event.args[1]
+    assert len(acts) == 1
+    assert acts[0] == ('foo_id', handles['chat'])
+
+    props = act_prop_iface.GetProperties(handles['chat'])
+    assert props == {'color': '#ffff00,#00ffff', 'private' : True}
+
+    # Bobs invites us to the activity
     message = domish.Element((None, 'message'))
     message['from'] = 'chat@conf.localhost'
     message['to'] = 'test@localhost'
-    x = message.addElement(('http://jabber.org/protocol/muc#user', 'x'))
+    x = message.addElement((ns.MUC_USER, 'x'))
     invite = x.addElement((None, 'invite'))
     invite['from'] = 'bob@localhost'
     reason = invite.addElement((None, 'reason'))
@@ -63,8 +81,7 @@ def test(q, bus, conn, stream):
     assert event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Text'
 
     assert event.args[2] == 2   # handle type
-    assert event.args[3] == 1   # handle
-    room_handle = 1
+    assert event.args[3] == handles['chat']   # handle
 
     text_chan = bus.get_object(conn.bus_name, event.args[0])
     group_iface = dbus.Interface(text_chan,
@@ -76,19 +93,17 @@ def test(q, bus, conn, stream):
 
     assert len(members) == 1
     assert conn.InspectHandles(1, members)[0] == 'bob@localhost'
-    bob_handle = members[0]
     assert len(local_pending) == 1
     # FIXME: the username-part-is-nickname assumption
     assert conn.InspectHandles(1, local_pending)[0] == \
             'chat@conf.localhost/test'
     assert len(remote_pending) == 0
 
-    room_self_handle = group_iface.GetSelfHandle()
-    assert room_self_handle == local_pending[0]
+    handles['chat_self'] = group_iface.GetSelfHandle()
+    assert handles['chat_self'] == local_pending[0]
 
     # by now, we should have picked up the extra activity properties
-    buddy_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
-    call_async(q, buddy_iface, 'GetActivities', bob_handle)
+    call_async(q, buddy_iface, 'GetActivities', handles['bob'])
 
     event = q.expect('stream-iq', iq_type='get', to='bob@localhost')
     # Bob still has no (public) activities
@@ -99,10 +114,10 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-return', method='GetActivities')
 
-    assert event.value == ([('foo_id', room_handle)],)
+    assert event.value == ([('foo_id', handles['chat'])],)
 
     # OK, now accept the invitation
-    call_async(q, group_iface, 'AddMembers', [room_self_handle], 'Oh, OK then')
+    call_async(q, group_iface, 'AddMembers', [handles['chat_self']], 'Oh, OK then')
 
     _, event, _ = q.expect_many(
         EventPattern('stream-presence', to='chat@conf.localhost/test'),
@@ -110,22 +125,22 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-return', method='AddMembers')
         )
 
-    assert event.args == ['', [], [bob_handle], [],
-            [room_self_handle], 0, room_self_handle]
+    assert event.args == ['', [], [handles['bob']], [],
+            [handles['chat_self']], 0, handles['chat_self']]
 
     # Send presence for own membership of room.
     presence = domish.Element((None, 'presence'))
     presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
+    x = presence.addElement((ns.MUC_USER, 'x'))
     item = x.addElement('item')
     item['affiliation'] = 'owner'
     item['role'] = 'moderator'
     stream.send(presence)
 
     event = q.expect('dbus-signal', signal='MembersChanged')
-    assert event.args == ['', [room_self_handle], [], [], [], 0, 0]
+    assert event.args == ['', [handles['chat_self']], [], [], [], 0, 0]
 
-    call_async(q, buddy_iface, 'SetActivities', [('foo_id', room_handle)])
+    call_async(q, buddy_iface, 'SetActivities', [('foo_id', handles['chat'])])
 
     event = q.expect('stream-iq', iq_type='set')
     event.stanza['type'] = 'result'
@@ -134,15 +149,19 @@ def test(q, bus, conn, stream):
     stream.send(event.stanza)
 
     q.expect('dbus-return', method='SetActivities')
-    act_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
     call_async(q, act_prop_iface, 'SetProperties',
-        room_handle, {'color': '#ffff00,#00ffff', 'private': True})
+        handles['chat'], {'color': '#ffff00,#00ffff', 'private': True})
+
+    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
+    chat_handle, props = event.args
+    assert chat_handle == handles['chat']
+    assert props == {'color': '#ffff00,#00ffff', 'private' : True}
 
     q.expect('dbus-return', method='SetProperties')
     # Test sending an invitation
-    alice_handle = conn.RequestHandles(1,
+    handles['alice'] = conn.RequestHandles(1,
         ['alice@localhost'])[0]
-    call_async(q, group_iface, 'AddMembers', [alice_handle],
+    call_async(q, group_iface, 'AddMembers', [handles['alice']],
             'I want to test invitations')
 
     event = q.expect('stream-message', to='alice@localhost')
@@ -150,7 +169,7 @@ def test(q, bus, conn, stream):
 
     properties = xpath.queryForNodes('/message/properties', message)
     assert (properties is not None and len(properties) == 1), repr(properties)
-    assert properties[0].uri == 'http://laptop.org/xmpp/activity-properties'
+    assert properties[0].uri == ns.OLPC_ACTIVITY_PROPS
     assert properties[0]['room'] == 'chat@conf.localhost'
     assert properties[0]['activity'] == 'foo_id'
 
@@ -175,7 +194,7 @@ def test(q, bus, conn, stream):
 
     x = xpath.queryForNodes('/message/x', message)
     assert (x is not None and len(x) == 1), repr(x)
-    assert x[0].uri == 'http://jabber.org/protocol/muc#user'
+    assert x[0].uri == ns.MUC_USER
 
     invites = xpath.queryForNodes('/x/invite', x[0])
     assert (invites is not None and len(invites) == 1), repr(invites)
@@ -186,14 +205,14 @@ def test(q, bus, conn, stream):
     assert str(reasons[0]) == 'I want to test invitations'
 
     call_async(q, act_prop_iface, 'SetProperties',
-        room_handle, {'color': '#f00baa,#f00baa', 'private': True})
+        handles['chat'], {'color': '#f00baa,#f00baa', 'private': True})
 
     event = q.expect('stream-message', to='alice@localhost')
     message = event.stanza
 
     properties = xpath.queryForNodes('/message/properties', message)
     assert (properties is not None and len(properties) == 1), repr(properties)
-    assert properties[0].uri == 'http://laptop.org/xmpp/activity-properties'
+    assert properties[0].uri == ns.OLPC_ACTIVITY_PROPS
     assert properties[0]['room'] == 'chat@conf.localhost'
     assert properties[0]['activity'] == 'foo_id'
 
@@ -212,6 +231,11 @@ def test(q, bus, conn, stream):
             assert False, 'Unexpected property %s' % p['name']
     assert 'color' in seen, seen
     assert 'private' in seen, seen
+
+    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
+    chat_handle, props = event.args
+    assert chat_handle == handles['chat']
+    assert props == {'color': '#f00baa,#f00baa', 'private' : True}
 
     q.expect('dbus-return', method='SetProperties')
 

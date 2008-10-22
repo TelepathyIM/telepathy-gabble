@@ -119,14 +119,13 @@ construct_contact_statuses_cb (GObject *obj,
 
       parameters = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
           (GDestroyNotify) tp_g_value_slice_free);
-      if (status_message != NULL) {
-        message = g_slice_new0 (GValue);
-        g_value_init (message, G_TYPE_STRING);
-        g_value_set_static_string (message, status_message);
 
-
-        g_hash_table_insert (parameters, "message", message);
-      }
+      if (status_message != NULL)
+        {
+          message = tp_g_value_slice_new (G_TYPE_STRING);
+          g_value_set_static_string (message, status_message);
+          g_hash_table_insert (parameters, "message", message);
+        }
 
       contact_status = tp_presence_status_new (status, parameters);
       g_hash_table_destroy (parameters);

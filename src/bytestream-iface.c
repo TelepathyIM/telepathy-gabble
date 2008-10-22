@@ -78,11 +78,7 @@ gabble_bytestream_iface_base_init (gpointer klass)
           "GabbleConnection object",
           "Gabble connection object that owns this Bytestream object.",
           GABBLE_TYPE_CONNECTION,
-          G_PARAM_CONSTRUCT_ONLY |
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_uint (
@@ -90,11 +86,7 @@ gabble_bytestream_iface_base_init (gpointer klass)
           "Peer handle",
           "The TpHandle of the remote peer involved in this bytestream",
           0, G_MAXUINT32, 0,
-          G_PARAM_CONSTRUCT_ONLY |
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_uint (
@@ -102,10 +94,7 @@ gabble_bytestream_iface_base_init (gpointer klass)
           "Peer handle type",
           "The TpHandleType of the remote peer's associated handle",
           0, G_MAXUINT32, 0,
-          G_PARAM_READABLE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_string (
@@ -113,11 +102,7 @@ gabble_bytestream_iface_base_init (gpointer klass)
           "stream ID",
           "the ID of the stream",
           "",
-          G_PARAM_CONSTRUCT_ONLY |
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_string (
@@ -126,9 +111,7 @@ gabble_bytestream_iface_base_init (gpointer klass)
           "The JID used by the remote peer during the SI",
           "",
           G_PARAM_READABLE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_uint (
@@ -138,10 +121,7 @@ gabble_bytestream_iface_base_init (gpointer klass)
           "this bytestream object",
           0, NUM_GABBLE_BYTESTREAM_STATES - 1,
           GABBLE_BYTESTREAM_STATE_LOCAL_PENDING,
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_string (
@@ -149,10 +129,7 @@ gabble_bytestream_iface_base_init (gpointer klass)
           "protocol",
           "the name of the protocol implemented by this bytestream",
           NULL,
-          G_PARAM_READABLE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       initialized = TRUE;

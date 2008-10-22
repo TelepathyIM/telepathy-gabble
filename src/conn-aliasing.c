@@ -760,6 +760,12 @@ gabble_conn_aliasing_nickname_updated (GObject *object,
   g_value_unset (&entry);
   g_ptr_array_free (aliases, TRUE);
 
+  /* Check whether the roster has an entry for the handle and if so, set the
+   * roster alias so the vCard isn't fetched on every connect. */
+  if (signal_source < GABBLE_CONNECTION_ALIAS_FROM_ROSTER &&
+      gabble_roster_handle_has_entry (conn->roster, handle))
+    gabble_roster_handle_set_name (conn->roster, handle, alias, NULL);
+
 OUT:
   g_free (alias);
 }
@@ -961,8 +967,7 @@ gabble_connection_get_aliases (TpSvcConnectionInterfaceAliasing *iface,
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
-  GHashTable *result = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-    NULL, g_free);
+  GHashTable *result;
   GError *error = NULL;
   guint i;
 
@@ -976,6 +981,9 @@ gabble_connection_get_aliases (TpSvcConnectionInterfaceAliasing *iface,
       g_error_free (error);
       return;
     }
+
+  result = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+    NULL, g_free);
 
   for (i = 0; i < contacts->len; i++)
     {
@@ -1010,8 +1018,7 @@ conn_aliasing_init (GabbleConnection *conn)
 void
 conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceAliasingClass *klass =
-    (TpSvcConnectionInterfaceAliasingClass *) g_iface;
+  TpSvcConnectionInterfaceAliasingClass *klass = g_iface;
 
 #define IMPLEMENT(x) tp_svc_connection_interface_aliasing_implement_##x (\
     klass, gabble_connection_##x)

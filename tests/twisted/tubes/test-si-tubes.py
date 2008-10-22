@@ -60,14 +60,16 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert properties.get('Channels') == [], properties['Channels']
     assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Tubes',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle'],
+             ['org.freedesktop.Telepathy.Channel.TargetHandle',
+              'org.freedesktop.Telepathy.Channel.TargetID',
+             ],
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
     assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
@@ -147,14 +149,14 @@ def test(q, bus, conn, stream):
             bob_handle
     assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
             'bob@localhost'
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+    assert emitted_props[tp_name_prefix + '.Channel.Requested'] == True
+    assert emitted_props[tp_name_prefix + '.Channel.InitiatorHandle'] \
             == conn.GetSelfHandle()
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] == \
+    assert emitted_props[tp_name_prefix + '.Channel.InitiatorID'] == \
             'test@localhost'
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests.DRAFT',
+            'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
 
     assert new_sig.args[0][0] in properties['Channels'], \
@@ -263,14 +265,9 @@ def test(q, bus, conn, stream):
 
     self_handle = conn.GetSelfHandle()
 
-    # Exercise FUTURE properties
-    # on the Channel.Type.Tubes channel
-    future_props = tubes_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == self_handle
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == self_handle
 
     # Offer the tube, old API
     path = os.getcwd() + '/stream'
@@ -831,13 +828,14 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-return', method='AcceptDBusTube')
     address = event.value[0]
-    # FIXME: this is currently broken. See FIXME in tubes-channel.c
-    #assert len(address) > 0
+    assert len(address) > 0 # regression test for bug #13891
 
     event = q.expect('dbus-signal', signal='TubeStateChanged',
         args=[69, 2]) # 2 == OPEN
     id = event.args[0]
     state = event.args[1]
+
+    assert address == tubes_iface.GetDBusTubeAddress(id)
 
     # OK, we're done
     conn.Disconnect()

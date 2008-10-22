@@ -29,6 +29,7 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
@@ -46,12 +47,10 @@
 #include "bytestream-factory.h"
 #include "capabilities.h"
 #include "caps-hash.h"
-#include "channel-manager.h"
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
 #include "conn-presence.h"
 #include "conn-olpc.h"
-#include "conn-requests.h"
 #include "debug.h"
 #include "disco.h"
 #include "media-channel.h"
@@ -60,6 +59,7 @@
 #include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
+#include "olpc-gadget-manager.h"
 #include "presence-cache.h"
 #include "presence.h"
 #include "pubsub.h"
@@ -96,12 +96,12 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       tp_presence_mixin_simple_presence_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       conn_presence_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_REQUESTS,
-      gabble_conn_requests_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY_INFO,
       olpc_buddy_info_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_ACTIVITY_PROPERTIES,
       olpc_activity_properties_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_GADGET,
+      olpc_gadget_iface_init);
     )
 
 /* properties */
@@ -136,7 +136,9 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
   LmMessageHandler *stream_error_cb;
-  LmMessageHandler *msg_cb;
+  LmMessageHandler *pubsub_msg_cb;
+  LmMessageHandler *olpc_msg_cb;
+  LmMessageHandler *olpc_presence_cb;
 
   /* connection properties */
   gchar *connect_server;
@@ -183,31 +185,24 @@ static void connection_capabilities_update_cb (GabblePresenceCache *,
     TpHandle, GabblePresenceCapabilities, GabblePresenceCapabilities,
     gpointer);
 
+
 static GPtrArray *
-_gabble_connection_create_channel_factories (TpBaseConnection *conn)
+_gabble_connection_create_channel_managers (TpBaseConnection *conn)
 {
   GabbleConnection *self = GABBLE_CONNECTION (conn);
-
-  GPtrArray *channel_factories = g_ptr_array_sized_new (4);
-
-  /* Temporary hack for requestotron support - divert the channel factories
-   * and channel managers to somewhere under our control */
-  self->channel_factories = channel_factories;
-  channel_factories = g_ptr_array_sized_new (0);
-
-  self->channel_managers = g_ptr_array_sized_new (1);
+  GPtrArray *channel_managers = g_ptr_array_sized_new (5);
 
   self->roster = gabble_roster_new (self);
   g_signal_connect (self->roster, "nickname-update", G_CALLBACK
       (gabble_conn_aliasing_nickname_updated), self);
-  g_ptr_array_add (self->channel_managers, self->roster);
+  g_ptr_array_add (channel_managers, self->roster);
 
-  g_ptr_array_add (self->channel_managers,
+  g_ptr_array_add (channel_managers,
       g_object_new (GABBLE_TYPE_IM_FACTORY,
         "connection", self,
         NULL));
 
-  g_ptr_array_add (self->channel_managers,
+  g_ptr_array_add (channel_managers,
       g_object_new (GABBLE_TYPE_ROOMLIST_MANAGER,
         "connection", self,
         NULL));
@@ -215,17 +210,22 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
   self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY,
       "connection", self,
       NULL);
-  g_ptr_array_add (self->channel_managers, self->muc_factory);
+  g_ptr_array_add (channel_managers, self->muc_factory);
 
   self->private_tubes_factory = gabble_private_tubes_factory_new (self);
-  g_ptr_array_add (self->channel_managers, self->private_tubes_factory);
+  g_ptr_array_add (channel_managers, self->private_tubes_factory);
 
-  g_ptr_array_add (self->channel_managers,
+  g_ptr_array_add (channel_managers,
       g_object_new (GABBLE_TYPE_MEDIA_FACTORY,
         "connection", self,
         NULL));
 
-  return channel_factories;
+  self->olpc_gadget_manager = g_object_new (GABBLE_TYPE_OLPC_GADGET_MANAGER,
+      "connection", self,
+      NULL);
+  g_ptr_array_add (channel_managers, self->olpc_gadget_manager);
+
+  return channel_managers;
 }
 
 static GObject *
@@ -262,7 +262,6 @@ gabble_connection_constructor (GType type,
   conn_avatars_init (self);
   conn_presence_init (self);
   conn_olpc_activity_properties_init (self);
-  gabble_conn_requests_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
@@ -501,19 +500,6 @@ base_connected_cb (TpBaseConnection *base_conn)
 static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
-  static TpDBusPropertiesMixinPropImpl requests_props[] = {
-        { "Channels", NULL, NULL },
-        { "RequestableChannelClasses", NULL, NULL },
-        { NULL }
-  };
-  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-        { GABBLE_IFACE_CONNECTION_INTERFACE_REQUESTS,
-          gabble_conn_requests_get_dbus_property,
-          NULL,
-          requests_props,
-        },
-        { NULL }
-  };
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_connection_class);
   TpBaseConnectionClass *parent_class = TP_BASE_CONNECTION_CLASS (
       gabble_connection_class);
@@ -524,7 +510,21 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
       TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
+      TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
+      GABBLE_IFACE_OLPC_GADGET,
       NULL };
+  static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
+        { "GadgetAvailable", NULL, NULL },
+        { NULL }
+  };
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+        { GABBLE_IFACE_OLPC_GADGET,
+          conn_olpc_gadget_propeties_getter,
+          NULL,
+          olpc_gadget_props,
+        },
+        { NULL }
+  };
 
   DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
 
@@ -534,8 +534,9 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   parent_class->create_handle_repos = _gabble_connection_create_handle_repos;
   parent_class->get_unique_connection_name = gabble_connection_get_unique_name;
-  parent_class->create_channel_factories =
-    _gabble_connection_create_channel_factories;
+  parent_class->create_channel_factories = NULL;
+  parent_class->create_channel_managers =
+    _gabble_connection_create_channel_managers;
   parent_class->connecting = connect_callbacks;
   parent_class->connected = base_connected_cb;
   parent_class->disconnected = disconnect_callbacks;
@@ -720,7 +721,6 @@ gabble_connection_dispose (GObject *object)
 
   g_assert ((base->status == TP_CONNECTION_STATUS_DISCONNECTED) ||
             (base->status == TP_INTERNAL_CONNECTION_STATUS_NEW));
-  g_assert (base->self_handle == 0);
 
   g_object_unref (self->bytestream_factory);
   self->bytestream_factory = NULL;
@@ -747,9 +747,7 @@ gabble_connection_dispose (GObject *object)
   g_object_unref (self->presence_cache);
   self->presence_cache = NULL;
 
-  g_hash_table_destroy (self->olpc_activities_info);
-  g_hash_table_destroy (self->olpc_pep_activities);
-  g_hash_table_destroy (self->olpc_invited_activities);
+  conn_olpc_activity_properties_dispose (self);
 
   g_hash_table_destroy (self->avatar_requests);
 
@@ -759,7 +757,9 @@ gabble_connection_dispose (GObject *object)
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->stream_error_cb == NULL);
-  g_assert (priv->msg_cb == NULL);
+  g_assert (priv->pubsub_msg_cb == NULL);
+  g_assert (priv->olpc_msg_cb == NULL);
+  g_assert (priv->olpc_presence_cb == NULL);
 
   /*
    * The Loudmouth connection can't be unref'd immediately because this
@@ -767,8 +767,6 @@ gabble_connection_dispose (GObject *object)
    * connection to always be there.
    */
   g_idle_add (_unref_lm_connection, self->lmconn);
-
-  gabble_conn_requests_dispose (self);
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
@@ -1071,7 +1069,9 @@ connect_callbacks (TpBaseConnection *base)
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->stream_error_cb == NULL);
-  g_assert (priv->msg_cb == NULL);
+  g_assert (priv->pubsub_msg_cb == NULL);
+  g_assert (priv->olpc_msg_cb == NULL);
+  g_assert (priv->olpc_presence_cb == NULL);
 
   priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
                                               conn, NULL);
@@ -1091,11 +1091,23 @@ connect_callbacks (TpBaseConnection *base)
                                           LM_MESSAGE_TYPE_STREAM_ERROR,
                                           LM_HANDLER_PRIORITY_LAST);
 
-  priv->msg_cb = lm_message_handler_new (pubsub_msg_event_cb,
+  priv->pubsub_msg_cb = lm_message_handler_new (pubsub_msg_event_cb,
                                             conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->msg_cb,
+  lm_connection_register_message_handler (conn->lmconn, priv->pubsub_msg_cb,
                                           LM_MESSAGE_TYPE_MESSAGE,
                                           LM_HANDLER_PRIORITY_FIRST);
+
+  priv->olpc_msg_cb = lm_message_handler_new (conn_olpc_msg_cb,
+                                            conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->olpc_msg_cb,
+                                          LM_MESSAGE_TYPE_MESSAGE,
+                                          LM_HANDLER_PRIORITY_FIRST);
+
+  priv->olpc_presence_cb = lm_message_handler_new (conn_olpc_presence_cb,
+      conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->olpc_presence_cb,
+                                          LM_MESSAGE_TYPE_PRESENCE,
+                                          LM_HANDLER_PRIORITY_NORMAL);
 }
 
 static void
@@ -1107,7 +1119,9 @@ disconnect_callbacks (TpBaseConnection *base)
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
   g_assert (priv->stream_error_cb != NULL);
-  g_assert (priv->msg_cb != NULL);
+  g_assert (priv->pubsub_msg_cb != NULL);
+  g_assert (priv->olpc_msg_cb != NULL);
+  g_assert (priv->olpc_presence_cb != NULL);
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->iq_disco_cb,
                                             LM_MESSAGE_TYPE_IQ);
@@ -1124,10 +1138,20 @@ disconnect_callbacks (TpBaseConnection *base)
   lm_message_handler_unref (priv->stream_error_cb);
   priv->stream_error_cb = NULL;
 
-  lm_connection_unregister_message_handler (conn->lmconn, priv->msg_cb,
+  lm_connection_unregister_message_handler (conn->lmconn, priv->pubsub_msg_cb,
                                             LM_MESSAGE_TYPE_MESSAGE);
-  lm_message_handler_unref (priv->msg_cb);
-  priv->msg_cb = NULL;
+  lm_message_handler_unref (priv->pubsub_msg_cb);
+  priv->pubsub_msg_cb = NULL;
+
+  lm_connection_unregister_message_handler (conn->lmconn, priv->olpc_msg_cb,
+                                            LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_handler_unref (priv->olpc_msg_cb);
+  priv->olpc_msg_cb = NULL;
+
+  lm_connection_unregister_message_handler (conn->lmconn,
+      priv->olpc_presence_cb, LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_handler_unref (priv->olpc_presence_cb);
+  priv->olpc_presence_cb = NULL;
 }
 
 /**
@@ -1340,9 +1364,9 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   lm_message_unref (message);
 
   /* broadcast presence to MUCs */
-  gabble_channel_manager_foreach_channel (
-      GABBLE_CHANNEL_MANAGER (self->muc_factory),
-      (GabbleExportableChannelFunc) gabble_muc_channel_send_presence, NULL);
+  tp_channel_manager_foreach_channel (
+      TP_CHANNEL_MANAGER (self->muc_factory),
+      (TpExportableChannelFunc) gabble_muc_channel_send_presence, NULL);
 
   return ret;
 }
@@ -2840,14 +2864,39 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
     }
 }
 
+gboolean
+gabble_connection_send_presence (GabbleConnection *conn,
+                                 LmMessageSubType sub_type,
+                                 const gchar *contact,
+                                 const gchar *status,
+                                 GError **error)
+{
+  LmMessage *message;
+  gboolean result;
+
+  message = lm_message_new_with_sub_type (contact,
+      LM_MESSAGE_TYPE_PRESENCE,
+      sub_type);
+
+  if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
+    lm_message_node_add_own_nick (message->node, conn);
+
+  if (status != NULL && status[0] != '\0')
+    lm_message_node_add_child (message->node, "status", status);
+
+  result = _gabble_connection_send (conn, message, error);
+
+  lm_message_unref (message);
+
+  return result;
+}
+
 /* We reimplement RequestHandles to be able to do async validation on
  * room handles */
 static void
 conn_service_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionClass *klass = (TpSvcConnectionClass *) g_iface;
-
-  gabble_conn_requests_conn_iface_init (g_iface, iface_data);
 
 #define IMPLEMENT(x) tp_svc_connection_implement_##x (klass, \
     gabble_connection_##x)

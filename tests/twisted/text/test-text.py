@@ -43,20 +43,13 @@ def test(q, bus, conn, stream):
     assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.FUTURE' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
     assert channel_props['TargetID'] == jid,\
             (channel_props['TargetID'], jid)
-
-    future_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == False
-    assert future_props['InitiatorHandle'] == event.args[3],\
-            (future_props['InitiatorHandle'], event.args[3])
-    assert future_props['InitiatorID'] == jid,\
-            (future_props['InitiatorID'], jid)
+    assert channel_props['Requested'] == False
+    assert channel_props['InitiatorHandle'] == event.args[3],\
+            (channel_props['InitiatorHandle'], event.args[3])
+    assert channel_props['InitiatorID'] == jid,\
+            (channel_props['InitiatorID'], jid)
 
     event = q.expect('dbus-signal', signal='Received')
 

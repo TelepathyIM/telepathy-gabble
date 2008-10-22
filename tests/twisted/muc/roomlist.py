@@ -40,7 +40,7 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     properties = conn.GetAll(
-            tp_name_prefix + '.Connection.Interface.Requests.DRAFT',
+            tp_name_prefix + '.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert properties.get('Channels') == [], properties['Channels']
     assert ({tp_name_prefix + '.Channel.ChannelType':
@@ -72,10 +72,10 @@ def test(q, bus, conn, stream):
     assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 0
     assert props[tp_name_prefix + '.Channel.TargetHandle'] == 0
     assert props[tp_name_prefix + '.Channel.TargetID'] == ''
-    assert props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+    assert props[tp_name_prefix + '.Channel.Requested'] == True
+    assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
             == conn.GetSelfHandle()
-    assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] \
+    assert props[tp_name_prefix + '.Channel.InitiatorID'] \
             == 'test@localhost'
     assert props[tp_name_prefix + '.Channel.Type.RoomList.Server'] == \
             'conf.localhost'
@@ -98,17 +98,9 @@ def test(q, bus, conn, stream):
     assert channel_props.get('ChannelType') == \
             tp_name_prefix + '.Channel.Type.RoomList',\
             channel_props.get('ChannelType')
-    assert 'Interfaces' in channel_props
-    assert tp_name_prefix + '.Channel.FUTURE' in \
-            channel_props['Interfaces']
-
-    # Exercise FUTURE properties
-    future_props = chan.GetAll(
-            tp_name_prefix + '.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     assert chan.Get(
             tp_name_prefix + '.Channel.Type.RoomList', 'Server',
@@ -118,7 +110,7 @@ def test(q, bus, conn, stream):
     # FIXME: actually list the rooms!
 
     requestotron = dbus.Interface(conn,
-            tp_name_prefix + '.Connection.Interface.Requests.DRAFT')
+            tp_name_prefix + '.Connection.Interface.Requests')
     call_async(q, requestotron, 'CreateChannel',
             { tp_name_prefix + '.Channel.ChannelType':
                 tp_name_prefix + '.Channel.Type.RoomList',
@@ -141,10 +133,10 @@ def test(q, bus, conn, stream):
     assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 0
     assert props[tp_name_prefix + '.Channel.TargetHandle'] == 0
     assert props[tp_name_prefix + '.Channel.TargetID'] == ''
-    assert props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
-    assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+    assert props[tp_name_prefix + '.Channel.Requested'] == True
+    assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
             == conn.GetSelfHandle()
-    assert props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] \
+    assert props[tp_name_prefix + '.Channel.InitiatorID'] \
             == 'test@localhost'
     assert props[tp_name_prefix + '.Channel.Type.RoomList.Server'] == \
             'conference.example.net'
@@ -164,6 +156,22 @@ def test(q, bus, conn, stream):
                     'conference.example.net'
 
     # FIXME: actually list the rooms!
+
+
+    call_async(q, requestotron, 'EnsureChannel',
+            { tp_name_prefix + '.Channel.ChannelType':
+                tp_name_prefix + '.Channel.Type.RoomList',
+              tp_name_prefix + '.Channel.TargetHandleType': 0,
+              tp_name_prefix + '.Channel.Type.RoomList.Server':
+                'conference.example.net',
+              })
+
+    ret = q.expect('dbus-return', method='EnsureChannel')
+    yours, ensured_path, ensured_props = ret.value
+
+    assert not yours
+    assert ensured_path == path2, (ensured_path, path2)
+
 
     conn.Disconnect()
 

@@ -16,8 +16,7 @@ dbus_tube_sources = \
     tube-dbus.c
 endif
 
-# These are the bits we wrote, so we can be really strict about coding style
-libgabble_convenience_la_our_sources = \
+libgabble_convenience_la_SOURCES = \
     $(dbus_tube_sources) \
     base64.h \
     base64.c \
@@ -33,8 +32,6 @@ libgabble_convenience_la_our_sources = \
     capabilities.c \
     caps-hash.h \
     caps-hash.c \
-    channel-manager.h \
-    channel-manager.c \
     conn-aliasing.h \
     conn-aliasing.c \
     conn-avatars.h \
@@ -43,8 +40,6 @@ libgabble_convenience_la_our_sources = \
     conn-olpc.c \
     conn-presence.h \
     conn-presence.c \
-    conn-requests.h \
-    conn-requests.c \
     connection.h \
     connection.c \
     connection-manager.h \
@@ -55,8 +50,6 @@ libgabble_convenience_la_our_sources = \
     disco.c \
     error.c \
     error.h \
-    exportable-channel.c \
-    exportable-channel.h \
     gabble.c \
     gabble.h \
     im-channel.h \
@@ -76,6 +69,16 @@ libgabble_convenience_la_our_sources = \
     muc-factory.h \
     muc-factory.c \
     namespaces.h \
+    olpc-activity.h \
+    olpc-activity.c \
+    olpc-activity-view.h \
+    olpc-activity-view.c \
+    olpc-buddy-view.h \
+    olpc-buddy-view.c \
+    olpc-gadget-manager.h \
+    olpc-gadget-manager.c \
+    olpc-view.h \
+    olpc-view.c \
     pubsub.h \
     pubsub.c \
     presence.h \
@@ -109,15 +112,6 @@ libgabble_convenience_la_our_sources = \
     util.c \
     vcard-manager.h \
     vcard-manager.c
-
-# we don't want to subject third-party source to whitespace removal -
-# it's more useful to keep it a verbatim copy
-libgabble_convenience_la_SOURCES = \
-    libmd5-rfc/md5.c \
-    libmd5-rfc/md5.h \
-    sha1/sha1.h \
-    sha1/sha1.c \
-    $(libgabble_convenience_la_our_sources)
 
 libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la

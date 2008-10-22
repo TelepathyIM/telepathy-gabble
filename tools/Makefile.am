@@ -12,6 +12,7 @@ EXTRA_DIST = \
     identity.xsl \
     libglibcodegen.py \
     libtpcodegen.py \
+    telepathy.am \
     xep.xsl
 
 CLEANFILES = *.pyc *.pyo

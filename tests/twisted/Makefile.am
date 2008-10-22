@@ -99,6 +99,7 @@ EXTRA_DIST = \
 	gabbletest.py \
 	servicetest.py \
 	jingle/jingletest.py \
+	ns.py \
 	olpc/util.py
 
 noinst_PROGRAMS = \

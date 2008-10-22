@@ -12,19 +12,7 @@ from twisted.words.protocols.jabber.client import IQ
 
 from util import (announce_gadget, properties_to_xml, parse_properties,
     create_gadget_message, close_view)
-
-NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
-NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
-NS_OLPC_CURRENT_ACTIVITY = "http://laptop.org/xmpp/current-activity"
-NS_OLPC_ACTIVITY_PROPS = "http://laptop.org/xmpp/activity-properties"
-NS_OLPC_BUDDY = "http://laptop.org/xmpp/buddy"
-NS_OLPC_ACTIVITY = "http://laptop.org/xmpp/activity"
-
-NS_PUBSUB = "http://jabber.org/protocol/pubsub"
-NS_DISCO_INFO = "http://jabber.org/protocol/disco#info"
-NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
-
-NS_AMP = "http://jabber.org/protocol/amp"
+import ns
 
 tp_name_prefix = 'org.freedesktop.Telepathy'
 olpc_name_prefix = 'org.laptop.Telepathy'
@@ -36,7 +24,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
-        EventPattern('stream-iq', to='localhost', query_ns=NS_DISCO_ITEMS))
+        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
 
     acknowledge_iq(stream, iq_event.stanza)
 
@@ -62,7 +50,7 @@ def test(q, bus, conn, stream):
     call_async(q, buddy_info_iface, 'GetProperties', bob_handle)
 
     # wait for pubsub query
-    event = q.expect('stream-iq', to='bob@localhost', query_ns=NS_PUBSUB)
+    event = q.expect('stream-iq', to='bob@localhost', query_ns=ns.PUBSUB)
     query = event.stanza
     assert query['to'] == 'bob@localhost'
 
@@ -75,7 +63,7 @@ def test(q, bus, conn, stream):
 
     # wait for buddy search query
     event = q.expect('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_BUDDY)
+            query_ns=ns.OLPC_BUDDY)
     buddies = xpath.queryForNodes('/iq/query/buddy', event.stanza)
     assert len(buddies) == 1
     buddy = buddies[0]
@@ -88,7 +76,7 @@ def test(q, bus, conn, stream):
     query = xpath.queryForNodes('/iq/query', reply)[0]
     buddy = query.addElement((None, "buddy"))
     buddy['jid'] = 'bob@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#005FE4,#00A0FF')}):
         properties.addChild(node)
     stream.send(reply)
@@ -120,7 +108,7 @@ def test(q, bus, conn, stream):
 
     iq_event, return_event, new_channels_event, new_channel_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_BUDDY),
+            query_ns=ns.OLPC_BUDDY),
         EventPattern('dbus-return', method='CreateChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         EventPattern('dbus-signal', signal='NewChannel'))
@@ -137,12 +125,12 @@ def test(q, bus, conn, stream):
     view = xpath.queryForNodes('/iq/view', reply)[0]
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'charles@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#AAAAAA,#BBBBBB')}):
         properties.addChild(node)
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'bob@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#005FE4,#00A0FF')}):
         properties.addChild(node)
     stream.send(reply)
@@ -212,10 +200,10 @@ def test(q, bus, conn, stream):
     # Bob changed his properties
     message = create_gadget_message("test@localhost")
 
-    change = message.addElement((NS_OLPC_BUDDY, 'change'))
+    change = message.addElement((ns.OLPC_BUDDY, 'change'))
     change['jid'] = 'bob@localhost'
     change['id'] = '1'
-    properties = change.addElement((NS_OLPC_BUDDY_PROPS, 'properties'))
+    properties = change.addElement((ns.OLPC_BUDDY_PROPS, 'properties'))
     for node in properties_to_xml({'color': ('str', '#FFFFFF,#AAAAAA')}):
         properties.addChild(node)
 
@@ -238,7 +226,7 @@ def test(q, bus, conn, stream):
           })
 
     iq_event, return_event = q.expect_many(
-        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
+        EventPattern('stream-iq', to='gadget.localhost', query_ns=ns.OLPC_BUDDY),
         EventPattern('dbus-return', method='CreateChannel'))
 
     properties_node = xpath.queryForNodes('/iq/view/buddy/properties',
@@ -258,7 +246,7 @@ def test(q, bus, conn, stream):
     view = xpath.queryForNodes('/iq/view', reply)[0]
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'charles@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#AABBCC,#001122')}):
         properties.addChild(node)
     stream.send(reply)
@@ -293,11 +281,11 @@ def test(q, bus, conn, stream):
     # add a buddy to view 1
     message = create_gadget_message("test@localhost")
 
-    added = message.addElement((NS_OLPC_BUDDY, 'added'))
+    added = message.addElement((ns.OLPC_BUDDY, 'added'))
     added['id'] = '1'
     buddy = added.addElement((None, 'buddy'))
     buddy['jid'] = 'oscar@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#000000,#AAAAAA')}):
         properties.addChild(node)
 
@@ -321,7 +309,7 @@ def test(q, bus, conn, stream):
     # remove a buddy from view 1
     message = create_gadget_message("test@localhost")
 
-    added = message.addElement((NS_OLPC_BUDDY, 'removed'))
+    added = message.addElement((ns.OLPC_BUDDY, 'removed'))
     added['id'] = '1'
     buddy = added.addElement((None, 'buddy'))
     buddy['jid'] = 'bob@localhost'
@@ -352,7 +340,7 @@ def test(q, bus, conn, stream):
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_BUDDY),
+            query_ns=ns.OLPC_BUDDY),
         EventPattern('dbus-return', method='CreateChannel'))
 
     view = iq_event.stanza.firstChildElement()
@@ -422,7 +410,7 @@ def test(q, bus, conn, stream):
           })
 
     iq_event, return_event = q.expect_many(
-        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
+        EventPattern('stream-iq', to='gadget.localhost', query_ns=ns.OLPC_BUDDY),
         EventPattern('dbus-return', method='CreateChannel'))
 
     view = iq_event.stanza.firstChildElement()

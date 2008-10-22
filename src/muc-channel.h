@@ -24,12 +24,13 @@
 
 #include <glib-object.h>
 
+#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 #include <telepathy-glib/group-mixin.h>
+#include <telepathy-glib/message-mixin.h>
 #include <telepathy-glib/properties-mixin.h>
 
 #include "types.h"
-#include "text-mixin.h"
 
 G_BEGIN_DECLS
 
@@ -49,7 +50,6 @@ struct _GabbleMucChannelClass {
 
     TpGroupMixinClass group_class;
     TpPropertiesMixinClass properties_class;
-    GabbleTextMixinClass text_class;
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 
@@ -58,7 +58,7 @@ struct _GabbleMucChannel {
 
     TpGroupMixin group;
     TpPropertiesMixin properties;
-    GabbleTextMixin text;
+    TpMessageMixin message_mixin;
 
     GabbleMucChannelPrivate *priv;
 };

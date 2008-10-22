@@ -40,6 +40,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "error.h"
+#include "message-util.h"
 #include "namespaces.h"
 #include "presence.h"
 #include "util.h"
@@ -53,7 +54,6 @@
 
 static void channel_iface_init (gpointer, gpointer);
 static void password_iface_init (gpointer, gpointer);
-static void text_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
@@ -69,18 +69,24 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_PASSWORD,
       password_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
-      text_iface_init);
+      tp_message_mixin_text_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MESSAGES,
+      tp_message_mixin_messages_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init)
     )
 
+static void gabble_muc_channel_send (GObject *obj, TpMessage *message,
+    TpMessageSendingFlags flags);
+
 static const gchar *gabble_muc_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
     TP_IFACE_PROPERTIES_INTERFACE,
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
+    TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
     NULL
 };
 
@@ -282,6 +288,8 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
 static TpHandle create_room_identity (GabbleMucChannel *)
   G_GNUC_WARN_UNUSED_RESULT;
 
+#define NUM_SUPPORTED_MESSAGE_TYPES 3
+
 static GObject *
 gabble_muc_channel_constructor (GType type, guint n_props,
                                 GObjectConstructParam *props)
@@ -293,6 +301,12 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   DBusGConnection *bus;
   TpHandleRepoIface *room_handles, *contact_handles;
   TpHandle self_handle;
+  TpChannelTextMessageType types[NUM_SUPPORTED_MESSAGE_TYPES] = {
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
+  };
+  const gchar * const *supported_content_types = { NULL };
 
   obj = G_OBJECT_CLASS (gabble_muc_channel_parent_class)->
            constructor (type, n_props, props);
@@ -348,15 +362,11 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   tp_properties_mixin_init (obj, G_STRUCT_OFFSET (
         GabbleMucChannel, properties));
 
-  /* initialize text mixin */
-  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text),
-      contact_handles, FALSE);
-
-  tp_text_mixin_set_message_types (obj,
-      TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
-      TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
-      TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
-      G_MAXUINT);
+  /* initialize message mixin */
+  tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, message_mixin),
+      conn);
+  tp_message_mixin_implement_sending (obj, gabble_muc_channel_send,
+      NUM_SUPPORTED_MESSAGE_TYPES, types, 0, supported_content_types);
 
   tp_group_mixin_add_handle_owner (obj, self_handle, conn->self_handle);
 
@@ -1084,12 +1094,11 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                       room_property_signatures, NUM_ROOM_PROPS,
                                       gabble_muc_channel_do_set_properties);
 
-  tp_text_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
-
   gabble_muc_channel_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMucChannelClass, dbus_props_class));
+
+  tp_message_mixin_init_dbus_properties (object_class);
 
   tp_group_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
@@ -1164,7 +1173,7 @@ gabble_muc_channel_finalize (GObject *object)
 
   tp_group_mixin_finalize (object);
 
-  tp_text_mixin_finalize (object);
+  tp_message_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_muc_channel_parent_class)->finalize (object);
 }
@@ -2232,6 +2241,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              LmMessage *msg)
 {
   gboolean is_error;
+  TpMessage *message;
   GabbleMucChannelPrivate *priv;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
@@ -2246,23 +2256,36 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
       return;
     }
-  else if ((sender == chan->group.self_handle) && (timestamp == 0))
-    {
-      /* If we sent the message and it's not delayed, just emit the sent
-      signal */
-      timestamp = time (NULL);
-      tp_svc_channel_type_text_emit_sent (chan, timestamp, msg_type, text);
 
+  if ((sender == chan->group.self_handle) && (timestamp == 0))
+    {
+      /* If we sent the message and it's not delayed, do nothing; we already
+       * emitted the Sent signals.
+       */
+
+      /* TODO: emit a delivery report. */
       return;
     }
 
-  /* Receive messages from other contacts and our own if they're delayed, and
-   * set the timestamp for non-delayed messages */
-  if (timestamp == 0)
-      timestamp = time (NULL);
+  /* Receive messages from other contacts and our own if they're delayed */
+  message = tp_message_new ((TpBaseConnection *) priv->conn, 2, 2);
 
-  tp_text_mixin_receive (G_OBJECT (chan), msg_type, sender,
-      timestamp, text);
+  /* Header */
+  if (msg_type != TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL)
+    tp_message_set_uint32 (message, 0, "message-type", msg_type);
+
+  if (timestamp != 0)
+    tp_message_set_uint64 (message, 0, "message-sent", timestamp);
+
+  tp_message_set_uint64 (message, 0, "message-received", time (NULL));
+  tp_message_set_handle (message, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
+      sender);
+
+  /* Body */
+  tp_message_set_string (message, 1, "type", "text/plain");
+  tp_message_set_string (message, 1, "content", text);
+
+  tp_message_mixin_take_received (G_OBJECT (chan), message);
 }
 
 /**
@@ -2443,34 +2466,21 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
 /**
  * gabble_muc_channel_send
  *
- * Implements D-Bus method Send
- * on interface org.freedesktop.Telepathy.Channel.Type.Text
+ * Indirectly implements (via TpMessageMixin) D-Bus method Send on interface
+ * org.freedesktop.Telepathy.Channel.Type.Text and D-Bus method SendMessage on
+ * Channel.Interface.Messages
  */
 static void
-gabble_muc_channel_send (TpSvcChannelTypeText *iface,
-                         guint type,
-                         const gchar *text,
-                         DBusGMethodInvocation *context)
+gabble_muc_channel_send (GObject *obj,
+                         TpMessage *message,
+                         TpMessageSendingFlags flags)
 {
-  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
-  GabbleMucChannelPrivate *priv;
-  GError *error = NULL;
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  g_assert (GABBLE_IS_MUC_CHANNEL (self));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
-
-  if (!gabble_text_mixin_send (G_OBJECT (self), type,
-      LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE, priv->jid,
-      text, priv->conn, FALSE /* emit_signal */, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-
-      return;
-    }
-
-  tp_svc_channel_type_text_return_from_send (context);
+  gabble_message_util_send_message (obj, priv->conn, message,
+      LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE,
+      priv->jid, FALSE /* send nick */);
 }
 
 gboolean
@@ -3083,9 +3093,9 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
           "you may not explicitly set the Gone state");
     }
 
-  if (error != NULL || !gabble_text_mixin_send (G_OBJECT (self),
-        TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, LM_MESSAGE_SUB_TYPE_GROUPCHAT,
-        state, priv->jid, NULL, priv->conn, FALSE /* emit_signal */, &error))
+  if (error != NULL ||
+      !gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
+          LM_MESSAGE_SUB_TYPE_GROUPCHAT, state, priv->jid, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -3123,18 +3133,6 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(get_channel_type);
   IMPLEMENT(get_handle);
   IMPLEMENT(get_interfaces);
-#undef IMPLEMENT
-}
-
-static void
-text_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *) g_iface;
-
-  tp_text_mixin_iface_init (g_iface, iface_data);
-#define IMPLEMENT(x) tp_svc_channel_type_text_implement_##x (\
-    klass, gabble_muc_channel_##x)
-  IMPLEMENT(send);
 #undef IMPLEMENT
 }
 

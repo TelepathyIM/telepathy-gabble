@@ -146,7 +146,7 @@ def test(q, bus, conn, stream):
     assert presence[handles['charles']] == (6, 'dnd', 'Hacking on Sugar')
 
     # we receive a presence from Dambien
-    send_presence(stream, 'damien@localhost', 'away', 'Watching pr0n')
+    send_presence(stream, 'damien@localhost/Telepathy', 'away', 'Watching pr0n')
 
     # presence is properly changed
     event, _ = q.expect_many(

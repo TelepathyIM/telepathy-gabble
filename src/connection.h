@@ -25,12 +25,14 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/contacts-mixin.h>
 #include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 
 #include "types.h"
 #include "error.h"
 #include "muc-factory.h"
+#include "olpc-gadget-manager.h"
 
 G_BEGIN_DECLS
 
@@ -102,11 +104,13 @@ struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;
     TpDBusPropertiesMixinClass properties_class;
     TpPresenceMixinClass presence_class;
+    TpContactsMixinClass contacts_class;
 };
 
 struct _GabbleConnection {
     TpBaseConnection parent;
     TpPresenceMixin presence;
+    TpContactsMixin contacts;
 
     /* loudmouth connection */
     LmConnection *lmconn;
@@ -137,12 +141,27 @@ struct _GabbleConnection {
     GHashTable *olpc_activities_info;
     GHashTable *olpc_pep_activities;
     GHashTable *olpc_invited_activities;
+    GHashTable *olpc_current_act;
+
+    /* OLPC services */
+    const gchar *olpc_gadget_buddy;
+    const gchar *olpc_gadget_activity;
+    gboolean olpc_gadget_publish;
+
+    /* OLPC Gadget manager */
+    GabbleOlpcGadgetManager *olpc_gadget_manager;
 
     /* bytestream factory */
     GabbleBytestreamFactory *bytestream_factory;
 
     /* outstanding avatar requests */
     GHashTable *avatar_requests;
+
+    /* temporary, for requestotron support */
+    GPtrArray *channel_factories;
+    GPtrArray *channel_managers;
+    GPtrArray *channel_requests;
+    gboolean has_tried_connection;
 
     GabbleConnectionPrivate *priv;
 };
@@ -193,6 +212,10 @@ gboolean _gabble_connection_signal_own_presence (GabbleConnection *,
 
 void gabble_connection_ensure_capabilities (GabbleConnection *conn,
     GabblePresenceCapabilities caps);
+
+gboolean gabble_connection_send_presence (GabbleConnection *conn,
+    LmMessageSubType sub_type, const gchar *contact, const gchar *status,
+    GError **error);
 
 /* extern only for the benefit of the unit tests */
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,

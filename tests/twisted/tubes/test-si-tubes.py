@@ -51,6 +51,20 @@ def test(q, bus, conn, stream):
     set_up_echo()
     conn.Connect()
 
+    properties = conn.GetAll(
+            'org.freedesktop.Telepathy.Connection.Interface.Requests',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert properties.get('Channels') == [], properties['Channels']
+    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
+                'org.freedesktop.Telepathy.Channel.Type.Tubes',
+             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
+             },
+             ['org.freedesktop.Telepathy.Channel.TargetHandle',
+              'org.freedesktop.Telepathy.Channel.TargetID',
+             ],
+             ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']
+
     _, vcard_event, roster_event = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
@@ -87,8 +101,52 @@ def test(q, bus, conn, stream):
     stream.send(result)
 
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
-    chan_path = conn.RequestChannel(tp_name_prefix + '.Channel.Type.Tubes', 1,
-            bob_handle, True)
+
+    call_async(q, conn, 'RequestChannel',
+            tp_name_prefix + '.Channel.Type.Tubes', 1, bob_handle, True);
+
+    ret, old_sig, new_sig = q.expect_many(
+        EventPattern('dbus-return', method='RequestChannel'),
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
+        )
+
+
+    assert len(ret.value) == 1
+    chan_path = ret.value[0]
+
+    assert old_sig.args[0] == chan_path
+    assert old_sig.args[1] == tp_name_prefix + '.Channel.Type.Tubes'
+    assert old_sig.args[2] == 1         # contact handle
+    assert old_sig.args[3] == bob_handle
+    assert old_sig.args[4] == True      # suppress handler
+
+    assert len(new_sig.args) == 1
+    assert len(new_sig.args[0]) == 1        # one channel
+    assert len(new_sig.args[0][0]) == 2     # two struct members
+    assert new_sig.args[0][0][0] == ret.value[0]
+    emitted_props = new_sig.args[0][0][1]
+
+    assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
+            tp_name_prefix + '.Channel.Type.Tubes'
+    assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 1
+    assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
+            bob_handle
+    assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
+            'bob@localhost'
+    assert emitted_props[tp_name_prefix + '.Channel.Requested'] == True
+    assert emitted_props[tp_name_prefix + '.Channel.InitiatorHandle'] \
+            == conn.GetSelfHandle()
+    assert emitted_props[tp_name_prefix + '.Channel.InitiatorID'] == \
+            'test@localhost'
+
+    properties = conn.GetAll(
+            'org.freedesktop.Telepathy.Connection.Interface.Requests',
+            dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert new_sig.args[0][0] in properties['Channels'], \
+            (new_sig.args[0][0], properties['Channels'])
+
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
     tubes_iface = dbus.Interface(tubes_chan,
         tp_name_prefix + '.Channel.Type.Tubes')
@@ -108,17 +166,13 @@ def test(q, bus, conn, stream):
     assert 'org.freedesktop.Telepathy.Channel.Interface.Group' not in \
             channel_props['Interfaces'], \
             channel_props['Interfaces']
+    assert channel_props['TargetID'] == 'bob@localhost'
 
     self_handle = conn.GetSelfHandle()
 
-    # Exercise FUTURE properties
-    future_props = tubes_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['TargetID'] == 'bob@localhost'
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == self_handle
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == self_handle
 
     # Unix socket
     path = os.getcwd() + '/stream'
@@ -473,13 +527,14 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-return', method='AcceptDBusTube')
     address = event.value[0]
-    # FIXME: this is currently broken. See FIXME in tubes-channel.c
-    #assert len(address) > 0
+    assert len(address) > 0 # regression test for bug #13891
 
     event = q.expect('dbus-signal', signal='TubeStateChanged',
         args=[69, 2]) # 2 == OPEN
     id = event.args[0]
     state = event.args[1]
+
+    assert address == tubes_iface.GetDBusTubeAddress(id)
 
     # OK, we're done
     conn.Disconnect()

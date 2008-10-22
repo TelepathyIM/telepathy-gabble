@@ -27,12 +27,13 @@
 #include <loudmouth/loudmouth.h>
 
 #include <telepathy-glib/svc-connection.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/contacts-mixin.h>
 
 #include "base64.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "namespaces.h"
-#include "sha1/sha1.h"
 #include "vcard-manager.h"
 #include "util.h"
 
@@ -820,6 +821,39 @@ gabble_connection_clear_avatar (TpSvcConnectionInterfaceAvatars *iface,
   gabble_connection_set_avatar (iface, NULL, NULL, context);
 }
 
+static void
+conn_avatars_fill_contact_attributes (GObject *obj,
+    const GArray *contacts, GHashTable *attributes_hash)
+{
+  guint i;
+  GabbleConnection *self = GABBLE_CONNECTION(obj);
+  TpBaseConnection *base = (TpBaseConnection *) self;
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      TpHandle handle = g_array_index (contacts, guint, i);
+      GabblePresence *presence = NULL;
+
+      if (base->self_handle == handle)
+        presence = self->self_presence;
+      else
+        presence = gabble_presence_cache_get (self->presence_cache, handle);
+
+      if (NULL != presence)
+        {
+          GValue *val = tp_g_value_slice_new (G_TYPE_STRING);
+
+          if (NULL != presence->avatar_sha1)
+            g_value_set_string (val, presence->avatar_sha1);
+          else
+            g_value_set_string (val, "");
+
+          tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
+            TP_IFACE_CONNECTION_INTERFACE_AVATARS"/token", val);
+        }
+    }
+}
+
 
 void
 conn_avatars_init (GabbleConnection *conn)
@@ -828,14 +862,17 @@ conn_avatars_init (GabbleConnection *conn)
       (connection_got_self_initial_avatar_cb), conn);
   g_signal_connect (conn->presence_cache, "avatar-update", G_CALLBACK
       (connection_avatar_update_cb), conn);
+
+  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
+      TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+          conn_avatars_fill_contact_attributes);
 }
 
 
 void
 conn_avatars_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceAvatarsClass *klass =
-    (TpSvcConnectionInterfaceAvatarsClass *) g_iface;
+  TpSvcConnectionInterfaceAvatarsClass *klass = g_iface;
 
 #define IMPLEMENT(x) tp_svc_connection_interface_avatars_implement_##x (\
     klass, gabble_connection_##x)

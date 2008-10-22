@@ -4,7 +4,7 @@
 # The canonical location of this program is the telepathy-glib tools/
 # directory, please synchronize any changes with that copy.
 #
-# Copyright (C) 2007 Collabora Ltd. <http://www.collabora.co.uk/>
+# Copyright (C) 2007-2008 Collabora Ltd. <http://www.collabora.co.uk/>
 #
 # Copying and distribution of this file, with or without modification,
 # are permitted in any medium without royalty provided the copyright
@@ -20,6 +20,10 @@ usage ()
 {
   echo "usage: $me [options] -- program [program_options]" >&2
   echo "Requires write access to the current directory." >&2
+  echo "" >&2
+  echo "If \$WITH_SESSION_BUS_FORK_DBUS_MONITOR is set, fork dbus-monitor" >&2
+  echo "with the arguments in \$WITH_SESSION_BUS_FORK_DBUS_MONITOR_OPT." >&2
+  echo "The output of dbus-monitor is saved in $me-<pid>.dbus-monitor-logs" >&2
   exit 2
 }
 
@@ -65,6 +69,13 @@ dbus-daemon $dbus_daemon_args
 e=0
 DBUS_SESSION_BUS_ADDRESS="`cat $me-$$.address`"
 export DBUS_SESSION_BUS_ADDRESS
+
+if [ -n "$WITH_SESSION_BUS_FORK_DBUS_MONITOR" ] ; then
+  echo -n "Forking dbus-monitor $WITH_SESSION_BUS_FORK_DBUS_MONITOR_OPT" >&2
+  dbus-monitor $WITH_SESSION_BUS_FORK_DBUS_MONITOR_OPT \
+        &> $me-$$.dbus-monitor-logs &
+fi
+
 "$@" || e=$?
 
 trap - INT HUP TERM

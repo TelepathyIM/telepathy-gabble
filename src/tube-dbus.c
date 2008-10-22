@@ -280,8 +280,21 @@ do_close (GabbleTubeDBus *self)
     }
 }
 
-static void
-tube_dbus_open (GabbleTubeDBus *self)
+/* There is two step to enable receiving a D-Bus connection from the local
+ * application:
+ * - listen on the socket
+ * - add the socket in the mainloop
+ *
+ * We need to know the socket path to return from the AcceptDBusTube D-Bus
+ * call but the socket in the mainloop must be added only when we are ready
+ * to receive connections, that is when the bytestream is fully open with the
+ * remote contact.
+ *
+ * See also Bug 13891:
+ * https://bugs.freedesktop.org/show_bug.cgi?id=13891
+ * */
+void
+gabble_tube_dbus_listen (GabbleTubeDBus *self)
 {
 #define SERVER_LISTEN_MAX_TRIES 5
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
@@ -307,7 +320,7 @@ tube_dbus_open (GabbleTubeDBus *self)
       dbus_error_init (&error);
       priv->dbus_srv = dbus_server_listen (priv->dbus_srv_addr, &error);
 
-      if (priv->dbus_srv_addr != NULL)
+      if (priv->dbus_srv != NULL)
         break;
 
       DEBUG ("dbus_server_listen failed (try %u): %s: %s", i, error.name,
@@ -315,7 +328,7 @@ tube_dbus_open (GabbleTubeDBus *self)
       dbus_error_free (&error);
     }
 
-  if (priv->dbus_srv_addr == NULL)
+  if (priv->dbus_srv == NULL)
     {
       DEBUG ("all attempts failed. Close the tube");
       do_close (self);
@@ -326,7 +339,22 @@ tube_dbus_open (GabbleTubeDBus *self)
 
   dbus_server_set_new_connection_function (priv->dbus_srv, new_connection_cb,
       self, NULL);
-  dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
+}
+
+static void
+tube_dbus_open (GabbleTubeDBus *self)
+{
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+
+  if (priv->dbus_srv_addr == NULL)
+    {
+      gabble_tube_dbus_listen (self);
+    }
+
+  if (priv->dbus_srv_addr != NULL)
+    {
+      dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
+    }
 }
 
 static void
@@ -416,19 +444,23 @@ gabble_tube_dbus_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->bytestream)
+  if (priv->bytestream != NULL)
     {
       gabble_bytestream_iface_close (priv->bytestream, NULL);
     }
 
-  if (priv->dbus_conn)
+  if (priv->dbus_conn != NULL)
     {
       dbus_connection_close (priv->dbus_conn);
       dbus_connection_unref (priv->dbus_conn);
     }
 
-  if (priv->dbus_srv)
-    dbus_server_unref (priv->dbus_srv);
+  if (priv->dbus_srv != NULL)
+    {
+      dbus_server_disconnect (priv->dbus_srv);
+      dbus_server_unref (priv->dbus_srv);
+      priv->dbus_srv = NULL;
+    }
 
   if (priv->socket_path != NULL)
     {

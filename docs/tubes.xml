@@ -762,7 +762,7 @@
           decimal integer. This corresponds to xs:unsignedInt in XML
           Schema Part 2.</li>
       <li>"int": A signed integer representable in 32 bits using two's
-          complement. The corresponding D-Bus signature is 'i' or 'h' on input,
+          complement. The corresponding D-Bus signature is 'i' or 'n' on input,
           'i' on output, and the element's character content is an ASCII
           decimal integer, possibly starting with '-' or '+'. This corresponds
           to xs:int in XML Schema Part 2.</li>

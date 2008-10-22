@@ -36,26 +36,23 @@
 #include "connection.h"
 #include "debug.h"
 #include "namespaces.h"
-#include "sha1/sha1.h"
 
 gchar *
-sha1_hex (const gchar *bytes, guint len)
+sha1_hex (const gchar *bytes,
+          guint len)
 {
-  SHA1Context sc;
-  uint8_t hash[SHA1_HASH_SIZE];
-  gchar *hex_hash = g_malloc (SHA1_HASH_SIZE*2 + 1);
-  int i;
+  gchar *hex = g_compute_checksum_for_string (G_CHECKSUM_SHA1, bytes, len);
+  guint i;
 
-  SHA1Init (&sc);
-  SHA1Update (&sc, bytes, len);
-  SHA1Final (&sc, hash);
-
-  for (i = 0; i < SHA1_HASH_SIZE; i++)
+  for (i = 0; i < SHA1_HASH_SIZE * 2; i++)
     {
-      sprintf (hex_hash + 2 * i, "%02x", (unsigned int) hash[i]);
+      g_assert (hex[i] != '\0');
+      hex[i] = g_ascii_tolower (hex[i]);
     }
 
-  return hex_hash;
+  g_assert (hex[SHA1_HASH_SIZE * 2] == '\0');
+
+  return hex;
 }
 
 void
@@ -63,11 +60,14 @@ sha1_bin (const gchar *bytes,
           guint len,
           guchar out[SHA1_HASH_SIZE])
 {
-  SHA1Context sc;
+  GChecksum *checksum = g_checksum_new (G_CHECKSUM_SHA1);
+  gsize out_len = SHA1_HASH_SIZE;
 
-  SHA1Init (&sc);
-  SHA1Update (&sc, bytes, len);
-  SHA1Final (&sc, (uint8_t *) out);
+  g_assert (g_checksum_type_get_length (G_CHECKSUM_SHA1) == SHA1_HASH_SIZE);
+  g_checksum_update (checksum, (const guchar *) bytes, len);
+  g_checksum_get_digest (checksum, out, &out_len);
+  g_assert (out_len == SHA1_HASH_SIZE);
+  g_checksum_free (checksum);
 }
 
 static void

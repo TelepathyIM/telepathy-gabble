@@ -7,6 +7,7 @@ import base64
 import os
 import sha
 import sys
+import time
 
 import servicetest
 import twisted
@@ -328,8 +329,12 @@ def exec_test_deferred (fun, params, protocol=None, timeout=None):
             d.addBoth((lambda *args: os._exit(1)))
 
         conn.Disconnect()
-        # second call destroys object
-        conn.Disconnect()
+
+        if 'GABBLE_TEST_REFDBG' in os.environ:
+            # we have to wait that Gabble timeouts so the process is properly
+            # exited and refdbg can generates its report
+            time.sleep(5.5)
+
     except dbus.DBusException, e:
         pass
 
@@ -384,3 +389,58 @@ def handle_set_vcard(event, data):
     return True
 
 
+def _elem_add(elem, *children):
+    for child in children:
+        if isinstance(child, domish.Element):
+            elem.addChild(child)
+        elif isinstance(child, unicode):
+            elem.addContent(child)
+        else:
+            raise ValueError('invalid child object %r', child)
+
+def elem(a, b=None, **kw):
+    r"""
+    >>> elem('foo')().toXml()
+    u'<foo/>'
+    >>> elem('foo', x='1')().toXml()
+    u"<foo x='1'/>"
+    >>> elem('foo', x='1')(u'hello').toXml()
+    u"<foo x='1'>hello</foo>"
+    >>> elem('foo', x='1')(u'hello',
+    ...         elem('http://foo.org', 'bar', y='2')(u'bye')).toXml()
+    u"<foo x='1'>hello<bar xmlns='http://foo.org' y='2'>bye</bar></foo>"
+    """
+
+    class _elem(domish.Element):
+        def __call__(self, *children):
+            _elem_add(self, *children)
+            return self
+
+    if b is not None:
+        elem = _elem((a, b))
+    else:
+        elem = _elem((None, a))
+
+    for k, v in kw.iteritems():
+        if k == 'from_':
+            elem['from'] = v
+        else:
+            elem[k] = v
+
+    return elem
+
+def elem_iq(server, type, **kw):
+    class _iq(IQ):
+        def __call__(self, *children):
+            _elem_add(self, *children)
+            return self
+
+    iq = _iq(server, type)
+
+    for k, v in kw.iteritems():
+        if k == 'from_':
+            iq['from'] = v
+        else:
+            iq[k] = v
+
+    return iq

@@ -102,9 +102,6 @@ struct _GabbleMediaStreamPrivate
   guint id;
   guint media_type;
 
-  gboolean ready;
-  gboolean sending;
-
   GValue native_codecs;     /* intersected codec list */
   GValue native_candidates;
 
@@ -113,9 +110,12 @@ struct _GabbleMediaStreamPrivate
 
   guint remote_candidate_count;
 
-  gboolean closed:1;
-  gboolean dispose_has_run:1;
-  gboolean local_hold:1;
+  /* These are really booleans, but gboolean is signed. Thanks, GLib */
+  unsigned closed:1;
+  unsigned dispose_has_run:1;
+  unsigned local_hold:1;
+  unsigned ready:1;
+  unsigned sending:1;
 };
 
 #define GABBLE_MEDIA_STREAM_GET_PRIVATE(obj) ((obj)->priv)

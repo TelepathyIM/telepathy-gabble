@@ -33,25 +33,24 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-generic.h>
 
-#include "extensions/extensions.h"
-
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
 #include "bytestream-factory.h"
 #include "connection.h"
 #include "debug.h"
-#include "exportable-channel.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "presence.h"
 #include "tube-iface.h"
 #include "tube-stream.h"
+#include "tube-dbus.h"
 #include "util.h"
 
 #ifdef HAVE_DBUS_TUBE
@@ -66,11 +65,10 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubesChannel, gabble_tubes_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TUBES, tubes_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
         tp_external_group_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 static const gchar *gabble_tubes_channel_interfaces[] = {
@@ -78,7 +76,6 @@ static const gchar *gabble_tubes_channel_interfaces[] = {
     /* If more interfaces are added, either keep Group as the first, or change
      * the implementations of gabble_tubes_channel_get_interfaces () and
      * gabble_tubes_channel_get_property () too */
-    GABBLE_IFACE_CHANNEL_FUTURE,
     NULL
 };
 
@@ -270,15 +267,15 @@ gabble_tubes_channel_get_property (GObject *object,
         g_value_set_boolean (value, priv->closed);
         break;
       case PROP_CHANNEL_PROPERTIES:
-        g_value_set_boxed (value,
-            gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+        g_value_take_boxed (value,
+            tp_dbus_properties_mixin_make_properties_hash (object,
                 TP_IFACE_CHANNEL, "TargetHandle",
                 TP_IFACE_CHANNEL, "TargetHandleType",
                 TP_IFACE_CHANNEL, "ChannelType",
-                GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
-                GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
-                GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
-                GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+                TP_IFACE_CHANNEL, "TargetID",
+                TP_IFACE_CHANNEL, "InitiatorHandle",
+                TP_IFACE_CHANNEL, "InitiatorID",
+                TP_IFACE_CHANNEL, "Requested",
                 NULL));
         break;
       default:
@@ -1912,10 +1909,11 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
   add_yourself_in_dbus_names (self, id);
 
+  /* The address is known only after we start to listen on the connection,
+   * so we need to listen now. However, connections are accepted only when
+   * the bytestream is fully initialised. See also Bug #13891. */
+  gabble_tube_dbus_listen (GABBLE_TUBE_DBUS (tube));
   g_object_get (tube, "dbus-address", &addr, NULL);
-  /* FIXME: This is broken in 1-1 D-Bus tubes because tube_open will be called
-   * only when the bytestream is fully initialised.
-   * So now we return a NULL string. Bug #13891 on fd.o */
   tp_svc_channel_type_tubes_return_from_accept_d_bus_tube (context, addr);
   g_free (addr);
 #else
@@ -2451,13 +2449,10 @@ gabble_tubes_channel_class_init (
   static TpDBusPropertiesMixinPropImpl channel_props[] = {
       { "TargetHandleType", "handle-type", NULL },
       { "TargetHandle", "handle", NULL },
+      { "TargetID", "target-id", NULL },
       { "ChannelType", "channel-type", NULL },
       { "Interfaces", "interfaces", NULL },
-      { NULL }
-  };
-  static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "Requested", "requested", NULL },
-      { "TargetID", "target-id", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
       { NULL }
@@ -2467,11 +2462,6 @@ gabble_tubes_channel_class_init (
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
-      },
-      { GABBLE_IFACE_CHANNEL_FUTURE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        future_props,
       },
       { NULL }
   };
@@ -2507,18 +2497,13 @@ gabble_tubes_channel_class_init (
       "GabbleConnection object",
       "Gabble connection object that owns this Tubes channel object.",
       GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
       "Additional Channel.Interface.* interfaces",
       G_TYPE_STRV,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_object (
@@ -2527,41 +2512,33 @@ gabble_tubes_channel_class_init (
       "Gabble text MUC channel corresponding to this Tubes channel object, "
       "if the handle type is ROOM.",
       GABBLE_TYPE_MUC_CHANNEL,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MUC, param_spec);
 
   param_spec = g_param_spec_string ("target-id", "Target JID",
       "The string obtained by inspecting the target handle",
       NULL,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
 
   param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
       "The contact who initiated the channel",
       0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
       param_spec);
 
   param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
       "The string obtained by inspecting the initiator-handle",
       NULL,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
 
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   gabble_tubes_channel_class->dbus_props_class.interfaces = prop_interfaces;

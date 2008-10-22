@@ -25,18 +25,16 @@
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-generic.h>
 #include <telepathy-glib/svc-channel.h>
 
-#include "extensions/extensions.h"
-
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
 #include "connection.h"
 #include "debug.h"
-#include "exportable-channel.h"
 #include "roster.h"
 #include "util.h"
 
@@ -45,17 +43,15 @@ static void channel_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE (GabbleRosterChannel, gabble_roster_channel,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_CONTACT_LIST, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 static const gchar *gabble_roster_channel_interfaces[] = {
-    GABBLE_IFACE_CHANNEL_FUTURE,
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     NULL
 };
@@ -247,15 +243,15 @@ gabble_roster_channel_get_property (GObject    *object,
       g_value_set_boolean (value, priv->closed);
       break;
     case PROP_CHANNEL_PROPERTIES:
-      g_value_set_boxed (value,
-          gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+      g_value_take_boxed (value,
+          tp_dbus_properties_mixin_make_properties_hash (object,
               TP_IFACE_CHANNEL, "TargetHandle",
               TP_IFACE_CHANNEL, "TargetHandleType",
               TP_IFACE_CHANNEL, "ChannelType",
-              GABBLE_IFACE_CHANNEL_FUTURE, "TargetID",
-              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
-              GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
-              GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+              TP_IFACE_CHANNEL, "TargetID",
+              TP_IFACE_CHANNEL, "InitiatorHandle",
+              TP_IFACE_CHANNEL, "InitiatorID",
+              TP_IFACE_CHANNEL, "Requested",
               NULL));
       break;
     default:
@@ -311,13 +307,10 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
   static TpDBusPropertiesMixinPropImpl channel_props[] = {
       { "TargetHandleType", "handle-type", NULL },
       { "TargetHandle", "handle", NULL },
+      { "TargetID", "target-id", NULL },
       { "ChannelType", "channel-type", NULL },
       { "Interfaces", "interfaces", NULL },
-      { NULL }
-  };
-  static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "Requested", "requested", NULL },
-      { "TargetID", "target-id", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
       { NULL }
@@ -327,11 +320,6 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
-      },
-      { GABBLE_IFACE_CHANNEL_FUTURE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        future_props,
       },
       { NULL }
   };
@@ -352,45 +340,39 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this Roster channel object.",
       GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
       "Additional Channel.Interface.* interfaces",
       G_TYPE_STRV,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_string ("target-id", "Target JID",
       "The string obtained by inspecting this channel's handle",
       NULL,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
 
   param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
       "The contact who initiated the channel",
       0, G_MAXUINT32, 0,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
       param_spec);
 
   param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
       "The string obtained by inspecting the initiator-handle",
       NULL,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
 
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   g_object_class_override_property (object_class, PROP_OBJECT_PATH,
@@ -457,44 +439,6 @@ gabble_roster_channel_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_roster_channel_parent_class)->finalize (object);
 }
 
-
-static gboolean
-_gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
-                                      LmMessageSubType sub_type,
-                                      TpHandle handle,
-                                      const gchar *status,
-                                      GError **error)
-{
-  GabbleRosterChannelPrivate *priv;
-  TpBaseConnection *conn;
-  TpHandleRepoIface *repo;
-  const char *contact;
-  LmMessage *message;
-  gboolean result;
-
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
-  conn = (TpBaseConnection *) priv->conn;
-  repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
-  contact = tp_handle_inspect (repo, handle);
-
-  message = lm_message_new_with_sub_type (contact,
-      LM_MESSAGE_TYPE_PRESENCE,
-      sub_type);
-
-  if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
-    lm_message_node_add_own_nick (message->node, priv->conn);
-
-  if (status != NULL && status[0] != '\0')
-    lm_message_node_add_child (message->node, "status", status);
-
-  result = _gabble_connection_send (priv->conn, message, error);
-
-  lm_message_unref (message);
-
-  return result;
-}
-
-
 /**
  * _gabble_roster_channel_add_member_cb
  *
@@ -509,20 +453,25 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   GabbleRosterChannelPrivate *priv;
   gboolean ret = FALSE;
 #ifdef ENABLE_DEBUG
-  TpHandleRepoIface *handle_repo, *contact_repo;
+  TpHandleRepoIface *handle_repo;
 #endif
+  TpHandleRepoIface *contact_repo;
+  const gchar *contact_id;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
+
 #ifdef ENABLE_DEBUG
   handle_repo = tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
       priv->handle_type);
+#endif
+
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-#endif
+  contact_id = tp_handle_inspect (contact_repo, handle);
 
   DEBUG ("called on %s with handle %u (%s) \"%s\"",
       tp_handle_inspect (handle_repo, priv->handle), handle,
-      tp_handle_inspect (contact_repo, handle), message);
+      contact_id, message);
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)
     {
@@ -539,8 +488,8 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   else if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
       /* send <presence type="subscribed"> */
-      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
-          LM_MESSAGE_SUB_TYPE_SUBSCRIBED, handle, message, error);
+      ret = gabble_connection_send_presence (priv->conn,
+          LM_MESSAGE_SUB_TYPE_SUBSCRIBED, contact_id, message, error);
     }
   /* subscribe list */
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
@@ -549,8 +498,8 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
       gabble_roster_handle_add (priv->conn->roster, handle, NULL);
 
       /* send <presence type="subscribe"> */
-      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
-          LM_MESSAGE_SUB_TYPE_SUBSCRIBE, handle, message, error);
+      ret = gabble_connection_send_presence (priv->conn,
+          LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, message, error);
     }
   /* deny list */
   else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
@@ -580,22 +529,26 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
                                          GError **error)
 {
   GabbleRosterChannelPrivate *priv;
-#ifdef ENABLE_DEBUG
   TpBaseConnection *conn;
-  TpHandleRepoIface *handle_repo, *contact_repo;
+  TpHandleRepoIface *contact_repo;
+#ifdef ENABLE_DEBUG
+  TpHandleRepoIface *handle_repo;
 #endif
   gboolean ret = FALSE;
+  const gchar *contact_id;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
-#ifdef ENABLE_DEBUG
   conn = (TpBaseConnection *) priv->conn;
+#ifdef ENABLE_DEBUG
   handle_repo = tp_base_connection_get_handles (conn, priv->handle_type);
-  contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
 #endif
+  contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
+
+  contact_id = tp_handle_inspect (contact_repo, handle);
 
   DEBUG ("called on %s with handle %u (%s) \"%s\"",
       tp_handle_inspect (handle_repo, priv->handle), handle,
-      tp_handle_inspect (contact_repo, handle), message);
+      contact_id, message);
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)
     {
@@ -612,8 +565,8 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   else if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
       /* send <presence type="unsubscribed"> */
-      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, handle, message, error);
+      ret = gabble_connection_send_presence (priv->conn,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, message, error);
 
       /* remove it from local_pending here, because roster callback doesn't
          know if it can (subscription='none' is used both during request and
@@ -633,8 +586,8 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
       /* send <presence type="unsubscribe"> */
-      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, handle, message, error);
+      ret = gabble_connection_send_presence (priv->conn,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, message, error);
     }
   /* known list */
   else if (GABBLE_LIST_HANDLE_KNOWN == priv->handle)

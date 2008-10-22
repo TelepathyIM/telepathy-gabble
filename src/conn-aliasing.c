@@ -1018,8 +1018,7 @@ conn_aliasing_init (GabbleConnection *conn)
 void
 conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceAliasingClass *klass =
-    (TpSvcConnectionInterfaceAliasingClass *) g_iface;
+  TpSvcConnectionInterfaceAliasingClass *klass = g_iface;
 
 #define IMPLEMENT(x) tp_svc_connection_interface_aliasing_implement_##x (\
     klass, gabble_connection_##x)

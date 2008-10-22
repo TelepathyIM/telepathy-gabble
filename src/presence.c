@@ -270,6 +270,13 @@ aggregate_resources (GabblePresence *presence)
           prio = r->priority;
         }
     }
+
+  if (presence->status <= GABBLE_PRESENCE_HIDDEN && priv->olpc_views > 0)
+    {
+      /* Contact is in at least one view and we didn't receive a better
+       * presence from him so announce it as available */
+      presence->status = GABBLE_PRESENCE_AVAILABLE;
+    }
 }
 
 gboolean
@@ -483,35 +490,46 @@ gboolean
 gabble_presence_added_to_view (GabblePresence *self)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (self);
+  GabblePresenceId old_status;
+  gchar *old_status_message;
+  gboolean ret = FALSE;
+
+  /* save our current state */
+  old_status = self->status;
+  old_status_message = g_strdup (self->status_message);
 
   priv->olpc_views++;
+  aggregate_resources (self);
 
-  if (priv->olpc_views > 1)
-    /* That's not the version view associated with this presence so
-     * that doesn't change anything */
-    return FALSE;
+  /* detect changes */
+  if (self->status != old_status ||
+      tp_strdiff (self->status_message, old_status_message))
+    ret = TRUE;
 
-  if (self->status > GABBLE_PRESENCE_HIDDEN)
-    /* We already have a better presence */
-    return FALSE;
-
-  return TRUE;
+  g_free (old_status_message);
+  return ret;
 }
 
 gboolean
 gabble_presence_removed_from_view (GabblePresence *self)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (self);
+  GabblePresenceId old_status;
+  gchar *old_status_message;
+  gboolean ret = FALSE;
+
+  /* save our current state */
+  old_status = self->status;
+  old_status_message = g_strdup (self->status_message);
 
   priv->olpc_views--;
+  aggregate_resources (self);
 
-  if (priv->olpc_views > 0)
-    /* We are still in at least one view */
-    return FALSE;
+  /* detect changes */
+  if (self->status != old_status ||
+      tp_strdiff (self->status_message, old_status_message))
+    ret = TRUE;
 
-  if (self->status > GABBLE_PRESENCE_HIDDEN)
-    /* We still have a better presence */
-    return FALSE;
-
-  return TRUE;
+  g_free (old_status_message);
+  return ret;
 }

@@ -8,6 +8,7 @@ from twisted.words.xish import xpath
 
 from servicetest import EventPattern
 from gabbletest import go, exec_test
+import ns
 
 def test(q, bus, conn, stream):
     buddy_info_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
@@ -19,28 +20,28 @@ def test(q, bus, conn, stream):
     # buddy activities
     event = q.expect('stream-iq', iq_type='set', query_name='pubsub')
     assert xpath.queryForNodes(
-        "/iq[@type='set']/pubsub[@xmlns='http://jabber.org/protocol/pubsub']"
-        "/publish[@node='http://laptop.org/xmpp/activities']", event.stanza)
+        "/iq[@type='set']/pubsub[@xmlns='%s']"
+        "/publish[@node='%s']" % (ns.PUBSUB, ns.OLPC_ACTIVITIES), event.stanza)
 
     # activity properties
     event = q.expect('stream-iq', iq_type='set', query_name='pubsub')
     assert xpath.queryForNodes(
-        "/iq[@type='set']/pubsub[@xmlns='http://jabber.org/protocol/pubsub']"
-        "/publish[@node='http://laptop.org/xmpp/activity-properties']",
+        "/iq[@type='set']/pubsub[@xmlns='%s']"
+        "/publish[@node='%s']" % (ns.PUBSUB, ns.OLPC_ACTIVITY_PROPS),
         event.stanza)
 
     # buddy properties
     event = q.expect('stream-iq', iq_type='set', query_name='pubsub')
     iq = event.stanza
     nodes = xpath.queryForNodes(
-        "/iq[@type='set']/pubsub[@xmlns='http://jabber.org/protocol/pubsub']"
-        "/publish[@node='http://laptop.org/xmpp/buddy-properties']", iq)
+        "/iq[@type='set']/pubsub[@xmlns='%s']"
+        "/publish[@node='%s']" % (ns.PUBSUB, ns.OLPC_BUDDY_PROPS), iq)
     assert nodes
 
     nodes = xpath.queryForNodes(
         "/publish/item"
-        "/properties[@xmlns='http://laptop.org/xmpp/buddy-properties']"
-        "/property",
+        "/properties[@xmlns='%s']"
+        "/property" % (ns.OLPC_BUDDY_PROPS),
         nodes[0])
     assert len(nodes) == 1
     assert nodes[0]['type'] == 'str'

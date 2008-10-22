@@ -5,7 +5,17 @@ Requirements:
 
 Enhancements:
 
+* OLPC View: use the Requests API and make the views into channels
+
 Fixes:
+
+* sha1_bin(): fix a memory leak, and assertion failures on 64-bit
+
+* D-Bus tubes: fix an assertion in libdbus during dispose
+
+* Add --disable-Werror to configure.ac (copied from telepathy-glib), useful
+  when building Debian packages of prereleases using cdbs (which implicitly
+  turns on -Wunused-parameter)
 
 telepathy-gabble 0.7.10 (2008-10-15)
 ====================================

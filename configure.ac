@@ -113,10 +113,7 @@ AC_SUBST(COVERAGE_CFLAGS)
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
-dnl Endianness (for the sha1 implementation)
-AC_C_BIGENDIAN
-
-dnl Check for Glib 
+dnl Check for Glib
 PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16, gobject-2.0 >= 2.16])
 
 AC_SUBST(GLIB_CFLAGS)

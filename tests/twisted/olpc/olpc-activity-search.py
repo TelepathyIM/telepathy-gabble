@@ -12,20 +12,7 @@ from twisted.words.protocols.jabber.client import IQ
 from util import (announce_gadget, request_random_activity_view,
     answer_error_to_pubsub_request, send_reply_to_activity_view_request,
     parse_properties, properties_to_xml, create_gadget_message, close_view)
-
-NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
-NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
-NS_OLPC_CURRENT_ACTIVITY = "http://laptop.org/xmpp/current-activity"
-NS_OLPC_ACTIVITY_PROPS = "http://laptop.org/xmpp/activity-properties"
-NS_OLPC_BUDDY = "http://laptop.org/xmpp/buddy"
-NS_OLPC_ACTIVITY = "http://laptop.org/xmpp/activity"
-
-NS_PUBSUB = "http://jabber.org/protocol/pubsub"
-NS_DISCO_INFO = "http://jabber.org/protocol/disco#info"
-NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
-
-NS_AMP = "http://jabber.org/protocol/amp"
-NS_STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"
+import ns
 
 tp_name_prefix = 'org.freedesktop.Telepathy'
 olpc_name_prefix = 'org.laptop.Telepathy'
@@ -51,7 +38,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
-        EventPattern('stream-iq', to='localhost', query_ns=NS_DISCO_ITEMS))
+        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
 
     acknowledge_iq(stream, iq_event.stanza)
 
@@ -169,7 +156,7 @@ def test(q, bus, conn, stream):
     call_async (q, buddy_prop_iface, 'GetActivities', handles['lucien'])
 
     event = q.expect('stream-iq', to='lucien@localhost', query_name='pubsub',
-            query_ns=NS_PUBSUB)
+            query_ns=ns.PUBSUB)
     # return an error, we can't query pubsub node
     answer_error_to_pubsub_request(stream, event.stanza)
 
@@ -188,7 +175,7 @@ def test(q, bus, conn, stream):
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_ACTIVITY),
+            query_ns=ns.OLPC_ACTIVITY),
         EventPattern('dbus-return', method='CreateChannel'))
 
     properties_nodes = xpath.queryForNodes('/iq/view/activity/properties',
@@ -248,7 +235,7 @@ def test(q, bus, conn, stream):
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_ACTIVITY),
+            query_ns=ns.OLPC_ACTIVITY),
         EventPattern('dbus-return', method='CreateChannel'))
 
     buddies = xpath.queryForNodes('/iq/view/activity/buddy', iq_event.stanza)
@@ -289,17 +276,17 @@ def test(q, bus, conn, stream):
     # add activity 4 to view 1
     message = create_gadget_message('alice@localhost')
 
-    added = message.addElement((NS_OLPC_ACTIVITY, 'added'))
+    added = message.addElement((ns.OLPC_ACTIVITY, 'added'))
     added['id'] = '1'
     activity = added.addElement((None, 'activity'))
     activity['id'] = 'activity4'
     activity['room'] = 'room4@conference.localhost'
-    properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
+    properties = activity.addElement((ns.OLPC_ACTIVITY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#DDEEDD,#EEDDEE')}):
         properties.addChild(node)
     buddy = activity.addElement((None, 'buddy'))
     buddy['jid'] = 'fernand@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#AABBAA,#BBAABB')}):
         properties.addChild(node)
     buddy = activity.addElement((None, 'buddy'))
@@ -351,11 +338,11 @@ def test(q, bus, conn, stream):
     # Gadget informs us about an activity properties change
     message = create_gadget_message('alice@localhost')
 
-    change = message.addElement((NS_OLPC_ACTIVITY, 'change'))
+    change = message.addElement((ns.OLPC_ACTIVITY, 'change'))
     change['activity'] = 'activity1'
     change['room'] = 'room1@conference.localhost'
     change['id'] = '1'
-    properties = change.addElement((NS_OLPC_ACTIVITY_PROPS, 'properties'))
+    properties = change.addElement((ns.OLPC_ACTIVITY_PROPS, 'properties'))
     for node in properties_to_xml({'tags': ('str', 'game'), \
             'color': ('str', '#AABBAA,#BBAABB')}):
         properties.addChild(node)
@@ -372,12 +359,12 @@ def test(q, bus, conn, stream):
     # Marcel joined activity 1
     message = create_gadget_message('alice@localhost')
 
-    activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
+    activity = message.addElement((ns.OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
     activity['view'] = '1'
     joined = activity.addElement((None, 'joined'))
     joined['jid'] = 'marcel@localhost'
-    properties = joined.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = joined.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#CCCCCC,#DDDDDD')}):
         properties.addChild(node)
 
@@ -409,7 +396,7 @@ def test(q, bus, conn, stream):
     # Marcel left activity 1
     message = create_gadget_message('alice@localhost')
 
-    activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
+    activity = message.addElement((ns.OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
     activity['view'] = '1'
     left = activity.addElement((None, 'left'))
@@ -437,7 +424,7 @@ def test(q, bus, conn, stream):
     # Jean left activity 1
     message = create_gadget_message('alice@localhost')
 
-    activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
+    activity = message.addElement((ns.OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
     activity['view'] = '1'
     left = activity.addElement((None, 'left'))
@@ -462,7 +449,7 @@ def test(q, bus, conn, stream):
     # remove activity 1 from view 1
     message = create_gadget_message('alice@localhost')
 
-    removed = message.addElement((NS_OLPC_ACTIVITY, 'removed'))
+    removed = message.addElement((ns.OLPC_ACTIVITY, 'removed'))
     removed['id'] = '1'
     activity = removed.addElement((None, 'activity'))
     activity['id'] = 'activity1'
@@ -535,7 +522,7 @@ def test(q, bus, conn, stream):
           })
 
     iq_event, return_event = q.expect_many(
-        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
+        EventPattern('stream-iq', to='gadget.localhost', query_ns=ns.OLPC_ACTIVITY),
         EventPattern('dbus-return', method='CreateChannel'))
 
     view = iq_event.stanza.firstChildElement()

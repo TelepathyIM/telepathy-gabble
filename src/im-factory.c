@@ -37,7 +37,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "im-channel.h"
-#include "text-mixin.h"
+#include "message-util.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
 
@@ -216,7 +216,7 @@ im_factory_message_cb (LmMessageHandler *handler,
   gint state;
   TpChannelTextSendError send_error;
 
-  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
+  if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
         &msgtype, &body, &state, &send_error))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 

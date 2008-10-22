@@ -38,10 +38,10 @@
 #include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
+#include "message-util.h"
 #include "muc-channel.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include "text-mixin.h"
 #include "tubes-channel.h"
 #include "util.h"
 
@@ -735,7 +735,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
   gchar *room;
   LmMessageNode *subj_node;
 
-  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
+  if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
         &msgtype, &body, &state, &send_error))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 

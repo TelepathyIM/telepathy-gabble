@@ -3,7 +3,8 @@
 
 #include <string.h>
 
-#include "src/text-mixin.h"
+#include "src/util.h"
+#include "src/message-util.h"
 
 /* Test the most basic <message> possible. */
 static gboolean
@@ -21,7 +22,7 @@ test1 (void)
   msg = lm_message_build (NULL, LM_MESSAGE_TYPE_MESSAGE,
         '@', "from", "foo@bar.com",
         NULL);
-  ret = gabble_text_mixin_parse_incoming_message (
+  ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &body, &state, &send_error);
   g_assert (ret == TRUE);
   g_assert (0 == strcmp (from, "foo@bar.com"));
@@ -52,7 +53,7 @@ test2 (void)
         '@', "from", "foo@bar.com",
         '(', "body", "hello", ')',
         NULL);
-  ret = gabble_text_mixin_parse_incoming_message (
+  ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &body, &state, &send_error);
   g_assert (ret == TRUE);
   g_assert (0 == strcmp (from, "foo@bar.com"));
@@ -83,7 +84,7 @@ test3 (void)
         '@', "type", "chat",
         '(', "body", "hello", ')',
         NULL);
-  ret = gabble_text_mixin_parse_incoming_message (
+  ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &body, &state, &send_error);
   g_assert (ret == TRUE);
   g_assert (0 == strcmp (from, "foo@bar.com"));
@@ -115,7 +116,7 @@ test_error (void)
       '@', "type", "error",
       '(', "error", "oops", ')',
       NULL);
-  ret = gabble_text_mixin_parse_incoming_message (
+  ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &body, &state, &send_error);
   g_assert (ret == TRUE);
   g_assert (0 == strcmp (from, "foo@bar.com"));
@@ -152,7 +153,7 @@ test_google_offline (void)
          '@', "ms", "1190899454656",
       ')',
       NULL);
-  ret = gabble_text_mixin_parse_incoming_message (
+  ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &body, &state, &send_error);
   g_assert (ret == TRUE);
   g_assert (0 == strcmp (from, "foo@bar.com"));

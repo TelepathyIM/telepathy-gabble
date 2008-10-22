@@ -37,6 +37,13 @@ gboolean gabble_message_util_send_chat_state (GObject *obj,
     GabbleConnection *conn, LmMessageSubType subtype, TpChannelChatState state,
     const char *recipient, GError **error);
 
+
+#define GABBLE_TEXT_CHANNEL_SEND_NO_ERROR ((TpChannelTextSendError)-1)
+
+gboolean gabble_message_util_parse_incoming_message (LmMessage *message,
+    const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype,
+    const gchar **body_ret, gint *state, TpChannelTextSendError *send_error);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_MESSAGE_UTIL_H__ */

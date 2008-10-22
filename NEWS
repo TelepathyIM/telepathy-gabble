@@ -1,21 +1,23 @@
-telepathy-gabble 0.7.11 (UNRELEASED)
+telepathy-gabble 0.7.11 (2008-10-22)
 ====================================
 
-Requirements:
+The "HAPPY CAPS LOCK DAY" release.
 
 Enhancements:
 
 * OLPC View: use the Requests API and make the views into channels
+
+* Optionally run dbus-monitor alongside regression tests
+
+* Add --disable-Werror to configure.ac (copied from telepathy-glib), useful
+  when building Debian packages of prereleases using cdbs (which implicitly
+  turns on -Wunused-parameter)
 
 Fixes:
 
 * sha1_bin(): fix a memory leak, and assertion failures on 64-bit
 
 * D-Bus tubes: fix an assertion in libdbus during dispose
-
-* Add --disable-Werror to configure.ac (copied from telepathy-glib), useful
-  when building Debian packages of prereleases using cdbs (which implicitly
-  turns on -Wunused-parameter)
 
 telepathy-gabble 0.7.10 (2008-10-15)
 ====================================

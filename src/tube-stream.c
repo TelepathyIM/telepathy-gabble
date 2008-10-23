@@ -1153,7 +1153,7 @@ gabble_tube_stream_set_property (GObject *object,
         break;
       case PROP_INITIATOR_HANDLE:
         /* PROP_INITIATOR_HANDLE and PROP_INITIATOR are the same property from
-         * two different interfaces (Channeland
+         * two different interfaces (Channel and
          * Channel.Interface.Tube.DRAFT). In case of tube channels, this can
          * never be 0. The value is stored in priv->initiator. The object is
          * created only with PROP_INITIATOR set, so do nothing here. */

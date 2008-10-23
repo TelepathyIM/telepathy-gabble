@@ -9,8 +9,8 @@ AC_PREREQ([2.59])
 
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [7])
-m4_define([gabble_micro_version], [10])
-m4_define([gabble_nano_version], [1])
+m4_define([gabble_micro_version], [11])
+m4_define([gabble_nano_version], [0])
 
 # Some magic
 m4_define([gabble_base_version],
@@ -113,10 +113,7 @@ AC_SUBST(COVERAGE_CFLAGS)
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
-dnl Endianness (for the sha1 implementation)
-AC_C_BIGENDIAN
-
-dnl Check for Glib 
+dnl Check for Glib
 PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16, gobject-2.0 >= 2.16])
 
 AC_SUBST(GLIB_CFLAGS)

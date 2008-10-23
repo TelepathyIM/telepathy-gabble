@@ -17,6 +17,7 @@ TWISTED_TESTS = \
 	olpc/gadget-invite.py \
 	olpc/gadget-publish.py \
 	olpc/gadget-restarted.py \
+	olpc/view-presence.py \
 	presence/presence.py \
 	roster/ensure.py \
 	roster/groups.py \

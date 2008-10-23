@@ -52,6 +52,7 @@ struct _Resource {
 struct _GabblePresencePrivate {
     gchar *no_resource_status_message;
     GSList *resources;
+    guint olpc_views;
 };
 
 static Resource *
@@ -279,6 +280,47 @@ _find_resource (GabblePresence *presence, const gchar *resource)
   return NULL;
 }
 
+static void
+aggregate_resources (GabblePresence *presence)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GSList *i;
+  guint8 prio;
+
+  /* select the most preferable Resource and update presence->* based on our
+   * choice */
+  presence->caps = 0;
+  presence->status = GABBLE_PRESENCE_OFFLINE;
+
+  prio = -128;
+
+  for (i = priv->resources; NULL != i; i = i->next)
+    {
+      Resource *r = (Resource *) i->data;
+
+      presence->caps |= r->caps;
+
+      /* trump existing status & message if it's more present
+       * or has the same presence and a higher priority */
+      if (r->status > presence->status ||
+          (r->status == presence->status && r->priority > prio))
+        {
+          presence->status = r->status;
+          presence->status_message = r->status_message;
+          prio = r->priority;
+        }
+    }
+
+  if (presence->status <= GABBLE_PRESENCE_HIDDEN && priv->olpc_views > 0)
+    {
+      /* Contact is in at least one view and we didn't receive a better
+       * presence from him so announce it as available */
+      presence->status = GABBLE_PRESENCE_AVAILABLE;
+      g_free (presence->status_message);
+      presence->status_message = NULL;
+    }
+}
+
 gboolean
 gabble_presence_update (GabblePresence *presence,
                         const gchar *resource,
@@ -291,7 +333,6 @@ gabble_presence_update (GabblePresence *presence,
   GabblePresenceId old_status;
   gchar *old_status_message;
   GSList *i;
-  guint8 prio;
   gboolean ret = FALSE;
 
   /* save our current state */
@@ -385,24 +426,7 @@ gabble_presence_update (GabblePresence *presence,
    * keeping around just because it has a message on it */
   presence->status_message = res ? res->status_message : NULL;
 
-  prio = -128;
-
-  for (i = priv->resources; NULL != i; i = i->next)
-    {
-      Resource *r = (Resource *) i->data;
-
-      presence->caps |= r->caps;
-
-      /* trump existing status & message if it's more present
-       * or has the same presence and a higher priority */
-      if (r->status > presence->status ||
-          (r->status == presence->status && r->priority > prio))
-        {
-          presence->status = r->status;
-          presence->status_message = r->status_message;
-          prio = r->priority;
-        }
-    }
+  aggregate_resources (presence);
 
 OUT:
   /* detect changes */
@@ -513,4 +537,52 @@ gabble_presence_dump (GabblePresence *presence)
     g_string_append_printf (ret, "  (none)\n");
 
   return g_string_free (ret, FALSE);
+}
+
+gboolean
+gabble_presence_added_to_view (GabblePresence *self)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (self);
+  GabblePresenceId old_status;
+  gchar *old_status_message;
+  gboolean ret = FALSE;
+
+  /* save our current state */
+  old_status = self->status;
+  old_status_message = g_strdup (self->status_message);
+
+  priv->olpc_views++;
+  aggregate_resources (self);
+
+  /* detect changes */
+  if (self->status != old_status ||
+      tp_strdiff (self->status_message, old_status_message))
+    ret = TRUE;
+
+  g_free (old_status_message);
+  return ret;
+}
+
+gboolean
+gabble_presence_removed_from_view (GabblePresence *self)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (self);
+  GabblePresenceId old_status;
+  gchar *old_status_message;
+  gboolean ret = FALSE;
+
+  /* save our current state */
+  old_status = self->status;
+  old_status_message = g_strdup (self->status_message);
+
+  priv->olpc_views--;
+  aggregate_resources (self);
+
+  /* detect changes */
+  if (self->status != old_status ||
+      tp_strdiff (self->status_message, old_status_message))
+    ret = TRUE;
+
+  g_free (old_status_message);
+  return ret;
 }

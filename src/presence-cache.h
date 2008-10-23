@@ -100,6 +100,12 @@ void gabble_presence_cache_copy_cache_entry (GHashTable **out,
 void gabble_presence_cache_update_cache_entry (GHashTable *out,
     GHashTable *in);
 
+void gabble_presence_cache_contacts_added_to_olpc_view (
+    GabblePresenceCache *cache, TpHandleSet *handles);
+
+void gabble_presence_cache_contacts_removed_from_olpc_view (
+    GabblePresenceCache *cache, TpHandleSet *handles);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_CACHE_H__ */

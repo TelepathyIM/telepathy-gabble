@@ -217,6 +217,90 @@ gabble_message_util_send_chat_state (GObject *obj,
 }
 
 
+static TpChannelTextSendError
+_tp_send_error_from_error_node (LmMessageNode *error_node)
+{
+  TpChannelTextSendError send_error;
+
+  if (error_node != NULL)
+    {
+      GabbleXmppError err = gabble_xmpp_error_from_node (error_node);
+      DEBUG ("got xmpp error: %s: %s", gabble_xmpp_error_string (err),
+          gabble_xmpp_error_description (err));
+
+      /* these are based on descriptions of errors, and some testing */
+      switch (err)
+        {
+        case XMPP_ERROR_SERVICE_UNAVAILABLE:
+        case XMPP_ERROR_RECIPIENT_UNAVAILABLE:
+          send_error = TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;
+          break;
+
+        case XMPP_ERROR_ITEM_NOT_FOUND:
+        case XMPP_ERROR_JID_MALFORMED:
+        case XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
+          send_error = TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
+          break;
+
+        case XMPP_ERROR_FORBIDDEN:
+          send_error = TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
+          break;
+
+        case XMPP_ERROR_RESOURCE_CONSTRAINT:
+          send_error = TP_CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
+          break;
+
+        case XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
+          send_error = TP_CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
+          break;
+
+        default:
+          send_error = TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
+        }
+    }
+  else
+    {
+      send_error = TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
+    }
+
+  return send_error;
+}
+
+
+static gint
+_tp_chat_state_from_message (LmMessage *message)
+{
+  LmMessageNode *node;
+
+  node = lm_message_node_get_child_with_namespace (message->node, "active",
+      NS_CHAT_STATES);
+  if (node)
+    return TP_CHANNEL_CHAT_STATE_ACTIVE;
+
+  node = lm_message_node_get_child_with_namespace  (message->node, "composing",
+      NS_CHAT_STATES);
+  if (node)
+    return TP_CHANNEL_CHAT_STATE_COMPOSING;
+
+  node = lm_message_node_get_child_with_namespace  (message->node, "inactive",
+      NS_CHAT_STATES);
+  if (node)
+    return TP_CHANNEL_CHAT_STATE_INACTIVE;
+
+  node = lm_message_node_get_child_with_namespace  (message->node, "paused",
+      NS_CHAT_STATES);
+  if (node)
+    return TP_CHANNEL_CHAT_STATE_PAUSED;
+
+  node = lm_message_node_get_child_with_namespace  (message->node, "gone",
+      NS_CHAT_STATES);
+  if (node)
+    return TP_CHANNEL_CHAT_STATE_GONE;
+
+  return -1;
+}
+
+
 /**
  * gabble_message_util_parse_incoming_message:
  * @message: an incoming XMPP message
@@ -256,46 +340,8 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
       LmMessageNode *error_node;
 
       error_node = lm_message_node_get_child (message->node, "error");
-      if (error_node)
-        {
-          GabbleXmppError err = gabble_xmpp_error_from_node (error_node);
-          DEBUG ("got xmpp error: %s: %s", gabble_xmpp_error_string (err),
-                 gabble_xmpp_error_description (err));
 
-          /* these are based on descriptions of errors, and some testing */
-          switch (err)
-            {
-              case XMPP_ERROR_SERVICE_UNAVAILABLE:
-              case XMPP_ERROR_RECIPIENT_UNAVAILABLE:
-                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;
-                break;
-
-              case XMPP_ERROR_ITEM_NOT_FOUND:
-              case XMPP_ERROR_JID_MALFORMED:
-              case XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
-                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
-                break;
-
-              case XMPP_ERROR_FORBIDDEN:
-                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
-                break;
-
-              case XMPP_ERROR_RESOURCE_CONSTRAINT:
-                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
-                break;
-
-              case XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
-                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
-                break;
-
-              default:
-                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
-            }
-        }
-      else
-        {
-          *send_error = TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
-        }
+      *send_error = _tp_send_error_from_error_node (error_node);
     }
 
   *from = lm_message_node_get_attribute (message->node, "from");
@@ -384,51 +430,8 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
         }
     }
 
-  /*
-   * Parse chat state if it exists.
-   */
-
-  node = lm_message_node_get_child_with_namespace (message->node, "active",
-      NS_CHAT_STATES);
-  if (node)
-    {
-      *state = TP_CHANNEL_CHAT_STATE_ACTIVE;
-      return TRUE;
-    }
-
-  node = lm_message_node_get_child_with_namespace  (message->node, "composing",
-      NS_CHAT_STATES);
-  if (node)
-    {
-      *state = TP_CHANNEL_CHAT_STATE_COMPOSING;
-      return TRUE;
-    }
-
-  node = lm_message_node_get_child_with_namespace  (message->node, "inactive",
-      NS_CHAT_STATES);
-  if (node)
-    {
-      *state = TP_CHANNEL_CHAT_STATE_INACTIVE;
-      return TRUE;
-    }
-
-  node = lm_message_node_get_child_with_namespace  (message->node, "paused",
-      NS_CHAT_STATES);
-  if (node)
-    {
-      *state = TP_CHANNEL_CHAT_STATE_PAUSED;
-      return TRUE;
-    }
-
-  node = lm_message_node_get_child_with_namespace  (message->node, "gone",
-      NS_CHAT_STATES);
-  if (node)
-    {
-      *state = TP_CHANNEL_CHAT_STATE_GONE;
-      return TRUE;
-    }
-
-  *state = -1;
+  /* Parse chat state if it exists. */
+  *state = _tp_chat_state_from_message (message);
 
   return TRUE;
 }

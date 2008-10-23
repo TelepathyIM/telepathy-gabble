@@ -89,6 +89,9 @@ def test(q, bus, conn, stream):
     assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
+    assert 'org.freedesktop.Telepathy.Channel.Interface.Messages.DRAFT' in \
+            channel_props.get('Interfaces', ()), \
+            channel_props.get('Interfaces')
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'
@@ -104,32 +107,145 @@ def test(q, bus, conn, stream):
     assert 'RemotePendingMembers' in group_props, group_props
     assert 'GroupFlags' in group_props, group_props
 
+
+    # Test receiving a message from Bob in the MUC
     message = domish.Element((None, 'message'))
     message['from'] = 'chat@conf.localhost/bob'
     message['type'] = 'groupchat'
     body = message.addElement('body', content='hello')
     stream.send(message)
 
-    event = q.expect('dbus-signal', signal='Received')
-    # sender: bob
-    assert event.args[2] == 3
-    # message type: normal
-    assert event.args[3] == 0
-    # flags: none
-    assert event.args[4] == 0
-    # body
-    assert event.args[5] == 'hello'
+    received, message_received = q.expect_many(
+        EventPattern('dbus-signal', signal='Received'),
+        EventPattern('dbus-signal', signal='MessageReceived'),
+        )
 
+    # Check Channel.Type.Text.Received:
+    # sender: bob
+    assert received.args[2] == 3
+    # message type: normal
+    assert received.args[3] == 0
+    # flags: none
+    assert received.args[4] == 0
+    # body
+    assert received.args[5] == 'hello'
+
+    # Check Channel.Interface.Messages.MessageReceived:
+    message = message_received.args[0]
+
+    # message should have two parts: the header and one content part
+    assert len(message) == 2, message
+    header, body = message
+
+    # 3 is bob
+    assert header['message-sender'] == 3, header
+    # the spec says that message-type "SHOULD be omitted for normal chat
+    # messages."
+    assert 'message-type' not in header, header
+
+    assert body['type'] == 'text/plain', body
+    assert body['content'] == 'hello', body
+
+
+    # Remove the message from the pending message queue, and check that
+    # PendingMessagesRemoved fires.
+    message_id = header['pending-message-id']
+
+    dbus.Interface(text_chan,
+        u'org.freedesktop.Telepathy.Channel.Type.Text'
+        ).AcknowledgePendingMessages([message_id])
+
+    removed = q.expect('dbus-signal', signal='PendingMessagesRemoved')
+
+    removed_ids = removed.args[0]
+    assert len(removed_ids) == 1, removed_ids
+    assert removed_ids[0] == message_id, (removed_ids, message_id)
+
+
+    # Send an action using the Messages API
+    greeting = [
+        dbus.Dictionary({ 'message-type': 1, # Action
+                        }, signature='sv'),
+        { 'type': 'text/plain',
+          'content': u"peers through a gap in the curtains",
+        }
+    ]
+
+    dbus.Interface(text_chan,
+        u'org.freedesktop.Telepathy.Channel.Interface.Messages.DRAFT'
+        ).SendMessage(greeting, dbus.UInt32(0))
+
+    stream_message, sent, message_sent = q.expect_many(
+        EventPattern('stream-message'),
+        EventPattern('dbus-signal', signal='Sent'),
+        EventPattern('dbus-signal', signal='MessageSent'),
+        )
+
+    sent_message = message_sent.args[0]
+    assert len(sent_message) == 2, sent_message
+    header = sent_message[0]
+    assert header['message-type'] == 1, header # Action
+    body = sent_message[1]
+    assert body['type'] == 'text/plain', body
+    assert body['content'] == u'peers through a gap in the curtains', body
+
+    assert sent.args[1] == 1, sent.args # Action
+    assert sent.args[2] == u'peers through a gap in the curtains', sent.args
+
+    elem = stream_message.stanza
+    assert elem.name == 'message'
+    assert elem['type'] == 'groupchat', repr(elem)
+    assert elem['to'] == 'chat@conf.localhost', repr(elem)
+    for sub_elem in stream_message.stanza.elements():
+        if sub_elem.name == 'body':
+            found_body = True
+            assert sub_elem.children[0] == u'/me peers through a gap in the curtains'
+            break
+    assert found_body
+
+
+    # reflect the sent message back to the MUC
+    elem['from'] = 'chat@conf.localhost/test'
+    stream.send(elem)
+
+    # TODO: check for a delivery report
+
+
+    # Send a normal message using the Channel.Type.Text API
     dbus.Interface(text_chan,
             'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'goodbye')
 
-    event = q.expect('stream-message')
+
+    event, sent, message_sent = q.expect_many(
+        EventPattern('stream-message'),
+        EventPattern('dbus-signal', signal='Sent'),
+        EventPattern('dbus-signal', signal='MessageSent'),
+        )
+
+    sent_message = message_sent.args[0]
+    assert len(sent_message) == 2, sent_message
+    header = sent_message[0]
+    assert 'message-type' not in header, header # Normal
+    body = sent_message[1]
+    assert body['type'] == 'text/plain', body
+    assert body['content'] == u'goodbye', body
+
+    assert sent.args[1] == 0, sent.args # Normal
+    assert sent.args[2] == u'goodbye', sent.args
+
     elem = event.stanza
     assert elem.name == 'message'
     assert elem['type'] == 'groupchat'
     body = list(event.stanza.elements())[0]
     assert body.name == 'body'
     assert body.children[0] == u'goodbye'
+
+    # reflect the sent message back to the MUC
+    elem['from'] = 'chat@conf.localhost/test'
+    stream.send(elem)
+
+    # TODO: check for a delivery report.
+
 
     # test that presence changes are sent via the MUC
     conn.Presence.SetStatus({'away':{'message':'hurrah'}})

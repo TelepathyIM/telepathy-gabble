@@ -220,8 +220,6 @@ gabble_message_util_send_chat_state (GObject *obj,
 static TpChannelTextSendError
 _tp_send_error_from_error_node (LmMessageNode *error_node)
 {
-  TpChannelTextSendError send_error;
-
   if (error_node != NULL)
     {
       GabbleXmppError err = gabble_xmpp_error_from_node (error_node);
@@ -233,37 +231,30 @@ _tp_send_error_from_error_node (LmMessageNode *error_node)
         {
         case XMPP_ERROR_SERVICE_UNAVAILABLE:
         case XMPP_ERROR_RECIPIENT_UNAVAILABLE:
-          send_error = TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;
-          break;
+          return TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;
 
         case XMPP_ERROR_ITEM_NOT_FOUND:
         case XMPP_ERROR_JID_MALFORMED:
         case XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
-          send_error = TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
-          break;
+          return TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
 
         case XMPP_ERROR_FORBIDDEN:
-          send_error = TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
-          break;
+          return TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
 
         case XMPP_ERROR_RESOURCE_CONSTRAINT:
-          send_error = TP_CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
-          break;
+          return TP_CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
 
         case XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
-          send_error = TP_CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
-          break;
+          return TP_CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
 
         default:
-          send_error = TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
+          return TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
         }
     }
   else
     {
-      send_error = TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
+      return TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
     }
-
-  return send_error;
 }
 
 
@@ -272,30 +263,19 @@ _tp_chat_state_from_message (LmMessage *message)
 {
   LmMessageNode *node;
 
-  node = lm_message_node_get_child_with_namespace (message->node, "active",
-      NS_CHAT_STATES);
-  if (node)
-    return TP_CHANNEL_CHAT_STATE_ACTIVE;
+#define MAP_TO(str, state) \
+  node = lm_message_node_get_child_with_namespace (message->node, str, \
+      NS_CHAT_STATES); \
+  if (node != NULL) \
+    return state;
 
-  node = lm_message_node_get_child_with_namespace  (message->node, "composing",
-      NS_CHAT_STATES);
-  if (node)
-    return TP_CHANNEL_CHAT_STATE_COMPOSING;
+  MAP_TO ("active",    TP_CHANNEL_CHAT_STATE_ACTIVE);
+  MAP_TO ("composing", TP_CHANNEL_CHAT_STATE_COMPOSING);
+  MAP_TO ("inactive",  TP_CHANNEL_CHAT_STATE_INACTIVE);
+  MAP_TO ("paused",    TP_CHANNEL_CHAT_STATE_PAUSED);
+  MAP_TO ("gone",      TP_CHANNEL_CHAT_STATE_GONE);
 
-  node = lm_message_node_get_child_with_namespace  (message->node, "inactive",
-      NS_CHAT_STATES);
-  if (node)
-    return TP_CHANNEL_CHAT_STATE_INACTIVE;
-
-  node = lm_message_node_get_child_with_namespace  (message->node, "paused",
-      NS_CHAT_STATES);
-  if (node)
-    return TP_CHANNEL_CHAT_STATE_PAUSED;
-
-  node = lm_message_node_get_child_with_namespace  (message->node, "gone",
-      NS_CHAT_STATES);
-  if (node)
-    return TP_CHANNEL_CHAT_STATE_GONE;
+#undef MAP_TO
 
   return -1;
 }

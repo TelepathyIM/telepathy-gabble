@@ -217,6 +217,26 @@ gabble_message_util_send_chat_state (GObject *obj,
 }
 
 
+/**
+ * gabble_message_util_parse_incoming_message:
+ * @message: an incoming XMPP message
+ * @from: will be set to the message sender's jid.
+ * @stamp: will be set to the message's timestamp if it's a delayed message, or
+ *         to 0 otherwise.
+ * @msgtype: will be set to the message's type.
+ * @body_ret: will be set to the contents of the message's body, or %NULL if it
+ *            had no body.
+ * @state: will be set to the %TpChannelChatState of the message, or -1 if
+ *         there was no chat state in the message.
+ * @send_error: set to the relevant send error if the message contained an
+ *              error node, or to %GABBLE_TEXT_CHANNEL_SEND_NO_ERROR otherwise.
+ *
+ * Parses an incoming <message> stanza, producing various bits of the message
+ * as various out parameters.
+ *
+ * Returns: %TRUE if the <message> was successfully parsed, even if it
+ *  contained no body, chat state or send error; %FALSE otherwise.
+ */
 gboolean
 gabble_message_util_parse_incoming_message (LmMessage *message,
                                             const gchar **from,

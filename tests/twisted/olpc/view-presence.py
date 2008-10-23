@@ -211,7 +211,7 @@ def test(q, bus, conn, stream):
     # close view 1
     view1.Close(dbus_interface='org.freedesktop.Telepathy.Channel')
 
-    # Eric's presence is changed as it's not in the view anymore
+    # Eric's presence is changed as he's not in the view anymore
     event, _ = q.expect_many(
         EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('dbus-signal', signal='PresenceUpdate'))

@@ -663,7 +663,7 @@ _emit_d_bus_names_changed_foreach_data
 
 struct _ForeachData
 {
-  GabbleExportableChannelFunc foreach;
+  TpExportableChannelFunc foreach;
   gpointer user_data;
 };
 
@@ -675,11 +675,11 @@ foreach_slave (gpointer key,
   GabbleTubeIface *tube = GABBLE_TUBE_IFACE (value);
   struct _ForeachData *data = (struct _ForeachData *) user_data;
 
-  data->foreach (GABBLE_EXPORTABLE_CHANNEL (tube), data->user_data);
+  data->foreach (TP_EXPORTABLE_CHANNEL (tube), data->user_data);
 }
 
 void gabble_tubes_channel_foreach (GabbleTubesChannel *self,
-    GabbleExportableChannelFunc foreach, gpointer user_data)
+    TpExportableChannelFunc foreach, gpointer user_data)
 {
   struct _ForeachData data;
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
@@ -1622,6 +1622,10 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
       parameters = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
           (GDestroyNotify) tp_g_value_slice_free);
     }
+
+  /* if the service property is missing, the requestotron rejects the request
+   */
+  g_assert (service != NULL);
 
   DEBUG ("Request a tube channel with type='%s' and service='%s'",
       channel_type, service);

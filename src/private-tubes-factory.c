@@ -59,9 +59,7 @@ G_DEFINE_TYPE_WITH_CODE (GabblePrivateTubesFactory,
     gabble_private_tubes_factory,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
-      caps_channel_manager_iface_init));
+      channel_manager_iface_init));
 
 /* properties */
 enum
@@ -532,9 +530,23 @@ static const gchar * const tubes_channel_fixed_properties[] = {
     NULL
 };
 
-static const gchar * const tubes_channel_allowed_properties[] = {
+static const gchar * const old_tubes_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
+    NULL
+};
+static const gchar * const stream_tube_channel_allowed_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
+    GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
+    NULL
+};
+static const gchar * const dbus_tube_channel_allowed_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
+    GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName",
     NULL
 };
 
@@ -562,7 +574,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, tubes_channel_allowed_properties, user_data);
+  func (manager, table, old_tubes_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 
@@ -580,8 +592,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, tubes_channel_required_properties,
-      tubes_channel_optional_properties, user_data);
+  func (manager, table, stream_tube_channel_allowed_properties, user_data);
 
   /* 1-1 Channel.Type.DBusTube */
   table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
@@ -597,8 +608,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, tubes_channel_required_properties,
-      tubes_channel_optional_properties, user_data);
+  func (manager, table, dbus_tube_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -618,6 +628,10 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
   GabbleTubesChannel *channel;
   const gchar *channel_type;
 
+  if (tp_asv_get_uint32 (request_properties,
+        TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
+    return FALSE;
+
   channel_type = tp_asv_get_string (request_properties,
             TP_IFACE_CHANNEL ".ChannelType");
 
@@ -626,19 +640,61 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     return FALSE;
 
-  if (tp_asv_get_uint32 (request_properties,
-        TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
-    return FALSE;
+  if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
+    {
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              tubes_channel_fixed_properties,
+              old_tubes_channel_allowed_properties,
+              &error))
+        goto error;
+    }
+  else if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+    {
+      const gchar *service;
+
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              tubes_channel_fixed_properties,
+              stream_tube_channel_allowed_properties,
+              &error))
+        goto error;
+
+      /* "Service" is a mandatory, not-fixed property */
+      service = tp_asv_get_string (request_properties,
+                GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+      if (service == NULL)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+              "Request missed a mandatory property '%s'",
+              GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+          goto error;
+        }
+    }
+  else if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+    {
+      const gchar *service;
+
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              tubes_channel_fixed_properties,
+              dbus_tube_channel_allowed_properties,
+              &error))
+        goto error;
+
+      /* "ServiceName" is a mandatory, not-fixed property */
+      service = tp_asv_get_string (request_properties,
+                GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+      if (service == NULL)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+              "Request missed a mandatory property '%s'",
+              GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+          goto error;
+        }
+    }
 
   handle = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
 
   if (!tp_handle_is_valid (contact_repo, handle, &error))
-    goto error;
-
-  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
-          tubes_channel_fixed_properties, tubes_channel_allowed_properties,
-          &error))
     goto error;
 
   /* Don't support opening a channel to our self handle */
@@ -670,8 +726,8 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
           goto error;
         }
 
-      gabble_channel_manager_emit_request_already_satisfied (self,
-          request_token, GABBLE_EXPORTABLE_CHANNEL (channel));
+      tp_channel_manager_emit_request_already_satisfied (self,
+          request_token, TP_EXPORTABLE_CHANNEL (channel));
       return TRUE;
     }
   else
@@ -713,8 +769,8 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
         }
       else
         {
-          gabble_channel_manager_emit_request_already_satisfied (self,
-              request_token, GABBLE_EXPORTABLE_CHANNEL (channel));
+          tp_channel_manager_emit_request_already_satisfied (self,
+              request_token, TP_EXPORTABLE_CHANNEL (channel));
         }
 
       return TRUE;

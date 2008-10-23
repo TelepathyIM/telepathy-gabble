@@ -48,7 +48,6 @@
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
-#include "exportable-channel.h"
 #include "gabble-signals-marshal.h"
 #include "muc-channel.h"
 #include "namespaces.h"
@@ -65,7 +64,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_TUBE_IFACE, tube_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_STREAM_TUBE,
       streamtube_iface_init);
@@ -73,7 +71,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
       NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
         tp_external_group_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_EXPORTABLE_CHANNEL, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 static const gchar *gabble_tube_stream_interfaces[] = {
@@ -81,7 +79,6 @@ static const gchar *gabble_tube_stream_interfaces[] = {
     /* If more interfaces are added, either keep Group as the first, or change
      * the implementations of gabble_tube_stream_get_interfaces () and
      * gabble_tube_stream_get_property () too */
-    GABBLE_IFACE_CHANNEL_FUTURE,
     GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
     NULL
 };
@@ -1037,14 +1034,14 @@ gabble_tube_stream_get_property (GObject *object,
         break;
       case PROP_CHANNEL_PROPERTIES:
         g_value_set_boxed (value,
-            gabble_tp_dbus_properties_mixin_make_properties_hash (object,
+            tp_dbus_properties_mixin_make_properties_hash (object,
                 TP_IFACE_CHANNEL, "TargetHandle",
                 TP_IFACE_CHANNEL, "TargetHandleType",
                 TP_IFACE_CHANNEL, "ChannelType",
                 TP_IFACE_CHANNEL, "TargetID",
-                GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorHandle",
-                GABBLE_IFACE_CHANNEL_FUTURE, "InitiatorID",
-                GABBLE_IFACE_CHANNEL_FUTURE, "Requested",
+                TP_IFACE_CHANNEL, "InitiatorHandle",
+                TP_IFACE_CHANNEL, "InitiatorID",
+                TP_IFACE_CHANNEL, "Requested",
                 NULL));
         break;
       case PROP_REQUESTED:
@@ -1155,7 +1152,7 @@ gabble_tube_stream_set_property (GObject *object,
         break;
       case PROP_INITIATOR_HANDLE:
         /* PROP_INITIATOR_HANDLE and PROP_INITIATOR are the same property from
-         * two different interfaces (Channel.FUTURE and
+         * two different interfaces (Channel and
          * Channel.Interface.Tube.DRAFT). In case of tube channels, this can
          * never be 0. The value is stored in priv->initiator. The object is
          * created only with PROP_INITIATOR set, so do nothing here. */
@@ -1257,9 +1254,6 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       { "ChannelType", "channel-type", NULL },
       { "TargetID", "target-id", NULL },
       { "Interfaces", "interfaces", NULL },
-      { NULL }
-  };
-  static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "Requested", "requested", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
@@ -1281,11 +1275,6 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
-      },
-      { GABBLE_IFACE_CHANNEL_FUTURE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        future_props,
       },
       { GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE,
         tp_dbus_properties_mixin_getter_gobject_properties,

@@ -76,7 +76,8 @@ def test(q, bus, conn, stream):
                 'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
              },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle'],
+             ['org.freedesktop.Telepathy.Channel.TargetHandle',
+              'org.freedesktop.Telepathy.Channel.TargetID'],
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -179,7 +180,7 @@ def test(q, bus, conn, stream):
 #    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
 
     call_async(q, requestotron, 'CreateChannel',
-            {'org.freedesktop.Telepathy.Channel.ChannelType':
+            dbus.Dictionary({'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
              'org.freedesktop.Telepathy.Channel.TargetHandleType':
                 1,
@@ -189,7 +190,7 @@ def test(q, bus, conn, stream):
                 "newecho",
              'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
                 dbus.Dictionary({'foo': 'bar'}, signature='sv'),
-            });
+            }, signature='sv'));
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
@@ -226,12 +227,12 @@ def test(q, bus, conn, stream):
     assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 1
     assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
             bob_handle
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.Requested'] == True
+    assert emitted_props[tp_name_prefix + '.Channel.Requested'] == True
     assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
             'bob@localhost', emitted_props[tp_name_prefix + '.Channel.TargetID']
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorHandle'] \
+    assert emitted_props[tp_name_prefix + '.Channel.InitiatorHandle'] \
             == conn.GetSelfHandle()
-    assert emitted_props[tp_name_prefix + '.Channel.FUTURE.InitiatorID'] == \
+    assert emitted_props[tp_name_prefix + '.Channel.InitiatorID'] == \
             'test@localhost'
 
     properties = conn.GetAll(
@@ -360,15 +361,9 @@ def test(q, bus, conn, stream):
             channel_props['Interfaces'], \
             channel_props['Interfaces']
     assert channel_props['TargetID'] == 'bob@localhost'
-
-    # Exercise FUTURE properties
-    # on the Channel.Type.StreamTube channel
-    future_props = tube_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.FUTURE',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert future_props['Requested'] == True
-    assert future_props['InitiatorID'] == 'test@localhost'
-    assert future_props['InitiatorHandle'] == self_handle
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == self_handle
 
     # Offer the tube, new API
     path2 = os.getcwd() + '/stream2'

@@ -1,3 +1,16 @@
+telepathy-gabble 0.7.12 (2008-10-23)
+====================================
+
+The "15 network cables in individual boxes" release.
+
+Enhancements:
+
+* OLPC View: contacts in views are not announced as being online.
+
+Fixes:
+
+* fd.o #13891: AcceptDBusTube returns NULL with 1-1 D-Bus tube.
+
 telepathy-gabble 0.7.11 (2008-10-22)
 ====================================
 

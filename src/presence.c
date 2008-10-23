@@ -276,6 +276,8 @@ aggregate_resources (GabblePresence *presence)
       /* Contact is in at least one view and we didn't receive a better
        * presence from him so announce it as available */
       presence->status = GABBLE_PRESENCE_AVAILABLE;
+      g_free (presence->status_message);
+      presence->status_message = NULL;
     }
 }
 

@@ -25,9 +25,9 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
-#include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/util.h>
 
@@ -53,8 +53,6 @@ static LmHandlerResult private_tubes_factory_msg_tube_cb (
     LmMessageHandler *handler, LmConnection *lmconn, LmMessage *msg,
     gpointer user_data);
 
-static void gabble_private_tubes_factory_iface_init (gpointer g_iface,
-    gpointer iface_data);
 static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabblePrivateTubesFactory,
@@ -62,8 +60,8 @@ G_DEFINE_TYPE_WITH_CODE (GabblePrivateTubesFactory,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
-        gabble_private_tubes_factory_iface_init));
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
+      caps_channel_manager_iface_init));
 
 /* properties */
 enum
@@ -308,9 +306,6 @@ new_tubes_channel (GabblePrivateTubesFactory *fac,
 
   g_hash_table_insert (priv->channels, GUINT_TO_POINTER (handle), chan);
 
-  tp_channel_factory_iface_emit_new_channel (fac, TP_CHANNEL_IFACE (chan),
-      request_token);
-
   g_free (object_path);
 
   if (request_token != NULL)
@@ -372,9 +367,6 @@ _foreach_slave (gpointer key,
   struct _ForeachData *data = (struct _ForeachData *) user_data;
   TpExportableChannel *chan = TP_EXPORTABLE_CHANNEL (value);
 
-  /* assert that it has both interfaces, for now */
-  g_assert (TP_IS_CHANNEL_IFACE (chan));
-
   /* Add channels of type Channel.Type.Tubes */
   data->foreach (chan, data->user_data);
 
@@ -398,18 +390,6 @@ gabble_private_tubes_factory_foreach_channel (TpChannelManager *manager,
   data.foreach = foreach;
 
   g_hash_table_foreach (priv->channels, _foreach_slave, &data);
-}
-
-static TpChannelFactoryRequestStatus
-gabble_private_tubes_factory_iface_request (TpChannelFactoryIface *iface,
-                                    const gchar *chan_type,
-                                    TpHandleType handle_type,
-                                    guint handle,
-                                    gpointer request,
-                                    TpChannelIface **ret,
-                                    GError **error)
-{
-  return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
 }
 
 void
@@ -543,19 +523,6 @@ gabble_private_tubes_factory_new (GabbleConnection *conn)
       GABBLE_TYPE_PRIVATE_TUBES_FACTORY,
       "connection", conn,
       NULL);
-}
-
-static void
-gabble_private_tubes_factory_iface_init (gpointer g_iface,
-                                 gpointer iface_data)
-{
-  TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
-
-  klass->close_all =
-      (TpChannelFactoryIfaceProc) gabble_private_tubes_factory_close_all;
-  klass->foreach = (TpChannelFactoryIfaceForeachImpl)
-      gabble_private_tubes_factory_foreach_channel;
-  klass->request = gabble_private_tubes_factory_iface_request;
 }
 
 
@@ -709,12 +676,15 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
     }
   else
     {
+      gboolean channel_was_existing = (channel != NULL);
       GabbleTubeIface *new_channel;
 
       if (channel == NULL)
         {
+          /* Don't give the request_token to new_tubes_channel() because we
+           * must emit NewChannels with 2 channels together */
           channel = new_tubes_channel (self, handle, base_conn->self_handle,
-              request_token);
+              NULL);
         }
       g_assert (channel != NULL);
 
@@ -722,19 +692,23 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
           request_properties, require_new);
       if (new_channel != NULL)
         {
+          GHashTable *channels;
           GSList *request_tokens;
 
-          tp_channel_factory_iface_emit_new_channel (self,
-              TP_CHANNEL_IFACE (new_channel), request_token);
+          channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+              NULL, NULL);
+          if (!channel_was_existing)
+            g_hash_table_insert (channels, channel, NULL);
 
           if (request_token != NULL)
             request_tokens = g_slist_prepend (NULL, request_token);
           else
             request_tokens = NULL;
 
-          gabble_channel_manager_emit_new_channel (self,
-              GABBLE_EXPORTABLE_CHANNEL (new_channel), request_tokens);
+          g_hash_table_insert (channels, new_channel, request_tokens);
+          tp_channel_manager_emit_new_channels (self, channels);
 
+          g_hash_table_destroy (channels);
           g_slist_free (request_tokens);
         }
       else

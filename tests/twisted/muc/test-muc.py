@@ -7,27 +7,14 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test
+from gabbletest import exec_test, make_muc_presence, request_muc_handle
 from servicetest import call_async, EventPattern
 
 def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    # Need to call this asynchronously as it involves Gabble sending us a
-    # query.
-    call_async(q, conn, 'RequestHandles', 2, ['chat@conf.localhost'])
-
-    event = q.expect('stream-iq', to='conf.localhost',
-        query_ns='http://jabber.org/protocol/disco#info')
-    result = make_result_iq(stream, event.stanza)
-    feature = result.firstChildElement().addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/muc'
-    stream.send(result)
-
-    event = q.expect('dbus-return', method='RequestHandles')
-    room_handle = event.value[0][0]
-
+    room_handle = request_muc_handle(q, conn, stream, 'chat@conf.localhost')
     call_async(q, conn, 'RequestChannel',
         'org.freedesktop.Telepathy.Channel.Type.Text', 2, room_handle, True)
 
@@ -39,22 +26,12 @@ def test(q, bus, conn, stream):
     assert gfc.args[1] == 0
 
     # Send presence for other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/bob'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    stream.send(make_muc_presence(
+        'owner', 'moderator', 'chat@conf.localhost', 'bob'))
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    stream.send(make_muc_presence(
+        'none', 'participant', 'chat@conf.localhost', 'test'))
 
     event = q.expect('dbus-signal', signal='MembersChanged',
         args=[u'', [2, 3], [], [], [], 0, 0])

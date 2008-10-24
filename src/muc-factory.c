@@ -930,7 +930,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
             }
 
           _gabble_muc_channel_member_presence_updated (muc_chan, handle,
-                                                       msg, x_node);
+              msg, x_node, item_node);
           tp_handle_unref (contact_repo, handle);
         }
       else

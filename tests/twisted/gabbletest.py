@@ -60,6 +60,22 @@ class JabberAuthenticator(xmlstream.Authenticator):
         self.password = password
         xmlstream.Authenticator.__init__(self)
 
+    # Patch in fix from http://twistedmatrix.com/trac/changeset/23418.
+    # This monkeypatch taken from Gadget source code
+    from twisted.words.xish.utility import EventDispatcher
+
+    def _addObserver(self, onetime, event, observerfn, priority, *args,
+            **kwargs):
+        if self._dispatchDepth > 0:
+            self._updateQueue.append(lambda: self._addObserver(onetime, event,
+                observerfn, priority, *args, **kwargs))
+
+        return self._oldAddObserver(onetime, event, observerfn, priority,
+            *args, **kwargs)
+
+    EventDispatcher._oldAddObserver = EventDispatcher._addObserver
+    EventDispatcher._addObserver = _addObserver
+
     def streamStarted(self, root=None):
         if root:
             self.xmlstream.sid = root.getAttribute('id')
@@ -316,13 +332,18 @@ def exec_test_deferred (fun, params, protocol=None, timeout=None):
         or '-v' in sys.argv)
 
     bus = dbus.SessionBus()
-    conn = make_connection(bus, queue.append, params)
+    # conn = make_connection(bus, queue.append, params)
     (stream, port) = make_stream(queue.append, protocol=protocol)
 
     error = None
 
+    if not isinstance(fun, list):
+        fun = [fun]
+
     try:
-        fun(queue, bus, conn, stream)
+        for f in fun:
+            conn = make_connection(bus, queue.append, params)
+            f(queue, bus, conn, stream)
     except Exception, e:
         import traceback
         traceback.print_exc()

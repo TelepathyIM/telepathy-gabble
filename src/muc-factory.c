@@ -900,6 +900,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
       if (muc_chan != NULL)
         {
           TpHandle handle;
+          LmMessageNode *item_node;
 
           handle = tp_handle_ensure (contact_repo, from,
               GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
@@ -908,6 +909,22 @@ muc_factory_presence_cb (LmMessageHandler *handler,
               NODE_DEBUG (msg->node,
                   "discarding MUC presence from malformed jid");
               return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+            }
+
+          item_node = lm_message_node_get_child (x_node, "item");
+          if (item_node != NULL)
+            {
+              const gchar *owner_jid;
+
+              owner_jid = lm_message_node_get_attribute (item_node, "jid");
+              /* We drop OLPC Gadget's inspector presence as activities
+               * doesn't have to see it as a member of the room and the
+               * presence cache should ignore it as well. */
+              if (owner_jid != NULL &&
+                  !tp_strdiff (owner_jid, priv->conn->olpc_gadget_activity))
+                {
+                  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+                }
             }
 
           _gabble_muc_channel_member_presence_updated (muc_chan, handle,

@@ -56,6 +56,7 @@ def test(q, bus, conn, stream):
 
     act_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
     buddy_info_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
+    simple_presence_iface = dbus.Interface(conn, 'org.freedesktop.Telepathy.Connection.Interface.SimplePresence')
 
     q.expect('dbus-signal', signal='GadgetDiscovered')
 
@@ -122,6 +123,13 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
     members = muc_group.GetMembers()
     assert conn.InspectHandles(1, members) == ['myroom@conference.localhost/test']
+
+    # Regression test for a nasty bug caused by the presence cache handling
+    # the inspector presence as a not muc one because the inspector is not
+    # addded to muc's members.
+    handle = conn.RequestHandles(1, ['myroom@conference.localhost'])[0]
+    presence = simple_presence_iface.GetPresences([handle])
+    assert presence[handle] == (7, 'unknown', '')
 
     conn.Disconnect()
 

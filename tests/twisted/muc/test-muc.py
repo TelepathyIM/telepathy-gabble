@@ -12,7 +12,6 @@ from servicetest import call_async, EventPattern
 
 def test(q, bus, conn, stream):
     conn.Connect()
-
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     # Need to call this asynchronously as it involves Gabble sending us a
@@ -63,7 +62,6 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
 
     event = q.expect('dbus-return', method='RequestChannel')
-
     text_chan = bus.get_object(conn.bus_name, event.value[0])
 
     # Exercise basic Channel Properties from spec 0.17.7

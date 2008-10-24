@@ -9,6 +9,7 @@ import sha
 import sys
 import time
 
+import ns
 import servicetest
 import twisted
 from twisted.words.xish import domish, xpath
@@ -33,6 +34,26 @@ def make_result_iq(stream, iq):
 
 def acknowledge_iq(stream, iq):
     stream.send(make_result_iq(stream, iq))
+
+def request_muc_handle(q, conn, stream, muc_jid):
+    servicetest.call_async(q, conn, 'RequestHandles', 2, [muc_jid])
+    host = muc_jid.split('@')[1]
+    event = q.expect('stream-iq', to=host, query_ns=ns.DISCO_INFO)
+    result = make_result_iq(stream, event.stanza)
+    feature = result.firstChildElement().addElement('feature')
+    feature['var'] = ns.MUC
+    stream.send(result)
+    event = q.expect('dbus-return', method='RequestHandles')
+    return event.value[0][0]
+
+def make_muc_presence(affiliation, role, muc_jid, alias):
+    presence = domish.Element((None, 'presence'))
+    presence['from'] = '%s/%s' % (muc_jid, alias)
+    x = presence.addElement((ns.MUC_USER, 'x'))
+    item = x.addElement('item')
+    item['affiliation'] = affiliation
+    item['role'] = role
+    return presence
 
 def sync_stream(q, stream):
     """Used to ensure that Gabble has processed all stanzas sent to it."""

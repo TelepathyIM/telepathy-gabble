@@ -1828,11 +1828,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   mixin = TP_GROUP_MIXIN (chan);
 
   item_node = lm_message_node_get_child (x_node, "item");
-  if (item_node == NULL)
-    {
-      g_warning ("%s: node missing 'item' child, ignoring", G_STRFUNC);
-      return;
-    }
+  /* muc-factory already checked that */
+  g_assert (item_node != NULL);
 
   node = lm_message_node_get_child (x_node, "status");
   if (node)

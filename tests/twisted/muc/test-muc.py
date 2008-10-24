@@ -7,8 +7,8 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import go, make_result_iq, exec_test
-from servicetest import call_async, lazy, match, EventPattern
+from gabbletest import exec_test
+from servicetest import call_async, EventPattern
 
 def test(q, bus, conn, stream):
     conn.Connect()

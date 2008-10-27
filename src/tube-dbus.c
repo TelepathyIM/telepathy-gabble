@@ -334,6 +334,13 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
   if (priv->dbus_srv == NULL)
     {
       DEBUG ("all attempts failed. Close the tube");
+
+      g_free (priv->dbus_srv_addr);
+      priv->dbus_srv_addr = NULL;
+
+      g_free (priv->socket_path);
+      priv->socket_path = NULL;
+
       do_close (self);
       return;
     }

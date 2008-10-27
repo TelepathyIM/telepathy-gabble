@@ -1721,7 +1721,8 @@ check_unix_params (TpSocketAddressType address_type,
   if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
   {
     g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-        "Unix sockets only support localhost control access");
+        "Only the Localhost access control method is supported for Unix"
+        " sockets");
     return FALSE;
   }
 
@@ -1998,7 +1999,8 @@ gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
   if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
       GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Unix sockets only support localhost control access" };
+          "Only the Localhost access control method is supported for Unix"
+            "sockets" };
 
       dbus_g_method_return_error (context, &e);
       return;

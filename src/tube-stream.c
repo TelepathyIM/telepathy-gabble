@@ -115,7 +115,6 @@ enum
   PROP_SELF_HANDLE,
   PROP_ID,
   PROP_TYPE,
-  PROP_INITIATOR,
   PROP_SERVICE,
   PROP_PARAMETERS,
   PROP_STATE,
@@ -1005,7 +1004,7 @@ gabble_tube_stream_get_property (GObject *object,
       case PROP_TYPE:
         g_value_set_uint (value, TP_TUBE_TYPE_STREAM);
         break;
-      case PROP_INITIATOR:
+      case PROP_INITIATOR_HANDLE:
         g_value_set_uint (value, priv->initiator);
         break;
       case PROP_SERVICE:
@@ -1071,9 +1070,6 @@ gabble_tube_stream_get_property (GObject *object,
                 tp_handle_inspect (repo, priv->handle));
           }
         break;
-      case PROP_INITIATOR_HANDLE:
-        g_value_set_uint (value, priv->initiator);
-        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -1115,7 +1111,7 @@ gabble_tube_stream_set_property (GObject *object,
       case PROP_ID:
         priv->id = g_value_get_uint (value);
         break;
-      case PROP_INITIATOR:
+      case PROP_INITIATOR_HANDLE:
         priv->initiator = g_value_get_uint (value);
         break;
       case PROP_SERVICE:
@@ -1149,13 +1145,6 @@ gabble_tube_stream_set_property (GObject *object,
             priv->access_control_param = tp_g_value_slice_dup (
                 g_value_get_pointer (value));
           }
-        break;
-      case PROP_INITIATOR_HANDLE:
-        /* PROP_INITIATOR_HANDLE and PROP_INITIATOR are the same property from
-         * two different interfaces (Channel and
-         * Channel.Interface.Tube.DRAFT). In case of tube channels, this can
-         * never be 0. The value is stored in priv->initiator. The object is
-         * created only with PROP_INITIATOR set, so do nothing here. */
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1265,7 +1254,6 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl tube_iface_props[] = {
-      { "Initiator", "initiator", NULL },
       { "Parameters", "parameters", "parameters" },
       { "Status", "state", NULL },
       { NULL }
@@ -1317,8 +1305,6 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "id");
   g_object_class_override_property (object_class, PROP_TYPE,
       "type");
-  g_object_class_override_property (object_class, PROP_INITIATOR,
-      "initiator");
   g_object_class_override_property (object_class, PROP_SERVICE,
       "service");
   g_object_class_override_property (object_class, PROP_PARAMETERS,
@@ -1506,7 +1492,7 @@ gabble_tube_stream_new (GabbleConnection *conn,
       "handle", handle,
       "handle-type", handle_type,
       "self-handle", self_handle,
-      "initiator", initiator,
+      "initiator-handle", initiator,
       "service", service,
       "parameters", parameters,
       "id", id,

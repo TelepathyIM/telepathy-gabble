@@ -931,7 +931,7 @@ copy_tube_in_ptr_array (gpointer key,
 
   g_object_get (tube,
                 "type", &type,
-                "initiator", &initiator,
+                "initiator-handle", &initiator,
                 "service", &service,
                 "parameters", &parameters,
                 "state", &state,
@@ -1069,7 +1069,7 @@ publish_tubes_in_node (gpointer key,
   g_object_get (tube,
       "state", &state,
       "type", &type,
-      "initiator", &initiator,
+      "initiator-handle", &initiator,
        NULL);
 
   if (state != TP_TUBE_STATE_OPEN)

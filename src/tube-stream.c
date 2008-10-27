@@ -1302,29 +1302,29 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   object_class->finalize = gabble_tube_stream_finalize;
 
   g_object_class_override_property (object_class, PROP_OBJECT_PATH,
-    "object-path");
+      "object-path");
   g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
       "channel-type");
   g_object_class_override_property (object_class, PROP_CONNECTION,
-    "connection");
+      "connection");
   g_object_class_override_property (object_class, PROP_HANDLE,
-    "handle");
+      "handle");
   g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
-    "handle-type");
+      "handle-type");
   g_object_class_override_property (object_class, PROP_SELF_HANDLE,
-    "self-handle");
+      "self-handle");
   g_object_class_override_property (object_class, PROP_ID,
-    "id");
+      "id");
   g_object_class_override_property (object_class, PROP_TYPE,
-    "type");
+      "type");
   g_object_class_override_property (object_class, PROP_INITIATOR,
-    "initiator");
+      "initiator");
   g_object_class_override_property (object_class, PROP_SERVICE,
-    "service");
+      "service");
   g_object_class_override_property (object_class, PROP_PARAMETERS,
-    "parameters");
+      "parameters");
   g_object_class_override_property (object_class, PROP_STATE,
-    "state");
+      "state");
 
   g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
       "channel-destroyed");

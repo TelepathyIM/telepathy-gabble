@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
     </tp:docstring>
 
-    <method name="OfferStreamTube">
+    <method name="OfferStreamTube" tp:name-for-bindings="Offer_Stream_Tube">
       <tp:docstring>
         Offer a stream tube exporting the local socket specified.
       </tp:docstring>
@@ -79,7 +79,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <method name="AcceptStreamTube">
+    <method name="AcceptStreamTube" tp:name-for-bindings="Accept_Stream_Tube">
       <tp:docstring>
         Accept a stream tube that's in the "local pending" state. The
         connection manager will attempt to open the tube. The tube remains in
@@ -126,7 +126,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <method name="GetStreamTubeSocketAddress">
+    <method name="GetStreamTubeSocketAddress"
+            tp:name-for-bindings="Get_Stream_Tube_Socket_Address">
       <tp:docstring>
         For a stream tube, obtain the address of the socket used to
         communicate over this tube.
@@ -152,7 +153,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <signal name="StreamTubeNewConnection">
+    <signal name="StreamTubeNewConnection"
+            tp:name-for-bindings="Stream_Tube_New_Connection">
       <tp:docstring>
         Emitted on a stream tube when a participant opens a new connection
         to its socket.
@@ -164,7 +166,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </arg>
     </signal>
 
-    <property name="Service" type="s" access="read">
+    <property name="Service" type="s" access="read"
+              tp:name-for-bindings="Service">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p> A string representing the service name that will be used over the
           tube.  It should be a well-known TCP service name as defined by
@@ -176,13 +179,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         <p>When the tube is offered, the service name is transmitted to the
           other end.</p>
         <p>When requesting a channel with 
-          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.CreateChannel</tp:dbus-ref>,
+          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.CreateChannel</tp:dbus-ref>,
           this property MUST be included in the request.</p>
       </tp:docstring>
     </property>
 
     <property name="SupportedSocketTypes" type="a{uau}"
-              tp:type="Supported_Socket_Map" access="read">
+              tp:type="Supported_Socket_Map" access="read"
+              tp:name-for-bindings="Supported_Socket_Types">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>A mapping from address types (members of Socket_Address_Type) to
         arrays of access-control type (members of Socket_Access_Control)
@@ -203,7 +207,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         </pre>
 
         <p>When requesting a channel with 
-          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.DRAFT.CreateChannel</tp:dbus-ref>,
+          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.CreateChannel</tp:dbus-ref>,
           this property MUST NOT be included in the request.</p>
 
       </tp:docstring>

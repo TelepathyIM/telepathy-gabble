@@ -230,3 +230,34 @@ def create_gadget_message(to):
     rule['action'] ='error'
 
     return message
+
+def gadget_publish(q, stream, conn, publish):
+    gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
+
+    call_async(q, gadget_iface, 'Publish', publish)
+    if publish:
+        q.expect_many(
+                EventPattern('stream-presence', presence_type='subscribe'),
+                EventPattern('dbus-return', method='Publish'))
+
+        # accept the request
+        presence = elem('presence', to='test@localhost', from_='gadget.localhost',
+            type='subscribed')
+        stream.send(presence)
+
+        # send a subscribe request
+        presence = elem('presence', to='test@localhost', from_='gadget.localhost',
+            type='subscribe')
+        stream.send(presence)
+
+        q.expect('stream-presence', presence_type='subscribed'),
+    else:
+        q.expect_many(
+                EventPattern('stream-presence', presence_type='unsubscribe'),
+                EventPattern('stream-presence', presence_type='unsubscribed'),
+                EventPattern('dbus-return', method='Publish'))
+
+        # Gadget tries to subscribe but is refused now
+        presence = elem('presence', to='test@localhost', from_='gadget.localhost',
+            type='subscribe')
+        stream.send(presence)

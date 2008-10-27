@@ -304,9 +304,7 @@ def test(q, bus, conn, stream):
     message = event.stanza
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
         message)
-    if tube_nodes is None:
-        return False
-
+    assert tube_nodes is not None
     assert len(tube_nodes) == 1
     tube = tube_nodes[0]
 
@@ -384,9 +382,7 @@ def test(q, bus, conn, stream):
     message = event.stanza
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
         message)
-    if tube_nodes is None:
-        return False
-
+    assert tube_nodes is not None
     assert len(tube_nodes) == 1
     tube = tube_nodes[0]
 
@@ -600,9 +596,7 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
     iq = event.stanza
     si_nodes = xpath.queryForNodes('/iq/si', iq)
-    if si_nodes is None:
-        return False
-
+    assert si_nodes is not None
     assert len(si_nodes) == 1
     si = si_nodes[0]
     assert si['profile'] == NS_TUBES

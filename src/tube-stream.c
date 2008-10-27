@@ -1048,14 +1048,13 @@ gabble_tube_stream_get_property (GObject *object,
             (priv->initiator == priv->self_handle));
         break;
       case PROP_INITIATOR_ID:
-        if (priv->initiator == 0)
-          {
-            g_value_set_static_string (value, "");
-          }
-        else
           {
             TpHandleRepoIface *repo = tp_base_connection_get_handles (
                 base_conn, TP_HANDLE_TYPE_CONTACT);
+
+            /* some channel can have o.f.T.Channel.InitiatorHandle == 0 but
+             * tubes always have an initiator */
+            g_assert (priv->initiator != 0);
 
             g_value_set_string (value,
                 tp_handle_inspect (repo, priv->initiator));

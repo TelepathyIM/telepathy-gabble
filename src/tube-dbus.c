@@ -745,7 +745,6 @@ gabble_tube_dbus_constructor (GType type,
       priv->reassembly_bytes_needed = 0;
     }
 
-
   return obj;
 }
 

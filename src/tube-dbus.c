@@ -300,6 +300,9 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   guint i;
 
+  if (priv->dbus_srv != NULL)
+    return;
+
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
 

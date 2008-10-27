@@ -1089,7 +1089,6 @@ gabble_tube_stream_set_property (GObject *object,
       case PROP_OBJECT_PATH:
         g_free (priv->object_path);
         priv->object_path = g_value_dup_string (value);
-        DEBUG ("Setting object_path: %s", priv->object_path);
         break;
       case PROP_CHANNEL_TYPE:
       /* this property is writable in the interface, but not actually

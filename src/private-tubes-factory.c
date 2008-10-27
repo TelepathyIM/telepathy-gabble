@@ -594,6 +594,8 @@ gabble_private_tubes_factory_foreach_channel_class (
 
   func (manager, table, stream_tube_channel_allowed_properties, user_data);
 
+  g_hash_table_destroy (table);
+
   /* 1-1 Channel.Type.DBusTube */
   table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
       (GDestroyNotify) tp_g_value_slice_free);

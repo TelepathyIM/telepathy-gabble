@@ -1846,11 +1846,12 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
 }
 
 /* can be called both from the old tube API and the new tube API */
-gboolean gabble_tube_stream_offer (GabbleTubeStream *self,
-                                   guint address_type,
-                                   const GValue *address, guint access_control,
-                                   const GValue *access_control_param,
-                                   GError **error)
+gboolean
+gabble_tube_stream_offer (GabbleTubeStream *self,
+                          guint address_type,
+                          const GValue *address, guint access_control,
+                          const GValue *access_control_param,
+                          GError **error)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   LmMessageNode *tube_node = NULL;

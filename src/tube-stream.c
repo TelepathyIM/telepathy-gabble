@@ -134,8 +134,6 @@ enum
 struct _GabbleTubeStreamPrivate
 {
   GabbleConnection *conn;
-  /* GabbleTubeStream implements
-   * org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT */
   char *object_path;
   TpHandle handle;
   TpHandleType handle_type;

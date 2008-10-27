@@ -358,7 +358,7 @@ tube_dbus_open (GabbleTubeDBus *self)
 
   gabble_tube_dbus_listen (self);
 
-  if (priv->dbus_srv_addr != NULL)
+  if (priv->dbus_srv != NULL)
     {
       dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
     }

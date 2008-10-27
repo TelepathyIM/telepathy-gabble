@@ -120,7 +120,6 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         assert tube_props['Status'] == state
         # no strict check but at least check the properties exist
         assert tube_props['Parameters'] is not None
-        assert tube_props['Initiator'] is not None
 
 def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
     assert old_sig[0] == chan_path
@@ -340,6 +339,12 @@ def test(q, bus, conn, stream):
     tube_iface = dbus.Interface(tube_chan,
         tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
 
+    self_handle = conn.GetSelfHandle()
+    tube_basic_props = tube_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert tube_basic_props.get("InitiatorHandle") == self_handle
+
     stream_tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
@@ -348,8 +353,6 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
-    self_handle = conn.GetSelfHandle()
-    assert tube_props.get("Initiator") == self_handle
     print str(tube_props.get("Parameters"))
     assert tube_props.get("Parameters") == dbus.Dictionary(
             {dbus.String(u'foo'): dbus.String(u'bar')},

@@ -3698,6 +3698,8 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
           g_error_free (error);
           return;
         }
+
+      /* FIXME: Should we invite Gadget to all our public activities? */
     }
   else
     {

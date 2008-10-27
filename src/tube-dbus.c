@@ -349,10 +349,7 @@ tube_dbus_open (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
-  if (priv->dbus_srv_addr == NULL)
-    {
-      gabble_tube_dbus_listen (self);
-    }
+  gabble_tube_dbus_listen (self);
 
   if (priv->dbus_srv_addr != NULL)
     {
@@ -740,6 +737,7 @@ gabble_tube_dbus_constructor (GType type,
       priv->reassembly_buffer = g_string_new ("");
       priv->reassembly_bytes_needed = 0;
     }
+
 
   return obj;
 }

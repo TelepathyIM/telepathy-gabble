@@ -125,8 +125,8 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(1, members) == ['myroom@conference.localhost/test']
 
     # Regression test for a nasty bug caused by the presence cache handling
-    # the inspector presence as a not muc one because the inspector is not
-    # addded to muc's members.
+    # the inspector presence as a non-MUC one because the inspector is not
+    # added to MUC's members.
     handle = conn.RequestHandles(1, ['myroom@conference.localhost'])[0]
     presence = simple_presence_iface.GetPresences([handle])
     assert presence[handle] == (7, 'unknown', '')

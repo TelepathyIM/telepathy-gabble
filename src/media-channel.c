@@ -1192,7 +1192,7 @@ _pick_best_resource (GabbleMediaChannel *chan,
 
   if (resource != NULL)
     {
-      *dialect = JINGLE_DIALECT_V026;
+      *dialect = JINGLE_DIALECT_V032;
       goto CHOOSE_TRANSPORT;
     }
 

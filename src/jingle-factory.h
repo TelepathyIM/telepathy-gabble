@@ -38,7 +38,7 @@ typedef enum {
   /* jingle in the old 0.15 version days */
   JINGLE_DIALECT_V015,
   /* current jingle standard */
-  JINGLE_DIALECT_V026
+  JINGLE_DIALECT_V032
 } JingleDialect;
 
 typedef enum {

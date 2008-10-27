@@ -803,7 +803,7 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_OLPC_1;
       else if (!tp_strdiff (var, NS_JINGLE_RTP_TMP))
         caps |= PRESENCE_CAP_JINGLE_RTP_TMP;
-      else if (!tp_strdiff (var, NS_JINGLE_TMP))
+      else if (!tp_strdiff (var, NS_JINGLE032))
         caps |= PRESENCE_CAP_JINGLE_TMP;
       else if (!tp_strdiff (var, NS_JINGLE_TRANSPORT_ICE))
         caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICE;

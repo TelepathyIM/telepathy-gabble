@@ -883,11 +883,11 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
 
   /* first, we try standard jingle */
   session_node = lm_message_node_get_child_with_namespace (iq_node,
-      "jingle", NS_JINGLE026);
+      "jingle", NS_JINGLE032);
 
   if (session_node != NULL)
     {
-      dialect = JINGLE_DIALECT_V026;
+      dialect = JINGLE_DIALECT_V032;
     }
   else
     {
@@ -1095,7 +1095,7 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
         g_assert_not_reached ();
       default:
         el = "jingle";
-        ns = NS_JINGLE026;
+        ns = NS_JINGLE032;
         break;
     }
 

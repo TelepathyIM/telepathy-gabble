@@ -1796,8 +1796,11 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
   if (!was_visible && is_visible)
     {
-      /* activity becomes visible. Invite gadget */
-      invite_gadget (conn, muc_channel);
+      if (conn->olpc_gadget_publish)
+        {
+          /* activity becomes visible. Invite gadget */
+          invite_gadget (conn, muc_channel);
+        }
     }
 
   if (was_visible || is_visible)

@@ -2146,9 +2146,7 @@ static void
 gabble_tube_stream_close_async (TpSvcChannel *iface,
                                   DBusGMethodInvocation *context)
 {
-  GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
-
-  tp_svc_channel_emit_closed (self);
+  gabble_tube_stream_close (GABBLE_TUBE_IFACE (iface));
   tp_svc_channel_return_from_close (context);
 }
 

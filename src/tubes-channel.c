@@ -2246,41 +2246,12 @@ gabble_tubes_channel_get_available_stream_tube_types (TpSvcChannelTypeTubes *ifa
                                                       DBusGMethodInvocation *context)
 {
   GHashTable *ret;
-  GArray *unix_tab, *ipv4_tab, *ipv6_tab;
-  TpSocketAccessControl access_control;
 
-  ret = g_hash_table_new (g_direct_hash, g_direct_equal);
-
-  /* Socket_Address_Type_Unix */
-  unix_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
-      1);
-  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
-  g_array_append_val (unix_tab, access_control);
-  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX),
-      unix_tab);
-
-  /* Socket_Address_Type_IPv4 */
-  ipv4_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
-      1);
-  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
-  g_array_append_val (ipv4_tab, access_control);
-  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV4),
-      ipv4_tab);
-
-  /* Socket_Address_Type_IPv6 */
-  ipv6_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
-      1);
-  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
-  g_array_append_val (ipv6_tab, access_control);
-  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV6),
-      ipv6_tab);
+  ret = gabble_tube_stream_get_supported_socket_types ();
 
   tp_svc_channel_type_tubes_return_from_get_available_stream_tube_types (
       context, ret);
 
-  g_array_free (unix_tab, TRUE);
-  g_array_free (ipv4_tab, TRUE);
-  g_array_free (ipv6_tab, TRUE);
   g_hash_table_destroy (ret);
 }
 

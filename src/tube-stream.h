@@ -76,6 +76,8 @@ gboolean gabble_tube_stream_offer (GabbleTubeStream *self, guint address_type,
     const GValue *address, guint access_control,
     const GValue *access_control_param, GError **error);
 
+GHashTable *gabble_tube_stream_get_supported_socket_types (void);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_TUBE_STREAM_H__ */

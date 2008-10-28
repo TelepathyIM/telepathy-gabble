@@ -129,6 +129,7 @@ enum
   PROP_TARGET_ID,
   PROP_INITIATOR_HANDLE,
   PROP_INITIATOR_ID,
+  PROP_SUPPORTED_SOCKET_TYPES,
   LAST_PROPERTY
 };
 
@@ -1080,6 +1081,10 @@ gabble_tube_stream_get_property (GObject *object,
                 tp_handle_inspect (repo, priv->handle));
           }
         break;
+      case PROP_SUPPORTED_SOCKET_TYPES:
+        g_value_set_boxed (value,
+            gabble_tube_stream_get_supported_socket_types ());
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -1259,7 +1264,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   };
   static TpDBusPropertiesMixinPropImpl stream_tube_props[] = {
       { "Service", "service", NULL },
-      /*{ "AvailableStreamTubeTypes", NULL, NULL },*/
+      { "SupportedSocketTypes", "supported-socket-types", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl tube_iface_props[] = {
@@ -1325,6 +1330,16 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "channel-destroyed");
   g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
       "channel-properties");
+
+  param_spec = g_param_spec_boxed (
+      "supported-socket-types",
+      "Supported socket types",
+      "GHashTable containing supported socket types.",
+      dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, DBUS_TYPE_G_UINT_ARRAY),
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SUPPORTED_SOCKET_TYPES,
+      param_spec);
 
   param_spec = g_param_spec_uint (
       "address-type",
@@ -1902,6 +1917,58 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
 
   lm_message_unref (msg);
   return result;
+}
+
+static void
+destroy_socket_control_list (gpointer data)
+{
+  GArray *tab = data;
+  g_array_free (tab, TRUE);
+}
+
+/**
+ * gabble_tube_stream_get_supported_socket_types
+ *
+ * Used to implement D-Bus property
+ * org.freedesktop.Telepathy.Channel.Type.StreamTube.SupportedSocketTypes
+ * and D-Bus method GetAvailableStreamTubeTypes
+ * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ */
+GHashTable *
+gabble_tube_stream_get_supported_socket_types (void)
+{
+  GHashTable *ret;
+  GArray *unix_tab, *ipv4_tab, *ipv6_tab;
+  TpSocketAccessControl access_control;
+
+  ret = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+      destroy_socket_control_list);
+
+  /* Socket_Address_Type_Unix */
+  unix_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
+      1);
+  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (unix_tab, access_control);
+  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX),
+      unix_tab);
+
+  /* Socket_Address_Type_IPv4 */
+  ipv4_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
+      1);
+  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (ipv4_tab, access_control);
+  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV4),
+      ipv4_tab);
+
+  /* Socket_Address_Type_IPv6 */
+  ipv6_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
+      1);
+  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (ipv6_tab, access_control);
+  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV6),
+      ipv6_tab);
+
+  return ret;
 }
 
 /* Callback plugged only if the tube has been offered with the new

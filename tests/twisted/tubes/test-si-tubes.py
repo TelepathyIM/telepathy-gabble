@@ -113,6 +113,7 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
     if channel_type == "Tubes":
         assert state is None
         assert len(channel_props['Interfaces']) == 0, channel_props['Interfaces']
+        supported_socket_types = channel.GetAvailableStreamTubeTypes()
     else:
         assert state is not None
         tube_props = channel.GetAll(
@@ -125,6 +126,15 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
             dbus.Array(['org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT'],
                     signature='s'), \
             channel_props['Interfaces']
+
+        stream_tube_props = channel.GetAll(
+                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+                dbus_interface='org.freedesktop.DBus.Properties')
+        supported_socket_types = stream_tube_props['SupportedSocketTypes']
+
+    # Support for different socket types. no strict check but at least check
+    # there is some support.
+    assert len(supported_socket_types) == 3
 
 def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
     assert old_sig[0] == chan_path

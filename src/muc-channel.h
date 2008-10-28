@@ -86,7 +86,8 @@ gboolean _gabble_muc_channel_is_ready (GabbleMucChannel *chan);
 void _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
     const gchar *jid, LmMessageNode *pres_node);
 void _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
-    TpHandle handle, LmMessage *message, LmMessageNode *x_node);
+    TpHandle handle, LmMessage *message, LmMessageNode *x_node,
+    LmMessageNode *item_node);
 void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
     TpChannelTextMessageType msg_type, TpHandleType handle_type,
     TpHandle sender, time_t timestamp, const gchar *subject, LmMessage *msg);

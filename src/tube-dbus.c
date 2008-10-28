@@ -300,6 +300,9 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   guint i;
 
+  if (priv->dbus_srv != NULL)
+    return;
+
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
 
@@ -331,6 +334,13 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
   if (priv->dbus_srv == NULL)
     {
       DEBUG ("all attempts failed. Close the tube");
+
+      g_free (priv->dbus_srv_addr);
+      priv->dbus_srv_addr = NULL;
+
+      g_free (priv->socket_path);
+      priv->socket_path = NULL;
+
       do_close (self);
       return;
     }
@@ -346,12 +356,9 @@ tube_dbus_open (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
-  if (priv->dbus_srv_addr == NULL)
-    {
-      gabble_tube_dbus_listen (self);
-    }
+  gabble_tube_dbus_listen (self);
 
-  if (priv->dbus_srv_addr != NULL)
+  if (priv->dbus_srv != NULL)
     {
       dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
     }

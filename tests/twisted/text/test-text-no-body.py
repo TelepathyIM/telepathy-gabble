@@ -4,28 +4,20 @@ Test that <message>s with a chat state notification but no body don't create a
 new text channel.
 """
 
-import dbus
-
 from twisted.words.xish import domish
 
-from gabbletest import go
+from gabbletest import exec_test
 
-def expect_connected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [0, 1]:
-        return False
+def test(q, bus, conn, stream):
+    conn.Connect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     # message without body
     m = domish.Element(('', 'message'))
     m['from'] = 'alice@foo.com'
     m['type'] = 'chat'
     m.addElement(('http://jabber.org/protocol/chatstates', 'composing'))
-    data['stream'].send(m)
+    stream.send(m)
 
     # message with body
     m = domish.Element(('', 'message'))
@@ -33,36 +25,16 @@ def expect_connected(event, data):
     m['type'] = 'chat'
     m.addElement(('http://jabber.org/protocol/chatstates', 'composing'))
     m.addElement('body', content='hello')
-    data['stream'].send(m)
-    return True
+    stream.send(m)
 
-def expect_new_channel(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'NewChannel':
-        return False
-
-    if event.args[1] != u'org.freedesktop.Telepathy.Channel.Type.Text':
-        return False
-
-    jid = data['conn_iface'].InspectHandles(1, [event.args[3]])[0]
+    # first message should be from Bob, not Alice
+    event = q.expect('dbus-signal', signal='NewChannel')
+    assert event.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
+    jid = conn.InspectHandles(1, [event.args[3]])[0]
     assert jid == 'bob@foo.com'
-    data['conn_iface'].Disconnect()
-    return True
-
-def expect_disconnected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [2, 1]:
-        return False
-
-    return True
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
+    exec_test(test)
 

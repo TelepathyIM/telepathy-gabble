@@ -1,3 +1,15 @@
+telepathy-gabble 0.7.13 (2008-10-28)
+====================================
+
+The "so you quote love unquote me" release.
+
+Fixes:
+
+* Fix a regression breaking MUC D-Bus tubes.
+* Don't invite Gadget to our OLPC activity if we didn't ask it to publish
+our information.
+* Don't fire presence signals for Gadget presence.
+
 telepathy-gabble 0.7.12 (2008-10-23)
 ====================================
 

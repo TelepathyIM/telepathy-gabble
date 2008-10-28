@@ -112,6 +112,7 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
 
     if channel_type == "Tubes":
         assert state is None
+        assert len(channel_props['Interfaces']) == 0, channel_props['Interfaces']
     else:
         assert state is not None
         tube_props = channel.GetAll(
@@ -120,6 +121,10 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         assert tube_props['Status'] == state
         # no strict check but at least check the properties exist
         assert tube_props['Parameters'] is not None
+        assert channel_props['Interfaces'] == \
+            dbus.Array(['org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT'],
+                    signature='s'), \
+            channel_props['Interfaces']
 
 def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
     assert old_sig[0] == chan_path

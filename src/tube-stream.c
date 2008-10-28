@@ -110,6 +110,7 @@ enum
   PROP_OBJECT_PATH = 1,
   PROP_CHANNEL_TYPE,
   PROP_CONNECTION,
+  PROP_INTERFACES,
   PROP_HANDLE,
   PROP_HANDLE_TYPE,
   PROP_SELF_HANDLE,
@@ -987,6 +988,18 @@ gabble_tube_stream_get_property (GObject *object,
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
         break;
+      case PROP_INTERFACES:
+        if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+          {
+            /* 1-1 tubes - omit the Group interface */
+            g_value_set_boxed (value, gabble_tube_stream_interfaces + 1);
+          }
+        else
+          {
+            /* MUC tubes */
+            g_value_set_boxed (value, gabble_tube_stream_interfaces);
+          }
+        break;
       case PROP_HANDLE:
         g_value_set_uint (value, priv->handle);
         break;
@@ -1363,6 +1376,12 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ACCESS_CONTROL_PARAM,
       param_spec);
+
+  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
+      "Additional Channel.Interface.* interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_string ("target-id", "Target JID",
       "The string obtained by inspecting the target handle",

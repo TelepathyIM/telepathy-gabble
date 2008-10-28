@@ -71,7 +71,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_TUBE,
       NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
-        tp_external_group_mixin_iface_init);
+      tp_external_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
@@ -111,12 +111,12 @@ enum
   PROP_OBJECT_PATH = 1,
   PROP_CHANNEL_TYPE,
   PROP_CONNECTION,
+  PROP_INTERFACES,
   PROP_HANDLE,
   PROP_HANDLE_TYPE,
   PROP_SELF_HANDLE,
   PROP_ID,
   PROP_TYPE,
-  PROP_INITIATOR,
   PROP_SERVICE,
   PROP_PARAMETERS,
   PROP_STATE,
@@ -130,14 +130,13 @@ enum
   PROP_TARGET_ID,
   PROP_INITIATOR_HANDLE,
   PROP_INITIATOR_ID,
+  PROP_SUPPORTED_SOCKET_TYPES,
   LAST_PROPERTY
 };
 
 struct _GabbleTubeStreamPrivate
 {
   GabbleConnection *conn;
-  /* GabbleTubeStream implements
-   * org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT */
   char *object_path;
   TpHandle handle;
   TpHandleType handle_type;
@@ -991,6 +990,18 @@ gabble_tube_stream_get_property (GObject *object,
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
         break;
+      case PROP_INTERFACES:
+        if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+          {
+            /* 1-1 tubes - omit the Group interface */
+            g_value_set_boxed (value, gabble_tube_stream_interfaces + 1);
+          }
+        else
+          {
+            /* MUC tubes */
+            g_value_set_boxed (value, gabble_tube_stream_interfaces);
+          }
+        break;
       case PROP_HANDLE:
         g_value_set_uint (value, priv->handle);
         break;
@@ -1006,7 +1017,7 @@ gabble_tube_stream_get_property (GObject *object,
       case PROP_TYPE:
         g_value_set_uint (value, TP_TUBE_TYPE_STREAM);
         break;
-      case PROP_INITIATOR:
+      case PROP_INITIATOR_HANDLE:
         g_value_set_uint (value, priv->initiator);
         break;
       case PROP_SERVICE:
@@ -1050,14 +1061,13 @@ gabble_tube_stream_get_property (GObject *object,
             (priv->initiator == priv->self_handle));
         break;
       case PROP_INITIATOR_ID:
-        if (priv->initiator == 0)
-          {
-            g_value_set_static_string (value, "");
-          }
-        else
           {
             TpHandleRepoIface *repo = tp_base_connection_get_handles (
                 base_conn, TP_HANDLE_TYPE_CONTACT);
+
+            /* some channel can have o.f.T.Channel.InitiatorHandle == 0 but
+             * tubes always have an initiator */
+            g_assert (priv->initiator != 0);
 
             g_value_set_string (value,
                 tp_handle_inspect (repo, priv->initiator));
@@ -1072,8 +1082,9 @@ gabble_tube_stream_get_property (GObject *object,
                 tp_handle_inspect (repo, priv->handle));
           }
         break;
-      case PROP_INITIATOR_HANDLE:
-        g_value_set_uint (value, priv->initiator);
+      case PROP_SUPPORTED_SOCKET_TYPES:
+        g_value_set_boxed (value,
+            gabble_tube_stream_get_supported_socket_types ());
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1095,7 +1106,6 @@ gabble_tube_stream_set_property (GObject *object,
       case PROP_OBJECT_PATH:
         g_free (priv->object_path);
         priv->object_path = g_value_dup_string (value);
-        DEBUG ("Setting object_path: %s", priv->object_path);
         break;
       case PROP_CHANNEL_TYPE:
       /* this property is writable in the interface, but not actually
@@ -1116,7 +1126,7 @@ gabble_tube_stream_set_property (GObject *object,
       case PROP_ID:
         priv->id = g_value_get_uint (value);
         break;
-      case PROP_INITIATOR:
+      case PROP_INITIATOR_HANDLE:
         priv->initiator = g_value_get_uint (value);
         break;
       case PROP_SERVICE:
@@ -1150,13 +1160,6 @@ gabble_tube_stream_set_property (GObject *object,
             priv->access_control_param = tp_g_value_slice_dup (
                 g_value_get_pointer (value));
           }
-        break;
-      case PROP_INITIATOR_HANDLE:
-        /* PROP_INITIATOR_HANDLE and PROP_INITIATOR are the same property from
-         * two different interfaces (Channel and
-         * Channel.Interface.Tube.DRAFT). In case of tube channels, this can
-         * never be 0. The value is stored in priv->initiator. The object is
-         * created only with PROP_INITIATOR set, so do nothing here. */
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1262,11 +1265,10 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   };
   static TpDBusPropertiesMixinPropImpl stream_tube_props[] = {
       { "Service", "service", NULL },
-      /*{ "AvailableStreamTubeTypes", NULL, NULL },*/
+      { "SupportedSocketTypes", "supported-socket-types", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl tube_iface_props[] = {
-      { "Initiator", "initiator", NULL },
       { "Parameters", "parameters", "parameters" },
       { "Status", "state", NULL },
       { NULL }
@@ -1303,34 +1305,42 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   object_class->finalize = gabble_tube_stream_finalize;
 
   g_object_class_override_property (object_class, PROP_OBJECT_PATH,
-    "object-path");
+      "object-path");
   g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
       "channel-type");
   g_object_class_override_property (object_class, PROP_CONNECTION,
-    "connection");
+      "connection");
   g_object_class_override_property (object_class, PROP_HANDLE,
-    "handle");
+      "handle");
   g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
-    "handle-type");
+      "handle-type");
   g_object_class_override_property (object_class, PROP_SELF_HANDLE,
-    "self-handle");
+      "self-handle");
   g_object_class_override_property (object_class, PROP_ID,
-    "id");
+      "id");
   g_object_class_override_property (object_class, PROP_TYPE,
-    "type");
-  g_object_class_override_property (object_class, PROP_INITIATOR,
-    "initiator");
+      "type");
   g_object_class_override_property (object_class, PROP_SERVICE,
-    "service");
+      "service");
   g_object_class_override_property (object_class, PROP_PARAMETERS,
-    "parameters");
+      "parameters");
   g_object_class_override_property (object_class, PROP_STATE,
-    "state");
+      "state");
 
   g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
       "channel-destroyed");
   g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
       "channel-properties");
+
+  param_spec = g_param_spec_boxed (
+      "supported-socket-types",
+      "Supported socket types",
+      "GHashTable containing supported socket types.",
+      dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, DBUS_TYPE_G_UINT_ARRAY),
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SUPPORTED_SOCKET_TYPES,
+      param_spec);
 
   param_spec = g_param_spec_uint (
       "address-type",
@@ -1382,6 +1392,12 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ACCESS_CONTROL_PARAM,
       param_spec);
+
+  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
+      "Additional Channel.Interface.* interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_string ("target-id", "Target JID",
       "The string obtained by inspecting the target handle",
@@ -1507,7 +1523,7 @@ gabble_tube_stream_new (GabbleConnection *conn,
       "handle", handle,
       "handle-type", handle_type,
       "self-handle", self_handle,
-      "initiator", initiator,
+      "initiator-handle", initiator,
       "service", service,
       "parameters", parameters,
       "id", id,
@@ -1740,7 +1756,8 @@ check_unix_params (TpSocketAddressType address_type,
   if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
   {
     g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-        "Unix sockets only support localhost control access");
+        "Only the Localhost access control method is supported for Unix"
+        " sockets");
     return FALSE;
   }
 
@@ -1847,11 +1864,12 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
 }
 
 /* can be called both from the old tube API and the new tube API */
-gboolean gabble_tube_stream_offer (GabbleTubeStream *self,
-                                   guint address_type,
-                                   const GValue *address, guint access_control,
-                                   const GValue *access_control_param,
-                                   GError **error)
+gboolean
+gabble_tube_stream_offer (GabbleTubeStream *self,
+                          guint address_type,
+                          const GValue *address, guint access_control,
+                          const GValue *access_control_param,
+                          GError **error)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   LmMessageNode *tube_node = NULL;
@@ -1900,6 +1918,58 @@ gboolean gabble_tube_stream_offer (GabbleTubeStream *self,
 
   lm_message_unref (msg);
   return result;
+}
+
+static void
+destroy_socket_control_list (gpointer data)
+{
+  GArray *tab = data;
+  g_array_free (tab, TRUE);
+}
+
+/**
+ * gabble_tube_stream_get_supported_socket_types
+ *
+ * Used to implement D-Bus property
+ * org.freedesktop.Telepathy.Channel.Type.StreamTube.SupportedSocketTypes
+ * and D-Bus method GetAvailableStreamTubeTypes
+ * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ */
+GHashTable *
+gabble_tube_stream_get_supported_socket_types (void)
+{
+  GHashTable *ret;
+  GArray *unix_tab, *ipv4_tab, *ipv6_tab;
+  TpSocketAccessControl access_control;
+
+  ret = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+      destroy_socket_control_list);
+
+  /* Socket_Address_Type_Unix */
+  unix_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
+      1);
+  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (unix_tab, access_control);
+  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX),
+      unix_tab);
+
+  /* Socket_Address_Type_IPv4 */
+  ipv4_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
+      1);
+  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (ipv4_tab, access_control);
+  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV4),
+      ipv4_tab);
+
+  /* Socket_Address_Type_IPv6 */
+  ipv6_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
+      1);
+  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (ipv6_tab, access_control);
+  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV6),
+      ipv6_tab);
+
+  return ret;
 }
 
 /* Callback plugged only if the tube has been offered with the new
@@ -2016,7 +2086,8 @@ gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
   if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
       GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Unix sockets only support localhost control access" };
+          "Only the Localhost access control method is supported for Unix"
+            "sockets" };
 
       dbus_g_method_return_error (context, &e);
       return;

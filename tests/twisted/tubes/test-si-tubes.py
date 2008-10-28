@@ -112,6 +112,8 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
 
     if channel_type == "Tubes":
         assert state is None
+        assert len(channel_props['Interfaces']) == 0, channel_props['Interfaces']
+        supported_socket_types = channel.GetAvailableStreamTubeTypes()
     else:
         assert state is not None
         tube_props = channel.GetAll(
@@ -120,7 +122,19 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         assert tube_props['Status'] == state
         # no strict check but at least check the properties exist
         assert tube_props['Parameters'] is not None
-        assert tube_props['Initiator'] is not None
+        assert channel_props['Interfaces'] == \
+            dbus.Array(['org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT'],
+                    signature='s'), \
+            channel_props['Interfaces']
+
+        stream_tube_props = channel.GetAll(
+                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+                dbus_interface='org.freedesktop.DBus.Properties')
+        supported_socket_types = stream_tube_props['SupportedSocketTypes']
+
+    # Support for different socket types. no strict check but at least check
+    # there is some support.
+    assert len(supported_socket_types) == 3
 
 def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
     assert old_sig[0] == chan_path
@@ -304,9 +318,7 @@ def test(q, bus, conn, stream):
     message = event.stanza
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
         message)
-    if tube_nodes is None:
-        return False
-
+    assert tube_nodes is not None
     assert len(tube_nodes) == 1
     tube = tube_nodes[0]
 
@@ -342,6 +354,12 @@ def test(q, bus, conn, stream):
     tube_iface = dbus.Interface(tube_chan,
         tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
 
+    self_handle = conn.GetSelfHandle()
+    tube_basic_props = tube_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert tube_basic_props.get("InitiatorHandle") == self_handle
+
     stream_tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
@@ -350,8 +368,6 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
-    self_handle = conn.GetSelfHandle()
-    assert tube_props.get("Initiator") == self_handle
     print str(tube_props.get("Parameters"))
     assert tube_props.get("Parameters") == dbus.Dictionary(
             {dbus.String(u'foo'): dbus.String(u'bar')},
@@ -384,9 +400,7 @@ def test(q, bus, conn, stream):
     message = event.stanza
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
         message)
-    if tube_nodes is None:
-        return False
-
+    assert tube_nodes is not None
     assert len(tube_nodes) == 1
     tube = tube_nodes[0]
 
@@ -600,9 +614,7 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
     iq = event.stanza
     si_nodes = xpath.queryForNodes('/iq/si', iq)
-    if si_nodes is None:
-        return False
-
+    assert si_nodes is not None
     assert len(si_nodes) == 1
     si = si_nodes[0]
     assert si['profile'] == NS_TUBES

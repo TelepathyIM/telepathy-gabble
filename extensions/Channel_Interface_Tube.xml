@@ -40,16 +40,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       simultaneously).</p>
     </tp:docstring>
 
-    <property name="Initiator" type="u" tp:type="Contact_Handle" access="read"
-              tp:name-for-bindings="Initiator">
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>Initiator handle.</p>
-        <p>When requesting a channel with 
-          <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.CreateChannel</tp:dbus-ref>,
-          this property MUST NOT be included in the request.</p>
-      </tp:docstring>
-    </property>
-
     <property name="Parameters" type="a{sv}" tp:type="String_Variant_Map"
               access="readwrite" tp:name-for-bindings="Parameters">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">

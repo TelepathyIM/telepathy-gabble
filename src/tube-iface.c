@@ -137,18 +137,6 @@ gabble_tube_iface_base_init (gpointer klass)
           G_PARAM_STATIC_BLURB);
       g_object_interface_install_property (klass, param_spec);
 
-      param_spec = g_param_spec_uint (
-          "initiator",
-          "Initiator handle",
-          "The TpHandle of the initiator of this tube object.",
-          0, G_MAXUINT32, 0,
-          G_PARAM_CONSTRUCT_ONLY |
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
-      g_object_interface_install_property (klass, param_spec);
-
       param_spec = g_param_spec_string (
           "service",
           "service name",
@@ -229,7 +217,7 @@ gabble_tube_iface_publish_in_node (GabbleTubeIface *tube,
 
   g_object_get (G_OBJECT (tube),
       "type", &type,
-      "initiator", &initiator_handle,
+      "initiator-handle", &initiator_handle,
       "service", &service,
       "parameters", &parameters,
       "id", &tube_id,

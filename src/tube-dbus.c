@@ -78,7 +78,7 @@ enum
   PROP_BYTESTREAM,
   PROP_STREAM_ID,
   PROP_TYPE,
-  PROP_INITIATOR,
+  PROP_INITIATOR_HANDLE,
   PROP_SERVICE,
   PROP_PARAMETERS,
   PROP_STATE,
@@ -300,6 +300,9 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   guint i;
 
+  if (priv->dbus_srv != NULL)
+    return;
+
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
 
@@ -331,6 +334,13 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
   if (priv->dbus_srv == NULL)
     {
       DEBUG ("all attempts failed. Close the tube");
+
+      g_free (priv->dbus_srv_addr);
+      priv->dbus_srv_addr = NULL;
+
+      g_free (priv->socket_path);
+      priv->socket_path = NULL;
+
       do_close (self);
       return;
     }
@@ -346,12 +356,9 @@ tube_dbus_open (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
-  if (priv->dbus_srv_addr == NULL)
-    {
-      gabble_tube_dbus_listen (self);
-    }
+  gabble_tube_dbus_listen (self);
 
-  if (priv->dbus_srv_addr != NULL)
+  if (priv->dbus_srv != NULL)
     {
       dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
     }
@@ -560,7 +567,7 @@ gabble_tube_dbus_get_property (GObject *object,
       case PROP_TYPE:
         g_value_set_uint (value, TP_TUBE_TYPE_DBUS);
         break;
-      case PROP_INITIATOR:
+      case PROP_INITIATOR_HANDLE:
         g_value_set_uint (value, priv->initiator);
         break;
       case PROP_SERVICE:
@@ -635,7 +642,7 @@ gabble_tube_dbus_set_property (GObject *object,
         g_free (priv->stream_id);
         priv->stream_id = g_value_dup_string (value);
         break;
-      case PROP_INITIATOR:
+      case PROP_INITIATOR_HANDLE:
         priv->initiator = g_value_get_uint (value);
         break;
       case PROP_SERVICE:
@@ -769,14 +776,27 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
     "id");
   g_object_class_override_property (object_class, PROP_TYPE,
     "type");
-  g_object_class_override_property (object_class, PROP_INITIATOR,
-    "initiator");
   g_object_class_override_property (object_class, PROP_SERVICE,
     "service");
   g_object_class_override_property (object_class, PROP_PARAMETERS,
     "parameters");
   g_object_class_override_property (object_class, PROP_STATE,
     "state");
+
+  /* TODO: When D-Bus tubes will be channels, this will be replaced by
+   * g_object_class_override_property*/
+  param_spec = g_param_spec_uint (
+      "initiator-handle",
+      "Initiator handle",
+      "The TpHandle of the initiator of this tube object.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
+      param_spec);
 
   param_spec = g_param_spec_object (
       "bytestream",
@@ -1085,7 +1105,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
       "handle", handle,
       "handle-type", handle_type,
       "self-handle", self_handle,
-      "initiator", initiator,
+      "initiator-handle", initiator,
       "service", service,
       "parameters", parameters,
       "stream-id", stream_id,

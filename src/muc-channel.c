@@ -2225,15 +2225,12 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              const gchar *text,
                              LmMessage *msg)
 {
-  gboolean is_error;
   TpMessage *message;
   GabbleMucChannelPrivate *priv;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  is_error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
 
   if (handle_type == TP_HANDLE_TYPE_ROOM)
     {

@@ -40,6 +40,7 @@
 #include "gabble-signals-marshal.h"
 #include "olpc-activity.h"
 #include "namespaces.h"
+#include "presence-cache.h"
 #include "util.h"
 
 /* signals */
@@ -542,6 +543,9 @@ do_close (GabbleOlpcView *self,
 
   lm_message_unref (msg);
 
+  gabble_presence_cache_contacts_removed_from_olpc_view (
+      self->conn->presence_cache, priv->buddies);
+
   /* Claim that all the buddies left their activities */
   tp_handle_set_foreach (priv->buddies,
       (TpHandleSetMemberFunc) buddy_left_activities_foreach, self);
@@ -644,8 +648,9 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   guint i;
   GArray *empty;
-  TpHandleRepoIface *room_repo;
+  TpHandleRepoIface *room_repo, *contact_repo;
   GArray *buddies_changed;
+  TpHandleSet *buddies_added;
 
   g_assert (buddies->len == buddies_properties->len);
   if (buddies->len == 0)
@@ -653,9 +658,12 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
 
   room_repo = tp_base_connection_get_handles ((TpBaseConnection *) self->conn,
       TP_HANDLE_TYPE_ROOM);
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->conn, TP_HANDLE_TYPE_CONTACT);
 
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   buddies_changed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+  buddies_added = tp_handle_set_new (contact_repo);
 
   /* store properties */
   for (i = 0; i < buddies->len; i++)
@@ -666,7 +674,13 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
       handle = g_array_index (buddies, TpHandle, i);
       properties = g_ptr_array_index (buddies_properties, i);
 
-      tp_handle_set_add (priv->buddies, handle);
+      if (!tp_handle_set_is_member (priv->buddies, handle))
+          {
+            tp_handle_set_add (priv->buddies, handle);
+
+            tp_handle_set_add (buddies_added, handle);
+           }
+
       g_hash_table_insert (priv->buddy_properties, GUINT_TO_POINTER (handle),
           properties);
       g_hash_table_ref (properties);
@@ -698,6 +712,13 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
             }
         }
     }
+
+  if (tp_handle_set_size (buddies_added) > 0)
+    {
+      gabble_presence_cache_contacts_added_to_olpc_view (
+          self->conn->presence_cache, buddies_added);
+    }
+  tp_handle_set_destroy (buddies_added);
 
   gabble_svc_olpc_channel_interface_view_emit_buddies_changed (self, buddies,
       empty);
@@ -744,6 +765,9 @@ gabble_olpc_view_remove_buddies (GabbleOlpcView *self,
 
   gabble_svc_olpc_channel_interface_view_emit_buddies_changed (self, empty,
       removed);
+
+  gabble_presence_cache_contacts_removed_from_olpc_view (
+      self->conn->presence_cache, buddies);
 
   g_array_free (empty, TRUE);
   g_array_free (removed, TRUE);

@@ -1473,3 +1473,82 @@ gabble_presence_cache_really_remove (
   tp_handle_set_remove (priv->presence_handles, handle);
 }
 
+void
+gabble_presence_cache_contacts_added_to_olpc_view (GabblePresenceCache *self,
+                                                   TpHandleSet *handles)
+{
+  GArray *tmp, *changed;
+  guint i;
+
+  tmp = tp_handle_set_to_array (handles);
+
+  changed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+
+  for (i = 0; i < tmp->len; i++)
+    {
+      TpHandle handle;
+      GabblePresence *presence;
+
+      handle = g_array_index (tmp, TpHandle, i);
+
+      presence = gabble_presence_cache_get (self, handle);
+      if (presence == NULL)
+        {
+          presence = _cache_insert (self, handle);
+        }
+
+      if (gabble_presence_added_to_view (presence))
+        {
+          g_array_append_val (changed, handle);
+        }
+    }
+
+  if (changed->len > 0)
+    {
+      g_signal_emit (self, signals[PRESENCES_UPDATED], 0, changed);
+    }
+
+  g_array_free (tmp, TRUE);
+  g_array_free (changed, TRUE);
+}
+
+void
+gabble_presence_cache_contacts_removed_from_olpc_view (
+    GabblePresenceCache *self,
+    TpHandleSet *handles)
+{
+  GArray *tmp, *changed;
+  guint i;
+
+  tmp = tp_handle_set_to_array (handles);
+
+  changed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+
+  for (i = 0; i < tmp->len; i++)
+    {
+      TpHandle handle;
+      GabblePresence *presence;
+
+      handle = g_array_index (tmp, TpHandle, i);
+
+      presence = gabble_presence_cache_get (self, handle);
+      if (presence == NULL)
+        {
+          presence = _cache_insert (self, handle);
+        }
+
+      if (gabble_presence_removed_from_view (presence))
+        {
+          g_array_append_val (changed, handle);
+          gabble_presence_cache_maybe_remove (self, handle);
+        }
+    }
+
+  if (changed->len > 0)
+    {
+      g_signal_emit (self, signals[PRESENCES_UPDATED], 0, changed);
+    }
+
+  g_array_free (tmp, TRUE);
+  g_array_free (changed, TRUE);
+}

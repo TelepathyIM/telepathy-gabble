@@ -10,7 +10,7 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 
-from util import announce_gadget
+from util import announce_gadget, gadget_publish
 import ns
 
 def join_channel(name, q, conn, stream):
@@ -56,8 +56,10 @@ def test(q, bus, conn, stream):
 
     act_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
     buddy_info_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
+    simple_presence_iface = dbus.Interface(conn, 'org.freedesktop.Telepathy.Connection.Interface.SimplePresence')
 
     q.expect('dbus-signal', signal='GadgetDiscovered')
+    gadget_publish(q, stream, conn, True)
 
     # join a room
     room_handle, room_path = join_channel('myroom@conference.localhost',
@@ -122,6 +124,13 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
     members = muc_group.GetMembers()
     assert conn.InspectHandles(1, members) == ['myroom@conference.localhost/test']
+
+    # Regression test for a nasty bug caused by the presence cache handling
+    # the inspector presence as a non-MUC one because the inspector is not
+    # added to MUC's members.
+    handle = conn.RequestHandles(1, ['myroom@conference.localhost'])[0]
+    presence = simple_presence_iface.GetPresences([handle])
+    assert presence[handle] == (7, 'unknown', '')
 
     conn.Disconnect()
 

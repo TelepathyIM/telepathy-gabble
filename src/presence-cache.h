@@ -85,6 +85,12 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
 void gabble_presence_cache_really_remove (GabblePresenceCache *cache,
     TpHandle handle);
 
+void gabble_presence_cache_contacts_added_to_olpc_view (
+    GabblePresenceCache *cache, TpHandleSet *handles);
+
+void gabble_presence_cache_contacts_removed_from_olpc_view (
+    GabblePresenceCache *cache, TpHandleSet *handles);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_CACHE_H__ */

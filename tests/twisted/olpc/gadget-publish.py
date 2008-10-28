@@ -11,7 +11,7 @@ from gabbletest import (exec_test, make_result_iq, acknowledge_iq, sync_stream,
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 
-from util import announce_gadget
+from util import announce_gadget, gadget_publish
 import ns
 
 def test(q, bus, conn, stream):
@@ -41,35 +41,9 @@ def test(q, bus, conn, stream):
 
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
 
-    call_async(q, gadget_iface, 'Publish', True)
-
-    q.expect_many(
-            EventPattern('stream-presence', presence_type='subscribe'),
-            EventPattern('dbus-return', method='Publish'))
-
-    # accept the request
-    presence = elem('presence', to='test@localhost', from_='gadget.localhost',
-        type='subscribed')
-    stream.send(presence)
-
-    # send a subscribe request
-    presence = elem('presence', to='test@localhost', from_='gadget.localhost',
-        type='subscribe')
-    stream.send(presence)
-
-    q.expect('stream-presence', presence_type='subscribed'),
-
-    call_async(q, gadget_iface, 'Publish', False)
-
-    q.expect_many(
-            EventPattern('stream-presence', presence_type='unsubscribe'),
-            EventPattern('stream-presence', presence_type='unsubscribed'),
-            EventPattern('dbus-return', method='Publish'))
-
-    # Gadget tries to subscribe but is refused now
-    presence = elem('presence', to='test@localhost', from_='gadget.localhost',
-        type='subscribe')
-    stream.send(presence)
+    # All the code has been moved to util.py:gadget_publish
+    gadget_publish(q, stream, conn, True)
+    gadget_publish(q, stream, conn, False)
 
     q.expect('stream-presence', presence_type='unsubscribed'),
 

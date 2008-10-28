@@ -2086,12 +2086,16 @@ gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
   if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
       GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Only the Localhost access control method is supported for Unix"
-            "sockets" };
+          "Only the Localhost access control method is implemented"
+            " by Gabble" };
 
       dbus_g_method_return_error (context, &e);
       return;
     }
+
+  priv->access_control = access_control;
+  g_assert (priv->access_control_param == NULL);
+  priv->access_control_param = tp_g_value_slice_dup (access_control_param);
 
   if (priv->state != GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING)
     {
@@ -2147,9 +2151,7 @@ static void
 gabble_tube_stream_close_async (TpSvcChannel *iface,
                                   DBusGMethodInvocation *context)
 {
-  GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
-
-  tp_svc_channel_emit_closed (self);
+  gabble_tube_stream_close (GABBLE_TUBE_IFACE (iface));
   tp_svc_channel_return_from_close (context);
 }
 

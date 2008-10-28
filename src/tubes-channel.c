@@ -1929,7 +1929,8 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
+      access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
       GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Only the Localhost access control method is supported for Unix"

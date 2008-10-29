@@ -51,11 +51,14 @@ To debug an individual test you can set one of the following env variable:
 
   * GABBLE_TEST_VALGRIND : to run Gabble inside valgrind. The report is
     added to tools/gabble-testing.log.
+        export GABBLE_TEST_VALGRIND=1
 
   * GABBLE_TEST_REFDBG : to run Gabble inside refdbg. The report is written
-    to tools/refdbg.log. You also need to setup GABBLE_WRAPPER to your refdbg
-    command. Example:
-        export GABBLE_WRAPPER="~/bin/refdbg -c btnum=16"
+    to tools/refdbg.log. You can change GABBLE_WRAPPER to use an alternative
+    refdbg and change REFDBG_OPTIONS to set your own parameters. Example:
+        export GABBLE_TEST_REFDBG=1
+        export GABBLE_WRAPPER="/path/to/refdbg"
+        export REFDBG_OPTIONS="btnum=16"
 
   * GABBLE_WRAPPER="nemiver" : to run Gabble inside the graphical debugger
     nemiver. You'll be able to set up breakpoints; then hit the "continue"

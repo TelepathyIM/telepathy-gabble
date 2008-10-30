@@ -842,7 +842,7 @@ gabble_tube_stream_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+  gabble_tube_iface_close (GABBLE_TUBE_IFACE (self), TRUE);
 
   if (priv->initiator != priv->self_handle &&
       priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX &&
@@ -1289,7 +1289,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
 
   if (!tube_stream_open (self, error))
     {
-      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self), TRUE);
       return FALSE;
     }
 
@@ -1304,7 +1304,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
  * Implements gabble_tube_iface_close on GabbleTubeIface
  */
 static void
-gabble_tube_stream_close (GabbleTubeIface *tube)
+gabble_tube_stream_close (GabbleTubeIface *tube, gboolean local)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
@@ -1316,7 +1316,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
   g_hash_table_foreach_remove (priv->fd_to_bytestreams,
       close_each_extra_bytestream, self);
 
-  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+  if (local &&priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       LmMessage *msg;
       const gchar *jid;

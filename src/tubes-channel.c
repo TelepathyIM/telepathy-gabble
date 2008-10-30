@@ -1182,7 +1182,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   if (bytestream == NULL)
     {
       /* Tube was declined by remote user. Close it */
-      gabble_tube_iface_close (tube);
+      gabble_tube_iface_close (tube, FALSE);
       return;
     }
 
@@ -1575,7 +1575,7 @@ tube_msg_offered (GabbleTubesChannel *self,
   if (tube != NULL)
     {
       DEBUG ("tube ID already in use. Close both tubes");
-      gabble_tube_iface_close (tube);
+      gabble_tube_iface_close (tube, TRUE);
       return;
     }
 
@@ -1645,7 +1645,7 @@ tube_msg_close (GabbleTubesChannel *self,
 
   DEBUG ("tube %u was closed by remote peer", tube_id);
   /* FIXME: we shouldn't re-send the close message */
-  gabble_tube_iface_close (tube);
+  gabble_tube_iface_close (tube, FALSE);
 }
 
 void
@@ -1722,7 +1722,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
       if (!start_stream_initiation (self, tube, stream_id, &error))
         {
-          gabble_tube_iface_close (tube);
+          gabble_tube_iface_close (tube, FALSE);
 
           dbus_g_method_return_error (context, error);
 
@@ -1823,7 +1823,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
       /* Stream initiation */
       if (!send_new_stream_tube_msg (self, tube, stream_id, &error))
         {
-          gabble_tube_iface_close (tube);
+          gabble_tube_iface_close (tube, FALSE);
 
           dbus_g_method_return_error (context, error);
 
@@ -2053,7 +2053,7 @@ gabble_tubes_channel_close_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  gabble_tube_iface_close (tube);
+  gabble_tube_iface_close (tube, TRUE);
 
   tp_svc_channel_type_tubes_return_from_close_tube (context);
 }

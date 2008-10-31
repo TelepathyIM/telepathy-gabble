@@ -1644,7 +1644,6 @@ tube_msg_close (GabbleTubesChannel *self,
     }
 
   DEBUG ("tube %u was closed by remote peer", tube_id);
-  /* FIXME: we shouldn't re-send the close message */
   gabble_tube_iface_close (tube, FALSE);
 }
 

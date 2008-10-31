@@ -1316,7 +1316,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube, gboolean local)
   g_hash_table_foreach_remove (priv->fd_to_bytestreams,
       close_each_extra_bytestream, self);
 
-  if (local &&priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+  if (local && priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       LmMessage *msg;
       const gchar *jid;

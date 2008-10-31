@@ -1730,8 +1730,11 @@ session_terminated_cb (GabbleJingleSession *session,
   if (priv->streams != NULL)
     {
       GPtrArray *tmp = priv->streams;
+      GabbleMediaStream *s = g_ptr_array_index (tmp, 0);
 
       DEBUG ("unreffing streams");
+      DEBUG ("%p with refcount %d",
+          s, G_OBJECT(s)->ref_count);
 
       /* move priv->streams aside so that the stream_close_cb
        * doesn't double unref */
@@ -2013,6 +2016,10 @@ stream_close_cb (GabbleMediaStream *stream,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   guint id;
 
+  DEBUG ("%p called", chan);
+
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (chan));
+
   g_object_get (stream,
       "id", &id,
       NULL);
@@ -2038,20 +2045,20 @@ stream_error_cb (GabbleMediaStream *stream,
                  const gchar *message,
                  GabbleMediaChannel *chan)
 {
-  // GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleJingleContent *c;
   guint id;
 
+  DEBUG ("%p called", chan);
+
   /* emit signal */
-  g_object_get (stream, "id", &id, NULL);
+  g_object_get (stream, "id", &id, "content", &c, NULL);
   tp_svc_channel_type_streamed_media_emit_stream_error (chan, id, errno,
       message);
 
-  /* remove stream from session */
-  // TODO _gabble_media_session_remove_streams (priv->session, &stream, 1);
-
-  /* FIXME: we unref the stream, so it should be disposed and remove
-   * jingle content. */
-  g_object_unref (stream);
+  /* remove stream from session (removal will be signalled
+   * so we can dispose of the stream) */
+  gabble_jingle_session_remove_content (priv->session, c);
 }
 
 static void
@@ -2159,7 +2166,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
       "id", id,
       NULL);
 
-  DEBUG ("created new MediaStream %p for content '%s'", stream, name);
+  DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 
   /* we will own the only reference to this stream */
   g_ptr_array_add (priv->streams, stream);

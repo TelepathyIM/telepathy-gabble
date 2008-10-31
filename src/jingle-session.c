@@ -495,6 +495,56 @@ _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
 }
 
 static void content_ready_cb (GabbleJingleContent *c, gpointer user_data);
+static void content_removed_cb (GabbleJingleContent *c, gpointer user_data);
+
+struct idle_content_reject_ctx {
+    GabbleJingleSession *session;
+    gchar *creator;
+    gchar *name;
+};
+
+static gboolean
+idle_content_reject (gpointer data)
+{
+  LmMessage *msg;
+  LmMessageNode *sess_node, *node;
+  struct idle_content_reject_ctx *ctx = data;
+
+  msg = gabble_jingle_session_new_message (ctx->session,
+      JINGLE_ACTION_CONTENT_REJECT, &sess_node);
+
+  g_debug ("name = %s, intiiator = %s", ctx->name, ctx->creator);
+
+  node = lm_message_node_add_child (sess_node, "content", NULL);
+  lm_message_node_set_attributes (node,
+      "name", ctx->name, "creator", ctx->creator, NULL);
+
+  gabble_jingle_session_send (ctx->session, msg, NULL, NULL);
+
+  g_object_unref (ctx->session);
+  g_free (ctx->name);
+  g_free (ctx->creator);
+  g_free (ctx);
+
+  return FALSE;
+}
+
+static void
+fire_idle_content_reject (GabbleJingleSession *sess, const gchar *name,
+    const gchar *creator)
+{
+  struct idle_content_reject_ctx *ctx = g_new0 (struct idle_content_reject_ctx, 1);
+
+  if (creator == NULL)
+      creator = "";
+
+  ctx->session = g_object_ref (sess);
+  ctx->name = g_strdup (name);
+  ctx->creator = g_strdup (creator);
+
+  g_idle_add (idle_content_reject, ctx);
+}
+
 
 static void
 _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
@@ -516,8 +566,19 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 
   if (content_type == 0)
     {
-      SET_BAD_REQ ("unsupported content type");
       DEBUG ("unsupported content type with ns %s", content_ns);
+
+      /* if this is session-initiate, we should return error, otherwise,
+       * we should respond with content-reject */
+      if (priv->state < JS_STATE_PENDING_INITIATED)
+        {
+          SET_BAD_REQ ("unsupported content type");
+        }
+      else
+        {
+          fire_idle_content_reject (sess, name,
+              lm_message_node_get_attribute (content_node, "creator"));
+        }
       return;
     }
 
@@ -556,6 +617,8 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 
   g_signal_connect (c, "ready",
       (GCallback) content_ready_cb, sess);
+  g_signal_connect (c, "removed",
+      (GCallback) content_removed_cb, sess);
 
   gabble_jingle_content_parse_add (c, content_node,
     ((priv->dialect == JINGLE_DIALECT_GTALK3) ||
@@ -592,15 +655,17 @@ _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
       return;
     }
 
+  /* FIXME: do we treat this as a session terminate instead of error? */
   if (g_hash_table_size (priv->contents) == 1)
     {
       SET_BAD_REQ ("unable to remove the last content in a session");
       return;
     }
 
-  /* This should have the effect of shutting the content down.
-   * FIXME: do we need to have REMOVING state at all? */
-  g_hash_table_remove (priv->contents, name);
+  g_object_set (c, "state", JINGLE_CONTENT_STATE_REMOVING, NULL);
+  /* FIXME: we emit "removed" on GabbleJingleContent object, is this
+   * too hackish? */
+  g_signal_emit_by_name (c, "removed");
 }
 
 static void
@@ -963,6 +1028,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
       SET_BAD_REQ ("sender with no resource");
       return NULL;
     }
+  resource++;
 
   /* this one is not required, so it can be NULL */
   responder = lm_message_node_get_attribute (session_node, "responder");
@@ -1174,36 +1240,47 @@ _fill_content (GabbleJingleSession *sess,
     }
 }
 
+struct jingle_reply_ctx {
+  JingleReplyHandler handler;
+  gpointer user_data;
+};
+
 static LmHandlerResult
 _process_reply (GabbleConnection *conn,
     LmMessage *sent, LmMessage *reply, GObject *obj, gpointer user_data)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (obj);
-  JingleReplyHandler handler = user_data;
+  struct jingle_reply_ctx *ctx = user_data;
 
   if (lm_message_get_sub_type (reply) == LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      handler (sess, TRUE, reply);
+      ctx->handler (sess, TRUE, reply, ctx->user_data);
     }
   else
     {
-      handler (sess, FALSE, reply);
+      ctx->handler (sess, FALSE, reply, ctx->user_data);
     }
 
+  g_free (ctx);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 void
 gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
-    JingleReplyHandler cb)
+    JingleReplyHandler cb, gpointer user_data)
 {
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
 
   if (cb != NULL)
     {
+      struct jingle_reply_ctx *ctx = g_new0 (struct jingle_reply_ctx, 1);
+
+      ctx->handler = cb;
+      ctx->user_data = user_data;
+
       DEBUG ("sending with reply %p", cb);
       _gabble_connection_send_with_reply (priv->conn, msg,
-          _process_reply, G_OBJECT (sess), cb, NULL);
+          _process_reply, G_OBJECT (sess), ctx, NULL);
     }
   else
     {
@@ -1215,7 +1292,7 @@ gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
 
 static void
 _on_initiate_reply (GabbleJingleSession *sess, gboolean success,
-    LmMessage *reply)
+    LmMessage *reply, gpointer user_data)
 {
   if (success)
       set_state (sess, JS_STATE_PENDING_INITIATED);
@@ -1225,7 +1302,7 @@ _on_initiate_reply (GabbleJingleSession *sess, gboolean success,
 
 static void
 _on_accept_reply (GabbleJingleSession *sess, gboolean success,
-    LmMessage *reply)
+    LmMessage *reply, gpointer user_data)
 {
   /* FIXME: clear session timeout timer here */
 
@@ -1297,7 +1374,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
   msg = gabble_jingle_session_new_message (sess, action, &sess_node);
   _map_initial_contents (sess, _fill_content, sess_node);
-  gabble_jingle_session_send (sess, msg, handler);
+  gabble_jingle_session_send (sess, msg, handler, NULL);
   set_state (sess, new_state);
 }
 
@@ -1349,7 +1426,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess)
     {
       gabble_jingle_session_send (sess,
           gabble_jingle_session_new_message (sess,
-              JINGLE_ACTION_SESSION_TERMINATE, NULL), NULL);
+              JINGLE_ACTION_SESSION_TERMINATE, NULL), NULL, NULL);
     }
 
   /* NOTE: on "terminated", jingle factory and media channel will unref
@@ -1361,33 +1438,59 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess)
   set_state (sess, JS_STATE_ENDED);
 }
 
+static gboolean
+_terminate_delayed (gpointer user_data)
+{
+  GabbleJingleSession *sess = user_data;
+  gabble_jingle_session_terminate (sess);
+  return FALSE;
+}
+
+static void
+content_removed_cb (GabbleJingleContent *c, gpointer user_data)
+{
+  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
+  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  const gchar *name;
+
+  DEBUG ("JingleSession:contant_removed_cb() called");
+
+  g_object_get (c, "name", &name, NULL);
+  g_hash_table_remove (priv->contents, name);
+
+  if (g_hash_table_size (priv->contents) == 0)
+    {
+      /* Terminate the session from idle loop
+       * so that content removal can be processed
+       * in media stream before that. */
+      g_idle_add (_terminate_delayed, sess);
+    }
+}
+
 void
 gabble_jingle_session_remove_content (GabbleJingleSession *sess,
     GabbleJingleContent *c)
 {
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
-  const gchar *content_name;
-  LmMessage *msg;
-  LmMessageNode *sess_node;
 
-  g_object_get (c, "name", &content_name, NULL);
+  DEBUG ("called");
 
-  DEBUG ("removing content '%s'", content_name);
-
-  msg = gabble_jingle_session_new_message (sess, JINGLE_ACTION_CONTENT_REMOVE,
-      &sess_node);
-  gabble_jingle_content_produce_node (c, sess_node, FALSE);
-  gabble_jingle_session_send (sess, msg, NULL);
-
-  /* FIXME: emit a 'content-removed' signal, mark it as in removal? */
-  /* When we and MediaChannel unref the object, it should get disposed */
-  g_hash_table_remove (priv->contents, content_name);
-
-  /* If that was the last one, we can terminate the session */
-  if (g_hash_table_size (priv->contents) == 0)
+  /* If this is the last content, instead of removing it we can just
+   * terminate the entire session. */
+  if (g_hash_table_size (priv->contents) == 1)
     {
-      gabble_jingle_session_terminate (sess);
+      /* We'll fake the content removal signal, so both we and media
+       * channel clean up after it properly. */
+      // gabble_jingle_session_terminate (sess);
+      DEBUG ("manually removing content %p and emitting the signal", c);
+      g_object_set (c, "state", JINGLE_CONTENT_STATE_REMOVING, NULL);
+      g_signal_emit_by_name (c, "removed");
+      return;
     }
+
+  /* When content-remove is acknowledged, "removed" signal will be fired,
+   * so we can clean up. */
+  gabble_jingle_content_remove (c);
 }
 
 GabbleJingleContent *
@@ -1426,6 +1529,8 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
 
   g_signal_connect (c, "ready",
       (GCallback) content_ready_cb, sess);
+  g_signal_connect (c, "removed",
+      (GCallback) content_removed_cb, sess);
 
   g_hash_table_insert (priv->contents, g_strdup (name), c);
   g_signal_emit (sess, signals[NEW_CONTENT], 0, c);

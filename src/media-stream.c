@@ -60,7 +60,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleMediaStream,
 enum
 {
     DESTROY,
-
     NEW_ACTIVE_CANDIDATE_PAIR,
     NEW_NATIVE_CANDIDATE,
     SUPPORTED_CODECS,
@@ -153,6 +152,8 @@ static void content_state_changed_cb (GabbleJingleContent *c,
      GParamSpec *pspec, GabbleMediaStream *stream);
 static void content_senders_changed_cb (GabbleJingleContent *c,
      GParamSpec *pspec, GabbleMediaStream *stream);
+static void content_removed_cb (GabbleJingleContent *content,
+      GabbleMediaStream *stream);
 
 static void
 gabble_media_stream_init (GabbleMediaStream *self)
@@ -342,7 +343,7 @@ gabble_media_stream_set_property (GObject      *object,
 
       priv->content = g_value_get_object (value);
 
-      DEBUG ("connecting to content %p signals", priv->content);
+      DEBUG ("%p: connecting to content %p signals", stream, priv->content);
       g_signal_connect (priv->content, "new-candidates",
           (GCallback) new_remote_candidates_cb, stream);
 
@@ -356,6 +357,9 @@ gabble_media_stream_set_property (GObject      *object,
 
       g_signal_connect (priv->content, "notify::senders",
           (GCallback) content_senders_changed_cb, stream);
+
+      g_signal_connect (priv->content, "removed",
+          (GCallback) content_removed_cb, stream);
 
       /* we can immediately get the codecs if we're responder */
       new_remote_codecs_cb (priv->content,
@@ -561,6 +565,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   g_object_class_install_property (object_class, PROP_CONTENT, param_spec);
 
   /* signals not exported by D-Bus interface */
+
   signals[DESTROY] =
     g_signal_new ("destroy",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -1439,6 +1444,14 @@ content_senders_changed_cb (GabbleJingleContent *c,
 
   g_object_get (c, "senders", &senders, NULL);
 }
+
+static void
+content_removed_cb (GabbleJingleContent *content, GabbleMediaStream *stream)
+{
+  DEBUG ("MediaStream:content_removed_cb() called");
+  _gabble_media_stream_close (stream);
+}
+
 
 gboolean
 gabble_media_stream_change_direction (GabbleMediaStream *stream,

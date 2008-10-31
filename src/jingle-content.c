@@ -1,5 +1,5 @@
 /*
- * gabble-jingle-session.c - Source for GabbleJingleContent
+ * gabble-jingle-content.c - Source for GabbleJingleContent
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -41,6 +41,7 @@ enum
 {
   READY,
   NEW_CANDIDATES,
+  REMOVED,
   LAST_SIGNAL
 };
 
@@ -394,6 +395,13 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     NULL, NULL,
     g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
+  signals[REMOVED] = g_signal_new ("removed",
+    G_OBJECT_CLASS_TYPE (cls),
+    G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+    0,
+    NULL, NULL,
+    g_cclosure_marshal_VOID__VOID,
+    G_TYPE_NONE, 0);
 }
 
 #define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
@@ -434,7 +442,7 @@ send_gtalk4_transport_accept (gpointer user_data)
   tnode = lm_message_node_add_child (sess_node, "transport", NULL);
   lm_message_node_set_attribute (tnode, "xmlns", priv->transport_ns);
 
-  gabble_jingle_session_send (c->session, msg, NULL);
+  gabble_jingle_session_send (c->session, msg, NULL, NULL);
 
   return FALSE;
 }
@@ -765,7 +773,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
   msg = gabble_jingle_session_new_message (self->session,
       action, &sess_node);
   gabble_jingle_content_produce_node (self, sess_node, TRUE);
-  gabble_jingle_session_send (self->session, msg, NULL);
+  gabble_jingle_session_send (self->session, msg, NULL, NULL);
 
   priv->state = new_state;
   g_object_notify (G_OBJECT (self), "state");
@@ -846,25 +854,6 @@ gabble_jingle_content_set_transport_state (GabbleJingleContent *self,
     }
 }
 
-void
-gabble_jingle_content_accept (GabbleJingleContent *c)
-{
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
-  LmMessage *msg;
-  LmMessageNode *sess_node;
-
-  g_assert (!priv->created_by_us);
-  g_assert (gabble_jingle_content_is_ready (c));
-
-  msg = gabble_jingle_session_new_message (c->session,
-      JINGLE_ACTION_CONTENT_ACCEPT, &sess_node);
-
-  gabble_jingle_content_produce_node (c, sess_node, TRUE);
-  gabble_jingle_session_send (c->session, msg, NULL);
-
-  g_object_set (c, "state", JINGLE_CONTENT_STATE_ACKNOWLEDGED, NULL);
-}
-
 GList *
 gabble_jingle_content_get_remote_candidates (GabbleJingleContent *c)
 {
@@ -895,9 +884,51 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
   msg = gabble_jingle_session_new_message (c->session,
       JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
   gabble_jingle_content_produce_node (c, sess_node, FALSE); 
-  gabble_jingle_session_send (c->session, msg, NULL);
+  gabble_jingle_session_send (c->session, msg, NULL, NULL);
 
   /* FIXME: actually check whether remote end accepts our content-modify */
   return TRUE;
+}
+
+static void
+_on_remove_reply (GabbleJingleSession *sess, gboolean success,
+    LmMessage *reply, gpointer user_data)
+{
+  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (user_data);
+  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+
+  g_assert (priv->state == JINGLE_CONTENT_STATE_REMOVING);
+
+  g_signal_emit (c, signals[REMOVED], 0);
+}
+
+void
+gabble_jingle_content_remove (GabbleJingleContent *c)
+{
+  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  LmMessage *msg;
+  LmMessageNode *sess_node;
+
+  if (priv->state == JINGLE_CONTENT_STATE_REMOVING)
+    {
+      DEBUG ("ignoring request to remove content which is already being removed");
+      return;
+    }
+
+  priv->state = JINGLE_CONTENT_STATE_REMOVING;
+  g_object_notify ((GObject *) c, "state");
+
+  /* If we were already signalled, we have to signal removal to the peer. */
+  if (priv->state != JINGLE_CONTENT_STATE_EMPTY)
+    {
+      msg = gabble_jingle_session_new_message (c->session,
+          JINGLE_ACTION_CONTENT_REMOVE, &sess_node);
+      gabble_jingle_content_produce_node (c, sess_node, FALSE);
+      gabble_jingle_session_send (c->session, msg, _on_remove_reply, c);
+    }
+  else
+    {
+      g_signal_emit (c, signals[REMOVED], 0);
+    }
 }
 

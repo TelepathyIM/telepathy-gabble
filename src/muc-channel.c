@@ -1476,7 +1476,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
           break;
         default:
           tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              gabble_xmpp_error_description (error));
+              "%s", gabble_xmpp_error_description (error));
           break;
       }
 
@@ -2125,7 +2125,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           GError *error = NULL;
 
           error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-              (err_desc) ? err_desc : "failed to change subject");
+              "%s", (err_desc) ? err_desc : "failed to change subject");
 
           tp_properties_context_return (priv->properties_ctx, error);
           priv->properties_ctx = NULL;

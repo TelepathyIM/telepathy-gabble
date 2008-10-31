@@ -205,8 +205,10 @@ class JingleProtocol015(JingleProtocol):
     def Description(self, type, children):
         if type == 'audio':
             ns = 'http://jabber.org/protocol/jingle/description/audio'
-        else:
+        elif type == 'video':
             ns = 'http://jabber.org/protocol/jingle/description/video'
+        else:
+            ns = 'unexistent-namespace'
         return ('description', ns, { 'type': type }, children)
 
 class JingleProtocol031(JingleProtocol):

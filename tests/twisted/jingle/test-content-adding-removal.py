@@ -144,12 +144,12 @@ def test(q, bus, conn, stream):
     assert e.query['action'] == 'content-remove'
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 
-    # Then we remove the second stream
+    # Then we remove the second stream, which terminates the session
     media_iface.RemoveStreams([stream2_id])
 
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
-    assert e.query['action'] == 'content-remove'
+    assert e.query['action'] == 'session-terminate'
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 
     # Now the session should be terminated

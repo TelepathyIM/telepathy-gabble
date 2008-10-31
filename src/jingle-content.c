@@ -900,6 +900,8 @@ _on_remove_reply (GabbleJingleSession *sess, gboolean success,
   g_assert (priv->state == JINGLE_CONTENT_STATE_REMOVING);
 
   g_signal_emit (c, signals[REMOVED], 0);
+
+  g_object_unref (c);
 }
 
 void
@@ -928,6 +930,7 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
       msg = gabble_jingle_session_new_message (c->session,
           JINGLE_ACTION_CONTENT_REMOVE, &sess_node);
       gabble_jingle_content_produce_node (c, sess_node, FALSE);
+      g_object_ref (c);
       gabble_jingle_session_send (c->session, msg, _on_remove_reply, c);
     }
   else

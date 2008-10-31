@@ -1480,6 +1480,9 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
   g_object_get (c, "name", &name, NULL);
   g_hash_table_remove (priv->contents, name);
 
+  if (priv->state == JS_STATE_ENDED)
+      return;
+
   if (count_active_contents (sess) == 0)
     {
       /* Terminate the session from idle loop

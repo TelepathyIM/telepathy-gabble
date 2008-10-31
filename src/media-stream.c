@@ -114,6 +114,9 @@ struct _GabbleMediaStreamPrivate
 
   guint remote_candidate_count;
 
+  /* signal handler ID for content REMOVED signal */
+  gboolean removed_id;
+
   /* These are really booleans, but gboolean is signed. Thanks, GLib */
   unsigned closed:1;
   unsigned dispose_has_run:1;
@@ -358,7 +361,7 @@ gabble_media_stream_set_property (GObject      *object,
       g_signal_connect (priv->content, "notify::senders",
           (GCallback) content_senders_changed_cb, stream);
 
-      g_signal_connect (priv->content, "removed",
+      priv->removed_id = g_signal_connect (priv->content, "removed",
           (GCallback) content_removed_cb, stream);
 
       /* we can immediately get the codecs if we're responder */
@@ -633,6 +636,14 @@ gabble_media_stream_dispose (GObject *object)
   g_signal_emit (self, signals[DESTROY], 0);
 
   priv->dispose_has_run = TRUE;
+
+  /* If content wasn't removed already, it will emit REMOVED signal
+   * later on. We don't want to catch that. */
+  if (priv->removed_id)
+    {
+      g_signal_handler_disconnect (priv->content, priv->removed_id);
+      priv->removed_id = 0;
+    }
 
   if (G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose (object);

@@ -430,6 +430,8 @@
       </message>
       ]]>
     </example>
+    <p>Only stream tubes can be closed explicitely. D-Bus tubes have exactly
+      one stream. The D-Bus tube must be closed when the stream is closed.</p>
   </section2>
   <section2 topic='In a link-local multi-user chat' anchor='usecases-llmuc'>
     <example caption='Offering a new D-Bus tube'>

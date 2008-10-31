@@ -98,9 +98,9 @@ GType gabble_jingle_session_get_content_type (GabbleJingleSession *);
 GList *gabble_jingle_session_get_contents (GabbleJingleSession *sess);
 
 typedef void (*JingleReplyHandler) (GabbleJingleSession *, gboolean success,
-    LmMessage *reply);
+    LmMessage *reply, gpointer user_data);
 void gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
-    JingleReplyHandler cb);
+    JingleReplyHandler cb, gpointer user_data);
 
 
 #endif /* __JINGLE_SESSION_H__ */

@@ -233,6 +233,11 @@ parse_description (GabbleJingleContent *content,
           mtype = JINGLE_MEDIA_TYPE_AUDIO;
       else if (!tp_strdiff (type, "video"))
           mtype = JINGLE_MEDIA_TYPE_VIDEO;
+      else
+        {
+          SET_BAD_REQ("unknown media type %s", type);
+          return;
+        }
     }
   else if (lm_message_node_has_namespace (desc_node,
         NS_JINGLE_DESCRIPTION_AUDIO, NULL))

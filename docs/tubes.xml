@@ -430,8 +430,9 @@
       </message>
       ]]>
     </example>
-    <p>Only stream tubes can be closed explicitely. D-Bus tubes have exactly
-      one stream. The D-Bus tube must be closed when the stream is closed.</p>
+    <p>Only stream tubes use a message stanza to be closed. D-Bus tubes are
+       closed implicitly when the underlying bytestream is closed and thus do
+       not need an explicit message stanza.</p>
   </section2>
   <section2 topic='In a link-local multi-user chat' anchor='usecases-llmuc'>
     <example caption='Offering a new D-Bus tube'>

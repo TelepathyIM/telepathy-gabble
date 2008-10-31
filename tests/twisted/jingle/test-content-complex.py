@@ -224,5 +224,5 @@ def test031(q, bus, conn, stream):
     return worker(JingleProtocol031(),q, bus, conn, stream)
 
 if __name__ == '__main__':
-    exec_tests([test015, test031] * 10)
+    exec_tests([test015, test031])
 

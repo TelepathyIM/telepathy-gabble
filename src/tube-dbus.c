@@ -134,7 +134,8 @@ struct _GabbleTubeDBusPrivate
 static void data_received_cb (GabbleBytestreamIface *stream, TpHandle sender,
     GString *data, gpointer user_data);
 
-static void gabble_tube_dbus_close (GabbleTubeIface *tube, gboolean local);
+static void gabble_tube_dbus_close (GabbleTubeIface *tube, gboolean
+    closed_remotely);
 
 /*
  * Characters used are permissible both in filenames and in D-Bus names. (See
@@ -1165,7 +1166,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube,
  * Implements gabble_tube_iface_close on GabbleTubeIface
  */
 static void
-gabble_tube_dbus_close (GabbleTubeIface *tube, gboolean local)
+gabble_tube_dbus_close (GabbleTubeIface *tube, gboolean closed_remotely)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
 

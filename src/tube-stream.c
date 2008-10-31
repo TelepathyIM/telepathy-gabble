@@ -1304,7 +1304,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
  * Implements gabble_tube_iface_close on GabbleTubeIface
  */
 static void
-gabble_tube_stream_close (GabbleTubeIface *tube, gboolean local)
+gabble_tube_stream_close (GabbleTubeIface *tube, gboolean closed_remotely)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
@@ -1316,7 +1316,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube, gboolean local)
   g_hash_table_foreach_remove (priv->fd_to_bytestreams,
       close_each_extra_bytestream, self);
 
-  if (local && priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+  if (!closed_remotely && priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       LmMessage *msg;
       const gchar *jid;

@@ -1574,7 +1574,8 @@ tube_msg_offered (GabbleTubesChannel *self,
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
     {
-      DEBUG ("tube ID already in use. Close both tubes");
+      DEBUG ("tube ID already in use. Do not open the offered tube and close "
+          "the existing tube id %u", tube_id);
       gabble_tube_iface_close (tube, TRUE);
       return;
     }

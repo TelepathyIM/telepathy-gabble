@@ -662,10 +662,7 @@ _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
       return;
     }
 
-  g_object_set (c, "state", JINGLE_CONTENT_STATE_REMOVING, NULL);
-  /* FIXME: we emit "removed" on GabbleJingleContent object, is this
-   * too hackish? */
-  g_signal_emit_by_name (c, "removed");
+  gabble_jingle_content_remove (c, FALSE);
 }
 
 static void
@@ -1447,6 +1444,31 @@ _terminate_delayed (gpointer user_data)
 }
 
 static void
+_foreach_count_active_contents (gpointer key, gpointer value, gpointer user_data)
+{
+  GabbleJingleContent *c = value;
+  guint *n_contents = user_data;
+  JingleContentState state;
+
+  g_object_get (c, "state", &state, NULL);
+  if ((state > JINGLE_CONTENT_STATE_NEW) &&
+      (state < JINGLE_CONTENT_STATE_REMOVING))
+    {
+      *n_contents = *n_contents + 1;
+    }
+}
+
+static gboolean
+count_active_contents (GabbleJingleSession *sess)
+{
+  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  guint n_contents = 0;
+
+  g_hash_table_foreach (priv->contents, _foreach_count_active_contents, &n_contents);
+  return n_contents;
+}
+
+static void
 content_removed_cb (GabbleJingleContent *c, gpointer user_data)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
@@ -1458,7 +1480,7 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
   g_object_get (c, "name", &name, NULL);
   g_hash_table_remove (priv->contents, name);
 
-  if (g_hash_table_size (priv->contents) == 0)
+  if (count_active_contents (sess) == 0)
     {
       /* Terminate the session from idle loop
        * so that content removal can be processed
@@ -1467,30 +1489,21 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
     }
 }
 
+
 void
 gabble_jingle_session_remove_content (GabbleJingleSession *sess,
     GabbleJingleContent *c)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
-
-  DEBUG ("called");
-
-  /* If this is the last content, instead of removing it we can just
-   * terminate the entire session. */
-  if (g_hash_table_size (priv->contents) == 1)
+  if (count_active_contents (sess) > 1)
     {
-      /* We'll fake the content removal signal, so both we and media
-       * channel clean up after it properly. */
-      // gabble_jingle_session_terminate (sess);
-      DEBUG ("manually removing content %p and emitting the signal", c);
-      g_object_set (c, "state", JINGLE_CONTENT_STATE_REMOVING, NULL);
-      g_signal_emit_by_name (c, "removed");
-      return;
+      gabble_jingle_content_remove (c, TRUE);
     }
-
-  /* When content-remove is acknowledged, "removed" signal will be fired,
-   * so we can clean up. */
-  gabble_jingle_content_remove (c);
+  else
+    {
+      /* session will be terminated when the content gets maked as removed */
+      DEBUG ("called for last active content, doing session-terminate instead");
+      gabble_jingle_content_remove (c, FALSE);
+    }
 }
 
 GabbleJingleContent *

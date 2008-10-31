@@ -903,11 +903,13 @@ _on_remove_reply (GabbleJingleSession *sess, gboolean success,
 }
 
 void
-gabble_jingle_content_remove (GabbleJingleContent *c)
+gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
 {
   GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
   LmMessage *msg;
   LmMessageNode *sess_node;
+
+  DEBUG ("called for content %s", priv->name);
 
   if (priv->state == JINGLE_CONTENT_STATE_REMOVING)
     {
@@ -918,8 +920,10 @@ gabble_jingle_content_remove (GabbleJingleContent *c)
   priv->state = JINGLE_CONTENT_STATE_REMOVING;
   g_object_notify ((GObject *) c, "state");
 
-  /* If we were already signalled, we have to signal removal to the peer. */
-  if (priv->state != JINGLE_CONTENT_STATE_EMPTY)
+  /* If we were already signalled and removal is not a side-effect of
+   * something else (sesssion termination, or removal by peer),
+   * we have to signal removal to the peer. */
+  if (signal_peer && (priv->state != JINGLE_CONTENT_STATE_EMPTY))
     {
       msg = gabble_jingle_session_new_message (c->session,
           JINGLE_ACTION_CONTENT_REMOVE, &sess_node);

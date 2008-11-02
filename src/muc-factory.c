@@ -810,6 +810,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
   if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
+      /* FIXME: emit a delivery report */
       tp_svc_channel_type_text_emit_send_error ((TpSvcChannelTypeText *) chan,
           send_error, stamp, msgtype, body);
       goto done;

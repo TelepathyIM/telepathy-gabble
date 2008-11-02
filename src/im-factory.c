@@ -274,6 +274,7 @@ im_factory_message_cb (LmMessageHandler *handler,
       DEBUG ("got error sending to %s (handle %u), msgtype %u, body:\n%s",
          from, handle, msgtype, body);
 
+      /* FIXME: emit a delivery report */
       tp_svc_channel_type_text_emit_send_error ((TpSvcChannelTypeText *) chan,
           send_error, stamp, msgtype, body);
 

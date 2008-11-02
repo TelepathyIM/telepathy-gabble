@@ -2225,12 +2225,15 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              const gchar *text,
                              LmMessage *msg)
 {
-  TpMessage *message;
   GabbleMucChannelPrivate *priv;
+  TpBaseConnection *base_conn;
+  TpMessage *message;
+  gboolean is_echo = FALSE;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  base_conn = (TpBaseConnection *) priv->conn;
 
   if (handle_type == TP_HANDLE_TYPE_ROOM)
     {
@@ -2239,18 +2242,14 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       return;
     }
 
-  if ((sender == chan->group.self_handle) && (timestamp == 0))
-    {
-      /* If we sent the message and it's not delayed, do nothing; we already
-       * emitted the Sent signals.
-       */
+  /* If we sent the message and it's not delayed, this is an echo from the MUC;
+   * we'll emit a delivery report.
+   * For messages from other contacts, or our own delayed messages, we'll emit
+   * a received message.
+   */
+  is_echo = ((sender == chan->group.self_handle) && (timestamp == 0));
 
-      /* TODO: emit a delivery report. */
-      return;
-    }
-
-  /* Receive messages from other contacts and our own if they're delayed */
-  message = tp_message_new ((TpBaseConnection *) priv->conn, 2, 2);
+  message = tp_message_new (base_conn, 2, 2);
 
   /* Header */
   if (msg_type != TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL)
@@ -2267,7 +2266,23 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   tp_message_set_string (message, 1, "type", "text/plain");
   tp_message_set_string (message, 1, "content", text);
 
-  tp_message_mixin_take_received (G_OBJECT (chan), message);
+  if (is_echo)
+    {
+      TpMessage *delivery_report = tp_message_new (base_conn, 1, 1);
+
+      tp_message_set_uint32 (delivery_report, 0, "message-type",
+          TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
+      tp_message_set_uint32 (delivery_report, 0, "delivery-status",
+          1); /* FIXME: Delivery_Status_Delivered */
+      tp_message_take_message (delivery_report, 0, "delivery-echo",
+          message);
+
+      tp_message_mixin_take_received (G_OBJECT (chan), delivery_report);
+    }
+  else
+    {
+      tp_message_mixin_take_received (G_OBJECT (chan), message);
+    }
 }
 
 /**

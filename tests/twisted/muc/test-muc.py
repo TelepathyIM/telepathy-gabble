@@ -183,7 +183,45 @@ def test(q, bus, conn, stream):
     elem['from'] = 'chat@conf.localhost/test'
     stream.send(elem)
 
-    # TODO: check for a delivery report
+    # Check that we got the corresponding delivery report
+    report, old_received = q.expect_many(
+        EventPattern('dbus-signal', signal='MessageReceived'),
+        EventPattern('dbus-signal', signal='Received'),
+        )
+
+    assert len(report.args) == 1, report.args
+    parts = report.args[0]
+    # The delivery report should just be a header, no body.
+    assert len(parts) == 1, parts
+    part = parts[0]
+    # The intended recipient was the MUC, so there's no contact handle
+    # suitable for being 'message-sender'.
+    assert 'message-sender' not in part or part['message-sender'] == 0, part
+    assert part['message-type'] == 4, part # Message_Type_Delivery_Report
+    assert part['delivery-status'] == 1, part # Delivery_Status_Delivered
+    # Gabble doesn't issue tokens for messages you send, so no token should be
+    # in the report
+    assert 'delivery-token' not in part, part
+    assert 'delivery-error' not in part, part
+    assert 'delivery-echo' in part, part
+
+    # Check that the included echo is from us, and matches all the keys in the
+    # message we sent.
+    echo = part['delivery-echo']
+    assert len(echo) == len(greeting), (echo, greeting)
+    # Earlier in this test we checked that handle 2 is us.
+    assert echo[0]['message-sender'] == 2, echo[0]
+    for i in range(0, len(echo)):
+        for key in greeting[i]:
+            assert key in echo[i], (i, key, echo)
+            assert echo[i][key] == greeting[i][key], (i, key, echo, greeting)
+
+    # The Text.Received signal should be a "you're not tall enough" stub
+    id, timestamp, sender, type, flags, text = old_received.args
+    assert sender == 0, old_received.args
+    assert type == 4, old_received.args # Message_Type_Delivery_Report
+    assert flags == 2, old_received.args # Non_Text_Content
+    assert text == '', old_received.args
 
 
     # Send a normal message using the Channel.Type.Text API

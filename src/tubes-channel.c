@@ -1917,9 +1917,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4 &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV6)
+  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Address type %d not implemented", address_type);

@@ -80,9 +80,11 @@ enum
 enum _Socks5State
 {
   SOCKS5_STATE_INVALID,
-  SOCKS5_STATE_AUTH,
+  SOCKS5_STATE_AUTH_REQUEST_SENT,
   SOCKS5_STATE_CONNECT_REQUESTED,
   SOCKS5_STATE_CONNECTED,
+  SOCKS5_STATE_AWAITING_AUTH_REQUEST,
+  SOCKS5_STATE_AWAITING_COMMAND,
 };
 
 typedef enum _Socks5State Socks5State;
@@ -433,7 +435,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
   switch (priv->socks5_state)
     {
-      case SOCKS5_STATE_AUTH:
+      case SOCKS5_STATE_AUTH_REQUEST_SENT:
         if (string->len < 2)
           return 0;
 
@@ -471,6 +473,39 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         _gabble_connection_acknowledge_set_iq (priv->conn, priv->msg_for_acknowledge_connection);
 
         return 2;
+
+      case SOCKS5_STATE_AWAITING_AUTH_REQUEST:
+        if (string->len < 3)
+          return 0;
+
+        /* FIXME: handle errors */
+        g_assert (string->str[0] == SOCKS5_VERSION &&
+            string->str[1] == 1 &&
+            string->str[2] == SOCKS5_AUTH_NONE);
+
+        msg[0] = SOCKS5_VERSION;
+        msg[1] = SOCKS5_AUTH_NONE;
+
+        socks5_schedule_write (self, msg, 2);
+
+        priv->socks5_state = SOCKS5_STATE_AWAITING_COMMAND;
+
+        return 3;
+
+      case SOCKS5_STATE_AWAITING_COMMAND:
+        if (string->len < 47)
+          return 0;
+
+        /* FIXME: check the values */
+
+        msg[0] = SOCKS5_VERSION;
+        msg[1] = SOCKS5_STATUS_OK; // XXX rinominare OK?
+
+        socks5_schedule_write (self, msg, 2);
+
+        priv->socks5_state = SOCKS5_STATE_CONNECTED;
+
+        return 47;
 
       case SOCKS5_STATE_CONNECTED:
         g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0, priv->peer_handle, string);
@@ -626,14 +661,14 @@ socks5_connect (gpointer data)
   g_assert (priv->read_buffer == NULL);
   priv->read_buffer = g_string_sized_new (4096);
 
-  priv->socks5_state = SOCKS5_STATE_AUTH;
-
   msg[0] = SOCKS5_VERSION;
   /* Number of auth methods we are offering */
   msg[1] = 1;
   msg[2] = SOCKS5_AUTH_NONE;
 
   socks5_schedule_write (self, msg, 3);
+
+  priv->socks5_state = SOCKS5_STATE_AUTH_REQUEST_SENT;
 
   return FALSE;
 }
@@ -912,6 +947,47 @@ socks5_init_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static gboolean
+socks5_listen_cb (GIOChannel *source,
+                  GIOCondition condition,
+                  gpointer data)
+{
+  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  gint fd;
+  struct sockaddr_in addr;
+  guint addr_len = sizeof (addr);
+  int flags;
+
+  fd = accept (g_io_channel_unix_get_fd (source), (struct sockaddr *) &addr,
+      &addr_len);
+
+  /* Set non-blocking */
+  flags = fcntl (fd, F_GETFL, 0);
+  fcntl (fd, F_SETFL, flags | O_NONBLOCK);
+
+  priv->io_channel = g_io_channel_unix_new (fd);
+
+  g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
+  g_io_channel_set_buffered (priv->io_channel, FALSE);
+  g_io_channel_set_close_on_unref (priv->io_channel, TRUE);
+
+  priv->read_watch = g_io_add_watch(priv->io_channel, G_IO_IN,
+      socks5_channel_readable_cb, self);
+  priv->error_watch = g_io_add_watch(priv->io_channel, G_IO_HUP | G_IO_ERR,
+      socks5_channel_error_cb, self);
+
+  g_assert (priv->write_buffer == NULL);
+  priv->write_buffer = g_string_new ("");
+
+  g_assert (priv->read_buffer == NULL);
+  priv->read_buffer = g_string_sized_new (4096);
+
+  priv->socks5_state = SOCKS5_STATE_AWAITING_AUTH_REQUEST;
+
+  return FALSE;
+}
+
 /*
  * gabble_bytestream_socks5_initiate
  *
@@ -922,8 +998,10 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  struct sockaddr_in addr;
+  gint fd;
+  GIOChannel *channel;
   LmMessage *msg;
-  //gchar *block_size;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -931,6 +1009,21 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
           priv->bytestream_state);
       return FALSE;
     }
+
+  fd = socket (AF_INET, SOCK_STREAM, 0);
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = INADDR_ANY;
+  addr.sin_port = htons (5087);
+
+  /* FIXME: check the return values */
+  bind (fd, (struct sockaddr *)&addr, sizeof (addr));
+  listen (fd, 5);
+  channel = g_io_channel_unix_new (fd);
+
+  g_io_channel_set_close_on_unref (channel, TRUE);
+
+  /* FIXME handle errors */
+  priv->read_watch = g_io_add_watch (channel, G_IO_IN, socks5_listen_cb, self);
 
   /* FIXME: send a real address and port. */
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
@@ -942,7 +1035,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
         '(', "streamhost", "",
           '@', "jid", priv->peer_jid,
           '@', "host", "127.0.0.1",
-          '@', "port", "5086",
+          '@', "port", "5087",
         ')',
       ')', NULL);
 

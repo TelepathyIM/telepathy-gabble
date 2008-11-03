@@ -40,14 +40,15 @@ def test(q, bus, conn, stream):
     # send an empty roster
     stream.send(roster_event.stanza)
 
+    event = q.expect('dbus-return', method='RequestChannel')
+    path = event.value[0]
+
     while True:
         event = q.expect('dbus-signal', signal='NewChannel')
-        path, type, handle_type, handle, suppress_handler = event.args
+        assert event.args[0] == path, (event.args, path)
+        _, type, handle_type, handle, suppress_handler = event.args
         if handle_type == HT_GROUP and handle == test_handle:
-            break;
-
-    event = q.expect('dbus-return', method='RequestChannel')
-    assert event.value[0] == path, (event.args[0], path)
+            break
 
 if __name__ == '__main__':
     exec_test(test)

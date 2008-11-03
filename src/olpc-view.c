@@ -25,21 +25,27 @@
 #include <glib.h>
 
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/svc-generic.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_OLPC
 
+#include "conn-olpc.h"
 #include "debug.h"
 #include "extensions/extensions.h"
 #include "gabble-signals-marshal.h"
 #include "olpc-activity.h"
 #include "namespaces.h"
+#include "presence-cache.h"
 #include "util.h"
 
 /* signals */
 enum
 {
-  CLOSED,
   BUDDY_ACTIVITIES_CHANGED,
   LAST_SIGNAL
 };
@@ -49,9 +55,26 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
-  PROP_TYPE,
-  PROP_OBJECT_PATH,
+  PROP_OBJECT_PATH = 1,
+  /* org.freedesktop.Telepathy.Channel D-Bus properties */
+  PROP_CHANNEL_TYPE,
+  PROP_INTERFACES,
+  PROP_HANDLE,
+  PROP_TARGET_ID,
+  PROP_HANDLE_TYPE,
+  PROP_REQUESTED,
+  PROP_INITIATOR_HANDLE,
+  PROP_INITIATOR_ID,
+
+  PROP_CHANNEL_DESTROYED,
+  PROP_CHANNEL_PROPERTIES,
+
+  /* org.laptop.Telepathy.Channel.Type.View D-Bus properties */
+  PROP_MAX_SIZE,
+  PROP_BUDDIES,
+  PROP_ACTIVITIES,
+
+  PROP_CONNECTION,
   PROP_ID,
   LAST_PROPERTY
 };
@@ -59,11 +82,7 @@ enum
 typedef struct _GabbleOlpcViewPrivate GabbleOlpcViewPrivate;
 struct _GabbleOlpcViewPrivate
 {
-  GabbleConnection *conn;
-  /* FIXME: subclass instead of using a type attribute ? */
-  GabbleOlpcViewType type;
-  char *object_path;
-  guint id;
+  gboolean closed;
 
   TpHandleSet *buddies;
   /* TpHandle => GabbleOlpcActivity * */
@@ -77,12 +96,22 @@ struct _GabbleOlpcViewPrivate
   gboolean dispose_has_run;
 };
 
-static void view_iface_init (gpointer, gpointer);
+static void channel_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (
     GabbleOlpcView, gabble_olpc_view, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_VIEW,
-      view_iface_init));
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
+      tp_dbus_properties_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_CHANNEL_INTERFACE_VIEW, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
+    );
+
+static const gchar *gabble_olpc_view_interfaces[] = {
+    GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW,
+    NULL
+};
 
 #define GABBLE_OLPC_VIEW_GET_PRIVATE(obj) \
     ((GabbleOlpcViewPrivate *) obj->priv)
@@ -95,7 +124,7 @@ gabble_olpc_view_init (GabbleOlpcView *self)
       GABBLE_TYPE_OLPC_VIEW, GabbleOlpcViewPrivate);
 
   self->priv = priv;
-
+  priv->closed = FALSE;
   priv->dispose_has_run = FALSE;
 }
 
@@ -142,11 +171,42 @@ static void
 gabble_olpc_view_finalize (GObject *object)
 {
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (object);
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
 
-  g_free (priv->object_path);
+  g_free (self->object_path);
 
   G_OBJECT_CLASS (gabble_olpc_view_parent_class)->finalize (object);
+}
+
+static void
+add_activity_to_array (TpHandle handle,
+                       GabbleOlpcActivity *activity,
+                       GPtrArray *array)
+{
+  GValue gvalue = { 0 };
+
+  g_value_init (&gvalue, GABBLE_STRUCT_TYPE_ACTIVITY);
+  g_value_take_boxed (&gvalue, dbus_g_type_specialized_construct
+      (GABBLE_STRUCT_TYPE_ACTIVITY));
+  dbus_g_type_struct_set (&gvalue,
+      0, activity->id,
+      1, activity->room,
+      G_MAXUINT);
+
+  g_ptr_array_add (array, g_value_get_boxed (&gvalue));
+}
+
+static GPtrArray *
+create_activities_array (GabbleOlpcView *self)
+{
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GPtrArray *activities;
+
+  activities = g_ptr_array_new ();
+
+  g_hash_table_foreach (priv->activities, (GHFunc) add_activity_to_array,
+      activities);
+
+  return activities;
 }
 
 static void
@@ -157,20 +217,65 @@ gabble_olpc_view_get_property (GObject *object,
 {
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (object);
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  TpBaseConnection *base_conn = (TpBaseConnection *) self->conn;
 
   switch (property_id)
     {
-      case PROP_CONNECTION:
-        g_value_set_object (value, priv->conn);
-        break;
-      case PROP_TYPE:
-        g_value_set_uint (value, priv->type);
-        break;
       case PROP_OBJECT_PATH:
-        g_value_set_string (value, priv->object_path);
+        g_value_set_string (value, self->object_path);
+        break;
+      case PROP_CHANNEL_TYPE:
+        /* This property has to be implemented in the concrete classes */
+        break;
+      case PROP_HANDLE_TYPE:
+        g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
+        break;
+      case PROP_HANDLE:
+        g_value_set_uint (value, 0);
+        break;
+      case PROP_INITIATOR_HANDLE:
+        g_value_set_uint (value, base_conn->self_handle);
+        break;
+      case PROP_INITIATOR_ID:
+          {
+            TpHandleRepoIface *repo = tp_base_connection_get_handles (
+                base_conn, TP_HANDLE_TYPE_CONTACT);
+
+            g_value_set_string (value,
+                tp_handle_inspect (repo, base_conn->self_handle));
+          }
+        break;
+      case PROP_TARGET_ID:
+          {
+            g_value_set_string (value, NULL);
+        }
+        break;
+      case PROP_REQUESTED:
+        g_value_set_boolean (value, TRUE);
+        break;
+     case PROP_INTERFACES:
+        g_value_set_boxed (value, gabble_olpc_view_interfaces);
+        break;
+      case PROP_CHANNEL_DESTROYED:
+        g_value_set_boolean (value, priv->closed);
+        break;
+      case PROP_CHANNEL_PROPERTIES:
+        /* This property has to be implemented in the concrete classes */
+        break;
+      case PROP_CONNECTION:
+        g_value_set_object (value, self->conn);
         break;
       case PROP_ID:
-        g_value_set_uint (value, priv->id);
+        g_value_set_uint (value, self->id);
+        break;
+      case PROP_MAX_SIZE:
+        g_value_set_uint (value, self->max_size);
+        break;
+      case PROP_BUDDIES:
+        g_value_take_boxed (value, tp_handle_set_to_array (priv->buddies));
+        break;
+      case PROP_ACTIVITIES:
+        g_value_take_boxed (value, create_activities_array (self));
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -185,18 +290,28 @@ gabble_olpc_view_set_property (GObject *object,
                                GParamSpec *pspec)
 {
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (object);
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
 
   switch (property_id)
     {
-      case PROP_CONNECTION:
-        priv->conn = g_value_get_object (value);
+      case PROP_OBJECT_PATH:
+        g_free (self->object_path);
+        self->object_path = g_value_dup_string (value);
         break;
-      case PROP_TYPE:
-        priv->type = g_value_get_uint (value);
+      case PROP_HANDLE:
+      case PROP_INITIATOR_HANDLE:
+      case PROP_HANDLE_TYPE:
+      case PROP_CHANNEL_TYPE:
+        /* these properties are writable in the interface, but not actually
+         * meaningfully changeable on this channel, so we do nothing */
+        break;
+      case PROP_CONNECTION:
+        self->conn = g_value_get_object (value);
         break;
       case PROP_ID:
-        priv->id = g_value_get_uint (value);
+        self->id = g_value_get_uint (value);
+        break;
+      case PROP_MAX_SIZE:
+        self->max_size = g_value_get_uint (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -210,21 +325,17 @@ gabble_olpc_view_constructor (GType type,
                               GObjectConstructParam *props)
 {
   GObject *obj;
+  GabbleOlpcView *self;
   GabbleOlpcViewPrivate *priv;
-  DBusGConnection *bus;
   TpBaseConnection *conn;
   TpHandleRepoIface *contact_handles;
 
   obj = G_OBJECT_CLASS (gabble_olpc_view_parent_class)->
            constructor (type, n_props, props);
 
-  priv = GABBLE_OLPC_VIEW_GET_PRIVATE (GABBLE_OLPC_VIEW (obj));
-  conn = (TpBaseConnection *) priv->conn;
-
-  priv->object_path = g_strdup_printf ("%s/OlpcView%u",
-      conn->object_path, priv->id);
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  self = GABBLE_OLPC_VIEW (obj);
+  priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  conn = (TpBaseConnection *) self->conn;
 
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -246,6 +357,36 @@ gabble_olpc_view_class_init (GabbleOlpcViewClass *gabble_olpc_view_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_olpc_view_class);
   GParamSpec *param_spec;
+   static TpDBusPropertiesMixinPropImpl channel_props[] = {
+      { "TargetHandleType", "handle-type", NULL },
+      { "TargetHandle", "handle", NULL },
+      { "TargetID", "target-id", NULL },
+      { "ChannelType", "channel-type", NULL },
+      { "Interfaces", "interfaces", NULL },
+      { "Requested", "requested", NULL },
+      { "InitiatorHandle", "initiator-handle", NULL },
+      { "InitiatorID", "initiator-id", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinPropImpl view_props[] = {
+      { "MaxSize", "max-size", NULL },
+      { "Buddies", "buddies", NULL },
+      { "Activities", "activities", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+      { TP_IFACE_CHANNEL,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        channel_props,
+      },
+      { GABBLE_IFACE_OLPC_CHANNEL_INTERFACE_VIEW,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        view_props,
+      },
+      { NULL }
+  };
 
   object_class->get_property = gabble_olpc_view_get_property;
   object_class->set_property = gabble_olpc_view_set_property;
@@ -257,63 +398,93 @@ gabble_olpc_view_class_init (GabbleOlpcViewClass *gabble_olpc_view_class)
   object_class->dispose = gabble_olpc_view_dispose;
   object_class->finalize = gabble_olpc_view_finalize;
 
-   param_spec = g_param_spec_object (
-      "connection",
-      "GabbleConnection object",
-      "Gabble connection object that owns this view object.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+  g_object_class_override_property (object_class, PROP_OBJECT_PATH,
+      "object-path");
+  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
+      "channel-type");
+  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
+      "handle-type");
+  g_object_class_override_property (object_class, PROP_HANDLE, "handle");
+  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
+      "channel-destroyed");
+  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
+      "channel-properties");
 
-  param_spec = g_param_spec_uint (
-      "type",
-      "view type",
-      "the type of query who creates this view object. A GabbleOlpcViewType",
-      GABBLE_OLPC_VIEW_TYPE_BUDDY, NUM_GABBLE_OLPC_VIEW_TYPE -1,
-      GABBLE_OLPC_VIEW_TYPE_BUDDY,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_TYPE, param_spec);
+  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
+      "Additional Channel.Interface.* interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
-  param_spec = g_param_spec_string (
-      "object-path",
-      "D-Bus object path",
-      "The D-Bus object path of this view object",
+  param_spec = g_param_spec_string ("target-id", "Peer's bare JID",
+      "The string obtained by inspecting the peer handle (never the full JID)",
       NULL,
       G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
 
-  param_spec = g_param_spec_uint (
-      "id",
-      "query ID",
+  param_spec = g_param_spec_boolean ("requested", "Requested?",
+      "True if this channel was requested by the local user",
+      FALSE,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
+
+  param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
+      "The contact who initiated the channel",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
+      "The string obtained by inspecting the initiator-handle",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_ID,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("max-size", "View's max size",
+      "The maximum number of elements that Gadget has to return to the "
+      "search request.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_MAX_SIZE,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("buddies", "View's buddies",
+      "The contact handles of the buddies who are in this view channel",
+      GABBLE_ARRAY_TYPE_HANDLE,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_BUDDIES,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("activities", "View's activities",
+      "The activities which are in this view channel",
+      GABBLE_ARRAY_TYPE_ACTIVITY_LIST,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_ACTIVITIES,
+      param_spec);
+
+   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
+      "Gabble connection object that owns this view object.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  param_spec = g_param_spec_uint ("id", "query ID",
       "The ID of the query associated with this view",
       0, G_MAXUINT, 0,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ID, param_spec);
-
-  /* We can't use "closed" as it's already use for the D-Bus signal... */
-  signals[CLOSED] =
-    g_signal_new ("closed_",
-        G_OBJECT_CLASS_TYPE (gabble_olpc_view_class),
-        G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-        0,
-        NULL, NULL,
-        gabble_marshal_VOID__VOID,
-        G_TYPE_NONE, 0);
 
   signals[BUDDY_ACTIVITIES_CHANGED] =
     g_signal_new ("buddy-activities-changed",
@@ -323,51 +494,10 @@ gabble_olpc_view_class_init (GabbleOlpcViewClass *gabble_olpc_view_class)
         NULL, NULL,
         gabble_marshal_VOID__UINT,
         G_TYPE_NONE, 1, G_TYPE_UINT);
-}
 
-GabbleOlpcView *
-gabble_olpc_view_new (GabbleConnection *conn,
-                      GabbleOlpcViewType type,
-                      guint id)
-{
-  return g_object_new (GABBLE_TYPE_OLPC_VIEW,
-      "connection", conn,
-      "type", type,
-      "id", id,
-      NULL);
-}
-
-static void
-olpc_view_get_buddies (GabbleSvcOLPCView *iface,
-                       DBusGMethodInvocation *context)
-{
-  GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
-  GArray *buddies;
-
-  buddies = tp_handle_set_to_array (priv->buddies);
-
-  gabble_svc_olpc_view_return_from_get_buddies (context, buddies);
-
-  g_array_free (buddies, TRUE);
-}
-
-static void
-add_activity_to_array (TpHandle handle,
-                       GabbleOlpcActivity *activity,
-                       GPtrArray *array)
-{
-  GValue gvalue = { 0 };
-
-  g_value_init (&gvalue, GABBLE_STRUCT_TYPE_ACTIVITY);
-  g_value_take_boxed (&gvalue, dbus_g_type_specialized_construct
-      (GABBLE_STRUCT_TYPE_ACTIVITY));
-  dbus_g_type_struct_set (&gvalue,
-      0, activity->id,
-      1, activity->room,
-      G_MAXUINT);
-
-  g_ptr_array_add (array, g_value_get_boxed (&gvalue));
+  gabble_olpc_view_class->dbus_props_class.interfaces = prop_interfaces;
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleOlpcViewClass, dbus_props_class));
 }
 
 static void
@@ -379,24 +509,6 @@ free_activities_array (GPtrArray *activities)
     g_boxed_free (GABBLE_STRUCT_TYPE_ACTIVITY, activities->pdata[i]);
 
   g_ptr_array_free (activities, TRUE);
-}
-
-static void
-olpc_view_get_activities (GabbleSvcOLPCView *iface,
-                          DBusGMethodInvocation *context)
-{
-  GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
-  GPtrArray *activities;
-
-  activities = g_ptr_array_new ();
-
-  g_hash_table_foreach (priv->activities, (GHFunc) add_activity_to_array,
-      activities);
-
-  gabble_svc_olpc_view_return_from_get_activities (context, activities);
-
-  free_activities_array (activities);
 }
 
 static void
@@ -414,58 +526,16 @@ buddy_left_activities_foreach (TpHandleSet *set,
       0, buddy);
 }
 
-static void
-olpc_view_close (GabbleSvcOLPCView *iface,
-                 DBusGMethodInvocation *context)
-{
-  GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
-  GError *error = NULL;
-
-  if (!gabble_olpc_view_close (self, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-    }
-
-  gabble_svc_olpc_view_return_from_close (context);
-}
-
-gboolean
-gabble_olpc_view_close (GabbleOlpcView *self,
-                        GError **error)
+static gboolean
+do_close (GabbleOlpcView *self,
+          GError **error)
 {
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   LmMessage *msg;
-  gchar *id_str;
 
-  id_str = g_strdup_printf ("%u", priv->id);
+  msg = GABBLE_OLPC_VIEW_GET_CLASS (self)->create_close_msg (self);
 
-  if (priv->type == GABBLE_OLPC_VIEW_TYPE_BUDDY)
-    {
-      msg = lm_message_build (priv->conn->olpc_gadget_buddy,
-          LM_MESSAGE_TYPE_MESSAGE,
-          '(', "close", "",
-            '@', "xmlns", NS_OLPC_BUDDY,
-            '@', "id", id_str,
-          ')', NULL);
-    }
-  else if (priv->type == GABBLE_OLPC_VIEW_TYPE_ACTIVITY)
-    {
-      msg = lm_message_build (priv->conn->olpc_gadget_activity,
-          LM_MESSAGE_TYPE_MESSAGE,
-          '(', "close", "",
-            '@', "xmlns", NS_OLPC_ACTIVITY,
-            '@', "id", id_str,
-          ')', NULL);
-    }
-  else
-    {
-      g_assert_not_reached ();
-    }
-
-  g_free (id_str);
-
-  if (!_gabble_connection_send (priv->conn, msg, error))
+  if (!_gabble_connection_send (self->conn, msg, error))
     {
       lm_message_unref (msg);
       return FALSE;
@@ -473,15 +543,97 @@ gabble_olpc_view_close (GabbleOlpcView *self,
 
   lm_message_unref (msg);
 
+  gabble_presence_cache_contacts_removed_from_olpc_view (
+      self->conn->presence_cache, priv->buddies);
+
   /* Claim that all the buddies left their activities */
   tp_handle_set_foreach (priv->buddies,
       (TpHandleSetMemberFunc) buddy_left_activities_foreach, self);
 
-  g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
-
-  gabble_svc_olpc_view_emit_closed (self);
+  priv->closed = TRUE;
+  tp_svc_channel_emit_closed (self);
 
   return TRUE;
+}
+
+void
+gabble_olpc_view_close (GabbleOlpcView *self)
+{
+  do_close (self, NULL);
+}
+
+/**
+ * gabble_olpc_view_close_dbus
+ *
+ * Implements D-Bus method Close
+ * on interface org.freedesktop.Telepathy.Channel
+ */
+static void
+gabble_olpc_view_close_dbus (TpSvcChannel *iface,
+                             DBusGMethodInvocation *context)
+{
+  GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GError *error = NULL;
+
+  if (priv->closed)
+    {
+      DEBUG ("Already closed. Doing nothing");
+    }
+  else
+    {
+      if (!do_close (self, &error))
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+        }
+    }
+
+  tp_svc_channel_return_from_close (context);
+}
+
+/**
+ * gabble_olpc_view_get_channel_type
+ *
+ * Implements D-Bus method GetChannelType
+ * on interface org.freedesktop.Telepathy.Channel
+ */
+static void
+gabble_olpc_view_get_channel_type (TpSvcChannel *iface,
+                                   DBusGMethodInvocation *context)
+{
+  gchar *channel_type;
+
+  g_object_get (iface, "channel-type", &channel_type, NULL);
+  tp_svc_channel_return_from_get_channel_type (context, channel_type);
+  g_free (channel_type);
+}
+
+/**
+ * gabble_olpc_view_get_handle
+ *
+ * Implements D-Bus method GetHandle
+ * on interface org.freedesktop.Telepathy.Channel
+ */
+static void
+gabble_olpc_view_get_handle (TpSvcChannel *iface,
+                             DBusGMethodInvocation *context)
+{
+  tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_NONE, 0);
+}
+
+/**
+ * gabble_olpc_view_get_interfaces
+ *
+ * Implements D-Bus method GetInterfaces
+ * on interface org.freedesktop.Telepathy.Channel
+ */
+static void
+gabble_olpc_view_get_interfaces (TpSvcChannel *iface,
+                                 DBusGMethodInvocation *context)
+{
+  tp_svc_channel_return_from_get_interfaces (context,
+      gabble_olpc_view_interfaces);
 }
 
 /* If room is not zero, these buddies are associated with the activity
@@ -496,18 +648,22 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   guint i;
   GArray *empty;
-  TpHandleRepoIface *room_repo;
+  TpHandleRepoIface *room_repo, *contact_repo;
   GArray *buddies_changed;
+  TpHandleSet *buddies_added;
 
   g_assert (buddies->len == buddies_properties->len);
   if (buddies->len == 0)
     return;
 
-  room_repo = tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
+  room_repo = tp_base_connection_get_handles ((TpBaseConnection *) self->conn,
       TP_HANDLE_TYPE_ROOM);
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->conn, TP_HANDLE_TYPE_CONTACT);
 
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   buddies_changed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+  buddies_added = tp_handle_set_new (contact_repo);
 
   /* store properties */
   for (i = 0; i < buddies->len; i++)
@@ -518,7 +674,13 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
       handle = g_array_index (buddies, TpHandle, i);
       properties = g_ptr_array_index (buddies_properties, i);
 
-      tp_handle_set_add (priv->buddies, handle);
+      if (!tp_handle_set_is_member (priv->buddies, handle))
+          {
+            tp_handle_set_add (priv->buddies, handle);
+
+            tp_handle_set_add (buddies_added, handle);
+           }
+
       g_hash_table_insert (priv->buddy_properties, GUINT_TO_POINTER (handle),
           properties);
       g_hash_table_ref (properties);
@@ -551,7 +713,15 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
         }
     }
 
-  gabble_svc_olpc_view_emit_buddies_changed (self, buddies, empty);
+  if (tp_handle_set_size (buddies_added) > 0)
+    {
+      gabble_presence_cache_contacts_added_to_olpc_view (
+          self->conn->presence_cache, buddies_added);
+    }
+  tp_handle_set_destroy (buddies_added);
+
+  gabble_svc_olpc_channel_interface_view_emit_buddies_changed (self, buddies,
+      empty);
 
   for (i = 0; i < buddies_changed->len; i++)
     {
@@ -593,7 +763,11 @@ gabble_olpc_view_remove_buddies (GabbleOlpcView *self,
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   removed = tp_handle_set_to_array (buddies);
 
-  gabble_svc_olpc_view_emit_buddies_changed (self, empty, removed);
+  gabble_svc_olpc_channel_interface_view_emit_buddies_changed (self, empty,
+      removed);
+
+  gabble_presence_cache_contacts_removed_from_olpc_view (
+      self->conn->presence_cache, buddies);
 
   g_array_free (empty, TRUE);
   g_array_free (removed, TRUE);
@@ -647,7 +821,8 @@ gabble_olpc_view_add_activities (GabbleOlpcView *self,
 
   empty = g_ptr_array_new ();
 
-  gabble_svc_olpc_view_emit_activities_changed (self, added, empty);
+  gabble_svc_olpc_channel_interface_view_emit_activities_changed (self, added,
+      empty);
 
   free_activities_array (added);
   g_ptr_array_free (empty, TRUE);
@@ -696,7 +871,7 @@ gabble_olpc_view_remove_activities (GabbleOlpcView *self,
     return;
 
   contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) self->conn, TP_HANDLE_TYPE_CONTACT);
 
   /* for easier iteration */
   array = tp_handle_set_to_array (rooms);
@@ -733,7 +908,8 @@ gabble_olpc_view_remove_activities (GabbleOlpcView *self,
       tp_handle_set_destroy (ctx.removed);
     }
 
-  gabble_svc_olpc_view_emit_activities_changed (self, empty, removed);
+  gabble_svc_olpc_channel_interface_view_emit_activities_changed (self, empty,
+      removed);
 
   free_activities_array (removed);
   g_ptr_array_free (empty, TRUE);
@@ -802,7 +978,7 @@ gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
   TpHandleSet *removed;
 
   contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) self->conn, TP_HANDLE_TYPE_CONTACT);
 
   removed = tp_handle_set_new (contact_repo);
 
@@ -834,16 +1010,24 @@ gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
   tp_handle_set_destroy (removed);
 }
 
-static void
-view_iface_init (gpointer g_iface,
-                 gpointer iface_data)
-{
-  GabbleSvcOLPCViewClass *klass = g_iface;
+gboolean
+gabble_olpc_view_send_request (GabbleOlpcView *self,
+                               GError **error)
 
-#define IMPLEMENT(x) gabble_svc_olpc_view_implement_##x (\
-    klass, olpc_view_##x)
-  IMPLEMENT(get_buddies);
-  IMPLEMENT(get_activities);
-  IMPLEMENT(close);
+{
+  return GABBLE_OLPC_VIEW_GET_CLASS (self)->send_request (self, error);
+}
+
+static void
+channel_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
+
+#define IMPLEMENT(x,suffix) tp_svc_channel_implement_##x (\
+    klass, gabble_olpc_view_##x##suffix)
+  IMPLEMENT(close,_dbus);
+  IMPLEMENT(get_channel_type,);
+  IMPLEMENT(get_handle,);
+  IMPLEMENT(get_interfaces,);
 #undef IMPLEMENT
 }

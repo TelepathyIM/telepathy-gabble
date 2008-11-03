@@ -12,20 +12,10 @@ from twisted.words.protocols.jabber.client import IQ
 
 from util import (announce_gadget, properties_to_xml, parse_properties,
     create_gadget_message, close_view)
+import ns
 
-NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
-NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
-NS_OLPC_CURRENT_ACTIVITY = "http://laptop.org/xmpp/current-activity"
-NS_OLPC_ACTIVITY_PROPS = "http://laptop.org/xmpp/activity-properties"
-NS_OLPC_BUDDY = "http://laptop.org/xmpp/buddy"
-NS_OLPC_ACTIVITY = "http://laptop.org/xmpp/activity"
-
-NS_PUBSUB = "http://jabber.org/protocol/pubsub"
-NS_DISCO_INFO = "http://jabber.org/protocol/disco#info"
-NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
-
-
-NS_AMP = "http://jabber.org/protocol/amp"
+tp_name_prefix = 'org.freedesktop.Telepathy'
+olpc_name_prefix = 'org.laptop.Telepathy'
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -34,14 +24,23 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
-        EventPattern('stream-iq', to='localhost', query_ns=NS_DISCO_ITEMS))
+        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
 
     acknowledge_iq(stream, iq_event.stanza)
-    announce_gadget(q, stream, disco_event.stanza)
 
     buddy_info_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
+    requests_iface = dbus.Interface(conn, tp_name_prefix + '.Connection.Interface.Requests')
 
+    # Gadget was not announced yet
+    call_async(q, requests_iface, 'CreateChannel',
+        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+            'org.laptop.Telepathy.Channel.Type.BuddyView',
+            'org.laptop.Telepathy.Channel.Interface.View.MaxSize': 5,
+          })
+
+    event = q.expect('dbus-error', method='CreateChannel')
+    announce_gadget(q, stream, disco_event.stanza)
     call_async(q, conn, 'RequestHandles', 1, ['bob@localhost'])
 
     event = q.expect('dbus-return', method='RequestHandles')
@@ -51,7 +50,7 @@ def test(q, bus, conn, stream):
     call_async(q, buddy_info_iface, 'GetProperties', bob_handle)
 
     # wait for pubsub query
-    event = q.expect('stream-iq', to='bob@localhost', query_ns=NS_PUBSUB)
+    event = q.expect('stream-iq', to='bob@localhost', query_ns=ns.PUBSUB)
     query = event.stanza
     assert query['to'] == 'bob@localhost'
 
@@ -64,7 +63,7 @@ def test(q, bus, conn, stream):
 
     # wait for buddy search query
     event = q.expect('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_BUDDY)
+            query_ns=ns.OLPC_BUDDY)
     buddies = xpath.queryForNodes('/iq/query/buddy', event.stanza)
     assert len(buddies) == 1
     buddy = buddies[0]
@@ -77,7 +76,7 @@ def test(q, bus, conn, stream):
     query = xpath.queryForNodes('/iq/query', reply)[0]
     buddy = query.addElement((None, "buddy"))
     buddy['jid'] = 'bob@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#005FE4,#00A0FF')}):
         properties.addChild(node)
     stream.send(reply)
@@ -87,20 +86,37 @@ def test(q, bus, conn, stream):
 
     assert props == {'color': '#005FE4,#00A0FF' }
 
-    # request 3 random buddies
-    call_async(q, gadget_iface, 'RequestRandomBuddies', 3)
+    # check if we can request Buddy views
+    properties = conn.GetAll(
+        'org.freedesktop.Telepathy.Connection.Interface.Requests',
+        dbus_interface='org.freedesktop.DBus.Properties')
 
-    iq_event, return_event = q.expect_many(
+    assert ({tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView'},
+            [olpc_name_prefix + '.Channel.Interface.View.MaxSize',
+             olpc_name_prefix + '.Channel.Type.BuddyView.Properties',
+             olpc_name_prefix + '.Channel.Type.BuddyView.Alias'],
+         ) in properties.get('RequestableChannelClasses'),\
+                 properties['RequestableChannelClasses']
+
+    # request 3 random buddies
+    call_async(q, requests_iface, 'CreateChannel',
+        { tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView',
+          olpc_name_prefix + '.Channel.Interface.View.MaxSize': 3
+          })
+
+    iq_event, return_event, new_channels_event, new_channel_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_BUDDY),
-        EventPattern('dbus-return', method='RequestRandomBuddies'))
+            query_ns=ns.OLPC_BUDDY),
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'))
 
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
-    assert view['id'] == '0'
-    random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
-    assert len(random) == 1
-    assert random[0]['max'] == '3'
+    assert view['id'] == '1'
+    assert view['size'] == '3'
 
     # reply to random query
     reply = make_result_iq(stream, iq_event.stanza)
@@ -109,19 +125,62 @@ def test(q, bus, conn, stream):
     view = xpath.queryForNodes('/iq/view', reply)[0]
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'charles@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#AAAAAA,#BBBBBB')}):
         properties.addChild(node)
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'bob@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#005FE4,#00A0FF')}):
         properties.addChild(node)
     stream.send(reply)
 
     view_path = return_event.value[0]
-    view0 = bus.get_object(conn.bus_name, view_path)
-    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
+    props = return_event.value[1]
+    view1 = bus.get_object(conn.bus_name, view_path)
+
+    # check NewChannels arg
+    channels = new_channels_event.args[0]
+    assert len(channels) == 1
+    chan, props_ = channels[0]
+    assert chan == view_path
+    assert props == props_
+
+    # check NewChannel arg
+    chan = new_channel_event.args[0]
+    assert chan == view_path
+
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Properties'] == {}
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == ''
+
+    # check org.freedesktop.Telepathy.Channel D-Bus properties
+    props = view1.GetAll(
+        'org.freedesktop.Telepathy.Channel',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['ChannelType'] == 'org.laptop.Telepathy.Channel.Type.BuddyView'
+    assert 'org.laptop.Telepathy.Channel.Interface.View' in props['Interfaces']
+    assert props['TargetHandle'] == 0
+    assert props['TargetID'] == ''
+    assert props['TargetHandleType'] == 0
+
+    # check org.laptop.Telepathy.Channel.Interface.View D-Bus properties
+    props = view1.GetAll(
+        'org.laptop.Telepathy.Channel.Interface.View',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['MaxSize'] == 3
+
+    # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
+    props = view1.GetAll(
+        'org.laptop.Telepathy.Channel.Type.BuddyView',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['Properties'] == {}
+    assert props['Alias'] == ''
+
+    assert view1.GetChannelType(dbus_interface='org.freedesktop.Telepathy.Channel') ==\
+            'org.laptop.Telepathy.Channel.Type.BuddyView'
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -141,10 +200,10 @@ def test(q, bus, conn, stream):
     # Bob changed his properties
     message = create_gadget_message("test@localhost")
 
-    change = message.addElement((NS_OLPC_BUDDY, 'change'))
+    change = message.addElement((ns.OLPC_BUDDY, 'change'))
     change['jid'] = 'bob@localhost'
-    change['id'] = '0'
-    properties = change.addElement((NS_OLPC_BUDDY_PROPS, 'properties'))
+    change['id'] = '1'
+    properties = change.addElement((ns.OLPC_BUDDY_PROPS, 'properties'))
     for node in properties_to_xml({'color': ('str', '#FFFFFF,#AAAAAA')}):
         properties.addChild(node)
 
@@ -158,12 +217,17 @@ def test(q, bus, conn, stream):
     assert props == {'color': '#FFFFFF,#AAAAAA'}
 
     # buddy search
-    props = {'color': '#AABBCC,#001122'}
-    call_async(q, gadget_iface, 'SearchBuddiesByProperties', props)
+    props = dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    call_async(q, requests_iface, 'CreateChannel',
+        { tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView',
+          olpc_name_prefix + '.Channel.Interface.View.MaxSize': 10,
+          olpc_name_prefix + '.Channel.Type.BuddyView.Properties': props
+          })
 
     iq_event, return_event = q.expect_many(
-        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
-        EventPattern('dbus-return', method='SearchBuddiesByProperties'))
+        EventPattern('stream-iq', to='gadget.localhost', query_ns=ns.OLPC_BUDDY),
+        EventPattern('dbus-return', method='CreateChannel'))
 
     properties_node = xpath.queryForNodes('/iq/view/buddy/properties',
             iq_event.stanza)
@@ -172,7 +236,8 @@ def test(q, bus, conn, stream):
 
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
-    assert view['id'] == '1'
+    assert view['id'] == '2'
+    assert view['size'] == '10'
 
     # reply to request
     reply = make_result_iq(stream, iq_event.stanza)
@@ -181,14 +246,25 @@ def test(q, bus, conn, stream):
     view = xpath.queryForNodes('/iq/view', reply)[0]
     buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'charles@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#AABBCC,#001122')}):
         properties.addChild(node)
     stream.send(reply)
 
     view_path = return_event.value[0]
-    view1 = bus.get_object(conn.bus_name, view_path)
-    view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.View')
+    props = return_event.value[1]
+    view2 = bus.get_object(conn.bus_name, view_path)
+
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Properties'] == dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == ''
+
+    # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
+    props = view2.GetAll(
+        'org.laptop.Telepathy.Channel.Type.BuddyView',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['Properties'] == {'color': '#AABBCC,#001122'}
+    assert props['Alias'] == ''
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -202,14 +278,14 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
     assert props == {'color': '#AABBCC,#001122'}
 
-    # add a buddy to view 0
+    # add a buddy to view 1
     message = create_gadget_message("test@localhost")
 
-    added = message.addElement((NS_OLPC_BUDDY, 'added'))
-    added['id'] = '0'
+    added = message.addElement((ns.OLPC_BUDDY, 'added'))
+    added['id'] = '1'
     buddy = added.addElement((None, 'buddy'))
     buddy['jid'] = 'oscar@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    properties = buddy.addElement((ns.OLPC_BUDDY_PROPS, "properties"))
     for node in properties_to_xml({'color': ('str', '#000000,#AAAAAA')}):
         properties.addChild(node)
 
@@ -222,16 +298,19 @@ def test(q, bus, conn, stream):
     handle = added[0]
     assert conn.InspectHandles(1, added)[0] == 'oscar@localhost'
 
-    members = view0_iface.GetBuddies()
+    members = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
+        'Buddies',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['bob@localhost', 'charles@localhost',
             'oscar@localhost']
 
-    # remove a buddy from view 0
+    # remove a buddy from view 1
     message = create_gadget_message("test@localhost")
 
-    added = message.addElement((NS_OLPC_BUDDY, 'removed'))
-    added['id'] = '0'
+    added = message.addElement((ns.OLPC_BUDDY, 'removed'))
+    added['id'] = '1'
     buddy = added.addElement((None, 'buddy'))
     buddy['jid'] = 'bob@localhost'
 
@@ -244,21 +323,30 @@ def test(q, bus, conn, stream):
     handle = removed[0]
     assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
 
-    members = view0_iface.GetBuddies()
+    members = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
+        'Buddies',
+        dbus_interface='org.freedesktop.DBus.Properties')
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['charles@localhost', 'oscar@localhost']
 
     # test alias search
-    call_async(q, gadget_iface, 'SearchBuddiesByAlias', "tom")
+    call_async(q, requests_iface, 'CreateChannel',
+        { tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView',
+          olpc_name_prefix + '.Channel.Interface.View.MaxSize': 10,
+          olpc_name_prefix + '.Channel.Type.BuddyView.Alias': 'tom'
+          })
+
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_BUDDY),
-        EventPattern('dbus-return', method='SearchBuddiesByAlias'))
+            query_ns=ns.OLPC_BUDDY),
+        EventPattern('dbus-return', method='CreateChannel'))
 
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
-    assert view['id'] == '2'
+    assert view['id'] == '3'
+    assert view['size'] == '10'
     buddy = xpath.queryForNodes('/iq/view/buddy', iq_event.stanza)
     assert len(buddy) == 1
     assert buddy[0]['alias'] == 'tom'
@@ -275,8 +363,19 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     view_path = return_event.value[0]
-    view2 = bus.get_object(conn.bus_name, view_path)
-    view2_iface = dbus.Interface(view2, 'org.laptop.Telepathy.View')
+    props = return_event.value[1]
+    view3 = bus.get_object(conn.bus_name, view_path)
+
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Properties'] == {}
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == 'tom'
+
+    # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
+    props = view3.GetAll(
+        'org.laptop.Telepathy.Channel.Type.BuddyView',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert props['Properties'] == {}
+    assert props['Alias'] == 'tom'
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
@@ -285,14 +384,55 @@ def test(q, bus, conn, stream):
     assert sorted(conn.InspectHandles(1, added)) == ['thomas@localhost',
             'tom@localhost']
 
-    # close view 0
-    close_view(q, view0_iface, '0')
+    close_view(q, view1, '1')
 
-    # close view 1
-    close_view(q, view1_iface, '1')
+    close_view(q, view2, '2')
 
-    # close view 2
-    close_view(q, view2_iface, '2')
+    close_view(q, view3, '3')
+
+    # View request without MaxSize property
+    call_async(q, requests_iface, 'CreateChannel',
+        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+            'org.laptop.Telepathy.Channel.Type.BuddyView',
+          })
+
+    event = q.expect('dbus-error', method='CreateChannel')
+    assert event.error.get_dbus_name() == 'org.freedesktop.Telepathy.Errors.InvalidArgument'
+
+    # test alias and properties search
+    props = dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    call_async(q, requests_iface, 'CreateChannel',
+        { tp_name_prefix + '.Channel.ChannelType':
+            olpc_name_prefix + '.Channel.Type.BuddyView',
+          olpc_name_prefix + '.Channel.Interface.View.MaxSize': 5,
+          olpc_name_prefix + '.Channel.Type.BuddyView.Properties': props,
+          olpc_name_prefix + '.Channel.Type.BuddyView.Alias': 'jean'
+          })
+
+    iq_event, return_event = q.expect_many(
+        EventPattern('stream-iq', to='gadget.localhost', query_ns=ns.OLPC_BUDDY),
+        EventPattern('dbus-return', method='CreateChannel'))
+
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == '4'
+    assert view['size'] == '5'
+
+    properties_node = xpath.queryForNodes('/iq/view/buddy/properties',
+            iq_event.stanza)
+    props = parse_properties(properties_node[0])
+    assert props == {'color': ('str', '#AABBCC,#001122')}
+
+    buddy = xpath.queryForNodes('/iq/view/buddy', iq_event.stanza)
+    assert len(buddy) == 1
+    assert buddy[0]['alias'] == 'jean'
+
+    view_path = return_event.value[0]
+    props = return_event.value[1]
+    view4 = bus.get_object(conn.bus_name, view_path)
+
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Properties'] == dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
+    assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == 'jean'
 
 if __name__ == '__main__':
     exec_test(test)

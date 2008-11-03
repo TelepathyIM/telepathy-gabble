@@ -17,6 +17,7 @@ TWISTED_TESTS = \
 	olpc/gadget-invite.py \
 	olpc/gadget-publish.py \
 	olpc/gadget-restarted.py \
+	olpc/view-presence.py \
 	presence/presence.py \
 	roster/ensure.py \
 	roster/groups.py \
@@ -29,6 +30,7 @@ TWISTED_TESTS = \
 	roster/test-save-alias-to-roster.py \
 	text/initiate.py \
 	text/initiate-requestotron.py \
+	text/destroy.py \
 	text/ensure.py \
 	text/respawn.py \
 	text/test-text-delayed.py \
@@ -100,6 +102,7 @@ EXTRA_DIST = \
 	gabbletest.py \
 	servicetest.py \
 	jingle/jingletest.py \
+	ns.py \
 	olpc/util.py
 
 noinst_PROGRAMS = \

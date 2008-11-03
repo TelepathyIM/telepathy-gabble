@@ -872,8 +872,7 @@ conn_avatars_init (GabbleConnection *conn)
 void
 conn_avatars_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceAvatarsClass *klass =
-    (TpSvcConnectionInterfaceAvatarsClass *) g_iface;
+  TpSvcConnectionInterfaceAvatarsClass *klass = g_iface;
 
 #define IMPLEMENT(x) tp_svc_connection_interface_avatars_implement_##x (\
     klass, gabble_connection_##x)

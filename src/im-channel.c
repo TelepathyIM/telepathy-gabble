@@ -38,6 +38,7 @@
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
+#include "extensions/extensions.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "roster.h"
@@ -45,6 +46,7 @@
 static void channel_iface_init (gpointer, gpointer);
 static void text_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
+static void destroyable_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
@@ -54,10 +56,13 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
-      chat_state_iface_init));
+      chat_state_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_DESTROYABLE,
+      destroyable_iface_init));
 
 static const gchar *gabble_im_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
+    GABBLE_IFACE_CHANNEL_INTERFACE_DESTROYABLE,
     NULL
 };
 
@@ -583,6 +588,30 @@ gabble_im_channel_get_channel_type (TpSvcChannel *iface,
       TP_IFACE_CHANNEL_TYPE_TEXT);
 }
 
+/**
+ * gabble_im_channel_destroy
+ *
+ * Implements D-Bus method Destroy
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Destroyable
+ */
+static void
+gabble_im_channel_destroy (GabbleSvcChannelInterfaceDestroyable *iface,
+                           DBusGMethodInvocation *context)
+{
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
+
+  g_assert (GABBLE_IS_IM_CHANNEL (self));
+
+  DEBUG ("called on %p", self);
+
+  /* Clear out any pending messages */
+  tp_text_mixin_clear ((GObject *) self);
+
+  /* Close() and Destroy() have the same signature, so we can safely
+   * chain to the other function now */
+  gabble_im_channel_close ((TpSvcChannel *) self, context);
+}
+
 
 /**
  * gabble_im_channel_get_handle
@@ -755,5 +784,17 @@ chat_state_iface_init (gpointer g_iface, gpointer iface_data)
 #define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
     klass, gabble_im_channel_##x)
   IMPLEMENT(set_chat_state);
+#undef IMPLEMENT
+}
+
+static void
+destroyable_iface_init (gpointer g_iface,
+                        gpointer iface_data)
+{
+  GabbleSvcChannelInterfaceDestroyableClass *klass = g_iface;
+
+#define IMPLEMENT(x) gabble_svc_channel_interface_destroyable_implement_##x (\
+    klass, gabble_im_channel_##x)
+  IMPLEMENT(destroy);
 #undef IMPLEMENT
 }

@@ -73,6 +73,12 @@ libgabble_convenience_la_SOURCES = \
     namespaces.h \
     olpc-activity.h \
     olpc-activity.c \
+    olpc-activity-view.h \
+    olpc-activity-view.c \
+    olpc-buddy-view.h \
+    olpc-buddy-view.c \
+    olpc-gadget-manager.h \
+    olpc-gadget-manager.c \
     olpc-view.h \
     olpc-view.c \
     pubsub.h \

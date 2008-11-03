@@ -9,7 +9,7 @@ AC_PREREQ([2.59])
 
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [7])
-m4_define([gabble_micro_version], [10])
+m4_define([gabble_micro_version], [13])
 m4_define([gabble_nano_version], [1])
 
 # Some magic
@@ -36,6 +36,11 @@ AC_PROG_LIBTOOL
 dnl decide error flags
 AS_COMPILER_FLAG(-Wall, ERROR_CFLAGS="-Wall", ERROR_CFLAGS="")
 AS_COMPILER_FLAG(-Werror, werror=yes, werror=no)
+
+AC_ARG_ENABLE(Werror,
+  AC_HELP_STRING([--disable-Werror],[compile without -Werror (normally enabled in development builds)]),
+    werror=$enableval, :)
+
 AS_COMPILER_FLAG(-Wextra, wextra=yes, wextra=no)
 AS_COMPILER_FLAG(-Wno-missing-field-initializers,
         wno_missing_field_initializers=yes,
@@ -108,10 +113,7 @@ AC_SUBST(COVERAGE_CFLAGS)
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
-dnl Endianness (for the sha1 implementation)
-AC_C_BIGENDIAN
-
-dnl Check for Glib 
+dnl Check for Glib
 PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16, gobject-2.0 >= 2.16])
 
 AC_SUBST(GLIB_CFLAGS)

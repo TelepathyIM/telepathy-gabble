@@ -50,6 +50,7 @@
 #include "presence.h"
 #include "tube-iface.h"
 #include "tube-stream.h"
+#include "tube-dbus.h"
 #include "util.h"
 
 #ifdef HAVE_DBUS_TUBE
@@ -1181,7 +1182,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   if (bytestream == NULL)
     {
       /* Tube was declined by remote user. Close it */
-      gabble_tube_iface_close (tube);
+      gabble_tube_iface_close (tube, TRUE);
       return;
     }
 
@@ -1573,8 +1574,9 @@ tube_msg_offered (GabbleTubesChannel *self,
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
     {
-      DEBUG ("tube ID already in use. Close both tubes");
-      gabble_tube_iface_close (tube);
+      DEBUG ("tube ID already in use. Do not open the offered tube and close "
+          "the existing tube id %u", tube_id);
+      gabble_tube_iface_close (tube, FALSE);
       return;
     }
 
@@ -1643,8 +1645,7 @@ tube_msg_close (GabbleTubesChannel *self,
     }
 
   DEBUG ("tube %u was closed by remote peer", tube_id);
-  /* FIXME: we shouldn't re-send the close message */
-  gabble_tube_iface_close (tube);
+  gabble_tube_iface_close (tube, TRUE);
 }
 
 void
@@ -1721,7 +1722,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
       if (!start_stream_initiation (self, tube, stream_id, &error))
         {
-          gabble_tube_iface_close (tube);
+          gabble_tube_iface_close (tube, TRUE);
 
           dbus_g_method_return_error (context, error);
 
@@ -1822,7 +1823,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
       /* Stream initiation */
       if (!send_new_stream_tube_msg (self, tube, stream_id, &error))
         {
-          gabble_tube_iface_close (tube);
+          gabble_tube_iface_close (tube, TRUE);
 
           dbus_g_method_return_error (context, error);
 
@@ -1908,10 +1909,11 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
   add_yourself_in_dbus_names (self, id);
 
+  /* The address is known only after we start to listen on the connection,
+   * so we need to listen now. However, connections are accepted only when
+   * the bytestream is fully initialised. See also Bug #13891. */
+  gabble_tube_dbus_listen (GABBLE_TUBE_DBUS (tube));
   g_object_get (tube, "dbus-address", &addr, NULL);
-  /* FIXME: This is broken in 1-1 D-Bus tubes because tube_open will be called
-   * only when the bytestream is fully initialised.
-   * So now we return a NULL string. Bug #13891 on fd.o */
   tp_svc_channel_type_tubes_return_from_accept_d_bus_tube (context, addr);
   g_free (addr);
 #else
@@ -2051,7 +2053,7 @@ gabble_tubes_channel_close_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  gabble_tube_iface_close (tube);
+  gabble_tube_iface_close (tube, FALSE);
 
   tp_svc_channel_type_tubes_return_from_close_tube (context);
 }

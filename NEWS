@@ -1,11 +1,48 @@
-telepathy-gabble 0.7.11 (UNRELEASED)
+telepathy-gabble 0.7.13 (2008-10-28)
 ====================================
 
-Requirements:
+The "so you quote love unquote me" release.
+
+Fixes:
+
+* Fix a regression breaking MUC D-Bus tubes.
+* Don't invite Gadget to our OLPC activity if we didn't ask it to publish
+our information.
+* Don't fire presence signals for Gadget presence.
+
+telepathy-gabble 0.7.12 (2008-10-23)
+====================================
+
+The "15 network cables in individual boxes" release.
 
 Enhancements:
 
+* OLPC View: contacts in views are not announced as being online.
+
 Fixes:
+
+* fd.o #13891: AcceptDBusTube returns NULL with 1-1 D-Bus tube.
+
+telepathy-gabble 0.7.11 (2008-10-22)
+====================================
+
+The "HAPPY CAPS LOCK DAY" release.
+
+Enhancements:
+
+* OLPC View: use the Requests API and make the views into channels
+
+* Optionally run dbus-monitor alongside regression tests
+
+* Add --disable-Werror to configure.ac (copied from telepathy-glib), useful
+  when building Debian packages of prereleases using cdbs (which implicitly
+  turns on -Wunused-parameter)
+
+Fixes:
+
+* sha1_bin(): fix a memory leak, and assertion failures on 64-bit
+
+* D-Bus tubes: fix an assertion in libdbus during dispose
 
 telepathy-gabble 0.7.10 (2008-10-15)
 ====================================

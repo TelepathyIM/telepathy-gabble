@@ -32,6 +32,7 @@
 #include "types.h"
 #include "error.h"
 #include "muc-factory.h"
+#include "olpc-gadget-manager.h"
 
 G_BEGIN_DECLS
 
@@ -140,13 +141,15 @@ struct _GabbleConnection {
     GHashTable *olpc_activities_info;
     GHashTable *olpc_pep_activities;
     GHashTable *olpc_invited_activities;
-    GHashTable *olpc_views;
     GHashTable *olpc_current_act;
 
     /* OLPC services */
     const gchar *olpc_gadget_buddy;
     const gchar *olpc_gadget_activity;
     gboolean olpc_gadget_publish;
+
+    /* OLPC Gadget manager */
+    GabbleOlpcGadgetManager *olpc_gadget_manager;
 
     /* bytestream factory */
     GabbleBytestreamFactory *bytestream_factory;

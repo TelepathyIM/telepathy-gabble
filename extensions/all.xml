@@ -25,14 +25,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <tp:generic-types>
   <tp:external-type name="Room_Handle" type="u"
     from="Telepathy specification"/>
+  <tp:external-type name="Contact_Handle" type="u"
+    from="Telepathy specification"/>
 </tp:generic-types>
 
 <xi:include href="Channel_Bundle.xml"/>
 <xi:include href="Channel_Future.xml"/>
+<xi:include href="Channel_Interface_Destroyable.xml"/>
 <xi:include href="OLPC_Buddy_Info.xml"/>
 <xi:include href="OLPC_Activity_Properties.xml"/>
 <xi:include href="OLPC_Gadget.xml"/>
-<xi:include href="OLPC_View.xml"/>
+<xi:include href="OLPC_Channel_Interface_View.xml"/>
+<xi:include href="OLPC_Channel_Type_BuddyView.xml"/>
+<xi:include href="OLPC_Channel_Type_ActivityView.xml"/>
 
 <tp:generic-types>
   <tp:external-type name="Contact_Handle" type="u"

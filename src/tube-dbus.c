@@ -134,7 +134,8 @@ struct _GabbleTubeDBusPrivate
 static void data_received_cb (GabbleBytestreamIface *stream, TpHandle sender,
     GString *data, gpointer user_data);
 
-static void gabble_tube_dbus_close (GabbleTubeIface *tube);
+static void gabble_tube_dbus_close (GabbleTubeIface *tube, gboolean
+    closed_remotely);
 
 /*
  * Characters used are permissible both in filenames and in D-Bus names. (See
@@ -280,12 +281,28 @@ do_close (GabbleTubeDBus *self)
     }
 }
 
-static void
-tube_dbus_open (GabbleTubeDBus *self)
+/* There is two step to enable receiving a D-Bus connection from the local
+ * application:
+ * - listen on the socket
+ * - add the socket in the mainloop
+ *
+ * We need to know the socket path to return from the AcceptDBusTube D-Bus
+ * call but the socket in the mainloop must be added only when we are ready
+ * to receive connections, that is when the bytestream is fully open with the
+ * remote contact.
+ *
+ * See also Bug 13891:
+ * https://bugs.freedesktop.org/show_bug.cgi?id=13891
+ * */
+void
+gabble_tube_dbus_listen (GabbleTubeDBus *self)
 {
 #define SERVER_LISTEN_MAX_TRIES 5
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   guint i;
+
+  if (priv->dbus_srv != NULL)
+    return;
 
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
@@ -318,6 +335,13 @@ tube_dbus_open (GabbleTubeDBus *self)
   if (priv->dbus_srv == NULL)
     {
       DEBUG ("all attempts failed. Close the tube");
+
+      g_free (priv->dbus_srv_addr);
+      priv->dbus_srv_addr = NULL;
+
+      g_free (priv->socket_path);
+      priv->socket_path = NULL;
+
       do_close (self);
       return;
     }
@@ -326,7 +350,19 @@ tube_dbus_open (GabbleTubeDBus *self)
 
   dbus_server_set_new_connection_function (priv->dbus_srv, new_connection_cb,
       self, NULL);
-  dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
+}
+
+static void
+tube_dbus_open (GabbleTubeDBus *self)
+{
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+
+  gabble_tube_dbus_listen (self);
+
+  if (priv->dbus_srv != NULL)
+    {
+      dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
+    }
 }
 
 static void
@@ -416,19 +452,23 @@ gabble_tube_dbus_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->bytestream)
+  if (priv->bytestream != NULL)
     {
       gabble_bytestream_iface_close (priv->bytestream, NULL);
     }
 
-  if (priv->dbus_conn)
+  if (priv->dbus_conn != NULL)
     {
       dbus_connection_close (priv->dbus_conn);
       dbus_connection_unref (priv->dbus_conn);
     }
 
-  if (priv->dbus_srv)
-    dbus_server_unref (priv->dbus_srv);
+  if (priv->dbus_srv != NULL)
+    {
+      dbus_server_disconnect (priv->dbus_srv);
+      dbus_server_unref (priv->dbus_srv);
+      priv->dbus_srv = NULL;
+    }
 
   if (priv->socket_path != NULL)
     {
@@ -997,7 +1037,7 @@ data_received_cb (GabbleBytestreamIface *stream,
             {
               DEBUG ("D-Bus message has unknown endianness byte 0x%x, "
                   "closing tube", (unsigned int) buf->str[0]);
-              gabble_tube_dbus_close ((GabbleTubeIface *) tube);
+              gabble_tube_dbus_close ((GabbleTubeIface *) tube, TRUE);
               return;
             }
 
@@ -1018,7 +1058,7 @@ data_received_cb (GabbleBytestreamIface *stream,
               priv->reassembly_bytes_needed > DBUS_MAXIMUM_MESSAGE_LENGTH)
             {
               DEBUG ("D-Bus message is too large to be valid, closing tube");
-              gabble_tube_dbus_close ((GabbleTubeIface *) tube);
+              gabble_tube_dbus_close ((GabbleTubeIface *) tube, TRUE);
               return;
             }
 
@@ -1126,7 +1166,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube,
  * Implements gabble_tube_iface_close on GabbleTubeIface
  */
 static void
-gabble_tube_dbus_close (GabbleTubeIface *tube)
+gabble_tube_dbus_close (GabbleTubeIface *tube, gboolean closed_remotely)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
 

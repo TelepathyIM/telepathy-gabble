@@ -90,13 +90,6 @@ struct _GabbleJingleContentPrivate
 
 /* lookup tables */
 
-static const gchar *content_senders_table[] = {
-  "initiator",
-  "responder",
-  "both",
-  NULL
-};
-
 G_DEFINE_TYPE(GabbleJingleContent, gabble_jingle_content, G_TYPE_OBJECT);
 
 static void new_transport_candidates_cb (GabbleJingleTransportIface *trans,
@@ -404,6 +397,42 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     G_TYPE_NONE, 0);
 }
 
+static JingleContentSenders
+parse_senders (const gchar *txt)
+{
+  if (txt == NULL)
+      return JINGLE_CONTENT_SENDERS_NONE;
+
+  if (!tp_strdiff (txt, "initiator"))
+      return JINGLE_CONTENT_SENDERS_INITIATOR;
+  else if (!tp_strdiff (txt, "responder"))
+      return JINGLE_CONTENT_SENDERS_RESPONDER;
+  else if (!tp_strdiff (txt, "both"))
+      return JINGLE_CONTENT_SENDERS_BOTH;
+
+  return JINGLE_CONTENT_SENDERS_NONE;
+}
+
+static const gchar *
+produce_senders (JingleContentSenders senders)
+{
+  switch (senders) {
+    case JINGLE_CONTENT_SENDERS_INITIATOR:
+      return "initiator";
+    case JINGLE_CONTENT_SENDERS_RESPONDER:
+      return "responder";
+    case JINGLE_CONTENT_SENDERS_BOTH:
+      return "both";
+    default:
+      DEBUG ("invalid content senders %u", senders);
+      g_assert_not_reached ();
+  }
+
+  /* to make gcc not complain */
+  return NULL;
+}
+
+
 #define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
 #define SET_OUT_ORDER(txt) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
 #define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
@@ -528,7 +557,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
   priv->created_by_us = FALSE;
   priv->created_by_initiator = (!tp_strdiff (creator, "initiator"));
-  priv->senders = _string_to_enum (content_senders_table, senders);
+  priv->senders = parse_senders (senders);
   if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
     {
       SET_BAD_REQ ("invalid content senders");
@@ -620,8 +649,8 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
     }
   else
     {
-      DEBUG ("changing senders from %s to %s", _enum_to_string(content_senders_table, priv->senders), senders);
-      priv->senders = _string_to_enum (content_senders_table, senders);
+      DEBUG ("changing senders from %s to %s", produce_senders (priv->senders), senders);
+      priv->senders = parse_senders (senders);
       if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
         {
           SET_BAD_REQ ("invalid content senders");
@@ -667,13 +696,13 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
     {
       DEBUG ("creator: %s", priv->creator);
       DEBUG ("name: %s", priv->name);
-      DEBUG ("senders: %s", _enum_to_string (content_senders_table, priv->senders));
+      DEBUG ("senders: %s", produce_senders (priv->senders));
 
       content_node = lm_message_node_add_child (parent, "content", NULL);
       lm_message_node_set_attributes (content_node,
           "creator", priv->created_by_initiator ? "initiator" : "responder",
           "name", priv->name,
-          "senders", _enum_to_string (content_senders_table, priv->senders),
+          "senders", produce_senders (priv->senders),
           NULL);
       DEBUG ("created new content node %p", content_node);
     }
@@ -695,8 +724,7 @@ gabble_jingle_content_update_senders (GabbleJingleContent *c,
   GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
   JingleContentSenders senders;
 
-  senders = _string_to_enum (content_senders_table,
-      lm_message_node_get_attribute (content_node, "senders"));
+  senders = parse_senders (lm_message_node_get_attribute (content_node, "senders"));
 
   if (senders == JINGLE_CONTENT_SENDERS_NONE)
     {

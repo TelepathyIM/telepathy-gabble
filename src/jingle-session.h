@@ -82,9 +82,6 @@ const gchar *gabble_jingle_session_parse (GabbleJingleSession *sess,
 LmMessage *gabble_jingle_session_new_message (GabbleJingleSession *sess,
     JingleAction action, LmMessageNode **sess_node);
 
-const gchar *_enum_to_string (const gchar **table, gint val);
-gint _string_to_enum (const gchar **table, const gchar *val);
-
 void gabble_jingle_session_accept (GabbleJingleSession *sess);
 void gabble_jingle_session_terminate (GabbleJingleSession *sess);
 void gabble_jingle_session_remove_content (GabbleJingleSession *sess,

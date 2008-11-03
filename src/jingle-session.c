@@ -88,24 +88,6 @@ struct _GabbleJingleSessionPrivate
 #define GABBLE_JINGLE_SESSION_GET_PRIVATE(o)\
   ((GabbleJingleSessionPrivate *) ((o)->priv))
 
-/* lookup tables */
-
-static const gchar *action_table[] = {
-  "content-accept",
-  "content-add",
-  "content-modify",
-  "content-remove",
-  "content-replace",
-  "content-reject",
-  "session-accept",
-  "session-info",
-  "session-initiate",
-  "session-terminate",
-  "transport-info",
-  "transport-accept",
-  NULL
-};
-
 #define DEFAULT_SESSION_TIMEOUT 60000
 
 typedef struct {
@@ -380,72 +362,88 @@ typedef void (*HandlerFunc)(GabbleJingleSession *sess,
 typedef void (*ContentHandlerFunc)(GabbleJingleSession *sess,
   GabbleJingleContent *c, LmMessageNode *content_node, GError **error);
 
-const gchar *
-_enum_to_string (const gchar **table, gint val)
-{
-  return table[val];
-}
-
-gint
-_string_to_enum (const gchar **table, const gchar *val)
-{
-  gint i;
-
-  if (val == NULL)
-    return -1;
-
-  for (i = 0; table[i] != NULL; i++)
-    {
-      if (!tp_strdiff (val, table[i]))
-        return i;
-    }
-
-  return -1;
-}
-
 static JingleAction
 parse_action (const gchar *txt)
 {
-  /* synonyms, best deal with them right now */
-  if (!tp_strdiff (txt, "initiate"))
-    txt = "session-initiate";
-  else if (!tp_strdiff (txt, "terminate"))
-    txt = "session-terminate";
-  else if (!tp_strdiff (txt, "accept"))
-    txt = "session-accept";
-  else if (!tp_strdiff (txt, "reject"))
-    txt = "session-terminate";
-  else if (!tp_strdiff (txt, "candidates"))
-    txt = "transport-info";
+  if (txt == NULL)
+      return JINGLE_ACTION_UNKNOWN;
 
-  return (JingleAction) _string_to_enum (action_table, txt);
+  DEBUG ("with %s", txt);
+
+  /* synonyms, best deal with them right now */
+  if (!tp_strdiff (txt, "initiate") ||
+      !tp_strdiff (txt, "session-initiate"))
+    {
+        DEBUG ("it's initiate");
+        return JINGLE_ACTION_SESSION_INITIATE;
+    }
+  else if (!tp_strdiff (txt, "terminate") ||
+      !tp_strdiff (txt, "session-terminate") ||
+      !tp_strdiff (txt, "reject"))
+        return JINGLE_ACTION_SESSION_TERMINATE;
+  else if (!tp_strdiff (txt, "accept") ||
+      !tp_strdiff (txt, "session-accept"))
+        return JINGLE_ACTION_SESSION_ACCEPT;
+  else if (!tp_strdiff (txt, "candidates") ||
+      !tp_strdiff (txt, "transport-info"))
+        return JINGLE_ACTION_TRANSPORT_INFO;
+  else if (!tp_strdiff (txt, "content-accept"))
+      return JINGLE_ACTION_CONTENT_ACCEPT;
+  else if (!tp_strdiff (txt, "content-add"))
+      return JINGLE_ACTION_CONTENT_ADD;
+  else if (!tp_strdiff (txt, "content-modify"))
+      return JINGLE_ACTION_CONTENT_MODIFY;
+  else if (!tp_strdiff (txt, "content-replace"))
+      return JINGLE_ACTION_CONTENT_REPLACE;
+  else if (!tp_strdiff (txt, "content-reject"))
+      return JINGLE_ACTION_CONTENT_REJECT;
+  else if (!tp_strdiff (txt, "session-info"))
+      return JINGLE_ACTION_SESSION_INFO;
+  else if (!tp_strdiff (txt, "transport-accept"))
+      return JINGLE_ACTION_TRANSPORT_ACCEPT;
+
+  return JINGLE_ACTION_UNKNOWN;
 }
 
 static const gchar *
-produce_action (JingleAction act, JingleDialect dialect)
+produce_action (JingleAction action, JingleDialect dialect)
 {
-  g_assert (act != JINGLE_ACTION_UNKNOWN);
+  gboolean gmode = (dialect == JINGLE_DIALECT_GTALK3) ||
+      (dialect == JINGLE_DIALECT_GTALK4);
 
-  if ((dialect == JINGLE_DIALECT_GTALK3) || (dialect == JINGLE_DIALECT_GTALK4))
-    {
-      switch (act) {
-        case JINGLE_ACTION_SESSION_INITIATE:
-          return "initiate";
-        case JINGLE_ACTION_SESSION_TERMINATE:
-          return "terminate";
-        case JINGLE_ACTION_SESSION_ACCEPT:
-          return "accept";
-        case JINGLE_ACTION_TRANSPORT_INFO:
-          if (dialect == JINGLE_DIALECT_GTALK3)
-              return "candidates";
-          else
-              break;
-        default:
-          return _enum_to_string (action_table, act);
-      }
-    }
+  switch (action) {
+    case JINGLE_ACTION_SESSION_INITIATE:
+      return (gmode) ? "initiate" : "session-initiate";
+    case JINGLE_ACTION_SESSION_TERMINATE:
+      return (gmode) ? "terminate" : "session-terminate";
+    case JINGLE_ACTION_SESSION_ACCEPT:
+      return (gmode) ? "accept" : "session-accept";
+    case JINGLE_ACTION_TRANSPORT_INFO:
+      return (dialect == JINGLE_DIALECT_GTALK3) ?
+        "candidates" : "transport-info";
+    case JINGLE_ACTION_CONTENT_ACCEPT:
+      return "content-accept";
+    case JINGLE_ACTION_CONTENT_ADD:
+      return "content-add";
+    case JINGLE_ACTION_CONTENT_MODIFY:
+      return "content-modify";
+    case JINGLE_ACTION_CONTENT_REMOVE:
+      return "content-remove";
+    case JINGLE_ACTION_CONTENT_REPLACE:
+      return "content-replace";
+    case JINGLE_ACTION_CONTENT_REJECT:
+      return "content-reject";
+    case JINGLE_ACTION_SESSION_INFO:
+      return "session-info";
+    case JINGLE_ACTION_TRANSPORT_ACCEPT:
+      return "transport-accept";
+    default:
+      DEBUG ("unknown action %u", action);
+      g_assert_not_reached ();
+  }
 
-  return _enum_to_string (action_table, act);
+  /* to make gcc not complain */
+  return NULL;
 }
 
 static gboolean
@@ -889,6 +887,7 @@ on_transport_accept (GabbleJingleSession *sess, LmMessageNode *node,
 
 
 static HandlerFunc handlers[] = {
+  NULL, /* for unknown action */
   on_content_accept,
   on_content_add,
   on_content_modify,
@@ -1006,6 +1005,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
     }
 
   action = parse_action (actxt);
+  DEBUG ("action '%s' parsed as %u", actxt, action);
   if (action == JINGLE_ACTION_UNKNOWN)
     {
       SET_BAD_REQ ("unknown session action");
@@ -1036,8 +1036,8 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
 
   priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
 
-  DEBUG("jingle action '%s' from '%s' in session '%s' dialect %u", actxt, from,
-      sid, dialect);
+  DEBUG("jingle action '%s' from '%s' in session '%s' dialect %u state %u", actxt, from,
+      sid, dialect, priv->state);
 
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);

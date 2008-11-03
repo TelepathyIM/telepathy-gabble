@@ -2035,7 +2035,7 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
       if (!gabble_tube_stream_offer (self, address_type,
           address, access_control, access_control_param, &error))
         {
-          gabble_tube_stream_close (GABBLE_TUBE_IFACE (self));
+          gabble_tube_stream_close (GABBLE_TUBE_IFACE (self), TRUE);
 
           dbus_g_method_return_error (context, error);
 
@@ -2148,7 +2148,7 @@ static void
 gabble_tube_stream_close_async (TpSvcChannel *iface,
                                   DBusGMethodInvocation *context)
 {
-  gabble_tube_stream_close (GABBLE_TUBE_IFACE (iface));
+  gabble_tube_stream_close (GABBLE_TUBE_IFACE (iface), FALSE);
   tp_svc_channel_return_from_close (context);
 }
 

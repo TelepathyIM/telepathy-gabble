@@ -548,6 +548,8 @@ gabble_im_channel_close (TpSvcChannel *iface,
               priv->initiator = priv->handle;
               tp_handle_ref (contact_repo, priv->initiator);
             }
+
+          tp_text_mixin_set_rescued ((GObject *) self);
         }
       else
         {

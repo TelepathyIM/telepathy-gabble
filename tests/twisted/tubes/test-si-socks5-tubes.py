@@ -292,7 +292,6 @@ def test(q, bus, conn, stream):
     stream.send(iq)
 
     event = q.expect('s5b-data-received')
-    print event.properties['data']
     assert event.properties['data'] == '\x05\x01\x00' # version 5, 1 auth method, no auth
     event.properties['transport'].write('\x05\x00') # version 5, no auth
     event = q.expect('s5b-data-received')

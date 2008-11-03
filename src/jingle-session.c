@@ -397,6 +397,8 @@ parse_action (const gchar *txt)
       return JINGLE_ACTION_CONTENT_REPLACE;
   else if (!tp_strdiff (txt, "content-reject"))
       return JINGLE_ACTION_CONTENT_REJECT;
+  else if (!tp_strdiff (txt, "content-remove"))
+      return JINGLE_ACTION_CONTENT_REMOVE;
   else if (!tp_strdiff (txt, "session-info"))
       return JINGLE_ACTION_SESSION_INFO;
   else if (!tp_strdiff (txt, "transport-accept"))
@@ -915,33 +917,22 @@ jingle_state_machine_dance (GabbleJingleSession *sess, JingleAction action,
   handlers[action] (sess, node, error);
 }
 
-
 const gchar *
-gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GError **error)
+gabble_jingle_session_detect (LmMessage *message, JingleAction *action, JingleDialect *dialect)
 {
-  TpHandleRepoIface *contact_repo;
-  GabbleJingleSessionPrivate *priv;
+  const gchar *actxt, *sid;
   LmMessageNode *iq_node, *session_node;
-  const gchar *actxt, *sid, *from, *to, *resource;
-  JingleDialect dialect;
-  JingleAction action;
-  const gchar *initiator, *responder;
   gboolean google_mode = FALSE;
 
   /* all jingle actions are sets */
   if (LM_MESSAGE_SUB_TYPE_SET != lm_message_get_sub_type (message))
-    return FALSE;
+    return NULL;
 
   iq_node = lm_message_get_node (message);
 
-  /* IQ from/to can come in handy */
-  from = lm_message_node_get_attribute (iq_node, "from");
-  if (from == NULL)
-    return NULL;
-
-  to = lm_message_node_get_attribute (iq_node, "to");
-  if (to == FALSE)
-    return NULL;
+  if ((NULL == lm_message_node_get_attribute (iq_node, "from")) ||
+      (NULL == lm_message_node_get_attribute (iq_node, "to")))
+        return NULL;
 
   /* first, we try standard jingle */
   session_node = lm_message_node_get_child_with_namespace (iq_node,
@@ -949,7 +940,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
 
   if (session_node != NULL)
     {
-      dialect = JINGLE_DIALECT_V032;
+      *dialect = JINGLE_DIALECT_V032;
     }
   else
     {
@@ -959,7 +950,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
 
       if (session_node != NULL)
         {
-          dialect = JINGLE_DIALECT_V015;
+          *dialect = JINGLE_DIALECT_V015;
         }
       else
         {
@@ -971,7 +962,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
            * point, assume the better case */
           if (session_node != NULL)
             {
-              dialect = JINGLE_DIALECT_GTALK4;
+              *dialect = JINGLE_DIALECT_GTALK4;
               google_mode = TRUE;
             }
           else
@@ -992,60 +983,87 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
       sid = lm_message_node_get_attribute (session_node, "sid");
     }
 
-  if (actxt == NULL)
+  *action = parse_action (actxt);
+
+  return sid;
+}
+
+gboolean
+gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmMessage *message, GError **error)
+{
+  TpHandleRepoIface *contact_repo;
+  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  LmMessageNode *iq_node, *session_node;
+  const gchar *from, *to, *resource;
+  const gchar *initiator, *responder;
+
+  iq_node = lm_message_get_node (message);
+
+  /* IQ from/to can come in handy */
+  from = lm_message_node_get_attribute (iq_node, "from");
+  to = lm_message_node_get_attribute (iq_node, "to");
+
+  DEBUG("jingle action '%s' from '%s' in session '%s' dialect %u state %u", 
+      produce_action (action, priv->dialect), from, priv->sid,
+      priv->dialect, priv->state);
+
+  switch (priv->dialect) {
+    case JINGLE_DIALECT_V032:
+      session_node = lm_message_node_get_child_with_namespace (iq_node,
+          "jingle", NS_JINGLE032);
+      break;
+    case JINGLE_DIALECT_V015:
+      session_node = lm_message_node_get_child_with_namespace (iq_node,
+          "jingle", NS_JINGLE015);
+      break;
+    case JINGLE_DIALECT_GTALK3:
+    case JINGLE_DIALECT_GTALK4:
+      session_node = lm_message_node_get_child_with_namespace (iq_node,
+          "session", NS_GOOGLE_SESSION);
+      break;
+    default:
+      /* just to make gcc happy about dealing with default case */
+      session_node = NULL;
+  }
+
+  if (session_node == NULL)
     {
-      SET_BAD_REQ ("session action not found");
-      return NULL;
+      SET_BAD_REQ ("malformed jingle stanza");
+      return FALSE;
     }
 
-  if (sid == NULL)
-    {
-      SET_BAD_REQ ("session id not found");
-      return NULL;
-    }
-
-  action = parse_action (actxt);
-  DEBUG ("action '%s' parsed as %u", actxt, action);
   if (action == JINGLE_ACTION_UNKNOWN)
     {
       SET_BAD_REQ ("unknown session action");
-      return NULL;
+      return FALSE;
     }
 
   initiator = lm_message_node_get_attribute (session_node, "initiator");
   if (initiator == NULL)
     {
       SET_BAD_REQ ("session initiator not found");
-      return NULL;
+      return FALSE;
     }
 
   resource = strchr (from, '/');
   if (resource == NULL || *resource == '\0')
     {
       SET_BAD_REQ ("sender with no resource");
-      return NULL;
+      return FALSE;
     }
   resource++;
 
   /* this one is not required, so it can be NULL */
   responder = lm_message_node_get_attribute (session_node, "responder");
 
-  /* if we were just validating, return successfully now */
-  if (sess == NULL)
-    return sid;
-
-  priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
-
-  DEBUG("jingle action '%s' from '%s' in session '%s' dialect %u state %u", actxt, from,
-      sid, dialect, priv->state);
-
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (!action_is_allowed (action, priv->state))
     {
-      SET_OUT_ORDER ("action \"%s\" not allowed in current state", actxt);
-      return NULL;
+      SET_OUT_ORDER ("action \"%s\" not allowed in current state",
+          produce_action (action, priv->dialect));
+      return FALSE;
     }
 
   /* if we just created the session, fill in the data */
@@ -1056,12 +1074,10 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
       if (sess->peer == 0)
         {
           SET_BAD_REQ ("unable to get sender handle");
-          return NULL;
+          return FALSE;
         }
 
-      priv->sid = g_strdup (sid);
       priv->peer_resource = g_strdup (resource);
-      priv->dialect = dialect;
       priv->peer_jid = g_strdup (from);
       priv->initiator = g_strdup (initiator);
     }
@@ -1069,9 +1085,11 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, LmMessage *message, GErr
   jingle_state_machine_dance (sess, action, session_node, error);
 
   if (*error != NULL)
-    return NULL;
+    return FALSE;
 
-  return sid;
+  DEBUG ("parsed properly");
+
+  return TRUE;
 }
 
 static gchar *

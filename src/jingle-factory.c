@@ -503,29 +503,32 @@ jingle_cb (LmMessageHandler *handler,
   const gchar *sid;
   GabbleJingleSession *sess;
   gboolean new_session = FALSE;
+  JingleAction action;
+  JingleDialect dialect;
 
-  /* try and validate the message */
-  sid = gabble_jingle_session_parse (NULL, msg, &error);
+  /* see if it's a jingle message and detect dialect */
+  sid = gabble_jingle_session_detect (msg, &action, &dialect);
   if (sid == NULL)
     {
-      if (error)
-        goto REQUEST_ERROR;
-
-      /* else, it's not for us, bail out */
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   sess = g_hash_table_lookup (priv->sessions, sid);
   if (sess == NULL)
     {
+      if (action != JINGLE_ACTION_SESSION_INITIATE)
+        {
+          g_set_error (&error, GABBLE_XMPP_ERROR,
+              XMPP_ERROR_JINGLE_OUT_OF_ORDER, "session not initiated yet");
+          goto REQUEST_ERROR;
+        }
       new_session = TRUE;
       sess = create_session (self, sid, 0, NULL);
+      g_object_set (sess, "dialect", dialect, NULL);
     }
 
   /* now act on the message */
-  gabble_jingle_session_parse (sess, msg, &error);
-
-  if (!error)
+  if (gabble_jingle_session_parse (sess, action, msg, &error))
     {
       if (new_session)
         {
@@ -539,6 +542,8 @@ jingle_cb (LmMessageHandler *handler,
     }
 
   /* on parse error */
+  g_assert (error != NULL);
+
   if (new_session)
       _jingle_factory_unregister_session (self, sid);
 

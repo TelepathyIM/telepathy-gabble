@@ -77,8 +77,10 @@ struct _GabbleJingleSession {
     TpHandle peer;
 };
 
-const gchar *gabble_jingle_session_parse (GabbleJingleSession *sess,
-    LmMessage *message, GError **error);
+const gchar * gabble_jingle_session_detect (LmMessage *message,
+    JingleAction *action, JingleDialect *dialect);
+gboolean gabble_jingle_session_parse (GabbleJingleSession *sess,
+    JingleAction action, LmMessage *message, GError **error);
 LmMessage *gabble_jingle_session_new_message (GabbleJingleSession *sess,
     JingleAction action, LmMessageNode **sess_node);
 

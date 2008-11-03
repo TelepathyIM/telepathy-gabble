@@ -23,6 +23,7 @@ NS_SI = 'http://jabber.org/protocol/si'
 NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
 NS_IBB = 'http://jabber.org/protocol/ibb'
 NS_X_DATA = 'jabber:x:data'
+NS_BYTESTREAMS = 'http://jabber.org/protocol/bytestreams'
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -310,6 +311,8 @@ def test(q, bus, conn, stream):
     assert field['var'] == 'stream-method'
     assert field['type'] == 'list-single'
     value = xpath.queryForNodes('/field/option/value', field)[0]
+    assert str(value) == NS_BYTESTREAMS
+    value = xpath.queryForNodes('/field/option/value', field)[1]
     assert str(value) == NS_IBB
 
     tube = xpath.queryForNodes('/si/tube', si)[0]

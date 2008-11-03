@@ -1082,7 +1082,7 @@ gabble_tube_stream_get_property (GObject *object,
           }
         break;
       case PROP_SUPPORTED_SOCKET_TYPES:
-        g_value_set_boxed (value,
+        g_value_take_boxed (value,
             gabble_tube_stream_get_supported_socket_types ());
         break;
       default:

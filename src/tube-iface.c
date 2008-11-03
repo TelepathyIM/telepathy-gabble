@@ -36,12 +36,12 @@ gabble_tube_iface_accept (GabbleTubeIface *self,
 }
 
 void
-gabble_tube_iface_close (GabbleTubeIface *self)
+gabble_tube_iface_close (GabbleTubeIface *self, gboolean closed_remotely)
 {
-  void (*virtual_method)(GabbleTubeIface *) =
+  void (*virtual_method)(GabbleTubeIface *, gboolean) =
     GABBLE_TUBE_IFACE_GET_CLASS (self)->close;
   g_assert (virtual_method != NULL);
-  virtual_method (self);
+  virtual_method (self, closed_remotely);
 }
 
 void

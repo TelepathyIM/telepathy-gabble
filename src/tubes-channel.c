@@ -1135,7 +1135,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   if (bytestream == NULL)
     {
       /* Tube was declined by remote user. Close it */
-      gabble_tube_iface_close (tube);
+      gabble_tube_iface_close (tube, TRUE);
       return;
     }
 
@@ -1474,8 +1474,9 @@ tube_msg_offered (GabbleTubesChannel *self,
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
     {
-      DEBUG ("tube ID already in use. Close both tubes");
-      gabble_tube_iface_close (tube);
+      DEBUG ("tube ID already in use. Do not open the offered tube and close "
+          "the existing tube id %u", tube_id);
+      gabble_tube_iface_close (tube, FALSE);
       return;
     }
 
@@ -1544,8 +1545,7 @@ tube_msg_close (GabbleTubesChannel *self,
     }
 
   DEBUG ("tube %u was closed by remote peer", tube_id);
-  /* FIXME: we shouldn't re-send the close message */
-  gabble_tube_iface_close (tube);
+  gabble_tube_iface_close (tube, TRUE);
 }
 
 void
@@ -1679,7 +1679,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
       if (!start_stream_initiation (self, tube, stream_id, &error))
         {
-          gabble_tube_iface_close (tube);
+          gabble_tube_iface_close (tube, TRUE);
 
           dbus_g_method_return_error (context, error);
 
@@ -1781,7 +1781,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
       if (!gabble_tube_stream_offer (GABBLE_TUBE_STREAM (tube), address_type,
           address, access_control, access_control_param, &error))
         {
-          gabble_tube_iface_close (tube);
+          gabble_tube_iface_close (tube, TRUE);
 
           dbus_g_method_return_error (context, error);
 
@@ -1917,9 +1917,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4 &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV6)
+  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Address type %d not implemented", address_type);
@@ -2012,7 +2010,7 @@ gabble_tubes_channel_close_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  gabble_tube_iface_close (tube);
+  gabble_tube_iface_close (tube, FALSE);
 
   tp_svc_channel_type_tubes_return_from_close_tube (context);
 }

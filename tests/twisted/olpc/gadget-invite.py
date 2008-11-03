@@ -10,7 +10,7 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 
-from util import announce_gadget
+from util import announce_gadget, gadget_publish
 import ns
 
 def join_channel(name, q, conn, stream):
@@ -59,6 +59,7 @@ def test(q, bus, conn, stream):
     simple_presence_iface = dbus.Interface(conn, 'org.freedesktop.Telepathy.Connection.Interface.SimplePresence')
 
     q.expect('dbus-signal', signal='GadgetDiscovered')
+    gadget_publish(q, stream, conn, True)
 
     # join a room
     room_handle, room_path = join_channel('myroom@conference.localhost',

@@ -134,7 +134,8 @@ struct _GabbleTubeDBusPrivate
 static void data_received_cb (GabbleBytestreamIface *stream, TpHandle sender,
     GString *data, gpointer user_data);
 
-static void gabble_tube_dbus_close (GabbleTubeIface *tube);
+static void gabble_tube_dbus_close (GabbleTubeIface *tube, gboolean
+    closed_remotely);
 
 /*
  * Characters used are permissible both in filenames and in D-Bus names. (See
@@ -1049,7 +1050,7 @@ data_received_cb (GabbleBytestreamIface *stream,
             {
               DEBUG ("D-Bus message has unknown endianness byte 0x%x, "
                   "closing tube", (unsigned int) buf->str[0]);
-              gabble_tube_dbus_close ((GabbleTubeIface *) tube);
+              gabble_tube_dbus_close ((GabbleTubeIface *) tube, TRUE);
               return;
             }
 
@@ -1070,7 +1071,7 @@ data_received_cb (GabbleBytestreamIface *stream,
               priv->reassembly_bytes_needed > DBUS_MAXIMUM_MESSAGE_LENGTH)
             {
               DEBUG ("D-Bus message is too large to be valid, closing tube");
-              gabble_tube_dbus_close ((GabbleTubeIface *) tube);
+              gabble_tube_dbus_close ((GabbleTubeIface *) tube, TRUE);
               return;
             }
 
@@ -1178,7 +1179,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube,
  * Implements gabble_tube_iface_close on GabbleTubeIface
  */
 static void
-gabble_tube_dbus_close (GabbleTubeIface *tube)
+gabble_tube_dbus_close (GabbleTubeIface *tube, gboolean closed_remotely)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
 

@@ -883,7 +883,7 @@ gabble_tube_stream_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+  gabble_tube_iface_close (GABBLE_TUBE_IFACE (self), TRUE);
 
   if (priv->initiator != priv->self_handle &&
       priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX &&
@@ -1045,7 +1045,7 @@ gabble_tube_stream_get_property (GObject *object,
         g_value_set_boolean (value, priv->closed);
         break;
       case PROP_CHANNEL_PROPERTIES:
-        g_value_set_boxed (value,
+        g_value_take_boxed (value,
             tp_dbus_properties_mixin_make_properties_hash (object,
                 TP_IFACE_CHANNEL, "TargetHandle",
                 TP_IFACE_CHANNEL, "TargetHandleType",
@@ -1083,7 +1083,7 @@ gabble_tube_stream_get_property (GObject *object,
           }
         break;
       case PROP_SUPPORTED_SOCKET_TYPES:
-        g_value_set_boxed (value,
+        g_value_take_boxed (value,
             gabble_tube_stream_get_supported_socket_types ());
         break;
       default:
@@ -1550,7 +1550,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
 
   if (!tube_stream_open (self, error))
     {
-      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self), TRUE);
       return FALSE;
     }
 
@@ -1570,7 +1570,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
  * Implements gabble_tube_iface_close on GabbleTubeIface
  */
 static void
-gabble_tube_stream_close (GabbleTubeIface *tube)
+gabble_tube_stream_close (GabbleTubeIface *tube, gboolean closed_remotely)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
@@ -1582,7 +1582,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
   g_hash_table_foreach_remove (priv->fd_to_bytestreams,
       close_each_extra_bytestream, self);
 
-  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+  if (!closed_remotely && priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       LmMessage *msg;
       const gchar *jid;
@@ -2036,7 +2036,7 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
       if (!gabble_tube_stream_offer (self, address_type,
           address, access_control, access_control_param, &error))
         {
-          gabble_tube_stream_close (GABBLE_TUBE_IFACE (self));
+          gabble_tube_stream_close (GABBLE_TUBE_IFACE (self), TRUE);
 
           dbus_g_method_return_error (context, error);
 
@@ -2071,9 +2071,7 @@ gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GError *error = NULL;
 
-  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4 &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV6)
+  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Address type %d not implemented", address_type);
@@ -2151,7 +2149,7 @@ static void
 gabble_tube_stream_close_async (TpSvcChannel *iface,
                                   DBusGMethodInvocation *context)
 {
-  gabble_tube_stream_close (GABBLE_TUBE_IFACE (iface));
+  gabble_tube_stream_close (GABBLE_TUBE_IFACE (iface), FALSE);
   tp_svc_channel_return_from_close (context);
 }
 

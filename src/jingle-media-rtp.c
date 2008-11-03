@@ -367,8 +367,6 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
   g_object_get (obj, "session", &sess, NULL);
   g_object_get (sess, "dialect", &dialect, NULL);
 
-  DEBUG ("using content node %p", content_node);
-
   desc_node = lm_message_node_add_child (content_node, "description", NULL);
 
   switch (dialect)

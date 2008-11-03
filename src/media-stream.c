@@ -1459,7 +1459,6 @@ content_senders_changed_cb (GabbleJingleContent *c,
 static void
 content_removed_cb (GabbleJingleContent *content, GabbleMediaStream *stream)
 {
-  DEBUG ("MediaStream:content_removed_cb() called");
   _gabble_media_stream_close (stream);
 }
 

@@ -377,7 +377,6 @@ connection_status_changed_cb (GabbleConnection *conn,
       g_assert (priv->conn != NULL);
       g_assert (priv->conn->lmconn != NULL);
 
-      DEBUG ("adding callbacks");
       g_assert (priv->jingle_cb == NULL);
       g_assert (priv->jingle_info_cb == NULL);
 

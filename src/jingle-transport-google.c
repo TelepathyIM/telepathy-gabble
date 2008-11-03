@@ -262,26 +262,6 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
   DEBUG ("called");
 
-#if 0
-  // FIXME do we need this?
-  if (!tp_strdiff (transport_node->name, "candidate"))
-    {
-      JingleDialect dialect;
-
-      g_object_get (priv->content->session, "dialect", &dialect, NULL);
-
-      if (dialect == JINGLE_DIALECT_GTALK4)
-        {
-          /* FIXME: do we need to do anything more than retransmit
-           * local candidates and mode switch? */
-          g_object_set (priv->content->session, "dialect",
-              JINGLE_DIALECT_GTALK3, NULL);
-
-          transmit_candidates (t, priv->local_candidates);
-        }
-    }
-#endif
-
   for (node = transport_node->children; node; node = node->next)
     {
       const gchar *name, *address, *user, *pass, *str;
@@ -290,8 +270,6 @@ parse_candidates (GabbleJingleTransportIface *obj,
       JingleTransportProtocol proto;
       JingleCandidateType ctype;
       JingleCandidate *c;
-
-      DEBUG ("Parsing node %s", node->name);
 
       if (tp_strdiff (node->name, "candidate"))
           continue;
@@ -303,7 +281,6 @@ parse_candidates (GabbleJingleTransportIface *obj,
       address = lm_message_node_get_attribute (node, "address");
       if (address == NULL)
           break;
-      DEBUG ("AAA");
 
       str = lm_message_node_get_attribute (node, "port");
       if (str == NULL)
@@ -371,7 +348,6 @@ parse_candidates (GabbleJingleTransportIface *obj,
           break;
         }
 
-      DEBUG ("XXX");
       user = lm_message_node_get_attribute (node, "username");
       if (user == NULL)
           break;
@@ -384,7 +360,6 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (str == NULL)
           break;
       net = atoi (str);
-      DEBUG ("YYY");
 
       str = lm_message_node_get_attribute (node, "generation");
       if (str == NULL)
@@ -403,7 +378,6 @@ parse_candidates (GabbleJingleTransportIface *obj,
       c->network = net;
       c->generation = gen;
 
-      DEBUG ("all well, adding candidate %s:%d!", c->address, c->port);
       candidates = g_list_append (candidates, c);
     }
 

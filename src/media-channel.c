@@ -1730,11 +1730,8 @@ session_terminated_cb (GabbleJingleSession *session,
   if (priv->streams != NULL)
     {
       GPtrArray *tmp = priv->streams;
-      GabbleMediaStream *s = g_ptr_array_index (tmp, 0);
 
       DEBUG ("unreffing streams");
-      DEBUG ("%p with refcount %d",
-          s, G_OBJECT(s)->ref_count);
 
       /* move priv->streams aside so that the stream_close_cb
        * doesn't double unref */
@@ -2016,8 +2013,6 @@ stream_close_cb (GabbleMediaStream *stream,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   guint id;
 
-  DEBUG ("%p called", chan);
-
   g_assert (GABBLE_IS_MEDIA_CHANNEL (chan));
 
   g_object_get (stream,
@@ -2048,8 +2043,6 @@ stream_error_cb (GabbleMediaStream *stream,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabbleJingleContent *c;
   guint id;
-
-  DEBUG ("%p called", chan);
 
   /* emit signal */
   g_object_get (stream, "id", &id, "content", &c, NULL);

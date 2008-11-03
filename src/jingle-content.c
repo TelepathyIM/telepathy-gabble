@@ -201,7 +201,6 @@ gabble_jingle_content_set_property (GObject *object,
   switch (property_id) {
     case PROP_CONNECTION:
       self->conn = g_value_get_object (value);
-      DEBUG ("setting self->conn to %p", self->conn);
       break;
     case PROP_SESSION:
       self->session = g_value_get_object (value);
@@ -225,8 +224,6 @@ gabble_jingle_content_set_property (GObject *object,
 
           g_assert (transport_type != 0);
 
-          DEBUG ("using transport: %s", priv->transport_ns);
-
           priv->transport = g_object_new (transport_type,
               "content", self, "transport-ns", priv->transport_ns, NULL);
 
@@ -245,7 +242,6 @@ gabble_jingle_content_set_property (GObject *object,
       break;
     case PROP_STATE:
       priv->state = g_value_get_uint (value);
-      DEBUG ("setting content state to %u", priv->state);
       break;
     case PROP_READY:
       g_assert_not_reached ();
@@ -441,8 +437,6 @@ static void
 new_transport_candidates_cb (GabbleJingleTransportIface *trans,
     GList *candidates, GabbleJingleContent *content)
 {
-  DEBUG ("JingleContent %p: passing the signal on", content);
-
   /* just pass the signal on */
   g_signal_emit (content, signals[NEW_CANDIDATES], 0, candidates);
 }
@@ -499,7 +493,6 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
   if (google_mode)
     {
-      DEBUG ("content in google mode!");
       if (creator == NULL)
           creator = "initiator";
 
@@ -512,7 +505,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
       if (trans_node == NULL)
         {
           /* gtalk lj0.3 assumes google-p2p transport */
-          DEBUG ("detecting GTalk3 dialect");
+          DEBUG ("detected GTalk3 dialect");
 
           dialect = JINGLE_DIALECT_GTALK3;
           g_object_set (c->session, "dialect", JINGLE_DIALECT_GTALK3, NULL);
@@ -541,7 +534,6 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   if (transport_type == 0)
     {
       const gchar *ns = lm_message_node_get_attribute (trans_node, "xmlns");
-      DEBUG ("ns is %s", ns);
 
       transport_type = GPOINTER_TO_INT (
           g_hash_table_lookup (c->conn->jingle_factory->transports, ns));
@@ -629,11 +621,9 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
 
   g_object_get (c->session, "dialect", &dialect, NULL);
 
-  /* FIXME: if we examine dialect manually, we don't need google_modeparamflag */
+  /* FIXME: if we examine dialect manually, we don't need google_mode param flag */
   if (google_mode)
     {
-      DEBUG ("parsing content-accept in google mode");
-
       if (trans_node == NULL)
         {
           DEBUG ("no transport node, assuming GTalk3 dialect");
@@ -684,8 +674,6 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
   if ((dialect == JINGLE_DIALECT_GTALK3) ||
       (dialect == JINGLE_DIALECT_GTALK4))
     {
-      DEBUG ("content node setting to parent??");
-
       /* content-* isn't used in GTalk anyways, so we always have to include
        * the full content description */
       g_assert (full == TRUE);
@@ -694,17 +682,12 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
     }
   else
     {
-      DEBUG ("creator: %s", priv->creator);
-      DEBUG ("name: %s", priv->name);
-      DEBUG ("senders: %s", produce_senders (priv->senders));
-
       content_node = lm_message_node_add_child (parent, "content", NULL);
       lm_message_node_set_attributes (content_node,
           "creator", priv->created_by_initiator ? "initiator" : "responder",
           "name", priv->name,
           "senders", produce_senders (priv->senders),
           NULL);
-      DEBUG ("created new content node %p", content_node);
     }
 
   if (!full)
@@ -816,8 +799,6 @@ _maybe_ready (GabbleJingleContent *self)
   if (!gabble_jingle_content_is_ready (self))
       return;
 
-  DEBUG ("called, and is ready");
-
   /* If content disposition is session and session
    * is not yet acknowledged/active, we signall
    * the readiness to the session and let it take
@@ -826,12 +807,9 @@ _maybe_ready (GabbleJingleContent *self)
 
   g_object_get (self->session, "state", &state, NULL);
 
-  DEBUG ("session state == %d", state);
-
   if (!tp_strdiff (priv->disposition, "session") &&
       (state < JS_STATE_PENDING_ACCEPT_SENT))
     {
-      DEBUG ("disposition == 'session' and session not active, signalling");
       /* Notify the session that we're ready for
        * session-initiate/session-accept */
       g_signal_emit (self, signals[READY], 0);
@@ -840,9 +818,9 @@ _maybe_ready (GabbleJingleContent *self)
     {
       if (state >= JS_STATE_PENDING_INITIATE_SENT)
         {
-          DEBUG ("disposition != 'session', sending add/accept");
           send_content_add_or_accept (self);
         }
+      else
         {
           /* non session-disposition content ready without session
            * being initiated at all? */

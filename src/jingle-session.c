@@ -148,7 +148,7 @@ gabble_jingle_session_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  DEBUG ("dispose called");
+  DEBUG ("called");
   priv->dispose_has_run = TRUE;
 
   g_assert ((priv->state == JS_STATE_PENDING_CREATED) ||
@@ -254,7 +254,6 @@ gabble_jingle_session_set_property (GObject *object,
     case PROP_PEER_RESOURCE:
       g_free (priv->peer_resource);
       priv->peer_resource = g_value_dup_string (value);
-      DEBUG ("setting peer resource to %s", priv->peer_resource);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -368,15 +367,10 @@ parse_action (const gchar *txt)
   if (txt == NULL)
       return JINGLE_ACTION_UNKNOWN;
 
-  DEBUG ("with %s", txt);
-
   /* synonyms, best deal with them right now */
   if (!tp_strdiff (txt, "initiate") ||
       !tp_strdiff (txt, "session-initiate"))
-    {
-        DEBUG ("it's initiate");
         return JINGLE_ACTION_SESSION_INITIATE;
-    }
   else if (!tp_strdiff (txt, "terminate") ||
       !tp_strdiff (txt, "session-terminate") ||
       !tp_strdiff (txt, "reject"))
@@ -581,8 +575,6 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
         }
       return;
     }
-
-  DEBUG ("remote end adds new content named '%s' of type %s", name, g_type_name (content_type));
 
   if (c != NULL)
     {
@@ -1087,8 +1079,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   if (*error != NULL)
     return FALSE;
 
-  DEBUG ("parsed properly");
-
   return TRUE;
 }
 
@@ -1138,8 +1128,6 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
   LmMessageNode *iq_node, *session_node;
   gchar *el = NULL, *ns = NULL;
   gboolean gtalk_mode = FALSE;
-
-  DEBUG ("creating new message to peer: %s", priv->peer_jid);
 
   g_assert ((action == JINGLE_ACTION_SESSION_INITIATE) || (priv->state > JS_STATE_PENDING_CREATED));
 
@@ -1250,7 +1238,7 @@ _fill_content (GabbleJingleSession *sess,
     }
   else
     {
-      DEBUG ("weird, content %p is in stata %u", c, state);
+      DEBUG ("content %p is in state %u", c, state);
       g_assert_not_reached ();
     }
 }
@@ -1293,7 +1281,6 @@ gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
       ctx->handler = cb;
       ctx->user_data = user_data;
 
-      DEBUG ("sending with reply %p", cb);
       _gabble_connection_send_with_reply (priv->conn, msg,
           _process_reply, G_OBJECT (sess), ctx, NULL);
     }
@@ -1448,8 +1435,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess)
    * it, bringing refcount to 0, so dispose will be called, and it
    * takes care of cleanup */
 
-  DEBUG ("we are terminating this session, our refcount is %d",
-      G_OBJECT (sess)->ref_count);
+  DEBUG ("we are terminating this session");
   set_state (sess, JS_STATE_ENDED);
 }
 
@@ -1492,8 +1478,6 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
   const gchar *name;
-
-  DEBUG ("JingleSession:contant_removed_cb() called");
 
   g_object_get (c, "name", &name, NULL);
   g_hash_table_remove (priv->contents, name);

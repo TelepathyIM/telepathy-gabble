@@ -51,12 +51,9 @@ struct _GabbleMediaStream {
 
     gchar *name;
 
-    JingleInitiator initiator;
     TpMediaStreamState connection_state;
-    StreamSignallingState signalling_state;
 
     CombinedStreamDirection combined_direction;
-    gboolean got_local_codecs;
     gboolean playing;
 
     GabbleMediaStreamPrivate *priv;
@@ -92,18 +89,6 @@ gboolean gabble_media_stream_error (GabbleMediaStream *self, guint errno,
     const gchar *message, GError **error);
 
 void _gabble_media_stream_close (GabbleMediaStream *close);
-// gboolean _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
-//     LmMessage *message, LmMessageNode *desc_node, GError **error);
-// gboolean _gabble_media_stream_post_remote_candidates (
-//    GabbleMediaStream *stream, LmMessage *message,
-//     LmMessageNode *transport_node, GError **error);
-//LmMessageNode *_gabble_media_stream_add_content_node (
-//    GabbleMediaStream *stream, LmMessageNode *session_node);
-//void _gabble_media_stream_content_node_add_description (
-//    GabbleMediaStream *stream, LmMessageNode *content_node);
-//LmMessageNode *_gabble_media_stream_content_node_add_transport (
-//    GabbleMediaStream *stream, LmMessageNode *content_node);
-
 void _gabble_media_stream_update_sending (GabbleMediaStream *stream,
     gboolean start_sending);
 void gabble_media_stream_hold (GabbleMediaStream *stream, gboolean hold);

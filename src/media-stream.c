@@ -76,15 +76,11 @@ enum
   PROP_CONNECTION = 1,
   PROP_MEDIA_SESSION,
   PROP_OBJECT_PATH,
-  PROP_MODE,
   PROP_NAME,
   PROP_ID,
-  PROP_INITIATOR,
   PROP_MEDIA_TYPE,
   PROP_CONNECTION_STATE,
   PROP_READY,
-  PROP_GOT_LOCAL_CODECS,
-  PROP_SIGNALLING_STATE,
   PROP_PLAYING,
   PROP_COMBINED_DIRECTION,
   PROP_LOCAL_HOLD,
@@ -225,17 +221,11 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
-    case PROP_MODE:
-      g_value_set_uint (value, priv->mode);
-      break;
     case PROP_NAME:
       g_value_set_string (value, stream->name);
       break;
     case PROP_ID:
       g_value_set_uint (value, priv->id);
-      break;
-    case PROP_INITIATOR:
-      g_value_set_uint (value, stream->initiator);
       break;
     case PROP_MEDIA_TYPE:
       g_value_set_uint (value, priv->media_type);
@@ -245,12 +235,6 @@ gabble_media_stream_get_property (GObject    *object,
       break;
     case PROP_READY:
       g_value_set_boolean (value, priv->ready);
-      break;
-    case PROP_GOT_LOCAL_CODECS:
-      g_value_set_boolean (value, stream->got_local_codecs);
-      break;
-    case PROP_SIGNALLING_STATE:
-      g_value_set_uint (value, stream->signalling_state);
       break;
     case PROP_PLAYING:
       g_value_set_boolean (value, stream->playing);
@@ -290,18 +274,12 @@ gabble_media_stream_set_property (GObject      *object,
       g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
       break;
-    case PROP_MODE:
-      priv->mode = g_value_get_uint (value);
-      break;
     case PROP_NAME:
       g_free (stream->name);
       stream->name = g_value_dup_string (value);
       break;
     case PROP_ID:
       priv->id = g_value_get_uint (value);
-      break;
-    case PROP_INITIATOR:
-      stream->initiator = g_value_get_uint (value);
       break;
     case PROP_MEDIA_TYPE:
       priv->media_type = g_value_get_uint (value);
@@ -313,21 +291,6 @@ gabble_media_stream_set_property (GObject      *object,
       break;
     case PROP_READY:
       priv->ready = g_value_get_boolean (value);
-      break;
-    case PROP_GOT_LOCAL_CODECS:
-      stream->got_local_codecs = g_value_get_boolean (value);
-      break;
-    case PROP_SIGNALLING_STATE:
-        {
-          StreamSignallingState old = stream->signalling_state;
-          stream->signalling_state = g_value_get_uint (value);
-          DEBUG ("stream %s sig_state %d->%d",
-              stream->name, old, stream->signalling_state);
-          /* FIXME 
-          if (stream->signalling_state != old)
-            push_native_candidates (stream);
-            */
-        }
       break;
     case PROP_PLAYING:
         {
@@ -432,16 +395,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
 
-  param_spec = g_param_spec_uint ("mode", "Signalling mode",
-                                  "Which signalling mode used to control the "
-                                  "stream.",
-                                  0, G_MAXUINT, MODE_JINGLE, // FIXME
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_MODE, param_spec);
-
   param_spec = g_param_spec_string ("name", "Stream name",
       "An opaque name for the stream used in the signalling.", NULL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NAME |
@@ -457,18 +410,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ID, param_spec);
-
-  param_spec = g_param_spec_uint ("initiator", "Stream initiator",
-                                  "An enum signifying which end initiated "
-                                  "the stream.",
-                                  INITIATOR_LOCAL,
-                                  INITIATOR_REMOTE,
-                                  INITIATOR_LOCAL,
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_INITIATOR, param_spec);
 
   param_spec = g_param_spec_uint ("media-type", "Stream media type",
                                   "A constant indicating which media type the "
@@ -505,27 +446,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                      G_PARAM_STATIC_NAME |
                                      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_READY, param_spec);
-
-  param_spec = g_param_spec_boolean ("got-local-codecs", "Got local codecs?",
-      "A boolean signifying whether we've got the locally supported codecs "
-      "from the user.", FALSE,
-      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_GOT_LOCAL_CODECS,
-      param_spec);
-
-  param_spec = g_param_spec_uint ("signalling-state", "Signalling state",
-                                  "Whether the stream is newly created, "
-                                  "sent to the peer, or acknowledged.",
-                                  STREAM_SIG_STATE_NEW,
-                                  STREAM_SIG_STATE_REMOVING,
-                                  STREAM_SIG_STATE_NEW,
-                                  G_PARAM_CONSTRUCT |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_SIGNALLING_STATE,
-      param_spec);
 
   param_spec = g_param_spec_boolean ("playing", "Set playing",
                                      "A boolean signifying whether the stream "
@@ -951,8 +871,6 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   li = g_list_prepend (NULL, c);
   gabble_jingle_content_add_candidates (priv->content, li);
 
-  // FIXME: the above instead this: push_native_candidates (self);
-
   g_signal_emit (self, signals[NEW_NATIVE_CANDIDATE], 0,
                  candidate_id, transports);
 
@@ -1332,11 +1250,6 @@ push_remote_candidates (GabbleMediaStream *stream)
       transports = g_value_get_boxed (g_value_array_get_nth (candidate, 1));
 
       DEBUG ("passing 1 remote candidate to stream engine: %s", candidate_id);
-      /*
-      GMS_DEBUG_EVENT (priv->session, "passing 1 remote candidate "
-                       "to stream-engine");
-                       */
-
       tp_svc_media_stream_handler_emit_add_remote_candidate (
           stream, candidate_id, transports);
     }

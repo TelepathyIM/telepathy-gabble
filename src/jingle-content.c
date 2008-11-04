@@ -57,7 +57,6 @@ enum
   PROP_NAME,
   PROP_SENDERS,
   PROP_STATE,
-  PROP_READY,
   PROP_DISPOSITION,
   LAST_PROPERTY
 };
@@ -70,7 +69,6 @@ struct _GabbleJingleContentPrivate
   gboolean created_by_us;
   JingleContentState state;
   JingleContentSenders senders;
-  // gboolean ready;
 
   gchar *content_ns;
   gchar *transport_ns;
@@ -168,10 +166,6 @@ gabble_jingle_content_get_property (GObject *object,
     case PROP_STATE:
       g_value_set_uint (value, priv->state);
       break;
-    case PROP_READY:
-      g_assert_not_reached ();
-      // g_value_set_boolean (value, priv->ready);
-      break;
     case PROP_CONTENT_NS:
       g_value_set_string (value, priv->content_ns);
       break;
@@ -240,21 +234,6 @@ gabble_jingle_content_set_property (GObject *object,
       break;
     case PROP_STATE:
       priv->state = g_value_get_uint (value);
-      break;
-    case PROP_READY:
-      g_assert_not_reached ();
-#if 0
-      DEBUG ("setting content ready from %u to %u",
-          priv->ready, g_value_get_boolean (value));
-
-      if (priv->ready == g_value_get_boolean (value))
-        {
-          DEBUG ("we're already ready, doing nothing");
-          return;
-        }
-
-      priv->ready = g_value_get_boolean (value);
-#endif
       break;
     case PROP_DISPOSITION:
       g_assert (priv->disposition == NULL);
@@ -340,19 +319,6 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
-
-/* Note: we now have media_ready and transport_ready internal flags for this
- */
-#if 0
-  param_spec = g_param_spec_boolean ("ready", "Ready?",
-                                     "A boolean signifying whether media for "
-                                     "this content is ready to be signalled.",
-                                     FALSE,
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_READY, param_spec);
-#endif
 
   param_spec = g_param_spec_string ("disposition", "Content disposition",
                                     "Distinguishes between 'session' and other "

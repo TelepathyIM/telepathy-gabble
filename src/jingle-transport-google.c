@@ -125,7 +125,7 @@ gabble_jingle_transport_google_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  _free_candidates (priv->remote_candidates); // FIXME: huge bug, malloc/free hell
+  _free_candidates (priv->remote_candidates);
   priv->remote_candidates = NULL;
 
   _free_candidates (priv->local_candidates);
@@ -497,6 +497,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
   _gabble_connection_send (priv->content->conn, msg, NULL);
 }
 
+/* Takes in a list of slice-allocated JingleCandidate structs */
 static void
 add_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
 {
@@ -561,7 +562,6 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   GabbleJingleTransportIfaceClass *klass = (GabbleJingleTransportIfaceClass *) g_iface;
 
   klass->parse_candidates = parse_candidates;
-  // FIXME: klass->produce = produce_candidates;
   klass->add_candidates = add_candidates;
   klass->retransmit_candidates = retransmit_candidates;
   klass->get_remote_candidates = get_remote_candidates;

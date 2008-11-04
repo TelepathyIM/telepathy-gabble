@@ -49,6 +49,7 @@ gabble_jingle_transport_iface_produce (GabbleJingleTransportIface *self,
   return virtual_method (self, node);
 }
 
+/* Takes in a list of slice-allocated JingleCandidate structs */
 void
 gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *self,
     GList *candidates)

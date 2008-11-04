@@ -1336,7 +1336,7 @@ _gabble_media_channel_request_streams (GabbleMediaChannel *chan,
   if (dialect != JINGLE_DIALECT_ERROR)
     {
       /* is a google call... we have no other option */
-      if (dialect <= JINGLE_DIALECT_GTALK4)
+      if (JINGLE_IS_GOOGLE_DIALECT (dialect))
         {
           DEBUG ("already in Google mode; can't add new stream");
 

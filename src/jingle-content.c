@@ -597,7 +597,7 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
     }
 
   /* GTalk mode and old Gabble both don't really mind this */
-  if (dialect <= JINGLE_DIALECT_V015)
+  if (JINGLE_IS_GOOGLE_DIALECT (dialect) || (dialect == JINGLE_DIALECT_V015))
     {
       DEBUG ("gtalk or old gabble detected, settings senders = both");
     }
@@ -618,7 +618,6 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
 
   g_object_notify ((GObject *) c, "senders");
 
-  // If all went well, it means the content is finally ackd
   priv->state = JINGLE_CONTENT_STATE_ACKNOWLEDGED;
   g_object_notify ((GObject *) c, "state");
 }
@@ -692,6 +691,7 @@ gabble_jingle_content_parse_transport_info (GabbleJingleContent *self,
   gabble_jingle_transport_iface_parse_candidates (priv->transport, trans_node, error);
 }
 
+/* Takes in a list of slice-allocated JingleCandidate structs */
 void
 gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
 {
@@ -843,7 +843,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 
   g_object_get (c->session, "dialect", &dialect, NULL);
 
-  if (dialect <= JINGLE_DIALECT_GTALK4)
+  if (JINGLE_IS_GOOGLE_DIALECT (dialect))
     {
       DEBUG ("ignoring direction change request for GTalk stream");
       return FALSE;

@@ -449,6 +449,7 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
     }
 }
 
+/* Takes in a list of slice-allocated JingleCodec structs */
 void
 jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
 {

@@ -93,7 +93,10 @@ typedef struct {
   JingleAction *actions;
 } JingleStateActions;
 
-static JingleAction allowed_actions[6][11] = {
+/* gcc should be able to figure this out from the table below, but.. */
+#define MAX_ACTIONS_PER_STATE 11
+
+static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = {
   /* JS_STATE_PENDING_CREATED */
   { JINGLE_ACTION_SESSION_INITIATE, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_INITIATE_SENT */
@@ -698,7 +701,7 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
     }
 
   gabble_jingle_content_parse_accept (c, content_node,
-      (priv->dialect <= JINGLE_DIALECT_GTALK4), error);
+      JINGLE_IS_GOOGLE_DIALECT (priv->dialect), error);
 }
 
 static void
@@ -710,8 +713,9 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
   /* we can't call ourselves at the moment */
   if (priv->local_initiator)
     {
-      // FIXME: terminate session here, plzkthxbai
-      // jingle_session_terminate (sess, FALSE, JINGLE_REASON_BUSY);
+      /* We ignore initiate from us, and terminate the session immediately
+       * afterwards */
+      _terminate_delayed (sess);
       return;
     }
 
@@ -831,7 +835,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
   /* FIXME: we need to do dialect detection here!!! */
 
-  if (priv->dialect <= JINGLE_DIALECT_GTALK4)
+  if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
     {
       /* GTalk has only one content anyways */
       GList *cs = g_hash_table_get_values (priv->contents);

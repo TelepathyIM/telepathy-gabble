@@ -2256,7 +2256,10 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     tp_message_set_uint32 (message, 0, "message-type", msg_type);
 
   if (timestamp != 0)
-    tp_message_set_uint64 (message, 0, "message-sent", timestamp);
+    {
+      tp_message_set_boolean (message, 0, "scrollback", TRUE);
+      tp_message_set_uint64 (message, 0, "message-sent", timestamp);
+    }
 
   tp_message_set_uint64 (message, 0, "message-received", time (NULL));
   tp_message_set_handle (message, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
@@ -2273,7 +2276,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       tp_message_set_uint32 (delivery_report, 0, "message-type",
           TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
       tp_message_set_uint32 (delivery_report, 0, "delivery-status",
-          1); /* FIXME: Delivery_Status_Delivered */
+          TP_DELIVERY_STATUS_DELIVERED);
       tp_message_take_message (delivery_report, 0, "delivery-echo",
           message);
 

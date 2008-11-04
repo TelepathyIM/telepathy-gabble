@@ -519,8 +519,8 @@ create_new_tube (GabbleTubesChannel *self,
     }
 #endif
 
-  g_signal_connect (tube, "opened", G_CALLBACK (tube_opened_cb), self);
-  g_signal_connect (tube, "closed", G_CALLBACK (tube_closed_cb), self);
+  g_signal_connect (tube, "tube-opened", G_CALLBACK (tube_opened_cb), self);
+  g_signal_connect (tube, "tube-closed", G_CALLBACK (tube_closed_cb), self);
 
   return tube;
 }
@@ -660,6 +660,35 @@ _emit_d_bus_names_changed_foreach_data
   GabbleTubesChannel *self;
   TpHandle contact;
 };
+
+struct _ForeachData
+{
+  TpExportableChannelFunc foreach;
+  gpointer user_data;
+};
+
+static void
+foreach_slave (gpointer key,
+               gpointer value,
+               gpointer user_data)
+{
+  GabbleTubeIface *tube = GABBLE_TUBE_IFACE (value);
+  struct _ForeachData *data = (struct _ForeachData *) user_data;
+
+  data->foreach (TP_EXPORTABLE_CHANNEL (tube), data->user_data);
+}
+
+void gabble_tubes_channel_foreach (GabbleTubesChannel *self,
+    TpExportableChannelFunc foreach, gpointer user_data)
+{
+  struct _ForeachData data;
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+
+  data.user_data = user_data;
+  data.foreach = foreach;
+
+  g_hash_table_foreach (priv->tubes, foreach_slave, &data);
+}
 
 static void
 emit_d_bus_names_changed_foreach (gpointer key,
@@ -902,7 +931,7 @@ copy_tube_in_ptr_array (gpointer key,
 
   g_object_get (tube,
                 "type", &type,
-                "initiator", &initiator,
+                "initiator-handle", &initiator,
                 "service", &service,
                 "parameters", &parameters,
                 "state", &state,
@@ -1013,83 +1042,6 @@ copy_parameter (gpointer key,
   g_hash_table_insert (parameters, g_strdup (prop), gvalue_copied);
 }
 
-static void
-publish_tube_in_node (GabbleTubesChannel *self,
-                      LmMessageNode *node,
-                      GabbleTubeIface *tube)
-{
-  LmMessageNode *parameters_node;
-  GHashTable *parameters;
-  TpTubeType type;
-  gchar *service, *id_str;
-  guint tube_id;
-  GabbleTubesChannelPrivate *priv =
-      GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-    (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  TpHandle initiator_handle;
-
-  g_object_get (G_OBJECT (tube),
-      "type", &type,
-      "initiator", &initiator_handle,
-      "service", &service,
-      "parameters", &parameters,
-      "id", &tube_id,
-      NULL);
-
-  id_str = g_strdup_printf ("%u", tube_id);
-
-  lm_message_node_set_attributes (node,
-      "service", service,
-      "id", id_str,
-      NULL);
-
-  g_free (id_str);
-
-  switch (type)
-    {
-      case TP_TUBE_TYPE_DBUS:
-        {
-          gchar *name, *stream_id;
-
-          g_object_get (G_OBJECT (tube),
-              "stream-id", &stream_id,
-              "dbus-name", &name,
-              NULL);
-
-          lm_message_node_set_attributes (node,
-              "type", "dbus",
-              "stream-id", stream_id,
-              "initiator", tp_handle_inspect (contact_repo, initiator_handle),
-              NULL);
-
-          if (name != NULL)
-            lm_message_node_set_attribute (node, "dbus-name", name);
-
-          g_free (name);
-          g_free (stream_id);
-        }
-        break;
-      case TP_TUBE_TYPE_STREAM:
-        {
-          lm_message_node_set_attribute (node, "type", "stream");
-        }
-        break;
-      default:
-        {
-          g_return_if_reached ();
-        }
-    }
-
-  parameters_node = lm_message_node_add_child (node, "parameters",
-      NULL);
-  lm_message_node_add_children_from_properties (parameters_node, parameters,
-      "parameter");
-
-  g_free (service);
-  g_hash_table_unref (parameters);
-}
-
 struct _i_hate_g_hash_table_foreach
 {
   GabbleTubesChannel *self;
@@ -1117,7 +1069,7 @@ publish_tubes_in_node (gpointer key,
   g_object_get (tube,
       "state", &state,
       "type", &type,
-      "initiator", &initiator,
+      "initiator-handle", &initiator,
        NULL);
 
   if (state != TP_TUBE_STATE_OPEN)
@@ -1128,7 +1080,8 @@ publish_tubes_in_node (gpointer key,
     return;
 
   tube_node = lm_message_node_add_child (data->tubes_node, "tube", NULL);
-  publish_tube_in_node (data->self, tube_node, tube);
+  gabble_tube_iface_publish_in_node (tube, (TpBaseConnection *) priv->conn,
+      tube_node);
 }
 
 static void
@@ -1182,7 +1135,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   if (bytestream == NULL)
     {
       /* Tube was declined by remote user. Close it */
-      gabble_tube_iface_close (tube);
+      gabble_tube_iface_close (tube, TRUE);
       return;
     }
 
@@ -1427,7 +1380,8 @@ start_stream_initiation (GabbleTubesChannel *self,
 
   tube_node = lm_message_node_add_child (si_node, "tube", NULL);
   lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
-  publish_tube_in_node (self, tube_node, tube);
+  gabble_tube_iface_publish_in_node (tube, (TpBaseConnection *) priv->conn,
+      tube_node);
 
   data = g_slice_new (struct _bytestream_negotiate_cb_data);
   data->self = self;
@@ -1450,60 +1404,6 @@ start_stream_initiation (GabbleTubesChannel *self,
   return result;
 }
 #endif
-
-static gboolean
-send_new_stream_tube_msg (GabbleTubesChannel *self,
-                          GabbleTubeIface *tube,
-                          const gchar *stream_id,
-                          GError **error)
-{
-  GabbleTubesChannelPrivate *priv;
-  LmMessageNode *tube_node = NULL;
-  LmMessage *msg;
-  TpHandleRepoIface *contact_repo;
-  const gchar *jid;
-  TpTubeType type;
-  gboolean result;
-
-  g_object_get (tube, "type", &type, NULL);
-  g_assert (type == TP_TUBE_TYPE_STREAM);
-
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-
-  contact_repo = tp_base_connection_get_handles (
-     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-  jid = tp_handle_inspect (contact_repo, priv->handle);
-
-  msg = lm_message_build (jid, LM_MESSAGE_TYPE_MESSAGE,
-      '(', "tube", "",
-        '*', &tube_node,
-        '@', "xmlns", NS_TUBES,
-      ')',
-      '(', "amp", "",
-        '@', "xmlns", NS_AMP,
-        '(', "rule", "",
-          '@', "condition", "deliver-at",
-          '@', "value", "stored",
-          '@', "action", "error",
-        ')',
-        '(', "rule", "",
-          '@', "condition", "match-resource",
-          '@', "value", "exact",
-          '@', "action", "error",
-        ')',
-      ')',
-      NULL);
-
-  g_assert (tube_node != NULL);
-
-  publish_tube_in_node (self, tube_node, tube);
-
-  result = _gabble_connection_send (priv->conn, msg, error);
-
-  lm_message_unref (msg);
-  return result;
-}
 
 static void
 send_tube_close_msg (GabbleTubesChannel *self,
@@ -1574,8 +1474,9 @@ tube_msg_offered (GabbleTubesChannel *self,
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
     {
-      DEBUG ("tube ID already in use. Close both tubes");
-      gabble_tube_iface_close (tube);
+      DEBUG ("tube ID already in use. Do not open the offered tube and close "
+          "the existing tube id %u", tube_id);
+      gabble_tube_iface_close (tube, FALSE);
       return;
     }
 
@@ -1644,8 +1545,7 @@ tube_msg_close (GabbleTubesChannel *self,
     }
 
   DEBUG ("tube %u was closed by remote peer", tube_id);
-  /* FIXME: we shouldn't re-send the close message */
-  gabble_tube_iface_close (tube);
+  gabble_tube_iface_close (tube, TRUE);
 }
 
 void
@@ -1677,6 +1577,63 @@ generate_tube_id (void)
   /* We don't generate IDs in the top half of the range, to be nice to
    * older Gabble versions. */
   return g_random_int_range (0, G_MAXINT);
+}
+
+GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
+    gpointer request_token, GHashTable *request_properties,
+    gboolean require_new)
+{
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubeIface *tube;
+  const gchar *channel_type;
+  const gchar *service;
+  GHashTable *parameters = NULL;
+  guint tube_id;
+  TpTubeType type;
+
+  tube_id = generate_tube_id ();
+
+  channel_type = tp_asv_get_string (request_properties,
+            TP_IFACE_CHANNEL ".ChannelType");
+
+  if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+    {
+      type = TP_TUBE_TYPE_STREAM;
+      service = tp_asv_get_string (request_properties,
+                GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+
+    }
+  else if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+    {
+      type = TP_TUBE_TYPE_DBUS;
+      service = tp_asv_get_string (request_properties,
+                GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+    }
+  else
+    g_assert_not_reached ();
+
+  parameters = tp_asv_get_boxed (request_properties,
+               GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
+               TP_HASH_TYPE_STRING_VARIANT_MAP);
+  if (parameters == NULL)
+    {
+      /* If it is not included in the request, the connection manager MUST
+       * consider the property to be empty. */
+      parameters = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+          (GDestroyNotify) tp_g_value_slice_free);
+    }
+
+  /* if the service property is missing, the requestotron rejects the request
+   */
+  g_assert (service != NULL);
+
+  DEBUG ("Request a tube channel with type='%s' and service='%s'",
+      channel_type, service);
+
+  tube = create_new_tube (self, type, priv->self_handle, service,
+      parameters, NULL, tube_id, NULL);
+
+  return tube;
 }
 
 /**
@@ -1722,7 +1679,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
       if (!start_stream_initiation (self, tube, stream_id, &error))
         {
-          gabble_tube_iface_close (tube);
+          gabble_tube_iface_close (tube, TRUE);
 
           dbus_g_method_return_error (context, error);
 
@@ -1821,9 +1778,10 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       /* Stream initiation */
-      if (!send_new_stream_tube_msg (self, tube, stream_id, &error))
+      if (!gabble_tube_stream_offer (GABBLE_TUBE_STREAM (tube), address_type,
+          address, access_control, access_control_param, &error))
         {
-          gabble_tube_iface_close (tube);
+          gabble_tube_iface_close (tube, TRUE);
 
           dbus_g_method_return_error (context, error);
 
@@ -1833,7 +1791,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
         }
     }
 
-  g_signal_connect (tube, "new-connection",
+  g_signal_connect (tube, "tube-new-connection",
       G_CALLBACK (stream_unix_tube_new_connection_cb), self);
 
   tp_svc_channel_type_tubes_return_from_offer_stream_tube (context,
@@ -1959,9 +1917,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4 &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV6)
+  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Address type %d not implemented", address_type);
@@ -1974,7 +1930,8 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
   if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
       GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Unix sockets only support localhost control access" };
+          "Only the Localhost access control method is implemented by"
+            " Gabble" };
 
       dbus_g_method_return_error (context, &e);
       return;
@@ -2053,7 +2010,7 @@ gabble_tubes_channel_close_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  gabble_tube_iface_close (tube);
+  gabble_tube_iface_close (tube, FALSE);
 
   tp_svc_channel_type_tubes_return_from_close_tube (context);
 }
@@ -2287,41 +2244,12 @@ gabble_tubes_channel_get_available_stream_tube_types (TpSvcChannelTypeTubes *ifa
                                                       DBusGMethodInvocation *context)
 {
   GHashTable *ret;
-  GArray *unix_tab, *ipv4_tab, *ipv6_tab;
-  TpSocketAccessControl access_control;
 
-  ret = g_hash_table_new (g_direct_hash, g_direct_equal);
-
-  /* Socket_Address_Type_Unix */
-  unix_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
-      1);
-  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
-  g_array_append_val (unix_tab, access_control);
-  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX),
-      unix_tab);
-
-  /* Socket_Address_Type_IPv4 */
-  ipv4_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
-      1);
-  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
-  g_array_append_val (ipv4_tab, access_control);
-  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV4),
-      ipv4_tab);
-
-  /* Socket_Address_Type_IPv6 */
-  ipv6_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
-      1);
-  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
-  g_array_append_val (ipv6_tab, access_control);
-  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV6),
-      ipv6_tab);
+  ret = gabble_tube_stream_get_supported_socket_types ();
 
   tp_svc_channel_type_tubes_return_from_get_available_stream_tube_types (
       context, ret);
 
-  g_array_free (unix_tab, TRUE);
-  g_array_free (ipv4_tab, TRUE);
-  g_array_free (ipv6_tab, TRUE);
   g_hash_table_destroy (ret);
 }
 

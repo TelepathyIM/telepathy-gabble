@@ -1,5 +1,6 @@
 """
-Test text channel being recreated because there are still pending messages.
+Test text channel not being recreated because although there were still
+pending messages, we destroyed it with extreme prejudice.
 """
 
 import dbus
@@ -35,6 +36,8 @@ def test(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Channel')
     text_iface = dbus.Interface(text_chan,
             'org.freedesktop.Telepathy.Channel.Type.Text')
+    destroyable_iface = dbus.Interface(text_chan,
+            'org.freedesktop.Telepathy.Channel.Interface.Destroyable')
 
     assert old_sig.args[0] == ret.value[0]
     assert old_sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
@@ -109,69 +112,17 @@ def test(q, bus, conn, stream):
             [(hello_message_id, hello_message_time, foo_handle,
                 0, 0, 'hello')], messages
 
-    # close the channel without acking the message; it comes back
+    # destroy the channel without acking the message; it does not come back
 
-    call_async(q, chan_iface, 'Close')
-
-    old, new = q.expect_many(
-            EventPattern('dbus-signal', signal='Closed'),
-            EventPattern('dbus-signal', signal='ChannelClosed'),
-            )
-    assert tp_path_prefix + old.path == text_chan.object_path,\
-            (tp_path_prefix + old.path, text_chan.object_path)
-    assert new.args[0] == text_chan.object_path,\
-            (new.args[0], text_chan.object_path)
-
-    event = q.expect('dbus-signal', signal='NewChannel')
-    assert event.args[0] == text_chan.object_path
-    assert event.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
-    assert event.args[2] == 1   # CONTACT
-    assert event.args[3] == foo_handle
-    assert event.args[4] == False   # suppress handler
-
-    event = q.expect('dbus-return', method='Close')
-
-    # it now behaves as if the message had initiated it
-
-    channel_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert channel_props['TargetID'] == jid,\
-            (channel_props['TargetID'], jid)
-    assert channel_props['Requested'] == False
-    assert channel_props['InitiatorHandle'] == foo_handle,\
-            (channel_props['InitiatorHandle'], foo_handle)
-    assert channel_props['InitiatorID'] == 'foo@bar.com',\
-            channel_props['InitiatorID']
-
-    # the message is still there
-
-    messages = text_chan.ListPendingMessages(False,
-            dbus_interface='org.freedesktop.Telepathy.Channel.Type.Text')
-    assert messages == \
-            [(hello_message_id, hello_message_time, foo_handle,
-                0, 8, 'hello')], messages
-
-    # acknowledge it
-
-    text_chan.AcknowledgePendingMessages([hello_message_id],
-            dbus_interface='org.freedesktop.Telepathy.Channel.Type.Text')
-
-    messages = text_chan.ListPendingMessages(False,
-            dbus_interface='org.freedesktop.Telepathy.Channel.Type.Text')
-    assert messages == []
-
-    # close the channel again
-
-    call_async(q, chan_iface, 'Close')
+    call_async(q, destroyable_iface, 'Destroy')
 
     event = q.expect('dbus-signal', signal='Closed')
     assert tp_path_prefix + event.path == text_chan.object_path,\
             (tp_path_prefix + event.path, text_chan.object_path)
 
-    event = q.expect('dbus-return', method='Close')
+    event = q.expect('dbus-return', method='Destroy')
 
-    # assert that it stays dead this time!
+    # assert that it stays dead
 
     try:
         chan_iface.GetChannelType()

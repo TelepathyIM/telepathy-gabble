@@ -970,13 +970,25 @@ gabble_media_stream_stream_state (TpSvcMediaStreamHandler *iface,
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
+  JingleTransportState ts = JINGLE_TRANSPORT_STATE_DISCONNECTED;
+
+  switch (connection_state) {
+    case TP_MEDIA_STREAM_STATE_DISCONNECTED:
+      ts = JINGLE_TRANSPORT_STATE_DISCONNECTED;
+      break;
+    case TP_MEDIA_STREAM_STATE_CONNECTING:
+      ts = JINGLE_TRANSPORT_STATE_CONNECTING;
+      break;
+    case TP_MEDIA_STREAM_STATE_CONNECTED:
+      ts = JINGLE_TRANSPORT_STATE_CONNECTED;
+    default:
+      goto OUT;
+  }
 
   g_object_set (self, "connection-state", connection_state, NULL);
+  gabble_jingle_content_set_transport_state (priv->content, ts);
 
-  /* FIXME: we're relying on 1:1 mapping between tp and jingle enums */
-  gabble_jingle_content_set_transport_state (priv->content,
-      connection_state);
-
+OUT:
   tp_svc_media_stream_handler_return_from_stream_state (context);
 }
 

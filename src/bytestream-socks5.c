@@ -1,5 +1,6 @@
 /*
  * bytestream-socks5.c - Source for GabbleBytestreamSocks5
+ * Copyright (C) 2006 Youness Alaoui <kakaroto@kakaroto.homelinux.net>
  * Copyright (C) 2007-2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -20,10 +21,15 @@
 #include "config.h"
 #include "bytestream-socks5.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <net/if.h>
+#include <netinet/in.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -988,6 +994,91 @@ socks5_listen_cb (GIOChannel *source,
   return FALSE;
 }
 
+/* get_local_interfaces_ips copied from Farsight 2 (function
+ * fs_interfaces_get_local_ips in /gst-libs/gst/farsight/fs-interfaces.c).
+ *   Copyright (C) 2006 Youness Alaoui <kakaroto@kakaroto.homelinux.net>
+ *   Copyright (C) 2007 Collabora
+ */
+static GList *
+get_local_interfaces_ips (gboolean include_loopback)
+{
+  GList *ips = NULL;
+  gint sockfd;
+  gint size = 0;
+  struct ifreq *ifr;
+  struct ifconf ifc;
+  struct sockaddr_in *sa;
+  gchar *loopback = NULL;
+
+  if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0)
+    {
+      DEBUG ("Cannot open socket to retreive interface list");
+      return NULL;
+    }
+
+  ifc.ifc_len = 0;
+  ifc.ifc_req = NULL;
+
+  /* Loop and get each interface the system has, one by one... */
+  do
+    {
+      size += sizeof (struct ifreq);
+      /* realloc buffer size until no overflow occurs  */
+      if (NULL == (ifc.ifc_req = realloc (ifc.ifc_req, size)))
+        {
+          DEBUG ("Out of memory while allocation interface configuration"
+              " structure");
+          close (sockfd);
+          return NULL;
+        }
+      ifc.ifc_len = size;
+
+      if (ioctl (sockfd, SIOCGIFCONF, &ifc))
+        {
+          DEBUG ("ioctl SIOCFIFCONF");
+          close (sockfd);
+          free (ifc.ifc_req);
+          return NULL;
+        }
+    } while  (size <= ifc.ifc_len);
+
+  /* Loop throught the interface list and get the IP address of each IF */
+  for (ifr = ifc.ifc_req;
+      (gchar *) ifr < (gchar *) ifc.ifc_req + ifc.ifc_len;
+      ++ifr)
+    {
+
+      if (ioctl (sockfd, SIOCGIFFLAGS, ifr))
+        {
+          DEBUG ("Unable to get IP information for interface %s. Skipping...",
+              ifr->ifr_name);
+          continue;  /* failed to get flags, skip it */
+        }
+      sa = (struct sockaddr_in *) &ifr->ifr_addr;
+      DEBUG ("Interface:  %s", ifr->ifr_name);
+      DEBUG ("IP Address: %s", inet_ntoa (sa->sin_addr));
+      if ((ifr->ifr_flags & IFF_LOOPBACK) == IFF_LOOPBACK)
+        {
+          if (include_loopback)
+            loopback = g_strdup (inet_ntoa (sa->sin_addr));
+          else
+            DEBUG ("Ignoring loopback interface");
+        }
+      else
+        {
+          ips = g_list_append (ips, g_strdup (inet_ntoa (sa->sin_addr)));
+        }
+    }
+
+  close (sockfd);
+  free (ifc.ifc_req);
+
+  if (loopback)
+    ips = g_list_append (ips, loopback);
+
+  return ips;
+}
+
 /*
  * gabble_bytestream_socks5_initiate
  *
@@ -1004,6 +1095,8 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   GIOChannel *channel;
   gchar port[G_ASCII_DTOSTR_BUF_SIZE];
   LmMessage *msg;
+  GList *ips;
+  GList *ip;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -1027,19 +1120,29 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   getsockname (fd, (struct sockaddr *)&addr, &addr_len);
   g_ascii_dtostr (port, G_N_ELEMENTS (port), ntohs (addr.sin_port));
 
-  /* FIXME: send a real address */
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
       '(', "query", "",
         '@', "xmlns", NS_BYTESTREAMS,
         '@', "sid", priv->stream_id,
         '@', "mode", "tcp",
-        '(', "streamhost", "",
-          '@', "jid", priv->peer_jid,
-          '@', "host", "127.0.0.1",
-          '@', "port", port,
-        ')',
       ')', NULL);
+
+  ips = get_local_interfaces_ips (FALSE);
+  ip = ips;
+  while (ip)
+    {
+      LmMessageNode *node = lm_message_node_add_child (msg->node->children,
+          "streamhost", "");
+      lm_message_node_set_attributes (node,
+          "jid", priv->peer_jid,
+          "host", ip->data,
+          "port", port,
+          NULL);
+
+      ip = ip->next;
+    }
+  g_list_free (ips);
 
   if (!_gabble_connection_send_with_reply (priv->conn, msg,
       socks5_init_reply_cb, G_OBJECT (self), NULL, NULL))

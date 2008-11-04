@@ -47,7 +47,9 @@ def run_test(q, bus, conn, stream, set_status_func):
     assert signal.args == [{1L: (0L, {u'away': {u'message': u'gone'}})}]
     assert simple_signal.args == [{1L: (3L, u'away',  u'gone')}]
     assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
-      { ispresence + "/presence": (3L, u'away', u'gone') }}
+      { ispresence + "/presence": (3L, u'away', u'gone'),
+        'org.freedesktop.Telepathy.Connection/contact-id':
+            'test@localhost'}}
 
     children = list(presence.stanza.elements())
     assert children[0].name == 'show'
@@ -59,7 +61,9 @@ def run_test(q, bus, conn, stream, set_status_func):
     # be no PresenceUpdate or <presence> sent to the server.
     set_status_func('away', 'gone')
     assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
-      { ispresence + "/presence": (3L, u'away', u'gone') }}
+      { ispresence + "/presence": (3L, u'away', u'gone'),
+        'org.freedesktop.Telepathy.Connection/contact-id':
+            'test@localhost'}}
 
     # Set presence a third time. This call is not redundant, and should
     # generate a signal/message.
@@ -76,7 +80,9 @@ def run_test(q, bus, conn, stream, set_status_func):
     assert children[0].name == 'status'
     assert str(children[0]) == 'yo'
     assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
-      { ispresence + "/presence": (2L, u'available', u'yo') }}
+      { ispresence + "/presence": (2L, u'available', u'yo'),
+        'org.freedesktop.Telepathy.Connection/contact-id':
+            'test@localhost'}}
 
     # call SetPresence with no optional arguments, as this used to cause a
     # crash in tp-glib
@@ -89,7 +95,9 @@ def run_test(q, bus, conn, stream, set_status_func):
     assert signal.args == [{1L: (0L, {u'available': {}})}]
     assert simple_signal.args == [{1L: (2L, u'available',  u'')}]
     assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
-      { ispresence + "/presence": (2L, u'available', u'') }}
+      { ispresence + "/presence": (2L, u'available', u''),
+        'org.freedesktop.Telepathy.Connection/contact-id':
+            'test@localhost'}}
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

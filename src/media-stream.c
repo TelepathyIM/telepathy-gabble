@@ -822,7 +822,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
       1, transports,
       G_MAXUINT);
 
-  if (transports->len != 1)
+  if (transports->len < 1)
     {
       GError only_one = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "google p2p "
           "connections only support the concept of one transport per "
@@ -831,6 +831,13 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
           "rejecting", G_STRFUNC);
       dbus_g_method_return_error (context, &only_one);
       return;
+    }
+
+  if (transports->len > 1)
+    {
+      GMS_DEBUG_WARNING (priv->session, "google p2p "
+          "connections only support the concept of one transport per "
+          "candidate, ignoring other components");
     }
 
   transport = g_ptr_array_index (transports, 0);
@@ -1021,7 +1028,7 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
   transports = g_value_get_boxed (g_value_array_get_nth (candidate, 1));
 
   /* jingle audio only supports the concept of one transport per candidate */
-  g_assert (transports->len == 1);
+  g_assert (transports->len >= 1);
 
   g_value_init (&transport, TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_TRANSPORT);
   g_value_set_static_boxed (&transport, g_ptr_array_index (transports, 0));

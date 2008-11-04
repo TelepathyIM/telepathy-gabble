@@ -296,7 +296,8 @@ def test(q, bus, conn, stream):
 
     event = q.expect('s5b-data-received')
     assert event.properties['data'] == '\x05\x01\x00' # version 5, 1 auth method, no auth
-    event.properties['transport'].write('\x05\x00') # version 5, no auth
+    transport = event.properties['transport']
+    transport.write('\x05\x00') # version 5, no auth
     event = q.expect('s5b-data-received')
     # ver + cmd + rsv + atyp + len + SHA1 (40) + dst.port (2) = 47
     assert len(event.properties['data']) == 47
@@ -305,8 +306,7 @@ def test(q, bus, conn, stream):
     # port
     assert event.properties['data'].endswith('\x00\x00')
 
-    event.properties['transport'].write('\x05\x00') #version 5, ok
-    previous_event = event
+    transport.write('\x05\x00') #version 5, ok
 
     event = q.expect('stream-iq', iq_type='result')
     iq = event.stanza
@@ -315,7 +315,7 @@ def test(q, bus, conn, stream):
     streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
     assert streamhost_used['jid'] == 'bob@localhost/Bob'
 
-    previous_event.properties['transport'].write("HELLO WORLD")
+    transport.write("HELLO WORLD")
     event = q.expect('s5b-data-received')
     assert event.properties['data'] == 'hello world'
 
@@ -404,7 +404,6 @@ def test(q, bus, conn, stream):
 
     event = q.expect('s5b-data-received')
     event.properties['data'] == '\x05\x00' # version 5, ok
-    transport = event.properties['transport']
 
     result = IQ(stream, 'result')
     result['id'] = iq['id']

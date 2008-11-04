@@ -918,8 +918,6 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
 
   g_value_set_boxed (&priv->native_codecs, codecs);
 
-  g_object_set (self, "got-local-codecs", TRUE, NULL);
-
   for (i = 0; i < codecs->len; i++)
     {
       GType codec_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CODEC;
@@ -981,6 +979,7 @@ gabble_media_stream_stream_state (TpSvcMediaStreamHandler *iface,
       break;
     case TP_MEDIA_STREAM_STATE_CONNECTED:
       ts = JINGLE_TRANSPORT_STATE_CONNECTED;
+      break;
     default:
       goto OUT;
   }

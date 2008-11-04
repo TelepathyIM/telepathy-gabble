@@ -29,13 +29,13 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "debug.h"
 #include "connection.h"
-#include "util.h"
-#include "namespaces.h"
+#include "debug.h"
+#include "jingle-content.h"
 #include "jingle-factory.h"
 #include "jingle-session.h"
-#include "jingle-content.h"
+#include "namespaces.h"
+#include "util.h"
 
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data);

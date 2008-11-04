@@ -22,6 +22,7 @@
 
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
+
 #include "types.h"
 
 G_BEGIN_DECLS

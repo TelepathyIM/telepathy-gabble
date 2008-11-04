@@ -18,11 +18,12 @@
  */
 
 #include "jingle-transport-iface.h"
-#include "connection.h"
-#include "jingle-session.h"
-#include "jingle-content.h"
 
 #include <glib.h>
+
+#include "connection.h"
+#include "jingle-content.h"
+#include "jingle-session.h"
 
 void
 gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *self,

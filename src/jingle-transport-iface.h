@@ -21,9 +21,9 @@
 #define __GABBLE_JINGLE_TRANSPORT_IFACE_H__
 
 #include <glib-object.h>
+#include <loudmouth/loudmouth.h>
 
 #include "types.h"
-#include <loudmouth/loudmouth.h>
 
 G_BEGIN_DECLS
 

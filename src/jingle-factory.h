@@ -23,8 +23,6 @@
 #include <glib-object.h>
 
 #include "types.h"
-#include "jingle-transport-iface.h"
-#include "jingle-description-iface.h"
 
 G_BEGIN_DECLS
 

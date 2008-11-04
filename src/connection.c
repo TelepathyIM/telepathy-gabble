@@ -56,6 +56,7 @@
 #include "media-channel.h"
 #include "register.h"
 #include "im-factory.h"
+#include "jingle-factory.h"
 #include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
@@ -69,7 +70,6 @@
 #include "private-tubes-factory.h"
 #include "util.h"
 #include "vcard-manager.h"
-#include "jingle-factory.h"
 
 static guint disco_reply_timeout = 5000;
 

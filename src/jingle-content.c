@@ -28,13 +28,13 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "debug.h"
 #include "connection.h"
-#include "util.h"
-#include "namespaces.h"
+#include "debug.h"
 #include "jingle-factory.h"
 #include "jingle-session.h"
 #include "jingle-transport-iface.h"
+#include "namespaces.h"
+#include "util.h"
 
 /* signal enum */
 enum

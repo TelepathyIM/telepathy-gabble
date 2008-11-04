@@ -54,6 +54,12 @@ libgabble_convenience_la_SOURCES = \
     im-channel.c \
     im-factory.h \
     im-factory.c \
+    jingle-content.c \
+    jingle-factory.c \
+    jingle-media-rtp.c \
+    jingle-session.c \
+    jingle-transport-google.c \
+    jingle-transport-iface.c \
     media-channel.h \
     media-channel.c \
     media-stream.h \
@@ -107,14 +113,7 @@ libgabble_convenience_la_SOURCES = \
     util.h \
     util.c \
     vcard-manager.h \
-    vcard-manager.c \
-    jingle-content.c \
-    jingle-description-iface.c \
-    jingle-factory.c \
-    jingle-media-rtp.c \
-    jingle-session.c \
-    jingle-transport-google.c \
-    jingle-transport-iface.c
+    vcard-manager.c
 
 
 libgabble_convenience_la_LIBADD = \

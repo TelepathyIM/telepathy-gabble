@@ -29,11 +29,11 @@
 #include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 
-#include "types.h"
 #include "error.h"
+#include "jingle-factory.h"
 #include "muc-factory.h"
 #include "olpc-gadget-manager.h"
-#include "jingle-factory.h"
+#include "types.h"
 
 G_BEGIN_DECLS
 

@@ -37,16 +37,15 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "jingle-content.h"
+#include "jingle-factory.h"
+#include "jingle-media-rtp.h"
+#include "jingle-session.h"
 #include "media-factory.h"
 #include "media-stream.h"
+#include "namespaces.h"
 #include "presence-cache.h"
 #include "presence.h"
-
-#include "jingle-factory.h"
-#include "jingle-session.h"
-#include "jingle-content.h"
-#include "jingle-media-rtp.h"
-#include "namespaces.h"
 
 #define MAX_STREAMS 99
 

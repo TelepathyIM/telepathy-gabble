@@ -29,15 +29,13 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "debug.h"
 #include "connection.h"
-#include "util.h"
-#include "namespaces.h"
-#include "jingle-session.h"
-
+#include "debug.h"
 #include "jingle-media-rtp.h"
+#include "jingle-session.h"
 #include "jingle-transport-google.h"
-
+#include "namespaces.h"
+#include "util.h"
 
 G_DEFINE_TYPE(GabbleJingleFactory, gabble_jingle_factory, G_TYPE_OBJECT);
 

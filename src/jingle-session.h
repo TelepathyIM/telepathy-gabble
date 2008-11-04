@@ -22,10 +22,10 @@
 
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
-#include "types.h"
-#include "jingle-factory.h"
 
 #include "jingle-content.h"
+#include "jingle-factory.h"
+#include "types.h"
 
 G_BEGIN_DECLS
 

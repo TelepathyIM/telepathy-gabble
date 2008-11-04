@@ -40,12 +40,11 @@
 #include "connection.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
-#include "media-channel.h"
-#include "namespaces.h"
-
 #include "jingle-content.h"
 #include "jingle-session.h"
 #include "jingle-media-rtp.h"
+#include "media-channel.h"
+#include "namespaces.h"
 
 static void stream_handler_iface_init (gpointer, gpointer);
 

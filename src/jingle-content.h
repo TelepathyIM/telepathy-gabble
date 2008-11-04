@@ -24,6 +24,7 @@
 #include <loudmouth/loudmouth.h>
 #include "types.h"
 #include "jingle-factory.h"
+#include "jingle-transport-iface.h"
 
 G_BEGIN_DECLS
 

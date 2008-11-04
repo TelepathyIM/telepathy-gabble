@@ -107,7 +107,7 @@ _free_candidates (GList *candidates)
       g_free (c->username);
       g_free (c->password);
 
-      g_free (c);
+      g_slice_free (JingleCandidate, c);
 
       candidates = g_list_remove (candidates, c);
     }
@@ -365,7 +365,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       gen = atoi (str);
 
-      c = g_new0 (JingleCandidate, 1);
+      c = g_slice_new0 (JingleCandidate);
       c->address = g_strdup (address);
       c->port = port;
       c->protocol = proto;
@@ -383,14 +383,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
     {
       DEBUG ("not all nodes were processed, reporting error");
       /* rollback these */
-      while (candidates != NULL)
-        {
-          JingleCandidate *c = candidates->data;
-
-          g_free (candidates->data);
-          candidates = g_list_remove (candidates, c);
-        }
-
+      _free_candidates (candidates);
       SET_BAD_REQ ("invalid candidate");
       return;
     }

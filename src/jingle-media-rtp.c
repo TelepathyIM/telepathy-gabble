@@ -99,7 +99,7 @@ _free_codecs (GList *codecs)
       JingleCodec *p = (JingleCodec *) codecs->data;
 
       g_free (p->name);
-      g_free (p);
+      g_slice_free (JingleCodec, p);
 
       codecs = g_list_remove (codecs, p);
     }
@@ -313,7 +313,7 @@ parse_description (GabbleJingleContent *content,
 
       /* FIXME: do we need "bitrate" param? never seen it in use */
 
-      p = g_new0 (JingleCodec, 1);
+      p = g_slice_new0 (JingleCodec);
       p->id = id;
       p->name = g_strdup (name);
       p->clockrate = clockrate;
@@ -328,14 +328,7 @@ parse_description (GabbleJingleContent *content,
   if (node != NULL)
     {
       /* rollback these */
-      while (codecs != NULL)
-        {
-          JingleCodec *p = codecs->data;
-
-          g_free (codecs->data);
-          codecs = g_list_remove (codecs, p);
-        }
-
+      _free_codecs (codecs);
       SET_BAD_REQ ("invalid payload");
       return;
     }

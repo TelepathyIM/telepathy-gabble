@@ -122,21 +122,6 @@ struct _GabbleMediaStreamPrivate
 
 #define GABBLE_MEDIA_STREAM_GET_PRIVATE(obj) ((obj)->priv)
 
-#ifdef ENABLE_DEBUG
-#if _GMS_DEBUG_LEVEL > 1
-static const char *tp_protocols[] = {
-  "TP_MEDIA_STREAM_BASE_PROTO_UDP (0)",
-  "TP_MEDIA_STREAM_BASE_PROTO_TCP (1)"
-};
-
-static const char *tp_transports[] = {
-  "TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL (0)",
-  "TP_MEDIA_STREAM_TRANSPORT_TYPE_DERIVED (1)",
-  "TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY (2)"
-};
-#endif
-#endif
-
 static void push_remote_codecs (GabbleMediaStream *stream);
 static void push_remote_candidates (GabbleMediaStream *stream);
 static void push_playing (GabbleMediaStream *stream);
@@ -839,10 +824,6 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   if (!strcmp (addr, "127.0.0.1"))
     {
       DEBUG ("ignoring native localhost candidate");
-      /*
-      GMS_DEBUG_WARNING (priv->session,
-          "%s: ignoring native localhost candidate", G_STRFUNC); */
-
       tp_svc_media_stream_handler_return_from_new_native_candidate (context);
       return;
     }
@@ -859,7 +840,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 
   DEBUG ("put 1 native candidate from stream-engine into cache");
 
-  c = g_new0 (JingleCandidate, 1);
+  c = g_slice_new0 (JingleCandidate);
   c->address = g_value_dup_string (g_value_array_get_nth (transport, 1));
   c->port = g_value_get_uint (g_value_array_get_nth (transport, 2));
   c->protocol = g_value_get_uint (g_value_array_get_nth (transport, 3));
@@ -966,7 +947,7 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
           5, &params,
           G_MAXUINT);
 
-      c = g_new0 (JingleCodec, 1);
+      c = g_slice_new0 (JingleCodec);
 
       c->id = id;
       c->name = g_strdup (name);

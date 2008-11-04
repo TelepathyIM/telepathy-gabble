@@ -139,7 +139,7 @@ def test(q, bus, conn, stream):
     # We first remove the original stream
     media_iface.RemoveStreams([stream_id])
 
-    e = q.expect('stream-iq')
+    e = q.expect('stream-iq', iq_type='set')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'content-remove'
     stream.send(gabbletest.make_result_iq(stream, e.stanza))

@@ -2218,6 +2218,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 {
   gboolean is_error;
   GabbleMucChannelPrivate *priv;
+  TpChannelTextMessageFlags flags = 0;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -2244,10 +2245,12 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   /* Receive messages from other contacts and our own if they're delayed, and
    * set the timestamp for non-delayed messages */
   if (timestamp == 0)
-      timestamp = time (NULL);
+    timestamp = time (NULL);
+  else
+    flags = TP_CHANNEL_TEXT_MESSAGE_FLAG_SCROLLBACK;
 
-  tp_text_mixin_receive (G_OBJECT (chan), msg_type, sender,
-      timestamp, text);
+  tp_text_mixin_receive_with_flags (G_OBJECT (chan), msg_type, sender,
+      timestamp, text, flags);
 }
 
 /**

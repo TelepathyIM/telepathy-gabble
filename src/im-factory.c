@@ -307,11 +307,6 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 
   DEBUG ("%p, channel %p", self, chan);
 
-  g_object_get (chan,
-      "handle", &contact_handle,
-      "channel-destroyed", &really_destroyed,
-      NULL);
-
   tp_channel_manager_emit_channel_closed_for_object (self,
       (TpExportableChannel *) chan);
 

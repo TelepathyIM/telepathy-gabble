@@ -73,4 +73,7 @@ void
 lm_message_node_add_children_from_properties (LmMessageNode *node,
     GHashTable *properties, const gchar *prop);
 
+LmMessage *
+lm_iq_message_make_result (LmMessage *iq_message);
+
 #endif /* __GABBLE_UTIL_H__ */

@@ -64,13 +64,6 @@ typedef enum {
   JINGLE_MEDIA_PROFILE_RTP_AVP,
 } JingleMediaProfile;
 
-typedef struct {
-  guchar id;
-  gchar *name;
-  guint clockrate;
-  guint channels;
-} JingleCodec;
-
 struct _GabbleJingleMediaRtpPrivate
 {
   GList *local_codecs;
@@ -97,6 +90,9 @@ _free_codecs (GList *codecs)
   while (codecs != NULL)
     {
       JingleCodec *p = (JingleCodec *) codecs->data;
+
+      if (p->params != NULL)
+          g_hash_table_destroy  (p->params);
 
       g_free (p->name);
       g_slice_free (JingleCodec, p);
@@ -206,6 +202,10 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 #define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
 #define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
 
+static const gchar *video_codec_params[] = {
+  "x", "y", "width", "height", "layer", "transparent", NULL,
+};
+
 static void
 parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error)
@@ -272,6 +272,7 @@ parse_description (GabbleJingleContent *content,
       guchar id;
       const gchar *name;
       guint clockrate, channels;
+      guint i;
 
       if (tp_strdiff (node->name, "payload-type"))
           continue;
@@ -311,13 +312,20 @@ parse_description (GabbleJingleContent *content,
           channels = 1;
         }
 
-      /* FIXME: do we need "bitrate" param? never seen it in use */
-
       p = g_slice_new0 (JingleCodec);
       p->id = id;
       p->name = g_strdup (name);
       p->clockrate = clockrate;
       p->channels = channels;
+      p->params = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+
+      for (i = 0; video_codec_params[i] != NULL; i++)
+        {
+          txt = lm_message_node_get_attribute (node, video_codec_params[i]);
+          if (txt != NULL)
+              g_hash_table_insert (p->params, (gpointer) video_codec_params[i],
+                  g_strdup (txt));
+        }
 
       DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",
           p->id, p->name, p->clockrate, p->channels);
@@ -340,6 +348,13 @@ parse_description (GabbleJingleContent *content,
 
   /* append them to the known remote codecs */
   priv->remote_codecs = g_list_concat (priv->remote_codecs, codecs);
+}
+
+static void
+_produce_extra_param (gpointer key, gpointer value, gpointer user_data)
+{
+  lm_message_node_set_attribute ((LmMessageNode *) user_data,
+      (gchar *) key, (gchar *) value);
 }
 
 static void
@@ -425,6 +440,11 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
         {
           sprintf (buf, "%u", p->channels);
           lm_message_node_set_attribute (pt_node, "channels", buf);
+        }
+
+      if (p->params != NULL)
+        {
+          g_hash_table_foreach (p->params, _produce_extra_param, pt_node);
         }
     }
 }

@@ -60,6 +60,14 @@ struct _GabbleJingleMediaRtp {
     GabbleJingleMediaRtpPrivate *priv;
 };
 
+typedef struct {
+  guchar id;
+  gchar *name;
+  guint clockrate;
+  guint channels;
+  GHashTable *params;
+} JingleCodec;
+
 const gchar *gabble_jingle_media_rtp_parse (GabbleJingleMediaRtp *sess,
     LmMessage *message, GError **error);
 void jingle_media_rtp_register (GabbleJingleFactory *factory);

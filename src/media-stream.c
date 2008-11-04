@@ -570,13 +570,6 @@ gabble_media_stream_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_media_stream_parent_class)->finalize (object);
 }
 
-typedef struct {
-  guchar id;
-  gchar *name;
-  guint clockrate;
-  guint channels;
-} JingleCodec;
-
 /**
  * gabble_media_stream_codec_choice
  *
@@ -953,6 +946,7 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
       c->name = g_strdup (name);
       c->clockrate = clock_rate;
       c->channels = channels;
+      c->params = params;
 
       DEBUG ("adding codec %s (%u %u %u)", c->name, c->id, c->clockrate, c->channels);
       li = g_list_append (li, c);
@@ -1069,9 +1063,7 @@ new_remote_codecs_cb (GabbleJingleContent *content,
           2, priv->media_type,
           3, c->clockrate,
           4, c->channels,
-            /* FIXME: valgrind shows leak in g_hash_table_new_full - doesn't
-             * dbus-glib free that? */
-          5, g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free),
+          5, c->params,
           G_MAXUINT);
 
       g_ptr_array_add (codecs, g_value_get_boxed (&codec));
@@ -1276,67 +1268,6 @@ push_sending (GabbleMediaStream *stream)
   tp_svc_media_stream_handler_emit_set_stream_sending (
       stream, priv->sending);
 }
-
-/*
- * oh sweet g_hash_table_foreach how beautiful thou be'st
- *
- *    _\ / ^/
- *  \/ \// 7_   __
- *  ( 7 ) (__) (__)
- *  ^\\ |/__/___/
- *   \\/_/     | <-- TP-cable kindly provided by Mika N.
- *    \ /      O
- *     ||     /|\
- *     ||     / \
- *     ||
- * ____||_____________
- */
-
-typedef struct {
-    GabbleMediaStreamPrivate *priv;
-    LmMessageNode *pt_node;
-} CodecParamsFromTpContext;
-
-#if 0
-static const gchar *video_codec_params[] = {
-  "x", "y", "width", "height", "layer", "transparent",
-};
-
-// FIXME - we need to have extended params for video stream
-static void
-codec_params_from_tp_foreach (gpointer key, gpointer value, gpointer user_data)
-{
-  CodecParamsFromTpContext *ctx = user_data;
-  GabbleMediaStreamPrivate *priv = ctx->priv;
-  const gchar *pname = key, *pvalue = value;
-
-  if (priv->media_type == TP_MEDIA_STREAM_TYPE_AUDIO)
-    {
-      if (priv->mode == MODE_GOOGLE && strcmp (pname, "bitrate") == 0)
-        {
-          lm_message_node_set_attribute (ctx->pt_node, pname, pvalue);
-          return;
-        }
-    }
-  else if (priv->mode == MODE_JINGLE)
-    {
-      gint i;
-
-      for (i = 0; video_codec_params[i] != NULL; i++)
-        {
-          if (strcmp (pname, video_codec_params[i]) == 0)
-            {
-              lm_message_node_set_attribute (ctx->pt_node, pname, pvalue);
-              return;
-            }
-        }
-    }
-
-  DEBUG ("ignoring %s=%s for %s %s stream", pname, pvalue,
-      (priv->mode == MODE_JINGLE) ? "jingle" : "google",
-      (priv->media_type == TP_MEDIA_STREAM_TYPE_AUDIO) ? "audio" : "video");
-}
-#endif
 
 static void
 content_senders_changed_cb (GabbleJingleContent *c,

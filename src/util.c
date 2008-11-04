@@ -852,6 +852,14 @@ lm_message_node_add_children_from_properties (LmMessageNode *node,
   g_hash_table_foreach (properties, set_child_from_property, &data);
 }
 
+/**
+ * lm_iq_message_make_result:
+ * @iq_message: A LmMessage containing an IQ stanza to acknowledge
+ *
+ * Creates a result IQ stanza to acknowledge @iq_message.
+ *
+ * Returns: A newly-created LmMessage containing the result IQ stanza.
+ */
 LmMessage *
 lm_iq_message_make_result (LmMessage *iq_message)
 {

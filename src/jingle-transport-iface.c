@@ -37,18 +37,6 @@ gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *self
   return virtual_method (self, node, error);
 }
 
-void
-gabble_jingle_transport_iface_produce (GabbleJingleTransportIface *self,
-    LmMessageNode *node)
-{
-  void (*virtual_method)(GabbleJingleTransportIface *,
-      LmMessageNode *) =
-    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->produce;
-
-  g_assert (virtual_method != NULL);
-  return virtual_method (self, node);
-}
-
 /* Takes in a list of slice-allocated JingleCandidate structs */
 void
 gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *self,

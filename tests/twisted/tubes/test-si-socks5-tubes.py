@@ -306,9 +306,16 @@ def test(q, bus, conn, stream):
     assert event.properties['data'].endswith('\x00\x00')
 
     event.properties['transport'].write('\x05\x00') #version 5, ok
-    q.expect('stream-iq', iq_type='result')
+    previous_event = event
 
-    event.properties['transport'].write("HELLO WORLD")
+    event = q.expect('stream-iq', iq_type='result')
+    iq = event.stanza
+    query = xpath.queryForNodes('/iq/query', iq)[0]
+    assert query.uri == NS_BYTESTREAMS
+    streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
+    assert streamhost_used['jid'] == 'bob@localhost/Bob'
+
+    previous_event.properties['transport'].write("HELLO WORLD")
     event = q.expect('s5b-data-received')
     assert event.properties['data'] == 'hello world'
 

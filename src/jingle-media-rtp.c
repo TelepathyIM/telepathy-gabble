@@ -217,7 +217,7 @@ parse_description (GabbleJingleContent *content,
   GList *codecs = NULL;
   LmMessageNode *node;
 
-  if (lm_message_node_has_namespace (desc_node, NS_JINGLE_RTP_TMP, NULL))
+  if (lm_message_node_has_namespace (desc_node, NS_JINGLE_RTP, NULL))
     {
       const gchar *type = lm_message_node_get_attribute (desc_node, "media");
 
@@ -454,7 +454,7 @@ jingle_media_rtp_register (GabbleJingleFactory *factory)
 {
   /* Current (v0.25) Jingle draft URI */
   gabble_jingle_factory_register_content_type (factory,
-      NS_JINGLE_RTP_TMP, GABBLE_TYPE_JINGLE_MEDIA_RTP);
+      NS_JINGLE_RTP, GABBLE_TYPE_JINGLE_MEDIA_RTP);
 
   /* Old Jingle audio/video namespaces */
   gabble_jingle_factory_register_content_type (factory,

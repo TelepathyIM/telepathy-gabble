@@ -39,14 +39,31 @@
 #define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
 #define NS_GOOGLE_TRANSPORT_P2P "http://www.google.com/transport/p2p"
 #define NS_IBB                  "http://jabber.org/protocol/ibb"
-#define NS_JINGLE               "http://jabber.org/protocol/jingle"
+/* XEP-0166 draft v0.15 */
+#define NS_JINGLE015            "http://jabber.org/protocol/jingle"
+/* XEP-0166 draft v0.32 (last call) */
+#define NS_JINGLE032            "urn:xmpp:jingle:0"
+/* Google's Jingle dialect */
+#define NS_GOOGLE_SESSION       "http://www.google.com/session"
+/* Audio capability in Google Jingle dialect */
+#define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
+/* XEP-0167 (Jingle RTP) */
+#define NS_JINGLE_RTP           "urn:xmpp:jingle:apps:rtp:0"
+/* RTP audio capability in Jingle v0.15 */
 #define NS_JINGLE_DESCRIPTION_AUDIO \
   "http://jabber.org/protocol/jingle/description/audio"
+/* RTP video capability in Jingle v0.15 */
 #define NS_JINGLE_DESCRIPTION_VIDEO \
   "http://jabber.org/protocol/jingle/description/video"
 #define NS_JINGLE_ERRORS            "http://jabber.org/protocol/jingle#errors"
+/* Jingle ICE-UDP transport */
 #define NS_JINGLE_TRANSPORT_ICE     \
   "http://jabber.org/protocol/jingle/transport/ice"
+/* google-p2p transport */
+#define NS_GOOGLE_TRANSPORT_P2P "http://www.google.com/transport/p2p"
+/* Jingle RAW-UDP transport */
+#define NS_JINGLE_TRANSPORT_RAWUDP \
+  "http://jabber.org/protocol/jingle/transport/rawudp"
 #define NS_MUC                  "http://jabber.org/protocol/muc"
 #define NS_MUC_BYTESTREAM       "http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream"
 #define NS_MUC_USER             "http://jabber.org/protocol/muc#user"
@@ -74,13 +91,5 @@
 #define NS_X_CONFERENCE         "jabber:x:conference"
 #define NS_XMPP_STANZAS         "urn:ietf:params:xml:ns:xmpp-stanzas"
 
-#define NS_JINGLE015            "http://jabber.org/protocol/jingle"
-#define NS_JINGLE032            "urn:xmpp:jingle:0"
-#define NS_GOOGLE_SESSION       "http://www.google.com/session"
-#define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
-#define NS_GOOGLE_TRANSPORT_P2P "http://www.google.com/transport/p2p"
-#define NS_JINGLE_RTP_TMP       "urn:xmpp:jingle:apps:rtp:0"
-#define NS_JINGLE_TRANSPORT_RAWUDP \
-  "http://jabber.org/protocol/jingle/transport/rawudp"
 
 #endif /* __GABBLE_NAMESPACES__H__ */

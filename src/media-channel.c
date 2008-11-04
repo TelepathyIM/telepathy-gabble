@@ -1139,9 +1139,9 @@ _pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
 
   if (gabble_presence_resource_has_caps (presence, resource,
-          PRESENCE_CAP_JINGLE_RTP_TMP))
+          PRESENCE_CAP_JINGLE_RTP))
     {
-      return NS_JINGLE_RTP_TMP;
+      return NS_JINGLE_RTP;
     }
 
   if ((type == JINGLE_MEDIA_TYPE_VIDEO) &&
@@ -1186,7 +1186,7 @@ _pick_best_resource (GabbleMediaChannel *chan,
   g_return_val_if_fail (want_audio || want_video, NULL);
 
   /* Try newest Jingle standard */
-  caps = PRESENCE_CAP_JINGLE_RTP_TMP;
+  caps = PRESENCE_CAP_JINGLE_RTP;
   resource = gabble_presence_pick_resource_by_caps (presence, caps);
 
   if (resource != NULL)
@@ -1524,7 +1524,7 @@ contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer)
       conn, TP_HANDLE_TYPE_CONTACT);
   GabblePresenceCapabilities caps;
 
-  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_RTP_TMP |
+  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_RTP |
     PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO | PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
@@ -2096,7 +2096,7 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
   ( PRESENCE_CAP_GOOGLE_VOICE )
 
 #define JINGLE_CAPS \
-  ( PRESENCE_CAP_JINGLE \
+  ( PRESENCE_CAP_JINGLE015 \
   | PRESENCE_CAP_GOOGLE_TRANSPORT_P2P )
 
 #define JINGLE_AUDIO_CAPS \

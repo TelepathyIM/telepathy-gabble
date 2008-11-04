@@ -62,7 +62,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleJingleContentPrivate GabbleJingleContentPrivate;
 struct _GabbleJingleContentPrivate
 {
   gchar *name;
@@ -85,8 +84,7 @@ struct _GabbleJingleContentPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_CONTENT_GET_PRIVATE(o)\
-  ((GabbleJingleContentPrivate *) ((o)->priv))
+#define GABBLE_JINGLE_CONTENT_GET_PRIVATE(o) ((o)->priv)
 
 /* lookup tables */
 

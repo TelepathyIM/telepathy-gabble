@@ -63,7 +63,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleJingleTransportGooglePrivate GabbleJingleTransportGooglePrivate;
 struct _GabbleJingleTransportGooglePrivate
 {
   GabbleJingleContent *content;
@@ -81,8 +80,7 @@ struct _GabbleJingleTransportGooglePrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE(o)\
-  ((GabbleJingleTransportGooglePrivate *) ((o)->priv))
+#define GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE(o) ((o)->priv)
 
 static void transmit_candidates (GabbleJingleTransportGoogle *transport,
     GList *candidates);

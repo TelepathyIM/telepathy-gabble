@@ -60,7 +60,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleJingleSessionPrivate GabbleJingleSessionPrivate;
 struct _GabbleJingleSessionPrivate
 {
   GabbleConnection *conn;
@@ -85,8 +84,7 @@ struct _GabbleJingleSessionPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_SESSION_GET_PRIVATE(o)\
-  ((GabbleJingleSessionPrivate *) ((o)->priv))
+#define GABBLE_JINGLE_SESSION_GET_PRIVATE(o) ((o)->priv)
 
 #define DEFAULT_SESSION_TIMEOUT 60000
 

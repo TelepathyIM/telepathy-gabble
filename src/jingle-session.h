@@ -70,9 +70,11 @@ struct _GabbleJingleSessionClass {
     GObjectClass parent_class;
 };
 
+typedef struct _GabbleJingleSessionPrivate GabbleJingleSessionPrivate;
+
 struct _GabbleJingleSession {
     GObject parent;
-    gpointer priv;
+    GabbleJingleSessionPrivate *priv;
 
     TpHandle peer;
 };

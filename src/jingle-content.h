@@ -83,9 +83,11 @@ struct _GabbleJingleContentClass {
     void  (*produce_description) (GabbleJingleContent *, LmMessageNode *);
 };
 
+typedef struct _GabbleJingleContentPrivate GabbleJingleContentPrivate;
+
 struct _GabbleJingleContent {
     GObject parent;
-    gpointer priv;
+    GabbleJingleContentPrivate *priv;
 
     GabbleConnection *conn;
     GabbleJingleFactory *factory;

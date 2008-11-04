@@ -116,6 +116,8 @@ struct _GabbleJingleFactoryClass {
     GObjectClass parent_class;
 };
 
+typedef struct _GabbleJingleFactoryPrivate GabbleJingleFactoryPrivate;
+
 struct _GabbleJingleFactory {
     GObject parent;
 
@@ -127,7 +129,7 @@ struct _GabbleJingleFactory {
     guint16 stun_port;
     gchar *relay_token;
 
-    gpointer priv;
+    GabbleJingleFactoryPrivate *priv;
 };
 
 void gabble_jingle_factory_register_content_type (GabbleJingleFactory *factory,

@@ -51,9 +51,11 @@ struct _GabbleJingleTransportGoogleClass {
     GObjectClass parent_class;
 };
 
+typedef struct _GabbleJingleTransportGooglePrivate GabbleJingleTransportGooglePrivate;
+
 struct _GabbleJingleTransportGoogle {
     GObject parent;
-    gpointer priv;
+    GabbleJingleTransportGooglePrivate *priv;
 };
 
 void jingle_transport_google_register (GabbleJingleFactory *factory);

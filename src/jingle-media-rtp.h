@@ -53,9 +53,11 @@ struct _GabbleJingleMediaRtpClass {
     GabbleJingleContentClass parent_class;
 };
 
+typedef struct _GabbleJingleMediaRtpPrivate GabbleJingleMediaRtpPrivate;
+
 struct _GabbleJingleMediaRtp {
     GabbleJingleContent parent;
-    gpointer priv;
+    GabbleJingleMediaRtpPrivate *priv;
 };
 
 const gchar *gabble_jingle_media_rtp_parse (GabbleJingleMediaRtp *sess,

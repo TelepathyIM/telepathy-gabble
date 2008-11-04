@@ -58,7 +58,6 @@ enum
 };
 
 
-typedef struct _GabbleJingleFactoryPrivate GabbleJingleFactoryPrivate;
 struct _GabbleJingleFactoryPrivate
 {
   GabbleConnection *conn;
@@ -69,8 +68,7 @@ struct _GabbleJingleFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_FACTORY_GET_PRIVATE(o)\
-  ((GabbleJingleFactoryPrivate *) ((o)->priv))
+#define GABBLE_JINGLE_FACTORY_GET_PRIVATE(o) ((o)->priv)
 
 static LmHandlerResult jingle_cb (LmMessageHandler *handler,
     LmConnection *lmconn, LmMessage *message, gpointer user_data);

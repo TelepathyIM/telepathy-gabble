@@ -1609,10 +1609,6 @@ content_ready_cb (GabbleJingleContent *c, gpointer user_data)
 
   DEBUG ("called");
 
-  /* FIXME: we rely on the fact that JingleContent only signals
-   * "ready" on session contents; this is wrong, session contents
-   * added/accepted *after* session-accept are handled the same
-   * as early media */
   g_object_get (c, "disposition", &disposition, NULL);
   g_assert (!tp_strdiff (disposition, "session"));
 

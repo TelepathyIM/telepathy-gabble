@@ -999,8 +999,10 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   struct sockaddr_in addr;
+  guint addr_len;
   gint fd;
   GIOChannel *channel;
+  gchar port[G_ASCII_DTOSTR_BUF_SIZE];
   LmMessage *msg;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
@@ -1011,12 +1013,8 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
     }
 
   fd = socket (AF_INET, SOCK_STREAM, 0);
-  addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = INADDR_ANY;
-  addr.sin_port = htons (5087);
 
   /* FIXME: check the return values */
-  bind (fd, (struct sockaddr *)&addr, sizeof (addr));
   listen (fd, 5);
   channel = g_io_channel_unix_new (fd);
 
@@ -1025,7 +1023,11 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   /* FIXME handle errors */
   priv->read_watch = g_io_add_watch (channel, G_IO_IN, socks5_listen_cb, self);
 
-  /* FIXME: send a real address and port. */
+  addr_len = sizeof (addr);
+  getsockname (fd, (struct sockaddr *)&addr, &addr_len);
+  g_ascii_dtostr (port, G_N_ELEMENTS (port), ntohs (addr.sin_port));
+
+  /* FIXME: send a real address */
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
       '(', "query", "",
@@ -1035,7 +1037,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
         '(', "streamhost", "",
           '@', "jid", priv->peer_jid,
           '@', "host", "127.0.0.1",
-          '@', "port", "5087",
+          '@', "port", port,
         ')',
       ')', NULL);
 

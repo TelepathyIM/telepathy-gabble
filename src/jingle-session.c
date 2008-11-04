@@ -121,6 +121,8 @@ static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = 
   { JINGLE_ACTION_UNKNOWN }
 };
 
+static gboolean _terminate_delayed (gpointer user_data);
+
 static void
 gabble_jingle_session_init (GabbleJingleSession *obj)
 {
@@ -837,11 +839,10 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
   if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
     {
-      /* GTalk has only one content anyways */
+      /* We are certain that GTalk has only one content. It's not possible
+       * for session to have more than one content if in gtalk mode (if
+       * it happens, it's a bug in our code). */
       GList *cs = g_hash_table_get_values (priv->contents);
-
-      /* Check that's the case */
-      /* FIXME: report error to peer instead of assert */
       g_assert (g_list_length (cs) == 1);
 
       c = cs->data;

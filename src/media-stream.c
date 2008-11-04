@@ -1285,7 +1285,6 @@ content_senders_changed_cb (GabbleJingleContent *c,
                             GParamSpec *pspec,
                             GabbleMediaStream *stream)
 {
-  // GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
   JingleContentSenders senders;
 
   g_object_get (c, "senders", &senders, NULL);

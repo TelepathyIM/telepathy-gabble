@@ -321,7 +321,7 @@ gabble_jingle_factory_constructor (GType type,
   self = GABBLE_JINGLE_FACTORY (obj);
   priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (self);
 
-  // FIXME: why was this in _constructed in media factory?
+  /* FIXME: why was this in _constructed in media factory? */
   g_signal_connect (priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, self);
 

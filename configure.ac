@@ -187,6 +187,9 @@ if test x$have_dbus_tube = xno; then
   echo "Not building support for D-Bus tubes! (libdbus >= 1.1 required)"
 fi
 
+dnl Check for functions
+AC_CHECK_FUNCS(getifaddrs)
+
 AC_OUTPUT( Makefile \
            docs/Makefile \
            extensions/Makefile \

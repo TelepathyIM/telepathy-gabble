@@ -33,6 +33,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#ifdef HAVE_GETIFADDRS
+ #include <ifaddrs.h>
+#endif
+
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
@@ -999,6 +1003,56 @@ socks5_listen_cb (GIOChannel *source,
  *   Copyright (C) 2006 Youness Alaoui <kakaroto@kakaroto.homelinux.net>
  *   Copyright (C) 2007 Collabora
  */
+#ifdef HAVE_GETIFADDRS
+
+static GList *
+get_local_interfaces_ips (gboolean include_loopback)
+{
+  GList *ips = NULL;
+  struct sockaddr_in *sa;
+  struct ifaddrs *ifa, *results;
+  gchar *loopback = NULL;
+
+  if (getifaddrs (&results) < 0)
+    return NULL;
+
+  /* Loop through the interface list and get the IP address of each IF */
+  for (ifa = results; ifa; ifa = ifa->ifa_next)
+    {
+      /* no ip address from interface that is down */
+      if ((ifa->ifa_flags & IFF_UP) == 0)
+        continue;
+
+      if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET)
+        continue;
+
+      sa = (struct sockaddr_in *) ifa->ifa_addr;
+
+      DEBUG ("Interface:  %s", ifa->ifa_name);
+      DEBUG ("IP Address: %s", inet_ntoa (sa->sin_addr));
+      if ((ifa->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK)
+        {
+          if (include_loopback)
+            loopback = g_strdup (inet_ntoa (sa->sin_addr));
+          else
+            DEBUG ("Ignoring loopback interface");
+        }
+      else
+        {
+          ips = g_list_append (ips, g_strdup (inet_ntoa (sa->sin_addr)));
+        }
+    }
+
+  freeifaddrs (results);
+
+  if (loopback)
+    ips = g_list_append (ips, loopback);
+
+  return ips;
+}
+
+#else /* ! HAVE_GETIFADDRS */
+
 static GList *
 get_local_interfaces_ips (gboolean include_loopback)
 {
@@ -1078,6 +1132,8 @@ get_local_interfaces_ips (gboolean include_loopback)
 
   return ips;
 }
+
+#endif /* ! HAVE_GETIFADDRS */
 
 /*
  * gabble_bytestream_socks5_initiate

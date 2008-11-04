@@ -442,6 +442,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 {
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gchar msg[47] = {'\0'};
+  LmMessage *iq_result;
 
   switch (priv->socks5_state)
     {
@@ -480,7 +481,24 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
 
-        _gabble_connection_acknowledge_set_iq (priv->conn, priv->msg_for_acknowledge_connection);
+        iq_result = lm_iq_message_make_result (priv->msg_for_acknowledge_connection);
+        if (NULL != iq_result)
+          {
+            LmMessageNode *node;
+            Streamhost *current_streamhost;
+
+            node = lm_message_node_add_child (iq_result->node, "query", "");
+            lm_message_node_set_attribute (node, "xmlns", NS_BYTESTREAMS);
+
+            node = lm_message_node_add_child (node, "streamhost-used", "");
+            /* FIXME: proper error handling */
+            g_assert (priv->streamhosts);
+            current_streamhost = priv->streamhosts->data;
+            lm_message_node_set_attribute (node, "jid", current_streamhost->jid);
+
+            _gabble_connection_send (priv->conn, iq_result, NULL);
+            lm_message_unref (iq_result);
+          }
 
         return 2;
 

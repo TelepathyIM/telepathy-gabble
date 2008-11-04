@@ -35,9 +35,6 @@
 #define NS_GOOGLE_FEAT_VOICE    "http://www.google.com/xmpp/protocol/voice/v1"
 #define NS_GOOGLE_JINGLE_INFO   "google:jingleinfo"
 #define NS_GOOGLE_ROSTER        "google:roster"
-#define NS_GOOGLE_SESSION       "http://www.google.com/session"
-#define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
-#define NS_GOOGLE_TRANSPORT_P2P "http://www.google.com/transport/p2p"
 #define NS_IBB                  "http://jabber.org/protocol/ibb"
 /* XEP-0166 draft v0.15 */
 #define NS_JINGLE015            "http://jabber.org/protocol/jingle"
@@ -49,10 +46,10 @@
 #define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
 /* XEP-0167 (Jingle RTP) */
 #define NS_JINGLE_RTP           "urn:xmpp:jingle:apps:rtp:0"
-/* RTP audio capability in Jingle v0.15 */
+/* RTP audio capability in Jingle v0.15 (obsoleted by NS_JINGLE_RTP) */
 #define NS_JINGLE_DESCRIPTION_AUDIO \
   "http://jabber.org/protocol/jingle/description/audio"
-/* RTP video capability in Jingle v0.15 */
+/* RTP video capability in Jingle v0.15 (obsoleted by NS_JINGLE_RTP) */
 #define NS_JINGLE_DESCRIPTION_VIDEO \
   "http://jabber.org/protocol/jingle/description/video"
 #define NS_JINGLE_ERRORS            "http://jabber.org/protocol/jingle#errors"

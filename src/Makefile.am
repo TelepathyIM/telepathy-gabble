@@ -54,11 +54,17 @@ libgabble_convenience_la_SOURCES = \
     im-channel.c \
     im-factory.h \
     im-factory.c \
+    jingle-content.h \
     jingle-content.c \
+    jingle-factory.h \
     jingle-factory.c \
+    jingle-media-rtp.h \
     jingle-media-rtp.c \
+    jingle-session.h \
     jingle-session.c \
+    jingle-transport-google.h \
     jingle-transport-google.c \
+    jingle-transport-iface.h \
     jingle-transport-iface.c \
     media-channel.h \
     media-channel.c \

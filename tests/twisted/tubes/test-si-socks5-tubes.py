@@ -69,6 +69,9 @@ class S5BFactory(Factory):
     def startedConnecting(self, connector):
         pass
 
+    def clientConnectionLost(self, connector, reason):
+        pass
+
 def test(q, bus, conn, stream):
     set_up_echo()
     conn.Connect()

@@ -79,10 +79,14 @@ struct _GabbleJingleContentPrivate
   gboolean media_ready;
   gboolean transport_ready;
 
+  guint timer_id;
+
   gboolean dispose_has_run;
 };
 
 #define GABBLE_JINGLE_CONTENT_GET_PRIVATE(o) ((o)->priv)
+
+#define DEFAULT_CONTENT_TIMEOUT 60000
 
 /* lookup tables */
 
@@ -104,6 +108,7 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
   priv->created_by_us = TRUE;
   priv->media_ready = FALSE;
   priv->transport_ready = FALSE;
+  priv->timer_id = 0;
   priv->dispose_has_run = FALSE;
 
   obj->conn = NULL;
@@ -121,6 +126,8 @@ gabble_jingle_content_dispose (GObject *object)
 
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
+
+  g_assert (priv->timer_id == 0);
 
   g_free (priv->name);
   priv->name = NULL;
@@ -722,6 +729,19 @@ gabble_jingle_content_is_ready (GabbleJingleContent *self)
   return FALSE;
 }
 
+static gboolean
+timeout_content (gpointer data)
+{
+  GabbleJingleContent *c = data;
+
+  c->priv->timer_id = 0;
+  DEBUG ("content timed out");
+
+  /* we're handling it as if it were rejected */
+  gabble_jingle_content_remove (c, FALSE);
+  return FALSE;
+}
+
 static void
 send_content_add_or_accept (GabbleJingleContent *self)
 {
@@ -738,6 +758,10 @@ send_content_add_or_accept (GabbleJingleContent *self)
       /* TODO: set a timer for acknowledgement */
       action = JINGLE_ACTION_CONTENT_ADD;
       new_state = JINGLE_CONTENT_STATE_SENT;
+
+      g_assert (priv->timer_id == 0);
+      priv->timer_id = g_timeout_add (DEFAULT_CONTENT_TIMEOUT,
+        timeout_content, self);
     }
   else
     {
@@ -913,6 +937,12 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
   else
     {
       g_signal_emit (c, signals[REMOVED], 0);
+    }
+
+  if (priv->timer_id != 0)
+    {
+      g_source_remove (priv->timer_id);
+      priv->timer_id = 0;
     }
 }
 

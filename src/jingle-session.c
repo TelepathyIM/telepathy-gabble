@@ -1335,6 +1335,7 @@ timeout_session (gpointer data)
   GabbleJingleSession *session = data;
 
   DEBUG ("session timed out");
+  session->priv->timer_id = 0;
 
   /* FIXME: distinguish between different cases; we somehow need to
    * signal this to media channel - parameter to TERMINATED perhaps?*/

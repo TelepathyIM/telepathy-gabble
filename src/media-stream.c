@@ -845,8 +845,8 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
     {
       guint component;
 
-      transport = g_ptr_array_index (transports, 0);
-      component = g_value_get_uint (g_value_array_get_nth (transport, 1));
+      transport = g_ptr_array_index (transports, i);
+      component = g_value_get_uint (g_value_array_get_nth (transport, 0));
 
       /* Accept component 0 because old farsight1 stream-engine didn't set the
        * component

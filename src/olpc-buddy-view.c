@@ -363,16 +363,14 @@ gabble_olpc_buddy_view_class_init (
       "View's search properties",
       "The buddy properties Gadget should look for",
       TP_HASH_TYPE_STRING_VARIANT_MAP,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_VIEW_PROPERTIES,
       param_spec);
 
   param_spec = g_param_spec_string ("alias", "View's search alias",
       "The buddy alias Gadget should look for",
       NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ALIAS,
       param_spec);
 

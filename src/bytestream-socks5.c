@@ -115,6 +115,35 @@ struct _Streamhost
 };
 typedef struct _Streamhost Streamhost;
 
+static Streamhost *
+streamhost_new (const gchar *jid,
+                const gchar *host,
+                guint port)
+{
+  Streamhost *streamhost;
+
+  g_return_val_if_fail (jid != NULL, NULL);
+  g_return_val_if_fail (host != NULL, NULL);
+
+  streamhost = g_new0 (Streamhost, 1);
+  streamhost->jid = g_strdup (jid);
+  streamhost->host = g_strdup (host);
+  streamhost->port = port;
+
+  return streamhost;
+}
+
+static void
+streamhost_free (Streamhost *streamhost)
+{
+  if (streamhost == NULL)
+    return;
+
+  g_free (streamhost->jid);
+  g_free (streamhost->host);
+  g_free (streamhost);
+}
+
 struct _GabbleBytestreamSocks5Private
 {
   GabbleConnection *conn;
@@ -192,6 +221,9 @@ gabble_bytestream_socks5_finalize (GObject *object)
   g_free (priv->stream_init_id);
   g_free (priv->peer_resource);
   g_free (priv->peer_jid);
+
+  g_slist_foreach (priv->streamhosts, (GFunc) streamhost_free, NULL);
+  g_slist_free (priv->streamhosts);
 
   G_OBJECT_CLASS (gabble_bytestream_socks5_parent_class)->finalize (object);
 }
@@ -723,7 +755,7 @@ socks5_connect_next (GabbleBytestreamSocks5 *self)
 
   g_assert (priv->streamhosts != NULL);
 
-  /* FIXME: free the streamhost */
+  streamhost_free (priv->streamhosts->data);
   priv->streamhosts = g_slist_delete_link (priv->streamhosts, priv->streamhosts);
 
   socks5_connect (self);
@@ -786,11 +818,7 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
   DEBUG ("streamhost with jid %s, host %s and port %d added", jid, host,
       numeric_port);
 
-  streamhost = g_new0 (Streamhost, 1);
-  streamhost->jid = g_strdup (jid);
-  streamhost->host = g_strdup (host);
-  streamhost->port = numeric_port;
-
+  streamhost = streamhost_new (jid, host, numeric_port);
   priv->streamhosts = g_slist_append (priv->streamhosts, streamhost);
 }
 

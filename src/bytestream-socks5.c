@@ -542,7 +542,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         /* FIXME: check the values */
 
         msg[0] = SOCKS5_VERSION;
-        msg[1] = SOCKS5_STATUS_OK; // XXX rinominare OK?
+        msg[1] = SOCKS5_STATUS_OK;
 
         socks5_schedule_write (self, msg, 2);
 

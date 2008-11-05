@@ -366,7 +366,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, message_mixin),
       conn);
   tp_message_mixin_implement_sending (obj, gabble_muc_channel_send,
-      NUM_SUPPORTED_MESSAGE_TYPES, types, 0, supported_content_types);
+      NUM_SUPPORTED_MESSAGE_TYPES, types, 0, 0, supported_content_types);
 
   tp_group_mixin_add_handle_owner (obj, self_handle, conn->self_handle);
 

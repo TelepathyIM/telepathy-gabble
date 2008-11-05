@@ -166,7 +166,7 @@ gabble_im_channel_constructor (GType type, guint n_props,
       conn);
 
   tp_message_mixin_implement_sending (obj, _gabble_im_channel_send_message,
-      NUM_SUPPORTED_MESSAGE_TYPES, types, 0, supported_content_types);
+      NUM_SUPPORTED_MESSAGE_TYPES, types, 0, 0, supported_content_types);
 
   return obj;
 }

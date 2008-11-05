@@ -51,13 +51,14 @@ gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *self,
 }
 
 void
-gabble_jingle_transport_iface_retransmit_candidates (GabbleJingleTransportIface *self)
+gabble_jingle_transport_iface_retransmit_candidates (GabbleJingleTransportIface *self,
+    gboolean all)
 {
-  void (*virtual_method)(GabbleJingleTransportIface *) =
+  void (*virtual_method)(GabbleJingleTransportIface *, gboolean) =
     GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->retransmit_candidates;
 
   g_assert (virtual_method != NULL);
-  virtual_method (self);
+  virtual_method (self, all);
 }
 
 GList *

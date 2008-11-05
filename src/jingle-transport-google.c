@@ -531,18 +531,28 @@ add_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
 }
 
 static void
-retransmit_candidates (GabbleJingleTransportIface *obj)
+retransmit_candidates (GabbleJingleTransportIface *obj, gboolean all)
 {
   GabbleJingleTransportGoogle *transport =
     GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
   GabbleJingleTransportGooglePrivate *priv =
     GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
 
-  /* now transmit all pending candidates */
-  if (priv->pending_candidates != NULL) {
-      transmit_candidates (transport, priv->pending_candidates);
+  if (all)
+    {
+      /* for gtalk3, we might have to retransmit everything */
+      transmit_candidates (transport, priv->local_candidates);
       priv->pending_candidates = NULL;
-  }
+    }
+  else
+    {
+      /* in case content was ready after we wanted to transmit
+       * them originally, we are called to retranmit them */
+      if (priv->pending_candidates != NULL) {
+          transmit_candidates (transport, priv->pending_candidates);
+          priv->pending_candidates = NULL;
+      }
+    }
 }
 
 static GList *

@@ -835,8 +835,6 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
   GabbleJingleContent *c = NULL;
 
-  /* FIXME: we need to do dialect detection here!!! */
-
   if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
     {
       /* We are certain that GTalk has only one content. It's not possible
@@ -849,24 +847,40 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
       g_list_free (cs);
 
-      /* FIXME: here we need to take care if we receive <candidates>
-       * and we're in gtalk4 mode, to switch to gtalk3? */
-      /* GTalk4 includes "transport" subnode */
       if (priv->dialect == JINGLE_DIALECT_GTALK4)
-        node = lm_message_node_get_child (node, "transport");
+        {
+          /* If we think we're in gtalk4 mode and get sent this,
+           * switch to gtalk3 mode and resend our candidates */
+          if (!tp_strdiff (node->name, "candidates"))
+            {
+              priv->dialect = JINGLE_DIALECT_GTALK3;
+              gabble_jingle_content_retransmit_candidates (c);
+            }
+          else
+            {
+              node = lm_message_node_get_child (node, "transport");
+
+              if (node == NULL)
+                {
+                  SET_BAD_REQ ("illegal transport-info stanza");
+                  return;
+                }
+            }
+        }
     }
   else
     {
       const gchar *name;
 
       node = lm_message_node_get_child (node, "content");
-
       name = lm_message_node_get_attribute (node, "name");
-
       c = g_hash_table_lookup (priv->contents, name);
 
-      /* FIXME: report error to peer instead of assert */
-      g_assert (c != NULL);
+      if (c == NULL)
+        {
+          SET_BAD_REQ ("content doesn't exist");
+          return;
+        }
 
       /* we need transport child of content node */
       node = lm_message_node_get_child (node, "transport");

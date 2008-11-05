@@ -795,7 +795,14 @@ _maybe_ready (GabbleJingleContent *self)
 
   /* if we have pending local candidates, now's the time
    * to transmit them */
-  gabble_jingle_transport_iface_retransmit_candidates (priv->transport);
+  gabble_jingle_transport_iface_retransmit_candidates (priv->transport, FALSE);
+}
+
+/* Used when we detect gtalk3 after we've transmitted some candidates */
+void
+gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self)
+{
+  gabble_jingle_transport_iface_retransmit_candidates (self->priv->transport, TRUE);
 }
 
 /* Called by a subclass when the media is ready (e.g. we got local codecs) */

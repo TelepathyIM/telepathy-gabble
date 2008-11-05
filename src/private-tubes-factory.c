@@ -623,8 +623,6 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
                                            gboolean require_new)
 {
   TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->conn;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base_conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   GError *error = NULL;
   GabbleTubesChannel *channel;
@@ -693,11 +691,10 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
         }
     }
 
+  /* validity already checked by TpBaseConnection */
   handle = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
-
-  if (!tp_handle_is_valid (contact_repo, handle, &error))
-    goto error;
+  g_assert (handle != 0);
 
   /* Don't support opening a channel to our self handle */
   if (handle == base_conn->self_handle)

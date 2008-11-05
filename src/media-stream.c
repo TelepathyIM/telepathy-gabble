@@ -239,6 +239,8 @@ gabble_media_stream_get_property (GObject    *object,
   }
 }
 
+static void update_direction (GabbleMediaStream *stream, GabbleJingleContent *c);
+
 static void
 gabble_media_stream_set_property (GObject      *object,
                                   guint         property_id,
@@ -310,6 +312,8 @@ gabble_media_stream_set_property (GObject      *object,
 
       priv->removed_id = g_signal_connect (priv->content, "removed",
           (GCallback) content_removed_cb, stream);
+
+      update_direction (stream, priv->content);
 
       /* we can immediately get the codecs if we're responder */
       new_remote_codecs_cb (priv->content,
@@ -1192,15 +1196,23 @@ content_state_changed_cb (GabbleJingleContent *c,
 
   DEBUG ("called");
 
-  if (state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-    {
-      /* FIXME: check direction for these */
+  switch (state) {
+    case JINGLE_CONTENT_STATE_ACKNOWLEDGED:
+      /* connected stream means we can play, but sending is determined
+       * by content senders (in update_senders) */
       stream->playing = TRUE;
-      priv->sending = TRUE;
-
       push_playing (stream);
       push_sending (stream);
-    }
+      break;
+    case JINGLE_CONTENT_STATE_REMOVING:
+      stream->playing = FALSE;
+      priv->sending = FALSE;
+      push_playing (stream);
+      break;
+    default:
+      /* so gcc doesn't cry */
+      break;
+  }
 }
 
 static void
@@ -1281,13 +1293,72 @@ push_sending (GabbleMediaStream *stream)
 }
 
 static void
+update_direction (GabbleMediaStream *stream, GabbleJingleContent *c)
+{
+  CombinedStreamDirection new_combined_dir;
+  TpMediaStreamDirection requested_dir, current_dir;
+  TpMediaStreamPendingSend pending_send;
+  JingleContentSenders senders;
+  gboolean local_initiator;
+
+  g_object_get (c, "senders", &senders, NULL);
+  g_object_get (c->session, "local-initiator", &local_initiator, NULL);
+
+  switch (senders) {
+      case JINGLE_CONTENT_SENDERS_INITIATOR:
+        requested_dir = local_initiator ?
+          TP_MEDIA_STREAM_DIRECTION_SEND : TP_MEDIA_STREAM_DIRECTION_RECEIVE;
+        break;
+      case JINGLE_CONTENT_SENDERS_RESPONDER:
+        requested_dir = local_initiator ?
+          TP_MEDIA_STREAM_DIRECTION_RECEIVE : TP_MEDIA_STREAM_DIRECTION_SEND;
+        break;
+      case JINGLE_CONTENT_SENDERS_BOTH:
+        requested_dir = TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL;
+        break;
+      default:
+        requested_dir = TP_MEDIA_STREAM_DIRECTION_NONE;
+  }
+
+  current_dir = COMBINED_DIRECTION_GET_DIRECTION (stream->combined_direction);
+  pending_send = COMBINED_DIRECTION_GET_PENDING_SEND
+    (stream->combined_direction);
+
+  /* if local sending has been added, remove it,
+   * and set the pending local send flag */
+  if (((current_dir & TP_MEDIA_STREAM_DIRECTION_SEND) == 0) &&
+    ((requested_dir & TP_MEDIA_STREAM_DIRECTION_SEND) != 0))
+    {
+      DEBUG ("setting pending local send flag");
+      requested_dir &= ~TP_MEDIA_STREAM_DIRECTION_SEND;
+      pending_send |= TP_MEDIA_STREAM_PENDING_LOCAL_SEND;
+    }
+
+#if 0
+  /* clear any pending remote send */
+  if ((pending_send & TP_MEDIA_STREAM_PENDING_REMOTE_SEND) != 0)
+    {
+      GMS_DEBUG_INFO (session, "setting pending local send flag");
+      pending_send &= ~TP_MEDIA_STREAM_PENDING_REMOTE_SEND;
+    }
+#endif
+
+  /* make any necessary changes */
+  new_combined_dir = MAKE_COMBINED_DIRECTION (requested_dir, pending_send);
+  if (new_combined_dir != stream->combined_direction)
+    {
+      g_object_set (stream, "combined-direction", new_combined_dir, NULL);
+      _gabble_media_stream_update_sending (stream, FALSE);
+    }
+
+}
+
+static void
 content_senders_changed_cb (GabbleJingleContent *c,
                             GParamSpec *pspec,
                             GabbleMediaStream *stream)
 {
-  JingleContentSenders senders;
-
-  g_object_get (c, "senders", &senders, NULL);
+  update_direction (stream, c);
 }
 
 static void
@@ -1380,8 +1451,6 @@ gabble_media_stream_change_direction (GabbleMediaStream *stream,
 }
 
 
-
-/* FIXME: this doesn't work yet */
 void
 _gabble_media_stream_update_sending (GabbleMediaStream *stream,
                                      gboolean start_sending)

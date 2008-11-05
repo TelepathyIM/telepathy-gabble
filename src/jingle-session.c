@@ -1309,8 +1309,6 @@ static void
 _on_accept_reply (GabbleJingleSession *sess, gboolean success,
     LmMessage *reply, gpointer user_data)
 {
-  /* FIXME: clear session timeout timer here */
-
   if (success)
       set_state (sess, JS_STATE_ACTIVE);
   else
@@ -1356,8 +1354,6 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
       action = JINGLE_ACTION_SESSION_INITIATE;
       new_state = JS_STATE_PENDING_INITIATE_SENT;
       handler = _on_initiate_reply;
-
-      /* FIXME: set session timeout timer here */
     }
   else
     {

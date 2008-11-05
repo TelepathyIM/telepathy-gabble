@@ -849,10 +849,10 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
       if (priv->dialect == JINGLE_DIALECT_GTALK4)
         {
-          /* If we think we're in gtalk4 mode and get sent this,
-           * switch to gtalk3 mode and resend our candidates */
-          if (!tp_strdiff (node->name, "candidates"))
+          if (!tp_strdiff (lm_message_node_get_attribute (node, "type"),
+                "candidates"))
             {
+              DEBUG ("switching to gtalk3 dialect and retransmiting our candidates");
               priv->dialect = JINGLE_DIALECT_GTALK3;
               gabble_jingle_content_retransmit_candidates (c);
             }

@@ -499,22 +499,26 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
                             TpHandle sender,
                             const char *from,
                             time_t timestamp,
-                            const char *text)
+                            const char *text,
+                            TpChannelTextSendError send_error)
 {
   GabbleIMChannelPrivate *priv;
+  TpBaseConnection *base_conn;
   TpMessage *msg;
 
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+  base_conn = (TpBaseConnection *) priv->conn;
 
   /* update peer's full JID if it's changed */
-  if (0 != strcmp (from, priv->peer_jid))
+  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR &&
+      0 != strcmp (from, priv->peer_jid))
     {
       g_free (priv->peer_jid);
       priv->peer_jid = g_strdup (from);
     }
 
-  msg = tp_message_new ((TpBaseConnection *) priv->conn, 2, 2);
+  msg = tp_message_new (base_conn, 2, 2);
 
   /* Header */
   if (type != TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL)
@@ -524,15 +528,41 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
     tp_message_set_uint64 (msg, 0, "message-sent", timestamp);
 
   tp_message_set_uint64 (msg, 0, "message-received", time (NULL));
-  tp_message_set_handle (msg, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
-      sender);
 
   /* Body */
   tp_message_set_string (msg, 1, "content-type", "text/plain");
   tp_message_set_string (msg, 1, "content", text);
 
+  if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
+    {
+      tp_message_set_handle (msg, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
+          sender);
 
-  tp_message_mixin_take_received (G_OBJECT (chan), msg);
+      tp_message_mixin_take_received (G_OBJECT (chan), msg);
+    }
+  else
+    {
+      TpMessage *delivery_report = tp_message_new (base_conn, 1, 1);
+
+      tp_message_set_uint32 (delivery_report, 0, "message-type",
+          TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
+      tp_message_set_handle (delivery_report, 0, "message-sender",
+          TP_HANDLE_TYPE_CONTACT, sender);
+      /* FIXME: Propagate whether the error is temporary or permanent from
+       * gabble_xmpp_error_from_node via _tp_send_error_from_error_node
+       */
+      tp_message_set_uint32 (delivery_report, 0, "delivery-status",
+          TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
+      tp_message_set_uint32 (delivery_report, 0, "delivery-error", send_error);
+
+      /* We're getting a send error, so the original sender of the echoed
+       * message must be us! */
+      tp_message_set_handle (msg, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
+          base_conn->self_handle);
+      tp_message_take_message (delivery_report, 0, "delivery-echo", msg);
+
+      tp_message_mixin_take_received (G_OBJECT (chan), delivery_report);
+    }
 }
 
 /**

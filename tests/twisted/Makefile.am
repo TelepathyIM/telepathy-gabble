@@ -33,6 +33,7 @@ TWISTED_TESTS = \
 	text/destroy.py \
 	text/ensure.py \
 	text/respawn.py \
+	text/send-error.py \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
 	text/test-text.py \

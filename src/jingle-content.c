@@ -914,6 +914,12 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
 
   DEBUG ("called for content %s", priv->name);
 
+  if (priv->timer_id != 0)
+    {
+      g_source_remove (priv->timer_id);
+      priv->timer_id = 0;
+    }
+
   if (priv->state == JINGLE_CONTENT_STATE_REMOVING)
     {
       DEBUG ("ignoring request to remove content which is already being removed");
@@ -939,10 +945,7 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
       g_signal_emit (c, signals[REMOVED], 0);
     }
 
-  if (priv->timer_id != 0)
-    {
-      g_source_remove (priv->timer_id);
-      priv->timer_id = 0;
-    }
+  /* At this point content could be unreffed by REMOVED handler
+   * and disposed of; don't do anything else with it. */
 }
 

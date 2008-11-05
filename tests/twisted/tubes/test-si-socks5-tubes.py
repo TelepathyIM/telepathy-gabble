@@ -288,12 +288,20 @@ def test(q, bus, conn, stream):
     query = iq.addElement((NS_BYTESTREAMS, 'query'))
     query['sid'] = 'alpha'
     query['mode'] = 'tcp'
+    # Not working streamhost
     streamhost = query.addElement('streamhost')
     streamhost['jid'] = 'invalid.invalid'
     streamhost['host'] = 'invalid.invalid'
     streamhost['port'] = '5086'
+    # Working streamhost
     streamhost = query.addElement('streamhost')
     streamhost['jid'] = 'bob@localhost/Bob'
+    streamhost['host'] = '127.0.0.1'
+    streamhost['port'] = '5086'
+    # This works too but should not be tried as gabble should just
+    # connect to the previous one
+    streamhost = query.addElement('streamhost')
+    streamhost['jid'] = 'bob@localhost'
     streamhost['host'] = '127.0.0.1'
     streamhost['port'] = '5086'
     stream.send(iq)

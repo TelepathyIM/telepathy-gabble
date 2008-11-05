@@ -442,6 +442,10 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 {
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gchar msg[47] = {'\0'};
+  const gchar *from;
+  const gchar *to;
+  gchar *unhashed_domain;
+  gchar *domain;
   LmMessage *iq_result;
 
   switch (priv->socks5_state)
@@ -454,16 +458,27 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         g_assert (string->str[0] == SOCKS5_VERSION &&
             string->str[1] == SOCKS5_STATUS_OK);
 
+        from = lm_message_node_get_attribute (
+            priv->msg_for_acknowledge_connection->node, "from");
+        to = lm_message_node_get_attribute (
+            priv->msg_for_acknowledge_connection->node, "to"),
+        unhashed_domain = g_strconcat (priv->stream_id, from, to, NULL);
+        domain = sha1_hex (unhashed_domain, -1);
+
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_CMD_CONNECT;
         msg[2] = SOCKS5_RESERVED;
         msg[3] = SOCKS5_ATYP_DOMAIN;
-        /* Lenght of a hex SHA1 */
+        /* Length of a hex SHA1 */
         msg[4] = 40;
-        /* FIXME: send the domainname */
+        /* Domain name: SHA-1(sid + initiator + target) */
+        memcpy (&msg[5], domain, 40);
         /* Port: 0 */
         msg[45] = 0x00;
         msg[46] = 0x00;
+
+        g_free (domain);
+        g_free (unhashed_domain);
 
         socks5_schedule_write (self, msg, 47);
 

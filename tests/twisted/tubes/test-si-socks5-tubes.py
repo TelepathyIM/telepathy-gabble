@@ -3,6 +3,7 @@
 import base64
 import errno
 import os
+import sha
 
 import dbus
 from dbus.connection import Connection
@@ -299,12 +300,14 @@ def test(q, bus, conn, stream):
     transport = event.properties['transport']
     transport.write('\x05\x00') # version 5, no auth
     event = q.expect('s5b-data-received')
-    # ver + cmd + rsv + atyp + len + SHA1 (40) + dst.port (2) = 47
-    assert len(event.properties['data']) == 47
-    # version 5, connect, reserved, domain type, len(SHA-1)
-    assert event.properties['data'].startswith('\x05\x01\x00\x03' + chr(40))
-    # port
-    assert event.properties['data'].endswith('\x00\x00')
+    # version 5, connect, reserved, domain type
+    expected_connect = '\x05\x01\x00\x03'
+    expected_connect += chr(40) # len (SHA-1)
+    # sha-1(sid + initiator + target)
+    unhashed_domain = query['sid'] + iq['from'] + iq['to']
+    expected_connect += sha.new(unhashed_domain).hexdigest()
+    expected_connect += '\x00\x00' # port
+    assert event.properties['data'] == expected_connect
 
     transport.write('\x05\x00') #version 5, ok
 

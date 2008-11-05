@@ -289,7 +289,10 @@ def test(q, bus, conn, stream):
     query['sid'] = 'alpha'
     query['mode'] = 'tcp'
     streamhost = query.addElement('streamhost')
-    # FIXME test with a non-working streamhost
+    streamhost['jid'] = 'invalid.invalid'
+    streamhost['host'] = 'invalid.invalid'
+    streamhost['port'] = '5086'
+    streamhost = query.addElement('streamhost')
     streamhost['jid'] = 'bob@localhost/Bob'
     streamhost['host'] = '127.0.0.1'
     streamhost['port'] = '5086'

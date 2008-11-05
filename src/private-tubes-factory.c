@@ -719,8 +719,8 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       if (require_new)
         {
           g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              "Already chatting with contact #%u in another channel", handle);
-          DEBUG ("Already chatting with contact #%u in another channel",
+              "Tubes channel with contact #%u already exists", handle);
+          DEBUG ("Tubes channel with contact #%u already exists",
               handle);
           goto error;
         }

@@ -185,7 +185,7 @@ check_publish_reply_msg (LmMessage *reply_msg,
           if (error_node != NULL)
             {
               GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (
-                  error_node);
+                  error_node, NULL);
 
               error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
                   "Failed to publish to the PEP node: %s",
@@ -228,7 +228,7 @@ check_query_reply_msg (LmMessage *reply_msg,
           if (error_node != NULL)
             {
               GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (
-                  error_node);
+                  error_node, NULL);
 
               error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
                   "Failed to query the PEP node: %s",

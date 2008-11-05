@@ -594,7 +594,7 @@ jingle_info_iq_callback (LmMessageHandler *handler,
       node = lm_message_node_get_child (message->node, "error");
       if (node != NULL)
         {
-          xmpp_error = gabble_xmpp_error_from_node (node);
+          xmpp_error = gabble_xmpp_error_from_node (node, NULL);
         }
 
       DEBUG ("jingle info error: %s", gabble_xmpp_error_string (xmpp_error));

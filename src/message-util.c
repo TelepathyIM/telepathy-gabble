@@ -222,7 +222,7 @@ _tp_send_error_from_error_node (LmMessageNode *error_node)
 {
   if (error_node != NULL)
     {
-      GabbleXmppError err = gabble_xmpp_error_from_node (error_node);
+      GabbleXmppError err = gabble_xmpp_error_from_node (error_node, NULL);
       DEBUG ("got xmpp error: %s: %s", gabble_xmpp_error_string (err),
           gabble_xmpp_error_description (err));
 

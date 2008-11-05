@@ -25,6 +25,15 @@
 #include <loudmouth/loudmouth.h>
 
 typedef enum {
+    XMPP_ERROR_TYPE_UNDEFINED = 0,
+    XMPP_ERROR_TYPE_CANCEL,
+    XMPP_ERROR_TYPE_CONTINUE,
+    XMPP_ERROR_TYPE_MODIFY,
+    XMPP_ERROR_TYPE_AUTH,
+    XMPP_ERROR_TYPE_WAIT,
+} GabbleXmppErrorType;
+
+typedef enum {
     XMPP_ERROR_UNDEFINED_CONDITION = 0, /* 500 */
     XMPP_ERROR_REDIRECT,                /* 302 */
     XMPP_ERROR_GONE,                    /* 302 */
@@ -75,7 +84,8 @@ typedef enum {
 GQuark gabble_xmpp_error_quark (void);
 #define GABBLE_XMPP_ERROR (gabble_xmpp_error_quark ())
 
-GabbleXmppError gabble_xmpp_error_from_node (LmMessageNode *error_node);
+GabbleXmppError gabble_xmpp_error_from_node (LmMessageNode *error_node,
+    GabbleXmppErrorType *type_out);
 LmMessageNode *gabble_xmpp_error_to_node (GabbleXmppError error,
     LmMessageNode *parent_node, const gchar *errmsg);
 const gchar *gabble_xmpp_error_string (GabbleXmppError error);

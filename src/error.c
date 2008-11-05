@@ -310,6 +310,29 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
     },
 };
 
+
+static GabbleXmppErrorType
+error_type_to_enum (const gchar *error_type)
+{
+  if (!tp_strdiff (error_type, "cancel"))
+    return XMPP_ERROR_TYPE_CANCEL;
+
+  if (!tp_strdiff (error_type, "continue"))
+    return XMPP_ERROR_TYPE_CONTINUE;
+
+  if (!tp_strdiff (error_type, "modify"))
+    return XMPP_ERROR_TYPE_MODIFY;
+
+  if (!tp_strdiff (error_type, "auth"))
+    return XMPP_ERROR_TYPE_AUTH;
+
+  if (!tp_strdiff (error_type, "wait"))
+    return XMPP_ERROR_TYPE_WAIT;
+
+  return XMPP_ERROR_TYPE_UNDEFINED;
+}
+
+
 GQuark
 gabble_xmpp_error_quark (void)
 {
@@ -320,7 +343,8 @@ gabble_xmpp_error_quark (void)
 }
 
 GabbleXmppError
-gabble_xmpp_error_from_node (LmMessageNode *error_node)
+gabble_xmpp_error_from_node (LmMessageNode *error_node,
+                             GabbleXmppErrorType *type_out)
 {
   gint i, j;
   const gchar *error_code_str;
@@ -330,6 +354,10 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node)
   /* First, try to look it up the modern way */
   if (error_node->children)
     {
+      if (type_out != NULL)
+        *type_out = error_type_to_enum (lm_message_node_get_attribute (
+            error_node, "type"));
+
       /* we loop backwards because the most specific errors are the larger
        * numbers; the >= 0 test is OK because i is signed */
       for (i = NUM_XMPP_ERRORS - 1; i >= 0; i--)
@@ -363,10 +391,18 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node)
                 break;
 
               if (cur_code == error_code)
-                return i;
+                {
+                  if (type_out != NULL)
+                    *type_out = error_type_to_enum (spec->type);
+
+                  return i;
+                }
             }
         }
     }
+
+  if (type_out != NULL)
+    *type_out = XMPP_ERROR_TYPE_UNDEFINED;
 
   return XMPP_ERROR_UNDEFINED_CONDITION;
 }
@@ -465,7 +501,7 @@ gabble_message_get_xmpp_error (LmMessage *msg)
       if (error_node != NULL)
         {
           return gabble_xmpp_error_to_g_error
-              (gabble_xmpp_error_from_node (error_node));
+              (gabble_xmpp_error_from_node (error_node, NULL));
         }
       else
         {

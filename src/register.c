@@ -214,7 +214,7 @@ set_reply_cb (GabbleConnection *conn,
         {
           GabbleXmppError error;
 
-          error = gabble_xmpp_error_from_node (node);
+          error = gabble_xmpp_error_from_node (node, NULL);
           if (error == XMPP_ERROR_CONFLICT)
             {
               code = TP_ERROR_INVALID_ARGUMENT;

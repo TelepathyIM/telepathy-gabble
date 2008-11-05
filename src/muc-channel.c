@@ -1418,7 +1418,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
       return;
     }
 
-  error = gabble_xmpp_error_from_node (error_node);
+  error = gabble_xmpp_error_from_node (error_node, NULL);
 
   if (priv->state >= MUC_STATE_JOINED)
     {
@@ -2125,7 +2125,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
       node = lm_message_node_get_child (msg->node, "error");
       if (node)
         {
-          GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (node);
+          GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (node, NULL);
           err_desc = gabble_xmpp_error_description (xmpp_error);
         }
 

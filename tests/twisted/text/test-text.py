@@ -82,7 +82,7 @@ def test(q, bus, conn, stream):
     # messages."
     assert 'message-type' not in header, header
 
-    assert body['type'] == 'text/plain', body
+    assert body['content-type'] == 'text/plain', body
     assert body['content'] == 'hello', body
 
     # Remove the message from the pending message queue, and check that
@@ -103,7 +103,7 @@ def test(q, bus, conn, stream):
     greeting = [
         dbus.Dictionary({ 'message-type': 2, # Notice
                         }, signature='sv'),
-        { 'type': 'text/plain',
+        { 'content-type': 'text/plain',
           'content': u"what up",
         }
     ]
@@ -130,7 +130,7 @@ def test(q, bus, conn, stream):
     header = sent_message[0]
     assert header['message-type'] == 2, header # Notice
     body = sent_message[1]
-    assert body['type'] == 'text/plain', body
+    assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'what up', body
 
     assert sent.args[1] == 2, sent.args # Notice
@@ -160,7 +160,7 @@ def test(q, bus, conn, stream):
     # if it would be Normal, message-type SHOULD be omitted
     assert 'message-type' not in header, header
     body = sent_message[1]
-    assert body['type'] == 'text/plain', body
+    assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'goodbye', body
 
     assert sent.args[1] == 0, sent.args # message type normal

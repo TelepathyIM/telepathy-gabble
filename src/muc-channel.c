@@ -2266,7 +2266,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       sender);
 
   /* Body */
-  tp_message_set_string (message, 1, "type", "text/plain");
+  tp_message_set_string (message, 1, "content-type", "text/plain");
   tp_message_set_string (message, 1, "content", text);
 
   if (is_echo)

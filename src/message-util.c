@@ -123,7 +123,7 @@ gabble_message_util_send_message (GObject *obj,
         (n_parts - 1));
 
   part = tp_message_peek (message, 1);
-  content_type = tp_asv_get_string (part, "type");
+  content_type = tp_asv_get_string (part, "content-type");
   text = tp_asv_get_string (part, "content");
 
   if (content_type == NULL || tp_strdiff (content_type, "text/plain"))

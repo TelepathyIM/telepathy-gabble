@@ -118,7 +118,7 @@ def test(q, bus, conn, stream):
     # messages."
     assert 'message-type' not in header, header
 
-    assert body['type'] == 'text/plain', body
+    assert body['content-type'] == 'text/plain', body
     assert body['content'] == 'hello', body
 
 
@@ -141,7 +141,7 @@ def test(q, bus, conn, stream):
     greeting = [
         dbus.Dictionary({ 'message-type': 1, # Action
                         }, signature='sv'),
-        { 'type': 'text/plain',
+        { 'content-type': 'text/plain',
           'content': u"peers through a gap in the curtains",
         }
     ]
@@ -161,7 +161,7 @@ def test(q, bus, conn, stream):
     header = sent_message[0]
     assert header['message-type'] == 1, header # Action
     body = sent_message[1]
-    assert body['type'] == 'text/plain', body
+    assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'peers through a gap in the curtains', body
 
     assert sent.args[1] == 1, sent.args # Action
@@ -240,7 +240,7 @@ def test(q, bus, conn, stream):
     header = sent_message[0]
     assert 'message-type' not in header, header # Normal
     body = sent_message[1]
-    assert body['type'] == 'text/plain', body
+    assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'goodbye', body
 
     assert sent.args[1] == 0, sent.args # Normal

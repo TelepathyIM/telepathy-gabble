@@ -528,7 +528,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
       sender);
 
   /* Body */
-  tp_message_set_string (msg, 1, "type", "text/plain");
+  tp_message_set_string (msg, 1, "content-type", "text/plain");
   tp_message_set_string (msg, 1, "content", text);
 
 

@@ -874,14 +874,25 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 
   DEBUG ("put 1 native candidate from stream-engine into cache");
 
-  c = g_slice_new0 (JingleCandidate);
-  c->address = g_value_dup_string (g_value_array_get_nth (transport, 1));
-  c->port = g_value_get_uint (g_value_array_get_nth (transport, 2));
-  c->protocol = g_value_get_uint (g_value_array_get_nth (transport, 3));
-  c->preference = g_value_get_double (g_value_array_get_nth (transport, 6));
-  c->type = g_value_get_uint (g_value_array_get_nth (transport, 7));
-  c->username = g_value_dup_string (g_value_array_get_nth (transport, 8));
-  c->password = g_value_dup_string (g_value_array_get_nth (transport, 9));
+  c = jingle_candidate_new (
+      /* address */
+      g_value_get_string (g_value_array_get_nth (transport, 1)),
+      /* port */
+      g_value_get_uint (g_value_array_get_nth (transport, 2)),
+      /* protocol */
+      g_value_get_uint (g_value_array_get_nth (transport, 3)),
+      /* preference */
+      g_value_get_double (g_value_array_get_nth (transport, 6)),
+      /* candidate type, we're relying on 1:1 candidate type mapping */
+      g_value_get_uint (g_value_array_get_nth (transport, 7)),
+      /* username */
+      g_value_get_string (g_value_array_get_nth (transport, 8)),
+      /* password */
+      g_value_dup_string (g_value_array_get_nth (transport, 9)),
+      /* FIXME: network is hardcoded for now */
+      0,
+      /* FIXME: generation is also hardcoded for now */
+      0);
 
   li = g_list_prepend (NULL, c);
   gabble_jingle_content_add_candidates (priv->content, li);
@@ -979,13 +990,8 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
           5, &params,
           G_MAXUINT);
 
-      c = g_slice_new0 (JingleCodec);
-
-      c->id = id;
-      c->name = g_strdup (name);
-      c->clockrate = clock_rate;
-      c->channels = channels;
-      c->params = params;
+      c = jingle_media_rtp_codec_new (id, name,
+          clock_rate, channels, params);
 
       DEBUG ("adding codec %s (%u %u %u)", c->name, c->id, c->clockrate, c->channels);
       li = g_list_append (li, c);
@@ -1213,12 +1219,6 @@ new_remote_candidates_cb (GabbleJingleContent *content,
     }
 
   push_remote_candidates (stream);
-
-  while (clist != NULL)
-    {
-      g_free (clist->data);
-      clist = clist->next;
-    }
 }
 
 static void

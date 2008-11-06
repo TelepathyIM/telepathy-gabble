@@ -97,23 +97,6 @@ gabble_jingle_transport_google_init (GabbleJingleTransportGoogle *obj)
 }
 
 static void
-_free_candidates (GList *candidates)
-{
-  while (candidates != NULL)
-    {
-      JingleCandidate *c = (JingleCandidate *) candidates->data;
-
-      g_free (c->address);
-      g_free (c->username);
-      g_free (c->password);
-
-      g_slice_free (JingleCandidate, c);
-
-      candidates = g_list_remove (candidates, c);
-    }
-}
-
-static void
 gabble_jingle_transport_google_dispose (GObject *object)
 {
   GabbleJingleTransportGoogle *trans = GABBLE_JINGLE_TRANSPORT_GOOGLE (object);
@@ -125,10 +108,10 @@ gabble_jingle_transport_google_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  _free_candidates (priv->remote_candidates);
+  jingle_transport_free_candidates (priv->remote_candidates);
   priv->remote_candidates = NULL;
 
-  _free_candidates (priv->local_candidates);
+  jingle_transport_free_candidates (priv->local_candidates);
   priv->local_candidates = NULL;
 
   g_free (priv->transport_ns);
@@ -365,16 +348,8 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       gen = atoi (str);
 
-      c = g_slice_new0 (JingleCandidate);
-      c->address = g_strdup (address);
-      c->port = port;
-      c->protocol = proto;
-      c->preference = pref;
-      c->type = ctype;
-      c->username = g_strdup (user);
-      c->password = g_strdup (pass);
-      c->network = net;
-      c->generation = gen;
+      c = jingle_candidate_new (address, port, proto, pref,
+          ctype, user, pass, net, gen);
 
       candidates = g_list_append (candidates, c);
     }
@@ -383,7 +358,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
     {
       DEBUG ("not all nodes were processed, reporting error");
       /* rollback these */
-      _free_candidates (candidates);
+      jingle_transport_free_candidates (candidates);
       SET_BAD_REQ ("invalid candidate");
       return;
     }
@@ -393,10 +368,6 @@ parse_candidates (GabbleJingleTransportIface *obj,
   g_signal_emit (obj, signals[NEW_CANDIDATES], 0, candidates);
 
   /* append them to the known remote candidates */
-
-  /* OK this sucks, do we really need to save it? if we want to save it we
-   * can't borrow the strings, malloc hell ensues */
-  /* we need to free the fields, make a custom function for it */
   priv->remote_candidates = g_list_concat (priv->remote_candidates, candidates);
 }
 

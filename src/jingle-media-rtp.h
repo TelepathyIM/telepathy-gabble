@@ -75,5 +75,10 @@ void jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
     GList *codecs);
 GList *gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self);
 
+JingleCodec * jingle_media_rtp_codec_new (guint id, const gchar *name,
+    guint clockrate, guint channels, GHashTable *params);
+void jingle_media_rtp_codec_free (JingleCodec *p);
+void jingle_media_rtp_free_codecs (GList *codecs);
+
 #endif /* __JINGLE_MEDIA_RTP_H__ */
 

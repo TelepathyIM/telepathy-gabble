@@ -84,19 +84,42 @@ gabble_jingle_media_rtp_init (GabbleJingleMediaRtp *obj)
   priv->dispose_has_run = FALSE;
 }
 
-static void
-_free_codecs (GList *codecs)
+JingleCodec *
+jingle_media_rtp_codec_new (guint id, const gchar *name,
+    guint clockrate, guint channels, GHashTable *params)
+{
+  JingleCodec *p = g_slice_new0 (JingleCodec);
+
+  p->id = id;
+  p->name = g_strdup (name);
+  p->clockrate = clockrate;
+  p->channels = channels;
+
+  if (params != NULL)
+      p->params = params;
+  else
+      p->params = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+
+  return p;
+}
+
+void
+jingle_media_rtp_codec_free (JingleCodec *p)
+{
+  if (p->params != NULL)
+      g_hash_table_destroy  (p->params);
+
+  g_free (p->name);
+  g_slice_free (JingleCodec, p);
+}
+
+void
+jingle_media_rtp_free_codecs (GList *codecs)
 {
   while (codecs != NULL)
     {
       JingleCodec *p = (JingleCodec *) codecs->data;
-
-      if (p->params != NULL)
-          g_hash_table_destroy  (p->params);
-
-      g_free (p->name);
-      g_slice_free (JingleCodec, p);
-
+      jingle_media_rtp_codec_free (p);
       codecs = g_list_remove (codecs, p);
     }
 }
@@ -113,10 +136,10 @@ gabble_jingle_media_rtp_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  _free_codecs (priv->remote_codecs);
+  jingle_media_rtp_free_codecs (priv->remote_codecs);
   priv->remote_codecs = NULL;
 
-  _free_codecs (priv->local_codecs);
+  jingle_media_rtp_free_codecs (priv->local_codecs);
   priv->local_codecs = NULL;
 
   if (G_OBJECT_CLASS (gabble_jingle_media_rtp_parent_class)->dispose)
@@ -312,12 +335,7 @@ parse_description (GabbleJingleContent *content,
           channels = 1;
         }
 
-      p = g_slice_new0 (JingleCodec);
-      p->id = id;
-      p->name = g_strdup (name);
-      p->clockrate = clockrate;
-      p->channels = channels;
-      p->params = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+      p = jingle_media_rtp_codec_new (id, name, clockrate, channels, NULL);
 
       for (i = 0; video_codec_params[i] != NULL; i++)
         {
@@ -336,7 +354,7 @@ parse_description (GabbleJingleContent *content,
   if (node != NULL)
     {
       /* rollback these */
-      _free_codecs (codecs);
+      jingle_media_rtp_free_codecs (codecs);
       SET_BAD_REQ ("invalid payload");
       return;
     }

@@ -148,3 +148,43 @@ gabble_jingle_transport_iface_get_type (void)
   return type;
 }
 
+JingleCandidate *
+jingle_candidate_new (const gchar *address, guint port,
+    JingleTransportProtocol proto, gdouble pref, JingleCandidateType type,
+    const gchar *user, const gchar *pass, guint net, guint gen)
+{
+  JingleCandidate *c = g_slice_new0 (JingleCandidate);
+  c->address = g_strdup (address);
+  c->port = port;
+  c->protocol = proto;
+  c->preference = pref;
+  c->type = type;
+  c->username = g_strdup (user);
+  c->password = g_strdup (pass);
+  c->network = net;
+  c->generation = gen;
+
+  return c;
+}
+
+void
+jingle_candidate_free (JingleCandidate *c)
+{
+    g_free (c->address);
+    g_free (c->username);
+    g_free (c->password);
+
+    g_slice_free (JingleCandidate, c);
+}
+
+void
+jingle_transport_free_candidates (GList *candidates)
+{
+  while (candidates != NULL)
+    {
+      JingleCandidate *c = (JingleCandidate *) candidates->data;
+      jingle_candidate_free (c);
+      candidates = g_list_remove (candidates, c);
+    }
+}
+

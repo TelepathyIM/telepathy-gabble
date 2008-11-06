@@ -569,7 +569,7 @@ properties_disco_cb (GabbleDisco *disco,
           /* Unhandled */
           else
             {
-              g_warning ("%s: unhandled feature '%s'", G_STRFUNC, str);
+              DEBUG ("unhandled feature '%s'", str);
             }
         }
       else if (strcmp (lm_node->name, "x") == 0)
@@ -643,7 +643,7 @@ room_properties_update (GabbleMucChannel *chan)
         priv->jid, NULL, properties_disco_cb, chan, G_OBJECT (chan),
         &error) == NULL)
     {
-      g_warning ("%s: disco query failed: '%s'", G_STRFUNC, error->message);
+      DEBUG ("disco query failed: '%s'", error->message);
       g_error_free (error);
     }
 }
@@ -738,7 +738,7 @@ send_join_request (GabbleMucChannel *channel,
   ret = _gabble_connection_send (priv->conn, msg, error);
   if (!ret)
     {
-      g_warning ("%s: _gabble_connection_send_with_reply failed", G_STRFUNC);
+      DEBUG ("_gabble_connection_send_with_reply failed");
     }
   else
     {
@@ -776,7 +776,7 @@ send_leave_message (GabbleMucChannel *channel,
   ret = _gabble_connection_send (priv->conn, msg, &error);
   if (!ret)
     {
-      g_warning ("%s: _gabble_connection_send_with_reply failed", G_STRFUNC);
+      DEBUG ("_gabble_connection_send_with_reply failed");
       g_error_free (error);
     }
   else
@@ -1398,15 +1398,14 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
 
   if (strcmp (jid, priv->self_jid->str) != 0)
     {
-      g_warning ("%s: presence error from other jids than self not handled",
-                 G_STRFUNC);
+      DEBUG ("presence error from other jids than self not handled");
       return;
     }
 
   error_node = lm_message_node_get_child (pres_node, "error");
   if (error_node == NULL)
     {
-      g_warning ("%s: missing required node 'error'", G_STRFUNC);
+      DEBUG ("missing required node 'error'");
       return;
     }
 
@@ -1414,8 +1413,8 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
 
   if (priv->state >= MUC_STATE_JOINED)
     {
-      g_warning ("%s: presence error while already member of the channel "
-          "-- NYI", G_STRFUNC);
+      DEBUG ("presence error while already member of the channel "
+          "-- NYI");
       return;
     }
 
@@ -1507,8 +1506,7 @@ get_role_from_string (const gchar *role)
         }
     }
 
-  g_warning ("%s: unknown role '%s' -- defaulting to ROLE_VISITOR",
-             G_STRFUNC, role);
+  DEBUG ("unknown role '%s' -- defaulting to ROLE_VISITOR", role);
 
   return ROLE_VISITOR;
 }
@@ -1531,8 +1529,8 @@ get_affiliation_from_string (const gchar *affil)
         }
     }
 
-  g_warning ("%s: unknown affiliation '%s' -- defaulting to "
-             "AFFILIATION_NONE", G_STRFUNC, affil);
+  DEBUG ("unknown affiliation '%s' -- defaulting to "
+             "AFFILIATION_NONE", affil);
 
   return AFFILIATION_NONE;
 }
@@ -1544,7 +1542,7 @@ room_created_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 {
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      g_warning ("%s: failed to submit room config", G_STRFUNC);
+      DEBUG ("failed to submit room config");
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -1595,8 +1593,8 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      g_warning ("%s: request for config form denied, property permissions "
-                 "will be inaccurate", G_STRFUNC);
+      DEBUG ("request for config form denied, property permissions "
+                 "will be inaccurate");
       goto OUT;
     }
 
@@ -1607,8 +1605,7 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   form_node = config_form_get_form_node (reply_msg);
   if (form_node == NULL)
     {
-      g_warning ("%s: form node node found, property permissions will be "
-                 "inaccurate", G_STRFUNC);
+      DEBUG ("form node node found, property permissions will be inaccurate");
       goto OUT;
     }
 
@@ -1775,8 +1772,7 @@ update_permissions (GabbleMucChannel *chan)
 
       if (!success)
         {
-          g_warning ("%s: failed to request config form: %s",
-              G_STRFUNC, error->message);
+          DEBUG ("failed to request config form: %s", error->message);
           g_error_free (error);
         }
     }
@@ -1983,8 +1979,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                     room_created_submit_reply_cb, G_OBJECT (chan), NULL,
                     &error))
                 {
-                  g_warning ("%s: failed to send submit message: %s",
-                      G_STRFUNC, error->message);
+                  DEBUG ("failed to send submit message: %s",
+                      error->message);
                   g_error_free (error);
 
                   lm_message_unref (msg);
@@ -2590,7 +2586,7 @@ kick_request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      g_warning ("%s: Failed to kick user %s from room", G_STRFUNC, jid);
+      DEBUG ("Failed to kick user %s from room", jid);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -2878,7 +2874,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         }
       else
         {
-          g_warning ("%s: ignoring field '%s'", G_STRFUNC, var);
+          DEBUG ("ignoring field '%s'", var);
         }
 
       /* add the corresponding field node to the reply message */

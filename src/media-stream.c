@@ -1089,8 +1089,8 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
       type_str = "relay";
       break;
     default:
-      g_warning ("%s: TpMediaStreamTransportType has an invalid value, "
-          "ignoring candidate", G_STRFUNC);
+      DEBUG ("TpMediaStreamTransportType has an invalid value, "
+          "ignoring candidate");
       goto out;
   }
 
@@ -1106,8 +1106,8 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
         proto_str = "tcp";
       break;
     default:
-      g_warning ("%s: TpMediaStreamBaseProto has an invalid value, ignoring "
-          "candidate", G_STRFUNC);
+      DEBUG ("TpMediaStreamBaseProto has an invalid value, ignoring "
+          "candidate");
       goto out;
     }
 

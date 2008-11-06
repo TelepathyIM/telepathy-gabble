@@ -528,8 +528,6 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   if (timestamp != 0)
     tp_message_set_uint64 (msg, 0, "message-sent", timestamp);
 
-  tp_message_set_uint64 (msg, 0, "message-received", time (NULL));
-
   /* Body */
   tp_message_set_string (msg, 1, "content-type", "text/plain");
   tp_message_set_string (msg, 1, "content", text);
@@ -538,6 +536,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
     {
       tp_message_set_handle (msg, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
           sender);
+      tp_message_set_uint64 (msg, 0, "message-received", time (NULL));
 
       tp_message_mixin_take_received (G_OBJECT (chan), msg);
     }
@@ -549,6 +548,8 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
           TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
       tp_message_set_handle (delivery_report, 0, "message-sender",
           TP_HANDLE_TYPE_CONTACT, sender);
+      tp_message_set_uint64 (delivery_report, 0, "message-received",
+          time (NULL));
 
       tp_message_set_uint32 (delivery_report, 0, "delivery-status",
           delivery_status);

@@ -215,9 +215,10 @@ im_factory_message_cb (LmMessageHandler *handler,
   GabbleIMChannel *chan;
   gint state;
   TpChannelTextSendError send_error;
+  TpDeliveryStatus delivery_status;
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
-        &msgtype, &body, &state, &send_error))
+        &msgtype, &body, &state, &send_error, &delivery_status))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   if (body == NULL && state == -1)

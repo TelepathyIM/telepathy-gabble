@@ -732,11 +732,12 @@ muc_factory_message_cb (LmMessageHandler *handler,
   GabbleMucChannel *chan;
   gint state;
   TpChannelTextSendError send_error;
+  TpDeliveryStatus delivery_status;
   gchar *room;
   LmMessageNode *subj_node;
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
-        &msgtype, &body, &state, &send_error))
+        &msgtype, &body, &state, &send_error, &delivery_status))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   if (conn_olpc_process_activity_properties_message (priv->conn, message,

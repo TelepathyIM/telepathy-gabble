@@ -218,13 +218,21 @@ gabble_message_util_send_chat_state (GObject *obj,
 
 
 static TpChannelTextSendError
-_tp_send_error_from_error_node (LmMessageNode *error_node)
+_tp_send_error_from_error_node (LmMessageNode *error_node,
+                                TpDeliveryStatus *delivery_status)
 {
   if (error_node != NULL)
     {
-      GabbleXmppError err = gabble_xmpp_error_from_node (error_node, NULL);
+      GabbleXmppErrorType err_type = XMPP_ERROR_TYPE_UNDEFINED;
+      GabbleXmppError err = gabble_xmpp_error_from_node (error_node, &err_type);
+
       DEBUG ("got xmpp error: %s: %s", gabble_xmpp_error_string (err),
           gabble_xmpp_error_description (err));
+
+      if (err_type == XMPP_ERROR_TYPE_WAIT)
+        *delivery_status = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
+      else
+        *delivery_status = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;
 
       /* these are based on descriptions of errors, and some testing */
       switch (err)
@@ -294,6 +302,9 @@ _tp_chat_state_from_message (LmMessage *message)
  *         there was no chat state in the message.
  * @send_error: set to the relevant send error if the message contained an
  *              error node, or to %GABBLE_TEXT_CHANNEL_SEND_NO_ERROR otherwise.
+ * @delivery_status: set to TemporarilyFailed if an <error type="wait"/> is
+ *                   encountered, to PermanentlyFailed if any other <error/> is
+ *                   encountered, and to Unknown otherwise.
  *
  * Parses an incoming <message> stanza, producing various bits of the message
  * as various out parameters.
@@ -308,12 +319,14 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
                                             TpChannelTextMessageType *msgtype,
                                             const gchar **body_ret,
                                             gint *state,
-                                            TpChannelTextSendError *send_error)
+                                            TpChannelTextSendError *send_error,
+                                            TpDeliveryStatus *delivery_status)
 {
   const gchar *type, *body;
   LmMessageNode *node;
 
   *send_error = GABBLE_TEXT_CHANNEL_SEND_NO_ERROR;
+  *delivery_status = TP_DELIVERY_STATUS_UNKNOWN;
 
   if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -321,7 +334,7 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
 
       error_node = lm_message_node_get_child (message->node, "error");
 
-      *send_error = _tp_send_error_from_error_node (error_node);
+      *send_error = _tp_send_error_from_error_node (error_node, delivery_status);
     }
 
   *from = lm_message_node_get_attribute (message->node, "from");

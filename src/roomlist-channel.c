@@ -199,6 +199,7 @@ gabble_roomlist_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "InitiatorHandle",
               TP_IFACE_CHANNEL, "InitiatorID",
               TP_IFACE_CHANNEL, "Requested",
+              TP_IFACE_CHANNEL, "Interfaces",
               TP_IFACE_CHANNEL_TYPE_ROOM_LIST, "Server",
               NULL));
       break;

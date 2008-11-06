@@ -281,7 +281,7 @@ im_factory_message_cb (LmMessageHandler *handler,
 
   if (body != NULL)
     _gabble_im_channel_receive (chan, msgtype, handle, from, stamp, body,
-        send_error);
+        send_error, delivery_status);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

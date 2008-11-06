@@ -500,7 +500,8 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
                             const char *from,
                             time_t timestamp,
                             const char *text,
-                            TpChannelTextSendError send_error)
+                            TpChannelTextSendError send_error,
+                            TpDeliveryStatus delivery_status)
 {
   GabbleIMChannelPrivate *priv;
   TpBaseConnection *base_conn;
@@ -548,11 +549,9 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
           TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
       tp_message_set_handle (delivery_report, 0, "message-sender",
           TP_HANDLE_TYPE_CONTACT, sender);
-      /* FIXME: Propagate whether the error is temporary or permanent from
-       * gabble_xmpp_error_from_node via _tp_send_error_from_error_node
-       */
+
       tp_message_set_uint32 (delivery_report, 0, "delivery-status",
-          TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
+          delivery_status);
       tp_message_set_uint32 (delivery_report, 0, "delivery-error", send_error);
 
       /* We're getting a send error, so the original sender of the echoed

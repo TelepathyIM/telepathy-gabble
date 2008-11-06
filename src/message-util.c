@@ -226,8 +226,8 @@ _tp_send_error_from_error_node (LmMessageNode *error_node,
       GabbleXmppErrorType err_type = XMPP_ERROR_TYPE_UNDEFINED;
       GabbleXmppError err = gabble_xmpp_error_from_node (error_node, &err_type);
 
-      DEBUG ("got xmpp error: %s: %s", gabble_xmpp_error_string (err),
-          gabble_xmpp_error_description (err));
+      DEBUG ("got xmpp error: %s (type=%u): %s", gabble_xmpp_error_string (err),
+          err_type, gabble_xmpp_error_description (err));
 
       if (err_type == XMPP_ERROR_TYPE_WAIT)
         *delivery_status = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;

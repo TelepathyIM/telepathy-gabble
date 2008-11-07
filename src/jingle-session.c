@@ -1475,7 +1475,7 @@ _foreach_count_active_contents (gpointer key, gpointer value, gpointer user_data
   JingleContentState state;
 
   g_object_get (c, "state", &state, NULL);
-  if ((state > JINGLE_CONTENT_STATE_NEW) &&
+  if ((state >= JINGLE_CONTENT_STATE_NEW) &&
       (state < JINGLE_CONTENT_STATE_REMOVING))
     {
       *n_contents = *n_contents + 1;

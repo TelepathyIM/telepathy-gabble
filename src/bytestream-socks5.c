@@ -561,6 +561,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 {
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gchar msg[47] = {'\0'};
+  guint authentication_methods;
+  guint i;
   const gchar *from;
   const gchar *to;
   gchar *unhashed_domain;
@@ -645,28 +647,40 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         return 2;
 
       case SOCKS5_STATE_AWAITING_AUTH_REQUEST:
-        if (string->len < 3)
+        if (string->len < 2)
           return 0;
 
-        /* FIXME */
-        if (string->str[0] != SOCKS5_VERSION ||
-            string->str[1] != 1 ||
-            string->str[2] != SOCKS5_AUTH_NONE)
+        if (string->str[0] != SOCKS5_VERSION)
           {
-            DEBUG ("Invalid authentication method requested");
+            DEBUG ("Authentication failed");
 
             socks5_error (self);
             return string->len;
           }
 
-        msg[0] = SOCKS5_VERSION;
-        msg[1] = SOCKS5_AUTH_NONE;
+        authentication_methods = string->str[1];
+        if (string->len < authentication_methods + 2)
+          return 0;
 
-        socks5_schedule_write (self, msg, 2);
+        for (i = 0; i < authentication_methods; i++)
+          {
+            if (string->str[i + 2] == SOCKS5_AUTH_NONE)
+              {
+                msg[0] = SOCKS5_VERSION;
+                msg[1] = SOCKS5_AUTH_NONE;
+                socks5_schedule_write (self, msg, 2);
 
-        priv->socks5_state = SOCKS5_STATE_AWAITING_COMMAND;
+                priv->socks5_state = SOCKS5_STATE_AWAITING_COMMAND;
 
-        return 3;
+                return authentication_methods + 2;
+              }
+          }
+
+        DEBUG ("Unauthenticated access is not supported by the streamhost");
+
+        socks5_error (self);
+
+        return authentication_methods + 2;
 
       case SOCKS5_STATE_AWAITING_COMMAND:
         if (string->len < 47)

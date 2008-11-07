@@ -1232,7 +1232,12 @@ static void
 _check_content_ready (GabbleJingleSession *sess,
     GabbleJingleContent *c, gpointer user_data)
 {
-  * ((gboolean *) user_data) = gabble_jingle_content_is_ready (c);
+  gboolean *ready = (gboolean *) user_data;
+
+  if (!gabble_jingle_content_is_ready (c))
+    {
+      *ready = FALSE;
+    }
 }
 
 static void

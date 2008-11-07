@@ -247,6 +247,7 @@ _tp_send_error_from_error_node (LmMessageNode *error_node,
           return TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
 
         case XMPP_ERROR_FORBIDDEN:
+        case XMPP_ERROR_NOT_AUTHORIZED:
           return TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
 
         case XMPP_ERROR_RESOURCE_CONSTRAINT:

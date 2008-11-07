@@ -2136,7 +2136,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   guint id;
   gchar *object_path;
 
-  g_object_get (c, "name", &name, NULL);
+  g_object_get (c, "name", &name, "media-type", &type, NULL);
 
   if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
@@ -2156,6 +2156,8 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
       "content", c,
       "name", name,
       "id", id,
+      "media-type", type == JINGLE_MEDIA_TYPE_AUDIO ?
+        TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO,
       NULL);
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
@@ -2177,7 +2179,8 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
                     (GCallback) stream_hold_state_changed, chan);
 
   /* emit StreamAdded */
-  g_object_get (GABBLE_JINGLE_MEDIA_RTP (c), "media-type", &type, NULL);
+  DEBUG ("emitting StreamAdded with type '%s'",
+    type == JINGLE_MEDIA_TYPE_AUDIO ? "audio" : "video");
 
   tp_svc_channel_type_streamed_media_emit_stream_added (
       chan, id, priv->session->peer,
@@ -2334,7 +2337,8 @@ _emit_new_stream (GabbleMediaChannel *chan,
 
   /* all of the streams are bidirectional from farsight's point of view, it's
    * just in the signalling they change */
-  DEBUG ("emitting MediaSessionHandler:NewStreamHandler signal for stream %d", id);
+  DEBUG ("emitting MediaSessionHandler:NewStreamHandler signal for %s stream %d ",
+      media_type == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video", id);
   tp_svc_media_session_handler_emit_new_stream_handler (chan,
       object_path, id, media_type, TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
 

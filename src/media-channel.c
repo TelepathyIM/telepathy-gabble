@@ -2096,14 +2096,14 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
   ( PRESENCE_CAP_GOOGLE_VOICE )
 
 #define JINGLE_CAPS \
-  ( PRESENCE_CAP_JINGLE015 \
+  ( PRESENCE_CAP_JINGLE015 | PRESENCE_CAP_JINGLE032 \
   | PRESENCE_CAP_GOOGLE_TRANSPORT_P2P )
 
 #define JINGLE_AUDIO_CAPS \
-  ( PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO )
+  ( PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO )
 
 #define JINGLE_VIDEO_CAPS \
-  ( PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO )
+  ( PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO )
 
 GabblePresenceCapabilities
 _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
@@ -2114,6 +2114,8 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
    * the GTalk-P2P transport */
   if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P)
     {
+      DEBUG ("adding jingle caps");
+
       caps |= JINGLE_CAPS;
 
       if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)

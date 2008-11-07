@@ -1,5 +1,6 @@
 TWISTED_TESTS = \
 	muc/roomlist.py \
+	muc/send-error.py \
 	muc/test-ensure.py \
 	muc/test-muc-alias.py \
 	muc/test-muc-invitation.py \

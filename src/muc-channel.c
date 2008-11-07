@@ -2219,64 +2219,88 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 void
 _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              TpChannelTextMessageType msg_type,
-                             TpHandleType handle_type,
+                             TpHandleType sender_handle_type,
                              TpHandle sender,
                              time_t timestamp,
                              const gchar *text,
-                             LmMessage *msg)
+                             LmMessage *msg,
+                             TpChannelTextSendError send_error,
+                             TpDeliveryStatus error_status)
 {
   GabbleMucChannelPrivate *priv;
   TpBaseConnection *base_conn;
   TpMessage *message;
-  gboolean is_echo = FALSE;
+  TpHandle muc_self_handle;
+  gboolean is_echo;
+  gboolean is_error;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
   base_conn = (TpBaseConnection *) priv->conn;
+  muc_self_handle = chan->group.self_handle;
 
-  if (handle_type == TP_HANDLE_TYPE_ROOM)
+  /* Is this an error report? */
+  is_error = (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
+
+  if (is_error && sender == muc_self_handle)
     {
-      NODE_DEBUG (msg->node, "ignoring message from channel");
+      /* So this is a <message from="ourself" type="error">.  I can only think
+       * that this would happen if we send an error stanza and the MUC reflects
+       * it back at us, so let's just ignore it.
+       */
+      NODE_DEBUG (msg->node, "ignoring error stanza from ourself");
 
       return;
     }
 
-  /* If we sent the message and it's not delayed, this is an echo from the MUC;
-   * we'll emit a delivery report.
-   * For messages from other contacts, or our own delayed messages, we'll emit
-   * a received message.
+  /* Is this an echo from the MUC of a message we just sent? */
+  is_echo = ((sender == muc_self_handle) && (timestamp == 0));
+
+  /* Having excluded the "error from ourself" case, is_error and is_echo are
+   * mutually exclusive.
    */
-  is_echo = ((sender == chan->group.self_handle) && (timestamp == 0));
 
   message = tp_message_new (base_conn, 2, 2);
 
-  /* Header */
+  /* Header common to normal message and delivery-echo */
   if (msg_type != TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL)
     tp_message_set_uint32 (message, 0, "message-type", msg_type);
 
   if (timestamp != 0)
-    {
-      tp_message_set_boolean (message, 0, "scrollback", TRUE);
-      tp_message_set_uint64 (message, 0, "message-sent", timestamp);
-    }
-
-  tp_message_set_uint64 (message, 0, "message-received", time (NULL));
-  tp_message_set_handle (message, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
-      sender);
+    tp_message_set_uint64 (message, 0, "message-sent", timestamp);
 
   /* Body */
   tp_message_set_string (message, 1, "content-type", "text/plain");
   tp_message_set_string (message, 1, "content", text);
 
-  if (is_echo)
+  if (is_error || is_echo)
     {
+      /* Error reports and echos of our own messages are represented as
+       * delivery reports.
+       */
+
       TpMessage *delivery_report = tp_message_new (base_conn, 1, 1);
+      TpDeliveryStatus status =
+          is_error ? error_status : TP_DELIVERY_STATUS_DELIVERED;
 
       tp_message_set_uint32 (delivery_report, 0, "message-type",
           TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
-      tp_message_set_uint32 (delivery_report, 0, "delivery-status",
-          TP_DELIVERY_STATUS_DELIVERED);
+      tp_message_set_uint32 (delivery_report, 0, "delivery-status", status);
+
+      if (is_error)
+        tp_message_set_uint32 (delivery_report, 0, "delivery-error",
+            send_error);
+
+      /* We do not set a message-sender on the report: the intended recipient
+       * of the original message was the MUC, so the spec we should omit it.
+       *
+       * The sender of the echo, however, is ourself.  (Unless we get errors
+       * for messages that we didn't send, which would be odd.)
+       */
+      tp_message_set_handle (message, 0, "message-sender",
+          TP_HANDLE_TYPE_CONTACT, muc_self_handle);
+
       tp_message_take_message (delivery_report, 0, "delivery-echo",
           message);
 
@@ -2284,6 +2308,14 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     }
   else
     {
+      /* Messages from the MUC itself should have no sender. */
+      if (sender_handle_type == TP_HANDLE_TYPE_CONTACT)
+        tp_message_set_handle (message, 0, "message-sender",
+            TP_HANDLE_TYPE_CONTACT, sender);
+
+      if (timestamp != 0)
+        tp_message_set_boolean (message, 0, "scrollback", TRUE);
+
       tp_message_mixin_take_received (G_OBJECT (chan), message);
     }
 }

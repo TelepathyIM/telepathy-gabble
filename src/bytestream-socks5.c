@@ -495,7 +495,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         to = lm_message_node_get_attribute (
             priv->msg_for_acknowledge_connection->node, "to"),
         unhashed_domain = g_strconcat (priv->stream_id, from, to, NULL);
-        domain = sha1_hex (unhashed_domain, -1);
+        domain = sha1_hex (unhashed_domain, strlen (unhashed_domain));
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_CMD_CONNECT;

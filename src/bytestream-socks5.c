@@ -444,6 +444,18 @@ socks5_close_channel (GabbleBytestreamSocks5 *self)
      priv->error_watch = 0;
    }
 
+ if (priv->read_buffer)
+   {
+     g_string_free (priv->read_buffer, TRUE);
+     priv->read_buffer = NULL;
+   }
+
+ if (priv->write_buffer)
+   {
+     g_string_free (priv->write_buffer, TRUE);
+     priv->write_buffer = NULL;
+   }
+
  g_io_channel_unref (priv->io_channel);
  priv->io_channel = NULL;
 }

@@ -95,6 +95,7 @@ enum _Socks5State
   SOCKS5_STATE_CONNECTED,
   SOCKS5_STATE_AWAITING_AUTH_REQUEST,
   SOCKS5_STATE_AWAITING_COMMAND,
+  SOCKS5_STATE_ERROR
 };
 
 typedef enum _Socks5State Socks5State;
@@ -174,7 +175,7 @@ struct _GabbleBytestreamSocks5Private
 
 #define GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE(obj) ((obj)->priv)
 
-static void socks5_connect_next (GabbleBytestreamSocks5 *self);
+static gboolean socks5_connect (gpointer data);
 
 static void gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
     GError *error);
@@ -417,6 +418,47 @@ gabble_bytestream_socks5_class_init (
                   G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
+static void
+socks5_error (GabbleBytestreamSocks5 *self)
+{
+  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+
+  priv->socks5_state = SOCKS5_STATE_ERROR;
+
+  if (priv->msg_for_acknowledge_connection)
+    {
+      /* The attempt for connect to the streamhost failed... */
+      g_assert (priv->streamhosts);
+      streamhost_free (priv->streamhosts->data);
+      priv->streamhosts = g_slist_delete_link (priv->streamhosts, priv->streamhosts);
+
+      if (priv->streamhosts != NULL)
+        {
+          /* ... so let's try to connect to the next one */
+          DEBUG ("connection to streamhost failed, trying the next one");
+
+          socks5_connect (self);
+          return;
+        }
+
+      /* ... but there are no more streamhosts */
+      DEBUG ("no more streamhosts to try");
+      _gabble_connection_send_iq_error (priv->conn,
+          priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
+          "impossible to connect to any streamhost");
+
+      lm_message_unref (priv->msg_for_acknowledge_connection);
+      priv->msg_for_acknowledge_connection = NULL;
+    }
+
+  DEBUG ("error, closing the connection\n");
+
+  gabble_bytestream_socks5_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
+
+  return;
+}
+
 static gboolean 
 socks5_channel_writable_cb (GIOChannel *source, 
                             GIOCondition condition,
@@ -447,7 +489,9 @@ socks5_channel_writable_cb (GIOChannel *source,
 
   if (status != G_IO_STATUS_NORMAL)
     {
-      /* FIXME handle errors. */
+      DEBUG ("Error writing on the SOCSK5 bytestream");
+
+      socks5_error (self);
       return FALSE;
     }
 
@@ -486,9 +530,14 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (string->len < 2)
           return 0;
 
-        /* FIXME: do proper checking */
-        g_assert (string->str[0] == SOCKS5_VERSION &&
-            string->str[1] == SOCKS5_STATUS_OK);
+        if (string->str[0] != SOCKS5_VERSION ||
+            string->str[1] != SOCKS5_STATUS_OK)
+          {
+            DEBUG ("Authentication failed");
+
+            socks5_error (self);
+            return string->len;
+          }
 
         from = lm_message_node_get_attribute (
             priv->msg_for_acknowledge_connection->node, "from");
@@ -522,9 +571,14 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (string->len < 2)
           return 0;
 
-        /* FIXME: handle errors */
-        g_assert (string->str[0] == SOCKS5_VERSION &&
-            string->str[1] == SOCKS5_STATUS_OK);
+        if (string->str[0] != SOCKS5_VERSION ||
+            string->str[1] != SOCKS5_STATUS_OK)
+          {
+            DEBUG ("Connection refused");
+
+            socks5_error (self);
+            return string->len;
+          }
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
 
@@ -553,10 +607,16 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (string->len < 3)
           return 0;
 
-        /* FIXME: handle errors */
-        g_assert (string->str[0] == SOCKS5_VERSION &&
-            string->str[1] == 1 &&
-            string->str[2] == SOCKS5_AUTH_NONE);
+        /* FIXME */
+        if (string->str[0] != SOCKS5_VERSION ||
+            string->str[1] != 1 ||
+            string->str[2] != SOCKS5_AUTH_NONE)
+          {
+            DEBUG ("Invalid authentication method requested");
+
+            socks5_error (self);
+            return string->len;
+          }
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_AUTH_NONE;
@@ -571,7 +631,19 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (string->len < 47)
           return 0;
 
-        /* FIXME: check the values */
+        if (string->str[0] != SOCKS5_VERSION ||
+            string->str[1] != SOCKS5_CMD_CONNECT ||
+            string->str[2] != SOCKS5_RESERVED ||
+            string->str[3] != SOCKS5_ATYP_DOMAIN ||
+            string->str[4] != 40 ||
+            string->str[45] != 0 ||
+            string->str[46] != 0)
+          {
+            DEBUG ("Invalid SOCSK5 connect message");
+
+            socks5_error (self);
+            return string->len;
+          }
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_STATUS_OK;
@@ -587,10 +659,17 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         return string->len;
 
-      default:
-        /* FIXME: handle errors */
+      case SOCKS5_STATE_ERROR:
+        /* An error occurred and the channel will be close in an idle
+         * callback, so let's just throw away the data we receive */
         return string->len;
+
+      case SOCKS5_STATE_INVALID:
+        break;
     }
+
+  g_assert_not_reached ();
+  return string->len;
 }
 
 static gboolean 
@@ -630,9 +709,11 @@ socks5_channel_error_cb (GIOChannel *source,
                          GIOCondition condition,
                          gpointer data) 
 {
-  /* FIXME: handle errors */
-  g_critical ("I/O error\n");
+  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
 
+  DEBUG ("I/O error on a SOCKS5 channel");
+
+  socks5_error (self);
   return FALSE;
 }
 
@@ -657,8 +738,8 @@ socks5_connect (gpointer data)
   else
     {
       DEBUG ("No more streamhosts to streamhost, closing");
-      gabble_bytestream_socks5_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
 
+      socks5_error (self);
       return FALSE;
     }
 
@@ -672,7 +753,7 @@ socks5_connect (gpointer data)
   if (getaddrinfo (streamhost->host, NULL, &req, &address_list) != 0)
     {
       DEBUG ("getaddrinfo on %s failed", streamhost->host);
-      socks5_connect_next (self);
+      socks5_error (self);
 
       return FALSE;
     }
@@ -713,8 +794,10 @@ socks5_connect (gpointer data)
 
   if (res < 0 && errno != EINPROGRESS)
     {
+      DEBUG ("connect failed");
+
       close (fd);
-      socks5_connect_next (self);
+      socks5_error (self);
 
       return FALSE;
     }
@@ -746,19 +829,6 @@ socks5_connect (gpointer data)
   priv->socks5_state = SOCKS5_STATE_AUTH_REQUEST_SENT;
 
   return FALSE;
-}
-
-static void
-socks5_connect_next (GabbleBytestreamSocks5 *self)
-{
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-
-  g_assert (priv->streamhosts != NULL);
-
-  streamhost_free (priv->streamhosts->data);
-  priv->streamhosts = g_slist_delete_link (priv->streamhosts, priv->streamhosts);
-
-  socks5_connect (self);
 }
 
 /**
@@ -967,11 +1037,23 @@ gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
       if (priv->io_channel)
         {
           if (priv->read_watch != 0)
-            g_source_remove (priv->read_watch);
+            {
+              g_source_remove (priv->read_watch);
+              priv->read_watch = 0;
+            }
+
           if (priv->write_watch != 0)
-            g_source_remove (priv->write_watch);
+            {
+              g_source_remove (priv->write_watch);
+              priv->write_watch = 0;
+            }
+
           if (priv->error_watch != 0)
-            g_source_remove (priv->error_watch);
+            {
+              g_source_remove (priv->error_watch);
+              priv->error_watch = 0;
+            }
+
           g_io_channel_unref (priv->io_channel);
           priv->io_channel = NULL;
         }
@@ -1223,9 +1305,18 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
     }
 
   fd = socket (AF_INET, SOCK_STREAM, 0);
+  if (fd < 0)
+    {
+      DEBUG ("couldn't create socket");
+      return FALSE;
+    }
 
-  /* FIXME: check the return values */
-  listen (fd, 5);
+  if (listen (fd, 5) < 0)
+    {
+      DEBUG ("couldn't listen on socket");
+      return FALSE;
+    }
+
   channel = g_io_channel_unix_new (fd);
 
   g_io_channel_set_close_on_unref (channel, TRUE);

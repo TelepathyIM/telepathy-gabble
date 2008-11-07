@@ -419,6 +419,36 @@ gabble_bytestream_socks5_class_init (
 }
 
 static void
+socks5_close_channel (GabbleBytestreamSocks5 *self)
+{
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+
+  if (priv->io_channel == NULL)
+    return;
+
+ if (priv->read_watch != 0)
+   {
+     g_source_remove (priv->read_watch);
+     priv->read_watch = 0;
+   }
+
+ if (priv->write_watch != 0)
+   {
+     g_source_remove (priv->write_watch);
+     priv->write_watch = 0;
+   }
+
+ if (priv->error_watch != 0)
+   {
+     g_source_remove (priv->error_watch);
+     priv->error_watch = 0;
+   }
+
+ g_io_channel_unref (priv->io_channel);
+ priv->io_channel = NULL;
+}
+
+static void
 socks5_error (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
@@ -428,6 +458,8 @@ socks5_error (GabbleBytestreamSocks5 *self)
   if (priv->msg_for_acknowledge_connection)
     {
       /* The attempt for connect to the streamhost failed... */
+      socks5_close_channel (self);
+
       g_assert (priv->streamhosts);
       streamhost_free (priv->streamhosts->data);
       priv->streamhosts = g_slist_delete_link (priv->streamhosts, priv->streamhosts);
@@ -1033,29 +1065,7 @@ gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
 
       DEBUG ("send Socks5 close stanza");
 
-      if (priv->io_channel)
-        {
-          if (priv->read_watch != 0)
-            {
-              g_source_remove (priv->read_watch);
-              priv->read_watch = 0;
-            }
-
-          if (priv->write_watch != 0)
-            {
-              g_source_remove (priv->write_watch);
-              priv->write_watch = 0;
-            }
-
-          if (priv->error_watch != 0)
-            {
-              g_source_remove (priv->error_watch);
-              priv->error_watch = 0;
-            }
-
-          g_io_channel_unref (priv->io_channel);
-          priv->io_channel = NULL;
-        }
+      socks5_close_channel (self);
 
       msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
           '@', "type", "set",

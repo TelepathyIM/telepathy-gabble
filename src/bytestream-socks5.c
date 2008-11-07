@@ -635,8 +635,6 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             lm_message_node_set_attribute (node, "xmlns", NS_BYTESTREAMS);
 
             node = lm_message_node_add_child (node, "streamhost-used", "");
-            /* FIXME: proper error handling */
-            g_assert (priv->streamhosts);
             current_streamhost = priv->streamhosts->data;
             lm_message_node_set_attribute (node, "jid", current_streamhost->jid);
 

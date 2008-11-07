@@ -1145,6 +1145,13 @@ socks5_listen_cb (GIOChannel *source,
   guint addr_len = sizeof (addr);
   int flags;
 
+  if (condition & G_IO_ERR || condition & G_IO_HUP)
+    {
+      socks5_error (self);
+
+      return FALSE;
+    }
+
   fd = accept (g_io_channel_unix_get_fd (source), (struct sockaddr *) &addr,
       &addr_len);
 
@@ -1354,8 +1361,8 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 
   g_io_channel_set_close_on_unref (channel, TRUE);
 
-  /* FIXME handle errors */
-  priv->read_watch = g_io_add_watch (channel, G_IO_IN, socks5_listen_cb, self);
+  priv->read_watch = g_io_add_watch (channel, G_IO_IN | G_IO_HUP | G_IO_ERR,
+      socks5_listen_cb, self);
 
   addr_len = sizeof (addr);
   getsockname (fd, (struct sockaddr *)&addr, &addr_len);

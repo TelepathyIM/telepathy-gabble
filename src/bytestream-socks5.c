@@ -421,7 +421,6 @@ gabble_bytestream_socks5_class_init (
 static void
 socks5_error (GabbleBytestreamSocks5 *self)
 {
-  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   priv->socks5_state = SOCKS5_STATE_ERROR;

@@ -412,7 +412,7 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
           }
         break;
       default:
-        xmlns = "urn:xmpp:tmp:jingle:apps:rtp";
+        xmlns = NS_JINGLE_RTP;
         if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
             lm_message_node_set_attribute (desc_node, "media", "audio");
         else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)

@@ -25,11 +25,13 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
-#include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/util.h>
+
+#include "extensions/extensions.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
@@ -51,17 +53,13 @@ static LmHandlerResult private_tubes_factory_msg_tube_cb (
     LmMessageHandler *handler, LmConnection *lmconn, LmMessage *msg,
     gpointer user_data);
 
-static void gabble_private_tubes_factory_iface_init (gpointer g_iface,
-    gpointer iface_data);
 static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabblePrivateTubesFactory,
     gabble_private_tubes_factory,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
-        gabble_private_tubes_factory_iface_init));
+      channel_manager_iface_init));
 
 /* properties */
 enum
@@ -306,9 +304,6 @@ new_tubes_channel (GabblePrivateTubesFactory *fac,
 
   g_hash_table_insert (priv->channels, GUINT_TO_POINTER (handle), chan);
 
-  tp_channel_factory_iface_emit_new_channel (fac, TP_CHANNEL_IFACE (chan),
-      request_token);
-
   g_free (object_path);
 
   if (request_token != NULL)
@@ -370,9 +365,13 @@ _foreach_slave (gpointer key,
   struct _ForeachData *data = (struct _ForeachData *) user_data;
   TpExportableChannel *chan = TP_EXPORTABLE_CHANNEL (value);
 
-  g_assert (TP_IS_CHANNEL_IFACE (chan));
-
+  /* Add channels of type Channel.Type.Tubes */
   data->foreach (chan, data->user_data);
+
+  /* Add channels of type Channel.Type.{Stream|DBus}Tube which live in the
+   * GabbleTubesChannel object */
+  gabble_tubes_channel_foreach (GABBLE_TUBES_CHANNEL (chan), data->foreach,
+      data->user_data);
 }
 
 static void
@@ -389,18 +388,6 @@ gabble_private_tubes_factory_foreach_channel (TpChannelManager *manager,
   data.foreach = foreach;
 
   g_hash_table_foreach (priv->channels, _foreach_slave, &data);
-}
-
-static TpChannelFactoryRequestStatus
-gabble_private_tubes_factory_iface_request (TpChannelFactoryIface *iface,
-                                    const gchar *chan_type,
-                                    TpHandleType handle_type,
-                                    guint handle,
-                                    gpointer request,
-                                    TpChannelIface **ret,
-                                    GError **error)
-{
-  return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
 }
 
 void
@@ -536,19 +523,6 @@ gabble_private_tubes_factory_new (GabbleConnection *conn)
       NULL);
 }
 
-static void
-gabble_private_tubes_factory_iface_init (gpointer g_iface,
-                                 gpointer iface_data)
-{
-  TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
-
-  klass->close_all =
-      (TpChannelFactoryIfaceProc) gabble_private_tubes_factory_close_all;
-  klass->foreach = (TpChannelFactoryIfaceForeachImpl)
-      gabble_private_tubes_factory_foreach_channel;
-  klass->request = gabble_private_tubes_factory_iface_request;
-}
-
 
 static const gchar * const tubes_channel_fixed_properties[] = {
     TP_IFACE_CHANNEL ".ChannelType",
@@ -556,9 +530,23 @@ static const gchar * const tubes_channel_fixed_properties[] = {
     NULL
 };
 
-static const gchar * const tubes_channel_allowed_properties[] = {
+static const gchar * const old_tubes_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
+    NULL
+};
+static const gchar * const stream_tube_channel_allowed_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
+    GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
+    NULL
+};
+static const gchar * const dbus_tube_channel_allowed_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
+    GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName",
     NULL
 };
 
@@ -569,9 +557,12 @@ gabble_private_tubes_factory_foreach_channel_class (
     TpChannelManagerChannelClassFunc func,
     gpointer user_data)
 {
-  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) tp_g_value_slice_free);
+  GHashTable *table;
   GValue *value;
+
+  /* 1-1 Channel.Type.Tubes */
+  table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
 
   value = tp_g_value_slice_new (G_TYPE_STRING);
   g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_TUBES);
@@ -583,7 +574,43 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, tubes_channel_allowed_properties, user_data);
+  func (manager, table, old_tubes_channel_allowed_properties, user_data);
+
+  g_hash_table_destroy (table);
+
+  /* 1-1 Channel.Type.StreamTube */
+  table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType",
+      value);
+
+  value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
+      value);
+
+  func (manager, table, stream_tube_channel_allowed_properties, user_data);
+
+  g_hash_table_destroy (table);
+
+  /* 1-1 Channel.Type.DBusTube */
+  table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType",
+      value);
+
+  value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
+      value);
+
+  func (manager, table, dbus_tube_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -596,58 +623,157 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
                                            gboolean require_new)
 {
   TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->conn;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base_conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   GError *error = NULL;
-  TpExportableChannel *channel;
-
-  if (tp_strdiff (tp_asv_get_string (request_properties,
-          TP_IFACE_CHANNEL ".ChannelType"), TP_IFACE_CHANNEL_TYPE_TUBES))
-    return FALSE;
+  GabbleTubesChannel *channel;
+  const gchar *channel_type;
 
   if (tp_asv_get_uint32 (request_properties,
         TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
     return FALSE;
 
+  channel_type = tp_asv_get_string (request_properties,
+            TP_IFACE_CHANNEL ".ChannelType");
+
+  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
+      tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
+      tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+    return FALSE;
+
+  if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
+    {
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              tubes_channel_fixed_properties,
+              old_tubes_channel_allowed_properties,
+              &error))
+        goto error;
+    }
+  else if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+    {
+      const gchar *service;
+
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              tubes_channel_fixed_properties,
+              stream_tube_channel_allowed_properties,
+              &error))
+        goto error;
+
+      /* "Service" is a mandatory, not-fixed property */
+      service = tp_asv_get_string (request_properties,
+                GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+      if (service == NULL)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+              "Request missed a mandatory property '%s'",
+              GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+          goto error;
+        }
+    }
+  else if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+    {
+      const gchar *service;
+
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              tubes_channel_fixed_properties,
+              dbus_tube_channel_allowed_properties,
+              &error))
+        goto error;
+
+      /* "ServiceName" is a mandatory, not-fixed property */
+      service = tp_asv_get_string (request_properties,
+                GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+      if (service == NULL)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+              "Request missed a mandatory property '%s'",
+              GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+          goto error;
+        }
+    }
+
+  /* validity already checked by TpBaseConnection */
   handle = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
-
-  if (!tp_handle_is_valid (contact_repo, handle, &error))
-    goto error;
-
-  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
-          tubes_channel_fixed_properties, tubes_channel_allowed_properties,
-          &error))
-    goto error;
+  g_assert (handle != 0);
 
   /* Don't support opening a channel to our self handle */
   if (handle == base_conn->self_handle)
     {
-     g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-         "Can't open a channel to your self handle");
-     goto error;
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Can't open a channel to your self handle");
+      goto error;
     }
 
   channel = g_hash_table_lookup (self->priv->channels,
       GUINT_TO_POINTER (handle));
 
-  if (channel == NULL)
+  if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
     {
-      new_tubes_channel (self, handle, base_conn->self_handle, request_token);
+      if (channel == NULL)
+        {
+          channel = new_tubes_channel (self, handle, base_conn->self_handle,
+              request_token);
+          return TRUE;
+        }
+
+      if (require_new)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "Tubes channel with contact #%u already exists", handle);
+          DEBUG ("Tubes channel with contact #%u already exists",
+              handle);
+          goto error;
+        }
+
+      tp_channel_manager_emit_request_already_satisfied (self,
+          request_token, TP_EXPORTABLE_CHANNEL (channel));
       return TRUE;
     }
-
-  if (require_new)
+  else
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "Already chatting with contact #%u in another channel", handle);
-      goto error;
-    }
+      gboolean channel_was_existing = (channel != NULL);
+      GabbleTubeIface *new_channel;
 
-  tp_channel_manager_emit_request_already_satisfied (self, request_token,
-      channel);
-  return TRUE;
+      if (channel == NULL)
+        {
+          /* Don't give the request_token to new_tubes_channel() because we
+           * must emit NewChannels with 2 channels together */
+          channel = new_tubes_channel (self, handle, base_conn->self_handle,
+              NULL);
+        }
+      g_assert (channel != NULL);
+
+      new_channel = gabble_tubes_channel_tube_request (channel, request_token,
+          request_properties, require_new);
+      if (new_channel != NULL)
+        {
+          GHashTable *channels;
+          GSList *request_tokens;
+
+          channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+              NULL, NULL);
+          if (!channel_was_existing)
+            g_hash_table_insert (channels, channel, NULL);
+
+          if (request_token != NULL)
+            request_tokens = g_slist_prepend (NULL, request_token);
+          else
+            request_tokens = NULL;
+
+          g_hash_table_insert (channels, new_channel, request_tokens);
+          tp_channel_manager_emit_new_channels (self, channels);
+
+          g_hash_table_destroy (channels);
+          g_slist_free (request_tokens);
+        }
+      else
+        {
+          tp_channel_manager_emit_request_already_satisfied (self,
+              request_token, TP_EXPORTABLE_CHANNEL (channel));
+        }
+
+      return TRUE;
+    }
 
 error:
   tp_channel_manager_emit_request_failed (self, request_token,

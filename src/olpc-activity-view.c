@@ -421,8 +421,7 @@ gabble_olpc_activity_view_class_init (
       "View's search properties",
       "The activity properties Gadget should look for",
       TP_HASH_TYPE_STRING_VARIANT_MAP,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_VIEW_PROPERTIES,
       param_spec);
 
@@ -430,8 +429,7 @@ gabble_olpc_activity_view_class_init (
       "View's search participants",
       "The activity participants Gadget should look for",
       GABBLE_ARRAY_TYPE_HANDLE,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PARTICIPANTS,
       param_spec);
 

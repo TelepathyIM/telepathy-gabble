@@ -267,7 +267,6 @@ gabble_connection_constructor (GType type,
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
           conn_capabilities_fill_contact_attributes);
 
-
   self->bytestream_factory = gabble_bytestream_factory_new (self);
 
   self->avatar_requests = g_hash_table_new (NULL, NULL);

@@ -119,7 +119,13 @@ def test(q, bus, conn, stream):
 
     # tubes channel is automatically created
     event = q.expect('dbus-signal', signal='NewChannel')
-    assert event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Tubes'
+
+    if event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Text':
+        # skip this one, try the next one
+        event = q.expect('dbus-signal', signal='NewChannel')
+
+    assert event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Tubes',\
+        event.args
     assert event.args[2] == 2 # Handle_Type_Room
     assert event.args[3] == room_handle
 

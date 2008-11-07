@@ -25,8 +25,10 @@
 
 #include <telepathy-glib/base-connection.h>
 
-#include "muc-channel.h"
 #include "bytestream-iface.h"
+#include <telepathy-glib/exportable-channel.h>
+#include "muc-channel.h"
+#include "tube-iface.h"
 
 G_BEGIN_DECLS
 
@@ -66,6 +68,13 @@ GType gabble_tubes_channel_get_type (void);
 #define GABBLE_TUBES_CHANNEL_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBES_CHANNEL,\
                               GabbleTubesChannelClass))
+
+void gabble_tubes_channel_foreach (GabbleTubesChannel *self,
+    TpExportableChannelFunc foreach, gpointer user_data);
+
+GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
+    gpointer request_token, GHashTable *request_properties,
+    gboolean require_new);
 
 void gabble_tubes_channel_presence_updated (GabbleTubesChannel *chan,
     TpHandle contact, LmMessage *presence);

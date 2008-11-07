@@ -150,7 +150,7 @@ def test(q, bus, conn, stream):
             dbus_interface='org.freedesktop.Telepathy.Channel.Type.Text')
     assert messages == \
             [(hello_message_id, hello_message_time, foo_handle,
-                0, 0, 'hello')], messages
+                0, 8, 'hello')], messages
 
     # acknowledge it
 

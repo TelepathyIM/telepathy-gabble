@@ -177,6 +177,11 @@ struct _GabbleBytestreamSocks5Private
 
 static gboolean socks5_connect (gpointer data);
 
+static gboolean socks5_channel_readable_cb (GIOChannel *source,
+    GIOCondition condition, gpointer data);
+static gboolean socks5_channel_error_cb (GIOChannel *source, 
+    GIOCondition condition, gpointer data);
+
 static void gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
     GError *error);
 
@@ -416,6 +421,34 @@ gabble_bytestream_socks5_class_init (
                   NULL, NULL,
                   gabble_marshal_VOID__UINT,
                   G_TYPE_NONE, 1, G_TYPE_UINT);
+}
+
+static void
+socks5_setup_channel (GabbleBytestreamSocks5 *self,
+                      gint fd)
+{
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  gint socket_flags;
+
+  socket_flags = fcntl (fd, F_GETFL, 0);
+  fcntl (fd, F_SETFL, socket_flags | O_NONBLOCK);
+
+  priv->io_channel = g_io_channel_unix_new (fd);
+
+  g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
+  g_io_channel_set_buffered (priv->io_channel, FALSE);
+  g_io_channel_set_close_on_unref (priv->io_channel, TRUE);
+
+  priv->read_watch = g_io_add_watch(priv->io_channel, G_IO_IN,
+      socks5_channel_readable_cb, self);
+  priv->error_watch = g_io_add_watch(priv->io_channel, G_IO_HUP | G_IO_ERR,
+      socks5_channel_error_cb, self);
+
+  g_assert (priv->write_buffer == NULL);
+  priv->write_buffer = g_string_new ("");
+
+  g_assert (priv->read_buffer == NULL);
+  priv->read_buffer = g_string_sized_new (4096);
 }
 
 static void
@@ -730,7 +763,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 static gboolean 
 socks5_channel_readable_cb (GIOChannel *source, 
                             GIOCondition condition,
-                            gpointer data) 
+                            gpointer data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
@@ -782,7 +815,6 @@ socks5_connect (gpointer data)
   struct addrinfo *address_list;
   struct addrinfo *streamhost_address;
   gint fd;
-  gint socket_flags;
   gint res;
   gchar msg[3];
 
@@ -839,10 +871,8 @@ socks5_connect (gpointer data)
       return FALSE;
     }
 
-  /* Set non-blocking */
-  socket_flags = fcntl (fd, F_GETFL, 0);
-  fcntl (fd, F_SETFL, socket_flags | O_NONBLOCK);
-  
+  socks5_setup_channel (self, fd);
+
   res = connect (fd, (struct sockaddr*)streamhost_address->ai_addr, streamhost_address->ai_addrlen);
 
   freeaddrinfo (address_list);
@@ -851,28 +881,10 @@ socks5_connect (gpointer data)
     {
       DEBUG ("connect failed");
 
-      close (fd);
       socks5_error (self);
-
       return FALSE;
     }
 
-  priv->io_channel = g_io_channel_unix_new (fd);
-
-  g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
-  g_io_channel_set_buffered (priv->io_channel, FALSE);
-  g_io_channel_set_close_on_unref (priv->io_channel, TRUE);
-
-  priv->read_watch = g_io_add_watch(priv->io_channel, G_IO_IN,
-      socks5_channel_readable_cb, self);
-  priv->error_watch = g_io_add_watch(priv->io_channel, G_IO_HUP | G_IO_ERR,
-      socks5_channel_error_cb, self);
-
-  g_assert (priv->write_buffer == NULL);
-  priv->write_buffer = g_string_new ("");
-
-  g_assert (priv->read_buffer == NULL);
-  priv->read_buffer = g_string_sized_new (4096);
 
   msg[0] = SOCKS5_VERSION;
   /* Number of auth methods we are offering */
@@ -1143,7 +1155,6 @@ socks5_listen_cb (GIOChannel *source,
   gint fd;
   struct sockaddr_in addr;
   guint addr_len = sizeof (addr);
-  int flags;
 
   if (condition & G_IO_ERR || condition & G_IO_HUP)
     {
@@ -1155,26 +1166,7 @@ socks5_listen_cb (GIOChannel *source,
   fd = accept (g_io_channel_unix_get_fd (source), (struct sockaddr *) &addr,
       &addr_len);
 
-  /* Set non-blocking */
-  flags = fcntl (fd, F_GETFL, 0);
-  fcntl (fd, F_SETFL, flags | O_NONBLOCK);
-
-  priv->io_channel = g_io_channel_unix_new (fd);
-
-  g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
-  g_io_channel_set_buffered (priv->io_channel, FALSE);
-  g_io_channel_set_close_on_unref (priv->io_channel, TRUE);
-
-  priv->read_watch = g_io_add_watch(priv->io_channel, G_IO_IN,
-      socks5_channel_readable_cb, self);
-  priv->error_watch = g_io_add_watch(priv->io_channel, G_IO_HUP | G_IO_ERR,
-      socks5_channel_error_cb, self);
-
-  g_assert (priv->write_buffer == NULL);
-  priv->write_buffer = g_string_new ("");
-
-  g_assert (priv->read_buffer == NULL);
-  priv->read_buffer = g_string_sized_new (4096);
+  socks5_setup_channel (self, fd);
 
   priv->socks5_state = SOCKS5_STATE_AWAITING_AUTH_REQUEST;
 

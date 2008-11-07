@@ -1,4 +1,4 @@
-telepathy-gabble 0.7.15 (UNRELEASED)
+telepathy-gabble 0.7.16 (UNRELEASED)
 ====================================
 
 Dependencies:
@@ -6,6 +6,27 @@ Dependencies:
 Enhancements:
 
 Fixes:
+
+telepathy-gabble 0.7.15 (2008-11-06)
+====================================
+
+The "brunch and fireworks" release.
+
+Enhancements:
+
+* fd.o #17770: remove some redundant handle validation from channel managers
+
+* Add the immutable Interfaces property to all NewChannels signals and
+  CreateChannel/EnsureChannel results
+
+Fixes:
+
+* Spec compliance: don't advertise StreamedMedia channels with handle type
+  NONE as requestable (they can be created, but not with CreateChannel or
+  EnsureChannel, so they shouldn't be in RequestableChannelClasses)
+
+* Ignore candidates > 1 in Jingle rather than rejecting them, for
+  compatibility with Farsight 2 (in which RTCP produces a second candidate)
 
 telepathy-gabble 0.7.14 (2008-11-04)
 ====================================

@@ -731,8 +731,14 @@ def test(q, bus, conn, stream):
     event = q.expect('s5b-data-received')
     event.properties['data'] == '\x05\x00' # version 5, no auth
 
-    # FIXME: send the correct data
-    transport.write('X' * 47)
+    # version 5, connect, reserved, domain type
+    connect = '\x05\x01\x00\x03'
+    connect += chr(40) # len (SHA-1)
+    # sha-1(sid + initiator + target)
+    unhashed_domain = query['sid'] + 'test@localhost/Resource' + 'bob@localhost/Bob'
+    connect += sha.new(unhashed_domain).hexdigest()
+    connect += '\x00\x00' # port
+    transport.write(connect)
 
     event = q.expect('s5b-data-received')
     event.properties['data'] == '\x05\x00' # version 5, ok

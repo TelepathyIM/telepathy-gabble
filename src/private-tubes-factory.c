@@ -100,8 +100,8 @@ struct _TubesCapabilities
    * to be returned by gabble_private_tubes_factory_get_feature_list().
    *
    * So the value of the hash table is either NULL (if the variable is related
-   * to a contact handle), either a Feature structure (if the variable is
-   * related to the self_handle).
+   * to a contact handle), or a Feature structure (if the variable is related
+   * to the self_handle).
    */
 
   /* gchar *Service -> NULL

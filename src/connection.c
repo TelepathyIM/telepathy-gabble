@@ -2186,11 +2186,7 @@ gabble_free_enhanced_contact_capabilities (GPtrArray *caps)
 
   for (i = 0; i < caps->len; i++)
     {
-      GValue monster = {0, };
-
-      g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
-      g_value_take_boxed (&monster, g_ptr_array_index (caps, i));
-      g_value_unset (&monster);
+      g_value_array_free (g_ptr_array_index (caps, i));
     }
 
   g_ptr_array_free (caps, TRUE);

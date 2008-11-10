@@ -48,7 +48,8 @@
 #include "util.h"
 
 static GabbleTubesChannel *new_tubes_channel (GabblePrivateTubesFactory *fac,
-    TpHandle handle, TpHandle initiator, gpointer request_token);
+    TpHandle handle, TpHandle initiator, gpointer request_token,
+    gboolean send_new_channel_signal);
 
 static void tubes_channel_closed_cb (GabbleTubesChannel *chan,
     gpointer user_data);
@@ -309,13 +310,13 @@ static GabbleTubesChannel *
 new_tubes_channel (GabblePrivateTubesFactory *fac,
                    TpHandle handle,
                    TpHandle initiator,
-                   gpointer request_token)
+                   gpointer request_token,
+                   gboolean send_new_channel_signal)
 {
   GabblePrivateTubesFactoryPrivate *priv;
   TpBaseConnection *conn;
   GabbleTubesChannel *chan;
   char *object_path;
-  GSList *request_tokens;
 
   g_assert (GABBLE_IS_PRIVATE_TUBES_FACTORY (fac));
   g_assert (handle != 0);
@@ -343,15 +344,19 @@ new_tubes_channel (GabblePrivateTubesFactory *fac,
 
   g_free (object_path);
 
-  if (request_token != NULL)
-    request_tokens = g_slist_prepend (NULL, request_token);
-  else
-    request_tokens = NULL;
+  if (send_new_channel_signal)
+    {
+      GSList *request_tokens;
+      if (request_token != NULL)
+        request_tokens = g_slist_prepend (NULL, request_token);
+      else
+        request_tokens = NULL;
 
-  tp_channel_manager_emit_new_channel (fac,
-      TP_EXPORTABLE_CHANNEL (chan), request_tokens);
+      tp_channel_manager_emit_new_channel (fac,
+          TP_EXPORTABLE_CHANNEL (chan), request_tokens);
 
-  g_slist_free (request_tokens);
+      g_slist_free (request_tokens);
+    }
 
   return chan;
 }
@@ -852,7 +857,7 @@ gabble_private_tubes_factory_handle_si_tube_request (
   chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
   if (chan == NULL)
     {
-      chan = new_tubes_channel (self, handle, handle, NULL);
+      chan = new_tubes_channel (self, handle, handle, NULL, TRUE);
 
       /* FIXME: Should we close the channel if the request is not properly
        * handled by the newly created channel ? */
@@ -939,7 +944,7 @@ private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
         {
           /* We create the tubes channel only if the message is a new tube
            * offer */
-          chan = new_tubes_channel (self, handle, handle, NULL);
+          chan = new_tubes_channel (self, handle, handle, NULL, TRUE);
         }
       else
         {
@@ -1154,7 +1159,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       if (channel == NULL)
         {
           channel = new_tubes_channel (self, handle, base_conn->self_handle,
-              request_token);
+              request_token, TRUE);
           return TRUE;
         }
 
@@ -1181,7 +1186,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
           /* Don't give the request_token to new_tubes_channel() because we
            * must emit NewChannels with 2 channels together */
           channel = new_tubes_channel (self, handle, base_conn->self_handle,
-              NULL);
+              NULL, FALSE);
         }
       g_assert (channel != NULL);
 

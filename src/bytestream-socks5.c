@@ -1356,6 +1356,8 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   priv->read_watch = g_io_add_watch (channel, G_IO_IN | G_IO_HUP | G_IO_ERR,
       socks5_listen_cb, self);
 
+  g_io_channel_unref (channel);
+
   addr_len = sizeof (addr);
   getsockname (fd, (struct sockaddr *)&addr, &addr_len);
   g_ascii_dtostr (port, G_N_ELEMENTS (port), ntohs (addr.sin_port));

@@ -8,6 +8,8 @@ from twisted.words.xish import domish
 
 from gabbletest import exec_test
 
+import ns
+
 def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
@@ -16,14 +18,14 @@ def test(q, bus, conn, stream):
     m = domish.Element(('', 'message'))
     m['from'] = 'alice@foo.com'
     m['type'] = 'chat'
-    m.addElement(('http://jabber.org/protocol/chatstates', 'composing'))
+    m.addElement((ns.CHAT_STATES, 'composing'))
     stream.send(m)
 
     # message with body
     m = domish.Element(('', 'message'))
     m['from'] = 'bob@foo.com'
     m['type'] = 'chat'
-    m.addElement(('http://jabber.org/protocol/chatstates', 'composing'))
+    m.addElement((ns.CHAT_STATES, 'composing'))
     m.addElement('body', content='hello')
     stream.send(m)
 

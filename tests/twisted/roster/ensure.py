@@ -40,16 +40,12 @@ def test(q, bus, conn, stream):
               'org.freedesktop.Telepathy.Channel.TargetHandle': test_handle,
               })
 
-    while True:
-        sig = q.expect('dbus-signal', signal='NewChannels')
-        sig_path, sig_props = sig.args[0][0]
-        if sig_props['org.freedesktop.Telepathy.Channel.TargetHandleType'] ==\
-            HT_GROUP and\
-           sig_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            test_handle:
-            break
     ret = q.expect('dbus-return', method='EnsureChannel')
     ret2 = q.expect('dbus-return', method='EnsureChannel')
+
+    # We don't test the NewChannels signal here - depending on exact timing,
+    # it might happen between the two EnsureChannel calls, or after the second
+    # one.
 
     yours, path, props = ret.value
     yours2, path2, props2 = ret2.value
@@ -66,9 +62,6 @@ def test(q, bus, conn, stream):
     assert yours != yours2, (yours, yours2)
     assert path == path2, (path, path2)
     assert props == props2, (props, props2)
-
-    assert sig_props == props, (sig_props, props)
-
 
 if __name__ == '__main__':
     exec_test(test)

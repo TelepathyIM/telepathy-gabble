@@ -1306,8 +1306,6 @@ gabble_muc_factory_request (GabbleMucFactory *self,
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (base_conn,
-      TP_HANDLE_TYPE_ROOM);
   GError *error = NULL;
   TpHandle handle;
   const gchar *channel_type;
@@ -1318,11 +1316,10 @@ gabble_muc_factory_request (GabbleMucFactory *self,
       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_ROOM)
     return FALSE;
 
+  /* validity already checked by TpBaseConnection */
   handle = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
-
-  if (!tp_handle_is_valid (room_repo, handle, &error))
-    goto error;
+  g_assert (handle != 0);
 
   channel_type = tp_asv_get_string (request_properties,
       TP_IFACE_CHANNEL ".ChannelType");

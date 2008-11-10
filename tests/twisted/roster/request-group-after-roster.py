@@ -38,6 +38,9 @@ def test(q, bus, conn, stream):
               'org.freedesktop.Telepathy.Channel.TargetHandle': test_handle,
               })
 
+    event = q.expect('dbus-return', method='CreateChannel')
+    ret_path, ret_props = event.value
+
     event = q.expect('dbus-signal', signal='NewChannels')
     path, props = event.args[0][0]
     assert props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
@@ -48,9 +51,6 @@ def test(q, bus, conn, stream):
             test_handle, props
     assert props['org.freedesktop.Telepathy.Channel.TargetID'] ==\
             'test', props
-
-    event = q.expect('dbus-return', method='CreateChannel')
-    ret_path, ret_props = event.value
 
     assert ret_path == path, (ret_path, path)
     assert ret_props == props, (ret_props, props)

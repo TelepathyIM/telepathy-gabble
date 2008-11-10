@@ -327,10 +327,8 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
         TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
     return FALSE;
 
-  if ((tp_asv_get_uint32 (request_properties,
-       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0) ||
-      (tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandle", NULL) != 0))
+  if (tp_asv_get_uint32 (request_properties,
+       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0)
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "RoomList channels can't have a target handle");

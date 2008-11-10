@@ -795,6 +795,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   guint component_id;
   const gchar *addr;
   GType candidate_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE;
+  guint i;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
@@ -822,9 +823,9 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
       1, transports,
       G_MAXUINT);
 
-  if (transports->len != 1)
+  if (transports->len < 1)
     {
-      GError only_one = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "google p2p "
+      GError only_one = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "google p2p "
           "connections only support the concept of one transport per "
           "candidate" };
       GMS_DEBUG_WARNING (priv->session, "%s: number of transports was not 1; "
@@ -833,7 +834,45 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
       return;
     }
 
-  transport = g_ptr_array_index (transports, 0);
+  if (transports->len > 1)
+    {
+      GMS_DEBUG_WARNING (priv->session, "google p2p "
+          "connections only support the concept of one transport per "
+          "candidate, ignoring other components");
+    }
+
+  for (i = 0; i < transports->len; i++)
+    {
+      guint component;
+
+      transport = g_ptr_array_index (transports, i);
+      component = g_value_get_uint (g_value_array_get_nth (transport, 0));
+
+      /* Accept component 0 because old farsight1 stream-engine didn't set the
+       * component
+       */
+      if (component == 0 || component == 1)
+        {
+          break;
+        }
+      else
+        {
+          transport = NULL;
+        }
+    }
+
+
+  if (transport == NULL)
+    {
+      GError only_one = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "You need"
+          " at least a component 1." };
+      GMS_DEBUG_WARNING (priv->session, "%s: number of transports was not 1; "
+          "rejecting", G_STRFUNC);
+      dbus_g_method_return_error (context, &only_one);
+      return;
+    }
+
+
   addr = g_value_get_string (g_value_array_get_nth (transport, 1));
   if (!strcmp (addr, "127.0.0.1"))
     {
@@ -1021,7 +1060,7 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
   transports = g_value_get_boxed (g_value_array_get_nth (candidate, 1));
 
   /* jingle audio only supports the concept of one transport per candidate */
-  g_assert (transports->len == 1);
+  g_assert (transports->len >= 1);
 
   g_value_init (&transport, TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_TRANSPORT);
   g_value_set_static_boxed (&transport, g_ptr_array_index (transports, 0));

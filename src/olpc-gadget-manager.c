@@ -294,10 +294,8 @@ create_buddy_view_channel (GabbleOlpcGadgetManager *self,
       return NULL;
     }
 
-  if ((tp_asv_get_uint32 (request_properties,
-       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0) ||
-      (tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandle", NULL) != 0))
+  if (tp_asv_get_uint32 (request_properties,
+       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Views channels can't have a target handle");
@@ -366,10 +364,8 @@ create_activity_view_channel (GabbleOlpcGadgetManager *self,
       return NULL;
     }
 
-  if ((tp_asv_get_uint32 (request_properties,
-       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0) ||
-      (tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandle", NULL) != 0))
+  if (tp_asv_get_uint32 (request_properties,
+       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Views channels can't have a target handle");

@@ -37,7 +37,7 @@ def test(q, bus, conn, stream):
     text_iface = dbus.Interface(text_chan,
             'org.freedesktop.Telepathy.Channel.Type.Text')
     destroyable_iface = dbus.Interface(text_chan,
-            'org.freedesktop.Telepathy.Channel.Interface.Destroyable.DRAFT')
+            'org.freedesktop.Telepathy.Channel.Interface.Destroyable')
 
     assert old_sig.args[0] == ret.value[0]
     assert old_sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'

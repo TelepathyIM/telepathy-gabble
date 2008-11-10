@@ -2643,11 +2643,7 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
 
   for (i = 0; i < ret->len; i++)
     {
-      GValue monster = {0, };
-
-      g_value_init (&monster, TP_STRUCT_TYPE_CONTACT_CAPABILITY);
-      g_value_take_boxed (&monster, g_ptr_array_index (ret, i));
-      g_value_unset (&monster);
+      g_value_array_free (g_ptr_array_index (ret, i));
     }
 
   g_ptr_array_free (ret, TRUE);

@@ -1106,7 +1106,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       if (service == NULL)
         {
           g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-              "Request missed a mandatory property '%s'",
+              "Request does not contain the mandatory property '%s'",
               GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
           goto error;
         }
@@ -1127,7 +1127,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       if (service == NULL)
         {
           g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-              "Request missed a mandatory property '%s'",
+              "Request does not contain the mandatory property '%s'",
               GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
           goto error;
         }

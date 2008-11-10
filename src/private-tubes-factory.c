@@ -1173,7 +1173,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
     }
   else
     {
-      gboolean channel_was_existing = (channel != NULL);
+      gboolean channel_already_existed = (channel != NULL);
       GabbleTubeIface *new_channel;
 
       if (channel == NULL)
@@ -1194,7 +1194,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
 
           channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
               NULL, NULL);
-          if (!channel_was_existing)
+          if (!channel_already_existed)
             g_hash_table_insert (channels, channel, NULL);
 
           if (request_token != NULL)

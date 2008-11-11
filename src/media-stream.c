@@ -137,6 +137,7 @@ static void content_senders_changed_cb (GabbleJingleContent *c,
      GParamSpec *pspec, GabbleMediaStream *stream);
 static void content_removed_cb (GabbleJingleContent *content,
       GabbleMediaStream *stream);
+static void update_direction (GabbleMediaStream *stream, GabbleJingleContent *c);
 
 static void
 gabble_media_stream_init (GabbleMediaStream *self)
@@ -172,17 +173,35 @@ gabble_media_stream_constructor (GType type, guint n_props,
                                  GObjectConstructParam *props)
 {
   GObject *obj;
+  GabbleMediaStream *stream;
   GabbleMediaStreamPrivate *priv;
   DBusGConnection *bus;
 
   /* call base class constructor */
   obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
            constructor (type, n_props, props);
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (GABBLE_MEDIA_STREAM (obj));
+  stream = GABBLE_MEDIA_STREAM (obj);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   /* go for the bus */
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+
+  if (priv->content != NULL)
+    {
+      update_direction (stream, priv->content);
+
+      /* we can immediately get the codecs if we're responder */
+      new_remote_codecs_cb (priv->content,
+          gabble_jingle_media_rtp_get_remote_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content)),
+          stream);
+
+      /* if any candidates arrived before idle loop had the chance to excute
+       * us (e.g. specified in session-initiate/content-add), we don't want to
+       * miss them */
+      new_remote_candidates_cb (priv->content,
+          gabble_jingle_content_get_remote_candidates (priv->content), stream);
+    }
 
   return obj;
 }
@@ -238,8 +257,6 @@ gabble_media_stream_get_property (GObject    *object,
       break;
   }
 }
-
-static void update_direction (GabbleMediaStream *stream, GabbleJingleContent *c);
 
 static void
 gabble_media_stream_set_property (GObject      *object,
@@ -312,18 +329,6 @@ gabble_media_stream_set_property (GObject      *object,
 
       priv->removed_id = g_signal_connect (priv->content, "removed",
           (GCallback) content_removed_cb, stream);
-
-      update_direction (stream, priv->content);
-
-      /* we can immediately get the codecs if we're responder */
-      new_remote_codecs_cb (priv->content,
-          gabble_jingle_media_rtp_get_remote_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content)),
-          stream);
-
-      /* if any candidates arrived before idle loop had the chance to excute
-       * us, we don't wan to miss them */
-      new_remote_candidates_cb (priv->content,
-          gabble_jingle_content_get_remote_candidates (priv->content), stream);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1112,7 +1117,8 @@ new_remote_codecs_cb (GabbleJingleContent *content,
       g_value_take_boxed (&codec,
           dbus_g_type_specialized_construct (codec_struct_type));
 
-      DEBUG ("new remote codec: %u '%s' %u %u %u",
+      DEBUG ("new remote %s codec: %u '%s' %u %u %u",
+          priv->media_type == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video",
           c->id, c->name, priv->media_type, c->clockrate, c->channels);
 
       dbus_g_type_struct_set (&codec,
@@ -1238,6 +1244,7 @@ content_state_changed_cb (GabbleJingleContent *c,
       /* connected stream means we can play, but sending is determined
        * by content senders (in update_senders) */
       stream->playing = TRUE;
+      _gabble_media_stream_update_sending (stream, TRUE);
       push_playing (stream);
       push_sending (stream);
       break;
@@ -1337,6 +1344,8 @@ update_direction (GabbleMediaStream *stream, GabbleJingleContent *c)
   TpMediaStreamPendingSend pending_send;
   JingleContentSenders senders;
   gboolean local_initiator;
+
+  DEBUG ("called");
 
   g_object_get (c, "senders", &senders, NULL);
   g_object_get (c->session, "local-initiator", &local_initiator, NULL);

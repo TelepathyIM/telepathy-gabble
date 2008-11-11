@@ -1808,21 +1808,6 @@ session_state_changed_cb (GabbleJingleSession *session,
 
     }
 
-  if (state == JS_STATE_ACTIVE)
-    {
-      guint i;
-
-      /* set all streams as playing */
-      for (i = 0; i < priv->streams->len; i++)
-        {
-          GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
-
-          g_object_set (stream, "playing", TRUE, NULL);
-          _gabble_media_stream_update_sending (stream, TRUE);
-
-        }
-    }
-
   tp_intset_destroy (set);
 }
 
@@ -2135,6 +2120,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabbleMediaStream *stream;
   JingleMediaType type;
+  TpMediaStreamType mtype;
   gchar *name;
   guint id;
   gchar *object_path;
@@ -2154,13 +2140,15 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   object_path = g_strdup_printf ("%s/MediaStream%u",
       priv->object_path, id);
 
+  mtype = (type == JINGLE_MEDIA_TYPE_AUDIO) ?
+    TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO;
+
   stream = g_object_new (GABBLE_TYPE_MEDIA_STREAM,
       "object-path", object_path,
       "content", c,
       "name", name,
       "id", id,
-      "media-type", type == JINGLE_MEDIA_TYPE_AUDIO ?
-        TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO,
+      "media-type", mtype,
       NULL);
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
@@ -2186,9 +2174,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
     type == JINGLE_MEDIA_TYPE_AUDIO ? "audio" : "video");
 
   tp_svc_channel_type_streamed_media_emit_stream_added (
-      chan, id, priv->session->peer,
-      type == JINGLE_MEDIA_TYPE_AUDIO ?
-        TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO);
+      chan, id, priv->session->peer, mtype);
 
   /* A stream being added might cause the "total" hold state to change */
   stream_hold_state_changed (stream, NULL, chan);
@@ -2199,10 +2185,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
        * just in the signalling they change */
       DEBUG ("emitting MediaSessionHandler:NewStreamHandler signal for stream %d", id);
       tp_svc_media_session_handler_emit_new_stream_handler (chan,
-        object_path, id,
-        type == JINGLE_MEDIA_TYPE_AUDIO ?
-          TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO,
-        TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
+        object_path, id, mtype, TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
     }
 
   g_free (object_path);

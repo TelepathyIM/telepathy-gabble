@@ -1,4 +1,12 @@
-"""Test to accept a 1-1 stream tube."""
+"""
+Receives several tube offers:
+- Test to accept a 1-1 stream tube
+  - using UNIX sockets and IPv4 sockets
+  - using the old tube iface and the new tube iface
+- Test to accept with bad parameters
+- Test to refuse the tube offer
+  - using the old tube iface and the new tube iface
+"""
 
 import dbus
 
@@ -65,7 +73,12 @@ def receive_tube_offer(q, bus, conn, stream):
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
     tubes_iface = dbus.Interface(tubes_chan,
             tp_name_prefix + '.Channel.Type.Tubes')
-    return (tubes_chan, tubes_iface)
+
+    new_tubes_chan = bus.get_object(conn.bus_name, new_chan_path)
+    new_tubes_iface = dbus.Interface(new_tubes_chan,
+            tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
+
+    return (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface)
 
 def expect_tube_activity(q, bus, conn, stream):
     event_socket, event_iq = q.expect_many(
@@ -129,9 +142,29 @@ def test(q, bus, conn, stream):
     stream.send(result)
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface) = receive_tube_offer(q, bus, conn, stream)
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+        receive_tube_offer(q, bus, conn, stream)
 
-    # Accept the tube and use IPv4
+    # Try bad parameters on the old iface
+    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id+1, 2, 0, '',
+            byte_arrays=True)
+    q.expect('dbus-error', method='AcceptStreamTube')
+    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 2, 1, '',
+            byte_arrays=True)
+    q.expect('dbus-error', method='AcceptStreamTube')
+    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 20, 0, '',
+            byte_arrays=True)
+    q.expect('dbus-error', method='AcceptStreamTube')
+
+    # Try bad parameters on the new iface
+    call_async(q, new_tubes_iface, 'AcceptStreamTube', 20, 0, '',
+            byte_arrays=True)
+    q.expect('dbus-error', method='AcceptStreamTube')
+    call_async(q, new_tubes_iface, 'AcceptStreamTube', 0, 1, '',
+            byte_arrays=True)
+    q.expect('dbus-error', method='AcceptStreamTube')
+
+    # Accept the tube with old iface, and use IPv4
     call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 2, 0, '',
             byte_arrays=True)
 
@@ -142,6 +175,7 @@ def test(q, bus, conn, stream):
 
     ip = accept_return_event.value[0][0]
     port = accept_return_event.value[0][1]
+    assert port > 0
 
     factory = EventProtocolClientFactory(q)
     reactor.connectTCP(ip, port, factory)
@@ -150,9 +184,10 @@ def test(q, bus, conn, stream):
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface) = receive_tube_offer(q, bus, conn, stream)
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+        receive_tube_offer(q, bus, conn, stream)
 
-    # Accept the tube and use UNIX sockets
+    # Accept the tube with old iface, and use UNIX sockets
     call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 0, 0, '',
             byte_arrays=True)
 
@@ -168,6 +203,62 @@ def test(q, bus, conn, stream):
 
     expect_tube_activity(q, bus, conn, stream)
     tubes_chan.Close()
+
+    # Receive a tube offer from Bob
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+        receive_tube_offer(q, bus, conn, stream)
+
+    # Accept the tube with new iface, and use IPv4
+    call_async(q, new_tubes_iface, 'AcceptStreamTube', 2, 0, '',
+            byte_arrays=True)
+
+    accept_return_event, _ = q.expect_many(
+        EventPattern('dbus-return', method='AcceptStreamTube'),
+        EventPattern('dbus-signal', signal='TubeStateChanged',
+            args=[stream_tube_id, 2]))
+
+    ip = accept_return_event.value[0][0]
+    port = accept_return_event.value[0][1]
+    assert port > 0
+
+    factory = EventProtocolClientFactory(q)
+    reactor.connectTCP(ip, port, factory)
+
+    expect_tube_activity(q, bus, conn, stream)
+    tubes_chan.Close()
+
+    # Receive a tube offer from Bob
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+        receive_tube_offer(q, bus, conn, stream)
+
+    # Accept the tube with new iface, and use UNIX sockets
+    call_async(q, new_tubes_iface, 'AcceptStreamTube', 0, 0, '',
+            byte_arrays=True)
+
+    accept_return_event, _ = q.expect_many(
+        EventPattern('dbus-return', method='AcceptStreamTube'),
+        EventPattern('dbus-signal', signal='TubeStateChanged',
+            args=[stream_tube_id, 2]))
+
+    socket_address = accept_return_event.value[0]
+
+    factory = EventProtocolClientFactory(q)
+    reactor.connectUNIX(socket_address, factory)
+
+    expect_tube_activity(q, bus, conn, stream)
+    tubes_chan.Close()
+
+    # Receive a tube offer from Bob
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+        receive_tube_offer(q, bus, conn, stream)
+    # Just close the tube
+    tubes_chan.Close()
+
+    # Receive a tube offer from Bob
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+        receive_tube_offer(q, bus, conn, stream)
+    # Just close the tube
+    new_tubes_chan.Close()
 
     # OK, we're done
     conn.Disconnect()

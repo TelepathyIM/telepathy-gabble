@@ -1241,6 +1241,13 @@ _check_content_ready (GabbleJingleSession *sess,
 }
 
 static void
+_transmit_candidates (GabbleJingleSession *sess,
+    GabbleJingleContent *c, gpointer user_data)
+{
+  gabble_jingle_content_retransmit_candidates (c);
+}
+
+static void
 _fill_content (GabbleJingleSession *sess,
     GabbleJingleContent *c, gpointer user_data)
 {
@@ -1398,6 +1405,9 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
   _map_initial_contents (sess, _fill_content, sess_node);
   gabble_jingle_session_send (sess, msg, handler, NULL);
   set_state (sess, new_state);
+
+  /* now all initial contents can transmit their candidates */
+  _map_initial_contents (sess, _transmit_candidates, NULL);
 }
 
 static void

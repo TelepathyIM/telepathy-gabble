@@ -540,14 +540,13 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   g_signal_connect (trans, "new-candidates",
       (GCallback) new_transport_candidates_cb, c);
 
-  /* FIXME: I think candidates can't be specified in content addition/session
-   * init, so disabling this:
+  /* Depending on transport, there may be initial candidates specified here */
   gabble_jingle_transport_iface_parse_candidates (trans, trans_node, error);
   if (*error)
     {
       g_object_unref (trans);
       return;
-    } */
+    }
 
   g_assert (priv->transport == NULL);
   priv->transport = trans;
@@ -795,6 +794,10 @@ _maybe_ready (GabbleJingleContent *self)
       if (state >= JS_STATE_PENDING_INITIATE_SENT)
         {
           send_content_add_or_accept (self);
+
+          /* if neccessary, transmit the candidates */
+          gabble_jingle_transport_iface_retransmit_candidates (priv->transport,
+              FALSE);
         }
       else
         {
@@ -804,13 +807,11 @@ _maybe_ready (GabbleJingleContent *self)
           return;
         }
     }
-
-  /* if we have pending local candidates, now's the time
-   * to transmit them */
-  gabble_jingle_transport_iface_retransmit_candidates (priv->transport, FALSE);
 }
 
-/* Used when we detect gtalk3 after we've transmitted some candidates */
+/* Used when session-initiate is sent (so all initial contents transmit their
+ * candidates), and when we detect gtalk3 after we've transmitted some
+ * candidates. */
 void
 gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self)
 {

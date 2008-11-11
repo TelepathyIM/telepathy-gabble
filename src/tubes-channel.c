@@ -1918,28 +1918,6 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4 &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV6)
-    {
-      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "Address type %d not implemented", address_type);
-
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
-    {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Only the Localhost access control method is implemented by"
-            " Gabble" };
-
-      dbus_g_method_return_error (context, &e);
-      return;
-    }
-
   g_object_get (tube,
       "type", &type,
       "state", &state,
@@ -1954,15 +1932,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (state != TP_TUBE_STATE_LOCAL_PENDING)
-    {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Tube is not in the local pending state" };
-
-      dbus_g_method_return_error (context, &e);
-      return;
-    }
-
+  /* parameters sanity checks are done in gabble_tube_stream_accept */
   g_object_set (tube,
       "address-type", address_type,
       "access-control", access_control,

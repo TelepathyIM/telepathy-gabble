@@ -192,7 +192,7 @@ def test(q, bus, conn, stream):
     item['subscription'] = 'both'
     stream.send(roster)
 
-    # Send Joe presence is without caps
+    # Send Joe presence is without tube caps
     presence = domish.Element(('jabber:client', 'presence'))
     presence['from'] = 'joe@localhost/Joe'
     presence['to'] = 'test@localhost/Resource'
@@ -211,7 +211,7 @@ def test(q, bus, conn, stream):
         'http://example.com/IDontSupportTubes#1.0'
     stream.send(result)
 
-    # Send Bob presence and his caps
+    # Send Bob presence and his tube caps
     presence = domish.Element(('jabber:client', 'presence'))
     presence['from'] = 'bob@localhost/Bob'
     presence['to'] = 'test@localhost/Resource'

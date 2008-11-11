@@ -1,160 +1,19 @@
-"""Test 1-1 tubes support."""
-
-import base64
-import errno
-import os
+"""Test to accept a 1-1 stream tube."""
 
 import dbus
-from dbus.connection import Connection
-from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, tp_name_prefix, \
-     watch_tube_signals, sync_dbus, EventProtocolClientFactory
-from gabbletest import exec_test, acknowledge_iq, sync_stream
+     EventProtocolClientFactory
+from gabbletest import exec_test, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
-from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
-from twisted.words.protocols.jabber.client import IQ
-
-from gabbleconfig import HAVE_DBUS_TUBES
 
 NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
 NS_SI = 'http://jabber.org/protocol/si'
-NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
 NS_IBB = 'http://jabber.org/protocol/ibb'
-NS_X_DATA = 'jabber:x:data'
-
-sample_parameters = dbus.Dictionary({
-    's': 'hello',
-    'ay': dbus.ByteArray('hello'),
-    'u': dbus.UInt32(123),
-    'i': dbus.Int32(-123),
-    }, signature='sv')
-
-new_sample_parameters = dbus.Dictionary({
-    's': 'newhello',
-    'ay': dbus.ByteArray('newhello'),
-    'u': dbus.UInt32(123),
-    'i': dbus.Int32(-123),
-    }, signature='sv')
-
-
-def check_conn_properties(q, bus, conn, stream, channel_list=None):
-    properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
-
-    if channel_list == None:
-        assert properties.get('Channels') == [], properties['Channels']
-    else:
-        for i in channel_list:
-            assert i in properties['Channels'], \
-                (i, properties['Channels'])
-
-    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Tubes',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-             },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle',
-              'org.freedesktop.Telepathy.Channel.TargetID',
-             ]
-            ) in properties.get('RequestableChannelClasses'),\
-                     properties['RequestableChannelClasses']
-    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-             },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle',
-              'org.freedesktop.Telepathy.Channel.TargetID',
-              'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters',
-              'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service',
-             ]
-            ) in properties.get('RequestableChannelClasses'),\
-                     properties['RequestableChannelClasses']
-
-def check_channel_properties(q, bus, conn, stream, channel, channel_type,
-        contact_handle, contact_id, state=None):
-    # Exercise basic Channel Properties from spec 0.17.7
-    # on the channel of type channel_type
-    channel_props = channel.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert channel_props.get('TargetHandle') == contact_handle,\
-            (channel_props.get('TargetHandle'), contact_handle)
-    assert channel_props.get('TargetHandleType') == 1,\
-            channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.' + channel_type,\
-            channel_props.get('ChannelType')
-    assert 'Interfaces' in channel_props, channel_props
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' not in \
-            channel_props['Interfaces'], \
-            channel_props['Interfaces']
-    assert channel_props['TargetID'] == contact_id
-    assert channel_props['Requested'] == True
-    assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
-
-
-    if channel_type == "Tubes":
-        assert state is None
-        assert len(channel_props['Interfaces']) == 0, channel_props['Interfaces']
-        supported_socket_types = channel.GetAvailableStreamTubeTypes()
-    else:
-        assert state is not None
-        tube_props = channel.GetAll(
-                'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
-                dbus_interface='org.freedesktop.DBus.Properties')
-        assert tube_props['Status'] == state
-        # no strict check but at least check the properties exist
-        assert tube_props['Parameters'] is not None
-        assert channel_props['Interfaces'] == \
-            dbus.Array(['org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT'],
-                    signature='s'), \
-            channel_props['Interfaces']
-
-        stream_tube_props = channel.GetAll(
-                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-                dbus_interface='org.freedesktop.DBus.Properties')
-        supported_socket_types = stream_tube_props['SupportedSocketTypes']
-
-    # Support for different socket types. no strict check but at least check
-    # there is some support.
-    assert len(supported_socket_types) == 3
-
-def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
-    assert old_sig[0] == chan_path
-    assert old_sig[1] == tp_name_prefix + '.Channel.Type.' + channel_type
-    assert old_sig[2] == 1         # contact handle
-    assert old_sig[3] == contact_handle
-    assert old_sig[4] == True      # suppress handler
-
-def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
-        contact_id, initiator_handle):
-    assert len(new_sig) == 1
-    assert len(new_sig[0]) == 1        # one channel
-    assert len(new_sig[0][0]) == 2     # two struct members
-    assert new_sig[0][0][0] == chan_path
-    emitted_props = new_sig[0][0][1]
-
-    assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            tp_name_prefix + '.Channel.Type.' + channel_type
-    assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 1
-    assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
-            contact_handle
-    assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
-            contact_id
-    assert emitted_props[tp_name_prefix + '.Channel.Requested'] == True
-    assert emitted_props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-            == initiator_handle
-    assert emitted_props[tp_name_prefix + '.Channel.InitiatorID'] == \
-            'test@localhost'
-
 
 def test(q, bus, conn, stream):
-    check_conn_properties(q, bus, conn, stream)
-
     conn.Connect()
 
     _, vcard_event, roster_event = q.expect_many(
@@ -170,29 +29,7 @@ def test(q, bus, conn, stream):
     item = roster_event.query.addElement('item')
     item['jid'] = 'bob@localhost' # Bob can do tubes
     item['subscription'] = 'both'
-    item = roster_event.query.addElement('item')
-    item['jid'] = 'joe@localhost' # Joe cannot do tubes
-    item['subscription'] = 'both'
     stream.send(roster)
-
-    # Send Joe presence is without caps
-    presence = domish.Element(('jabber:client', 'presence'))
-    presence['from'] = 'joe@localhost/Joe'
-    presence['to'] = 'test@localhost/Resource'
-    c = presence.addElement('c')
-    c['xmlns'] = 'http://jabber.org/protocol/caps'
-    c['node'] = 'http://example.com/IDontSupportTubes'
-    c['ver'] = '1.0'
-    stream.send(presence)
-
-    event = q.expect('stream-iq', iq_type='get',
-        query_ns='http://jabber.org/protocol/disco#info',
-        to='joe@localhost/Joe')
-    result = event.stanza
-    result['type'] = 'result'
-    assert event.query['node'] == \
-        'http://example.com/IDontSupportTubes#1.0'
-    stream.send(result)
 
     # Send Bob presence and his caps
     presence = domish.Element(('jabber:client', 'presence'))

@@ -529,7 +529,7 @@ def test(q, bus, conn, stream):
     field['type'] = 'list-single'
     option = field.addElement((None, 'option'))
     value = option.addElement((None, 'value'))
-    value.addContent(NS_IBB)
+    value.addContent(NS_BYTESTREAMS)
 
     stream_node = si.addElement((NS_TUBES, 'stream'))
     stream_node['tube'] = str(new_stream_tube_id)
@@ -545,7 +545,7 @@ def test(q, bus, conn, stream):
     value = xpath.queryForNodes('/si/feature/x/field/value', si)
     assert len(value) == 1
     proto = value[0]
-    assert str(proto) == NS_IBB
+    assert str(proto) == NS_BYTESTREAMS
     tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
     assert len(tube) == 1
 
@@ -620,38 +620,60 @@ def test(q, bus, conn, stream):
     if not HAVE_DBUS_TUBES:
         return
 
+    reactor.listenTCP(5085, S5BFactory(q.append))
+
     # have the fake client open the stream
     # New tube API
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
-    open = iq.addElement((NS_IBB, 'open'))
-    open['sid'] = 'beta'
-    open['block-size'] = '4096'
+    query = iq.addElement((NS_BYTESTREAMS, 'query'))
+    query['sid'] = 'beta'
+    query['mode'] = 'tcp'
+    # Not working streamhost
+    streamhost = query.addElement('streamhost')
+    streamhost['jid'] = 'invalid.invalid'
+    streamhost['host'] = 'invalid.invalid'
+    streamhost['port'] = '5085'
+    # Working streamhost
+    streamhost = query.addElement('streamhost')
+    streamhost['jid'] = 'bob@localhost/Bob'
+    streamhost['host'] = '127.0.0.1'
+    streamhost['port'] = '5085'
+    # This works too but should not be tried as gabble should just
+    # connect to the previous one
+    streamhost = query.addElement('streamhost')
+    streamhost['jid'] = 'bob@localhost'
+    streamhost['host'] = '127.0.0.1'
+    streamhost['port'] = '5085'
     stream.send(iq)
 
-    q.expect('stream-iq', iq_type='result')
-    # have the fake client send us some data
-    message = domish.Element(('jabber:client', 'message'))
-    message['to'] = 'test@localhost/Resource'
-    message['from'] = 'bob@localhost/Bob'
-    data_node = message.addElement((NS_IBB, 'data'))
-    data_node['sid'] = 'beta'
-    data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hello, new world'))
-    stream.send(message)
+    event = q.expect('s5b-data-received')
+    assert event.properties['data'] == '\x05\x01\x00' # version 5, 1 auth method, no auth
+    transport = event.properties['transport']
+    transport.write('\x05\x00') # version 5, no auth
+    event = q.expect('s5b-data-received')
+    # version 5, connect, reserved, domain type
+    expected_connect = '\x05\x01\x00\x03'
+    expected_connect += chr(40) # len (SHA-1)
+    # sha-1(sid + initiator + target)
+    unhashed_domain = query['sid'] + iq['from'] + iq['to']
+    expected_connect += sha.new(unhashed_domain).hexdigest()
+    expected_connect += '\x00\x00' # port
+    assert event.properties['data'] == expected_connect
 
-    event = q.expect('stream-message', to='bob@localhost/Bob')
-    message = event.stanza
+    transport.write('\x05\x00') #version 5, ok
 
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
-        message)
-    assert data_nodes is not None
-    assert len(data_nodes) == 1
-    ibb_data = data_nodes[0]
-    assert ibb_data['sid'] == 'beta'
-    binary = base64.b64decode(str(ibb_data))
-    assert binary == 'hello, new world'
+    event = q.expect('stream-iq', iq_type='result')
+    iq = event.stanza
+    query = xpath.queryForNodes('/iq/query', iq)[0]
+    assert query.uri == NS_BYTESTREAMS
+    streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
+    assert streamhost_used['jid'] == 'bob@localhost/Bob'
+
+    transport.write("HELLO, NEW WORLD")
+    event = q.expect('s5b-data-received')
+    assert event.properties['data'] == 'hello, new world'
 
     if not HAVE_DBUS_TUBES:
         return
@@ -826,7 +848,7 @@ def test(q, bus, conn, stream):
     field['type'] = 'list-single'
     option = field.addElement((None, 'option'))
     value = option.addElement((None, 'value'))
-    value.addContent(NS_IBB)
+    value.addContent(NS_BYTESTREAMS)
 
     tube = si.addElement((NS_TUBES, 'tube'))
     tube['type'] = 'dbus'
@@ -866,17 +888,23 @@ def test(q, bus, conn, stream):
     value = xpath.queryForNodes('/si/feature/x/field/value', si)
     assert len(value) == 1
     proto = value[0]
-    assert str(proto) == NS_IBB
+    assert str(proto) == NS_BYTESTREAMS
     tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
     assert len(tube) == 1
 
-    # Init the IBB bytestream
+    reactor.listenTCP(5084, S5BFactory(q.append))
+
+    # Init the SOCKS5 bytestream
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
-    open = iq.addElement((NS_IBB, 'open'))
-    open['sid'] = 'beta'
-    open['block-size'] = '4096'
+    query = iq.addElement((NS_BYTESTREAMS, 'query'))
+    query['sid'] = 'beta'
+    query['mode'] = 'tcp'
+    streamhost = query.addElement('streamhost')
+    streamhost['jid'] = 'bob@localhost/Bob'
+    streamhost['host'] = '127.0.0.1'
+    streamhost['port'] = '5084'
     stream.send(iq)
 
     event = q.expect('dbus-return', method='AcceptDBusTube')

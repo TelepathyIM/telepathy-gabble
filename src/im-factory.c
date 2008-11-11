@@ -276,7 +276,7 @@ im_factory_message_cb (LmMessageHandler *handler,
          from, handle, msgtype, body);
     }
 
-  if (state != -1 && send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
+  if (state != -1 && send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     _gabble_im_channel_state_receive (chan, state);
 
   if (body != NULL)

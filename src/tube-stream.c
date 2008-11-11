@@ -1149,9 +1149,6 @@ gabble_tube_stream_set_property (GObject *object,
           }
         break;
       case PROP_ACCESS_CONTROL:
-        /* For now, only "localhost" control is implemented */
-        g_assert (g_value_get_uint (value) ==
-            TP_SOCKET_ACCESS_CONTROL_LOCALHOST);
         priv->access_control = g_value_get_uint (value);
         break;
       case PROP_ACCESS_CONTROL_PARAM:
@@ -1531,20 +1528,20 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
   if (!gabble_tube_stream_check_params (priv->address_type, NULL,
         priv->access_control, priv->access_control_param, error))
     {
-      return FALSE;
+      goto fail;
     }
 
   if (priv->state != GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not in the local pending state");
-      return FALSE;
+      goto fail;
     }
 
   if (!tube_stream_open (self, error))
     {
       gabble_tube_iface_close (GABBLE_TUBE_IFACE (self), TRUE);
-      return FALSE;
+      goto fail;
     }
 
   priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
@@ -1555,6 +1552,13 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
 
   return TRUE;
+
+fail:
+  priv->address_type = 0;
+  priv->access_control = 0;
+  tp_g_value_slice_free (priv->access_control_param);
+  priv->access_control_param = NULL;
+  return FALSE;
 }
 
 /**

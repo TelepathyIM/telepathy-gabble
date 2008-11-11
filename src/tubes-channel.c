@@ -1935,7 +1935,18 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  /* parameters sanity checks are done in gabble_tube_stream_accept */
+  /* most parameters sanity checks are done in gabble_tube_stream_accept,
+   * but at least check that they fit the properties requirements */
+  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
+      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4 &&
+      address_type != TP_SOCKET_ADDRESS_TYPE_IPV6)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Address type not implemented" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
   g_object_set (tube,
       "address-type", address_type,
       "access-control", access_control,

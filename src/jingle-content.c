@@ -462,6 +462,9 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
   g_assert (priv->transport_ns == NULL);
 
+  if (senders == NULL)
+      senders = "both";
+
   if (google_mode)
     {
       if (creator == NULL)
@@ -469,9 +472,6 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
       if (name == NULL)
           name = "gtalk";
-
-      if (senders == NULL)
-          senders = "both";
 
       if (trans_node == NULL)
         {
@@ -487,14 +487,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
     }
   else
     {
-      /* senders weren't mandatory back then */
-      if (dialect == JINGLE_DIALECT_V015)
-        {
-          DEBUG ("old gabble detected, settings senders = both");
-          senders = "both";
-        }
-
-      if ((trans_node == NULL) || (creator == NULL) || (name == NULL) || (senders == NULL))
+      if ((trans_node == NULL) || (creator == NULL) || (name == NULL))
         {
           SET_BAD_REQ ("missing required content attributes or elements");
           return;
@@ -603,20 +596,15 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
         }
     }
 
-  /* GTalk mode and old Gabble both don't really mind this */
-  if (JINGLE_IS_GOOGLE_DIALECT (dialect) || (dialect == JINGLE_DIALECT_V015))
+  if (senders == NULL)
+      senders = "both";
+
+  DEBUG ("changing senders from %s to %s", produce_senders (priv->senders), senders);
+  priv->senders = parse_senders (senders);
+  if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
     {
-      DEBUG ("gtalk or old gabble detected, settings senders = both");
-    }
-  else
-    {
-      DEBUG ("changing senders from %s to %s", produce_senders (priv->senders), senders);
-      priv->senders = parse_senders (senders);
-      if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
-        {
-          SET_BAD_REQ ("invalid content senders");
-          return;
-        }
+      SET_BAD_REQ ("invalid content senders");
+      return;
     }
 
   parse_description (c, desc_node, error);

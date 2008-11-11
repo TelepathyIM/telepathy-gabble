@@ -2075,6 +2075,7 @@ gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
   GError *error = NULL;
 
   /* parameters sanity checks are done in gabble_tube_stream_accept */
+  priv->address_type = address_type;
   priv->access_control = access_control;
   if (priv->access_control_param != NULL)
     tp_g_value_slice_free (priv->access_control_param);

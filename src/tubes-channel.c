@@ -1499,6 +1499,9 @@ tube_msg_offered (GabbleTubesChannel *self,
 
   tube = create_new_tube (self, type, priv->handle, service,
       parameters, NULL, tube_id, NULL);
+
+  tp_channel_manager_emit_new_channel (priv->conn->private_tubes_factory,
+      TP_EXPORTABLE_CHANNEL (tube), NULL);
 }
 
 static void

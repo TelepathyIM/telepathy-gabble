@@ -1381,15 +1381,6 @@ update_direction (GabbleMediaStream *stream, GabbleJingleContent *c)
       pending_send |= TP_MEDIA_STREAM_PENDING_LOCAL_SEND;
     }
 
-#if 0
-  /* clear any pending remote send */
-  if ((pending_send & TP_MEDIA_STREAM_PENDING_REMOTE_SEND) != 0)
-    {
-      GMS_DEBUG_INFO (session, "setting pending local send flag");
-      pending_send &= ~TP_MEDIA_STREAM_PENDING_REMOTE_SEND;
-    }
-#endif
-
   /* make any necessary changes */
   new_combined_dir = MAKE_COMBINED_DIRECTION (requested_dir, pending_send);
   if (new_combined_dir != stream->combined_direction)
@@ -1440,18 +1431,6 @@ gabble_media_stream_change_direction (GabbleMediaStream *stream,
        * bidirectional) so that we send the correct transitions */
       current_dir ^= TP_MEDIA_STREAM_DIRECTION_SEND;
     }
-
-#if 0
-  /* if we're asking the remote end to start sending, set the pending flag and
-   * don't change our directionality just yet */
-  new_dir = requested_dir;
-  if (((current_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) == 0) &&
-      ((new_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) != 0))
-    {
-      pending_send ^= TP_MEDIA_STREAM_PENDING_REMOTE_SEND;
-      new_dir &= ~TP_MEDIA_STREAM_DIRECTION_RECEIVE;
-    }
-#endif
 
   /* make any necessary changes */
   new_combined_dir = MAKE_COMBINED_DIRECTION (requested_dir, pending_send);

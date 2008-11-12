@@ -1033,6 +1033,7 @@ gabble_media_stream_stream_state (TpSvcMediaStreamHandler *iface,
       ts = JINGLE_TRANSPORT_STATE_CONNECTED;
       break;
     default:
+      DEBUG ("ignoring unknown connection state %u", connection_state);
       goto OUT;
   }
 

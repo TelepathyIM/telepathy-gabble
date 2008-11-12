@@ -241,7 +241,7 @@ def test(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Connection.Interface.Requests')
 
     # Test tubes with Joe. Joe does not have tube capabilities.
-    # Should Gabble allow to offer a tube to him? For now, accept it.
+    # Gabble does not allow to offer a tube to him.
     joe_handle = conn.RequestHandles(1, ['joe@localhost'])[0]
     call_async(q, conn, 'RequestChannel',
             tp_name_prefix + '.Channel.Type.Tubes', 1, joe_handle, True);
@@ -259,9 +259,7 @@ def test(q, bus, conn, stream):
     path = os.getcwd() + '/stream'
     call_async(q, joe_tubes_iface, 'OfferStreamTube',
         'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
-
-    sync_dbus(bus, q, conn)
-    # event = q.expect('dbus-error', method='OfferStreamTube')
+    event = q.expect('dbus-error', method='OfferStreamTube')
 
     joe_tubes_chan.Close()
 

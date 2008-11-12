@@ -367,8 +367,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-message')
     message = event.stanza
-    offer_nodes = xpath.queryForNodes('/message', message)
-    assert offer_nodes[0]['to'] == 'bob@localhost/Bob' # check the resource
+    assert message['to'] == 'bob@localhost/Bob' # check the resource
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
         message)
     assert tube_nodes is not None
@@ -451,8 +450,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-message')
     message = event.stanza
-    offer_nodes = xpath.queryForNodes('/message', message)
-    assert offer_nodes[0]['to'] == 'bob@localhost/Bob' # check the resource
+    assert message['to'] == 'bob@localhost/Bob' # check the resource
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
         message)
     assert tube_nodes is not None

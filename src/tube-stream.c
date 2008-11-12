@@ -1884,6 +1884,9 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
   gboolean result;
+  GabblePresence *presence;
+  const gchar *resource;
+  gchar *full_jid;
 
   g_assert (priv->state == GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED);
 
@@ -1892,7 +1895,33 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
 
   jid = tp_handle_inspect (contact_repo, priv->handle);
 
-  msg = lm_message_build (jid, LM_MESSAGE_TYPE_MESSAGE,
+  presence = gabble_presence_cache_get (priv->conn->presence_cache,
+      priv->handle);
+  if (presence == NULL)
+    {
+      DEBUG ("can't find tube recipient's presence");
+      if (error != NULL)
+        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "can't find tube recipient's presence");
+
+      return FALSE;
+    }
+
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      PRESENCE_CAP_SI_TUBES);
+  if (resource == NULL)
+    {
+      DEBUG ("tube recipient doesn't have tubes capabilities");
+      if (error != NULL)
+        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "tube recipient doesn't have tubes capabilities");
+
+      return FALSE;
+    }
+
+  full_jid = g_strdup_printf ("%s/%s", jid, resource);
+
+  msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_MESSAGE,
       '(', "tube", "",
         '*', &tube_node,
         '@', "xmlns", NS_TUBES,
@@ -1911,6 +1940,7 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
         ')',
       ')',
       NULL);
+  g_free (full_jid);
 
   g_assert (tube_node != NULL);
 

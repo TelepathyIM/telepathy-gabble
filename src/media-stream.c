@@ -138,6 +138,7 @@ static void content_senders_changed_cb (GabbleJingleContent *c,
 static void content_removed_cb (GabbleJingleContent *content,
       GabbleMediaStream *stream);
 static void update_direction (GabbleMediaStream *stream, GabbleJingleContent *c);
+static void update_sending (GabbleMediaStream *stream, gboolean start_sending);
 
 static void
 gabble_media_stream_init (GabbleMediaStream *self)
@@ -1245,7 +1246,7 @@ content_state_changed_cb (GabbleJingleContent *c,
       /* connected stream means we can play, but sending is determined
        * by content senders (in update_senders) */
       stream->playing = TRUE;
-      _gabble_media_stream_update_sending (stream, TRUE);
+      update_sending (stream, TRUE);
       push_playing (stream);
       push_sending (stream);
       break;
@@ -1386,7 +1387,7 @@ update_direction (GabbleMediaStream *stream, GabbleJingleContent *c)
   if (new_combined_dir != stream->combined_direction)
     {
       g_object_set (stream, "combined-direction", new_combined_dir, NULL);
-      _gabble_media_stream_update_sending (stream, FALSE);
+      update_sending (stream, FALSE);
     }
 
 }
@@ -1437,7 +1438,7 @@ gabble_media_stream_change_direction (GabbleMediaStream *stream,
   if (new_combined_dir != stream->combined_direction)
     {
       g_object_set (stream, "combined-direction", new_combined_dir, NULL);
-      _gabble_media_stream_update_sending (stream, FALSE);
+      update_sending (stream, FALSE);
     }
 
   /* short-circuit sending a request if we're not asking for anything new */
@@ -1477,9 +1478,8 @@ gabble_media_stream_change_direction (GabbleMediaStream *stream,
 }
 
 
-void
-_gabble_media_stream_update_sending (GabbleMediaStream *stream,
-                                     gboolean start_sending)
+static void
+update_sending (GabbleMediaStream *stream, gboolean start_sending)
 {
   GabbleMediaStreamPrivate *priv;
   gboolean new_sending;

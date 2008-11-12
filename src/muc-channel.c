@@ -2261,6 +2261,18 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
    * mutually exclusive.
    */
 
+  /* Ignore messages from the channel.  The only such messages I have seen in
+   * practice have been on devel@conference.pidgin.im, which sends useful
+   * messages like "foo has set the subject to: ..." and "This room is not
+   * anonymous".
+   */
+  if (!is_echo && !is_error && sender_handle_type == TP_HANDLE_TYPE_ROOM)
+    {
+      NODE_DEBUG (msg->node, "ignoring message from muc");
+
+      return;
+    }
+
   message = tp_message_new (base_conn, 2, 2);
 
   /* Header common to normal message and delivery-echo */

@@ -446,7 +446,6 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleType handle_type;
   TpHandle handle;
   GabbleMediaChannel *channel = NULL;

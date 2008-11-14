@@ -950,29 +950,36 @@ gabble_media_stream_ready (TpSvcMediaStreamHandler *iface,
   gabble_media_stream_set_local_codecs (iface, codecs, context);
 }
 
-/**
- * gabble_media_stream_set_local_codecs
- *
- * Implements D-Bus method SetLocalCodecs
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
- */
 static void
-gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
-                                      const GPtrArray *codecs,
-                                      DBusGMethodInvocation *context)
+pass_local_codecs (GabbleMediaStream *stream, const GPtrArray *codecs,
+    gboolean intersection)
 {
-  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-  GabbleMediaStreamPrivate *priv;
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
   GList *li = NULL;
   JingleCodec *c;
   guint i;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (self));
+  /* if content is created by us, we want all the codecs, else we want the
+   * intersection. */
+  if (gabble_jingle_content_is_created_by_us (priv->content))
+    {
+      if (intersection)
+        {
+          DEBUG ("we already sent our codecs, ignoring codec intersection");
+          return;
+        }
+    }
+  else
+    {
+      if (!intersection)
+        {
+          DEBUG ("ignoring local codecs, waiting for codec intersection");
+          return;
+        }
+    }
 
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
-
-  DEBUG ("putting list of all %d locally supported "
-                  "codecs from stream-engine into cache", codecs->len);
+  DEBUG ("putting list of %d supported codecs from stream-engine into cache",
+      codecs->len);
 
   g_value_set_boxed (&priv->native_codecs, codecs);
 
@@ -1004,7 +1011,22 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
     }
 
   jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content), li);
+}
 
+/**
+ * gabble_media_stream_set_local_codecs
+ *
+ * Implements D-Bus method SetLocalCodecs
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ */
+static void
+gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
+                                      const GPtrArray *codecs,
+                                      DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+
+  pass_local_codecs (self, codecs, FALSE);
   tp_svc_media_stream_handler_return_from_set_local_codecs (context);
 }
 
@@ -1058,20 +1080,9 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
                                       DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-  GabbleMediaStreamPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (self));
-
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
-
-  DEBUG ("got codec intersection containing %d "
-                  "codecs from stream-engine", codecs->len);
-
-  /* store the intersection for later on */
-  g_value_set_boxed (&priv->native_codecs, codecs);
-
+  pass_local_codecs (self, codecs, TRUE);
   g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
-
   tp_svc_media_stream_handler_return_from_supported_codecs (context);
 }
 

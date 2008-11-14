@@ -938,3 +938,9 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
    * and disposed of; don't do anything else with it. */
 }
 
+gboolean
+gabble_jingle_content_is_created_by_us (GabbleJingleContent *c)
+{
+  return c->priv->created_by_us;
+}
+

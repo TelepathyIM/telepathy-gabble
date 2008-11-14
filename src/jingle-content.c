@@ -454,8 +454,8 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
   g_object_get (c->session, "dialect", &dialect, NULL);
 
-  desc_node = lm_message_node_get_child (content_node, "description");
-  trans_node = lm_message_node_get_child (content_node, "transport");
+  desc_node = lm_message_node_get_child_any_ns (content_node, "description");
+  trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
   creator = lm_message_node_get_attribute (content_node, "creator");
   name = lm_message_node_get_attribute (content_node, "name");
   senders = lm_message_node_get_attribute (content_node, "senders");
@@ -497,7 +497,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   /* if we didn't set it to google-p2p implicitly already, detect it */
   if (transport_type == 0)
     {
-      const gchar *ns = lm_message_node_get_attribute (trans_node, "xmlns");
+      const gchar *ns = lm_message_node_get_namespace (trans_node);
 
       transport_type = GPOINTER_TO_INT (
           g_hash_table_lookup (c->conn->jingle_factory->transports, ns));
@@ -541,11 +541,14 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
       (GCallback) new_transport_candidates_cb, c);
 
   /* Depending on transport, there may be initial candidates specified here */
-  gabble_jingle_transport_iface_parse_candidates (trans, trans_node, error);
-  if (*error)
+  if (trans_node != NULL)
     {
-      g_object_unref (trans);
-      return;
+      gabble_jingle_transport_iface_parse_candidates (trans, trans_node, error);
+      if (*error)
+        {
+          g_object_unref (trans);
+          return;
+        }
     }
 
   g_assert (priv->transport == NULL);
@@ -578,8 +581,8 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   LmMessageNode *trans_node, *desc_node;
   JingleDialect dialect;
 
-  desc_node = lm_message_node_get_child (content_node, "description");
-  trans_node = lm_message_node_get_child (content_node, "transport");
+  desc_node = lm_message_node_get_child_any_ns (content_node, "description");
+  trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
   senders = lm_message_node_get_attribute (content_node, "senders");
 
   g_object_get (c->session, "dialect", &dialect, NULL);

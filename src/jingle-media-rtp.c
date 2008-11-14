@@ -238,6 +238,8 @@ parse_description (GabbleJingleContent *content,
   GList *codecs = NULL;
   LmMessageNode *node;
 
+  DEBUG ("node: %s", desc_node->name);
+
   if (lm_message_node_has_namespace (desc_node, NS_JINGLE_RTP, NULL))
     {
       const gchar *type = lm_message_node_get_attribute (desc_node, "media");
@@ -295,7 +297,7 @@ parse_description (GabbleJingleContent *content,
       guint clockrate, channels;
       guint i;
 
-      if (tp_strdiff (node->name, "payload-type"))
+      if (tp_strdiff (lm_message_node_get_name (node), "payload-type"))
           continue;
 
       txt = lm_message_node_get_attribute (node, "id");

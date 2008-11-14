@@ -480,7 +480,7 @@ _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
        NULL != content_node;
        content_node = content_node->next)
     {
-      if (tp_strdiff (content_node->name, "content"))
+      if (tp_strdiff (lm_message_node_get_name (content_node), "content"))
         continue;
 
       name = lm_message_node_get_attribute (content_node, "name");
@@ -599,13 +599,15 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 {
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
   const gchar *name = lm_message_node_get_attribute (content_node, "name");
-  LmMessageNode *desc_node = lm_message_node_get_child (content_node, "description");
+  LmMessageNode *desc_node = lm_message_node_get_child_any_ns (content_node,
+      "description");
   GType content_type = 0;
   const gchar *content_ns = NULL;
 
   if (desc_node != NULL)
     {
-      content_ns = lm_message_node_get_attribute (desc_node, "xmlns");
+      content_ns = lm_message_node_get_namespace (desc_node);
+      DEBUG ("namespace: %s", content_ns);
       content_type =
           GPOINTER_TO_INT (g_hash_table_lookup (priv->conn->jingle_factory->content_types,
           content_ns));
@@ -878,7 +880,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
             }
           else
             {
-              node = lm_message_node_get_child (node, "transport");
+              node = lm_message_node_get_child_any_ns (node, "transport");
 
               if (node == NULL)
                 {
@@ -892,7 +894,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
     {
       const gchar *name;
 
-      node = lm_message_node_get_child (node, "content");
+      node = lm_message_node_get_child_any_ns (node, "content");
       name = lm_message_node_get_attribute (node, "name");
       c = g_hash_table_lookup (priv->contents, name);
 
@@ -903,7 +905,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
         }
 
       /* we need transport child of content node */
-      node = lm_message_node_get_child (node, "transport");
+      node = lm_message_node_get_child_any_ns (node, "transport");
     }
 
   gabble_jingle_content_parse_transport_info (c, node, error);

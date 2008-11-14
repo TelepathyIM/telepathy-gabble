@@ -250,7 +250,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       JingleCandidateType ctype;
       JingleCandidate *c;
 
-      if (tp_strdiff (node->name, "candidate"))
+      if (tp_strdiff (lm_message_node_get_name (node), "candidate"))
           continue;
 
       name = lm_message_node_get_attribute (node, "name");

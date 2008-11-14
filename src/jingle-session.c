@@ -1435,6 +1435,12 @@ set_state (GabbleJingleSession *sess, JingleState state)
 {
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
 
+  if (state <= priv->state)
+    {
+      DEBUG ("ignoring request to set state from %u back to %u", priv->state, state);
+      return;
+    }
+
   DEBUG ("Setting state of JingleSession: %p (priv = %p) from %u to %u", sess, priv, priv->state, state);
 
   priv->state = state;
@@ -1473,6 +1479,12 @@ void
 gabble_jingle_session_terminate (GabbleJingleSession *sess)
 {
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+
+  if (priv->state == JS_STATE_ENDED)
+    {
+      DEBUG ("session already terminated, ignoring terminate request");
+      return;
+    }
 
   if (priv->state != JS_STATE_PENDING_CREATED)
     {

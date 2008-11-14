@@ -853,9 +853,6 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 
       /* Accept component 0 because old farsight1 stream-engine didn't set the
        * component */
-      if (component == 0)
-          component = 1;
-
       if (component == 0 || component == 1)
         {
           break;
@@ -886,15 +883,9 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
     }
 
   component_id = g_value_get_uint (g_value_array_get_nth (transport, 0));
-  /* FIXME: we're not ignoring them if dialect is videochat, or if
-   * we're not using google-p2p 
-  if (component_id != 1)
-    {
-      DEBUG ("%s: ignoring native candidate non-1 component", G_STRFUNC);
-      tp_svc_media_stream_handler_return_from_new_native_candidate (context);
-      return;
-    }
-  */
+  /* Old farsight1 s-e didn't set the component, make sure it's sane */
+  if (component_id == 0)
+      component_id = 1;
 
   g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 

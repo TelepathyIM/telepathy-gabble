@@ -98,6 +98,9 @@ def worker(jp, q, bus, conn, stream):
     # stream.send(gabbletest.make_result_iq(stream, e.stanza))
     stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
 
+    # S-E reports codec intersection, after which gabble can send acceptance
+    stream_handler.SupportedCodecs(jt2.get_audio_codecs_dbus())
+
     # Second one is session-accept
     e = q.expect('stream-iq')
     assert jp.match_jingle_action(e.query, 'session-accept')

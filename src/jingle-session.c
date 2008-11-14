@@ -545,8 +545,8 @@ fire_idle_content_reject (GabbleJingleSession *sess, const gchar *name,
 
 static GabbleJingleContent *
 create_content (GabbleJingleSession *sess, GType content_type,
-  JingleMediaType type, const gchar *content_ns, const gchar *name,
-  LmMessageNode *content_node, GError **error)
+  JingleMediaType type, const gchar *content_ns, const gchar *transport_ns,
+  const gchar *name, LmMessageNode *content_node, GError **error)
 {
   GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
   GabbleJingleContent *c;
@@ -556,13 +556,12 @@ create_content (GabbleJingleSession *sess, GType content_type,
                     "connection", priv->conn,
                     "session", sess,
                     "content-ns", content_ns,
+                    "transport-ns", transport_ns,
+                    "media-type", type,
                     "name", name,
+                    "disposition", "session",
+                    "senders", JINGLE_CONTENT_SENDERS_BOTH,
                     NULL);
-
-  if (type != JINGLE_MEDIA_TYPE_NONE)
-    {
-      g_object_set (c, "media-type", type, NULL);
-    }
 
   g_signal_connect (c, "ready",
       (GCallback) content_ready_cb, sess);
@@ -656,7 +655,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
     }
 
   create_content (sess, content_type, JINGLE_MEDIA_TYPE_NONE,
-      content_ns, NULL, content_node, error);
+      content_ns, NULL, NULL, content_node, error);
 }
 
 static void
@@ -1585,8 +1584,8 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
 
   g_assert (content_type != 0);
 
-  c = create_content (sess, content_type, JINGLE_MEDIA_TYPE_NONE,
-      content_ns, name, NULL, NULL);
+  c = create_content (sess, content_type, mtype,
+      content_ns, transport_ns, name, NULL, NULL);
 
   return c;
 }

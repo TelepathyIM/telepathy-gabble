@@ -101,6 +101,9 @@ def test(q, bus, conn, stream):
 
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 
+    # S-E sets supported codecs, gabble can accept
+    stream_handler.SupportedCodecs(jt.get_audio_codecs_dbus())
+
     # Second one is session-accept
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'

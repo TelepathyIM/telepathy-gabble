@@ -837,8 +837,10 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
       component = g_value_get_uint (g_value_array_get_nth (transport, 0));
 
       /* Accept component 0 because old farsight1 stream-engine didn't set the
-       * component
-       */
+       * component */
+      if (component == 0)
+          component = 1;
+
       if (component == 0 || component == 1)
         {
           break;
@@ -869,18 +871,21 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
     }
 
   component_id = g_value_get_uint (g_value_array_get_nth (transport, 0));
+  /* FIXME: we're not ignoring them if dialect is videochat, or if
+   * we're not using google-p2p 
   if (component_id != 1)
     {
       DEBUG ("%s: ignoring native candidate non-1 component", G_STRFUNC);
       tp_svc_media_stream_handler_return_from_new_native_candidate (context);
       return;
     }
+  */
 
   g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 
   DEBUG ("put 1 native candidate from stream-engine into cache");
 
-  c = jingle_candidate_new (
+  c = jingle_candidate_new (component_id,
       /* address */
       g_value_get_string (g_value_array_get_nth (transport, 1)),
       /* port */
@@ -1207,7 +1212,7 @@ new_remote_candidates_cb (GabbleJingleContent *content,
           dbus_g_type_specialized_construct (transport_struct_type));
 
       dbus_g_type_struct_set (&transport,
-          0, 1,         /* component number */
+          0, c->component,
           1, c->address,
           2, c->port,
           3, c->protocol == JINGLE_TRANSPORT_PROTOCOL_UDP ? 0 : 1,

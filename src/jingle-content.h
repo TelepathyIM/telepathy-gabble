@@ -44,6 +44,7 @@ typedef enum {
 
 struct _JingleCandidate {
   gchar *address;
+  int component;
   int port;
   int generation;
 

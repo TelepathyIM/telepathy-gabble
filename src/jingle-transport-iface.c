@@ -149,11 +149,12 @@ gabble_jingle_transport_iface_get_type (void)
 }
 
 JingleCandidate *
-jingle_candidate_new (const gchar *address, guint port,
+jingle_candidate_new (guint component, const gchar *address, guint port,
     JingleTransportProtocol proto, gdouble pref, JingleCandidateType type,
     const gchar *user, const gchar *pass, guint net, guint gen)
 {
   JingleCandidate *c = g_slice_new0 (JingleCandidate);
+  c->component = component;
   c->address = g_strdup (address);
   c->port = port;
   c->protocol = proto;

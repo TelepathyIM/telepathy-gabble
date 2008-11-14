@@ -241,12 +241,10 @@ parse_candidates (GabbleJingleTransportIface *obj,
   GList *candidates = NULL;
   LmMessageNode *node;
 
-  DEBUG ("called");
-
   for (node = transport_node->children; node; node = node->next)
     {
       const gchar *name, *address, *user, *pass, *str;
-      guint port, net, gen;
+      guint port, net, gen, component = 1;
       gdouble pref;
       JingleTransportProtocol proto;
       JingleCandidateType ctype;
@@ -345,11 +343,14 @@ parse_candidates (GabbleJingleTransportIface *obj,
       str = lm_message_node_get_attribute (node, "generation");
       if (str == NULL)
           break;
-
       gen = atoi (str);
 
-      c = jingle_candidate_new (address, port, proto, pref,
-          ctype, user, pass, net, gen);
+      str = lm_message_node_get_attribute (node, "component");
+      if (str != NULL)
+          component = atoi (str);
+
+      c = jingle_candidate_new (component, address, port, proto,
+          pref, ctype, user, pass, net, gen);
 
       candidates = g_list_append (candidates, c);
     }
@@ -415,11 +416,19 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
   for (li = candidates; li; li = li->next)
     {
       JingleCandidate *c = (JingleCandidate *) li->data;
-      gchar port_str[16], pref_str[16], *type_str, *proto_str;
+      gchar port_str[16], pref_str[16], comp_str[16], *type_str, *proto_str;
       LmMessageNode *cnode;
+
+      // FIXME
+      if (c->component == 2)
+        {
+          DEBUG ("ignoring RTCP component");
+          continue;
+        }
 
       sprintf (port_str, "%d", c->port);
       sprintf (pref_str, "%lf", c->preference);
+      sprintf (comp_str, "%d", c->component);
 
       switch (c->type) {
         case JINGLE_CANDIDATE_TYPE_LOCAL:
@@ -458,7 +467,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
           "preference", pref_str,
           "protocol", proto_str,
           "type", type_str,
-
+          "component", comp_str,
           "name", "rtp",
           "network", "0",
           "generation", "0",

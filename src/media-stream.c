@@ -169,6 +169,26 @@ gabble_media_stream_init (GabbleMediaStream *self)
       dbus_g_type_specialized_construct (candidate_list_type));
 }
 
+static gboolean
+_get_initial_codecs_and_candidates (gpointer user_data)
+{
+  GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (user_data);
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+
+  /* we can immediately get the codecs if we're responder */
+  new_remote_codecs_cb (priv->content,
+      gabble_jingle_media_rtp_get_remote_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content)),
+      stream);
+
+  /* if any candidates arrived before idle loop had the chance to excute
+   * us (e.g. specified in session-initiate/content-add), we don't want to
+   * miss them */
+  new_remote_candidates_cb (priv->content,
+      gabble_jingle_content_get_remote_candidates (priv->content), stream);
+
+  return FALSE;
+}
+
 static GObject *
 gabble_media_stream_constructor (GType type, guint n_props,
                                  GObjectConstructParam *props)
@@ -192,16 +212,11 @@ gabble_media_stream_constructor (GType type, guint n_props,
     {
       update_direction (stream, priv->content);
 
-      /* we can immediately get the codecs if we're responder */
-      new_remote_codecs_cb (priv->content,
-          gabble_jingle_media_rtp_get_remote_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content)),
-          stream);
-
-      /* if any candidates arrived before idle loop had the chance to excute
-       * us (e.g. specified in session-initiate/content-add), we don't want to
-       * miss them */
-      new_remote_candidates_cb (priv->content,
-          gabble_jingle_content_get_remote_candidates (priv->content), stream);
+      /* MediaStream is created as soon as GabbleJingleContent is
+       * created, but we want to let it parse the initiation (if
+       * initiated by remote end) before we pick up initial
+       * codecs and candidates. */
+      g_idle_add (_get_initial_codecs_and_candidates, stream);
     }
 
   return obj;

@@ -2213,17 +2213,18 @@ _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
    * require the other end to advertise the GTalk-P2P transport capability
    * separately because old GTalk clients didn't do that - having Google voice
    * implied Google session and GTalk-P2P */
-  if ((caps & GTALK_CAPS) == GTALK_CAPS)
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
 
-  if ((caps & JINGLE_CAPS) == JINGLE_CAPS)
-    {
-      if ((caps & JINGLE_AUDIO_CAPS) == JINGLE_AUDIO_CAPS)
+  /* TODO: we should use RTP_AUDIO and RTP_VIDEO instead of just RTP */
+
+  if ((caps & PRESENCE_CAP_GOOGLE_VOICE) ||
+      ((caps & PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO) &&
+       (caps & PRESENCE_CAP_GOOGLE_TRANSPORT_P2P)))
         typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
 
-      if ((caps & JINGLE_VIDEO_CAPS) == JINGLE_VIDEO_CAPS)
+  if ((caps & PRESENCE_CAP_JINGLE_RTP) ||
+      ((caps & PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO) &&
+       (caps & PRESENCE_CAP_GOOGLE_TRANSPORT_P2P)))
         typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
-    }
 
   return typeflags;
 }

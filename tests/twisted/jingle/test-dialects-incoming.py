@@ -60,7 +60,7 @@ def worker(jp, q, bus, conn, stream):
     stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
 
     # We are now in members too
-    e = q.expect('dbus-signal', signal='MembersChanged',
+    e = q.expect_racy('dbus-signal', signal='MembersChanged',
              args=[u'', [1L], [], [], [], 0, 0])
 
     # we are now both in members

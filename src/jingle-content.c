@@ -580,6 +580,7 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   const gchar *senders;
   LmMessageNode *trans_node, *desc_node;
   JingleDialect dialect;
+  JingleContentSenders newsenders;
 
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
@@ -601,19 +602,23 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   if (senders == NULL)
       senders = "both";
 
-  DEBUG ("changing senders from %s to %s", produce_senders (priv->senders), senders);
-  priv->senders = parse_senders (senders);
-  if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
+  newsenders = parse_senders (senders);
+  if (newsenders == JINGLE_CONTENT_SENDERS_NONE)
     {
       SET_BAD_REQ ("invalid content senders");
       return;
     }
 
+  if (newsenders != priv->senders)
+    {
+      DEBUG ("changing senders from %s to %s", produce_senders (priv->senders), senders);
+      priv->senders = newsenders;
+      g_object_notify ((GObject *) c, "senders");
+    }
+
   parse_description (c, desc_node, error);
   if (*error != NULL)
       return;
-
-  g_object_notify ((GObject *) c, "senders");
 
   priv->state = JINGLE_CONTENT_STATE_ACKNOWLEDGED;
   g_object_notify ((GObject *) c, "state");

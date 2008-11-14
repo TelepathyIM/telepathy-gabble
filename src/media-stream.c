@@ -1497,12 +1497,8 @@ gabble_media_stream_change_direction (GabbleMediaStream *stream,
 static void
 update_sending (GabbleMediaStream *stream, gboolean start_sending)
 {
-  GabbleMediaStreamPrivate *priv;
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
   gboolean new_sending;
-
-  g_assert (GABBLE_IS_MEDIA_STREAM (stream));
-
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   new_sending =
     ((stream->combined_direction & TP_MEDIA_STREAM_DIRECTION_SEND) != 0);

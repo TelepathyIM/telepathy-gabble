@@ -42,8 +42,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         private messages, or can send broadcast messages which are
         received by everyone in the tube (including themselves).
         Each participant has a D-Bus unique name; connection managers
-        must prevent participants from sending messages with the wrong
-        sender unique name, and should attempt to avoid participants
+        MUST prevent participants from sending messages with the wrong
+        sender unique name, and SHOULD attempt to avoid participants
         receiving messages not intended for them.</p>
 
       <p>In a 1-1 context (Handle_Type_Contact) the tube behaves like
@@ -84,7 +84,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       <arg direction="out" name="address" type="s">
         <tp:docstring>
           The string describing the address of the private bus. The client
-          should not attempt to connect to the address until the tube is open.
+          SHOULD not attempt to connect to the address until the tube is open.
         </tp:docstring>
       </arg>
       <tp:possible-errors>
@@ -167,7 +167,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
               tp:name-for-bindings="Service_Name">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>A string representing the service name that will be used over the
-          tube. It should be a well-known D-Bus service name, of the form
+          tube. It SHOULD be a well-known D-Bus service name, of the form
           com.example.ServiceName.</p>
         <p>When the tube is offered, the service name is transmitted to the
           other end.</p>

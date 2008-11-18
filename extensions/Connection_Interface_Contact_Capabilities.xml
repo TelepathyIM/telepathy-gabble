@@ -22,9 +22,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-      <p>An interface to get contact capabilities in order to know what channel
-        classes may be created with a contact before the request is made to the
-        connection object. Each capability represents a commitment by the
+      <p>Contact capabilities describe the channel classes which may be
+        created with a given conatact in advance of attempting to create a
+        channel. Each capability represents a commitment by the
         connection manager that it will ordinarily be able to create a channel
         with a contact when given a request with the properties defined by the
         channel class.</p>
@@ -35,9 +35,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
       <p>This interface also enables user interfaces to notify the connection
         manager what capabilities to advertise for the user to other contacts.
-        This is done by using the SetSelfCapabilities method, and deals with
-        channel properties values pertaining to them which are implemented by
-        available client processes.</p>
+        This is done by using the
+        <tp:member-ref>SetSelfCapabilities</tp:member-ref> method, and deals
+        with channel property values pertaining to them which are implemented
+        by available client processes.</p>
 
     </tp:docstring>
 
@@ -47,7 +48,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
            tp:type="String_Variant_Map[]">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of channel classes to replace to the list of what the
-          connection can handle
+          connection can handle. If you include optional properties, they
+          may not get advertised. The given properties are matched to the
+          mandatory properties.
         </tp:docstring>
       </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
@@ -60,9 +63,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         class are added.</p>
 
         <p>Upon a successful invocation of this method, the
-        ContactCapabilitiesChanged signal will be emitted for the user's own
-        handle (as returned by GetSelfHandle) by the connection manager to
-        indicate the changes that have been made.</p>
+        <tp:member-ref>ContactCapabilitiesChanged</tp:member-ref> signal
+        will only be emitted for the user's own
+        handle (as returned by GetSelfHandle) by the connection manager if, in
+        the given protocol, the given capabilities are distinct from the
+        previous state.</p>
+
+        <tp:rationale>
+          <p>The connection manager will essentially intersect the provided
+            capabilities and the channel classes it implements. Therefore,
+            certain properties which are never fixed for a channel class
+            (such as the target handle, or the Parameters property of a tube
+            channel) will almost certainly not be advertised.</p>
+        </tp:rationale>
+
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
@@ -85,7 +99,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
            Now there is a fix, so we don't use the workaround anymore.
         -->
       <arg direction="out" type="a{ua(a{sv}as)}"
-           tp:type="Contact_Handle_Enhanced_Contact_Capability_Map">
+           tp:type="Contact_Capabilities_Map">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of structures containing:
           <ul>
@@ -109,49 +123,27 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <signal name="ContactCapabilitiesChanged"
             tp:name-for-bindings="Contact_Capabilities_Changed">
-      <arg name="handle" type="u" tp:type="Contact_Handle">
+      <arg name="caps" type="a{ua(a{sv}as)}"
+           tp:type="Contact_Capabilities_Map">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          <p>A contact handle.</p>
-        </tp:docstring>
-      </arg>
-      <arg name="caps" type="a(a{sv}as)"
-           tp:type="Enhanced_Contact_Capability[]">
-        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          All the capabilities of the contact
+          All the capabilities of the contacts
         </tp:docstring>
       </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Announce that there has been a change of capabilities on the
-          given handle.</p>
+          given handles. A single signal can be emitted for several
+        contacts.</p>
+
+        <tp:rationale>
+          <p>The underlying protocol can get several contacts' capabilities at
+            the same time.</p>
+        </tp:rationale>
+        
       </tp:docstring>
     </signal>
 
-    <tp:struct name="Enhanced_Contact_Capability"
-               array-name="Enhanced_Contact_Capability_List">
-      <tp:docstring>
-        A struct representing a capability posessed by a contact,
-        as returned by GetContactCapabilities on the ContactCapabilities
-        interface. The channel creation will succeed if the request contains
-        all the Fixed_Properties will the values specified in this struct. The
-        request can contain additional properties from Allowed_Properties. If
-        the request contains a property which does not belong to
-        Fixed_Properties nor to Allowed_Properties, the request will fail.
-      </tp:docstring>
-      <tp:member type="a{sv}" tp:type="Channel_Class"
-                 name="Fixed_Properties">
-        <tp:docstring>
-          A dictionary mapping the channel properties to their values.
-        </tp:docstring>
-      </tp:member>
-      <tp:member type="as" name="Allowed_Properties">
-        <tp:docstring>
-          An array of additional allowed properties.
-        </tp:docstring>
-      </tp:member>
-    </tp:struct>
-
-  <tp:mapping name="Contact_Handle_Enhanced_Contact_Capability_Map"
-              array-name="Contact_Handle_Enhanced_Contact_Capability_Map_List">
+  <tp:mapping name="Contact_Capabilities_Map"
+              array-name="Contact_Capabilities_Map_List">
     <tp:docstring>A mapping from contact handle to their capabilities.
     </tp:docstring>
     <tp:member type="u" name="Key" tp:type="Contact_Handle">
@@ -160,7 +152,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </tp:member>
     <tp:member type="a(a{sv}as)" name="Value"
-               tp:type="Enhanced_Contact_Capability[]">
+               tp:type="Requestable_Channel_Class[]">
       <tp:docstring>
         The contact capabilities.
       </tp:docstring>

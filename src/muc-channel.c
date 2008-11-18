@@ -306,7 +306,10 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
   };
-  const gchar * const *supported_content_types = { NULL };
+  const gchar * supported_content_types[] = {
+      "text/plain",
+      NULL
+  };
 
   obj = G_OBJECT_CLASS (gabble_muc_channel_parent_class)->
            constructor (type, n_props, props);

@@ -2202,6 +2202,7 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
   TpChannelManagerIter iter;
   TpChannelManager *manager;
   GPtrArray *ret;
+  GHashTable *hash;
   gboolean diff = FALSE;
 
   tp_base_connection_channel_manager_iter_init (&iter, base_conn);
@@ -2234,9 +2235,13 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
   ret = g_ptr_array_new ();
 
   gabble_connection_get_handle_contact_capabilities (conn, handle, ret);
-  gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
-      conn, handle, ret);
 
+  hash = g_hash_table_new (NULL, NULL);
+  g_hash_table_insert (hash, GUINT_TO_POINTER (handle), ret);
+  gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
+      conn, hash);
+
+  g_hash_table_destroy (hash);
   gabble_free_enhanced_contact_capabilities (ret);
 }
 

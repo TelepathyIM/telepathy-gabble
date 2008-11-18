@@ -2522,7 +2522,9 @@ gabble_muc_channel_send (GObject *obj,
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  gabble_message_util_send_message (obj, priv->conn, message,
+  flags &= TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY;
+
+  gabble_message_util_send_message (obj, priv->conn, message, flags,
       LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE,
       priv->jid, FALSE /* send nick */);
 }

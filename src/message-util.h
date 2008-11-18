@@ -30,8 +30,9 @@
 G_BEGIN_DECLS
 
 void gabble_message_util_send_message (GObject *obj,
-    GabbleConnection *conn, TpMessage *message, LmMessageSubType subtype,
-    TpChannelChatState state, const char *recipient, gboolean send_nick);
+    GabbleConnection *conn, TpMessage *message, TpMessageSendingFlags flags,
+    LmMessageSubType subtype, TpChannelChatState state, const char *recipient,
+    gboolean send_nick);
 
 gboolean gabble_message_util_send_chat_state (GObject *obj,
     GabbleConnection *conn, LmMessageSubType subtype, TpChannelChatState state,

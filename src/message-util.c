@@ -75,6 +75,7 @@ _add_chat_state (LmMessage *msg,
  * @obj: a channel implementation featuring TpMessageMixin
  * @conn: the connection owning this channel
  * @message: the message to be sent
+ * @flags: the flags used if sending is successful
  * @subtype: the Loudmouth message subtype
  * @state: the Telepathy chat state, or -1 if unknown or not applicable
  * @recipient: the recipient's JID
@@ -84,6 +85,7 @@ void
 gabble_message_util_send_message (GObject *obj,
                                   GabbleConnection *conn,
                                   TpMessage *message,
+                                  TpMessageSendingFlags flags,
                                   LmMessageSubType subtype,
                                   TpChannelChatState state,
                                   const char *recipient,
@@ -174,13 +176,13 @@ gabble_message_util_send_message (GObject *obj,
   if (!result)
     goto despair_island;
 
-  tp_message_mixin_sent (obj, message, "", NULL);
+  tp_message_mixin_sent (obj, message, flags, "", NULL);
 
   return;
 
 despair_island:
   g_assert (error != NULL);
-  tp_message_mixin_sent (obj, message, NULL, error);
+  tp_message_mixin_sent (obj, message, 0, NULL, error);
   g_error_free (error);
 }
 

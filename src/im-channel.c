@@ -481,8 +481,11 @@ _gabble_im_channel_send_message (GObject *object,
       state = TP_CHANNEL_CHAT_STATE_ACTIVE;
     }
 
-  gabble_message_util_send_message (object, priv->conn, message, 0, state,
-      priv->peer_jid, priv->send_nick);
+  /* We don't support providing successful delivery reports. */
+  flags = 0;
+
+  gabble_message_util_send_message (object, priv->conn, message, flags, 0,
+      state, priv->peer_jid, priv->send_nick);
 
   if (priv->send_nick)
     priv->send_nick = FALSE;

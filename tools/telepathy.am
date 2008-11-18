@@ -7,7 +7,9 @@ dist-hook:
 		git log > ${distdir}/ChangeLog; \
 	fi
 
-maintainer-upload-release:
+maintainer-upload-release: _maintainer-upload-release
+
+_maintainer-upload-release-check:
 	@case @VERSION@ in \
 		(*.*.*.*) \
 			echo "@VERSION@ is not a release" >&2; \
@@ -17,6 +19,9 @@ maintainer-upload-release:
 	test -f @PACKAGE@-@VERSION@.tar.gz
 	test -f @PACKAGE@-@VERSION@.tar.gz.asc
 	gpg --verify @PACKAGE@-@VERSION@.tar.gz.asc
+
+_maintainer-upload-release: _maintainer-upload-release-check
 	rsync -vzP @PACKAGE@-@VERSION@.tar.gz telepathy.freedesktop.org:/srv/telepathy.freedesktop.org/www/releases/@PACKAGE@/@PACKAGE@-@VERSION@.tar.gz
+	rsync -vzP @PACKAGE@-@VERSION@.tar.gz.asc telepathy.freedesktop.org:/srv/telepathy.freedesktop.org/www/releases/@PACKAGE@/@PACKAGE@-@VERSION@.tar.gz.asc
 
 ## vim:set ft=automake:

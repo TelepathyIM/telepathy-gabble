@@ -304,11 +304,6 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 
   DEBUG ("%p, channel %p", self, chan);
 
-  g_object_get (chan,
-      "handle", &contact_handle,
-      "channel-destroyed", &really_destroyed,
-      NULL);
-
   tp_channel_manager_emit_channel_closed_for_object (self,
       (TpExportableChannel *) chan);
 
@@ -520,8 +515,6 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
                                 gboolean require_new)
 {
   TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->conn;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base_conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   GError *error = NULL;
   TpExportableChannel *channel;
@@ -534,11 +527,10 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
         TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
     return FALSE;
 
+  /* validity already checked by TpBaseConnection */
   handle = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
-
-  if (!tp_handle_is_valid (contact_repo, handle, &error))
-    goto error;
+  g_assert (handle != 0);
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
           im_channel_fixed_properties, im_channel_allowed_properties,

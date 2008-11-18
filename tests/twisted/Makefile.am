@@ -43,6 +43,7 @@ TWISTED_TESTS = \
 	tubes/test-muc-accept-stream-tube-ibb.py \
 	tubes/test-muc-offer-dbus-tube.py \
 	tubes/test-muc-offer-stream-tube-ibb.py \
+        tubes/test-si-accept-tubes.py \
 	tubes/test-si-tubes.py \
 	tubes/ensure-si-tube.py \
 	vcard/test-alias-empty-vcard.py \

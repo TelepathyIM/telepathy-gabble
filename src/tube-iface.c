@@ -68,11 +68,7 @@ gabble_tube_iface_base_init (gpointer klass)
           "GabbleConnection object",
           "Gabble connection object that owns this tube object.",
           GABBLE_TYPE_CONNECTION,
-          G_PARAM_CONSTRUCT_ONLY |
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_uint (
@@ -81,11 +77,7 @@ gabble_tube_iface_base_init (gpointer klass)
           "The TpHandle associated with the tubes channel that"
           "owns this tube object.",
           0, G_MAXUINT32, 0,
-          G_PARAM_CONSTRUCT_ONLY |
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_uint (
@@ -94,11 +86,7 @@ gabble_tube_iface_base_init (gpointer klass)
           "The TpHandleType of the handle associated with the tubes channel"
           "that owns this tube object.",
           0, G_MAXUINT32, 0,
-          G_PARAM_CONSTRUCT_ONLY |
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_uint (
@@ -107,11 +95,7 @@ gabble_tube_iface_base_init (gpointer klass)
           "The handle to use for ourself. This can be different from the "
           "connection's self handle if our handle is a room handle.",
           0, G_MAXUINT, 0,
-          G_PARAM_CONSTRUCT_ONLY |
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_uint (
@@ -119,11 +103,7 @@ gabble_tube_iface_base_init (gpointer klass)
           "id",
           "The unique identifier of this tube",
           0, G_MAXUINT32, 0,
-          G_PARAM_CONSTRUCT_ONLY |
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_uint (
@@ -131,10 +111,7 @@ gabble_tube_iface_base_init (gpointer klass)
           "Tube type",
           "The TpTubeType this tube object.",
           0, G_MAXUINT32, 0,
-          G_PARAM_READABLE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_string (
@@ -142,11 +119,7 @@ gabble_tube_iface_base_init (gpointer klass)
           "service name",
           "the service associated with this tube object.",
           "",
-          G_PARAM_CONSTRUCT_ONLY |
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_boxed (
@@ -154,10 +127,7 @@ gabble_tube_iface_base_init (gpointer klass)
           "parameters GHashTable",
           "GHashTable containing parameters of this tube object.",
           TP_HASH_TYPE_STRING_VARIANT_MAP,
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_uint (
@@ -165,10 +135,7 @@ gabble_tube_iface_base_init (gpointer klass)
           "Tube state",
           "The GabbleTubeState of this tube object",
           0, G_MAXUINT32, TP_TUBE_STATE_REMOTE_PENDING,
-          G_PARAM_READABLE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
+          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
       initialized = TRUE;

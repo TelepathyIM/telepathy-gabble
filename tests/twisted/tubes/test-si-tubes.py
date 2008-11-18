@@ -8,8 +8,9 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, tp_name_prefix, watch_tube_signals
-from gabbletest import exec_test, acknowledge_iq
+from servicetest import call_async, EventPattern, tp_name_prefix, \
+     watch_tube_signals, sync_dbus
+from gabbletest import exec_test, acknowledge_iq, sync_stream
 
 from twisted.words.xish import domish, xpath
 from twisted.internet.protocol import Factory, Protocol
@@ -184,10 +185,33 @@ def test(q, bus, conn, stream):
     roster = roster_event.stanza
     roster['type'] = 'result'
     item = roster_event.query.addElement('item')
-    item['jid'] = 'bob@localhost'
+    item['jid'] = 'bob@localhost' # Bob can do tubes
+    item['subscription'] = 'both'
+    item = roster_event.query.addElement('item')
+    item['jid'] = 'joe@localhost' # Joe cannot do tubes
     item['subscription'] = 'both'
     stream.send(roster)
 
+    # Send Joe presence is without tube caps
+    presence = domish.Element(('jabber:client', 'presence'))
+    presence['from'] = 'joe@localhost/Joe'
+    presence['to'] = 'test@localhost/Resource'
+    c = presence.addElement('c')
+    c['xmlns'] = 'http://jabber.org/protocol/caps'
+    c['node'] = 'http://example.com/IDontSupportTubes'
+    c['ver'] = '1.0'
+    stream.send(presence)
+
+    event = q.expect('stream-iq', iq_type='get',
+        query_ns='http://jabber.org/protocol/disco#info',
+        to='joe@localhost/Joe')
+    result = event.stanza
+    result['type'] = 'result'
+    assert event.query['node'] == \
+        'http://example.com/IDontSupportTubes#1.0'
+    stream.send(result)
+
+    # Send Bob presence and his tube caps
     presence = domish.Element(('jabber:client', 'presence'))
     presence['from'] = 'bob@localhost/Bob'
     presence['to'] = 'test@localhost/Resource'
@@ -208,6 +232,38 @@ def test(q, bus, conn, stream):
     feature['var'] = NS_TUBES
     stream.send(result)
 
+    # A tube request can be done only if the contact has tube capabilities
+    # Ensure that Joe and Bob's caps have been received
+    sync_stream(q, stream)
+
+    # new requestotron
+    requestotron = dbus.Interface(conn,
+            'org.freedesktop.Telepathy.Connection.Interface.Requests')
+
+    # Test tubes with Joe. Joe does not have tube capabilities.
+    # Gabble does not allow to offer a tube to him.
+    joe_handle = conn.RequestHandles(1, ['joe@localhost'])[0]
+    call_async(q, conn, 'RequestChannel',
+            tp_name_prefix + '.Channel.Type.Tubes', 1, joe_handle, True);
+
+    ret, old_sig, new_sig = q.expect_many(
+        EventPattern('dbus-return', method='RequestChannel'),
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
+        )
+    joe_chan_path = ret.value[0]
+
+    joe_tubes_chan = bus.get_object(conn.bus_name, joe_chan_path)
+    joe_tubes_iface = dbus.Interface(joe_tubes_chan,
+        tp_name_prefix + '.Channel.Type.Tubes')
+    path = os.getcwd() + '/stream'
+    call_async(q, joe_tubes_iface, 'OfferStreamTube',
+        'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
+    event = q.expect('dbus-error', method='OfferStreamTube')
+
+    joe_tubes_chan.Close()
+
+    # Test tubes with Bob. Bob does not have tube capabilities.
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
 
     # old requestotron
@@ -229,10 +285,6 @@ def test(q, bus, conn, stream):
     old_tubes_channel_properties = new_sig.args[0][0]
 
     check_conn_properties(q, bus, conn, stream, [old_tubes_channel_properties])
-
-    # new requestotron
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
 
     # Try to CreateChannel with unknown properties
     # Gabble must return an error
@@ -310,12 +362,12 @@ def test(q, bus, conn, stream):
             bob_handle, "bob@localhost")
 
     # Offer the tube, old API
-    path = os.getcwd() + '/stream'
     call_async(q, tubes_iface, 'OfferStreamTube',
         'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
 
     event = q.expect('stream-message')
     message = event.stanza
+    assert message['to'] == 'bob@localhost/Bob' # check the resource
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
         message)
     assert tube_nodes is not None
@@ -398,6 +450,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-message')
     message = event.stanza
+    assert message['to'] == 'bob@localhost/Bob' # check the resource
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
         message)
     assert tube_nodes is not None

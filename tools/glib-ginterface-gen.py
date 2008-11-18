@@ -588,10 +588,21 @@ class Generator(object):
         self.b('}')
         self.b('')
 
+        signal_name = dbus_gutils_wincaps_to_uscore(dbus_name).replace('_',
+                '-')
+        in_base_init.append('  /**')
+        in_base_init.append('   * %s%s::%s:'
+                % (self.Prefix, self.node_name_mixed, signal_name))
+        for (ctype, name, gtype) in args:
+            in_base_init.append('   * @%s: %s (FIXME, generate documentation)'
+                   % (name, ctype))
+        in_base_init.append('   *')
+        in_base_init.append('   * The %s D-Bus signal is emitted whenever '
+                'this GObject signal is.' % dbus_name)
+        in_base_init.append('   */')
         in_base_init.append('  %s_signals[%s] ='
                             % (self.node_name_lc, const_name))
-        in_base_init.append('  g_signal_new ("%s",'
-                % (dbus_gutils_wincaps_to_uscore(dbus_name).replace('_', '-')))
+        in_base_init.append('  g_signal_new ("%s",' % signal_name)
         in_base_init.append('      G_OBJECT_CLASS_TYPE (klass),')
         in_base_init.append('      G_SIGNAL_RUN_LAST|G_SIGNAL_DETAILED,')
         in_base_init.append('      0,')

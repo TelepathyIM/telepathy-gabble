@@ -1053,6 +1053,7 @@ gabble_tube_stream_get_property (GObject *object,
                 TP_IFACE_CHANNEL, "InitiatorHandle",
                 TP_IFACE_CHANNEL, "InitiatorID",
                 TP_IFACE_CHANNEL, "Requested",
+                TP_IFACE_CHANNEL, "Interfaces",
                 NULL));
         break;
       case PROP_REQUESTED:
@@ -1148,9 +1149,6 @@ gabble_tube_stream_set_property (GObject *object,
           }
         break;
       case PROP_ACCESS_CONTROL:
-        /* For now, only "localhost" control is implemented */
-        g_assert (g_value_get_uint (value) ==
-            TP_SOCKET_ACCESS_CONTROL_LOCALHOST);
         priv->access_control = g_value_get_uint (value);
         break;
       case PROP_ACCESS_CONTROL_PARAM:
@@ -1336,8 +1334,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "Supported socket types",
       "GHashTable containing supported socket types.",
       dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, DBUS_TYPE_G_UINT_ARRAY),
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_STRINGS);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SUPPORTED_SOCKET_TYPES,
       param_spec);
 
@@ -1348,10 +1345,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "address of the local service",
       0, NUM_TP_SOCKET_ADDRESS_TYPES - 1,
       TP_SOCKET_ADDRESS_TYPE_UNIX,
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ADDRESS_TYPE,
       param_spec);
 
@@ -1360,10 +1354,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "address",
       "The listening address of the local service, as indicated by the "
       "address-type",
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ADDRESS, param_spec);
 
   param_spec = g_param_spec_uint (
@@ -1373,10 +1364,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "the local service applies to the local socket",
       0, NUM_TP_SOCKET_ACCESS_CONTROLS - 1,
       TP_SOCKET_ACCESS_CONTROL_LOCALHOST,
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ACCESS_CONTROL,
       param_spec);
 
@@ -1385,10 +1373,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "access control param",
       "A parameter for the access control type, to be interpreted as specified"
       "in the documentation for the Socket_Access_Control enum.",
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ACCESS_CONTROL_PARAM,
       param_spec);
 
@@ -1401,31 +1386,27 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   param_spec = g_param_spec_string ("target-id", "Target JID",
       "The string obtained by inspecting the target handle",
       NULL,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
 
   param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
       "The contact who initiated the channel",
       0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
       param_spec);
 
   param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
       "The string obtained by inspecting the initiator-handle",
       NULL,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
 
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   signals[OPENED] =
@@ -1544,13 +1525,23 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
+  if (!gabble_tube_stream_check_params (priv->address_type, NULL,
+        priv->access_control, priv->access_control_param, error))
+    {
+      goto fail;
+    }
+
   if (priv->state != GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING)
-    return TRUE;
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Tube is not in the local pending state");
+      goto fail;
+    }
 
   if (!tube_stream_open (self, error))
     {
       gabble_tube_iface_close (GABBLE_TUBE_IFACE (self), TRUE);
-      return FALSE;
+      goto fail;
     }
 
   priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
@@ -1561,6 +1552,13 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
 
   return TRUE;
+
+fail:
+  priv->address_type = 0;
+  priv->access_control = 0;
+  tp_g_value_slice_free (priv->access_control_param);
+  priv->access_control_param = NULL;
+  return FALSE;
 }
 
 /**
@@ -1700,57 +1698,60 @@ check_unix_params (TpSocketAddressType address_type,
   g_assert (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX);
 
   /* Check address type */
-  if (G_VALUE_TYPE (address) != DBUS_TYPE_G_UCHAR_ARRAY)
+  if (address != NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Unix socket address is supposed to be ay");
-      return FALSE;
-    }
-
-  array = g_value_get_boxed (address);
-
-  if (array->len > sizeof (dummy.sun_path) - 1)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Unix socket path is too long (max length allowed: %"
-          G_GSIZE_FORMAT ")",
-          sizeof (dummy.sun_path) - 1);
-      return FALSE;
-    }
-
-  for (i = 0; i < array->len; i++)
-    {
-      if (g_array_index (array, gchar , i) == '\0')
+      if (G_VALUE_TYPE (address) != DBUS_TYPE_G_UCHAR_ARRAY)
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "Unix socket path can't contain zero bytes");
+              "Unix socket address is supposed to be ay");
           return FALSE;
         }
+
+      array = g_value_get_boxed (address);
+
+      if (array->len > sizeof (dummy.sun_path) - 1)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "Unix socket path is too long (max length allowed: %"
+              G_GSIZE_FORMAT ")",
+              sizeof (dummy.sun_path) - 1);
+          return FALSE;
+        }
+
+      for (i = 0; i < array->len; i++)
+        {
+          if (g_array_index (array, gchar , i) == '\0')
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "Unix socket path can't contain zero bytes");
+              return FALSE;
+            }
+        }
+
+      socket_address = g_string_new_len (array->data, array->len);
+
+      if (g_stat (socket_address->str, &stat_buff) == -1)
+      {
+        DEBUG ("Error calling stat on socket: %s", g_strerror (errno));
+
+        g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "%s: %s",
+            socket_address->str, g_strerror (errno));
+        g_string_free (socket_address, TRUE);
+        return FALSE;
+      }
+
+      if (!S_ISSOCK (stat_buff.st_mode))
+      {
+        DEBUG ("%s is not a socket", socket_address->str);
+
+        g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+            "%s is not a socket", socket_address->str);
+        g_string_free (socket_address, TRUE);
+        return FALSE;
+      }
+
+      g_string_free (socket_address, TRUE);
     }
-
-  socket_address = g_string_new_len (array->data, array->len);
-
-  if (g_stat (socket_address->str, &stat_buff) == -1)
-  {
-    DEBUG ("Error calling stat on socket: %s", g_strerror (errno));
-
-    g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "%s: %s",
-        socket_address->str, g_strerror (errno));
-    g_string_free (socket_address, TRUE);
-    return FALSE;
-  }
-
-  if (!S_ISSOCK (stat_buff.st_mode))
-  {
-    DEBUG ("%s is not a socket", socket_address->str);
-
-    g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-        "%s is not a socket", socket_address->str);
-    g_string_free (socket_address, TRUE);
-    return FALSE;
-  }
-
-  g_string_free (socket_address, TRUE);
 
   if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
   {
@@ -1770,61 +1771,64 @@ check_ip_params (TpSocketAddressType address_type,
                  const GValue *access_control_param,
                  GError **error)
 {
-  gchar *ip;
-  guint port;
-  struct addrinfo req, *result = NULL;
-  int ret;
-
   /* Check address type */
-  if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+  if (address != NULL)
     {
-      if (G_VALUE_TYPE (address) != TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV4)
+      gchar *ip;
+      guint port;
+      struct addrinfo req, *result = NULL;
+      int ret;
+
+      if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+        {
+          if (G_VALUE_TYPE (address) != TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV4)
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "IPv4 socket address is supposed to be sq");
+              return FALSE;
+            }
+        }
+      else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
+        {
+          if (G_VALUE_TYPE (address) != TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV6)
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "IPv6 socket address is supposed to be sq");
+              return FALSE;
+            }
+        }
+      else
+        {
+          g_return_val_if_reached (FALSE);
+        }
+
+      dbus_g_type_struct_get (address,
+          0, &ip,
+          1, &port,
+          G_MAXUINT);
+
+      memset (&req, 0, sizeof (req));
+      req.ai_flags = AI_NUMERICHOST;
+      req.ai_socktype = SOCK_STREAM;
+      req.ai_protocol = IPPROTO_TCP;
+
+      if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+        req.ai_family = AF_INET;
+      else
+        req.ai_family = AF_INET6;
+
+      ret = getaddrinfo (ip, NULL, &req, &result);
+      if (ret != 0)
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "IPv4 socket address is supposed to be sq");
+              "Invalid address: %s", gai_strerror (ret));
+          g_free (ip);
           return FALSE;
         }
-    }
-  else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
-    {
-      if (G_VALUE_TYPE (address) != TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV6)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "IPv6 socket address is supposed to be sq");
-          return FALSE;
-        }
-    }
-  else
-    {
-      g_return_val_if_reached (FALSE);
-    }
 
-  dbus_g_type_struct_get (address,
-      0, &ip,
-      1, &port,
-      G_MAXUINT);
-
-  memset (&req, 0, sizeof (req));
-  req.ai_flags = AI_NUMERICHOST;
-  req.ai_socktype = SOCK_STREAM;
-  req.ai_protocol = IPPROTO_TCP;
-
-  if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
-    req.ai_family = AF_INET;
-  else
-    req.ai_family = AF_INET6;
-
-  ret = getaddrinfo (ip, NULL, &req, &result);
-  if (ret != 0)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Invalid address: %s", gai_strerror (ret));
       g_free (ip);
-      return FALSE;
+      freeaddrinfo (result);
     }
-
-  g_free (ip);
-  freeaddrinfo (result);
 
   if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
@@ -1837,6 +1841,10 @@ check_ip_params (TpSocketAddressType address_type,
   return TRUE;
 }
 
+/* used to check access control parameters both for OfferStreamTube and
+ * AcceptStreamTube. In case of AcceptStreamTube, address is NULL because we
+ * listen on the socket after the parameters have been accepted
+ */
 gboolean
 gabble_tube_stream_check_params (TpSocketAddressType address_type,
                                  const GValue *address,
@@ -1876,6 +1884,9 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
   gboolean result;
+  GabblePresence *presence;
+  const gchar *resource;
+  gchar *full_jid;
 
   g_assert (priv->state == GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED);
 
@@ -1884,7 +1895,33 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
 
   jid = tp_handle_inspect (contact_repo, priv->handle);
 
-  msg = lm_message_build (jid, LM_MESSAGE_TYPE_MESSAGE,
+  presence = gabble_presence_cache_get (priv->conn->presence_cache,
+      priv->handle);
+  if (presence == NULL)
+    {
+      DEBUG ("can't find tube recipient's presence");
+      if (error != NULL)
+        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "can't find tube recipient's presence");
+
+      return FALSE;
+    }
+
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      PRESENCE_CAP_SI_TUBES);
+  if (resource == NULL)
+    {
+      DEBUG ("tube recipient doesn't have tubes capabilities");
+      if (error != NULL)
+        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "tube recipient doesn't have tubes capabilities");
+
+      return FALSE;
+    }
+
+  full_jid = g_strdup_printf ("%s/%s", jid, resource);
+
+  msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_MESSAGE,
       '(', "tube", "",
         '*', &tube_node,
         '@', "xmlns", NS_TUBES,
@@ -1903,6 +1940,7 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
         ')',
       ')',
       NULL);
+  g_free (full_jid);
 
   g_assert (tube_node != NULL);
 
@@ -2070,38 +2108,12 @@ gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GError *error = NULL;
 
-  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX)
-    {
-      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "Address type %d not implemented", address_type);
-
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
-    {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Only the Localhost access control method is implemented"
-            " by Gabble" };
-
-      dbus_g_method_return_error (context, &e);
-      return;
-    }
-
+  /* parameters sanity checks are done in gabble_tube_stream_accept */
+  priv->address_type = address_type;
   priv->access_control = access_control;
-  g_assert (priv->access_control_param == NULL);
+  if (priv->access_control_param != NULL)
+    tp_g_value_slice_free (priv->access_control_param);
   priv->access_control_param = tp_g_value_slice_dup (access_control_param);
-
-  if (priv->state != GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING)
-    {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Tube is not in the local pending state" };
-
-      dbus_g_method_return_error (context, &e);
-      return;
-    }
 
   if (!gabble_tube_stream_accept (GABBLE_TUBE_IFACE (self), &error))
     {

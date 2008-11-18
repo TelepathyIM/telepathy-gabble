@@ -2581,7 +2581,7 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
       if (array->len > 0)
         {
           GValue *val =  tp_g_value_slice_new (
-            GABBLE_ARRAY_TYPE_ENHANCED_CONTACT_CAPABILITY_LIST);
+            TP_ARRAY_TYPE_REQUESTABLE_CHANNEL_CLASS_LIST);
 
           g_value_take_boxed (val, array);
           tp_contacts_mixin_set_contact_attribute (attributes_hash,

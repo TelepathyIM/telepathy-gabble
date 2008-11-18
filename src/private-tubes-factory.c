@@ -411,10 +411,10 @@ add_service_to_array (gchar *service,
 
   g_assert (type == TP_TUBE_TYPE_STREAM || type == TP_TUBE_TYPE_DBUS);
 
-  g_value_init (&monster, GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY);
+  g_value_init (&monster, TP_STRUCT_TYPE_REQUESTABLE_CHANNEL_CLASS);
   g_value_take_boxed (&monster,
       dbus_g_type_specialized_construct (
-        GABBLE_STRUCT_TYPE_ENHANCED_CONTACT_CAPABILITY));
+        TP_STRUCT_TYPE_REQUESTABLE_CHANNEL_CLASS));
 
   fixed_properties = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
       (GDestroyNotify) tp_g_value_slice_free);

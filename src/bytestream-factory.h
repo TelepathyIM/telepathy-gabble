@@ -28,6 +28,7 @@
 #include "bytestream-iface.h"
 #include "bytestream-ibb.h"
 #include "bytestream-muc.h"
+#include "bytestream-multiple.h"
 #include "bytestream-socks5.h"
 #include "connection.h"
 
@@ -85,6 +86,11 @@ GabbleBytestreamSocks5 *gabble_bytestream_factory_create_socks5 (
     GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
     const gchar *stream_init_id, const gchar *peer_resource,
     GabbleBytestreamState state);
+
+GabbleBytestreamMultiple *gabble_bytestream_factory_create_multiple (
+    GabbleBytestreamFactory *self, TpHandle peer_handle,
+    const gchar *stream_id, const gchar *stream_init_id,
+    const gchar *peer_resource, GabbleBytestreamState state);
 
 LmMessage *gabble_bytestream_factory_make_stream_init_iq (
     const gchar *full_jid, const gchar *stream_id, const gchar *profile);

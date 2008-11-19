@@ -28,6 +28,8 @@ libgabble_convenience_la_SOURCES = \
     bytestream-iface.c \
     bytestream-muc.h \
     bytestream-muc.c \
+    bytestream-multiple.h \
+    bytestream-multiple.c \
     bytestream-socks5.h \
     bytestream-socks5.c \
     capabilities.h \

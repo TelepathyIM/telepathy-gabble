@@ -52,6 +52,7 @@ enum
 {
   DATA_RECEIVED,
   STATE_CHANGED,
+  CONNECTION_ERROR,
   LAST_SIGNAL
 };
 
@@ -69,6 +70,7 @@ enum
   PROP_PEER_RESOURCE,
   PROP_STATE,
   PROP_PROTOCOL,
+  PROP_CLOSE_ON_CONNECTION_ERROR,
   PROP_BLOCK_SIZE,
   LAST_PROPERTY
 };
@@ -82,6 +84,7 @@ struct _GabbleBytestreamIBBPrivate
   gchar *peer_resource;
   GabbleBytestreamState state;
   gchar *peer_jid;
+  gboolean close_on_connection_error;
   guint block_size;
 
   guint16 seq;
@@ -98,6 +101,8 @@ gabble_bytestream_ibb_init (GabbleBytestreamIBB *self)
       GABBLE_TYPE_BYTESTREAM_IBB, GabbleBytestreamIBBPrivate);
 
   self->priv = priv;
+
+  priv->close_on_connection_error = TRUE;
 }
 
 static void
@@ -175,6 +180,9 @@ gabble_bytestream_ibb_get_property (GObject *object,
       case PROP_PROTOCOL:
         g_value_set_string (value, NS_IBB);
         break;
+      case PROP_CLOSE_ON_CONNECTION_ERROR:
+        g_value_set_boolean (value, priv->close_on_connection_error);
+        break;
       case PROP_BLOCK_SIZE:
         g_value_set_uint (value, priv->block_size);
         break;
@@ -219,6 +227,9 @@ gabble_bytestream_ibb_set_property (GObject *object,
               priv->state = g_value_get_uint (value);
               g_signal_emit (object, signals[STATE_CHANGED], 0, priv->state);
             }
+        break;
+      case PROP_CLOSE_ON_CONNECTION_ERROR:
+        priv->close_on_connection_error = g_value_get_boolean (value);
         break;
       case PROP_BLOCK_SIZE:
         priv->block_size = g_value_get_uint (value);
@@ -294,6 +305,9 @@ gabble_bytestream_ibb_class_init (
        "state");
    g_object_class_override_property (object_class, PROP_PROTOCOL,
        "protocol");
+   g_object_class_override_property (object_class,
+       PROP_CLOSE_ON_CONNECTION_ERROR, "close-on-connection-error");
+
 
   param_spec = g_param_spec_string (
       "peer-resource",
@@ -339,6 +353,15 @@ gabble_bytestream_ibb_class_init (
                   NULL, NULL,
                   gabble_marshal_VOID__UINT,
                   G_TYPE_NONE, 1, G_TYPE_UINT);
+
+  signals[CONNECTION_ERROR] =
+    g_signal_new ("connection-error",
+                  G_OBJECT_CLASS_TYPE (gabble_bytestream_ibb_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
 }
 
 /*

@@ -537,8 +537,6 @@ socks5_error (GabbleBytestreamSocks5 *self)
           DEBUG ("connection to streamhost failed, trying the next one");
 
           socks5_connect (self);
-
-          g_object_unref (self);
           return;
         }
 

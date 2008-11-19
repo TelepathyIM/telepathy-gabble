@@ -21,7 +21,7 @@ def test(q, bus, conn, stream):
         query_ns='http://jabber.org/protocol/pubsub')
 
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
-    call_async(q, conn.Location, 'RequestLocations', [handle])
+    call_async(q, conn.Location, 'GetLocations', [handle])
 
     event = q.expect('stream-iq', iq_type='get',
         query_ns='http://jabber.org/protocol/pubsub')
@@ -33,7 +33,7 @@ def test(q, bus, conn, stream):
     geoloc.addElement('lon', content='5.678')
     stream.send(result)
 
-    q.expect('dbus-return', method='RequestLocations')
+    q.expect('dbus-return', method='GetLocations')
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

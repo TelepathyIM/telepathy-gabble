@@ -137,7 +137,8 @@ FAIL:
 END:
   if (ctx->pending_replies == 0)
     {
-      gabble_svc_location_return_from_request_locations (ctx->call, ctx->results);
+      gabble_svc_connection_interface_location_return_from_get_locations
+        (ctx->call, ctx->results);
       g_hash_table_destroy (ctx->results);
       g_slice_free (struct request_location_ctx, ctx);
     }
@@ -146,7 +147,7 @@ END:
 }
 
 static void
-location_request_locations (GabbleSvcLocation *iface,
+location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
                         const GArray *contacts,
                         DBusGMethodInvocation *context)
 {
@@ -182,7 +183,7 @@ location_request_locations (GabbleSvcLocation *iface,
 }
 
 static void
-location_set_location (GabbleSvcLocation *iface,
+location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
                        GHashTable *location,
                        DBusGMethodInvocation *context)
 {
@@ -227,10 +228,11 @@ location_set_location (GabbleSvcLocation *iface,
 void
 location_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcLocationClass *klass = g_iface;
+  GabbleSvcConnectionInterfaceLocationClass *klass = g_iface;
 
-#define IMPLEMENT(x) gabble_svc_location_implement_##x (klass, location_##x)
-  IMPLEMENT(request_locations);
+#define IMPLEMENT(x) gabble_svc_connection_interface_location_implement_##x \
+  (klass, location_##x)
+  IMPLEMENT(get_locations);
   IMPLEMENT(set_location);
 #undef IMPLEMENT
 }

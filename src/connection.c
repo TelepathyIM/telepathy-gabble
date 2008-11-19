@@ -102,7 +102,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       tp_presence_mixin_simple_presence_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       conn_presence_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_LOCATION,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_LOCATION,
       location_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY_INFO,
       olpc_buddy_info_iface_init);
@@ -2031,7 +2031,8 @@ connection_disco_cb (GabbleDisco *disco,
   if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
     {
       const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
-          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES, GABBLE_IFACE_LOCATION, NULL };
+          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
+          GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }

@@ -1,14 +1,25 @@
 from gabbletest import exec_test, make_result_iq
 from servicetest import call_async
 
+location_iface = \
+    'org.freedesktop.Telepathy.Connection.Interface.Location.DRAFT'
+
 def test(q, bus, conn, stream):
     # hack
     import dbus
     conn.interfaces['Location'] = \
-        dbus.Interface(conn, 'org.freedesktop.Telepathy.Connection.Interface.Location.DRAFT')
+        dbus.Interface(conn, location_iface)
 
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+
+    # check location properties
+    properties = conn.GetAll(
+            location_iface,
+            dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert properties.get('LocationAccessControlTypes') is not None
+    assert properties.get('LocationAccessControl') is not None
 
     # discard activities request
     q.expect('stream-iq', iq_type='set',

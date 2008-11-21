@@ -198,7 +198,8 @@ static void
 gabble_bytestream_socks5_dispose (GObject *object)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (object);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
@@ -221,7 +222,8 @@ static void
 gabble_bytestream_socks5_finalize (GObject *object)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (object);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   g_free (priv->stream_id);
   g_free (priv->stream_init_id);
@@ -241,7 +243,8 @@ gabble_bytestream_socks5_get_property (GObject *object,
                                        GParamSpec *pspec)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (object);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   switch (property_id)
     {
@@ -285,7 +288,8 @@ gabble_bytestream_socks5_set_property (GObject *object,
                                        GParamSpec *pspec)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (object);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   switch (property_id)
     {
@@ -311,7 +315,8 @@ gabble_bytestream_socks5_set_property (GObject *object,
         if (priv->bytestream_state != g_value_get_uint (value))
             {
               priv->bytestream_state = g_value_get_uint (value);
-              g_signal_emit (object, signals[STATE_CHANGED], 0, priv->bytestream_state);
+              g_signal_emit (object, signals[STATE_CHANGED], 0,
+                  priv->bytestream_state);
             }
         break;
       default:
@@ -333,7 +338,8 @@ gabble_bytestream_socks5_constructor (GType type,
   obj = G_OBJECT_CLASS (gabble_bytestream_socks5_parent_class)->
            constructor (type, n_props, props);
 
-  priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (GABBLE_BYTESTREAM_SOCKS5 (obj));
+  priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (GABBLE_BYTESTREAM_SOCKS5 (obj));
 
   g_assert (priv->conn != NULL);
   g_assert (priv->peer_handle != 0);
@@ -358,7 +364,8 @@ static void
 gabble_bytestream_socks5_class_init (
     GabbleBytestreamSocks5Class *gabble_bytestream_socks5_class)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS (gabble_bytestream_socks5_class);
+  GObjectClass *object_class =
+      G_OBJECT_CLASS (gabble_bytestream_socks5_class);
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_bytestream_socks5_class,
@@ -427,7 +434,8 @@ static void
 socks5_setup_channel (GabbleBytestreamSocks5 *self,
                       gint fd)
 {
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gint socket_flags;
 
   socket_flags = fcntl (fd, F_GETFL, 0);
@@ -454,7 +462,8 @@ socks5_setup_channel (GabbleBytestreamSocks5 *self,
 static void
 socks5_close_channel (GabbleBytestreamSocks5 *self)
 {
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   if (priv->io_channel == NULL)
     return;
@@ -496,7 +505,8 @@ socks5_close_channel (GabbleBytestreamSocks5 *self)
 static void
 socks5_error (GabbleBytestreamSocks5 *self)
 {
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   priv->socks5_state = SOCKS5_STATE_ERROR;
 
@@ -507,7 +517,8 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       g_assert (priv->streamhosts);
       streamhost_free (priv->streamhosts->data);
-      priv->streamhosts = g_slist_delete_link (priv->streamhosts, priv->streamhosts);
+      priv->streamhosts = g_slist_delete_link (priv->streamhosts,
+          priv->streamhosts);
 
       if (priv->streamhosts != NULL)
         {
@@ -541,7 +552,8 @@ socks5_channel_writable_cb (GIOChannel *source,
                             gpointer data) 
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gsize remaining_length = priv->write_buffer->len - priv->write_position;
   GIOStatus status;
   gsize bytes_written;
@@ -579,7 +591,8 @@ socks5_schedule_write (GabbleBytestreamSocks5 *self,
                        const gchar *msg,
                        gsize len)
 {
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   g_string_append_len (priv->write_buffer, msg, len);
 
@@ -592,7 +605,8 @@ static gsize
 socks5_handle_received_data (GabbleBytestreamSocks5 *self,
                              GString *string)
 {
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gchar msg[47] = {'\0'};
   guint authentication_methods;
   guint i;
@@ -660,7 +674,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
 
-        iq_result = lm_iq_message_make_result (priv->msg_for_acknowledge_connection);
+        iq_result = lm_iq_message_make_result (
+            priv->msg_for_acknowledge_connection);
         if (NULL != iq_result)
           {
             LmMessageNode *node;
@@ -671,7 +686,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
             node = lm_message_node_add_child (node, "streamhost-used", "");
             current_streamhost = priv->streamhosts->data;
-            lm_message_node_set_attribute (node, "jid", current_streamhost->jid);
+            lm_message_node_set_attribute (node, "jid",
+                current_streamhost->jid);
 
             _gabble_connection_send (priv->conn, iq_result, NULL);
             lm_message_unref (iq_result);
@@ -743,7 +759,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         return 47;
 
       case SOCKS5_STATE_CONNECTED:
-        g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0, priv->peer_handle, string);
+        g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0,
+            priv->peer_handle, string);
 
         return string->len;
 
@@ -766,7 +783,8 @@ socks5_channel_readable_cb (GIOChannel *source,
                             gpointer data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gsize available_length =
     priv->read_buffer->allocated_len - priv->read_buffer->len - 1;
   GIOStatus status;
@@ -776,7 +794,8 @@ socks5_channel_readable_cb (GIOChannel *source,
   if (available_length == 0)
     {
       g_string_set_size (priv->read_buffer, priv->read_buffer->len * 2);
-      available_length = priv->read_buffer->allocated_len - priv->read_buffer->len - 1;
+      available_length = priv->read_buffer->allocated_len -
+          priv->read_buffer->len - 1;
     }
 
   status = g_io_channel_read_chars (source,
@@ -809,7 +828,8 @@ static gboolean
 socks5_connect (gpointer data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   Streamhost* streamhost;
   struct addrinfo req = {0};
   struct addrinfo *address_list;
@@ -873,7 +893,8 @@ socks5_connect (gpointer data)
 
   socks5_setup_channel (self, fd);
 
-  res = connect (fd, (struct sockaddr*)streamhost_address->ai_addr, streamhost_address->ai_addrlen);
+  res = connect (fd, (struct sockaddr*)streamhost_address->ai_addr,
+      streamhost_address->ai_addrlen);
 
   freeaddrinfo (address_list);
 
@@ -907,7 +928,8 @@ void
 gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
                                          LmMessageNode *streamhost_node)
 {
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   const gchar *zeroconf;
   const gchar *jid;
   const gchar *host;
@@ -969,7 +991,8 @@ gabble_bytestream_socks5_connect_to_streamhost (GabbleBytestreamSocks5 *self,
                                                 LmMessage *msg)
 
 {
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   priv->msg_for_acknowledge_connection = lm_message_ref (msg);
 
@@ -987,7 +1010,8 @@ gabble_bytestream_socks5_send (GabbleBytestreamIface *iface,
                                const gchar *str)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_OPEN)
     {
@@ -1012,7 +1036,8 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
                                  gpointer user_data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   LmMessage *msg;
   LmMessageNode *si;
 
@@ -1047,10 +1072,12 @@ static void
 gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
                                GError *error)
 {
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   LmMessage *msg;
 
-  g_return_if_fail (priv->bytestream_state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
+  g_return_if_fail (priv->bytestream_state ==
+      GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "error",
@@ -1084,7 +1111,8 @@ gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
                                 GError *error)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   if (priv->bytestream_state == GABBLE_BYTESTREAM_STATE_CLOSED)
      /* bytestream already closed, do nothing */
@@ -1151,7 +1179,8 @@ socks5_listen_cb (GIOChannel *source,
                   gpointer data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gint fd;
   struct sockaddr_in addr;
   guint addr_len = sizeof (addr);
@@ -1319,7 +1348,8 @@ static gboolean
 gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   struct sockaddr_in addr;
   guint addr_len;
   gint fd;

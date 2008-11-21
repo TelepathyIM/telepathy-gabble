@@ -40,6 +40,7 @@ TWISTED_TESTS = \
 	tubes/test-muc-accept-stream-tube-ibb.py \
 	tubes/test-muc-offer-dbus-tube.py \
 	tubes/test-muc-offer-stream-tube-ibb.py \
+        tubes/test-si-accept-tubes.py \
 	tubes/test-si-fallback.py \
 	tubes/test-si-ibb-tubes.py \
 	tubes/test-si-socks5-tubes.py \

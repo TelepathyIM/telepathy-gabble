@@ -148,8 +148,8 @@ bytestream_factory_iq_ibb_cb (LmMessageHandler *handler, LmConnection *lmconn,
     LmMessage *message, gpointer user_data);
 
 static LmHandlerResult
-bytestream_factory_iq_socks5_cb (LmMessageHandler *handler, LmConnection *lmconn,
-    LmMessage *message, gpointer user_data);
+bytestream_factory_iq_socks5_cb (LmMessageHandler *handler,
+    LmConnection *lmconn, LmMessage *message, gpointer user_data);
 
 static void
 gabble_bytestream_factory_init (GabbleBytestreamFactory *self)

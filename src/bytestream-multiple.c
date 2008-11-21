@@ -84,6 +84,7 @@ struct _GabbleBytestreamMultiplePrivate
   gboolean close_on_connection_error;
 
   GList *bytestreams;
+  GabbleBytestreamIface *active;
 
   gboolean dispose_has_run;
 };
@@ -359,7 +360,6 @@ gabble_bytestream_multiple_send (GabbleBytestreamIface *iface,
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (iface);
   GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
-  GabbleBytestreamIface *bytestream;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
     {
@@ -368,11 +368,9 @@ gabble_bytestream_multiple_send (GabbleBytestreamIface *iface,
       return FALSE;
     }
 
-  g_assert (priv->bytestreams);
-  g_assert (priv->bytestreams->data);
+  g_assert(priv->active);
 
-  bytestream = priv->bytestreams->data;
-  return gabble_bytestream_iface_send (bytestream, len, str);
+  return gabble_bytestream_iface_send (priv->active, len, str);
 }
 
 /*
@@ -488,7 +486,6 @@ gabble_bytestream_multiple_initiate (GabbleBytestreamIface *iface)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (iface);
   GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
-  GabbleBytestreamIface *bytestream;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -498,12 +495,17 @@ gabble_bytestream_multiple_initiate (GabbleBytestreamIface *iface)
     }
 
   if (priv->bytestreams == NULL)
-    return FALSE;
+    {
+      DEBUG ("no bytestreams to initiate");
+      return FALSE;
+    }
+
+  g_assert (priv->active == NULL);
 
   /* Initiate the first available bytestream */
-  bytestream = priv->bytestreams->data;
+  priv->active = priv->bytestreams->data;
 
-  return gabble_bytestream_iface_initiate (bytestream);
+  return gabble_bytestream_iface_initiate (priv->active);
 }
 
 static void
@@ -512,9 +514,11 @@ bytestream_connection_error_cb (GabbleBytestreamIface *failed,
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (user_data);
   GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
-  GabbleBytestreamIface *fallback;
+
+  g_assert (failed == priv->active);
 
   priv->bytestreams = g_list_remove (priv->bytestreams, failed);
+  priv->active = NULL;
 
   if (!priv->bytestreams)
     return;
@@ -525,12 +529,11 @@ bytestream_connection_error_cb (GabbleBytestreamIface *failed,
 
   g_object_unref (failed);
 
-  fallback = priv->bytestreams->data;
-
   DEBUG ("Trying alternative streaming method");
 
-  g_object_set (fallback, "state", GABBLE_BYTESTREAM_STATE_INITIATING, NULL);
-  gabble_bytestream_iface_initiate (fallback);
+  priv->active = priv->bytestreams->data;
+  g_object_set (priv->active, "state", GABBLE_BYTESTREAM_STATE_INITIATING, NULL);
+  gabble_bytestream_iface_initiate (priv->active);
 }
 
 static void
@@ -557,6 +560,20 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
       g_list_length (priv->bytestreams) <= 1)
     {
       return;
+    }
+  else if (state == GABBLE_BYTESTREAM_STATE_OPEN)
+    {
+      if (priv->active != NULL && priv->active != bytestream)
+        {
+          /* The old active bytestream is now useless as another one was
+           * open */
+          g_object_set (priv->active, "close-on-connection-error", FALSE, NULL);
+          gabble_bytestream_iface_close (priv->active, NULL);
+          priv->bytestreams = g_list_remove (priv->bytestreams, priv->active);
+          g_object_unref (priv->active);
+        }
+
+      priv->active = bytestream;
     }
 
   g_object_set (self, "state", state, NULL);

@@ -326,7 +326,5 @@ def test(q, bus, conn, stream):
 
     q.expect('stream-iq', iq_type='result')
 
-    return
-
 if __name__ == '__main__':
     exec_test(test)

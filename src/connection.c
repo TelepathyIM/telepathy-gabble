@@ -536,11 +536,21 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { "GadgetAvailable", NULL, NULL },
         { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl location_props[] = {
+        { "LocationAccessControlTypes", NULL, NULL },
+        { "LocationAccessControl", NULL, NULL },
+        { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
         { GABBLE_IFACE_OLPC_GADGET,
           conn_olpc_gadget_properties_getter,
           NULL,
           olpc_gadget_props,
+        },
+        { GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION,
+          conn_location_propeties_getter,
+          NULL,
+          location_props,
         },
         { NULL }
   };

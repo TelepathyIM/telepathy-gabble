@@ -4,6 +4,10 @@
 
 #include <stdlib.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_LOCATION
+
+#include "debug.h"
+#include "extensions/extensions.h"
 #include "namespaces.h"
 #include "pubsub.h"
 
@@ -235,5 +239,48 @@ location_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(get_locations);
   IMPLEMENT(set_location);
 #undef IMPLEMENT
+}
+
+void
+conn_location_propeties_getter (GObject *object,
+                                GQuark interface,
+                                GQuark name,
+                                GValue *value,
+                                gpointer getter_data)
+{
+  /* GabbleConnection *conn = GABBLE_CONNECTION (object); */
+  GabbleRichPresenceAccessControlType access_control_type =
+    GABBLE_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST;
+
+  if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControlTypes"))
+    {
+      GArray *access_control = g_array_sized_new (FALSE, FALSE,
+          sizeof (GabbleRichPresenceAccessControlType), 1);
+      g_array_append_val (access_control, access_control_type);
+      g_value_take_boxed (value, access_control);
+    }
+  else if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControl"))
+    {
+      GValueArray *access_control = g_value_array_new (2);
+      GValue variant = {0,};
+
+      DEBUG ("%s", g_type_name (G_VALUE_TYPE (value)));
+
+      g_value_init (&variant, G_TYPE_INT); /* random type, it is not used */
+      g_value_set_int (&variant, 1);
+      g_value_array_append (access_control, &variant);
+      g_value_unset (&variant);
+
+      g_value_init (&variant, G_TYPE_STRING); /* random type, it is not used */
+      g_value_set_string (&variant, "");
+      g_value_array_append (access_control, &variant);
+      g_value_unset (&variant);
+
+      g_value_take_boxed (value, access_control);
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
 }
 

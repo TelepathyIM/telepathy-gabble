@@ -249,30 +249,37 @@ conn_location_propeties_getter (GObject *object,
                                 gpointer getter_data)
 {
   /* GabbleConnection *conn = GABBLE_CONNECTION (object); */
-  GabbleRichPresenceAccessControlType access_control_type =
-    GABBLE_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST;
 
   if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControlTypes"))
     {
+      GabbleRichPresenceAccessControlType access_control_type =
+        GABBLE_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST;
       GArray *access_control = g_array_sized_new (FALSE, FALSE,
           sizeof (GabbleRichPresenceAccessControlType), 1);
+
       g_array_append_val (access_control, access_control_type);
       g_value_take_boxed (value, access_control);
     }
   else if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControl"))
     {
       GValueArray *access_control = g_value_array_new (2);
+      GValue type = {0,};
       GValue variant = {0,};
+      GValue *allocated_value;
 
       DEBUG ("%s", g_type_name (G_VALUE_TYPE (value)));
 
-      g_value_init (&variant, G_TYPE_INT); /* random type, it is not used */
-      g_value_set_int (&variant, 1);
-      g_value_array_append (access_control, &variant);
-      g_value_unset (&variant);
+      /* G_TYPE_INT is the type of GabbleRichPresenceAccessControlType */
+      g_value_init (&type, G_TYPE_INT);
+      g_value_set_int (&type,
+          GABBLE_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST);
+      g_value_array_append (access_control, &type);
+      g_value_unset (&type);
 
-      g_value_init (&variant, G_TYPE_STRING); /* random type, it is not used */
-      g_value_set_string (&variant, "");
+      g_value_init (&variant, G_TYPE_POINTER);
+      /* G_TYPE_UINT is a random type, it is not used */
+      allocated_value = tp_g_value_slice_new (G_TYPE_UINT);
+      g_value_set_pointer (&variant, allocated_value);
       g_value_array_append (access_control, &variant);
       g_value_unset (&variant);
 

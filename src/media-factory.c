@@ -122,11 +122,15 @@ gabble_media_factory_dispose (GObject *object)
   gabble_media_factory_close_all (fac);
   g_assert (priv->channels == NULL);
 
+  /* Use a temporary variable because we don't want
+   * media_channel_closed_cb to remove the channel from the hash table a
+   * second time */
   if (priv->session_chans)
     {
-      g_assert (g_hash_table_size (priv->session_chans) == 0);
-      g_hash_table_destroy (priv->session_chans);
+      GHashTable *tmp = priv->session_chans;
       priv->session_chans = NULL;
+      g_assert (g_hash_table_size (tmp) == 0);
+      g_hash_table_destroy (tmp);
     }
 
   g_free (priv->stun_server);

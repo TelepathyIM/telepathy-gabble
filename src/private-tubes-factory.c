@@ -342,6 +342,9 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
       priv->msg_tube_cb = NULL;
     }
 
+  /* Use a temporary variable because we don't want
+   * tubes_channel_closed_cb to remove the channel from the hash table a
+   * second time */
   if (priv->channels != NULL)
     {
       GHashTable *tmp = priv->channels;

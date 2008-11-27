@@ -646,7 +646,7 @@ gabble_private_tubes_factory_copy_caps (
 static void
 gabble_private_tubes_factory_update_caps (
     GabbleCapsChannelManager *manager,
-    gpointer *specific_caps_out,
+    gpointer specific_caps_out,
     gpointer specific_caps_in)
 {
   TubesCapabilities *caps_out = (TubesCapabilities *) specific_caps_out;

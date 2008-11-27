@@ -145,7 +145,7 @@ void gabble_caps_channel_manager_update_capabilities (
 {
   GabbleCapsChannelManagerIface *iface =
     GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
-  GabbleCapsChannelManagerCopyCapsFunc method = iface->update_caps;
+  GabbleCapsChannelManagerUpdateCapsFunc method = iface->update_caps;
 
   /* cannot be called if not implemented */
   g_assert (method != NULL);

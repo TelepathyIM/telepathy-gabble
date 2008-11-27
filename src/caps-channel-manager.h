@@ -78,7 +78,7 @@ typedef void (*GabbleCapsChannelManagerCopyCapsFunc) (
     gpointer specific_caps_in);
 
 typedef void (*GabbleCapsChannelManagerUpdateCapsFunc) (
-    GabbleCapsChannelManager *manager, gpointer *specific_caps_out,
+    GabbleCapsChannelManager *manager, gpointer specific_caps_out,
     gpointer specific_caps_in);
 
 typedef gboolean (*GabbleCapsChannelManagerCapsDiffFunc) (

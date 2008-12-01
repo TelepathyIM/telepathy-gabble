@@ -108,6 +108,9 @@ typedef enum _Socks5State Socks5State;
 #define SOCKS5_STATUS_OK   0x00
 #define SOCKS5_AUTH_NONE   0x00
 
+#define SHA1_LENGTH 40
+#define SOCKS5_CONNECT_LENGTH (7 + SHA1_LENGTH)
+
 struct _Streamhost
 {
   gchar *jid;
@@ -155,7 +158,11 @@ struct _GabbleBytestreamSocks5Private
   GabbleBytestreamState bytestream_state;
   gchar *peer_jid;
 
+  /* List of Streamhost */
   GSList *streamhosts;
+
+  /* Connections to streamhosts are async, so we keep the IQ set message
+   * around */
   LmMessage *msg_for_acknowledge_connection;
 
   GIOChannel *io_channel;
@@ -510,6 +517,9 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
   priv->socks5_state = SOCKS5_STATE_ERROR;
 
+  /* If msg_for_acknowledge_connection is not NULL it means that we are
+   * trying to find a working streamhost, so we should try the next available
+   * one instead of just failing */
   if (priv->msg_for_acknowledge_connection != NULL)
     {
       /* The attempt for connect to the streamhost failed... */
@@ -577,7 +587,7 @@ socks5_channel_writable_cb (GIOChannel *source,
 
   if (status != G_IO_STATUS_NORMAL)
     {
-      DEBUG ("Error writing on the SOCSK5 bytestream");
+      DEBUG ("Error writing on the SOCKS5 bytestream");
 
       socks5_error (self);
       return FALSE;
@@ -601,14 +611,16 @@ socks5_schedule_write (GabbleBytestreamSocks5 *self,
         socks5_channel_writable_cb, self);
 }
 
+/* Process the received data and returns the number of bytes that have been
+ * used */
 static gsize
 socks5_handle_received_data (GabbleBytestreamSocks5 *self,
                              GString *string)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  gchar msg[47] = {'\0'};
-  guint authentication_methods;
+  gchar msg[SOCKS5_CONNECT_LENGTH];
+  guint auth_len;
   guint i;
   const gchar *from;
   const gchar *to;
@@ -619,6 +631,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   switch (priv->socks5_state)
     {
       case SOCKS5_STATE_AUTH_REQUEST_SENT:
+        /* We sent an authorization request and we are awaiting for a
+         * response, the response is 2 bytes-long */
         if (string->len < 2)
           return 0;
 
@@ -630,6 +644,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             socks5_error (self);
             return string->len;
           }
+
+        /* We have been authorized, let's send a CONNECT command */
 
         from = lm_message_node_get_attribute (
             priv->msg_for_acknowledge_connection->node, "from");
@@ -660,6 +676,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         return 2;
 
       case SOCKS5_STATE_CONNECT_REQUESTED:
+        /* We sent an CONNECT request and we are awaiting for a response, the
+         * response is 2 bytes-long */
         if (string->len < 2)
           return 0;
 
@@ -674,6 +692,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
 
+        /* Acknowledge the connection */
         iq_result = lm_iq_message_make_result (
             priv->msg_for_acknowledge_connection);
         if (NULL != iq_result)
@@ -696,6 +715,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         return 2;
 
       case SOCKS5_STATE_AWAITING_AUTH_REQUEST:
+        /* A client connected to us and we are awaiting for the authorization
+         * request (at least 2 bytes) */
         if (string->len < 2)
           return 0;
 
@@ -707,21 +728,24 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        authentication_methods = string->str[1];
-        if (string->len < authentication_methods + 2)
+        /* The auth request string is SOCKS5_VERSION + # of methods + methods */
+        auth_len = string->str[1] + 2;
+        if (string->len < auth_len)
+          /* We are still receiving some auth method */
           return 0;
 
-        for (i = 0; i < authentication_methods; i++)
+        for (i = 2; i < auth_len; i++)
           {
-            if (string->str[i + 2] == SOCKS5_AUTH_NONE)
+            if (string->str[i] == SOCKS5_AUTH_NONE)
               {
+                /* Authorize the connection */
                 msg[0] = SOCKS5_VERSION;
                 msg[1] = SOCKS5_AUTH_NONE;
                 socks5_schedule_write (self, msg, 2);
 
                 priv->socks5_state = SOCKS5_STATE_AWAITING_COMMAND;
 
-                return authentication_methods + 2;
+                return auth_len;
               }
           }
 
@@ -729,25 +753,34 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         socks5_error (self);
 
-        return authentication_methods + 2;
+        return auth_len;
 
       case SOCKS5_STATE_AWAITING_COMMAND:
-        if (string->len < 47)
+        /* The client has been authorized and we are waiting for a command,
+         * the only one supported by the SOCKS5 bytestreams XEP is
+         * CONNECT with:
+         *  - ATYP = DOMAIN
+         *  - PORT = 0
+         *  - DOMAIN = SHA1(sid + initiator + target)
+         */
+        if (string->len < SOCKS5_CONNECT_LENGTH)
           return 0;
 
         if (string->str[0] != SOCKS5_VERSION ||
             string->str[1] != SOCKS5_CMD_CONNECT ||
             string->str[2] != SOCKS5_RESERVED ||
             string->str[3] != SOCKS5_ATYP_DOMAIN ||
-            string->str[4] != 40 ||
-            string->str[45] != 0 ||
-            string->str[46] != 0)
+            string->str[4] != SHA1_LENGTH ||
+            string->str[45] != 0 || /* first half of the port number */
+            string->str[46] != 0) /* second half of the port number */
           {
-            DEBUG ("Invalid SOCSK5 connect message");
+            DEBUG ("Invalid SOCKS5 connect message");
 
             socks5_error (self);
             return string->len;
           }
+
+        /* FIXME: check the domain type */
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_STATUS_OK;
@@ -756,20 +789,22 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
 
-        return 47;
+        return SOCKS5_CONNECT_LENGTH;
 
       case SOCKS5_STATE_CONNECTED:
+        /* We are connected, everything we receive now is data */
         g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0,
             priv->peer_handle, string);
 
         return string->len;
 
       case SOCKS5_STATE_ERROR:
-        /* An error occurred and the channel will be close in an idle
+        /* An error occurred and the channel will be closed in an idle
          * callback, so let's just throw away the data we receive */
         return string->len;
 
       case SOCKS5_STATE_INVALID:
+        DEBUG ("Invalid SOCKS5 state");
         break;
     }
 
@@ -908,7 +943,8 @@ socks5_connect (gpointer data)
 
 
   msg[0] = SOCKS5_VERSION;
-  /* Number of auth methods we are offering */
+  /* Number of auth methods we are offering, we support just
+   * SOCKS5_AUTH_NONE */
   msg[1] = 1;
   msg[2] = SOCKS5_AUTH_NONE;
 
@@ -1415,6 +1451,10 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       ip = ip->next;
     }
   g_list_free (ips);
+
+  /* FIXME: for now we support only direct connections, we should also
+   * add support for external proxies to have more chances to make the
+   * bytestream work */
 
   if (!_gabble_connection_send_with_reply (priv->conn, msg,
       socks5_init_reply_cb, G_OBJECT (self), NULL, NULL))

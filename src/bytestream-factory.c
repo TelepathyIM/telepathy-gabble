@@ -117,6 +117,7 @@ struct _GabbleBytestreamFactoryPrivate
    *
    * BytestreamIdentifier -> GabbleBytestreamIBB */
   GHashTable *ibb_bytestreams;
+  /* BytestreamIdentifier -> GabbleBytestreamSocks5 */
   GHashTable *socks5_bytestreams;
 
   /* MUC pseudo-IBB - data sent by groupchat messages, IQs not allowed.

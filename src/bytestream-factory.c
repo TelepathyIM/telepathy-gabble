@@ -320,7 +320,7 @@ remove_bytestream (GabbleBytestreamFactory *self,
     (self);
   BytestreamIdentifier bsid = { NULL, NULL };
   guint handle_type;
-  GHashTable *table;
+  GHashTable *table = NULL;
 
   g_object_get (bytestream,
       "stream-id", &(bsid.stream),

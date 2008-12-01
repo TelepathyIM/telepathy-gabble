@@ -1520,10 +1520,12 @@ contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabblePresence *presence;
+  GabblePresenceCapabilities caps;
+#ifdef ENABLE_DEBUG
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_CONTACT);
-  GabblePresenceCapabilities caps;
+#endif
 
   caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_RTP |
     PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO | PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;

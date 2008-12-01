@@ -102,7 +102,7 @@ typedef enum _Socks5State Socks5State;
 
 /* SOCKS5 commands */
 #define SOCKS5_VERSION     0x05
-#define SOCKS5_CMD_CONNECT 0x01 
+#define SOCKS5_CMD_CONNECT 0x01
 #define SOCKS5_RESERVED    0x00
 #define SOCKS5_ATYP_DOMAIN 0x03
 #define SOCKS5_STATUS_OK   0x00
@@ -179,7 +179,7 @@ static gboolean socks5_connect (gpointer data);
 
 static gboolean socks5_channel_readable_cb (GIOChannel *source,
     GIOCondition condition, gpointer data);
-static gboolean socks5_channel_error_cb (GIOChannel *source, 
+static gboolean socks5_channel_error_cb (GIOChannel *source,
     GIOCondition condition, gpointer data);
 
 static void gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
@@ -447,9 +447,9 @@ socks5_setup_channel (GabbleBytestreamSocks5 *self,
   g_io_channel_set_buffered (priv->io_channel, FALSE);
   g_io_channel_set_close_on_unref (priv->io_channel, TRUE);
 
-  priv->read_watch = g_io_add_watch(priv->io_channel, G_IO_IN,
+  priv->read_watch = g_io_add_watch (priv->io_channel, G_IO_IN,
       socks5_channel_readable_cb, self);
-  priv->error_watch = g_io_add_watch(priv->io_channel, G_IO_HUP | G_IO_ERR,
+  priv->error_watch = g_io_add_watch (priv->io_channel, G_IO_HUP | G_IO_ERR,
       socks5_channel_error_cb, self);
 
   g_assert (priv->write_buffer == NULL);
@@ -510,7 +510,7 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
   priv->socks5_state = SOCKS5_STATE_ERROR;
 
-  if (priv->msg_for_acknowledge_connection)
+  if (priv->msg_for_acknowledge_connection != NULL)
     {
       /* The attempt for connect to the streamhost failed... */
       socks5_close_channel (self);
@@ -546,10 +546,10 @@ socks5_error (GabbleBytestreamSocks5 *self)
   return;
 }
 
-static gboolean 
-socks5_channel_writable_cb (GIOChannel *source, 
+static gboolean
+socks5_channel_writable_cb (GIOChannel *source,
                             GIOCondition condition,
-                            gpointer data) 
+                            gpointer data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
   GabbleBytestreamSocks5Private *priv =
@@ -777,8 +777,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   return string->len;
 }
 
-static gboolean 
-socks5_channel_readable_cb (GIOChannel *source, 
+static gboolean
+socks5_channel_readable_cb (GIOChannel *source,
                             GIOCondition condition,
                             gpointer data)
 {
@@ -811,10 +811,10 @@ socks5_channel_readable_cb (GIOChannel *source,
   return TRUE;
 }
 
-static gboolean 
-socks5_channel_error_cb (GIOChannel *source, 
+static gboolean
+socks5_channel_error_cb (GIOChannel *source,
                          GIOCondition condition,
-                         gpointer data) 
+                         gpointer data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
 
@@ -838,7 +838,7 @@ socks5_connect (gpointer data)
   gint res;
   gchar msg[3];
 
-  if (priv->streamhosts)
+  if (priv->streamhosts != NULL)
     {
       streamhost = priv->streamhosts->data;
     }
@@ -868,7 +868,7 @@ socks5_connect (gpointer data)
   fd = -1;
   streamhost_address = address_list;
 
-  while (fd < 0 && streamhost_address) 
+  while (fd < 0 && streamhost_address)
     {
       ((struct sockaddr_in *) streamhost_address->ai_addr)->sin_port =
         htons (streamhost->port);
@@ -996,7 +996,7 @@ gabble_bytestream_socks5_connect_to_streamhost (GabbleBytestreamSocks5 *self,
 
   priv->msg_for_acknowledge_connection = lm_message_ref (msg);
 
-  g_idle_add(socks5_connect, self);
+  g_idle_add (socks5_connect, self);
 }
 
 /*
@@ -1070,7 +1070,7 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
 
 static void
 gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
-                               GError *error)
+                                  GError *error)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
@@ -1151,10 +1151,10 @@ gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
 
 static LmHandlerResult
 socks5_init_reply_cb (GabbleConnection *conn,
-                   LmMessage *sent_msg,
-                   LmMessage *reply_msg,
-                   GObject *obj,
-                   gpointer user_data)
+                      LmMessage *sent_msg,
+                      LmMessage *reply_msg,
+                      GObject *obj,
+                      gpointer user_data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (obj);
 
@@ -1389,7 +1389,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   g_io_channel_unref (channel);
 
   addr_len = sizeof (addr);
-  getsockname (fd, (struct sockaddr *)&addr, &addr_len);
+  getsockname (fd, (struct sockaddr *) &addr, &addr_len);
   g_ascii_dtostr (port, G_N_ELEMENTS (port), ntohs (addr.sin_port));
 
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,

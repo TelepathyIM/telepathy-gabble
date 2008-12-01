@@ -984,7 +984,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
     {
       DEBUG ("got a message without a from field");
       _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <query> has no 'from' attribute");
       return TRUE;
     }
 
@@ -993,7 +993,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
     {
       DEBUG ("SOCKS5 query stanza doesn't contain stream id");
       _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <query> has no stream ID");
       return TRUE;
     }
 
@@ -1003,7 +1003,8 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
       /* We don't accept streams not previously announced using SI */
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
       _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+          XMPP_ERROR_ITEM_NOT_FOUND,
+          "SOCKS5 <query> has an unknown stream ID");
       return TRUE;
     }
 
@@ -1012,7 +1013,8 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
     {
       DEBUG ("non-TCP SOCKS5 bytestreams are not supported");
       _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+          XMPP_ERROR_BAD_REQUEST,
+          "SOCKS5 non-TCP bytestreams are not supported");
       return TRUE;
     }
 

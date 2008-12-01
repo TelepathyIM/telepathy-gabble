@@ -1179,7 +1179,7 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
       G_CALLBACK (bytestream_state_changed_cb), self);
 
   id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (ibb));
-  DEBUG ("add private bytestream <%s> from <%s>", id->stream, id->jid);
+  DEBUG ("add IBB bytestream <%s> from <%s>", id->stream, id->jid);
   g_hash_table_insert (priv->ibb_bytestreams, id, ibb);
 
   return ibb;
@@ -1243,7 +1243,7 @@ gabble_bytestream_factory_create_socks5 (GabbleBytestreamFactory *self,
       G_CALLBACK (bytestream_state_changed_cb), self);
 
   id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (socks5));
-  DEBUG ("add private bytestream <%s> from <%s>", id->stream, id->jid);
+  DEBUG ("add SOCKS5 bytestream <%s> from <%s>", id->stream, id->jid);
   g_hash_table_insert (priv->socks5_bytestreams, id, socks5);
 
   return socks5;

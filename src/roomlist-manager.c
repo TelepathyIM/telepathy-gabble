@@ -92,6 +92,9 @@ gabble_roomlist_manager_close_all (GabbleRoomlistManager *self)
       self->priv->status_changed_id = 0;
     }
 
+  /* Use a temporary variable because we don't want
+   * roomlist_channel_closed_cb to remove the channel from the ptr array a
+   * second time */
   if (self->priv->channels != NULL)
     {
       GPtrArray *tmp = self->priv->channels;

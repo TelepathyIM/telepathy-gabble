@@ -840,8 +840,15 @@ socks5_channel_readable_cb (GIOChannel *source,
   priv->read_buffer->len += bytes_read;
   priv->read_buffer->str[priv->read_buffer->len] = '\0';
 
-  used_bytes = socks5_handle_received_data (self, priv->read_buffer);
-  g_string_erase (priv->read_buffer, 0, used_bytes);
+  do
+    {
+      /* socks5_handle_received_data() processes the data and returns the
+       * number of bytes that have been used. 0 means that there is not enough
+       * data to do anything, so we just wait for more data from the socket */
+      used_bytes = socks5_handle_received_data (self, priv->read_buffer);
+      g_string_erase (priv->read_buffer, 0, used_bytes);
+    }
+  while (used_bytes > 0 && priv->read_buffer->len > 0);
 
   return TRUE;
 }

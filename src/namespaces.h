@@ -73,6 +73,5 @@
 #define NS_X_DELAY              "jabber:x:delay"
 #define NS_X_CONFERENCE         "jabber:x:conference"
 #define NS_XMPP_STANZAS         "urn:ietf:params:xml:ns:xmpp-stanzas"
-#define NS_BYTESTREAMS          "http://jabber.org/protocol/bytestreams"
 
 #endif /* __GABBLE_NAMESPACES__H__ */

@@ -106,6 +106,7 @@ EXTRA_DIST = \
 	gabbletest.py \
 	servicetest.py \
 	jingle/jingletest.py \
+	jingle/jingletest2.py \
 	ns.py \
 	olpc/util.py
 

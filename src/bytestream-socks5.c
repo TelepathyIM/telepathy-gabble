@@ -1373,7 +1373,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       return FALSE;
     }
 
-  if (listen (fd, 5) < 0)
+  if (listen (fd, 1) < 0)
     {
       DEBUG ("couldn't listen on socket");
       return FALSE;

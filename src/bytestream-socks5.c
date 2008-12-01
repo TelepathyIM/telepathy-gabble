@@ -126,7 +126,7 @@ streamhost_new (const gchar *jid,
   g_return_val_if_fail (jid != NULL, NULL);
   g_return_val_if_fail (host != NULL, NULL);
 
-  streamhost = g_new0 (Streamhost, 1);
+  streamhost = g_slice_new0 (Streamhost);
   streamhost->jid = g_strdup (jid);
   streamhost->host = g_strdup (host);
   streamhost->port = port;
@@ -142,7 +142,7 @@ streamhost_free (Streamhost *streamhost)
 
   g_free (streamhost->jid);
   g_free (streamhost->host);
-  g_free (streamhost);
+  g_slice_free (Streamhost, streamhost);
 }
 
 struct _GabbleBytestreamSocks5Private

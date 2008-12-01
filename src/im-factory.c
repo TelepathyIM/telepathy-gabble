@@ -390,6 +390,9 @@ new_im_channel (GabbleImFactory *fac,
 static void
 gabble_im_factory_close_all (GabbleImFactory *self)
 {
+  /* Use a temporary variable because we don't want
+   * im_channel_closed_cb to remove the channel from the hash table a
+   * second time */
   if (self->priv->channels != NULL)
     {
       GHashTable *tmp = self->priv->channels;

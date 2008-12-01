@@ -937,7 +937,7 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
   guint numeric_port;
   Streamhost *streamhost;
 
-  g_return_if_fail (strcmp (streamhost_node->name, "streamhost") == 0);
+  g_return_if_fail (!tp_strdiff (streamhost_node->name, "streamhost"));
 
   zeroconf = lm_message_node_get_attribute (streamhost_node, "zeroconf");
   if (zeroconf != NULL)

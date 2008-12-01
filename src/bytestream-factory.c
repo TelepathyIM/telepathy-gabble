@@ -1007,7 +1007,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
     }
 
   tmp = lm_message_node_get_attribute (query_node, "mode");
-  if (tmp != NULL && strcmp (tmp, "tcp") != 0)
+  if (tp_strdiff (tmp, "tcp"))
     {
       DEBUG ("non-TCP SOCKS5 bytestreams are not supported");
       _gabble_connection_send_iq_error (priv->conn, msg,
@@ -1018,7 +1018,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
   child_node = query_node->children;
   while (child_node)
     {
-      if (strcmp (child_node->name, "streamhost") == 0)
+      if (!tp_strdiff (child_node->name, "streamhost"))
         gabble_bytestream_socks5_add_streamhost (bytestream, child_node);
 
       child_node = child_node->next;

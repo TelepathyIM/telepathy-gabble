@@ -691,6 +691,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
           }
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
+        g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
 
         /* Acknowledge the connection */
         iq_result = lm_iq_message_make_result (

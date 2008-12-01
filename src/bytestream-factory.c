@@ -1027,9 +1027,6 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
       child_node = child_node->next;
     }
 
-  g_object_set (bytestream, "state", GABBLE_BYTESTREAM_STATE_OPEN,
-      NULL);
-
   gabble_bytestream_socks5_connect_to_streamhost (bytestream, msg);
 
   return TRUE;

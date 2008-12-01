@@ -960,15 +960,12 @@ def test(q, bus, conn, stream):
     streamhost['port'] = '5084'
     stream.send(iq)
 
-    event = q.expect('dbus-return', method='AcceptDBusTube')
+    event, _ = q.expect_many(
+        EventPattern('dbus-return', method='AcceptDBusTube'),
+        EventPattern('s5b-connected'))
     address = event.value[0]
     # FIXME: this is currently broken. See FIXME in tubes-channel.c
     #assert len(address) > 0
-
-    event = q.expect('dbus-signal', signal='TubeStateChanged',
-        args=[69, 2]) # 2 == OPEN
-    id = event.args[0]
-    state = event.args[1]
 
     # OK, we're done
     conn.Disconnect()

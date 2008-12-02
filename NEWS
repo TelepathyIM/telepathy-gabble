@@ -1,11 +1,32 @@
-telepathy-gabble 0.7.16 (UNRELEASED)
+telepathy-gabble 0.7.16 (2008-12-02)
 ====================================
 
-Dependencies:
+The "what could possibly go wrong" release.
+
+This release contains the reworked Jingle engine with support for latest
+Jingle draft (XEP-0166 v0.32), and Google's Jingle variants as used in
+their desktop client and recently launched Googlemail client.
+
+This release has no known regressions, but as we have done extensive changes
+to the Jingle engine, you might want to restrict this release to experimental
+distributions like Debian experimental and Fedora rawhide for now.
 
 Enhancements:
 
+* fd.o #15908: refactor Jingle state machine
+
+* fd.o #15907: Update real-Jingle implementation to XEP-0166 v0.25
+
+* fd.o #13159: support current Google Talk protocol
+
+* Misc Tubes-related enhancements and fixes
+
 Fixes:
+
+* fd.o #18404: fix race condition in tests/twisted/roster/ensure.py
+
+* Fixes for double freeing in dispose in channel managers
+
 
 telepathy-gabble 0.7.15 (2008-11-06)
 ====================================

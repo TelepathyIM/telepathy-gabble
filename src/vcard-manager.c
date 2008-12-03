@@ -975,17 +975,17 @@ patch_vcard_foreach (gpointer k, gpointer v, gpointer user_data)
 static LmMessageNode *
 vcard_copy (LmMessageNode *parent, LmMessageNode *src)
 {
-    LmMessageNode *child;
     LmMessageNode *new = lm_message_node_add_child (parent, src->name,
         src->value);
     const gchar *xmlns;
+    NodeIter i;
 
     xmlns = lm_message_node_get_attribute (src, "xmlns");
     if (xmlns != NULL)
       lm_message_node_set_attribute (new, "xmlns", xmlns);
 
-    for (child = src->children; child; child = child->next)
-        vcard_copy (new, child);
+    for (i = node_iter (src); i; i = node_iter_next (i))
+      vcard_copy (new, node_iter_data (i));
 
     return new;
 }

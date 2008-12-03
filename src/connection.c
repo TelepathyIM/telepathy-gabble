@@ -2166,26 +2166,28 @@ connection_disco_cb (GabbleDisco *disco,
     }
   else
     {
-      LmMessageNode *iter;
+      NodeIter i;
 
       NODE_DEBUG (result, "got");
 
-      for (iter = result->children; iter != NULL; iter = iter->next)
+      for (i = node_iter (result); i; i = node_iter_next (i))
         {
-          if (0 == strcmp (iter->name, "identity"))
+          LmMessageNode *child = node_iter_data (i);
+
+          if (0 == strcmp (child->name, "identity"))
             {
-              const gchar *category = lm_message_node_get_attribute (iter,
+              const gchar *category = lm_message_node_get_attribute (child,
                   "category");
-              const gchar *type = lm_message_node_get_attribute (iter, "type");
+              const gchar *type = lm_message_node_get_attribute (child, "type");
 
               if (!tp_strdiff (category, "pubsub") &&
                   !tp_strdiff (type, "pep"))
                 /* XXX: should we also check for specific PubSub <feature>s? */
                 conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
             }
-          else if (0 == strcmp (iter->name, "feature"))
+          else if (0 == strcmp (child->name, "feature"))
             {
-              const gchar *var = lm_message_node_get_attribute (iter, "var");
+              const gchar *var = lm_message_node_get_attribute (child, "var");
 
               if (var == NULL)
                 continue;
@@ -3062,9 +3064,9 @@ room_jid_disco_cb (GabbleDisco *disco,
   RoomVerifyBatch *batch = rvctx->batch;
   TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
       (TpBaseConnection *) batch->conn, TP_HANDLE_TYPE_ROOM);
-  LmMessageNode *lm_node;
   gboolean found = FALSE;
   TpHandle handle;
+  NodeIter i;
 
   /* stop the request getting cancelled after it's already finished */
   rvctx->request = NULL;
@@ -3088,8 +3090,9 @@ room_jid_disco_cb (GabbleDisco *disco,
       return;
     }
 
-  for (lm_node = query_result->children; lm_node; lm_node = lm_node->next)
+  for (i = node_iter (query_result); i; i = node_iter_next (i))
     {
+      LmMessageNode *lm_node = node_iter_data (i);
       const gchar *var;
 
       if (tp_strdiff (lm_node->name, "feature"))

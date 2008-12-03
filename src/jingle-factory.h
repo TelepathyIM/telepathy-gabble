@@ -141,6 +141,8 @@ void _jingle_factory_unregister_session (GabbleJingleFactory *factory,
 
 GabbleJingleSession *gabble_jingle_factory_create_session (GabbleJingleFactory
     *fac, TpHandle peer, const gchar *peer_resource);
+void gabble_jingle_factory_create_google_relay_session (GabbleJingleFactory
+  *fac, GabbleJingleSession *sess);
 
 const gchar *gabble_jingle_factory_get_google_relay_token (
     GabbleJingleFactory *self);

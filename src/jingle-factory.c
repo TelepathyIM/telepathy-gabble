@@ -27,6 +27,7 @@
 
 #include <lib/gibber/gibber-resolver.h>
 #include <loudmouth/loudmouth.h>
+#include <libsoup/soup.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -66,6 +67,7 @@ struct _GabbleJingleFactoryPrivate
   GHashTable *transports;
   GHashTable *sessions;
   GibberResolver *resolver;
+  SoupSession *soup;
 
   gchar *stun_server;
   guint16 stun_port;
@@ -73,6 +75,7 @@ struct _GabbleJingleFactoryPrivate
   guint16 fallback_stun_port;
   gchar *relay_token;
   gboolean get_stun_from_jingle;
+
   gboolean dispose_has_run;
 };
 
@@ -298,7 +301,7 @@ jingle_info_cb (LmMessageHandler *handler,
 
           if (token != NULL)
             {
-              DEBUG ("jingle info: got relay token %s", token);
+              DEBUG ("jingle info: got Google relay token %s", token);
               g_free (fac->priv->relay_token);
               fac->priv->relay_token = g_strdup (token);
             }
@@ -366,6 +369,12 @@ gabble_jingle_factory_dispose (GObject *object)
   g_free (fac->priv->stun_server);
   g_free (fac->priv->fallback_stun_server);
   g_free (fac->priv->relay_token);
+
+  if (priv->soup != NULL)
+    {
+      g_object_unref (priv->soup);
+      priv->soup = NULL;
+    }
 
   if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose (object);
@@ -792,4 +801,93 @@ gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
     *stun_port = self->priv->stun_port;
 
   return TRUE;
+}
+
+static void
+on_http_response (SoupSession *soup,
+                  SoupMessage *msg,
+                  gpointer user_data)
+{
+  if (msg->status_code != 200)
+    {
+      DEBUG ("Google session creation failed, relaying not used: %d %s",
+          msg->status_code, msg->reason_phrase);
+    }
+  else
+    {
+      /* parse a=b lines into GHashTable */
+      GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
+      GHashTable *map = g_hash_table_new_full (g_str_hash, g_str_equal,
+          g_free, g_free);
+      gchar **lines;
+      guint i;
+
+      lines = g_strsplit (msg->response_body->data, "\n", 0);
+
+      if (lines != NULL)
+        {
+          for (i = 0; lines[i] != NULL; i++)
+            {
+              gchar ** fields = g_strsplit (lines[i], "=", 2);
+
+              /* we only want lines of format a=b */
+              if ((fields != NULL) &&
+                  (fields[0] != NULL) && (fields[1] != NULL) &&
+                  (fields[2] == NULL))
+                {
+                  gchar *key = g_strdup (fields[0]);
+                  gchar *val = g_strdup (fields[1]);
+                  gchar *cr = g_utf8_strchr (val, -1, '\r');
+                  if (cr != NULL)
+                      *cr = 0;
+
+                  g_hash_table_insert (map, key, val);
+                }
+
+              g_strfreev (fields);
+            }
+        }
+
+      g_object_set (sess, "relay-info", map, NULL);
+      g_strfreev (lines);
+    }
+}
+
+/* If we have a relay token, we'll try to use it and get relay info.
+ * When/if we do, we'll set "relay-info" property on the given session. */
+void
+gabble_jingle_factory_create_google_relay_session (GabbleJingleFactory *fac,
+  GabbleJingleSession *sess)
+{
+  GabbleJingleFactoryPrivate *priv =
+      GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
+  SoupMessage *msg;
+
+  if (fac->priv->relay_token == NULL)
+    {
+      DEBUG ("No relay token provided, not creating google relay session");
+      return;
+    }
+
+  if (priv->soup == NULL)
+    {
+      /* libsoup uses glib in multiple threads and don't have this, so we have to
+       * enable it manually here */
+      if (!g_thread_supported ())
+        g_thread_init (NULL);
+
+      priv->soup = soup_session_async_new ();
+    }
+
+  msg = soup_message_new ("GET", "http://relay.google.com/create_session");
+
+  DEBUG ("Trying to create a new relay session");
+
+  /* libjingle sets both headers, so shall we */
+  soup_message_headers_append (msg->request_headers,
+      "X-Talk-Google-Relay-Auth", fac->priv->relay_token);
+  soup_message_headers_append (msg->request_headers,
+      "X-Google-Relay-Auth", fac->priv->relay_token);
+
+  soup_session_queue_message (priv->soup, msg, on_http_response, sess);
 }

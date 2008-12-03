@@ -808,9 +808,10 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                                        LmMessage *presence)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  LmMessageNode *tubes_node, *tube_node;
+  LmMessageNode *tubes_node;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  NodeIter i;
   const gchar *presence_type;
   GHashTable *old_dbus_tubes;
   struct _add_in_old_dbus_tubes_data add_data;
@@ -842,9 +843,9 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
   add_data.contact = contact;
   g_hash_table_foreach (priv->tubes, add_in_old_dbus_tubes, &add_data);
 
-  for (tube_node = tubes_node->children; tube_node != NULL;
-      tube_node = tube_node->next)
+  for (i = node_iter (tubes_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *tube_node = node_iter_data (i);
       const gchar *stream_id;
       GabbleTubeIface *tube;
       guint tube_id;

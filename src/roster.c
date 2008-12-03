@@ -340,16 +340,16 @@ _parse_item_subscription (LmMessageNode *item_node)
 static TpHandleSet *
 _parse_item_groups (LmMessageNode *item_node, TpBaseConnection *conn)
 {
-  LmMessageNode *group_node;
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_GROUP);
   TpHandleSet *groups = tp_handle_set_new (group_repo);
   TpHandle handle;
+  NodeIter i;
 
-  for (group_node = item_node->children;
-      NULL != group_node;
-      group_node = group_node->next)
+  for (i = node_iter (item_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *group_node = node_iter_data (i);
+
       if (0 != strcmp (group_node->name, "group"))
         continue;
 
@@ -1163,7 +1163,6 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
    * it's a roster push. either way, parse the items. */
   switch (sub_type)
     {
-      LmMessageNode *item_node;
       TpIntSet *pub_add, *pub_rem,
                *sub_add, *sub_rem, *sub_rp,
                *stored_add, *stored_rem,
@@ -1174,6 +1173,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       GabbleRosterChannel *pub_chan, *sub_chan, *chan;
       GHashTable *group_update_table;
       guint i;
+      NodeIter j;
 
     case LM_MESSAGE_SUB_TYPE_RESULT:
     case LM_MESSAGE_SUB_TYPE_SET:
@@ -1209,12 +1209,11 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
 
       /* iterate every sub-node, which we expect to be <item>s */
-      for (item_node = query_node->children;
-           item_node;
-           item_node = item_node->next)
+      for (j = node_iter (query_node); j; j = node_iter_next (j))
         {
           const char *jid;
           GabbleRosterItem *item;
+          LmMessageNode *item_node = node_iter_data (j);
 
           if (strcmp (item_node->name, "item"))
             {

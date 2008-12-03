@@ -31,6 +31,11 @@
 
 #include "types.h"
 
+typedef LmMessageNode * NodeIter;
+#define node_iter(node) (node->children)
+#define node_iter_next(i) (i->next)
+#define node_iter_data(i) (i)
+
 /* Guarantees that the resulting hash is in lower-case */
 gchar *sha1_hex (const gchar *bytes, guint len);
 

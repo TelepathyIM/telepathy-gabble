@@ -655,8 +655,9 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
                                              LmMessage *msg,
                                              TpHandle handle)
 {
-  LmMessageNode *pubsub_node, *items_node, *item_node;
+  LmMessageNode *pubsub_node, *items_node;
   gboolean found = FALSE;
+  NodeIter i;
 
   pubsub_node = lm_message_node_get_child_with_namespace (msg->node,
       "pubsub", NS_PUBSUB);
@@ -686,10 +687,10 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
       return;
     }
 
-  for (item_node = items_node->children;
-       item_node != NULL;
-       item_node = item_node->next)
+  for (i = node_iter (items_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *item_node = node_iter_data (i);
+
       if (_grab_nickname (conn, handle, item_node))
         {
           /* FIXME: does this do the right thing on servers which return

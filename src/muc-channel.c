@@ -439,6 +439,7 @@ properties_disco_cb (GabbleDisco *disco,
   LmMessageNode *lm_node;
   const gchar *str;
   GValue val = { 0, };
+  NodeIter i;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -483,13 +484,14 @@ properties_disco_cb (GabbleDisco *disco,
         }
     }
 
-  for (lm_node = query_result->children; lm_node; lm_node = lm_node->next)
+  for (i = node_iter (query_result); i; i = node_iter_next (i))
     {
       guint prop_id = INVALID_ROOM_PROP;
+      LmMessageNode *child = node_iter_data (i);
 
-      if (strcmp (lm_node->name, "feature") == 0)
+      if (strcmp (child->name, "feature") == 0)
         {
-          str = lm_message_node_get_attribute (lm_node, "var");
+          str = lm_message_node_get_attribute (child, "var");
           if (str == NULL)
             continue;
 
@@ -590,14 +592,17 @@ properties_disco_cb (GabbleDisco *disco,
               DEBUG ("unhandled feature '%s'", str);
             }
         }
-      else if (strcmp (lm_node->name, "x") == 0)
+      else if (strcmp (child->name, "x") == 0)
         {
-          if (lm_message_node_has_namespace (lm_node, NS_X_DATA, NULL))
+          if (lm_message_node_has_namespace (child, NS_X_DATA, NULL))
             {
-              LmMessageNode *field, *value_node;
+              NodeIter j;
 
-              for (field = lm_node->children; field; field = field->next)
+              for (j = node_iter (child); j; j = node_iter_next (j))
                 {
+                  LmMessageNode *field = node_iter_data (j);
+                  LmMessageNode *value_node;
+
                   if (strcmp (field->name, "field") != 0)
                     continue;
 
@@ -1629,6 +1634,7 @@ static LmMessageNode *
 config_form_get_form_node (LmMessage *msg)
 {
   LmMessageNode *node;
+  NodeIter i;
 
   /* find the query node */
   node = lm_message_node_get_child (msg->node, "query");
@@ -1636,24 +1642,26 @@ config_form_get_form_node (LmMessage *msg)
     return NULL;
 
   /* then the form node */
-  for (node = node->children; node; node = node->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
-      if (tp_strdiff (node->name, "x"))
+      LmMessageNode *child = node_iter_data (i);
+
+      if (tp_strdiff (child->name, "x"))
         {
           continue;
         }
 
-      if (!lm_message_node_has_namespace (node, NS_X_DATA, NULL))
+      if (!lm_message_node_has_namespace (child, NS_X_DATA, NULL))
         {
           continue;
         }
 
-      if (tp_strdiff (lm_message_node_get_attribute (node, "type"), "form"))
+      if (tp_strdiff (lm_message_node_get_attribute (child, "type"), "form"))
         {
           continue;
         }
 
-      return node;
+      return child;
     }
 
   return NULL;
@@ -1666,7 +1674,8 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  LmMessageNode *form_node, *node;
+  LmMessageNode *form_node;
+  NodeIter i;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -1686,9 +1695,10 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       goto OUT;
     }
 
-  for (node = form_node->children; node; node = node->next)
+  for (i = node_iter (form_node); i; i = node_iter_next (i))
     {
       const gchar *var;
+      LmMessageNode *node = node_iter_data (i);
 
       if (strcmp (node->name, "field") != 0)
         continue;
@@ -1943,12 +1953,13 @@ handle_unavailable_presence_update (GabbleMucChannel *chan,
 static gboolean
 renamed_by_server (LmMessageNode *x_node)
 {
-  LmMessageNode *child;
   gboolean is_self = FALSE;
   gboolean renamed = FALSE;
+  NodeIter i;
 
-  for (child = x_node->children; child != NULL; child = child->next)
+  for (i = node_iter (x_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *child = node_iter_data (i);
       const gchar *code;
 
       if (strcmp (child->name, "status") != 0)
@@ -2951,6 +2962,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   LmMessage *msg = NULL;
   LmMessageNode *submit_node, *form_node, *node;
   guint i, props_left;
+  NodeIter j;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -2994,26 +3006,27 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         props_left |= 1 << i;
     }
 
-  for (node = form_node->children; node; node = node->next)
+  for (j = node_iter (form_node); j; j = node_iter_next (j))
     {
       const gchar *var;
       LmMessageNode *field_node;
+      LmMessageNode *child = node_iter_data (j);
       guint id;
       GType type;
       gboolean invert;
       const gchar *val_str = NULL, *type_str;
       gboolean val_bool;
 
-      if (strcmp (node->name, "field") != 0)
+      if (strcmp (child->name, "field") != 0)
         {
-          DEBUG ("skipping node '%s'", node->name);
+          DEBUG ("skipping node '%s'", child->name);
           continue;
         }
 
-      var = lm_message_node_get_attribute (node, "var");
+      var = lm_message_node_get_attribute (child, "var");
       if (var == NULL) {
         DEBUG ("skipping node '%s' because of lacking var attribute",
-               node->name);
+               child->name);
         continue;
       }
 
@@ -3112,7 +3125,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       field_node = lm_message_node_add_child (submit_node, "field", NULL);
       lm_message_node_set_attribute (field_node, "var", var);
 
-      type_str = lm_message_node_get_attribute (node, "type");
+      type_str = lm_message_node_get_attribute (child, "type");
       if (type_str)
         {
           lm_message_node_set_attribute (field_node, "type", type_str);
@@ -3155,11 +3168,12 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       else
         {
           /* Copy all the <value> nodes */
-          LmMessageNode *value_node;
+          NodeIter k;
 
-          for (value_node = node->children; value_node != NULL;
-              value_node = value_node->next)
+          for (k = node_iter (child); k; k = node_iter_next (k))
             {
+              LmMessageNode *value_node = node_iter_data (k);
+
               if (tp_strdiff (value_node->name, "value"))
                 /* Not a value, skip it */
                 continue;

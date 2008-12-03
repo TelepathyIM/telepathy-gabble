@@ -190,7 +190,11 @@ PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0 >= 1.3.2)
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
-dnl Check for functions
+dnl Check for libsoup
+PKG_CHECK_MODULES(SOUP, libsoup-2.4)
+AC_SUBST(SOUP_CFLAGS)
+AC_SUBST(SOUP_LIBS)
+
 AC_CHECK_FUNCS(getifaddrs memset select strndup setresuid setreuid strerror)
 
 AC_OUTPUT( Makefile \

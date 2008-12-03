@@ -56,7 +56,7 @@ gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
       return FALSE;
     }
 
-  if (item_node->children == NULL)
+  if (node_iter (item_node) == NULL)
     {
       return FALSE;
     }
@@ -64,7 +64,9 @@ gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
   /*
    * the namespace of the item is that of the first child of the <item> node
    */
-  event_ns = lm_message_node_get_attribute (item_node->children, "xmlns");
+  event_ns = lm_message_node_get_attribute (
+      node_iter_data (node_iter (item_node)), "xmlns");
+
   if (event_ns == NULL)
     {
       return FALSE;

@@ -259,6 +259,7 @@ get_buddy_properties_from_search_reply_cb (GabbleConnection *conn,
   LmMessageNode *query, *buddy;
   const gchar *buddy_jid;
   GError *error = NULL;
+  NodeIter i;
 
   /* Which buddy are we requesting properties for ? */
   buddy = lm_message_node_find_child (sent_msg->node, "buddy");
@@ -276,11 +277,13 @@ get_buddy_properties_from_search_reply_cb (GabbleConnection *conn,
       goto search_reply_cb_end;
     }
 
-  for (buddy = query->children; buddy != NULL; buddy = buddy->next)
+  for (i = node_iter (query); i; i = node_iter_next (i))
     {
       const gchar *jid;
 
+      buddy = node_iter_data (i);
       jid = lm_message_node_get_attribute (buddy, "jid");
+
       if (!tp_strdiff (jid, buddy_jid))
         {
           LmMessageNode *properties_node;
@@ -705,20 +708,22 @@ extract_activities (GabbleConnection *conn,
                     TpHandle sender)
 {
   LmMessageNode *activities_node;
-  LmMessageNode *node;
   TpHandleSet *activities_set, *old_activities;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
+  NodeIter i;
 
   activities_node = lm_message_node_find_child (msg->node, "activities");
 
   activities_set = tp_handle_set_new (room_repo);
-  for (node = (activities_node != NULL ? activities_node->children : NULL);
-       node;
-       node = node->next)
+
+  for (i = (activities_node != NULL ? node_iter (activities_node) : NULL);
+       i;
+       i = node_iter_next (i))
     {
       const gchar *act_id;
       const gchar *room;
+      LmMessageNode *node = node_iter_data (i);
       GabbleOlpcActivity *activity;
       TpHandle room_handle;
 
@@ -2017,15 +2022,17 @@ update_activities_properties (GabbleConnection *conn,
                               LmMessage *msg)
 {
   const gchar *room;
-  LmMessageNode *node, *properties_node;
+  LmMessageNode *node;
+  NodeIter i;
 
   node = lm_message_node_find_child (msg->node, "activities");
   if (node == NULL)
     return FALSE;
 
-  for (properties_node = node->children; properties_node != NULL;
-      properties_node = properties_node->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *properties_node = node_iter_data (i);
+
       if (strcmp (properties_node->name, "properties") != 0)
         continue;
 
@@ -2893,10 +2900,11 @@ populate_buddies_from_nodes (GabbleConnection *conn,
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *buddy;
+  NodeIter i;
 
-  for (buddy = node->children; buddy != NULL; buddy = buddy->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *buddy = node_iter_data (i);
       const gchar *jid;
       TpHandle handle;
 
@@ -2908,14 +2916,14 @@ populate_buddies_from_nodes (GabbleConnection *conn,
       handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
       if (handle == 0)
         {
-          guint i;
+          guint j;
 
           DEBUG ("Invalid jid: %s", jid);
 
           /* Free the ressources previously allocated */
-          for (i = 0; i < buddies->len; i++)
-            tp_handle_unref (contact_repo, g_array_index (buddies, TpHandle,
-                  i));
+          for (j = 0; j < buddies->len; j++)
+            tp_handle_unref (contact_repo,
+                g_array_index (buddies, TpHandle, j));
 
           if (buddies_properties != NULL)
             {
@@ -2955,7 +2963,6 @@ add_activities_to_view_from_node (GabbleConnection *conn,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   GHashTable *activities;
-  LmMessageNode *activity_node;
   GPtrArray *buddies_to_add;
   struct buddies_to_add_t
     {
@@ -2964,16 +2971,17 @@ add_activities_to_view_from_node (GabbleConnection *conn,
       TpHandle room;
     };
   guint i;
+  NodeIter k;
 
   activities = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       g_object_unref );
 
   buddies_to_add = g_ptr_array_new ();
 
-  for (activity_node = node->children; activity_node != NULL;
-      activity_node = activity_node->next)
+  for (k = node_iter (node); k; k = node_iter_next (k))
     {
       const gchar *jid, *act_id;
+      LmMessageNode *activity_node = node_iter_data (k);
       LmMessageNode *properties_node;
       GHashTable *properties;
       TpHandle handle;
@@ -3202,13 +3210,13 @@ remove_buddies_from_view_from_node (GabbleConnection *conn,
   TpHandleSet *buddies;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *buddy;
+  NodeIter i;
 
   buddies = tp_handle_set_new (contact_repo);
 
-  for (buddy = node->children; buddy != NULL; buddy = buddy->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
-
+      LmMessageNode *buddy = node_iter_data (i);
       const gchar *jid;
       TpHandle handle;
 
@@ -3267,12 +3275,13 @@ remove_activities_from_view_from_node (GabbleConnection *conn,
   TpHandleSet *rooms;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
-  LmMessageNode *activity;
+  NodeIter i;
 
   rooms = tp_handle_set_new (room_repo);
 
-  for (activity = node->children; activity != NULL; activity = activity->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *activity = node_iter_data (i);
       const gchar *room;
       TpHandle handle;
 
@@ -3417,7 +3426,7 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   const gchar *from;
-  LmMessageNode *node;
+  NodeIter i;
 
   from = lm_message_node_get_attribute (message->node, "from");
   if (from == NULL)
@@ -3430,8 +3439,9 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
       tp_strdiff (from, conn->olpc_gadget_activity))
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  for (node = message->node->children; node != NULL; node = node->next)
+  for (i = node_iter (message->node); i; i = node_iter_next (i))
     {
+      LmMessageNode *node = node_iter_data (i);
       const gchar *ns;
 
       ns = lm_message_node_get_attribute (node, "xmlns");

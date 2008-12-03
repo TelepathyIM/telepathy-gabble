@@ -567,10 +567,11 @@ item_info_cb (GabbleDisco *disco,
               GError *error,
               gpointer user_data)
 {
-  LmMessageNode *identity, *feature, *field, *value_node;
+  LmMessageNode *identity, *value_node;
   const char *category, *type, *var, *name, *value;
   GHashTable *keys;
   GabbleDiscoItem item;
+  NodeIter i;
 
   GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) user_data;
 
@@ -603,8 +604,10 @@ item_info_cb (GabbleDisco *disco,
 
   keys = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
-  for (feature = result->children; feature; feature = feature->next)
+  for (i = node_iter (result); i; i = node_iter_next (i))
     {
+      LmMessageNode *feature = node_iter_data (i);
+
       if (0 == strcmp (feature->name, "feature"))
         {
           var = lm_message_node_get_attribute (feature, "var");
@@ -615,9 +618,12 @@ item_info_cb (GabbleDisco *disco,
         {
           if (lm_message_node_has_namespace (feature, NS_X_DATA, NULL))
             {
-              for (field = feature->children;
-                   field; field = field->next)
+              NodeIter j;
+
+              for (j = node_iter (feature); j; j = node_iter_next (j))
                 {
+                  LmMessageNode *field = node_iter_data (j);
+
                   if (0 != strcmp (field->name, "field"))
                     continue;
 
@@ -711,10 +717,10 @@ disco_items_cb (GabbleDisco *disco,
           GError *error,
           gpointer user_data)
 {
-  LmMessageNode *iter;
   const char *item_jid;
   gpointer key, value;
   GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) user_data;
+  NodeIter i;
 
   pipeline->list_request = NULL;
 
@@ -724,12 +730,14 @@ disco_items_cb (GabbleDisco *disco,
       goto out;
     }
 
-  for (iter = result->children; iter; iter = iter->next)
+  for (i = node_iter (result); i; i = node_iter_next (i))
     {
-      if (0 != strcmp (iter->name, "item"))
+      LmMessageNode *item = node_iter_data (i);
+
+      if (0 != strcmp (item->name, "item"))
         continue;
 
-      item_jid = lm_message_node_get_attribute (iter, "jid");
+      item_jid = lm_message_node_get_attribute (item, "jid");
 
       if (NULL != item_jid &&
           !g_hash_table_lookup_extended (pipeline->remaining_items, item_jid,

@@ -352,7 +352,7 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node,
   g_return_val_if_fail (error_node != NULL, XMPP_ERROR_UNDEFINED_CONDITION);
 
   /* First, try to look it up the modern way */
-  if (error_node->children)
+  if (node_iter (error_node))
     {
       if (type_out != NULL)
         *type_out = error_type_to_enum (lm_message_node_get_attribute (

@@ -662,7 +662,8 @@ streaminit_parse_request (LmMessage *message,
                           gboolean *multiple)
 {
   LmMessageNode *iq = message->node;
-  LmMessageNode *feature, *x, *field, *stream_method, *si_multiple;
+  LmMessageNode *feature, *x, *si_multiple;
+  NodeIter i, j;
 
   *stream_init_id = lm_message_node_get_attribute (iq, "id");
 
@@ -709,8 +710,10 @@ streaminit_parse_request (LmMessage *message,
       return FALSE;
     }
 
-  for (field = x->children; field; field = field->next)
+  for (i = node_iter (x); i; i = node_iter_next (i))
     {
+      LmMessageNode *field = node_iter_data (i);
+
       if (tp_strdiff (lm_message_node_get_attribute (field, "var"),
             "stream-method"))
         /* some future field, ignore it */
@@ -726,9 +729,9 @@ streaminit_parse_request (LmMessage *message,
 
       /* Get the stream methods offered */
       *stream_methods = NULL;
-      for (stream_method = field->children; stream_method;
-          stream_method = stream_method->next)
+      for (j = node_iter (field); j; j = node_iter_next (j))
         {
+          LmMessageNode *stream_method = node_iter_data (j);
           LmMessageNode *value;
           const gchar *stream_method_str;
 
@@ -1383,9 +1386,9 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
   GabbleBytestreamSocks5 *bytestream;
   LmMessageNode *query_node;
-  LmMessageNode *child_node;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   const gchar *tmp;
+  NodeIter i;
 
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return FALSE;
@@ -1435,13 +1438,12 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
       return TRUE;
     }
 
-  child_node = query_node->children;
-  while (child_node)
+  for (i = node_iter (query_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *child_node = node_iter_data (i);
+
       if (!tp_strdiff (child_node->name, "streamhost"))
         gabble_bytestream_socks5_add_streamhost (bytestream, child_node);
-
-      child_node = child_node->next;
     }
 
   gabble_bytestream_socks5_connect_to_streamhost (bytestream, msg);
@@ -1685,9 +1687,10 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
 {
   /* If the other client supports si-multiple we have directly a list of
    * supported methods inside <value/> tags */
-  LmMessageNode *si_multi, *value;
+  LmMessageNode *si_multi;
   const gchar *stream_method;
   GabbleBytestreamMultiple *bytestream = NULL;
+  NodeIter i;
 
   si_multi = lm_message_node_get_child_with_namespace (si, "si-multiple",
       NS_SI_MULTIPLE);
@@ -1698,8 +1701,10 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
       stream_id, NULL, peer_resource, self_jid,
       GABBLE_BYTESTREAM_STATE_INITIATING);
 
-  for (value = si_multi->children; value; value = value->next)
+  for (i = node_iter (si_multi); i; i = node_iter_next (i))
     {
+      LmMessageNode *value = node_iter_data (i);
+
       if (tp_strdiff (value->name, "value"))
         continue;
 
@@ -1726,9 +1731,10 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
                            const gchar *peer_resource,
                            const gchar *self_jid)
 {
-  LmMessageNode *feature, *x, *field, *value;
+  LmMessageNode *feature, *x, *value;
   GabbleBytestreamIface *bytestream = NULL;
   const gchar *stream_method;
+  NodeIter i;
 
   feature = lm_message_node_get_child_with_namespace (si, "feature",
       NS_FEATURENEG);
@@ -1746,8 +1752,10 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
       return NULL;
     }
 
-  for (field = x->children; field; field = field->next)
+  for (i = node_iter (x); i; i = node_iter_next (i))
     {
+      LmMessageNode *field = node_iter_data (i);
+
       if (tp_strdiff (lm_message_node_get_attribute (field, "var"),
             "stream-method"))
         /* some future field, ignore it */

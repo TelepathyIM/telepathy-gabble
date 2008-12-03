@@ -196,19 +196,17 @@ caps_hash_compute (
 static DataForm *
 _parse_dataform (LmMessageNode *node)
 {
-  LmMessageNode *field_node;
   DataForm *form;
+  NodeIter i;
 
   form = g_slice_new0 (DataForm);
   form->form_type = NULL;
   form->fields = g_ptr_array_new ();
 
-  for (field_node = node->children;
-       NULL != field_node;
-       field_node = field_node->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *field_node = node_iter_data (i);
       const gchar *var;
-      LmMessageNode *value_node;
 
       if (! g_str_equal (field_node->name, "field"))
         continue;
@@ -220,10 +218,11 @@ _parse_dataform (LmMessageNode *node)
 
       if (g_str_equal (var, "FORM_TYPE"))
         {
-          for (value_node = field_node->children;
-               NULL != value_node;
-               value_node = value_node->next)
+          NodeIter j;
+
+          for (j = node_iter (field_node); j; j = node_iter_next (j))
             {
+              LmMessageNode *value_node = node_iter_data (j);
               const gchar *content;
 
               if (tp_strdiff (value_node->name, "value"))
@@ -241,15 +240,15 @@ _parse_dataform (LmMessageNode *node)
       else
         {
           DataFormField *field = NULL;
+          NodeIter j;
 
           field = g_slice_new0 (DataFormField);
           field->values = g_ptr_array_new ();
           field->field_name = g_strdup (var);
 
-          for (value_node = field_node->children;
-               NULL != value_node;
-               value_node = value_node->next)
+          for (j = node_iter (field_node); j; j = node_iter_next (j))
             {
+              LmMessageNode *value_node = node_iter_data (j);
               const gchar *content;
 
               if (tp_strdiff (value_node->name, "value"))
@@ -282,11 +281,13 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = g_ptr_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();
-  LmMessageNode *child;
   gchar *str;
+  NodeIter i;
 
-  for (child = node->children; NULL != child; child = child->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *child = node_iter_data (i);
+
       if (g_str_equal (child->name, "identity"))
         {
           const gchar *category;

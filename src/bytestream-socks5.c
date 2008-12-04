@@ -672,7 +672,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         g_free (domain);
         g_free (unhashed_domain);
 
-        socks5_schedule_write (self, msg, 47);
+        socks5_schedule_write (self, msg, SOCKS5_CONNECT_LENGTH);
 
         priv->socks5_state = SOCKS5_STATE_CONNECT_REQUESTED;
 

@@ -524,9 +524,10 @@ socks5_error (GabbleBytestreamSocks5 *self)
       previous_state == SOCKS5_STATE_AUTH_REQUEST_SENT ||
       previous_state == SOCKS5_STATE_CONNECT_REQUESTED)
     {
-      /* The attempt for connect to the streamhost failed... */
+      /* The attempt for connect to the streamhost failed */
       socks5_close_channel (self);
 
+      /* Remove the failed streamhost */
       g_assert (priv->streamhosts);
       streamhost_free (priv->streamhosts->data);
       priv->streamhosts = g_slist_delete_link (priv->streamhosts,
@@ -534,14 +535,12 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       if (priv->streamhosts != NULL)
         {
-          /* ... so let's try to connect to the next one */
           DEBUG ("connection to streamhost failed, trying the next one");
 
           socks5_connect (self);
           return;
         }
 
-      /* ... but there are no more streamhosts */
       DEBUG ("no more streamhosts to try");
 
       g_assert (priv->msg_for_acknowledge_connection != NULL);
@@ -708,6 +707,10 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             node = lm_message_node_add_child (iq_result->node, "query", "");
             lm_message_node_set_attribute (node, "xmlns", NS_BYTESTREAMS);
 
+            /* streamhost-used informs the other end of the streamhost we
+             * decided to use. In case of a direct connetion this is useless
+             * but if we are using an external proxy we need to know which
+             * one was selected */
             node = lm_message_node_add_child (node, "streamhost-used", "");
             current_streamhost = priv->streamhosts->data;
             lm_message_node_set_attribute (node, "jid",
@@ -806,6 +809,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
       case SOCKS5_STATE_ERROR:
         /* An error occurred and the channel will be closed in an idle
          * callback, so let's just throw away the data we receive */
+        DEBUG ("An error occurred, throwing away received data");
         return string->len;
 
       case SOCKS5_STATE_TRYING_CONNECT:
@@ -897,7 +901,7 @@ socks5_connect (gpointer data)
     }
   else
     {
-      DEBUG ("No more streamhosts to streamhost, closing");
+      DEBUG ("No more streamhosts to try, closing");
 
       socks5_error (self);
       return FALSE;
@@ -921,6 +925,8 @@ socks5_connect (gpointer data)
   fd = -1;
   streamhost_address = address_list;
 
+  /* getaddrinfo returns a list of addrinfo structures that identify the
+   * host. Try them in order and stop when the call to socket() succeeds */
   while (fd < 0 && streamhost_address)
     {
       ((struct sockaddr_in *) streamhost_address->ai_addr)->sin_port =
@@ -996,6 +1002,7 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
   zeroconf = lm_message_node_get_attribute (streamhost_node, "zeroconf");
   if (zeroconf != NULL)
     {
+      /* TODO: add suppport for zeroconf */
       DEBUG ("zeroconf streamhosts are not supported");
       return;
     }

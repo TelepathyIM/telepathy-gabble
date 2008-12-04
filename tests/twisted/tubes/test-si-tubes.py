@@ -418,7 +418,6 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
-    print str(tube_props.get("Parameters"))
     assert tube_props.get("Parameters") == dbus.Dictionary(
             {dbus.String(u'foo'): dbus.String(u'bar')},
             signature=dbus.Signature('sv'))

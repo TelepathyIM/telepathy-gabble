@@ -17,8 +17,6 @@ from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
 
-from gabbleconfig import HAVE_DBUS_TUBES
-
 NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
 NS_SI = 'http://jabber.org/protocol/si'
 NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
@@ -621,9 +619,6 @@ def test(q, bus, conn, stream):
     binary = base64.b64decode(str(ibb_data))
     assert binary == 'hello, world'
 
-    if not HAVE_DBUS_TUBES:
-        return
-
     # have the fake client open the stream
     # New tube API
     iq = IQ(stream, 'set')
@@ -656,9 +651,6 @@ def test(q, bus, conn, stream):
     assert ibb_data['sid'] == 'beta'
     binary = base64.b64decode(str(ibb_data))
     assert binary == 'hello, new world'
-
-    if not HAVE_DBUS_TUBES:
-        return
 
     # OK, how about D-Bus?
     call_async(q, tubes_iface, 'OfferDBusTube',

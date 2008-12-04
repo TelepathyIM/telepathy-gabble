@@ -1560,3 +1560,32 @@ gabble_presence_cache_contacts_removed_from_olpc_view (
   g_array_free (tmp, TRUE);
   g_array_free (changed, TRUE);
 }
+
+gboolean
+gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
+                                    TpHandle handle)
+{
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GList *uris, *li;
+
+  uris = g_hash_table_get_values (priv->disco_pending);
+
+  for (li = uris; li != NULL; li = li->next)
+    {
+      GSList *waiters;
+
+      for (waiters = li->data; waiters != NULL; waiters = waiters->next)
+        {
+          DiscoWaiter *w = waiters->data;
+          if (w->handle == handle)
+            {
+              g_list_free (uris);
+              return TRUE;
+            }
+
+        }
+    }
+
+  return FALSE;
+}
+

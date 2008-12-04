@@ -91,6 +91,9 @@ void gabble_presence_cache_contacts_added_to_olpc_view (
 void gabble_presence_cache_contacts_removed_from_olpc_view (
     GabblePresenceCache *cache, TpHandleSet *handles);
 
+gboolean gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
+    TpHandle handle);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_CACHE_H__ */

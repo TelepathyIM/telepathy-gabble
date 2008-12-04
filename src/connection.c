@@ -56,6 +56,7 @@
 #include "media-channel.h"
 #include "register.h"
 #include "im-factory.h"
+#include "jingle-factory.h"
 #include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
@@ -214,6 +215,9 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
 
   self->private_tubes_factory = gabble_private_tubes_factory_new (self);
   g_ptr_array_add (channel_managers, self->private_tubes_factory);
+
+  self->jingle_factory = g_object_new (GABBLE_TYPE_JINGLE_FACTORY,
+    "connection", self, NULL);
 
   g_ptr_array_add (channel_managers,
       g_object_new (GABBLE_TYPE_MEDIA_FACTORY,
@@ -733,6 +737,9 @@ gabble_connection_dispose (GObject *object)
 
   g_object_unref (self->vcard_manager);
   self->vcard_manager = NULL;
+
+  g_object_unref (self->jingle_factory);
+  self->jingle_factory = NULL;
 
   /* remove borrowed references before TpBaseConnection unrefs the channel
    * factories */

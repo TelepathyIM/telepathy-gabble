@@ -1,0 +1,327 @@
+# New API for making it easier to write Jingle tests. The idea
+# is not so much to hide away the details (this makes tests
+# unreadable), but to make the expressions denser and more concise.
+# Helper classes support different dialects so the test can
+# be invoked for different (possibly all) dialects.
+#
+# This can be used in parallel with the old API, but should
+# obsolete it in time.
+
+from twisted.words.xish import domish
+import random
+from gabbletest import sync_stream
+from servicetest import EventPattern
+import dbus
+
+class JingleProtocol:
+    """
+    Defines a simple DSL for constructing Jingle messages.
+    """
+
+    def __init__(self, dialect):
+        self.dialect = dialect 
+        self.id_seq = 0
+
+    def _simple_xml(self, node):
+        "Construct domish.Element tree from tree of tuples"
+        name, ns, attribs, children = node
+        el = domish.Element((ns, name))
+        for key, val in attribs.items():
+            el[key] = val
+        for c in children:
+            if isinstance(c, tuple):
+                el.addChild(self._simple_xml(c))
+            elif isinstance(c, unicode):
+                el.addContent(c)
+            else:
+                raise ValueError("invalid child object %r of type %r" % (c, type(c)))
+        return el
+
+    def xml(self, node):
+        "Returns XML from tree of tuples"
+        return self._simple_xml(node).toXml()
+
+    def Iq(self, type, id, frm, to, children):
+        "Creates an IQ element"
+        if not id:
+            id = 'seq%d' % self.id_seq
+            self.id_seq += 1
+
+        return ('iq', 'jabber:client',
+            { 'type': type, 'from': frm, 'to': to, 'id': id },
+            children)
+
+    def SetIq(self, frm, to, children):
+        "Creates a set IQ element"
+        return self.Iq('set', None, frm, to, children)
+
+    def ResultIq(self, to, iq, children):
+        "Creates a result IQ element"
+        return self.Iq('result', iq['id'], iq['to'], to,
+            children)
+
+    def ErrorIq(self, iq, errtype, errchild):
+        "Creates an error IQ element, and includes the original stanza"
+        return self.Iq('error', iq['id'], iq['to'], iq['from'],
+            [ iq.firstChildElement(),
+                ('error', None, { 'type': errtype, 'xmlns':
+                    'urn:ietf:params:xml:ns:xmpp-stanzas' }, [ errchild ]) ])
+
+    def PayloadType(self, name, rate, id, **kw):
+        "Creates a <payload-type> element"
+        kw['name'] = name
+        kw['rate'] = rate
+        kw['id'] = id
+        return ('payload-type', None, kw, [])
+
+    def TransportGoogleP2P(self):
+        "Creates a <transport> element for Google P2P transport"
+        return ('transport', 'http://www.google.com/transport/p2p', {}, [])
+
+    def Presence(self, frm, to, caps):
+        "Creates <presence> stanza with specified capabilities"
+        children = []
+        if caps:
+            children = [ ('c', 'http://jabber.org/protocol/caps', caps, []) ]
+        return ('presence', 'jabber:client', { 'from': frm, 'to': to },
+            children)
+
+    def Query(self, node, xmlns, children):
+        "Creates <query> element"
+        attrs = {}
+        if node:
+            attrs['node'] = node
+        return ('query', xmlns, attrs, children)
+
+    def Feature(self, var):
+        "Creates <feature> element"
+        return ('feature', None, { 'var': var }, [])
+
+    def match_jingle_action(self, q, action):
+        return q.name == 'jingle' and q['action'] == action
+
+class GtalkProtocol03(JingleProtocol):
+    features = [ 'http://www.google.com/xmpp/protocol/voice/v1' ]
+
+    def __init__(self):
+        JingleProtocol.__init__(self, 'gtalk-v0.3')
+
+    def _action_map(self, action):
+        map = {
+            'session-initiate': 'initiate',
+            'session-terminate': 'terminate',
+            'session-accept': 'accept',
+            'transport-info': 'candidates'
+        }
+
+        if action in map:
+            return map[action]
+        else:
+            return action
+
+    def Jingle(self, sid, initiator, action, children):
+        action = self._action_map(action)
+        return ('session', 'http://www.google.com/session',
+            { 'type': action, 'initiator': initiator, 'id': sid }, children)
+
+    # Gtalk has only one content, and <content> node is implicit
+    def Content(self, name, creator, senders, children):
+        # Normally <content> has <description> and <transport>, but we only
+        # use <description>
+        assert len(children) == 2
+        return children[0]
+
+    def Description(self, type, children):
+        return ('description', 'http://www.google.com/session/phone', {}, children)
+
+    def match_jingle_action(self, q, action):
+        action = self._action_map(action)
+        return q.name == 'session' and q['type'] == action
+
+    # Content will never pick up transport, so this can return invalid value
+    def TransportGoogleP2P(self):
+        return None
+
+class GtalkProtocol04(JingleProtocol):
+    features = [ 'http://www.google.com/xmpp/protocol/voice/v1',
+          'http://www.google.com/transport/p2p' ]
+
+    def __init__(self):
+        JingleProtocol.__init__(self, 'gtalk-v0.4')
+
+    def _action_map(self, action):
+        map = {
+            'session-initiate': 'initiate',
+            'session-terminate': 'terminate',
+            'session-accept': 'accept',
+        }
+
+        if action in map:
+            return map[action]
+        else:
+            return action
+
+    def Jingle(self, sid, initiator, action, children):
+        # ignore Content and go straight for its children
+        if len(children) == 1 and children[0][0] == 'dummy-content':
+            children = [ children[0][3][0], children[0][3][1] ]
+
+        action = self._action_map(action)
+        return ('session', 'http://www.google.com/session',
+            { 'type': action, 'initiator': initiator, 'id': sid }, children)
+
+    # hacky: parent Jingle node should just pick up our children
+    def Content(self, name, creator, senders, children):
+        return ('dummy-content', None, {}, children)
+
+    def Description(self, type, children):
+        return ('description', 'http://www.google.com/session/phone', {}, children)
+
+    def match_jingle_action(self, q, action):
+        action = self._action_map(action)
+        return q.name == 'session' and q['type'] == action
+
+
+class JingleProtocol015(JingleProtocol):
+    features = [ 'http://www.google.com/transport/p2p',
+          'http://jabber.org/protocol/jingle',
+          'http://jabber.org/protocol/jingle/description/audio',
+          'http://jabber.org/protocol/jingle/description/video' ]
+
+    def __init__(self):
+        JingleProtocol.__init__(self, 'jingle-v0.15')
+
+    def Jingle(self, sid, initiator, action, children):
+        return ('jingle', 'http://jabber.org/protocol/jingle',
+            { 'action': action, 'initiator': initiator, 'sid': sid }, children)
+
+    # Note: senders weren't mandatory in this dialect
+    def Content(self, name, creator, senders, children):
+        attribs = { 'name': name, 'creator': creator }
+        if senders:
+            attribs['senders'] = senders
+        return ('content', None, attribs, children)
+
+    def Description(self, type, children):
+        if type == 'audio':
+            ns = 'http://jabber.org/protocol/jingle/description/audio'
+        elif type == 'video':
+            ns = 'http://jabber.org/protocol/jingle/description/video'
+        else:
+            ns = 'unexistent-namespace'
+        return ('description', ns, { 'type': type }, children)
+
+class JingleProtocol031(JingleProtocol):
+    features = [ 'urn:xmpp:jingle:0', 'urn:xmpp:jingle:apps:rtp:0',
+          'http://www.google.com/transport/p2p' ]
+
+    def __init__(self):
+        JingleProtocol.__init__(self, 'jingle-v0.31')
+
+    def Jingle(self, sid, initiator, action, children):
+        return ('jingle', 'urn:xmpp:jingle:0',
+            { 'action': action, 'initiator': initiator, 'sid': sid }, children)
+
+    def Content(self, name, creator, senders, children):
+        if not senders:
+            senders = 'both'
+        return ('content', None,
+            { 'name': name, 'creator': creator, 'senders': senders }, children)
+
+    def Description(self, type, children):
+        return ('description', 'urn:xmpp:jingle:apps:rtp:0',
+            { 'media': type }, children)
+
+
+class JingleTest2:
+    # Default caps for the remote end
+    remote_caps = { 'ext': '', 'ver': '0.0.0',
+             'node': 'http://example.com/fake-client0' }
+
+    # Default feats for remote end - XXX shouldn't be used
+    remote_feats = [ 'http://www.google.com/xmpp/protocol/session',
+          'http://www.google.com/transport/p2p',
+          'http://jabber.org/protocol/jingle',
+          # was previously in bundles:
+          'http://jabber.org/protocol/jingle/description/audio',
+          'http://jabber.org/protocol/jingle/description/video',
+          'http://www.google.com/xmpp/protocol/voice/v1']
+
+    # Default audio codecs for the remote end
+    audio_codecs = [ ('GSM', 3, 8000), ('PCMA', 8, 8000), ('PCMU', 0, 8000) ]
+
+    # Default video codecs for the remote end. I have no idea what's
+    # a suitable value here...
+    video_codecs = [ ('WTF', 42, 80000) ]
+
+    # Default candidates for the remote end
+    remote_transports = [
+          ( "192.168.0.1", # host
+            666, # port
+            0, # protocol = TP_MEDIA_STREAM_BASE_PROTO_UDP
+            "RTP", # protocol subtype
+            "AVP", # profile
+            1.0, # preference
+            0, # transport type = TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+            "username",
+            "password" ) ]
+
+
+
+    def __init__(self, jp, conn, q, stream, jid, peer):
+        self.jp = jp
+        self.conn = conn
+        self.q = q
+        self.jid = jid
+        self.peer = peer
+        self.stream = stream
+        self.sid = 'sess' + str(int(random.random() * 10000))
+
+    def prepare(self):
+        # If we need to override remote caps, feats, codecs or caps,
+        # we should do it prior to calling this method.
+
+        # Connecting
+        self.conn.Connect()
+
+        # Catch events: status connecting, authentication, our presence update,
+        # status connected
+        self.q.expect_many(
+                EventPattern('dbus-signal', signal='StatusChanged', args=[1, 1]),
+                EventPattern('stream-authenticated'),
+                EventPattern('dbus-signal', signal='PresenceUpdate',
+                    args=[{1L: (0L, {u'available': {}})}]),
+                EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+                )
+
+        # We need remote end's presence for capabilities
+        self.stream.send(self.jp.xml(
+            self.jp.Presence(self.peer, self.jid, self.remote_caps)))
+
+        query_ns = 'http://jabber.org/protocol/disco#info'
+        # Gabble doesn't trust it, so makes a disco
+        event = self.q.expect('stream-iq', query_ns=query_ns, to=self.peer)
+
+        # jt.send_remote_disco_reply(event.stanza)
+        self.stream.send(self.jp.xml(self.jp.ResultIq(self.jid, event.stanza,
+            [ self.jp.Query(None, query_ns,
+                [ self.jp.Feature(x) for x in self.jp.features ]) ]) ))
+
+        # Force Gabble to process the caps before doing any more Jingling
+        sync_stream(self.q, self.stream)
+
+    def get_audio_codecs_dbus(self):
+        return dbus.Array([ (id, name, 0, rate, 0, {} ) for (name, id, rate) in self.audio_codecs ],
+            signature='(usuuua{ss})')
+
+    def get_remote_transports_dbus(self):
+        return dbus.Array([
+            (dbus.UInt32(1 + i), host, port, proto, subtype,
+                profile, pref, transtype, user, pwd)
+                for i, (host, port, proto, subtype, profile,
+                    pref, transtype, user, pwd)
+                in enumerate(self.remote_transports) ],
+            signature='(usuussduss)')
+
+
+

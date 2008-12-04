@@ -111,6 +111,11 @@ gboolean gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
 
 gboolean gabble_presence_cache_is_unsure (GabblePresenceCache *cache);
 
+void gabble_presence_cache_update_location (GabblePresenceCache *cache,
+    TpHandle handle, GHashTable *location);
+gboolean gabble_presence_cache_get_location (GabblePresenceCache *cache,
+    TpHandle handle, GHashTable **location);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_CACHE_H__ */

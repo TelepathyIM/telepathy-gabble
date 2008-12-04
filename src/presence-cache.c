@@ -69,6 +69,7 @@ enum
   CAPABILITIES_UPDATE,
   AVATAR_UPDATE,
   CAPABILITIES_DISCOVERED,
+  LOCATION_UPDATED,
   LAST_SIGNAL
 };
 
@@ -91,6 +92,8 @@ struct _GabblePresenceCachePrivate
   guint caps_serial;
 
   GTimeVal creation_time;
+  GHashTable *location;
+
   gboolean dispose_has_run;
 };
 
@@ -352,12 +355,15 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
   signals[CAPABILITIES_DISCOVERED] = g_signal_new (
     "capabilities-discovered",
+    gabble_marshal_VOID__UINT, G_TYPE_NONE,
+    1, G_TYPE_UINT);
+  signals[LOCATION_UPDATED] = g_signal_new (
+    "location-update",
     G_TYPE_FROM_CLASS (klass),
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    gabble_marshal_VOID__UINT, G_TYPE_NONE,
-    1, G_TYPE_UINT);
+    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 static void
@@ -374,6 +380,9 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
   priv->disco_pending = g_hash_table_new_full (g_str_hash, g_str_equal,
     g_free, (GDestroyNotify) disco_waiter_list_free);
   priv->caps_serial = 1;
+
+  priv->location = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+      NULL);
 }
 
 static GObject *
@@ -423,6 +432,9 @@ gabble_presence_cache_dispose (GObject *object)
 
   tp_handle_set_destroy (priv->presence_handles);
   priv->presence_handles = NULL;
+
+  g_hash_table_destroy (priv->location);
+  priv->location = NULL;
 
   if (G_OBJECT_CLASS (gabble_presence_cache_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_presence_cache_parent_class)->dispose (object);
@@ -1770,3 +1782,48 @@ gabble_presence_cache_is_unsure (GabblePresenceCache *cache)
   return (diff < UNSURE_PERIOD);
 }
 
+static void update_location_for_each (gpointer key,
+                                      gpointer value,
+                                      gpointer user_data)
+{
+  GHashTable *location = (GHashTable*) user_data;
+    g_hash_table_insert (location, g_strdup(key), tp_g_value_slice_dup (value));
+}
+
+void gabble_presence_cache_update_location (GabblePresenceCache *cache,
+                                            TpHandle handle,
+                                            GHashTable *location)
+{
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GHashTable *cur_location;
+
+  // FIXME: Necessary? should the destroy cb take care of that?
+  cur_location = g_hash_table_lookup (priv->location, GINT_TO_POINTER (handle));
+  if (!cur_location)
+    cur_location = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+        (GDestroyNotify) tp_g_value_slice_free);
+
+  // Copy keys
+  g_hash_table_foreach (location, update_location_for_each, cur_location);
+
+  g_hash_table_replace (priv->location, GINT_TO_POINTER (handle), cur_location);
+
+  g_signal_emit (cache, signals[LOCATION_UPDATED], 0, handle);
+}
+
+
+gboolean gabble_presence_cache_get_location (GabblePresenceCache *cache,
+                                             TpHandle handle,
+                                             GHashTable **location)
+{
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+
+  *location = g_hash_table_lookup (priv->location, GINT_TO_POINTER (handle));
+  if (*location != NULL)
+    {
+      g_hash_table_ref(*location);
+      return TRUE;
+    }
+
+  return FALSE;
+}

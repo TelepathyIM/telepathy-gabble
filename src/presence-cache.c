@@ -66,6 +66,7 @@ enum
   NICKNAME_UPDATE,
   CAPABILITIES_UPDATE,
   AVATAR_UPDATE,
+  CAPABILITIES_DISCOVERED,
   LAST_SIGNAL
 };
 
@@ -316,6 +317,14 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     0,
     NULL, NULL,
     g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
+  signals[CAPABILITIES_DISCOVERED] = g_signal_new (
+    "capabilities-discovered",
+    G_TYPE_FROM_CLASS (klass),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    gabble_marshal_VOID__UINT, G_TYPE_NONE,
+    1, G_TYPE_UINT);
 }
 
 static void
@@ -915,6 +924,7 @@ _caps_disco_cb (GabbleDisco *disco,
           g_hash_table_insert (priv->disco_pending, key, waiters);
 
           disco_waiter_free (waiter);
+          g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, handle);
         }
       else if (trust + disco_waiter_list_get_request_count (waiters) - trust_inc
           < CAPABILITY_BUNDLE_ENOUGH_TRUST)

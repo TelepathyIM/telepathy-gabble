@@ -90,6 +90,7 @@ enum
 enum _Socks5State
 {
   SOCKS5_STATE_INVALID,
+  SOCKS5_STATE_TRYING_CONNECT,
   SOCKS5_STATE_AUTH_REQUEST_SENT,
   SOCKS5_STATE_CONNECT_REQUESTED,
   SOCKS5_STATE_CONNECTED,
@@ -514,13 +515,14 @@ socks5_error (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  Socks5State previous_state;
 
+  previous_state = priv->socks5_state;
   priv->socks5_state = SOCKS5_STATE_ERROR;
 
-  /* If msg_for_acknowledge_connection is not NULL it means that we are
-   * trying to find a working streamhost, so we should try the next available
-   * one instead of just failing */
-  if (priv->msg_for_acknowledge_connection != NULL)
+  if (previous_state == SOCKS5_STATE_TRYING_CONNECT ||
+      previous_state == SOCKS5_STATE_AUTH_REQUEST_SENT ||
+      previous_state == SOCKS5_STATE_CONNECT_REQUESTED)
     {
       /* The attempt for connect to the streamhost failed... */
       socks5_close_channel (self);
@@ -541,6 +543,8 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       /* ... but there are no more streamhosts */
       DEBUG ("no more streamhosts to try");
+
+      g_assert (priv->msg_for_acknowledge_connection != NULL);
       _gabble_connection_send_iq_error (priv->conn,
           priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
           "impossible to connect to any streamhost");
@@ -804,6 +808,10 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
          * callback, so let's just throw away the data we receive */
         return string->len;
 
+      case SOCKS5_STATE_TRYING_CONNECT:
+        DEBUG ("Impossible to receive data when not yet connected to the socket");
+        break;
+
       case SOCKS5_STATE_INVALID:
         DEBUG ("Invalid SOCKS5 state");
         break;
@@ -880,6 +888,8 @@ socks5_connect (gpointer data)
   gint fd;
   gint res;
   gchar msg[3];
+
+  priv->socks5_state = SOCKS5_STATE_TRYING_CONNECT;
 
   if (priv->streamhosts != NULL)
     {

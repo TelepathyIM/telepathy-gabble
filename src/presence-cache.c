@@ -50,6 +50,10 @@
  */
 #define CAPABILITY_BUNDLE_ENOUGH_TRUST 5
 
+/* Time period from the cache creation in which we're unsure whether we
+ * got initial presence from all the contacts. */
+#define UNSURE_PERIOD (5 * G_USEC_PER_SEC)
+
 G_DEFINE_TYPE (GabblePresenceCache, gabble_presence_cache, G_TYPE_OBJECT);
 
 /* properties */
@@ -88,6 +92,7 @@ struct _GabblePresenceCachePrivate
   GHashTable *disco_pending;
   guint caps_serial;
 
+  GTimeVal creation_time;
   gboolean dispose_has_run;
 };
 
@@ -356,6 +361,8 @@ gabble_presence_cache_constructor (GType type, guint n_props,
 
   priv->status_changed_cb = g_signal_connect (priv->conn, "status-changed",
       G_CALLBACK (gabble_presence_cache_status_changed_cb), obj);
+
+  g_get_current_time (&priv->creation_time);
 
   return obj;
 }
@@ -1597,5 +1604,21 @@ gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
     }
 
   return FALSE;
+}
+
+gboolean
+gabble_presence_cache_is_unsure (GabblePresenceCache *cache)
+{
+  gulong diff;
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GTimeVal now;
+
+  g_get_current_time (&now);
+  diff = (now.tv_sec - priv->creation_time.tv_sec) * G_USEC_PER_SEC +
+      (now.tv_usec - priv->creation_time.tv_usec);
+
+  DEBUG ("Diff: %lu", diff);
+
+  return (diff < UNSURE_PERIOD);
 }
 

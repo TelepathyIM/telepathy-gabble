@@ -8,14 +8,7 @@ CLEANFILES = $(BUILT_SOURCES)
 libexec_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
-if HAVE_DBUS_TUBE
-dbus_tube_sources = \
-    tube-dbus.h \
-    tube-dbus.c
-endif
-
 libgabble_convenience_la_SOURCES = \
-    $(dbus_tube_sources) \
     base64.h \
     base64.c \
     bytestream-factory.h \
@@ -113,6 +106,8 @@ libgabble_convenience_la_SOURCES = \
     tube-iface.c \
     tubes-channel.h \
     tubes-channel.c \
+    tube-dbus.h \
+    tube-dbus.c \
     tube-stream.h \
     tube-stream.c \
     types.h \

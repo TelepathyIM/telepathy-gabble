@@ -1445,6 +1445,7 @@ _gabble_media_channel_request_streams (GabbleMediaChannel *chan,
 }
 
 struct _delayed_request_streams_ctx {
+  GabblePresenceCache *cache;
   gulong caps_updated_id;
   TpSvcChannelTypeStreamedMedia *iface;
   guint contact_handle;
@@ -1455,28 +1456,28 @@ struct _delayed_request_streams_ctx {
 static void gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
     guint contact_handle, const GArray *types, DBusGMethodInvocation *context);
 
+static gboolean
+repeat_request (struct _delayed_request_streams_ctx *ctx)
+{
+  gabble_media_channel_request_streams (ctx->iface,
+      ctx->contact_handle, ctx->types, ctx->context);
+
+  g_array_free (ctx->types, TRUE);
+  g_slice_free (struct _delayed_request_streams_ctx, ctx);
+  return FALSE;
+}
+
 static void
 capabilities_discovered_cb (GabblePresenceCache *cache,
                             TpHandle handle,
-                            gpointer user_data)
+                            struct _delayed_request_streams_ctx *ctx)
 {
-  struct _delayed_request_streams_ctx *ctx = user_data;
-
-  g_assert (handle == ctx->contact_handle);
-
   /* If there are more cache caps pending, wait for them. */
   if (gabble_presence_cache_caps_pending (cache, handle))
     return;
 
   g_signal_handler_disconnect (cache, ctx->caps_updated_id);
-
-  DEBUG ("Contact caps arrived, completing RequestStreams");
-
-  gabble_media_channel_request_streams (ctx->iface, handle,
-      ctx->types, ctx->context);
-
-  g_array_free (ctx->types, TRUE);
-  g_slice_free (struct _delayed_request_streams_ctx, ctx);
+  repeat_request (ctx);
 }
 
 static void
@@ -1484,7 +1485,8 @@ delay_stream_request (GabbleMediaChannel *chan,
                       TpSvcChannelTypeStreamedMedia *iface,
                       guint contact_handle,
                       const GArray *types,
-                      DBusGMethodInvocation *context)
+                      DBusGMethodInvocation *context,
+                      gboolean disco_in_progress)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   struct _delayed_request_streams_ctx *ctx =
@@ -1496,8 +1498,17 @@ delay_stream_request (GabbleMediaChannel *chan,
   ctx->types = g_array_sized_new (FALSE, FALSE, sizeof(guint), types->len);
   g_array_append_vals (ctx->types, types->data, types->len);
 
-  ctx->caps_updated_id = g_signal_connect (priv->conn-> presence_cache,
-      "capabilities-discovered", G_CALLBACK (capabilities_discovered_cb), ctx);
+  if (disco_in_progress)
+    {
+      ctx->caps_updated_id = g_signal_connect (priv->conn->presence_cache,
+          "capabilities-discovered", G_CALLBACK (capabilities_discovered_cb),
+          ctx);
+    }
+  else
+    {
+      ctx->cache = priv->conn->presence_cache;
+      g_timeout_add_seconds (5, (GSourceFunc) repeat_request, ctx);
+    }
 }
 
 /**
@@ -1539,8 +1550,18 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
     {
       if (wait)
         {
-          DEBUG ("delaying RequestStreams until we get all caps from contact");
-          delay_stream_request (self, iface, contact_handle, types, context);
+          DEBUG ("Delaying RequestStreams until we get all caps from contact");
+          delay_stream_request (self, iface, contact_handle, types, context,
+              TRUE);
+          return;
+        }
+
+      /* if we're unsure about the offlineness of the contact, wait a bit */
+      if (gabble_presence_cache_is_unsure (priv->conn->presence_cache))
+        {
+          DEBUG ("Delaying RequestStreams because we're unsure about them");
+          delay_stream_request (self, iface, contact_handle, types, context,
+              FALSE);
           return;
         }
     }
@@ -1667,7 +1688,8 @@ _gabble_media_channel_add_member (GObject *obj,
        * hope for the best. */
       if (!contact_is_media_capable (chan, handle, &wait))
         {
-          if (wait)
+          if (wait ||
+              gabble_presence_cache_is_unsure (priv->conn->presence_cache))
             {
               DEBUG ("contact %u caps still pending, adding anyways", handle);
             }

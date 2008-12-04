@@ -55,6 +55,8 @@ static const Feature self_advertised_features[] =
   { FEATURE_OPTIONAL, NS_OLPC_CURRENT_ACTIVITY "+notify", PRESENCE_CAP_OLPC_1},
   { FEATURE_OPTIONAL, NS_OLPC_ACTIVITY_PROPS "+notify", PRESENCE_CAP_OLPC_1},
 
+  { FEATURE_OPTIONAL, NS_GEOLOC "+notify", 0},
+
   { 0, NULL, 0}
 };
 

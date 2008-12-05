@@ -1,6 +1,7 @@
 
 #include "config.h"
 #include "conn-location.h"
+#include "presence-cache.h"
 
 #include <stdlib.h>
 
@@ -11,12 +12,29 @@
 #include "namespaces.h"
 #include "pubsub.h"
 
-struct request_location_ctx
-{
-  DBusGMethodInvocation *call;
-  guint pending_replies;
-  GHashTable *results;
-};
+#define XEP0080_ALT "alt"
+#define XEP0080_AREA "area"
+#define XEP0080_BEARING "bearing"
+#define XEP0080_BUILDING "building"
+#define XEP0080_COUNTRY "country"
+#define XEP0080_DESCRIPTION "description"
+#define XEP0080_ERROR "error"
+#define XEP0080_FLOOR "floor"
+#define XEP0080_LAT "lat"
+#define XEP0080_LOCALITY "locality"
+#define XEP0080_LON "lon"
+#define XEP0080_POSTAL_CODE "postalcode"
+#define XEP0080_REGION "region"
+#define XEP0080_ROOM "room"
+#define XEP0080_STREET "street"
+#define XEP0080_TEXT "text"
+#define XEP0080_TIMESTAMP "timestamp"
+#define XEP0080_URI "uri"
+
+#define LOCATION_ACCURACY_LEVEL "accuracy-level"
+#define LOCATION_COUNTRY_CODE "countrycode"
+#define LOCATION_VERTICAL_ERROR_M "vertical-error-m"
+#define LOCATION_HORIZONTAL_ERROR_M "horizontal-error-m"
 
 /* XXX: similar to conn-olpc.c's inspect_contact(), except that it assumes
  * that the handle is valid. (Does tp_handle_inspect check validity anyway?)
@@ -70,7 +88,22 @@ lm_message_node_get_double (LmMessageNode *node,
 
   return TRUE;
 }
+/*
+static gboolean
+lm_message_node_get_string (LmMessageNode *node,
+                            gchar *s)
+{
+  const gchar *value;
 
+  value = lm_message_node_get_value (node);
+
+  if (value == NULL)
+    return FALSE;
+
+  s = g_strdup (value);
+  return TRUE;
+}
+*/
 static LmHandlerResult
 pep_reply_cb (GabbleConnection *conn,
               LmMessage *sent_msg,
@@ -85,19 +118,17 @@ pep_reply_cb (GabbleConnection *conn,
   LmMessageNode *lat_node;
   LmMessageNode *lon_node;
   GHashTable *result = NULL;
-  struct request_location_ctx *ctx = user_data;
   const gchar *from;
   gdouble lat;
   gdouble lon;
   guint contact;
 
-  ctx->pending_replies--;
-  result = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+  result = g_hash_table_new_full (g_direct_hash, g_direct_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
   from = lm_message_node_get_attribute (reply_msg->node, "from");
 
   if (from == NULL)
-    goto FAIL;
+    goto END;
 
   contact = tp_handle_lookup (contact_repo, from, NULL, NULL);
   /* XXX: ref all the handles */
@@ -105,14 +136,14 @@ pep_reply_cb (GabbleConnection *conn,
   geoloc = lm_message_node_find_child (reply_msg->node, "geoloc");
 
   if (geoloc == NULL)
-    goto FAIL;
+    goto END;
 
   lat_node = lm_message_node_find_child (geoloc, "lat");
   lon_node = lm_message_node_find_child (geoloc, "lon");
 
   if (lat_node == NULL &&
       lon_node == NULL)
-    goto FAIL;
+    goto END;
 
   if (lat_node != NULL && lm_message_node_get_double (lat_node, &lat))
     {
@@ -132,20 +163,14 @@ pep_reply_cb (GabbleConnection *conn,
       g_hash_table_insert (result, g_strdup ("lon"), value);
     }
 
-  g_hash_table_insert (ctx->results, GINT_TO_POINTER (contact), result);
-  goto END;
+  gabble_presence_cache_update_location (conn->presence_cache, contact,
+      result);
 
-FAIL:
-  g_hash_table_destroy (result);
+  gabble_svc_connection_interface_location_emit_location_updated (conn,
+      contact, result);
 
 END:
-  if (ctx->pending_replies == 0)
-    {
-      gabble_svc_connection_interface_location_return_from_get_locations
-        (ctx->call, ctx->results);
-      g_hash_table_destroy (ctx->results);
-      g_slice_free (struct request_location_ctx, ctx);
-    }
+  g_hash_table_destroy (result);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -157,33 +182,41 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  struct request_location_ctx *ctx = NULL;
   guint i;
+  GHashTable *return_locations = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+      NULL);
+  GHashTable *location = NULL;
 
   if (!validate_contacts (base, context, contacts))
     return;
 
-  ctx = g_slice_new0 (struct request_location_ctx);
-  ctx->call = context;
-  ctx->pending_replies = contacts->len;
-  ctx->results = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
-      (GDestroyNotify) g_hash_table_destroy);
-
   for (i = 0; i < contacts->len; i++)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-          "Sending PEP location query failed" };
       guint contact = g_array_index (contacts, guint, i);
       const gchar *jid = inspect_contact (base, contact);
 
-      if (!pubsub_query (conn, jid, NS_GEOLOC, pep_reply_cb, ctx))
+      /* Check for cached locations */
+      if (gabble_presence_cache_get_location (conn->presence_cache, contact, &location))
         {
+          //FIXME: where to unref the location?
+          g_hash_table_insert (return_locations, GINT_TO_POINTER (contact), location);
+        }
+      else if (!pubsub_query (conn, jid, NS_GEOLOC, pep_reply_cb, NULL))
+        {
+          GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "Sending PEP location query failed" };
+
           dbus_g_method_return_error (context, &error);
-          g_hash_table_destroy (ctx->results);
-          g_slice_free (struct request_location_ctx, ctx);
+          g_hash_table_unref (return_locations);
+
           return;
         }
     }
+
+  gabble_svc_connection_interface_location_return_from_get_locations
+      (context, return_locations);
+  g_hash_table_unref (return_locations);
+
 }
 
 static void

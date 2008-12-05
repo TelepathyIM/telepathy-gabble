@@ -44,12 +44,6 @@
 #include "util.h"
 #include "roster.h"
 
-/* When five DIFFERENT guys report the same caps for a given bundle, it'll
- * be enough. But if only ONE guy use the verification string (XEP-0115 v1.5),
- * it'll be enough too.
- */
-#define CAPABILITY_BUNDLE_ENOUGH_TRUST 5
-
 /* Time period from the cache creation in which we're unsure whether we
  * got initial presence from all the contacts. */
 #define UNSURE_PERIOD (5 * G_USEC_PER_SEC)

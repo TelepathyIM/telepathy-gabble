@@ -291,14 +291,15 @@ jingle_info_cb (LmMessageHandler *handler,
 
   if (node != NULL)
     {
-      node = lm_message_node_get_child (node, "token");
+      LmMessageNode *subnode;
 
-      if (node != NULL)
+      subnode = lm_message_node_get_child (node, "token");
+
+      if (subnode != NULL)
         {
           const gchar *token;
 
-          token = lm_message_node_get_value (node);
-
+          token = lm_message_node_get_value (subnode);
           if (token != NULL)
             {
               DEBUG ("jingle info: got Google relay token %s", token);
@@ -306,6 +307,52 @@ jingle_info_cb (LmMessageHandler *handler,
               fac->priv->relay_token = g_strdup (token);
             }
         }
+
+      subnode = lm_message_node_get_child (node, "server");
+
+      if (subnode != NULL)
+        {
+          const gchar *server;
+          const gchar *port;
+
+          server = lm_message_node_get_attribute (subnode, "host");
+
+          if (server != NULL)
+            {
+              DEBUG ("jingle info: got relay server %s", server);
+              g_free (fac->relay_server);
+              fac->relay_server = g_strdup (server);
+            }
+
+          /* FIXME: these are not really actually used anywhere at
+           * the moment, because we get the same info when creating
+           * relay session. */
+          port = lm_message_node_get_attribute (subnode, "udp");
+
+          if (port != NULL)
+            {
+              DEBUG ("jingle info: got relay udp port %s", port);
+              fac->relay_udp = atoi (port);
+            }
+
+          port = lm_message_node_get_attribute (subnode, "tcp");
+
+          if (port != NULL)
+            {
+              DEBUG ("jingle info: got relay tcp port %s", port);
+              fac->relay_tcp = atoi (port);
+            }
+
+          port = lm_message_node_get_attribute (subnode, "tcpssl");
+
+          if (port != NULL)
+            {
+              DEBUG ("jingle info: got relay tcpssl port %s", port);
+              fac->relay_ssltcp = atoi (port);
+            }
+
+        }
+
     }
 
   if (sub_type == LM_MESSAGE_SUB_TYPE_SET)
@@ -369,6 +416,7 @@ gabble_jingle_factory_dispose (GObject *object)
   g_free (fac->priv->stun_server);
   g_free (fac->priv->fallback_stun_server);
   g_free (fac->priv->relay_token);
+  g_free (fac->relay_server);
 
   if (priv->soup != NULL)
     {

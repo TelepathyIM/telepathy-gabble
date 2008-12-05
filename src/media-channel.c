@@ -1479,6 +1479,15 @@ destroy_request (struct _delayed_request_streams_ctx *ctx,
     g_signal_handler_disconnect (priv->conn->presence_cache,
         ctx->caps_disco_id);
 
+  if (ctx->context != NULL)
+    {
+      GError *error = NULL;
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "cannot add streams: peer has insufficient caps");
+      dbus_g_method_return_error (ctx->context, error);
+      g_error_free (error);
+    }
+
   g_array_free (ctx->types, TRUE);
   g_slice_free (struct _delayed_request_streams_ctx, ctx);
   g_ptr_array_remove_fast (priv->delayed_request_streams, ctx);
@@ -1501,6 +1510,7 @@ repeat_request (struct _delayed_request_streams_ctx *ctx)
       ctx->contact_handle, ctx->types, ctx->context);
 
   ctx->timeout_id = 0;
+  ctx->context = NULL;
   destroy_request (ctx, NULL);
   return FALSE;
 }

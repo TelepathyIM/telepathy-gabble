@@ -380,7 +380,7 @@ gabble_xmpp_error_to_g_error (GabbleXmppError error)
 
   return g_error_new (GABBLE_XMPP_ERROR,
                       error,
-                      xmpp_errors[error].description);
+                      "%s", xmpp_errors[error].description);
 }
 
 /*

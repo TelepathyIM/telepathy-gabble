@@ -18,8 +18,6 @@ from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
 
-from gabbleconfig import HAVE_DBUS_TUBES
-
 NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
 NS_SI = 'http://jabber.org/protocol/si'
 NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
@@ -447,7 +445,6 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
-    print str(tube_props.get("Parameters"))
     assert tube_props.get("Parameters") == dbus.Dictionary(
             {dbus.String(u'foo'): dbus.String(u'bar')},
             signature=dbus.Signature('sv'))
@@ -670,9 +667,6 @@ def test(q, bus, conn, stream):
     event = q.expect('s5b-data-received')
     assert event.properties['data'] == 'hello world'
 
-    if not HAVE_DBUS_TUBES:
-        return
-
     reactor.listenTCP(5085, S5BFactory(q.append))
 
     # have the fake client open the stream
@@ -727,9 +721,6 @@ def test(q, bus, conn, stream):
     transport.write("HELLO, NEW WORLD")
     event = q.expect('s5b-data-received')
     assert event.properties['data'] == 'hello, new world'
-
-    if not HAVE_DBUS_TUBES:
-        return
 
     # OK, how about D-Bus?
     call_async(q, tubes_iface, 'OfferDBusTube',
@@ -960,15 +951,12 @@ def test(q, bus, conn, stream):
     streamhost['port'] = '5084'
     stream.send(iq)
 
-    event = q.expect('dbus-return', method='AcceptDBusTube')
+    event, _ = q.expect_many(
+        EventPattern('dbus-return', method='AcceptDBusTube'),
+        EventPattern('s5b-connected'))
     address = event.value[0]
     # FIXME: this is currently broken. See FIXME in tubes-channel.c
     #assert len(address) > 0
-
-    event = q.expect('dbus-signal', signal='TubeStateChanged',
-        args=[69, 2]) # 2 == OPEN
-    id = event.args[0]
-    state = event.args[1]
 
     # OK, we're done
     conn.Disconnect()

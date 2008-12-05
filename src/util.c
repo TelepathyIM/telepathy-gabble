@@ -127,26 +127,67 @@ lm_message_node_steal_children (LmMessageNode *snatcher,
     baby->parent = snatcher;
 }
 
+/* variant of lm_message_node_get_child() which ignores node namespace
+ * prefix */
+LmMessageNode *
+lm_message_node_get_child_any_ns (LmMessageNode *node, const gchar *name)
+{
+  LmMessageNode *child;
+
+  for (child = node->children; child != NULL; child = child->next)
+    {
+      if (!tp_strdiff (lm_message_node_get_name (child), name))
+          return child;
+    }
+
+  return NULL;
+}
+
+const gchar *
+lm_message_node_get_namespace (LmMessageNode *node)
+{
+  const gchar *node_ns = NULL;
+  gchar *x = strchr (node->name, ':');
+
+  if (x != NULL)
+    {
+      gchar *prefix = g_strndup (node->name, (x - node->name));
+      gchar *attr = g_strdup_printf ("xmlns:%s", prefix);
+
+      /* find the namespace in this node or its parents */
+      for (node_ns = NULL; (node != NULL) && (node_ns == NULL); node = node->parent)
+        {
+          node_ns = lm_message_node_get_attribute (node, attr);
+        }
+
+      g_free (prefix);
+      g_free (attr);
+    }
+  else
+    {
+      node_ns = lm_message_node_get_attribute (node, "xmlns");
+    }
+
+  return node_ns;
+}
+
+const gchar *
+lm_message_node_get_name (LmMessageNode *node)
+{
+  gchar *x = strchr (node->name, ':');
+
+  if (x != NULL)
+    return x + 1;
+  else
+    return node->name;
+}
+
 gboolean
 lm_message_node_has_namespace (LmMessageNode *node,
                                const gchar *ns,
                                const gchar *tag)
 {
-  gchar *attribute = NULL;
-  const gchar *node_ns;
-  gboolean ret;
-
-  if (tag != NULL)
-    attribute = g_strconcat ("xmlns:", tag, NULL);
-
-  node_ns = lm_message_node_get_attribute (node,
-      tag != NULL ? attribute : "xmlns");
-
-  ret = !tp_strdiff (node_ns, ns);
-
-  g_free (attribute);
-
-  return ret;
+  return (!tp_strdiff (lm_message_node_get_namespace (node), ns));
 }
 
 LmMessageNode *

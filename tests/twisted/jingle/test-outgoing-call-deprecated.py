@@ -59,6 +59,8 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorID'] == 'test@localhost'
     assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
+    media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
+
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
@@ -67,7 +69,6 @@ def test(q, bus, conn, stream):
     session_handler.Ready()
 
 
-    media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
 

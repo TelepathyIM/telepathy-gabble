@@ -118,6 +118,7 @@ struct _GabbleBytestreamFactoryPrivate
    *
    * BytestreamIdentifier -> GabbleBytestreamIBB */
   GHashTable *ibb_bytestreams;
+  /* BytestreamIdentifier -> GabbleBytestreamSocks5 */
   GHashTable *socks5_bytestreams;
 
   /* MUC pseudo-IBB - data sent by groupchat messages, IQs not allowed.
@@ -1028,7 +1029,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
     {
       DEBUG ("got a message without a from field");
       _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <query> has no 'from' attribute");
       return TRUE;
     }
 
@@ -1037,7 +1038,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
     {
       DEBUG ("SOCKS5 query stanza doesn't contain stream id");
       _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <query> has no stream ID");
       return TRUE;
     }
 
@@ -1047,30 +1048,29 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
       /* We don't accept streams not previously announced using SI */
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
       _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+          XMPP_ERROR_ITEM_NOT_FOUND,
+          "SOCKS5 <query> has an unknown stream ID");
       return TRUE;
     }
 
   tmp = lm_message_node_get_attribute (query_node, "mode");
-  if (tmp != NULL && strcmp (tmp, "tcp") != 0)
+  if (tp_strdiff (tmp, "tcp"))
     {
       DEBUG ("non-TCP SOCKS5 bytestreams are not supported");
       _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+          XMPP_ERROR_BAD_REQUEST,
+          "SOCKS5 non-TCP bytestreams are not supported");
       return TRUE;
     }
 
   child_node = query_node->children;
   while (child_node)
     {
-      if (strcmp (child_node->name, "streamhost") == 0)
+      if (!tp_strdiff (child_node->name, "streamhost"))
         gabble_bytestream_socks5_add_streamhost (bytestream, child_node);
 
       child_node = child_node->next;
     }
-
-  g_object_set (bytestream, "state", GABBLE_BYTESTREAM_STATE_OPEN,
-      NULL);
 
   gabble_bytestream_socks5_connect_to_streamhost (bytestream, msg);
 
@@ -1224,7 +1224,7 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
       G_CALLBACK (bytestream_state_changed_cb), self);
 
   id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (ibb));
-  DEBUG ("add private bytestream <%s> from <%s>", id->stream, id->jid);
+  DEBUG ("add IBB bytestream <%s> from <%s>", id->stream, id->jid);
   g_hash_table_insert (priv->ibb_bytestreams, id, ibb);
 
   return ibb;
@@ -1288,7 +1288,7 @@ gabble_bytestream_factory_create_socks5 (GabbleBytestreamFactory *self,
       G_CALLBACK (bytestream_state_changed_cb), self);
 
   id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (socks5));
-  DEBUG ("add private bytestream <%s> from <%s>", id->stream, id->jid);
+  DEBUG ("add SOCKS5 bytestream <%s> from <%s>", id->stream, id->jid);
   g_hash_table_insert (priv->socks5_bytestreams, id, socks5);
 
   return socks5;

@@ -1,15 +1,11 @@
-if HAVE_DBUS_TUBE
-dbus_test_programs = test-dtube-unique-names
-endif
-
 if WANT_TWISTED_TESTS
 CHECKTWISTED = twisted
 endif
 SUBDIRS = $(CHECKTWISTED)
 
 noinst_PROGRAMS = \
-	$(dbus_test_programs) \
 	test-base64 \
+	test-dtube-unique-names \
 	test-handles \
 	test-jid-decode \
 	test-parse-message \
@@ -51,13 +47,10 @@ check-valgrind:
 			--error-exitcode=1" \
 		check-TESTS
 
-if HAVE_DBUS_TUBE
-dbus_test_sources = test-dtube-unique-names.c
-endif
-
 check_c_sources = \
 	$(dbus_test_sources) \
 	test-base64.c \
+	test-dtube-unique-names.c \
 	test-presence.c \
 	test-jid-decode.c \
 	test-handles.c \

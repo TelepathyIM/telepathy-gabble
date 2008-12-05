@@ -92,6 +92,7 @@ enum
 enum _Socks5State
 {
   SOCKS5_STATE_INVALID,
+  SOCKS5_STATE_TRYING_CONNECT,
   SOCKS5_STATE_AUTH_REQUEST_SENT,
   SOCKS5_STATE_CONNECT_REQUESTED,
   SOCKS5_STATE_CONNECTED,
@@ -104,11 +105,14 @@ typedef enum _Socks5State Socks5State;
 
 /* SOCKS5 commands */
 #define SOCKS5_VERSION     0x05
-#define SOCKS5_CMD_CONNECT 0x01 
+#define SOCKS5_CMD_CONNECT 0x01
 #define SOCKS5_RESERVED    0x00
 #define SOCKS5_ATYP_DOMAIN 0x03
 #define SOCKS5_STATUS_OK   0x00
 #define SOCKS5_AUTH_NONE   0x00
+
+#define SHA1_LENGTH 40
+#define SOCKS5_CONNECT_LENGTH (7 + SHA1_LENGTH)
 
 struct _Streamhost
 {
@@ -128,7 +132,7 @@ streamhost_new (const gchar *jid,
   g_return_val_if_fail (jid != NULL, NULL);
   g_return_val_if_fail (host != NULL, NULL);
 
-  streamhost = g_new0 (Streamhost, 1);
+  streamhost = g_slice_new0 (Streamhost);
   streamhost->jid = g_strdup (jid);
   streamhost->host = g_strdup (host);
   streamhost->port = port;
@@ -144,7 +148,7 @@ streamhost_free (Streamhost *streamhost)
 
   g_free (streamhost->jid);
   g_free (streamhost->host);
-  g_free (streamhost);
+  g_slice_free (Streamhost, streamhost);
 }
 
 struct _GabbleBytestreamSocks5Private
@@ -158,7 +162,11 @@ struct _GabbleBytestreamSocks5Private
   gchar *peer_jid;
   gboolean close_on_connection_error;
 
+  /* List of Streamhost */
   GSList *streamhosts;
+
+  /* Connections to streamhosts are async, so we keep the IQ set message
+   * around */
   LmMessage *msg_for_acknowledge_connection;
 
   GIOChannel *io_channel;
@@ -182,7 +190,7 @@ static gboolean socks5_connect (gpointer data);
 
 static gboolean socks5_channel_readable_cb (GIOChannel *source,
     GIOCondition condition, gpointer data);
-static gboolean socks5_channel_error_cb (GIOChannel *source, 
+static gboolean socks5_channel_error_cb (GIOChannel *source,
     GIOCondition condition, gpointer data);
 
 static void gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
@@ -469,9 +477,9 @@ socks5_setup_channel (GabbleBytestreamSocks5 *self,
   g_io_channel_set_buffered (priv->io_channel, FALSE);
   g_io_channel_set_close_on_unref (priv->io_channel, TRUE);
 
-  priv->read_watch = g_io_add_watch(priv->io_channel, G_IO_IN,
+  priv->read_watch = g_io_add_watch (priv->io_channel, G_IO_IN,
       socks5_channel_readable_cb, self);
-  priv->error_watch = g_io_add_watch(priv->io_channel, G_IO_HUP | G_IO_ERR,
+  priv->error_watch = g_io_add_watch (priv->io_channel, G_IO_HUP | G_IO_ERR,
       socks5_channel_error_cb, self);
 
   g_assert (priv->write_buffer == NULL);
@@ -529,14 +537,19 @@ socks5_error (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  Socks5State previous_state;
 
+  previous_state = priv->socks5_state;
   priv->socks5_state = SOCKS5_STATE_ERROR;
 
-  if (priv->msg_for_acknowledge_connection)
+  if (previous_state == SOCKS5_STATE_TRYING_CONNECT ||
+      previous_state == SOCKS5_STATE_AUTH_REQUEST_SENT ||
+      previous_state == SOCKS5_STATE_CONNECT_REQUESTED)
     {
-      /* The attempt for connect to the streamhost failed... */
+      /* The attempt for connect to the streamhost failed */
       socks5_close_channel (self);
 
+      /* Remove the failed streamhost */
       g_assert (priv->streamhosts);
       streamhost_free (priv->streamhosts->data);
       priv->streamhosts = g_slist_delete_link (priv->streamhosts,
@@ -544,19 +557,19 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       if (priv->streamhosts != NULL)
         {
-          /* ... so let's try to connect to the next one */
           DEBUG ("connection to streamhost failed, trying the next one");
 
           socks5_connect (self);
           return;
         }
 
-      /* ... but there are no more streamhosts */
       DEBUG ("no more streamhosts to try");
+
       g_signal_emit (self, signals[CONNECTION_ERROR], 0);
 
       if (priv->close_on_connection_error)
         {
+          g_assert (priv->msg_for_acknowledge_connection != NULL);
           _gabble_connection_send_iq_error (priv->conn,
               priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
               "impossible to connect to any streamhost");
@@ -571,10 +584,10 @@ socks5_error (GabbleBytestreamSocks5 *self)
   gabble_bytestream_socks5_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
 }
 
-static gboolean 
-socks5_channel_writable_cb (GIOChannel *source, 
+static gboolean
+socks5_channel_writable_cb (GIOChannel *source,
                             GIOCondition condition,
-                            gpointer data) 
+                            gpointer data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
   GabbleBytestreamSocks5Private *priv =
@@ -602,7 +615,7 @@ socks5_channel_writable_cb (GIOChannel *source,
 
   if (status != G_IO_STATUS_NORMAL)
     {
-      DEBUG ("Error writing on the SOCSK5 bytestream");
+      DEBUG ("Error writing on the SOCKS5 bytestream");
 
       socks5_error (self);
       return FALSE;
@@ -626,14 +639,16 @@ socks5_schedule_write (GabbleBytestreamSocks5 *self,
         socks5_channel_writable_cb, self);
 }
 
+/* Process the received data and returns the number of bytes that have been
+ * used */
 static gsize
 socks5_handle_received_data (GabbleBytestreamSocks5 *self,
                              GString *string)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  gchar msg[47] = {'\0'};
-  guint authentication_methods;
+  gchar msg[SOCKS5_CONNECT_LENGTH];
+  guint auth_len;
   guint i;
   const gchar *from;
   const gchar *to;
@@ -644,6 +659,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   switch (priv->socks5_state)
     {
       case SOCKS5_STATE_AUTH_REQUEST_SENT:
+        /* We sent an authorization request and we are awaiting for a
+         * response, the response is 2 bytes-long */
         if (string->len < 2)
           return 0;
 
@@ -655,6 +672,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             socks5_error (self);
             return string->len;
           }
+
+        /* We have been authorized, let's send a CONNECT command */
 
         from = lm_message_node_get_attribute (
             priv->msg_for_acknowledge_connection->node, "from");
@@ -678,13 +697,15 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         g_free (domain);
         g_free (unhashed_domain);
 
-        socks5_schedule_write (self, msg, 47);
+        socks5_schedule_write (self, msg, SOCKS5_CONNECT_LENGTH);
 
         priv->socks5_state = SOCKS5_STATE_CONNECT_REQUESTED;
 
         return 2;
 
       case SOCKS5_STATE_CONNECT_REQUESTED:
+        /* We sent an CONNECT request and we are awaiting for a response, the
+         * response is 2 bytes-long */
         if (string->len < 2)
           return 0;
 
@@ -698,7 +719,9 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
           }
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
+        g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
 
+        /* Acknowledge the connection */
         iq_result = lm_iq_message_make_result (
             priv->msg_for_acknowledge_connection);
         if (NULL != iq_result)
@@ -709,6 +732,10 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             node = lm_message_node_add_child (iq_result->node, "query", "");
             lm_message_node_set_attribute (node, "xmlns", NS_BYTESTREAMS);
 
+            /* streamhost-used informs the other end of the streamhost we
+             * decided to use. In case of a direct connetion this is useless
+             * but if we are using an external proxy we need to know which
+             * one was selected */
             node = lm_message_node_add_child (node, "streamhost-used", "");
             current_streamhost = priv->streamhosts->data;
             lm_message_node_set_attribute (node, "jid",
@@ -721,6 +748,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         return 2;
 
       case SOCKS5_STATE_AWAITING_AUTH_REQUEST:
+        /* A client connected to us and we are awaiting for the authorization
+         * request (at least 2 bytes) */
         if (string->len < 2)
           return 0;
 
@@ -732,21 +761,24 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        authentication_methods = string->str[1];
-        if (string->len < authentication_methods + 2)
+        /* The auth request string is SOCKS5_VERSION + # of methods + methods */
+        auth_len = string->str[1] + 2;
+        if (string->len < auth_len)
+          /* We are still receiving some auth method */
           return 0;
 
-        for (i = 0; i < authentication_methods; i++)
+        for (i = 2; i < auth_len; i++)
           {
-            if (string->str[i + 2] == SOCKS5_AUTH_NONE)
+            if (string->str[i] == SOCKS5_AUTH_NONE)
               {
+                /* Authorize the connection */
                 msg[0] = SOCKS5_VERSION;
                 msg[1] = SOCKS5_AUTH_NONE;
                 socks5_schedule_write (self, msg, 2);
 
                 priv->socks5_state = SOCKS5_STATE_AWAITING_COMMAND;
 
-                return authentication_methods + 2;
+                return auth_len;
               }
           }
 
@@ -754,25 +786,34 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         socks5_error (self);
 
-        return authentication_methods + 2;
+        return auth_len;
 
       case SOCKS5_STATE_AWAITING_COMMAND:
-        if (string->len < 47)
+        /* The client has been authorized and we are waiting for a command,
+         * the only one supported by the SOCKS5 bytestreams XEP is
+         * CONNECT with:
+         *  - ATYP = DOMAIN
+         *  - PORT = 0
+         *  - DOMAIN = SHA1(sid + initiator + target)
+         */
+        if (string->len < SOCKS5_CONNECT_LENGTH)
           return 0;
 
         if (string->str[0] != SOCKS5_VERSION ||
             string->str[1] != SOCKS5_CMD_CONNECT ||
             string->str[2] != SOCKS5_RESERVED ||
             string->str[3] != SOCKS5_ATYP_DOMAIN ||
-            string->str[4] != 40 ||
-            string->str[45] != 0 ||
-            string->str[46] != 0)
+            string->str[4] != SHA1_LENGTH ||
+            string->str[45] != 0 || /* first half of the port number */
+            string->str[46] != 0) /* second half of the port number */
           {
-            DEBUG ("Invalid SOCSK5 connect message");
+            DEBUG ("Invalid SOCKS5 connect message");
 
             socks5_error (self);
             return string->len;
           }
+
+        /* FIXME: check the domain type */
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_STATUS_OK;
@@ -781,20 +822,27 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
 
-        return 47;
+        return SOCKS5_CONNECT_LENGTH;
 
       case SOCKS5_STATE_CONNECTED:
+        /* We are connected, everything we receive now is data */
         g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0,
             priv->peer_handle, string);
 
         return string->len;
 
       case SOCKS5_STATE_ERROR:
-        /* An error occurred and the channel will be close in an idle
+        /* An error occurred and the channel will be closed in an idle
          * callback, so let's just throw away the data we receive */
+        DEBUG ("An error occurred, throwing away received data");
         return string->len;
 
+      case SOCKS5_STATE_TRYING_CONNECT:
+        DEBUG ("Impossible to receive data when not yet connected to the socket");
+        break;
+
       case SOCKS5_STATE_INVALID:
+        DEBUG ("Invalid SOCKS5 state");
         break;
     }
 
@@ -802,8 +850,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   return string->len;
 }
 
-static gboolean 
-socks5_channel_readable_cb (GIOChannel *source, 
+static gboolean
+socks5_channel_readable_cb (GIOChannel *source,
                             GIOCondition condition,
                             gpointer data)
 {
@@ -830,16 +878,23 @@ socks5_channel_readable_cb (GIOChannel *source,
   priv->read_buffer->len += bytes_read;
   priv->read_buffer->str[priv->read_buffer->len] = '\0';
 
-  used_bytes = socks5_handle_received_data (self, priv->read_buffer);
-  g_string_erase (priv->read_buffer, 0, used_bytes);
+  do
+    {
+      /* socks5_handle_received_data() processes the data and returns the
+       * number of bytes that have been used. 0 means that there is not enough
+       * data to do anything, so we just wait for more data from the socket */
+      used_bytes = socks5_handle_received_data (self, priv->read_buffer);
+      g_string_erase (priv->read_buffer, 0, used_bytes);
+    }
+  while (used_bytes > 0 && priv->read_buffer->len > 0);
 
   return TRUE;
 }
 
-static gboolean 
-socks5_channel_error_cb (GIOChannel *source, 
+static gboolean
+socks5_channel_error_cb (GIOChannel *source,
                          GIOCondition condition,
-                         gpointer data) 
+                         gpointer data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
 
@@ -863,13 +918,15 @@ socks5_connect (gpointer data)
   gint res;
   gchar msg[3];
 
-  if (priv->streamhosts)
+  priv->socks5_state = SOCKS5_STATE_TRYING_CONNECT;
+
+  if (priv->streamhosts != NULL)
     {
       streamhost = priv->streamhosts->data;
     }
   else
     {
-      DEBUG ("No more streamhosts to streamhost, closing");
+      DEBUG ("No more streamhosts to try, closing");
 
       socks5_error (self);
       return FALSE;
@@ -893,7 +950,9 @@ socks5_connect (gpointer data)
   fd = -1;
   streamhost_address = address_list;
 
-  while (fd < 0 && streamhost_address) 
+  /* getaddrinfo returns a list of addrinfo structures that identify the
+   * host. Try them in order and stop when the call to socket() succeeds */
+  while (fd < 0 && streamhost_address)
     {
       ((struct sockaddr_in *) streamhost_address->ai_addr)->sin_port =
         htons (streamhost->port);
@@ -933,7 +992,8 @@ socks5_connect (gpointer data)
 
 
   msg[0] = SOCKS5_VERSION;
-  /* Number of auth methods we are offering */
+  /* Number of auth methods we are offering, we support just
+   * SOCKS5_AUTH_NONE */
   msg[1] = 1;
   msg[2] = SOCKS5_AUTH_NONE;
 
@@ -962,11 +1022,12 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
   guint numeric_port;
   Streamhost *streamhost;
 
-  g_return_if_fail (strcmp (streamhost_node->name, "streamhost") == 0);
+  g_return_if_fail (!tp_strdiff (streamhost_node->name, "streamhost"));
 
   zeroconf = lm_message_node_get_attribute (streamhost_node, "zeroconf");
   if (zeroconf != NULL)
     {
+      /* TODO: add suppport for zeroconf */
       DEBUG ("zeroconf streamhosts are not supported");
       return;
     }
@@ -1021,7 +1082,7 @@ gabble_bytestream_socks5_connect_to_streamhost (GabbleBytestreamSocks5 *self,
 
   priv->msg_for_acknowledge_connection = lm_message_ref (msg);
 
-  g_idle_add(socks5_connect, self);
+  g_idle_add (socks5_connect, self);
 }
 
 /*
@@ -1095,7 +1156,7 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
 
 static void
 gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
-                               GError *error)
+                                  GError *error)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
@@ -1179,10 +1240,10 @@ gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
 
 static LmHandlerResult
 socks5_init_reply_cb (GabbleConnection *conn,
-                   LmMessage *sent_msg,
-                   LmMessage *reply_msg,
-                   GObject *obj,
-                   gpointer user_data)
+                      LmMessage *sent_msg,
+                      LmMessage *reply_msg,
+                      GObject *obj,
+                      gpointer user_data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (obj);
 
@@ -1402,7 +1463,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       return FALSE;
     }
 
-  if (listen (fd, 5) < 0)
+  if (listen (fd, 1) < 0)
     {
       DEBUG ("couldn't listen on socket");
       return FALSE;
@@ -1418,7 +1479,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   g_io_channel_unref (channel);
 
   addr_len = sizeof (addr);
-  getsockname (fd, (struct sockaddr *)&addr, &addr_len);
+  getsockname (fd, (struct sockaddr *) &addr, &addr_len);
   g_ascii_dtostr (port, G_N_ELEMENTS (port), ntohs (addr.sin_port));
 
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
@@ -1444,6 +1505,10 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       ip = ip->next;
     }
   g_list_free (ips);
+
+  /* FIXME: for now we support only direct connections, we should also
+   * add support for external proxies to have more chances to make the
+   * bytestream work */
 
   if (!_gabble_connection_send_with_reply (priv->conn, msg,
       socks5_init_reply_cb, G_OBJECT (self), NULL, NULL))

@@ -1,23 +1,14 @@
 BUILT_SOURCES = \
     gabble-signals-marshal.h \
     gabble-signals-marshal.c \
-    gabble-signals-marshal.list \
-    media-session-enumtypes.h \
-    media-session-enumtypes.c
+    gabble-signals-marshal.list
 
 CLEANFILES = $(BUILT_SOURCES)
 
 libexec_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
-if HAVE_DBUS_TUBE
-dbus_tube_sources = \
-    tube-dbus.h \
-    tube-dbus.c
-endif
-
 libgabble_convenience_la_SOURCES = \
-    $(dbus_tube_sources) \
     base64.h \
     base64.c \
     bytestream-factory.h \
@@ -60,10 +51,20 @@ libgabble_convenience_la_SOURCES = \
     im-channel.c \
     im-factory.h \
     im-factory.c \
+    jingle-content.h \
+    jingle-content.c \
+    jingle-factory.h \
+    jingle-factory.c \
+    jingle-media-rtp.h \
+    jingle-media-rtp.c \
+    jingle-session.h \
+    jingle-session.c \
+    jingle-transport-google.h \
+    jingle-transport-google.c \
+    jingle-transport-iface.h \
+    jingle-transport-iface.c \
     media-channel.h \
     media-channel.c \
-    media-session.h \
-    media-session.c \
     media-stream.h \
     media-stream.c \
     media-factory.h \
@@ -109,6 +110,8 @@ libgabble_convenience_la_SOURCES = \
     tube-iface.c \
     tubes-channel.h \
     tubes-channel.c \
+    tube-dbus.h \
+    tube-dbus.c \
     tube-stream.h \
     tube-stream.c \
     types.h \
@@ -116,6 +119,7 @@ libgabble_convenience_la_SOURCES = \
     util.c \
     vcard-manager.h \
     vcard-manager.c
+
 
 libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la

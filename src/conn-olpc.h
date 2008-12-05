@@ -65,7 +65,7 @@ LmHandlerResult conn_olpc_msg_cb (LmMessageHandler *handler,
 LmHandlerResult conn_olpc_presence_cb (LmMessageHandler *handler,
     LmConnection *connection, LmMessage *presence, gpointer user_data);
 
-void conn_olpc_gadget_propeties_getter (GObject *object, GQuark interface,
+void conn_olpc_gadget_properties_getter (GObject *object, GQuark interface,
     GQuark name, GValue *value, gpointer getter_data);
 
 gboolean add_buddies_to_view_from_node (GabbleConnection *conn,

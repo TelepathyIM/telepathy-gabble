@@ -1058,6 +1058,9 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
       priv->text_needed_for_tubes = NULL;
     }
 
+  /* Use a temporary variable because we don't want
+   * muc_channel_closed_cb or tubes_channel_closed_cb to remove the channel
+   * from the hash table a second time */
   if (priv->text_channels != NULL)
     {
       GHashTable *tmp = priv->text_channels;

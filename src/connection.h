@@ -29,10 +29,11 @@
 #include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 
-#include "types.h"
 #include "error.h"
+#include "jingle-factory.h"
 #include "muc-factory.h"
 #include "olpc-gadget-manager.h"
+#include "types.h"
 
 G_BEGIN_DECLS
 
@@ -156,6 +157,15 @@ struct _GabbleConnection {
 
     /* outstanding avatar requests */
     GHashTable *avatar_requests;
+
+    /* jingle factory */
+    GabbleJingleFactory *jingle_factory;
+
+    /* temporary, for requestotron support */
+    GPtrArray *channel_factories;
+    GPtrArray *channel_managers;
+    GPtrArray *channel_requests;
+    gboolean has_tried_connection;
 
     GabbleConnectionPrivate *priv;
 };

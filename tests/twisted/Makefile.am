@@ -58,6 +58,7 @@ TWISTED_TESTS = \
 	vcard/test-vcard-set-and-get.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
+	jingle/test-content-adding-removal.py \
 	jingle/test-incoming-call.py \
 	jingle/test-incoming-call-reject.py \
 	jingle/test-outgoing-call.py \
@@ -66,6 +67,9 @@ TWISTED_TESTS = \
 	jingle/test-outgoing-call-requestotron.py \
 	jingle/test-outgoing-call-rejected.py \
 	jingle/test-outgoing-call-ensure.py \
+	jingle/test-dialects-incoming.py \
+	jingle/test-dialects-outgoing.py \
+	jingle/test-content-complex.py \
 	test-capabilities.py \
 	test-caps-cache.py \
 	test-caps-hash.py \
@@ -103,6 +107,7 @@ EXTRA_DIST = \
 	gabbletest.py \
 	servicetest.py \
 	jingle/jingletest.py \
+	jingle/jingletest2.py \
 	ns.py \
 	olpc/util.py
 

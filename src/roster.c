@@ -1696,16 +1696,21 @@ gabble_roster_close_all (GabbleRoster *self)
       self->priv->status_changed_id = 0;
     }
 
+  /* Use a temporary variable because we don't want
+   * roster_channel_closed_cb to remove the channel from the hash table a
+   * second time */
   if (priv->group_channels != NULL)
     {
-      g_hash_table_destroy (priv->group_channels);
+      GHashTable *t = priv->group_channels;
       priv->group_channels = NULL;
+      g_hash_table_destroy (t);
     }
 
   if (priv->list_channels != NULL)
     {
-      g_hash_table_destroy (priv->list_channels);
+      GHashTable *t = priv->list_channels;
       priv->list_channels = NULL;
+      g_hash_table_destroy (t);
     }
 
   if (self->priv->iq_cb != NULL)

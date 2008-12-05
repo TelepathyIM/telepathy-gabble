@@ -48,12 +48,6 @@
 #include "roster.h"
 #include "types.h"
 
-/* When five DIFFERENT guys report the same caps for a given bundle, it'll
- * be enough. But if only ONE guy use the verification string (XEP-0115 v1.5),
- * it'll be enough too.
- */
-#define CAPABILITY_BUNDLE_ENOUGH_TRUST 5
-
 G_DEFINE_TYPE (GabblePresenceCache, gabble_presence_cache, G_TYPE_OBJECT);
 
 /* properties */
@@ -905,8 +899,8 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
       else if (0 == strcmp (var, NS_GOOGLE_FEAT_VOICE))
         caps |= PRESENCE_CAP_GOOGLE_VOICE;
-      else if (0 == strcmp (var, NS_JINGLE))
-        caps |= PRESENCE_CAP_JINGLE;
+      else if (0 == strcmp (var, NS_JINGLE015))
+        caps |= PRESENCE_CAP_JINGLE015;
       else if (0 == strcmp (var, NS_JINGLE_DESCRIPTION_AUDIO))
         caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
       else if (0 == strcmp (var, NS_JINGLE_DESCRIPTION_VIDEO))
@@ -926,6 +920,14 @@ _caps_disco_cb (GabbleDisco *disco,
           !tp_strdiff (var, NS_OLPC_CURRENT_ACTIVITY "+notify") ||
           !tp_strdiff (var, NS_OLPC_ACTIVITY_PROPS "+notify"))
         caps |= PRESENCE_CAP_OLPC_1;
+      else if (!tp_strdiff (var, NS_JINGLE_RTP))
+        caps |= PRESENCE_CAP_JINGLE_RTP;
+      else if (!tp_strdiff (var, NS_JINGLE032))
+        caps |= PRESENCE_CAP_JINGLE032;
+      else if (!tp_strdiff (var, NS_JINGLE_TRANSPORT_ICE))
+        caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICE;
+      else if (!tp_strdiff (var, NS_JINGLE_TRANSPORT_RAWUDP))
+        caps |= PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP;
     }
 
   handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);

@@ -3788,7 +3788,7 @@ conn_olpc_presence_cb (LmMessageHandler *handler,
 }
 
 void
-conn_olpc_gadget_propeties_getter (GObject *object,
+conn_olpc_gadget_properties_getter (GObject *object,
                                    GQuark interface,
                                    GQuark name,
                                    GValue *value,

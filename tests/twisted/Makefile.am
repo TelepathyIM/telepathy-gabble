@@ -70,6 +70,7 @@ TWISTED_TESTS = \
 	jingle/test-dialects-incoming.py \
 	jingle/test-dialects-outgoing.py \
 	jingle/test-content-complex.py \
+	jingle/test-wait-for-caps.py \
 	test-capabilities.py \
 	test-caps-cache.py \
 	test-caps-hash.py \

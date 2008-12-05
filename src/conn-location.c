@@ -256,8 +256,13 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
 
   /* XXX: use _ignore_reply */
   if (!_gabble_connection_send (conn, msg, NULL))
-    /* XXX: return error */
-    return;
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "Failed to send msg" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
 
   dbus_g_method_return (context);
 }

@@ -123,6 +123,11 @@ typedef struct _GabbleJingleFactoryPrivate GabbleJingleFactoryPrivate;
 struct _GabbleJingleFactory {
     GObject parent;
 
+    gchar *relay_server;
+    guint16 relay_udp;
+    guint16 relay_tcp;
+    guint16 relay_ssltcp;
+
     GabbleJingleFactoryPrivate *priv;
 };
 

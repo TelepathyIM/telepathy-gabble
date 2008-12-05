@@ -523,7 +523,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
         { GABBLE_IFACE_OLPC_GADGET,
-          conn_olpc_gadget_propeties_getter,
+          conn_olpc_gadget_properties_getter,
           NULL,
           olpc_gadget_props,
         },

@@ -123,7 +123,7 @@ GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
 
 dnl Check for D-Bus
-PKG_CHECK_MODULES(DBUS, [dbus-1 >= 0.95, dbus-glib-1 >= 0.73])
+PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.73])
 
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
@@ -169,24 +169,6 @@ PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0 >= 1.3.2)
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
-dnl Check for D-Bus tubes - may be removed if we depend on dbus-1 >= 1.1.0
-AC_CHECK_LIB(dbus-1, dbus_message_marshal,
-             [have_dbus_message_marshal=yes],
-             [have_dbus_message_marshal=no],
-             [$DBUS_LIBS])
-
-have_dbus_tube=no
-if test x$have_dbus_message_marshal = xyes; then
-  have_dbus_tube=yes
-  AC_DEFINE(HAVE_DBUS_TUBE, 1, [Define if we have D-Bus tubes support])
-fi
-
-AM_CONDITIONAL(HAVE_DBUS_TUBE, test x$have_dbus_tube = xyes)
-
-if test x$have_dbus_tube = xno; then
-  echo "Not building support for D-Bus tubes! (libdbus >= 1.1 required)"
-fi
-
 dnl Check for functions
 AC_CHECK_FUNCS(getifaddrs)
 
@@ -199,6 +181,5 @@ AC_OUTPUT( Makefile \
            tests/Makefile \
            tools/Makefile \
            tests/twisted/Makefile \
-           tests/twisted/tools/Makefile \
-           tests/twisted/gabbleconfig.py
+           tests/twisted/tools/Makefile
 )

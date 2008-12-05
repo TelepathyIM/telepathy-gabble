@@ -1198,9 +1198,6 @@ ensure_muc_channel (GabbleMucFactory *fac,
 
   if (*ret == NULL)
     {
-      /* FIXME: using base_conn->self_handle causes Requested to be TRUE,
-       * which is incorrect if this is a side-effect of joining a Tubes
-       * channel */
       *ret = new_muc_channel (fac, handle, FALSE, base_conn->self_handle, NULL,
           requested);
       return FALSE;

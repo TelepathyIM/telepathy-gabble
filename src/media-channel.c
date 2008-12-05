@@ -152,11 +152,25 @@ struct _GabbleMediaChannelPrivate
   TpLocalHoldState hold_state;
   TpLocalHoldStateReason hold_state_reason;
 
+  GPtrArray *delayed_request_streams;
+
   /* These are really booleans, but gboolean is signed. Thanks, GLib */
   unsigned ready:1;
   unsigned closed:1;
   unsigned dispose_has_run:1;
 };
+
+struct _delayed_request_streams_ctx {
+  GabbleMediaChannel *chan;
+  gulong caps_disco_id;
+  guint timeout_id;
+  guint contact_handle;
+  GArray *types;
+  DBusGMethodInvocation *context;
+};
+
+static void destroy_request (struct _delayed_request_streams_ctx *ctx,
+    gpointer user_data);
 
 #define GABBLE_MEDIA_CHANNEL_GET_PRIVATE(obj) (obj->priv)
 
@@ -696,6 +710,13 @@ gabble_media_channel_dispose (GObject *object)
   DEBUG ("called");
 
   priv->dispose_has_run = TRUE;
+
+  if (priv->delayed_request_streams != NULL)
+    {
+      g_ptr_array_foreach (priv->delayed_request_streams,
+          (GFunc) destroy_request, NULL);
+      g_assert (priv->delayed_request_streams == NULL);
+    }
 
   tp_handle_unref (contact_handles, priv->creator);
   priv->creator = 0;
@@ -1444,14 +1465,30 @@ _gabble_media_channel_request_streams (GabbleMediaChannel *chan,
   return TRUE;
 }
 
-struct _delayed_request_streams_ctx {
-  GabblePresenceCache *cache;
-  gulong caps_updated_id;
-  TpSvcChannelTypeStreamedMedia *iface;
-  guint contact_handle;
-  GArray *types;
-  DBusGMethodInvocation *context;
-};
+/* user_data param is here so we match the GFunc prototype */
+static void
+destroy_request (struct _delayed_request_streams_ctx *ctx,
+    gpointer user_data G_GNUC_UNUSED)
+{
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (ctx->chan);
+
+  if (ctx->timeout_id)
+    g_source_remove (ctx->timeout_id);
+
+  if (ctx->caps_disco_id)
+    g_signal_handler_disconnect (priv->conn->presence_cache,
+        ctx->caps_disco_id);
+
+  g_array_free (ctx->types, TRUE);
+  g_slice_free (struct _delayed_request_streams_ctx, ctx);
+  g_ptr_array_remove_fast (priv->delayed_request_streams, ctx);
+
+  if (priv->delayed_request_streams->len == 0)
+    {
+      g_ptr_array_free (priv->delayed_request_streams, TRUE);
+      priv->delayed_request_streams = NULL;
+    }
+}
 
 static void gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
     guint contact_handle, const GArray *types, DBusGMethodInvocation *context);
@@ -1459,11 +1496,12 @@ static void gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia 
 static gboolean
 repeat_request (struct _delayed_request_streams_ctx *ctx)
 {
-  gabble_media_channel_request_streams (ctx->iface,
+  gabble_media_channel_request_streams (
+      TP_SVC_CHANNEL_TYPE_STREAMED_MEDIA (ctx->chan),
       ctx->contact_handle, ctx->types, ctx->context);
 
-  g_array_free (ctx->types, TRUE);
-  g_slice_free (struct _delayed_request_streams_ctx, ctx);
+  ctx->timeout_id = 0;
+  destroy_request (ctx, NULL);
   return FALSE;
 }
 
@@ -1476,7 +1514,6 @@ capabilities_discovered_cb (GabblePresenceCache *cache,
   if (gabble_presence_cache_caps_pending (cache, handle))
     return;
 
-  g_signal_handler_disconnect (cache, ctx->caps_updated_id);
   repeat_request (ctx);
 }
 
@@ -1492,7 +1529,7 @@ delay_stream_request (GabbleMediaChannel *chan,
   struct _delayed_request_streams_ctx *ctx =
     g_slice_new0 (struct _delayed_request_streams_ctx);
 
-  ctx->iface = iface;
+  ctx->chan = chan;
   ctx->contact_handle = contact_handle;
   ctx->context = context;
   ctx->types = g_array_sized_new (FALSE, FALSE, sizeof(guint), types->len);
@@ -1500,15 +1537,22 @@ delay_stream_request (GabbleMediaChannel *chan,
 
   if (disco_in_progress)
     {
-      ctx->caps_updated_id = g_signal_connect (priv->conn->presence_cache,
+      ctx->caps_disco_id = g_signal_connect (priv->conn->presence_cache,
           "capabilities-discovered", G_CALLBACK (capabilities_discovered_cb),
           ctx);
+      ctx->timeout_id = 0;
     }
   else
     {
-      ctx->cache = priv->conn->presence_cache;
-      g_timeout_add_seconds (5, (GSourceFunc) repeat_request, ctx);
+      ctx->caps_disco_id = 0;
+      ctx->timeout_id = g_timeout_add_seconds (5,
+          (GSourceFunc) repeat_request, ctx);
     }
+
+  if (priv->delayed_request_streams == NULL)
+      priv->delayed_request_streams = g_ptr_array_sized_new (1);
+
+  g_ptr_array_add (priv->delayed_request_streams, ctx);
 }
 
 /**

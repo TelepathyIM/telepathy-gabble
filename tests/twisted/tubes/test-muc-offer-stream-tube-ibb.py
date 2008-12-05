@@ -95,9 +95,26 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
     bob_handle = 3
 
-    event = q.expect('dbus-return', method='RequestChannel')
+    text_created, returned = q.expect_many(
+        # first text channel is created
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-return', method='RequestChannel'))
 
-    tubes_chan = bus.get_object(conn.bus_name, event.value[0])
+    path, type, handle_type, handle, supress = text_created.args
+    assert type == 'org.freedesktop.Telepathy.Channel.Type.Text'
+    assert handle_type == 2 #room
+    assert handle == handles[0]
+    assert supress == False
+
+    # tube channel is created
+    e = q.expect('dbus-signal', signal='NewChannel')
+    path, type, handle_type, handle, supress = e.args
+    assert type == 'org.freedesktop.Telepathy.Channel.Type.Tubes'
+    assert handle_type == 2 #room
+    assert handle == handles[0]
+    assert supress == True
+
+    tubes_chan = bus.get_object(conn.bus_name, returned.value[0])
     tubes_iface = dbus.Interface(tubes_chan,
             tp_name_prefix + '.Channel.Type.Tubes')
 

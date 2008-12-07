@@ -1336,6 +1336,95 @@ gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
   return multiple;
 }
 
+static GabbleBytestreamIface *
+streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
+                                    LmMessageNode *si,
+                                    const gchar *stream_id,
+                                    TpHandle peer_handle,
+                                    const gchar *peer_resource)
+{
+  /* If the other client supports si-multiple we have directly a list of
+   * supported methods inside <value/> tags */
+  LmMessageNode *value;
+  GabbleBytestreamIface *bytestream = NULL;
+
+  for (value = si->children; value; value = value->next)
+    {
+      if (tp_strdiff (value->name, "value"))
+        continue;
+
+      /* If there is at least a <value/> we create a multiple bytestream and
+       * add the supported methods to it */
+      if (!bytestream)
+        bytestream = GABBLE_BYTESTREAM_IFACE (
+            gabble_bytestream_factory_create_multiple (self, peer_handle,
+               stream_id, NULL, peer_resource,
+               GABBLE_BYTESTREAM_STATE_INITIATING));
+
+      gabble_bytestream_multiple_add_bytestream (
+          GABBLE_BYTESTREAM_MULTIPLE (bytestream),
+          lm_message_node_get_value (value));
+    }
+
+  return bytestream;
+}
+
+static GabbleBytestreamIface *
+streaminit_get_bytestream (GabbleBytestreamFactory *self,
+                           LmMessage *reply_msg,
+                           LmMessageNode *si,
+                           const gchar *stream_id,
+                           TpHandle peer_handle,
+                           const gchar *peer_resource)
+{
+  LmMessageNode *feature, *x, *field, *value;
+  GabbleBytestreamIface *bytestream = NULL;
+  const gchar *stream_method;
+
+  feature = lm_message_node_get_child_with_namespace (si, "feature",
+      NS_FEATURENEG);
+  if (feature == NULL)
+    {
+      NODE_DEBUG (reply_msg->node,
+          "got a SI reply without a feature field");
+      return NULL;
+    }
+
+  x = lm_message_node_get_child_with_namespace (feature, "x", NS_X_DATA);
+  if (x == NULL)
+    {
+      NODE_DEBUG (reply_msg->node, "got a SI reply without a x field");
+      return NULL;
+    }
+
+  for (field = x->children; field; field = field->next)
+    {
+      if (tp_strdiff (lm_message_node_get_attribute (field, "var"),
+            "stream-method"))
+        /* some future field, ignore it */
+        continue;
+
+      value = lm_message_node_get_child (field, "value");
+      if (value == NULL)
+        {
+          NODE_DEBUG (reply_msg->node, "SI reply's stream-method field "
+              "doesn't contain stream-method value");
+          return NULL;
+        }
+
+      stream_method = lm_message_node_get_value (value);
+      bytestream = gabble_bytestream_factory_create_from_method (self,
+          stream_method, peer_handle, stream_id, NULL, peer_resource,
+          GABBLE_BYTESTREAM_STATE_INITIATING);
+
+      /* no need to parse the rest of the fields, we've found the one we
+       * wanted */
+      break;
+    }
+
+  return bytestream;
+}
+
 struct _streaminit_reply_cb_data
 {
   gchar *stream_id;
@@ -1356,8 +1445,8 @@ streaminit_reply_cb (GabbleConnection *conn,
     (struct _streaminit_reply_cb_data*) user_data;
   GabbleBytestreamIface *bytestream = NULL;
   gchar *peer_resource = NULL;
-  LmMessageNode *si, *feature, *x, *field, *value;
-  const gchar *from, *stream_method;
+  LmMessageNode *si;
+  const gchar *from;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
@@ -1396,76 +1485,19 @@ streaminit_reply_cb (GabbleConnection *conn,
       goto END;
     }
 
-  /* If the other client supports si-multiple we have directly a list of
-   * supported methods inside <value/> tags.
-   * If there is at least one <value/> we create a multiple bytestream and
-   * add the supported methods to it */
-  for (value = si->children; value; value = value->next)
-    {
-      if (tp_strdiff (value->name, "value"))
-        continue;
+  /* Try to build a multiple bytestream with fallback methods */
+  bytestream = streaminit_get_multiple_bytestream (self, si, data->stream_id,
+      peer_handle, peer_resource);
 
-      if (!bytestream)
-        bytestream = GABBLE_BYTESTREAM_IFACE (
-            gabble_bytestream_factory_create_multiple (self, peer_handle,
-               data->stream_id, NULL, peer_resource,
-               GABBLE_BYTESTREAM_STATE_INITIATING));
-
-      gabble_bytestream_multiple_add_bytestream (
-          GABBLE_BYTESTREAM_MULTIPLE (bytestream),
-          lm_message_node_get_value (value));
-    }
-
-  if (bytestream)
-    // XXX remove the goto when we see that this works
-    goto DONE;
-
-  /* The other client doesn't suppport si-multiple, use the normal method */
-  feature = lm_message_node_get_child_with_namespace (si, "feature",
-      NS_FEATURENEG);
-  if (feature == NULL)
-    {
-      NODE_DEBUG (reply_msg->node,
-          "got a SI reply without a feature field");
-      goto END;
-    }
-
-  x = lm_message_node_get_child_with_namespace (feature, "x", NS_X_DATA);
-  if (x == NULL)
-    {
-      NODE_DEBUG (reply_msg->node, "got a SI reply without a x field");
-      goto END;
-    }
-
-  for (field = x->children; field; field = field->next)
-    {
-      if (tp_strdiff (lm_message_node_get_attribute (field, "var"),
-            "stream-method"))
-        /* some future field, ignore it */
-        continue;
-
-      value = lm_message_node_get_child (field, "value");
-      if (value == NULL)
-        {
-          NODE_DEBUG (reply_msg->node, "SI reply's stream-method field "
-              "doesn't contain stream-method value");
-          goto END;
-        }
-
-      stream_method = lm_message_node_get_value (value);
-      bytestream = gabble_bytestream_factory_create_from_method (self,
-          stream_method, peer_handle, data->stream_id, NULL,
-          peer_resource, GABBLE_BYTESTREAM_STATE_INITIATING);
-
-      /* no need to parse the rest of the fields, we've found the one we
-       * wanted */
-      break;
-    }
+  if (bytestream == NULL)
+    /* The other client doesn't suppport si-multiple, use the normal XEP-095
+     * method */
+    bytestream = streaminit_get_bytestream (self, reply_msg, si,
+        data->stream_id, peer_handle, peer_resource);
 
   if (bytestream == NULL)
     goto END;
 
-DONE:
   DEBUG ("stream %s accepted", data->stream_id);
 
   /* Let's start the initiation of the stream */

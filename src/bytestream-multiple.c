@@ -68,7 +68,6 @@ enum
   PROP_PEER_RESOURCE,
   PROP_STATE,
   PROP_PROTOCOL,
-  PROP_CLOSE_ON_CONNECTION_ERROR,
   PROP_FACTORY,
   LAST_PROPERTY
 };
@@ -307,9 +306,6 @@ gabble_bytestream_multiple_class_init (
        "state");
    g_object_class_override_property (object_class, PROP_PROTOCOL,
        "protocol");
-   /* FIXME */
-   g_object_class_override_property (object_class,
-        PROP_CLOSE_ON_CONNECTION_ERROR, "close-on-connection-error");
 
   param_spec = g_param_spec_string (
       "peer-resource",

@@ -537,7 +537,7 @@ bytestream_connection_error_cb (GabbleBytestreamIface *failed,
       GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
   g_assert (failed == priv->active_bytestream);
- 
+
   g_signal_handlers_disconnect_by_func (failed,
       bytestream_connection_error_cb, self);
   g_signal_handlers_disconnect_by_func (failed,

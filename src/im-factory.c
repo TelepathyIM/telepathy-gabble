@@ -29,10 +29,14 @@
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 
+#include "extensions/extensions.h"
+
+#include "caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
@@ -40,10 +44,13 @@
 #include "text-mixin.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
+static void caps_channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleImFactory, gabble_im_factory, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init));
+      channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
+      caps_channel_manager_iface_init));
 
 /* properties */
 enum
@@ -179,7 +186,7 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
   object_class->set_property = gabble_im_factory_set_property;
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that owns this IM channel factory object.",
+      "Gabble connection object that owns this IM channel manager object.",
       GABBLE_TYPE_CONNECTION,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
@@ -445,6 +452,54 @@ connection_status_changed_cb (GabbleConnection *conn,
     }
 }
 
+static void
+gabble_im_factory_get_contact_caps (GabbleCapsChannelManager *manager,
+                                    GabbleConnection *conn,
+                                    TpHandle handle,
+                                    GPtrArray *arr)
+{
+  /* We don't need to check this contact's capabilities, we assume every
+   * contact support text channels. */
+
+  GValue monster = {0, };
+  GHashTable *fixed_properties;
+  GValue *channel_type_value;
+  GValue *target_handle_type_value;
+  gchar *text_allowed_properties[] =
+      {
+        TP_IFACE_CHANNEL ".TargetHandle",
+        NULL
+      };
+
+  g_assert (handle != 0);
+
+  g_value_init (&monster, TP_STRUCT_TYPE_REQUESTABLE_CHANNEL_CLASS);
+  g_value_take_boxed (&monster,
+      dbus_g_type_specialized_construct (
+        TP_STRUCT_TYPE_REQUESTABLE_CHANNEL_CLASS));
+
+  fixed_properties = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TEXT);
+  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".ChannelType",
+      channel_type_value);
+
+  target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
+  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".TargetHandleType",
+      target_handle_type_value);
+
+  dbus_g_type_struct_set (&monster,
+      0, fixed_properties,
+      1, text_allowed_properties,
+      G_MAXUINT);
+
+  g_hash_table_destroy (fixed_properties);
+
+  g_ptr_array_add (arr, g_value_get_boxed (&monster));
+}
 
 struct _ForeachData
 {
@@ -618,4 +673,13 @@ channel_manager_iface_init (gpointer g_iface,
   iface->create_channel = gabble_im_factory_create_channel;
   iface->request_channel = gabble_im_factory_request_channel;
   iface->ensure_channel = gabble_im_factory_ensure_channel;
+}
+
+static void
+caps_channel_manager_iface_init (gpointer g_iface,
+                                 gpointer iface_data)
+{
+  GabbleCapsChannelManagerIface *iface = g_iface;
+
+  iface->get_contact_caps = gabble_im_factory_get_contact_caps;
 }

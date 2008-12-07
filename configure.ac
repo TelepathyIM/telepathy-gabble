@@ -123,7 +123,9 @@ GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
 
 dnl Check for D-Bus
-PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.73])
+# dbus-glib 0.78 fixed the bug #17329. It is needed for the contact
+# capabilities interface.
+PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.78])
 
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
@@ -148,10 +150,10 @@ if test -z "$PYTHON"; then
   AC_MSG_ERROR([Python is required to compile this package])
 fi
 
-# Check for a Python >= 2.4 with Twisted, to run the tests
-AC_MSG_CHECKING([for Python >= 2.4 with Twisted and XMPP protocol support])
-for TEST_PYTHON in python2.4 python2.5 python; do
-  if $TEST_PYTHON -c "from sys import version_info; raise SystemExit(version_info < (2, 4, 0, 'final', 0))" >/dev/null 2>&1; then
+# Check for a Python >= 2.5 with Twisted, to run the tests
+AC_MSG_CHECKING([for Python >= 2.5 with Twisted and XMPP protocol support])
+for TEST_PYTHON in python2.5 python2.6 python; do
+  if $TEST_PYTHON -c "from sys import version_info; import dbus, dbus.mainloop.glib; raise SystemExit(version_info < (2, 5, 0, 'final', 0))" >/dev/null 2>&1; then
     if $TEST_PYTHON -c "import twisted.words.xish.domish, twisted.words.protocols.jabber, twisted.internet.reactor" >/dev/null 2>&1; then
       AC_MSG_RESULT([$TEST_PYTHON])
       AM_CONDITIONAL([WANT_TWISTED_TESTS], true)

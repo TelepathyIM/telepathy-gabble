@@ -85,6 +85,21 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
 void gabble_presence_cache_really_remove (GabblePresenceCache *cache,
     TpHandle handle);
 
+/* loop on CapabilityInfo::per_channel_manager_caps and call
+ * gabble_caps_channel_manager_free_capabilities */
+void gabble_presence_cache_free_cache_entry (
+    GHashTable *per_channel_manager_caps);
+
+/* loop on CapabilityInfo::per_channel_manager_caps and call
+ * gabble_caps_channel_manager_copy_capabilities */
+void gabble_presence_cache_copy_cache_entry (GHashTable **out,
+    GHashTable *in);
+
+/* loop on CapabilityInfo::per_channel_manager_caps and call
+ * gabble_caps_channel_manager_update_capabilities */
+void gabble_presence_cache_update_cache_entry (GHashTable *out,
+    GHashTable *in);
+
 void gabble_presence_cache_contacts_added_to_olpc_view (
     GabblePresenceCache *cache, TpHandleSet *handles);
 

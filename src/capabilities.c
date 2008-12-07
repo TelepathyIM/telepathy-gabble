@@ -21,9 +21,12 @@
 #include "config.h"
 #include "capabilities.h"
 
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/channel-manager.h>
+
+#include "caps-channel-manager.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include <telepathy-glib/interfaces.h>
 #include "media-channel.h"
 
 static const Feature self_advertised_features[] =
@@ -56,14 +59,30 @@ static const Feature self_advertised_features[] =
 };
 
 GSList *
-capabilities_get_features (GabblePresenceCapabilities caps)
+capabilities_get_features (GabblePresenceCapabilities caps,
+                           GHashTable *per_channel_manager_caps)
 {
+  GHashTableIter channel_manager_iter;
   GSList *features = NULL;
   const Feature *i;
 
   for (i = self_advertised_features; NULL != i->ns; i++)
     if ((i->caps & caps) == i->caps)
       features = g_slist_append (features, (gpointer) i);
+
+  if (per_channel_manager_caps != NULL)
+    {
+      gpointer manager;
+      gpointer cap;
+
+      g_hash_table_iter_init (&channel_manager_iter, per_channel_manager_caps);
+      while (g_hash_table_iter_next (&channel_manager_iter,
+                 &manager, &cap))
+        {
+          gabble_caps_channel_manager_get_feature_list (manager, cap,
+              &features);
+        }
+    }
 
   return features;
 }

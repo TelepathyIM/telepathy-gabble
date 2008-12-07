@@ -22,6 +22,7 @@
 #include "presence.h"
 
 #include <string.h>
+#include <telepathy-glib/channel-manager.h>
 
 #include "presence-cache.h"
 #include "namespaces.h"
@@ -40,6 +41,7 @@ typedef struct _Resource Resource;
 struct _Resource {
     gchar *name;
     GabblePresenceCapabilities caps;
+    GHashTable *per_channel_manager_caps;
     guint caps_serial;
     GabblePresenceId status;
     gchar *status_message;
@@ -56,9 +58,10 @@ struct _GabblePresencePrivate {
 static Resource *
 _resource_new (gchar *name)
 {
-  Resource *new = g_slice_new (Resource);
+  Resource *new = g_slice_new0 (Resource);
   new->name = name;
   new->caps = PRESENCE_CAP_NONE;
+  new->per_channel_manager_caps = NULL;
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   new->priority = 0;
@@ -73,6 +76,13 @@ _resource_free (Resource *resource)
 {
   g_free (resource->name);
   g_free (resource->status_message);
+  if (resource->per_channel_manager_caps != NULL)
+    {
+      gabble_presence_cache_free_cache_entry
+        (resource->per_channel_manager_caps);
+      resource->per_channel_manager_caps = NULL;
+    }
+
   g_slice_free (Resource, resource);
 }
 
@@ -85,6 +95,13 @@ gabble_presence_finalize (GObject *object)
 
   for (i = priv->resources; NULL != i; i = i->next)
     _resource_free (i->data);
+
+  if (presence->per_channel_manager_caps != NULL)
+    {
+      gabble_presence_cache_free_cache_entry
+        (presence->per_channel_manager_caps);
+      presence->per_channel_manager_caps = NULL;
+    }
 
   g_slist_free (priv->resources);
   g_free (presence->nickname);
@@ -183,12 +200,20 @@ void
 gabble_presence_set_capabilities (GabblePresence *presence,
                                   const gchar *resource,
                                   GabblePresenceCapabilities caps,
+                                  GHashTable *per_channel_manager_caps,
                                   guint serial)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
 
   presence->caps = 0;
+  if (presence->per_channel_manager_caps != NULL)
+    {
+      gabble_presence_cache_free_cache_entry
+        (presence->per_channel_manager_caps);
+      presence->per_channel_manager_caps = NULL;
+    }
+  presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
 
   DEBUG ("about to add caps %u to resource %s with serial %u", caps, resource,
     serial);
@@ -214,10 +239,25 @@ gabble_presence_set_capabilities (GabblePresence *presence,
               DEBUG ("adding caps %u to resource %s", caps, resource);
               tmp->caps |= caps;
               DEBUG ("resource %s caps now %u", resource, tmp->caps);
+
+              if (tmp->per_channel_manager_caps != NULL)
+                {
+                  gabble_presence_cache_free_cache_entry
+                      (tmp->per_channel_manager_caps);
+                  tmp->per_channel_manager_caps = NULL;
+                }
+              if (per_channel_manager_caps != NULL)
+                gabble_presence_cache_copy_cache_entry
+                    (&tmp->per_channel_manager_caps, per_channel_manager_caps);
             }
         }
 
       presence->caps |= tmp->caps;
+
+      if (tmp->per_channel_manager_caps != NULL)
+        gabble_presence_cache_update_cache_entry
+            (presence->per_channel_manager_caps,
+             tmp->per_channel_manager_caps);
     }
 
   DEBUG ("total caps now %u", presence->caps);
@@ -332,8 +372,14 @@ gabble_presence_update (GabblePresence *presence,
           _resource_free (res);
           res = NULL;
 
-          /* recaulculate aggregate capability mask */
-
+          /* recalculate aggregate capability mask */
+          if (presence->per_channel_manager_caps != NULL)
+            {
+              gabble_presence_cache_free_cache_entry
+                (presence->per_channel_manager_caps);
+              presence->per_channel_manager_caps = NULL;
+            }
+          presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
           presence->caps = 0;
 
           for (i = priv->resources; i; i = i->next)
@@ -341,6 +387,11 @@ gabble_presence_update (GabblePresence *presence,
               Resource *r = (Resource *) i->data;
 
               presence->caps |= r->caps;
+
+              if (r->per_channel_manager_caps != NULL)
+                gabble_presence_cache_update_cache_entry
+                    (presence->per_channel_manager_caps,
+                     r->per_channel_manager_caps);
             }
         }
     }

@@ -25,11 +25,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       <p>A stream tube is a transport for ordered, reliable data transfer,
         similar to SOCK_STREAM sockets.</p>
 
-      <p>When accepting a stream tube, a new listening local socket is
-        created. Each time the client connects to this socket, the
-        connection manager of the initiator of the tube opens a new
-        connection to its local socket. Both sides can then use this pair
-        of sockets to communicate together.</p>
+      <p>When offering a stream tube, the initiating client creates a local
+        listening socket and offers it to the recipient client using the
+        <tp:member-ref>OfferStreamTube</tp:member-ref> method.  When a
+        recipient accepts a stream tube using the
+        <tp:member-ref>AcceptStreamTube</tp:member-ref> method, the
+        recipient's connection manager creates a new local listening socket.
+        Each time the recipient's client connects to this socket, the
+        initiator's connection manager proxies this connection to the
+        originally offered socket.</p>
 
     </tp:docstring>
 
@@ -72,8 +76,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         </tp:error>
         <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
           <tp:docstring>
-            The connection manager doesn't support stream tubes, or
-            does not support the given address type or access-control type.
+            The connection manager doesn't support the given address type
+            or access-control type.
           </tp:docstring>
         </tp:error>
       </tp:possible-errors>
@@ -114,40 +118,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument">
           <tp:docstring>
-            The given tube ID is invalid or does not refer to a stream
-            tube.
+            The access_control_param is invalid with the given access_control.
           </tp:docstring>
         </tp:error>
         <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
           <tp:docstring>
             The given address type or access-control mechanism is not supported.
-          </tp:docstring>
-        </tp:error>
-      </tp:possible-errors>
-    </method>
-
-    <method name="GetStreamTubeSocketAddress"
-            tp:name-for-bindings="Get_Stream_Tube_Socket_Address">
-      <tp:docstring>
-        For a stream tube, obtain the address of the socket used to
-        communicate over this tube.
-      </tp:docstring>
-      <arg direction="out" name="address_type" type="u" tp:type="Socket_Address_Type">
-        <tp:docstring>
-          The type of the listening address of the socket, as a member of
-          Socket_Address_Type.
-        </tp:docstring>
-      </arg>
-      <arg direction="out" name="address" type="v">
-        <tp:docstring>
-          The listening address of the socket, as indicated by the
-          address_type.
-        </tp:docstring>
-      </arg>
-      <tp:possible-errors>
-        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
-          <tp:docstring>
-            This tube is not in the "open" state.
           </tp:docstring>
         </tp:error>
       </tp:possible-errors>
@@ -205,6 +181,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
               [Socket_Access_Control_Localhost, Socket_Access_Control_Credentials]
           }
         </pre>
+
+        <p>Connection Managers MUST support at least IPv4 with the localhost
+          access control.</p>
 
         <p>When requesting a channel with 
           <tp:dbus-ref namespace="org.freedesktop.Telepathy">Connection.Interface.Requests.CreateChannel</tp:dbus-ref>,

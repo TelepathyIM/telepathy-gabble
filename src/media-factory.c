@@ -34,6 +34,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
+#include "caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "jingle-factory.h"
@@ -49,7 +50,8 @@ static void channel_manager_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaFactory, gabble_media_factory,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init));
+      channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
 /* properties */
 enum
@@ -183,7 +185,7 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
   object_class->set_property = gabble_media_factory_set_property;
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that owns this media channel factory object.",
+      "Gabble connection object that owns this media channel manager object.",
       GABBLE_TYPE_CONNECTION,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);

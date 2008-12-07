@@ -595,10 +595,9 @@ bytestream_activate_next (GabbleBytestreamMultiple *self)
  *
  * Add an alternative stream method.
  */
-/* FIXME -> add_stream_method */
 void
-gabble_bytestream_multiple_add_bytestream (GabbleBytestreamMultiple *self,
-                                           const gchar *method)
+gabble_bytestream_multiple_add_stream_method (GabbleBytestreamMultiple *self,
+                                              const gchar *method)
 {
   GabbleBytestreamMultiplePrivate *priv;
 

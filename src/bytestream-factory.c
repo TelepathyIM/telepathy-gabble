@@ -613,7 +613,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     {
       if (multiple)
         {
-          gabble_bytestream_multiple_add_bytestream (GABBLE_BYTESTREAM_MULTIPLE (bytestream), l->data);
+          gabble_bytestream_multiple_add_stream_method (
+              GABBLE_BYTESTREAM_MULTIPLE (bytestream), l->data);
         }
       else
         {
@@ -1361,7 +1362,7 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
                stream_id, NULL, peer_resource,
                GABBLE_BYTESTREAM_STATE_INITIATING));
 
-      gabble_bytestream_multiple_add_bytestream (
+      gabble_bytestream_multiple_add_stream_method (
           GABBLE_BYTESTREAM_MULTIPLE (bytestream),
           lm_message_node_get_value (value));
     }

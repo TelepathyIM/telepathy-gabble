@@ -270,14 +270,6 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
       guint source_id;
       DEBUG ("extra bytestream open");
 
-      /* The bytestream can go back from open to initiating in case of a
-       * multiple bytestream */
-      if (g_hash_table_lookup (priv->io_channel_to_watcher_source_id,
-            channel))
-        {
-          return;
-        }
-
       g_signal_connect (bytestream, "data-received",
           G_CALLBACK (data_received_cb), self);
 

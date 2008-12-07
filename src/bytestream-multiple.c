@@ -108,7 +108,8 @@ static void
 gabble_bytestream_multiple_dispose (GObject *object)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (object);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+  GabbleBytestreamMultiplePrivate *priv =
+      GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
@@ -134,7 +135,8 @@ static void
 gabble_bytestream_multiple_finalize (GObject *object)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (object);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+  GabbleBytestreamMultiplePrivate *priv =
+      GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
   g_free (priv->stream_id);
   g_free (priv->stream_init_id);
@@ -151,7 +153,8 @@ gabble_bytestream_multiple_get_property (GObject *object,
                                          GParamSpec *pspec)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (object);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+  GabbleBytestreamMultiplePrivate *priv =
+      GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
   switch (property_id)
     {
@@ -198,7 +201,8 @@ gabble_bytestream_multiple_set_property (GObject *object,
                                          GParamSpec *pspec)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (object);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+  GabbleBytestreamMultiplePrivate *priv =
+      GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
   switch (property_id)
     {
@@ -249,7 +253,8 @@ gabble_bytestream_multiple_constructor (GType type,
   obj = G_OBJECT_CLASS (gabble_bytestream_multiple_parent_class)->
            constructor (type, n_props, props);
 
-  priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (GABBLE_BYTESTREAM_MULTIPLE (obj));
+  priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (
+      GABBLE_BYTESTREAM_MULTIPLE (obj));
 
   g_assert (priv->conn != NULL);
   g_assert (priv->peer_handle != 0);
@@ -274,7 +279,8 @@ static void
 gabble_bytestream_multiple_class_init (
     GabbleBytestreamMultipleClass *gabble_bytestream_multiple_class)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS (gabble_bytestream_multiple_class);
+  GObjectClass *object_class =
+      G_OBJECT_CLASS (gabble_bytestream_multiple_class);
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_bytestream_multiple_class,
@@ -371,7 +377,8 @@ gabble_bytestream_multiple_send (GabbleBytestreamIface *iface,
                                  const gchar *str)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (iface);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+  GabbleBytestreamMultiplePrivate *priv =
+      GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
     {
@@ -396,7 +403,8 @@ gabble_bytestream_multiple_accept (GabbleBytestreamIface *iface,
                                    gpointer user_data)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (iface);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+  GabbleBytestreamMultiplePrivate *priv =
+      GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
   LmMessage *msg;
   LmMessageNode *si;
   GList *all_methods;
@@ -454,7 +462,8 @@ gabble_bytestream_multiple_close (GabbleBytestreamIface *iface,
                                   GError *error)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (iface);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+  GabbleBytestreamMultiplePrivate *priv =
+      GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
   if (priv->state == GABBLE_BYTESTREAM_STATE_CLOSED)
      /* bytestream already closed, do nothing */
@@ -476,7 +485,8 @@ static gboolean
 gabble_bytestream_multiple_initiate (GabbleBytestreamIface *iface)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (iface);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+  GabbleBytestreamMultiplePrivate *priv =
+      GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -527,7 +537,8 @@ bytestream_connection_error_cb (GabbleBytestreamIface *failed,
                                 gpointer user_data)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (user_data);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+  GabbleBytestreamMultiplePrivate *priv =
+      GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
   g_assert (failed == priv->active_bytestream);
  

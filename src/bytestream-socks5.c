@@ -85,7 +85,6 @@ enum
   PROP_PEER_RESOURCE,
   PROP_STATE,
   PROP_PROTOCOL,
-  PROP_CLOSE_ON_CONNECTION_ERROR,
   LAST_PROPERTY
 };
 
@@ -160,7 +159,6 @@ struct _GabbleBytestreamSocks5Private
   gchar *peer_resource;
   GabbleBytestreamState bytestream_state;
   gchar *peer_jid;
-  gboolean close_on_connection_error;
 
   /* List of Streamhost */
   GSList *streamhosts;
@@ -203,8 +201,6 @@ gabble_bytestream_socks5_init (GabbleBytestreamSocks5 *self)
       GABBLE_TYPE_BYTESTREAM_SOCKS5, GabbleBytestreamSocks5Private);
 
   self->priv = priv;
-
-  priv->close_on_connection_error = TRUE;
 }
 
 static void
@@ -288,9 +284,6 @@ gabble_bytestream_socks5_get_property (GObject *object,
       case PROP_PROTOCOL:
         g_value_set_string (value, NS_BYTESTREAMS);
         break;
-      case PROP_CLOSE_ON_CONNECTION_ERROR:
-        g_value_set_boolean (value, priv->close_on_connection_error);
-        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -334,9 +327,6 @@ gabble_bytestream_socks5_set_property (GObject *object,
               g_signal_emit (object, signals[STATE_CHANGED], 0,
                   priv->bytestream_state);
             }
-        break;
-      case PROP_CLOSE_ON_CONNECTION_ERROR:
-        priv->close_on_connection_error = g_value_get_boolean (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -411,8 +401,6 @@ gabble_bytestream_socks5_class_init (
        "state");
    g_object_class_override_property (object_class, PROP_PROTOCOL,
        "protocol");
-   g_object_class_override_property (object_class,
-       PROP_CLOSE_ON_CONNECTION_ERROR, "close-on-connection-error");
 
   param_spec = g_param_spec_string (
       "peer-resource",
@@ -567,13 +555,10 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       g_signal_emit (self, signals[CONNECTION_ERROR], 0);
 
-      if (priv->close_on_connection_error)
-        {
-          g_assert (priv->msg_for_acknowledge_connection != NULL);
-          _gabble_connection_send_iq_error (priv->conn,
-              priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
-              "impossible to connect to any streamhost");
-        }
+      g_assert (priv->msg_for_acknowledge_connection != NULL);
+      _gabble_connection_send_iq_error (priv->conn,
+          priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
+          "impossible to connect to any streamhost");
 
       lm_message_unref (priv->msg_for_acknowledge_connection);
       priv->msg_for_acknowledge_connection = NULL;
@@ -1180,7 +1165,6 @@ gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
           "Offer Declined");
     }
 
-  /* FIXME: we should not send the SI error if we are falling back */
   _gabble_connection_send (priv->conn, msg, NULL);
 
   lm_message_unref (msg);
@@ -1212,28 +1196,25 @@ gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
     }
   else
     {
+      LmMessage *msg;
+
       DEBUG ("send Socks5 close stanza");
 
       socks5_close_channel (self);
 
-      if (priv->close_on_connection_error)
-        {
-          LmMessage *msg;
+      msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
+          '@', "type", "set",
+          '(', "close", "",
+            '@', "xmlns", NS_BYTESTREAMS,
+            '@', "sid", priv->stream_id,
+          ')', NULL);
 
-          msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-              '@', "type", "set",
-              '(', "close", "",
-                '@', "xmlns", NS_BYTESTREAMS,
-                '@', "sid", priv->stream_id,
-              ')', NULL);
+      /* We don't really care about the answer as the bytestream
+       * is closed anyway. */
+      _gabble_connection_send_with_reply (priv->conn, msg,
+          NULL, NULL, NULL, NULL);
 
-          /* We don't really care about the answer as the bytestream
-           * is closed anyway. */
-          _gabble_connection_send_with_reply (priv->conn, msg,
-              NULL, NULL, NULL, NULL);
-
-          lm_message_unref (msg);
-        }
+      lm_message_unref (msg);
 
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
     }
@@ -1257,6 +1238,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
   else
     {
       DEBUG ("error during Socks5 initiation");
+
       g_signal_emit (self, signals[CONNECTION_ERROR], 0);
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
     }

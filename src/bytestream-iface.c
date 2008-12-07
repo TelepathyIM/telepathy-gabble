@@ -132,14 +132,6 @@ gabble_bytestream_iface_base_init (gpointer klass)
           G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
-      param_spec = g_param_spec_boolean (
-          "close-on-connection-error",
-          "Close on connection error",
-          "Wether to send a close stanza if there was a connection error",
-          TRUE,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-      g_object_interface_install_property (klass, param_spec);
-
       initialized = TRUE;
     }
 }

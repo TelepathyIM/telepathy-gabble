@@ -82,7 +82,6 @@ struct _GabbleBytestreamMultiplePrivate
   gchar *peer_resource;
   GabbleBytestreamState state;
   gchar *peer_jid;
-  gboolean close_on_connection_error;
   GabbleBytestreamFactory *factory;
 
   /* List of gchar* */
@@ -103,8 +102,6 @@ gabble_bytestream_multiple_init (GabbleBytestreamMultiple *self)
       GABBLE_TYPE_BYTESTREAM_MULTIPLE, GabbleBytestreamMultiplePrivate);
 
   self->priv = priv;
-
-  priv->close_on_connection_error = TRUE;
 }
 
 static void
@@ -185,9 +182,6 @@ gabble_bytestream_multiple_get_property (GObject *object,
       case PROP_PROTOCOL:
         g_value_set_string (value, NS_BYTESTREAMS);
         break;
-      case PROP_CLOSE_ON_CONNECTION_ERROR:
-        g_value_set_boolean (value, priv->close_on_connection_error);
-        break;
       case PROP_FACTORY:
         g_value_set_object (value, priv->factory);
         break;
@@ -232,9 +226,6 @@ gabble_bytestream_multiple_set_property (GObject *object,
             priv->state = g_value_get_uint (value);
             g_signal_emit (object, signals[STATE_CHANGED], 0, priv->state);
           }
-        break;
-      case PROP_CLOSE_ON_CONNECTION_ERROR:
-        priv->close_on_connection_error = g_value_get_boolean (value);
         break;
       case PROP_FACTORY:
         priv->factory = g_value_get_object (value);
@@ -553,11 +544,6 @@ bytestream_connection_error_cb (GabbleBytestreamIface *failed,
 
   if (priv->fallback_stream_methods == NULL)
     return;
-
-  /* If we have other methods to try, prevent the failed bytestream to send a
-     close stanza */
-  // XXX
-  //g_object_set (failed, "close-on-connection-error", FALSE, NULL);
 
   DEBUG ("Trying alternative streaming method");
 

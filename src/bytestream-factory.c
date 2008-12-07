@@ -382,11 +382,10 @@ streaminit_parse_request (LmMessage *message,
                           const gchar **stream_init_id,
                           const gchar **mime_type,
                           GSList **stream_methods,
-                          gboolean *use_fallback)
+                          gboolean *multiple)
 {
   LmMessageNode *iq = message->node;
-  LmMessageNode *feature, *x, *field, *stream_method;
-  const gchar *list_type;
+  LmMessageNode *feature, *x, *field, *stream_method, *si_multiple;
 
   *stream_init_id = lm_message_node_get_attribute (iq, "id");
 
@@ -440,16 +439,8 @@ streaminit_parse_request (LmMessage *message,
         /* some future field, ignore it */
         continue;
 
-      list_type = lm_message_node_get_attribute (field, "type");
-      if (!tp_strdiff (list_type, "list-single"))
-        {
-          *use_fallback = FALSE;
-        }
-      else if (!tp_strdiff (list_type, "list-multiple"))
-        {
-          *use_fallback = TRUE;
-        }
-      else
+      if (tp_strdiff (lm_message_node_get_attribute (field, "type"),
+            "list-single"))
         {
           NODE_DEBUG (message->node, "SI request's stream-method field was "
               "not of type list-single");
@@ -491,6 +482,13 @@ streaminit_parse_request (LmMessage *message,
       return FALSE;
     }
 
+  si_multiple = lm_message_node_get_child_with_namespace (si, "si-multiple",
+      NS_SI_MULTIPLE);
+  if (si_multiple == NULL)
+    *multiple = FALSE;
+  else
+    *multiple = TRUE;
+
   return TRUE;
 }
 
@@ -525,7 +523,7 @@ gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
             '@', "type", "form",
             '(', "field", "",
               '@', "var", "stream-method",
-              '@', "type", "list-multiple",
+              '@', "type", "list-single",
               '(', "option", "",
                 '(', "value", NS_BYTESTREAMS,
                 ')',
@@ -534,6 +532,9 @@ gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
               ')',
             ')',
           ')',
+        ')',
+        '(', "si-multiple", "",
+          '@', "xmlns", NS_SI_MULTIPLE,
         ')',
       ')', NULL);
 }
@@ -564,8 +565,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   GSList *l;
   const gchar *profile, *from, *stream_id, *stream_init_id, *mime_type;
   GSList *stream_methods = NULL;
-  gboolean use_fallback;
-  GabbleBytestreamMultiple *multiple;
+  gboolean multiple;
   gchar *peer_resource = NULL;
 
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
@@ -579,7 +579,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
    * it or send an error reply */
 
   if (!streaminit_parse_request (msg, si, &profile, &from, &stream_id,
-        &stream_init_id, &mime_type, &stream_methods, &use_fallback))
+        &stream_init_id, &mime_type, &stream_methods, &multiple))
     {
       _gabble_connection_send_iq_error (priv->conn, msg,
           XMPP_ERROR_BAD_REQUEST, "failed to parse SI request");
@@ -603,46 +603,31 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       gabble_decode_jid (from, NULL, NULL, &peer_resource);
     }
 
-  if (use_fallback)
-    multiple = gabble_bytestream_factory_create_multiple (self, peer_handle,
+  if (multiple)
+    bytestream = (GabbleBytestreamIface *) gabble_bytestream_factory_create_multiple (self, peer_handle,
         stream_id, stream_init_id, peer_resource,
         GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
-  else
-    multiple = NULL;
 
   /* check stream method */
   for (l = stream_methods; l != NULL; l = l->next)
     {
-      /* We create the stream according the stream method chosen.
-       * User has to accept it */
-      if (!tp_strdiff (l->data, NS_IBB))
+      if (multiple)
         {
-          bytestream = (GabbleBytestreamIface *)
-            gabble_bytestream_factory_create_ibb (self, peer_handle,
-              stream_id, stream_init_id, peer_resource,
-              GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
-        }
-      else if (!tp_strdiff (l->data, NS_BYTESTREAMS))
-        {
-          bytestream = (GabbleBytestreamIface *)
-            gabble_bytestream_factory_create_socks5 (self, peer_handle,
-              stream_id, stream_init_id, peer_resource,
-              GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
+          gabble_bytestream_multiple_add_bytestream (GABBLE_BYTESTREAM_MULTIPLE (bytestream), l->data);
         }
       else
         {
-          continue;
+          /* We create the stream according the stream method chosen.
+           * User has to accept it */
+          bytestream = gabble_bytestream_factory_create_from_method (self,
+              l->data, peer_handle, stream_id, stream_init_id, peer_resource,
+              GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
+          if (bytestream)
+            break;
         }
-
-      if (multiple != NULL)
-        gabble_bytestream_multiple_add_bytestream (multiple, bytestream);
-      else
-        break;
     }
 
   /* FIXME check if there are bytestream methods in the multiple one */
-  if (multiple != NULL)
-    bytestream = GABBLE_BYTESTREAM_IFACE (multiple);
 
   if (bytestream == NULL)
     {
@@ -1196,6 +1181,33 @@ gabble_bytestream_factory_generate_stream_id (void)
   return stream_id;
 }
 
+GabbleBytestreamIface *
+gabble_bytestream_factory_create_from_method (GabbleBytestreamFactory *self,
+                                              const gchar *stream_method,
+                                              TpHandle peer_handle,
+                                              const gchar *stream_id,
+                                              const gchar *stream_init_id,
+                                              const gchar *peer_resource,
+                                              GabbleBytestreamState state)
+{
+  GabbleBytestreamIface *bytestream = NULL;
+
+  if (!tp_strdiff (stream_method, NS_IBB))
+    {
+      bytestream = GABBLE_BYTESTREAM_IFACE (
+          gabble_bytestream_factory_create_ibb (self, peer_handle,
+            stream_id, stream_init_id, peer_resource, state));
+    }
+  else if (!tp_strdiff (stream_method, NS_BYTESTREAMS))
+    {
+      bytestream = GABBLE_BYTESTREAM_IFACE (
+          gabble_bytestream_factory_create_socks5 (self, peer_handle,
+            stream_id, stream_init_id, peer_resource, state));
+    }
+
+  return bytestream;
+}
+
 GabbleBytestreamIBB *
 gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
                                       TpHandle peer_handle,
@@ -1315,6 +1327,7 @@ gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
       "state", state,
       "stream-init-id", stream_init_id,
       "peer-resource", peer_resource,
+      "factory", self,
       NULL);
 
   g_signal_connect (multiple, "state-changed",
@@ -1342,7 +1355,6 @@ streaminit_reply_cb (GabbleConnection *conn,
   struct _streaminit_reply_cb_data *data =
     (struct _streaminit_reply_cb_data*) user_data;
   GabbleBytestreamIface *bytestream = NULL;
-  GSList *bytestream_list = NULL;
   gchar *peer_resource = NULL;
   LmMessageNode *si, *feature, *x, *field, *value;
   const gchar *from, *stream_method;
@@ -1384,6 +1396,31 @@ streaminit_reply_cb (GabbleConnection *conn,
       goto END;
     }
 
+  /* If the other client supports si-multiple we have directly a list of
+   * supported methods inside <value/> tags.
+   * If there is at least one <value/> we create a multiple bytestream and
+   * add the supported methods to it */
+  for (value = si->children; value; value = value->next)
+    {
+      if (tp_strdiff (value->name, "value"))
+        continue;
+
+      if (!bytestream)
+        bytestream = GABBLE_BYTESTREAM_IFACE (
+            gabble_bytestream_factory_create_multiple (self, peer_handle,
+               data->stream_id, NULL, peer_resource,
+               GABBLE_BYTESTREAM_STATE_INITIATING));
+
+      gabble_bytestream_multiple_add_bytestream (
+          GABBLE_BYTESTREAM_MULTIPLE (bytestream),
+          lm_message_node_get_value (value));
+    }
+
+  if (bytestream)
+    // XXX remove the goto when we see that this works
+    goto DONE;
+
+  /* The other client doesn't suppport si-multiple, use the normal method */
   feature = lm_message_node_get_child_with_namespace (si, "feature",
       NS_FEATURENEG);
   if (feature == NULL)
@@ -1407,65 +1444,28 @@ streaminit_reply_cb (GabbleConnection *conn,
         /* some future field, ignore it */
         continue;
 
-      for (value = field->children; value; value = value->next)
+      value = lm_message_node_get_child (field, "value");
+      if (value == NULL)
         {
-          stream_method = lm_message_node_get_value (value);
-
-          if (!tp_strdiff (stream_method, NS_IBB))
-            {
-              /* Remote user has accepted the stream */
-              bytestream = GABBLE_BYTESTREAM_IFACE (
-                  gabble_bytestream_factory_create_ibb (self, peer_handle,
-                  data->stream_id, NULL, peer_resource,
-                  GABBLE_BYTESTREAM_STATE_INITIATING));
-            }
-          else if (!tp_strdiff (stream_method, NS_BYTESTREAMS))
-            {
-              /* Remote user has accepted the stream */
-              bytestream = GABBLE_BYTESTREAM_IFACE (
-                  gabble_bytestream_factory_create_socks5 (self, peer_handle,
-                  data->stream_id, NULL, peer_resource,
-                  GABBLE_BYTESTREAM_STATE_INITIATING));
-            }
-          else
-            {
-              DEBUG ("Remote user chose an unsupported stream method");
-              goto END;
-            }
-
-          bytestream_list = g_slist_prepend (bytestream_list, bytestream);
+          NODE_DEBUG (reply_msg->node, "SI reply's stream-method field "
+              "doesn't contain stream-method value");
+          goto END;
         }
 
+      stream_method = lm_message_node_get_value (value);
+      bytestream = gabble_bytestream_factory_create_from_method (self,
+          stream_method, peer_handle, data->stream_id, NULL,
+          peer_resource, GABBLE_BYTESTREAM_STATE_INITIATING);
+
+      /* no need to parse the rest of the fields, we've found the one we
+       * wanted */
       break;
     }
 
-  if (bytestream_list == NULL)
+  if (bytestream == NULL)
     goto END;
 
-  /* Create a multiple bytestream if needed */
-  if (g_slist_length (bytestream_list) > 1)
-    {
-      GSList *l;
-
-      bytestream = GABBLE_BYTESTREAM_IFACE (
-          gabble_bytestream_factory_create_multiple (self, peer_handle,
-          data->stream_id, NULL, peer_resource,
-          GABBLE_BYTESTREAM_STATE_INITIATING));
-
-      l = bytestream_list = g_slist_reverse (bytestream_list);
-
-      while (l != NULL)
-        {
-          gabble_bytestream_multiple_add_bytestream (
-              GABBLE_BYTESTREAM_MULTIPLE (bytestream), l->data);
-
-          l = g_slist_next (l);
-        }
-    }
-
-  /* If there is only one bytestream than we already have
-     bytestream == bytestream_list->data */
-
+DONE:
   DEBUG ("stream %s accepted", data->stream_id);
 
   /* Let's start the initiation of the stream */
@@ -1496,7 +1496,6 @@ END:
 
   g_free (data->stream_id);
   g_slice_free (struct _streaminit_reply_cb_data, data);
-  g_slist_free (bytestream_list);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -1582,4 +1581,39 @@ gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
           ')',
         ')',
       ')', NULL);
+}
+
+/*
+ * gabble_bytestream_factory_make_multi_accept_iq
+ *
+ * @full_jid: the full jid of the stream initiator
+ * @stream_init_id: the id of the SI request
+ * @stream_methods: a list of the accepted string methods
+ *
+ * Create an IQ stanza accepting a stream in response to
+ * a si-multiple SI request.
+ *
+ */
+LmMessage *
+gabble_bytestream_factory_make_multi_accept_iq (const gchar *full_jid,
+                                                const gchar *stream_init_id,
+                                                GList *stream_methods)
+{
+  LmMessage *msg;
+  GList *l;
+
+  msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "result",
+      '@', "id", stream_init_id,
+      '(', "si", "",
+        '@', "xmlns", NS_SI,
+      ')', NULL);
+
+  for (l = stream_methods; l != NULL; l = l->next)
+    {
+      lm_message_node_add_child (msg->node->children,
+          "value", l->data);
+    }
+
+  return msg;
 }

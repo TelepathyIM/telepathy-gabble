@@ -1180,6 +1180,7 @@ gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
           "Offer Declined");
     }
 
+  /* FIXME: we should not send the SI error if we are falling back */
   _gabble_connection_send (priv->conn, msg, NULL);
 
   lm_message_unref (msg);

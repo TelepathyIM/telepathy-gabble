@@ -73,6 +73,7 @@ typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (
 GabbleBytestreamFactory *gabble_bytestream_factory_new (
     GabbleConnection *conn);
 
+/* FIXME: what's the point to have these public? */
 GabbleBytestreamIBB *gabble_bytestream_factory_create_ibb (
     GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
     const gchar *stream_init_id, const gchar *peer_resource,
@@ -92,11 +93,20 @@ GabbleBytestreamMultiple *gabble_bytestream_factory_create_multiple (
     const gchar *stream_id, const gchar *stream_init_id,
     const gchar *peer_resource, GabbleBytestreamState state);
 
+GabbleBytestreamIface *gabble_bytestream_factory_create_from_method (
+    GabbleBytestreamFactory *self, const gchar *stream_method,
+    TpHandle peer_handle, const gchar *stream_id, const gchar *stream_init_id,
+    const gchar *peer_resource, GabbleBytestreamState state);
+
 LmMessage *gabble_bytestream_factory_make_stream_init_iq (
     const gchar *full_jid, const gchar *stream_id, const gchar *profile);
 
 LmMessage *gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
     const gchar *stream_init_id, const gchar *stream_method);
+
+LmMessage *gabble_bytestream_factory_make_multi_accept_iq (
+    const gchar *full_jid, const gchar *stream_init_id,
+    GList *stream_methods);
 
 gboolean gabble_bytestream_factory_negotiate_stream (
     GabbleBytestreamFactory *fac, LmMessage *msg, const gchar *stream_id,

@@ -24,10 +24,11 @@ NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
 NS_IBB = 'http://jabber.org/protocol/ibb'
 NS_X_DATA = 'jabber:x:data'
 NS_BYTESTREAMS = 'http://jabber.org/protocol/bytestreams'
+NS_SI_MULTIPLE = 'http://telepathy.freedesktop.org/xmpp/si-multiple'
 
 class Echo(Protocol):
     def dataReceived(self, data):
-        self.transport.write(data)
+        self.transport.write(data.upper())
 
 def set_up_echo():
     factory = Factory()
@@ -140,7 +141,7 @@ def test(q, bus, conn, stream):
     x['type'] = 'form'
     field = x.addElement((None, 'field'))
     field['var'] = 'stream-method'
-    field['type'] = 'list-multiple'
+    field['type'] = 'list-single'
     option = field.addElement((None, 'option'))
     value = option.addElement((None, 'value'))
     value.addContent(NS_BYTESTREAMS)
@@ -150,6 +151,9 @@ def test(q, bus, conn, stream):
 
     stream_node = si.addElement((NS_TUBES, 'stream'))
     stream_node['tube'] = str(stream_tube_id)
+
+    si_multiple = si.addElement((NS_SI_MULTIPLE, 'si-multiple'))
+
     stream.send(iq)
 
     si_reply_event, _ = q.expect_many(
@@ -157,12 +161,13 @@ def test(q, bus, conn, stream):
             EventPattern('dbus-signal', signal='TubeChannelStateChanged',
                 args=[2])) # 2 == OPEN
     iq = si_reply_event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI,
-        iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    assert str(proto) == NS_BYTESTREAMS
+    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI, iq)[0]
+    methods = xpath.queryForNodes('/si/value', si)
+    assert len(methods) == 2
+    assert methods[0].name == 'value'
+    assert str(methods[0]) == NS_BYTESTREAMS
+    assert methods[1].name == 'value'
+    assert str(methods[1]) == NS_IBB
     tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
     assert len(tube) == 1
 
@@ -182,18 +187,19 @@ def test(q, bus, conn, stream):
     streamhost['port'] = '1234'
     stream.send(iq)
 
-    event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
-    iq = event.stanza
-    open = xpath.queryForNodes('/iq/open', iq)[0]
-    assert open.uri == NS_IBB
-    assert open['sid'] == 'alpha'
+    event = q.expect('stream-iq', iq_type='error', to='bob@localhost/Bob')
 
-    result = IQ(stream, 'result')
-    result['id'] = iq['id']
-    result['from'] = iq['to']
-    result['to'] = 'test@localhost/Resource'
+    # Then try with IBB
 
-    stream.send(result)
+    iq = IQ(stream, 'set')
+    iq['to'] = 'test@localhost/Resource'
+    iq['from'] = 'bob@localhost/Bob'
+    open = iq.addElement((NS_IBB, 'open'))
+    open['sid'] = 'alpha'
+    open['block-size'] = '4096'
+    stream.send(iq)
+
+    q.expect('stream-iq', iq_type='result')
 
     # have the fake client send us some data
     message = domish.Element(('jabber:client', 'message'))
@@ -202,7 +208,7 @@ def test(q, bus, conn, stream):
     data_node = message.addElement((NS_IBB, 'data'))
     data_node['sid'] = 'alpha'
     data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hello world'))
+    data_node.addContent(base64.b64encode('hello, world'))
     stream.send(message)
 
     event = q.expect('stream-message', to='bob@localhost/Bob')
@@ -215,7 +221,7 @@ def test(q, bus, conn, stream):
     ibb_data = data_nodes[0]
     assert ibb_data['sid'] == 'alpha'
     binary = base64.b64decode(str(ibb_data))
-    assert binary == 'hello world'
+    assert binary == 'HELLO, WORLD'
 
 
     # Accepting a tube
@@ -254,7 +260,7 @@ def test(q, bus, conn, stream):
     # accept the tube
     channels = filter(lambda x:
       x[1] == "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT" and
-      '42' in x[0],
+      '42' in x[0], # FIXME
       conn.ListChannels())
     assert len(channels) == 1
 
@@ -285,25 +291,22 @@ def test(q, bus, conn, stream):
     assert x['type'] == 'form'
     field = xpath.queryForNodes('/x/field', x)[0]
     assert field['var'] == 'stream-method'
-    assert field['type'] == 'list-multiple'
+    assert field['type'] == 'list-single'
     value = xpath.queryForNodes('/field/option/value', field)[0]
     assert str(value) == NS_BYTESTREAMS
     value = xpath.queryForNodes('/field/option/value', field)[1]
     assert str(value) == NS_IBB
+    si_multiple = xpath.queryForNodes('/si/si-multiple', si)[0]
+    assert si_multiple.uri == NS_SI_MULTIPLE
 
     result = IQ(stream, 'result')
     result['id'] = iq['id']
     result['from'] = iq['to']
     result['to'] = 'test@localhost/Resource'
     res_si = result.addElement((NS_SI, 'si'))
-    res_feature = res_si.addElement((NS_FEATURE_NEG, 'feature'))
-    res_x = res_feature.addElement((NS_X_DATA, 'x'))
-    res_x['type'] = 'submit'
-    res_field = res_x.addElement((None, 'field'))
-    res_field['var'] = 'stream-method'
-    res_value = res_field.addElement((None, 'value'))
+    res_value = res_si.addElement(('', 'value'))
     res_value.addContent(NS_BYTESTREAMS)
-    res_value = res_field.addElement((None, 'value'))
+    res_value = res_si.addElement(('', 'value'))
     res_value.addContent(NS_IBB)
 
     stream.send(result)
@@ -316,15 +319,28 @@ def test(q, bus, conn, stream):
     streamhost = xpath.queryForNodes('/iq/query/streamhost', iq)[0]
     assert streamhost
 
-    iq = IQ(stream, 'set')
+    response_id = iq['id']
+    iq = IQ(stream, 'error')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
-    open = iq.addElement((NS_IBB, 'open'))
-    open['sid'] = sid
-    open['block-size'] = '4096'
+    iq['id'] = response_id
+    error = iq.addElement(('', 'error'))
+    error['type'] = 'auth'
+    error['code'] = '403'
     stream.send(iq)
 
-    q.expect('stream-iq', iq_type='result')
+    event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
+    iq = event.stanza
+    open = xpath.queryForNodes('/iq/open', iq)[0]
+    assert open.uri == NS_IBB
+    sid = open['sid']
+
+    result = IQ(stream, 'result')
+    result['id'] = iq['id']
+    result['from'] = iq['to']
+    result['to'] = 'test@localhost/Resource'
+
+    stream.send(result)
 
 if __name__ == '__main__':
     exec_test(test)

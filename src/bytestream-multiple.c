@@ -69,6 +69,7 @@ enum
   PROP_STATE,
   PROP_PROTOCOL,
   PROP_CLOSE_ON_CONNECTION_ERROR,
+  PROP_FACTORY,
   LAST_PROPERTY
 };
 
@@ -82,17 +83,18 @@ struct _GabbleBytestreamMultiplePrivate
   GabbleBytestreamState state;
   gchar *peer_jid;
   gboolean close_on_connection_error;
+  GabbleBytestreamFactory *factory;
 
-  GList *bytestreams;
-  GabbleBytestreamIface *active;
+  /* List of gchar* */
+  GList *fallback_stream_methods;
+  GabbleBytestreamIface *active_bytestream;
 
   gboolean dispose_has_run;
 };
 
 #define GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE(obj) ((obj)->priv)
 
-static void gabble_bytestream_multiple_close (GabbleBytestreamIface *iface,
-    GError *error);
+static void bytestream_activate_next (GabbleBytestreamMultiple *self);
 
 static void
 gabble_bytestream_multiple_init (GabbleBytestreamMultiple *self)
@@ -124,6 +126,9 @@ gabble_bytestream_multiple_dispose (GObject *object)
     {
       gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
     }
+
+  if (priv->factory)
+    g_object_unref (priv->factory);
 
   G_OBJECT_CLASS (gabble_bytestream_multiple_parent_class)->dispose (object);
 }
@@ -183,6 +188,9 @@ gabble_bytestream_multiple_get_property (GObject *object,
       case PROP_CLOSE_ON_CONNECTION_ERROR:
         g_value_set_boolean (value, priv->close_on_connection_error);
         break;
+      case PROP_FACTORY:
+        g_value_set_object (value, priv->factory);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -227,6 +235,9 @@ gabble_bytestream_multiple_set_property (GObject *object,
         break;
       case PROP_CLOSE_ON_CONNECTION_ERROR:
         priv->close_on_connection_error = g_value_get_boolean (value);
+        break;
+      case PROP_FACTORY:
+        priv->factory = g_value_get_object (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -299,6 +310,7 @@ gabble_bytestream_multiple_class_init (
        "state");
    g_object_class_override_property (object_class, PROP_PROTOCOL,
        "protocol");
+   /* FIXME */
    g_object_class_override_property (object_class,
         PROP_CLOSE_ON_CONNECTION_ERROR, "close-on-connection-error");
 
@@ -318,6 +330,15 @@ gabble_bytestream_multiple_class_init (
       NULL,
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STREAM_INIT_ID,
+      param_spec);
+
+  param_spec = g_param_spec_object (
+      "factory",
+      "Factory",
+      "The GabbleBytestreamFactory that created the stream",
+      GABBLE_TYPE_BYTESTREAM_FACTORY,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_FACTORY,
       param_spec);
 
   signals[DATA_RECEIVED] =
@@ -368,9 +389,9 @@ gabble_bytestream_multiple_send (GabbleBytestreamIface *iface,
       return FALSE;
     }
 
-  g_assert(priv->active);
+  g_assert(priv->active_bytestream);
 
-  return gabble_bytestream_iface_send (priv->active, len, str);
+  return gabble_bytestream_iface_send (priv->active_bytestream, len, str);
 }
 
 /*
@@ -387,6 +408,11 @@ gabble_bytestream_multiple_accept (GabbleBytestreamIface *iface,
   GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
   LmMessage *msg;
   LmMessageNode *si;
+  GList *all_methods;
+  gchar *current_method;
+
+  /* We cannot just call the accept method of the active bytestream because
+   * the result stanza is different if we are using si-multiple */
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {
@@ -394,8 +420,18 @@ gabble_bytestream_multiple_accept (GabbleBytestreamIface *iface,
       return;
     }
 
-  msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
-      priv->stream_init_id, NS_BYTESTREAMS);
+  g_return_if_fail (priv->active_bytestream);
+
+  all_methods = g_list_copy (priv->fallback_stream_methods);
+  g_object_get (priv->active_bytestream, "protocol", &current_method, NULL);
+  all_methods = g_list_prepend (all_methods, current_method);
+
+  msg = gabble_bytestream_factory_make_multi_accept_iq (priv->peer_jid,
+      priv->stream_init_id, all_methods);
+
+  g_free (current_method);
+  g_list_free (all_methods);
+
   si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
   g_assert (si != NULL);
 
@@ -409,42 +445,13 @@ gabble_bytestream_multiple_accept (GabbleBytestreamIface *iface,
     {
       DEBUG ("stream %s with %s is now accepted", priv->stream_id,
           priv->peer_jid);
-      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_ACCEPTED, NULL);
+      g_object_set (priv->active_bytestream, "state",
+          GABBLE_BYTESTREAM_STATE_ACCEPTED, NULL);
     }
 
   lm_message_unref (msg);
 }
 
-static void
-gabble_bytestream_multiple_decline (GabbleBytestreamMultiple *self,
-                                    GError *error)
-{
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
-  LmMessage *msg;
-
-  g_return_if_fail (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
-
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "error",
-      '@', "id", priv->stream_init_id,
-      NULL);
-
-  if (error != NULL && error->domain == GABBLE_XMPP_ERROR)
-    {
-      gabble_xmpp_error_to_node (error->code, msg->node, error->message);
-    }
-  else
-    {
-      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN, msg->node,
-          "Offer Declined");
-    }
-
-  _gabble_connection_send (priv->conn, msg, NULL);
-
-  lm_message_unref (msg);
-
-  g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-}
 
 /*
  * gabble_bytestream_multiple_close
@@ -453,7 +460,7 @@ gabble_bytestream_multiple_decline (GabbleBytestreamMultiple *self,
  */
 static void
 gabble_bytestream_multiple_close (GabbleBytestreamIface *iface,
-                                GError *error)
+                                  GError *error)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (iface);
   GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
@@ -462,18 +469,11 @@ gabble_bytestream_multiple_close (GabbleBytestreamIface *iface,
      /* bytestream already closed, do nothing */
      return;
 
-  if (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
-    {
-      /* Stream was created using SI so we decline the request */
-      gabble_bytestream_multiple_decline (self, error);
-    }
+  if (priv->active_bytestream)
+    gabble_bytestream_iface_close (priv->active_bytestream, error);
   else
-    {
-      /* FIXME: send a close stanza */
-      /* FIXME: close the sub-bytesreams */
-
-      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-    }
+    /* FIXME can it happen? maybe when there are no methods */
+    g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
 }
 
 /*
@@ -494,46 +494,14 @@ gabble_bytestream_multiple_initiate (GabbleBytestreamIface *iface)
       return FALSE;
     }
 
-  if (priv->bytestreams == NULL)
+  if (priv->active_bytestream == NULL)
     {
+      /* FIXME no stream methods? */
       DEBUG ("no bytestreams to initiate");
       return FALSE;
     }
 
-  g_assert (priv->active == NULL);
-
-  /* Initiate the first available bytestream */
-  priv->active = priv->bytestreams->data;
-
-  return gabble_bytestream_iface_initiate (priv->active);
-}
-
-static void
-bytestream_connection_error_cb (GabbleBytestreamIface *failed,
-                                gpointer user_data)
-{
-  GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (user_data);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
-
-  g_assert (failed == priv->active);
-
-  priv->bytestreams = g_list_remove (priv->bytestreams, failed);
-  priv->active = NULL;
-
-  if (!priv->bytestreams)
-    return;
-
-  /* If we have other methods to try, prevent the failed bytestrem to send a
-     close stanza */
-  g_object_set (failed, "close-on-connection-error", FALSE, NULL);
-
-  g_object_unref (failed);
-
-  DEBUG ("Trying alternative streaming method");
-
-  priv->active = priv->bytestreams->data;
-  g_object_set (priv->active, "state", GABBLE_BYTESTREAM_STATE_INITIATING, NULL);
-  gabble_bytestream_iface_initiate (priv->active);
+  return gabble_bytestream_iface_initiate (priv->active_bytestream);
 }
 
 static void
@@ -554,29 +522,79 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
                              gpointer user_data)
 {
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (user_data);
-  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
-  if (state == GABBLE_BYTESTREAM_STATE_CLOSED &&
-      g_list_length (priv->bytestreams) <= 1)
-    {
-      return;
-    }
-  else if (state == GABBLE_BYTESTREAM_STATE_OPEN)
-    {
-      if (priv->active != NULL && priv->active != bytestream)
-        {
-          /* The old active bytestream is now useless as another one was
-           * open */
-          g_object_set (priv->active, "close-on-connection-error", FALSE, NULL);
-          gabble_bytestream_iface_close (priv->active, NULL);
-          priv->bytestreams = g_list_remove (priv->bytestreams, priv->active);
-          g_object_unref (priv->active);
-        }
-
-      priv->active = bytestream;
-    }
+  /* When there is a connection error the state of the sub-bytestream becomes
+   * CLOSED. There is no risk to receive a notification for this kind of
+   * change because the signal handler is previously disconnected in
+   * bytestream_connection_error_cb */
 
   g_object_set (self, "state", state, NULL);
+}
+
+static void
+bytestream_connection_error_cb (GabbleBytestreamIface *failed,
+                                gpointer user_data)
+{
+  GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (user_data);
+  GabbleBytestreamMultiplePrivate *priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+
+  g_assert (failed == priv->active_bytestream);
+ 
+  g_signal_handlers_disconnect_by_func (failed,
+      bytestream_connection_error_cb, self);
+  g_signal_handlers_disconnect_by_func (failed,
+      bytestream_data_received_cb, self);
+  g_signal_handlers_disconnect_by_func (failed,
+      bytestream_state_changed_cb, self);
+
+  /* We don't have to unref it because the reference is kept by the
+   * factory */
+  priv->active_bytestream = NULL;
+
+  if (priv->fallback_stream_methods == NULL)
+    return;
+
+  /* If we have other methods to try, prevent the failed bytestream to send a
+     close stanza */
+  // XXX
+  //g_object_set (failed, "close-on-connection-error", FALSE, NULL);
+
+  DEBUG ("Trying alternative streaming method");
+
+  bytestream_activate_next (self);
+
+  if (priv->state == GABBLE_BYTESTREAM_STATE_INITIATING)
+    /* The previous bytestream failed when initiating it, so now we have to
+     * initiate the new one */
+    gabble_bytestream_iface_initiate (priv->active_bytestream);
+}
+
+static void
+bytestream_activate_next (GabbleBytestreamMultiple *self)
+{
+  GabbleBytestreamMultiplePrivate *priv =
+      GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+  const gchar *stream_method;
+
+  g_return_if_fail (priv->active_bytestream == NULL);
+  /* The caller has to be sure that there is a fallback method */
+  g_return_if_fail (priv->fallback_stream_methods != NULL);
+
+  /* Try the first stream method in the fallback list */
+  stream_method = priv->fallback_stream_methods->data;
+  priv->fallback_stream_methods = g_list_remove_link (
+      priv->fallback_stream_methods, priv->fallback_stream_methods);
+
+  priv->active_bytestream = gabble_bytestream_factory_create_from_method (
+      priv->factory, stream_method, priv->peer_handle, priv->stream_id,
+      priv->stream_init_id, priv->peer_resource, priv->state);
+
+  g_signal_connect (priv->active_bytestream, "connection-error",
+      G_CALLBACK (bytestream_connection_error_cb), self);
+  g_signal_connect (priv->active_bytestream, "data-received",
+      G_CALLBACK (bytestream_data_received_cb), self);
+  g_signal_connect (priv->active_bytestream, "state-changed",
+      G_CALLBACK (bytestream_state_changed_cb), self);
 }
 
 /*
@@ -584,28 +602,25 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
  *
  * Add an alternative stream method.
  */
+/* FIXME -> add_stream_method */
 void
 gabble_bytestream_multiple_add_bytestream (GabbleBytestreamMultiple *self,
-                                           GabbleBytestreamIface *bytestream)
+                                           const gchar *method)
 {
   GabbleBytestreamMultiplePrivate *priv;
 
   g_return_if_fail (GABBLE_IS_BYTESTREAM_MULTIPLE (self));
-  g_return_if_fail (GABBLE_IS_BYTESTREAM_IFACE (bytestream));
+  g_return_if_fail (method != NULL);
 
   priv = GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
-  DEBUG ("Add bytestream");
+  DEBUG ("Add bytestream method %s", method);
 
-  g_object_ref (bytestream);
-  priv->bytestreams = g_list_append (priv->bytestreams, bytestream);
+  priv->fallback_stream_methods = g_list_append (
+      priv->fallback_stream_methods, g_strdup (method));
 
-  g_signal_connect (bytestream, "connection-error",
-      G_CALLBACK (bytestream_connection_error_cb), self);
-  g_signal_connect (bytestream, "data-received",
-      G_CALLBACK (bytestream_data_received_cb), self);
-  g_signal_connect (bytestream, "state-changed",
-      G_CALLBACK (bytestream_state_changed_cb), self);
+  if (priv->active_bytestream == NULL)
+    bytestream_activate_next (self);
 }
 
 static void

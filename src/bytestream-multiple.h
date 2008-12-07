@@ -67,7 +67,7 @@ GType gabble_bytestream_multiple_get_type (void);
 
 void
 gabble_bytestream_multiple_add_bytestream (GabbleBytestreamMultiple *self,
-                                           GabbleBytestreamIface *bytestream);
+                                           const gchar *method);
 
 G_END_DECLS
 

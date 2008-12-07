@@ -468,7 +468,8 @@ gabble_bytestream_multiple_close (GabbleBytestreamIface *iface,
   if (priv->active_bytestream)
     gabble_bytestream_iface_close (priv->active_bytestream, error);
   else
-    /* FIXME can it happen? maybe when there are no methods */
+    /* It can happen if the bytestream is still empty, i.e. not stream
+     * methods have been added yet */
     g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
 }
 
@@ -493,7 +494,6 @@ gabble_bytestream_multiple_initiate (GabbleBytestreamIface *iface)
 
   if (priv->active_bytestream == NULL)
     {
-      /* FIXME no stream methods? */
       DEBUG ("no bytestreams to initiate");
       return FALSE;
     }

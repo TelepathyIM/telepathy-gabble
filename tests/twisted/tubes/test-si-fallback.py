@@ -145,6 +145,9 @@ def test(q, bus, conn, stream):
     value.addContent(NS_BYTESTREAMS)
     option = field.addElement((None, 'option'))
     value = option.addElement((None, 'value'))
+    value.addContent("invalid-stream-method")
+    option = field.addElement((None, 'option'))
+    value = option.addElement((None, 'value'))
     value.addContent(NS_IBB)
 
     stream_node = si.addElement((NS_TUBES, 'stream'))
@@ -188,7 +191,6 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', iq_type='error', to='bob@localhost/Bob')
 
     # Then try with IBB
-
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
@@ -302,6 +304,8 @@ def test(q, bus, conn, stream):
     result['from'] = iq['to']
     result['to'] = 'test@localhost/Resource'
     res_si = result.addElement((NS_SI, 'si'))
+    res_value = res_si.addElement(('', 'value'))
+    res_value.addContent('invalid-stream-method')
     res_value = res_si.addElement(('', 'value'))
     res_value.addContent(NS_BYTESTREAMS)
     res_value = res_si.addElement(('', 'value'))

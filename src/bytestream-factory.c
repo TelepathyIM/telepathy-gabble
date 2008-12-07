@@ -539,6 +539,13 @@ gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
       ')', NULL);
 }
 
+static gboolean
+stream_method_supported (const gchar *stream_method)
+{
+  return !tp_strdiff (stream_method, NS_IBB) ||
+         !tp_strdiff (stream_method, NS_BYTESTREAMS);
+}
+
 /**
  * bytestream_factory_iq_si_cb:
  *
@@ -614,8 +621,9 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     {
       if (multiple)
         {
-          gabble_bytestream_multiple_add_stream_method (
-              GABBLE_BYTESTREAM_MULTIPLE (bytestream), l->data);
+          if (stream_method_supported (l->data))
+            gabble_bytestream_multiple_add_stream_method (
+                GABBLE_BYTESTREAM_MULTIPLE (bytestream), l->data);
         }
       else
         {
@@ -1340,6 +1348,7 @@ gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
 
 static GabbleBytestreamIface *
 streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
+                                    LmMessage *reply_msg,
                                     LmMessageNode *si,
                                     const gchar *stream_id,
                                     TpHandle peer_handle,
@@ -1348,12 +1357,22 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
   /* If the other client supports si-multiple we have directly a list of
    * supported methods inside <value/> tags */
   LmMessageNode *value;
+  const gchar *stream_method;
   GabbleBytestreamIface *bytestream = NULL;
 
   for (value = si->children; value; value = value->next)
     {
       if (tp_strdiff (value->name, "value"))
         continue;
+
+      stream_method = lm_message_node_get_value (value);
+
+      if (!stream_method_supported (stream_method))
+        {
+          NODE_DEBUG (reply_msg->node,
+              "got a SI reply with an unsupported stream method");
+          continue;
+        }
 
       /* If there is at least a <value/> we create a multiple bytestream and
        * add the supported methods to it */
@@ -1364,8 +1383,7 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
                GABBLE_BYTESTREAM_STATE_INITIATING));
 
       gabble_bytestream_multiple_add_stream_method (
-          GABBLE_BYTESTREAM_MULTIPLE (bytestream),
-          lm_message_node_get_value (value));
+          GABBLE_BYTESTREAM_MULTIPLE (bytestream), stream_method);
     }
 
   return bytestream;
@@ -1488,8 +1506,8 @@ streaminit_reply_cb (GabbleConnection *conn,
     }
 
   /* Try to build a multiple bytestream with fallback methods */
-  bytestream = streaminit_get_multiple_bytestream (self, si, data->stream_id,
-      peer_handle, peer_resource);
+  bytestream = streaminit_get_multiple_bytestream (self, reply_msg, si,
+      data->stream_id, peer_handle, peer_resource);
 
   if (bytestream == NULL)
     /* The other client doesn't suppport si-multiple, use the normal XEP-095

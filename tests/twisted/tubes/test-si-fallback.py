@@ -258,13 +258,8 @@ def test(q, bus, conn, stream):
     assert state == 0 # local pending
 
     # accept the tube
-    channels = filter(lambda x:
-      x[1] == "org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT" and
-      '42' in x[0], # FIXME
-      conn.ListChannels())
-    assert len(channels) == 1
-
-    tube_chan = bus.get_object(conn.bus_name, channels[0][0])
+    ret = q.expect('dbus-signal', signal='NewChannel')
+    tube_chan = bus.get_object(conn.bus_name, ret.args[0])
     tube_iface = dbus.Interface(tube_chan,
         tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
 

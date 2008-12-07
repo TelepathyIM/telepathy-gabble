@@ -34,6 +34,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
+#include "caps-channel-manager.h"
 #include "connection.h"
 #include "conn-olpc.h"
 #include "debug.h"
@@ -49,7 +50,8 @@ static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucFactory, gabble_muc_factory, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init));
+      channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
 /* properties */
 enum
@@ -371,7 +373,8 @@ new_muc_channel (GabbleMucFactory *fac,
                  TpHandle handle,
                  gboolean invited,
                  TpHandle inviter,
-                 const gchar *message)
+                 const gchar *message,
+                 gboolean requested)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
@@ -393,6 +396,7 @@ new_muc_channel (GabbleMucFactory *fac,
        "invited", invited,
        "initiator-handle", invited ? inviter : conn->self_handle,
        "invitation-message", message,
+       "requested", requested,
        NULL);
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
@@ -477,7 +481,7 @@ do_invite (GabbleMucFactory *fac,
   if (g_hash_table_lookup (priv->text_channels,
         GUINT_TO_POINTER (room_handle)) == NULL)
     {
-      new_muc_channel (fac, room_handle, TRUE, inviter_handle, reason);
+      new_muc_channel (fac, room_handle, TRUE, inviter_handle, reason, FALSE);
     }
   else
     {
@@ -1187,7 +1191,8 @@ static gboolean
 ensure_muc_channel (GabbleMucFactory *fac,
                     GabbleMucFactoryPrivate *priv,
                     TpHandle handle,
-                    GabbleMucChannel **ret)
+                    GabbleMucChannel **ret,
+                    gboolean requested)
 {
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
 
@@ -1195,10 +1200,8 @@ ensure_muc_channel (GabbleMucFactory *fac,
 
   if (*ret == NULL)
     {
-      /* FIXME: using base_conn->self_handle causes Requested to be TRUE,
-       * which is incorrect if this is a side-effect of joining a Tubes
-       * channel */
-      *ret = new_muc_channel (fac, handle, FALSE, base_conn->self_handle, NULL);
+      *ret = new_muc_channel (fac, handle, FALSE, base_conn->self_handle, NULL,
+          requested);
       return FALSE;
     }
 
@@ -1332,7 +1335,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
               &error))
         goto error;
 
-      if (ensure_muc_channel (self, priv, handle, &text_chan))
+      if (ensure_muc_channel (self, priv, handle, &text_chan, TRUE))
         {
           if (require_new)
             {
@@ -1379,7 +1382,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
                   request_token, TP_EXPORTABLE_CHANNEL (tubes_chan));
             }
         }
-      else if (ensure_muc_channel (self, priv, handle, &text_chan))
+      else if (ensure_muc_channel (self, priv, handle, &text_chan, FALSE))
         {
           tubes_chan = new_tubes_channel (self, handle, text_chan,
               base_conn->self_handle);

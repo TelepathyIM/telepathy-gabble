@@ -33,6 +33,7 @@
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
@@ -2141,24 +2142,6 @@ gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
 }
 
 /**
- * gabble_tube_stream_get_stream_tube_socket_address
- *
- * Implements D-Bus method GetStreamTubeSocketAddress
- * on org.freedesktop.Telepathy.Channel.Type.StreamTube
- */
-static void
-gabble_tube_stream_get_stream_tube_socket_address (
-    GabbleSvcChannelTypeStreamTube *iface,
-    DBusGMethodInvocation *context)
-{
-  GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-
-  gabble_svc_channel_type_stream_tube_return_from_get_stream_tube_socket_address
-      (context, priv->address_type, priv->address);
-}
-
-/**
  * gabble_tube_stream_close_async:
  *
  * Implements D-Bus method Close
@@ -2266,6 +2249,5 @@ streamtube_iface_init (gpointer g_iface,
     klass, gabble_tube_stream_##x)
   IMPLEMENT(offer_stream_tube);
   IMPLEMENT(accept_stream_tube);
-  IMPLEMENT(get_stream_tube_socket_address);
 #undef IMPLEMENT
 }

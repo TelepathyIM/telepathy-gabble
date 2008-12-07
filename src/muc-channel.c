@@ -232,6 +232,7 @@ struct _GabbleMucChannelPrivate
 
   TpHandle handle;
   const gchar *jid;
+  gboolean requested;
 
   guint nick_retry_count;
   GString *self_jid;
@@ -840,7 +841,7 @@ gabble_muc_channel_get_property (GObject    *object,
         }
       break;
     case PROP_REQUESTED:
-      g_value_set_boolean (value, (priv->initiator == base_conn->self_handle));
+      g_value_set_boolean (value, priv->requested);
       break;
     case PROP_CHANNEL_DESTROYED:
       g_value_set_boolean (value, priv->closed);
@@ -912,6 +913,9 @@ gabble_muc_channel_set_property (GObject     *object,
     case PROP_INVITATION_MESSAGE:
       g_assert (priv->invitation_message == NULL);
       priv->invitation_message = g_value_dup_string (value);
+      break;
+    case PROP_REQUESTED:
+      priv->requested = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1022,7 +1026,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_string ("invitation-message",

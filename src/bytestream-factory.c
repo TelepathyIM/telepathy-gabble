@@ -604,9 +604,10 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     }
 
   if (multiple)
-    bytestream = (GabbleBytestreamIface *) gabble_bytestream_factory_create_multiple (self, peer_handle,
-        stream_id, stream_init_id, peer_resource,
-        GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
+    bytestream = (GabbleBytestreamIface *)
+        gabble_bytestream_factory_create_multiple (self, peer_handle,
+          stream_id, stream_init_id, peer_resource,
+          GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
   /* check stream method */
   for (l = stream_methods; l != NULL; l = l->next)

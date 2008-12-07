@@ -509,7 +509,6 @@ gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
                                                const gchar *stream_id,
                                                const gchar *profile)
 {
-  /* FIXME list-multiple is not supported by old versions of gabble */
   return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
       '(', "si", "",

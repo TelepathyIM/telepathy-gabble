@@ -3097,6 +3097,10 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self,
   LmMessage *msg;
   gboolean result;
 
+  /* do nothing if we havn't actually joined yet */
+  if (priv->state < MUC_STATE_INITIATED)
+    return TRUE;
+
   msg = create_presence_message (self, LM_MESSAGE_SUB_TYPE_NOT_SET, NULL);
   g_signal_emit (self, signals[PRE_PRESENCE], 0, msg);
   result = _gabble_connection_send (priv->conn, msg, error);

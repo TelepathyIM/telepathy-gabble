@@ -126,7 +126,7 @@ static void
 gabble_jingle_media_rtp_dispose (GObject *object)
 {
   GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
-  GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
+  GabbleJingleMediaRtpPrivate *priv = trans->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -151,7 +151,7 @@ gabble_jingle_media_rtp_get_property (GObject *object,
                                              GParamSpec *pspec)
 {
   GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
-  GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
+  GabbleJingleMediaRtpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_MEDIA_TYPE:
@@ -170,8 +170,7 @@ gabble_jingle_media_rtp_set_property (GObject *object,
                                              GParamSpec *pspec)
 {
   GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
-  GabbleJingleMediaRtpPrivate *priv =
-      GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
+  GabbleJingleMediaRtpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_MEDIA_TYPE:
@@ -232,7 +231,7 @@ parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error)
 {
   GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
-  GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
   JingleMediaType mtype = JINGLE_MEDIA_TYPE_NONE;
   gboolean google_mode = FALSE;
   GList *codecs = NULL;
@@ -381,8 +380,7 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
   GabbleJingleMediaRtp *desc =
     GABBLE_JINGLE_MEDIA_RTP (obj);
   GabbleJingleSession *sess;
-  GabbleJingleMediaRtpPrivate *priv =
-    GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (desc);
+  GabbleJingleMediaRtpPrivate *priv = desc->priv;
   LmMessageNode *desc_node;
   GList *li;
   JingleDialect dialect;
@@ -471,8 +469,7 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 void
 jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
 {
-  GabbleJingleMediaRtpPrivate *priv =
-    GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
 
   DEBUG ("adding new local codecs");
 
@@ -510,9 +507,6 @@ jingle_media_rtp_register (GabbleJingleFactory *factory)
 GList *
 gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self)
 {
-  GabbleJingleMediaRtpPrivate *priv =
-    GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
-
-  return priv->remote_codecs;
+  return self->priv->remote_codecs;
 }
 

@@ -1792,7 +1792,7 @@ static void update_location_for_each (gpointer key,
 
 void gabble_presence_cache_update_location (GabblePresenceCache *cache,
                                             TpHandle handle,
-                                            GHashTable *location)
+                                            GHashTable *new_location)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   GHashTable *cur_location;
@@ -1804,7 +1804,8 @@ void gabble_presence_cache_update_location (GabblePresenceCache *cache,
         (GDestroyNotify) tp_g_value_slice_free);
 
   // Copy keys
-  g_hash_table_foreach (location, update_location_for_each, cur_location);
+  g_hash_table_remove_all (cur_location);
+  g_hash_table_foreach (new_location, update_location_for_each, cur_location);
 
   g_hash_table_replace (priv->location, GINT_TO_POINTER (handle), cur_location);
 

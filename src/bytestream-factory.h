@@ -73,25 +73,9 @@ typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (
 GabbleBytestreamFactory *gabble_bytestream_factory_new (
     GabbleConnection *conn);
 
-/* FIXME: what's the point to have these public? */
-GabbleBytestreamIBB *gabble_bytestream_factory_create_ibb (
-    GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
-    const gchar *stream_init_id, const gchar *peer_resource,
-    GabbleBytestreamState state);
-
 GabbleBytestreamMuc *gabble_bytestream_factory_create_muc (
     GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
     GabbleBytestreamState state);
-
-GabbleBytestreamSocks5 *gabble_bytestream_factory_create_socks5 (
-    GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
-    const gchar *stream_init_id, const gchar *peer_resource,
-    GabbleBytestreamState state);
-
-GabbleBytestreamMultiple *gabble_bytestream_factory_create_multiple (
-    GabbleBytestreamFactory *self, TpHandle peer_handle,
-    const gchar *stream_id, const gchar *stream_init_id,
-    const gchar *peer_resource, GabbleBytestreamState state);
 
 GabbleBytestreamIface *gabble_bytestream_factory_create_from_method (
     GabbleBytestreamFactory *self, const gchar *stream_method,

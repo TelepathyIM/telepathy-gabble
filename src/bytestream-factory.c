@@ -552,6 +552,21 @@ stream_method_supported (const gchar *stream_method)
   return FALSE;
 }
 
+static GabbleBytestreamMultiple *gabble_bytestream_factory_create_multiple (
+    GabbleBytestreamFactory *self, TpHandle peer_handle,
+    const gchar *stream_id, const gchar *stream_init_id,
+    const gchar *peer_resource, GabbleBytestreamState state);
+
+static GabbleBytestreamIBB *gabble_bytestream_factory_create_ibb (
+    GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
+    const gchar *stream_init_id, const gchar *peer_resource,
+    GabbleBytestreamState state);
+
+static GabbleBytestreamSocks5 *gabble_bytestream_factory_create_socks5 (
+    GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
+    const gchar *stream_init_id, const gchar *peer_resource,
+    GabbleBytestreamState state);
+
 /**
  * bytestream_factory_iq_si_cb:
  *
@@ -1250,7 +1265,7 @@ gabble_bytestream_factory_create_from_method (GabbleBytestreamFactory *self,
   return bytestream;
 }
 
-GabbleBytestreamIBB *
+static GabbleBytestreamIBB *
 gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
                                       TpHandle peer_handle,
                                       const gchar *stream_id,
@@ -1314,7 +1329,7 @@ gabble_bytestream_factory_create_muc (GabbleBytestreamFactory *self,
   return bytestream;
 }
 
-GabbleBytestreamSocks5 *
+static GabbleBytestreamSocks5 *
 gabble_bytestream_factory_create_socks5 (GabbleBytestreamFactory *self,
                                          TpHandle peer_handle,
                                          const gchar *stream_id,
@@ -1348,7 +1363,7 @@ gabble_bytestream_factory_create_socks5 (GabbleBytestreamFactory *self,
   return socks5;
 }
 
-GabbleBytestreamMultiple *
+static GabbleBytestreamMultiple *
 gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
                                            TpHandle peer_handle,
                                            const gchar *stream_id,

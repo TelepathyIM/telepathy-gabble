@@ -617,10 +617,14 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     }
 
   if (multiple)
-    bytestream = (GabbleBytestreamIface *)
-        gabble_bytestream_factory_create_multiple (self, peer_handle,
-          stream_id, stream_init_id, peer_resource,
-          GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
+    {
+      DEBUG ("Receiver supports multi bytestreams");
+
+      bytestream = (GabbleBytestreamIface *)
+          gabble_bytestream_factory_create_multiple (self, peer_handle,
+            stream_id, stream_init_id, peer_resource,
+            GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
+    }
 
   /* check stream method */
   for (l = stream_methods; l != NULL; l = l->next)
@@ -628,13 +632,23 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       if (multiple)
         {
           if (stream_method_supported (l->data))
-            gabble_bytestream_multiple_add_stream_method (
-                GABBLE_BYTESTREAM_MULTIPLE (bytestream), l->data);
+            {
+              gabble_bytestream_multiple_add_stream_method (
+                  GABBLE_BYTESTREAM_MULTIPLE (bytestream), l->data);
+            }
+          else
+            {
+              DEBUG ("skip unsupported stream method: %s",
+                  (const gchar *) l->data);
+            }
         }
       else
         {
           /* We create the stream according the stream method chosen.
            * User has to accept it */
+          DEBUG ("Receiver doesn't support multi bytestreams. He chose %s",
+              (const gchar *) l->data);
+
           bytestream = gabble_bytestream_factory_create_from_method (self,
               l->data, peer_handle, stream_id, stream_init_id, peer_resource,
               GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);

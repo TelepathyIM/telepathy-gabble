@@ -225,6 +225,30 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
 
 }
 
+static void create_msg_foreach (gpointer key,
+                                 gpointer value,
+                                 gpointer user_data)
+{
+  LmMessageNode *geoloc = (LmMessageNode *) user_data;
+  gchar *str;
+  gchar *dup_key = g_strdup (key);
+
+  if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)
+    {
+      str = g_strdup_printf ("%.6f", g_value_get_double (value));
+      lm_message_node_add_child (geoloc, dup_key, str);
+    }
+  else if (G_VALUE_TYPE (value) == G_TYPE_STRING)
+    {
+      str = g_value_dup_string (value);
+      lm_message_node_add_child (geoloc, dup_key, str);
+    }
+  DEBUG ("\t - %s: %s", (gchar*) key, str);
+  g_free (dup_key);
+  g_free (str);
+
+}
+
 static void
 location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
                        GHashTable *location,
@@ -233,36 +257,13 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *msg;
   LmMessageNode *geoloc;
-  GValue *lat_val;
-  GValue *lon_val;
 
   msg = pubsub_make_publish_msg (NULL, NS_GEOLOC, NS_GEOLOC, "geoloc",
       &geoloc);
 
   DEBUG ("SetLocation to");
 
-  lat_val = g_hash_table_lookup (location, "lat");
-  lon_val = g_hash_table_lookup (location, "lon");
-
-  if (lat_val && G_VALUE_TYPE (lat_val) == G_TYPE_DOUBLE)
-    {
-      gchar *lat_str;
-
-      lat_str = g_strdup_printf ("%.6f", g_value_get_double (lat_val));
-      lm_message_node_add_child (geoloc, "lat", lat_str);
-      DEBUG ("\tLatitude: %s", lat_str);
-      g_free (lat_str);
-    }
-
-  if (lon_val && G_VALUE_TYPE (lon_val) == G_TYPE_DOUBLE)
-    {
-      gchar *lon_str;
-
-      lon_str = g_strdup_printf ("%.6f", g_value_get_double (lon_val));
-      lm_message_node_add_child (geoloc, "lon", lon_str);
-      DEBUG ("\tLongitude: %s", lon_str);
-      g_free (lon_str);
-    }
+  g_hash_table_foreach (location, create_msg_foreach, geoloc);
 
   /* XXX: use _ignore_reply */
   if (!_gabble_connection_send (conn, msg, NULL))

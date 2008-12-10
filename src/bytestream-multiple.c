@@ -615,6 +615,15 @@ gabble_bytestream_multiple_add_stream_method (GabbleBytestreamMultiple *self,
     bytestream_activate_next (self);
 }
 
+guint
+gabble_bytestream_multiple_nb_stream_method (GabbleBytestreamMultiple *self)
+{
+  GabbleBytestreamMultiplePrivate *priv =
+    GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
+
+  return g_list_length (priv->fallback_stream_methods);
+}
+
 static void
 bytestream_iface_init (gpointer g_iface,
                        gpointer iface_data)

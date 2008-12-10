@@ -36,6 +36,7 @@
 
 #include <extensions/extensions.h>
 
+#include "caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "namespaces.h"
@@ -51,7 +52,8 @@ static void channel_manager_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE (GabbleOlpcGadgetManager, gabble_olpc_gadget_manager,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init));
+      channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
 /* properties */
 enum
@@ -89,10 +91,14 @@ gabble_olpc_gadget_manager_close_all (GabbleOlpcGadgetManager *self)
 {
   DEBUG ("%p", self);
 
+  /* Use a temporary variable because we don't want
+   * olpc_gadget_channel_closed_cb to remove the channel from the hash table a
+   * second time */
   if (self->priv->channels != NULL)
     {
-      g_hash_table_destroy (self->priv->channels);
+      GHashTable *tmp = self->priv->channels;
       self->priv->channels = NULL;
+      g_hash_table_destroy (tmp);
     }
 }
 

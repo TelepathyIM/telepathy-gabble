@@ -33,6 +33,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
+#include "caps-channel-manager.h"
 #include "conn-aliasing.h"
 #include "connection.h"
 #include "debug.h"
@@ -133,7 +134,8 @@ static void gabble_roster_close_all (GabbleRoster *roster);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init));
+      channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
 #define GABBLE_ROSTER_GET_PRIVATE(o) ((o)->priv)
 
@@ -1694,16 +1696,21 @@ gabble_roster_close_all (GabbleRoster *self)
       self->priv->status_changed_id = 0;
     }
 
+  /* Use a temporary variable because we don't want
+   * roster_channel_closed_cb to remove the channel from the hash table a
+   * second time */
   if (priv->group_channels != NULL)
     {
-      g_hash_table_destroy (priv->group_channels);
+      GHashTable *t = priv->group_channels;
       priv->group_channels = NULL;
+      g_hash_table_destroy (t);
     }
 
   if (priv->list_channels != NULL)
     {
-      g_hash_table_destroy (priv->list_channels);
+      GHashTable *t = priv->list_channels;
       priv->list_channels = NULL;
+      g_hash_table_destroy (t);
     }
 
   if (self->priv->iq_cb != NULL)

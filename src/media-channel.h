@@ -27,7 +27,6 @@
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/properties-mixin.h>
 
-#include "media-session.h"
 #include "presence.h"
 
 G_BEGIN_DECLS

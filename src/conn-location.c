@@ -163,6 +163,8 @@ pep_reply_cb (GabbleConnection *conn,
       g_hash_table_insert (result, g_strdup ("lon"), value);
     }
 
+  DEBUG ("LocationsUpdate %s (%f, %f)", from, lat, lon);
+
   gabble_presence_cache_update_location (conn->presence_cache, contact,
       result);
 
@@ -187,6 +189,8 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
       NULL);
   GHashTable *location = NULL;
 
+  DEBUG ("GetLocation for contacts:");
+
   if (!validate_contacts (base, context, contacts))
     return;
 
@@ -199,6 +203,7 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
       if (gabble_presence_cache_get_location (conn->presence_cache, contact, &location))
         {
           //FIXME: where to unref the location?
+          DEBUG (" - %s: cached", jid);
           g_hash_table_insert (return_locations, GINT_TO_POINTER (contact), location);
         }
       else if (!pubsub_query (conn, jid, NS_GEOLOC, pep_reply_cb, NULL))
@@ -210,7 +215,8 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
           g_hash_table_unref (return_locations);
 
           return;
-        }
+        } else
+           DEBUG (" - %s: requested", jid);
     }
 
   gabble_svc_connection_interface_location_return_from_get_locations
@@ -233,6 +239,8 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
   msg = pubsub_make_publish_msg (NULL, NS_GEOLOC, NS_GEOLOC, "geoloc",
       &geoloc);
 
+  DEBUG ("SetLocation to");
+
   lat_val = g_hash_table_lookup (location, "lat");
   lon_val = g_hash_table_lookup (location, "lon");
 
@@ -242,6 +250,7 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
 
       lat_str = g_strdup_printf ("%.6f", g_value_get_double (lat_val));
       lm_message_node_add_child (geoloc, "lat", lat_str);
+      DEBUG ("\tLatitude: %s", lat_str);
       g_free (lat_str);
     }
 
@@ -251,6 +260,7 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
 
       lon_str = g_strdup_printf ("%.6f", g_value_get_double (lon_val));
       lm_message_node_add_child (geoloc, "lon", lon_str);
+      DEBUG ("\tLongitude: %s", lon_str);
       g_free (lon_str);
     }
 
@@ -263,6 +273,7 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
       dbus_g_method_return_error (context, &error);
       return;
     }
+
 
   dbus_g_method_return (context);
 }

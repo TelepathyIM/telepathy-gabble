@@ -638,7 +638,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
           bytestream = gabble_bytestream_factory_create_from_method (self,
               l->data, peer_handle, stream_id, stream_init_id, peer_resource,
               GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
-          if (bytestream)
+          if (bytestream != NULL)
             break;
         }
     }

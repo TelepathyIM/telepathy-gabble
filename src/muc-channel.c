@@ -739,7 +739,7 @@ send_join_request (GabbleMucChannel *channel,
   ret = _gabble_connection_send (priv->conn, msg, error);
   if (!ret)
     {
-      DEBUG ("_gabble_connection_send_with_reply failed");
+      DEBUG ("_gabble_connection_send failed");
     }
   else
     {
@@ -777,7 +777,7 @@ send_leave_message (GabbleMucChannel *channel,
   ret = _gabble_connection_send (priv->conn, msg, &error);
   if (!ret)
     {
-      DEBUG ("_gabble_connection_send_with_reply failed");
+      DEBUG ("_gabble_connection_send failed");
       g_error_free (error);
     }
   else

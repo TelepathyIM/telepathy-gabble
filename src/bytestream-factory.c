@@ -541,8 +541,15 @@ gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
 static gboolean
 stream_method_supported (const gchar *stream_method)
 {
-  return !tp_strdiff (stream_method, NS_IBB) ||
-         !tp_strdiff (stream_method, NS_BYTESTREAMS);
+  /* IBB */
+  if (!tp_strdiff (stream_method, NS_IBB))
+    return TRUE;
+
+  /* Sock5 */
+  if (!tp_strdiff (stream_method, NS_BYTESTREAMS))
+    return TRUE;
+
+  return FALSE;
 }
 
 /**

@@ -191,6 +191,7 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
 
   DEBUG ("GetLocation for contacts:");
 
+  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_GEOLOCATION);
   if (!validate_contacts (base, context, contacts))
     return;
 
@@ -225,9 +226,10 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
 
 }
 
-static void create_msg_foreach (gpointer key,
-                                 gpointer value,
-                                 gpointer user_data)
+static void
+create_msg_foreach (gpointer key,
+                    gpointer value,
+                    gpointer user_data)
 {
   LmMessageNode *geoloc = (LmMessageNode *) user_data;
   gchar *str;
@@ -258,6 +260,7 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
   LmMessage *msg;
   LmMessageNode *geoloc;
 
+  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_GEOLOCATION);
   msg = pubsub_make_publish_msg (NULL, NS_GEOLOC, NS_GEOLOC, "geoloc",
       &geoloc);
 

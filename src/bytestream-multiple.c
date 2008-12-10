@@ -124,9 +124,6 @@ gabble_bytestream_multiple_dispose (GObject *object)
       gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
     }
 
-  if (priv->factory)
-    g_object_unref (priv->factory);
-
   G_OBJECT_CLASS (gabble_bytestream_multiple_parent_class)->dispose (object);
 }
 

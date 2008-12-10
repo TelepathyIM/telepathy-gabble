@@ -657,8 +657,6 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
         }
     }
 
-  /* FIXME check if there are bytestream methods in the multiple one */
-
   if (bytestream == NULL)
     {
       DEBUG ("SI request doesn't contain any supported stream methods.");
@@ -666,6 +664,20 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       _gabble_connection_send_iq_error (priv->conn, msg,
           XMPP_ERROR_SI_NO_VALID_STREAMS, NULL);
       goto out;
+    }
+
+  if (multiple)
+    {
+      /* Is there at least one stream method? */
+      if (gabble_bytestream_multiple_nb_stream_method (
+            GABBLE_BYTESTREAM_MULTIPLE (bytestream)) == 0)
+        {
+          GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_SI_NO_VALID_STREAMS, "" };
+          DEBUG ("No valid stream method in the multi bytestream. Closing");
+
+          gabble_bytestream_iface_close (bytestream, &e);
+          goto out;
+        }
     }
 
   /* Now that we have a bytestream, it's responsible for declining the IQ

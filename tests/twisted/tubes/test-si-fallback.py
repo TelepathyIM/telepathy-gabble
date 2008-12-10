@@ -161,15 +161,17 @@ def test(q, bus, conn, stream):
             EventPattern('stream-iq', iq_type='result'),
             EventPattern('dbus-signal', signal='TubeChannelStateChanged',
                 args=[2])) # 2 == OPEN
+
     iq = si_reply_event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI, iq)[0]
-    methods = xpath.queryForNodes('/si/value', si)
+    methods = xpath.queryForNodes('/iq/si[@xmlns="%s"]/si-multiple[@xmlns="%s"]/value' %
+            (NS_SI, NS_SI_MULTIPLE), iq)
     assert len(methods) == 2
     assert methods[0].name == 'value'
     assert str(methods[0]) == NS_BYTESTREAMS
     assert methods[1].name == 'value'
     assert str(methods[1]) == NS_IBB
-    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
+    tube = xpath.queryForNodes('/iq/si[@xmlns="%s"]/tube[@xmlns="%s"]' %
+            (NS_SI, NS_TUBES), iq)
     assert len(tube) == 1
 
     q.expect('dbus-signal', signal='StreamTubeNewConnection',

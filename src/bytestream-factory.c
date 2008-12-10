@@ -1688,6 +1688,7 @@ gabble_bytestream_factory_make_multi_accept_iq (const gchar *full_jid,
                                                 GList *stream_methods)
 {
   LmMessage *msg;
+  LmMessageNode *multi_node;
   GList *l;
 
   msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
@@ -1695,12 +1696,15 @@ gabble_bytestream_factory_make_multi_accept_iq (const gchar *full_jid,
       '@', "id", stream_init_id,
       '(', "si", "",
         '@', "xmlns", NS_SI,
+        '(', "si-multiple", "",
+          '@', "xmlns", NS_SI_MULTIPLE,
+          '*', &multi_node,
+        ')',
       ')', NULL);
 
   for (l = stream_methods; l != NULL; l = l->next)
     {
-      lm_message_node_add_child (msg->node->children,
-          "value", l->data);
+      lm_message_node_add_child (multi_node, "value", l->data);
     }
 
   return msg;

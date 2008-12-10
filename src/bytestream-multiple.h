@@ -65,9 +65,8 @@ GType gabble_bytestream_multiple_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_BYTESTREAM_MULTIPLE,\
                               GabbleBytestreamMultipleClass))
 
-void
-gabble_bytestream_multiple_add_stream_method (GabbleBytestreamMultiple *self,
-    const gchar *method);
+void gabble_bytestream_multiple_add_stream_method (
+    GabbleBytestreamMultiple *self, const gchar *method);
 
 G_END_DECLS
 

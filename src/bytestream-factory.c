@@ -1393,37 +1393,35 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
 {
   /* If the other client supports si-multiple we have directly a list of
    * supported methods inside <value/> tags */
-  LmMessageNode *value;
+  LmMessageNode *si_multi, *value;
   const gchar *stream_method;
-  GabbleBytestreamIface *bytestream = NULL;
+  GabbleBytestreamMultiple *bytestream = NULL;
 
-  for (value = si->children; value; value = value->next)
+  si_multi = lm_message_node_get_child_with_namespace (si, "si-multiple",
+      NS_SI_MULTIPLE);
+  if (si_multi == NULL)
+    return NULL;
+
+  bytestream = gabble_bytestream_factory_create_multiple (self, peer_handle,
+      stream_id, NULL, peer_resource, GABBLE_BYTESTREAM_STATE_INITIATING);
+
+  for (value = si_multi->children; value; value = value->next)
     {
       if (tp_strdiff (value->name, "value"))
         continue;
 
       stream_method = lm_message_node_get_value (value);
-
       if (!stream_method_supported (stream_method))
         {
-          NODE_DEBUG (reply_msg->node,
-              "got a SI reply with an unsupported stream method");
+          DEBUG ("got a si-multiple reply with an unsupported "
+              "stream method: %s", stream_method);
           continue;
         }
 
-      /* If there is at least a <value/> we create a multiple bytestream and
-       * add the supported methods to it */
-      if (!bytestream)
-        bytestream = GABBLE_BYTESTREAM_IFACE (
-            gabble_bytestream_factory_create_multiple (self, peer_handle,
-               stream_id, NULL, peer_resource,
-               GABBLE_BYTESTREAM_STATE_INITIATING));
-
-      gabble_bytestream_multiple_add_stream_method (
-          GABBLE_BYTESTREAM_MULTIPLE (bytestream), stream_method);
+      gabble_bytestream_multiple_add_stream_method (bytestream, stream_method);
     }
 
-  return bytestream;
+  return GABBLE_BYTESTREAM_IFACE (bytestream);
 }
 
 static GabbleBytestreamIface *
@@ -1545,6 +1543,7 @@ streaminit_reply_cb (GabbleConnection *conn,
   /* Try to build a multiple bytestream with fallback methods */
   bytestream = streaminit_get_multiple_bytestream (self, reply_msg, si,
       data->stream_id, peer_handle, peer_resource);
+  /* FIXME: check if there is at least one stream method */
 
   if (bytestream == NULL)
     /* The other client doesn't suppport si-multiple, use the normal XEP-095

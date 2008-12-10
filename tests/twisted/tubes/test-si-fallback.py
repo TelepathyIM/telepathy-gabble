@@ -299,11 +299,12 @@ def test(q, bus, conn, stream):
     result['from'] = iq['to']
     result['to'] = 'test@localhost/Resource'
     res_si = result.addElement((NS_SI, 'si'))
-    res_value = res_si.addElement(('', 'value'))
+    res_multi = res_si.addElement((NS_SI_MULTIPLE, 'si-multiple'))
+    res_value = res_multi.addElement(('', 'value'))
     res_value.addContent('invalid-stream-method')
-    res_value = res_si.addElement(('', 'value'))
+    res_value = res_multi.addElement(('', 'value'))
     res_value.addContent(NS_BYTESTREAMS)
-    res_value = res_si.addElement(('', 'value'))
+    res_value = res_multi.addElement(('', 'value'))
     res_value.addContent(NS_IBB)
 
     stream.send(result)

@@ -1358,6 +1358,7 @@ gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv;
   GabbleBytestreamMultiple *multiple;
+  BytestreamIdentifier *id;
 
   g_return_val_if_fail (GABBLE_IS_BYTESTREAM_FACTORY (self), NULL);
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
@@ -1374,6 +1375,10 @@ gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
 
   g_signal_connect (multiple, "state-changed",
       G_CALLBACK (bytestream_state_changed_cb), self);
+
+  id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (multiple));
+  DEBUG ("add multi bytestream <%s> from <%s>", id->stream, id->jid);
+  g_hash_table_insert (priv->multiple_bytestreams, id, multiple);
 
   return multiple;
 }

@@ -83,7 +83,7 @@ struct _GabbleBytestreamMultiplePrivate
   gchar *peer_jid;
   GabbleBytestreamFactory *factory;
 
-  /* List of gchar* */
+  /* List of (gchar *) containing the NS of a stream method */
   GList *fallback_stream_methods;
   GabbleBytestreamIface *active_bytestream;
 

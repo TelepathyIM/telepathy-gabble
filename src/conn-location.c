@@ -3,6 +3,7 @@
 #include "conn-location.h"
 #include "presence-cache.h"
 
+#include <string.h>
 #include <stdlib.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_LOCATION
@@ -36,6 +37,9 @@
 #define LOCATION_VERTICAL_ERROR_M "vertical-error-m"
 #define LOCATION_HORIZONTAL_ERROR_M "horizontal-error-m"
 
+static gboolean update_location (GabbleConnection *conn, const gchar *from,
+    LmMessage *msg);
+
 /* XXX: similar to conn-olpc.c's inspect_contact(), except that it assumes
  * that the handle is valid. (Does tp_handle_inspect check validity anyway?)
  * Reduce duplication.
@@ -48,6 +52,16 @@ inspect_contact (TpBaseConnection *base,
       base, TP_HANDLE_TYPE_CONTACT);
 
   return tp_handle_inspect (contact_repo, contact);
+}
+
+static guint
+lookup_contact (TpBaseConnection *base,
+                const gchar *from)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      base, TP_HANDLE_TYPE_CONTACT);
+
+  return tp_handle_lookup (contact_repo, from, NULL, NULL);
 }
 
 static gboolean
@@ -88,10 +102,10 @@ lm_message_node_get_double (LmMessageNode *node,
 
   return TRUE;
 }
-/*
+
 static gboolean
 lm_message_node_get_string (LmMessageNode *node,
-                            gchar *s)
+                            gchar **s)
 {
   const gchar *value;
 
@@ -100,10 +114,10 @@ lm_message_node_get_string (LmMessageNode *node,
   if (value == NULL)
     return FALSE;
 
-  s = g_strdup (value);
+  *s = g_strdup (value);
   return TRUE;
 }
-*/
+
 static LmHandlerResult
 pep_reply_cb (GabbleConnection *conn,
               LmMessage *sent_msg,
@@ -111,68 +125,12 @@ pep_reply_cb (GabbleConnection *conn,
               GObject *object,
               gpointer user_data)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  TpHandleRepoIface *contact_repo =
-      tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *geoloc;
-  LmMessageNode *lat_node;
-  LmMessageNode *lon_node;
-  GHashTable *result = NULL;
   const gchar *from;
-  gdouble lat;
-  gdouble lon;
-  guint contact;
 
-  result = g_hash_table_new_full (g_direct_hash, g_direct_equal, g_free,
-      (GDestroyNotify) tp_g_value_slice_free);
   from = lm_message_node_get_attribute (reply_msg->node, "from");
 
-  if (from == NULL)
-    goto END;
-
-  contact = tp_handle_lookup (contact_repo, from, NULL, NULL);
-  /* XXX: ref all the handles */
-  g_assert (contact);
-  geoloc = lm_message_node_find_child (reply_msg->node, "geoloc");
-
-  if (geoloc == NULL)
-    goto END;
-
-  lat_node = lm_message_node_find_child (geoloc, "lat");
-  lon_node = lm_message_node_find_child (geoloc, "lon");
-
-  if (lat_node == NULL &&
-      lon_node == NULL)
-    goto END;
-
-  if (lat_node != NULL && lm_message_node_get_double (lat_node, &lat))
-    {
-      GValue *value = g_slice_new0 (GValue);
-
-      g_value_init (value, G_TYPE_DOUBLE);
-      g_value_set_double (value, lat);
-      g_hash_table_insert (result, g_strdup ("lat"), value);
-    }
-
-  if (lon_node != NULL && lm_message_node_get_double (lon_node, &lon))
-    {
-      GValue *value = g_slice_new0 (GValue);
-
-      g_value_init (value, G_TYPE_DOUBLE);
-      g_value_set_double (value, lon);
-      g_hash_table_insert (result, g_strdup ("lon"), value);
-    }
-
-  DEBUG ("LocationsUpdate %s (%f, %f)", from, lat, lon);
-
-  gabble_presence_cache_update_location (conn->presence_cache, contact,
-      result);
-
-  gabble_svc_connection_interface_location_emit_location_updated (conn,
-      contact, result);
-
-END:
-  g_hash_table_destroy (result);
+  if (from != NULL)
+    update_location (conn, from, reply_msg);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -278,7 +236,6 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
       return;
     }
 
-
   dbus_g_method_return (context);
 }
 
@@ -342,5 +299,78 @@ conn_location_propeties_getter (GObject *object,
     {
       g_assert_not_reached ();
     }
+}
+
+static gboolean
+update_location (GabbleConnection *conn,
+                 const gchar *from,
+                 LmMessage *msg)
+{
+  LmMessageNode *node, *subloc_node;
+  gchar *key, *str;
+  gdouble double_value;
+  GValue *value;
+  GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal, g_free,
+      (GDestroyNotify) tp_g_value_slice_free);
+  guint contact = lookup_contact ((TpBaseConnection *) conn, from);
+
+  node = lm_message_node_find_child (msg->node, "geoloc");
+  if (node == NULL)
+    return FALSE;
+
+  DEBUG ("LocationsUpdate for %s:", from);
+
+  for (subloc_node = node->children; subloc_node != NULL;
+      subloc_node = subloc_node->next)
+    {
+      key = subloc_node->name;
+
+      if ((strcmp (key, "lat") == 0 ||
+           strcmp (key, "lon") == 0 ||
+           strcmp (key, "alt") == 0 ||
+           strcmp (key, "accuracy") == 0) &&
+          lm_message_node_get_double (subloc_node, &double_value))
+        {
+          value = g_slice_new0 (GValue);
+          g_value_init (value, G_TYPE_DOUBLE);
+          g_value_set_double (value, double_value);
+          DEBUG ("\t - %s: %f", key, double_value);
+        }
+      else if (lm_message_node_get_string (subloc_node, &str))
+        {
+          value = g_slice_new0 (GValue);
+          g_value_init (value, G_TYPE_STRING);
+          g_value_take_string (value, str);
+          DEBUG ("\t - %s: %s", key, str);
+        }
+
+      g_hash_table_insert (location, g_strdup (key), value);
+    }
+
+
+  gabble_presence_cache_update_location (conn->presence_cache, contact,
+      location);
+  gabble_svc_connection_interface_location_emit_location_updated (conn,
+      contact, location);
+  g_hash_table_unref (location);
+
+  return TRUE;
+}
+
+gboolean
+geolocation_event_handler (GabbleConnection *conn,
+                           LmMessage *msg,
+                           TpHandle handle)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  const gchar *from;
+
+  if (handle == base->self_handle)
+    /* Ignore echoed pubsub notifications */
+    return TRUE;
+
+  from = lm_message_node_get_attribute (msg->node, "from");
+
+  return update_location (conn, from, msg);
 }
 

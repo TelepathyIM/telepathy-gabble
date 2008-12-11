@@ -534,6 +534,9 @@ bytestream_connection_error_cb (GabbleBytestreamIface *failed,
       GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
 
   g_assert (failed == priv->active_bytestream);
+  /* the error signal is only emitted when intiating the bytestream */
+  g_assert (priv->state == GABBLE_BYTESTREAM_STATE_INITIATING ||
+      priv->state == GABBLE_BYTESTREAM_STATE_ACCEPTED);
 
   g_signal_handlers_disconnect_by_func (failed,
       bytestream_connection_error_cb, self);

@@ -276,7 +276,7 @@ def test(q, bus, conn, stream):
     factory = EventProtocolClientFactory(q)
     reactor.connectUNIX(path2, factory)
 
-    # Gabble need a bytestream for the connection and sends a SI offer.
+    # Gabble needs a bytestream for the connection and sends a SI offer.
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
     iq = event.stanza
     si_nodes = xpath.queryForNodes('/iq/si', iq)

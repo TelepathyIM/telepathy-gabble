@@ -270,10 +270,7 @@ def test(q, bus, conn, stream):
     tube_iface = dbus.Interface(tube_chan,
         tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
 
-    call_async(q, tube_iface, 'AcceptStreamTube', 0, 0, '')
-
-    event = q.expect('dbus-return', method='AcceptStreamTube')
-    path2 = event.value[0]
+    path2 = tube_iface.AcceptStreamTube(0, 0, '')
     path2 = ''.join([chr(c) for c in path2])
 
     factory = EventProtocolClientFactory(q)

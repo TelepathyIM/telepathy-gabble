@@ -82,7 +82,7 @@ def test(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Connection.Interface.Requests')
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
 
-    # Offer a tube
+    # Offer a tube to Bob
     call_async(q, requestotron, 'CreateChannel',
             {'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
@@ -153,6 +153,7 @@ def test(q, bus, conn, stream):
     stream_node = si.addElement((NS_TUBES, 'stream'))
     stream_node['tube'] = str(stream_tube_id)
 
+    # Bob supports multi bytestreams
     si_multiple = si.addElement((NS_SI_MULTIPLE, 'si-multiple'))
 
     stream.send(iq)
@@ -163,6 +164,7 @@ def test(q, bus, conn, stream):
                 args=[2])) # 2 == OPEN
 
     iq = si_reply_event.stanza
+    # check if SI reply contains the 2 bytestreams
     methods = xpath.queryForNodes('/iq/si[@xmlns="%s"]/si-multiple[@xmlns="%s"]/value' %
             (NS_SI, NS_SI_MULTIPLE), iq)
     assert len(methods) == 2
@@ -177,7 +179,8 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StreamTubeNewConnection',
         args=[bob_handle])
 
-    # Send the non-working streamhost
+    # Bob initiates the S5B bytestream. He sends a not-working streamhost
+    # so Gabble won't be able to connect to it.
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
@@ -190,9 +193,10 @@ def test(q, bus, conn, stream):
     streamhost['port'] = '1234'
     stream.send(iq)
 
+    # Gabble informs Bob that Sock5 failed
     event = q.expect('stream-iq', iq_type='error', to='bob@localhost/Bob')
 
-    # Then try with IBB
+    # Then Bob tries with IBB
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
@@ -201,6 +205,7 @@ def test(q, bus, conn, stream):
     open['block-size'] = '4096'
     stream.send(iq)
 
+    # cool, IBB succeeded
     q.expect('stream-iq', iq_type='result')
 
     # have the fake client send us some data
@@ -226,7 +231,7 @@ def test(q, bus, conn, stream):
     assert binary == 'HELLO, WORLD'
 
 
-    # Accepting a tube
+    # Test the other side. Bob offers a stream tube.
     message = domish.Element(('jabber:client', 'message'))
     message['to'] = 'test@localhost/Resource'
     message['from'] = 'bob@localhost/Bob'
@@ -274,6 +279,7 @@ def test(q, bus, conn, stream):
     factory = EventProtocolClientFactory(q)
     reactor.connectUNIX(path2, factory)
 
+    # Gabble need a bytestream for the connection and sends a SI offer.
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
     iq = event.stanza
     si_nodes = xpath.queryForNodes('/iq/si', iq)
@@ -293,6 +299,7 @@ def test(q, bus, conn, stream):
     assert str(value) == NS_BYTESTREAMS
     value = xpath.queryForNodes('/field/option/value', field)[1]
     assert str(value) == NS_IBB
+    # Gabble supports multi-bytestreams extension
     si_multiple = xpath.queryForNodes('/si/si-multiple', si)[0]
     assert si_multiple.uri == NS_SI_MULTIPLE
 
@@ -301,6 +308,7 @@ def test(q, bus, conn, stream):
     result['from'] = iq['to']
     result['to'] = 'test@localhost/Resource'
     res_si = result.addElement((NS_SI, 'si'))
+    # reply using multi-bytestreams extension
     res_multi = res_si.addElement((NS_SI_MULTIPLE, 'si-multiple'))
     res_value = res_multi.addElement(('', 'value'))
     res_value.addContent('invalid-stream-method')
@@ -311,6 +319,7 @@ def test(q, bus, conn, stream):
 
     stream.send(result)
 
+    # Gabble first tries Sock5
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
     iq = event.stanza
     query = xpath.queryForNodes('/iq/query', iq)[0]
@@ -319,6 +328,7 @@ def test(q, bus, conn, stream):
     streamhost = xpath.queryForNodes('/iq/query/streamhost', iq)[0]
     assert streamhost
 
+    # pretend we can't connect using Sock5
     response_id = iq['id']
     iq = IQ(stream, 'error')
     iq['to'] = 'test@localhost/Resource'
@@ -329,12 +339,14 @@ def test(q, bus, conn, stream):
     error['code'] = '403'
     stream.send(iq)
 
+    # Gabble now tries using IBB
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
     iq = event.stanza
     open = xpath.queryForNodes('/iq/open', iq)[0]
     assert open.uri == NS_IBB
     sid = open['sid']
 
+    # IBB is working
     result = IQ(stream, 'result')
     result['id'] = iq['id']
     result['from'] = iq['to']

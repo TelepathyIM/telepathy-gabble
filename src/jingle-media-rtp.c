@@ -98,7 +98,8 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
   if (params != NULL)
       p->params = params;
   else
-      p->params = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+      p->params = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+          g_free);
 
   return p;
 }
@@ -222,9 +223,6 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 #define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
 #define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
 
-static const gchar *video_codec_params[] = {
-  "x", "y", "width", "height", "layer", "transparent", NULL,
-};
 
 static void
 parse_description (GabbleJingleContent *content,
@@ -294,7 +292,7 @@ parse_description (GabbleJingleContent *content,
       guchar id;
       const gchar *name;
       guint clockrate, channels;
-      guint i;
+      LmMessageNode *param;
 
       if (tp_strdiff (lm_message_node_get_name (node), "payload-type"))
           continue;
@@ -336,12 +334,21 @@ parse_description (GabbleJingleContent *content,
 
       p = jingle_media_rtp_codec_new (id, name, clockrate, channels, NULL);
 
-      for (i = 0; video_codec_params[i] != NULL; i++)
+      for (param = node->children; param != NULL; param = param->next)
         {
-          txt = lm_message_node_get_attribute (node, video_codec_params[i]);
-          if (txt != NULL)
-              g_hash_table_insert (p->params, (gpointer) video_codec_params[i],
-                  g_strdup (txt));
+          const gchar *param_name, *param_value;
+
+          if (tp_strdiff (lm_message_node_get_name (param), "parameter"))
+            continue;
+
+          param_name = lm_message_node_get_attribute (param, "name");
+          param_value = lm_message_node_get_attribute (param, "value");
+
+          if (param_name == NULL || param_value == NULL)
+            continue;
+
+          g_hash_table_insert (p->params, g_strdup (param_name),
+              g_strdup (param_value));
         }
 
       DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",
@@ -370,8 +377,14 @@ parse_description (GabbleJingleContent *content,
 static void
 _produce_extra_param (gpointer key, gpointer value, gpointer user_data)
 {
-  lm_message_node_set_attribute ((LmMessageNode *) user_data,
-      (gchar *) key, (gchar *) value);
+  LmMessageNode *pt_node = user_data;
+  LmMessageNode *param;
+  gchar *param_name = key;
+  gchar *param_value = value;
+
+  param = lm_message_node_add_child (pt_node, "parameter", NULL);
+  lm_message_node_set_attribute (param, "name", param_name);
+  lm_message_node_set_attribute (param, "value", param_value);
 }
 
 static void

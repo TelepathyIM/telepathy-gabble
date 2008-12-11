@@ -136,7 +136,6 @@ def test(q, bus, conn, stream):
         assert len(parameters) == 1, parameters
         assert parameters['misc'] == 'other', parameters
 
-    print e.args[0]
     # Test completed, close the connection
 
     conn.Disconnect()

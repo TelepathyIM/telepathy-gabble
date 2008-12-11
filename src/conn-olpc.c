@@ -157,7 +157,6 @@ check_gadget_buddy (GabbleConnection *conn,
   if (conn->olpc_gadget_buddy != NULL)
     return TRUE;
 
-  DEBUG ("%s", error.message);
   if (context != NULL)
     dbus_g_method_return_error (context, &error);
 
@@ -3682,7 +3681,10 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
   GError *error = NULL;
 
   if (!check_gadget_buddy (conn, context))
-    return;
+    {
+      DEBUG ("Server does not provide Gadget Buddy service");
+      return;
+    }
 
   conn->olpc_gadget_publish = publish;
 

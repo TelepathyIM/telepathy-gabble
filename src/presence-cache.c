@@ -814,7 +814,7 @@ _caps_disco_cb (GabbleDisco *disco,
 
   if (NULL == node)
     {
-      g_warning ("got disco response with NULL node, ignoring");
+      DEBUG ("got disco response with NULL node, ignoring");
       return;
     }
 
@@ -979,7 +979,7 @@ _caps_disco_cb (GabbleDisco *disco,
       else
         {
           /* The received reply does not match the */
-          g_warning ("The announced verification string '%s' does not match "
+          DEBUG ("The announced verification string '%s' does not match "
               "our hash '%s'.", waiter_self->ver, computed_hash);
           trust = 0;
           bad_hash = TRUE;

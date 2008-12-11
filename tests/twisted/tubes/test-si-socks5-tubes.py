@@ -667,6 +667,9 @@ def test(q, bus, conn, stream):
     event = q.expect('s5b-data-received')
     assert event.properties['data'] == 'hello world'
 
+    # this connection is disconnected
+    transport.loseConnection()
+
     reactor.listenTCP(5085, S5BFactory(q.append))
 
     # have the fake client open the stream

@@ -12,6 +12,7 @@ import gabbletest
 import dbus
 import time
 
+MEDIA_STREAM_TYPE_AUDIO = 0
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -65,7 +66,7 @@ def test(q, bus, conn, stream):
     # Test that codec parameters are correctly sent in <parameter> children of
     # <payload-type> rather than as attributes of the latter.
 
-    media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
+    media_iface.RequestStreams(handle, [MEDIA_STREAM_TYPE_AUDIO])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')

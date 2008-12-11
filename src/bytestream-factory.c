@@ -648,6 +648,9 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
         {
           if (stream_method_supported (l->data))
             {
+              DEBUG ("add %s to multi-bytestream methods",
+                  (const gchar *) l->data);
+
               gabble_bytestream_multiple_add_stream_method (
                   GABBLE_BYTESTREAM_MULTIPLE (bytestream), l->data);
             }

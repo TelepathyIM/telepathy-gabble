@@ -82,12 +82,12 @@
       </si>
     </iq>
   ]]>
+  </example>
 
   <p>At this point Romeo starts to initiate the bytestream using the first method (<spec>XEP-0065</spec>).
-If that fails, he'll try the second one (<spec>XEP-0047</spec>). Each bytestream is negotiated
-according the protocol described in its XEP. Once a bytestream has been sucessfully established,
-all the data are send using it and the other methods are not used.</p>
-  </example>
+    If that fails, he'll try the second one (<spec>XEP-0047</spec>). Each bytestream is negotiated
+    according the protocol described in its XEP. Once a bytestream has been sucessfully established,
+    all the data are send using it and the other methods are not used.</p>
 
 </section1>
 <section1 topic='Security Considerations' anchor='security'>

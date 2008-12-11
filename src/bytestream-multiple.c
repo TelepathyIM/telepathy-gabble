@@ -613,7 +613,7 @@ gabble_bytestream_multiple_add_stream_method (GabbleBytestreamMultiple *self,
 }
 
 guint
-gabble_bytestream_multiple_nb_stream_method (GabbleBytestreamMultiple *self)
+gabble_bytestream_multiple_count_stream_method (GabbleBytestreamMultiple *self)
 {
   GabbleBytestreamMultiplePrivate *priv =
     GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);

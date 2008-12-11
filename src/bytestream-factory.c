@@ -684,7 +684,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   if (multiple)
     {
       /* Is there at least one stream method? */
-      if (gabble_bytestream_multiple_nb_stream_method (
+      if (gabble_bytestream_multiple_count_stream_method (
             GABBLE_BYTESTREAM_MULTIPLE (bytestream)) == 0)
         {
           GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_SI_NO_VALID_STREAMS, "" };

@@ -380,7 +380,7 @@ gabble_bytestream_multiple_send (GabbleBytestreamIface *iface,
       return FALSE;
     }
 
-  g_assert(priv->active_bytestream);
+  g_assert (priv->active_bytestream != NULL);
 
   return gabble_bytestream_iface_send (priv->active_bytestream, len, str);
 }
@@ -412,7 +412,7 @@ gabble_bytestream_multiple_accept (GabbleBytestreamIface *iface,
       return;
     }
 
-  g_return_if_fail (priv->active_bytestream);
+  g_return_if_fail (priv->active_bytestream != NULL);
 
   all_methods = g_list_copy (priv->fallback_stream_methods);
   g_object_get (priv->active_bytestream, "protocol", &current_method, NULL);
@@ -462,7 +462,7 @@ gabble_bytestream_multiple_close (GabbleBytestreamIface *iface,
      /* bytestream already closed, do nothing */
      return;
 
-  if (priv->active_bytestream)
+  if (priv->active_bytestream != NULL)
     gabble_bytestream_iface_close (priv->active_bytestream, error);
   else
     /* It can happen if the bytestream is still empty, i.e. not stream

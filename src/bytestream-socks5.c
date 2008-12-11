@@ -850,6 +850,18 @@ socks5_channel_readable_cb (GIOChannel *source,
       &priv->read_buffer->str [priv->read_buffer->len], available_length,
       &bytes_read, NULL);
 
+  switch (status)
+    {
+      case G_IO_STATUS_AGAIN:
+        return TRUE;
+      case G_IO_STATUS_ERROR:
+      case G_IO_STATUS_EOF:
+        socks5_error (self);
+        return FALSE;
+      case G_IO_STATUS_NORMAL:
+        break;
+    }
+
   priv->read_buffer->len += bytes_read;
   priv->read_buffer->str[priv->read_buffer->len] = '\0';
 

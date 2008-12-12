@@ -1785,14 +1785,19 @@ gabble_presence_cache_is_unsure (GabblePresenceCache *cache)
 static void update_location_for_each (gpointer key,
                                       gpointer value,
                                       gpointer user_data)
+static void
+update_location_for_each (gpointer key,
+                          gpointer value,
+                          gpointer user_data)
 {
   GHashTable *location = (GHashTable*) user_data;
-    g_hash_table_insert (location, g_strdup(key), tp_g_value_slice_dup (value));
+  g_hash_table_insert (location, g_strdup(key), tp_g_value_slice_dup (value));
 }
 
-void gabble_presence_cache_update_location (GabblePresenceCache *cache,
-                                            TpHandle handle,
-                                            GHashTable *new_location)
+void
+gabble_presence_cache_update_location (GabblePresenceCache *cache,
+                                       TpHandle handle,
+                                       GHashTable *new_location)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   GHashTable *cur_location;
@@ -1800,7 +1805,7 @@ void gabble_presence_cache_update_location (GabblePresenceCache *cache,
   // FIXME: Necessary? should the destroy cb take care of that?
   cur_location = g_hash_table_lookup (priv->location, GINT_TO_POINTER (handle));
   if (!cur_location)
-    cur_location = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+    cur_location = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
         (GDestroyNotify) tp_g_value_slice_free);
 
   // Copy keys
@@ -1813,9 +1818,10 @@ void gabble_presence_cache_update_location (GabblePresenceCache *cache,
 }
 
 
-gboolean gabble_presence_cache_get_location (GabblePresenceCache *cache,
-                                             TpHandle handle,
-                                             GHashTable **location)
+gboolean
+gabble_presence_cache_get_location (GabblePresenceCache *cache,
+                                    TpHandle handle,
+                                    GHashTable **location)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
 

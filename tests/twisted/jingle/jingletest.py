@@ -88,7 +88,7 @@ class JingleTest:
 
     def get_remote_transports_dbus(self):
         return dbus.Array([
-            (dbus.UInt32(i), host, port, proto, subtype,
+            (dbus.UInt32(1 + i), host, port, proto, subtype,
                 profile, pref, transtype, user, pwd)
                 for i, (host, port, proto, subtype, profile,
                     pref, transtype, user, pwd)
@@ -139,7 +139,7 @@ class JingleTest:
         self.stream.send(reply.toXml())
 
 
-    def incoming_call(self):
+    def incoming_call(self, codec_parameters=None):
         self.direction = 'incoming'
 
         if self.google_mode:
@@ -152,16 +152,26 @@ class JingleTest:
         content = domish.Element((None, 'content'))
         content['creator'] = 'initiator'
         content['name'] = 'audio1'
+        content['senders'] = 'both'
 
         desc = domish.Element((desc_ns, 'description'))
         for codec, id, rate in self.audio_codecs:
             p = domish.Element((None, 'payload-type'))
             p['name'] = codec
             p['id'] = str(id)
+
             if self.google_mode:
                 p['clockrate'] = p['bitrate'] = str(rate)
             else:
                 p['rate'] = str(rate)
+
+            if codec_parameters is not None:
+                for name, value in codec_parameters.iteritems():
+                    param = domish.Element((None, 'parameter'))
+                    param['name'] = name
+                    param['value'] = value
+                    p.addChild(param)
+
             desc.addChild(p)
 
         xport = domish.Element(("http://www.google.com/transport/p2p", 'transport'))
@@ -189,7 +199,8 @@ class JingleTest:
 
         content = domish.Element((None, 'content'))
         content['creator'] = 'initiator'
-        content['name'] = 'audio1'
+        content['name'] = 'stream1'
+        content['senders'] = 'both'
         jingle.addChild(content)
 
         desc = domish.Element(("http://jabber.org/protocol/jingle/description/audio", 'description'))

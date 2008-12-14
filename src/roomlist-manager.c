@@ -33,6 +33,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
+#include "caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "namespaces.h"
@@ -46,7 +47,8 @@ static void channel_manager_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistManager, gabble_roomlist_manager,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init));
+      channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
 
 /* properties */
@@ -92,6 +94,9 @@ gabble_roomlist_manager_close_all (GabbleRoomlistManager *self)
       self->priv->status_changed_id = 0;
     }
 
+  /* Use a temporary variable because we don't want
+   * roomlist_channel_closed_cb to remove the channel from the ptr array a
+   * second time */
   if (self->priv->channels != NULL)
     {
       GPtrArray *tmp = self->priv->channels;
@@ -325,10 +330,8 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
         TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
     return FALSE;
 
-  if ((tp_asv_get_uint32 (request_properties,
-       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0) ||
-      (tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandle", NULL) != 0))
+  if (tp_asv_get_uint32 (request_properties,
+       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0)
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "RoomList channels can't have a target handle");

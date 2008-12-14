@@ -46,7 +46,9 @@ def test(q, bus, conn, stream):
     # no special capabilities
     assert conn.Capabilities.GetCapabilities([2]) == basic_caps
     assert conn.Contacts.GetContactAttributes([2], [icaps], False) == { 2L:
-        { icaps + "/caps": basic_caps } }
+        { icaps + "/caps": basic_caps,
+            'org.freedesktop.Telepathy.Connection/contact-id':
+            'bob@foo.com'}}
 
     # send updated presence with Jingle audio/video caps info. we turn on both
     # audio and video at the same time to test that all of the capabilities are
@@ -93,7 +95,7 @@ def test(q, bus, conn, stream):
 
     caps = conn.Contacts.GetContactAttributes([2], [icaps], False)
     assert caps.keys() == [2L]
-    assert caps[2L].keys() == [icaps_attr]
+    assert icaps_attr in caps[2L]
     assert len(caps[2L][icaps_attr]) == 2
     assert basic_caps[0] in caps[2L][icaps_attr]
     assert (2, sm, 3, 3) in caps[2L][icaps_attr]
@@ -111,7 +113,7 @@ def test(q, bus, conn, stream):
 
     caps = conn.Contacts.GetContactAttributes([2], [icaps], False)
     assert caps.keys() == [2L]
-    assert caps[2L].keys() == [icaps_attr]
+    assert icaps_attr in caps[2L]
     assert len(caps[2L][icaps_attr]) == 2
     assert basic_caps[0] in caps[2L][icaps_attr]
     assert (2, sm, 3, 1) in caps[2L][icaps_attr]
@@ -124,7 +126,7 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
         args=[[(2, sm, 3, 0, 1, 0)]])
 
-    # Contact went offline, so caps are now unknown
+    # Contact went offline and the handle is now invalid
     assert conn.Contacts.GetContactAttributes([2], [icaps], False) == {}
 
     # regression test for fd.o #15198: getting caps of invalid handle crashed

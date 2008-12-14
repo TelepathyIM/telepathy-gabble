@@ -9,8 +9,8 @@ AC_PREREQ([2.59])
 
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [7])
-m4_define([gabble_micro_version], [11])
-m4_define([gabble_nano_version], [0])
+m4_define([gabble_micro_version], [16])
+m4_define([gabble_nano_version], [1])
 
 # Some magic
 m4_define([gabble_base_version],
@@ -123,12 +123,14 @@ GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
 
 dnl Check for D-Bus
-PKG_CHECK_MODULES(DBUS, [dbus-1 >= 0.95, dbus-glib-1 >= 0.73])
+# dbus-glib 0.78 fixed the bug #17329. It is needed for the contact
+# capabilities interface.
+PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.78])
 
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.7.17])
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.7.18])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)
@@ -148,10 +150,10 @@ if test -z "$PYTHON"; then
   AC_MSG_ERROR([Python is required to compile this package])
 fi
 
-# Check for a Python >= 2.4 with Twisted, to run the tests
-AC_MSG_CHECKING([for Python >= 2.4 with Twisted and XMPP protocol support])
-for TEST_PYTHON in python2.4 python2.5 python; do
-  if $TEST_PYTHON -c "from sys import version_info; raise SystemExit(version_info < (2, 4, 0, 'final', 0))" >/dev/null 2>&1; then
+# Check for a Python >= 2.5 with Twisted, to run the tests
+AC_MSG_CHECKING([for Python >= 2.5 with Twisted and XMPP protocol support])
+for TEST_PYTHON in python2.5 python2.6 python; do
+  if $TEST_PYTHON -c "from sys import version_info; import dbus, dbus.mainloop.glib; raise SystemExit(version_info < (2, 5, 0, 'final', 0))" >/dev/null 2>&1; then
     if $TEST_PYTHON -c "import twisted.words.xish.domish, twisted.words.protocols.jabber, twisted.internet.reactor" >/dev/null 2>&1; then
       AC_MSG_RESULT([$TEST_PYTHON])
       AM_CONDITIONAL([WANT_TWISTED_TESTS], true)
@@ -169,24 +171,6 @@ PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0 >= 1.3.2)
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
-dnl Check for D-Bus tubes - may be removed if we depend on dbus-1 >= 1.1.0
-AC_CHECK_LIB(dbus-1, dbus_message_marshal,
-             [have_dbus_message_marshal=yes],
-             [have_dbus_message_marshal=no],
-             [$DBUS_LIBS])
-
-have_dbus_tube=no
-if test x$have_dbus_message_marshal = xyes; then
-  have_dbus_tube=yes
-  AC_DEFINE(HAVE_DBUS_TUBE, 1, [Define if we have D-Bus tubes support])
-fi
-
-AM_CONDITIONAL(HAVE_DBUS_TUBE, test x$have_dbus_tube = xyes)
-
-if test x$have_dbus_tube = xno; then
-  echo "Not building support for D-Bus tubes! (libdbus >= 1.1 required)"
-fi
-
 AC_OUTPUT( Makefile \
            docs/Makefile \
            extensions/Makefile \
@@ -196,6 +180,5 @@ AC_OUTPUT( Makefile \
            tests/Makefile \
            tools/Makefile \
            tests/twisted/Makefile \
-           tests/twisted/tools/Makefile \
-           tests/twisted/gabbleconfig.py
+           tests/twisted/tools/Makefile
 )

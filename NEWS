@@ -1,3 +1,113 @@
+telepathy-gabble 0.7.17 (UNRELEASED)
+====================================
+
+The "I accidentally an entire MUC" release.
+
+Dependencies:
+
+Enhancements:
+
+Fixes:
+
+telepathy-gabble 0.7.16 (2008-12-02)
+====================================
+
+The "what could possibly go wrong" release.
+
+This release contains the reworked Jingle engine with support for latest
+Jingle draft (XEP-0166 v0.32), and Google's Jingle variants as used in
+their desktop client and recently launched Googlemail client.
+
+This release has no known regressions, but as we have done extensive changes
+to the Jingle engine, you might want to restrict this release to experimental
+distributions like Debian experimental and Fedora rawhide for now.
+
+Enhancements:
+
+* fd.o #15908: refactor Jingle state machine
+
+* fd.o #15907: Update real-Jingle implementation to XEP-0166 v0.25
+
+* fd.o #13159: support current Google Talk protocol
+
+* Misc Tubes-related enhancements and fixes
+
+Fixes:
+
+* fd.o #18404: fix race condition in tests/twisted/roster/ensure.py
+
+* Fixes for double freeing in dispose in channel managers
+
+
+telepathy-gabble 0.7.15 (2008-11-06)
+====================================
+
+The "brunch and fireworks" release.
+
+Enhancements:
+
+* fd.o #17770: remove some redundant handle validation from channel managers
+
+* Add the immutable Interfaces property to all NewChannels signals and
+  CreateChannel/EnsureChannel results
+
+Fixes:
+
+* Spec compliance: don't advertise StreamedMedia channels with handle type
+  NONE as requestable (they can be created, but not with CreateChannel or
+  EnsureChannel, so they shouldn't be in RequestableChannelClasses)
+
+* Ignore candidates > 1 in Jingle rather than rejecting them, for
+  compatibility with Farsight 2 (in which RTCP produces a second candidate)
+
+telepathy-gabble 0.7.14 (2008-11-04)
+====================================
+
+The "exterminate, annihilate, destroy" release.
+
+Dependencies:
+
+* telepathy-glib 0.7.18
+
+Enhancements:
+
+* Comply with specification 0.17.14
+  * depend on telepathy-glib 0.7.18
+  * implement the Destroyable interface on IM channels
+  * set the RESCUED flag on messages in respawned IM channels
+  * set the SCROLLBACK flag on discussion history in MUC channels
+
+* Start to implement the new Tubes API draft (one Channel per Tube)
+
+Fixes:
+
+* fd.o #16797: Don't send the close message for Tubes twice
+
+telepathy-gabble 0.7.13 (2008-10-28)
+====================================
+
+The "so you quote love unquote me" release.
+
+Fixes:
+
+* Fix a regression breaking MUC D-Bus tubes.
+* Don't invite Gadget to our OLPC activity if we didn't ask it to publish
+our information.
+* Don't fire presence signals for Gadget presence.
+
+telepathy-gabble 0.7.12 (2008-10-23)
+====================================
+
+The "15 network cables in individual boxes" release.
+
+Enhancements:
+
+* OLPC View: contacts in views are not announced as being online.
+
+Fixes:
+
+* fd.o #13891: AcceptDBusTube returns NULL with 1-1 D-Bus tube.
+
 telepathy-gabble 0.7.11 (2008-10-22)
 ====================================
 

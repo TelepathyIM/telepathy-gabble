@@ -38,6 +38,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <xi:include href="OLPC_Channel_Type_BuddyView.xml"/>
 <xi:include href="OLPC_Channel_Type_ActivityView.xml"/>
 
+<xi:include href="Connection_Interface_Contact_Capabilities.xml"/>
+
+<xi:include href="Channel_Type_Stream_Tube.xml"/>
+<xi:include href="Channel_Type_DBus_Tube.xml"/>
+<xi:include href="Channel_Interface_Tube.xml"/>
+
 <tp:generic-types>
   <tp:external-type name="Contact_Handle" type="u"
     from="Telepathy specification"/>
@@ -46,6 +52,26 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   <tp:external-type name="DBus_Qualified_Member" type="s"
     from="Telepathy specification"/>
   <tp:external-type name="Qualified_Property_Value_Map" type="a{sv}"
+    from="Telepathy specification"/>
+  <tp:external-type name="String_Variant_Map" type="a{sv}"
+    from="Telepathy specification"/>
+
+  <!-- use types from Connection_Interface_Requests -->
+  <tp:external-type name="Channel_Class" type="a{sv}"
+    from="Telepathy specification"/>
+
+  <!-- use types from Channel_Type_Tubes -->
+  <tp:external-type name="Socket_Address_Type" type="u"
+    from="Telepathy specification"/>
+  <tp:external-type name="Socket_Access_Control" type="u"
+    from="Telepathy specification"/>
+  <tp:external-type name="Supported_Socket_Map" type="a{uau}"
+    from="Telepathy specification"/>
+  <tp:external-type name="DBus_Tube_Member" type="(us)"
+    from="Telepathy specification"/>
+
+  <!-- use types from Connection_Interface_Contact_Capabilities -->
+  <tp:external-type name="Requestable_Channel_Class" type="(a{sv}as)"
     from="Telepathy specification"/>
 </tp:generic-types>
 

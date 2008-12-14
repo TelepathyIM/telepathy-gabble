@@ -1,6 +1,6 @@
 /*
  * tube-iface.h - Header for GabbleTube interface
- * Copyright (C) 2007 Collabora Ltd.
+ * Copyright (C) 2007-2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,6 +21,7 @@
 #define __GABBLE_TUBE_IFACE_H__
 
 #include <glib-object.h>
+#include <telepathy-glib/base-connection.h>
 
 #include "bytestream-iface.h"
 
@@ -33,7 +34,7 @@ struct _GabbleTubeIfaceClass {
   GTypeInterface parent;
 
   gboolean (*accept) (GabbleTubeIface *tube, GError **error);
-  void (*close) (GabbleTubeIface *tube);
+  void (*close) (GabbleTubeIface *tube, gboolean closed_remotely);
   void (*add_bytestream) (GabbleTubeIface *tube,
       GabbleBytestreamIface *bytestream);
 };
@@ -53,10 +54,13 @@ GType gabble_tube_iface_get_type (void);
 
 gboolean gabble_tube_iface_accept (GabbleTubeIface *tube, GError **error);
 
-void gabble_tube_iface_close (GabbleTubeIface *tube);
+void gabble_tube_iface_close (GabbleTubeIface *tube, gboolean closed_remotely);
 
 void gabble_tube_iface_add_bytestream (GabbleTubeIface *tube,
     GabbleBytestreamIface *bytestream);
+
+void gabble_tube_iface_publish_in_node (GabbleTubeIface *tube,
+    TpBaseConnection *conn, LmMessageNode *node);
 
 G_END_DECLS
 

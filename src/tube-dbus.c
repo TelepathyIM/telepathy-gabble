@@ -78,7 +78,7 @@ enum
   PROP_BYTESTREAM,
   PROP_STREAM_ID,
   PROP_TYPE,
-  PROP_INITIATOR,
+  PROP_INITIATOR_HANDLE,
   PROP_SERVICE,
   PROP_PARAMETERS,
   PROP_STATE,
@@ -134,7 +134,8 @@ struct _GabbleTubeDBusPrivate
 static void data_received_cb (GabbleBytestreamIface *stream, TpHandle sender,
     GString *data, gpointer user_data);
 
-static void gabble_tube_dbus_close (GabbleTubeIface *tube);
+static void gabble_tube_dbus_close (GabbleTubeIface *tube, gboolean
+    closed_remotely);
 
 /*
  * Characters used are permissible both in filenames and in D-Bus names. (See
@@ -300,6 +301,9 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   guint i;
 
+  if (priv->dbus_srv != NULL)
+    return;
+
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
 
@@ -331,6 +335,13 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
   if (priv->dbus_srv == NULL)
     {
       DEBUG ("all attempts failed. Close the tube");
+
+      g_free (priv->dbus_srv_addr);
+      priv->dbus_srv_addr = NULL;
+
+      g_free (priv->socket_path);
+      priv->socket_path = NULL;
+
       do_close (self);
       return;
     }
@@ -346,12 +357,9 @@ tube_dbus_open (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
-  if (priv->dbus_srv_addr == NULL)
-    {
-      gabble_tube_dbus_listen (self);
-    }
+  gabble_tube_dbus_listen (self);
 
-  if (priv->dbus_srv_addr != NULL)
+  if (priv->dbus_srv != NULL)
     {
       dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
     }
@@ -560,7 +568,7 @@ gabble_tube_dbus_get_property (GObject *object,
       case PROP_TYPE:
         g_value_set_uint (value, TP_TUBE_TYPE_DBUS);
         break;
-      case PROP_INITIATOR:
+      case PROP_INITIATOR_HANDLE:
         g_value_set_uint (value, priv->initiator);
         break;
       case PROP_SERVICE:
@@ -635,7 +643,7 @@ gabble_tube_dbus_set_property (GObject *object,
         g_free (priv->stream_id);
         priv->stream_id = g_value_dup_string (value);
         break;
-      case PROP_INITIATOR:
+      case PROP_INITIATOR_HANDLE:
         priv->initiator = g_value_get_uint (value);
         break;
       case PROP_SERVICE:
@@ -643,7 +651,7 @@ gabble_tube_dbus_set_property (GObject *object,
         priv->service = g_value_dup_string (value);
         break;
       case PROP_PARAMETERS:
-        priv->parameters = g_value_get_boxed (value);
+        priv->parameters = g_value_dup_boxed (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -769,8 +777,6 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
     "id");
   g_object_class_override_property (object_class, PROP_TYPE,
     "type");
-  g_object_class_override_property (object_class, PROP_INITIATOR,
-    "initiator");
   g_object_class_override_property (object_class, PROP_SERVICE,
     "service");
   g_object_class_override_property (object_class, PROP_PARAMETERS,
@@ -778,16 +784,24 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   g_object_class_override_property (object_class, PROP_STATE,
     "state");
 
+  /* TODO: When D-Bus tubes will be channels, this will be replaced by
+   * g_object_class_override_property*/
+  param_spec = g_param_spec_uint (
+      "initiator-handle",
+      "Initiator handle",
+      "The TpHandle of the initiator of this tube object.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
+      param_spec);
+
   param_spec = g_param_spec_object (
       "bytestream",
       "Object implementing the GabbleBytestreamIface interface",
       "Bytestream object used for streaming data for this"
       "tube object.",
       G_TYPE_OBJECT,
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_BYTESTREAM,
       param_spec);
 
@@ -796,11 +810,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       "stream id",
       "The identifier of this tube's bytestream",
       "",
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STREAM_ID,
       param_spec);
 
@@ -809,10 +819,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       "D-Bus address",
       "The D-Bus address on which this tube will listen for connections",
       "",
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DBUS_ADDRESS,
       param_spec);
 
@@ -821,10 +828,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       "D-Bus name",
       "The local D-Bus name on the virtual bus (used for muc tubes only).",
       "",
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DBUS_NAME, param_spec);
 
   param_spec = g_param_spec_boxed (
@@ -832,14 +836,11 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       "D-Bus names",
       "Mapping of contact handles to D-Bus names (used for muc tubes only).",
       G_TYPE_HASH_TABLE,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DBUS_NAMES, param_spec);
 
   signals[OPENED] =
-    g_signal_new ("opened",
+    g_signal_new ("tube-opened",
                   G_OBJECT_CLASS_TYPE (gabble_tube_dbus_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
@@ -848,7 +849,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
                   G_TYPE_NONE, 0);
 
   signals[CLOSED] =
-    g_signal_new ("closed",
+    g_signal_new ("tube-closed",
                   G_OBJECT_CLASS_TYPE (gabble_tube_dbus_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
@@ -1029,7 +1030,7 @@ data_received_cb (GabbleBytestreamIface *stream,
             {
               DEBUG ("D-Bus message has unknown endianness byte 0x%x, "
                   "closing tube", (unsigned int) buf->str[0]);
-              gabble_tube_dbus_close ((GabbleTubeIface *) tube);
+              gabble_tube_dbus_close ((GabbleTubeIface *) tube, TRUE);
               return;
             }
 
@@ -1050,7 +1051,7 @@ data_received_cb (GabbleBytestreamIface *stream,
               priv->reassembly_bytes_needed > DBUS_MAXIMUM_MESSAGE_LENGTH)
             {
               DEBUG ("D-Bus message is too large to be valid, closing tube");
-              gabble_tube_dbus_close ((GabbleTubeIface *) tube);
+              gabble_tube_dbus_close ((GabbleTubeIface *) tube, TRUE);
               return;
             }
 
@@ -1085,7 +1086,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
       "handle", handle,
       "handle-type", handle_type,
       "self-handle", self_handle,
-      "initiator", initiator,
+      "initiator-handle", initiator,
       "service", service,
       "parameters", parameters,
       "stream-id", stream_id,
@@ -1158,7 +1159,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube,
  * Implements gabble_tube_iface_close on GabbleTubeIface
  */
 static void
-gabble_tube_dbus_close (GabbleTubeIface *tube)
+gabble_tube_dbus_close (GabbleTubeIface *tube, gboolean closed_remotely)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
 

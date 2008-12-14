@@ -11,8 +11,6 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
 
-from gabbleconfig import HAVE_DBUS_TUBES
-
 sample_parameters = dbus.Dictionary({
     's': 'hello',
     'ay': dbus.ByteArray('hello'),
@@ -235,5 +233,4 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    if HAVE_DBUS_TUBES:
-        exec_test(test)
+    exec_test(test)

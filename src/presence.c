@@ -22,6 +22,7 @@
 #include "presence.h"
 
 #include <string.h>
+#include <telepathy-glib/channel-manager.h>
 
 #include "presence-cache.h"
 #include "namespaces.h"
@@ -40,6 +41,7 @@ typedef struct _Resource Resource;
 struct _Resource {
     gchar *name;
     GabblePresenceCapabilities caps;
+    GHashTable *per_channel_manager_caps;
     guint caps_serial;
     GabblePresenceId status;
     gchar *status_message;
@@ -50,14 +52,16 @@ struct _Resource {
 struct _GabblePresencePrivate {
     gchar *no_resource_status_message;
     GSList *resources;
+    guint olpc_views;
 };
 
 static Resource *
 _resource_new (gchar *name)
 {
-  Resource *new = g_slice_new (Resource);
+  Resource *new = g_slice_new0 (Resource);
   new->name = name;
   new->caps = PRESENCE_CAP_NONE;
+  new->per_channel_manager_caps = NULL;
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   new->priority = 0;
@@ -72,6 +76,13 @@ _resource_free (Resource *resource)
 {
   g_free (resource->name);
   g_free (resource->status_message);
+  if (resource->per_channel_manager_caps != NULL)
+    {
+      gabble_presence_cache_free_cache_entry
+        (resource->per_channel_manager_caps);
+      resource->per_channel_manager_caps = NULL;
+    }
+
   g_slice_free (Resource, resource);
 }
 
@@ -84,6 +95,13 @@ gabble_presence_finalize (GObject *object)
 
   for (i = priv->resources; NULL != i; i = i->next)
     _resource_free (i->data);
+
+  if (presence->per_channel_manager_caps != NULL)
+    {
+      gabble_presence_cache_free_cache_entry
+        (presence->per_channel_manager_caps);
+      presence->per_channel_manager_caps = NULL;
+    }
 
   g_slist_free (priv->resources);
   g_free (presence->nickname);
@@ -182,12 +200,20 @@ void
 gabble_presence_set_capabilities (GabblePresence *presence,
                                   const gchar *resource,
                                   GabblePresenceCapabilities caps,
+                                  GHashTable *per_channel_manager_caps,
                                   guint serial)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
 
   presence->caps = 0;
+  if (presence->per_channel_manager_caps != NULL)
+    {
+      gabble_presence_cache_free_cache_entry
+        (presence->per_channel_manager_caps);
+      presence->per_channel_manager_caps = NULL;
+    }
+  presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
 
   DEBUG ("about to add caps %u to resource %s with serial %u", caps, resource,
     serial);
@@ -213,10 +239,25 @@ gabble_presence_set_capabilities (GabblePresence *presence,
               DEBUG ("adding caps %u to resource %s", caps, resource);
               tmp->caps |= caps;
               DEBUG ("resource %s caps now %u", resource, tmp->caps);
+
+              if (tmp->per_channel_manager_caps != NULL)
+                {
+                  gabble_presence_cache_free_cache_entry
+                      (tmp->per_channel_manager_caps);
+                  tmp->per_channel_manager_caps = NULL;
+                }
+              if (per_channel_manager_caps != NULL)
+                gabble_presence_cache_copy_cache_entry
+                    (&tmp->per_channel_manager_caps, per_channel_manager_caps);
             }
         }
 
       presence->caps |= tmp->caps;
+
+      if (tmp->per_channel_manager_caps != NULL)
+        gabble_presence_cache_update_cache_entry
+            (presence->per_channel_manager_caps,
+             tmp->per_channel_manager_caps);
     }
 
   DEBUG ("total caps now %u", presence->caps);
@@ -239,6 +280,47 @@ _find_resource (GabblePresence *presence, const gchar *resource)
   return NULL;
 }
 
+static void
+aggregate_resources (GabblePresence *presence)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GSList *i;
+  guint8 prio;
+
+  /* select the most preferable Resource and update presence->* based on our
+   * choice */
+  presence->caps = 0;
+  presence->status = GABBLE_PRESENCE_OFFLINE;
+
+  prio = -128;
+
+  for (i = priv->resources; NULL != i; i = i->next)
+    {
+      Resource *r = (Resource *) i->data;
+
+      presence->caps |= r->caps;
+
+      /* trump existing status & message if it's more present
+       * or has the same presence and a higher priority */
+      if (r->status > presence->status ||
+          (r->status == presence->status && r->priority > prio))
+        {
+          presence->status = r->status;
+          presence->status_message = r->status_message;
+          prio = r->priority;
+        }
+    }
+
+  if (presence->status <= GABBLE_PRESENCE_HIDDEN && priv->olpc_views > 0)
+    {
+      /* Contact is in at least one view and we didn't receive a better
+       * presence from him so announce it as available */
+      presence->status = GABBLE_PRESENCE_AVAILABLE;
+      g_free (presence->status_message);
+      presence->status_message = NULL;
+    }
+}
+
 gboolean
 gabble_presence_update (GabblePresence *presence,
                         const gchar *resource,
@@ -251,7 +333,6 @@ gabble_presence_update (GabblePresence *presence,
   GabblePresenceId old_status;
   gchar *old_status_message;
   GSList *i;
-  guint8 prio;
   gboolean ret = FALSE;
 
   /* save our current state */
@@ -291,8 +372,14 @@ gabble_presence_update (GabblePresence *presence,
           _resource_free (res);
           res = NULL;
 
-          /* recaulculate aggregate capability mask */
-
+          /* recalculate aggregate capability mask */
+          if (presence->per_channel_manager_caps != NULL)
+            {
+              gabble_presence_cache_free_cache_entry
+                (presence->per_channel_manager_caps);
+              presence->per_channel_manager_caps = NULL;
+            }
+          presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
           presence->caps = 0;
 
           for (i = priv->resources; i; i = i->next)
@@ -300,6 +387,11 @@ gabble_presence_update (GabblePresence *presence,
               Resource *r = (Resource *) i->data;
 
               presence->caps |= r->caps;
+
+              if (r->per_channel_manager_caps != NULL)
+                gabble_presence_cache_update_cache_entry
+                    (presence->per_channel_manager_caps,
+                     r->per_channel_manager_caps);
             }
         }
     }
@@ -334,24 +426,7 @@ gabble_presence_update (GabblePresence *presence,
    * keeping around just because it has a message on it */
   presence->status_message = res ? res->status_message : NULL;
 
-  prio = -128;
-
-  for (i = priv->resources; NULL != i; i = i->next)
-    {
-      Resource *r = (Resource *) i->data;
-
-      presence->caps |= r->caps;
-
-      /* trump existing status & message if it's more present
-       * or has the same presence and a higher priority */
-      if (r->status > presence->status ||
-          (r->status == presence->status && r->priority > prio))
-        {
-          presence->status = r->status;
-          presence->status_message = r->status_message;
-          prio = r->priority;
-        }
-    }
+  aggregate_resources (presence);
 
 OUT:
   /* detect changes */
@@ -462,4 +537,52 @@ gabble_presence_dump (GabblePresence *presence)
     g_string_append_printf (ret, "  (none)\n");
 
   return g_string_free (ret, FALSE);
+}
+
+gboolean
+gabble_presence_added_to_view (GabblePresence *self)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (self);
+  GabblePresenceId old_status;
+  gchar *old_status_message;
+  gboolean ret = FALSE;
+
+  /* save our current state */
+  old_status = self->status;
+  old_status_message = g_strdup (self->status_message);
+
+  priv->olpc_views++;
+  aggregate_resources (self);
+
+  /* detect changes */
+  if (self->status != old_status ||
+      tp_strdiff (self->status_message, old_status_message))
+    ret = TRUE;
+
+  g_free (old_status_message);
+  return ret;
+}
+
+gboolean
+gabble_presence_removed_from_view (GabblePresence *self)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (self);
+  GabblePresenceId old_status;
+  gchar *old_status_message;
+  gboolean ret = FALSE;
+
+  /* save our current state */
+  old_status = self->status;
+  old_status_message = g_strdup (self->status_message);
+
+  priv->olpc_views--;
+  aggregate_resources (self);
+
+  /* detect changes */
+  if (self->status != old_status ||
+      tp_strdiff (self->status_message, old_status_message))
+    ret = TRUE;
+
+  g_free (old_status_message);
+  return ret;
 }

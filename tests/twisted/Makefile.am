@@ -17,6 +17,7 @@ TWISTED_TESTS = \
 	olpc/gadget-invite.py \
 	olpc/gadget-publish.py \
 	olpc/gadget-restarted.py \
+	olpc/view-presence.py \
 	presence/presence.py \
 	roster/ensure.py \
 	roster/groups.py \
@@ -29,6 +30,7 @@ TWISTED_TESTS = \
 	roster/test-save-alias-to-roster.py \
 	text/initiate.py \
 	text/initiate-requestotron.py \
+	text/destroy.py \
 	text/ensure.py \
 	text/respawn.py \
 	text/test-text-delayed.py \
@@ -38,6 +40,7 @@ TWISTED_TESTS = \
 	tubes/test-muc-accept-stream-tube-ibb.py \
 	tubes/test-muc-offer-dbus-tube.py \
 	tubes/test-muc-offer-stream-tube-ibb.py \
+        tubes/test-si-accept-tubes.py \
 	tubes/test-si-tubes.py \
 	tubes/ensure-si-tube.py \
 	vcard/test-alias-empty-vcard.py \
@@ -55,6 +58,8 @@ TWISTED_TESTS = \
 	vcard/test-vcard-set-and-get.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
+	jingle/payload-types.py \
+	jingle/test-content-adding-removal.py \
 	jingle/test-incoming-call.py \
 	jingle/test-incoming-call-reject.py \
 	jingle/test-outgoing-call.py \
@@ -63,9 +68,13 @@ TWISTED_TESTS = \
 	jingle/test-outgoing-call-requestotron.py \
 	jingle/test-outgoing-call-rejected.py \
 	jingle/test-outgoing-call-ensure.py \
+	jingle/test-dialects-incoming.py \
+	jingle/test-dialects-outgoing.py \
+	jingle/test-content-complex.py \
 	test-capabilities.py \
 	test-caps-cache.py \
 	test-caps-hash.py \
+	test-caps-tubes.py \
 	connect/test-fail.py \
 	connect/test-success.py \
 	connect/test-twice.py \
@@ -99,6 +108,7 @@ EXTRA_DIST = \
 	gabbletest.py \
 	servicetest.py \
 	jingle/jingletest.py \
+	jingle/jingletest2.py \
 	ns.py \
 	olpc/util.py
 

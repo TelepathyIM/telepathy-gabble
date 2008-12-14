@@ -232,6 +232,7 @@ struct _GabbleMucChannelPrivate
 
   TpHandle handle;
   const gchar *jid;
+  gboolean requested;
 
   guint nick_retry_count;
   GString *self_jid;
@@ -569,7 +570,7 @@ properties_disco_cb (GabbleDisco *disco,
           /* Unhandled */
           else
             {
-              g_warning ("%s: unhandled feature '%s'", G_STRFUNC, str);
+              DEBUG ("unhandled feature '%s'", str);
             }
         }
       else if (strcmp (lm_node->name, "x") == 0)
@@ -643,7 +644,7 @@ room_properties_update (GabbleMucChannel *chan)
         priv->jid, NULL, properties_disco_cb, chan, G_OBJECT (chan),
         &error) == NULL)
     {
-      g_warning ("%s: disco query failed: '%s'", G_STRFUNC, error->message);
+      DEBUG ("disco query failed: '%s'", error->message);
       g_error_free (error);
     }
 }
@@ -738,7 +739,7 @@ send_join_request (GabbleMucChannel *channel,
   ret = _gabble_connection_send (priv->conn, msg, error);
   if (!ret)
     {
-      g_warning ("%s: _gabble_connection_send_with_reply failed", G_STRFUNC);
+      DEBUG ("_gabble_connection_send failed");
     }
   else
     {
@@ -776,7 +777,7 @@ send_leave_message (GabbleMucChannel *channel,
   ret = _gabble_connection_send (priv->conn, msg, &error);
   if (!ret)
     {
-      g_warning ("%s: _gabble_connection_send_with_reply failed", G_STRFUNC);
+      DEBUG ("_gabble_connection_send failed");
       g_error_free (error);
     }
   else
@@ -840,7 +841,7 @@ gabble_muc_channel_get_property (GObject    *object,
         }
       break;
     case PROP_REQUESTED:
-      g_value_set_boolean (value, (priv->initiator == base_conn->self_handle));
+      g_value_set_boolean (value, priv->requested);
       break;
     case PROP_CHANNEL_DESTROYED:
       g_value_set_boolean (value, priv->closed);
@@ -855,6 +856,7 @@ gabble_muc_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "InitiatorHandle",
               TP_IFACE_CHANNEL, "InitiatorID",
               TP_IFACE_CHANNEL, "Requested",
+              TP_IFACE_CHANNEL, "Interfaces",
               NULL));
       break;
     default:
@@ -911,6 +913,9 @@ gabble_muc_channel_set_property (GObject     *object,
     case PROP_INVITATION_MESSAGE:
       g_assert (priv->invitation_message == NULL);
       priv->invitation_message = g_value_dup_string (value);
+      break;
+    case PROP_REQUESTED:
+      priv->requested = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1021,7 +1026,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_string ("invitation-message",
@@ -1397,15 +1402,14 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
 
   if (strcmp (jid, priv->self_jid->str) != 0)
     {
-      g_warning ("%s: presence error from other jids than self not handled",
-                 G_STRFUNC);
+      DEBUG ("presence error from other jids than self not handled");
       return;
     }
 
   error_node = lm_message_node_get_child (pres_node, "error");
   if (error_node == NULL)
     {
-      g_warning ("%s: missing required node 'error'", G_STRFUNC);
+      DEBUG ("missing required node 'error'");
       return;
     }
 
@@ -1413,8 +1417,8 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
 
   if (priv->state >= MUC_STATE_JOINED)
     {
-      g_warning ("%s: presence error while already member of the channel "
-          "-- NYI", G_STRFUNC);
+      DEBUG ("presence error while already member of the channel "
+          "-- NYI");
       return;
     }
 
@@ -1476,7 +1480,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
           break;
         default:
           tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              gabble_xmpp_error_description (error));
+              "%s", gabble_xmpp_error_description (error));
           break;
       }
 
@@ -1506,8 +1510,7 @@ get_role_from_string (const gchar *role)
         }
     }
 
-  g_warning ("%s: unknown role '%s' -- defaulting to ROLE_VISITOR",
-             G_STRFUNC, role);
+  DEBUG ("unknown role '%s' -- defaulting to ROLE_VISITOR", role);
 
   return ROLE_VISITOR;
 }
@@ -1530,8 +1533,8 @@ get_affiliation_from_string (const gchar *affil)
         }
     }
 
-  g_warning ("%s: unknown affiliation '%s' -- defaulting to "
-             "AFFILIATION_NONE", G_STRFUNC, affil);
+  DEBUG ("unknown affiliation '%s' -- defaulting to "
+             "AFFILIATION_NONE", affil);
 
   return AFFILIATION_NONE;
 }
@@ -1543,7 +1546,7 @@ room_created_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 {
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      g_warning ("%s: failed to submit room config", G_STRFUNC);
+      DEBUG ("failed to submit room config");
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -1594,8 +1597,8 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      g_warning ("%s: request for config form denied, property permissions "
-                 "will be inaccurate", G_STRFUNC);
+      DEBUG ("request for config form denied, property permissions "
+                 "will be inaccurate");
       goto OUT;
     }
 
@@ -1606,8 +1609,7 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   form_node = config_form_get_form_node (reply_msg);
   if (form_node == NULL)
     {
-      g_warning ("%s: form node node found, property permissions will be "
-                 "inaccurate", G_STRFUNC);
+      DEBUG ("form node node found, property permissions will be inaccurate");
       goto OUT;
     }
 
@@ -1774,8 +1776,7 @@ update_permissions (GabbleMucChannel *chan)
 
       if (!success)
         {
-          g_warning ("%s: failed to request config form: %s",
-              G_STRFUNC, error->message);
+          DEBUG ("failed to request config form: %s", error->message);
           g_error_free (error);
         }
     }
@@ -1803,13 +1804,14 @@ void
 _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                                              TpHandle handle,
                                              LmMessage *message,
-                                             LmMessageNode *x_node)
+                                             LmMessageNode *x_node,
+                                             LmMessageNode *item_node)
 {
   GabbleMucChannelPrivate *priv;
   TpBaseConnection *conn;
   TpIntSet *set;
   TpGroupMixin *mixin;
-  LmMessageNode *item_node, *node;
+  LmMessageNode *node;
   const gchar *affil, *role, *owner_jid, *status_code;
   TpHandle actor = 0;
   guint reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
@@ -1827,13 +1829,6 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
   mixin = TP_GROUP_MIXIN (chan);
 
-  item_node = lm_message_node_get_child (x_node, "item");
-  if (item_node == NULL)
-    {
-      g_warning ("%s: node missing 'item' child, ignoring", G_STRFUNC);
-      return;
-    }
-
   node = lm_message_node_get_child (x_node, "status");
   if (node)
     {
@@ -1847,15 +1842,6 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   role = lm_message_node_get_attribute (item_node, "role");
   affil = lm_message_node_get_attribute (item_node, "affiliation");
   owner_jid = lm_message_node_get_attribute (item_node, "jid");
-
-  /* We special case OLPC Gadget as activities doesn't have to see it as
-   * a member of the room. */
-  if (owner_jid != NULL &&
-      !tp_strdiff (owner_jid, priv->conn->olpc_gadget_activity))
-    {
-      DEBUG ("Don't add Gadget's inspector as member");
-      return;
-    }
 
   /* update channel members according to presence */
   set = tp_intset_new ();
@@ -1997,8 +1983,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                     room_created_submit_reply_cb, G_OBJECT (chan), NULL,
                     &error))
                 {
-                  g_warning ("%s: failed to send submit message: %s",
-                      G_STRFUNC, error->message);
+                  DEBUG ("failed to send submit message: %s",
+                      error->message);
                   g_error_free (error);
 
                   lm_message_unref (msg);
@@ -2140,7 +2126,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           GError *error = NULL;
 
           error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-              (err_desc) ? err_desc : "failed to change subject");
+              "%s", (err_desc) ? err_desc : "failed to change subject");
 
           tp_properties_context_return (priv->properties_ctx, error);
           priv->properties_ctx = NULL;
@@ -2233,6 +2219,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 {
   gboolean is_error;
   GabbleMucChannelPrivate *priv;
+  TpChannelTextMessageFlags flags = 0;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -2259,10 +2246,12 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   /* Receive messages from other contacts and our own if they're delayed, and
    * set the timestamp for non-delayed messages */
   if (timestamp == 0)
-      timestamp = time (NULL);
+    timestamp = time (NULL);
+  else
+    flags = TP_CHANNEL_TEXT_MESSAGE_FLAG_SCROLLBACK;
 
-  tp_text_mixin_receive (G_OBJECT (chan), msg_type, sender,
-      timestamp, text);
+  tp_text_mixin_receive_with_flags (G_OBJECT (chan), msg_type, sender,
+      timestamp, text, flags);
 }
 
 /**
@@ -2601,7 +2590,7 @@ kick_request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      g_warning ("%s: Failed to kick user %s from room", G_STRFUNC, jid);
+      DEBUG ("Failed to kick user %s from room", jid);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -2889,7 +2878,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         }
       else
         {
-          g_warning ("%s: ignoring field '%s'", G_STRFUNC, var);
+          DEBUG ("ignoring field '%s'", var);
         }
 
       /* add the corresponding field node to the reply message */
@@ -3103,6 +3092,10 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self,
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   LmMessage *msg;
   gboolean result;
+
+  /* do nothing if we havn't actually joined yet */
+  if (priv->state < MUC_STATE_INITIATED)
+    return TRUE;
 
   msg = create_presence_message (self, LM_MESSAGE_SUB_TYPE_NOT_SET, NULL);
   g_signal_emit (self, signals[PRE_PRESENCE], 0, msg);

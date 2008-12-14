@@ -220,11 +220,7 @@ gabble_olpc_activity_class_init (
       "GabbleConnection object",
       "Gabble connection object that owns this activity object.",
       GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
    param_spec = g_param_spec_uint (
@@ -232,11 +228,7 @@ gabble_olpc_activity_class_init (
       "activity room",
       "a TpHandle representing the activity room",
       0, G_MAXUINT, 0,
-      G_PARAM_CONSTRUCT |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ROOM, param_spec);
 
    param_spec = g_param_spec_string (
@@ -244,11 +236,7 @@ gabble_olpc_activity_class_init (
       "activity id",
       "the activity ID",
       NULL,
-      G_PARAM_CONSTRUCT |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ID, param_spec);
 
    param_spec = g_param_spec_boxed (
@@ -256,11 +244,7 @@ gabble_olpc_activity_class_init (
       "activity properties",
       "a GHashTable containing activity's properties",
       G_TYPE_HASH_TABLE,
-      G_PARAM_CONSTRUCT |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PROPERTIES, param_spec);
 }
 

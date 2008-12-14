@@ -4,6 +4,10 @@ EXTRA_DIST = \
     all.xml \
     Channel_Bundle.xml \
     Channel_Future.xml \
+    Connection_Interface_Contact_Capabilities.xml \
+    Channel_Interface_Tube.xml \
+    Channel_Type_DBus_Tube.xml \
+    Channel_Type_Stream_Tube.xml \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \
     OLPC_Gadget.xml \

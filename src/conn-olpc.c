@@ -157,7 +157,6 @@ check_gadget_buddy (GabbleConnection *conn,
   if (conn->olpc_gadget_buddy != NULL)
     return TRUE;
 
-  DEBUG ("%s", error.message);
   if (context != NULL)
     dbus_g_method_return_error (context, &error);
 
@@ -1796,8 +1795,11 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
   if (!was_visible && is_visible)
     {
-      /* activity becomes visible. Invite gadget */
-      invite_gadget (conn, muc_channel);
+      if (conn->olpc_gadget_publish)
+        {
+          /* activity becomes visible. Invite gadget */
+          invite_gadget (conn, muc_channel);
+        }
     }
 
   if (was_visible || is_visible)
@@ -3679,7 +3681,10 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
   GError *error = NULL;
 
   if (!check_gadget_buddy (conn, context))
-    return;
+    {
+      DEBUG ("Server does not provide Gadget Buddy service");
+      return;
+    }
 
   conn->olpc_gadget_publish = publish;
 
@@ -3695,6 +3700,8 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
           g_error_free (error);
           return;
         }
+
+      /* FIXME: Should we invite Gadget to all our public activities? */
     }
   else
     {
@@ -3783,7 +3790,7 @@ conn_olpc_presence_cb (LmMessageHandler *handler,
 }
 
 void
-conn_olpc_gadget_propeties_getter (GObject *object,
+conn_olpc_gadget_properties_getter (GObject *object,
                                    GQuark interface,
                                    GQuark name,
                                    GValue *value,

@@ -15,8 +15,13 @@ if test -n "$GABBLE_TEST_VALGRIND"; then
         GABBLE_WRAPPER="$GABBLE_WRAPPER --child-silent-after-fork=yes"
         GABBLE_WRAPPER="$GABBLE_WRAPPER --suppressions=@abs_top_srcdir@/tests/twisted/tools/tp-glib.supp"
 elif test -n "$GABBLE_TEST_REFDBG"; then
-        export REFDBG_OPTIONS="btnum=10"
-        GABBLE_WRAPPER="refdbg"
+        if test -z "$REFDBG_OPTIONS" ; then
+                export REFDBG_OPTIONS="btnum=10"
+        fi
+        if test -z "$GABBLE_WRAPPER" ; then
+                GABBLE_WRAPPER="refdbg"
+        fi
 fi
 
+export G_DEBUG=fatal-warnings" ${G_DEBUG}"
 exec @abs_top_builddir@/libtool --mode=execute $GABBLE_WRAPPER ../telepathy-gabble-debug

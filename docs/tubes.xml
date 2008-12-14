@@ -676,7 +676,7 @@
     <p>Only the first kind is considered. The second is out of scope of this
     specification. Each specific service is advertised with XEP-0115 Entity
     Capabilities with this string:</p>
-    <code>http://telepathy.freedesktop.org/xmpp/tubes/$type/$service</code>
+    <code>http://telepathy.freedesktop.org/xmpp/tubes/$type#$service</code>
     <p>where $type is the tube type (either "dbus" or "stream") and $service is
     the service name (e.g. "vnc" or "TicTacTube").</p>
   </section2>

@@ -114,7 +114,7 @@ gibber_listeners_clean_listeners (GibberListener *self)
 
   for (t = priv->listeners ; t != NULL ; t = g_slist_delete_link (t, t))
     {
-      Listener *l = (Listener *)t->data;
+      Listener *l = (Listener *) t->data;
 
       g_io_channel_unref (l->listener);
       g_source_remove (l->io_watch_in);

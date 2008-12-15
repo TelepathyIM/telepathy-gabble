@@ -234,12 +234,12 @@ _writeout (GibberFdTransport *self, const guint8 *data, gsize len)
 
   if (priv->output_buffer)
     {
-      g_string_append_len (priv->output_buffer, (gchar *)data + written,
+      g_string_append_len (priv->output_buffer, (gchar *) data + written,
         len - written);
     }
   else
     {
-      priv->output_buffer = g_string_new_len ((gchar *)data + written,
+      priv->output_buffer = g_string_new_len ((gchar *) data + written,
           len - written);
     }
 
@@ -287,7 +287,7 @@ _channel_io_out (GIOChannel *source, GIOCondition condition, gpointer data)
   gsize written;
 
   g_assert (priv->output_buffer);
-  if (!_try_write (self, (guint8 *)priv->output_buffer->str,
+  if (!_try_write (self, (guint8 *) priv->output_buffer->str,
                    priv->output_buffer->len, &written))
     {
       return FALSE;
@@ -323,7 +323,7 @@ gibber_fd_transport_write (GibberFdTransport *fd_transport,
 {
   GIOStatus status;
 
-  status = g_io_channel_write_chars (channel, (gchar *)data, len,
+  status = g_io_channel_write_chars (channel, (gchar *) data, len,
     written, error);
 
   switch (status)
@@ -351,7 +351,7 @@ gibber_fd_transport_read (GibberFdTransport *transport,
   GIOStatus status;
   gsize bytes_read;
 
-  status = g_io_channel_read_chars (channel, (gchar *)buf, BUFSIZE,
+  status = g_io_channel_read_chars (channel, (gchar *) buf, BUFSIZE,
     &bytes_read, error);
 
   switch (status)

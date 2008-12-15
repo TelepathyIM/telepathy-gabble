@@ -56,6 +56,7 @@ struct _GabbleBytestreamIfaceClass {
   void (*close) (GabbleBytestreamIface *bytestream, GError *error);
   void (*accept) (GabbleBytestreamIface *bytestream,
       GabbleBytestreamAugmentSiAcceptReply func, gpointer user_data);
+  void (*block_read) (GabbleBytestreamIface *bytestream, gboolean block);
 };
 
 GType gabble_bytestream_iface_get_type (void);
@@ -82,6 +83,9 @@ void gabble_bytestream_iface_close (GabbleBytestreamIface *bytestream,
 
 void gabble_bytestream_iface_accept (GabbleBytestreamIface *bytestream,
     GabbleBytestreamAugmentSiAcceptReply func, gpointer user_data);
+
+void gabble_bytestream_iface_block_read (GabbleBytestreamIface *bytestream,
+    gboolean block);
 
 G_END_DECLS
 

@@ -183,5 +183,7 @@ AC_OUTPUT( Makefile \
            tests/Makefile \
            tools/Makefile \
            tests/twisted/Makefile \
-           tests/twisted/tools/Makefile
+           tests/twisted/tools/Makefile \
+           lib/Makefile \
+           lib/gibber/Makefile
 )

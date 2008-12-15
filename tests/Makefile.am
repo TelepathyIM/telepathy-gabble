@@ -12,22 +12,34 @@ noinst_PROGRAMS = \
 	test-presence
 
 test_presence_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
+    $(top_builddir)/src/libgabble-convenience.la \
+    $(top_builddir)/lib/gibber/libgibber.la \
+    $(ALL_LIBS)
 
 test_base64_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
+    $(top_builddir)/src/libgabble-convenience.la \
+    $(top_builddir)/lib/gibber/libgibber.la \
+    $(ALL_LIBS)
 
 test_handles_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
+    $(top_builddir)/src/libgabble-convenience.la \
+    $(top_builddir)/lib/gibber/libgibber.la \
+    $(ALL_LIBS)
 
 test_jid_decode_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
+    $(top_builddir)/src/libgabble-convenience.la \
+    $(top_builddir)/lib/gibber/libgibber.la \
+    $(ALL_LIBS)
 
 test_parse_message_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
+    $(top_builddir)/src/libgabble-convenience.la \
+    $(top_builddir)/lib/gibber/libgibber.la \
+    $(ALL_LIBS)
 
 test_dtube_unique_names_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
+    $(top_builddir)/src/libgabble-convenience.la \
+    $(top_builddir)/lib/gibber/libgibber.la \
+    $(ALL_LIBS)
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
     @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@ \

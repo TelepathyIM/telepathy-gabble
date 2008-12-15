@@ -136,6 +136,17 @@ gabble_bytestream_iface_base_init (gpointer klass)
     }
 }
 
+void
+gabble_bytestream_iface_block_read (GabbleBytestreamIface *self,
+                                    gboolean block)
+{
+  void (*virtual_method)(GabbleBytestreamIface *, gboolean) =
+    GABBLE_BYTESTREAM_IFACE_GET_CLASS (self)->block_read;
+  if (virtual_method != NULL)
+    virtual_method (self, block);
+  /* else: do nothing. Some bytestreams like IBB can't implement read_block. */
+}
+
 GType
 gabble_bytestream_iface_get_type (void)
 {

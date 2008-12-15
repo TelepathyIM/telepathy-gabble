@@ -37,6 +37,9 @@ extensions/extensions.html
 gtk-doc.make
 install-sh
 libtool
+lib/gibber/gibber-signals-marshal.c
+lib/gibber/gibber-signals-marshal.h
+lib/gibber/gibber-signals-marshal.list
 ltmain.sh
 m4/gtk-doc.m4
 m4/libtool.m4

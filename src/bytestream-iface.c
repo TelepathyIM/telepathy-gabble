@@ -19,6 +19,7 @@
 
 #include "config.h"
 #include "bytestream-iface.h"
+#include "gabble-signals-marshal.h"
 
 #include "connection.h"
 
@@ -131,6 +132,22 @@ gabble_bytestream_iface_base_init (gpointer klass)
           NULL,
           G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
+
+      g_signal_new ("data-received",
+          G_TYPE_FROM_INTERFACE (klass),
+          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          0,
+          NULL, NULL,
+          g_cclosure_marshal_VOID__UINT_POINTER,
+          G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_POINTER);
+
+      g_signal_new ("state-changed",
+          G_TYPE_FROM_INTERFACE (klass),
+          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          0,
+          NULL, NULL,
+          gabble_marshal_VOID__UINT,
+          G_TYPE_NONE, 1, G_TYPE_UINT);
 
       initialized = TRUE;
     }

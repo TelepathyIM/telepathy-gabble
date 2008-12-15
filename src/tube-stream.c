@@ -311,7 +311,6 @@ add_transport (GabbleTubeStream *self,
   gibber_transport_block_receiving (transport, FALSE);
 }
 
-#if 0
 static void
 bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
                              gboolean blocked,
@@ -335,7 +334,6 @@ bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
 
   gibber_transport_block_receiving (transport, blocked);
 }
-#endif
 
 static void
 extra_bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
@@ -355,11 +353,8 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 
       g_signal_connect (bytestream, "data-received",
           G_CALLBACK (data_received_cb), self);
-      /*
-       * TODO
       g_signal_connect (bytestream, "write-blocked",
           G_CALLBACK (bytestream_write_blocked_cb), self);
-          */
 
       transport = g_hash_table_lookup (priv->bytestream_to_transport,
             bytestream);

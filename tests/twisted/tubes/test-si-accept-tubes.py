@@ -12,7 +12,7 @@ import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix, \
      EventProtocolClientFactory
-from gabbletest import exec_test, acknowledge_iq
+from gabbletest import exec_test, acknowledge_iq, send_error_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -101,6 +101,8 @@ def expect_tube_activity(q, bus, conn, stream):
     assert stream_node is not None
     assert stream_node['tube'] == str(stream_tube_id)
     stream_id = si['id']
+
+    send_error_reply(stream, iq)
 
 def test(q, bus, conn, stream):
     conn.Connect()

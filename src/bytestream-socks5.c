@@ -841,7 +841,7 @@ transport_handler (GibberTransport *transport,
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gsize used_bytes;
 
-  DEBUG ("got %u bytes from sock5 transport", data->length);
+  DEBUG ("got %" G_GSIZE_FORMAT " bytes from sock5 transport", data->length);
 
   g_string_append_len (priv->read_buffer, (const gchar *) data->data,
       data->length);

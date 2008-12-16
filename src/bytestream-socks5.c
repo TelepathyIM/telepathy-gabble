@@ -790,6 +790,11 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
 
+        DEBUG ("sock5 stream connected. Stop to listen for connections");
+        g_assert (priv->listener != NULL);
+        g_object_unref (priv->listener);
+        priv->listener = NULL;
+
         return SOCKS5_CONNECT_LENGTH;
 
       case SOCKS5_STATE_CONNECTED:
@@ -1315,8 +1320,6 @@ new_connection_cb (GibberListener *listener,
 
   priv->socks5_state = SOCKS5_STATE_AWAITING_AUTH_REQUEST;
   set_transport (self, transport);
-
-  /* FIXME: we should stop to listen at some point */
 }
 
 /*

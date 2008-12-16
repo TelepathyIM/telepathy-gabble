@@ -791,6 +791,11 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
 
+        /* Sock5 is connected but the bytestream is not open yet as we need
+         * to wait for the IQ reply. Stop reading until the bytestream
+         * is open to avoid data loss. */
+        gibber_transport_block_receiving (priv->transport, TRUE);
+
         DEBUG ("sock5 stream connected. Stop to listen for connections");
         g_assert (priv->listener != NULL);
         g_object_unref (priv->listener);
@@ -1153,12 +1158,16 @@ socks5_init_reply_cb (GabbleConnection *conn,
                       gpointer user_data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (obj);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT)
     {
       /* yeah, stream initiated */
       DEBUG ("Socks5 stream initiated");
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
+      /* We can read data from the sock5 socket now */
+      gibber_transport_block_receiving (priv->transport, FALSE);
     }
   else
     {

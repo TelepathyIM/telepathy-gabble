@@ -686,6 +686,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
+        DEBUG ("sock5 stream connected. Bytestream is now open");
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
         g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
 

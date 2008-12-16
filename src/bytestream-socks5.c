@@ -1406,6 +1406,23 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 }
 
 static void
+gabble_bytestream_socks5_block_read (GabbleBytestreamIface *iface,
+                                     gboolean block)
+{
+  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+
+  if (priv->read_blocked == block)
+    return;
+
+  priv->read_blocked = block;
+
+  DEBUG ("%s the transport bytestream", block ? "block": "unblock");
+  gibber_transport_block_receiving (priv->transport, block);
+}
+
+static void
 bytestream_iface_init (gpointer g_iface,
                        gpointer iface_data)
 {
@@ -1415,4 +1432,5 @@ bytestream_iface_init (gpointer g_iface,
   klass->send = gabble_bytestream_socks5_send;
   klass->close = gabble_bytestream_socks5_close;
   klass->accept = gabble_bytestream_socks5_accept;
+  klass->block_read = gabble_bytestream_socks5_block_read;
 }

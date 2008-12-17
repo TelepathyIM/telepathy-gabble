@@ -517,6 +517,12 @@ start_stream_initiation (GabbleTubeStream *self,
     data,
     error);
 
+  if (!result)
+    {
+      g_object_unref (data->transport);
+      g_slice_free (struct _extra_bytestream_negotiate_cb_data, data);
+    }
+
   lm_message_unref (msg);
   g_free (stream_id);
   g_free (full_jid);

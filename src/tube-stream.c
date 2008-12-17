@@ -1345,11 +1345,7 @@ data_received_cb (GabbleBytestreamIface *bytestream,
   DEBUG ("received %" G_GSIZE_FORMAT " bytes from bytestream", data->len);
 
   transport = g_hash_table_lookup (priv->bytestream_to_transport, bytestream);
-  if (transport == NULL)
-    {
-      DEBUG ("no transport associated with the bytestream");
-      return;
-    }
+  g_assert (transport != NULL);
 
   if (!gibber_transport_send (transport, (const guint8 *) data->str, data->len,
       &error))

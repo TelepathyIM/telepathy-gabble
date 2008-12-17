@@ -287,7 +287,7 @@ transport_buffer_empty_cb (GibberTransport *transport,
 
   /* Buffer is empty so we can unblock the buffer if it was blocked */
   DEBUG ("tube buffer is empty. Unblock the bytestream");
-  gabble_bytestream_iface_block_read (bytestream, FALSE);
+  gabble_bytestream_iface_block_reading (bytestream, FALSE);
 }
 
 static void
@@ -1358,7 +1358,7 @@ data_received_cb (GabbleBytestreamIface *bytestream,
     {
       /* We don't want to send more data while the buffer isn't empty */
       DEBUG ("tube buffer isn't empty. Block the bytestream");
-      gabble_bytestream_iface_block_read (bytestream, TRUE);
+      gabble_bytestream_iface_block_reading (bytestream, TRUE);
     }
 }
 

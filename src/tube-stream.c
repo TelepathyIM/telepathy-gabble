@@ -1244,6 +1244,9 @@ tube_iface_props_setter (GObject *object,
     return FALSE;
   }
 
+  if (priv->parameters != NULL)
+    g_hash_table_destroy (priv->parameters);
+
   priv->parameters = g_value_dup_boxed (value);
 
   return TRUE;

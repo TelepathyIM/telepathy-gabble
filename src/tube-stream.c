@@ -517,6 +517,9 @@ start_stream_initiation (GabbleTubeStream *self,
     data,
     error);
 
+  /* FIXME: data and one ref on data->transport are leaked if the tube is
+   * closed before we got the SI reply. */
+
   if (!result)
     {
       g_object_unref (data->transport);

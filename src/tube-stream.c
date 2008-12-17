@@ -1027,6 +1027,8 @@ gabble_tube_stream_set_property (GObject *object,
         priv->service = g_value_dup_string (value);
         break;
       case PROP_PARAMETERS:
+        if (priv->parameters != NULL)
+          g_hash_table_destroy (priv->parameters);
         priv->parameters = g_value_dup_boxed (value);
         break;
       case PROP_ADDRESS_TYPE:
@@ -1134,7 +1136,7 @@ tube_iface_props_setter (GObject *object,
     return FALSE;
   }
 
-  priv->parameters = g_value_dup_boxed (value);
+  g_object_set (self, "parameters", g_value_get_boxed (value), NULL);
 
   return TRUE;
 }

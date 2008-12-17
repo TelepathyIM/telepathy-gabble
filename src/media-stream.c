@@ -186,8 +186,6 @@ _get_initial_codecs_and_candidates (gpointer user_data)
   new_remote_candidates_cb (priv->content,
       gabble_jingle_content_get_remote_candidates (priv->content), stream);
 
-  g_object_unref (stream);
-
   return FALSE;
 }
 
@@ -218,7 +216,7 @@ gabble_media_stream_constructor (GType type, guint n_props,
        * created, but we want to let it parse the initiation (if
        * initiated by remote end) before we pick up initial
        * codecs and candidates. */
-      g_idle_add (_get_initial_codecs_and_candidates, g_object_ref (stream));
+      g_idle_add (_get_initial_codecs_and_candidates, stream);
     }
 
   return obj;

@@ -831,6 +831,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 
               /* the tube has reffed its initiator, no need to keep a ref */
               tp_handle_unref (contact_repo, initiator_handle);
+              g_hash_table_destroy (parameters);
             }
         }
       else

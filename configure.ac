@@ -9,8 +9,8 @@ AC_PREREQ([2.59])
 
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [7])
-m4_define([gabble_micro_version], [16])
-m4_define([gabble_nano_version], [1])
+m4_define([gabble_micro_version], [17])
+m4_define([gabble_nano_version], [0])
 
 # Some magic
 m4_define([gabble_base_version],
@@ -183,5 +183,7 @@ AC_OUTPUT( Makefile \
            tests/Makefile \
            tools/Makefile \
            tests/twisted/Makefile \
-           tests/twisted/tools/Makefile
+           tests/twisted/tools/Makefile \
+           lib/Makefile \
+           lib/gibber/Makefile
 )

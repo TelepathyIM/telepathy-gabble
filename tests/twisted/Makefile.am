@@ -59,6 +59,7 @@ TWISTED_TESTS = \
 	vcard/test-vcard-set-and-get.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
+	jingle/payload-types.py \
 	jingle/test-content-adding-removal.py \
 	jingle/test-incoming-call.py \
 	jingle/test-incoming-call-reject.py \
@@ -119,7 +120,9 @@ telepathy_gabble_debug_SOURCES = \
     main-debug.c
 
 telepathy_gabble_debug_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
+    $(top_builddir)/src/libgabble-convenience.la \
+    $(top_builddir)/lib/gibber/libgibber.la \
+    $(ALL_LIBS)
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
     @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@ \

@@ -582,19 +582,19 @@ gabble_private_tubes_factory_parse_caps (
 
       if (g_str_has_prefix (var, NS_TUBES "/"))
         {
-          /* http://telepathy.freedesktop.org/xmpp/tubes/$type/$service */
+          /* http://telepathy.freedesktop.org/xmpp/tubes/$type#$service */
           var += strlen (NS_TUBES "/");
-          if (g_str_has_prefix (var, "stream/"))
+          if (g_str_has_prefix (var, "stream#"))
             {
               gchar *service;
-              var += strlen ("stream/");
+              var += strlen ("stream#");
               service = g_strdup (var);
               g_hash_table_insert (caps->stream_tube_caps, service, NULL);
             }
-          else if (g_str_has_prefix (var, "dbus/"))
+          else if (g_str_has_prefix (var, "dbus#"))
             {
               gchar *service;
-              var += strlen ("dbus/");
+              var += strlen ("dbus#");
               service = g_strdup (var);
               g_hash_table_insert (caps->dbus_tube_caps, service, NULL);
             }
@@ -785,7 +785,7 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
       gchar *service = g_strdup (tp_asv_get_string (cap,
           GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service"));
       feat->feature_type = FEATURE_OPTIONAL;
-      feat->ns = g_strdup_printf ("%s/stream/%s", NS_TUBES, service);
+      feat->ns = g_strdup_printf ("%s/stream#%s", NS_TUBES, service);
       feat->caps = 0;
       g_hash_table_insert (caps->stream_tube_caps, service, feat);
     }
@@ -795,7 +795,7 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
       gchar *service = g_strdup (tp_asv_get_string (cap,
           GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName"));
       feat->feature_type = FEATURE_OPTIONAL;
-      feat->ns = g_strdup_printf ("%s/dbus/%s", NS_TUBES, service);
+      feat->ns = g_strdup_printf ("%s/dbus#%s", NS_TUBES, service);
       feat->caps = 0;
       g_hash_table_insert (caps->dbus_tube_caps, service, feat);
     }
@@ -1047,6 +1047,9 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_destroy (table);
 
   /* 1-1 Channel.Type.DBusTube */
+  /* Channel.Type.DBusTube.DRAFT is not fully implemented yet, so let's
+   * disable this. FIXME: enable this when implemented. */
+#if 0
   table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
       (GDestroyNotify) tp_g_value_slice_free);
 
@@ -1063,6 +1066,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   func (manager, table, dbus_tube_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
+#endif
 }
 
 
@@ -1084,6 +1088,11 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
 
   channel_type = tp_asv_get_string (request_properties,
             TP_IFACE_CHANNEL ".ChannelType");
+
+  /* Channel.Type.DBusTube.DRAFT is not fully implemented yet, so let's
+   * disable this. FIXME: enable this when implemented. */
+  if (!tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+    return FALSE;
 
   if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&

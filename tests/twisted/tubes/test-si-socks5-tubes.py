@@ -341,6 +341,24 @@ def test(q, bus, conn, stream):
     # CreateChannel failed, we expect no new channel
     check_conn_properties(q, bus, conn, stream, [old_tubes_channel_properties])
 
+    # Try to create a DBusTube.DRAFT channel. This is not implemented yet, so
+    # it will fail. But it should not assert.
+    call_async(q, requestotron, 'CreateChannel',
+            {'org.freedesktop.Telepathy.Channel.ChannelType':
+                'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT',
+             'org.freedesktop.Telepathy.Channel.TargetHandleType':
+                1,
+             'org.freedesktop.Telepathy.Channel.TargetHandle':
+                bob_handle,
+             'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName':
+                "com.example.ServiceName",
+             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
+                dbus.Dictionary({'foo': 'bar'}, signature='sv'),
+            });
+    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
+    # CreateChannel failed, we expect no new channel
+    check_conn_properties(q, bus, conn, stream, [old_tubes_channel_properties])
+
     # Try to CreateChannel with correct properties
     # Gabble must succeed
     call_async(q, requestotron, 'CreateChannel',

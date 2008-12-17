@@ -98,7 +98,8 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
   if (params != NULL)
       p->params = params;
   else
-      p->params = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+      p->params = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+          g_free);
 
   return p;
 }
@@ -126,7 +127,7 @@ static void
 gabble_jingle_media_rtp_dispose (GObject *object)
 {
   GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
-  GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
+  GabbleJingleMediaRtpPrivate *priv = trans->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -151,7 +152,7 @@ gabble_jingle_media_rtp_get_property (GObject *object,
                                              GParamSpec *pspec)
 {
   GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
-  GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
+  GabbleJingleMediaRtpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_MEDIA_TYPE:
@@ -170,8 +171,7 @@ gabble_jingle_media_rtp_set_property (GObject *object,
                                              GParamSpec *pspec)
 {
   GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
-  GabbleJingleMediaRtpPrivate *priv =
-      GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (trans);
+  GabbleJingleMediaRtpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_MEDIA_TYPE:
@@ -223,16 +223,13 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 #define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
 #define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
 
-static const gchar *video_codec_params[] = {
-  "x", "y", "width", "height", "layer", "transparent", NULL,
-};
 
 static void
 parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error)
 {
   GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
-  GabbleJingleMediaRtpPrivate *priv = GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
   JingleMediaType mtype = JINGLE_MEDIA_TYPE_NONE;
   gboolean google_mode = FALSE;
   GList *codecs = NULL;
@@ -295,7 +292,7 @@ parse_description (GabbleJingleContent *content,
       guchar id;
       const gchar *name;
       guint clockrate, channels;
-      guint i;
+      LmMessageNode *param;
 
       if (tp_strdiff (lm_message_node_get_name (node), "payload-type"))
           continue;
@@ -337,12 +334,21 @@ parse_description (GabbleJingleContent *content,
 
       p = jingle_media_rtp_codec_new (id, name, clockrate, channels, NULL);
 
-      for (i = 0; video_codec_params[i] != NULL; i++)
+      for (param = node->children; param != NULL; param = param->next)
         {
-          txt = lm_message_node_get_attribute (node, video_codec_params[i]);
-          if (txt != NULL)
-              g_hash_table_insert (p->params, (gpointer) video_codec_params[i],
-                  g_strdup (txt));
+          const gchar *param_name, *param_value;
+
+          if (tp_strdiff (lm_message_node_get_name (param), "parameter"))
+            continue;
+
+          param_name = lm_message_node_get_attribute (param, "name");
+          param_value = lm_message_node_get_attribute (param, "value");
+
+          if (param_name == NULL || param_value == NULL)
+            continue;
+
+          g_hash_table_insert (p->params, g_strdup (param_name),
+              g_strdup (param_value));
         }
 
       DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",
@@ -371,8 +377,14 @@ parse_description (GabbleJingleContent *content,
 static void
 _produce_extra_param (gpointer key, gpointer value, gpointer user_data)
 {
-  lm_message_node_set_attribute ((LmMessageNode *) user_data,
-      (gchar *) key, (gchar *) value);
+  LmMessageNode *pt_node = user_data;
+  LmMessageNode *param;
+  gchar *param_name = key;
+  gchar *param_value = value;
+
+  param = lm_message_node_add_child (pt_node, "parameter", NULL);
+  lm_message_node_set_attribute (param, "name", param_name);
+  lm_message_node_set_attribute (param, "value", param_value);
 }
 
 static void
@@ -381,8 +393,7 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
   GabbleJingleMediaRtp *desc =
     GABBLE_JINGLE_MEDIA_RTP (obj);
   GabbleJingleSession *sess;
-  GabbleJingleMediaRtpPrivate *priv =
-    GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (desc);
+  GabbleJingleMediaRtpPrivate *priv = desc->priv;
   LmMessageNode *desc_node;
   GList *li;
   JingleDialect dialect;
@@ -471,8 +482,7 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 void
 jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
 {
-  GabbleJingleMediaRtpPrivate *priv =
-    GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
 
   DEBUG ("adding new local codecs");
 
@@ -510,9 +520,6 @@ jingle_media_rtp_register (GabbleJingleFactory *factory)
 GList *
 gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self)
 {
-  GabbleJingleMediaRtpPrivate *priv =
-    GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE (self);
-
-  return priv->remote_codecs;
+  return self->priv->remote_codecs;
 }
 

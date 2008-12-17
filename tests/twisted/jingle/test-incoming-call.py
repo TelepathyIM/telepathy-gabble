@@ -4,7 +4,7 @@ Test incoming call handling.
 
 from gabbletest import exec_test, make_result_iq, sync_stream
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern
+        EventPattern, sync_dbus
 import jingletest
 import gabbletest
 import dbus
@@ -79,21 +79,13 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorHandle'] == remote_handle
     assert channel_props['Requested'] == False
 
-    media_chan.AddMembers([dbus.UInt32(1)], 'accepted')
-
-    # We are now in members too
-    e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [1L], [], [], [], 0, 0])
-
-    # we are now both in members
-    members = media_chan.GetMembers()
-    assert set(members) == set([1L, remote_handle]), members
-
+    # Connectivity checks happen before we have accepted the call
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler.Ready(jt.get_audio_codecs_dbus())
     stream_handler.StreamState(2)
+    stream_handler.SupportedCodecs(jt.get_audio_codecs_dbus())
 
-    # First one is transport-info
+    # peer gets the transport
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'transport-info'
@@ -101,13 +93,24 @@ def test(q, bus, conn, stream):
 
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 
-    # S-E sets supported codecs, gabble can accept
-    stream_handler.SupportedCodecs(jt.get_audio_codecs_dbus())
+    # Make sure everything's processed
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
 
-    # Second one is session-accept
-    e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'session-accept'
+    # At last, accept the call
+    media_chan.AddMembers([dbus.UInt32(1)], 'accepted')
+
+    # Call is accepted and we're in members too
+    memb, acc = q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChanged', args=[u'', [1L],
+            [], [], [], 0, 0]),
+        EventPattern('stream-iq',
+            predicate=lambda e: (e.query.name == 'jingle' and
+                e.query['action'] == 'session-accept')))
+
+    # we are now both in members
+    members = media_chan.GetMembers()
+    assert set(members) == set([1L, remote_handle]), members
 
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 

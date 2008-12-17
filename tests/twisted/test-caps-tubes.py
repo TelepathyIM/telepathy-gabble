@@ -226,7 +226,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = 'njTWnNVMGeDjS8+4TkMuMX6Z/Ug='
+    c['ver'] = 'f5oUAlH0fcR8btEo5K0P135QReo='
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -242,7 +242,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     query = result.firstChildElement()
     query['node'] = client + '#' + c['ver']
     feature = query.addElement('feature')
-    feature['var'] = ns_tubes + '/stream/daap'
+    feature['var'] = ns_tubes + '/stream#daap'
     stream.send(result)
 
     # daap capabilities
@@ -269,7 +269,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = '8/mwj7yF0K23YT6GurBXI1X4hd4='
+    c['ver'] = '4Ps2iaOc+lsFwfbasCdsBjLOQ5s='
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -285,7 +285,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     query = result.firstChildElement()
     query['node'] = client + '#' + c['ver']
     feature = query.addElement('feature')
-    feature['var'] = ns_tubes + '/dbus/com.example.Xiangqi'
+    feature['var'] = ns_tubes + '/dbus#com.example.Xiangqi'
     stream.send(result)
 
     # xiangqi capabilities
@@ -312,7 +312,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = 'moS31cvk2kf9Zka4gb6ncj2VJCo='
+    c['ver'] = 'ALCBfacl4M/FKWckV1OCHfj+lt0='
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -328,9 +328,9 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     query = result.firstChildElement()
     query['node'] = client + '#' + c['ver']
     feature = query.addElement('feature')
-    feature['var'] = ns_tubes + '/dbus/com.example.Xiangqi'
+    feature['var'] = ns_tubes + '/dbus#com.example.Xiangqi'
     feature = query.addElement('feature')
-    feature['var'] = ns_tubes + '/stream/daap'
+    feature['var'] = ns_tubes + '/stream#daap'
     stream.send(result)
 
     # daap + xiangqi capabilities
@@ -358,7 +358,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = '4uwiaJY110AjLEFSIeu4/mVJ8wc='
+    c['ver'] = 'ObSHJf9W0fUDuSjmB6gmthptw+s='
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -374,13 +374,13 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     query = result.firstChildElement()
     query['node'] = client + '#' + c['ver']
     feature = query.addElement('feature')
-    feature['var'] = ns_tubes + '/dbus/com.example.Xiangqi'
+    feature['var'] = ns_tubes + '/dbus#com.example.Xiangqi'
     feature = query.addElement('feature')
-    feature['var'] = ns_tubes + '/dbus/com.example.Go'
+    feature['var'] = ns_tubes + '/dbus#com.example.Go'
     feature = query.addElement('feature')
-    feature['var'] = ns_tubes + '/stream/daap'
+    feature['var'] = ns_tubes + '/stream#daap'
     feature = query.addElement('feature')
-    feature['var'] = ns_tubes + '/stream/http'
+    feature['var'] = ns_tubes + '/stream#http'
     stream.send(result)
 
     # http + daap + xiangqi + go capabilities
@@ -410,7 +410,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = 'moS31cvk2kf9Zka4gb6ncj2VJCo='
+    c['ver'] = 'ALCBfacl4M/FKWckV1OCHfj+lt0='
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -491,11 +491,11 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
     # Expect Gabble to reply with the correct caps
     event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
     assert caps_contain(event, ns_tubes) == True, caps_str
-    assert caps_contain(event, ns_tubes + '/stream/daap') == True, caps_str
-    assert caps_contain(event, ns_tubes + '/stream/http') == False, caps_str
-    assert caps_contain(event, ns_tubes + '/dbus/com.example.Go') \
+    assert caps_contain(event, ns_tubes + '/stream#daap') == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream#http') == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus#com.example.Go') \
             == False, caps_str
-    assert caps_contain(event, ns_tubes + '/dbus/com.example.Xiangqi') \
+    assert caps_contain(event, ns_tubes + '/dbus#com.example.Xiangqi') \
             == False, caps_str
     assert signaled_caps == daap_caps
 
@@ -515,11 +515,11 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
     # Expect Gabble to reply with the correct caps
     event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
     assert caps_contain(event, ns_tubes) == True, caps_str
-    assert caps_contain(event, ns_tubes + '/stream/daap') == False, caps_str
-    assert caps_contain(event, ns_tubes + '/stream/http') == False, caps_str
-    assert caps_contain(event, ns_tubes + '/dbus/com.example.Go') \
+    assert caps_contain(event, ns_tubes + '/stream#daap') == False, caps_str
+    assert caps_contain(event, ns_tubes + '/stream#http') == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus#com.example.Go') \
             == False, caps_str
-    assert caps_contain(event, ns_tubes + '/dbus/com.example.Xiangqi') \
+    assert caps_contain(event, ns_tubes + '/dbus#com.example.Xiangqi') \
             == True, caps_str
     assert signaled_caps == xiangqi_caps
 
@@ -539,11 +539,11 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
     # Expect Gabble to reply with the correct caps
     event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
     assert caps_contain(event, ns_tubes) == True, caps_str
-    assert caps_contain(event, ns_tubes + '/stream/daap') == True, caps_str
-    assert caps_contain(event, ns_tubes + '/stream/http') == False, caps_str
-    assert caps_contain(event, ns_tubes + '/dbus/com.example.Go') \
+    assert caps_contain(event, ns_tubes + '/stream#daap') == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream#http') == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus#com.example.Go') \
             == False, caps_str
-    assert caps_contain(event, ns_tubes + '/dbus/com.example.Xiangqi') \
+    assert caps_contain(event, ns_tubes + '/dbus#com.example.Xiangqi') \
             == True, caps_str
     assert signaled_caps == daap_xiangqi_caps
 
@@ -564,11 +564,11 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
     # Expect Gabble to reply with the correct caps
     event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
     assert caps_contain(event, ns_tubes) == True, caps_str
-    assert caps_contain(event, ns_tubes + '/stream/daap') == True, caps_str
-    assert caps_contain(event, ns_tubes + '/stream/http') == True, caps_str
-    assert caps_contain(event, ns_tubes + '/dbus/com.example.Go') \
+    assert caps_contain(event, ns_tubes + '/stream#daap') == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream#http') == True, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus#com.example.Go') \
             == True, caps_str
-    assert caps_contain(event, ns_tubes + '/dbus/com.example.Xiangqi') \
+    assert caps_contain(event, ns_tubes + '/dbus#com.example.Xiangqi') \
             == True, caps_str
     assert signaled_caps == all_tubes_caps
 
@@ -588,11 +588,11 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
     # Expect Gabble to reply with the correct caps
     event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
     assert caps_contain(event, ns_tubes) == True, caps_str
-    assert caps_contain(event, ns_tubes + '/stream/daap') == True, caps_str
-    assert caps_contain(event, ns_tubes + '/stream/http') == False, caps_str
-    assert caps_contain(event, ns_tubes + '/dbus/com.example.Go') \
+    assert caps_contain(event, ns_tubes + '/stream#daap') == True, caps_str
+    assert caps_contain(event, ns_tubes + '/stream#http') == False, caps_str
+    assert caps_contain(event, ns_tubes + '/dbus#com.example.Go') \
             == False, caps_str
-    assert caps_contain(event, ns_tubes + '/dbus/com.example.Xiangqi') \
+    assert caps_contain(event, ns_tubes + '/dbus#com.example.Xiangqi') \
             == True, caps_str
     assert signaled_caps == daap_xiangqi_caps
 

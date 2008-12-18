@@ -1415,8 +1415,8 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 }
 
 static void
-gabble_bytestream_socks5_block_read (GabbleBytestreamIface *iface,
-                                     gboolean block)
+gabble_bytestream_socks5_block_reading (GabbleBytestreamIface *iface,
+                                        gboolean block)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
   GabbleBytestreamSocks5Private *priv =
@@ -1441,5 +1441,5 @@ bytestream_iface_init (gpointer g_iface,
   klass->send = gabble_bytestream_socks5_send;
   klass->close = gabble_bytestream_socks5_close;
   klass->accept = gabble_bytestream_socks5_accept;
-  klass->block_read = gabble_bytestream_socks5_block_read;
+  klass->block_reading = gabble_bytestream_socks5_block_reading;
 }

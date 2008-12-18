@@ -537,7 +537,7 @@ bytestream_activate_next (GabbleBytestreamMultiple *self)
 
   /* Try the first stream method in the fallback list */
   stream_method = priv->fallback_stream_methods->data;
-  priv->fallback_stream_methods = g_list_remove_link (
+  priv->fallback_stream_methods = g_list_delete_link (
       priv->fallback_stream_methods, priv->fallback_stream_methods);
 
   priv->active_bytestream = gabble_bytestream_factory_create_from_method (

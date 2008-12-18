@@ -157,6 +157,14 @@ gabble_bytestream_iface_base_init (gpointer klass)
           g_cclosure_marshal_VOID__BOOLEAN,
           G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 
+      g_signal_new ("connection-error",
+          G_TYPE_FROM_INTERFACE (klass),
+          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          0,
+          NULL, NULL,
+          gabble_marshal_VOID__VOID,
+          G_TYPE_NONE, 0);
+
       initialized = TRUE;
     }
 }

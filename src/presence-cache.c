@@ -48,6 +48,10 @@
 #include "roster.h"
 #include "types.h"
 
+/* Time period from the cache creation in which we're unsure whether we
+ * got initial presence from all the contacts. */
+#define UNSURE_PERIOD (5 * G_USEC_PER_SEC)
+
 G_DEFINE_TYPE (GabblePresenceCache, gabble_presence_cache, G_TYPE_OBJECT);
 
 /* properties */
@@ -64,6 +68,7 @@ enum
   NICKNAME_UPDATE,
   CAPABILITIES_UPDATE,
   AVATAR_UPDATE,
+  CAPABILITIES_DISCOVERED,
   LAST_SIGNAL
 };
 
@@ -85,6 +90,7 @@ struct _GabblePresenceCachePrivate
   GHashTable *disco_pending;
   guint caps_serial;
 
+  GTimeVal creation_time;
   gboolean dispose_has_run;
 };
 
@@ -344,6 +350,14 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     0,
     NULL, NULL,
     g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
+  signals[CAPABILITIES_DISCOVERED] = g_signal_new (
+    "capabilities-discovered",
+    G_TYPE_FROM_CLASS (klass),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    gabble_marshal_VOID__UINT, G_TYPE_NONE,
+    1, G_TYPE_UINT);
 }
 
 static void
@@ -375,6 +389,8 @@ gabble_presence_cache_constructor (GType type, guint n_props,
 
   priv->status_changed_cb = g_signal_connect (priv->conn, "status-changed",
       G_CALLBACK (gabble_presence_cache_status_changed_cb), obj);
+
+  g_get_current_time (&priv->creation_time);
 
   return obj;
 }
@@ -1054,6 +1070,7 @@ _caps_disco_cb (GabbleDisco *disco,
           g_hash_table_insert (priv->disco_pending, key, waiters);
 
           disco_waiter_free (waiter);
+          g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, handle);
         }
       else if (trust + disco_waiter_list_get_request_count (waiters) - trust_inc
           < CAPABILITY_BUNDLE_ENOUGH_TRUST)
@@ -1708,3 +1725,48 @@ gabble_presence_cache_contacts_removed_from_olpc_view (
   g_array_free (tmp, TRUE);
   g_array_free (changed, TRUE);
 }
+
+gboolean
+gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
+                                    TpHandle handle)
+{
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GList *uris, *li;
+
+  uris = g_hash_table_get_values (priv->disco_pending);
+
+  for (li = uris; li != NULL; li = li->next)
+    {
+      GSList *waiters;
+
+      for (waiters = li->data; waiters != NULL; waiters = waiters->next)
+        {
+          DiscoWaiter *w = waiters->data;
+          if (w->handle == handle)
+            {
+              g_list_free (uris);
+              return TRUE;
+            }
+
+        }
+    }
+
+  return FALSE;
+}
+
+gboolean
+gabble_presence_cache_is_unsure (GabblePresenceCache *cache)
+{
+  gulong diff;
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GTimeVal now;
+
+  g_get_current_time (&now);
+  diff = (now.tv_sec - priv->creation_time.tv_sec) * G_USEC_PER_SEC +
+      (now.tv_usec - priv->creation_time.tv_usec);
+
+  DEBUG ("Diff: %lu", diff);
+
+  return (diff < UNSURE_PERIOD);
+}
+

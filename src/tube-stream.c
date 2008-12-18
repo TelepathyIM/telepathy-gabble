@@ -1354,6 +1354,13 @@ data_received_cb (GabbleBytestreamIface *bytestream,
   transport = g_hash_table_lookup (priv->bytestream_to_transport, bytestream);
   g_assert (transport != NULL);
 
+  /* If something goes wrong when trying to write the data on the transport,
+   * it could be disconnected, causing its removal from the hash tables.
+   * When removed, the transport would be destroyed as the hash tables keep a
+   * ref on it and so we'll call _buffer_is_empty on a destroyed transport.
+   * We avoid that by reffing the transport between the 2 calls so we keep it
+   * artificially alive if needed. */
+  g_object_ref (transport);
   if (!gibber_transport_send (transport, (const guint8 *) data->str, data->len,
       &error))
   {
@@ -1368,6 +1375,7 @@ data_received_cb (GabbleBytestreamIface *bytestream,
       DEBUG ("tube buffer isn't empty. Block the bytestream");
       gabble_bytestream_iface_block_reading (bytestream, TRUE);
     }
+  g_object_unref (transport);
 }
 
 GabbleTubeStream *

@@ -52,6 +52,17 @@ static void gibber_fd_transport_block_receiving (GibberTransport *transport,
 
 G_DEFINE_TYPE(GibberFdTransport, gibber_fd_transport, GIBBER_TYPE_TRANSPORT)
 
+GQuark
+gibber_fd_transport_error_quark (void)
+{
+  static GQuark quark = 0;
+
+  if (!quark)
+    quark = g_quark_from_static_string ("gibber_fd_transport_error");
+
+  return quark;
+}
+
 /* private structure */
 typedef struct _GibberFdTransportPrivate GibberFdTransportPrivate;
 
@@ -311,8 +322,36 @@ _channel_io_out (GIOChannel *source, GIOCondition condition, gpointer data)
 static gboolean
 _channel_io_err (GIOChannel *source, GIOCondition condition, gpointer data)
 {
-  g_assert_not_reached ();
-  return TRUE;
+  GibberFdTransport *self = GIBBER_FD_TRANSPORT (data);
+  GError *error = NULL;
+  gint code;
+  const gchar *msg;
+
+  if (condition & G_IO_ERR)
+    {
+      DEBUG ("Error on GIOChannel.Closing the transport");
+      /* We can't use g_io_channel_error_from_errno because it seems errno is
+       * not always set when we got a G_IO_ERR. */
+      code = GIBBER_FD_TRANSPORT_ERROR_FAILED;
+      msg = "Error on GIOChannel";
+    }
+  else if (condition & G_IO_HUP)
+    {
+      DEBUG ("Connection has been broken. Closing the transport");
+      code = GIBBER_FD_TRANSPORT_ERROR_PIPE;
+      msg = "Connection has been broken";
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
+  error = g_error_new_literal (GIBBER_FD_TRANSPORT_ERROR, code, msg);
+  gibber_transport_emit_error (GIBBER_TRANSPORT (self), error);
+  g_error_free (error);
+
+  _do_disconnect (self);
+  return FALSE;
 }
 
 /* Default read and write implementations */

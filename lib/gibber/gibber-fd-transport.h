@@ -37,6 +37,15 @@ typedef enum {
 
 G_BEGIN_DECLS
 
+GQuark gibber_fd_transport_error_quark (void);
+#define GIBBER_FD_TRANSPORT_ERROR gibber_fd_transport_error_quark()
+
+typedef enum
+{
+  GIBBER_FD_TRANSPORT_ERROR_PIPE,
+  GIBBER_FD_TRANSPORT_ERROR_FAILED,
+} GibberFdTransportError;
+
 typedef struct _GibberFdTransport GibberFdTransport;
 typedef struct _GibberFdTransportClass GibberFdTransportClass;
 

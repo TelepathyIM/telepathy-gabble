@@ -1359,6 +1359,7 @@ data_received_cb (GabbleBytestreamIface *bytestream,
   {
     DEBUG ("sending failed: %s", error->message);
     g_error_free (error);
+    return;
   }
 
   if (!gibber_transport_buffer_is_empty (transport))

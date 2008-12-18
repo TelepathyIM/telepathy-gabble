@@ -139,7 +139,7 @@ class JingleTest:
         self.stream.send(reply.toXml())
 
 
-    def incoming_call(self):
+    def incoming_call(self, codec_parameters=None):
         self.direction = 'incoming'
 
         if self.google_mode:
@@ -159,10 +159,19 @@ class JingleTest:
             p = domish.Element((None, 'payload-type'))
             p['name'] = codec
             p['id'] = str(id)
+
             if self.google_mode:
                 p['clockrate'] = p['bitrate'] = str(rate)
             else:
                 p['rate'] = str(rate)
+
+            if codec_parameters is not None:
+                for name, value in codec_parameters.iteritems():
+                    param = domish.Element((None, 'parameter'))
+                    param['name'] = name
+                    param['value'] = value
+                    p.addChild(param)
+
             desc.addChild(p)
 
         xport = domish.Element(("http://www.google.com/transport/p2p", 'transport'))

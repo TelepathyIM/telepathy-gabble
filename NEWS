@@ -1,11 +1,30 @@
-telepathy-gabble 0.7.17 (UNRELEASED)
+telepathy-gabble 0.7.17 (2008-12-14)
 ====================================
+
+The "I accidentally an entire call *and* MUC" release.
 
 Dependencies:
 
+* dbus 1.1.0 (D-Bus Tubes are no longer conditionally compiled)
+
+* dbus-glib 0.78 (fixes support for complex types in hashtables)
+
 Enhancements:
 
+* Add support for the new draft ContactCapabilities spec to communicate tube
+  capabilities.
+
 Fixes:
+
+* Incoming Jingle calls are no longer automatically accepted when the call is
+  connected and the local codecs are ready.
+
+* Incoming MUC invites are no longer automatically accepted when changing your
+  presence.
+
+* fd.o #18918: Send codec parameters according to XEP-0167.
+
+* Various Jingle tweaks.
 
 telepathy-gabble 0.7.16 (2008-12-02)
 ====================================
@@ -35,7 +54,6 @@ Fixes:
 * fd.o #18404: fix race condition in tests/twisted/roster/ensure.py
 
 * Fixes for double freeing in dispose in channel managers
-
 
 telepathy-gabble 0.7.15 (2008-11-06)
 ====================================

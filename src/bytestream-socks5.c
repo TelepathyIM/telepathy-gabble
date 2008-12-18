@@ -42,6 +42,10 @@
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/interfaces.h>
 
+#include <gibber/gibber-transport.h>
+#include <gibber/gibber-tcp-transport.h>
+#include <gibber/gibber-listener.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
 
 #include "base64.h"
@@ -61,17 +65,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleBytestreamSocks5, gabble_bytestream_socks5,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_BYTESTREAM_IFACE,
       bytestream_iface_init));
-
-/* signals */
-enum
-{
-  DATA_RECEIVED,
-  STATE_CHANGED,
-  CONNECTION_ERROR,
-  LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
 
 /* properties */
 enum
@@ -117,14 +110,14 @@ struct _Streamhost
 {
   gchar *jid;
   gchar *host;
-  guint port;
+  gchar *port;
 };
 typedef struct _Streamhost Streamhost;
 
 static Streamhost *
 streamhost_new (const gchar *jid,
                 const gchar *host,
-                guint port)
+                const gchar *port)
 {
   Streamhost *streamhost;
 
@@ -134,7 +127,7 @@ streamhost_new (const gchar *jid,
   streamhost = g_slice_new0 (Streamhost);
   streamhost->jid = g_strdup (jid);
   streamhost->host = g_strdup (host);
-  streamhost->port = port;
+  streamhost->port = g_strdup (port);
 
   return streamhost;
 }
@@ -147,6 +140,7 @@ streamhost_free (Streamhost *streamhost)
 
   g_free (streamhost->jid);
   g_free (streamhost->host);
+  g_free (streamhost->port);
   g_slice_free (Streamhost, streamhost);
 }
 
@@ -167,32 +161,28 @@ struct _GabbleBytestreamSocks5Private
    * around */
   LmMessage *msg_for_acknowledge_connection;
 
-  GIOChannel *io_channel;
   Socks5State socks5_state;
+  GibberTransport *transport;
+  gboolean write_blocked;
+  gboolean read_blocked;
+  GibberListener *listener;
 
-  gint read_watch;
   GString *read_buffer;
-
-  gint write_watch;
-  GString *write_buffer;
-  gsize write_position;
-
-  gint error_watch;
 
   gboolean dispose_has_run;
 };
 
 #define GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE(obj) ((obj)->priv)
 
-static gboolean socks5_connect (gpointer data);
-
-static gboolean socks5_channel_readable_cb (GIOChannel *source,
-    GIOCondition condition, gpointer data);
-static gboolean socks5_channel_error_cb (GIOChannel *source,
-    GIOCondition condition, gpointer data);
+static void socks5_connect (GabbleBytestreamSocks5 *self);
 
 static void gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
     GError *error);
+
+static void socks5_error (GabbleBytestreamSocks5 *self);
+
+static void transport_handler (GibberTransport *transport,
+    GibberBuffer *data, gpointer user_data);
 
 static void
 gabble_bytestream_socks5_init (GabbleBytestreamSocks5 *self)
@@ -222,6 +212,18 @@ gabble_bytestream_socks5_dispose (GObject *object)
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_CLOSED)
     {
       gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
+    }
+
+  if (priv->transport != NULL)
+    {
+      g_object_unref (priv->transport);
+      priv->transport = NULL;
+    }
+
+  if (priv->listener != NULL)
+    {
+      g_object_unref (priv->listener);
+      priv->listener = NULL;
     }
 
   G_OBJECT_CLASS (gabble_bytestream_socks5_parent_class)->dispose (object);
@@ -324,7 +326,7 @@ gabble_bytestream_socks5_set_property (GObject *object,
         if (priv->bytestream_state != g_value_get_uint (value))
             {
               priv->bytestream_state = g_value_get_uint (value);
-              g_signal_emit (object, signals[STATE_CHANGED], 0,
+              g_signal_emit_by_name (object, "state-changed",
                   priv->bytestream_state);
             }
         break;
@@ -419,90 +421,81 @@ gabble_bytestream_socks5_class_init (
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STREAM_INIT_ID,
       param_spec);
-
-  signals[DATA_RECEIVED] =
-    g_signal_new ("data-received",
-                  G_OBJECT_CLASS_TYPE (gabble_bytestream_socks5_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__UINT_POINTER,
-                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_POINTER);
-
-  signals[STATE_CHANGED] =
-    g_signal_new ("state-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_bytestream_socks5_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_marshal_VOID__UINT,
-                  G_TYPE_NONE, 1, G_TYPE_UINT);
-
-  signals[CONNECTION_ERROR] =
-    g_signal_new ("connection-error",
-                  G_OBJECT_CLASS_TYPE (gabble_bytestream_socks5_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
 }
 
-static void
-socks5_setup_channel (GabbleBytestreamSocks5 *self,
-                      gint fd)
-{
-  GabbleBytestreamSocks5Private *priv =
-      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  gint socket_flags;
-
-  socket_flags = fcntl (fd, F_GETFL, 0);
-  fcntl (fd, F_SETFL, socket_flags | O_NONBLOCK);
-
-  priv->io_channel = g_io_channel_unix_new (fd);
-
-  g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
-  g_io_channel_set_buffered (priv->io_channel, FALSE);
-  g_io_channel_set_close_on_unref (priv->io_channel, TRUE);
-
-  priv->read_watch = g_io_add_watch (priv->io_channel, G_IO_IN,
-      socks5_channel_readable_cb, self);
-  priv->error_watch = g_io_add_watch (priv->io_channel, G_IO_HUP | G_IO_ERR,
-      socks5_channel_error_cb, self);
-
-  g_assert (priv->write_buffer == NULL);
-  priv->write_buffer = g_string_new ("");
-
-  g_assert (priv->read_buffer == NULL);
-  priv->read_buffer = g_string_sized_new (4096);
-}
-
-static void
-socks5_close_channel (GabbleBytestreamSocks5 *self)
+static gboolean
+write_to_transport (GabbleBytestreamSocks5 *self,
+                    const gchar *data,
+                    guint len,
+                    GError **error)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
-  if (priv->io_channel == NULL)
+  if (!gibber_transport_send (priv->transport, (const guint8 *) data, len,
+        error))
+    {
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
+transport_connected_cb (GibberTransport *transport,
+                        GabbleBytestreamSocks5 *self)
+{
+  GabbleBytestreamSocks5Private *priv =
+    GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+
+  if (priv->socks5_state == SOCKS5_STATE_TRYING_CONNECT)
+    {
+      gchar msg[3];
+
+      DEBUG ("transport is connected. Sending auth request");
+
+      msg[0] = SOCKS5_VERSION;
+      /* Number of auth methods we are offering, we support just
+       * SOCKS5_AUTH_NONE */
+      msg[1] = 1;
+      msg[2] = SOCKS5_AUTH_NONE;
+
+      write_to_transport (self, msg, 3, NULL);
+
+      priv->socks5_state = SOCKS5_STATE_AUTH_REQUEST_SENT;
+    }
+}
+
+static void
+transport_disconnected_cb (GibberTransport *transport,
+                           GabbleBytestreamSocks5 *self)
+{
+  DEBUG ("Sock5 transport disconnected");
+  socks5_error (self);
+}
+
+static void
+change_write_blocked_state (GabbleBytestreamSocks5 *self,
+                            gboolean blocked)
+{
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+
+  if (priv->write_blocked == blocked)
     return;
 
- if (priv->read_watch != 0)
-   {
-     g_source_remove (priv->read_watch);
-     priv->read_watch = 0;
-   }
+  priv->write_blocked = blocked;
+  g_signal_emit_by_name (self, "write-blocked", blocked);
+}
 
- if (priv->write_watch != 0)
-   {
-     g_source_remove (priv->write_watch);
-     priv->write_watch = 0;
-   }
+static void
+socks5_close_transport (GabbleBytestreamSocks5 *self)
+{
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
- if (priv->error_watch != 0)
-   {
-     g_source_remove (priv->error_watch);
-     priv->error_watch = 0;
-   }
+  if (priv->transport == NULL)
+    return;
 
  if (priv->read_buffer)
    {
@@ -510,14 +503,59 @@ socks5_close_channel (GabbleBytestreamSocks5 *self)
      priv->read_buffer = NULL;
    }
 
- if (priv->write_buffer)
-   {
-     g_string_free (priv->write_buffer, TRUE);
-     priv->write_buffer = NULL;
-   }
+ g_signal_handlers_disconnect_matched (priv->transport,
+        G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, self);
 
- g_io_channel_unref (priv->io_channel);
- priv->io_channel = NULL;
+ g_object_unref (priv->transport);
+ priv->transport = NULL;
+}
+
+static void
+bytestream_closed (GabbleBytestreamSocks5 *self)
+{
+  socks5_close_transport (self);
+  g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+}
+
+static void
+transport_buffer_empty_cb (GibberTransport *transport,
+                           GabbleBytestreamSocks5 *self)
+{
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE
+      (self);
+
+  if (priv->bytestream_state == GABBLE_BYTESTREAM_STATE_CLOSING)
+    {
+      DEBUG ("buffer is now empty. Bytestream can be closed");
+      bytestream_closed (self);
+    }
+  else if (priv->write_blocked)
+    {
+      DEBUG ("buffer is empty, unblock write to the bytestream");
+      change_write_blocked_state (self, FALSE);
+    }
+}
+
+static void
+set_transport (GabbleBytestreamSocks5 *self,
+               GibberTransport *transport)
+{
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+
+  priv->transport = g_object_ref (transport);
+
+  g_assert (priv->read_buffer == NULL);
+  priv->read_buffer = g_string_sized_new (4096);
+
+  gibber_transport_set_handler (transport, transport_handler, self);
+
+  g_signal_connect (transport, "connected",
+      G_CALLBACK (transport_connected_cb), self);
+  g_signal_connect (transport, "disconnected",
+      G_CALLBACK (transport_disconnected_cb), self);
+  g_signal_connect (priv->transport, "buffer-empty",
+      G_CALLBACK (transport_buffer_empty_cb), self);
 }
 
 static void
@@ -535,7 +573,7 @@ socks5_error (GabbleBytestreamSocks5 *self)
       previous_state == SOCKS5_STATE_CONNECT_REQUESTED)
     {
       /* The attempt for connect to the streamhost failed */
-      socks5_close_channel (self);
+      socks5_close_transport (self);
 
       /* Remove the failed streamhost */
       g_assert (priv->streamhosts);
@@ -553,7 +591,7 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       DEBUG ("no more streamhosts to try");
 
-      g_signal_emit (self, signals[CONNECTION_ERROR], 0);
+      //g_signal_emit (self, signals[CONNECTION_ERROR], 0);
 
       g_assert (priv->msg_for_acknowledge_connection != NULL);
       _gabble_connection_send_iq_error (priv->conn,
@@ -567,61 +605,6 @@ socks5_error (GabbleBytestreamSocks5 *self)
   DEBUG ("error, closing the connection\n");
 
   gabble_bytestream_socks5_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
-}
-
-static gboolean
-socks5_channel_writable_cb (GIOChannel *source,
-                            GIOCondition condition,
-                            gpointer data)
-{
-  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
-  GabbleBytestreamSocks5Private *priv =
-      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  gsize remaining_length = priv->write_buffer->len - priv->write_position;
-  GIOStatus status;
-  gsize bytes_written;
-
-  g_assert (remaining_length > 0);
-
-  status = g_io_channel_write_chars (priv->io_channel,
-      &priv->write_buffer->str [priv->write_position], remaining_length,
-      &bytes_written, NULL);
-
-  remaining_length -= bytes_written;
-  if (remaining_length == 0)
-    {
-      g_string_truncate (priv->write_buffer, 0);
-      priv->write_position = 0;
-      priv->write_watch = 0;
-      return FALSE;
-    }
-
-  priv->write_position += bytes_written;
-
-  if (status != G_IO_STATUS_NORMAL)
-    {
-      DEBUG ("Error writing on the SOCKS5 bytestream");
-
-      socks5_error (self);
-      return FALSE;
-    }
-
-  return TRUE;
-}
-
-static void
-socks5_schedule_write (GabbleBytestreamSocks5 *self,
-                       const gchar *msg,
-                       gsize len)
-{
-  GabbleBytestreamSocks5Private *priv =
-      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-
-  g_string_append_len (priv->write_buffer, msg, len);
-
-  if (!priv->write_watch)
-    priv->write_watch = g_io_add_watch (priv->io_channel, G_IO_OUT,
-        socks5_channel_writable_cb, self);
 }
 
 /* Process the received data and returns the number of bytes that have been
@@ -682,7 +665,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         g_free (domain);
         g_free (unhashed_domain);
 
-        socks5_schedule_write (self, msg, SOCKS5_CONNECT_LENGTH);
+        write_to_transport (self, msg, SOCKS5_CONNECT_LENGTH, NULL);
 
         priv->socks5_state = SOCKS5_STATE_CONNECT_REQUESTED;
 
@@ -703,6 +686,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
+        DEBUG ("sock5 stream connected. Bytestream is now open");
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
         g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
 
@@ -759,7 +743,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
                 /* Authorize the connection */
                 msg[0] = SOCKS5_VERSION;
                 msg[1] = SOCKS5_AUTH_NONE;
-                socks5_schedule_write (self, msg, 2);
+                write_to_transport (self, msg, 2, NULL);
 
                 priv->socks5_state = SOCKS5_STATE_AWAITING_COMMAND;
 
@@ -803,15 +787,25 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_STATUS_OK;
 
-        socks5_schedule_write (self, msg, 2);
+        write_to_transport (self, msg, 2, NULL);
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
+
+        /* Sock5 is connected but the bytestream is not open yet as we need
+         * to wait for the IQ reply. Stop reading until the bytestream
+         * is open to avoid data loss. */
+        gibber_transport_block_receiving (priv->transport, TRUE);
+
+        DEBUG ("sock5 stream connected. Stop to listen for connections");
+        g_assert (priv->listener != NULL);
+        g_object_unref (priv->listener);
+        priv->listener = NULL;
 
         return SOCKS5_CONNECT_LENGTH;
 
       case SOCKS5_STATE_CONNECTED:
         /* We are connected, everything we receive now is data */
-        g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0,
+        g_signal_emit_by_name (G_OBJECT (self), "data-received",
             priv->peer_handle, string);
 
         return string->len;
@@ -823,7 +817,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         return string->len;
 
       case SOCKS5_STATE_TRYING_CONNECT:
-        DEBUG ("Impossible to receive data when not yet connected to the socket");
+        DEBUG ("Impossible to receive data when not yet connected to the "
+            "socket");
         break;
 
       case SOCKS5_STATE_INVALID:
@@ -835,33 +830,21 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   return string->len;
 }
 
-static gboolean
-socks5_channel_readable_cb (GIOChannel *source,
-                            GIOCondition condition,
-                            gpointer data)
+static void
+transport_handler (GibberTransport *transport,
+                   GibberBuffer *data,
+                   gpointer user_data)
+
 {
-  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
+  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (user_data);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  gsize available_length =
-    priv->read_buffer->allocated_len - priv->read_buffer->len - 1;
-  GIOStatus status;
-  gsize bytes_read;
   gsize used_bytes;
 
-  if (available_length == 0)
-    {
-      g_string_set_size (priv->read_buffer, priv->read_buffer->len * 2);
-      available_length = priv->read_buffer->allocated_len -
-          priv->read_buffer->len - 1;
-    }
+  DEBUG ("got %" G_GSIZE_FORMAT " bytes from sock5 transport", data->length);
 
-  status = g_io_channel_read_chars (source,
-      &priv->read_buffer->str [priv->read_buffer->len], available_length,
-      &bytes_read, NULL);
-
-  priv->read_buffer->len += bytes_read;
-  priv->read_buffer->str[priv->read_buffer->len] = '\0';
+  g_string_append_len (priv->read_buffer, (const gchar *) data->data,
+      data->length);
 
   do
     {
@@ -869,39 +852,24 @@ socks5_channel_readable_cb (GIOChannel *source,
        * number of bytes that have been used. 0 means that there is not enough
        * data to do anything, so we just wait for more data from the socket */
       used_bytes = socks5_handle_received_data (self, priv->read_buffer);
+
+      if (priv->read_buffer == NULL)
+        /* If something did wrong in socks5_handle_received_data, the
+         * bytestream can be closed and so destroyed. */
+        return;
+
       g_string_erase (priv->read_buffer, 0, used_bytes);
     }
   while (used_bytes > 0 && priv->read_buffer->len > 0);
-
-  return TRUE;
 }
 
-static gboolean
-socks5_channel_error_cb (GIOChannel *source,
-                         GIOCondition condition,
-                         gpointer data)
+static void
+socks5_connect (GabbleBytestreamSocks5 *self)
 {
-  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
-
-  DEBUG ("I/O error on a SOCKS5 channel");
-
-  socks5_error (self);
-  return FALSE;
-}
-
-static gboolean
-socks5_connect (gpointer data)
-{
-  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   Streamhost* streamhost;
-  struct addrinfo req = {0};
-  struct addrinfo *address_list;
-  struct addrinfo *streamhost_address;
-  gint fd;
-  gint res;
-  gchar msg[3];
+  GibberTCPTransport *transport;
 
   priv->socks5_state = SOCKS5_STATE_TRYING_CONNECT;
 
@@ -914,79 +882,20 @@ socks5_connect (gpointer data)
       DEBUG ("No more streamhosts to try, closing");
 
       socks5_error (self);
-      return FALSE;
+      return;
     }
 
-  DEBUG ("Trying streamhost %s on port %d", streamhost->host,
+  DEBUG ("Trying streamhost %s on port %s", streamhost->host,
       streamhost->port);
 
-  req.ai_family = AF_UNSPEC;
-  req.ai_socktype = SOCK_STREAM;
-  req.ai_protocol = IPPROTO_TCP;
+  transport = gibber_tcp_transport_new ();
+  set_transport (self, GIBBER_TRANSPORT (transport));
+  g_object_unref (transport);
 
-  if (getaddrinfo (streamhost->host, NULL, &req, &address_list) != 0)
-    {
-      DEBUG ("getaddrinfo on %s failed", streamhost->host);
-      socks5_error (self);
+  gibber_tcp_transport_connect (transport, streamhost->host,
+      streamhost->port);
 
-      return FALSE;
-    }
-
-  fd = -1;
-  streamhost_address = address_list;
-
-  /* getaddrinfo returns a list of addrinfo structures that identify the
-   * host. Try them in order and stop when the call to socket() succeeds */
-  while (fd < 0 && streamhost_address)
-    {
-      ((struct sockaddr_in *) streamhost_address->ai_addr)->sin_port =
-        htons (streamhost->port);
-
-      fd = socket (streamhost_address->ai_family,
-          streamhost_address->ai_socktype, streamhost_address->ai_protocol);
-
-      if (fd >= 0)
-        break;
-
-      streamhost_address = streamhost_address->ai_next;
-    }
-
-
-  if (fd < 0)
-    {
-      gabble_bytestream_socks5_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
-      freeaddrinfo (address_list);
-
-      return FALSE;
-    }
-
-  socks5_setup_channel (self, fd);
-
-  res = connect (fd, (struct sockaddr*)streamhost_address->ai_addr,
-      streamhost_address->ai_addrlen);
-
-  freeaddrinfo (address_list);
-
-  if (res < 0 && errno != EINPROGRESS)
-    {
-      DEBUG ("connect failed");
-
-      socks5_error (self);
-      return FALSE;
-    }
-
-
-  msg[0] = SOCKS5_VERSION;
-  /* Number of auth methods we are offering, we support just
-   * SOCKS5_AUTH_NONE */
-  msg[1] = 1;
-  msg[2] = SOCKS5_AUTH_NONE;
-
-  socks5_schedule_write (self, msg, 3);
-
-  priv->socks5_state = SOCKS5_STATE_AUTH_REQUEST_SENT;
-
-  return FALSE;
+  /* We'll send the auth request once the transport is connected */
 }
 
 /**
@@ -1004,7 +913,6 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
   const gchar *jid;
   const gchar *host;
   const gchar *port;
-  guint numeric_port;
   Streamhost *streamhost;
 
   g_return_if_fail (!tp_strdiff (streamhost_node->name, "streamhost"));
@@ -1038,17 +946,10 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
       return;
     }
 
-  numeric_port = strtoul (port, NULL, 10);
-  if (numeric_port <= 0)
-    {
-      DEBUG ("streamhost contain an invalid port: %s", port);
-      return;
-    }
+  DEBUG ("streamhost with jid %s, host %s and port %s added", jid, host,
+      port);
 
-  DEBUG ("streamhost with jid %s, host %s and port %d added", jid, host,
-      numeric_port);
-
-  streamhost = streamhost_new (jid, host, numeric_port);
+  streamhost = streamhost_new (jid, host, port);
   priv->streamhosts = g_slist_append (priv->streamhosts, streamhost);
 }
 
@@ -1067,7 +968,7 @@ gabble_bytestream_socks5_connect_to_streamhost (GabbleBytestreamSocks5 *self,
 
   priv->msg_for_acknowledge_connection = lm_message_ref (msg);
 
-  g_idle_add (socks5_connect, self);
+  socks5_connect (self);
 }
 
 /*
@@ -1083,6 +984,7 @@ gabble_bytestream_socks5_send (GabbleBytestreamIface *iface,
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GError *error = NULL;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_OPEN)
     {
@@ -1091,7 +993,32 @@ gabble_bytestream_socks5_send (GabbleBytestreamIface *iface,
       return FALSE;
     }
 
-  socks5_schedule_write (self, str, len);
+  if (priv->write_blocked)
+    {
+      DEBUG ("sending data while the bytestream was blocked");
+    }
+
+  DEBUG ("send %u bytes through bytestream", len);
+  if (!write_to_transport (self, str, len, &error))
+    {
+      DEBUG ("sending failed: %s", error->message);
+
+      g_error_free (error);
+      gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
+      return FALSE;
+    }
+
+  /* If something did wrong during the writting, the transport has been closed
+   * and so set to NULL. */
+  if (priv->transport == NULL)
+    return FALSE;
+
+  if (!gibber_transport_buffer_is_empty (priv->transport))
+    {
+      /* We >don't want to send more data while the buffer isn't empty */
+      DEBUG ("buffer isn't empty. Block write to the bytestream");
+      change_write_blocked_state (self, TRUE);
+    }
 
   return TRUE;
 }
@@ -1200,8 +1127,6 @@ gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
 
       DEBUG ("send Socks5 close stanza");
 
-      socks5_close_channel (self);
-
       msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
           '@', "type", "set",
           '(', "close", "",
@@ -1216,7 +1141,17 @@ gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
 
       lm_message_unref (msg);
 
-      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSING, NULL);
+      if (priv->transport != NULL &&
+          !gibber_transport_buffer_is_empty (priv->transport))
+        {
+          DEBUG ("Wait transport buffer is empty before close the bytestream");
+        }
+      else
+        {
+          DEBUG ("Transport buffer is empty, we can close the bytestream");
+          bytestream_closed (self);
+        }
     }
 }
 
@@ -1228,51 +1163,26 @@ socks5_init_reply_cb (GabbleConnection *conn,
                       gpointer user_data)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (obj);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT)
     {
       /* yeah, stream initiated */
       DEBUG ("Socks5 stream initiated");
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
+      /* We can read data from the sock5 socket now */
+      gibber_transport_block_receiving (priv->transport, FALSE);
     }
   else
     {
       DEBUG ("error during Socks5 initiation");
 
-      g_signal_emit (self, signals[CONNECTION_ERROR], 0);
+      //g_signal_emit (self, signals[CONNECTION_ERROR], 0);
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
-static gboolean
-socks5_listen_cb (GIOChannel *source,
-                  GIOCondition condition,
-                  gpointer data)
-{
-  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
-  GabbleBytestreamSocks5Private *priv =
-      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  gint fd;
-  struct sockaddr_in addr;
-  guint addr_len = sizeof (addr);
-
-  if (condition & G_IO_ERR || condition & G_IO_HUP)
-    {
-      socks5_error (self);
-
-      return FALSE;
-    }
-
-  fd = accept (g_io_channel_unix_get_fd (source), (struct sockaddr *) &addr,
-      &addr_len);
-
-  socks5_setup_channel (self, fd);
-
-  priv->socks5_state = SOCKS5_STATE_AWAITING_AUTH_REQUEST;
-
-  return FALSE;
 }
 
 /* get_local_interfaces_ips copied from Farsight 2 (function
@@ -1412,6 +1322,23 @@ get_local_interfaces_ips (gboolean include_loopback)
 
 #endif /* ! HAVE_GETIFADDRS */
 
+static void
+new_connection_cb (GibberListener *listener,
+                   GibberTransport *transport,
+                   struct sockaddr *addr,
+                   guint size,
+                   gpointer user_data)
+{
+  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (user_data);
+  GabbleBytestreamSocks5Private *priv =
+    GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+
+  DEBUG ("New connection...");
+
+  priv->socks5_state = SOCKS5_STATE_AWAITING_AUTH_REQUEST;
+  set_transport (self, transport);
+}
+
 /*
  * gabble_bytestream_socks5_initiate
  *
@@ -1423,11 +1350,8 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  struct sockaddr_in addr;
-  guint addr_len;
-  gint fd;
-  GIOChannel *channel;
-  gchar port[G_ASCII_DTOSTR_BUF_SIZE];
+  gchar *port;
+  gint port_num;
   LmMessage *msg;
   GList *ips;
   GList *ip;
@@ -1439,31 +1363,20 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       return FALSE;
     }
 
-  fd = socket (AF_INET, SOCK_STREAM, 0);
-  if (fd < 0)
+  g_assert (priv->listener == NULL);
+  priv->listener = gibber_listener_new ();
+
+  g_signal_connect (priv->listener, "new-connection",
+      G_CALLBACK (new_connection_cb), self);
+
+  if (!gibber_listener_listen_tcp (priv->listener, 0, NULL))
     {
-      DEBUG ("couldn't create socket");
+      DEBUG ("can't listen for incoming connection");
       return FALSE;
     }
 
-  if (listen (fd, 1) < 0)
-    {
-      DEBUG ("couldn't listen on socket");
-      return FALSE;
-    }
-
-  channel = g_io_channel_unix_new (fd);
-
-  g_io_channel_set_close_on_unref (channel, TRUE);
-
-  priv->read_watch = g_io_add_watch (channel, G_IO_IN | G_IO_HUP | G_IO_ERR,
-      socks5_listen_cb, self);
-
-  g_io_channel_unref (channel);
-
-  addr_len = sizeof (addr);
-  getsockname (fd, (struct sockaddr *) &addr, &addr_len);
-  g_ascii_dtostr (port, G_N_ELEMENTS (port), ntohs (addr.sin_port));
+  port_num = gibber_listener_get_port (priv->listener);
+  port = g_strdup_printf ("%d", port_num);
 
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
@@ -1488,6 +1401,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       ip = ip->next;
     }
   g_list_free (ips);
+  g_free (port);
 
   /* FIXME: for now we support only direct connections, we should also
    * add support for external proxies to have more chances to make the
@@ -1508,6 +1422,23 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 }
 
 static void
+gabble_bytestream_socks5_block_reading (GabbleBytestreamIface *iface,
+                                        gboolean block)
+{
+  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+
+  if (priv->read_blocked == block)
+    return;
+
+  priv->read_blocked = block;
+
+  DEBUG ("%s the transport bytestream", block ? "block": "unblock");
+  gibber_transport_block_receiving (priv->transport, block);
+}
+
+static void
 bytestream_iface_init (gpointer g_iface,
                        gpointer iface_data)
 {
@@ -1517,4 +1448,5 @@ bytestream_iface_init (gpointer g_iface,
   klass->send = gabble_bytestream_socks5_send;
   klass->close = gabble_bytestream_socks5_close;
   klass->accept = gabble_bytestream_socks5_accept;
+  klass->block_reading = gabble_bytestream_socks5_block_reading;
 }

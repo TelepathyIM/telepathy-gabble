@@ -1411,6 +1411,12 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
           return;
         }
 
+      if (!priv->locally_accepted)
+        {
+          DEBUG ("session not locally accepted yet, not accepting");
+          return;
+        }
+
       action = JINGLE_ACTION_SESSION_ACCEPT;
       new_state = JS_STATE_PENDING_ACCEPT_SENT;
       handler = _on_accept_reply;

@@ -23,4 +23,5 @@ elif test -n "$GABBLE_TEST_REFDBG"; then
         fi
 fi
 
+export G_DEBUG=fatal-warnings" ${G_DEBUG}"
 exec @abs_top_builddir@/libtool --mode=execute $GABBLE_WRAPPER ../telepathy-gabble-debug

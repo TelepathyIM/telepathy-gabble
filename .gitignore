@@ -37,8 +37,16 @@ extensions/extensions.html
 gtk-doc.make
 install-sh
 libtool
+lib/gibber/gibber-signals-marshal.c
+lib/gibber/gibber-signals-marshal.h
+lib/gibber/gibber-signals-marshal.list
 ltmain.sh
 m4/gtk-doc.m4
+m4/libtool.m4
+m4/ltoptions.m4
+m4/ltsugar.m4
+m4/ltversion.m4
+m4/lt~obsolete.m4
 missing
 src/gabble-signals-marshal.list
 src/gabble-signals-marshal.c
@@ -58,6 +66,7 @@ tests/test-handles
 tests/test-jid-decode
 tests/test-parse-message
 tests/test-presence
+tests/twisted/gabbleconfig.py
 tests/twisted/telepathy-gabble-debug
 tests/twisted/tools/*.service
 tests/twisted/tools/exec-with-log.sh

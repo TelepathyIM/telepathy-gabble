@@ -591,7 +591,7 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       DEBUG ("no more streamhosts to try");
 
-      //g_signal_emit (self, signals[CONNECTION_ERROR], 0);
+      g_signal_emit_by_name (self, "connection-error");
 
       g_assert (priv->msg_for_acknowledge_connection != NULL);
       _gabble_connection_send_iq_error (priv->conn,
@@ -1178,7 +1178,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
     {
       DEBUG ("error during Socks5 initiation");
 
-      //g_signal_emit (self, signals[CONNECTION_ERROR], 0);
+      g_signal_emit_by_name (self, "connection-error");
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
     }
 

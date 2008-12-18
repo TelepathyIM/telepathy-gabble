@@ -544,6 +544,8 @@ bytestream_activate_next (GabbleBytestreamMultiple *self)
       priv->factory, stream_method, priv->peer_handle, priv->stream_id,
       priv->stream_init_id, priv->peer_resource, priv->state);
 
+  g_free (stream_method);
+
   g_signal_connect (priv->active_bytestream, "connection-error",
       G_CALLBACK (bytestream_connection_error_cb), self);
   g_signal_connect (priv->active_bytestream, "data-received",

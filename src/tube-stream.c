@@ -1366,6 +1366,7 @@ data_received_cb (GabbleBytestreamIface *bytestream,
   {
     DEBUG ("sending failed: %s", error->message);
     g_error_free (error);
+    g_object_unref (transport);
     return;
   }
 

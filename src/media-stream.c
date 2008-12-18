@@ -112,6 +112,9 @@ struct _GabbleMediaStreamPrivate
   /* signal handler ID for content REMOVED signal */
   gboolean removed_id;
 
+  /* source ID for initial codecs/candidates getter */
+  gboolean initial_getter_id;
+
   /* These are really booleans, but gboolean is signed. Thanks, GLib */
   unsigned closed:1;
   unsigned dispose_has_run:1;
@@ -175,6 +178,8 @@ _get_initial_codecs_and_candidates (gpointer user_data)
   GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (user_data);
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
+  priv->initial_getter_id = 0;
+
   /* we can immediately get the codecs if we're responder */
   new_remote_codecs_cb (priv->content,
       gabble_jingle_media_rtp_get_remote_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content)),
@@ -185,8 +190,6 @@ _get_initial_codecs_and_candidates (gpointer user_data)
    * miss them */
   new_remote_candidates_cb (priv->content,
       gabble_jingle_content_get_remote_candidates (priv->content), stream);
-
-  g_object_unref (stream);
 
   return FALSE;
 }
@@ -218,7 +221,8 @@ gabble_media_stream_constructor (GType type, guint n_props,
        * created, but we want to let it parse the initiation (if
        * initiated by remote end) before we pick up initial
        * codecs and candidates. */
-      g_idle_add (_get_initial_codecs_and_candidates, g_object_ref (stream));
+      priv->initial_getter_id =
+          g_idle_add (_get_initial_codecs_and_candidates, stream);
     }
 
   return obj;
@@ -561,6 +565,12 @@ gabble_media_stream_dispose (GObject *object)
 
   if (priv->dispose_has_run)
     return;
+
+  if (priv->initial_getter_id != 0)
+    {
+      g_source_remove (priv->initial_getter_id);
+      priv->initial_getter_id = 0;
+    }
 
   _gabble_media_stream_close (self);
 

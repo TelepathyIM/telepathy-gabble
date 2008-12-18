@@ -1008,6 +1008,11 @@ gabble_bytestream_socks5_send (GabbleBytestreamIface *iface,
       return FALSE;
     }
 
+  /* If something did wrong during the writting, the transport has been closed
+   * and so set to NULL. */
+  if (priv->transport == NULL)
+    return FALSE;
+
   if (!gibber_transport_buffer_is_empty (priv->transport))
     {
       /* We >don't want to send more data while the buffer isn't empty */

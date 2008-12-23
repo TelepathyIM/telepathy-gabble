@@ -1123,24 +1123,6 @@ gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
     }
   else
     {
-      LmMessage *msg;
-
-      DEBUG ("send Socks5 close stanza");
-
-      msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-          '@', "type", "set",
-          '(', "close", "",
-            '@', "xmlns", NS_BYTESTREAMS,
-            '@', "sid", priv->stream_id,
-          ')', NULL);
-
-      /* We don't really care about the answer as the bytestream
-       * is closed anyway. */
-      _gabble_connection_send_with_reply (priv->conn, msg,
-          NULL, NULL, NULL, NULL);
-
-      lm_message_unref (msg);
-
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSING, NULL);
       if (priv->transport != NULL &&
           !gibber_transport_buffer_is_empty (priv->transport))

@@ -1032,62 +1032,6 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
   return TRUE;
 }
 
-static gboolean
-handle_socks5_close_iq (GabbleBytestreamFactory *self,
-                        LmMessage *msg)
-{
-  GabbleBytestreamFactoryPrivate *priv =
-    GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
-  ConstBytestreamIdentifier bsid = { NULL, NULL };
-  GabbleBytestreamSocks5 *bytestream;
-  LmMessageNode *close_node;
-
-  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
-    return FALSE;
-
-  close_node = lm_message_node_get_child_with_namespace (msg->node, "close",
-      NS_BYTESTREAMS);
-  if (close_node == NULL)
-    return FALSE;
-
-  bsid.jid = lm_message_node_get_attribute (msg->node, "from");
-  if (bsid.jid == NULL)
-    {
-      DEBUG ("got a message without a from field");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <close> has no 'from' attribute");
-      return TRUE;
-    }
-
-  bsid.stream = lm_message_node_get_attribute (close_node, "sid");
-  if (bsid.stream == NULL)
-    {
-      DEBUG ("SOCKS5 close stanza doesn't contain stream id");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <close> has no stream ID");
-      return TRUE;
-    }
-
-  bytestream = g_hash_table_lookup (priv->socks5_bytestreams, &bsid);
-  if (bytestream == NULL)
-    {
-      DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_ITEM_NOT_FOUND, NULL);
-    }
-  else
-    {
-      DEBUG ("received SOCKS5 close stanza. Bytestream closed");
-
-      g_object_set (bytestream, "state", GABBLE_BYTESTREAM_STATE_CLOSED,
-          NULL);
-
-      _gabble_connection_acknowledge_set_iq (priv->conn, msg);
-    }
-
-  return TRUE;
-}
-
 /**
  * bytestream_factory_iq_socks5_cb:
  *
@@ -1104,9 +1048,6 @@ bytestream_factory_iq_socks5_cb (LmMessageHandler *handler,
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
 
   if (handle_socks5_query_iq (self, msg))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-
-  if (handle_socks5_close_iq (self, msg))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

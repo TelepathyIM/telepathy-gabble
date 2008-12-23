@@ -613,6 +613,7 @@ new_connection_to_socket (GabbleTubeStream *self,
   g_signal_connect (bytestream, "state-changed",
       G_CALLBACK (extra_bytestream_state_changed_cb), self);
 
+  g_object_unref (transport);
   return TRUE;
 }
 

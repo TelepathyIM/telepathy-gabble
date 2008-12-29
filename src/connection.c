@@ -1382,10 +1382,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   g_free (caps_hash);
   lm_message_unref (message);
 
-  /* broadcast presence to MUCs */
-  tp_channel_manager_foreach_channel (
-      TP_CHANNEL_MANAGER (self->muc_factory),
-      (TpExportableChannelFunc) gabble_muc_channel_send_presence, NULL);
+  gabble_muc_factory_broadcast_presence (self->muc_factory);
 
   return ret;
 }

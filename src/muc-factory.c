@@ -992,6 +992,23 @@ muc_factory_presence_cb (LmMessageHandler *handler,
 }
 
 
+void
+gabble_muc_factory_broadcast_presence (GabbleMucFactory *self)
+{
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GHashTableIter iter;
+  GabbleMucChannel *channel = NULL;
+
+  g_hash_table_iter_init (&iter, priv->text_channels);
+
+  while (g_hash_table_iter_next (&iter, NULL, (gpointer *) &channel))
+    {
+      g_assert (GABBLE_IS_MUC_CHANNEL (channel));
+      gabble_muc_channel_send_presence (channel, NULL);
+    }
+}
+
+
 static void
 gabble_muc_factory_associate_request (GabbleMucFactory *self,
                                       gpointer channel,

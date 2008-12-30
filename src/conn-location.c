@@ -121,7 +121,6 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
   guint i;
   GHashTable *return_locations = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       (GDestroyNotify) g_hash_table_destroy);
-  GHashTable *location = NULL;
 
   DEBUG ("GetLocation for contacts:");
 
@@ -133,6 +132,7 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
     {
       guint contact = g_array_index (contacts, guint, i);
       const gchar *jid = inspect_contact (base, contact);
+      GHashTable *location = NULL;
 
       location = gabble_presence_cache_get_location (conn->presence_cache, contact);
       if (location != NULL)

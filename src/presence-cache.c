@@ -93,12 +93,13 @@ struct _GabblePresenceCachePrivate
 
   GTimeVal creation_time;
 
-  // The cached contacts' location.
-  // The key is the contact's handle.
-  // The value is a GHashTable of the user's location:
-  //   - the key is a gchar* as per XEP-0080
-  //   - the value is a slice allocation GValue, the exact
-  //     type depends on the key.
+  /* The cached contacts' location.
+   * The key is the contact's TpHandle.
+   * The value is a GHashTable of the user's location:
+   *   - the key is a gchar* as per XEP-0080
+   *   - the value is a slice allocation GValue, the exact
+   *     type depends on the key.
+   */
   GHashTable *location;
 
   gboolean dispose_has_run;

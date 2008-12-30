@@ -179,6 +179,9 @@ create_msg_foreach (gpointer key,
       lm_message_node_add_child (geoloc, key, value);
       DEBUG ("\t - %s: %s", (gchar*) key, g_value_get_string (value));
     }
+  else
+    DEBUG ("\t - Unknown key dropped: %s", (gchar*) key);
+
 
 }
 

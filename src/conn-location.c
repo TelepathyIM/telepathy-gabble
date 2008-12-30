@@ -165,22 +165,20 @@ create_msg_foreach (gpointer key,
                     gpointer user_data)
 {
   LmMessageNode *geoloc = (LmMessageNode *) user_data;
-  gchar *str = NULL;
-  gchar *dup_key = g_strdup (key);
 
   if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)
     {
+      gchar *str;
       str = g_strdup_printf ("%.6f", g_value_get_double (value));
-      lm_message_node_add_child (geoloc, dup_key, str);
+      lm_message_node_add_child (geoloc, key, str);
+      DEBUG ("\t - %s: %s", (gchar*) key, str);
+      g_free (str);
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_STRING)
     {
-      str = g_value_dup_string (value);
-      lm_message_node_add_child (geoloc, dup_key, str);
+      lm_message_node_add_child (geoloc, key, value);
+      DEBUG ("\t - %s: %s", (gchar*) key, g_value_get_string (value));
     }
-  DEBUG ("\t - %s: %s", (gchar*) key, str);
-  g_free (dup_key);
-  g_free (str);
 
 }
 

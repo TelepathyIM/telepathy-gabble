@@ -209,10 +209,10 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
           "Failed to send msg" };
 
       dbus_g_method_return_error (context, &error);
-      return;
     }
+  else
+    dbus_g_method_return (context);
 
-  dbus_g_method_return (context);
   lm_message_unref (msg);
 }
 

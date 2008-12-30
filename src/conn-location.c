@@ -165,7 +165,7 @@ create_msg_foreach (gpointer key,
                     gpointer user_data)
 {
   LmMessageNode *geoloc = (LmMessageNode *) user_data;
-  gchar *str;
+  gchar *str = NULL;
   gchar *dup_key = g_strdup (key);
 
   if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)

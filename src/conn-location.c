@@ -282,9 +282,6 @@ update_location_from_msg (GabbleConnection *conn,
                           LmMessage *msg)
 {
   LmMessageNode *node, *subloc_node;
-  gchar *key, *str;
-  gdouble double_value;
-  GValue *value;
   GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
   guint contact = lookup_contact ((TpBaseConnection *) conn, from);
@@ -298,6 +295,10 @@ update_location_from_msg (GabbleConnection *conn,
   for (subloc_node = node->children; subloc_node != NULL;
       subloc_node = subloc_node->next)
     {
+      GValue *value;
+      gdouble double_value;
+      gchar *key, *str;
+
       key = subloc_node->name;
 
       if ((strcmp (key, "lat") == 0 ||

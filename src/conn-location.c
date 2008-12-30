@@ -213,6 +213,7 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
     }
 
   dbus_g_method_return (context);
+  lm_message_unref (msg);
 }
 
 void

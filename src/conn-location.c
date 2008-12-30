@@ -13,32 +13,8 @@
 #include "namespaces.h"
 #include "pubsub.h"
 
-#define XEP0080_ALT "alt"
-#define XEP0080_AREA "area"
-#define XEP0080_BEARING "bearing"
-#define XEP0080_BUILDING "building"
-#define XEP0080_COUNTRY "country"
-#define XEP0080_DESCRIPTION "description"
-#define XEP0080_ERROR "error"
-#define XEP0080_FLOOR "floor"
-#define XEP0080_LAT "lat"
-#define XEP0080_LOCALITY "locality"
-#define XEP0080_LON "lon"
-#define XEP0080_POSTAL_CODE "postalcode"
-#define XEP0080_REGION "region"
-#define XEP0080_ROOM "room"
-#define XEP0080_STREET "street"
-#define XEP0080_TEXT "text"
-#define XEP0080_TIMESTAMP "timestamp"
-#define XEP0080_URI "uri"
-
-#define LOCATION_ACCURACY_LEVEL "accuracy-level"
-#define LOCATION_COUNTRY_CODE "countrycode"
-#define LOCATION_VERTICAL_ERROR_M "vertical-error-m"
-#define LOCATION_HORIZONTAL_ERROR_M "horizontal-error-m"
-
-static gboolean update_location (GabbleConnection *conn, const gchar *from,
-    LmMessage *msg);
+static gboolean update_location_from_msg (GabbleConnection *conn,
+    const gchar *from, LmMessage *msg);
 
 /* XXX: similar to conn-olpc.c's inspect_contact(), except that it assumes
  * that the handle is valid. (Does tp_handle_inspect check validity anyway?)
@@ -130,7 +106,7 @@ pep_reply_cb (GabbleConnection *conn,
   from = lm_message_node_get_attribute (reply_msg->node, "from");
 
   if (from != NULL)
-    update_location (conn, from, reply_msg);
+    update_location_from_msg (conn, from, reply_msg);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -144,7 +120,7 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   guint i;
   GHashTable *return_locations = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
-      NULL);
+      (GDestroyNotify) g_hash_table_destroy);
   GHashTable *location = NULL;
 
   DEBUG ("GetLocation for contacts:");
@@ -158,10 +134,9 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
       guint contact = g_array_index (contacts, guint, i);
       const gchar *jid = inspect_contact (base, contact);
 
-      /* Check for cached locations */
-      if (gabble_presence_cache_get_location (conn->presence_cache, contact, &location))
+      location = gabble_presence_cache_get_location (conn->presence_cache, contact);
+      if (location != NULL)
         {
-          //FIXME: where to unref the location?
           DEBUG (" - %s: cached", jid);
           g_hash_table_insert (return_locations, GINT_TO_POINTER (contact), location);
         }
@@ -302,9 +277,9 @@ conn_location_propeties_getter (GObject *object,
 }
 
 static gboolean
-update_location (GabbleConnection *conn,
-                 const gchar *from,
-                 LmMessage *msg)
+update_location_from_msg (GabbleConnection *conn,
+                          const gchar *from,
+                          LmMessage *msg)
 {
   LmMessageNode *node, *subloc_node;
   gchar *key, *str;
@@ -347,12 +322,10 @@ update_location (GabbleConnection *conn,
       g_hash_table_insert (location, g_strdup (key), value);
     }
 
-
-  gabble_presence_cache_update_location (conn->presence_cache, contact,
-      location);
   gabble_svc_connection_interface_location_emit_location_updated (conn,
       contact, location);
-  g_hash_table_unref (location);
+  gabble_presence_cache_update_location (conn->presence_cache, contact,
+      location);
 
   return TRUE;
 }
@@ -371,6 +344,6 @@ geolocation_event_handler (GabbleConnection *conn,
 
   from = lm_message_node_get_attribute (msg->node, "from");
 
-  return update_location (conn, from, msg);
+  return update_location_from_msg (conn, from, msg);
 }
 

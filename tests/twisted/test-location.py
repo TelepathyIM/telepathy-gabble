@@ -13,7 +13,10 @@ def test(q, bus, conn, stream):
         dbus.Interface(conn, location_iface)
 
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='set', query_ns='http://jabber.org/protocol/pubsub'),
+        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]))
+    #q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     # check location properties
     #properties = conn.GetAll(
@@ -24,8 +27,8 @@ def test(q, bus, conn, stream):
     #assert properties.get('LocationAccessControl') is not None
 
     # discard activities request
-    q.expect('stream-iq', iq_type='set',
-        query_ns='http://jabber.org/protocol/pubsub')
+    #q.expect('stream-iq', iq_type='set',
+    #    query_ns='http://jabber.org/protocol/pubsub')
 
     conn.Location.SetLocation({
         'lat': dbus.Double(0.0, variant_level=1), 'lon': 0.0})

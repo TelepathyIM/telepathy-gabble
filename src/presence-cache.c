@@ -92,6 +92,13 @@ struct _GabblePresenceCachePrivate
   guint caps_serial;
 
   GTimeVal creation_time;
+
+  // The cached contacts' location.
+  // The key is the contact's handle.
+  // The value is a GHashTable of the user's location:
+  //   - the key is a gchar* as per XEP-0080
+  //   - the value is a slice allocation GValue, the exact
+  //     type depends on the key.
   GHashTable *location;
 
   gboolean dispose_has_run;
@@ -382,7 +389,7 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
   priv->caps_serial = 1;
 
   priv->location = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
-      NULL);
+      (GDestroyNotify) g_hash_table_destroy);
 }
 
 static GObject *
@@ -1800,37 +1807,26 @@ gabble_presence_cache_update_location (GabblePresenceCache *cache,
                                        GHashTable *new_location)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  GHashTable *cur_location;
 
-  // FIXME: Necessary? should the destroy cb take care of that?
-  cur_location = g_hash_table_lookup (priv->location, GINT_TO_POINTER (handle));
-  if (!cur_location)
-    cur_location = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-        (GDestroyNotify) tp_g_value_slice_free);
-
-  // Copy keys
-  g_hash_table_remove_all (cur_location);
-  g_hash_table_foreach (new_location, update_location_for_each, cur_location);
-
-  g_hash_table_replace (priv->location, GINT_TO_POINTER (handle), cur_location);
+  g_hash_table_insert (priv->location, GINT_TO_POINTER (handle), new_location);
 
   g_signal_emit (cache, signals[LOCATION_UPDATED], 0, handle);
 }
 
-
-gboolean
+// The return value should be g_object_unref'ed.
+GHashTable *
 gabble_presence_cache_get_location (GabblePresenceCache *cache,
-                                    TpHandle handle,
-                                    GHashTable **location)
+                                    TpHandle handle)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GHashTable *location = NULL;
 
-  *location = g_hash_table_lookup (priv->location, GINT_TO_POINTER (handle));
-  if (*location != NULL)
+  location = g_hash_table_lookup (priv->location, GINT_TO_POINTER (handle));
+  if (location != NULL)
     {
-      g_hash_table_ref(*location);
-      return TRUE;
+      g_hash_table_ref(location);
+      return location;
     }
 
-  return FALSE;
+  return NULL;
 }

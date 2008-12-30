@@ -113,8 +113,8 @@ gboolean gabble_presence_cache_is_unsure (GabblePresenceCache *cache);
 
 void gabble_presence_cache_update_location (GabblePresenceCache *cache,
     TpHandle handle, GHashTable *location);
-gboolean gabble_presence_cache_get_location (GabblePresenceCache *cache,
-    TpHandle handle, GHashTable **location);
+GHashTable* gabble_presence_cache_get_location (GabblePresenceCache *cache,
+    TpHandle handle);
 
 G_END_DECLS
 

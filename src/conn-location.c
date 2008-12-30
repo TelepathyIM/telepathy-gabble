@@ -132,7 +132,7 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
     {
       guint contact = g_array_index (contacts, guint, i);
       const gchar *jid = inspect_contact (base, contact);
-      GHashTable *location = NULL;
+      GHashTable *location;
 
       location = gabble_presence_cache_get_location (conn->presence_cache, contact);
       if (location != NULL)

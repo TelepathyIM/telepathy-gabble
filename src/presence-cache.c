@@ -1814,7 +1814,7 @@ gabble_presence_cache_update_location (GabblePresenceCache *cache,
   g_signal_emit (cache, signals[LOCATION_UPDATED], 0, handle);
 }
 
-// The return value should be g_object_unref'ed.
+/* The return value should be g_hash_table_unref'ed. */
 GHashTable *
 gabble_presence_cache_get_location (GabblePresenceCache *cache,
                                     TpHandle handle)

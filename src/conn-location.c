@@ -318,6 +318,12 @@ update_location_from_msg (GabbleConnection *conn,
           g_value_take_string (value, str);
           DEBUG ("\t - %s: %s", key, str);
         }
+      else
+        {
+          DEBUG ("Unable to read the key %s from the location of %s",
+              key, from);
+          continue;
+        }
 
       g_hash_table_insert (location, g_strdup (key), value);
     }

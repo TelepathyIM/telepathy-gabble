@@ -363,7 +363,11 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
   signals[CAPABILITIES_DISCOVERED] = g_signal_new (
     "capabilities-discovered",
-    gabble_marshal_VOID__UINT, G_TYPE_NONE,
+    G_TYPE_FROM_CLASS (klass),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE,
     1, G_TYPE_UINT);
   signals[LOCATION_UPDATED] = g_signal_new (
     "location-update",
@@ -1788,18 +1792,6 @@ gabble_presence_cache_is_unsure (GabblePresenceCache *cache)
   DEBUG ("Diff: %lu", diff);
 
   return (diff < UNSURE_PERIOD);
-}
-
-static void update_location_for_each (gpointer key,
-                                      gpointer value,
-                                      gpointer user_data)
-static void
-update_location_for_each (gpointer key,
-                          gpointer value,
-                          gpointer user_data)
-{
-  GHashTable *location = (GHashTable*) user_data;
-  g_hash_table_insert (location, g_strdup(key), tp_g_value_slice_dup (value));
 }
 
 void

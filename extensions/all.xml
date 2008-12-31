@@ -90,7 +90,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   <tp:external-type name="DBus_Tube_Member" type="(us)"
     from="Telepathy specification"/>
 
-<<<<<<< HEAD:extensions/all.xml
   <!-- use types from Connection_Interface_Contact_Capabilities -->
   <tp:external-type name="Requestable_Channel_Class" type="(a{sv}as)"
     from="Telepathy specification"/>
@@ -103,8 +102,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   <tp:external-type name="Unix_Timestamp" type="u"
     from="Telepathy specification"/>
 
-=======
->>>>>>> 68d5a39... Location: add spec Connection.Interface.Presence in extensions/ for Rich_Presence_Access_Control_Type:extensions/all.xml
 </tp:generic-types>
 
 </tp:spec>

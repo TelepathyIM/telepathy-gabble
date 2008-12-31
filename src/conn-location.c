@@ -176,7 +176,7 @@ create_msg_foreach (gpointer key,
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_STRING)
     {
-      lm_message_node_add_child (geoloc, key, value);
+      lm_message_node_add_child (geoloc, key, g_value_get_string(value));
       DEBUG ("\t - %s: %s", (gchar*) key, g_value_get_string (value));
     }
   else

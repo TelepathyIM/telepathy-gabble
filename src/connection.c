@@ -2060,7 +2060,7 @@ connection_disco_cb (GabbleDisco *disco,
       DEBUG ("set features flags to %d", conn->features);
     }
 
-  if (conn->features && GABBLE_CONNECTION_FEATURES_PEP)
+  if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
     {
       const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
           GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES, NULL };

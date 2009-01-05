@@ -539,7 +539,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
   if (fully_received)
     {
       DEBUG ("fully received %zu bytes of data", str->len);
-      g_signal_emit_by_name (G_OBJECT (self), "data-receied", sender, str);
+      g_signal_emit_by_name (G_OBJECT (self), "data-received", sender, str);
       g_string_free (str, TRUE);
     }
 }

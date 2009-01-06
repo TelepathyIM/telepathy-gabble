@@ -115,7 +115,8 @@ EXTRA_DIST = \
 	jingle/jingletest.py \
 	jingle/jingletest2.py \
 	ns.py \
-	olpc/util.py
+	olpc/util.py \
+	tubes/muctubeutil.py
 
 noinst_PROGRAMS = \
 	telepathy-gabble-debug

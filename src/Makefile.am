@@ -19,6 +19,8 @@ libgabble_convenience_la_SOURCES = \
     bytestream-iface.c \
     bytestream-muc.h \
     bytestream-muc.c \
+    bytestream-socks5.h \
+    bytestream-socks5.c \
     capabilities.h \
     capabilities.c \
     caps-hash.h \

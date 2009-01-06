@@ -1387,8 +1387,6 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   return ret;
 }
 
-static LmMessage *_lm_iq_message_make_result (LmMessage *iq_message);
-
 /**
  * _gabble_connection_send_iq_result
  *
@@ -1403,7 +1401,7 @@ _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
   g_assert (LM_MESSAGE_TYPE_IQ == lm_message_get_type (iq));
   g_assert (LM_MESSAGE_SUB_TYPE_SET == lm_message_get_sub_type (iq));
 
-  result = _lm_iq_message_make_result (iq);
+  result = lm_iq_message_make_result (iq);
 
   if (NULL != result)
     {
@@ -1452,36 +1450,6 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
   lm_message_unref (msg);
 }
 
-static LmMessage *
-_lm_iq_message_make_result (LmMessage *iq_message)
-{
-  LmMessage *result;
-  LmMessageNode *iq, *result_iq;
-  const gchar *from_jid, *id;
-
-  g_assert (lm_message_get_type (iq_message) == LM_MESSAGE_TYPE_IQ);
-  g_assert (lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_GET ||
-            lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_SET);
-
-  iq = lm_message_get_node (iq_message);
-  id = lm_message_node_get_attribute (iq, "id");
-
-  if (id == NULL)
-    {
-      NODE_DEBUG (iq, "can't acknowledge IQ with no id");
-      return NULL;
-    }
-
-  from_jid = lm_message_node_get_attribute (iq, "from");
-
-  result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
-                                         LM_MESSAGE_SUB_TYPE_RESULT);
-  result_iq = lm_message_get_node (result);
-  lm_message_node_set_attribute (result_iq, "id", id);
-
-  return result;
-}
-
 /**
  * connection_iq_disco_cb
  *
@@ -1527,7 +1495,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   else
     suffix = node + strlen (NS_GABBLE_CAPS) + 1;
 
-  result = _lm_iq_message_make_result (message);
+  result = lm_iq_message_make_result (message);
   result_iq = lm_message_get_node (result);
   result_query = lm_message_node_add_child (result_iq, "query", NULL);
   lm_message_node_set_attribute (result_query, "xmlns", NS_DISCO_INFO);

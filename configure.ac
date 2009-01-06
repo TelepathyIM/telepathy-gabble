@@ -171,6 +171,9 @@ PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0 >= 1.3.2)
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
+dnl Check for functions
+AC_CHECK_FUNCS(getifaddrs)
+
 AC_OUTPUT( Makefile \
            docs/Makefile \
            extensions/Makefile \

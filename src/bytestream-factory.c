@@ -1,6 +1,6 @@
 /*
  * bytestream-factory.c - Source for GabbleBytestreamFactory
- * Copyright (C) 2007 Collabora Ltd.
+ * Copyright (C) 2007-2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -33,6 +33,7 @@
 #include "bytestream-ibb.h"
 #include "bytestream-iface.h"
 #include "bytestream-muc.h"
+#include "bytestream-socks5.h"
 #include "connection.h"
 #include "debug.h"
 #include "namespaces.h"
@@ -108,6 +109,7 @@ struct _GabbleBytestreamFactoryPrivate
   GabbleConnection *conn;
   LmMessageHandler *iq_si_cb;
   LmMessageHandler *iq_ibb_cb;
+  LmMessageHandler *iq_socks5_cb;
   LmMessageHandler *msg_data_cb;
 
   /* SI-initiated bytestreams - data sent by normal messages, IQs used to
@@ -115,6 +117,8 @@ struct _GabbleBytestreamFactoryPrivate
    *
    * BytestreamIdentifier -> GabbleBytestreamIBB */
   GHashTable *ibb_bytestreams;
+  /* BytestreamIdentifier -> GabbleBytestreamSocks5 */
+  GHashTable *socks5_bytestreams;
 
   /* MUC pseudo-IBB - data sent by groupchat messages, IQs not allowed.
    *
@@ -138,6 +142,10 @@ static LmHandlerResult
 bytestream_factory_iq_ibb_cb (LmMessageHandler *handler, LmConnection *lmconn,
     LmMessage *message, gpointer user_data);
 
+static LmHandlerResult
+bytestream_factory_iq_socks5_cb (LmMessageHandler *handler,
+    LmConnection *lmconn, LmMessage *message, gpointer user_data);
+
 static void
 gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
 {
@@ -150,6 +158,9 @@ gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
       bytestream_id_equal, bytestream_id_free, g_object_unref);
 
   priv->muc_bytestreams = g_hash_table_new_full (bytestream_id_hash,
+      bytestream_id_equal, bytestream_id_free, g_object_unref);
+
+  priv->socks5_bytestreams = g_hash_table_new_full (bytestream_id_hash,
       bytestream_id_equal, bytestream_id_free, g_object_unref);
 }
 
@@ -183,6 +194,11 @@ gabble_bytestream_factory_constructor (GType type,
   lm_connection_register_message_handler (priv->conn->lmconn, priv->iq_ibb_cb,
       LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
 
+  priv->iq_socks5_cb = lm_message_handler_new (bytestream_factory_iq_socks5_cb,
+      self, NULL);
+  lm_connection_register_message_handler (priv->conn->lmconn,
+      priv->iq_socks5_cb, LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
+
   return obj;
 }
 
@@ -211,11 +227,18 @@ gabble_bytestream_factory_dispose (GObject *object)
       priv->iq_ibb_cb, LM_MESSAGE_TYPE_IQ);
   lm_message_handler_unref (priv->iq_ibb_cb);
 
+  lm_connection_unregister_message_handler (priv->conn->lmconn,
+      priv->iq_socks5_cb, LM_MESSAGE_TYPE_IQ);
+  lm_message_handler_unref (priv->iq_socks5_cb);
+
   g_hash_table_destroy (priv->ibb_bytestreams);
   priv->ibb_bytestreams = NULL;
 
   g_hash_table_destroy (priv->muc_bytestreams);
   priv->muc_bytestreams = NULL;
+
+  g_hash_table_destroy (priv->socks5_bytestreams);
+  priv->socks5_bytestreams = NULL;
 
   if (G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose (object);
@@ -297,7 +320,7 @@ remove_bytestream (GabbleBytestreamFactory *self,
     (self);
   BytestreamIdentifier bsid = { NULL, NULL };
   guint handle_type;
-  GHashTable *table;
+  GHashTable *table = NULL;
 
   g_object_get (bytestream,
       "stream-id", &(bsid.stream),
@@ -311,7 +334,10 @@ remove_bytestream (GabbleBytestreamFactory *self,
     }
   else
     {
-      table = priv->ibb_bytestreams;
+      if (GABBLE_IS_BYTESTREAM_IBB (bytestream))
+        table = priv->ibb_bytestreams;
+      else if (GABBLE_IS_BYTESTREAM_SOCKS5 (bytestream))
+        table = priv->socks5_bytestreams;
     }
 
   if (table == NULL)
@@ -476,6 +502,8 @@ gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
               '@', "var", "stream-method",
               '@', "type", "list-single",
               '(', "option", "",
+                '(', "value", NS_BYTESTREAMS,
+                ')',
                 '(', "value", NS_IBB,
                 ')',
               ')',
@@ -557,6 +585,14 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
         {
           bytestream = (GabbleBytestreamIface *)
             gabble_bytestream_factory_create_ibb (self, peer_handle,
+              stream_id, stream_init_id, peer_resource,
+              GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
+          break;
+        }
+      else if (!tp_strdiff (l->data, NS_BYTESTREAMS))
+        {
+          bytestream = (GabbleBytestreamIface *)
+            gabble_bytestream_factory_create_socks5 (self, peer_handle,
               stream_id, stream_init_id, peer_resource,
               GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
           break;
@@ -923,6 +959,100 @@ bytestream_factory_msg_data_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
+static gboolean
+handle_socks5_query_iq (GabbleBytestreamFactory *self,
+                        LmMessage *msg)
+{
+  GabbleBytestreamFactoryPrivate *priv =
+    GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  GabbleBytestreamSocks5 *bytestream;
+  LmMessageNode *query_node;
+  LmMessageNode *child_node;
+  ConstBytestreamIdentifier bsid = { NULL, NULL };
+  const gchar *tmp;
+
+  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+    return FALSE;
+
+  query_node = lm_message_node_get_child_with_namespace (msg->node,
+      "query", NS_BYTESTREAMS);
+  if (query_node == NULL)
+    return FALSE;
+
+  bsid.jid = lm_message_node_get_attribute (msg->node, "from");
+  if (bsid.jid == NULL)
+    {
+      DEBUG ("got a message without a from field");
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <query> has no 'from' attribute");
+      return TRUE;
+    }
+
+  bsid.stream = lm_message_node_get_attribute (query_node, "sid");
+  if (bsid.stream == NULL)
+    {
+      DEBUG ("SOCKS5 query stanza doesn't contain stream id");
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <query> has no stream ID");
+      return TRUE;
+    }
+
+  bytestream = g_hash_table_lookup (priv->socks5_bytestreams, &bsid);
+  if (bytestream == NULL)
+    {
+      /* We don't accept streams not previously announced using SI */
+      DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_ITEM_NOT_FOUND,
+          "SOCKS5 <query> has an unknown stream ID");
+      return TRUE;
+    }
+
+  tmp = lm_message_node_get_attribute (query_node, "mode");
+  if (tp_strdiff (tmp, "tcp"))
+    {
+      DEBUG ("non-TCP SOCKS5 bytestreams are not supported");
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST,
+          "SOCKS5 non-TCP bytestreams are not supported");
+      return TRUE;
+    }
+
+  child_node = query_node->children;
+  while (child_node)
+    {
+      if (!tp_strdiff (child_node->name, "streamhost"))
+        gabble_bytestream_socks5_add_streamhost (bytestream, child_node);
+
+      child_node = child_node->next;
+    }
+
+  gabble_bytestream_socks5_connect_to_streamhost (bytestream, msg);
+
+  return TRUE;
+}
+
+/**
+ * bytestream_factory_iq_socks5_cb:
+ *
+ * Called by loudmouth when we get an incoming <iq>.
+ * This handler is concerned with SOCKS5 iq's.
+ *
+ */
+static LmHandlerResult
+bytestream_factory_iq_socks5_cb (LmMessageHandler *handler,
+                                 LmConnection *lmconn,
+                                 LmMessage *msg,
+                                 gpointer user_data)
+{
+  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+
+  if (handle_socks5_query_iq (self, msg))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+}
+
 GabbleBytestreamFactory *
 gabble_bytestream_factory_new (GabbleConnection *conn)
 {
@@ -990,7 +1120,7 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
       G_CALLBACK (bytestream_state_changed_cb), self);
 
   id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (ibb));
-  DEBUG ("add private bytestream <%s> from <%s>", id->stream, id->jid);
+  DEBUG ("add IBB bytestream <%s> from <%s>", id->stream, id->jid);
   g_hash_table_insert (priv->ibb_bytestreams, id, ibb);
 
   return ibb;
@@ -1024,6 +1154,40 @@ gabble_bytestream_factory_create_muc (GabbleBytestreamFactory *self,
   g_hash_table_insert (priv->muc_bytestreams, id, bytestream);
 
   return bytestream;
+}
+
+GabbleBytestreamSocks5 *
+gabble_bytestream_factory_create_socks5 (GabbleBytestreamFactory *self,
+                                         TpHandle peer_handle,
+                                         const gchar *stream_id,
+                                         const gchar *stream_init_id,
+                                         const gchar *peer_resource,
+                                         GabbleBytestreamState state)
+{
+  GabbleBytestreamFactoryPrivate *priv;
+  GabbleBytestreamSocks5 *socks5;
+  BytestreamIdentifier *id;
+
+  g_return_val_if_fail (GABBLE_IS_BYTESTREAM_FACTORY (self), NULL);
+  priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+
+  socks5 = g_object_new (GABBLE_TYPE_BYTESTREAM_SOCKS5,
+      "connection", priv->conn,
+      "peer-handle", peer_handle,
+      "stream-id", stream_id,
+      "state", state,
+      "stream-init-id", stream_init_id,
+      "peer-resource", peer_resource,
+      NULL);
+
+  g_signal_connect (socks5, "state-changed",
+      G_CALLBACK (bytestream_state_changed_cb), self);
+
+  id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (socks5));
+  DEBUG ("add SOCKS5 bytestream <%s> from <%s>", id->stream, id->jid);
+  g_hash_table_insert (priv->socks5_bytestreams, id, socks5);
+
+  return socks5;
 }
 
 struct _streaminit_reply_cb_data
@@ -1124,6 +1288,14 @@ streaminit_reply_cb (GabbleConnection *conn,
           /* Remote user has accepted the stream */
           bytestream = GABBLE_BYTESTREAM_IFACE (
               gabble_bytestream_factory_create_ibb (self, peer_handle,
+              data->stream_id, NULL, peer_resource,
+              GABBLE_BYTESTREAM_STATE_INITIATING));
+        }
+      else if (!tp_strdiff (stream_method, NS_BYTESTREAMS))
+        {
+          /* Remote user has accepted the stream */
+          bytestream = GABBLE_BYTESTREAM_IFACE (
+              gabble_bytestream_factory_create_socks5 (self, peer_handle,
               data->stream_id, NULL, peer_resource,
               GABBLE_BYTESTREAM_STATE_INITIATING));
         }

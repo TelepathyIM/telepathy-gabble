@@ -78,4 +78,7 @@ LmMessageNode * lm_message_node_get_child_any_ns (LmMessageNode *node,
     const gchar *name);
 
 
+LmMessage *
+lm_iq_message_make_result (LmMessage *iq_message);
+
 #endif /* __GABBLE_UTIL_H__ */

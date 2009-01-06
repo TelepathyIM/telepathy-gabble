@@ -892,3 +892,42 @@ lm_message_node_add_children_from_properties (LmMessageNode *node,
 
   g_hash_table_foreach (properties, set_child_from_property, &data);
 }
+
+/**
+ * lm_iq_message_make_result:
+ * @iq_message: A LmMessage containing an IQ stanza to acknowledge
+ *
+ * Creates a result IQ stanza to acknowledge @iq_message.
+ *
+ * Returns: A newly-created LmMessage containing the result IQ stanza.
+ */
+LmMessage *
+lm_iq_message_make_result (LmMessage *iq_message)
+{
+  LmMessage *result;
+  LmMessageNode *iq, *result_iq;
+  const gchar *from_jid, *id;
+
+  g_assert (lm_message_get_type (iq_message) == LM_MESSAGE_TYPE_IQ);
+  g_assert (lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_GET ||
+            lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_SET);
+
+  iq = lm_message_get_node (iq_message);
+  id = lm_message_node_get_attribute (iq, "id");
+
+  if (id == NULL)
+    {
+      NODE_DEBUG (iq, "can't acknowledge IQ with no id");
+      return NULL;
+    }
+
+  from_jid = lm_message_node_get_attribute (iq, "from");
+
+  result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
+                                         LM_MESSAGE_SUB_TYPE_RESULT);
+  result_iq = lm_message_get_node (result);
+  lm_message_node_set_attribute (result_iq, "id", id);
+
+  return result;
+}
+

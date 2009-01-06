@@ -22,6 +22,7 @@ NS_SI = 'http://jabber.org/protocol/si'
 NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
 NS_IBB = 'http://jabber.org/protocol/ibb'
 NS_X_DATA = 'jabber:x:data'
+NS_BYTESTREAMS = 'http://jabber.org/protocol/bytestreams'
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -309,24 +310,6 @@ def test(q, bus, conn, stream):
                 1,
              'org.freedesktop.Telepathy.Channel.TargetHandle':
                 bob_handle
-            });
-    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
-    # CreateChannel failed, we expect no new channel
-    check_conn_properties(q, bus, conn, stream, [old_tubes_channel_properties])
-
-    # Try to create a DBusTube.DRAFT channel. This is not implemented yet, so
-    # it will fail. But it should not assert.
-    call_async(q, requestotron, 'CreateChannel',
-            {'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType':
-                1,
-             'org.freedesktop.Telepathy.Channel.TargetHandle':
-                bob_handle,
-             'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName':
-                "com.example.ServiceName",
-             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
-                dbus.Dictionary({'foo': 'bar'}, signature='sv'),
             });
     ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
     # CreateChannel failed, we expect no new channel
@@ -689,6 +672,8 @@ def test(q, bus, conn, stream):
     assert field['var'] == 'stream-method'
     assert field['type'] == 'list-single'
     value = xpath.queryForNodes('/field/option/value', field)[0]
+    assert str(value) == NS_BYTESTREAMS
+    value = xpath.queryForNodes('/field/option/value', field)[1]
     assert str(value) == NS_IBB
 
     tube = xpath.queryForNodes('/si/tube', si)[0]

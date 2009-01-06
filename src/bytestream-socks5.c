@@ -591,6 +591,8 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       DEBUG ("no more streamhosts to try");
 
+      g_signal_emit_by_name (self, "connection-error");
+
       g_assert (priv->msg_for_acknowledge_connection != NULL);
       _gabble_connection_send_iq_error (priv->conn,
           priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
@@ -603,8 +605,6 @@ socks5_error (GabbleBytestreamSocks5 *self)
   DEBUG ("error, closing the connection\n");
 
   gabble_bytestream_socks5_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
-
-  return;
 }
 
 /* Process the received data and returns the number of bytes that have been
@@ -1159,6 +1159,8 @@ socks5_init_reply_cb (GabbleConnection *conn,
   else
     {
       DEBUG ("error during Socks5 initiation");
+
+      g_signal_emit_by_name (self, "connection-error");
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
     }
 

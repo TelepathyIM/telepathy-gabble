@@ -1,3 +1,22 @@
+telepathy-gabble 0.7.18 (2009-01-06)
+====================================
+
+The "The Orchestral Tubular Socks"
+
+Enhancements:
+
+* Implement SOCKS5 bytestreams (XEP-0065) in stream tubes.
+
+* Implement a stream initiation fallback mechanism allowing to use IBB if
+  we can't connect to peer using SOCKS5.
+
+Fixes:
+
+* Don't crash on setting presence if there are open MUC Tubes.
+
+* Stream tube channel advertises the immutable channel properties,
+  including those not on the Channel interface.
+
 telepathy-gabble 0.7.17 (2008-12-14)
 ====================================
 

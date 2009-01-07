@@ -8,6 +8,7 @@ import os
 import sha
 import sys
 import time
+import random
 
 import ns
 import servicetest
@@ -99,7 +100,7 @@ class JabberAuthenticator(xmlstream.Authenticator):
 
     def streamStarted(self, root=None):
         if root:
-            self.xmlstream.sid = root.getAttribute('id')
+            self.xmlstream.sid = '%x' % random.randint(1, sys.maxint)
 
         self.xmlstream.sendHeader()
         self.xmlstream.addOnetimeObserver(

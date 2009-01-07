@@ -199,7 +199,7 @@ gabble_bytestream_muc_set_property (GObject *object,
         if (priv->state != g_value_get_uint (value))
             {
               priv->state = g_value_get_uint (value);
-              g_signal_emit_by_name (object, "state-changed", 0, priv->state);
+              g_signal_emit_by_name (object, "state-changed", priv->state);
             }
         break;
       default:

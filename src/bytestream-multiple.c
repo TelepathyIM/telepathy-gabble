@@ -534,7 +534,7 @@ bytestream_activate_next (GabbleBytestreamMultiple *self)
 {
   GabbleBytestreamMultiplePrivate *priv =
       GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
-  const gchar *stream_method;
+  gchar *stream_method;
 
   g_return_if_fail (priv->active_bytestream == NULL);
   /* The caller has to be sure that there is a fallback method */

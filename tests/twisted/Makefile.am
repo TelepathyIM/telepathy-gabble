@@ -37,6 +37,7 @@ TWISTED_TESTS = \
 	text/test-text-no-body.py \
 	text/test-text.py \
 	tubes/muc-presence.py \
+	tubes/close-muc-with-closed-tube.py \
 	tubes/test-get-available-tubes.py \
 	tubes/test-muc-accept-stream-tube-ibb.py \
 	tubes/test-muc-offer-dbus-tube.py \

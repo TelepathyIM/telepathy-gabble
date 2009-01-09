@@ -50,6 +50,7 @@ TWISTED_TESTS = \
 	tubes/offer-accept-private-stream-tube-si-fallback.py \
 	tubes/offer-muc-dbus-tube.py \
 	tubes/offer-muc-stream-tube-ibb.py \
+	tubes/test-muc-offer-dbus-private-tube.py \
 	tubes/ensure-si-tube.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \

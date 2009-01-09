@@ -1132,9 +1132,6 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_destroy (table);
 
   /* 1-1 Channel.Type.DBusTube */
-  /* Channel.Type.DBusTube.DRAFT is not fully implemented yet, so let's
-   * disable this. FIXME: enable this when implemented. */
-#if 0
   table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
       (GDestroyNotify) tp_g_value_slice_free);
 
@@ -1151,7 +1148,6 @@ gabble_private_tubes_factory_foreach_channel_class (
   func (manager, table, dbus_tube_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
-#endif
 }
 
 
@@ -1173,11 +1169,6 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
 
   channel_type = tp_asv_get_string (request_properties,
             TP_IFACE_CHANNEL ".ChannelType");
-
-  /* Channel.Type.DBusTube.DRAFT is not fully implemented yet, so let's
-   * disable this. FIXME: enable this when implemented. */
-  if (!tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
-    return FALSE;
 
   if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&

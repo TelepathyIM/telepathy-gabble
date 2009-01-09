@@ -10,7 +10,7 @@ from servicetest import call_async, EventPattern, tp_name_prefix
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 
 from twisted.words.xish import domish, xpath
-from ns import DISCO_INFO
+from ns import DISCO_INFO, TUBES, SI, FEATURE_NEG, IBB, MUC_BYTESTREAM, X_DATA
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -18,14 +18,6 @@ sample_parameters = dbus.Dictionary({
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
-
-# FIXME: use ns.py
-NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
-NS_SI = 'http://jabber.org/protocol/si'
-NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
-NS_IBB = 'http://jabber.org/protocol/ibb'
-NS_MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
-NS_X_DATA = 'jabber:x:data'
 
 HT_CONTACT = 1
 
@@ -78,7 +70,7 @@ def test(q, bus, conn, stream):
 
     # reply to disco query
     event = q.expect('stream-iq', to='alice@localhost/Test', query_ns=DISCO_INFO)
-    stream.send(make_caps_disco_reply(stream, event.stanza, [NS_TUBES]))
+    stream.send(make_caps_disco_reply(stream, event.stanza, [TUBES]))
 
     sync_stream(q, stream)
 
@@ -132,7 +124,7 @@ def test(q, bus, conn, stream):
     iq = iq_event.stanza
 
     tube_nodes = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]'
-        % NS_TUBES, iq)
+        % TUBES, iq)
     assert len(tube_nodes) == 1
     tube = tube_nodes[0]
     tube['type'] = 'dbus'
@@ -170,19 +162,19 @@ def test(q, bus, conn, stream):
     result = make_result_iq(stream, iq)
     result['from'] = 'alice@localhost/Test'
     si = result.firstChildElement()
-    feature = si.addElement((NS_FEATURE_NEG, 'feature'))
-    x = feature.addElement((NS_X_DATA, 'x'))
+    feature = si.addElement((FEATURE_NEG, 'feature'))
+    x = feature.addElement((X_DATA, 'x'))
     x['type'] = 'submit'
     field = x.addElement((None, 'field'))
     field['var'] = 'stream-method'
     value = field.addElement((None, 'value'))
-    value.addContent(NS_IBB)
-    si.addElement((NS_TUBES, 'tube'))
+    value.addContent(IBB)
+    si.addElement((TUBES, 'tube'))
     stream.send(result)
 
     # wait IBB init IQ
     event = q.expect('stream-iq', to='alice@localhost/Test',
-        query_name='open', query_ns=NS_IBB)
+        query_name='open', query_ns=IBB)
     iq = event.stanza
     open = xpath.queryForNodes('/iq/open', iq)[0]
     assert open['sid'] == dbus_stream_id
@@ -204,7 +196,7 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-message', to='alice@localhost/Test')
     message = event.stanza
 
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % IBB,
         message)
     assert data_nodes is not None
     assert len(data_nodes) == 1

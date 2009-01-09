@@ -28,6 +28,17 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
 
+#include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/dbus.h>
+#include <telepathy-glib/exportable-channel.h>
+#include <telepathy-glib/group-mixin.h>
+#include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/svc-generic.h>
+
+#include "extensions/extensions.h"
+
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
 #include "base64.h"
@@ -51,11 +62,32 @@
  * arbitrary limit on the queue size set to 4MB. */
 #define MAX_QUEUE_SIZE (4096*1024)
 
-static void
-tube_iface_init (gpointer g_iface, gpointer iface_data);
+static void channel_iface_init (gpointer, gpointer);
+static void tube_iface_init (gpointer g_iface, gpointer iface_data);
+static void dbustube_iface_init (gpointer g_iface, gpointer iface_data);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleTubeDBus, gabble_tube_dbus, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_TUBE_IFACE, tube_iface_init));
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
+      tp_dbus_properties_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_TUBE_IFACE, tube_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_DBUS_TUBE,
+      dbustube_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_TUBE,
+      NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
+      tp_external_group_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
+
+static const gchar *gabble_tube_dbus_interfaces[] = {
+    TP_IFACE_CHANNEL_INTERFACE_GROUP,
+    /* If more interfaces are added, either keep Group as the first, or change
+     * the implementations of gabble_tube_dbus_get_interfaces () and
+     * gabble_tube_dbus_get_property () too */
+    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
+    NULL
+};
 
 /* signals */
 enum
@@ -71,7 +103,10 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
+  PROP_OBJECT_PATH = 1,
+  PROP_CHANNEL_TYPE,
+  PROP_CONNECTION,
+  PROP_INTERFACES,
   PROP_HANDLE,
   PROP_HANDLE_TYPE,
   PROP_SELF_HANDLE,
@@ -86,12 +121,18 @@ enum
   PROP_DBUS_ADDRESS,
   PROP_DBUS_NAME,
   PROP_DBUS_NAMES,
+  PROP_CHANNEL_DESTROYED,
+  PROP_CHANNEL_PROPERTIES,
+  PROP_REQUESTED,
+  PROP_TARGET_ID,
+  PROP_INITIATOR_ID,
   LAST_PROPERTY
 };
 
 struct _GabbleTubeDBusPrivate
 {
   GabbleConnection *conn;
+  char *object_path;
   TpHandle handle;
   TpHandleType handle_type;
   TpHandle self_handle;
@@ -126,6 +167,8 @@ struct _GabbleTubeDBusPrivate
   GString *reassembly_buffer;
   /* Number of bytes that will be in the next message, 0 if unknown */
   guint32 reassembly_bytes_needed;
+
+  gboolean closed;
 
   gboolean dispose_has_run;
 };
@@ -271,6 +314,10 @@ static void
 do_close (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+
+  if (priv->closed)
+    return;
+  priv->closed = TRUE;
 
   if (priv->bytestream != NULL)
     {
@@ -527,6 +574,7 @@ gabble_tube_dbus_finalize (GObject *object)
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (object);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
+  g_free (priv->object_path);
   g_free (priv->stream_id);
   g_free (priv->service);
   g_hash_table_destroy (priv->parameters);
@@ -542,11 +590,31 @@ gabble_tube_dbus_get_property (GObject *object,
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (object);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
 
   switch (property_id)
     {
+      case PROP_OBJECT_PATH:
+        g_value_set_string (value, priv->object_path);
+        break;
+      case PROP_CHANNEL_TYPE:
+        g_value_set_static_string (value,
+            GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+        break;
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
+        break;
+     case PROP_INTERFACES:
+        if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+          {
+            /* 1-1 tubes - omit the Group interface */
+            g_value_set_boxed (value, gabble_tube_dbus_interfaces + 1);
+          }
+        else
+          {
+            /* MUC tubes */
+            g_value_set_boxed (value, gabble_tube_dbus_interfaces);
+          }
         break;
       case PROP_HANDLE:
         g_value_set_uint (value, priv->handle);
@@ -590,6 +658,51 @@ gabble_tube_dbus_get_property (GObject *object,
       case PROP_DBUS_NAMES:
         g_value_set_boxed (value, priv->dbus_names);
         break;
+      case PROP_CHANNEL_DESTROYED:
+        g_value_set_boolean (value, priv->closed);
+        break;
+      case PROP_CHANNEL_PROPERTIES:
+        g_value_take_boxed (value,
+            tp_dbus_properties_mixin_make_properties_hash (object,
+                TP_IFACE_CHANNEL, "TargetHandle",
+                TP_IFACE_CHANNEL, "TargetHandleType",
+                TP_IFACE_CHANNEL, "ChannelType",
+                TP_IFACE_CHANNEL, "TargetID",
+                TP_IFACE_CHANNEL, "InitiatorHandle",
+                TP_IFACE_CHANNEL, "InitiatorID",
+                TP_IFACE_CHANNEL, "Requested",
+                TP_IFACE_CHANNEL, "Interfaces",
+                GABBLE_IFACE_CHANNEL_INTERFACE_TUBE, "Status",
+                GABBLE_IFACE_CHANNEL_INTERFACE_TUBE, "Parameters",
+                GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE, "ServiceName",
+                NULL));
+        break;
+      case PROP_REQUESTED:
+        g_value_set_boolean (value,
+            (priv->initiator == priv->self_handle));
+        break;
+      case PROP_INITIATOR_ID:
+          {
+            TpHandleRepoIface *repo = tp_base_connection_get_handles (
+                base_conn, TP_HANDLE_TYPE_CONTACT);
+
+            /* some channel can have o.f.T.Channel.InitiatorHandle == 0 but
+             * tubes always have an initiator */
+            g_assert (priv->initiator != 0);
+
+            g_value_set_string (value,
+                tp_handle_inspect (repo, priv->initiator));
+          }
+        break;
+      case PROP_TARGET_ID:
+          {
+            TpHandleRepoIface *repo = tp_base_connection_get_handles (
+                base_conn, priv->handle_type);
+
+            g_value_set_string (value,
+                tp_handle_inspect (repo, priv->handle));
+          }
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -607,6 +720,14 @@ gabble_tube_dbus_set_property (GObject *object,
 
   switch (property_id)
     {
+      case PROP_OBJECT_PATH:
+        g_free (priv->object_path);
+        priv->object_path = g_value_dup_string (value);
+        break;
+      case PROP_CHANNEL_TYPE:
+        /* this property is writable in the interface, but not actually
+         * meaningfully changeable on this channel, so we do nothing */
+        break;
       case PROP_CONNECTION:
         priv->conn = g_value_get_object (value);
         break;
@@ -668,6 +789,7 @@ gabble_tube_dbus_constructor (GType type,
   GObject *obj;
   GabbleTubeDBus *self;
   GabbleTubeDBusPrivate *priv;
+  DBusGConnection *bus;
   TpHandleRepoIface *contact_repo;
   TpBaseConnection *base;
 
@@ -683,6 +805,11 @@ gabble_tube_dbus_constructor (GType type,
   contact_repo = tp_base_connection_get_handles
       ((TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   tp_handle_ref (contact_repo, priv->initiator);
+
+  bus = tp_get_bus ();
+  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+
+  DEBUG ("Registering at '%s'", priv->object_path);
 
   base = (TpBaseConnection *) priv->conn;
 
@@ -750,9 +877,78 @@ gabble_tube_dbus_constructor (GType type,
   return obj;
 }
 
+static gboolean
+tube_iface_props_setter (GObject *object,
+                         GQuark interface,
+                         GQuark name,
+                         const GValue *value,
+                         gpointer setter_data,
+                         GError **error)
+{
+  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (object);
+
+  g_return_val_if_fail (interface == GABBLE_IFACE_QUARK_CHANNEL_INTERFACE_TUBE,
+      FALSE);
+
+  if (name != g_quark_from_static_string ("Parameters"))
+    {
+      g_object_set_property (object, setter_data, value);
+      return TRUE;
+    }
+
+  if (get_tube_state (self) != GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED)
+  {
+    g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "Can change parameters only if the tube is not offered");
+    return FALSE;
+  }
+
+  g_object_set (self, "parameters", g_value_get_boxed (value), NULL);
+
+  return TRUE;
+}
+
 static void
 gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 {
+  static TpDBusPropertiesMixinPropImpl channel_props[] = {
+      { "TargetHandleType", "handle-type", NULL },
+      { "TargetHandle", "handle", NULL },
+      { "ChannelType", "channel-type", NULL },
+      { "TargetID", "target-id", NULL },
+      { "Interfaces", "interfaces", NULL },
+      { "Requested", "requested", NULL },
+      { "InitiatorHandle", "initiator-handle", NULL },
+      { "InitiatorID", "initiator-id", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinPropImpl dbus_tube_props[] = {
+      { "ServiceName", "service", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinPropImpl tube_iface_props[] = {
+      { "Parameters", "parameters", "parameters" },
+      { "Status", "state", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+      { TP_IFACE_CHANNEL,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        channel_props,
+      },
+      { GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        dbus_tube_props,
+      },
+      { GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        tube_iface_props_setter,
+        tube_iface_props,
+      },
+      { NULL }
+  };
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_tube_dbus_class);
   GParamSpec *param_spec;
 
@@ -766,6 +962,10 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   object_class->dispose = gabble_tube_dbus_dispose;
   object_class->finalize = gabble_tube_dbus_finalize;
 
+  g_object_class_override_property (object_class, PROP_OBJECT_PATH,
+      "object-path");
+  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
+      "channel-type");
   g_object_class_override_property (object_class, PROP_CONNECTION,
     "connection");
   g_object_class_override_property (object_class, PROP_HANDLE,
@@ -784,6 +984,11 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
     "parameters");
   g_object_class_override_property (object_class, PROP_STATE,
     "state");
+
+  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
+      "channel-destroyed");
+  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
+      "channel-properties");
 
   /* TODO: When D-Bus tubes will be channels, this will be replaced by
    * g_object_class_override_property*/
@@ -840,6 +1045,33 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DBUS_NAMES, param_spec);
 
+  /* FIXME: why do we have to manually define these properties? */
+  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
+      "Additional Channel.Interface.* interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
+
+  param_spec = g_param_spec_string ("target-id", "Target JID",
+      "The string obtained by inspecting the target handle",
+      NULL,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
+
+  param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
+      "The string obtained by inspecting the initiator-handle",
+      NULL,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIATOR_ID,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("requested", "Requested?",
+      "True if this channel was requested by the local user",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
+
+
   signals[OPENED] =
     g_signal_new ("tube-opened",
                   G_OBJECT_CLASS_TYPE (gabble_tube_dbus_class),
@@ -866,6 +1098,12 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
                   NULL, NULL,
                   gabble_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
+
+  gabble_tube_dbus_class->dbus_props_class.interfaces = prop_interfaces;
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleTubeDBusClass, dbus_props_class));
+
+  tp_external_group_mixin_init_dbus_properties (object_class);
 }
 
 static void
@@ -1091,8 +1329,15 @@ gabble_tube_dbus_new (GabbleConnection *conn,
                       guint id,
                       GabbleBytestreamIface *bytestream)
 {
-  GabbleTubeDBus *tube = g_object_new (GABBLE_TYPE_TUBE_DBUS,
+  GabbleTubeDBus *tube;
+  gchar *object_path;
+
+  object_path = g_strdup_printf ("%s/StreamTubeChannel_%u_%u",
+      conn->parent.object_path, handle, id);
+
+  tube = g_object_new (GABBLE_TYPE_TUBE_DBUS,
       "connection", conn,
+      "object-path", object_path,
       "handle", handle,
       "handle-type", handle_type,
       "self-handle", self_handle,
@@ -1106,6 +1351,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
   if (bytestream != NULL)
     g_object_set (tube, "bytestream", bytestream, NULL);
 
+  g_free (object_path);
   return tube;
 }
 
@@ -1336,6 +1582,92 @@ _gabble_generate_dbus_unique_name (const gchar *nick)
   return result;
 }
 
+/**
+ * gabble_tube_dbus_close_async:
+ *
+ * Implements D-Bus method Close
+ * on interface org.freedesktop.Telepathy.Channel
+ */
+static void
+gabble_tube_dbus_close_async (TpSvcChannel *iface,
+                                  DBusGMethodInvocation *context)
+{
+  gabble_tube_dbus_close (GABBLE_TUBE_IFACE (iface), FALSE);
+  tp_svc_channel_return_from_close (context);
+}
+
+/**
+ * gabble_tube_dbus_get_channel_type
+ *
+ * Implements D-Bus method GetChannelType
+ * on interface org.freedesktop.Telepathy.Channel
+ */
+static void
+gabble_tube_dbus_get_channel_type (TpSvcChannel *iface,
+                                       DBusGMethodInvocation *context)
+{
+  tp_svc_channel_return_from_get_channel_type (context,
+      GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+}
+
+/**
+ * gabble_tube_dbus_get_handle
+ *
+ * Implements D-Bus method GetHandle
+ * on interface org.freedesktop.Telepathy.Channel
+ */
+static void
+gabble_tube_dbus_get_handle (TpSvcChannel *iface,
+                                 DBusGMethodInvocation *context)
+{
+  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (iface);
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+
+  tp_svc_channel_return_from_get_handle (context, priv->handle_type,
+      priv->handle);
+}
+
+/**
+ * gabble_tube_dbus_get_interfaces
+ *
+ * Implements D-Bus method GetInterfaces
+ * on interface org.freedesktop.Telepathy.Channel
+ */
+static void
+gabble_tube_dbus_get_interfaces (TpSvcChannel *iface,
+                                   DBusGMethodInvocation *context)
+{
+  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (iface);
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      /* omit the Group interface */
+      tp_svc_channel_return_from_get_interfaces (context,
+          gabble_tube_dbus_interfaces + 1);
+    }
+  else
+    {
+      tp_svc_channel_return_from_get_interfaces (context,
+          gabble_tube_dbus_interfaces);
+    }
+}
+
+static void
+channel_iface_init (gpointer g_iface,
+                    gpointer iface_data)
+{
+  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
+
+#define IMPLEMENT(x, suffix) tp_svc_channel_implement_##x (\
+    klass, gabble_tube_dbus_##x##suffix)
+  IMPLEMENT(close,_async);
+  IMPLEMENT(get_channel_type,);
+  IMPLEMENT(get_handle,);
+  IMPLEMENT(get_interfaces,);
+#undef IMPLEMENT
+}
+
 static void
 tube_iface_init (gpointer g_iface,
                  gpointer iface_data)
@@ -1345,4 +1677,22 @@ tube_iface_init (gpointer g_iface,
   klass->accept = gabble_tube_dbus_accept;
   klass->close = gabble_tube_dbus_close;
   klass->add_bytestream = gabble_tube_dbus_add_bytestream;
+}
+
+static void
+dbustube_iface_init (gpointer g_iface,
+                     gpointer iface_data)
+{
+  /*
+  GabbleSvcChannelTypeDBusTubeClass *klass =
+      (GabbleSvcChannelTypeDBusTubeClass *) g_iface;
+      */
+
+#define IMPLEMENT(x) gabble_svc_channel_type_dbus_tube_implement_##x (\
+    klass, gabble_tube_dbus_##x)
+  /*
+  IMPLEMENT(offer_stream_tube);
+  IMPLEMENT(accept_stream_tube);
+  */
+#undef IMPLEMENT
 }

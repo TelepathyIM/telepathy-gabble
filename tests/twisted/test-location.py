@@ -6,6 +6,8 @@ from twisted.words.xish import domish, xpath
 location_iface = \
     'org.freedesktop.Telepathy.Connection.Interface.Location.DRAFT'
 
+Rich_Presence_Access_Control_Type_Publish_List = 1
+
 def test(q, bus, conn, stream):
     # hack
     import dbus
@@ -20,12 +22,28 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]))
 
     # check location properties
-    #properties = conn.GetAll(
-    #        location_iface,
-    #        dbus_interface='org.freedesktop.DBus.Properties')
 
-    #assert properties.get('LocationAccessControlTypes') is not None
-    #assert properties.get('LocationAccessControl') is not None
+    access_control_types = conn.Get(
+            location_iface, "LocationAccessControlTypes",
+            dbus_interface='org.freedesktop.DBus.Properties')
+    # only one access control is implemented in Gabble at the moment:
+    assert len(access_control_types) == 1, access_control_types
+    assert access_control_types[0] == \
+        Rich_Presence_Access_Control_Type_Publish_List
+
+    access_control = conn.Get(
+            location_iface, "LocationAccessControl",
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert len(access_control) == 2, access_control
+    assert access_control[0] == \
+        Rich_Presence_Access_Control_Type_Publish_List
+
+    properties = conn.GetAll(
+            location_iface,
+            dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert properties.get('LocationAccessControlTypes') == access_control_types
+    assert properties.get('LocationAccessControl') == access_control
 
     conn.Location.SetLocation({
         'lat': dbus.Double(0.0, variant_level=1), 'lon': 0.0})

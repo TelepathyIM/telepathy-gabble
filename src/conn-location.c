@@ -254,21 +254,22 @@ conn_location_propeties_getter (GObject *object,
       GValue variant = {0,};
       GValue *allocated_value;
 
-      DEBUG ("%s", g_type_name (G_VALUE_TYPE (value)));
-
-      /* G_TYPE_INT is the type of GabbleRichPresenceAccessControlType */
-      g_value_init (&type, G_TYPE_INT);
-      g_value_set_int (&type,
+      /* G_TYPE_UINT is the type of GabbleRichPresenceAccessControlType */
+      g_value_init (&type, G_TYPE_UINT);
+      g_value_set_uint (&type,
           GABBLE_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST);
       g_value_array_append (access_control, &type);
       g_value_unset (&type);
 
-      g_value_init (&variant, G_TYPE_POINTER);
+      g_value_init (&variant, G_TYPE_VALUE);
       /* G_TYPE_UINT is a random type, it is not used */
       allocated_value = tp_g_value_slice_new (G_TYPE_UINT);
-      g_value_set_pointer (&variant, allocated_value);
+      g_value_set_uint (allocated_value, 0);
+      g_value_set_boxed (&variant, allocated_value);
       g_value_array_append (access_control, &variant);
       g_value_unset (&variant);
+      tp_g_value_slice_free (allocated_value);
+      
 
       g_value_take_boxed (value, access_control);
     }

@@ -82,7 +82,7 @@ struct _GabblePrivateTubesFactoryPrivate
   gulong status_changed_id;
   LmMessageHandler *msg_tube_cb;
 
-  GHashTable *channels;
+  GHashTable *tubes_channels;
 
   gboolean dispose_has_run;
 };
@@ -128,7 +128,7 @@ gabble_private_tubes_factory_init (GabblePrivateTubesFactory *self)
   self->priv = priv;
 
   priv->msg_tube_cb = NULL;
-  priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+  priv->tubes_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_object_unref);
 
   priv->conn = NULL;
@@ -196,7 +196,7 @@ gabble_private_tubes_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   gabble_private_tubes_factory_close_all (fac);
-  g_assert (priv->channels == NULL);
+  g_assert (priv->tubes_channels == NULL);
 
   if (G_OBJECT_CLASS (gabble_private_tubes_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_private_tubes_factory_parent_class)->dispose (
@@ -288,7 +288,7 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan,
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandle contact_handle;
 
-  if (priv->channels == NULL)
+  if (priv->tubes_channels == NULL)
     return;
 
   g_object_get (chan, "handle", &contact_handle, NULL);
@@ -298,7 +298,7 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan,
 
   DEBUG ("removing tubes channel with handle %d", contact_handle);
 
-  g_hash_table_remove (priv->channels, GUINT_TO_POINTER (contact_handle));
+  g_hash_table_remove (priv->tubes_channels, GUINT_TO_POINTER (contact_handle));
 }
 
 /**
@@ -340,7 +340,7 @@ new_tubes_channel (GabblePrivateTubesFactory *fac,
 
   g_signal_connect (chan, "closed", G_CALLBACK (tubes_channel_closed_cb), fac);
 
-  g_hash_table_insert (priv->channels, GUINT_TO_POINTER (handle), chan);
+  g_hash_table_insert (priv->tubes_channels, GUINT_TO_POINTER (handle), chan);
 
   g_free (object_path);
 
@@ -387,11 +387,11 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
   /* Use a temporary variable because we don't want
    * tubes_channel_closed_cb to remove the channel from the hash table a
    * second time */
-  if (priv->channels != NULL)
+  if (priv->tubes_channels != NULL)
     {
-      GHashTable *tmp = priv->channels;
+      GHashTable *tmp = priv->tubes_channels;
 
-      priv->channels = NULL;
+      priv->tubes_channels = NULL;
       g_hash_table_destroy (tmp);
     }
 }
@@ -837,7 +837,7 @@ gabble_private_tubes_factory_foreach_channel (TpChannelManager *manager,
   data.user_data = user_data;
   data.foreach = foreach;
 
-  g_hash_table_foreach (priv->channels, _foreach_slave, &data);
+  g_hash_table_foreach (priv->tubes_channels, _foreach_slave, &data);
 }
 
 void
@@ -857,7 +857,7 @@ gabble_private_tubes_factory_handle_si_tube_request (
   DEBUG ("contact#%u stream %s", handle, stream_id);
   g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
-  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
+  chan = g_hash_table_lookup (priv->tubes_channels, GUINT_TO_POINTER (handle));
   if (chan == NULL)
     {
       chan = new_tubes_channel (self, handle, handle, NULL, TRUE);
@@ -886,7 +886,7 @@ gabble_private_tubes_factory_handle_si_stream_request (
   DEBUG ("contact#%u stream %s", handle, stream_id);
   g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
-  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
+  chan = g_hash_table_lookup (priv->tubes_channels, GUINT_TO_POINTER (handle));
   if (chan == NULL)
     {
       GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
@@ -939,7 +939,7 @@ private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
     }
 
   /* Tube offer */
-  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
+  chan = g_hash_table_lookup (priv->tubes_channels, GUINT_TO_POINTER (handle));
 
   if (chan == NULL)
     {
@@ -1163,7 +1163,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       goto error;
     }
 
-  channel = g_hash_table_lookup (self->priv->channels,
+  channel = g_hash_table_lookup (self->priv->tubes_channels,
       GUINT_TO_POINTER (handle));
 
   if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
@@ -1190,7 +1190,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
     }
   else
     {
-      gboolean channel_already_existed = (channel != NULL);
+      gboolean tubes_channel_already_existed = (channel != NULL);
       GabbleTubeIface *new_channel;
 
       if (channel == NULL)
@@ -1211,7 +1211,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
 
           channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
               NULL, NULL);
-          if (!channel_already_existed)
+          if (!tubes_channel_already_existed)
             g_hash_table_insert (channels, channel, NULL);
 
           if (request_token != NULL)

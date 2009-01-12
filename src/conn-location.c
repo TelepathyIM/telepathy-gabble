@@ -218,8 +218,6 @@ conn_location_propeties_getter (GObject *object,
                                 GValue *value,
                                 gpointer getter_data)
 {
-  /* GabbleConnection *conn = GABBLE_CONNECTION (object); */
-
   if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControlTypes"))
     {
       GabbleRichPresenceAccessControlType access_control_type =

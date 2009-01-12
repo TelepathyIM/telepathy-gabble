@@ -62,6 +62,7 @@ enum
 {
   OPENED,
   CLOSED,
+  OFFERED,
   LAST_SIGNAL
 };
 
@@ -850,6 +851,15 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 
   signals[CLOSED] =
     g_signal_new ("tube-closed",
+                  G_OBJECT_CLASS_TYPE (gabble_tube_dbus_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
+  signals[CLOSED] =
+    g_signal_new ("tube-offered",
                   G_OBJECT_CLASS_TYPE (gabble_tube_dbus_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,

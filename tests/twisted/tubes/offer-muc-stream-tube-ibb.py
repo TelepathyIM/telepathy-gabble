@@ -63,10 +63,11 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-return', method='RequestHandles')
     handles = event.value[0]
+    chat_handle = handles[0]
 
     # request tubes channel
     call_async(q, conn, 'RequestChannel',
-        tp_name_prefix + '.Channel.Type.Tubes', 2, handles[0], True)
+        tp_name_prefix + '.Channel.Type.Tubes', 2, chat_handle, True)
 
     _, stream_event = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
@@ -98,53 +99,46 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
     bob_handle = 3
 
-    old_sig, new_sig, returned = q.expect_many(
-        # first text channel is created
-        EventPattern('dbus-signal', signal='NewChannel'),
+    # text and tubes channels are created
+    new_sig, returned = q.expect_many(
         EventPattern('dbus-signal', signal='NewChannels'),
         EventPattern('dbus-return', method='RequestChannel'))
 
-    path, type, handle_type, handle, supress = old_sig.args
-    assert type == 'org.freedesktop.Telepathy.Channel.Type.Text'
-    assert handle_type == 2 #room
-    assert handle == handles[0]
-    assert supress == False
+    #path, type, handle_type, handle, supress = old_sig.args
+    #assert type == 'org.freedesktop.Telepathy.Channel.Type.Text'
+    #assert handle_type == 2 #room
+    #assert handle == handles[0]
+    #assert supress == False
 
-    # check text channel properties
-    text_props = new_sig.args[0][0][1]
-    assert text_props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.Text'
-    assert text_props[tp_name_prefix + '.Channel.TargetHandleType'] == 2
-    assert text_props[tp_name_prefix + '.Channel.TargetHandle'] == handle
-    assert text_props[tp_name_prefix + '.Channel.TargetID'] == 'chat@conf.localhost'
-    assert text_props[tp_name_prefix + '.Channel.Requested'] == False
-    assert text_props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-            == self_handle
-    assert text_props[tp_name_prefix + '.Channel.InitiatorID'] \
-            == self_name
+    channels = new_sig.args[0]
+    assert len(channels) == 2
 
-    # tube channel is created
-    old_sig, new_sig = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'))
-    path, type, handle_type, handle, supress = old_sig.args
-    assert type == 'org.freedesktop.Telepathy.Channel.Type.Tubes'
-    assert handle_type == 2 #room
-    assert handle == handles[0]
-    assert supress == True
+    for channel in channels:
+        path, props = channel
+        type = props[tp_name_prefix + '.Channel.ChannelType']
 
-    # check tubes channel properties
-    tubes_props = new_sig.args[0][0][1]
-    assert tubes_props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.Tubes'
-    assert tubes_props[tp_name_prefix + '.Channel.TargetHandleType'] == 2
-    assert tubes_props[tp_name_prefix + '.Channel.TargetHandle'] == handle
-    assert tubes_props[tp_name_prefix + '.Channel.TargetID'] == 'chat@conf.localhost'
-    assert tubes_props[tp_name_prefix + '.Channel.Requested'] == True
-    assert tubes_props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-            == self_handle
-    assert tubes_props[tp_name_prefix + '.Channel.InitiatorID'] \
-            == self_name
+        if type == 'org.freedesktop.Telepathy.Channel.Type.Text':
+            # check text channel properties
+            assert props[tp_name_prefix + '.Channel.TargetHandle'] == chat_handle
+            assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 2
+            assert props[tp_name_prefix + '.Channel.TargetID'] == 'chat@conf.localhost'
+            assert props[tp_name_prefix + '.Channel.Requested'] == False
+            assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
+                    == self_handle
+            assert props[tp_name_prefix + '.Channel.InitiatorID'] \
+                    == self_name
+        elif type == 'org.freedesktop.Telepathy.Channel.Type.Tubes':
+            # check tubes channel properties
+            assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 2
+            assert props[tp_name_prefix + '.Channel.TargetHandle'] == chat_handle
+            assert props[tp_name_prefix + '.Channel.TargetID'] == 'chat@conf.localhost'
+            assert props[tp_name_prefix + '.Channel.Requested'] == True
+            assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
+                    == self_handle
+            assert props[tp_name_prefix + '.Channel.InitiatorID'] \
+                    == self_name
+        else:
+            assert True
 
     tubes_chan = bus.get_object(conn.bus_name, returned.value[0])
     tubes_iface = dbus.Interface(tubes_chan,

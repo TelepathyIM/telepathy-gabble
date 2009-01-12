@@ -285,39 +285,67 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
 
 
 static void
-gabble_muc_factory_emit_new_channel (GabbleMucFactory *self,
-                                     TpExportableChannel *channel)
-{
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
-  GSList *requests_satisfied;
-
-  requests_satisfied = g_hash_table_lookup (priv->queued_requests, channel);
-  g_hash_table_steal (priv->queued_requests, channel);
-  requests_satisfied = g_slist_reverse (requests_satisfied);
-  tp_channel_manager_emit_new_channel (self, channel, requests_satisfied);
-  g_slist_free (requests_satisfied);
-}
-
-
-static void
-muc_ready_cb (GabbleMucChannel *chan,
+muc_ready_cb (GabbleMucChannel *text_chan,
               gpointer data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleTubesChannel *tubes_chan;
+  GSList *requests_satisfied_text, *requests_satisfied_tubes = NULL;
+  gboolean text_requested;
 
-  DEBUG ("chan=%p", chan);
+  DEBUG ("text chan=%p", text_chan);
 
-  gabble_muc_factory_emit_new_channel (fac, TP_EXPORTABLE_CHANNEL (chan));
+  g_object_get (text_chan, "requested", &text_requested, NULL);
 
-  tubes_chan = g_hash_table_lookup (priv->text_needed_for_tubes, chan);
+  requests_satisfied_text = g_hash_table_lookup (
+      priv->queued_requests, text_chan);
+  g_hash_table_steal (priv->queued_requests, text_chan);
+  requests_satisfied_text = g_slist_reverse (requests_satisfied_text);
+
+  tubes_chan = g_hash_table_lookup (priv->text_needed_for_tubes, text_chan);
+  g_hash_table_remove (priv->text_needed_for_tubes, text_chan);
+
   if (tubes_chan != NULL)
     {
-      g_hash_table_remove (priv->text_needed_for_tubes, chan);
-      gabble_muc_factory_emit_new_channel (fac,
-          TP_EXPORTABLE_CHANNEL (tubes_chan));
+      requests_satisfied_tubes = g_hash_table_lookup (
+          priv->queued_requests, tubes_chan);
+      g_hash_table_steal (priv->queued_requests, tubes_chan);
     }
+
+  if (tubes_chan == NULL || text_requested)
+    {
+      /* There is no tubes channel or the text channel has been explicitely
+       * requested. In both cases, the text channel has to be announced
+       * separately. */
+
+      /* announce text channel */
+      tp_channel_manager_emit_new_channel (fac,
+          TP_EXPORTABLE_CHANNEL (text_chan), requests_satisfied_text);
+
+      if (tubes_chan != NULL)
+        {
+          tp_channel_manager_emit_new_channel (fac,
+              TP_EXPORTABLE_CHANNEL (tubes_chan), requests_satisfied_tubes);
+        }
+    }
+  else
+    {
+      /* Announce text and tubes text_chan together */
+      GHashTable *channels;
+
+      channels = g_hash_table_new(g_direct_hash, g_direct_equal);
+      g_hash_table_insert (channels, text_chan, requests_satisfied_text);
+      g_hash_table_insert (channels, tubes_chan, requests_satisfied_tubes);
+
+      tp_channel_manager_emit_new_channels (fac, channels);
+
+      g_hash_table_destroy (channels);
+    }
+
+
+  g_slist_free (requests_satisfied_text);
+  g_slist_free (requests_satisfied_tubes);
 }
 
 static void

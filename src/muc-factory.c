@@ -970,8 +970,8 @@ muc_factory_presence_cb (LmMessageHandler *handler,
            * have a well-defined initiator (they're a consensus) so use 0 */
           tubes_chan = new_tubes_channel (fac, room_handle, muc_chan,
               0);
-          gabble_muc_factory_emit_new_channel (fac,
-              TP_EXPORTABLE_CHANNEL (tubes_chan));
+          tp_channel_manager_emit_new_channel (fac,
+              TP_EXPORTABLE_CHANNEL (tubes_chan), NULL);
         }
 
       handle = tp_handle_ensure (contact_repo, from,

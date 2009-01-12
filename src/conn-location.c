@@ -16,16 +16,6 @@
 static gboolean update_location_from_msg (GabbleConnection *conn,
     const gchar *from, LmMessage *msg);
 
-static guint
-lookup_contact (TpBaseConnection *base,
-                const gchar *from)
-{
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base, TP_HANDLE_TYPE_CONTACT);
-
-  return tp_handle_lookup (contact_repo, from, NULL, NULL);
-}
-
 static gboolean
 validate_contacts (TpBaseConnection *base,
                    DBusGMethodInvocation *context,
@@ -277,7 +267,10 @@ update_location_from_msg (GabbleConnection *conn,
   LmMessageNode *node, *subloc_node;
   GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
-  guint contact = lookup_contact ((TpBaseConnection *) conn, from);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+
+  guint contact = tp_handle_lookup (contact_repo, from, NULL, NULL);
 
   node = lm_message_node_find_child (msg->node, "geoloc");
   if (node == NULL)

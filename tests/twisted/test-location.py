@@ -18,7 +18,8 @@ def test(q, bus, conn, stream):
 
     # discard activities request and status change
     q.expect_many(
-        EventPattern('stream-iq', iq_type='set', query_ns='http://jabber.org/protocol/pubsub'),
+        EventPattern('stream-iq', iq_type='set',
+            query_ns='http://jabber.org/protocol/pubsub'),
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]))
 
     # check location properties

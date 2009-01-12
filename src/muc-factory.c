@@ -1423,10 +1423,12 @@ gabble_muc_factory_request (GabbleMucFactory *self,
         }
       else if (ensure_tubes_channel (self, handle, &tubes_chan))
         {
-          gabble_muc_factory_associate_request (self, tubes_chan,
-              request_token);
-          gabble_muc_factory_emit_new_channel (self,
-              TP_EXPORTABLE_CHANNEL (tubes_chan));
+          GSList *list = NULL;
+
+          list = g_slist_prepend (list, request_token);
+          tp_channel_manager_emit_new_channel (self,
+              TP_EXPORTABLE_CHANNEL (tubes_chan), list);
+          g_slist_free (list);
         }
       else
         {

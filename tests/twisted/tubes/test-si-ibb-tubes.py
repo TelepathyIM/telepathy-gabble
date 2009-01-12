@@ -38,6 +38,10 @@ new_sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
+TUBE_CHANNEL_STATE_LOCAL_PENDING = 0
+TUBE_CHANNEL_STATE_REMOTE_PENDING = 1
+TUBE_CHANNEL_STATE_OPEN = 2
+TUBE_CHANNEL_STATE_NOT_OFFERED = 3
 
 class Echo(Protocol):
     def dataReceived(self, data):
@@ -136,12 +140,13 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
     # there is some support.
     assert len(supported_socket_types) == 3
 
-def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
-    assert old_sig[0] == chan_path
+def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle, suppress_handler):
+    if chan_path is not None:
+        assert old_sig[0] == chan_path
     assert old_sig[1] == tp_name_prefix + '.Channel.Type.' + channel_type
     assert old_sig[2] == 1         # contact handle
     assert old_sig[3] == contact_handle
-    assert old_sig[4] == True      # suppress handler
+    assert old_sig[4] == suppress_handler      # suppress handler
 
 def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
         contact_id, initiator_handle):
@@ -179,6 +184,7 @@ def test(q, bus, conn, stream):
             query_name='vCard'),
         EventPattern('stream-iq', query_ns='jabber:iq:roster'))
 
+    self_handle = conn.GetSelfHandle()
     acknowledge_iq(stream, vcard_event.stanza)
 
     roster = roster_event.stanza
@@ -278,7 +284,7 @@ def test(q, bus, conn, stream):
     assert len(ret.value) == 1
     chan_path = ret.value[0]
 
-    check_NewChannel_signal(old_sig.args, "Tubes", chan_path, bob_handle)
+    check_NewChannel_signal(old_sig.args, "Tubes", chan_path, bob_handle, True)
     check_NewChannels_signal(new_sig.args, "Tubes", chan_path,
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     old_tubes_channel_properties = new_sig.args[0][0]
@@ -338,7 +344,8 @@ def test(q, bus, conn, stream):
     assert len(ret.value) == 2 # CreateChannel returns 2 values: o, a{sv}
     new_chan_path = ret.value[0]
     new_chan_prop_asv = ret.value[1]
-    assert new_chan_prop_asv[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Status'] == 3 # not offered
+    assert new_chan_prop_asv[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Status'] == \
+        TUBE_CHANNEL_STATE_NOT_OFFERED
     assert new_chan_prop_asv[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Parameters'] == {'foo': 'bar'}
     assert new_chan_path.find("StreamTube") != -1, new_chan_path
     assert new_chan_path.find("SITubesChannel") == -1, new_chan_path
@@ -347,7 +354,7 @@ def test(q, bus, conn, stream):
     assert chan_path != new_chan_path
 
     check_NewChannel_signal(old_sig.args, "StreamTube.DRAFT", \
-            new_chan_path, bob_handle)
+            new_chan_path, bob_handle, True)
     check_NewChannels_signal(new_sig.args, "StreamTube.DRAFT", new_chan_path, \
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     stream_tube_channel_properties = new_sig.args[0][0]
@@ -362,7 +369,7 @@ def test(q, bus, conn, stream):
     check_channel_properties(q, bus, conn, stream, tubes_chan, "Tubes",
             bob_handle, "bob@localhost")
 
-    # Offer the tube, old API
+    # Create another tube using old API
     call_async(q, tubes_iface, 'OfferStreamTube',
         'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
 
@@ -392,7 +399,7 @@ def test(q, bus, conn, stream):
                      }
 
     # We offered a tube using the old tube API and created one with the new
-    # API, so there is 2 tubes. Check the new tube API works
+    # API, so there are 2 tubes. Check the new tube API works
     assert len(filter(lambda x:
                   x[1] == "org.freedesktop.Telepathy.Channel.Type.Tubes",
                   conn.ListChannels())) == 1
@@ -407,7 +414,6 @@ def test(q, bus, conn, stream):
     tube_iface = dbus.Interface(tube_chan,
         tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
 
-    self_handle = conn.GetSelfHandle()
     tube_basic_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
             dbus_interface='org.freedesktop.DBus.Properties')
@@ -434,16 +440,16 @@ def test(q, bus, conn, stream):
             dbus_interface='org.freedesktop.DBus.Properties', byte_arrays=True)
     assert tube_props.get("Parameters") == new_sample_parameters, \
             tube_props.get("Parameters")
-    
-    # 3 == Tube_Channel_State_Not_Offered
-    assert tube_props.get("Status") == 3, tube_props
+
+    # the tube created using the old API is in the "not offered" state
+    assert tube_props.get("Status") == TUBE_CHANNEL_STATE_NOT_OFFERED, tube_props.get('Status')
 
     check_channel_properties(q, bus, conn, stream, tubes_chan, "Tubes",
             bob_handle, "bob@localhost")
     check_channel_properties(q, bus, conn, stream, tube_chan,
-            "StreamTube.DRAFT", bob_handle, "bob@localhost", 3)
+            "StreamTube.DRAFT", bob_handle, "bob@localhost", TUBE_CHANNEL_STATE_NOT_OFFERED)
 
-    # Offer the tube, new API
+    # Offer the first tube created (new API)
     path2 = os.getcwd() + '/stream2'
     call_async(q, tube_iface, 'OfferStreamTube',
         0, dbus.ByteArray(path2), 0, "")

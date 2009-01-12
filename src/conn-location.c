@@ -109,7 +109,7 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
       TpHandleRepoIface *contact_repo;
       const gchar *jid;
       GHashTable *location;
-      guint contact = g_array_index (contacts, guint, i);
+      TpHandle contact = g_array_index (contacts, TpHandle, i);
 
       contact_repo = tp_base_connection_get_handles (base,
           TP_HANDLE_TYPE_CONTACT);
@@ -270,7 +270,7 @@ update_location_from_msg (GabbleConnection *conn,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
 
-  guint contact = tp_handle_lookup (contact_repo, from, NULL, NULL);
+  TpHandle contact = tp_handle_lookup (contact_repo, from, NULL, NULL);
 
   node = lm_message_node_find_child (msg->node, "geoloc");
   if (node == NULL)

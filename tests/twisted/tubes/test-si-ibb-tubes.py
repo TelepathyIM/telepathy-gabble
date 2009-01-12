@@ -398,6 +398,23 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
+    new_tube_sig, return_event, new_chan, new_chans = q.expect_many(
+        EventPattern('dbus-signal', signal='NewTube'),
+        EventPattern('dbus-return', method='OfferStreamTube'),
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'))
+
+    # the tube channel (new API) is announced
+    check_NewChannel_signal(new_chan.args, "StreamTube.DRAFT", \
+        None, bob_handle, False)
+    check_NewChannels_signal(new_chans.args, "StreamTube.DRAFT", new_chan.args[0],
+        bob_handle, "bob@localhost", self_handle)
+
+    props = new_chans.args[0][0][1]
+    # Tube have been created using the old API and so is already offered
+    assert props['org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Status'] == \
+        TUBE_CHANNEL_STATE_REMOTE_PENDING
+
     # We offered a tube using the old tube API and created one with the new
     # API, so there are 2 tubes. Check the new tube API works
     assert len(filter(lambda x:

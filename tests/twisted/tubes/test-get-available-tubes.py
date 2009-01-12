@@ -72,14 +72,18 @@ def test(q, bus, conn, stream):
     item['role'] = 'participant'
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='MembersChanged',
-            args=[u'', [2, 3], [], [], [], 0, 0])
+    new_chans, members, event = q.expect_many(
+        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=[u'', [2, 3], [], [], [], 0, 0]),
+        EventPattern('dbus-return', method='RequestChannel'))
+
+    channels = new_chans.args[0]
+    assert len(channels) == 2
 
     assert conn.InspectHandles(1, [2]) == ['chat@conf.localhost/test']
     assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
     bob_handle = 3
-
-    event = q.expect('dbus-return', method='RequestChannel')
 
     tubes_chan = bus.get_object(conn.bus_name, event.value[0])
     tubes_iface_muc = dbus.Interface(tubes_chan,

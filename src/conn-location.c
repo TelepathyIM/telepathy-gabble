@@ -16,20 +16,6 @@
 static gboolean update_location_from_msg (GabbleConnection *conn,
     const gchar *from, LmMessage *msg);
 
-/* XXX: similar to conn-olpc.c's inspect_contact(), except that it assumes
- * that the handle is valid. (Does tp_handle_inspect check validity anyway?)
- * Reduce duplication.
- */
-static const gchar *
-inspect_contact (TpBaseConnection *base,
-                 guint contact)
-{
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base, TP_HANDLE_TYPE_CONTACT);
-
-  return tp_handle_inspect (contact_repo, contact);
-}
-
 static guint
 lookup_contact (TpBaseConnection *base,
                 const gchar *from)
@@ -130,9 +116,14 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
 
   for (i = 0; i < contacts->len; i++)
     {
-      guint contact = g_array_index (contacts, guint, i);
-      const gchar *jid = inspect_contact (base, contact);
+      TpHandleRepoIface *contact_repo;
+      const gchar *jid;
       GHashTable *location;
+      guint contact = g_array_index (contacts, guint, i);
+
+      contact_repo = tp_base_connection_get_handles (base,
+          TP_HANDLE_TYPE_CONTACT);
+      jid = tp_handle_inspect (contact_repo, contact);
 
       location = gabble_presence_cache_get_location (conn->presence_cache, contact);
       if (location != NULL)
@@ -269,7 +260,6 @@ conn_location_propeties_getter (GObject *object,
       g_value_array_append (access_control, &variant);
       g_value_unset (&variant);
       tp_g_value_slice_free (allocated_value);
-      
 
       g_value_take_boxed (value, access_control);
     }

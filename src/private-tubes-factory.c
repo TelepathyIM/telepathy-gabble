@@ -1277,6 +1277,12 @@ gabble_private_tubes_factory_ensure_channel (TpChannelManager *manager,
       request_properties, FALSE);
 }
 
+void
+gabble_private_tubes_factory_tube_created (GabblePrivateTubesFactory *fac,
+                                           GabbleTubeIface *tube)
+{
+  tp_channel_manager_emit_new_channel (fac, TP_EXPORTABLE_CHANNEL (tube), NULL);
+}
 
 static void
 channel_manager_iface_init (gpointer g_iface,

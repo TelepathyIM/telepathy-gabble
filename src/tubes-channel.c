@@ -463,6 +463,40 @@ tube_opened_cb (GabbleTubeIface *tube,
       TP_TUBE_STATE_OPEN);
 }
 
+static void
+tube_offered_cb (GabbleTubeIface *tube,
+                 gpointer user_data)
+{
+  GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
+  guint tube_id;
+  TpHandle initiator;
+  TpTubeType type;
+  gchar *service;
+  GHashTable *parameters;
+  TpTubeState state;
+
+  g_object_get (tube,
+      "id", &tube_id,
+      "initiator-handle", &initiator,
+      "type", &type,
+      "service", &service,
+      "parameters", &parameters,
+      "state", &state,
+      NULL);
+
+  /* tube has been offered and so can be announced using the old API */
+  tp_svc_channel_type_tubes_emit_new_tube (self,
+      tube_id,
+      initiator,
+      type,
+      service,
+      parameters,
+      state);
+
+  g_free (service);
+  g_hash_table_destroy (parameters);
+}
+
 static GabbleTubeIface *
 create_new_tube (GabbleTubesChannel *self,
                  TpTubeType type,
@@ -499,13 +533,18 @@ create_new_tube (GabbleTubesChannel *self,
 
   g_object_get (tube, "state", &state, NULL);
 
-  tp_svc_channel_type_tubes_emit_new_tube (self,
-      tube_id,
-      initiator,
-      type,
-      service,
-      parameters,
-      state);
+  /* The old API doesn't know the "not offered" state, so we have to wait that
+   * the tube is offered before announcing it. */
+  if (state != GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED)
+    {
+      tp_svc_channel_type_tubes_emit_new_tube (self,
+          tube_id,
+          initiator,
+          type,
+          service,
+          parameters,
+          state);
+    }
 
   if (type == TP_TUBE_TYPE_DBUS &&
       state != TP_TUBE_STATE_LOCAL_PENDING)
@@ -515,6 +554,7 @@ create_new_tube (GabbleTubesChannel *self,
 
   g_signal_connect (tube, "tube-opened", G_CALLBACK (tube_opened_cb), self);
   g_signal_connect (tube, "tube-closed", G_CALLBACK (tube_closed_cb), self);
+  g_signal_connect (tube, "tube-offered", G_CALLBACK (tube_offered_cb), self);
 
   return tube;
 }

@@ -548,8 +548,8 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           olpc_gadget_props,
         },
         { GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION,
-          conn_location_propeties_getter,
-          NULL,
+          conn_location_properties_getter,
+          conn_location_properties_setter,
           location_props,
         },
         { NULL }

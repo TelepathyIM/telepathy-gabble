@@ -212,11 +212,11 @@ location_iface_init (gpointer g_iface, gpointer iface_data)
 }
 
 void
-conn_location_propeties_getter (GObject *object,
-                                GQuark interface,
-                                GQuark name,
-                                GValue *value,
-                                gpointer getter_data)
+conn_location_properties_getter (GObject *object,
+                                 GQuark interface,
+                                 GQuark name,
+                                 GValue *value,
+                                 gpointer getter_data)
 {
   if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControlTypes"))
     {
@@ -257,6 +257,27 @@ conn_location_propeties_getter (GObject *object,
     {
       g_assert_not_reached ();
     }
+}
+
+gboolean
+conn_location_properties_setter (GObject *object,
+                                GQuark interface,
+                                GQuark name,
+                                const GValue *value,
+                                gpointer setter_data,
+                                GError **error)
+{
+  g_return_val_if_fail (interface ==
+      GABBLE_IFACE_QUARK_CONNECTION_INTERFACE_LOCATION, FALSE);
+
+  if (name != g_quark_from_static_string ("LocationAccessControlType") ||
+      name != g_quark_from_static_string ("LocationAccessControle"))
+    {
+      // Access Control is not yet implemented in conn-location
+      return TRUE;
+    }
+
+  return TRUE;
 }
 
 static gboolean

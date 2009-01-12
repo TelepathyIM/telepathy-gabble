@@ -46,6 +46,10 @@ def test(q, bus, conn, stream):
     assert properties.get('LocationAccessControlTypes') == access_control_types
     assert properties.get('LocationAccessControl') == access_control
 
+    # Test setting the properties (even if unimplemented)
+    conn.Set (location_iface, 'LocationAccessControl', access_control,
+        dbus_interface ='org.freedesktop.DBus.Properties')
+
     conn.Location.SetLocation({
         'lat': dbus.Double(0.0, variant_level=1), 'lon': 0.0})
 

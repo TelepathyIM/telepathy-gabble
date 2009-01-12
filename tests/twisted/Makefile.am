@@ -39,13 +39,13 @@ TWISTED_TESTS = \
 	tubes/muc-presence.py \
 	tubes/close-muc-with-closed-tube.py \
 	tubes/test-get-available-tubes.py \
-	tubes/test-muc-accept-stream-tube-ibb.py \
-	tubes/test-muc-offer-dbus-tube.py \
-	tubes/test-muc-offer-stream-tube-ibb.py \
-        tubes/test-si-accept-tubes.py \
-	tubes/test-si-fallback.py \
-	tubes/test-si-ibb-tubes.py \
-	tubes/test-si-socks5-tubes.py \
+	tubes/accept-muc-stream-tube-ibb.py \
+	tubes/accept-private-stream-tube.py \
+	tubes/offer-accept-private-dbus-stream-tube-ibb.py \
+	tubes/offer-accept-private-dbus-stream-tube-socks5.py \
+	tubes/offer-accept-private-stream-tube-si-fallback.py \
+	tubes/offer-muc-dbus-tube.py \
+	tubes/offer-muc-stream-tube-ibb.py \
 	tubes/ensure-si-tube.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \

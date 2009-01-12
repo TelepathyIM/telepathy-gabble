@@ -1,7 +1,6 @@
 
 #include "config.h"
 #include "conn-location.h"
-#include "presence-cache.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -12,6 +11,7 @@
 #include "extensions/extensions.h"
 #include "namespaces.h"
 #include "pubsub.h"
+#include "presence-cache.h"
 
 static gboolean update_location_from_msg (GabbleConnection *conn,
     const gchar *from, LmMessage *msg);

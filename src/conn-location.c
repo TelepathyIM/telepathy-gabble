@@ -95,8 +95,8 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   guint i;
-  GHashTable *return_locations = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
-      (GDestroyNotify) g_hash_table_destroy);
+  GHashTable *return_locations = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, (GDestroyNotify) g_hash_table_destroy);
 
   DEBUG ("GetLocation for contacts:");
 
@@ -115,11 +115,13 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
           TP_HANDLE_TYPE_CONTACT);
       jid = tp_handle_inspect (contact_repo, contact);
 
-      location = gabble_presence_cache_get_location (conn->presence_cache, contact);
+      location = gabble_presence_cache_get_location (conn->presence_cache,
+          contact);
       if (location != NULL)
         {
           DEBUG (" - %s: cached", jid);
-          g_hash_table_insert (return_locations, GINT_TO_POINTER (contact), location);
+          g_hash_table_insert (return_locations, GINT_TO_POINTER (contact),
+              location);
         }
       else if (!pubsub_query (conn, jid, NS_GEOLOC, pep_reply_cb, NULL))
         {
@@ -265,8 +267,8 @@ update_location_from_msg (GabbleConnection *conn,
                           LmMessage *msg)
 {
   LmMessageNode *node, *subloc_node;
-  GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal, g_free,
-      (GDestroyNotify) tp_g_value_slice_free);
+  GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      g_free, (GDestroyNotify) tp_g_value_slice_free);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
 

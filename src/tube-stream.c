@@ -106,6 +106,7 @@ enum
   OPENED,
   NEW_CONNECTION,
   CLOSED,
+  OFFERED,
   LAST_SIGNAL
 };
 
@@ -1334,6 +1335,15 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
                   gabble_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
+  signals[OFFERED] =
+    g_signal_new ("tube-offered",
+                  G_OBJECT_CLASS_TYPE (gabble_tube_stream_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
   gabble_tube_stream_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleTubeStreamClass, dbus_props_class));
@@ -1988,6 +1998,8 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
 
   g_signal_connect (self, "tube-new-connection",
       G_CALLBACK (stream_unix_tube_new_connection_cb), self);
+
+  g_signal_emit (G_OBJECT (self), signals[OFFERED], 0);
 
   gabble_svc_channel_type_stream_tube_return_from_offer_stream_tube (context);
 }

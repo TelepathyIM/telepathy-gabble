@@ -48,6 +48,7 @@
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "presence.h"
+#include "private-tubes-factory.h"
 #include "tube-iface.h"
 #include "tube-dbus.h"
 #include "tube-stream.h"
@@ -1718,6 +1719,19 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
 
   g_signal_connect (tube, "tube-new-connection",
       G_CALLBACK (stream_unix_tube_new_connection_cb), self);
+
+  /* announce the new tube channel we just created (new tube API) */
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      gabble_private_tubes_factory_tube_created (
+          priv->conn->private_tubes_factory, tube);
+    }
+  else
+    {
+      /* FIXME
+      gabble_muc_factory_tube_created (priv->conn->muc_factory, tube);
+      */
+    }
 
   tp_svc_channel_type_tubes_return_from_offer_stream_tube (context,
       tube_id);

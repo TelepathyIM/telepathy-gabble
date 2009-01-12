@@ -335,6 +335,9 @@ def test(q, bus, conn, stream):
              'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
                 dbus.Dictionary({'foo': 'bar'}, signature='sv'),
             });
+
+    # the NewTube signal (old API) is not fired now as the tube wasn't offered
+    # yet
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
         EventPattern('dbus-signal', signal='NewChannel'),
@@ -398,8 +401,7 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    new_tube_sig, return_event, new_chan, new_chans = q.expect_many(
-        EventPattern('dbus-signal', signal='NewTube'),
+    return_event, new_chan, new_chans = q.expect_many(
         EventPattern('dbus-return', method='OfferStreamTube'),
         EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'))
@@ -471,8 +473,11 @@ def test(q, bus, conn, stream):
     call_async(q, tube_iface, 'OfferStreamTube',
         0, dbus.ByteArray(path2), 0, "")
 
-    event = q.expect('stream-message')
-    message = event.stanza
+    msg_event, new_tube_sig = q.expect_many(
+        EventPattern('stream-message'),
+        EventPattern('dbus-signal', signal='NewTube'))
+
+    message = msg_event.stanza
     assert message['to'] == 'bob@localhost/Bob' # check the resource
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
         message)
@@ -495,6 +500,15 @@ def test(q, bus, conn, stream):
                       'i': ('int', '-123'),
                       'u': ('uint', '123'),
                      }
+
+    # check NewTube signal (old API)
+    id, initiator_handle, type, service, params, state = new_tube_sig.args
+    assert initiator_handle == self_handle
+    assert type == 1 # stream
+    assert service == 'newecho'
+    assert params == new_sample_parameters
+    assert state == 1 # remote pending
+
     # The new tube has been offered, the parameters cannot be changed anymore
     # We need to use call_async to check the error
     tube_prop_iface = dbus.Interface(tube_chan,

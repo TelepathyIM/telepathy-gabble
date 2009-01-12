@@ -858,7 +858,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
                   gabble_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
-  signals[CLOSED] =
+  signals[OFFERED] =
     g_signal_new ("tube-offered",
                   G_OBJECT_CLASS_TYPE (gabble_tube_dbus_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,

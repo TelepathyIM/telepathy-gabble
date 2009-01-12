@@ -1318,6 +1318,29 @@ gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
   g_hash_table_destroy (table);
 }
 
+/* return TRUE if the text_channel associated is ready */
+static gboolean
+ensure_tubes_channel (GabbleMucFactory *self,
+                      TpHandle handle,
+                      GabbleTubesChannel **tubes_chan)
+{
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
+  GabbleMucChannel *text_chan;
+  gboolean result;
+
+  result = ensure_muc_channel (self, priv, handle, &text_chan, FALSE);
+
+  *tubes_chan = new_tubes_channel (self, handle, text_chan,
+      base_conn->self_handle);
+
+  if (!result)
+    {
+      g_hash_table_insert (priv->text_needed_for_tubes, text_chan, *tubes_chan);
+    }
+
+  return result;
+}
 
 static gboolean
 gabble_muc_factory_request (GabbleMucFactory *self,
@@ -1326,7 +1349,6 @@ gabble_muc_factory_request (GabbleMucFactory *self,
                             gboolean require_new)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
-  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   GError *error = NULL;
   TpHandle handle;
   const gchar *channel_type;
@@ -1399,10 +1421,8 @@ gabble_muc_factory_request (GabbleMucFactory *self,
                   request_token, TP_EXPORTABLE_CHANNEL (tubes_chan));
             }
         }
-      else if (ensure_muc_channel (self, priv, handle, &text_chan, FALSE))
+      else if (ensure_tubes_channel (self, handle, &tubes_chan))
         {
-          tubes_chan = new_tubes_channel (self, handle, text_chan,
-              base_conn->self_handle);
           gabble_muc_factory_associate_request (self, tubes_chan,
               request_token);
           gabble_muc_factory_emit_new_channel (self,
@@ -1410,12 +1430,8 @@ gabble_muc_factory_request (GabbleMucFactory *self,
         }
       else
         {
-          tubes_chan = new_tubes_channel (self, handle, text_chan,
-              base_conn->self_handle);
           gabble_muc_factory_associate_request (self, tubes_chan,
               request_token);
-          g_hash_table_insert (priv->text_needed_for_tubes, text_chan,
-              tubes_chan);
         }
 
       return TRUE;

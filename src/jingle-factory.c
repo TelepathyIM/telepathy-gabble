@@ -427,7 +427,10 @@ connection_status_changed_cb (GabbleConnection *conn,
           lm_connection_unregister_message_handler (priv->conn->lmconn,
               priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
 
+          lm_message_handler_unref (priv->jingle_cb);
           priv->jingle_cb = NULL;
+
+          lm_message_handler_unref (priv->jingle_info_cb);
           priv->jingle_info_cb = NULL;
         }
       break;

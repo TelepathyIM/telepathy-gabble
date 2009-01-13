@@ -347,14 +347,27 @@ def test(q, bus, conn, stream):
     assert len(ret.value) == 2 # CreateChannel returns 2 values: o, a{sv}
     new_chan_path = ret.value[0]
     new_chan_prop_asv = ret.value[1]
-    assert new_chan_prop_asv[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Status'] == \
-        TUBE_CHANNEL_STATE_NOT_OFFERED
-    assert new_chan_prop_asv[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Parameters'] == {'foo': 'bar'}
+    # Status and Parameters are mutables so not announced
+    assert (tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Status') not in new_chan_prop_asv
+    assert (tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Parameters') not in new_chan_prop_asv
     assert new_chan_path.find("StreamTube") != -1, new_chan_path
     assert new_chan_path.find("SITubesChannel") == -1, new_chan_path
     # The path of the Channel.Type.Tubes object MUST be different to the path
     # of the Channel.Type.StreamTube object !
     assert chan_path != new_chan_path
+
+    new_tube_chan = bus.get_object(conn.bus_name, new_chan_path)
+    new_tube_iface = dbus.Interface(new_tube_chan,
+        tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
+
+    # check Status and Parameters
+    new_tube_props = new_tube_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties')
+
+    # the tube created using the old API is in the "not offered" state
+    assert new_tube_props['Status'] == TUBE_CHANNEL_STATE_NOT_OFFERED
+    assert new_tube_props['Parameters'] == {'foo': 'bar'}
 
     check_NewChannel_signal(old_sig.args, "StreamTube.DRAFT", \
             new_chan_path, bob_handle, True)
@@ -366,6 +379,7 @@ def test(q, bus, conn, stream):
             [old_tubes_channel_properties, stream_tube_channel_properties])
 
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
+
     tubes_iface = dbus.Interface(tubes_chan,
         tp_name_prefix + '.Channel.Type.Tubes')
 
@@ -413,9 +427,6 @@ def test(q, bus, conn, stream):
         bob_handle, "bob@localhost", self_handle)
 
     props = new_chans.args[0][0][1]
-    # Tube have been created using the old API and so is already offered
-    assert props['org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Status'] == \
-        TUBE_CHANNEL_STATE_REMOTE_PENDING
 
     # We offered a tube using the old tube API and created one with the new
     # API, so there are 2 tubes. Check the new tube API works
@@ -429,48 +440,46 @@ def test(q, bus, conn, stream):
     assert len(channels) == 1
     assert new_chan_path == channels[0][0]
 
-    tube_chan = bus.get_object(conn.bus_name, channels[0][0])
-    tube_iface = dbus.Interface(tube_chan,
-        tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
+    old_tube_chan = bus.get_object(conn.bus_name, new_chan.args[0])
 
-    tube_basic_props = tube_chan.GetAll(
+    tube_basic_props = old_tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert tube_basic_props.get("InitiatorHandle") == self_handle
 
-    stream_tube_props = tube_chan.GetAll(
+    stream_tube_props = old_tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert stream_tube_props.get("Service") == "newecho", stream_tube_props
+    assert stream_tube_props.get("Service") == "echo", stream_tube_props
 
-    tube_props = tube_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
-            dbus_interface='org.freedesktop.DBus.Properties')
-    assert tube_props.get("Parameters") == dbus.Dictionary(
-            {dbus.String(u'foo'): dbus.String(u'bar')},
-            signature=dbus.Signature('sv'))
-    # change the parameters
-    tube_chan.Set('org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
-            'Parameters', new_sample_parameters,
-            dbus_interface='org.freedesktop.DBus.Properties')
-    # check it is correctly changed
-    tube_props = tube_chan.GetAll(
+    old_tube_props = old_tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties', byte_arrays=True)
-    assert tube_props.get("Parameters") == new_sample_parameters, \
-            tube_props.get("Parameters")
+    assert old_tube_props.get("Parameters") == dbus.Dictionary(sample_parameters)
 
-    # the tube created using the old API is in the "not offered" state
-    assert tube_props.get("Status") == TUBE_CHANNEL_STATE_NOT_OFFERED, tube_props.get('Status')
+    # Tube have been created using the old API and so is already offered
+    assert old_tube_props['Status'] == TUBE_CHANNEL_STATE_REMOTE_PENDING
 
     check_channel_properties(q, bus, conn, stream, tubes_chan, "Tubes",
             bob_handle, "bob@localhost")
-    check_channel_properties(q, bus, conn, stream, tube_chan,
-            "StreamTube.DRAFT", bob_handle, "bob@localhost", TUBE_CHANNEL_STATE_NOT_OFFERED)
+    check_channel_properties(q, bus, conn, stream, old_tube_chan,
+            "StreamTube.DRAFT", bob_handle, "bob@localhost", TUBE_CHANNEL_STATE_REMOTE_PENDING)
+
+    # change the parameters of the not offered tube (the one created using the
+    # new API)
+    new_tube_chan.Set('org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
+            'Parameters', new_sample_parameters,
+            dbus_interface='org.freedesktop.DBus.Properties')
+    # check it is correctly changed
+    new_tube_props = new_tube_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
+            dbus_interface='org.freedesktop.DBus.Properties', byte_arrays=True)
+    assert new_tube_props.get("Parameters") == new_sample_parameters, \
+            new_tube_props.get("Parameters")
 
     # Offer the first tube created (new API)
     path2 = os.getcwd() + '/stream2'
-    call_async(q, tube_iface, 'OfferStreamTube',
+    call_async(q, new_tube_iface, 'OfferStreamTube',
         0, dbus.ByteArray(path2), 0, "")
 
     msg_event, new_tube_sig = q.expect_many(
@@ -511,7 +520,7 @@ def test(q, bus, conn, stream):
 
     # The new tube has been offered, the parameters cannot be changed anymore
     # We need to use call_async to check the error
-    tube_prop_iface = dbus.Interface(tube_chan,
+    tube_prop_iface = dbus.Interface(old_tube_chan,
         'org.freedesktop.DBus.Properties')
     call_async(q, tube_prop_iface, 'Set',
         'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
@@ -521,11 +530,11 @@ def test(q, bus, conn, stream):
             dbus_interface='org.freedesktop.DBus.Properties')
     set_error = q.expect('dbus-error')
     # check it is *not* correctly changed
-    tube_props = tube_chan.GetAll(
+    new_tube_props = new_tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             dbus_interface='org.freedesktop.DBus.Properties', byte_arrays=True)
-    assert tube_props.get("Parameters") == new_sample_parameters, \
-            tube_props.get("Parameters")
+    assert new_tube_props.get("Parameters") == new_sample_parameters, \
+            new_tube_props.get("Parameters")
 
     # The CM is the server, so fake a client wanting to talk to it
     # Old API tube

@@ -100,15 +100,12 @@ def test(q, bus, conn, stream):
     bob_handle = 3
 
     # text and tubes channels are created
+    # FIXME: We can't check NewChannel signals (old API) because two of them
+    # would be fired and we can't catch twice the same signals without specifying
+    # all their arguments.
     new_sig, returned = q.expect_many(
         EventPattern('dbus-signal', signal='NewChannels'),
         EventPattern('dbus-return', method='RequestChannel'))
-
-    #path, type, handle_type, handle, supress = old_sig.args
-    #assert type == 'org.freedesktop.Telepathy.Channel.Type.Text'
-    #assert handle_type == 2 #room
-    #assert handle == handles[0]
-    #assert supress == False
 
     channels = new_sig.args[0]
     assert len(channels) == 2

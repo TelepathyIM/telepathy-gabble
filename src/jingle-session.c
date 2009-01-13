@@ -352,7 +352,7 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
   signals[NEW_CONTENT] = g_signal_new ("new-content",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, g_cclosure_marshal_VOID__OBJECT,
-        G_TYPE_NONE, 1, G_TYPE_POINTER);
+        G_TYPE_NONE, 1, G_TYPE_OBJECT);
 
   signals[TERMINATED] = g_signal_new ("terminated",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,

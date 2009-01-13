@@ -64,7 +64,7 @@ def test(q, bus, conn, stream):
     assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Messages.DRAFT' in \
+    assert 'org.freedesktop.Telepathy.Channel.Interface.Messages' in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
@@ -147,7 +147,7 @@ def test(q, bus, conn, stream):
     ]
 
     dbus.Interface(text_chan,
-        u'org.freedesktop.Telepathy.Channel.Interface.Messages.DRAFT'
+        u'org.freedesktop.Telepathy.Channel.Interface.Messages'
         ).SendMessage(greeting, dbus.UInt32(0))
 
     stream_message, sent, message_sent = q.expect_many(

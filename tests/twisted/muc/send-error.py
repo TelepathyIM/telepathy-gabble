@@ -53,7 +53,7 @@ def test(q, bus, conn, stream):
     ]
 
     dbus.Interface(text_chan,
-        u'org.freedesktop.Telepathy.Channel.Interface.Messages.DRAFT'
+        u'org.freedesktop.Telepathy.Channel.Interface.Messages'
         ).SendMessage(greeting, dbus.UInt32(0))
 
     stream_message, _, _ = q.expect_many(

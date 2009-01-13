@@ -731,7 +731,6 @@ muc_factory_message_cb (LmMessageHandler *handler,
   TpHandle room_handle, handle;
   GabbleMucChannel *chan;
   gint state;
-  gboolean is_error;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
   gchar *room;
@@ -814,9 +813,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
     _gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
         body, message, send_error, delivery_status);
 
-  is_error = (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
-
-  if (!is_error)
+  if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       if (state != -1 && handle_type == TP_HANDLE_TYPE_CONTACT)
         _gabble_muc_channel_state_receive (chan, state, handle);

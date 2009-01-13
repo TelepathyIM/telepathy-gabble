@@ -349,7 +349,12 @@ def test(q, bus, conn, stream):
     call_async(q, tubes_iface, 'OfferStreamTube',
         'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
 
-    event = q.expect('stream-message')
+    event, return_event, new_chan, new_chans = q.expect_many(
+        EventPattern('stream-message'),
+        EventPattern('dbus-return', method='OfferStreamTube'),
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'))
+
     message = event.stanza
     assert message['to'] == 'bob@localhost/Bob' # check the resource
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
@@ -374,10 +379,6 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    return_event, new_chan, new_chans = q.expect_many(
-        EventPattern('dbus-return', method='OfferStreamTube'),
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'))
 
     # the tube channel (new API) is announced
     check_NewChannel_signal(new_chan.args, CHANNEL_TYPE_STREAM_TUBE,

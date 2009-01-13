@@ -1,9 +1,11 @@
 
+#define _GNU_SOURCE
 #include "config.h"
 #include "conn-location.h"
 
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_LOCATION
 
@@ -149,6 +151,19 @@ create_msg_foreach (gpointer key,
 {
   LmMessageNode *geoloc = (LmMessageNode *) user_data;
 
+  if (G_VALUE_TYPE (value) == G_TYPE_UINT64)
+    {
+      time_t stamp = g_value_get_uint64 (value);
+      struct tm *ptm = gmtime (&stamp);
+      gchar str[30];
+
+      if (strftime (str, 30, "%Y%m%dT%TZ", ptm) == 0)
+        return;
+
+      lm_message_node_add_child (geoloc, key, str);
+      DEBUG ("\t - %s: %s", (gchar*) key, str);
+      g_free (str);
+    }
   if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)
     {
       gchar *str;
@@ -302,7 +317,7 @@ update_location_from_msg (GabbleConnection *conn,
   for (subloc_node = node->children; subloc_node != NULL;
       subloc_node = subloc_node->next)
     {
-      GValue *value;
+      GValue *value = NULL;
       gdouble double_value;
       gchar *key, *str;
 
@@ -321,10 +336,31 @@ update_location_from_msg (GabbleConnection *conn,
         }
       else if (lm_message_node_get_string (subloc_node, &str))
         {
-          value = g_slice_new0 (GValue);
-          g_value_init (value, G_TYPE_STRING);
-          g_value_take_string (value, str);
-          DEBUG ("\t - %s: %s", key, str);
+          if (strcmp (key, "timestamp") == 0)
+            {
+              struct tm ptm;
+              gchar * p = strptime (str, "%Y%m%dT%T", &ptm);
+              if (p != NULL)
+                {
+                  guint64 stamp = mktime (&ptm);
+                  value = g_slice_new0 (GValue);
+                  g_value_init (value, G_TYPE_UINT64);
+                  g_value_set_uint64 (value, stamp);
+                  DEBUG ("\t - %s: %" G_GUINT64_FORMAT, key, stamp);
+                }
+              else
+                {
+                  DEBUG ("\t - %s: %s: unknown date format", key, str);
+                  continue;
+                }
+            }
+          else
+            {
+              value = g_slice_new0 (GValue);
+              g_value_init (value, G_TYPE_STRING);
+              g_value_take_string (value, str);
+              DEBUG ("\t - %s: %s", key, str);
+            }
         }
       else
         {

@@ -111,6 +111,7 @@ check-twisted:
 
 EXTRA_DIST = \
 	$(TWISTED_TESTS) \
+	constants.py \
 	gabbletest.py \
 	servicetest.py \
 	jingle/jingletest.py \

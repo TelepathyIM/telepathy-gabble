@@ -2312,7 +2312,8 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
             send_error);
 
       /* We do not set a message-sender on the report: the intended recipient
-       * of the original message was the MUC, so the spec we should omit it.
+       * of the original message was the MUC, so the spec says we should omit
+       * it.
        *
        * The sender of the echo, however, is ourself.  (Unless we get errors
        * for messages that we didn't send, which would be odd.)

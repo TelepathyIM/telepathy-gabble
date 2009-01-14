@@ -13,6 +13,8 @@ def test(q, bus, conn, stream):
     import dbus
     conn.interfaces['Location'] = \
         dbus.Interface(conn, location_iface)
+    conn.interfaces['Properties'] = \
+        dbus.Interface(conn, 'org.freedesktop.DBus.Properties')
 
     conn.Connect()
 
@@ -46,9 +48,29 @@ def test(q, bus, conn, stream):
     assert properties.get('LocationAccessControlTypes') == access_control_types
     assert properties.get('LocationAccessControl') == access_control
 
-    # Test setting the properties (even if unimplemented)
+    # Test setting the properties
+    bad_access_control = dbus.Struct([dbus.UInt32(99),
+            dbus.UInt32(0, variant_level=1)],
+            signature=dbus.Signature('uv'))
+    try:
+        conn.Set (location_iface, 'LocationAccessControl', bad_access_control,
+            dbus_interface ='org.freedesktop.DBus.Properties')
+    except dbus.DBusException, e:
+        pass
+    else:
+        assert False, "Should have had an error!"
+
     conn.Set (location_iface, 'LocationAccessControl', access_control,
         dbus_interface ='org.freedesktop.DBus.Properties')
+    # LocationAccessControlType is read-only, we just test it does not crash
+    try:
+        conn.Set (location_iface, 'LocationAccessControlType',
+            access_control_types,
+            dbus_interface ='org.freedesktop.DBus.Properties')
+    except dbus.DBusException, e:
+        pass
+    else:
+        assert False, "Should have had an error!"
 
     conn.Location.SetLocation({
         'lat': dbus.Double(0.0, variant_level=1), 'lon': 0.0})

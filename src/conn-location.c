@@ -157,7 +157,7 @@ create_msg_foreach (gpointer key,
       struct tm *ptm = gmtime (&stamp);
       gchar str[30];
 
-      if (strftime (str, 30, "%Y%m%dT%TZ", ptm) == 0)
+      if (strftime (str, sizeof(str), "%Y%m%dT%TZ", ptm) == 0)
         return;
 
       lm_message_node_add_child (geoloc, key, str);

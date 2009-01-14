@@ -282,14 +282,25 @@ conn_location_properties_setter (GObject *object,
                                 gpointer setter_data,
                                 GError **error)
 {
+  GValueArray *access_control;
+  GValue *access_control_type_value;
+  GabbleRichPresenceAccessControlType access_control_type;
   g_return_val_if_fail (interface ==
       GABBLE_IFACE_QUARK_CONNECTION_INTERFACE_LOCATION, FALSE);
 
-  if (name != g_quark_from_static_string ("LocationAccessControlType") ||
-      name != g_quark_from_static_string ("LocationAccessControle"))
+  g_assert (name == g_quark_from_static_string ("LocationAccessControl"));
+
+  access_control = g_value_get_boxed (value);
+  
+  access_control_type_value = g_value_array_get_nth (access_control, 0);
+  access_control_type = g_value_get_uint (access_control_type_value);
+
+  if (access_control_type !=
+      GABBLE_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST)
     {
-      // Access Control is not yet implemented in conn-location
-      return TRUE;
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Access control type not implemented");
+      return FALSE;
     }
 
   return TRUE;

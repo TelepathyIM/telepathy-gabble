@@ -44,6 +44,7 @@
 #include "presence-cache.h"
 #include "text-mixin.h"
 #include "tubes-channel.h"
+#include "tube-stream.h"
 #include "util.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
@@ -1314,8 +1315,6 @@ static const gchar * const muc_channel_allowed_properties[] = {
 static const gchar * const * muc_tubes_channel_allowed_properties =
     muc_channel_allowed_properties;
 
-
-
 static void
 gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
     TpChannelManagerChannelClassFunc func,
@@ -1335,12 +1334,20 @@ gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       handle_type_value);
 
+  /* Channel.Type.Text */
   g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TEXT);
   func (manager, table, muc_channel_allowed_properties,
       user_data);
 
+  /* Channel.Type.Tubes */
   g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TUBES);
   func (manager, table, muc_tubes_channel_allowed_properties,
+      user_data);
+
+  /* Muc Channel.Type.StreamTube */
+  g_value_set_static_string (channel_type_value,
+      GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
+  func (manager, table, gabble_tube_stream_channel_allowed_properties,
       user_data);
 
   g_hash_table_destroy (table);
@@ -1380,23 +1387,29 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   GError *error = NULL;
   TpHandle handle;
   const gchar *channel_type;
-  GabbleMucChannel *text_chan;
   GabbleTubesChannel *tubes_chan;
 
   if (tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_ROOM)
     return FALSE;
 
+  channel_type = tp_asv_get_string (request_properties,
+      TP_IFACE_CHANNEL ".ChannelType");
+
+   if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
+       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
+       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+     return FALSE;
+
   /* validity already checked by TpBaseConnection */
   handle = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
   g_assert (handle != 0);
 
-  channel_type = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL ".ChannelType");
-
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT))
     {
+      GabbleMucChannel *text_chan;
+
       if (tp_channel_manager_asv_has_unknown_properties (request_properties,
               muc_channel_fixed_properties, muc_channel_allowed_properties,
               &error))
@@ -1466,9 +1479,36 @@ gabble_muc_factory_request (GabbleMucFactory *self,
 
       return TRUE;
     }
-  else
+  else if (!tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))
     {
-      return FALSE;
+      const gchar *service;
+
+      if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              muc_tubes_channel_fixed_properties,
+              gabble_tube_stream_channel_allowed_properties,
+              &error))
+        goto error;
+
+      /* "Service" is a mandatory, not-fixed property */
+      service = tp_asv_get_string (request_properties,
+                GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+      if (service == NULL)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+              "Request does not contain the mandatory property '%s'",
+              GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+          goto error;
+        }
+
+        tubes_chan = g_hash_table_lookup (priv->tubes_channels,
+            GUINT_TO_POINTER (handle));
+        if (tubes_chan == NULL)
+          {
+            /* Need to create a tubes channel */
+            /* TODO */
+          }
+
+        return FALSE;
     }
 
 error:

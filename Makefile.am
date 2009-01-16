@@ -9,4 +9,5 @@ check-twisted: all
 
 check-all: check check-twisted
 
+include tools/lcov.am
 include tools/telepathy.am

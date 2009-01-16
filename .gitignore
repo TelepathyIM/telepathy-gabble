@@ -1,4 +1,6 @@
 *.[ao]
+*.gcda
+*.gcno
 *.l[ao]
 *.loT
 *.orig
@@ -36,6 +38,8 @@ core
 /extensions/extensions.html
 /gtk-doc.make
 /install-sh
+/lcov.html
+/lcov.info
 /libtool
 /lib/gibber/gibber-signals-marshal.c
 /lib/gibber/gibber-signals-marshal.h

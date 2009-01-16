@@ -23,6 +23,7 @@
 #include <glib-object.h>
 
 #include <telepathy-glib/enums.h>
+#include <telepathy-glib/interfaces.h>
 
 #include "connection.h"
 #include "extensions/extensions.h"
@@ -62,6 +63,14 @@ GType gabble_tube_stream_get_type (void);
 #define GABBLE_TUBE_STREAM_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBE_STREAM,\
                               GabbleTubeStreamClass))
+
+static const gchar * const gabble_tube_stream_channel_allowed_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
+    GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
+    NULL
+};
 
 GabbleTubeStream *gabble_tube_stream_new (GabbleConnection *conn,
     TpHandle handle, TpHandleType handle_type, TpHandle self_handle,

@@ -25,7 +25,6 @@ def test(q, bus, conn, stream):
                      DBUS_TUBE_SERVICE_NAME: invalid_service_name
                 });
         except dbus.DBusException, e:
-            print e
             assert e.get_dbus_name() == INVALID_ARGUMENT, \
                 (e.get_dbus_name(), invalid_service_name)
         else:

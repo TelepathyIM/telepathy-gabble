@@ -27,6 +27,7 @@ NS_IBB = 'http://jabber.org/protocol/ibb'
 NS_MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
 NS_X_DATA = 'jabber:x:data'
 
+HT_ROOM = 2
 
 def set_up_listener_socket(q):
     factory = EventProtocolFactory(q)
@@ -51,7 +52,7 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
     self_name = conn.InspectHandles(1, [self_handle])[0]
 
-    call_async(q, conn, 'RequestHandles', 2,
+    call_async(q, conn, 'RequestHandles', HT_ROOM,
         ['chat@conf.localhost'])
 
     event = q.expect('stream-iq', to='conf.localhost',
@@ -146,6 +147,7 @@ def test(q, bus, conn, stream):
 
     # Unix socket
     path = os.getcwd() + '/stream'
+    # offer stream tube (old API)
     call_async(q, tubes_iface, 'OfferStreamTube',
         'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
 
@@ -288,6 +290,41 @@ def test(q, bus, conn, stream):
     assert ibb_data['sid'] == 'alpha'
     binary = base64.b64decode(str(ibb_data))
     assert binary == 'hello joiner'
+
+    # offer a stream tube to another room (new API)
+    requestotron = dbus.Interface(conn, 'org.freedesktop.Telepathy.Connection.Interface.Requests')
+
+    # can we request muc stream tubes?
+    properties = conn.GetAll(
+        'org.freedesktop.Telepathy.Connection.Interface.Requests',
+        dbus_interface='org.freedesktop.DBus.Properties')
+
+    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
+            'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+         'org.freedesktop.Telepathy.Channel.TargetHandleType': HT_ROOM,
+         },
+         ['org.freedesktop.Telepathy.Channel.TargetHandle',
+          'org.freedesktop.Telepathy.Channel.TargetID',
+          'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters',
+          'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service',
+         ]
+        ) in properties.get('RequestableChannelClasses'),\
+                 properties['RequestableChannelClasses']
+
+    call_async(q, requestotron, 'CreateChannel',
+        {'org.freedesktop.Telepathy.Channel.ChannelType':
+            'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
+         'org.freedesktop.Telepathy.Channel.TargetHandleType':
+            HT_ROOM,
+         'org.freedesktop.Telepathy.Channel.TargetID':
+            'chat2@conf.localhost',
+         'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service':
+            "newecho",
+         'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
+            dbus.Dictionary({'foo': 'bar'}, signature='sv'),
+        })
+
+    # TODO: continue test
 
     # OK, we're done
     conn.Disconnect()

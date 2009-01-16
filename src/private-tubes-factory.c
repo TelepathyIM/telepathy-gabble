@@ -1207,6 +1207,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
   else if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     {
       const gchar *service;
+      GError *err = NULL;
 
       if (tp_channel_manager_asv_has_unknown_properties (request_properties,
               tubes_channel_fixed_properties,
@@ -1222,6 +1223,15 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
           g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
               "Request does not contain the mandatory property '%s'",
               GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+          goto error;
+        }
+
+      if (!tp_dbus_check_valid_bus_name (service, TP_DBUS_NAME_TYPE_WELL_KNOWN,
+            &err))
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "Invalid ServiceName: %s", err->message);
+          g_error_free (err);
           goto error;
         }
     }

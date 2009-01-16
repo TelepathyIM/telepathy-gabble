@@ -524,10 +524,10 @@ gabble_get_room_handle_from_jid (TpHandleRepoIface *room_repo,
   return handle;
 }
 
-#define INVALID_ARGUMENT(e, f, ...) \
+#define INVALID_HANDLE(e, f, ...) \
   G_STMT_START { \
   DEBUG (f, ##__VA_ARGS__); \
-  g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, f, ##__VA_ARGS__);\
+  g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_HANDLE, f, ##__VA_ARGS__);\
   } G_STMT_END
 
 gchar *
@@ -542,13 +542,13 @@ gabble_normalize_room (TpHandleRepoIface *repo,
   /* there'd better be an @ somewhere after the first character */
   if (at == NULL)
     {
-      INVALID_ARGUMENT (error,
+      INVALID_HANDLE (error,
           "invalid room JID %s: does not contain '@'", jid);
       return NULL;
     }
   if (at == jid)
     {
-      INVALID_ARGUMENT (error,
+      INVALID_HANDLE (error,
           "invalid room JID %s: room name before '@' may not be empty", jid);
       return NULL;
     }
@@ -556,7 +556,7 @@ gabble_normalize_room (TpHandleRepoIface *repo,
   /* room names can't contain the nick part */
   if (slash != NULL)
     {
-      INVALID_ARGUMENT (error,
+      INVALID_HANDLE (error,
           "invalid room JID %s: contains nickname part after '/' too", jid);
       return NULL;
     }
@@ -598,14 +598,14 @@ gabble_normalize_contact (TpHandleRepoIface *repo,
 
   if (!username || !server || !username[0] || !server[0])
     {
-      INVALID_ARGUMENT (error,
+      INVALID_HANDLE (error,
           "jid %s has invalid username or server", jid);
       goto OUT;
     }
 
   if (mode == GABBLE_JID_ROOM_MEMBER && resource == NULL)
     {
-      INVALID_ARGUMENT (error,
+      INVALID_HANDLE (error,
           "jid %s can't be a room member - it has no resource", jid);
       goto OUT;
     }

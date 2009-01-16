@@ -20,10 +20,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
   </tp:license>
   <interface name="org.freedesktop.Telepathy.Connection.Interface.ContactCapabilities.DRAFT">
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
+    <tp:added version="0.17.16">(as a draft)</tp:added>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>Contact capabilities describe the channel classes which may be
-        created with a given conatact in advance of attempting to create a
+        created with a given contact in advance of attempting to create a
         channel. Each capability represents a commitment by the
         connection manager that it will ordinarily be able to create a channel
         with a contact when given a request with the properties defined by the

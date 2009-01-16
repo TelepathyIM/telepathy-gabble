@@ -30,5 +30,7 @@ def test(q, bus, conn, stream):
         else:
             assert False
 
+    # TODO: do the same with muc D-Bus tubes
+
 if __name__ == '__main__':
     exec_test(test)

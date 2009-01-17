@@ -8,6 +8,8 @@ from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, tp_name_prefix
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
+from constants import *
+from tubetestutil import *
 
 from twisted.words.xish import domish, xpath
 from ns import DISCO_INFO, TUBES, SI, FEATURE_NEG, IBB, MUC_BYTESTREAM, X_DATA
@@ -150,14 +152,9 @@ def test(q, bus, conn, stream):
 
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert len(tubes) == 1
-    sorted(tubes) == sorted([(
-        dbus_tube_id,
-        self_handle,
-        0,      # DBUS
-        'com.example.TestCase',
-        sample_parameters,
-        1,      # Remote Pending
-        )])
+    expected_tube = (dbus_tube_id, self_handle, TUBE_TYPE_DBUS,
+        'com.example.TestCase', sample_parameters, TUBE_STATE_REMOTE_PENDING)
+    check_tube_in_tubes(expected_tube, tubes)
 
     # Alice accepts the tube and wants to use IBB
     result = make_result_iq(stream, iq)

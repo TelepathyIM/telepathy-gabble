@@ -11,6 +11,7 @@ from dbus.lowlevel import SignalMessage
 from servicetest import call_async, EventPattern, watch_tube_signals
 from gabbletest import exec_test, acknowledge_iq, sync_stream
 from constants import *
+from tubetestutil import *
 
 from dbus import PROPERTIES_IFACE
 
@@ -145,7 +146,6 @@ def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
     assert emitted_props[REQUESTED] == True
     assert emitted_props[INITIATOR_HANDLE] == initiator_handle
     assert emitted_props[INITIATOR_ID] == 'test@localhost'
-
 
 def test(q, bus, conn, stream):
     set_up_echo("")
@@ -534,15 +534,9 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StreamTubeNewConnection',
         args=[stream_tube_id, bob_handle])
 
-    tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert (
-        stream_tube_id,
-        self_handle,
-        1,      # Unix stream
-        'echo',
-        sample_parameters,
-        2,      # OPEN
-        ) in tubes
+    expected_tube = (stream_tube_id, self_handle, TUBE_TYPE_STREAM, 'echo',
+        sample_parameters, TUBE_STATE_OPEN)
+    check_tube_in_tubes(expected_tube, tubes_iface.ListTubes(byte_arrays=True))
 
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
@@ -583,15 +577,9 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StreamTubeNewConnection',
         args=[bob_handle])
 
-    tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert (
-        new_stream_tube_id,
-        self_handle,
-        1,      # Unix stream
-        'newecho',
-        new_sample_parameters,
-        2,      # OPEN
-        ) in tubes, tubes
+    expected_tube = (new_stream_tube_id, self_handle, TUBE_TYPE_STREAM,
+        'newecho', new_sample_parameters, TUBE_STATE_OPEN)
+    check_tube_in_tubes (expected_tube, tubes_iface.ListTubes(byte_arrays=True))
 
     # have the fake client open the stream
     # Old tube API
@@ -733,22 +721,12 @@ def test(q, bus, conn, stream):
         args=[dbus_tube_id, 2]) # 2 == OPEN
 
     tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert (
-        dbus_tube_id,
-        self_handle,
-        0,      # DBUS
-        'com.example.TestCase',
-        sample_parameters,
-        2,      # OPEN
-        ) in tubes
-    assert (
-        stream_tube_id,
-        self_handle,
-        1,      # stream
-        'echo',
-        sample_parameters,
-        2,      # OPEN
-        ) in tubes
+    expected_dtube = (dbus_tube_id, self_handle, TUBE_TYPE_DBUS,
+        'com.example.TestCase', sample_parameters, TUBE_STATE_OPEN)
+    expected_stube = (stream_tube_id, self_handle, TUBE_TYPE_STREAM,
+        'echo', sample_parameters, TUBE_STATE_OPEN)
+    check_tube_in_tubes(expected_dtube, tubes)
+    check_tube_in_tubes(expected_stube, tubes)
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
     dbus_tube_conn = Connection(dbus_tube_adr)

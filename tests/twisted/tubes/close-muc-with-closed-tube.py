@@ -5,6 +5,8 @@ import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolClientFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from constants import *
+from tubetestutil import *
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -151,15 +153,12 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='NewTube',
         args=[tube_id, bob_handle, 0, 'org.telepathy.freedesktop.test', sample_parameters, 0])
 
+    expected_tube = (tube_id, bob_handle, TUBE_TYPE_DBUS,
+        'org.telepathy.freedesktop.test', sample_parameters,
+        TUBE_STATE_LOCAL_PENDING)
     tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert tubes == [(
-        tube_id,
-        bob_handle,
-        0,      # D-Bus
-        'org.telepathy.freedesktop.test',
-        sample_parameters,
-        0,      # local pending
-        )]
+    assert len(tubes) == 1, unwrap(tubes)
+    check_tube_in_tubes(expected_tube, tubes)
 
     # reject the tube
     tubes_iface.CloseTube(tube_id)

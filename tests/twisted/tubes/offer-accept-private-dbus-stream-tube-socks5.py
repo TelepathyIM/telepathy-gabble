@@ -12,6 +12,8 @@ from dbus.lowlevel import SignalMessage
 from servicetest import call_async, EventPattern, tp_name_prefix, \
      watch_tube_signals, sync_dbus
 from gabbletest import exec_test, acknowledge_iq, sync_stream
+from constants import *
+from tubetestutil import *
 
 from twisted.words.xish import domish, xpath
 from twisted.internet.protocol import Factory, Protocol
@@ -571,15 +573,10 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StreamTubeNewConnection',
         args=[stream_tube_id, bob_handle])
 
+    expected_tube = (stream_tube_id, self_handle, TUBE_TYPE_STREAM, 'echo',
+        sample_parameters, TUBE_STATE_OPEN)
     tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert (
-        stream_tube_id,
-        self_handle,
-        1,      # Unix stream
-        'echo',
-        sample_parameters,
-        2,      # OPEN
-        ) in tubes
+    check_tube_in_tubes(expected_tube, tubes)
 
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
@@ -841,22 +838,12 @@ def test(q, bus, conn, stream):
         args=[dbus_tube_id, 2]) # 2 == OPEN
 
     tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert (
-        dbus_tube_id,
-        self_handle,
-        0,      # DBUS
-        'com.example.TestCase',
-        sample_parameters,
-        2,      # OPEN
-        ) in tubes
-    assert (
-        stream_tube_id,
-        self_handle,
-        1,      # stream
-        'echo',
-        sample_parameters,
-        2,      # OPEN
-        ) in tubes
+    expected_dtube = (dbus_tube_id, self_handle, TUBE_TYPE_DBUS,
+        'com.example.TestCase', sample_parameters, TUBE_STATE_OPEN)
+    expected_stube = (stream_tube_id, self_handle, TUBE_TYPE_STREAM,
+        'echo', sample_parameters, TUBE_STATE_OPEN)
+    check_tube_in_tubes(expected_dtube, tubes)
+    check_tube_in_tubes(expected_stube, tubes)
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
     dbus_tube_conn = Connection(dbus_tube_adr)

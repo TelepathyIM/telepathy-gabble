@@ -238,30 +238,6 @@ def test(q, bus, conn, stream):
 
     check_conn_properties(q, conn, [old_tubes_channel_properties])
 
-    # Try to CreateChannel with unknown properties
-    # Gabble must return an error
-    call_async(q, requestotron, 'CreateChannel',
-            {CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
-             TARGET_HANDLE_TYPE: HT_CONTACT,
-             TARGET_HANDLE: bob_handle,
-             'this.property.does.not.exist':
-                'this.value.should.not.exist'
-            });
-    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
-    # CreateChannel failed, we expect no new channel
-    check_conn_properties(q, conn, [old_tubes_channel_properties])
-
-    # Try to CreateChannel with missing properties ("Service")
-    # Gabble must return an error
-    call_async(q, requestotron, 'CreateChannel',
-            {CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
-             TARGET_HANDLE_TYPE: HT_CONTACT,
-             TARGET_HANDLE: bob_handle
-            });
-    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
-    # CreateChannel failed, we expect no new channel
-    check_conn_properties(q, conn, [old_tubes_channel_properties])
-
     # Try to CreateChannel with correct properties
     # Gabble must succeed
     call_async(q, requestotron, 'CreateChannel',

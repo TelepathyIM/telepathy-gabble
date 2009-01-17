@@ -42,6 +42,7 @@ TWISTED_TESTS = \
 	tubes/muc-presence.py \
 	tubes/close-muc-with-closed-tube.py \
 	tubes/crash-on-list-channels.py \
+	tubes/create-invalid-tube-channels.py \
 	tubes/test-get-available-tubes.py \
 	tubes/accept-muc-stream-tube-ibb.py \
 	tubes/accept-private-stream-tube.py \

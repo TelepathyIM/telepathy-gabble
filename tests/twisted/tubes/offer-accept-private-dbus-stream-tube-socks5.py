@@ -313,36 +313,6 @@ def test(q, bus, conn, stream):
 
     check_conn_properties(q, conn, [old_tubes_channel_properties])
 
-    # Try to CreateChannel with unknown properties
-    # Gabble must return an error
-    call_async(q, requestotron, 'CreateChannel',
-            {'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType':
-                1,
-             'org.freedesktop.Telepathy.Channel.TargetHandle':
-                bob_handle,
-             'this.property.does.not.exist':
-                'this.value.should.not.exist'
-            });
-    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
-    # CreateChannel failed, we expect no new channel
-    check_conn_properties(q, conn, [old_tubes_channel_properties])
-
-    # Try to CreateChannel with missing properties ("Service")
-    # Gabble must return an error
-    call_async(q, requestotron, 'CreateChannel',
-            {'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType':
-                1,
-             'org.freedesktop.Telepathy.Channel.TargetHandle':
-                bob_handle
-            });
-    ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
-    # CreateChannel failed, we expect no new channel
-    check_conn_properties(q, conn, [old_tubes_channel_properties])
-
     # Try to create a DBusTube.DRAFT channel. This is not implemented yet, so
     # it will fail. But it should not assert.
     call_async(q, requestotron, 'CreateChannel',

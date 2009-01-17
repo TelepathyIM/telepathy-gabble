@@ -133,7 +133,7 @@ gabble_tube_iface_base_init (gpointer klass)
       param_spec = g_param_spec_uint (
           "state",
           "Tube state",
-          "The GabbleTubeState of this tube object",
+          "The GabbleTubeChannelState of this tube object",
           0, G_MAXUINT32, TP_TUBE_STATE_REMOTE_PENDING,
           G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);

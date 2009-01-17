@@ -74,6 +74,8 @@ gboolean gabble_tube_dbus_remove_name (GabbleTubeDBus *tube, TpHandle handle);
 gboolean gabble_tube_dbus_handle_in_names (GabbleTubeDBus *tube,
     TpHandle handle);
 
+gboolean gabble_tube_dbus_offer (GabbleTubeDBus *tube, GError **error);
+
 void gabble_tube_dbus_listen (GabbleTubeDBus *self);
 
 /* Only extern for the benefit of tests/test-dtube-unique-names.c */

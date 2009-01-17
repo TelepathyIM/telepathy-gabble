@@ -1709,6 +1709,16 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
           g_free (stream_id);
           return;
         }
+
+      if (!gabble_tube_dbus_offer (GABBLE_TUBE_DBUS (tube), &error))
+        {
+          gabble_tube_iface_close (tube, TRUE);
+          dbus_g_method_return_error (context, error);
+
+          g_error_free (error);
+          g_free (stream_id);
+          return;
+        }
     }
 
   tp_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);

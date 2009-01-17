@@ -1130,6 +1130,22 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   tp_external_group_mixin_init_dbus_properties (object_class);
 }
 
+gboolean
+gabble_tube_dbus_offer (GabbleTubeDBus *tube,
+                        GError **error)
+{
+  if (tube->priv->offered)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Tube has already been offered");
+      return FALSE;
+    }
+
+  tube->priv->offered = TRUE;
+  g_signal_emit (G_OBJECT (tube), signals[OFFERED], 0);
+  return TRUE;
+}
+
 static void
 message_received (GabbleTubeDBus *tube,
                   TpHandle sender,

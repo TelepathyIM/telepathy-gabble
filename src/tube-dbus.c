@@ -168,8 +168,6 @@ struct _GabbleTubeDBusPrivate
   /* Number of bytes that will be in the next message, 0 if unknown */
   guint32 reassembly_bytes_needed;
 
-  /* TRUE if we initiated this tube and it has not been offered yet */
-  gboolean has_to_be_offered;
   gboolean closed;
 
   gboolean dispose_has_run;
@@ -649,10 +647,7 @@ gabble_tube_dbus_get_property (GObject *object,
         g_value_set_boxed (value, priv->parameters);
         break;
       case PROP_STATE:
-        if (priv->has_to_be_offered)
-          g_value_set_uint (value, GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED);
-        else
-          g_value_set_uint (value, get_tube_state (self));
+        g_value_set_uint (value, get_tube_state (self));
         break;
       case PROP_DBUS_ADDRESS:
         g_value_set_string (value, priv->dbus_srv_addr);
@@ -877,12 +872,6 @@ gabble_tube_dbus_constructor (GType type,
       /* For contact (IBB) tubes we need to be able to reassemble messages. */
       priv->reassembly_buffer = g_string_new ("");
       priv->reassembly_bytes_needed = 0;
-    }
-
-  if (priv->initiator == priv->self_handle)
-    {
-      /* We initiatied this tube and it has not been offered yet */
-      priv->has_to_be_offered = TRUE;
     }
 
   return obj;

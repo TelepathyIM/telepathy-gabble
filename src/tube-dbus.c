@@ -143,6 +143,11 @@ struct _GabbleTubeDBusPrivate
   gchar *service;
   GHashTable *parameters;
 
+  /* For outgoing tubes, TRUE if the offer has been sent over the network. For
+   * incoming tubes, always TRUE.
+   */
+  gboolean offered;
+
   /* our unique D-Bus name on the virtual tube bus (NULL for 1-1 D-Bus tubes)*/
   gchar *dbus_local_name;
   /* the address that we are listening for D-Bus connections on */
@@ -438,6 +443,9 @@ get_tube_state (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   GabbleBytestreamState bytestream_state;
+
+  if (!priv->offered)
+    return GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED;
 
   if (priv->bytestream == NULL)
     /* bytestream not yet created as we're waiting for the SI reply */
@@ -872,6 +880,22 @@ gabble_tube_dbus_constructor (GType type,
       /* For contact (IBB) tubes we need to be able to reassemble messages. */
       priv->reassembly_buffer = g_string_new ("");
       priv->reassembly_bytes_needed = 0;
+    }
+
+  if (priv->initiator == priv->self_handle)
+    {
+      /* FIXME: Above, we already created the bytestream if this is a MUC tube,
+       *        so it's already been offered.
+       */
+      if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
+        priv->offered = TRUE;
+      else
+        priv->offered = FALSE;
+    }
+  else
+    {
+      /* Incoming tubes have already been offered, as it were. */
+      priv->offered = TRUE;
     }
 
   return obj;

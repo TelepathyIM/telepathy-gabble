@@ -305,10 +305,18 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
 
     tube_chan = bus.get_object(conn.bus_name, tube_path)
     tube_chan_iface = dbus.Interface(tube_chan, tp_name_prefix + '.Channel')
+    dbus_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_DBUS_TUBE)
 
-    props = tube_chan.GetAll(
-        tp_name_prefix + '.Channel.Interface.Tube.DRAFT',
-        dbus_interface='org.freedesktop.DBus.Properties')
+    # Only when we offer the tube should it appear on the Tubes channel and an
+    # IQ be sent to Alice. We sync the stream to ensure the IQ would have
+    # arrived if it had been sent.
+    sync_stream(q, stream)
+    call_async(q, dbus_tube_iface, 'OfferDBusTube')
+    q.expect_many(
+        EventPattern('dbus-return', method='OfferDBusTube'),
+        EventPattern('stream-iq', to='alice@localhost/Test'),
+        EventPattern('dbus-signal', signal='NewTube'),
+        )
 
     # OK, we're done
     conn.Disconnect()

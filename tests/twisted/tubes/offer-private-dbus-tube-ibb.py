@@ -117,8 +117,7 @@ def test(q, bus, conn, stream):
     assert new_tube_event.args[2] == 0       # DBUS
     assert new_tube_event.args[3] == 'com.example.TestCase'
     assert new_tube_event.args[4] == sample_parameters
-    # FIXME
-    #assert new_tube_event.args[5] == 1       # Remote Pending
+    assert new_tube_event.args[5] == TUBE_STATE_REMOTE_PENDING
 
     # handle offer_return_event
     assert offer_return_event.value[0] == dbus_tube_id

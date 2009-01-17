@@ -71,7 +71,11 @@ def test(q, bus, conn, stream):
 
     sync_stream(q, stream)
 
-    # request tubes channe (old API)
+    offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle)
+    offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle)
+
+def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
+    # request tubes channel (old API)
     tubes_path = conn.RequestChannel('org.freedesktop.Telepathy.Channel.Type.Tubes',
         HT_CONTACT, alice_handle, True)
     tubes_chan = bus.get_object(conn.bus_name, tubes_path)
@@ -213,7 +217,8 @@ def test(q, bus, conn, stream):
     tubes_chan_iface.Close()
     q.expect('dbus-signal', signal='Closed')
 
-    # Let's try the new tube API
+
+def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     requestotron = dbus.Interface(conn,
         'org.freedesktop.Telepathy.Connection.Interface.Requests')
 
@@ -285,7 +290,7 @@ def test(q, bus, conn, stream):
     for path, details in new_channel_details:
         if details[CHANNEL_TYPE] == CHANNEL_TYPE_TUBES:
             found_tubes = True
-            tubes_chan = bus.get_object(conn.bus_name, tubes_path)
+            tubes_chan = bus.get_object(conn.bus_name, path)
             tubes_iface = dbus.Interface(tubes_chan, CHANNEL_TYPE_TUBES)
         elif details[CHANNEL_TYPE] == CHANNEL_TYPE_DBUS_TUBE:
             found_tube = True

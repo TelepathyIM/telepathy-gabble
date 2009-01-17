@@ -269,9 +269,15 @@ def test(q, bus, conn, stream):
     assert tube_props[tp_name_prefix + '.Channel.InitiatorID'] \
             == "test@localhost"
     assert tube_props[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Parameters'] == sample_parameters
-    assert tube_props[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Status'] == 3 # not offered
+    assert tube_props[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Status'] == TUBE_CHANNEL_STATE_NOT_OFFERED
 
     event = q.expect('dbus-signal', signal='NewChannels')
+
+    # The tube's not offered, so it shouldn't be shown on the old interface.
+    # FIXME: actually the old proxy shouldn't still work here, given that we
+    # closed it a while ago.
+    tubes = tubes_iface.ListTubes(byte_arrays=True)
+    assert len(tubes) == 0, tubes
 
     tube_chan = bus.get_object(conn.bus_name, tube_path)
     tube_chan_iface = dbus.Interface(tube_chan, tp_name_prefix + '.Channel')

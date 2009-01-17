@@ -980,17 +980,26 @@ copy_tube_in_ptr_array (gpointer key,
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
-  TpTubeState state;
+  GabbleTubeChannelState state;
   TpTubeType type;
   GPtrArray *array = (GPtrArray *) user_data;
   GValue entry = {0,};
+
+  g_object_get (tube,
+                "state", &state,
+                NULL);
+
+  /* The old interface has no way to represent unoffered tubes, so they
+   * shouldn't appear in the result of ListTubes()
+   */
+  if (state == GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED)
+    return;
 
   g_object_get (tube,
                 "type", &type,
                 "initiator-handle", &initiator,
                 "service", &service,
                 "parameters", &parameters,
-                "state", &state,
                 NULL);
 
   g_value_init (&entry, TP_STRUCT_TYPE_TUBE_INFO);

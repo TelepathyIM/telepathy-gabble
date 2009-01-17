@@ -51,12 +51,7 @@ def make_caps_disco_reply(stream, req, features):
 def test(q, bus, conn, stream):
     conn.Connect()
 
-    _, iq_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
-        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
-            query_name='vCard'))
-
-    acknowledge_iq(stream, iq_event.stanza)
+    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     self_handle = conn.GetSelfHandle()
     alice_handle = conn.RequestHandles(HT_CONTACT, ["alice@localhost"])[0]

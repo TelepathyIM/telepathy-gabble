@@ -242,7 +242,8 @@ def test(q, bus, conn, stream):
                  properties['RequestableChannelClasses']
 
     # Offer a tube to Alice (new API)
-    tube_path, tube_props = requestotron.CreateChannel(
+
+    call_async(q, requestotron, 'CreateChannel',
         {'org.freedesktop.Telepathy.Channel.ChannelType':
             'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT',
          'org.freedesktop.Telepathy.Channel.TargetHandleType':
@@ -254,6 +255,12 @@ def test(q, bus, conn, stream):
          'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName':
             'com.example.TestCase'
          }, byte_arrays=True)
+    cc_ret, nc = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
+        )
+    tube_path, tube_props = cc_ret.value
+    new_channel_details = nc.args[0]
 
     # check tube channel properties
     assert tube_props[tp_name_prefix + '.Channel.ChannelType'] ==\
@@ -271,11 +278,29 @@ def test(q, bus, conn, stream):
     assert tube_props[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Parameters'] == sample_parameters
     assert tube_props[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Status'] == TUBE_CHANNEL_STATE_NOT_OFFERED
 
-    event = q.expect('dbus-signal', signal='NewChannels')
+    # Under the current implementation, creating a new-style Tube channel
+    # ensures that an old-style Tubes channel exists, even though Tube channels
+    # aren't visible on the Tubes channel until they're offered.  Another
+    # correct implementation would have the Tubes channel spring up only when
+    # the Tube is offered.
+    #
+    # Anyway. Given the current implementation, they should be announced together.
+    assert len(new_channel_details) == 2, unwrap(new_channel_details)
+    found_tubes = False
+    found_tube = False
+    for path, details in new_channel_details:
+        if details[CHANNEL_TYPE] == CHANNEL_TYPE_TUBES:
+            found_tubes = True
+            tubes_chan = bus.get_object(conn.bus_name, tubes_path)
+            tubes_iface = dbus.Interface(tubes_chan, CHANNEL_TYPE_TUBES)
+        elif details[CHANNEL_TYPE] == CHANNEL_TYPE_DBUS_TUBE:
+            found_tube = True
+            assert tube_path == path, (tube_path, path)
+        else:
+            assert False, (path, details)
+    assert found_tube and found_tubes, unwrap(new_channel_details)
 
     # The tube's not offered, so it shouldn't be shown on the old interface.
-    # FIXME: actually the old proxy shouldn't still work here, given that we
-    # closed it a while ago.
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert len(tubes) == 0, tubes
 

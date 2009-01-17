@@ -55,32 +55,6 @@ def set_up_echo(name):
             raise
     reactor.listenUNIX(os.getcwd() + '/stream' + name, factory)
 
-def check_conn_properties(q, bus, conn, stream, channel_list=None):
-    properties = conn.GetAll(
-            CONN_IFACE_REQUESTS,
-            dbus_interface=PROPERTIES_IFACE)
-
-    if channel_list == None:
-        assert properties.get('Channels') == [], properties['Channels']
-    else:
-        for i in channel_list:
-            assert i in properties['Channels'], \
-                (i, properties['Channels'])
-
-    assert ({CHANNEL_TYPE: CHANNEL_TYPE_TUBES,
-             TARGET_HANDLE_TYPE: HT_CONTACT,
-             },
-             [TARGET_HANDLE, TARGET_ID
-             ]
-            ) in properties.get('RequestableChannelClasses'),\
-                     properties['RequestableChannelClasses']
-    assert ({CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
-             TARGET_HANDLE_TYPE: HT_CONTACT
-             },
-             [TARGET_HANDLE, TARGET_ID, TUBE_PARAMETERS, STREAM_TUBE_SERVICE]
-            ) in properties.get('RequestableChannelClasses'),\
-                     properties['RequestableChannelClasses']
-
 def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         contact_handle, contact_id, state=None):
     # Exercise basic Channel Properties from spec 0.17.7

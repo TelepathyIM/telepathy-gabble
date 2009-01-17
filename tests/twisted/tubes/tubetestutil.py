@@ -2,7 +2,10 @@
 Helper functions for writing tubes tests
 """
 
+from dbus import PROPERTIES_IFACE
+
 from servicetest import unwrap
+from constants import *
 
 def check_tube_in_tubes(tube, tubes):
     """
@@ -27,3 +30,34 @@ def check_tube_in_tubes(tube, tubes):
 
     assert False, "tube %s not in %s" % (unwrap (tube), unwrap (tubes))
 
+
+def check_conn_properties(q, bus, conn, stream, channel_list=None):
+    """
+    Check that Connection.Interface.Requests.Channels matches channel_list, and
+    that RequestableChannelClasses contains the expected tube types.
+    """
+
+    properties = conn.GetAll(
+            CONN_IFACE_REQUESTS,
+            dbus_interface=PROPERTIES_IFACE)
+
+    if channel_list == None:
+        assert properties.get('Channels') == [], properties['Channels']
+    else:
+        for i in channel_list:
+            assert i in properties['Channels'], \
+                (i, properties['Channels'])
+
+    assert ({CHANNEL_TYPE: CHANNEL_TYPE_TUBES,
+             TARGET_HANDLE_TYPE: HT_CONTACT,
+             },
+             [TARGET_HANDLE, TARGET_ID
+             ]
+            ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']
+    assert ({CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
+             TARGET_HANDLE_TYPE: HT_CONTACT
+             },
+             [TARGET_HANDLE, TARGET_ID, TUBE_PARAMETERS, STREAM_TUBE_SERVICE]
+            ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']

@@ -31,7 +31,7 @@ def check_tube_in_tubes(tube, tubes):
     assert False, "tube %s not in %s" % (unwrap (tube), unwrap (tubes))
 
 
-def check_conn_properties(q, bus, conn, stream, channel_list=None):
+def check_conn_properties(q, conn, channel_list=None):
     """
     Check that Connection.Interface.Requests.Channels matches channel_list, and
     that RequestableChannelClasses contains the expected tube types.

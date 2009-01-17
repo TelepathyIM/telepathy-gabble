@@ -125,7 +125,7 @@ def test(q, bus, conn, stream):
     set_up_echo("")
     set_up_echo("2")
 
-    check_conn_properties(q, bus, conn, stream)
+    check_conn_properties(q, conn)
 
     conn.Connect()
 
@@ -236,7 +236,7 @@ def test(q, bus, conn, stream):
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     old_tubes_channel_properties = new_sig.args[0][0]
 
-    check_conn_properties(q, bus, conn, stream, [old_tubes_channel_properties])
+    check_conn_properties(q, conn, [old_tubes_channel_properties])
 
     # Try to CreateChannel with unknown properties
     # Gabble must return an error
@@ -249,7 +249,7 @@ def test(q, bus, conn, stream):
             });
     ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
     # CreateChannel failed, we expect no new channel
-    check_conn_properties(q, bus, conn, stream, [old_tubes_channel_properties])
+    check_conn_properties(q, conn, [old_tubes_channel_properties])
 
     # Try to CreateChannel with missing properties ("Service")
     # Gabble must return an error
@@ -260,7 +260,7 @@ def test(q, bus, conn, stream):
             });
     ret = q.expect_many(EventPattern('dbus-error', method='CreateChannel'))
     # CreateChannel failed, we expect no new channel
-    check_conn_properties(q, bus, conn, stream, [old_tubes_channel_properties])
+    check_conn_properties(q, conn, [old_tubes_channel_properties])
 
     # Try to CreateChannel with correct properties
     # Gabble must succeed
@@ -311,7 +311,7 @@ def test(q, bus, conn, stream):
     assert TUBE_STATE not in stream_tube_channel_properties
     assert TUBE_PARAMETERS not in stream_tube_channel_properties
 
-    check_conn_properties(q, bus, conn, stream,
+    check_conn_properties(q, conn,
             [old_tubes_channel_properties, stream_tube_channel_properties])
 
     tubes_chan = bus.get_object(conn.bus_name, chan_path)

@@ -1159,23 +1159,13 @@ update_tubes_presence (GabbleTubesChannel *self)
   return gabble_muc_channel_send_presence (self->muc, NULL);
 }
 
-struct _bytestream_negotiate_cb_data
-{
-  GabbleTubesChannel *self;
-  GabbleTubeIface *tube;
-};
-
 static void
 bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                          const gchar *stream_id,
                          LmMessage *msg,
                          gpointer user_data)
 {
-  struct _bytestream_negotiate_cb_data *data =
-    (struct _bytestream_negotiate_cb_data *) user_data;
-  GabbleTubeIface *tube = data->tube;
-
-  g_slice_free (struct _bytestream_negotiate_cb_data, data);
+  GabbleTubeIface *tube = user_data;
 
   if (bytestream == NULL)
     {
@@ -1366,7 +1356,6 @@ start_stream_initiation (GabbleTubesChannel *self,
   const gchar *jid, *resource;
   gchar *full_jid;
   gboolean result;
-  struct _bytestream_negotiate_cb_data *data;
   TpTubeType type;
 
   g_object_get (tube, "type", &type, NULL);
@@ -1416,20 +1405,13 @@ start_stream_initiation (GabbleTubesChannel *self,
   gabble_tube_iface_publish_in_node (tube, (TpBaseConnection *) priv->conn,
       tube_node);
 
-  data = g_slice_new (struct _bytestream_negotiate_cb_data);
-  data->self = self;
-  data->tube = tube;
-
   result = gabble_bytestream_factory_negotiate_stream (
     priv->conn->bytestream_factory,
     msg,
     stream_id,
     bytestream_negotiate_cb,
-    data,
+    tube,
     error);
-
-  if (!result)
-    g_slice_free (struct _bytestream_negotiate_cb_data, data);
 
   lm_message_unref (msg);
   g_free (full_jid);

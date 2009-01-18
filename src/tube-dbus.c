@@ -1693,6 +1693,31 @@ gabble_tube_dbus_get_interfaces (TpSvcChannel *iface,
     }
 }
 
+/**
+ * gabble_tube_dbus_offer_d_bus_tube
+ *
+ * Implemnets D-Bus method OfferDBusTube on interface
+ * org.freedesktop.Telepathy.Channel.Type.DBusTube
+ */
+static void
+gabble_tube_dbus_offer_d_bus_tube (GabbleSvcChannelTypeDBusTube *self,
+                                  DBusGMethodInvocation *context)
+{
+  GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
+  GError *error = NULL;
+
+  if (gabble_tube_dbus_offer (tube, &error))
+    {
+      gabble_svc_channel_type_dbus_tube_return_from_offer_d_bus_tube (context);
+    }
+  else
+    {
+      g_assert (error != NULL);
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+}
+
 static void
 channel_iface_init (gpointer g_iface,
                     gpointer iface_data)
@@ -1723,16 +1748,12 @@ static void
 dbustube_iface_init (gpointer g_iface,
                      gpointer iface_data)
 {
-  /*
   GabbleSvcChannelTypeDBusTubeClass *klass =
       (GabbleSvcChannelTypeDBusTubeClass *) g_iface;
-      */
 
 #define IMPLEMENT(x) gabble_svc_channel_type_dbus_tube_implement_##x (\
     klass, gabble_tube_dbus_##x)
-  /*
-  IMPLEMENT(offer_stream_tube);
-  IMPLEMENT(accept_stream_tube);
-  */
+  IMPLEMENT(offer_d_bus_tube);
+/*IMPLEMENT(accept_d_bus_tube);*/
 #undef IMPLEMENT
 }

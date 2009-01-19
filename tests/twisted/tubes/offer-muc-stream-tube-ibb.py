@@ -31,14 +31,14 @@ NS_X_DATA = 'jabber:x:data'
 
 HT_ROOM = 2
 
-def set_up_listener_socket(q):
+def set_up_listener_socket(q, path):
     factory = EventProtocolFactory(q)
     try:
-        os.remove(os.getcwd() + '/stream')
+        os.remove(os.getcwd() + path)
     except OSError, e:
         if e.errno != errno.ENOENT:
             raise
-    reactor.listenUNIX(os.getcwd() + '/stream', factory)
+    reactor.listenUNIX(os.getcwd() + path, factory)
 
 def send_muc_presence(stream, _from, affiliation='none', role='participant'):
     presence = domish.Element((None, 'presence'))
@@ -50,7 +50,7 @@ def send_muc_presence(stream, _from, affiliation='none', role='participant'):
     stream.send(presence)
 
 def test(q, bus, conn, stream):
-    set_up_listener_socket(q)
+    set_up_listener_socket(q, '/stream')
     conn.Connect()
 
     _, iq_event = q.expect_many(

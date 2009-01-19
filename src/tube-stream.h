@@ -81,9 +81,7 @@ gboolean gabble_tube_stream_check_params (TpSocketAddressType address_type,
     const GValue *address, TpSocketAccessControl access_control,
     const GValue *access_control_param, GError **error);
 
-gboolean gabble_tube_stream_offer (GabbleTubeStream *self, guint address_type,
-    const GValue *address, guint access_control,
-    const GValue *access_control_param, GError **error);
+gboolean gabble_tube_stream_offer (GabbleTubeStream *self, GError **error);
 
 GHashTable *gabble_tube_stream_get_supported_socket_types (void);
 

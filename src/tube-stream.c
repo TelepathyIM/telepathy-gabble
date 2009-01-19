@@ -1856,11 +1856,6 @@ send_tube_offer (GabbleTubeStream *self,
 /* can be called both from the old tube API and the new tube API */
 gboolean
 gabble_tube_stream_offer (GabbleTubeStream *self,
-                          /* FIXME: remove useless args */
-                          guint address_type,
-                          const GValue *address,
-                          guint access_control,
-                          const GValue *access_control_param,
                           GError **error)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
@@ -1994,8 +1989,7 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
   g_assert (priv->access_control_param == NULL);
   priv->access_control_param = tp_g_value_slice_dup (access_control_param);
 
-  if (!gabble_tube_stream_offer (self, address_type,
-      address, access_control, access_control_param, &error))
+  if (!gabble_tube_stream_offer (self, &error))
     {
       gabble_tube_stream_close (GABBLE_TUBE_IFACE (self), TRUE);
 

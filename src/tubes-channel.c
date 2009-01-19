@@ -1772,8 +1772,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
       NULL);
 
   /* Tube was created using the old API so is already offered */
-  if (!gabble_tube_stream_offer (GABBLE_TUBE_STREAM (tube), address_type,
-      address, access_control, access_control_param, &error))
+  if (!gabble_tube_stream_offer (GABBLE_TUBE_STREAM (tube), &error))
     {
       gabble_tube_iface_close (tube, TRUE);
 

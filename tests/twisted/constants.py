@@ -2,6 +2,8 @@
 Some handy constants for other tests to share and enjoy.
 """
 
+from dbus import PROPERTIES_IFACE
+
 HT_CONTACT = 1
 HT_ROOM = 2
 
@@ -21,6 +23,7 @@ TARGET_ID = CHANNEL + '.TargetID'
 REQUESTED = CHANNEL + '.Requested'
 INITIATOR_HANDLE = CHANNEL + '.InitiatorHandle'
 INITIATOR_ID = CHANNEL + '.InitiatorID'
+INTERFACES = CHANNEL + '.Interfaces'
 
 CONN = "org.freedesktop.Telepathy.Connection"
 CONN_IFACE_CONTACTS = CONN + '.Interface.Contacts'

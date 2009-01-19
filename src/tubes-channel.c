@@ -1797,9 +1797,8 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
     }
   else
     {
-      /* FIXME
-      gabble_muc_factory_tube_created (priv->conn->muc_factory, tube);
-      */
+      tp_channel_manager_emit_new_channel (priv->conn->muc_factory,
+          TP_EXPORTABLE_CHANNEL (tube), NULL);
     }
 
   tp_svc_channel_type_tubes_return_from_offer_stream_tube (context,

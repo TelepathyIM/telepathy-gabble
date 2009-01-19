@@ -50,6 +50,7 @@
 #include "disco.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
+#include "presence-cache.h"
 #include "tube-iface.h"
 #include "util.h"
 
@@ -1130,15 +1131,102 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   tp_external_group_mixin_init_dbus_properties (object_class);
 }
 
+static void
+bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
+                         const gchar *stream_id,
+                         LmMessage *msg,
+                         gpointer user_data)
+{
+  GabbleTubeIface *tube = user_data;
+
+  if (bytestream == NULL)
+    {
+      /* Tube was declined by remote user. Close it */
+      gabble_tube_iface_close (tube, TRUE);
+      return;
+    }
+
+  /* Tube was accepted by remote user */
+
+  g_object_set (tube,
+      "bytestream", bytestream,
+      NULL);
+
+  gabble_tube_iface_accept (tube, NULL);
+}
+
 gboolean
 gabble_tube_dbus_offer (GabbleTubeDBus *tube,
                         GError **error)
 {
-  if (tube->priv->offered)
+  GabbleTubeDBusPrivate *priv = tube->priv;
+
+  if (priv->offered)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube has already been offered");
       return FALSE;
+    }
+
+  /* When MUC DBus tubes are new-style-ified, they'll need to be offered here
+   * rather than in the constructor.
+   */
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      TpHandleRepoIface *contact_repo;
+      const gchar *jid, *resource;
+      gchar *full_jid;
+      GabblePresence *presence;
+      LmMessageNode *tube_node, *si_node;
+      LmMessage *msg;
+      gboolean result;
+
+      contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      jid = tp_handle_inspect (contact_repo, priv->handle);
+      presence = gabble_presence_cache_get (priv->conn->presence_cache,
+          priv->handle);
+
+      if (presence == NULL)
+        {
+          DEBUG ("can't find contact %s's presence", jid);
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "can't find contact %s's presence", jid);
+          return FALSE;
+        }
+
+      resource = gabble_presence_pick_resource_by_caps (presence,
+          PRESENCE_CAP_SI_TUBES);
+
+      if (resource == NULL)
+        {
+          DEBUG ("contact %s doesn't have tubes capabilities", jid);
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "contact %s doesn't have tubes capabilities", jid);
+          return FALSE;
+        }
+
+      full_jid = g_strdup_printf ("%s/%s", jid, resource);
+      msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
+          priv->stream_id, NS_TUBES);
+      si_node = lm_message_node_get_child_with_namespace (msg->node, "si",
+          NS_SI);
+      g_assert (si_node != NULL);
+
+      tube_node = lm_message_node_add_child (si_node, "tube", NULL);
+      lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
+      gabble_tube_iface_publish_in_node (GABBLE_TUBE_IFACE (tube),
+          (TpBaseConnection *) priv->conn, tube_node);
+
+      result = gabble_bytestream_factory_negotiate_stream (
+          priv->conn->bytestream_factory, msg, priv->stream_id,
+          bytestream_negotiate_cb, tube, error);
+
+      lm_message_unref (msg);
+      g_free (full_jid);
+
+      if (!result)
+        return FALSE;
     }
 
   tube->priv->offered = TRUE;

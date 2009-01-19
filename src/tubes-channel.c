@@ -1159,30 +1159,6 @@ update_tubes_presence (GabbleTubesChannel *self)
   return gabble_muc_channel_send_presence (self->muc, NULL);
 }
 
-static void
-bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
-                         const gchar *stream_id,
-                         LmMessage *msg,
-                         gpointer user_data)
-{
-  GabbleTubeIface *tube = user_data;
-
-  if (bytestream == NULL)
-    {
-      /* Tube was declined by remote user. Close it */
-      gabble_tube_iface_close (tube, TRUE);
-      return;
-    }
-
-  /* Tube was accepted by remote user */
-
-  g_object_set (tube,
-      "bytestream", bytestream,
-      NULL);
-
-  gabble_tube_iface_accept (tube, NULL);
-}
-
 /* Called when we receive a SI request,
  * via gabble_tubes_factory_handle_si_tube_request
  */
@@ -1341,83 +1317,6 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   gabble_tube_iface_add_bytestream (tube, bytestream);
 }
 
-
-static gboolean
-start_stream_initiation (GabbleTubesChannel *self,
-                         GabbleTubeIface *tube,
-                         const gchar *stream_id,
-                         GError **error)
-{
-  GabbleTubesChannelPrivate *priv;
-  LmMessageNode *tube_node, *si_node;
-  LmMessage *msg;
-  TpHandleRepoIface *contact_repo;
-  GabblePresence *presence;
-  const gchar *jid, *resource;
-  gchar *full_jid;
-  gboolean result;
-  TpTubeType type;
-
-  g_object_get (tube, "type", &type, NULL);
-  g_assert (type == TP_TUBE_TYPE_DBUS);
-
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-
-  contact_repo = tp_base_connection_get_handles (
-     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-  jid = tp_handle_inspect (contact_repo, priv->handle);
-
-  presence = gabble_presence_cache_get (priv->conn->presence_cache,
-      priv->handle);
-  if (presence == NULL)
-    {
-      DEBUG ("can't find contacts's presence");
-      if (error != NULL)
-        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "can't find contact's presence");
-
-      return FALSE;
-    }
-
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      PRESENCE_CAP_SI_TUBES);
-  if (resource == NULL)
-    {
-      DEBUG ("contact doesn't have tubes capabilities");
-      if (error != NULL)
-        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "contact doesn't have tubes capabilities");
-
-      return FALSE;
-    }
-
-  full_jid = g_strdup_printf ("%s/%s", jid, resource);
-
-  msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
-      stream_id, NS_TUBES);
-
-  si_node = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
-  g_assert (si_node != NULL);
-
-  tube_node = lm_message_node_add_child (si_node, "tube", NULL);
-  lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
-  gabble_tube_iface_publish_in_node (tube, (TpBaseConnection *) priv->conn,
-      tube_node);
-
-  result = gabble_bytestream_factory_negotiate_stream (
-    priv->conn->bytestream_factory,
-    msg,
-    stream_id,
-    bytestream_negotiate_cb,
-    tube,
-    error);
-
-  lm_message_unref (msg);
-  g_free (full_jid);
-
-  return result;
-}
 
 static void
 send_tube_close_msg (GabbleTubesChannel *self,
@@ -1608,6 +1507,7 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
   const gchar *service;
   GHashTable *parameters = NULL;
   guint tube_id;
+  gchar *stream_id;
   TpTubeType type;
 
   tube_id = generate_tube_id ();
@@ -1629,6 +1529,10 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
                 GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
     }
   else
+    /* This assertion is safe: this function's caller only calls it in one of
+     * the above cases.
+     * FIXME: but it would be better to pass an enum member or something maybe.
+     */
     g_assert_not_reached ();
 
   parameters = tp_asv_get_boxed (request_properties,
@@ -1649,8 +1553,10 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
   DEBUG ("Request a tube channel with type='%s' and service='%s'",
       channel_type, service);
 
+  stream_id = gabble_bytestream_factory_generate_stream_id ();
   tube = create_new_tube (self, type, priv->self_handle, service,
-      parameters, NULL, tube_id, NULL);
+      parameters, stream_id, tube_id, NULL);
+  g_free (stream_id);
 
   return tube;
 }
@@ -1689,17 +1595,6 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
     {
       /* Stream initiation */
       GError *error = NULL;
-
-      if (!start_stream_initiation (self, tube, stream_id, &error))
-        {
-          gabble_tube_iface_close (tube, TRUE);
-
-          dbus_g_method_return_error (context, error);
-
-          g_error_free (error);
-          g_free (stream_id);
-          return;
-        }
 
       if (!gabble_tube_dbus_offer (GABBLE_TUBE_DBUS (tube), &error))
         {

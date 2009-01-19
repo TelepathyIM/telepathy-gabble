@@ -903,6 +903,9 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
               tube = create_new_tube (self, type, initiator_handle,
                   service, parameters, stream_id, tube_id, NULL);
 
+              tp_channel_manager_emit_new_channel (priv->conn->muc_factory,
+                  TP_EXPORTABLE_CHANNEL (tube), NULL);
+
               /* the tube has reffed its initiator, no need to keep a ref */
               tp_handle_unref (contact_repo, initiator_handle);
               g_hash_table_destroy (parameters);

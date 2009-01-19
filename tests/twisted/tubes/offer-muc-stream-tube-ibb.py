@@ -9,7 +9,6 @@ from dbus import PROPERTIES_IFACE
 
 from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
-# FIXME: use constants everywhere in the test
 from constants import *
 
 from twisted.words.xish import domish, xpath
@@ -29,8 +28,6 @@ NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
 NS_IBB = 'http://jabber.org/protocol/ibb'
 NS_MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
 NS_X_DATA = 'jabber:x:data'
-
-HT_ROOM = 2
 
 def set_up_listener_socket(q, path):
     factory = EventProtocolFactory(q)
@@ -81,8 +78,8 @@ def test(q, bus, conn, stream):
     chat_handle = handles[0]
 
     # request tubes channel
-    call_async(q, conn, 'RequestChannel',
-        tp_name_prefix + '.Channel.Type.Tubes', 2, chat_handle, True)
+    call_async(q, conn, 'RequestChannel', CHANNEL_TYPE_TUBES,
+        HT_ROOM, chat_handle, True)
 
     _, stream_event = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
@@ -115,37 +112,31 @@ def test(q, bus, conn, stream):
 
     for channel in channels:
         path, props = channel
-        type = props[tp_name_prefix + '.Channel.ChannelType']
+        type = props[CHANNEL_TYPE]
 
-        if type == 'org.freedesktop.Telepathy.Channel.Type.Text':
+        if type == CHANNEL_TYPE_TEXT:
             # check text channel properties
-            assert props[tp_name_prefix + '.Channel.TargetHandle'] == chat_handle
-            assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 2
-            assert props[tp_name_prefix + '.Channel.TargetID'] == 'chat@conf.localhost'
-            assert props[tp_name_prefix + '.Channel.Requested'] == False
-            assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-                    == self_handle
-            assert props[tp_name_prefix + '.Channel.InitiatorID'] \
-                    == self_name
-        elif type == 'org.freedesktop.Telepathy.Channel.Type.Tubes':
+            assert props[TARGET_HANDLE] == chat_handle
+            assert props[TARGET_HANDLE_TYPE] == HT_ROOM
+            assert props[TARGET_ID] == 'chat@conf.localhost'
+            assert props[REQUESTED] == False
+            assert props[INITIATOR_HANDLE] == self_handle
+            assert props[INITIATOR_ID] == self_name
+        elif type == CHANNEL_TYPE_TUBES:
             # check tubes channel properties
-            assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 2
-            assert props[tp_name_prefix + '.Channel.TargetHandle'] == chat_handle
-            assert props[tp_name_prefix + '.Channel.TargetID'] == 'chat@conf.localhost'
-            assert props[tp_name_prefix + '.Channel.Requested'] == True
-            assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-                    == self_handle
-            assert props[tp_name_prefix + '.Channel.InitiatorID'] \
-                    == self_name
+            assert props[TARGET_HANDLE_TYPE] == HT_ROOM
+            assert props[TARGET_HANDLE] == chat_handle
+            assert props[TARGET_ID] == 'chat@conf.localhost'
+            assert props[REQUESTED] == True
+            assert props[INITIATOR_HANDLE] == self_handle
+            assert props[INITIATOR_ID] == self_name
         else:
             assert True
 
     tubes_chan = bus.get_object(conn.bus_name, returned.value[0])
-    tubes_iface = dbus.Interface(tubes_chan,
-            tp_name_prefix + '.Channel.Type.Tubes')
+    tubes_iface = dbus.Interface(tubes_chan, CHANNEL_TYPE_TUBES)
 
-    tubes_self_handle = tubes_chan.GetSelfHandle(
-        dbus_interface=tp_name_prefix + '.Channel.Interface.Group')
+    tubes_self_handle = tubes_chan.GetSelfHandle(dbus_interface=CHANNEL_IFACE_GROUP)
 
     # offer stream tube (old API) using an Unix socket
     call_async(q, tubes_iface, 'OfferStreamTube',
@@ -162,7 +153,7 @@ def test(q, bus, conn, stream):
     assert new_tube_event.args[2] == 1       # Stream
     assert new_tube_event.args[3] == 'echo'
     assert new_tube_event.args[4] == sample_parameters
-    assert new_tube_event.args[5] == 2       # OPEN
+    assert new_tube_event.args[5] == TUBE_CHANNEL_STATE_OPEN
 
     # handle stream_event
     # We announce our newly created tube in our muc presence
@@ -206,7 +197,7 @@ def test(q, bus, conn, stream):
         1,      # Stream
         'echo',
         sample_parameters,
-        2,      # OPEN
+        TUBE_CHANNEL_STATE_OPEN
         )]
 
     # FIXME: if we use an unknown JID here, everything fails
@@ -293,36 +284,23 @@ def test(q, bus, conn, stream):
 
     # offer a stream tube to another room (new API)
     srv_path = set_up_listener_socket(q, '/stream2')
-    requestotron = dbus.Interface(conn, 'org.freedesktop.Telepathy.Connection.Interface.Requests')
+    requestotron = dbus.Interface(conn, CONN_IFACE_REQUESTS)
 
     # can we request muc stream tubes?
-    properties = conn.GetAll(
-        'org.freedesktop.Telepathy.Connection.Interface.Requests',
-        dbus_interface='org.freedesktop.DBus.Properties')
+    properties = conn.GetAll(CONN_IFACE_REQUESTS, dbus_interface=PROPERTIES_IFACE)
 
-    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
-            'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-         'org.freedesktop.Telepathy.Channel.TargetHandleType': HT_ROOM,
-         },
-         ['org.freedesktop.Telepathy.Channel.TargetHandle',
-          'org.freedesktop.Telepathy.Channel.TargetID',
-          'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters',
-          'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service',
-         ]
+    assert ({CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
+             TARGET_HANDLE_TYPE: HT_ROOM},
+         [TARGET_HANDLE, TARGET_ID, TUBE_PARAMETERS, STREAM_TUBE_SERVICE]
         ) in properties.get('RequestableChannelClasses'),\
                  properties['RequestableChannelClasses']
 
     call_async(q, requestotron, 'CreateChannel',
-        {'org.freedesktop.Telepathy.Channel.ChannelType':
-            'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-         'org.freedesktop.Telepathy.Channel.TargetHandleType':
-            HT_ROOM,
-         'org.freedesktop.Telepathy.Channel.TargetID':
-            'chat2@conf.localhost',
-         'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service':
-            "newecho",
-         'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
-            dbus.Dictionary({'foo': 'bar'}, signature='sv'),
+            {CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
+         TARGET_HANDLE_TYPE: HT_ROOM,
+         TARGET_ID: 'chat2@conf.localhost',
+         STREAM_TUBE_SERVICE: 'newecho',
+         TUBE_PARAMETERS: dbus.Dictionary({'foo': 'bar'}, signature='sv'),
         })
 
     # Send presence for other member of room.

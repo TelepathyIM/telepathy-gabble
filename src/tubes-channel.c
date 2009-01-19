@@ -513,6 +513,8 @@ tube_offered_cb (GabbleTubeIface *tube,
       parameters,
       state);
 
+  update_tubes_presence (self);
+
   g_free (service);
   g_hash_table_destroy (parameters);
 }

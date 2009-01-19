@@ -145,9 +145,6 @@ def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
                       'u': ('uint', '123'),
                      }
 
-    # handle offer_return_event
-    assert dbus_tube_id == offer_return_event.value[0]
-
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert len(tubes) == 1
     expected_tube = (dbus_tube_id, self_handle, TUBE_TYPE_DBUS,

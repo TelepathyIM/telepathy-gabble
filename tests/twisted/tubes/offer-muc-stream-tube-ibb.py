@@ -38,6 +38,15 @@ def set_up_listener_socket(q):
             raise
     reactor.listenUNIX(os.getcwd() + '/stream', factory)
 
+def send_muc_presence(stream, _from, affiliation='none', role='participant'):
+    presence = domish.Element((None, 'presence'))
+    presence['from'] = _from
+    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
+    item = x.addElement('item')
+    item['affiliation'] = affiliation
+    item['role'] = role
+    stream.send(presence)
+
 def test(q, bus, conn, stream):
     set_up_listener_socket(q)
     conn.Connect()
@@ -76,22 +85,10 @@ def test(q, bus, conn, stream):
         EventPattern('stream-presence', to='chat@conf.localhost/test'))
 
     # Send presence for other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/bob'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    send_muc_presence(stream, 'chat@conf.localhost/bob', 'owner', 'moderator')
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    send_muc_presence(stream, 'chat@conf.localhost/test')
 
     q.expect('dbus-signal', signal='MembersChanged',
             args=[u'', [2, 3], [], [], [], 0, 0])

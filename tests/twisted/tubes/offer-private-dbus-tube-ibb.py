@@ -316,11 +316,18 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     # arrived if it had been sent.
     sync_stream(q, stream)
     call_async(q, dbus_tube_iface, 'OfferDBusTube')
-    q.expect_many(
+    offer_return_event, iq_event, new_tube_event = q.expect_many(
         EventPattern('dbus-return', method='OfferDBusTube'),
         EventPattern('stream-iq', to='alice@localhost/Test'),
         EventPattern('dbus-signal', signal='NewTube'),
         )
+
+    # Now the tube's been offered, it should be shown on the old interface
+    tubes = tubes_iface.ListTubes(byte_arrays=True)
+    assert len(tubes) == 1
+    expected_tube = (None, self_handle, TUBE_TYPE_DBUS, 'com.example.TestCase',
+        sample_parameters, TUBE_STATE_REMOTE_PENDING)
+    check_tube_in_tubes(expected_tube, tubes)
 
     # OK, we're done
     conn.Disconnect()

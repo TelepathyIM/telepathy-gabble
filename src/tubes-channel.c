@@ -1792,8 +1792,8 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   /* announce the new tube channel we just created (new tube API) */
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      gabble_private_tubes_factory_tube_created (
-          priv->conn->private_tubes_factory, tube);
+      tp_channel_manager_emit_new_channel (priv->conn->private_tubes_factory,
+          TP_EXPORTABLE_CHANNEL (tube), NULL);
     }
   else
     {

@@ -76,9 +76,6 @@ void gabble_private_tubes_factory_handle_si_stream_request (
     GabblePrivateTubesFactory *fac, GabbleBytestreamIface *bytestream,
     TpHandle handle, const gchar *stream_id, LmMessage *msg);
 
-void gabble_private_tubes_factory_tube_created (
-    GabblePrivateTubesFactory *fac, GabbleTubeIface *tube);
-
 G_END_DECLS
 
 #endif /* #ifndef __PRIVATE_TUBES_FACTORY_H__ */

@@ -551,9 +551,14 @@ create_new_tube (GabbleTubesChannel *self,
 
   DEBUG ("create tube %u", tube_id);
   g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id), tube);
-  update_tubes_presence (self);
 
   g_object_get (tube, "state", &state, NULL);
+
+  if (state == GABBLE_TUBE_CHANNEL_STATE_OPEN)
+    {
+      /* FIXME: does it still make sense to call it here? */
+      update_tubes_presence (self);
+    }
 
   /* The old API doesn't know the "not offered" state, so we have to wait that
    * the tube is offered before announcing it. */

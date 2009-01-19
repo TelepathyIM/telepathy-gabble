@@ -142,10 +142,11 @@ def test(q, bus, conn, stream):
     call_async(q, tubes_iface, 'OfferStreamTube',
         'echo', sample_parameters, 0, dbus.ByteArray(srv_path), 0, "")
 
-    new_tube_event, stream_event, _ = q.expect_many(
+    new_tube_event, stream_event, _, new_channels_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
         EventPattern('stream-presence', to='chat@conf.localhost/test'),
-        EventPattern('dbus-return', method='OfferStreamTube'))
+        EventPattern('dbus-return', method='OfferStreamTube'),
+        EventPattern('dbus-signal', signal='NewChannels'))
 
     # handle new_tube_event
     stream_tube_id = new_tube_event.args[0]
@@ -189,6 +190,25 @@ def test(q, bus, conn, stream):
                       'i': ('int', '-123'),
                       'u': ('uint', '123'),
                      }
+
+    # tube is also announced using new API
+    channels = new_channels_event.args[0]
+    assert len(channels) == 1
+    path, props = channels[0]
+    assert props[CHANNEL_TYPE] == CHANNEL_TYPE_STREAM_TUBE
+    assert props[INITIATOR_HANDLE] == tubes_self_handle
+    assert props[INITIATOR_ID] == 'chat@conf.localhost/test'
+    assert props[INTERFACES] == [CHANNEL_IFACE_GROUP, CHANNEL_IFACE_TUBE]
+    assert props[REQUESTED] == True
+    assert props[TARGET_HANDLE] == chat_handle
+    assert props[TARGET_ID] == 'chat@conf.localhost'
+    assert props[STREAM_TUBE_SERVICE] == 'echo'
+
+    tube_chan = bus.get_object(conn.bus_name, path)
+    tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
+        byte_arrays=True)
+    assert tube_props['Parameters'] == sample_parameters
+    assert tube_props['Status'] == TUBE_CHANNEL_STATE_OPEN
 
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert tubes == [(

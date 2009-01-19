@@ -3,13 +3,12 @@
 import base64
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolClientFactory
+from servicetest import call_async, EventPattern, EventProtocolClientFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
-# FIXME: use everywhere
 from constants import *
 
 sample_parameters = dbus.Dictionary({
@@ -51,8 +50,8 @@ def test(q, bus, conn, stream):
     room_handle = handles[0]
 
     # join the muc
-    call_async(q, conn, 'RequestChannel',
-        tp_name_prefix + '.Channel.Type.Text', 2, room_handle, True)
+    call_async(q, conn, 'RequestChannel', CHANNEL_TYPE_TEXT, HT_ROOM,
+        room_handle, True)
 
     _, stream_event = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
@@ -136,17 +135,14 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'))
 
-    assert event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Tubes',\
-        event.args
-    assert event.args[2] == 2 # Handle_Type_Room
+    assert event.args[1] == CHANNEL_TYPE_TUBES, event.args
+    assert event.args[2] == HT_ROOM
     assert event.args[3] == room_handle
 
     tubes_chan = bus.get_object(conn.bus_name, event.args[0])
     tubes_iface = dbus.Interface(tubes_chan, event.args[1])
 
-    channel_props = tubes_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+    channel_props = tubes_chan.GetAll(CHANNEL, dbus_interface=PROPERTIES_IFACE)
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == False
     assert channel_props['InitiatorID'] == ''
@@ -157,8 +153,7 @@ def test(q, bus, conn, stream):
     path, props = channels[0]
     assert props[CHANNEL_TYPE] == CHANNEL_TYPE_TUBES
 
-    tubes_self_handle = tubes_chan.GetSelfHandle(
-        dbus_interface=tp_name_prefix + '.Channel.Interface.Group')
+    tubes_self_handle = tubes_chan.GetSelfHandle(dbus_interface=CHANNEL_IFACE_GROUP)
 
     q.expect('dbus-signal', signal='NewTube',
         args=[stream_tube_id, bob_handle, 1, 'echo', sample_parameters, 0])
@@ -170,7 +165,7 @@ def test(q, bus, conn, stream):
         1,      # Stream
         'echo',
         sample_parameters,
-        0,      # local pending
+        TUBE_CHANNEL_STATE_LOCAL_PENDING
         )]
 
     # tube channel is also announced (new API)

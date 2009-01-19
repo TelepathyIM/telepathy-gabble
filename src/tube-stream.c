@@ -1770,13 +1770,9 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
     }
 }
 
-/* can be called both from the old tube API and the new tube API */
-gboolean
-gabble_tube_stream_offer (GabbleTubeStream *self,
-                          guint address_type,
-                          const GValue *address, guint access_control,
-                          const GValue *access_control_param,
-                          GError **error)
+static gboolean
+send_tube_offer (GabbleTubeStream *self,
+                 GError **error)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   LmMessageNode *tube_node = NULL;
@@ -1788,7 +1784,7 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
   const gchar *resource;
   gchar *full_jid;
 
-  g_assert (priv->state == GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED);
+  g_assert (priv->handle_type == TP_HANDLE_TYPE_CONTACT);
 
   contact_repo = tp_base_connection_get_handles (
      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
@@ -1854,7 +1850,38 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
     }
 
   lm_message_unref (msg);
-  return result;
+  return TRUE;
+}
+
+/* can be called both from the old tube API and the new tube API */
+gboolean
+gabble_tube_stream_offer (GabbleTubeStream *self,
+                          /* FIXME: remove useless args */
+                          guint address_type,
+                          const GValue *address,
+                          guint access_control,
+                          const GValue *access_control_param,
+                          GError **error)
+{
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+
+  g_assert (priv->state == GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED);
+
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      /* 1-1 tube. Send tube offer message */
+      if (!send_tube_offer (self, error))
+        return FALSE;
+    }
+  else
+    {
+      /* muc tube is open as soon it's offered */
+      priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
+      g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
+    }
+
+  g_signal_emit (G_OBJECT (self), signals[OFFERED], 0);
+  return TRUE;
 }
 
 static void
@@ -1969,7 +1996,6 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      /* Stream initiation */
       if (!gabble_tube_stream_offer (self, address_type,
           address, access_control, access_control_param, &error))
         {
@@ -1987,8 +2013,6 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
 
   g_signal_connect (self, "tube-new-connection",
       G_CALLBACK (stream_unix_tube_new_connection_cb), self);
-
-  g_signal_emit (G_OBJECT (self), signals[OFFERED], 0);
 
   gabble_svc_channel_type_stream_tube_return_from_offer_stream_tube (context);
 }

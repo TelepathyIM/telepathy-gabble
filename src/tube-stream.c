@@ -1087,16 +1087,7 @@ gabble_tube_stream_constructor (GType type,
   if (priv->initiator == priv->self_handle)
     {
       /* We initiated this tube */
-      if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
-        {
-          /* Private tube */
-          priv->state = GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED;
-        }
-      else
-        {
-          /* Muc tube */
-          priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
-        }
+      priv->state = GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED;
     }
   else
     {

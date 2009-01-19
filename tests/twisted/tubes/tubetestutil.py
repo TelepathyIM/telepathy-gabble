@@ -10,23 +10,31 @@ from constants import *
 def check_tube_in_tubes(tube, tubes):
     """
     Check that 'tube' is in 'tubes', which should be the return value of
-    ListTubes()
+    ListTubes(). tube[0] may be None to check that a new-style tube is
+    represented on the old interface (because you don't know what its id is in
+    those cases)
     """
 
     utube = unwrap(tube)
-    for t in tubes:
-        if tube[0] != t[0]:
-            continue
 
-        pair = "\n    %s,\n    %s" % (utube, unwrap(t))
+    if tube[0] is None:
+        for t in tubes:
+            if tube[1:] == t[1:]:
+                return
+    else:
+        for t in tubes:
+            if tube[0] != t[0]:
+                continue
 
-        assert tube[1] == t[1], "self handles don't match: %s" % pair
-        assert tube[2] == t[2], "tube types don't match: %s" % pair
-        assert tube[3] == t[3], "services don't match: %s " % pair
-        assert tube[4] == t[4], "parameters don't match: %s" % pair
-        assert tube[5] == t[5], "states don't match: %s" % pair
+            pair = "\n    %s,\n    %s" % (utube, unwrap(t))
 
-        return
+            assert tube[1] == t[1], "self handles don't match: %s" % pair
+            assert tube[2] == t[2], "tube types don't match: %s" % pair
+            assert tube[3] == t[3], "services don't match: %s " % pair
+            assert tube[4] == t[4], "parameters don't match: %s" % pair
+            assert tube[5] == t[5], "states don't match: %s" % pair
+
+            return
 
     assert False, "tube %s not in %s" % (unwrap (tube), unwrap (tubes))
 

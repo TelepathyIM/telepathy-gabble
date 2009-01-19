@@ -1771,20 +1771,17 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
       "access-control-param", access_control_param,
       NULL);
 
-  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+  /* Tube was created using the old API so is already offered */
+  if (!gabble_tube_stream_offer (GABBLE_TUBE_STREAM (tube), address_type,
+      address, access_control, access_control_param, &error))
     {
-      /* Stream initiation */
-      if (!gabble_tube_stream_offer (GABBLE_TUBE_STREAM (tube), address_type,
-          address, access_control, access_control_param, &error))
-        {
-          gabble_tube_iface_close (tube, TRUE);
+      gabble_tube_iface_close (tube, TRUE);
 
-          dbus_g_method_return_error (context, error);
+      dbus_g_method_return_error (context, error);
 
-          g_error_free (error);
-          g_free (stream_id);
-          return;
-        }
+      g_error_free (error);
+      g_free (stream_id);
+      return;
     }
 
   g_signal_connect (tube, "tube-new-connection",

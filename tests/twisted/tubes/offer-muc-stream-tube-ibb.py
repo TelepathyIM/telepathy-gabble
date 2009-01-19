@@ -8,6 +8,8 @@ import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
+# FIXME: use constants everywhere in the test
+from constants import *
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -321,7 +323,39 @@ def test(q, bus, conn, stream):
             dbus.Dictionary({'foo': 'bar'}, signature='sv'),
         })
 
-    # TODO: continue test
+    # Send presence for other member of room.
+    send_muc_presence(stream, 'chat2@conf.localhost/bob', 'owner', 'moderator')
+
+    # Send presence for own membership of room.
+    send_muc_presence(stream, 'chat2@conf.localhost/test')
+
+    event = q.expect('dbus-return', method='CreateChannel')
+    new_tube_path, new_tube_props = event.value
+
+    # first text and tubes channels are announced
+    event = q.expect('dbus-signal', signal='NewChannels')
+    channels = event.args[0]
+    assert len(channels) == 2
+    path1, prop1 = channels[0]
+    path2, prop2 = channels[1]
+    assert sorted([prop1[CHANNEL_TYPE], prop2[CHANNEL_TYPE]]) == \
+        [CHANNEL_TYPE_TEXT, CHANNEL_TYPE_TUBES]
+    # FIXME: check other properties
+
+    # now the tube channel is announced
+    # FIXME: in this case, all channels should probably be announced together
+    event = q.expect('dbus-signal', signal='NewChannels')
+    channels = event.args[0]
+    assert len(channels) == 1
+    path, prop = channels[0]
+    assert prop[CHANNEL_TYPE] == CHANNEL_TYPE_STREAM_TUBE
+    assert prop[INITIATOR_ID] == 'chat2@conf.localhost/test'
+    assert prop[REQUESTED] == True
+    assert prop[TARGET_HANDLE_TYPE] == HT_ROOM
+    assert prop[TARGET_ID] == 'chat2@conf.localhost'
+    assert prop[STREAM_TUBE_SERVICE] == 'newecho'
+    # FIXME
+    #assert prop[TUBE_STATUS] == TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # OK, we're done
     conn.Disconnect()

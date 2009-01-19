@@ -1796,7 +1796,8 @@ gabble_tube_dbus_offer_d_bus_tube (GabbleSvcChannelTypeDBusTube *self,
 
   if (gabble_tube_dbus_offer (tube, &error))
     {
-      gabble_svc_channel_type_dbus_tube_return_from_offer_d_bus_tube (context);
+      gabble_svc_channel_type_dbus_tube_return_from_offer_d_bus_tube (context,
+          tube->priv->dbus_srv_addr);
     }
   else
     {

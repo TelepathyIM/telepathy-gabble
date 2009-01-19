@@ -33,12 +33,14 @@ HT_ROOM = 2
 
 def set_up_listener_socket(q, path):
     factory = EventProtocolFactory(q)
+    full_path = os.getcwd() + path
     try:
-        os.remove(os.getcwd() + path)
+        os.remove(full_path)
     except OSError, e:
         if e.errno != errno.ENOENT:
             raise
-    reactor.listenUNIX(os.getcwd() + path, factory)
+    reactor.listenUNIX(full_path, factory)
+    return full_path
 
 def send_muc_presence(stream, _from, affiliation='none', role='participant'):
     presence = domish.Element((None, 'presence'))
@@ -50,7 +52,7 @@ def send_muc_presence(stream, _from, affiliation='none', role='participant'):
     stream.send(presence)
 
 def test(q, bus, conn, stream):
-    set_up_listener_socket(q, '/stream')
+    srv_path = set_up_listener_socket(q, '/stream')
     conn.Connect()
 
     _, iq_event = q.expect_many(
@@ -144,11 +146,9 @@ def test(q, bus, conn, stream):
     tubes_self_handle = tubes_chan.GetSelfHandle(
         dbus_interface=tp_name_prefix + '.Channel.Interface.Group')
 
-    # Unix socket
-    path = os.getcwd() + '/stream'
-    # offer stream tube (old API)
+    # offer stream tube (old API) using an Unix socket
     call_async(q, tubes_iface, 'OfferStreamTube',
-        'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
+        'echo', sample_parameters, 0, dbus.ByteArray(srv_path), 0, "")
 
     new_tube_event, stream_event, _ = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),

@@ -1994,21 +1994,26 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
   g_assert (priv->access_control_param == NULL);
   priv->access_control_param = tp_g_value_slice_dup (access_control_param);
 
+  if (!gabble_tube_stream_offer (self, address_type,
+      address, access_control, access_control_param, &error))
+    {
+      gabble_tube_stream_close (GABBLE_TUBE_IFACE (self), TRUE);
+
+      dbus_g_method_return_error (context, error);
+
+      g_error_free (error);
+      return;
+    }
+
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      if (!gabble_tube_stream_offer (self, address_type,
-          address, access_control, access_control_param, &error))
-        {
-          gabble_tube_stream_close (GABBLE_TUBE_IFACE (self), TRUE);
-
-          dbus_g_method_return_error (context, error);
-
-          g_error_free (error);
-          return;
-        }
-
       gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (
           self, GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING);
+    }
+  else
+    {
+      gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (
+          self, GABBLE_TUBE_CHANNEL_STATE_OPEN);
     }
 
   g_signal_connect (self, "tube-new-connection",

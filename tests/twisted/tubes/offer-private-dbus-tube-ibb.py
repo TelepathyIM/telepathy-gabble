@@ -74,6 +74,83 @@ def test(q, bus, conn, stream):
     offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle)
     offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle)
 
+def alice_accepts_tube(q, stream, iq_event, dbus_tube_id):
+    iq = iq_event.stanza
+
+    tube_nodes = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]'
+        % TUBES, iq)
+    assert len(tube_nodes) == 1
+    tube = tube_nodes[0]
+    tube['type'] = 'dbus'
+    assert tube['initiator'] == 'test@localhost'
+    assert tube['service'] == 'com.example.TestCase'
+    dbus_stream_id = tube['stream-id']
+    assert tube['id'] == str(dbus_tube_id)
+
+    params = {}
+    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
+    for node in parameter_nodes:
+        assert node['name'] not in params
+        params[node['name']] = (node['type'], str(node))
+    assert params == {'ay': ('bytes', 'aGVsbG8='),
+                      's': ('str', 'hello'),
+                      'i': ('int', '-123'),
+                      'u': ('uint', '123'),
+                     }
+
+    # Alice accepts the tube and wants to use IBB
+    result = make_result_iq(stream, iq)
+    result['from'] = 'alice@localhost/Test'
+    si = result.firstChildElement()
+    feature = si.addElement((FEATURE_NEG, 'feature'))
+    x = feature.addElement((X_DATA, 'x'))
+    x['type'] = 'submit'
+    field = x.addElement((None, 'field'))
+    field['var'] = 'stream-method'
+    value = field.addElement((None, 'value'))
+    value.addContent(IBB)
+    si.addElement((TUBES, 'tube'))
+    stream.send(result)
+
+    # wait IBB init IQ
+    event = q.expect('stream-iq', to='alice@localhost/Test',
+        query_name='open', query_ns=IBB)
+    iq = event.stanza
+    open = xpath.queryForNodes('/iq/open', iq)[0]
+    assert open['sid'] == dbus_stream_id
+
+    # open the IBB bytestream
+    reply = make_result_iq(stream, iq)
+    stream.send(reply)
+
+    return dbus_stream_id
+
+def send_dbus_message_to_alice(q, stream, dbus_tube_adr, dbus_stream_id):
+    tube = Connection(dbus_tube_adr)
+    signal = SignalMessage('/', 'foo.bar', 'baz')
+    signal.append(42, signature='u')
+    tube.send_message(signal)
+
+    event = q.expect('stream-message', to='alice@localhost/Test')
+    message = event.stanza
+
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % IBB,
+        message)
+    assert data_nodes is not None
+    assert len(data_nodes) == 1
+    ibb_data = data_nodes[0]
+    assert ibb_data['sid'] == dbus_stream_id
+    binary = base64.b64decode(str(ibb_data))
+    # little and big endian versions of: SIGNAL, NO_REPLY, protocol v1,
+    # 4-byte payload
+    assert binary.startswith('l\x04\x01\x01' '\x04\x00\x00\x00') or \
+           binary.startswith('B\x04\x01\x01' '\x00\x00\x00\x04')
+    # little and big endian versions of the 4-byte payload, UInt32(42)
+    assert (binary[0] == 'l' and binary.endswith('\x2a\x00\x00\x00')) or \
+           (binary[0] == 'B' and binary.endswith('\x00\x00\x00\x2a'))
+    # XXX: verify that it's actually in the "sender" slot, rather than just
+    # being in the message somewhere
+
 def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     # request tubes channel (old API)
     tubes_path = conn.RequestChannel('org.freedesktop.Telepathy.Channel.Type.Tubes',
@@ -121,90 +198,20 @@ def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     # handle offer_return_event
     assert offer_return_event.value[0] == dbus_tube_id
 
-    # handle SI iq
-    iq = iq_event.stanza
-
-    tube_nodes = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]'
-        % TUBES, iq)
-    assert len(tube_nodes) == 1
-    tube = tube_nodes[0]
-    tube['type'] = 'dbus'
-    assert tube['initiator'] == 'test@localhost'
-    assert tube['service'] == 'com.example.TestCase'
-    dbus_stream_id = tube['stream-id']
-    assert tube['id'] == str(dbus_tube_id)
-
-    params = {}
-    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
-    for node in parameter_nodes:
-        assert node['name'] not in params
-        params[node['name']] = (node['type'], str(node))
-    assert params == {'ay': ('bytes', 'aGVsbG8='),
-                      's': ('str', 'hello'),
-                      'i': ('int', '-123'),
-                      'u': ('uint', '123'),
-                     }
-
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert len(tubes) == 1
     expected_tube = (dbus_tube_id, self_handle, TUBE_TYPE_DBUS,
         'com.example.TestCase', sample_parameters, TUBE_STATE_REMOTE_PENDING)
     check_tube_in_tubes(expected_tube, tubes)
 
-    # Alice accepts the tube and wants to use IBB
-    result = make_result_iq(stream, iq)
-    result['from'] = 'alice@localhost/Test'
-    si = result.firstChildElement()
-    feature = si.addElement((FEATURE_NEG, 'feature'))
-    x = feature.addElement((X_DATA, 'x'))
-    x['type'] = 'submit'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    value = field.addElement((None, 'value'))
-    value.addContent(IBB)
-    si.addElement((TUBES, 'tube'))
-    stream.send(result)
-
-    # wait IBB init IQ
-    event = q.expect('stream-iq', to='alice@localhost/Test',
-        query_name='open', query_ns=IBB)
-    iq = event.stanza
-    open = xpath.queryForNodes('/iq/open', iq)[0]
-    assert open['sid'] == dbus_stream_id
-
-    # open the IBB bytestream
-    reply = make_result_iq(stream, iq)
-    stream.send(reply)
+    dbus_stream_id = alice_accepts_tube(q, stream, iq_event, dbus_tube_id)
 
     q.expect('dbus-signal', signal='TubeStateChanged',
         interface='org.freedesktop.Telepathy.Channel.Type.Tubes',
         args=[dbus_tube_id, 2])
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
-    tube = Connection(dbus_tube_adr)
-    signal = SignalMessage('/', 'foo.bar', 'baz')
-    signal.append(42, signature='u')
-    tube.send_message(signal)
-
-    event = q.expect('stream-message', to='alice@localhost/Test')
-    message = event.stanza
-
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % IBB,
-        message)
-    assert data_nodes is not None
-    assert len(data_nodes) == 1
-    ibb_data = data_nodes[0]
-    assert ibb_data['sid'] == dbus_stream_id
-    binary = base64.b64decode(str(ibb_data))
-    # little and big endian versions of: SIGNAL, NO_REPLY, protocol v1,
-    # 4-byte payload
-    assert binary.startswith('l\x04\x01\x01' '\x04\x00\x00\x00') or \
-           binary.startswith('B\x04\x01\x01' '\x00\x00\x00\x04')
-    # little and big endian versions of the 4-byte payload, UInt32(42)
-    assert (binary[0] == 'l' and binary.endswith('\x2a\x00\x00\x00')) or \
-           (binary[0] == 'B' and binary.endswith('\x00\x00\x00\x2a'))
-    # XXX: verify that it's actually in the "sender" slot, rather than just
-    # being in the message somewhere
+    send_dbus_message_to_alice(q, stream, dbus_tube_adr, dbus_stream_id)
 
     # close the tube
     tubes_iface.CloseTube(dbus_tube_id)

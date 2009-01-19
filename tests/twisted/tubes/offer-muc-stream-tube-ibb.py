@@ -5,6 +5,7 @@ import errno
 import os
 
 import dbus
+from dbus import PROPERTIES_IFACE
 
 from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
@@ -291,6 +292,7 @@ def test(q, bus, conn, stream):
     assert binary == 'hello joiner'
 
     # offer a stream tube to another room (new API)
+    srv_path = set_up_listener_socket(q, '/stream2')
     requestotron = dbus.Interface(conn, 'org.freedesktop.Telepathy.Connection.Interface.Requests')
 
     # can we request muc stream tubes?
@@ -354,8 +356,59 @@ def test(q, bus, conn, stream):
     assert prop[TARGET_HANDLE_TYPE] == HT_ROOM
     assert prop[TARGET_ID] == 'chat2@conf.localhost'
     assert prop[STREAM_TUBE_SERVICE] == 'newecho'
-    # FIXME
-    #assert prop[TUBE_STATUS] == TUBE_CHANNEL_STATE_NOT_OFFERED
+
+    tube_chan = bus.get_object(conn.bus_name, path)
+    stream_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_STREAM_TUBE)
+    tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE)
+
+    assert tube_props['Parameters'] == {'foo': 'bar'}
+    assert tube_props['Status'] == TUBE_CHANNEL_STATE_NOT_OFFERED
+
+    # offer the tube
+    call_async(q, stream_tube_iface, 'OfferStreamTube',
+        SOCKET_ADDRESS_TYPE_UNIX, dbus.ByteArray(srv_path), SOCKET_ACCESS_CONTROL_LOCALHOST, "")
+
+    new_tube_event, stream_event, _, status_event = q.expect_many(
+        EventPattern('dbus-signal', signal='NewTube'),
+        EventPattern('stream-presence', to='chat2@conf.localhost/test'),
+        EventPattern('dbus-return', method='OfferStreamTube'),
+        EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[TUBE_CHANNEL_STATE_OPEN]))
+
+    # handle new_tube_event
+    stream_tube_id = new_tube_event.args[0]
+    assert new_tube_event.args[2] == 1       # Stream
+    assert new_tube_event.args[3] == 'newecho'
+    assert new_tube_event.args[4] == {'foo': 'bar'}
+    assert new_tube_event.args[5] == TUBE_CHANNEL_STATE_OPEN
+
+    presence = stream_event.stanza
+    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
+            'protocol/muc"]', presence)
+    assert x_nodes is not None
+    assert len(x_nodes) == 1
+
+    tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
+        % NS_TUBES, presence)
+    assert tubes_nodes is not None
+    assert len(tubes_nodes) == 1
+
+    tube_nodes = xpath.queryForNodes('/tubes/tube', tubes_nodes[0])
+    assert tube_nodes is not None
+    assert len(tube_nodes) == 1
+    for tube in tube_nodes:
+        assert tube['type'] == 'stream'
+        assert not tube.hasAttribute('initiator')
+        assert tube['service'] == 'newecho'
+        assert not tube.hasAttribute('stream-id')
+        assert not tube.hasAttribute('dbus-name')
+        assert tube['id'] == str(stream_tube_id)
+
+    params = {}
+    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
+    for node in parameter_nodes:
+        assert node['name'] not in params
+        params[node['name']] = (node['type'], str(node))
+    assert params == {'foo': ('str', 'bar')}
 
     # OK, we're done
     conn.Disconnect()

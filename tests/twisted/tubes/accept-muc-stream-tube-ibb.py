@@ -9,6 +9,8 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
+# FIXME: use everywhere
+from constants import *
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -117,12 +119,22 @@ def test(q, bus, conn, stream):
 
     stream.send(presence)
 
-    # tubes channel is automatically created
-    event = q.expect('dbus-signal', signal='NewChannel')
+    # text channel
+    event, new_event = q.expect_many(
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'))
 
-    if event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Text':
-        # skip this one, try the next one
-        event = q.expect('dbus-signal', signal='NewChannel')
+    assert event.args[1] == CHANNEL_TYPE_TEXT, event.args
+
+    channels = new_event.args[0]
+    assert len(channels) == 1
+    path, props = channels[0]
+    assert props[CHANNEL_TYPE] == CHANNEL_TYPE_TEXT
+
+    # tubes channel is automatically created
+    event, new_event = q.expect_many(
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'))
 
     assert event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Tubes',\
         event.args
@@ -140,6 +152,11 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorID'] == ''
     assert channel_props['InitiatorHandle'] == 0
 
+    channels = new_event.args[0]
+    assert len(channels) == 1
+    path, props = channels[0]
+    assert props[CHANNEL_TYPE] == CHANNEL_TYPE_TUBES
+
     tubes_self_handle = tubes_chan.GetSelfHandle(
         dbus_interface=tp_name_prefix + '.Channel.Interface.Group')
 
@@ -155,6 +172,27 @@ def test(q, bus, conn, stream):
         sample_parameters,
         0,      # local pending
         )]
+
+    # tube channel is also announced (new API)
+    new_event = q.expect('dbus-signal', signal='NewChannels')
+
+    channels = new_event.args[0]
+    assert len(channels) == 1
+    path, props = channels[0]
+    assert props[CHANNEL_TYPE] == CHANNEL_TYPE_STREAM_TUBE
+    assert props[INITIATOR_HANDLE] == bob_handle
+    assert props[INITIATOR_ID] == 'chat@conf.localhost/bob'
+    assert props[INTERFACES] == [CHANNEL_IFACE_GROUP, CHANNEL_IFACE_TUBE]
+    assert props[REQUESTED] == False
+    assert props[TARGET_HANDLE] == room_handle
+    assert props[TARGET_ID] == 'chat@conf.localhost'
+    assert props[STREAM_TUBE_SERVICE] == 'echo'
+
+    tube_chan = bus.get_object(conn.bus_name, path)
+    tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
+        byte_arrays=True)
+    assert tube_props['Parameters'] == sample_parameters
+    assert tube_props['Status'] == TUBE_CHANNEL_STATE_LOCAL_PENDING
 
     # Accept the tube
     call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 0, 0, '',

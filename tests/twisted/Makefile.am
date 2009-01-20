@@ -98,12 +98,20 @@ TESTS_ENVIRONMENT = \
 
 check-local: check-coding-style check-twisted
 
+# set to 6 when using refdbg, to give Gabble time to exit
+CHECK_TWISTED_SLEEP=0
+
 check-twisted:
 	$(MAKE) -C tools
 	rm -f tools/core
 	rm -f tools/gabble-testing.log
+	if test -n "$$GABBLE_TEST_REFDBG"; then \
+	  sleep=6; \
+        else \
+	  sleep=$(CHECK_TWISTED_SLEEP); \
+	fi; \
 	sh $(srcdir)/tools/with-session-bus.sh \
-		--sleep=6 \
+		--sleep=$$sleep \
 		--config-file=tools/tmp-session-bus.conf \
 		-- $(MAKE) check-TESTS \
 		TESTS="$(TWISTED_TESTS)" \

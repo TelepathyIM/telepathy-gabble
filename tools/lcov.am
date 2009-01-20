@@ -18,7 +18,7 @@ lcov-report:
 
 lcov-check:
 	$(MAKE) lcov-reset
-	$(MAKE) check
+	$(MAKE) check $(LCOV_CHECK_ARGS)
 	$(MAKE) lcov-report
 
 ## vim:set ft=automake:

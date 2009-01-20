@@ -1,5 +1,5 @@
 """
-Test basic roster functionality.
+Regression test for http://bugs.freedesktop.org/show_bug.cgi?id=19524
 """
 
 import dbus

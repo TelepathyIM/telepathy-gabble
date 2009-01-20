@@ -7,6 +7,7 @@ Fixes:
 * Don't resurrect removed streams if the call responder includes them in
   session-accept 
 * Don't crash in calls if using glib with debugging enabled (fd.o #19327).
+* Don't crash when removing contact from known list (fd.o #19524).
 
 telepathy-gabble 0.7.18 (2009-01-06)
 ====================================

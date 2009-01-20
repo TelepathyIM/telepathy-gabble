@@ -380,11 +380,6 @@ def exec_test_deferred (funs, params, protocol=None, timeout=None):
 
         conn.Disconnect()
 
-        if 'GABBLE_TEST_REFDBG' in os.environ:
-            # we have to wait that Gabble timeouts so the process is properly
-            # exited and refdbg can generates its report
-            time.sleep(5.5)
-
     except dbus.DBusException, e:
         pass
 

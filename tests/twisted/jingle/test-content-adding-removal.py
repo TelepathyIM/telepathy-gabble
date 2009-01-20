@@ -3,9 +3,6 @@ Test content adding and removal during the session. We start
 session with only one stream, then add one more, then remove
 the first one and lastly remove the second stream, which
 closes the session.
-
-Also does regression test for http://bugs.freedesktop.org/show_bug.cgi?id=19327
-
 """
 
 from gabbletest import exec_test, make_result_iq, sync_stream, \
@@ -107,7 +104,7 @@ def test(q, bus, conn, stream):
 
     # Only now the remote end removes the video stream; if gabble mistakenly
     # marked it as accepted on session acceptance, it'll crash right about
-    # now (fd.o #19327). If it's good, stream will be really removed, and
+    # now. If it's good, stream will be really removed, and
     # we can proceed.
 
     stream.send(gabbletest.make_result_iq(stream, e2.stanza))

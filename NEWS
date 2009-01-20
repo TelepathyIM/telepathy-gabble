@@ -5,7 +5,7 @@ Fixes:
 
 * Don't crash when closing a muc channel containing an closed D-Bus tube.
 * Don't resurrect removed streams if the call responder includes them in
-  session-initiate (fd.o #19327).
+  session-accept (fd.o #19327).
 
 telepathy-gabble 0.7.18 (2009-01-06)
 ====================================

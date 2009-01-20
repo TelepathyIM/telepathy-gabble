@@ -26,6 +26,7 @@ TWISTED_TESTS = \
 	roster/request-group-after-roster.py \
 	roster/test-google-roster.py \
 	roster/test-roster.py \
+	roster/test-roster-item-deletion.py \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
 	text/initiate.py \

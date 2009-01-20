@@ -136,7 +136,7 @@ telepathy_gabble_debug_LDADD = \
     $(ALL_LIBS)
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
-    @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@ \
+    @TP_GLIB_CFLAGS@ \
     -I $(top_srcdir)/src -I $(top_builddir)/src
 ALL_LIBS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 

@@ -154,7 +154,7 @@ noinst_LTLIBRARIES = libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
-	    @HANDLE_LEAK_DEBUG_CFLAGS@ @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@ \
+	    @HANDLE_LEAK_DEBUG_CFLAGS@ @TP_GLIB_CFLAGS@ \
 	    -I $(top_srcdir)/lib -I $(top_builddir)/lib
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 

@@ -163,7 +163,7 @@ create_msg_foreach (gpointer key,
       lm_message_node_add_child (geoloc, key, str);
       DEBUG ("\t - %s: %s", (gchar*) key, str);
     }
-  if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)
+  else if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)
     {
       gchar *str;
       str = g_strdup_printf ("%.6f", g_value_get_double (value));

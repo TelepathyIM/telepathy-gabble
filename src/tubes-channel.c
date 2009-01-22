@@ -705,8 +705,11 @@ foreach_slave (gpointer key,
 {
   GabbleTubeIface *tube = GABBLE_TUBE_IFACE (value);
   struct _ForeachData *data = (struct _ForeachData *) user_data;
+  TpTubeType type;
 
-  data->foreach (TP_EXPORTABLE_CHANNEL (tube), data->user_data);
+  g_object_get (tube, "type", &type, NULL);
+  if (type == TP_TUBE_TYPE_STREAM)
+    data->foreach (TP_EXPORTABLE_CHANNEL (tube), data->user_data);
 }
 
 void gabble_tubes_channel_foreach (GabbleTubesChannel *self,

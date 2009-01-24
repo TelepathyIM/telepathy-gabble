@@ -484,9 +484,10 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
 {
   GabbleJingleMediaRtpPrivate *priv = self->priv;
 
-  DEBUG ("adding new local codecs");
+  DEBUG ("setting new local codecs");
 
-  priv->local_codecs = g_list_concat (priv->local_codecs, codecs);
+  jingle_media_rtp_free_codecs (priv->local_codecs);
+  priv->local_codecs = codecs;
 
   _gabble_jingle_content_set_media_ready (GABBLE_JINGLE_CONTENT (self));
 }

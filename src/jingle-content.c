@@ -851,6 +851,20 @@ _maybe_ready (GabbleJingleContent *self)
     }
 }
 
+
+static void
+send_description_info (GabbleJingleContent *self)
+{
+  LmMessage *msg;
+  LmMessageNode *sess_node;
+
+  msg = gabble_jingle_session_new_message (self->session,
+      JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
+  gabble_jingle_content_produce_node (self, sess_node, TRUE);
+  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+}
+
+
 /* Used when session-initiate is sent (so all initial contents transmit their
  * candidates), and when we detect gtalk3 after we've transmitted some
  * candidates. */
@@ -865,6 +879,14 @@ void
 _gabble_jingle_content_set_media_ready (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+
+  /* If media was already ready, media info was changed and we need to
+   * push description-info action to the peer. */
+  if (priv->media_ready == TRUE)
+    {
+      send_description_info (self);
+      return;
+    }
 
   priv->media_ready = TRUE;
 

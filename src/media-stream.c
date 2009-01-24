@@ -1200,6 +1200,31 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
   tp_svc_media_stream_handler_return_from_supported_codecs (context);
 }
 
+/**
+ * gabble_media_stream_codecs_updated
+ *
+ * Implements D-Bus method CodecsUpdated
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ */
+static void
+gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
+                                    const GPtrArray *codecs,
+                                    DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
+
+  /* FIXME: we assume codecs have already been set (by set_local_codecs
+   * or supported_codecs(), depending on who's stream creator. */
+
+  /* trick pass_local_codecs() into always pushing the codecs, no matter
+   * whether we're creator or not. */
+  pass_local_codecs (self, codecs,
+    !gabble_jingle_content_is_created_by_us (priv->content));
+
+  tp_svc_media_stream_handler_return_from_codecs_updated (context);
+}
+
 void
 _gabble_media_stream_close (GabbleMediaStream *stream)
 {
@@ -1677,6 +1702,7 @@ stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(stream_state,);
   IMPLEMENT(supported_codecs,);
   IMPLEMENT(unhold_failure,);
+  IMPLEMENT(codecs_updated,);
 #undef IMPLEMENT
 }
 

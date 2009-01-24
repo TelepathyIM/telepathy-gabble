@@ -417,6 +417,8 @@ parse_action (const gchar *txt)
       return JINGLE_ACTION_SESSION_INFO;
   else if (!tp_strdiff (txt, "transport-accept"))
       return JINGLE_ACTION_TRANSPORT_ACCEPT;
+  else if (!tp_strdiff (txt, "description-info"))
+      return JINGLE_ACTION_DESCRIPTION_INFO;
 
   return JINGLE_ACTION_UNKNOWN;
 }
@@ -453,6 +455,8 @@ produce_action (JingleAction action, JingleDialect dialect)
       return "session-info";
     case JINGLE_ACTION_TRANSPORT_ACCEPT:
       return "transport-accept";
+    case JINGLE_ACTION_DESCRIPTION_INFO:
+      return "description-info";
     default:
       DEBUG ("unknown action %u", action);
       g_assert_not_reached ();

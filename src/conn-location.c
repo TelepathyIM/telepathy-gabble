@@ -110,9 +110,9 @@ create_msg_foreach (gpointer key,
 {
   LmMessageNode *geoloc = (LmMessageNode *) user_data;
 
-  if (G_VALUE_TYPE (value) == G_TYPE_UINT64)
+  if (G_VALUE_TYPE (value) == G_TYPE_INT64)
     {
-      time_t stamp = g_value_get_uint64 (value);
+      time_t stamp = g_value_get_int64 (value);
       struct tm *ptm = gmtime (&stamp);
       gchar str[30];
 
@@ -252,7 +252,7 @@ conn_location_properties_setter (GObject *object,
   g_assert (name == g_quark_from_static_string ("LocationAccessControl"));
 
   access_control = g_value_get_boxed (value);
-  
+
   access_control_type_value = g_value_array_get_nth (access_control, 0);
   access_control_type = g_value_get_uint (access_control_type_value);
 
@@ -323,11 +323,11 @@ update_location_from_msg (GabbleConnection *conn,
           gchar * p = strptime (str, "%Y%m%dT%T", &ptm);
           if (p != NULL)
             {
-              guint64 stamp = mktime (&ptm);
+              gint64 stamp = mktime (&ptm);
               value = g_slice_new0 (GValue);
-              g_value_init (value, G_TYPE_UINT64);
-              g_value_set_uint64 (value, stamp);
-              DEBUG ("\t - %s: %" G_GUINT64_FORMAT, key, stamp);
+              g_value_init (value, G_TYPE_INT64);
+              g_value_set_int64 (value, stamp);
+              DEBUG ("\t - %s: %" G_GINT64_FORMAT, key, stamp);
             }
           else
             {

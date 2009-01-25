@@ -18,41 +18,6 @@
 static gboolean update_location_from_msg (GabbleConnection *conn,
     const gchar *from, LmMessage *msg);
 
-static gboolean
-lm_message_node_get_double (LmMessageNode *node,
-                            gdouble *d)
-{
-  const gchar *value;
-  gchar *end;
-
-  value = lm_message_node_get_value (node);
-
-  if (value == NULL)
-    return FALSE;
-
-  *d = g_ascii_strtod (value, &end);
-
-  if (end == value)
-    return FALSE;
-
-  return TRUE;
-}
-
-static gboolean
-lm_message_node_get_string (LmMessageNode *node,
-                            gchar **s)
-{
-  const gchar *value;
-
-  value = lm_message_node_get_value (node);
-
-  if (value == NULL)
-    return FALSE;
-
-  *s = g_strdup (value);
-  return TRUE;
-}
-
 static LmHandlerResult
 pep_reply_cb (GabbleConnection *conn,
               LmMessage *sent_msg,
@@ -321,59 +286,61 @@ update_location_from_msg (GabbleConnection *conn,
 
   DEBUG ("LocationsUpdate for %s:", from);
 
-  for (subloc_node = node->children; subloc_node != NULL;
-      subloc_node = subloc_node->next)
+  for (subloc_node = node->children;
+       subloc_node != NULL;
+       subloc_node = subloc_node->next)
     {
       GValue *value = NULL;
-      gdouble double_value;
-      gchar *key, *str;
+      gchar *key;
+      const gchar *str;
 
       key = subloc_node->name;
+      str = lm_message_node_get_value (subloc_node);
+      if (str == NULL)
+        continue;
 
       if ((strcmp (key, "lat") == 0 ||
            strcmp (key, "lon") == 0 ||
            strcmp (key, "alt") == 0 ||
-           strcmp (key, "accuracy") == 0) &&
-          lm_message_node_get_double (subloc_node, &double_value))
+           strcmp (key, "accuracy") == 0))
         {
+          gdouble double_value;
+          gchar *end;
+
+          double_value = g_ascii_strtod (str, &end);
+
+          if (end == str)
+            continue;
+
           value = g_slice_new0 (GValue);
           g_value_init (value, G_TYPE_DOUBLE);
           g_value_set_double (value, double_value);
           DEBUG ("\t - %s: %f", key, double_value);
         }
-      else if (lm_message_node_get_string (subloc_node, &str))
+      else if (strcmp (key, "timestamp") == 0)
         {
-          if (strcmp (key, "timestamp") == 0)
+          struct tm ptm;
+          gchar * p = strptime (str, "%Y%m%dT%T", &ptm);
+          if (p != NULL)
             {
-              struct tm ptm;
-              gchar * p = strptime (str, "%Y%m%dT%T", &ptm);
-              if (p != NULL)
-                {
-                  guint64 stamp = mktime (&ptm);
-                  value = g_slice_new0 (GValue);
-                  g_value_init (value, G_TYPE_UINT64);
-                  g_value_set_uint64 (value, stamp);
-                  DEBUG ("\t - %s: %" G_GUINT64_FORMAT, key, stamp);
-                }
-              else
-                {
-                  DEBUG ("\t - %s: %s: unknown date format", key, str);
-                  continue;
-                }
+              guint64 stamp = mktime (&ptm);
+              value = g_slice_new0 (GValue);
+              g_value_init (value, G_TYPE_UINT64);
+              g_value_set_uint64 (value, stamp);
+              DEBUG ("\t - %s: %" G_GUINT64_FORMAT, key, stamp);
             }
           else
             {
-              value = g_slice_new0 (GValue);
-              g_value_init (value, G_TYPE_STRING);
-              g_value_take_string (value, str);
-              DEBUG ("\t - %s: %s", key, str);
+              DEBUG ("\t - %s: %s: unknown date format", key, str);
+              continue;
             }
         }
       else
         {
-          DEBUG ("Unable to read the key %s from the location of %s",
-              key, from);
-          continue;
+          value = g_slice_new0 (GValue);
+          g_value_init (value, G_TYPE_STRING);
+          g_value_set_string (value, str);
+          DEBUG ("\t - %s: %s", key, str);
         }
 
       g_hash_table_insert (location, g_strdup (key), value);

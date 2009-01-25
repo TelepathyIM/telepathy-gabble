@@ -191,6 +191,9 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
   LmMessage *msg;
   LmMessageNode *geoloc;
 
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) conn,
+    context);
+
   gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_GEOLOCATION);
   msg = pubsub_make_publish_msg (NULL, NS_GEOLOC, NS_GEOLOC, "geoloc",
       &geoloc);

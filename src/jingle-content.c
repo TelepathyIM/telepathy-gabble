@@ -650,6 +650,22 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
 }
 
 void
+gabble_jingle_content_parse_description_info (GabbleJingleContent *c,
+    LmMessageNode *content_node, GError **error)
+{
+  LmMessageNode *desc_node;
+  desc_node = lm_message_node_get_child_any_ns (content_node, "description");
+  if (desc_node == NULL)
+    {
+      SET_BAD_REQ ("invalid description-info action");
+      return;
+    }
+
+  parse_description (c, desc_node, error);
+}
+
+
+void
 gabble_jingle_content_produce_node (GabbleJingleContent *c,
   LmMessageNode *parent, gboolean full)
 {

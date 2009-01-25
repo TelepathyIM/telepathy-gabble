@@ -762,6 +762,20 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
 }
 
 static void
+_each_description_info (GabbleJingleSession *sess, GabbleJingleContent *c,
+    LmMessageNode *content_node, GError **error)
+{
+  if (c == NULL)
+    {
+      const gchar *name = lm_message_node_get_attribute (content_node, "name");
+      SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
+      return;
+    }
+
+  gabble_jingle_content_parse_description_info (c, content_node, error);
+}
+
+static void
 on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
   GError **error)
 {
@@ -951,6 +965,13 @@ on_transport_accept (GabbleJingleSession *sess, LmMessageNode *node,
   DEBUG ("Ignoring 'transport-accept' action from peer");
 }
 
+static void
+on_description_info (GabbleJingleSession *sess, LmMessageNode *node,
+    GError **error)
+{
+  _foreach_content (sess, node, _each_description_info, error);
+}
+
 
 static HandlerFunc handlers[] = {
   NULL, /* for unknown action */
@@ -965,7 +986,8 @@ static HandlerFunc handlers[] = {
   on_session_initiate,
   on_session_terminate, /* jingle_on_session_terminate */
   on_transport_info, /* jingle_on_transport_info */
-  on_transport_accept
+  on_transport_accept,
+  on_description_info
 };
 
 static void

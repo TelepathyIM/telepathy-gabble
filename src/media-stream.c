@@ -108,6 +108,11 @@ struct _GabbleMediaStreamPrivate
   GValue native_codecs;     /* intersected codec list */
   GValue native_candidates;
 
+  /* Whether we're in the process of updating the remote
+   * codecs. Changes our behaviour on SupportedCodecs/Error
+   * (turns it into ACK/NAK for description-info from peer). */
+  gboolean updating_remote_codecs;
+
   GValue remote_codecs;
   GValue remote_candidates;
 
@@ -205,6 +210,8 @@ gabble_media_stream_init (GabbleMediaStream *self)
       dbus_g_type_specialized_construct (candidate_list_type));
 
   priv->stun_servers = g_ptr_array_sized_new (1);
+
+  priv->updating_remote_codecs = FALSE;
 }
 
 static gboolean
@@ -754,7 +761,19 @@ gabble_media_stream_error_async (TpSvcMediaStreamHandler *iface,
                                  DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
   GError *error = NULL;
+
+  if (priv->updating_remote_codecs)
+    {
+      /* FIXME: description-info is purely advisory, and jingle-factory
+       * automatically acks stanzas that don't cause errors when they're
+       * interpreted, so we just never send error to the peer.
+      gabble_jingle_content_ack_description_info (priv->content, FALSE);
+      */
+      priv->updating_remote_codecs = FALSE;
+      return;
+    }
 
   if (gabble_media_stream_error (self, errno, message, &error))
     {
@@ -1194,9 +1213,22 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
                                       DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  pass_local_codecs (self, codecs, TRUE);
-  g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
+  if (priv->updating_remote_codecs)
+    {
+      /* FIXME: jingle-factory already ack'd, so we don't do it now (see
+       * comment for _error() implementation).
+      gabble_jingle_content_ack_description_info (priv->content, TRUE);
+      */
+      priv->updating_remote_codecs = FALSE;
+    }
+  else
+    {
+      pass_local_codecs (self, codecs, TRUE);
+      g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
+    }
+
   tp_svc_media_stream_handler_return_from_supported_codecs (context);
 }
 
@@ -1258,7 +1290,17 @@ new_remote_codecs_cb (GabbleJingleContent *content,
 
   codecs = g_value_get_boxed (&priv->remote_codecs);
 
-  g_assert (codecs->len == 0);
+  /* If the codecs have already been set, this means the
+   * peer is updating their parameters. We set a flag so
+   * when CM calls SupportedCodecs or Error, we can
+   * turn that into ack/nak for description-info from
+   * peer. */
+  if (codecs->len != 0)
+    {
+      priv->updating_remote_codecs = TRUE;
+      g_value_reset (&priv->remote_codecs);
+      priv->updating_remote_codecs = TRUE;
+    }
 
   for (li = clist; li; li = li->next)
     {

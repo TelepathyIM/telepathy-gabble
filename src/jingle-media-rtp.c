@@ -370,8 +370,9 @@ parse_description (GabbleJingleContent *content,
   DEBUG ("emitting remote-codecs signal");
   g_signal_emit (self, signals[REMOTE_CODECS], 0, codecs);
 
-  /* append them to the known remote codecs */
-  priv->remote_codecs = g_list_concat (priv->remote_codecs, codecs);
+  /* set them as the known remote codecs */
+  jingle_media_rtp_free_codecs (priv->remote_codecs);
+  priv->remote_codecs = codecs;
 }
 
 static void

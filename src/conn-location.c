@@ -49,7 +49,7 @@ lm_message_node_get_double (LmMessageNode *node,
   if (value == NULL)
     return FALSE;
 
-  *d = strtod (value, &end);
+  *d = g_ascii_strtod (value, &end);
 
   if (end == value)
     return FALSE;

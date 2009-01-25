@@ -19,25 +19,6 @@ static gboolean update_location_from_msg (GabbleConnection *conn,
     const gchar *from, LmMessage *msg);
 
 static gboolean
-validate_contacts (TpBaseConnection *base,
-                   DBusGMethodInvocation *context,
-                   const GArray *contacts)
-{
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-  GError *error = NULL;
-
-  if (!tp_handles_are_valid (contact_handles, contacts, TRUE, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return FALSE;
-    }
-
-  return TRUE;
-}
-
-static gboolean
 lm_message_node_get_double (LmMessageNode *node,
                             gdouble *d)
 {
@@ -96,15 +77,28 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandleRepoIface *contact_handles;
   guint i;
+  GError *error = NULL;
   GHashTable *return_locations = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) g_hash_table_destroy);
 
   DEBUG ("GetLocation for contacts:");
 
   gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_GEOLOCATION);
-  if (!validate_contacts (base, context, contacts))
-    return;
+
+  /* Validate contacts */
+  contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  if (!tp_handles_are_valid (contact_handles, contacts, TRUE, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      g_hash_table_unref (return_locations);
+      return;
+    }
+
 
   for (i = 0; i < contacts->len; i++)
     {
@@ -127,10 +121,10 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
         }
       else if (!pubsub_query (conn, jid, NS_GEOLOC, pep_reply_cb, NULL))
         {
-          GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          GError error2 = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "Sending PEP location query failed" };
 
-          dbus_g_method_return_error (context, &error);
+          dbus_g_method_return_error (context, &error2);
           g_hash_table_unref (return_locations);
 
           return;

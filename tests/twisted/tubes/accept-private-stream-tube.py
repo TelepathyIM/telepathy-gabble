@@ -253,6 +253,10 @@ def test(q, bus, conn, stream):
     # Just close the tube
     new_tube_chan.Close()
 
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-signal', signal='ChannelClosed'))
+
     # OK, we're done
     conn.Disconnect()
 

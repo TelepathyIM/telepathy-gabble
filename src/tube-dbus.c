@@ -415,6 +415,7 @@ tube_dbus_open (GabbleTubeDBus *self)
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
 
+  /* TODO: we should remove this call as the server should already exist */
   if (!create_dbus_server (self, NULL))
     do_close (self);
 

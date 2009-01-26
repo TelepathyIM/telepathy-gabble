@@ -16,10 +16,7 @@ from gabbletest import exec_test, acknowledge_iq, send_error_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
-
-NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
-NS_SI = 'http://jabber.org/protocol/si'
-NS_IBB = 'http://jabber.org/protocol/ibb'
+import ns
 
 bob_jid = 'bob@localhost/Bob'
 stream_tube_id = 49
@@ -28,7 +25,7 @@ def receive_tube_offer(q, bus, conn, stream):
     message = domish.Element(('jabber:client', 'message'))
     message['to'] = 'test@localhost/Resource'
     message['from'] = bob_jid
-    tube_node = message.addElement((NS_TUBES, 'tube'))
+    tube_node = message.addElement((ns.TUBES, 'tube'))
     tube_node['type'] = 'stream'
     tube_node['service'] = 'http'
     tube_node['id'] = str(stream_tube_id)
@@ -83,21 +80,21 @@ def receive_tube_offer(q, bus, conn, stream):
 def expect_tube_activity(q, bus, conn, stream):
     event_socket, event_iq = q.expect_many(
             EventPattern('socket-connected'),
-            EventPattern('stream-iq', to=bob_jid, query_ns=NS_SI,
+            EventPattern('stream-iq', to=bob_jid, query_ns=ns.SI,
                 query_name='si'))
     protocol = event_socket.protocol
     protocol.sendData("hello initiator")
 
     iq = event_iq.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI,
+    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
         iq)[0]
     values = xpath.queryForNodes(
         '/si/feature[@xmlns="%s"]/x[@xmlns="%s"]/field/option/value'
         % ('http://jabber.org/protocol/feature-neg', 'jabber:x:data'), si)
-    assert NS_IBB in [str(v) for v in values]
+    assert ns.IBB in [str(v) for v in values]
 
     stream_node = xpath.queryForNodes('/si/stream[@xmlns="%s"]' %
-        NS_TUBES, si)[0]
+        ns.TUBES, si)[0]
     assert stream_node is not None
     assert stream_node['tube'] == str(stream_tube_id)
     stream_id = si['id']
@@ -140,7 +137,7 @@ def test(q, bus, conn, stream):
     assert event.query['node'] == \
         'http://example.com/ICantBelieveItsNotTelepathy#1.2.3'
     feature = event.query.addElement('feature')
-    feature['var'] = NS_TUBES
+    feature['var'] = ns.TUBES
     stream.send(result)
 
     # Receive a tube offer from Bob

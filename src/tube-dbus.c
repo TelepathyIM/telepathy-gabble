@@ -1473,7 +1473,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
   GabbleTubeDBus *tube;
   gchar *object_path;
 
-  object_path = g_strdup_printf ("%s/StreamTubeChannel_%u_%u",
+  object_path = g_strdup_printf ("%s/DBusTubeChannel_%u_%u",
       conn->parent.object_path, handle, id);
 
   tube = g_object_new (GABBLE_TYPE_TUBE_DBUS,

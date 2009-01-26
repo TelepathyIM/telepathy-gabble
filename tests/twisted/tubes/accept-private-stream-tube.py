@@ -75,10 +75,10 @@ def receive_tube_offer(q, bus, conn, stream):
             tp_name_prefix + '.Channel.Type.Tubes')
 
     new_tubes_chan = bus.get_object(conn.bus_name, new_chan_path)
-    new_tubes_iface = dbus.Interface(new_tubes_chan,
+    new_tube_iface = dbus.Interface(new_tubes_chan,
             tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
 
-    return (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface)
+    return (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface)
 
 def expect_tube_activity(q, bus, conn, stream):
     event_socket, event_iq = q.expect_many(
@@ -144,7 +144,7 @@ def test(q, bus, conn, stream):
     stream.send(result)
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
 
     # Try bad parameters on the old iface
@@ -159,10 +159,10 @@ def test(q, bus, conn, stream):
     q.expect('dbus-error', method='AcceptStreamTube')
 
     # Try bad parameters on the new iface
-    call_async(q, new_tubes_iface, 'AcceptStreamTube', 20, 0, '',
+    call_async(q, new_tube_iface, 'AcceptStreamTube', 20, 0, '',
             byte_arrays=True)
     q.expect('dbus-error', method='AcceptStreamTube')
-    call_async(q, new_tubes_iface, 'AcceptStreamTube', 0, 1, '',
+    call_async(q, new_tube_iface, 'AcceptStreamTube', 0, 1, '',
             byte_arrays=True)
     q.expect('dbus-error', method='AcceptStreamTube')
 
@@ -186,7 +186,7 @@ def test(q, bus, conn, stream):
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with old iface, and use UNIX sockets
@@ -207,11 +207,11 @@ def test(q, bus, conn, stream):
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with new iface, and use IPv4
-    call_async(q, new_tubes_iface, 'AcceptStreamTube', 2, 0, '',
+    call_async(q, new_tube_iface, 'AcceptStreamTube', 2, 0, '',
             byte_arrays=True)
 
     accept_return_event, _ = q.expect_many(
@@ -230,11 +230,11 @@ def test(q, bus, conn, stream):
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with new iface, and use UNIX sockets
-    call_async(q, new_tubes_iface, 'AcceptStreamTube', 0, 0, '',
+    call_async(q, new_tube_iface, 'AcceptStreamTube', 0, 0, '',
             byte_arrays=True)
 
     accept_return_event, _ = q.expect_many(
@@ -251,13 +251,13 @@ def test(q, bus, conn, stream):
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
     # Just close the tube
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tubes_iface) = \
+    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
     # Just close the tube
     new_tubes_chan.Close()

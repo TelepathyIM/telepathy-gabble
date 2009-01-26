@@ -1244,6 +1244,10 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
 
   tube->priv->offered = TRUE;
   g_signal_emit (G_OBJECT (tube), signals[OFFERED], 0);
+
+  gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (tube,
+      GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING);
+
   return TRUE;
 }
 

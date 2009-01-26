@@ -837,6 +837,72 @@ def test(q, bus, conn, stream):
     id = event.args[0]
     state = event.args[1]
 
+    # OK, now let's try to accept a D-Bus tube using the new API
+    contact_offer_dbus_tube(stream, 'gamma', '70')
+
+    e = q.expect('dbus-signal', signal='NewChannels')
+    channels = e.args[0]
+    assert len(channels) == 1
+    path, props = channels[0]
+
+    assert props[CHANNEL_TYPE] == CHANNEL_TYPE_DBUS_TUBE
+    assert props[INITIATOR_HANDLE] == bob_handle
+    assert props[INITIATOR_ID] == 'bob@localhost'
+    assert props[INTERFACES] == [CHANNEL_IFACE_TUBE]
+    assert props[REQUESTED] == False
+    assert props[TARGET_HANDLE] == bob_handle
+    assert props[TARGET_ID] == 'bob@localhost'
+    assert props[DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase2'
+    # FIXME: check if Status and Parameters are *not* in props
+
+    tube_chan = bus.get_object(conn.bus_name, path)
+    tube_chan_iface = dbus.Interface(tube_chan, CHANNEL)
+    dbus_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_DBUS_TUBE)
+
+    status = tube_chan.Get(CHANNEL_IFACE_TUBE, 'Status', dbus_interface=PROPERTIES_IFACE)
+    assert status == TUBE_STATE_LOCAL_PENDING
+
+    # accept the tube (new API)
+    call_async(q, dbus_tube_iface, 'AcceptDBusTube')
+
+    event = q.expect('stream-iq', iq_type='result')
+    iq = event.stanza
+    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI,
+        iq)[0]
+    value = xpath.queryForNodes('/si/feature/x/field/value', si)
+    assert len(value) == 1
+    proto = value[0]
+    assert str(proto) == NS_IBB
+    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
+    assert len(tube) == 1
+
+    # Init the IBB bytestream
+    iq = IQ(stream, 'set')
+    iq['to'] = 'test@localhost/Resource'
+    iq['from'] = 'bob@localhost/Bob'
+    open = iq.addElement((NS_IBB, 'open'))
+    open['sid'] = 'gamma'
+    open['block-size'] = '4096'
+    stream.send(iq)
+
+    return_event, _, state_event = q.expect_many(
+        EventPattern('dbus-return', method='AcceptDBusTube'),
+        EventPattern('stream-iq', iq_type='result'),
+        EventPattern('dbus-signal', signal='TubeChannelStateChanged'))
+
+    addr = return_event.value[0]
+    assert len(addr) > 0
+
+    assert state_event.args[0] == TUBE_STATE_OPEN
+
+    # close the tube
+    tube_chan_iface.Close()
+
+    # FIXME: uncomment once the fix-stream-tube-new-api is merged
+    #q.expect_many(
+    #    EventPattern('dbus-signal', signal='Closed'),
+    #    EventPattern('dbus-signal', signal='ChannelClosed'))
+
     # OK, we're done
     conn.Disconnect()
 

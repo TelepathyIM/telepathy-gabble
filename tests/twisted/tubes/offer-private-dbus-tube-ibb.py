@@ -290,14 +290,17 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     # arrived if it had been sent.
     sync_stream(q, stream)
     call_async(q, dbus_tube_iface, 'OfferDBusTube')
-    offer_return_event, iq_event, new_tube_event = q.expect_many(
+    offer_return_event, iq_event, new_tube_event, state_event = q.expect_many(
         EventPattern('dbus-return', method='OfferDBusTube'),
         EventPattern('stream-iq', to='alice@localhost/Test'),
         EventPattern('dbus-signal', signal='NewTube'),
+        EventPattern('dbus-signal', signal='TubeChannelStateChanged'),
         )
 
     tube_address = offer_return_event.value[0]
     assert len(tube_address) > 0
+
+    assert state_event.args[0] == TUBE_CHANNEL_STATE_REMOTE_PENDING
 
     # Now the tube's been offered, it should be shown on the old interface
     tubes = tubes_iface.ListTubes(byte_arrays=True)
@@ -305,6 +308,9 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     expected_tube = (None, self_handle, TUBE_TYPE_DBUS, 'com.example.TestCase',
         sample_parameters, TUBE_STATE_REMOTE_PENDING)
     check_tube_in_tubes(expected_tube, tubes)
+
+    status = tube_chan.Get(CHANNEL_IFACE_TUBE, 'Status', dbus_interface=PROPERTIES_IFACE)
+    assert status == TUBE_STATE_REMOTE_PENDING
 
 def test(q, bus, conn, stream):
     conn.Connect()

@@ -1237,6 +1237,9 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
   tube = create_new_tube (self, type, priv->handle, service,
       parameters, stream_id, tube_id, (GabbleBytestreamIface *) bytestream);
 
+  tp_channel_manager_emit_new_channel (priv->conn->private_tubes_factory,
+      TP_EXPORTABLE_CHANNEL (tube), NULL);
+
   g_hash_table_destroy (parameters);
 }
 

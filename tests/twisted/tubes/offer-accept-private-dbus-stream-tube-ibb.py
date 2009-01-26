@@ -437,9 +437,12 @@ def test(q, bus, conn, stream):
     call_async(q, new_tube_iface, 'OfferStreamTube',
         0, dbus.ByteArray(path2), 0, "")
 
-    msg_event, new_tube_sig = q.expect_many(
+    msg_event, new_tube_sig, state_event = q.expect_many(
         EventPattern('stream-message'),
-        EventPattern('dbus-signal', signal='NewTube'))
+        EventPattern('dbus-signal', signal='NewTube'),
+        EventPattern('dbus-signal', signal='TubeChannelStateChanged'))
+
+    assert state_event.args[0] == TUBE_CHANNEL_STATE_REMOTE_PENDING
 
     message = msg_event.stanza
     assert message['to'] == 'bob@localhost/Bob' # check the resource

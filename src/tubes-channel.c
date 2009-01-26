@@ -1781,10 +1781,6 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
   add_yourself_in_dbus_names (self, id);
 
-  /* The address is known only after we start to listen on the connection,
-   * so we need to listen now. However, connections are accepted only when
-   * the bytestream is fully initialised. See also Bug #13891. */
-  gabble_tube_dbus_listen (GABBLE_TUBE_DBUS (tube));
   g_object_get (tube, "dbus-address", &addr, NULL);
   tp_svc_channel_type_tubes_return_from_accept_d_bus_tube (context, addr);
   g_free (addr);

@@ -48,32 +48,6 @@ def make_caps_disco_reply(stream, req, features):
 
     return iq
 
-def test(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
-
-    self_handle = conn.GetSelfHandle()
-    alice_handle = conn.RequestHandles(HT_CONTACT, ["alice@localhost"])[0]
-
-    # send Alice's presence
-    caps =  { 'ext': '', 'ver': '0.0.0',
-        'node': 'http://example.com/fake-client0' }
-    presence = make_presence('alice@localhost/Test', 'test@localhost', caps)
-    stream.send(presence)
-
-    q.expect('dbus-signal', signal='PresencesChanged',
-        args = [{alice_handle: (2L, u'available', u'')}])
-
-    # reply to disco query
-    event = q.expect('stream-iq', to='alice@localhost/Test', query_ns=DISCO_INFO)
-    stream.send(make_caps_disco_reply(stream, event.stanza, [TUBES]))
-
-    sync_stream(q, stream)
-
-    offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle)
-    offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle)
-
 def alice_accepts_tube(q, stream, iq_event, dbus_tube_id):
     iq = iq_event.stanza
 
@@ -329,9 +303,34 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
         sample_parameters, TUBE_STATE_REMOTE_PENDING)
     check_tube_in_tubes(expected_tube, tubes)
 
+def test(q, bus, conn, stream):
+    conn.Connect()
+
+    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+
+    self_handle = conn.GetSelfHandle()
+    alice_handle = conn.RequestHandles(HT_CONTACT, ["alice@localhost"])[0]
+
+    # send Alice's presence
+    caps =  { 'ext': '', 'ver': '0.0.0',
+        'node': 'http://example.com/fake-client0' }
+    presence = make_presence('alice@localhost/Test', 'test@localhost', caps)
+    stream.send(presence)
+
+    q.expect('dbus-signal', signal='PresencesChanged',
+        args = [{alice_handle: (2L, u'available', u'')}])
+
+    # reply to disco query
+    event = q.expect('stream-iq', to='alice@localhost/Test', query_ns=DISCO_INFO)
+    stream.send(make_caps_disco_reply(stream, event.stanza, [TUBES]))
+
+    sync_stream(q, stream)
+
+    offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle)
+    offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle)
+
     # OK, we're done
     conn.Disconnect()
-
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':

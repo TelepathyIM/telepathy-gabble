@@ -10,13 +10,13 @@ Receives several tube offers:
 
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix, \
-     EventProtocolClientFactory
+from servicetest import call_async, EventPattern, EventProtocolClientFactory
 from gabbletest import exec_test, acknowledge_iq, send_error_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
 import ns
+from constants import *
 
 bob_jid = 'bob@localhost/Bob'
 stream_tube_id = 49
@@ -36,10 +36,8 @@ def receive_tube_offer(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='NewChannels'),
         )
     chan_path = old_sig.args[0]
-    assert old_sig.args[1] == \
-        'org.freedesktop.Telepathy.Channel.Type.Tubes', \
-        old_sig.args[1]
-    assert old_sig.args[2] == 1 # Handle_Type_Contact
+    assert old_sig.args[1] == CHANNEL_TYPE_TUBES, old_sig.args[1]
+    assert old_sig.args[2] == HT_CONTACT
     bob_handle = old_sig.args[3]
     assert old_sig.args[2] == 1, old_sig.args[2] # Suppress_Handler
     assert len(new_sig.args) == 1
@@ -55,10 +53,8 @@ def receive_tube_offer(q, bus, conn, stream):
         )
     new_chan_path = old_sig.args[0]
     assert new_chan_path != chan_path
-    assert old_sig.args[1] == \
-        'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT', \
-        old_sig.args[1]
-    assert old_sig.args[2] == 1 # Handle_Type_Contact
+    assert old_sig.args[1] == CHANNEL_TYPE_STREAM_TUBE, old_sig.args[1]
+    assert old_sig.args[2] == HT_CONTACT
     bob_handle = old_sig.args[3]
     assert old_sig.args[2] == 1, old_sig.args[2] # Suppress_Handler
     assert len(new_sig.args) == 1
@@ -68,12 +64,10 @@ def receive_tube_offer(q, bus, conn, stream):
 
     # create channel proxies
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
-    tubes_iface = dbus.Interface(tubes_chan,
-            tp_name_prefix + '.Channel.Type.Tubes')
+    tubes_iface = dbus.Interface(tubes_chan, CHANNEL_TYPE_TUBES)
 
     new_tube_chan = bus.get_object(conn.bus_name, new_chan_path)
-    new_tube_iface = dbus.Interface(new_tube_chan,
-            tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
+    new_tube_iface = dbus.Interface(new_tube_chan, CHANNEL_TYPE_STREAM_TUBE)
 
     return (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface)
 

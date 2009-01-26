@@ -1239,7 +1239,8 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
         return FALSE;
     }
 
-  create_dbus_server (tube, NULL);
+  if (!create_dbus_server (tube, error))
+    return FALSE;
 
   tube->priv->offered = TRUE;
   g_signal_emit (G_OBJECT (tube), signals[OFFERED], 0);

@@ -1547,7 +1547,8 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube,
           NULL);
     }
 
-  create_dbus_server (self, NULL);
+  if (!create_dbus_server (self, error))
+    return FALSE;
 
   return TRUE;
 }

@@ -348,18 +348,16 @@ do_close (GabbleTubeDBus *self)
  * See also Bug 13891:
  * https://bugs.freedesktop.org/show_bug.cgi?id=13891
  * */
-void
-gabble_tube_dbus_listen (GabbleTubeDBus *self)
+static gboolean
+create_dbus_server (GabbleTubeDBus *self,
+                    GError **err)
 {
 #define SERVER_LISTEN_MAX_TRIES 5
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   guint i;
 
   if (priv->dbus_srv != NULL)
-    return;
-
-  g_signal_connect (priv->bytestream, "data-received",
-      G_CALLBACK (data_received_cb), self);
+    return TRUE;
 
   for (i = 0; i < SERVER_LISTEN_MAX_TRIES; i++)
     {
@@ -396,14 +394,29 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
       g_free (priv->socket_path);
       priv->socket_path = NULL;
 
-      do_close (self);
-      return;
+      g_set_error (err, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Can't create D-Bus server");
+      return FALSE;
     }
 
   DEBUG ("listening on %s", priv->dbus_srv_addr);
 
   dbus_server_set_new_connection_function (priv->dbus_srv, new_connection_cb,
       self, NULL);
+
+  return TRUE;
+}
+
+void
+gabble_tube_dbus_listen (GabbleTubeDBus *self)
+{
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+
+  g_signal_connect (priv->bytestream, "data-received",
+      G_CALLBACK (data_received_cb), self);
+
+  if (!create_dbus_server (self, NULL))
+    do_close (self);
 }
 
 static void

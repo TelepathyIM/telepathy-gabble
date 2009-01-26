@@ -296,6 +296,9 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
         EventPattern('dbus-signal', signal='NewTube'),
         )
 
+    tube_address = offer_return_event.value[0]
+    assert len(tube_address) > 0
+
     # Now the tube's been offered, it should be shown on the old interface
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert len(tubes) == 1

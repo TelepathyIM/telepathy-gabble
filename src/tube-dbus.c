@@ -1804,7 +1804,7 @@ gabble_tube_dbus_get_interfaces (TpSvcChannel *iface,
  */
 static void
 gabble_tube_dbus_offer_d_bus_tube (GabbleSvcChannelTypeDBusTube *self,
-                                  DBusGMethodInvocation *context)
+                                   DBusGMethodInvocation *context)
 {
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
   GError *error = NULL;

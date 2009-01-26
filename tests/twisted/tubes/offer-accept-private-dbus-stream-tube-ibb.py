@@ -121,6 +121,35 @@ def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
     assert emitted_props[INITIATOR_HANDLE] == initiator_handle
     assert emitted_props[INITIATOR_ID] == 'test@localhost'
 
+def contact_offer_dbus_tube(stream, si_id, tube_id):
+    iq = IQ(stream, 'set')
+    iq['to'] = 'test@localhost/Resource'
+    iq['from'] = 'bob@localhost/Bob'
+    si = iq.addElement((NS_SI, 'si'))
+    si['id'] = si_id
+    si['profile'] = NS_TUBES
+    feature = si.addElement((NS_FEATURE_NEG, 'feature'))
+    x = feature.addElement((NS_X_DATA, 'x'))
+    x['type'] = 'form'
+    field = x.addElement((None, 'field'))
+    field['var'] = 'stream-method'
+    field['type'] = 'list-single'
+    option = field.addElement((None, 'option'))
+    value = option.addElement((None, 'value'))
+    value.addContent(NS_IBB)
+
+    tube = si.addElement((NS_TUBES, 'tube'))
+    tube['type'] = 'dbus'
+    tube['service'] = 'com.example.TestCase2'
+    tube['id'] = tube_id
+    parameters = tube.addElement((None, 'parameters'))
+    parameter = parameters.addElement((None, 'parameter'))
+    parameter['type'] = 'str'
+    parameter['name'] = 'login'
+    parameter.addContent('TEST')
+
+    stream.send(iq)
+
 def test(q, bus, conn, stream):
     set_up_echo("")
     set_up_echo("2")
@@ -756,34 +785,8 @@ def test(q, bus, conn, stream):
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
 
-    # OK, now let's try to accept a D-Bus tube
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    si = iq.addElement((NS_SI, 'si'))
-    si['id'] = 'beta'
-    si['profile'] = NS_TUBES
-    feature = si.addElement((NS_FEATURE_NEG, 'feature'))
-    x = feature.addElement((NS_X_DATA, 'x'))
-    x['type'] = 'form'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    field['type'] = 'list-single'
-    option = field.addElement((None, 'option'))
-    value = option.addElement((None, 'value'))
-    value.addContent(NS_IBB)
-
-    tube = si.addElement((NS_TUBES, 'tube'))
-    tube['type'] = 'dbus'
-    tube['service'] = 'com.example.TestCase2'
-    tube['id'] = '69'
-    parameters = tube.addElement((None, 'parameters'))
-    parameter = parameters.addElement((None, 'parameter'))
-    parameter['type'] = 'str'
-    parameter['name'] = 'login'
-    parameter.addContent('TEST')
-
-    stream.send(iq)
+    # OK, now let's try to accept a D-Bus tube using the old API
+    contact_offer_dbus_tube(stream, 'beta', '69')
 
     event = q.expect('dbus-signal', signal='NewTube')
     id = event.args[0]
@@ -801,7 +804,7 @@ def test(q, bus, conn, stream):
     assert parameters == {'login': 'TEST'}
     assert state == 0 # local pending
 
-    # accept the tube
+    # accept the tube (old API)
     call_async(q, tubes_iface, 'AcceptDBusTube', id)
 
     event = q.expect('stream-iq', iq_type='result')

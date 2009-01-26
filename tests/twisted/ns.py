@@ -1,6 +1,7 @@
 AMP = "http://jabber.org/protocol/amp"
 DISCO_INFO = "http://jabber.org/protocol/disco#info"
 DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
+IBB = 'http://jabber.org/protocol/ibb'
 MUC = 'http://jabber.org/protocol/muc'
 MUC_OWNER = '%s#owner' % MUC
 MUC_USER = '%s#user' % MUC
@@ -15,4 +16,6 @@ OLPC_BUDDY_PROPS_NOTIFY = "%s+notify" % OLPC_BUDDY_PROPS
 OLPC_CURRENT_ACTIVITY = "http://laptop.org/xmpp/current-activity"
 OLPC_CURRENT_ACTIVITY_NOTIFY = "%s+notify" % OLPC_CURRENT_ACTIVITY
 PUBSUB = "http://jabber.org/protocol/pubsub"
+SI = 'http://jabber.org/protocol/si'
 STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"
+TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'

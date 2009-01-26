@@ -74,11 +74,11 @@ def receive_tube_offer(q, bus, conn, stream):
     tubes_iface = dbus.Interface(tubes_chan,
             tp_name_prefix + '.Channel.Type.Tubes')
 
-    new_tubes_chan = bus.get_object(conn.bus_name, new_chan_path)
-    new_tube_iface = dbus.Interface(new_tubes_chan,
+    new_tube_chan = bus.get_object(conn.bus_name, new_chan_path)
+    new_tube_iface = dbus.Interface(new_tube_chan,
             tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
 
-    return (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface)
+    return (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface)
 
 def expect_tube_activity(q, bus, conn, stream):
     event_socket, event_iq = q.expect_many(
@@ -144,7 +144,7 @@ def test(q, bus, conn, stream):
     stream.send(result)
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
+    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
 
     # Try bad parameters on the old iface
@@ -186,7 +186,7 @@ def test(q, bus, conn, stream):
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
+    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with old iface, and use UNIX sockets
@@ -207,7 +207,7 @@ def test(q, bus, conn, stream):
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
+    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with new iface, and use IPv4
@@ -230,7 +230,7 @@ def test(q, bus, conn, stream):
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
+    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with new iface, and use UNIX sockets
@@ -251,16 +251,16 @@ def test(q, bus, conn, stream):
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
+    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
     # Just close the tube
     tubes_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tubes_chan, new_tube_iface) = \
+    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
     # Just close the tube
-    new_tubes_chan.Close()
+    new_tube_chan.Close()
 
     # OK, we're done
     conn.Disconnect()

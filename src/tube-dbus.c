@@ -1823,6 +1823,33 @@ gabble_tube_dbus_offer_d_bus_tube (GabbleSvcChannelTypeDBusTube *self,
     }
 }
 
+/**
+ * gabble_tube_dbus_accept_d_bus_tube
+ *
+ * Implements D-Bus method AcceptDBusTube on interface
+ * org.freedesktop.Telepathy.Channel.Type.DBusTube
+ */
+static void
+gabble_tube_dbus_accept_d_bus_tube (GabbleSvcChannelTypeDBusTube *self,
+                                    DBusGMethodInvocation *context)
+{
+  GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
+  GError *error = NULL;
+
+  if (gabble_tube_dbus_accept (GABBLE_TUBE_IFACE (tube), &error))
+    {
+      gabble_svc_channel_type_dbus_tube_return_from_accept_d_bus_tube (context,
+          tube->priv->dbus_srv_addr);
+      ;
+    }
+  else
+    {
+      g_assert (error != NULL);
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+}
+
 static void
 channel_iface_init (gpointer g_iface,
                     gpointer iface_data)
@@ -1859,6 +1886,6 @@ dbustube_iface_init (gpointer g_iface,
 #define IMPLEMENT(x) gabble_svc_channel_type_dbus_tube_implement_##x (\
     klass, gabble_tube_dbus_##x)
   IMPLEMENT(offer_d_bus_tube);
-/*IMPLEMENT(accept_d_bus_tube);*/
+  IMPLEMENT(accept_d_bus_tube);
 #undef IMPLEMENT
 }

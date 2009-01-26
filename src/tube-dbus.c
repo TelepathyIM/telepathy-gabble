@@ -407,8 +407,8 @@ create_dbus_server (GabbleTubeDBus *self,
   return TRUE;
 }
 
-void
-gabble_tube_dbus_listen (GabbleTubeDBus *self)
+static void
+tube_dbus_open (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
@@ -417,14 +417,6 @@ gabble_tube_dbus_listen (GabbleTubeDBus *self)
 
   if (!create_dbus_server (self, NULL))
     do_close (self);
-}
-
-static void
-tube_dbus_open (GabbleTubeDBus *self)
-{
-  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-
-  gabble_tube_dbus_listen (self);
 
   if (priv->dbus_srv != NULL)
     {

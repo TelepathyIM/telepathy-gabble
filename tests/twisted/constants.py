@@ -7,6 +7,7 @@ HT_ROOM = 2
 
 CHANNEL = "org.freedesktop.Telepathy.Channel"
 CHANNEL_IFACE_GROUP = CHANNEL + ".Interface.Group"
+CHANNEL_TYPE_TEXT = CHANNEL + ".Type.Text"
 CHANNEL_TYPE_TUBES = CHANNEL + ".Type.Tubes"
 CHANNEL_IFACE_TUBE = CHANNEL + ".Interface.Tube.DRAFT"
 CHANNEL_TYPE_STREAM_TUBE = CHANNEL + ".Type.StreamTube.DRAFT"
@@ -22,6 +23,8 @@ INITIATOR_HANDLE = CHANNEL + '.InitiatorHandle'
 INITIATOR_ID = CHANNEL + '.InitiatorID'
 
 CONN = "org.freedesktop.Telepathy.Connection"
+CONN_IFACE_CONTACTS = CONN + '.Interface.Contacts'
+CONN_IFACE_CONTACT_CAPA = CONN + '.Interface.ContactCapabilities.DRAFT'
 CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
 
 ERRORS = 'org.freedesktop.Telepathy.Errors'

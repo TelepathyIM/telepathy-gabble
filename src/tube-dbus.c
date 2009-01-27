@@ -957,6 +957,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   };
   static TpDBusPropertiesMixinPropImpl dbus_tube_props[] = {
       { "ServiceName", "service", NULL },
+      { "DBusNames", "dbus-names", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl tube_iface_props[] = {
@@ -1074,7 +1075,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       "dbus-names",
       "D-Bus names",
       "Mapping of contact handles to D-Bus names (used for muc tubes only).",
-      G_TYPE_HASH_TABLE,
+      GABBLE_HASH_TYPE_DBUS_TUBE_PARTICIPANTS,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DBUS_NAMES, param_spec);
 

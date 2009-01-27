@@ -334,7 +334,7 @@ def test(q, bus, conn, stream):
     check_NewChannels_signal(new_sig.args, CHANNEL_TYPE_STREAM_TUBE, new_chan_path, \
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     stream_tube_channel_properties = new_sig.args[0][0]
-    assert TUBE_STATUS not in stream_tube_channel_properties
+    assert TUBE_STATE not in stream_tube_channel_properties
     assert TUBE_PARAMETERS not in stream_tube_channel_properties
 
     check_conn_properties(q, bus, conn, stream,
@@ -389,7 +389,7 @@ def test(q, bus, conn, stream):
         bob_handle, "bob@localhost", self_handle)
 
     props = new_chans.args[0][0][1]
-    assert TUBE_STATUS not in props
+    assert TUBE_STATE not in props
     assert TUBE_PARAMETERS not in props
 
     # We offered a tube using the old tube API and created one with the new

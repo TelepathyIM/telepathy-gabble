@@ -310,7 +310,7 @@ def test(q, bus, conn, stream):
     new_chan_path = ret.value[0]
     new_chan_prop_asv = ret.value[1]
     # State and Parameters are mutables so not announced
-    assert (TUBE_STATUS) not in new_chan_prop_asv
+    assert (TUBE_STATE) not in new_chan_prop_asv
     assert (TUBE_PARAMETERS) not in new_chan_prop_asv
     assert new_chan_path.find("StreamTube") != -1, new_chan_path
     assert new_chan_path.find("SITubesChannel") == -1, new_chan_path

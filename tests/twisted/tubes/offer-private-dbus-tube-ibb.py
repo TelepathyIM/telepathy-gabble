@@ -285,6 +285,12 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     tube_chan_iface = dbus.Interface(tube_chan, tp_name_prefix + '.Channel')
     dbus_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_DBUS_TUBE)
 
+    # check Status and Parameters
+    props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
+        byte_arrays=True)
+    assert props['Status'] == TUBE_CHANNEL_STATE_NOT_OFFERED
+    assert props['Parameters'] == sample_parameters
+
     # Only when we offer the tube should it appear on the Tubes channel and an
     # IQ be sent to Alice. We sync the stream to ensure the IQ would have
     # arrived if it had been sent.

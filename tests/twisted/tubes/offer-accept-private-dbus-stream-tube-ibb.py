@@ -853,13 +853,13 @@ def test(q, bus, conn, stream):
     assert props[TARGET_HANDLE] == bob_handle
     assert props[TARGET_ID] == 'bob@localhost'
     assert props[DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase2'
-    # FIXME: check if Status and Parameters are *not* in props
+    # FIXME: check if State and Parameters are *not* in props
 
     tube_chan = bus.get_object(conn.bus_name, path)
     tube_chan_iface = dbus.Interface(tube_chan, CHANNEL)
     dbus_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_DBUS_TUBE)
 
-    status = tube_chan.Get(CHANNEL_IFACE_TUBE, 'Status', dbus_interface=PROPERTIES_IFACE)
+    status = tube_chan.Get(CHANNEL_IFACE_TUBE, 'State', dbus_interface=PROPERTIES_IFACE)
     assert status == TUBE_STATE_LOCAL_PENDING
 
     # accept the tube (new API)

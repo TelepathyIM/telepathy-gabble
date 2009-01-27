@@ -107,7 +107,7 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         assert state is not None
         tube_props = channel.GetAll(CHANNEL_IFACE_TUBE,
                 dbus_interface=PROPERTIES_IFACE)
-        assert tube_props['Status'] == state
+        assert tube_props['State'] == state
         # no strict check but at least check the properties exist
         assert tube_props['Parameters'] is not None
         assert channel_props['Interfaces'] == \
@@ -309,7 +309,7 @@ def test(q, bus, conn, stream):
     assert len(ret.value) == 2 # CreateChannel returns 2 values: o, a{sv}
     new_chan_path = ret.value[0]
     new_chan_prop_asv = ret.value[1]
-    # Status and Parameters are mutables so not announced
+    # State and Parameters are mutables so not announced
     assert (TUBE_STATUS) not in new_chan_prop_asv
     assert (TUBE_PARAMETERS) not in new_chan_prop_asv
     assert new_chan_path.find("StreamTube") != -1, new_chan_path
@@ -321,12 +321,12 @@ def test(q, bus, conn, stream):
     new_tube_chan = bus.get_object(conn.bus_name, new_chan_path)
     new_tube_iface = dbus.Interface(new_tube_chan, CHANNEL_TYPE_STREAM_TUBE)
 
-    # check Status and Parameters
+    # check State and Parameters
     new_tube_props = new_tube_chan.GetAll(CHANNEL_IFACE_TUBE,
             dbus_interface=PROPERTIES_IFACE)
 
     # the tube created using the old API is in the "not offered" state
-    assert new_tube_props['Status'] == TUBE_CHANNEL_STATE_NOT_OFFERED
+    assert new_tube_props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
     assert new_tube_props['Parameters'] == {'foo': 'bar'}
 
     check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_STREAM_TUBE,
@@ -415,7 +415,7 @@ def test(q, bus, conn, stream):
     assert old_tube_props.get("Parameters") == dbus.Dictionary(sample_parameters)
 
     # Tube have been created using the old API and so is already offered
-    assert old_tube_props['Status'] == TUBE_CHANNEL_STATE_REMOTE_PENDING
+    assert old_tube_props['State'] == TUBE_CHANNEL_STATE_REMOTE_PENDING
 
     check_channel_properties(q, bus, conn, stream, tubes_chan, CHANNEL_TYPE_TUBES,
             bob_handle, "bob@localhost")

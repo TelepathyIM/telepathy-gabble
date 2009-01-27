@@ -231,7 +231,7 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     assert tube_props[DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase'
     assert DBUS_TUBE_DBUS_NAMES not in tube_props
     assert TUBE_PARAMETERS not in tube_props
-    assert TUBE_STATUS not in tube_props
+    assert TUBE_STATE not in tube_props
 
     # Under the current implementation, creating a new-style Tube channel
     # ensures that an old-style Tubes channel exists, even though Tube channels
@@ -263,10 +263,10 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     tube_chan_iface = dbus.Interface(tube_chan, CHANNEL)
     dbus_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_DBUS_TUBE)
 
-    # check Status and Parameters
+    # check State and Parameters
     props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
         byte_arrays=True)
-    assert props['Status'] == TUBE_CHANNEL_STATE_NOT_OFFERED
+    assert props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
     assert props['Parameters'] == sample_parameters
 
     # check ServiceName and DBusNames
@@ -298,7 +298,7 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
         sample_parameters, TUBE_STATE_REMOTE_PENDING)
     check_tube_in_tubes(expected_tube, tubes)
 
-    status = tube_chan.Get(CHANNEL_IFACE_TUBE, 'Status', dbus_interface=PROPERTIES_IFACE)
+    status = tube_chan.Get(CHANNEL_IFACE_TUBE, 'State', dbus_interface=PROPERTIES_IFACE)
     assert status == TUBE_STATE_REMOTE_PENDING
 
 def test(q, bus, conn, stream):

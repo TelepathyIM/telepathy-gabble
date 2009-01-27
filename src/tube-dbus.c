@@ -962,7 +962,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   };
   static TpDBusPropertiesMixinPropImpl tube_iface_props[] = {
       { "Parameters", "parameters", "parameters" },
-      { "Status", "state", NULL },
+      { "State", "state", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {

@@ -126,8 +126,14 @@ check-twisted:
 		exit 1;\
 	fi
 
+config.py:
+	echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\"" > config.py
+
+BUILT_SOURCES = config.py
+
 EXTRA_DIST = \
 	$(TWISTED_TESTS) \
+	config.py \
 	constants.py \
 	gabbletest.py \
 	servicetest.py \

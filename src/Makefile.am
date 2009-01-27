@@ -73,6 +73,8 @@ libgabble_convenience_la_SOURCES = \
     jingle-session.c \
     jingle-transport-google.h \
     jingle-transport-google.c \
+    jingle-transport-rawudp.h \
+    jingle-transport-rawudp.c \
     jingle-transport-iface.h \
     jingle-transport-iface.c \
     media-channel.h \

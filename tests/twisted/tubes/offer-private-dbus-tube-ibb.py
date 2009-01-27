@@ -6,7 +6,7 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, tp_name_prefix
+from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 from constants import *
 from tubetestutil import *
@@ -20,8 +20,6 @@ sample_parameters = dbus.Dictionary({
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
-
-HT_CONTACT = 1
 
 # FIXME: stolen from jingletest.py. Should be shared by all tests
 def make_presence(fromjid, tojid, caps=None):
@@ -127,22 +125,19 @@ def send_dbus_message_to_alice(q, stream, dbus_tube_adr, dbus_stream_id):
 
 def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     # request tubes channel (old API)
-    tubes_path = conn.RequestChannel('org.freedesktop.Telepathy.Channel.Type.Tubes',
-        HT_CONTACT, alice_handle, True)
+    tubes_path = conn.RequestChannel(CHANNEL_TYPE_TUBES, HT_CONTACT,
+            alice_handle, True)
     tubes_chan = bus.get_object(conn.bus_name, tubes_path)
-    tubes_iface = dbus.Interface(tubes_chan, tp_name_prefix + '.Channel.Type.Tubes')
-    tubes_chan_iface = dbus.Interface(tubes_chan, tp_name_prefix + '.Channel')
+    tubes_iface = dbus.Interface(tubes_chan, CHANNEL_TYPE_TUBES)
+    tubes_chan_iface = dbus.Interface(tubes_chan, CHANNEL)
 
     # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = tubes_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+    channel_props = tubes_chan.GetAll(CHANNEL, dbus_interface=PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == alice_handle,\
             (channel_props.get('TargetHandle'), alice_handle)
     assert channel_props.get('TargetHandleType') == HT_CONTACT,\
             channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.Tubes',\
+    assert channel_props.get('ChannelType') == CHANNEL_TYPE_TUBES,\
             channel_props.get('ChannelType')
     assert 'Interfaces' in channel_props, channel_props
     assert channel_props['Interfaces'] == [], channel_props['Interfaces']
@@ -180,8 +175,7 @@ def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
 
     dbus_stream_id = alice_accepts_tube(q, stream, iq_event, dbus_tube_id)
 
-    q.expect('dbus-signal', signal='TubeStateChanged',
-        interface='org.freedesktop.Telepathy.Channel.Type.Tubes',
+    q.expect('dbus-signal', signal='TubeStateChanged', interface=CHANNEL_TYPE_TUBES,
         args=[dbus_tube_id, 2])
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
@@ -197,41 +191,27 @@ def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
 
 
 def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
-    requestotron = dbus.Interface(conn,
-        'org.freedesktop.Telepathy.Connection.Interface.Requests')
+    requestotron = dbus.Interface(conn, CONN_IFACE_REQUESTS)
 
     # Can we request a DBusTube channel?
-    properties = conn.GetAll(
-        'org.freedesktop.Telepathy.Connection.Interface.Requests',
-        dbus_interface='org.freedesktop.DBus.Properties')
+    properties = conn.GetAll(CONN_IFACE_REQUESTS, dbus_interface=PROPERTIES_IFACE)
 
     # check if we can request 1-1 DBus tube
-    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
-            'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT',
-         'org.freedesktop.Telepathy.Channel.TargetHandleType': HT_CONTACT,
-         },
-         ['org.freedesktop.Telepathy.Channel.TargetHandle',
-          'org.freedesktop.Telepathy.Channel.TargetID',
-          'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters',
-          'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName',
-         ]
+    assert ({CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
+        TARGET_HANDLE_TYPE: HT_CONTACT},
+         [TARGET_HANDLE, TARGET_ID, TUBE_PARAMETERS, DBUS_TUBE_SERVICE_NAME]
         ) in properties.get('RequestableChannelClasses'),\
                  properties['RequestableChannelClasses']
 
     # Offer a tube to Alice (new API)
 
     call_async(q, requestotron, 'CreateChannel',
-        {'org.freedesktop.Telepathy.Channel.ChannelType':
-            'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT',
-         'org.freedesktop.Telepathy.Channel.TargetHandleType':
-            HT_CONTACT,
-         'org.freedesktop.Telepathy.Channel.TargetID':
-            'alice@localhost',
-         'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
-            sample_parameters,
-         'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT.ServiceName':
-            'com.example.TestCase'
-         }, byte_arrays=True)
+            {CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
+             TARGET_HANDLE_TYPE: HT_CONTACT,
+             TARGET_ID: 'alice@localhost',
+             TUBE_PARAMETERS: sample_parameters,
+             DBUS_TUBE_SERVICE_NAME: 'com.example.TestCase'
+            }, byte_arrays=True)
     cc_ret, nc = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
@@ -240,18 +220,14 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     new_channel_details = nc.args[0]
 
     # check tube channel properties
-    assert tube_props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.DBusTube.DRAFT'
-    assert tube_props[tp_name_prefix + '.Channel.Interfaces'] ==\
-            ['org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT']
-    assert tube_props[tp_name_prefix + '.Channel.TargetHandleType'] == HT_CONTACT
-    assert tube_props[tp_name_prefix + '.Channel.TargetHandle'] == alice_handle
-    assert tube_props[tp_name_prefix + '.Channel.TargetID'] == 'alice@localhost'
-    assert tube_props[tp_name_prefix + '.Channel.Requested'] == True
-    assert tube_props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-            == self_handle
-    assert tube_props[tp_name_prefix + '.Channel.InitiatorID'] \
-            == "test@localhost"
+    assert tube_props[CHANNEL_TYPE] == CHANNEL_TYPE_DBUS_TUBE
+    assert tube_props[INTERFACES] == [CHANNEL_IFACE_TUBE]
+    assert tube_props[TARGET_HANDLE_TYPE] == HT_CONTACT
+    assert tube_props[TARGET_HANDLE] == alice_handle
+    assert tube_props[TARGET_ID] == 'alice@localhost'
+    assert tube_props[REQUESTED] == True
+    assert tube_props[INITIATOR_HANDLE] == self_handle
+    assert tube_props[INITIATOR_ID] == "test@localhost"
     assert TUBE_PARAMETERS not in tube_props
     assert TUBE_STATUS not in tube_props
 
@@ -282,7 +258,7 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     assert len(tubes) == 0, tubes
 
     tube_chan = bus.get_object(conn.bus_name, tube_path)
-    tube_chan_iface = dbus.Interface(tube_chan, tp_name_prefix + '.Channel')
+    tube_chan_iface = dbus.Interface(tube_chan, CHANNEL)
     dbus_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_DBUS_TUBE)
 
     # check Status and Parameters

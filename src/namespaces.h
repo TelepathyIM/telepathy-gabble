@@ -76,8 +76,7 @@
 /* google-p2p transport */
 #define NS_GOOGLE_TRANSPORT_P2P "http://www.google.com/transport/p2p"
 /* Jingle RAW-UDP transport */
-#define NS_JINGLE_TRANSPORT_RAWUDP \
-  "http://jabber.org/protocol/jingle/transport/rawudp"
+#define NS_JINGLE_TRANSPORT_RAWUDP "urn:xmpp:jingle:transports:raw-udp:0"
 
 #define NS_MUC                  "http://jabber.org/protocol/muc"
 #define NS_MUC_BYTESTREAM       "http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream"

@@ -1638,6 +1638,7 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   g_hash_table_insert (priv->dbus_name_to_handle, name_copy,
       GUINT_TO_POINTER (handle));
 
+  /* TODO: gabble_svc_channel_type_dbus_tube_emit_d_bus_names_changed */
   return TRUE;
 }
 
@@ -1663,6 +1664,7 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
       g_hash_table_size (priv->dbus_name_to_handle));
 
   tp_handle_unref (contact_repo, handle);
+  /* TODO: gabble_svc_channel_type_dbus_tube_emit_d_bus_names_changed */
   return TRUE;
 }
 

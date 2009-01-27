@@ -165,7 +165,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
-    c['ver'] = 'JpaYgiKL0y4fUOCTwN3WLGpaftM='
+    c['ver'] = compute_caps_hash([], [ns.JINGLE, ns.JINGLE_AUDIO, ns.GOOGLE_P2P], [])
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -210,7 +210,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
-    c['ver'] = 'f5oUAlH0fcR8btEo5K0P135QReo='
+    c['ver'] = compute_caps_hash([], [ns.TUBES + '/stream#daap'], [])
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -252,7 +252,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
-    c['ver'] = '4Ps2iaOc+lsFwfbasCdsBjLOQ5s='
+    c['ver'] = compute_caps_hash([], [ns.TUBES + '/dbus#com.example.Xiangqi'], [])
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -294,7 +294,8 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
-    c['ver'] = 'ALCBfacl4M/FKWckV1OCHfj+lt0='
+    c['ver'] = compute_caps_hash([], [ns.TUBES + '/dbus#com.example.Xiangqi',
+        ns.TUBES + '/stream#daap'], [])
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -339,7 +340,9 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
-    c['ver'] = 'ObSHJf9W0fUDuSjmB6gmthptw+s='
+    c['ver'] = compute_caps_hash([], [ns.TUBES + '/dbus#com.example.Xiangqi',
+        ns.TUBES + '/stream#daap',  ns.TUBES + '/dbus#com.example.Go',
+        ns.TUBES + '/stream#http' ], [])
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -390,7 +393,8 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
-    c['ver'] = 'ALCBfacl4M/FKWckV1OCHfj+lt0='
+    c['ver'] = compute_caps_hash([], [ns.TUBES + '/dbus#com.example.Xiangqi',
+        ns.TUBES + '/stream#daap'], [])
     c['hash'] = 'sha-1'
     stream.send(presence)
 

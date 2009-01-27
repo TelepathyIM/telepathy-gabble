@@ -165,7 +165,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
-    c['ver'] = compute_caps_hash([], [ns.JINGLE, ns.JINGLE_AUDIO, ns.GOOGLE_P2P], [])
+    c['ver'] = compute_caps_hash([], [], [])
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -179,13 +179,6 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     result = make_result_iq(stream, event.stanza)
     query = result.firstChildElement()
     query['node'] = client + '#' + c['ver']
-
-    feature = query.addElement('feature')
-    feature['var'] = ns.JINGLE
-    feature = query.addElement('feature')
-    feature['var'] = ns.JINGLE_AUDIO
-    feature = query.addElement('feature')
-    feature['var'] = ns.GOOGLE_P2P
     stream.send(result)
 
     # no change in ContactCapabilities, so no signal ContactCapabilitiesChanged

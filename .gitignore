@@ -71,7 +71,7 @@ cscope.out
 /tests/test-jid-decode
 /tests/test-parse-message
 /tests/test-presence
-/tests/twisted/gabbleconfig.py
+/tests/twisted/config.py
 /tests/twisted/telepathy-gabble-debug
 /tests/twisted/tools/*.service
 /tests/twisted/tools/exec-with-log.sh

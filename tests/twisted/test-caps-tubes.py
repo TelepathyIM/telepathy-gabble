@@ -40,6 +40,9 @@ from servicetest import EventPattern
 from gabbletest import exec_test, make_result_iq, sync_stream
 from constants import *
 
+from caps_helper import compute_caps_hash
+from config import PACKAGE_STRING
+
 ns_tubes = 'http://telepathy.freedesktop.org/xmpp/tubes'
 
 text_fixed_properties = dbus.Dictionary({
@@ -132,6 +135,13 @@ def receive_presence_and_ask_caps(q, stream):
     event = q.expect('stream-iq',
         query_ns='http://jabber.org/protocol/disco#info')
     caps_str = str(xpath.queryForNodes('/iq/query/feature', event.stanza))
+
+    features = []
+    for feature in xpath.queryForNodes('/iq/query/feature', event.stanza):
+        features.append(feature['var'])
+
+    # Check if the hash matches the announced capabilities
+    assert ver == compute_caps_hash(['client/pc//%s' % PACKAGE_STRING], features, [])
 
     return (event, caps_str, signaled_caps)
 

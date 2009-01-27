@@ -85,6 +85,7 @@ TWISTED_TESTS = \
 	test-caps-cache.py \
 	test-caps-hash.py \
 	test-caps-tubes.py \
+	caps_helper.py \
 	connect/test-fail.py \
 	connect/test-success.py \
 	connect/test-twice.py \

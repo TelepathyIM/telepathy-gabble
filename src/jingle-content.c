@@ -1056,3 +1056,9 @@ gabble_jingle_content_get_disposition (GabbleJingleContent *self)
 {
   return self->priv->disposition;
 }
+
+JingleTransportType
+gabble_jingle_content_get_transport_type (GabbleJingleContent *c)
+{
+  return gabble_jingle_transport_iface_get_transport_type (c->priv->transport);
+}

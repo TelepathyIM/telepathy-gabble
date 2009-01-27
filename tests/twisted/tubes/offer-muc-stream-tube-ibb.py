@@ -208,7 +208,7 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
         byte_arrays=True)
     assert tube_props['Parameters'] == sample_parameters
-    assert tube_props['Status'] == TUBE_CHANNEL_STATE_OPEN
+    assert tube_props['State'] == TUBE_CHANNEL_STATE_OPEN
 
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert tubes == [(
@@ -360,7 +360,7 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE)
 
     assert tube_props['Parameters'] == {'foo': 'bar'}
-    assert tube_props['Status'] == TUBE_CHANNEL_STATE_NOT_OFFERED
+    assert tube_props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
     call_async(q, stream_tube_iface, 'OfferStreamTube',

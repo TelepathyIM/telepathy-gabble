@@ -50,6 +50,20 @@ text_fixed_properties = dbus.Dictionary({
     })
 text_allowed_properties = dbus.Array([TARGET_HANDLE])
 
+stream_tube_fixed_properties = dbus.Dictionary({
+    TARGET_HANDLE_TYPE: HT_CONTACT,
+    CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE
+    })
+stream_tube_allowed_properties = dbus.Array([TARGET_HANDLE,
+    TARGET_ID, TUBE_PARAMETERS, STREAM_TUBE_SERVICE])
+
+dbus_tube_fixed_properties = dbus.Dictionary({
+    TARGET_HANDLE_TYPE: HT_CONTACT,
+    CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE
+    })
+dbus_tube_allowed_properties = dbus.Array([TARGET_HANDLE,
+    TARGET_ID, TUBE_PARAMETERS, DBUS_TUBE_SERVICE_NAME])
+
 daap_fixed_properties = dbus.Dictionary({
     TARGET_HANDLE_TYPE: HT_CONTACT,
     CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
@@ -199,6 +213,50 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     assert caps_via_contacts_iface == caps[contact_handle], \
                                     caps_via_contacts_iface
 
+    # send presence with generic tubes caps
+    presence = make_presence(contact, None, 'hello')
+    c = presence.addElement((ns.CAPS, 'c'))
+    c['node'] = client
+    c['ver'] = compute_caps_hash([], [ns.TUBES], [])
+    c['hash'] = 'sha-1'
+    stream.send(presence)
+
+    # Gabble looks up our capabilities
+    event = q.expect('stream-iq', to=contact, query_ns=ns.DISCO_INFO)
+    query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
+    assert query_node.attributes['node'] == \
+        client + '#' + c['ver']
+
+    # send good reply
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    query['node'] = client + '#' + c['ver']
+    feature = query.addElement('feature')
+    feature['var'] = ns.TUBES
+    stream.send(result)
+
+    # generic tubes capabilities
+    generic_tubes_caps = dbus.Dictionary({contact_handle:
+            [(text_fixed_properties, text_allowed_properties),
+             (stream_tube_fixed_properties, stream_tube_allowed_properties),
+             (dbus_tube_fixed_properties, dbus_tube_allowed_properties)]})
+    event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
+    assert len(event.args) == 1
+    assert event.args[0] == generic_tubes_caps
+
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == generic_tubes_caps, caps
+    # test again, to check GetContactCapabilities does not have side effect
+    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    assert caps == generic_tubes_caps, caps
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
+            [contact_handle], [CONN_IFACE_CONTACT_CAPA], False) \
+            [contact_handle][CONN_IFACE_CONTACT_CAPA + '/caps']
+    assert caps_via_contacts_iface == caps[contact_handle], \
+                                    caps_via_contacts_iface
+
+
     # send presence with 1 stream tube cap
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement((ns.CAPS, 'c'))
@@ -224,6 +282,8 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     # daap capabilities
     daap_caps = dbus.Dictionary({contact_handle:
             [(text_fixed_properties, text_allowed_properties),
+             (stream_tube_fixed_properties, stream_tube_allowed_properties),
+             (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
              (daap_fixed_properties, daap_allowed_properties)]})
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
     assert len(event.args) == 1
@@ -266,6 +326,8 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     # xiangqi capabilities
     xiangqi_caps = dbus.Dictionary({contact_handle:
             [(text_fixed_properties, text_allowed_properties),
+             (stream_tube_fixed_properties, stream_tube_allowed_properties),
+             (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
             (xiangqi_fixed_properties, xiangqi_allowed_properties)]})
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
     assert len(event.args) == 1
@@ -311,6 +373,8 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     # daap + xiangqi capabilities
     daap_xiangqi_caps = dbus.Dictionary({contact_handle:
         [(text_fixed_properties, text_allowed_properties),
+        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, daap_allowed_properties),
         (xiangqi_fixed_properties, xiangqi_allowed_properties)]})
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
@@ -362,6 +426,8 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     # http + daap + xiangqi + go capabilities
     all_tubes_caps = dbus.Dictionary({contact_handle:
         [(text_fixed_properties, text_allowed_properties),
+        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, daap_allowed_properties),
         (http_fixed_properties, http_allowed_properties),
         (xiangqi_fixed_properties, xiangqi_allowed_properties),
@@ -396,6 +462,8 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     # daap + xiangqi capabilities
     daap_xiangqi_caps = dbus.Dictionary({contact_handle:
         [(text_fixed_properties, text_allowed_properties),
+        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, daap_allowed_properties),
         (xiangqi_fixed_properties, xiangqi_allowed_properties)]})
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
@@ -416,19 +484,29 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
 
 def test_tube_caps_to_contact(q, bus, conn, stream):
     basic_caps = dbus.Dictionary({1:
-        [(text_fixed_properties, text_allowed_properties)]})
+        [(text_fixed_properties, text_allowed_properties),
+         (stream_tube_fixed_properties, stream_tube_allowed_properties),
+         (dbus_tube_fixed_properties, dbus_tube_allowed_properties)]})
     daap_caps = dbus.Dictionary({1:
         [(text_fixed_properties, text_allowed_properties),
+        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, daap_allowed_properties)]})
     xiangqi_caps = dbus.Dictionary({1:
         [(text_fixed_properties, text_allowed_properties),
+        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (xiangqi_fixed_properties, xiangqi_allowed_properties)]})
     daap_xiangqi_caps = dbus.Dictionary({1:
         [(text_fixed_properties, text_allowed_properties),
+        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, daap_allowed_properties),
         (xiangqi_fixed_properties, xiangqi_allowed_properties)]})
     all_tubes_caps = dbus.Dictionary({1:
         [(text_fixed_properties, text_allowed_properties),
+        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, daap_allowed_properties),
         (http_fixed_properties, http_allowed_properties),
         (xiangqi_fixed_properties, xiangqi_allowed_properties),

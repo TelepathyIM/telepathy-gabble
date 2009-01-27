@@ -145,7 +145,7 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         tube_props = channel.GetAll(
                 'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
                 dbus_interface='org.freedesktop.DBus.Properties')
-        assert tube_props['Status'] == state
+        assert tube_props['State'] == state
         # no strict check but at least check the properties exist
         assert tube_props['Parameters'] is not None
         assert channel_props['Interfaces'] == \
@@ -476,9 +476,9 @@ def test(q, bus, conn, stream):
             dbus_interface='org.freedesktop.DBus.Properties', byte_arrays=True)
     assert tube_props.get("Parameters") == new_sample_parameters, \
             tube_props.get("Parameters")
-    
+
     # 3 == Tube_Channel_State_Not_Offered
-    assert tube_props.get("Status") == 3, tube_props
+    assert tube_props.get("State") == 3, tube_props
 
     check_channel_properties(q, bus, conn, stream, tubes_chan, "Tubes",
             bob_handle, "bob@localhost")

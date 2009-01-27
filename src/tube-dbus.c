@@ -164,7 +164,7 @@ struct _GabbleTubeDBusPrivate
   GSList *dbus_msg_queue;
   /* current size of the queue in bytes. The maximum is MAX_QUEUE_SIZE */
   unsigned long dbus_msg_queue_size;
-  /* mapping of contact handle -> D-Bus name (NULL for 1-1 D-Bus tubes) */
+  /* mapping of contact handle -> D-Bus name (empty for 1-1 D-Bus tubes) */
   GHashTable *dbus_names;
   /* mapping of D-Bus name -> contact handle */
   GHashTable *dbus_name_to_handle;
@@ -830,6 +830,9 @@ gabble_tube_dbus_constructor (GType type,
 
   base = (TpBaseConnection *) priv->conn;
 
+  priv->dbus_names = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, g_free);
+
   g_assert (priv->self_handle != 0);
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
     {
@@ -846,8 +849,6 @@ gabble_tube_dbus_constructor (GType type,
 
       g_assert (priv->stream_id != NULL);
 
-      priv->dbus_names = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-          NULL, g_free);
       priv->dbus_name_to_handle = g_hash_table_new_full (g_str_hash,
          g_str_equal, NULL, NULL);
 
@@ -883,7 +884,6 @@ gabble_tube_dbus_constructor (GType type,
     {
       /* The D-Bus names mapping is used in muc tubes only */
       priv->dbus_local_name = NULL;
-      priv->dbus_names = NULL;
       priv->dbus_name_to_handle = NULL;
 
       /* For contact (IBB) tubes we need to be able to reassemble messages. */

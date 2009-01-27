@@ -47,6 +47,7 @@ struct _GabbleJingleTransportIfaceClass {
     GList *);
   void (*retransmit_candidates) (GabbleJingleTransportIface *, gboolean);
   GList * (*get_remote_candidates) (GabbleJingleTransportIface *);
+  JingleTransportType (*get_transport_type) (void);
 };
 
 GType gabble_jingle_transport_iface_get_type (void);
@@ -67,6 +68,7 @@ void gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface 
 void gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *, GList *);
 void gabble_jingle_transport_iface_retransmit_candidates (GabbleJingleTransportIface *, gboolean);
 GList *gabble_jingle_transport_iface_get_remote_candidates (GabbleJingleTransportIface *);
+JingleTransportType gabble_jingle_transport_iface_get_transport_type (GabbleJingleTransportIface *);
 
 GabbleJingleTransportIface *gabble_jingle_transport_iface_new (
     GType type, GabbleJingleContent *content, const gchar *transport_ns);

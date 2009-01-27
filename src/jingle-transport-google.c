@@ -587,6 +587,12 @@ get_remote_candidates (GabbleJingleTransportIface *iface)
   return priv->remote_candidates;
 }
 
+static JingleTransportType
+get_transport_type (void)
+{
+  return JINGLE_TRANSPORT_GOOGLE_P2P;
+}
+
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data)
 {
@@ -596,6 +602,7 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   klass->add_candidates = add_candidates;
   klass->retransmit_candidates = retransmit_candidates;
   klass->get_remote_candidates = get_remote_candidates;
+  klass->get_transport_type = get_transport_type;
 }
 
 void

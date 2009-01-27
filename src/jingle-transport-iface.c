@@ -86,6 +86,16 @@ gabble_jingle_transport_iface_get_remote_candidates (
   return virtual_method (self);
 }
 
+JingleTransportType
+gabble_jingle_transport_iface_get_transport_type (GabbleJingleTransportIface *self)
+{
+  JingleTransportType (*virtual_method)(void) =
+    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->get_transport_type;
+
+  g_assert (virtual_method != NULL);
+  return virtual_method ();
+}
+
 static void
 gabble_jingle_transport_iface_base_init (gpointer klass)
 {

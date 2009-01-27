@@ -252,8 +252,8 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
             == self_handle
     assert tube_props[tp_name_prefix + '.Channel.InitiatorID'] \
             == "test@localhost"
-    assert tube_props[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Parameters'] == sample_parameters
-    assert tube_props[tp_name_prefix + '.Channel.Interface.Tube.DRAFT.Status'] == TUBE_CHANNEL_STATE_NOT_OFFERED
+    assert TUBE_PARAMETERS not in tube_props
+    assert TUBE_STATUS not in tube_props
 
     # Under the current implementation, creating a new-style Tube channel
     # ensures that an old-style Tubes channel exists, even though Tube channels

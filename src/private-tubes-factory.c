@@ -435,10 +435,12 @@ add_service_to_array (gchar *service,
   GValue *channel_type_value;
   GValue *target_handle_type_value;
   gchar *tube_allowed_properties[] =
-      {
+    {
         TP_IFACE_CHANNEL ".TargetHandle",
+        TP_IFACE_CHANNEL ".TargetID",
+        GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
         NULL
-      };
+    };
 
   g_assert (type == TP_TUBE_TYPE_STREAM || type == TP_TUBE_TYPE_DBUS);
 

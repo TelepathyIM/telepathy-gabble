@@ -1,7 +1,11 @@
 AMP = "http://jabber.org/protocol/amp"
+CAPS = "http://jabber.org/protocol/caps"
 DISCO_INFO = "http://jabber.org/protocol/disco#info"
 DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
+GOOGLE_P2P = "http://www.google.com/transport/p2p"
 IBB = 'http://jabber.org/protocol/ibb'
+JINGLE = "http://jabber.org/protocol/jingle"
+JINGLE_AUDIO = "http://jabber.org/protocol/jingle/description/audio"
 MUC = 'http://jabber.org/protocol/muc'
 MUC_OWNER = '%s#owner' % MUC
 MUC_USER = '%s#user' % MUC

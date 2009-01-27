@@ -187,7 +187,7 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
         byte_arrays=True)
     assert tube_props['Parameters'] == sample_parameters
-    assert tube_props['Status'] == TUBE_CHANNEL_STATE_LOCAL_PENDING
+    assert tube_props['State'] == TUBE_CHANNEL_STATE_LOCAL_PENDING
 
     # Accept the tube
     call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 0, 0, '',

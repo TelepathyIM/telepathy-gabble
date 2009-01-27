@@ -228,6 +228,8 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     assert tube_props[REQUESTED] == True
     assert tube_props[INITIATOR_HANDLE] == self_handle
     assert tube_props[INITIATOR_ID] == "test@localhost"
+    assert tube_props[DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase'
+    assert DBUS_TUBE_DBUS_NAMES not in tube_props
     assert TUBE_PARAMETERS not in tube_props
     assert TUBE_STATUS not in tube_props
 

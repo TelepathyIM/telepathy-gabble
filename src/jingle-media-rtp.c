@@ -399,7 +399,7 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
   JingleDialect dialect;
   const gchar *xmlns = NULL;
 
-  g_object_get (obj, "session", &sess, NULL);
+  sess = GABBLE_JINGLE_CONTENT(obj)->session;
   g_object_get (sess, "dialect", &dialect, NULL);
 
   desc_node = lm_message_node_add_child (content_node, "description", NULL);

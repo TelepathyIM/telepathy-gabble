@@ -5,7 +5,7 @@ Fixes:
 
 * Don't crash when closing a muc channel containing an closed D-Bus tube.
 * Don't resurrect removed streams if the call responder includes them in
-  session-accept 
+  session-accept
 * Don't crash in calls if using glib with debugging enabled (fd.o #19327).
 * Don't crash when removing contact from known list (fd.o #19524).
 

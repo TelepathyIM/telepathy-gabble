@@ -78,6 +78,7 @@ struct _GabbleJingleSessionPrivate
   gchar *sid;
 
   gboolean locally_accepted;
+  gboolean locally_terminated;
 
   guint timer_id;
 
@@ -137,6 +138,7 @@ gabble_jingle_session_init (GabbleJingleSession *obj)
 
   priv->state = JS_STATE_PENDING_CREATED;
   priv->locally_accepted = FALSE;
+  priv->locally_terminated = FALSE;
   priv->timer_id = 0;
   priv->dispose_has_run = FALSE;
 }
@@ -1477,7 +1479,7 @@ set_state (GabbleJingleSession *sess, JingleState state)
     }
 
   if (state == JS_STATE_ENDED)
-      g_signal_emit (sess, signals[TERMINATED], 0, FALSE);
+      g_signal_emit (sess, signals[TERMINATED], 0, priv->locally_terminated);
 }
 
 void
@@ -1513,6 +1515,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess)
    * takes care of cleanup */
 
   DEBUG ("we are terminating this session");
+  priv->locally_terminated = TRUE;
   set_state (sess, JS_STATE_ENDED);
 }
 

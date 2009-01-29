@@ -199,6 +199,17 @@ set_own_status_cb (GObject *obj,
       GValue *message = NULL, *priority = NULL;
       const gchar *message_str = NULL;
 
+      /* Workaround for tp-glib not checking whether we support setting
+       * a particular status (can be removed once we depend on tp-glib
+       * with the check enabled). Assumes PresenceId value ordering. */
+      if (i < GABBLE_PRESENCE_HIDDEN)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "Status '%s' can not be requested in this connection",
+                gabble_statuses[i].name);
+          return FALSE;
+        }
+
       if (args != NULL)
         {
           message = g_hash_table_lookup (args, "message");
@@ -293,12 +304,6 @@ status_available_cb (GObject *obj, guint status)
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTED)
-    return FALSE;
-
-  /* Workaround for tp-glib not checking whether we support setting
-   * a particular status (can be removed once we depend on tp-glib
-   * with the check enabled). */
-  if (!gabble_statuses[status].self)
     return FALSE;
 
   if (gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&

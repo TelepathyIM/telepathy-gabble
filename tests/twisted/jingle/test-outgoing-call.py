@@ -151,9 +151,16 @@ def test(q, bus, conn, stream):
 
     q.expect('stream-iq', iq_type='result')
 
+    # Call accepted
+    q.expect('dbus-signal', signal='MembersChanged')
+
     # Time passes ... afterwards we close the chan
 
     group_iface.RemoveMembers([dbus.UInt32(1)], 'closed')
+
+    # Check that we're the actor
+    e = q.expect('dbus-signal', signal='MembersChanged')
+    assert e.args[5] == self_handle
 
     # Test completed, close the connection
 

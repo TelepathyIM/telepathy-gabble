@@ -62,13 +62,16 @@ def test(q, bus, conn, stream):
 
     conn.Set (location_iface, 'LocationAccessControl', access_control,
         dbus_interface ='org.freedesktop.DBus.Properties')
-    # LocationAccessControlType is read-only, we just test it does not crash
+    # LocationAccessControlTypes is read-only, check Gabble return the
+    # PermissionDenied error
     try:
-        conn.Set (location_iface, 'LocationAccessControlType',
+        conn.Set (location_iface, 'LocationAccessControlTypes',
             access_control_types,
             dbus_interface ='org.freedesktop.DBus.Properties')
     except dbus.DBusException, e:
-        pass
+        assert e.get_dbus_name() == \
+            'org.freedesktop.Telepathy.Errors.PermissionDenied', \
+            e.get_dbus_name()
     else:
         assert False, "Should have had an error!"
 

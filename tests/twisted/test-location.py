@@ -49,6 +49,8 @@ def test(q, bus, conn, stream):
     assert properties.get('LocationAccessControl') == access_control
 
     # Test setting the properties
+
+    # Enum out of range
     bad_access_control = dbus.Struct([dbus.UInt32(99),
             dbus.UInt32(0, variant_level=1)],
             signature=dbus.Signature('uv'))
@@ -60,8 +62,36 @@ def test(q, bus, conn, stream):
     else:
         assert False, "Should have had an error!"
 
+    # Bad type
+    bad_access_control = dbus.String("This should not be a string")
+    try:
+        conn.Set (location_iface, 'LocationAccessControl', bad_access_control,
+            dbus_interface ='org.freedesktop.DBus.Properties')
+    except dbus.DBusException, e:
+        assert e.get_dbus_name() == \
+            'org.freedesktop.Telepathy.Errors.InvalidArgument', \
+            e.get_dbus_name()
+    else:
+        assert False, "Should have had an error!"
+
+    # Bad type
+    bad_access_control = dbus.Struct([dbus.String("bad"), dbus.String("!"),
+            dbus.UInt32(0, variant_level=1)],
+            signature=dbus.Signature('ssv'))
+    try:
+        conn.Set (location_iface, 'LocationAccessControl', bad_access_control,
+            dbus_interface ='org.freedesktop.DBus.Properties')
+    except dbus.DBusException, e:
+        assert e.get_dbus_name() == \
+            'org.freedesktop.Telepathy.Errors.InvalidArgument', \
+            e.get_dbus_name()
+    else:
+        assert False, "Should have had an error!"
+
+    # Correct
     conn.Set (location_iface, 'LocationAccessControl', access_control,
         dbus_interface ='org.freedesktop.DBus.Properties')
+
     # LocationAccessControlTypes is read-only, check Gabble return the
     # PermissionDenied error
     try:

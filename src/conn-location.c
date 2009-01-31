@@ -253,7 +253,21 @@ conn_location_properties_setter (GObject *object,
 
   access_control = g_value_get_boxed (value);
 
+  if (access_control->n_values != 2)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Two parameters expected for LocationAccessControl");
+      return FALSE;
+    }
+
   access_control_type_value = g_value_array_get_nth (access_control, 0);
+  if (G_VALUE_TYPE (access_control_type_value) != G_TYPE_UINT)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Type '(uv)' expected for LocationAccessControl");
+      return FALSE;
+    }
+
   access_control_type = g_value_get_uint (access_control_type_value);
 
   if (access_control_type !=

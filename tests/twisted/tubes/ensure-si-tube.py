@@ -53,7 +53,7 @@ def test(q, bus, conn, stream):
 
     properties = conn.GetAll(
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert properties.get('Channels') == [], properties['Channels']
     assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Tubes',

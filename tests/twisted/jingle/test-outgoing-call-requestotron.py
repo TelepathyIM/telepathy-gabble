@@ -100,7 +100,7 @@ def test(q, bus, conn, stream):
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = group_iface.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == handle, \
             channel_props.get('TargetHandle')
     assert channel_props.get('TargetHandleType') == 1,\
@@ -128,7 +128,7 @@ def test(q, bus, conn, stream):
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = group_iface.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Group',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert 'HandleOwners' in group_props, group_props
     assert 'Members' in group_props, group_props
     assert 'LocalPendingMembers' in group_props, group_props

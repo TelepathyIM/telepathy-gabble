@@ -51,7 +51,7 @@ def test(q, bus, conn, stream):
 
     channel_props = group_iface.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetHandleType'] == 1, channel_props
     assert channel_props['TargetHandle'] == handle, channel_props
     assert channel_props['TargetID'] == 'foo@bar.com', channel_props

@@ -41,7 +41,7 @@ def test(q, bus, conn, stream):
 
     properties = conn.GetAll(
             tp_name_prefix + '.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert properties.get('Channels') == [], properties['Channels']
     assert ({tp_name_prefix + '.Channel.ChannelType':
                 tp_name_prefix + '.Channel.Type.RoomList',
@@ -89,7 +89,7 @@ def test(q, bus, conn, stream):
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = chan.GetAll(
             tp_name_prefix + '.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == 0,\
             channel_props.get('TargetHandle')
     assert channel_props['TargetID'] == '', channel_props
@@ -104,7 +104,7 @@ def test(q, bus, conn, stream):
 
     assert chan.Get(
             tp_name_prefix + '.Channel.Type.RoomList', 'Server',
-            dbus_interface='org.freedesktop.DBus.Properties') == \
+            dbus_interface=dbus.PROPERTIES_IFACE) == \
                     'conf.localhost'
 
     # FIXME: actually list the rooms!
@@ -152,7 +152,7 @@ def test(q, bus, conn, stream):
 
     assert chan.Get(
             tp_name_prefix + '.Channel.Type.RoomList', 'Server',
-            dbus_interface='org.freedesktop.DBus.Properties') == \
+            dbus_interface=dbus.PROPERTIES_IFACE) == \
                     'conference.example.net'
 
     # FIXME: actually list the rooms!

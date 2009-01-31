@@ -39,7 +39,7 @@ def _expect_group_channel(q, bus, conn, name, contacts):
 
     channel_props = chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetID'] == name, channel_props
     assert channel_props['Requested'] == False
     assert channel_props['InitiatorID'] == ''

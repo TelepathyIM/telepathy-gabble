@@ -82,7 +82,7 @@ class S5BFactory(Factory):
 def check_conn_properties(q, bus, conn, stream, channel_list=None):
     properties = conn.GetAll(
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
 
     if channel_list == None:
         assert properties.get('Channels') == [], properties['Channels']
@@ -118,7 +118,7 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
     # on the channel of type channel_type
     channel_props = channel.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == contact_handle,\
             (channel_props.get('TargetHandle'), contact_handle)
     assert channel_props.get('TargetHandleType') == 1,\
@@ -144,7 +144,7 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         assert state is not None
         tube_props = channel.GetAll(
                 'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
-                dbus_interface='org.freedesktop.DBus.Properties')
+                dbus_interface=dbus.PROPERTIES_IFACE)
         assert tube_props['State'] == state
         # no strict check but at least check the properties exist
         assert tube_props['Parameters'] is not None
@@ -155,7 +155,7 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
 
         stream_tube_props = channel.GetAll(
                 'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-                dbus_interface='org.freedesktop.DBus.Properties')
+                dbus_interface=dbus.PROPERTIES_IFACE)
         supported_socket_types = stream_tube_props['SupportedSocketTypes']
 
     # Support for different socket types. no strict check but at least check
@@ -452,28 +452,28 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
     tube_basic_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert tube_basic_props.get("InitiatorHandle") == self_handle
 
     stream_tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert stream_tube_props.get("Service") == "newecho", stream_tube_props
 
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert tube_props.get("Parameters") == dbus.Dictionary(
             {dbus.String(u'foo'): dbus.String(u'bar')},
             signature=dbus.Signature('sv'))
     # change the parameters
     tube_chan.Set('org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             'Parameters', new_sample_parameters,
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     # check it is correctly changed
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
-            dbus_interface='org.freedesktop.DBus.Properties', byte_arrays=True)
+            dbus_interface=dbus.PROPERTIES_IFACE, byte_arrays=True)
     assert tube_props.get("Parameters") == new_sample_parameters, \
             tube_props.get("Parameters")
 
@@ -517,18 +517,18 @@ def test(q, bus, conn, stream):
     # The new tube has been offered, the parameters cannot be changed anymore
     # We need to use call_async to check the error
     tube_prop_iface = dbus.Interface(tube_chan,
-        'org.freedesktop.DBus.Properties')
+        dbus.PROPERTIES_IFACE)
     call_async(q, tube_prop_iface, 'Set',
         'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             'Parameters', dbus.Dictionary(
             {dbus.String(u'foo2'): dbus.String(u'bar2')},
             signature=dbus.Signature('sv')),
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     set_error = q.expect('dbus-error')
     # check it is *not* correctly changed
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
-            dbus_interface='org.freedesktop.DBus.Properties', byte_arrays=True)
+            dbus_interface=dbus.PROPERTIES_IFACE, byte_arrays=True)
     assert tube_props.get("Parameters") == new_sample_parameters, \
             tube_props.get("Parameters")
 

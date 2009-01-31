@@ -89,7 +89,7 @@ def test(q, bus, conn, stream):
     # check if we can request Buddy views
     properties = conn.GetAll(
         'org.freedesktop.Telepathy.Connection.Interface.Requests',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert ({tp_name_prefix + '.Channel.ChannelType':
             olpc_name_prefix + '.Channel.Type.BuddyView'},
@@ -156,7 +156,7 @@ def test(q, bus, conn, stream):
     # check org.freedesktop.Telepathy.Channel D-Bus properties
     props = view1.GetAll(
         'org.freedesktop.Telepathy.Channel',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert props['ChannelType'] == 'org.laptop.Telepathy.Channel.Type.BuddyView'
     assert 'org.laptop.Telepathy.Channel.Interface.View' in props['Interfaces']
@@ -167,14 +167,14 @@ def test(q, bus, conn, stream):
     # check org.laptop.Telepathy.Channel.Interface.View D-Bus properties
     props = view1.GetAll(
         'org.laptop.Telepathy.Channel.Interface.View',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert props['MaxSize'] == 3
 
     # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
     props = view1.GetAll(
         'org.laptop.Telepathy.Channel.Type.BuddyView',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert props['Properties'] == {}
     assert props['Alias'] == ''
@@ -261,7 +261,7 @@ def test(q, bus, conn, stream):
     # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
     props = view2.GetAll(
         'org.laptop.Telepathy.Channel.Type.BuddyView',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert props['Properties'] == {'color': '#AABBCC,#001122'}
     assert props['Alias'] == ''
@@ -300,7 +300,7 @@ def test(q, bus, conn, stream):
 
     members = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Buddies',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['bob@localhost', 'charles@localhost',
@@ -325,7 +325,7 @@ def test(q, bus, conn, stream):
 
     members = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Buddies',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['charles@localhost', 'oscar@localhost']
 
@@ -372,7 +372,7 @@ def test(q, bus, conn, stream):
     # check org.laptop.Telepathy.Channel.Type.BuddyView D-Bus properties
     props = view3.GetAll(
         'org.laptop.Telepathy.Channel.Type.BuddyView',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert props['Properties'] == {}
     assert props['Alias'] == 'tom'

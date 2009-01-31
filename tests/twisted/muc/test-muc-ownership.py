@@ -125,7 +125,7 @@ def test(q, bus, conn, stream):
     group = dbus.Interface(chan,
         'org.freedesktop.Telepathy.Channel.Interface.Group')
     props = dbus.Interface(chan,
-        'org.freedesktop.DBus.Properties')
+        dbus.PROPERTIES_IFACE)
 
     # Exercise GetHandleOwners
     assert group.GetHandleOwners([5, 7]) == [6, 8]

@@ -14,7 +14,7 @@ def test(q, bus, conn, stream):
     conn.interfaces['Location'] = \
         dbus.Interface(conn, location_iface)
     conn.interfaces['Properties'] = \
-        dbus.Interface(conn, 'org.freedesktop.DBus.Properties')
+        dbus.Interface(conn, dbus.PROPERTIES_IFACE)
 
     conn.Connect()
 

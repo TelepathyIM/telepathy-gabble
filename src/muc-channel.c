@@ -1898,6 +1898,120 @@ handle_unavailable_presence_update (GabbleMucChannel *chan,
 }
 
 static void
+handle_member_added (GabbleMucChannel *chan,
+                     GabbleMucChannelPrivate *priv,
+                     TpGroupMixin *mixin,
+                     TpHandleRepoIface *contact_handles,
+                     TpHandle handle,
+                     TpIntSet *handle_singleton,
+                     LmMessageNode *item_node)
+{
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  const gchar *owner_jid = lm_message_node_get_attribute (item_node, "jid");
+  TpHandle owner_handle = 0;
+
+  if (owner_jid != NULL)
+    {
+      owner_handle = tp_handle_ensure (contact_handles, owner_jid,
+          GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
+
+      if (owner_handle == 0)
+        DEBUG ("Invalid owner handle '%s', treating as no owner", owner_jid);
+    }
+
+  if (handle == mixin->self_handle &&
+      owner_handle != conn->self_handle)
+    {
+      /* We know that in XEP-0045 compliant MUCs, nobody else can have
+       * the nick we tried to use - the service MUST reject us
+       * with code 409/"conflict" in this case. So, if someone in the
+       * room has the nick we want, it's us.
+       *
+       * If the MUC service fails to comply with this requirement,
+       * we get hopelessly confused, but this isn't a regression
+       * (we always would have done).
+       *
+       * FIXME: we ought to respect the 110 and 210 status codes
+       * too, so we can detect MUCs renaming us - otherwise the
+       * presence aggregator will never stop
+       */
+      DEBUG ("Overriding ownership of channel-specific handle %u "
+          "from %u to %u because I know it's mine",
+          mixin->self_handle, owner_handle, conn->self_handle);
+
+      if (owner_handle != 0)
+        tp_handle_unref (contact_handles, owner_handle);
+
+      tp_handle_ref (contact_handles, conn->self_handle);
+      owner_handle = conn->self_handle;
+    }
+
+  if (priv->initial_state_aggregator == NULL)
+    {
+      /* we've already had the initial batch of presence stanzas */
+      tp_group_mixin_add_handle_owner ((GObject *) chan, handle,
+          owner_handle);
+      tp_group_mixin_change_members ((GObject *) chan, "",
+          handle_singleton, NULL, NULL, NULL, 0, 0);
+    }
+  else
+    {
+      /* aggregate this presence */
+      tp_handle_set_add (priv->initial_state_aggregator->members,
+          handle);
+
+      g_hash_table_insert (priv->initial_state_aggregator->owner_map,
+          GUINT_TO_POINTER (handle), GUINT_TO_POINTER (owner_handle));
+
+      if (owner_handle != 0)
+        tp_handle_set_add (priv->initial_state_aggregator->owners,
+            owner_handle);
+
+      /* Do not emit one signal per presence. Instead, get all
+       * presences, and add them in priv->initial_state_aggregator.
+       * When we get the last presence, emit the signal. The last
+       * presence is ourselves. */
+      if (handle == mixin->self_handle)
+        {
+          /* Add all handle owners in a single operation */
+          tp_group_mixin_add_handle_owners ((GObject *) chan,
+              priv->initial_state_aggregator->owner_map);
+
+          /* Change all presences in a single operation */
+          tp_group_mixin_change_members ((GObject *) chan, "",
+              tp_handle_set_peek (
+                  priv->initial_state_aggregator->members),
+              NULL, NULL, NULL, 0, 0);
+
+          initial_state_aggregator_free (
+              priv->initial_state_aggregator);
+          priv->initial_state_aggregator = NULL;
+        }
+    }
+
+  if (owner_handle != 0)
+    {
+      if (handle != mixin->self_handle)
+        {
+          /* If at least one other handle in the channel has an owner,
+           * the HANDLE_OWNERS_NOT_AVAILABLE flag should be removed.
+           */
+          tp_group_mixin_change_flags ((GObject *) chan, 0,
+              TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
+        }
+
+      g_signal_emit (chan, signals[CONTACT_JOIN], 0, owner_handle);
+
+      tp_handle_unref (contact_handles, owner_handle);
+    }
+
+  if (handle == mixin->self_handle)
+    {
+      g_object_set (chan, "state", MUC_STATE_JOINED, NULL);
+    }
+}
+
+static void
 handle_presence_update (GabbleMucChannel *chan,
                         TpHandleRepoIface *contact_handles,
                         TpHandle handle,
@@ -1907,114 +2021,10 @@ handle_presence_update (GabbleMucChannel *chan,
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
   TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  const gchar *owner_jid = lm_message_node_get_attribute (item_node, "jid");
 
   if (!tp_handle_set_is_member (mixin->members, handle))
-    {
-      TpHandle owner_handle = 0;
-
-      if (owner_jid != NULL)
-        {
-          owner_handle = tp_handle_ensure (contact_handles, owner_jid,
-              GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
-
-          if (owner_handle == 0)
-            DEBUG ("Invalid owner handle '%s', treating as no owner",
-                owner_jid);
-        }
-
-      if (handle == mixin->self_handle &&
-          owner_handle != conn->self_handle)
-        {
-          /* We know that in XEP-0045 compliant MUCs, nobody else can have
-           * the nick we tried to use - the service MUST reject us
-           * with code 409/"conflict" in this case. So, if someone in the
-           * room has the nick we want, it's us.
-           *
-           * If the MUC service fails to comply with this requirement,
-           * we get hopelessly confused, but this isn't a regression
-           * (we always would have done).
-           *
-           * FIXME: we ought to respect the 110 and 210 status codes
-           * too, so we can detect MUCs renaming us - otherwise the
-           * presence aggregator will never stop
-           */
-          DEBUG ("Overriding ownership of channel-specific handle %u "
-              "from %u to %u because I know it's mine",
-              mixin->self_handle, owner_handle, conn->self_handle);
-
-          if (owner_handle != 0)
-            tp_handle_unref (contact_handles, owner_handle);
-
-          tp_handle_ref (contact_handles, conn->self_handle);
-          owner_handle = conn->self_handle;
-        }
-
-      if (priv->initial_state_aggregator == NULL)
-        {
-          /* we've already had the initial batch of presence stanzas */
-          tp_group_mixin_add_handle_owner ((GObject *) chan, handle,
-              owner_handle);
-          tp_group_mixin_change_members ((GObject *) chan, "",
-              handle_singleton, NULL, NULL, NULL, 0, 0);
-        }
-      else
-        {
-          /* aggregate this presence */
-          tp_handle_set_add (priv->initial_state_aggregator->members,
-              handle);
-
-          g_hash_table_insert (priv->initial_state_aggregator->owner_map,
-              GUINT_TO_POINTER (handle), GUINT_TO_POINTER (owner_handle));
-
-          if (owner_handle != 0)
-            tp_handle_set_add (priv->initial_state_aggregator->owners,
-                owner_handle);
-
-          /* Do not emit one signal per presence. Instead, get all
-           * presences, and add them in priv->initial_state_aggregator.
-           * When we get the last presence, emit the signal. The last
-           * presence is ourselves. */
-          if (handle == mixin->self_handle)
-            {
-              /* Add all handle owners in a single operation */
-              tp_group_mixin_add_handle_owners ((GObject *) chan,
-                  priv->initial_state_aggregator->owner_map);
-
-              /* Change all presences in a single operation */
-              tp_group_mixin_change_members ((GObject *) chan, "",
-                  tp_handle_set_peek (
-                      priv->initial_state_aggregator->members),
-                  NULL, NULL, NULL, 0, 0);
-
-              initial_state_aggregator_free (
-                  priv->initial_state_aggregator);
-              priv->initial_state_aggregator = NULL;
-            }
-        }
-
-      if (owner_handle != 0)
-        {
-          if (handle != mixin->self_handle)
-            {
-              /* If at least one other handle in the channel has an owner,
-               * the HANDLE_OWNERS_NOT_AVAILABLE flag should be removed.
-               */
-              tp_group_mixin_change_flags ((GObject *) chan, 0,
-                  TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
-            }
-
-          g_signal_emit (chan, signals[CONTACT_JOIN], 0, owner_handle);
-
-          tp_handle_unref (contact_handles, owner_handle);
-        }
-
-      if (handle == mixin->self_handle)
-        {
-          g_object_set (chan, "state", MUC_STATE_JOINED, NULL);
-        }
-    }
+    handle_member_added (chan, priv, mixin, contact_handles, handle,
+        handle_singleton, item_node);
 
   if (handle == mixin->self_handle)
     {

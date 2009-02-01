@@ -1407,8 +1407,8 @@ handle_nick_conflict (GabbleMucChannel *chan,
   self_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
-  add_rp = tp_intset_sized_new (1);
-  remove_rp = tp_intset_sized_new (1);
+  add_rp = tp_intset_new ();
+  remove_rp = tp_intset_new ();
   tp_intset_add (add_rp, self_handle);
   tp_intset_add (remove_rp, mixin->self_handle);
 

@@ -2083,7 +2083,11 @@ handle_presence_update (GabbleMucChannel *chan,
 }
 
 /**
- * _gabble_muc_channel_member_presence_updated
+ * _gabble_muc_channel_member_presence_updated:
+ *
+ * Handles <presence> stanzas with type='unavailable' or other non-'error'
+ * types, updating channel members and/or closing the channel as appropriate.
+ * (<presence type='error'> is handled by _gabble_muc_channel_presence_error.)
  */
 void
 _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
@@ -2094,10 +2098,9 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 {
   GabbleMucChannelPrivate *priv;
   TpBaseConnection *conn;
-  TpIntSet *set;
-  TpGroupMixin *mixin;
-  LmMessageNode *node;
-  const gchar *status_code;
+  TpIntSet *handle_singleton;
+  LmMessageNode *status_node;
+  const gchar *status_code = NULL;
   TpHandleRepoIface *contact_handles;
 
   DEBUG ("called");
@@ -2110,34 +2113,23 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
-  mixin = TP_GROUP_MIXIN (chan);
+  status_node = lm_message_node_get_child (x_node, "status");
 
-  node = lm_message_node_get_child (x_node, "status");
-  if (node)
-    {
-      status_code = lm_message_node_get_attribute (node, "code");
-    }
-  else
-    {
-      status_code = NULL;
-    }
+  if (status_node != NULL)
+    status_code = lm_message_node_get_attribute (status_node, "code");
 
   /* update channel members according to presence */
-  set = tp_intset_new ();
-  tp_intset_add (set, handle);
+  handle_singleton = tp_intset_new ();
+  tp_intset_add (handle_singleton, handle);
 
-  if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_UNAVAILABLE)
-    {
-      handle_presence_update (chan, contact_handles, handle, set, item_node,
-          status_code);
-    }
+  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_UNAVAILABLE)
+    handle_unavailable_presence_update (chan, contact_handles, handle,
+        handle_singleton, item_node, status_code);
   else
-    {
-      handle_unavailable_presence_update (chan, contact_handles, handle,
-          set, item_node, status_code);
-    }
+    handle_presence_update (chan, contact_handles, handle, handle_singleton,
+        item_node, status_code);
 
-  tp_intset_destroy (set);
+  tp_intset_destroy (handle_singleton);
 }
 
 

@@ -2021,6 +2021,7 @@ handle_member_added (GabbleMucChannel *chan,
           initial_state_aggregator_free (
               priv->initial_state_aggregator);
           priv->initial_state_aggregator = NULL;
+          g_object_set (chan, "state", MUC_STATE_JOINED, NULL);
         }
     }
 
@@ -2038,11 +2039,6 @@ handle_member_added (GabbleMucChannel *chan,
       g_signal_emit (chan, signals[CONTACT_JOIN], 0, owner_handle);
 
       tp_handle_unref (contact_handles, owner_handle);
-    }
-
-  if (handle == mixin->self_handle)
-    {
-      g_object_set (chan, "state", MUC_STATE_JOINED, NULL);
     }
 
   if (old_self_handle_singleton != NULL)

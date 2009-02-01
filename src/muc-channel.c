@@ -1382,6 +1382,48 @@ _gabble_muc_channel_is_ready (GabbleMucChannel *chan)
   return priv->ready;
 }
 
+static gboolean
+handle_nick_conflict (GabbleMucChannel *chan,
+                      GError **tp_error)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle self_handle;
+  TpIntSet *add_rp, *remove_rp;
+
+  if (priv->nick_retry_count >= MAX_NICK_RETRIES)
+    {
+      g_set_error (tp_error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "nickname already in use and retry count exceeded");
+      return FALSE;
+    }
+
+  /* Add a _ to our jid, and update the group mixin's self handle
+   * and remote pending members appropriately.
+   */
+  g_string_append_c (priv->self_jid, '_');
+  self_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
+      GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+
+  add_rp = tp_intset_sized_new (1);
+  remove_rp = tp_intset_sized_new (1);
+  tp_intset_add (add_rp, self_handle);
+  tp_intset_add (remove_rp, mixin->self_handle);
+
+  tp_group_mixin_change_self_handle ((GObject *) chan, self_handle);
+  tp_group_mixin_change_members ((GObject *) chan, NULL, NULL, remove_rp, NULL,
+      add_rp, 0, TP_CHANNEL_GROUP_CHANGE_REASON_RENAMED);
+
+  tp_intset_destroy (add_rp);
+  tp_intset_destroy (remove_rp);
+  tp_handle_unref (contact_repo, self_handle);
+
+  priv->nick_retry_count++;
+  return send_join_request (chan, priv->password, tp_error);
+}
+
 /**
  * _gabble_muc_channel_presence_error
  */
@@ -1462,47 +1504,9 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
                                   "room is invite only");
           break;
         case XMPP_ERROR_CONFLICT:
-          if (priv->nick_retry_count < MAX_NICK_RETRIES)
-            {
-              TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
-              TpHandleRepoIface *contact_repo;
-              TpHandle self_handle;
-              TpIntSet *add_rp = tp_intset_sized_new (1);
-              TpIntSet *remove_rp = tp_intset_sized_new (1);
+          if (handle_nick_conflict (chan, &tp_error))
+            return;
 
-              /* Add a _ to our jid, and update the group mixin's self handle
-               * and remote pending members appropriately.
-               */
-              g_string_append_c (priv->self_jid, '_');
-
-              contact_repo = tp_base_connection_get_handles (
-                  (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-              self_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
-                  GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
-
-              tp_intset_add (add_rp, self_handle);
-              tp_intset_add (remove_rp, mixin->self_handle);
-
-              tp_group_mixin_change_self_handle ((GObject *) chan, self_handle);
-              tp_group_mixin_change_members ((GObject *) chan, NULL, NULL,
-                  remove_rp, NULL, add_rp, 0,
-                  TP_CHANNEL_GROUP_CHANGE_REASON_RENAMED);
-
-              tp_intset_destroy (add_rp);
-              tp_intset_destroy (remove_rp);
-              tp_handle_unref (contact_repo, self_handle);
-
-              if (send_join_request (chan, priv->password, &tp_error))
-                {
-                  priv->nick_retry_count++;
-                  return;
-                }
-            }
-          else
-            {
-              tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                  "nickname already in use and retry count exceeded");
-            }
           break;
         default:
           tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,

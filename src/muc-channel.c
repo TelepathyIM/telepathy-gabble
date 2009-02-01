@@ -1827,6 +1827,76 @@ update_permissions (GabbleMucChannel *chan)
   tp_intset_destroy (changed_props_flags);
 }
 
+static void
+handle_unavailable_presence_update (GabbleMucChannel *chan,
+                                    TpHandleRepoIface *contact_handles,
+                                    TpHandle handle,
+                                    TpIntSet *handle_singleton,
+                                    LmMessageNode *item_node,
+                                    const gchar *status_code)
+{
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
+  LmMessageNode *reason_node, *actor_node;
+  const gchar *reason = "", *actor_jid = "";
+  TpHandle actor = 0;
+  TpChannelGroupChangeReason reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+
+  actor_node = lm_message_node_get_child (item_node, "actor");
+  if (actor_node != NULL)
+    {
+      actor_jid = lm_message_node_get_attribute (actor_node, "jid");
+      if (actor_jid != NULL)
+        {
+          actor = tp_handle_ensure (contact_handles, actor_jid, NULL,
+              NULL);
+          if (actor == 0)
+            {
+              DEBUG ("ignoring invalid actor JID %s", actor_jid);
+            }
+        }
+    }
+
+  /* Possible reasons we could have been removed from the room:
+   * 301 banned
+   * 307 kicked
+   * 321 "because of an affiliation change" - no reason_code
+   * 322 room has become members-only and we're not a member - no
+   *    reason_code
+   * 332 system (server) is being shut down - no reason code
+   */
+  if (status_code)
+    {
+      if (strcmp (status_code, "301") == 0)
+        {
+          reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
+        }
+      else if (strcmp (status_code, "307") == 0)
+        {
+          reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
+        }
+    }
+
+  reason_node = lm_message_node_get_child (item_node, "reason");
+  if (reason_node != NULL)
+    {
+      reason = lm_message_node_get_value (reason_node);
+    }
+
+  if (handle != mixin->self_handle)
+    {
+      tp_group_mixin_change_members ((GObject *) chan, reason,
+                                         NULL, handle_singleton, NULL, NULL,
+                                         actor, reason_code);
+    }
+  else
+    {
+      close_channel (chan, reason, FALSE, actor, reason_code);
+    }
+
+  if (actor)
+    tp_handle_unref (contact_handles, actor);
+}
+
 /**
  * _gabble_muc_channel_member_presence_updated
  */
@@ -1843,8 +1913,6 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   TpGroupMixin *mixin;
   LmMessageNode *node;
   const gchar *affil, *role, *owner_jid, *status_code;
-  TpHandle actor = 0;
-  guint reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
   TpHandleRepoIface *contact_handles;
 
   DEBUG ("called");
@@ -2018,7 +2086,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                   g_error_free (error);
 
                   lm_message_unref (msg);
-                  close_channel (chan, NULL, TRUE, actor, reason_code);
+                  close_channel (chan, NULL, TRUE, 0,
+                      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
                   goto OUT;
                 }
@@ -2047,66 +2116,12 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
     }
   else
     {
-      LmMessageNode *reason_node, *actor_node;
-      const gchar *reason = "", *actor_jid = "";
-
-      actor_node = lm_message_node_get_child (item_node, "actor");
-      if (actor_node != NULL)
-        {
-          actor_jid = lm_message_node_get_attribute (actor_node, "jid");
-          if (actor_jid != NULL)
-            {
-              actor = tp_handle_ensure (contact_handles, actor_jid, NULL,
-                  NULL);
-              if (actor == 0)
-                {
-                  DEBUG ("ignoring invalid actor JID %s", actor_jid);
-                }
-            }
-        }
-
-      /* Possible reasons we could have been removed from the room:
-       * 301 banned
-       * 307 kicked
-       * 321 "because of an affiliation change" - no reason_code
-       * 322 room has become members-only and we're not a member - no
-       *    reason_code
-       * 332 system (server) is being shut down - no reason code
-       */
-      if (status_code)
-        {
-          if (strcmp (status_code, "301") == 0)
-            {
-              reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
-            }
-          else if (strcmp (status_code, "307") == 0)
-            {
-              reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
-            }
-        }
-
-      reason_node = lm_message_node_get_child (item_node, "reason");
-      if (reason_node != NULL)
-        {
-          reason = lm_message_node_get_value (reason_node);
-        }
-
-      if (handle != mixin->self_handle)
-        {
-          tp_group_mixin_change_members ((GObject *) chan, reason,
-                                             NULL, set, NULL, NULL,
-                                             actor, reason_code);
-        }
-      else
-        {
-          close_channel (chan, reason, FALSE, actor, reason_code);
-        }
+      handle_unavailable_presence_update (chan, contact_handles, handle,
+          set, item_node, status_code);
     }
 
 OUT:
   tp_intset_destroy (set);
-  if (actor)
-    tp_handle_unref (contact_handles, actor);
 }
 
 

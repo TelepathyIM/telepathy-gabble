@@ -1897,6 +1897,31 @@ handle_unavailable_presence_update (GabbleMucChannel *chan,
     tp_handle_unref (contact_handles, actor);
 }
 
+static gboolean
+renamed_by_server (LmMessageNode *x_node)
+{
+  LmMessageNode *child;
+  gboolean is_self = FALSE;
+  gboolean renamed = FALSE;
+
+  for (child = x_node->children; child != NULL; child = child->next)
+    {
+      const gchar *code;
+
+      if (strcmp (child->name, "status") != 0)
+        continue;
+
+      code = lm_message_node_get_attribute (child, "code");
+
+      if (!tp_strdiff (code, "110"))
+        is_self = TRUE;
+      else if (!tp_strdiff (code, "210"))
+        renamed = TRUE;
+    }
+
+  return (is_self && renamed);
+}
+
 static void
 handle_member_added (GabbleMucChannel *chan,
                      GabbleMucChannelPrivate *priv,
@@ -1904,11 +1929,13 @@ handle_member_added (GabbleMucChannel *chan,
                      TpHandleRepoIface *contact_handles,
                      TpHandle handle,
                      TpIntSet *handle_singleton,
+                     LmMessageNode *x_node,
                      LmMessageNode *item_node)
 {
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   const gchar *owner_jid = lm_message_node_get_attribute (item_node, "jid");
   TpHandle owner_handle = 0;
+  TpIntSet *old_self_handle_singleton = NULL;
 
   if (owner_jid != NULL)
     {
@@ -1919,21 +1946,29 @@ handle_member_added (GabbleMucChannel *chan,
         DEBUG ("Invalid owner handle '%s', treating as no owner", owner_jid);
     }
 
+  if (renamed_by_server (x_node))
+    {
+      old_self_handle_singleton = tp_intset_new ();
+      tp_intset_add (old_self_handle_singleton, mixin->self_handle);
+
+      tp_group_mixin_change_self_handle ((GObject *) chan, handle);
+    }
+
   if (handle == mixin->self_handle &&
       owner_handle != conn->self_handle)
     {
-      /* We know that in XEP-0045 compliant MUCs, nobody else can have
-       * the nick we tried to use - the service MUST reject us
-       * with code 409/"conflict" in this case. So, if someone in the
-       * room has the nick we want, it's us.
+      /* In XEP-0045-compliant MUCs, if we get presence for the jid we asked
+       * for (or for another jid, with status 110 and 210) then we know it's
+       * us. There can't be another user in the MUC with the nick we asked for:
+       * the service MUST reject us with code 409/"conflict" in this case. So,
+       * if someone in the room has the nick we want, it's us.
        *
-       * If the MUC service fails to comply with this requirement,
-       * we get hopelessly confused, but this isn't a regression
-       * (we always would have done).
-       *
-       * FIXME: we ought to respect the 110 and 210 status codes
-       * too, so we can detect MUCs renaming us - otherwise the
-       * presence aggregator will never stop
+       * If the MUC service fails to comply with this requirement, we get
+       * hopelessly confused. Given that the service isn't required to label
+       * our own presence as 110 ("this is you") and there's no way to label a
+       * presence for the jid we asked for as "not you" it's not possible for a
+       * client not to get hopelessly confused if the service is broken. So
+       * this is the best we can do.
        */
       DEBUG ("Overriding ownership of channel-specific handle %u "
           "from %u to %u because I know it's mine",
@@ -1981,7 +2016,7 @@ handle_member_added (GabbleMucChannel *chan,
           tp_group_mixin_change_members ((GObject *) chan, "",
               tp_handle_set_peek (
                   priv->initial_state_aggregator->members),
-              NULL, NULL, NULL, 0, 0);
+              old_self_handle_singleton, NULL, NULL, 0, 0);
 
           initial_state_aggregator_free (
               priv->initial_state_aggregator);
@@ -2009,6 +2044,9 @@ handle_member_added (GabbleMucChannel *chan,
     {
       g_object_set (chan, "state", MUC_STATE_JOINED, NULL);
     }
+
+  if (old_self_handle_singleton != NULL)
+    tp_intset_destroy (old_self_handle_singleton);
 }
 
 static void
@@ -2016,6 +2054,7 @@ handle_presence_update (GabbleMucChannel *chan,
                         TpHandleRepoIface *contact_handles,
                         TpHandle handle,
                         TpIntSet *handle_singleton,
+                        LmMessageNode *x_node,
                         LmMessageNode *item_node,
                         const gchar *status_code)
 {
@@ -2024,7 +2063,7 @@ handle_presence_update (GabbleMucChannel *chan,
 
   if (!tp_handle_set_is_member (mixin->members, handle))
     handle_member_added (chan, priv, mixin, contact_handles, handle,
-        handle_singleton, item_node);
+        handle_singleton, x_node, item_node);
 
   if (handle == mixin->self_handle)
     {
@@ -2137,7 +2176,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
         handle_singleton, item_node, status_code);
   else
     handle_presence_update (chan, contact_handles, handle, handle_singleton,
-        item_node, status_code);
+        x_node, item_node, status_code);
 
   tp_intset_destroy (handle_singleton);
 }

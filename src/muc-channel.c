@@ -1464,7 +1464,17 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
         case XMPP_ERROR_CONFLICT:
           if (priv->nick_retry_count < MAX_NICK_RETRIES)
             {
+              TpHandleRepoIface *contact_repo;
+              TpHandle self_handle;
+
               g_string_append_c (priv->self_jid, '_');
+
+              contact_repo = tp_base_connection_get_handles (
+                  (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+              self_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
+                  GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+              tp_group_mixin_change_self_handle ((GObject *) chan, self_handle);
+              tp_handle_unref (contact_repo, self_handle);
 
               if (send_join_request (chan, priv->password, &tp_error))
                 {

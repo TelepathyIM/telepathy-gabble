@@ -8,7 +8,7 @@ import dbus
 from dbus import PROPERTIES_IFACE
 
 from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolFactory
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
 from constants import *
 
 from twisted.words.xish import domish, xpath
@@ -39,15 +39,6 @@ def set_up_listener_socket(q, path):
             raise
     reactor.listenUNIX(full_path, factory)
     return full_path
-
-def send_muc_presence(stream, _from, affiliation='none', role='participant'):
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = _from
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = affiliation
-    item['role'] = role
-    stream.send(presence)
 
 def test(q, bus, conn, stream):
     srv_path = set_up_listener_socket(q, '/stream')
@@ -87,10 +78,10 @@ def test(q, bus, conn, stream):
         EventPattern('stream-presence', to='chat@conf.localhost/test'))
 
     # Send presence for other member of room.
-    send_muc_presence(stream, 'chat@conf.localhost/bob', 'owner', 'moderator')
+    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
 
     # Send presence for own membership of room.
-    send_muc_presence(stream, 'chat@conf.localhost/test')
+    stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost', 'test'))
 
     q.expect('dbus-signal', signal='MembersChanged',
             args=[u'', [2, 3], [], [], [], 0, 0])
@@ -324,10 +315,10 @@ def test(q, bus, conn, stream):
         })
 
     # Send presence for other member of room.
-    send_muc_presence(stream, 'chat2@conf.localhost/bob', 'owner', 'moderator')
+    stream.send(make_muc_presence('owner', 'moderator', 'chat2@conf.localhost', 'bob'))
 
     # Send presence for own membership of room.
-    send_muc_presence(stream, 'chat2@conf.localhost/test')
+    stream.send(make_muc_presence('none', 'participant', 'chat2@conf.localhost', 'test'))
 
     event = q.expect('dbus-return', method='CreateChannel')
     new_tube_path, new_tube_props = event.value

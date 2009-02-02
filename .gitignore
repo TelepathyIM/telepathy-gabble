@@ -13,6 +13,7 @@
 .deps
 .libs
 .svn
+FIXME.out
 /INSTALL
 Makefile
 Makefile.in

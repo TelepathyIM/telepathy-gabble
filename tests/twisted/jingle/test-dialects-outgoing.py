@@ -128,6 +128,7 @@ def testg4(q, bus, conn, stream):
     return worker(GtalkProtocol04(), q, bus, conn, stream)
 
 if __name__ == '__main__':
-    exec_tests([testg3, testg4, test015, test031])
-
-
+    exec_test(testg3)
+    exec_test(testg4)
+    exec_test(test015)
+    exec_test(test031)

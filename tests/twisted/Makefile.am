@@ -126,7 +126,7 @@ check-twisted:
 		exit 1;\
 	fi
 
-config.py:
+config.py: Makefile
 	echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\"" > config.py
 
 BUILT_SOURCES = config.py

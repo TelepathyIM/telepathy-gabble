@@ -464,8 +464,11 @@ tube_closed_cb (GabbleTubeIface *tube,
     }
   else
     {
-      /* FIXME: emit with the muc-factory once new API is implemented in muc
-       * tubes */
+      /* FIXME: this is a workaround while new tube API is not implemented on
+       * D-Bus tubes */
+      if (GABBLE_IS_TUBE_STREAM (tube))
+        tp_channel_manager_emit_channel_closed_for_object (
+            priv->conn->muc_factory, TP_EXPORTABLE_CHANNEL (tube));
     }
 
 }

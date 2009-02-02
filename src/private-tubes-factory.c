@@ -586,7 +586,7 @@ gabble_private_tubes_factory_get_contact_caps (
        == NULL))
     {
       /* No tubes capabilities have been set but we always support at
-       * least generirc tubes caps */
+       * least generic tubes caps */
       add_generic_tube_caps (arr);
       return;
     }

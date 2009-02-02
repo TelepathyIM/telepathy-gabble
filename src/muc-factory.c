@@ -1543,59 +1543,60 @@ gabble_muc_factory_request (GabbleMucFactory *self,
           goto error;
         }
 
-        tubes_chan = g_hash_table_lookup (priv->tubes_channels,
-            GUINT_TO_POINTER (handle));
-        if (tubes_chan == NULL)
+      tubes_chan = g_hash_table_lookup (priv->tubes_channels,
+          GUINT_TO_POINTER (handle));
+      if (tubes_chan == NULL)
+        {
+          /* Need to create a tubes channel */
+          if (!ensure_tubes_channel (self, handle, &tubes_chan, FALSE))
           {
-            /* Need to create a tubes channel */
-            if (!ensure_tubes_channel (self, handle, &tubes_chan, FALSE))
-            {
-              /* We have to wait the tubes channel before announcing */
-              can_announce_now = FALSE;
+            /* We have to wait the tubes channel before announcing */
+            can_announce_now = FALSE;
 
-              gabble_muc_factory_associate_request (self, tubes_chan,
-                  request_token);
-            }
-
-            tubes_channel_created = TRUE;
+            gabble_muc_factory_associate_request (self, tubes_chan,
+                request_token);
           }
 
-        g_assert (tubes_chan != NULL);
+          tubes_channel_created = TRUE;
+        }
 
-        new_channel = gabble_tubes_channel_tube_request (tubes_chan,
-            request_token, request_properties, TRUE);
-        g_assert (new_channel != NULL);
+      g_assert (tubes_chan != NULL);
 
-        if (can_announce_now)
-          {
-            GHashTable *channels;
-            GSList *request_tokens;
+      new_channel = gabble_tubes_channel_tube_request (tubes_chan,
+          request_token, request_properties, TRUE);
+      g_assert (new_channel != NULL);
 
-            channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-              NULL, NULL);
+      if (can_announce_now)
+        {
+          GHashTable *channels;
+          GSList *request_tokens;
 
-            if (tubes_channel_created)
-              g_hash_table_insert (channels, tubes_chan, NULL);
+          channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+            NULL, NULL);
 
-            request_tokens = g_slist_prepend (NULL, request_token);
+          if (tubes_channel_created)
+            g_hash_table_insert (channels, tubes_chan, NULL);
 
-            g_hash_table_insert (channels, new_channel, request_tokens);
-            tp_channel_manager_emit_new_channels (self, channels);
+          request_tokens = g_slist_prepend (NULL, request_token);
 
-            g_hash_table_destroy (channels);
-            g_slist_free (request_tokens);
-          }
-        else
-          {
-            GSList *l;
+          g_hash_table_insert (channels, new_channel, request_tokens);
+          tp_channel_manager_emit_new_channels (self, channels);
 
-            l = g_hash_table_lookup (priv->tubes_needed_for_tube, tubes_chan);
-            g_hash_table_steal (priv->tubes_needed_for_tube, tubes_chan);
+          g_hash_table_destroy (channels);
+          g_slist_free (request_tokens);
+        }
+      else
+        {
+          GSList *l;
 
-            l = g_slist_prepend (l, new_channel);
-            g_hash_table_insert (priv->tubes_needed_for_tube, tubes_chan, l);
-          }
-        return TRUE;
+          l = g_hash_table_lookup (priv->tubes_needed_for_tube, tubes_chan);
+          g_hash_table_steal (priv->tubes_needed_for_tube, tubes_chan);
+
+          l = g_slist_prepend (l, new_channel);
+          g_hash_table_insert (priv->tubes_needed_for_tube, tubes_chan, l);
+        }
+
+      return TRUE;
     }
 
 error:

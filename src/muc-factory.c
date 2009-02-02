@@ -1520,6 +1520,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
     {
       const gchar *service;
       gboolean can_announce_now = TRUE;
+      gboolean tubes_channel_created = FALSE;
       GabbleTubeIface *new_channel;
 
       if (tp_channel_manager_asv_has_unknown_properties (request_properties,
@@ -1544,17 +1545,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
         if (tubes_chan == NULL)
           {
             /* Need to create a tubes channel */
-            if (ensure_tubes_channel (self, handle, &tubes_chan))
-            {
-              GSList *list = NULL;
-
-              /* announce the newly create tubes channel right away */
-              list = g_slist_prepend (list, request_token);
-              tp_channel_manager_emit_new_channel (self,
-                  TP_EXPORTABLE_CHANNEL (tubes_chan), list);
-              g_slist_free (list);
-            }
-          else
+            if (!ensure_tubes_channel (self, handle, &tubes_chan))
             {
               /* We have to wait the tubes channel before announcing */
               can_announce_now = FALSE;
@@ -1562,6 +1553,8 @@ gabble_muc_factory_request (GabbleMucFactory *self,
               gabble_muc_factory_associate_request (self, tubes_chan,
                   request_token);
             }
+
+            tubes_channel_created = TRUE;
           }
 
         g_assert (tubes_chan != NULL);
@@ -1578,11 +1571,8 @@ gabble_muc_factory_request (GabbleMucFactory *self,
             channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
               NULL, NULL);
 
-            /* FIXME: announce tubes if needed */
-            /*
-            if (!tubes_channel_already_existed)
-              g_hash_table_insert (channels, channel, NULL);
-              */
+            if (tubes_channel_created)
+              g_hash_table_insert (channels, tubes_chan, NULL);
 
             request_tokens = g_slist_prepend (NULL, request_token);
 

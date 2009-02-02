@@ -485,7 +485,8 @@ static GabbleTubesChannel *
 new_tubes_channel (GabbleMucFactory *fac,
                    TpHandle room,
                    GabbleMucChannel *muc,
-                   TpHandle initiator)
+                   TpHandle initiator,
+                   gboolean requested)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
@@ -507,6 +508,7 @@ new_tubes_channel (GabbleMucFactory *fac,
       "handle-type", TP_HANDLE_TYPE_ROOM,
       "muc", muc,
       "initiator-handle", initiator,
+      "requested", requested,
       NULL);
 
   g_signal_connect (chan, "closed", (GCallback) tubes_channel_closed_cb, fac);
@@ -1029,7 +1031,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
           /* MUC Tubes channels (as opposed to the individual tubes) don't
            * have a well-defined initiator (they're a consensus) so use 0 */
           tubes_chan = new_tubes_channel (fac, room_handle, muc_chan,
-              0);
+              0, FALSE);
           tp_channel_manager_emit_new_channel (fac,
               TP_EXPORTABLE_CHANNEL (tubes_chan), NULL);
         }
@@ -1394,7 +1396,8 @@ gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
 static gboolean
 ensure_tubes_channel (GabbleMucFactory *self,
                       TpHandle handle,
-                      GabbleTubesChannel **tubes_chan)
+                      GabbleTubesChannel **tubes_chan,
+                      gboolean requested)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
@@ -1404,7 +1407,7 @@ ensure_tubes_channel (GabbleMucFactory *self,
   result = ensure_muc_channel (self, priv, handle, &text_chan, FALSE);
 
   *tubes_chan = new_tubes_channel (self, handle, text_chan,
-      base_conn->self_handle);
+      base_conn->self_handle, requested);
 
   if (!result)
     {
@@ -1499,7 +1502,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
                   request_token, TP_EXPORTABLE_CHANNEL (tubes_chan));
             }
         }
-      else if (ensure_tubes_channel (self, handle, &tubes_chan))
+      else if (ensure_tubes_channel (self, handle, &tubes_chan, TRUE))
         {
           GSList *list = NULL;
 
@@ -1545,7 +1548,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
         if (tubes_chan == NULL)
           {
             /* Need to create a tubes channel */
-            if (!ensure_tubes_channel (self, handle, &tubes_chan))
+            if (!ensure_tubes_channel (self, handle, &tubes_chan, FALSE))
             {
               /* We have to wait the tubes channel before announcing */
               can_announce_now = FALSE;

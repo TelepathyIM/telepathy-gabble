@@ -159,7 +159,7 @@ AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
     -I $(top_srcdir)/src -I $(top_builddir)/src
 ALL_LIBS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
-CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc
+CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc config.py
 
 check_misc_sources = $(TESTS)
 

@@ -514,7 +514,7 @@ add_generic_tube_caps (GPtrArray *arr)
 
   dbus_g_type_struct_set (&monster1,
       0, fixed_properties,
-      1, stream_tube_channel_allowed_properties,
+      1, gabble_tube_stream_channel_allowed_properties,
       G_MAXUINT);
 
   g_hash_table_destroy (fixed_properties);

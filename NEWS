@@ -1,3 +1,18 @@
+telepathy-gabble 0.7.20 (UNRELEASED)
+====================================
+
+Enhancements:
+
+* Implement the draft version of Location from telepathy-spec 0.17.19
+
+Fixes:
+
+* Don't get confused if MUC services auto-rename us (as much as is possible)
+* Don't get confused if we have to change our own nick in order to join a MUC
+* Set the correct actor when Jingle sessions are terminated
+* Don't omit offline, unknown and error from Statuses and GetStatuses()
+  (regression in 0.7.19)
+
 telepathy-gabble 0.7.19 (2009-01-29)
 ====================================
 

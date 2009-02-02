@@ -1382,6 +1382,48 @@ _gabble_muc_channel_is_ready (GabbleMucChannel *chan)
   return priv->ready;
 }
 
+static gboolean
+handle_nick_conflict (GabbleMucChannel *chan,
+                      GError **tp_error)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle self_handle;
+  TpIntSet *add_rp, *remove_rp;
+
+  if (priv->nick_retry_count >= MAX_NICK_RETRIES)
+    {
+      g_set_error (tp_error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "nickname already in use and retry count exceeded");
+      return FALSE;
+    }
+
+  /* Add a _ to our jid, and update the group mixin's self handle
+   * and remote pending members appropriately.
+   */
+  g_string_append_c (priv->self_jid, '_');
+  self_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
+      GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+
+  add_rp = tp_intset_new ();
+  remove_rp = tp_intset_new ();
+  tp_intset_add (add_rp, self_handle);
+  tp_intset_add (remove_rp, mixin->self_handle);
+
+  tp_group_mixin_change_self_handle ((GObject *) chan, self_handle);
+  tp_group_mixin_change_members ((GObject *) chan, NULL, NULL, remove_rp, NULL,
+      add_rp, 0, TP_CHANNEL_GROUP_CHANGE_REASON_RENAMED);
+
+  tp_intset_destroy (add_rp);
+  tp_intset_destroy (remove_rp);
+  tp_handle_unref (contact_repo, self_handle);
+
+  priv->nick_retry_count++;
+  return send_join_request (chan, priv->password, tp_error);
+}
+
 /**
  * _gabble_muc_channel_presence_error
  */
@@ -1462,21 +1504,9 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
                                   "room is invite only");
           break;
         case XMPP_ERROR_CONFLICT:
-          if (priv->nick_retry_count < MAX_NICK_RETRIES)
-            {
-              g_string_append_c (priv->self_jid, '_');
+          if (handle_nick_conflict (chan, &tp_error))
+            return;
 
-              if (send_join_request (chan, priv->password, &tp_error))
-                {
-                  priv->nick_retry_count++;
-                  return;
-                }
-            }
-          else
-            {
-              tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                  "nickname already in use and retry count exceeded");
-            }
           break;
         default:
           tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -1797,8 +1827,312 @@ update_permissions (GabbleMucChannel *chan)
   tp_intset_destroy (changed_props_flags);
 }
 
+static void
+handle_unavailable_presence_update (GabbleMucChannel *chan,
+                                    TpHandleRepoIface *contact_handles,
+                                    TpHandle handle,
+                                    TpIntSet *handle_singleton,
+                                    LmMessageNode *item_node,
+                                    const gchar *status_code)
+{
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
+  LmMessageNode *reason_node, *actor_node;
+  const gchar *reason = "", *actor_jid = "";
+  TpHandle actor = 0;
+  TpChannelGroupChangeReason reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+
+  actor_node = lm_message_node_get_child (item_node, "actor");
+  if (actor_node != NULL)
+    {
+      actor_jid = lm_message_node_get_attribute (actor_node, "jid");
+      if (actor_jid != NULL)
+        {
+          actor = tp_handle_ensure (contact_handles, actor_jid, NULL,
+              NULL);
+          if (actor == 0)
+            {
+              DEBUG ("ignoring invalid actor JID %s", actor_jid);
+            }
+        }
+    }
+
+  /* Possible reasons we could have been removed from the room:
+   * 301 banned
+   * 307 kicked
+   * 321 "because of an affiliation change" - no reason_code
+   * 322 room has become members-only and we're not a member - no
+   *    reason_code
+   * 332 system (server) is being shut down - no reason code
+   */
+  if (status_code)
+    {
+      if (strcmp (status_code, "301") == 0)
+        {
+          reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
+        }
+      else if (strcmp (status_code, "307") == 0)
+        {
+          reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
+        }
+    }
+
+  reason_node = lm_message_node_get_child (item_node, "reason");
+  if (reason_node != NULL)
+    {
+      reason = lm_message_node_get_value (reason_node);
+    }
+
+  if (handle != mixin->self_handle)
+    {
+      tp_group_mixin_change_members ((GObject *) chan, reason,
+                                         NULL, handle_singleton, NULL, NULL,
+                                         actor, reason_code);
+    }
+  else
+    {
+      close_channel (chan, reason, FALSE, actor, reason_code);
+    }
+
+  if (actor)
+    tp_handle_unref (contact_handles, actor);
+}
+
+static gboolean
+renamed_by_server (LmMessageNode *x_node)
+{
+  LmMessageNode *child;
+  gboolean is_self = FALSE;
+  gboolean renamed = FALSE;
+
+  for (child = x_node->children; child != NULL; child = child->next)
+    {
+      const gchar *code;
+
+      if (strcmp (child->name, "status") != 0)
+        continue;
+
+      code = lm_message_node_get_attribute (child, "code");
+
+      if (!tp_strdiff (code, "110"))
+        is_self = TRUE;
+      else if (!tp_strdiff (code, "210"))
+        renamed = TRUE;
+    }
+
+  return (is_self && renamed);
+}
+
+static void
+handle_member_added (GabbleMucChannel *chan,
+                     GabbleMucChannelPrivate *priv,
+                     TpGroupMixin *mixin,
+                     TpHandleRepoIface *contact_handles,
+                     TpHandle handle,
+                     TpIntSet *handle_singleton,
+                     LmMessageNode *x_node,
+                     LmMessageNode *item_node)
+{
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  const gchar *owner_jid = lm_message_node_get_attribute (item_node, "jid");
+  TpHandle owner_handle = 0;
+  TpIntSet *old_self_handle_singleton = NULL;
+
+  if (owner_jid != NULL)
+    {
+      owner_handle = tp_handle_ensure (contact_handles, owner_jid,
+          GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
+
+      if (owner_handle == 0)
+        DEBUG ("Invalid owner handle '%s', treating as no owner", owner_jid);
+    }
+
+  if (renamed_by_server (x_node))
+    {
+      old_self_handle_singleton = tp_intset_new ();
+      tp_intset_add (old_self_handle_singleton, mixin->self_handle);
+
+      tp_group_mixin_change_self_handle ((GObject *) chan, handle);
+    }
+
+  if (handle == mixin->self_handle &&
+      owner_handle != conn->self_handle)
+    {
+      /* In XEP-0045-compliant MUCs, if we get presence for the jid we asked
+       * for (or for another jid, with status 110 and 210) then we know it's
+       * us. There can't be another user in the MUC with the nick we asked for:
+       * the service MUST reject us with code 409/"conflict" in this case. So,
+       * if someone in the room has the nick we want, it's us.
+       *
+       * If the MUC service fails to comply with this requirement, we get
+       * hopelessly confused. Given that the service isn't required to label
+       * our own presence as 110 ("this is you") and there's no way to label a
+       * presence for the jid we asked for as "not you" it's not possible for a
+       * client not to get hopelessly confused if the service is broken. So
+       * this is the best we can do.
+       */
+      DEBUG ("Overriding ownership of channel-specific handle %u "
+          "from %u to %u because I know it's mine",
+          mixin->self_handle, owner_handle, conn->self_handle);
+
+      if (owner_handle != 0)
+        tp_handle_unref (contact_handles, owner_handle);
+
+      tp_handle_ref (contact_handles, conn->self_handle);
+      owner_handle = conn->self_handle;
+    }
+
+  if (priv->initial_state_aggregator == NULL)
+    {
+      /* we've already had the initial batch of presence stanzas */
+      tp_group_mixin_add_handle_owner ((GObject *) chan, handle,
+          owner_handle);
+      tp_group_mixin_change_members ((GObject *) chan, "",
+          handle_singleton, NULL, NULL, NULL, 0, 0);
+    }
+  else
+    {
+      /* aggregate this presence */
+      tp_handle_set_add (priv->initial_state_aggregator->members,
+          handle);
+
+      g_hash_table_insert (priv->initial_state_aggregator->owner_map,
+          GUINT_TO_POINTER (handle), GUINT_TO_POINTER (owner_handle));
+
+      if (owner_handle != 0)
+        tp_handle_set_add (priv->initial_state_aggregator->owners,
+            owner_handle);
+
+      /* Do not emit one signal per presence. Instead, get all
+       * presences, and add them in priv->initial_state_aggregator.
+       * When we get the last presence, emit the signal. The last
+       * presence is ourselves. */
+      if (handle == mixin->self_handle)
+        {
+          /* Add all handle owners in a single operation */
+          tp_group_mixin_add_handle_owners ((GObject *) chan,
+              priv->initial_state_aggregator->owner_map);
+
+          /* Change all presences in a single operation */
+          tp_group_mixin_change_members ((GObject *) chan, "",
+              tp_handle_set_peek (
+                  priv->initial_state_aggregator->members),
+              old_self_handle_singleton, NULL, NULL, 0, 0);
+
+          initial_state_aggregator_free (
+              priv->initial_state_aggregator);
+          priv->initial_state_aggregator = NULL;
+          g_object_set (chan, "state", MUC_STATE_JOINED, NULL);
+        }
+    }
+
+  if (owner_handle != 0)
+    {
+      if (handle != mixin->self_handle)
+        {
+          /* If at least one other handle in the channel has an owner,
+           * the HANDLE_OWNERS_NOT_AVAILABLE flag should be removed.
+           */
+          tp_group_mixin_change_flags ((GObject *) chan, 0,
+              TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
+        }
+
+      g_signal_emit (chan, signals[CONTACT_JOIN], 0, owner_handle);
+
+      tp_handle_unref (contact_handles, owner_handle);
+    }
+
+  if (old_self_handle_singleton != NULL)
+    tp_intset_destroy (old_self_handle_singleton);
+}
+
+static void
+handle_presence_update (GabbleMucChannel *chan,
+                        TpHandleRepoIface *contact_handles,
+                        TpHandle handle,
+                        TpIntSet *handle_singleton,
+                        LmMessageNode *x_node,
+                        LmMessageNode *item_node,
+                        const gchar *status_code)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
+
+  if (!tp_handle_set_is_member (mixin->members, handle))
+    handle_member_added (chan, priv, mixin, contact_handles, handle,
+        handle_singleton, x_node, item_node);
+
+  if (handle == mixin->self_handle)
+    {
+      const gchar *role, *affil;
+      GabbleMucRole new_role;
+      GabbleMucAffiliation new_affil;
+
+      /* accept newly-created room settings before we send anything
+       * below which queryies them. */
+      if (status_code && strcmp (status_code, "201") == 0)
+        {
+          LmMessage *msg;
+          LmMessageNode *node;
+          GError *error = NULL;
+
+          msg = lm_message_new_with_sub_type (priv->jid,
+              LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_SET);
+
+          node = lm_message_node_add_child (msg->node, "query", NULL);
+          lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
+
+          node = lm_message_node_add_child (node, "x", NULL);
+          lm_message_node_set_attributes (node,
+                                          "xmlns", NS_X_DATA,
+                                          "type", "submit",
+                                          NULL);
+
+          if (!_gabble_connection_send_with_reply (priv->conn, msg,
+                room_created_submit_reply_cb, G_OBJECT (chan), NULL,
+                &error))
+            {
+              DEBUG ("failed to send submit message: %s",
+                  error->message);
+              g_error_free (error);
+
+              lm_message_unref (msg);
+              close_channel (chan, NULL, TRUE, 0,
+                  TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+
+              return;
+            }
+
+          lm_message_unref (msg);
+        }
+
+      /* Update room properties */
+      room_properties_update (chan);
+
+      /* update permissions after requesting new properties so that if we
+       * become an owner, we get our configuration form reply after the
+       * discovery reply, so we know whether there is a description
+       * property before we try and decide whether we can write to it. */
+      role = lm_message_node_get_attribute (item_node, "role");
+      affil = lm_message_node_get_attribute (item_node, "affiliation");
+      new_role = get_role_from_string (role);
+      new_affil = get_affiliation_from_string (affil);
+
+      if (new_role != priv->self_role || new_affil != priv->self_affil)
+        {
+          priv->self_role = new_role;
+          priv->self_affil = new_affil;
+
+          update_permissions (chan);
+        }
+    }
+}
+
 /**
- * _gabble_muc_channel_member_presence_updated
+ * _gabble_muc_channel_member_presence_updated:
+ *
+ * Handles <presence> stanzas with type='unavailable' or other non-'error'
+ * types, updating channel members and/or closing the channel as appropriate.
+ * (<presence type='error'> is handled by _gabble_muc_channel_presence_error.)
  */
 void
 _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
@@ -1809,12 +2143,9 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 {
   GabbleMucChannelPrivate *priv;
   TpBaseConnection *conn;
-  TpIntSet *set;
-  TpGroupMixin *mixin;
-  LmMessageNode *node;
-  const gchar *affil, *role, *owner_jid, *status_code;
-  TpHandle actor = 0;
-  guint reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+  TpIntSet *handle_singleton;
+  LmMessageNode *status_node;
+  const gchar *status_code = NULL;
   TpHandleRepoIface *contact_handles;
 
   DEBUG ("called");
@@ -1827,256 +2158,23 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
-  mixin = TP_GROUP_MIXIN (chan);
+  status_node = lm_message_node_get_child (x_node, "status");
 
-  node = lm_message_node_get_child (x_node, "status");
-  if (node)
-    {
-      status_code = lm_message_node_get_attribute (node, "code");
-    }
-  else
-    {
-      status_code = NULL;
-    }
-
-  role = lm_message_node_get_attribute (item_node, "role");
-  affil = lm_message_node_get_attribute (item_node, "affiliation");
-  owner_jid = lm_message_node_get_attribute (item_node, "jid");
+  if (status_node != NULL)
+    status_code = lm_message_node_get_attribute (status_node, "code");
 
   /* update channel members according to presence */
-  set = tp_intset_new ();
-  tp_intset_add (set, handle);
+  handle_singleton = tp_intset_new ();
+  tp_intset_add (handle_singleton, handle);
 
-  if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_UNAVAILABLE)
-    {
-      if (!tp_handle_set_is_member (mixin->members, handle))
-        {
-          TpHandle owner_handle = 0;
-
-          if (owner_jid != NULL)
-            {
-              owner_handle = tp_handle_ensure (contact_handles, owner_jid,
-                  GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
-
-              if (owner_handle == 0)
-                DEBUG ("Invalid owner handle '%s', treating as no owner",
-                    owner_jid);
-            }
-
-          if (handle == mixin->self_handle &&
-              owner_handle != conn->self_handle)
-            {
-              /* We know that in XEP-0045 compliant MUCs, nobody else can have
-               * the nick we tried to use - the service MUST reject us
-               * with code 409/"conflict" in this case. So, if someone in the
-               * room has the nick we want, it's us.
-               *
-               * If the MUC service fails to comply with this requirement,
-               * we get hopelessly confused, but this isn't a regression
-               * (we always would have done).
-               *
-               * FIXME: we ought to respect the 110 and 210 status codes
-               * too, so we can detect MUCs renaming us - otherwise the
-               * presence aggregator will never stop
-               */
-              DEBUG ("Overriding ownership of channel-specific handle %u "
-                  "from %u to %u because I know it's mine",
-                  mixin->self_handle, owner_handle, conn->self_handle);
-
-              if (owner_handle != 0)
-                tp_handle_unref (contact_handles, owner_handle);
-
-              tp_handle_ref (contact_handles, conn->self_handle);
-              owner_handle = conn->self_handle;
-            }
-
-          if (priv->initial_state_aggregator == NULL)
-            {
-              /* we've already had the initial batch of presence stanzas */
-              tp_group_mixin_add_handle_owner ((GObject *) chan, handle,
-                  owner_handle);
-              tp_group_mixin_change_members ((GObject *) chan, "", set, NULL,
-                                              NULL, NULL, 0, 0);
-            }
-          else
-            {
-              /* aggregate this presence */
-              tp_handle_set_add (priv->initial_state_aggregator->members,
-                  handle);
-
-              g_hash_table_insert (priv->initial_state_aggregator->owner_map,
-                  GUINT_TO_POINTER (handle), GUINT_TO_POINTER (owner_handle));
-
-              if (owner_handle != 0)
-                tp_handle_set_add (priv->initial_state_aggregator->owners,
-                    owner_handle);
-
-              /* Do not emit one signal per presence. Instead, get all
-               * presences, and add them in priv->initial_state_aggregator.
-               * When we get the last presence, emit the signal. The last
-               * presence is ourselves. */
-              if (handle == mixin->self_handle)
-                {
-                  /* Add all handle owners in a single operation */
-                  tp_group_mixin_add_handle_owners ((GObject *) chan,
-                      priv->initial_state_aggregator->owner_map);
-
-                  /* Change all presences in a single operation */
-                  tp_group_mixin_change_members ((GObject *) chan, "",
-                      tp_handle_set_peek (
-                          priv->initial_state_aggregator->members),
-                      NULL, NULL, NULL, 0, 0);
-
-                  initial_state_aggregator_free (
-                      priv->initial_state_aggregator);
-                  priv->initial_state_aggregator = NULL;
-                }
-            }
-
-          if (owner_handle != 0)
-            {
-              if (handle != mixin->self_handle)
-                {
-                  /* If at least one other handle in the channel has an owner,
-                   * the HANDLE_OWNERS_NOT_AVAILABLE flag should be removed.
-                   */
-                  tp_group_mixin_change_flags ((GObject *) chan, 0,
-                      TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
-                }
-
-              g_signal_emit (chan, signals[CONTACT_JOIN], 0, owner_handle);
-
-              tp_handle_unref (contact_handles, owner_handle);
-            }
-
-          if (handle == mixin->self_handle)
-            {
-              g_object_set (chan, "state", MUC_STATE_JOINED, NULL);
-            }
-        }
-
-      if (handle == mixin->self_handle)
-        {
-          GabbleMucRole new_role;
-          GabbleMucAffiliation new_affil;
-
-          /* accept newly-created room settings before we send anything
-           * below which queryies them. */
-          if (status_code && strcmp (status_code, "201") == 0)
-            {
-              LmMessage *msg;
-              GError *error = NULL;
-
-              msg = lm_message_new_with_sub_type (priv->jid,
-                  LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_SET);
-
-              node = lm_message_node_add_child (msg->node, "query", NULL);
-              lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
-
-              node = lm_message_node_add_child (node, "x", NULL);
-              lm_message_node_set_attributes (node,
-                                              "xmlns", NS_X_DATA,
-                                              "type", "submit",
-                                              NULL);
-
-              if (!_gabble_connection_send_with_reply (priv->conn, msg,
-                    room_created_submit_reply_cb, G_OBJECT (chan), NULL,
-                    &error))
-                {
-                  DEBUG ("failed to send submit message: %s",
-                      error->message);
-                  g_error_free (error);
-
-                  lm_message_unref (msg);
-                  close_channel (chan, NULL, TRUE, actor, reason_code);
-
-                  goto OUT;
-                }
-
-              lm_message_unref (msg);
-            }
-
-          /* Update room properties */
-          room_properties_update (chan);
-
-          /* update permissions after requesting new properties so that if we
-           * become an owner, we get our configuration form reply after the
-           * discovery reply, so we know whether there is a description
-           * property before we try and decide whether we can write to it. */
-          new_role = get_role_from_string (role);
-          new_affil = get_affiliation_from_string (affil);
-
-          if (new_role != priv->self_role || new_affil != priv->self_affil)
-            {
-              priv->self_role = new_role;
-              priv->self_affil = new_affil;
-
-              update_permissions (chan);
-            }
-        }
-    }
+  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_UNAVAILABLE)
+    handle_unavailable_presence_update (chan, contact_handles, handle,
+        handle_singleton, item_node, status_code);
   else
-    {
-      LmMessageNode *reason_node, *actor_node;
-      const gchar *reason = "", *actor_jid = "";
+    handle_presence_update (chan, contact_handles, handle, handle_singleton,
+        x_node, item_node, status_code);
 
-      actor_node = lm_message_node_get_child (item_node, "actor");
-      if (actor_node != NULL)
-        {
-          actor_jid = lm_message_node_get_attribute (actor_node, "jid");
-          if (actor_jid != NULL)
-            {
-              actor = tp_handle_ensure (contact_handles, actor_jid, NULL,
-                  NULL);
-              if (actor == 0)
-                {
-                  DEBUG ("ignoring invalid actor JID %s", actor_jid);
-                }
-            }
-        }
-
-      /* Possible reasons we could have been removed from the room:
-       * 301 banned
-       * 307 kicked
-       * 321 "because of an affiliation change" - no reason_code
-       * 322 room has become members-only and we're not a member - no
-       *    reason_code
-       * 332 system (server) is being shut down - no reason code
-       */
-      if (status_code)
-        {
-          if (strcmp (status_code, "301") == 0)
-            {
-              reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
-            }
-          else if (strcmp (status_code, "307") == 0)
-            {
-              reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
-            }
-        }
-
-      reason_node = lm_message_node_get_child (item_node, "reason");
-      if (reason_node != NULL)
-        {
-          reason = lm_message_node_get_value (reason_node);
-        }
-
-      if (handle != mixin->self_handle)
-        {
-          tp_group_mixin_change_members ((GObject *) chan, reason,
-                                             NULL, set, NULL, NULL,
-                                             actor, reason_code);
-        }
-      else
-        {
-          close_channel (chan, reason, FALSE, actor, reason_code);
-        }
-    }
-
-OUT:
-  tp_intset_destroy (set);
-  if (actor)
-    tp_handle_unref (contact_handles, actor);
+  tp_intset_destroy (handle_singleton);
 }
 
 

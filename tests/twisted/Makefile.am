@@ -1,4 +1,6 @@
 TWISTED_TESTS = \
+	muc/name-conflict.py \
+	muc/renamed.py \
 	muc/roomlist.py \
 	muc/test-ensure.py \
 	muc/test-muc-alias.py \

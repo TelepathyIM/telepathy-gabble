@@ -12,10 +12,6 @@ from twisted.words.xish import xpath
 
 from jingletest2 import *
 
-print "FIXME: This test is broken: http://bugs.freedesktop.org/show_bug.cgi?id=19161"
-# exiting 77 causes automake to consider the test to have been skipped
-raise SystemExit(77)
-
 def worker(jp, q, bus, conn, stream):
 
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')

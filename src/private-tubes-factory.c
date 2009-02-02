@@ -340,6 +340,7 @@ new_tubes_channel (GabblePrivateTubesFactory *fac,
   TpBaseConnection *conn;
   GabbleTubesChannel *chan;
   char *object_path;
+  gboolean requested;
 
   g_assert (GABBLE_IS_PRIVATE_TUBES_FACTORY (fac));
   g_assert (handle != 0);
@@ -351,12 +352,15 @@ new_tubes_channel (GabblePrivateTubesFactory *fac,
   object_path = g_strdup_printf ("%s/SITubesChannel%u", conn->object_path,
       handle);
 
+  requested = (request_token != NULL);
+
   chan = g_object_new (GABBLE_TYPE_TUBES_CHANNEL,
                        "connection", priv->conn,
                        "object-path", object_path,
                        "handle", handle,
                        "handle-type", TP_HANDLE_TYPE_CONTACT,
                        "initiator-handle", initiator,
+                       "requested", requested,
                        NULL);
 
   DEBUG ("object path %s", object_path);

@@ -4,6 +4,7 @@ telepathy-gabble 0.7.20 (UNRELEASED)
 Enhancements:
 
 * Implement the draft version of Location from telepathy-spec 0.17.19
+* Announce generic tube capabilities when contacts support tubes
 
 Fixes:
 

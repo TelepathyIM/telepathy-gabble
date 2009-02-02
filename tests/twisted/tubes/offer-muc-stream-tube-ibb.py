@@ -340,7 +340,23 @@ def test(q, bus, conn, stream):
     path2, prop2 = channels[1]
     assert sorted([prop1[CHANNEL_TYPE], prop2[CHANNEL_TYPE]]) == \
         [CHANNEL_TYPE_TEXT, CHANNEL_TYPE_TUBES]
-    # FIXME: check other properties
+
+    got_text, got_tubes = False, False
+    for path, props in channels:
+        if props[CHANNEL_TYPE] == CHANNEL_TYPE_TEXT:
+            got_text = True
+        elif props[CHANNEL_TYPE] == CHANNEL_TYPE_TUBES:
+            got_tubes = True
+        else:
+            assert False
+
+        assert props[INITIATOR_HANDLE] == self_handle
+        assert props[INITIATOR_ID] == self_name
+        assert CHANNEL_IFACE_GROUP in props[INTERFACES]
+        assert props[TARGET_ID] == 'chat2@conf.localhost'
+        assert props[REQUESTED] == False
+
+    assert (got_text, got_tubes) == (True, True)
 
     # now the tube channel is announced
     # FIXME: in this case, all channels should probably be announced together

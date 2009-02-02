@@ -12,6 +12,7 @@ Fixes:
 * Set the correct actor when Jingle sessions are terminated
 * Don't omit offline, unknown and error from Statuses and GetStatuses()
   (regression in 0.7.19)
+* Close and ChannelClosed signals are now fired when a tube is closed (new API)
 
 telepathy-gabble 0.7.19 (2009-01-29)
 ====================================

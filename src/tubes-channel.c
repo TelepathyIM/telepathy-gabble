@@ -562,7 +562,8 @@ create_new_tube (GabbleTubesChannel *self,
 
   if (state == GABBLE_TUBE_CHANNEL_STATE_OPEN)
     {
-      /* FIXME: does it still make sense to call it here? */
+      /* FIXME: we should remove that once D-Bus tube have been ported to new
+       * API */
       update_tubes_presence (self);
     }
 

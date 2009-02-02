@@ -357,6 +357,7 @@ def test(q, bus, conn, stream):
 
     tube_chan = bus.get_object(conn.bus_name, path)
     stream_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_STREAM_TUBE)
+    chan_iface = dbus.Interface(tube_chan, CHANNEL)
     tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE)
 
     assert tube_props['Parameters'] == {'foo': 'bar'}
@@ -407,6 +408,11 @@ def test(q, bus, conn, stream):
         assert node['name'] not in params
         params[node['name']] = (node['type'], str(node))
     assert params == {'foo': ('str', 'bar')}
+
+    chan_iface.Close()
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-signal', signal='ChannelClosed'))
 
     # OK, we're done
     conn.Disconnect()

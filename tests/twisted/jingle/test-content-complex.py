@@ -2,9 +2,6 @@
 Test everything related to contents
 """
 
-print "FIXME: Disabled due to race condition somewhere in Twisted XMPP support"
-raise SystemExit(77)
-
 from gabbletest import exec_test, make_result_iq, sync_stream, exec_tests
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
         EventPattern
@@ -230,5 +227,6 @@ def test031(q, bus, conn, stream):
     return worker(JingleProtocol031(),q, bus, conn, stream)
 
 if __name__ == '__main__':
-    exec_tests([test015, test031])
+    exec_test(test015)
+    exec_test(test031)
 

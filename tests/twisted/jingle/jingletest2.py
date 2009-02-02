@@ -285,13 +285,17 @@ class JingleTest2:
         self.conn.Connect()
 
         # Catch events: status connecting, authentication, our presence update,
-        # status connected
+        # status connected, vCard query
+        # If we don't catch the vCard query here, it can trip us up later:
+        # http://bugs.freedesktop.org/show_bug.cgi?id=19161
         self.q.expect_many(
                 EventPattern('dbus-signal', signal='StatusChanged', args=[1, 1]),
                 EventPattern('stream-authenticated'),
                 EventPattern('dbus-signal', signal='PresenceUpdate',
                     args=[{1L: (0L, {u'available': {}})}]),
                 EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+                EventPattern('stream-iq', to=None, query_ns='vcard-temp',
+                    query_name='vCard'),
                 )
 
         # We need remote end's presence for capabilities

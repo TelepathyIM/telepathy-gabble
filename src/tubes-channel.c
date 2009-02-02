@@ -106,6 +106,7 @@ struct _GabbleTubesChannelPrivate
   TpHandleType handle_type;
   TpHandle self_handle;
   TpHandle initiator;
+  gboolean requested;
 
   GHashTable *tubes;
 
@@ -258,8 +259,7 @@ gabble_tubes_channel_get_property (GObject *object,
           }
         break;
       case PROP_REQUESTED:
-        g_value_set_boolean (value,
-            (priv->initiator == base_conn->self_handle));
+        g_value_set_boolean (value, priv->requested);
         break;
       case PROP_CHANNEL_DESTROYED:
         g_value_set_boolean (value, priv->closed);
@@ -317,6 +317,9 @@ gabble_tubes_channel_set_property (GObject *object,
         break;
       case PROP_INITIATOR_HANDLE:
         priv->initiator = g_value_get_uint (value);
+        break;
+      case PROP_REQUESTED:
+        priv->requested = g_value_get_boolean (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -2439,7 +2442,7 @@ gabble_tubes_channel_class_init (
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   gabble_tubes_channel_class->dbus_props_class.interfaces = prop_interfaces;

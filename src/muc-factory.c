@@ -44,6 +44,7 @@
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "tubes-channel.h"
+#include "tube-dbus.h"
 #include "tube-stream.h"
 #include "util.h"
 
@@ -1383,6 +1384,12 @@ gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
   g_value_set_static_string (channel_type_value,
       GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
   func (manager, table, gabble_tube_stream_channel_allowed_properties,
+      user_data);
+
+  /* Muc Channel.Type.DBusTube */
+  g_value_set_static_string (channel_type_value,
+      GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+  func (manager, table, gabble_tube_dbus_channel_allowed_properties,
       user_data);
 
   g_hash_table_destroy (table);

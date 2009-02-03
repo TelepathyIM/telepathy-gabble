@@ -901,13 +901,8 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
               tube = create_new_tube (self, type, initiator_handle,
                   service, parameters, stream_id, tube_id, NULL);
 
-              if (type == TP_TUBE_TYPE_STREAM)
-                {
-                  /* FIXME: remove this test once D-Tube new API is
-                   * implemented */
-                  tp_channel_manager_emit_new_channel (priv->conn->muc_factory,
-                      TP_EXPORTABLE_CHANNEL (tube), NULL);
-                }
+              tp_channel_manager_emit_new_channel (priv->conn->muc_factory,
+                  TP_EXPORTABLE_CHANNEL (tube), NULL);
 
               /* the tube has reffed its initiator, no need to keep a ref */
               tp_handle_unref (contact_repo, initiator_handle);

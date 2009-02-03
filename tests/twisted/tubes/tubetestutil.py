@@ -2,10 +2,16 @@
 Helper functions for writing tubes tests
 """
 
+import errno
+import os
+
 from dbus import PROPERTIES_IFACE
 
 from servicetest import unwrap
 from constants import *
+
+from twisted.internet import reactor
+from twisted.internet.protocol import Factory, Protocol
 
 def check_tube_in_tubes(tube, tubes):
     """
@@ -69,3 +75,23 @@ def check_conn_properties(q, conn, channel_list=None):
              [TARGET_HANDLE, TARGET_ID, TUBE_PARAMETERS, STREAM_TUBE_SERVICE]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
+
+class Echo(Protocol):
+    """
+    A trivial protocol that just echoes back whatever you send it, in lowercase.
+    """
+    def dataReceived(self, data):
+        self.transport.write(data.lower())
+
+def set_up_echo(name):
+    """
+    Sets up an instance of Echo listening on "%s/stream%s" % (cwd, name)
+    """
+    factory = Factory()
+    factory.protocol = Echo
+    try:
+        os.remove(os.getcwd() + '/stream' + name)
+    except OSError, e:
+        if e.errno != errno.ENOENT:
+            raise
+    reactor.listenUNIX(os.getcwd() + '/stream' + name, factory)

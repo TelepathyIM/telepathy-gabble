@@ -45,6 +45,7 @@
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "tubes-channel.h"
+#include "tube-dbus.h"
 #include "tube-stream.h"
 #include "util.h"
 
@@ -132,15 +133,6 @@ static const gchar * const old_tubes_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetID",
     NULL
 };
-/* TODO: move to tube-dbus.h */
-static const gchar * const dbus_tube_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",
-    TP_IFACE_CHANNEL ".TargetID",
-    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
-    GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName",
-    NULL
-};
-
 
 static void
 gabble_private_tubes_factory_init (GabblePrivateTubesFactory *self)
@@ -547,7 +539,7 @@ add_generic_tube_caps (GPtrArray *arr)
 
   dbus_g_type_struct_set (&monster2,
       0, fixed_properties,
-      1, dbus_tube_channel_allowed_properties,
+      1, gabble_tube_dbus_channel_allowed_properties,
       G_MAXUINT);
 
   g_hash_table_destroy (fixed_properties);
@@ -1145,7 +1137,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, dbus_tube_channel_allowed_properties, user_data);
+  func (manager, table, gabble_tube_dbus_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -1211,7 +1203,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
 
       if (tp_channel_manager_asv_has_unknown_properties (request_properties,
               tubes_channel_fixed_properties,
-              dbus_tube_channel_allowed_properties,
+              gabble_tube_dbus_channel_allowed_properties,
               &error))
         goto error;
 

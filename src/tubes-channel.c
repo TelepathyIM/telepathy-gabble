@@ -1572,6 +1572,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   guint tube_id;
   GabbleTubeIface *tube;
   gchar *stream_id;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1584,20 +1585,14 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   tube = create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
       service, parameters, (const gchar *) stream_id, tube_id, NULL);
 
-  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+  if (!gabble_tube_dbus_offer (GABBLE_TUBE_DBUS (tube), &error))
     {
-      /* Stream initiation */
-      GError *error = NULL;
+      gabble_tube_iface_close (tube, TRUE);
+      dbus_g_method_return_error (context, error);
 
-      if (!gabble_tube_dbus_offer (GABBLE_TUBE_DBUS (tube), &error))
-        {
-          gabble_tube_iface_close (tube, TRUE);
-          dbus_g_method_return_error (context, error);
-
-          g_error_free (error);
-          g_free (stream_id);
-          return;
-        }
+      g_error_free (error);
+      g_free (stream_id);
+      return;
     }
 
   tp_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);

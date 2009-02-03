@@ -7,7 +7,7 @@ from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, tp_name_prefix
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
 from constants import *
 import ns
 import tubetestutil as t
@@ -32,6 +32,9 @@ def test(q, bus, conn, stream):
             query_name='vCard'))
 
     acknowledge_iq(stream, iq_event.stanza)
+
+    self_handle = conn.GetSelfHandle()
+    self_name = conn.InspectHandles(1, [self_handle])[0]
 
     handles, tubes_chan, tubes_iface = get_muc_tubes_channel(q, bus, conn,
         stream, 'chat@conf.localhost')
@@ -67,7 +70,7 @@ def test(q, bus, conn, stream):
         dbus_interface=CHANNEL_IFACE_GROUP)
     assert group_props['SelfHandle'] == tubes_self_handle
 
-    # Offer a D-Bus tube
+    # Offer a D-Bus tube (old API)
     call_async(q, tubes_iface, 'OfferDBusTube',
             'com.example.TestCase', sample_parameters)
 
@@ -165,6 +168,142 @@ def test(q, bus, conn, stream):
     # XXX: verify that it's actually in the "sender" slot, rather than just
     # being in the message somewhere
     assert my_bus_name in binary
+
+
+    # offer a D-Bus tube to another room using new API
+    requestotron = dbus.Interface(conn, CONN_IFACE_REQUESTS)
+
+    # check if we can request muc D-Bus tube
+    properties = conn.GetAll(CONN_IFACE_REQUESTS, dbus_interface=PROPERTIES_IFACE)
+
+    assert ({CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
+        TARGET_HANDLE_TYPE: HT_ROOM},
+         [TARGET_HANDLE, TARGET_ID, TUBE_PARAMETERS, DBUS_TUBE_SERVICE_NAME]
+        ) in properties.get('RequestableChannelClasses'),\
+                 properties['RequestableChannelClasses']
+
+    call_async(q, requestotron, 'CreateChannel',
+            {CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
+         TARGET_HANDLE_TYPE: HT_ROOM,
+         TARGET_ID: 'chat2@conf.localhost',
+         DBUS_TUBE_SERVICE_NAME: 'com.example.TestCase',
+         TUBE_PARAMETERS: sample_parameters,
+        })
+
+    # Send presence for other member of room.
+    stream.send(make_muc_presence('owner', 'moderator', 'chat2@conf.localhost', 'bob'))
+
+    # Send presence for own membership of room.
+    stream.send(make_muc_presence('none', 'participant', 'chat2@conf.localhost', 'test'))
+
+    event = q.expect('dbus-return', method='CreateChannel')
+    new_tube_path, new_tube_props = event.value
+
+    # first text and tubes channels are announced
+    event = q.expect('dbus-signal', signal='NewChannels')
+    channels = event.args[0]
+    assert len(channels) == 2
+    path1, prop1 = channels[0]
+    path2, prop2 = channels[1]
+    assert sorted([prop1[CHANNEL_TYPE], prop2[CHANNEL_TYPE]]) == \
+        [CHANNEL_TYPE_TEXT, CHANNEL_TYPE_TUBES]
+
+    got_text, got_tubes = False, False
+    for path, props in channels:
+        if props[CHANNEL_TYPE] == CHANNEL_TYPE_TEXT:
+            got_text = True
+        elif props[CHANNEL_TYPE] == CHANNEL_TYPE_TUBES:
+            got_tubes = True
+        else:
+            assert False
+
+        assert props[INITIATOR_HANDLE] == self_handle
+        assert props[INITIATOR_ID] == self_name
+        assert CHANNEL_IFACE_GROUP in props[INTERFACES]
+        assert props[TARGET_ID] == 'chat2@conf.localhost'
+        assert props[REQUESTED] == False
+
+    assert (got_text, got_tubes) == (True, True)
+
+    # now the tube channel is announced
+    # FIXME: in this case, all channels should probably be announced together
+    event = q.expect('dbus-signal', signal='NewChannels')
+    channels = event.args[0]
+    assert len(channels) == 1
+    path, prop = channels[0]
+    assert prop[CHANNEL_TYPE] == CHANNEL_TYPE_DBUS_TUBE
+    assert prop[INITIATOR_ID] == 'chat2@conf.localhost/test'
+    assert prop[REQUESTED] == True
+    assert prop[TARGET_HANDLE_TYPE] == HT_ROOM
+    assert prop[TARGET_ID] == 'chat2@conf.localhost'
+    assert prop[DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase'
+
+    tube_chan = bus.get_object(conn.bus_name, path)
+    dbus_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_DBUS_TUBE)
+    chan_iface = dbus.Interface(tube_chan, CHANNEL)
+    tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
+        byte_arrays=True)
+
+    assert tube_props['Parameters'] == sample_parameters
+    assert tube_props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
+
+    # offer the tube
+    call_async(q, dbus_tube_iface, 'OfferDBusTube')
+
+    new_tube_event, presence_event, _, status_event = q.expect_many(
+        EventPattern('dbus-signal', signal='NewTube'),
+        EventPattern('stream-presence', to='chat2@conf.localhost/test'),
+        EventPattern('dbus-return', method='OfferDBusTube'),
+        EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[TUBE_CHANNEL_STATE_OPEN]))
+
+    # handle new_tube_event
+    dbus_tube_id = new_tube_event.args[0]
+    assert new_tube_event.args[2] == TUBE_TYPE_DBUS
+    assert new_tube_event.args[3] == 'com.example.TestCase'
+    assert new_tube_event.args[4] == sample_parameters
+    assert new_tube_event.args[5] == TUBE_STATE_OPEN
+
+    # handle presence_event
+    # We announce our newly created tube in our muc presence
+    presence = presence_event.stanza
+    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
+            'protocol/muc"]', presence)
+    assert x_nodes is not None
+    assert len(x_nodes) == 1
+
+    tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
+        % ns.TUBES, presence)
+    assert tubes_nodes is not None
+    assert len(tubes_nodes) == 1
+
+    tube_nodes = xpath.queryForNodes('/tubes/tube', tubes_nodes[0])
+    assert tube_nodes is not None
+    assert len(tube_nodes) == 1
+    for tube in tube_nodes:
+        tube['type'] = 'dbus'
+        assert tube['initiator'] == 'chat2@conf.localhost/test'
+        assert tube['service'] == 'com.example.TestCase'
+        dbus_stream_id = tube['stream-id']
+        my_bus_name = tube['dbus-name']
+        assert tube['id'] == str(dbus_tube_id)
+
+    params = {}
+    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
+    for node in parameter_nodes:
+        assert node['name'] not in params
+        params[node['name']] = (node['type'], str(node))
+    assert params == {'ay': ('bytes', 'aGVsbG8='),
+                      's': ('str', 'hello'),
+                      'i': ('int', '-123'),
+                      'u': ('uint', '123'),
+                     }
+
+    # TODO: add a participant to the tube and check DBusNamesChanged signal
+
+    chan_iface.Close()
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-signal', signal='ChannelClosed'))
 
     # OK, we're done
     conn.Disconnect()

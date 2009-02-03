@@ -37,19 +37,16 @@ def test(q, bus, conn, stream):
         stream, 'chat@conf.localhost')
 
     # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = tubes_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
+    channel_props = tubes_chan.GetAll(CHANNEL,
             dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == handles[0],\
             (channel_props.get('TargetHandle'), handles[0])
     assert channel_props.get('TargetHandleType') == 2,\
             channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.Tubes',\
+    assert channel_props.get('ChannelType') == CHANNEL_TYPE_TUBES,\
             channel_props.get('ChannelType')
     assert 'Interfaces' in channel_props, channel_props
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' in \
-            channel_props['Interfaces'], \
+    assert CHANNEL_IFACE_GROUP in channel_props['Interfaces'], \
             channel_props['Interfaces']
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == True
@@ -57,8 +54,7 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
-    group_props = tubes_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.Interface.Group',
+    group_props = tubes_chan.GetAll(CHANNEL_IFACE_GROUP,
             dbus_interface=dbus.PROPERTIES_IFACE)
     assert 'SelfHandle' in group_props, group_props
     assert 'HandleOwners' in group_props, group_props
@@ -68,7 +64,7 @@ def test(q, bus, conn, stream):
     assert 'GroupFlags' in group_props, group_props
 
     tubes_self_handle = tubes_chan.GetSelfHandle(
-        dbus_interface=tp_name_prefix + '.Channel.Interface.Group')
+        dbus_interface=CHANNEL_IFACE_GROUP)
     assert group_props['SelfHandle'] == tubes_self_handle
 
     # Offer a D-Bus tube
@@ -85,10 +81,10 @@ def test(q, bus, conn, stream):
     # handle new_tube_event
     dbus_tube_id = new_tube_event.args[0]
     assert new_tube_event.args[1] == tubes_self_handle
-    assert new_tube_event.args[2] == 0       # DBUS
+    assert new_tube_event.args[2] == TUBE_TYPE_DBUS
     assert new_tube_event.args[3] == 'com.example.TestCase'
     assert new_tube_event.args[4] == sample_parameters
-    assert new_tube_event.args[5] == 2       # OPEN
+    assert new_tube_event.args[5] == TUBE_STATE_OPEN
 
     # handle offer_return_event
     assert offer_return_event.value[0] == dbus_tube_id

@@ -560,13 +560,6 @@ create_new_tube (GabbleTubesChannel *self,
 
   g_object_get (tube, "state", &state, NULL);
 
-  if (state == GABBLE_TUBE_CHANNEL_STATE_OPEN)
-    {
-      /* FIXME: we should remove that once muc D-Bus tube have been ported to
-       * new API */
-      update_tubes_presence (self);
-    }
-
   /* The old API doesn't know the "not offered" state, so we have to wait that
    * the tube is offered before announcing it. */
   if (state != GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED)

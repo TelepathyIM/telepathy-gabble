@@ -1,0 +1,105 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE xep [
+  <!ENTITY NS_SI_MULTIPLE "http://telepathy.freedesktop.org/xmpp/si-multiple" >
+]>
+<?xml-stylesheet type='text/xsl' href='xep.xsl'?>
+<xep>
+<header>
+  <title>Stream initiation multi-bytestreams extension</title>
+  <abstract>Extension of <spec>XEP-0095</spec> allowing to negotiate more
+    than one bytestream to be used as a fallback.</abstract>
+  <legal>Copyright (c) 2008 Collabora Limited. This document may be
+    distributed under the same terms as the Telepathy specification.</legal>
+  <number>si-multiple</number>
+  <status>ProtoXEP</status>
+  <type>Extension</type>
+  <sig>Standards</sig>
+  <approver>Telepathy project</approver>
+  <dependencies>
+    <spec>XMPP Core</spec>
+    <spec>XEP-0095</spec>
+  </dependencies>
+  <supersedes/>
+  <supersededby/>
+  <shortname>NOT YET ASSIGNED</shortname>
+  <author>
+    <firstname>Guillaume</firstname>
+    <surname>Desmottes</surname>
+    <email>guillaume.desmottes@collabora.co.uk</email>
+    <jid>guillaume.desmottes@collabora.co.uk</jid>
+  </author>
+  <revision>
+    <version>0.0.1</version>
+    <date>2008-12-11</date>
+    <initials>cassidy</initials>
+    <remark><p>First draft.</p></remark>
+  </revision>
+</header>
+<section1 topic='Introduction' anchor='intro'>
+  <p>This document describes an extension of the Stream Initiation (SI)
+    protocol. With current SI protocol, the receiver has to choose which
+    bytestream method he wants to use for the data streaming.
+    If he chooses an efficient method as SOCKS5 (<spec>XEP-0065</spec>)
+    and this method fails because of network topology, the SI fails and
+    data can't be transferred. The protocol described in this document
+    aims to solve this problem by allowing users to fallback to another
+    bytestream method if the first one failed.</p>
+</section1>
+
+<section1 topic='Use Cases' anchor='usecases'>
+  <p>When sending a SI request, the sender informs the receiver that he
+    supports multi-bytestreams by adding the si-multiple node.</p>
+
+  <example caption='Romeo sends a SI offer to Juliet'>
+  <![CDATA[
+    <iq to='juliet@capulet.lit/Balcony' type='reply' id='H_1' from='romeo@montague.lit/Home'>
+      <si xmlns='http://jabber.org/protocol/si' profile='http://telepathy.freedesktop.org/xmpp/tubes' id='alpha'>
+        <feature xmlns='http://jabber.org/protocol/feature-neg'>
+          <x xmlns='jabber:x:data' type='form'>
+            <field var='stream-method' type='list-single'>
+              <option><value>http://jabber.org/protocol/bytestreams</value></option>
+              <option><value>http://jabber.org/protocol/ibb</value></option>
+            </field>
+          </x>
+        </feature>
+        <stream xmlns='http://telepathy.freedesktop.org/xmpp/tubes' tube='370459677'/>
+        <si-multiple xmlns='http://telepathy.freedesktop.org/xmpp/si-multiple'/>
+      </si>
+    </iq>
+  ]]>
+  </example>
+
+  <p>If the receiver support multi-bytestreams as well, he sends a list of the methods supported
+    instead of the normal SI reply. Bytestreams will be try by the sender in that order.</p>
+  <example caption='Juliet replies to SI offer'>
+  <![CDATA[
+    <iq to='juliet@capulet.lit/Balcony' type='set' id='H_1' from='romeo@montague.lit/Home'>
+      <si xmlns='http://jabber.org/protocol/si'>
+        <si-multiple xmlns='http://telepathy.freedesktop.org/xmpp/si-multiple>
+          <value>http://jabber.org/protocol/bytestreams</value>
+          <value>http://jabber.org/protocol/ibb</value>
+        </si-multiple>
+      </si>
+    </iq>
+  ]]>
+  </example>
+
+  <p>At this point Romeo starts to initiate the bytestream using the first method (<spec>XEP-0065</spec>).
+    If that fails, he'll try the second one (<spec>XEP-0047</spec>). Each bytestream is negotiated
+    according the protocol described in its XEP. Once a bytestream has been sucessfully established,
+    all the data are send using it and the other methods are not used.</p>
+
+</section1>
+<section1 topic='Security Considerations' anchor='security'>
+  <p>None.</p>
+</section1>
+<section1 topic='IANA Considerations' anchor='iana'>
+  <p>None.</p>
+</section1>
+<section1 topic='XMPP Registrar Considerations' anchor='registrar'>
+  <p>None.</p>
+</section1>
+<section1 topic='XML Schema' anchor='schema'>
+        TODO
+</section1>
+</xep>

@@ -22,7 +22,7 @@ NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
 
 
 print "FIXME: test-nonblocking-tls.py disabled due to a bug in Loudmouth:"
-print "       http://developer.imendio.com/issues/browse/LM-44"
+print "       http://loudmouth.lighthouseapp.com/projects/17276/tickets/5"
 print "       https://bugs.freedesktop.org/show_bug.cgi?id=14341"
 # exiting 77 causes automake to consider the test to have been skipped
 raise SystemExit(77)

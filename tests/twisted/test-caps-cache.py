@@ -149,6 +149,7 @@ def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    assert conn.Capabilities.GetCapabilities([contact_handle]) != basic_caps
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -169,11 +170,15 @@ def test(q, bus, conn, stream):
     # we have 5 different contacts that confirm
     _test_without_hash(q, bus, conn, stream, 'bob6@foo.com/Foo', 7L, client,
         False)
+    _test_without_hash(q, bus, conn, stream, 'bob7@foo.com/Foo', 8L, client,
+        False)
 
-    _test_with_hash(q, bus, conn, stream, 'bilbo1@foo.com/Foo', 8L, client,
+    _test_with_hash(q, bus, conn, stream, 'bilbo1@foo.com/Foo', 9L, client,
         True)
     # 1 contact is enough with hash
-    _test_with_hash(q, bus, conn, stream, 'bilbo2@foo.com/Foo', 9L, client,
+    _test_with_hash(q, bus, conn, stream, 'bilbo2@foo.com/Foo', 10L, client,
+        False)
+    _test_with_hash(q, bus, conn, stream, 'bilbo3@foo.com/Foo', 11L, client,
         False)
 
     conn.Disconnect()

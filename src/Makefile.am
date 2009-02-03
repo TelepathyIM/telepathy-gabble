@@ -1,23 +1,14 @@
 BUILT_SOURCES = \
     gabble-signals-marshal.h \
     gabble-signals-marshal.c \
-    gabble-signals-marshal.list \
-    media-session-enumtypes.h \
-    media-session-enumtypes.c
+    gabble-signals-marshal.list
 
 CLEANFILES = $(BUILT_SOURCES)
 
 libexec_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
-if HAVE_DBUS_TUBE
-dbus_tube_sources = \
-    tube-dbus.h \
-    tube-dbus.c
-endif
-
 libgabble_convenience_la_SOURCES = \
-    $(dbus_tube_sources) \
     base64.h \
     base64.c \
     bytestream-factory.h \
@@ -28,14 +19,22 @@ libgabble_convenience_la_SOURCES = \
     bytestream-iface.c \
     bytestream-muc.h \
     bytestream-muc.c \
+    bytestream-multiple.h \
+    bytestream-multiple.c \
+    bytestream-socks5.h \
+    bytestream-socks5.c \
     capabilities.h \
     capabilities.c \
     caps-hash.h \
     caps-hash.c \
+    caps-channel-manager.h \
+    caps-channel-manager.c \
     conn-aliasing.h \
     conn-aliasing.c \
     conn-avatars.h \
     conn-avatars.c \
+    conn-location.h \
+    conn-location.c \
     conn-olpc.h \
     conn-olpc.c \
     conn-presence.h \
@@ -56,10 +55,20 @@ libgabble_convenience_la_SOURCES = \
     im-channel.c \
     im-factory.h \
     im-factory.c \
+    jingle-content.h \
+    jingle-content.c \
+    jingle-factory.h \
+    jingle-factory.c \
+    jingle-media-rtp.h \
+    jingle-media-rtp.c \
+    jingle-session.h \
+    jingle-session.c \
+    jingle-transport-google.h \
+    jingle-transport-google.c \
+    jingle-transport-iface.h \
+    jingle-transport-iface.c \
     media-channel.h \
     media-channel.c \
-    media-session.h \
-    media-session.c \
     media-stream.h \
     media-stream.c \
     media-factory.h \
@@ -105,6 +114,8 @@ libgabble_convenience_la_SOURCES = \
     tube-iface.c \
     tubes-channel.h \
     tubes-channel.c \
+    tube-dbus.h \
+    tube-dbus.c \
     tube-stream.h \
     tube-stream.c \
     types.h \
@@ -112,6 +123,7 @@ libgabble_convenience_la_SOURCES = \
     util.c \
     vcard-manager.h \
     vcard-manager.c
+
 
 libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la
@@ -121,7 +133,9 @@ nodist_libgabble_convenience_la_SOURCES = \
 
 write_mgr_file_SOURCES = write-mgr-file.c
 
-write_mgr_file_LDADD = libgabble-convenience.la $(ALL_LIBS)
+write_mgr_file_LDADD = libgabble-convenience.la \
+		       $(top_builddir)/lib/gibber/libgibber.la \
+		       $(ALL_LIBS)
 
 telepathy_gabble_SOURCES = \
     main.c
@@ -134,15 +148,23 @@ check_c_sources = \
 include $(top_srcdir)/tools/check-coding-style.mk
 check-local: check-coding-style
 
-telepathy_gabble_LDADD = libgabble-convenience.la $(ALL_LIBS)
+telepathy_gabble_LDADD = libgabble-convenience.la \
+			 $(top_builddir)/lib/gibber/libgibber.la \
+			 $(ALL_LIBS)
 
 noinst_LTLIBRARIES = libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
-	    @HANDLE_LEAK_DEBUG_CFLAGS@ @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@
+	    @HANDLE_LEAK_DEBUG_CFLAGS@ @TP_GLIB_CFLAGS@ \
+	    -I $(top_srcdir)/lib -I $(top_builddir)/lib
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
+# Teach it how to make libgibber.la
+$(top_builddir)/lib/gibber/libgibber.la:
+	${MAKE} -C $(top_builddir)/lib/gibber libgibber.la
+
+.PHONY: $(top_builddir)/lib/gibber/libgibber.la
 
 gabble-signals-marshal.list: $(libgabble_convenience_la_SOURCES) Makefile.am
 	( cd $(srcdir) && \

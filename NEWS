@@ -1,11 +1,119 @@
-telepathy-gabble 0.7.16 (UNRELEASED)
+telepathy-gabble 0.7.21 (UNRELEASED)
 ====================================
 
-Dependencies:
+Enhancements:
+* Implement new tube API for muc stream tubes
+
+telepathy-gabble 0.7.20 (2008-01-02)
+====================================
+
+The "crêpes du belge" release.
 
 Enhancements:
 
+* Implement the draft version of Location from telepathy-spec 0.17.19
+* Announce generic tube capabilities when contacts support tubes
+
 Fixes:
+
+* Don't get confused if MUC services auto-rename us (as much as is possible)
+* Don't get confused if we have to change our own nick in order to join a MUC
+* Set the correct actor when Jingle sessions are terminated
+* Don't omit offline, unknown and error from Statuses and GetStatuses()
+  (regression in 0.7.19)
+* Close and ChannelClosed signals are now fired when a tube is closed (new API)
+
+telepathy-gabble 0.7.19 (2009-01-29)
+====================================
+
+The "redecorated" release.
+
+Fixes:
+
+* Don't crash when closing a muc channel containing an closed D-Bus tube.
+* Don't resurrect removed streams if the call responder includes them in
+  session-accept
+* Don't crash in calls if using glib with debugging enabled (fd.o #19327).
+* Don't crash when removing contact from known list (fd.o #19524).
+* Fix D-Bus muc tubes (dev.sugarlabs.org #60).
+* Fix refcount leak in jingle code (fd.o #19385).
+* Don't crash if "offline" presence status is requested.
+
+telepathy-gabble 0.7.18 (2009-01-06)
+====================================
+
+The "The Orchestral Tubular Socks" release.
+
+Enhancements:
+
+* Implement SOCKS5 bytestreams (XEP-0065) in stream tubes.
+
+* Implement a stream initiation fallback mechanism allowing to use IBB if
+  we can't connect to peer using SOCKS5.
+
+Fixes:
+
+* Don't crash on setting presence if there are open MUC Tubes.
+
+* Stream tube channel advertises the immutable channel properties,
+  including those not on the Channel interface.
+
+telepathy-gabble 0.7.17 (2008-12-14)
+====================================
+
+The "I accidentally an entire call *and* MUC" release.
+
+Dependencies:
+
+* dbus 1.1.0 (D-Bus Tubes are no longer conditionally compiled)
+
+* dbus-glib 0.78 (fixes support for complex types in hashtables)
+
+Enhancements:
+
+* Add support for the new draft ContactCapabilities spec to communicate tube
+  capabilities.
+
+Fixes:
+
+* Incoming Jingle calls are no longer automatically accepted when the call is
+  connected and the local codecs are ready.
+
+* Incoming MUC invites are no longer automatically accepted when changing your
+  presence.
+
+* fd.o #18918: Send codec parameters according to XEP-0167.
+
+* Various Jingle tweaks.
+
+telepathy-gabble 0.7.16 (2008-12-02)
+====================================
+
+The "what could possibly go wrong" release.
+
+This release contains the reworked Jingle engine with support for latest
+Jingle draft (XEP-0166 v0.32), and Google's Jingle variants as used in
+their desktop client and recently launched Googlemail client.
+
+This release has no known regressions, but as we have done extensive changes
+to the Jingle engine, you might want to restrict this release to experimental
+distributions like Debian experimental and Fedora rawhide for now.
+
+Enhancements:
+
+* fd.o #15908: refactor Jingle state machine
+
+* fd.o #15907: Update real-Jingle implementation to XEP-0166 v0.25
+
+* fd.o #13159: support current Google Talk protocol
+
+* Misc Tubes-related enhancements and fixes
+
+Fixes:
+
+* fd.o #18404: fix race condition in tests/twisted/roster/ensure.py
+
+* Fixes for double freeing in dispose in channel managers
 
 telepathy-gabble 0.7.15 (2008-11-06)
 ====================================

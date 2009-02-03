@@ -8,6 +8,7 @@ import os
 import sha
 import sys
 import time
+import random
 
 import ns
 import servicetest
@@ -34,6 +35,16 @@ def make_result_iq(stream, iq):
 
 def acknowledge_iq(stream, iq):
     stream.send(make_result_iq(stream, iq))
+
+def send_error_reply(stream, iq):
+    result = IQ(stream, "error")
+    result["id"] = iq["id"]
+    query = iq.firstChildElement()
+
+    if query:
+        result.addElement((query.uri, query.name))
+
+    stream.send(result)
 
 def request_muc_handle(q, conn, stream, muc_jid):
     servicetest.call_async(q, conn, 'RequestHandles', 2, [muc_jid])
@@ -71,9 +82,25 @@ class JabberAuthenticator(xmlstream.Authenticator):
         self.password = password
         xmlstream.Authenticator.__init__(self)
 
+    # Patch in fix from http://twistedmatrix.com/trac/changeset/23418.
+    # This monkeypatch taken from Gadget source code
+    from twisted.words.xish.utility import EventDispatcher
+
+    def _addObserver(self, onetime, event, observerfn, priority, *args,
+            **kwargs):
+        if self._dispatchDepth > 0:
+            self._updateQueue.append(lambda: self._addObserver(onetime, event,
+                observerfn, priority, *args, **kwargs))
+
+        return self._oldAddObserver(onetime, event, observerfn, priority,
+            *args, **kwargs)
+
+    EventDispatcher._oldAddObserver = EventDispatcher._addObserver
+    EventDispatcher._addObserver = _addObserver
+
     def streamStarted(self, root=None):
         if root:
-            self.xmlstream.sid = root.getAttribute('id')
+            self.xmlstream.sid = '%x' % random.randint(1, sys.maxint)
 
         self.xmlstream.sendHeader()
         self.xmlstream.addOnetimeObserver(
@@ -313,7 +340,7 @@ def install_colourer():
     return sys.stdout
 
 
-def exec_test_deferred (fun, params, protocol=None, timeout=None):
+def exec_test_deferred (funs, params, protocol=None, timeout=None):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
     colourer = None
@@ -327,13 +354,15 @@ def exec_test_deferred (fun, params, protocol=None, timeout=None):
         or '-v' in sys.argv)
 
     bus = dbus.SessionBus()
-    conn = make_connection(bus, queue.append, params)
+    # conn = make_connection(bus, queue.append, params)
     (stream, port) = make_stream(queue.append, protocol=protocol)
 
     error = None
 
     try:
-        fun(queue, bus, conn, stream)
+        for f in funs:
+            conn = make_connection(bus, queue.append, params)
+            f(queue, bus, conn, stream)
     except Exception, e:
         import traceback
         traceback.print_exc()
@@ -351,17 +380,15 @@ def exec_test_deferred (fun, params, protocol=None, timeout=None):
 
         conn.Disconnect()
 
-        if 'GABBLE_TEST_REFDBG' in os.environ:
-            # we have to wait that Gabble timeouts so the process is properly
-            # exited and refdbg can generates its report
-            time.sleep(5.5)
-
     except dbus.DBusException, e:
         pass
 
-def exec_test(fun, params=None, protocol=None, timeout=None):
-  reactor.callWhenRunning (exec_test_deferred, fun, params, protocol, timeout)
+def exec_tests(funs, params=None, protocol=None, timeout=None):
+  reactor.callWhenRunning (exec_test_deferred, funs, params, protocol, timeout)
   reactor.run()
+
+def exec_test(fun, params=None, protocol=None, timeout=None):
+  exec_tests([fun], params, protocol, timeout)
 
 # Useful routines for server-side vCard handling
 current_vcard = domish.Element(('vcard-temp', 'vCard'))

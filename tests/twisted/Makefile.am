@@ -1,4 +1,6 @@
 TWISTED_TESTS = \
+	muc/name-conflict.py \
+	muc/renamed.py \
 	muc/roomlist.py \
 	muc/send-error.py \
 	muc/test-ensure.py \
@@ -27,6 +29,7 @@ TWISTED_TESTS = \
 	roster/request-group-after-roster.py \
 	roster/test-google-roster.py \
 	roster/test-roster.py \
+	roster/test-roster-item-deletion.py \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
 	text/initiate.py \
@@ -39,12 +42,17 @@ TWISTED_TESTS = \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
 	text/test-text.py \
+	tubes/muc-presence.py \
+	tubes/close-muc-with-closed-tube.py \
+	tubes/crash-on-list-channels.py \
 	tubes/test-get-available-tubes.py \
-	tubes/test-muc-accept-stream-tube-ibb.py \
-	tubes/test-muc-offer-dbus-tube.py \
-	tubes/test-muc-offer-stream-tube-ibb.py \
-        tubes/test-si-accept-tubes.py \
-	tubes/test-si-tubes.py \
+	tubes/accept-muc-stream-tube-ibb.py \
+	tubes/accept-private-stream-tube.py \
+	tubes/offer-accept-private-dbus-stream-tube-ibb.py \
+	tubes/offer-accept-private-dbus-stream-tube-socks5.py \
+	tubes/offer-accept-private-stream-tube-si-fallback.py \
+	tubes/offer-muc-dbus-tube.py \
+	tubes/offer-muc-stream-tube-ibb.py \
 	tubes/ensure-si-tube.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
@@ -61,6 +69,8 @@ TWISTED_TESTS = \
 	vcard/test-vcard-set-and-get.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
+	jingle/payload-types.py \
+	jingle/test-content-adding-removal.py \
 	jingle/test-incoming-call.py \
 	jingle/test-incoming-call-reject.py \
 	jingle/test-outgoing-call.py \
@@ -69,9 +79,16 @@ TWISTED_TESTS = \
 	jingle/test-outgoing-call-requestotron.py \
 	jingle/test-outgoing-call-rejected.py \
 	jingle/test-outgoing-call-ensure.py \
+	jingle/test-dialects-incoming.py \
+	jingle/test-dialects-outgoing.py \
+	jingle/test-content-complex.py \
+	jingle/test-wait-for-caps.py \
+	jingle/test-wait-for-caps-incomplete.py \
 	test-capabilities.py \
 	test-caps-cache.py \
 	test-caps-hash.py \
+	test-caps-tubes.py \
+	caps_helper.py \
 	connect/test-fail.py \
 	connect/test-success.py \
 	connect/test-twice.py \
@@ -79,7 +96,8 @@ TWISTED_TESTS = \
 	test-disco.py \
 	test-disco-no-reply.py \
 	test-register.py \
-	test-set-status-idempotence.py
+	test-set-status-idempotence.py \
+        test-location.py
 
 TESTS =
 
@@ -88,11 +106,22 @@ TESTS_ENVIRONMENT = \
 
 check-local: check-coding-style check-twisted
 
+# set to 6 when using refdbg, to give Gabble time to exit
+CHECK_TWISTED_SLEEP=0
+
 check-twisted:
 	$(MAKE) -C tools
 	rm -f tools/core
 	rm -f tools/gabble-testing.log
-	sh $(srcdir)/tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf -- $(MAKE) check-TESTS \
+	if test -n "$$GABBLE_TEST_REFDBG"; then \
+	  sleep=6; \
+        else \
+	  sleep=$(CHECK_TWISTED_SLEEP); \
+	fi; \
+	sh $(srcdir)/tools/with-session-bus.sh \
+		--sleep=$$sleep \
+		--config-file=tools/tmp-session-bus.conf \
+		-- $(MAKE) check-TESTS \
 		TESTS="$(TWISTED_TESTS)" \
 		TESTS_ENVIRONMENT="$(TESTS_ENVIRONMENT) $(TEST_PYTHON)"
 	@if test -e tools/core; then\
@@ -100,13 +129,22 @@ check-twisted:
 		exit 1;\
 	fi
 
+config.py: Makefile
+	echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\"" > config.py
+
+BUILT_SOURCES = config.py
+
 EXTRA_DIST = \
 	$(TWISTED_TESTS) \
+	config.py \
+	constants.py \
 	gabbletest.py \
 	servicetest.py \
 	jingle/jingletest.py \
+	jingle/jingletest2.py \
 	ns.py \
-	olpc/util.py
+	olpc/util.py \
+	tubes/muctubeutil.py
 
 noinst_PROGRAMS = \
 	telepathy-gabble-debug
@@ -115,14 +153,16 @@ telepathy_gabble_debug_SOURCES = \
     main-debug.c
 
 telepathy_gabble_debug_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
+    $(top_builddir)/src/libgabble-convenience.la \
+    $(top_builddir)/lib/gibber/libgibber.la \
+    $(ALL_LIBS)
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
-    @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@ \
+    @TP_GLIB_CFLAGS@ \
     -I $(top_srcdir)/src -I $(top_builddir)/src
 ALL_LIBS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
-CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc
+CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc config.py
 
 check_misc_sources = $(TESTS)
 

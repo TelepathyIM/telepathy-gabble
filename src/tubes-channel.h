@@ -24,9 +24,9 @@
 #include <loudmouth/loudmouth.h>
 
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/exportable-channel.h>
 
 #include "bytestream-iface.h"
-#include <telepathy-glib/exportable-channel.h>
 #include "muc-channel.h"
 #include "tube-iface.h"
 

@@ -83,9 +83,11 @@ def test(q, bus, conn, stream):
     bob_handle = 3
 
     event = q.expect('dbus-return', method='RequestChannel')
+    text_chan = bus.get_object(conn.bus_name, event.value[0])
 
-    # Bob offers a stream tube
-    stream_tube_id = 666
+    # Bob offers a muc tube
+    tube_id = 666
+    stream_id = 1234
     presence = domish.Element((None, 'presence'))
     presence['from'] = 'chat@conf.localhost/bob'
     x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
@@ -94,9 +96,12 @@ def test(q, bus, conn, stream):
     item['role'] = 'moderator'
     tubes = presence.addElement((NS_TUBES, 'tubes'))
     tube = tubes.addElement((None, 'tube'))
-    tube['type'] = 'stream'
-    tube['service'] = 'echo'
-    tube['id'] = str(stream_tube_id)
+    tube['type'] = 'dbus'
+    tube['service'] = 'org.telepathy.freedesktop.test'
+    tube['id'] = str(tube_id)
+    tube['stream-id'] = str(stream_id)
+    tube['dbus-name'] = ':2.Y2Fzc2lkeS10ZXN0MgAA'
+    tube['initiator'] = 'chat@conf.localhost/bob'
     parameters = tube.addElement((None, 'parameters'))
     parameter = parameters.addElement((None, 'parameter'))
     parameter['name'] = 's'
@@ -134,7 +139,7 @@ def test(q, bus, conn, stream):
 
     channel_props = tubes_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == False
     assert channel_props['InitiatorID'] == ''
@@ -144,108 +149,28 @@ def test(q, bus, conn, stream):
         dbus_interface=tp_name_prefix + '.Channel.Interface.Group')
 
     q.expect('dbus-signal', signal='NewTube',
-        args=[stream_tube_id, bob_handle, 1, 'echo', sample_parameters, 0])
+        args=[tube_id, bob_handle, 0, 'org.telepathy.freedesktop.test', sample_parameters, 0])
 
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert tubes == [(
-        stream_tube_id,
+        tube_id,
         bob_handle,
-        1,      # Stream
-        'echo',
+        0,      # D-Bus
+        'org.telepathy.freedesktop.test',
         sample_parameters,
         0,      # local pending
         )]
 
-    # Accept the tube
-    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 0, 0, '',
-            byte_arrays=True)
+    # reject the tube
+    tubes_iface.CloseTube(tube_id)
+    q.expect('dbus-signal', signal='TubeClosed', args=[tube_id])
 
-    accept_return_event, _ = q.expect_many(
-        EventPattern('dbus-return', method='AcceptStreamTube'),
-        EventPattern('dbus-signal', signal='TubeStateChanged',
-            args=[stream_tube_id, 2]))
-
-    unix_socket_adr = accept_return_event.value[0]
-
-    factory = EventProtocolClientFactory(q)
-    reactor.connectUNIX(unix_socket_adr, factory)
-
-    event = q.expect('socket-connected')
-    protocol = event.protocol
-    protocol.sendData("hello initiator")
-
-    # expect SI request
-    event = q.expect('stream-iq', to='chat@conf.localhost/bob', query_ns=NS_SI,
-        query_name='si')
-    iq = event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI,
-        iq)[0]
-    values = xpath.queryForNodes('/si/feature[@xmlns="%s"]/x[@xmlns="%s"]/field/option/value'
-        % ('http://jabber.org/protocol/feature-neg', 'jabber:x:data'), si)
-    assert NS_IBB in [str(v) for v in values]
-
-    muc_stream_node = xpath.queryForNodes('/si/muc-stream[@xmlns="%s"]' %
-        NS_TUBES, si)[0]
-    assert muc_stream_node is not None
-    assert muc_stream_node['tube'] == str(stream_tube_id)
-    stream_id = si['id']
-
-    # reply to SI. We want to use IBB
-    result = IQ(stream, "result")
-    result["id"] = iq["id"]
-    result['from'] = 'chat@conf.localhost/bob'
-    result['to'] = 'chat@conf.localhost/test'
-    si = result.addElement((NS_SI, 'si'))
-    feature = si.addElement((NS_FEATURE_NEG, 'feature'))
-    x = feature.addElement((NS_X_DATA, 'x'))
-    x['type'] = 'submit'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    value = field.addElement((None, 'value'))
-    value.addContent(NS_IBB)
-    si.addElement((NS_TUBES, 'tube'))
-    stream.send(result)
-
-    # wait IBB init IQ
-    event = q.expect('stream-iq', to='chat@conf.localhost/bob',
-        query_name='open', query_ns=NS_IBB)
-    iq = event.stanza
-    open = xpath.queryForNodes('/iq/open', iq)[0]
-    assert open['sid'] == stream_id
-
-    # open the IBB bytestream
-    reply = make_result_iq(stream, iq)
-    stream.send(reply)
-
-    event = q.expect('stream-message', to='chat@conf.localhost/bob')
-    message = event.stanza
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
-        message)
-    assert data_nodes is not None
-    assert len(data_nodes) == 1
-    ibb_data = data_nodes[0]
-    assert ibb_data['sid'] == stream_id
-    binary = base64.b64decode(str(ibb_data))
-    assert binary == 'hello initiator'
-
-    # reply on the socket
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'chat@conf.localhost/bob'
-    message['to'] = 'chat@conf.localhost/test'
-    data_node = message.addElement((NS_IBB, 'data'))
-    data_node['sid'] = stream_id
-    data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hi joiner!'))
-    stream.send(message)
-
-    q.expect('socket-data', protocol=protocol, data="hi joiner!")
+    # close the text channel
+    text_chan.Close()
 
     # OK, we're done
     conn.Disconnect()
-
-    q.expect_many(
-        EventPattern('dbus-signal', signal='TubeClosed', args=[stream_tube_id]),
-        EventPattern('dbus-signal', signal='StatusChanged', args=[2, 1]))
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
     exec_test(test)

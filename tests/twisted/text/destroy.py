@@ -67,7 +67,7 @@ def test(q, bus, conn, stream):
 
     channel_props = text_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetID'] == jid,\
             (channel_props['TargetID'], jid)
     assert channel_props['Requested'] == True

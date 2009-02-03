@@ -43,7 +43,7 @@ def test(q, bus, conn, stream):
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = text_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == foo_handle,\
             (channel_props.get('TargetHandle'), foo_handle)
     assert channel_props.get('TargetHandleType') == 1,\

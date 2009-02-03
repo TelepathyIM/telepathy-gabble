@@ -127,26 +127,67 @@ lm_message_node_steal_children (LmMessageNode *snatcher,
     baby->parent = snatcher;
 }
 
+/* variant of lm_message_node_get_child() which ignores node namespace
+ * prefix */
+LmMessageNode *
+lm_message_node_get_child_any_ns (LmMessageNode *node, const gchar *name)
+{
+  LmMessageNode *child;
+
+  for (child = node->children; child != NULL; child = child->next)
+    {
+      if (!tp_strdiff (lm_message_node_get_name (child), name))
+          return child;
+    }
+
+  return NULL;
+}
+
+const gchar *
+lm_message_node_get_namespace (LmMessageNode *node)
+{
+  const gchar *node_ns = NULL;
+  gchar *x = strchr (node->name, ':');
+
+  if (x != NULL)
+    {
+      gchar *prefix = g_strndup (node->name, (x - node->name));
+      gchar *attr = g_strdup_printf ("xmlns:%s", prefix);
+
+      /* find the namespace in this node or its parents */
+      for (node_ns = NULL; (node != NULL) && (node_ns == NULL); node = node->parent)
+        {
+          node_ns = lm_message_node_get_attribute (node, attr);
+        }
+
+      g_free (prefix);
+      g_free (attr);
+    }
+  else
+    {
+      node_ns = lm_message_node_get_attribute (node, "xmlns");
+    }
+
+  return node_ns;
+}
+
+const gchar *
+lm_message_node_get_name (LmMessageNode *node)
+{
+  gchar *x = strchr (node->name, ':');
+
+  if (x != NULL)
+    return x + 1;
+  else
+    return node->name;
+}
+
 gboolean
 lm_message_node_has_namespace (LmMessageNode *node,
                                const gchar *ns,
                                const gchar *tag)
 {
-  gchar *attribute = NULL;
-  const gchar *node_ns;
-  gboolean ret;
-
-  if (tag != NULL)
-    attribute = g_strconcat ("xmlns:", tag, NULL);
-
-  node_ns = lm_message_node_get_attribute (node,
-      tag != NULL ? attribute : "xmlns");
-
-  ret = !tp_strdiff (node_ns, ns);
-
-  g_free (attribute);
-
-  return ret;
+  return (!tp_strdiff (lm_message_node_get_namespace (node), ns));
 }
 
 LmMessageNode *
@@ -483,10 +524,10 @@ gabble_get_room_handle_from_jid (TpHandleRepoIface *room_repo,
   return handle;
 }
 
-#define INVALID_ARGUMENT(e, f, ...) \
+#define INVALID_HANDLE(e, f, ...) \
   G_STMT_START { \
   DEBUG (f, ##__VA_ARGS__); \
-  g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, f, ##__VA_ARGS__);\
+  g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_HANDLE, f, ##__VA_ARGS__);\
   } G_STMT_END
 
 gchar *
@@ -501,13 +542,13 @@ gabble_normalize_room (TpHandleRepoIface *repo,
   /* there'd better be an @ somewhere after the first character */
   if (at == NULL)
     {
-      INVALID_ARGUMENT (error,
+      INVALID_HANDLE (error,
           "invalid room JID %s: does not contain '@'", jid);
       return NULL;
     }
   if (at == jid)
     {
-      INVALID_ARGUMENT (error,
+      INVALID_HANDLE (error,
           "invalid room JID %s: room name before '@' may not be empty", jid);
       return NULL;
     }
@@ -515,7 +556,7 @@ gabble_normalize_room (TpHandleRepoIface *repo,
   /* room names can't contain the nick part */
   if (slash != NULL)
     {
-      INVALID_ARGUMENT (error,
+      INVALID_HANDLE (error,
           "invalid room JID %s: contains nickname part after '/' too", jid);
       return NULL;
     }
@@ -557,14 +598,14 @@ gabble_normalize_contact (TpHandleRepoIface *repo,
 
   if (!username || !server || !username[0] || !server[0])
     {
-      INVALID_ARGUMENT (error,
+      INVALID_HANDLE (error,
           "jid %s has invalid username or server", jid);
       goto OUT;
     }
 
   if (mode == GABBLE_JID_ROOM_MEMBER && resource == NULL)
     {
-      INVALID_ARGUMENT (error,
+      INVALID_HANDLE (error,
           "jid %s can't be a room member - it has no resource", jid);
       goto OUT;
     }
@@ -851,3 +892,42 @@ lm_message_node_add_children_from_properties (LmMessageNode *node,
 
   g_hash_table_foreach (properties, set_child_from_property, &data);
 }
+
+/**
+ * lm_iq_message_make_result:
+ * @iq_message: A LmMessage containing an IQ stanza to acknowledge
+ *
+ * Creates a result IQ stanza to acknowledge @iq_message.
+ *
+ * Returns: A newly-created LmMessage containing the result IQ stanza.
+ */
+LmMessage *
+lm_iq_message_make_result (LmMessage *iq_message)
+{
+  LmMessage *result;
+  LmMessageNode *iq, *result_iq;
+  const gchar *from_jid, *id;
+
+  g_assert (lm_message_get_type (iq_message) == LM_MESSAGE_TYPE_IQ);
+  g_assert (lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_GET ||
+            lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_SET);
+
+  iq = lm_message_get_node (iq_message);
+  id = lm_message_node_get_attribute (iq, "id");
+
+  if (id == NULL)
+    {
+      NODE_DEBUG (iq, "can't acknowledge IQ with no id");
+      return NULL;
+    }
+
+  from_jid = lm_message_node_get_attribute (iq, "from");
+
+  result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
+                                         LM_MESSAGE_SUB_TYPE_RESULT);
+  result_iq = lm_message_get_node (result);
+  lm_message_node_set_attribute (result_iq, "id", id);
+
+  return result;
+}
+

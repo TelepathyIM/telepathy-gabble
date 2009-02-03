@@ -166,16 +166,6 @@ def test(q, bus, conn, stream):
 
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
 
-    # FIXME: Hack to make sure the disco info has been processed - we need to
-    # send Gabble some XML that will cause an event when processed, and
-    # wait for that event (until
-    # https://bugs.freedesktop.org/show_bug.cgi?id=15769 is fixed)
-    el = domish.Element(('jabber.client', 'presence'))
-    el['from'] = 'bob@example.com/Bar'
-    stream.send(el.toXml())
-    q.expect('dbus-signal', signal='PresenceUpdate')
-    # OK, now we can continue. End of hack
-
     # Request streams with the other person.  This should make them the
     # channel's "peer" property.
     media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO

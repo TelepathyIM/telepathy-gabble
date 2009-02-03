@@ -15,6 +15,7 @@ set -e
 me=with-session-bus
 
 dbus_daemon_args="--print-address=5 --print-pid=6 --fork"
+sleep=0
 
 usage ()
 {
@@ -29,6 +30,11 @@ usage ()
 
 while test "z$1" != "z--"; do
   case "$1" in
+  --sleep=*)
+    sleep="$1"
+    sleep="${sleep#--sleep=}"
+    shift
+    ;;
   --session)
     dbus_daemon_args="$dbus_daemon_args --session"
     shift
@@ -77,6 +83,10 @@ if [ -n "$WITH_SESSION_BUS_FORK_DBUS_MONITOR" ] ; then
 fi
 
 "$@" || e=$?
+
+if test $sleep != 0; then
+  sleep $sleep
+fi
 
 trap - INT HUP TERM
 cleanup

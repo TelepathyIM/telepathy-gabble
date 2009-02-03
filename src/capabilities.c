@@ -21,46 +21,70 @@
 #include "config.h"
 #include "capabilities.h"
 
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/channel-manager.h>
+
+#include "caps-channel-manager.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include <telepathy-glib/interfaces.h>
 #include "media-channel.h"
 
 static const Feature self_advertised_features[] =
 {
   { FEATURE_FIXED, NS_GOOGLE_FEAT_SESSION, 0},
   { FEATURE_FIXED, NS_GOOGLE_TRANSPORT_P2P, PRESENCE_CAP_GOOGLE_TRANSPORT_P2P},
-  { FEATURE_FIXED, NS_JINGLE, PRESENCE_CAP_JINGLE},
+  { FEATURE_FIXED, NS_JINGLE015, PRESENCE_CAP_JINGLE015},
+  { FEATURE_FIXED, NS_JINGLE032, PRESENCE_CAP_JINGLE032},
   { FEATURE_FIXED, NS_CHAT_STATES, PRESENCE_CAP_CHAT_STATES},
   { FEATURE_FIXED, NS_NICK, 0},
   { FEATURE_FIXED, NS_NICK "+notify", 0},
   { FEATURE_FIXED, NS_SI, PRESENCE_CAP_SI},
   { FEATURE_FIXED, NS_IBB, PRESENCE_CAP_IBB},
   { FEATURE_FIXED, NS_TUBES, PRESENCE_CAP_SI_TUBES},
+  { FEATURE_FIXED, NS_BYTESTREAMS, PRESENCE_CAP_BYTESTREAMS},
 
   { FEATURE_BUNDLE_COMPAT, NS_GOOGLE_FEAT_VOICE, PRESENCE_CAP_GOOGLE_VOICE},
   { FEATURE_OPTIONAL, NS_JINGLE_DESCRIPTION_AUDIO,
     PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO},
   { FEATURE_OPTIONAL, NS_JINGLE_DESCRIPTION_VIDEO,
     PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO},
+  { FEATURE_OPTIONAL, NS_JINGLE_RTP, PRESENCE_CAP_JINGLE_RTP},
 
   { FEATURE_OPTIONAL, NS_OLPC_BUDDY_PROPS "+notify", PRESENCE_CAP_OLPC_1},
   { FEATURE_OPTIONAL, NS_OLPC_ACTIVITIES "+notify", PRESENCE_CAP_OLPC_1},
   { FEATURE_OPTIONAL, NS_OLPC_CURRENT_ACTIVITY "+notify", PRESENCE_CAP_OLPC_1},
   { FEATURE_OPTIONAL, NS_OLPC_ACTIVITY_PROPS "+notify", PRESENCE_CAP_OLPC_1},
 
+  { FEATURE_OPTIONAL, NS_GEOLOC "+notify", PRESENCE_CAP_GEOLOCATION},
+
   { 0, NULL, 0}
 };
 
 GSList *
-capabilities_get_features (GabblePresenceCapabilities caps)
+capabilities_get_features (GabblePresenceCapabilities caps,
+                           GHashTable *per_channel_manager_caps)
 {
+  GHashTableIter channel_manager_iter;
   GSList *features = NULL;
   const Feature *i;
 
   for (i = self_advertised_features; NULL != i->ns; i++)
     if ((i->caps & caps) == i->caps)
       features = g_slist_append (features, (gpointer) i);
+
+  if (per_channel_manager_caps != NULL)
+    {
+      gpointer manager;
+      gpointer cap;
+
+      g_hash_table_iter_init (&channel_manager_iter, per_channel_manager_caps);
+      while (g_hash_table_iter_next (&channel_manager_iter,
+                 &manager, &cap))
+        {
+          gabble_caps_channel_manager_get_feature_list (manager, cap,
+              &features);
+        }
+    }
 
   return features;
 }

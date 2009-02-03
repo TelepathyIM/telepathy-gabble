@@ -11,7 +11,7 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
 
-from gabbleconfig import HAVE_DBUS_TUBES
+from muctubeutil import get_muc_tubes_channel
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -37,63 +37,13 @@ def test(q, bus, conn, stream):
 
     acknowledge_iq(stream, iq_event.stanza)
 
-    call_async(q, conn, 'RequestHandles', 2,
-        ['chat@conf.localhost'])
-
-    event = q.expect('stream-iq', to='conf.localhost',
-            query_ns='http://jabber.org/protocol/disco#info')
-    result = make_result_iq(stream, event.stanza)
-    feature = result.firstChildElement().addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/muc'
-    stream.send(result)
-
-    event = q.expect('dbus-return', method='RequestHandles')
-    handles = event.value[0]
-
-    # request tubes channel
-    call_async(q, conn, 'RequestChannel',
-        tp_name_prefix + '.Channel.Type.Tubes', 2, handles[0], True)
-
-    _, stream_event = q.expect_many(
-        EventPattern('dbus-signal', signal='MembersChanged',
-            args=[u'', [], [], [], [2], 0, 0]),
-        EventPattern('stream-presence', to='chat@conf.localhost/test'))
-
-    # Send presence for other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/bob'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
-
-    # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
-
-    q.expect('dbus-signal', signal='MembersChanged',
-            args=[u'', [2, 3], [], [], [], 0, 0])
-
-    assert conn.InspectHandles(1, [2]) == ['chat@conf.localhost/test']
-    assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
-    bob_handle = 3
-
-    event = q.expect('dbus-return', method='RequestChannel')
-
-    tubes_chan = bus.get_object(conn.bus_name, event.value[0])
-    tubes_iface = dbus.Interface(tubes_chan,
-            tp_name_prefix + '.Channel.Type.Tubes')
+    handles, tubes_chan, tubes_iface = get_muc_tubes_channel(q, bus, conn,
+        stream, 'chat@conf.localhost')
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = tubes_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == handles[0],\
             (channel_props.get('TargetHandle'), handles[0])
     assert channel_props.get('TargetHandleType') == 2,\
@@ -113,7 +63,7 @@ def test(q, bus, conn, stream):
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = tubes_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Group',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert 'SelfHandle' in group_props, group_props
     assert 'HandleOwners' in group_props, group_props
     assert 'Members' in group_props, group_props
@@ -235,5 +185,4 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    if HAVE_DBUS_TUBES:
-        exec_test(test)
+    exec_test(test)

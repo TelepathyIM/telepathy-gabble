@@ -46,7 +46,7 @@ static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
 /* order must match PresenceId enum in connection.h */
 /* in increasing order of presence */
 static const TpPresenceStatusSpec gabble_statuses[] = {
-  { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, TRUE,
+  { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, FALSE,
     gabble_status_arguments, NULL, NULL },
   { "unknown", TP_CONNECTION_PRESENCE_TYPE_UNKNOWN, FALSE,
     gabble_status_arguments, NULL, NULL },
@@ -176,7 +176,6 @@ emit_one_presence_update (GabbleConnection *self,
   g_array_free (handles, TRUE);
 }
 
-
 static gboolean
 set_own_status_cb (GObject *obj,
                    const TpPresenceStatus *status,
@@ -199,6 +198,17 @@ set_own_status_cb (GObject *obj,
       GHashTable *args = status->optional_arguments;
       GValue *message = NULL, *priority = NULL;
       const gchar *message_str = NULL;
+
+      /* Workaround for tp-glib not checking whether we support setting
+       * a particular status (can be removed once we depend on tp-glib
+       * with the check enabled). Assumes PresenceId value ordering. */
+      if (i < GABBLE_PRESENCE_HIDDEN)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "Status '%s' can not be requested in this connection",
+                gabble_statuses[i].name);
+          return FALSE;
+        }
 
       if (args != NULL)
         {

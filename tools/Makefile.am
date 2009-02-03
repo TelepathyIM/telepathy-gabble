@@ -10,6 +10,7 @@ EXTRA_DIST = \
     glib-interfaces-gen.py \
     glib-signals-marshal-gen.py \
     identity.xsl \
+    lcov.am \
     libglibcodegen.py \
     libtpcodegen.py \
     telepathy.am \

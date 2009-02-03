@@ -368,8 +368,8 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
           p = strptime (stamp_str, "%Y%m%dT%T", &stamp_tm);
           if (p == NULL || *p != '\0')
             {
-              g_warning ("%s: malformed date string '%s' for jabber:x:delay",
-                         G_STRFUNC, stamp_str);
+              DEBUG ("%s: malformed date string '%s' for jabber:x:delay",
+                  G_STRFUNC, stamp_str);
             }
           else
             {

@@ -28,6 +28,8 @@
 #include "bytestream-iface.h"
 #include "bytestream-ibb.h"
 #include "bytestream-muc.h"
+#include "bytestream-multiple.h"
+#include "bytestream-socks5.h"
 #include "connection.h"
 
 G_BEGIN_DECLS
@@ -71,20 +73,24 @@ typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (
 GabbleBytestreamFactory *gabble_bytestream_factory_new (
     GabbleConnection *conn);
 
-GabbleBytestreamIBB *gabble_bytestream_factory_create_ibb (
-    GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
-    const gchar *stream_init_id, const gchar *peer_resource,
-    GabbleBytestreamState state);
-
 GabbleBytestreamMuc *gabble_bytestream_factory_create_muc (
     GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
     GabbleBytestreamState state);
+
+GabbleBytestreamIface *gabble_bytestream_factory_create_from_method (
+    GabbleBytestreamFactory *self, const gchar *stream_method,
+    TpHandle peer_handle, const gchar *stream_id, const gchar *stream_init_id,
+    const gchar *peer_resource, GabbleBytestreamState state);
 
 LmMessage *gabble_bytestream_factory_make_stream_init_iq (
     const gchar *full_jid, const gchar *stream_id, const gchar *profile);
 
 LmMessage *gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
     const gchar *stream_init_id, const gchar *stream_method);
+
+LmMessage *gabble_bytestream_factory_make_multi_accept_iq (
+    const gchar *full_jid, const gchar *stream_init_id,
+    GList *stream_methods);
 
 gboolean gabble_bytestream_factory_negotiate_stream (
     GabbleBytestreamFactory *fac, LmMessage *msg, const gchar *stream_id,

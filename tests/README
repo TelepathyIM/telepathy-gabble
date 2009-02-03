@@ -1,6 +1,11 @@
 To run all tests:
 
-  make check-all
+  make check
+
+or with coverage info:
+
+  ./configure --enable-compiler-coverage
+  make lcov-check
 
 == C tests ==
 

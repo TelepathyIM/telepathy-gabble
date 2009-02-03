@@ -72,5 +72,13 @@ GHashTable *lm_message_node_extract_properties (LmMessageNode *node,
 void
 lm_message_node_add_children_from_properties (LmMessageNode *node,
     GHashTable *properties, const gchar *prop);
+const gchar * lm_message_node_get_namespace (LmMessageNode *node);
+const gchar * lm_message_node_get_name (LmMessageNode *node);
+LmMessageNode * lm_message_node_get_child_any_ns (LmMessageNode *node,
+    const gchar *name);
+
+
+LmMessage *
+lm_iq_message_make_result (LmMessage *iq_message);
 
 #endif /* __GABBLE_UTIL_H__ */

@@ -35,7 +35,6 @@
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
-#include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"
 
@@ -50,16 +49,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleBytestreamMuc, gabble_bytestream_muc,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_BYTESTREAM_IFACE,
       bytestream_iface_init));
-
-/* signals */
-enum
-{
-  DATA_RECEIVED,
-  STATE_CHANGED,
-  LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
 
 /* properties */
 enum
@@ -210,7 +199,7 @@ gabble_bytestream_muc_set_property (GObject *object,
         if (priv->state != g_value_get_uint (value))
             {
               priv->state = g_value_get_uint (value);
-              g_signal_emit (object, signals[STATE_CHANGED], 0, priv->state);
+              g_signal_emit_by_name (object, "state-changed", priv->state);
             }
         break;
       default:
@@ -278,24 +267,6 @@ gabble_bytestream_muc_class_init (
        "state");
   g_object_class_override_property (object_class, PROP_PROTOCOL,
        "protocol");
-
-  signals[DATA_RECEIVED] =
-    g_signal_new ("data-received",
-                  G_OBJECT_CLASS_TYPE (gabble_bytestream_muc_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__UINT_POINTER,
-                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_POINTER);
-
-  signals[STATE_CHANGED] =
-    g_signal_new ("state-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_bytestream_muc_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_marshal_VOID__UINT,
-                  G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 enum
@@ -568,8 +539,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
   if (fully_received)
     {
       DEBUG ("fully received %zu bytes of data", str->len);
-      g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0, sender,
-          str);
+      g_signal_emit_by_name (G_OBJECT (self), "data-received", sender, str);
       g_string_free (str, TRUE);
     }
 }

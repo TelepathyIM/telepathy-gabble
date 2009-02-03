@@ -85,11 +85,36 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
 void gabble_presence_cache_really_remove (GabblePresenceCache *cache,
     TpHandle handle);
 
+/* loop on CapabilityInfo::per_channel_manager_caps and call
+ * gabble_caps_channel_manager_free_capabilities */
+void gabble_presence_cache_free_cache_entry (
+    GHashTable *per_channel_manager_caps);
+
+/* loop on CapabilityInfo::per_channel_manager_caps and call
+ * gabble_caps_channel_manager_copy_capabilities */
+void gabble_presence_cache_copy_cache_entry (GHashTable **out,
+    GHashTable *in);
+
+/* loop on CapabilityInfo::per_channel_manager_caps and call
+ * gabble_caps_channel_manager_update_capabilities */
+void gabble_presence_cache_update_cache_entry (GHashTable *out,
+    GHashTable *in);
+
 void gabble_presence_cache_contacts_added_to_olpc_view (
     GabblePresenceCache *cache, TpHandleSet *handles);
 
 void gabble_presence_cache_contacts_removed_from_olpc_view (
     GabblePresenceCache *cache, TpHandleSet *handles);
+
+gboolean gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
+    TpHandle handle);
+
+gboolean gabble_presence_cache_is_unsure (GabblePresenceCache *cache);
+
+void gabble_presence_cache_update_location (GabblePresenceCache *cache,
+    TpHandle handle, GHashTable *location);
+GHashTable* gabble_presence_cache_get_location (GabblePresenceCache *cache,
+    TpHandle handle);
 
 G_END_DECLS
 

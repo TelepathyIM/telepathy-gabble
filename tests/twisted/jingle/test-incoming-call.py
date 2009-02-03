@@ -2,13 +2,9 @@
 Test incoming call handling.
 """
 
-print "FIXME: jingle/test-incoming-call.py disabled due to race condition"
-# exiting 77 causes automake to consider the test to have been skipped
-raise SystemExit(77)
-
 from gabbletest import exec_test, make_result_iq, sync_stream
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern
+        EventPattern, sync_dbus
 import jingletest
 import gabbletest
 import dbus
@@ -53,6 +49,12 @@ def test(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='MembersChanged',
              args=[u'', [remote_handle], [], [], [], 0, 0])
 
+    # We're pending because of remote_handle
+    e = q.expect('dbus-signal', signal='MembersChanged',
+             args=[u'', [], [], [1L], [], remote_handle, 0])
+
+    media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
+
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
@@ -60,16 +62,16 @@ def test(q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    # We're pending because of remote_handle
-    e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], remote_handle, 0])
 
-    media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
+    # S-E gets notified about a newly-created stream
+    e = q.expect('dbus-signal', signal='NewStreamHandler')
+
+    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetHandle'] == remote_handle
     assert channel_props['TargetHandleType'] == 1
     assert channel_props['TargetID'] == 'foo@bar.com'
@@ -77,26 +79,13 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorHandle'] == remote_handle
     assert channel_props['Requested'] == False
 
-    media_chan.AddMembers([dbus.UInt32(1)], 'accepted')
-
-    # S-E gets notified about a newly-created stream
-    e = q.expect('dbus-signal', signal='NewStreamHandler')
-
-    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
-
-    # We are now in members too
-    e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [1L], [], [], [], 0, 0])
-
-    # we are now both in members
-    members = media_chan.GetMembers()
-    assert set(members) == set([1L, remote_handle]), members
-
+    # Connectivity checks happen before we have accepted the call
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler.Ready(jt.get_audio_codecs_dbus())
     stream_handler.StreamState(2)
+    stream_handler.SupportedCodecs(jt.get_audio_codecs_dbus())
 
-    # First one is transport-info
+    # peer gets the transport
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'transport-info'
@@ -104,10 +93,24 @@ def test(q, bus, conn, stream):
 
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 
-    # Second one is session-accept
-    e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'session-accept'
+    # Make sure everything's processed
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
+
+    # At last, accept the call
+    media_chan.AddMembers([dbus.UInt32(1)], 'accepted')
+
+    # Call is accepted and we're in members too
+    memb, acc = q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChanged', args=[u'', [1L],
+            [], [], [], 0, 0]),
+        EventPattern('stream-iq',
+            predicate=lambda e: (e.query.name == 'jingle' and
+                e.query['action'] == 'session-accept')))
+
+    # we are now both in members
+    members = media_chan.GetMembers()
+    assert set(members) == set([1L, remote_handle]), members
 
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 
@@ -119,7 +122,7 @@ def test(q, bus, conn, stream):
 
     # Tests completed, close the connection
 
-    e = q.expect('dbus-signal', signal='Close') #XXX - match against the path
+    e = q.expect('dbus-signal', signal='Closed') #XXX - match against the path
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

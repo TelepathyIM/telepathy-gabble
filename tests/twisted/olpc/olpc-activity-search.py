@@ -20,13 +20,13 @@ olpc_name_prefix = 'org.laptop.Telepathy'
 def check_view(view, conn, activities, buddies):
     act = view.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Activities',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert sorted(act) == sorted(activities)
 
     handles = view.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Buddies',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
     assert sorted(conn.InspectHandles(1, handles)) == sorted(buddies)
 
 def test(q, bus, conn, stream):
@@ -62,7 +62,7 @@ def test(q, bus, conn, stream):
     # check if we can request Activity views
     properties = conn.GetAll(
         'org.freedesktop.Telepathy.Connection.Interface.Requests',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert ({tp_name_prefix + '.Channel.ChannelType':
             olpc_name_prefix + '.Channel.Type.ActivityView'},
@@ -85,7 +85,7 @@ def test(q, bus, conn, stream):
     # check org.freedesktop.Telepathy.Channel D-Bus properties
     props = view1.GetAll(
         'org.freedesktop.Telepathy.Channel',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert props['ChannelType'] == 'org.laptop.Telepathy.Channel.Type.ActivityView'
     assert 'org.laptop.Telepathy.Channel.Interface.View' in props['Interfaces']
@@ -96,14 +96,14 @@ def test(q, bus, conn, stream):
     # check org.laptop.Telepathy.Channel.Interface.View D-Bus properties
     props = view1.GetAll(
         'org.laptop.Telepathy.Channel.Interface.View',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert props['MaxSize'] == 3
 
     # check org.laptop.Telepathy.Channel.Type.ActivityView D-Bus properties
     props = view1.GetAll(
         'org.laptop.Telepathy.Channel.Type.ActivityView',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert props['Properties'] == {}
     assert props['Participants'] == []
@@ -215,12 +215,12 @@ def test(q, bus, conn, stream):
 
     act = view2.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Activities',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
     assert sorted(act) == [('activity2', handles['room2'])]
 
     buddies = view2.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Buddies',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
     assert buddies == []
 
     # activity search by participants (view 3)
@@ -270,7 +270,7 @@ def test(q, bus, conn, stream):
 
     act = view3.Get(olpc_name_prefix + '.Channel.Interface.View',
         'Activities',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
     assert sorted(act) == [('activity3', handles['room3'])]
 
     # add activity 4 to view 1

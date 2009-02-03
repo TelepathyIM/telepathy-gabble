@@ -90,7 +90,7 @@ def test(q, bus, conn, stream):
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = group_iface.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == 0, \
             channel_props.get('TargetHandle')
     assert channel_props.get('TargetHandleType') == 0,\
@@ -118,22 +118,12 @@ def test(q, bus, conn, stream):
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = group_iface.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Group',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert 'HandleOwners' in group_props, group_props
     assert 'Members' in group_props, group_props
     assert 'LocalPendingMembers' in group_props, group_props
     assert 'RemotePendingMembers' in group_props, group_props
     assert 'GroupFlags' in group_props, group_props
-
-    # FIXME: Hack to make sure the disco info has been processed - we need to
-    # send Gabble some XML that will cause an event when processed, and
-    # wait for that event (until
-    # https://bugs.freedesktop.org/show_bug.cgi?id=15769 is fixed)
-    el = domish.Element(('jabber.client', 'presence'))
-    el['from'] = 'bob@example.com/Bar'
-    stream.send(el.toXml())
-    q.expect('dbus-signal', signal='PresenceUpdate')
-    # OK, now we can continue. End of hack
 
     media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
 
@@ -161,9 +151,16 @@ def test(q, bus, conn, stream):
 
     q.expect('stream-iq', iq_type='result')
 
+    # Call accepted
+    q.expect('dbus-signal', signal='MembersChanged')
+
     # Time passes ... afterwards we close the chan
 
     group_iface.RemoveMembers([dbus.UInt32(1)], 'closed')
+
+    # Check that we're the actor
+    e = q.expect('dbus-signal', signal='MembersChanged')
+    assert e.args[5] == self_handle
 
     # Test completed, close the connection
 

@@ -33,6 +33,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
+#include "caps-channel-manager.h"
 #include "conn-aliasing.h"
 #include "connection.h"
 #include "debug.h"
@@ -133,7 +134,8 @@ static void gabble_roster_close_all (GabbleRoster *roster);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init));
+      channel_manager_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
 #define GABBLE_ROSTER_GET_PRIVATE(o) ((o)->priv)
 
@@ -1694,16 +1696,21 @@ gabble_roster_close_all (GabbleRoster *self)
       self->priv->status_changed_id = 0;
     }
 
+  /* Use a temporary variable because we don't want
+   * roster_channel_closed_cb to remove the channel from the hash table a
+   * second time */
   if (priv->group_channels != NULL)
     {
-      g_hash_table_destroy (priv->group_channels);
+      GHashTable *t = priv->group_channels;
       priv->group_channels = NULL;
+      g_hash_table_destroy (t);
     }
 
   if (priv->list_channels != NULL)
     {
-      g_hash_table_destroy (priv->list_channels);
+      GHashTable *t = priv->list_channels;
       priv->list_channels = NULL;
+      g_hash_table_destroy (t);
     }
 
   if (self->priv->iq_cb != NULL)
@@ -1892,6 +1899,8 @@ roster_item_apply_edits (GabbleRoster *roster,
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItemEdit *edits = item->unsent_edits;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessage *message;
 
   DEBUG ("Applying edits to contact#%u", contact);
@@ -2009,6 +2018,9 @@ roster_item_apply_edits (GabbleRoster *roster,
     }
 
   DEBUG ("Contact#%u did change, sending message", contact);
+
+  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
+  tp_handle_ref (contact_repo, contact);
   message = _gabble_roster_item_to_message (roster, contact, NULL,
       &edited_item);
   ret = _gabble_connection_send_with_reply (priv->conn,
@@ -2044,12 +2056,16 @@ roster_edited_cb (GabbleConnection *conn,
   GabbleRoster *roster = GABBLE_ROSTER (roster_obj);
   TpHandle contact = GPOINTER_TO_UINT (user_data);
   GabbleRosterItem *item = _gabble_roster_item_get (roster, contact);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
 
   if (item->unsent_edits)
     {
       /* more edits have been queued since we sent this batch */
       roster_item_apply_edits (roster, contact, item);
     }
+
+  tp_handle_unref (contact_repo, contact);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -2134,6 +2150,8 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   item->google_type = orig_type;
 
+  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
+  tp_handle_ref (contact_repo, handle);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
       GUINT_TO_POINTER(handle), error);
@@ -2232,6 +2250,8 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
 
   lm_message_node_set_attribute (item_node, "name", name);
 
+  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
+  tp_handle_ref (contact_repo, handle);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
       GUINT_TO_POINTER(handle), error);
@@ -2281,6 +2301,8 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   subscription = item->subscription;
   item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
 
+  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
+  tp_handle_ref (contact_repo, handle);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
@@ -2340,6 +2362,8 @@ gabble_roster_handle_add (GabbleRoster *roster,
       item->unsent_edits = item_edit_new ();
     }
 
+  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
+  tp_handle_ref (contact_repo, handle);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
@@ -2401,6 +2425,8 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   NODE_DEBUG (message->node, "Roster item as message");
   tp_handle_set_remove (item->groups, group);
 
+  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
+  tp_handle_ref (contact_repo, handle);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
       GUINT_TO_POINTER(handle), error);
@@ -2468,6 +2494,8 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
     tp_handle_set_add (item->groups, group);
   tp_handle_unref (group_repo, group);
 
+  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
+  tp_handle_ref (contact_repo, handle);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
       GUINT_TO_POINTER(handle), error);

@@ -33,6 +33,7 @@ static GDebugKey keys[] = {
   { "olpc",          GABBLE_DEBUG_OLPC },
   { "bytestream",    GABBLE_DEBUG_BYTESTREAM },
   { "tubes",         GABBLE_DEBUG_TUBES },
+  { "location",      GABBLE_DEBUG_LOCATION },
   { 0, },
 };
 

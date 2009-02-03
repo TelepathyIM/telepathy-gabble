@@ -62,6 +62,9 @@ def test(q, bus, conn, stream):
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
     hold_iface = make_channel_proxy(conn, path, 'Channel.Interface.Hold')
 
+    media_iface.RequestStreams(handle, [MEDIA_STREAM_TYPE_AUDIO,
+        MEDIA_STREAM_TYPE_VIDEO])
+
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
@@ -69,8 +72,6 @@ def test(q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    media_iface.RequestStreams(handle, [MEDIA_STREAM_TYPE_AUDIO,
-        MEDIA_STREAM_TYPE_VIDEO])
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
 

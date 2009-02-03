@@ -23,7 +23,7 @@ def test(q, bus, conn, stream):
 
     properties = conn.GetAll(
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert properties.get('Channels') == [], properties['Channels']
     assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
@@ -87,7 +87,7 @@ def test_ensure_ensure(q, requestotron, conn, self_handle, jid, handle):
 
     properties = conn.GetAll(
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert new_sig.args[0][0] in properties['Channels'], \
             (new_sig.args[0][0], properties['Channels'])
@@ -144,7 +144,7 @@ def test_request_ensure(q, requestotron, conn, self_handle, jid, handle):
 
     properties = conn.GetAll(
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert new_sig.args[0][0] in properties['Channels'], \
             (new_sig.args[0][0], properties['Channels'])

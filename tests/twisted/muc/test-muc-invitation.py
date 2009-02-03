@@ -55,22 +55,35 @@ def test(q, bus, conn, stream):
 
     channel_props = text_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == False
     assert channel_props['InitiatorID'] == 'bob@localhost'
     assert channel_props['InitiatorHandle'] == bob_handle
 
+    # set ourselves to away and back again, to check that we don't send any
+    # presence to the MUC before the invite has been accepted
+    conn.Presence.SetStatus({'away':{'message':'failure'}})
+    conn.Presence.SetStatus({'available':{'message':'success'}})
+
     # accept the invitation
     call_async(q, group_iface, 'AddMembers', [room_self_handle], 'Oh, OK then')
 
-    _, event, _ = q.expect_many(
+    event, event2, _ = q.expect_many(
             EventPattern('stream-presence', to='chat@conf.localhost/test'),
             EventPattern('dbus-signal', signal='MembersChanged'),
             EventPattern('dbus-return', method='AddMembers')
             )
 
-    assert event.args == ['', [], [bob_handle], [],
+    # check that the status we joined with was available / success
+    elem = event.stanza
+    show = [e for e in elem.elements() if e.name == 'show']
+    assert not show
+    status = [e for e in elem.elements() if e.name == 'status'][0]
+    assert status
+    assert status.children[0] == u'success'
+
+    assert event2.args == ['', [], [bob_handle], [],
             [room_self_handle], 0, room_self_handle]
 
     # Send presence for own membership of room.

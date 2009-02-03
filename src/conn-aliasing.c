@@ -450,7 +450,7 @@ nick_publish_msg_reply_cb (GabbleConnection *conn,
           GabbleXmppError error = gabble_xmpp_error_from_node (error_node,
               NULL);
 
-          g_warning ("%s: can't publish nick using PEP: %s: %s", G_STRFUNC,
+          DEBUG ("can't publish nick using PEP: %s: %s",
               gabble_xmpp_error_string (error),
               gabble_xmpp_error_description (error));
         }

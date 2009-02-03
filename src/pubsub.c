@@ -29,6 +29,7 @@
 #include "namespaces.h"
 #include "util.h"
 #include "conn-olpc.h"
+#include "conn-location.h"
 
 static const GabblePubsubEventHandler pubsub_event_handlers[] =
 {
@@ -37,6 +38,7 @@ static const GabblePubsubEventHandler pubsub_event_handlers[] =
     { NS_OLPC_ACTIVITIES, olpc_buddy_info_activities_event_handler},
     { NS_OLPC_CURRENT_ACTIVITY, olpc_buddy_info_current_activity_event_handler},
     { NS_OLPC_ACTIVITY_PROPS, olpc_activities_properties_event_handler},
+    { NS_GEOLOC, geolocation_event_handler},
     { NULL, NULL}
 };
 

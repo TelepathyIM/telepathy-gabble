@@ -201,7 +201,7 @@ def test(q, bus, conn, stream):
 
     # Fred is the only buddy in this view
     buddies = view2.Get('org.laptop.Telepathy.Channel.Interface.View', 'Buddies',
-        dbus_interface='org.freedesktop.DBus.Properties')
+        dbus_interface=dbus.PROPERTIES_IFACE)
     assert buddies == [handles['fred']]
 
     # ... and his presence didn't change

@@ -51,13 +51,15 @@ def test(q, bus, conn, stream):
 
     channel_props = group_iface.GetAll(
             'org.freedesktop.Telepathy.Channel',
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetHandleType'] == 1, channel_props
     assert channel_props['TargetHandle'] == handle, channel_props
     assert channel_props['TargetID'] == 'foo@bar.com', channel_props
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'
     assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
+
+    media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -67,7 +69,6 @@ def test(q, bus, conn, stream):
     session_handler.Ready()
 
 
-    media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
 

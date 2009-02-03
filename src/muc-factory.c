@@ -1513,36 +1513,19 @@ handle_tubes_channel_request (GabbleMucFactory *self,
 }
 
 static gboolean
-handle_stream_tube_channel_request (GabbleMucFactory *self,
-                                    gpointer request_token,
-                                    GHashTable *request_properties,
-                                    gboolean require_new,
-                                    TpHandle handle,
-                                    GError **error)
+handle_tube_channel_request (GabbleMucFactory *self,
+                             gpointer request_token,
+                             GHashTable *request_properties,
+                             gboolean require_new,
+                             TpHandle handle,
+                             GError **error)
+
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
-  const gchar *service;
   gboolean can_announce_now = TRUE;
   gboolean tubes_channel_created = FALSE;
   GabbleTubesChannel *tubes_chan;
   GabbleTubeIface *new_channel;
-
-  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
-          muc_tubes_channel_fixed_properties,
-          gabble_tube_stream_channel_allowed_properties,
-          error))
-    return FALSE;
-
-  /* "Service" is a mandatory, not-fixed property */
-  service = tp_asv_get_string (request_properties,
-            GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
-  if (service == NULL)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "Request does not contain the mandatory property '%s'",
-          GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
-      return FALSE;
-    }
 
   tubes_chan = g_hash_table_lookup (priv->tubes_channels,
       GUINT_TO_POINTER (handle));
@@ -1601,6 +1584,68 @@ handle_stream_tube_channel_request (GabbleMucFactory *self,
 }
 
 static gboolean
+handle_stream_tube_channel_request (GabbleMucFactory *self,
+                                    gpointer request_token,
+                                    GHashTable *request_properties,
+                                    gboolean require_new,
+                                    TpHandle handle,
+                                    GError **error)
+{
+  const gchar *service;
+
+  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+          muc_tubes_channel_fixed_properties,
+          gabble_tube_stream_channel_allowed_properties,
+          error))
+    return FALSE;
+
+  /* "Service" is a mandatory, not-fixed property */
+  service = tp_asv_get_string (request_properties,
+            GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+  if (service == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Request does not contain the mandatory property '%s'",
+          GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+      return FALSE;
+    }
+
+  return handle_tube_channel_request (self, request_token, request_properties,
+      require_new, handle, error);
+}
+
+static gboolean
+handle_dbus_tube_channel_request (GabbleMucFactory *self,
+                                  gpointer request_token,
+                                  GHashTable *request_properties,
+                                  gboolean require_new,
+                                  TpHandle handle,
+                                  GError **error)
+{
+  const gchar *service;
+
+  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+          muc_tubes_channel_fixed_properties,
+          gabble_tube_dbus_channel_allowed_properties,
+          error))
+    return FALSE;
+
+  /* "ServiceName" is a mandatory, not-fixed property */
+  service = tp_asv_get_string (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+  if (service == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Request does not contain the mandatory property '%s'",
+          GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+      return FALSE;
+    }
+
+  return handle_tube_channel_request (self, request_token, request_properties,
+      require_new, handle, error);
+}
+
+static gboolean
 gabble_muc_factory_request (GabbleMucFactory *self,
                             gpointer request_token,
                             GHashTable *request_properties,
@@ -1619,7 +1664,8 @@ gabble_muc_factory_request (GabbleMucFactory *self,
 
    if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
        tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
-       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
+       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
      return FALSE;
 
   /* validity already checked by TpBaseConnection */
@@ -1642,6 +1688,12 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   else if (!tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))
     {
       if (handle_stream_tube_channel_request (self, request_token,
+          request_properties, require_new, handle, &error))
+        return TRUE;
+    }
+  else if (!tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+    {
+      if (handle_dbus_tube_channel_request (self, request_token,
           request_properties, require_new, handle, &error))
         return TRUE;
     }

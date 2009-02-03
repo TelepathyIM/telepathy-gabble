@@ -79,7 +79,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='NewTube'),
         EventPattern('stream-presence', to='chat@conf.localhost/test'),
         EventPattern('dbus-return', method='OfferDBusTube'),
-        EventPattern('dbus-signal', signal='DBusNamesChanged'))
+        EventPattern('dbus-signal', signal='DBusNamesChanged', interface=CHANNEL_TYPE_TUBES))
 
     # handle new_tube_event
     dbus_tube_id = new_tube_event.args[0]

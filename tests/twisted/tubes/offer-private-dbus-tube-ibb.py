@@ -301,6 +301,12 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     status = tube_chan.Get(CHANNEL_IFACE_TUBE, 'State', dbus_interface=PROPERTIES_IFACE)
     assert status == TUBE_STATE_REMOTE_PENDING
 
+    tube_chan_iface.Close()
+
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-signal', signal='ChannelClosed'))
+
 def test(q, bus, conn, stream):
     conn.Connect()
 

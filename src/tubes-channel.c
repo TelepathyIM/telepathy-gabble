@@ -553,8 +553,8 @@ create_new_tube (GabbleTubesChannel *self,
 
   if (state == GABBLE_TUBE_CHANNEL_STATE_OPEN)
     {
-      /* FIXME: we should remove that once D-Bus tube have been ported to new
-       * API */
+      /* FIXME: we should remove that once muc D-Bus tube have been ported to
+       * new API */
       update_tubes_presence (self);
     }
 

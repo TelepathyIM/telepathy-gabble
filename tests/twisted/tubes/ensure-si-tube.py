@@ -12,6 +12,7 @@ from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, tp_name_prefix, watch_tube_signals
 from gabbletest import exec_test, acknowledge_iq
+import ns
 
 from twisted.words.xish import domish, xpath
 from twisted.internet.protocol import Factory, Protocol
@@ -19,12 +20,6 @@ from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
 
 import tubetestutil as t
-
-NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
-NS_SI = 'http://jabber.org/protocol/si'
-NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
-NS_IBB = 'http://jabber.org/protocol/ibb'
-NS_X_DATA = 'jabber:x:data'
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -85,7 +80,7 @@ def test(q, bus, conn, stream):
     assert event.query['node'] == \
         'http://example.com/ICantBelieveItsNotTelepathy#1.2.3'
     feature = event.query.addElement('feature')
-    feature['var'] = NS_TUBES
+    feature['var'] = ns.TUBES
     stream.send(result)
 
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]

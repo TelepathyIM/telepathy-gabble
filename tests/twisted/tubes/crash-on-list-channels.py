@@ -8,10 +8,10 @@ import dbus
 from servicetest import call_async, EventPattern, watch_tube_signals
 from gabbletest import exec_test, acknowledge_iq, sync_stream
 
-from twisted.words.xish import domish, xpath
+import ns
+import constants
 
-TUBES = 'org.freedesktop.Telepathy.Channel.Type.Tubes'
-NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
+from twisted.words.xish import domish, xpath
 
 jid = 'explosions@in.the.sky'
 
@@ -32,29 +32,29 @@ def test(q, bus, conn, stream):
     presence['from'] = '%s/Bob' % jid
     presence['to'] = 'test@localhost/Resource'
     c = presence.addElement('c')
-    c['xmlns'] = 'http://jabber.org/protocol/caps'
+    c['xmlns'] = ns.CAPS
     c['node'] = 'http://example.com/ICantBelieveItsNotTelepathy'
     c['ver'] = '1.2.3'
     stream.send(presence)
 
     event = q.expect('stream-iq', iq_type='get',
-        query_ns='http://jabber.org/protocol/disco#info',
+        query_ns=ns.DISCO_INFO,
         to=('%s/Bob' % jid))
     result = event.stanza
     result['type'] = 'result'
     assert event.query['node'] == \
         'http://example.com/ICantBelieveItsNotTelepathy#1.2.3'
     feature = event.query.addElement('feature')
-    feature['var'] = NS_TUBES
+    feature['var'] = ns.TUBES
     stream.send(result)
 
     sync_stream(q, stream)
 
     h = conn.RequestHandles(1, [jid])[0]
-    tubes_path = conn.RequestChannel(TUBES, 1, h, True)
+    tubes_path = conn.RequestChannel(constants.CHANNEL_TYPE_TUBES, 1, h, True)
 
     tubes_chan = bus.get_object(conn.bus_name, tubes_path)
-    tubes_iface = dbus.Interface(tubes_chan, TUBES)
+    tubes_iface = dbus.Interface(tubes_chan, constants.CHANNEL_TYPE_TUBES)
 
     tubes_iface.OfferDBusTube('bong.hits', dbus.Dictionary({}, signature='sv'))
 

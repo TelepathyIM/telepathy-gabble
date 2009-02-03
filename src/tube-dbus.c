@@ -840,12 +840,8 @@ gabble_tube_dbus_constructor (GType type,
       /*
        * We have to create a pseudo-IBB bytestream that will be
        * used by this MUC tube to communicate.
-       *
-       * We don't create the bytestream of private D-Bus tube yet.
-       * It will be when we'll receive the answer of the SI request
        */
       GabbleBytestreamMuc *bytestream;
-      GabbleBytestreamState state;
       gchar *nick;
 
       g_assert (priv->stream_id != NULL);
@@ -860,22 +856,11 @@ gabble_tube_dbus_constructor (GType type,
 
       DEBUG ("local name: %s", priv->dbus_local_name);
 
-      if (priv->initiator == priv->self_handle)
-        {
-          /* We create this tube, bytestream is open */
-          state = GABBLE_BYTESTREAM_STATE_OPEN;
-        }
-      else
-        {
-          /* We don't create this tube, bytestream is local pending */
-          state = GABBLE_BYTESTREAM_STATE_LOCAL_PENDING;
-        }
-
       bytestream = gabble_bytestream_factory_create_muc (
           priv->conn->bytestream_factory,
           priv->handle,
           priv->stream_id,
-          state);
+          GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
       g_object_set (self, "bytestream", bytestream, NULL);
 
@@ -894,13 +879,7 @@ gabble_tube_dbus_constructor (GType type,
 
   if (priv->initiator == priv->self_handle)
     {
-      /* FIXME: Above, we already created the bytestream if this is a MUC tube,
-       *        so it's already been offered.
-       */
-      if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
-        priv->offered = TRUE;
-      else
-        priv->offered = FALSE;
+      priv->offered = FALSE;
     }
   else
     {
@@ -1175,9 +1154,6 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       return FALSE;
     }
 
-  /* When MUC DBus tubes are new-style-ified, they'll need to be offered here
-   * rather than in the constructor.
-   */
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       TpHandleRepoIface *contact_repo;
@@ -1229,11 +1205,27 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
           priv->conn->bytestream_factory, msg, priv->stream_id,
           bytestream_negotiate_cb, tube, error);
 
+      /* We don't create the bytestream of private D-Bus tube yet.
+       * It will be when we'll receive the answer of the SI request */
+
       lm_message_unref (msg);
       g_free (full_jid);
 
       if (!result)
         return FALSE;
+
+      gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (tube,
+          GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING);
+
+    }
+  else
+    {
+      g_object_set (priv->bytestream,
+          "state", GABBLE_BYTESTREAM_STATE_OPEN,
+          NULL);
+
+      gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (tube,
+          GABBLE_TUBE_CHANNEL_STATE_OPEN);
     }
 
   if (!create_dbus_server (tube, error))
@@ -1241,9 +1233,6 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
 
   tube->priv->offered = TRUE;
   g_signal_emit (G_OBJECT (tube), signals[OFFERED], 0);
-
-  gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (tube,
-      GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING);
 
   return TRUE;
 }

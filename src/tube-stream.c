@@ -1230,7 +1230,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "supported-socket-types",
       "Supported socket types",
       "GHashTable containing supported socket types.",
-      dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, DBUS_TYPE_G_UINT_ARRAY),
+      TP_HASH_TYPE_SUPPORTED_SOCKET_MAP,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SUPPORTED_SOCKET_TYPES,
       param_spec);

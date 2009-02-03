@@ -22,8 +22,12 @@
 
 #include <glib-object.h>
 
+#include <telepathy-glib/enums.h>
+#include <telepathy-glib/interfaces.h>
+
 #include "connection.h"
 #include "bytestream-iface.h"
+#include "extensions/extensions.h"
 
 G_BEGIN_DECLS
 
@@ -60,6 +64,14 @@ GType gabble_tube_dbus_get_type (void);
 #define GABBLE_TUBE_DBUS_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBE_DBUS,\
                               GabbleTubeDBusClass))
+
+static const gchar * const gabble_tube_dbus_channel_allowed_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
+    GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName",
+    NULL
+};
 
 GabbleTubeDBus *gabble_tube_dbus_new (GabbleConnection *conn, TpHandle handle,
     TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,

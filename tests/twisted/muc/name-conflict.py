@@ -121,6 +121,13 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     if not transient_conflict:
         assert handle_owners[t] == 0, (handle_owners, t)
 
+    # test that closing the channel results in an unavailable message to the
+    # right jid
+    text_chan.Close()
+
+    event = q.expect('stream-presence', to=member_)
+    elem = event.stanza
+    assert elem['type'] == 'unavailable'
 
 if __name__ == '__main__':
     exec_test(test)

@@ -454,6 +454,10 @@ tube_closed_cb (GabbleTubeIface *tube,
 
   tp_svc_channel_emit_closed (tube);
 
+  /* Ideally, this should be done in the factory directly but the private
+   * tubes factory and the muc factory are not aware of tube channels.
+   * This design is a legacy of the old tube API and we can't really change it
+   * without big refactoring. */
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       tp_channel_manager_emit_channel_closed_for_object (

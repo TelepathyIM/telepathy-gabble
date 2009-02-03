@@ -516,6 +516,11 @@ tube_offered_cb (GabbleTubeIface *tube,
 
   update_tubes_presence (self);
 
+  if (type == TP_TUBE_TYPE_DBUS)
+    {
+      add_yourself_in_dbus_names (self, tube_id);
+    }
+
   g_free (service);
   g_hash_table_destroy (parameters);
 }
@@ -573,12 +578,6 @@ create_new_tube (GabbleTubesChannel *self,
           service,
           parameters,
           state);
-    }
-
-  if (type == TP_TUBE_TYPE_DBUS &&
-      state != TP_TUBE_STATE_LOCAL_PENDING)
-    {
-      add_yourself_in_dbus_names (self, tube_id);
     }
 
   g_signal_connect (tube, "tube-opened", G_CALLBACK (tube_opened_cb), self);

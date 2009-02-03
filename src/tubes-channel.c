@@ -452,26 +452,17 @@ tube_closed_cb (GabbleTubeIface *tube,
 
   tp_svc_channel_type_tubes_emit_tube_closed (self, tube_id);
 
-  /* FIXME: this is a workaround while new tube API is not implemented on
-   * D-Bus tubes */
-  if (GABBLE_IS_TUBE_STREAM (tube))
-    tp_svc_channel_emit_closed (tube);
+  tp_svc_channel_emit_closed (tube);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      /* FIXME: this is a workaround while new tube API is not implemented on
-       * D-Bus tubes */
-      if (GABBLE_IS_TUBE_STREAM (tube))
-        tp_channel_manager_emit_channel_closed_for_object (
-            priv->conn->private_tubes_factory, TP_EXPORTABLE_CHANNEL (tube));
+      tp_channel_manager_emit_channel_closed_for_object (
+          priv->conn->private_tubes_factory, TP_EXPORTABLE_CHANNEL (tube));
     }
   else
     {
-      /* FIXME: this is a workaround while new tube API is not implemented on
-       * D-Bus tubes */
-      if (GABBLE_IS_TUBE_STREAM (tube))
-        tp_channel_manager_emit_channel_closed_for_object (
-            priv->conn->muc_factory, TP_EXPORTABLE_CHANNEL (tube));
+      tp_channel_manager_emit_channel_closed_for_object (
+          priv->conn->muc_factory, TP_EXPORTABLE_CHANNEL (tube));
     }
 
 }

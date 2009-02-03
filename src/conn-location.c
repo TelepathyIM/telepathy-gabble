@@ -196,10 +196,10 @@ conn_location_properties_getter (GObject *object,
 {
   if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControlTypes"))
     {
-      TpRichPresenceAccessControlType access_control_type =
+      guint access_control_type =
         TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST;
       GArray *access_control = g_array_sized_new (FALSE, FALSE,
-          sizeof (TpRichPresenceAccessControlType), 1);
+          sizeof (guint), 1);
 
       g_array_append_val (access_control, access_control_type);
       g_value_take_boxed (value, access_control);

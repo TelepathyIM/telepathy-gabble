@@ -18,6 +18,8 @@ from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
 
+import tubetestutil as t
+
 NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
 NS_SI = 'http://jabber.org/protocol/si'
 NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
@@ -32,23 +34,9 @@ sample_parameters = dbus.Dictionary({
     }, signature='sv')
 
 
-class Echo(Protocol):
-    def dataReceived(self, data):
-        self.transport.write(data)
-
-def set_up_echo():
-    factory = Factory()
-    factory.protocol = Echo
-    try:
-        os.remove(os.getcwd() + '/stream')
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
-    reactor.listenUNIX(os.getcwd() + '/stream', factory)
-
-
 def test(q, bus, conn, stream):
-    set_up_echo()
+    t.set_up_echo('')
+
     conn.Connect()
 
     properties = conn.GetAll(

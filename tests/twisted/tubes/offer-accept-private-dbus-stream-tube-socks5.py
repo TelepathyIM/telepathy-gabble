@@ -41,21 +41,6 @@ new_sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
-
-class Echo(Protocol):
-    def dataReceived(self, data):
-        self.transport.write(data.lower())
-
-def set_up_echo(name):
-    factory = Factory()
-    factory.protocol = Echo
-    try:
-        os.remove(os.getcwd() + '/stream' + name)
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
-    reactor.listenUNIX(os.getcwd() + '/stream' + name, factory)
-
 class S5BProtocol(Protocol):
     def connectionMade(self):
         self.factory.event_func(EventPattern('s5b-connected',
@@ -194,8 +179,8 @@ def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
 
 
 def test(q, bus, conn, stream):
-    set_up_echo("")
-    set_up_echo("2")
+    t.set_up_echo("")
+    t.set_up_echo("2")
 
     check_conn_properties(q, conn)
 

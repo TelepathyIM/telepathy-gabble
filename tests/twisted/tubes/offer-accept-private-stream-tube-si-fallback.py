@@ -1,7 +1,6 @@
 """Test stream initiation fallback."""
 
 import base64
-import errno
 import os
 
 import dbus
@@ -12,9 +11,10 @@ from servicetest import call_async, EventPattern, tp_name_prefix, watch_tube_sig
 from gabbletest import exec_test, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
-from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
+
+import tubetestutil as t
 
 NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
 NS_SI = 'http://jabber.org/protocol/si'
@@ -24,22 +24,8 @@ NS_X_DATA = 'jabber:x:data'
 NS_BYTESTREAMS = 'http://jabber.org/protocol/bytestreams'
 NS_SI_MULTIPLE = 'http://telepathy.freedesktop.org/xmpp/si-multiple'
 
-class Echo(Protocol):
-    def dataReceived(self, data):
-        self.transport.write(data.upper())
-
-def set_up_echo():
-    factory = Factory()
-    factory.protocol = Echo
-    try:
-        os.remove(os.getcwd() + '/stream')
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
-    reactor.listenUNIX(os.getcwd() + '/stream', factory)
-
 def test(q, bus, conn, stream):
-    set_up_echo()
+    t.set_up_echo('')
 
     conn.Connect()
 
@@ -215,7 +201,7 @@ def test(q, bus, conn, stream):
     data_node = message.addElement((NS_IBB, 'data'))
     data_node['sid'] = 'alpha'
     data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hello, world'))
+    data_node.addContent(base64.b64encode('HELLO, WORLD'))
     stream.send(message)
 
     event = q.expect('stream-message', to='bob@localhost/Bob')
@@ -228,7 +214,7 @@ def test(q, bus, conn, stream):
     ibb_data = data_nodes[0]
     assert ibb_data['sid'] == 'alpha'
     binary = base64.b64decode(str(ibb_data))
-    assert binary == 'HELLO, WORLD'
+    assert binary == 'hello, world'
 
 
     # Test the other side. Bob offers a stream tube.

@@ -1,7 +1,6 @@
 """Test 1-1 tubes support."""
 
 import base64
-import errno
 import os
 
 import dbus
@@ -16,7 +15,6 @@ import tubetestutil as t
 from dbus import PROPERTIES_IFACE
 
 from twisted.words.xish import domish, xpath
-from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
 
@@ -40,20 +38,6 @@ new_sample_parameters = dbus.Dictionary({
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
-
-class Echo(Protocol):
-    def dataReceived(self, data):
-        self.transport.write(data)
-
-def set_up_echo(name):
-    factory = Factory()
-    factory.protocol = Echo
-    try:
-        os.remove(os.getcwd() + '/stream' + name)
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
-    reactor.listenUNIX(os.getcwd() + '/stream' + name, factory)
 
 def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         contact_handle, contact_id, state=None):
@@ -151,8 +135,8 @@ def contact_offer_dbus_tube(stream, si_id, tube_id):
     stream.send(iq)
 
 def test(q, bus, conn, stream):
-    set_up_echo("")
-    set_up_echo("2")
+    t.set_up_echo("")
+    t.set_up_echo("2")
 
     t.check_conn_properties(q, conn)
 

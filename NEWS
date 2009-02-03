@@ -3,6 +3,7 @@ telepathy-gabble 0.7.21 (UNRELEASED)
 
 Enhancements:
 * Implement new tube API for muc stream tubes
+* Implement new tube API for 1-1 D-Bus tubes
 
 telepathy-gabble 0.7.20 (2008-01-02)
 ====================================

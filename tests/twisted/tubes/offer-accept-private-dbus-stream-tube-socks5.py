@@ -81,7 +81,7 @@ class S5BFactory(Factory):
     def clientConnectionLost(self, connector, reason):
         pass
 
-def check_conn_properties(q, bus, conn, stream, channel_list=None):
+def check_conn_properties(q, conn, channel_list=None):
     properties = conn.GetAll(
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface=dbus.PROPERTIES_IFACE)

@@ -1025,8 +1025,6 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
       "channel-properties");
 
-  /* TODO: When D-Bus tubes will be channels, this will be replaced by
-   * g_object_class_override_property*/
   param_spec = g_param_spec_uint (
       "initiator-handle",
       "Initiator handle",
@@ -1080,7 +1078,6 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DBUS_NAMES, param_spec);
 
-  /* FIXME: why do we have to manually define these properties? */
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
       "Additional Channel.Interface.* interfaces",
       G_TYPE_STRV,

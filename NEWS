@@ -2,8 +2,23 @@ telepathy-gabble 0.7.21 (UNRELEASED)
 ====================================
 
 Enhancements:
+
 * Implement new tube API for muc stream tubes
 * Implement new tube API for 1-1 D-Bus tubes
+* Implement the Messages interface for Text channels.
+
+Changes:
+
+* In multi-user chats, the point at which Sent is emitted has changed.
+  Previously, Sent was emitted when the message was echoed back to you by the
+  server; now, it is emitted (as is Messages.MessageSent) when you send the
+  message. When the message is echoed, a delivery report is emitted with
+  Messages.MessageReceived, and Received is emitted with an empty body and the
+  Non_Text_Content flag set. Clients that don't understand the Messages
+  interface should just immediately ack the ID in that signal.
+
+  If clients want to preserve the total ordering of MUC messages, they now need
+  to care about the Messages interface and watch out for the delivery report.
 
 telepathy-gabble 0.7.20 (2008-01-02)
 ====================================

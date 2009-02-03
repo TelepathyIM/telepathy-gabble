@@ -10,7 +10,7 @@ from dbus import PROPERTIES_IFACE
 from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
 from constants import *
-from tubetestutil import *
+import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -215,7 +215,7 @@ def test(q, bus, conn, stream):
     assert len(tubes) == 1, unwrap(tubes)
     expected_tube = (stream_tube_id, tubes_self_handle, TUBE_TYPE_STREAM,
         'echo', sample_parameters, TUBE_STATE_OPEN)
-    check_tube_in_tubes(expected_tube, tubes)
+    t.check_tube_in_tubes(expected_tube, tubes)
 
     # FIXME: if we use an unknown JID here, everything fails
     # (the code uses lookup where it should use ensure)

@@ -13,7 +13,7 @@ from servicetest import call_async, EventPattern, tp_name_prefix, \
      watch_tube_signals, sync_dbus
 from gabbletest import exec_test, acknowledge_iq, sync_stream
 from constants import *
-from tubetestutil import *
+import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 from twisted.internet.protocol import Factory, Protocol
@@ -527,7 +527,7 @@ def test(q, bus, conn, stream):
     expected_tube = (stream_tube_id, self_handle, TUBE_TYPE_STREAM, 'echo',
         sample_parameters, TUBE_STATE_OPEN)
     tubes = tubes_iface.ListTubes(byte_arrays=True)
-    check_tube_in_tubes(expected_tube, tubes)
+    t.check_tube_in_tubes(expected_tube, tubes)
 
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
@@ -793,8 +793,8 @@ def test(q, bus, conn, stream):
         'com.example.TestCase', sample_parameters, TUBE_STATE_OPEN)
     expected_stube = (stream_tube_id, self_handle, TUBE_TYPE_STREAM,
         'echo', sample_parameters, TUBE_STATE_OPEN)
-    check_tube_in_tubes(expected_dtube, tubes)
-    check_tube_in_tubes(expected_stube, tubes)
+    t.check_tube_in_tubes(expected_dtube, tubes)
+    t.check_tube_in_tubes(expected_stube, tubes)
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
     dbus_tube_conn = Connection(dbus_tube_adr)

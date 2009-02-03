@@ -6,7 +6,7 @@ import dbus
 from servicetest import call_async, EventPattern, EventProtocolClientFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 from constants import *
-from tubetestutil import *
+import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -173,7 +173,7 @@ def test(q, bus, conn, stream):
         )]
 
     assert len(tubes) == 1, unwrap(tubes)
-    check_tube_in_tubes(expected_tube, tubes)
+    t.check_tube_in_tubes(expected_tube, tubes)
 
     # tube channel is also announced (new API)
     new_event = q.expect('dbus-signal', signal='NewChannels')

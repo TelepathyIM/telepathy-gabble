@@ -9,7 +9,7 @@ from dbus.lowlevel import SignalMessage
 from servicetest import call_async, EventPattern, tp_name_prefix
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 from constants import *
-from tubetestutil import *
+import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 
@@ -146,7 +146,7 @@ def test(q, bus, conn, stream):
     assert len(tubes) == 1
     expected_tube = (dbus_tube_id, tubes_self_handle, TUBE_TYPE_DBUS,
         'com.example.TestCase', sample_parameters, TUBE_STATE_OPEN)
-    check_tube_in_tubes(expected_tube, tubes)
+    t.check_tube_in_tubes(expected_tube, tubes)
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
     tube = Connection(dbus_tube_adr)

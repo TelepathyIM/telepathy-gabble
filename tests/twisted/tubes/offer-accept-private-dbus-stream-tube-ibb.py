@@ -11,7 +11,7 @@ from dbus.lowlevel import SignalMessage
 from servicetest import call_async, EventPattern, watch_tube_signals
 from gabbletest import exec_test, acknowledge_iq, sync_stream
 from constants import *
-from tubetestutil import *
+import tubetestutil as t
 
 from dbus import PROPERTIES_IFACE
 
@@ -154,7 +154,7 @@ def test(q, bus, conn, stream):
     set_up_echo("")
     set_up_echo("2")
 
-    check_conn_properties(q, conn)
+    t.check_conn_properties(q, conn)
 
     conn.Connect()
 
@@ -265,7 +265,7 @@ def test(q, bus, conn, stream):
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     old_tubes_channel_properties = new_sig.args[0][0]
 
-    check_conn_properties(q, conn, [old_tubes_channel_properties])
+    t.check_conn_properties(q, conn, [old_tubes_channel_properties])
 
     # Try to CreateChannel with correct properties
     # Gabble must succeed
@@ -316,7 +316,7 @@ def test(q, bus, conn, stream):
     assert TUBE_STATE not in stream_tube_channel_properties
     assert TUBE_PARAMETERS not in stream_tube_channel_properties
 
-    check_conn_properties(q, conn,
+    t.check_conn_properties(q, conn,
             [old_tubes_channel_properties, stream_tube_channel_properties])
 
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
@@ -515,7 +515,7 @@ def test(q, bus, conn, stream):
 
     expected_tube = (stream_tube_id, self_handle, TUBE_TYPE_STREAM, 'echo',
         sample_parameters, TUBE_STATE_OPEN)
-    check_tube_in_tubes(expected_tube, tubes_iface.ListTubes(byte_arrays=True))
+    t.check_tube_in_tubes(expected_tube, tubes_iface.ListTubes(byte_arrays=True))
 
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
@@ -558,7 +558,7 @@ def test(q, bus, conn, stream):
 
     expected_tube = (new_stream_tube_id, self_handle, TUBE_TYPE_STREAM,
         'newecho', new_sample_parameters, TUBE_STATE_OPEN)
-    check_tube_in_tubes (expected_tube, tubes_iface.ListTubes(byte_arrays=True))
+    t.check_tube_in_tubes (expected_tube, tubes_iface.ListTubes(byte_arrays=True))
 
     # have the fake client open the stream
     # Old tube API
@@ -704,8 +704,8 @@ def test(q, bus, conn, stream):
         'com.example.TestCase', sample_parameters, TUBE_STATE_OPEN)
     expected_stube = (stream_tube_id, self_handle, TUBE_TYPE_STREAM,
         'echo', sample_parameters, TUBE_STATE_OPEN)
-    check_tube_in_tubes(expected_dtube, tubes)
-    check_tube_in_tubes(expected_stube, tubes)
+    t.check_tube_in_tubes(expected_dtube, tubes)
+    t.check_tube_in_tubes(expected_stube, tubes)
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
     dbus_tube_conn = Connection(dbus_tube_adr)

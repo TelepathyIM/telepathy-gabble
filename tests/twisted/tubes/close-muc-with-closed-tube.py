@@ -6,7 +6,7 @@ import dbus
 from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolClientFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 from constants import *
-from tubetestutil import *
+import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -158,7 +158,7 @@ def test(q, bus, conn, stream):
         TUBE_STATE_LOCAL_PENDING)
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert len(tubes) == 1, unwrap(tubes)
-    check_tube_in_tubes(expected_tube, tubes)
+    t.check_tube_in_tubes(expected_tube, tubes)
 
     # reject the tube
     tubes_iface.CloseTube(tube_id)

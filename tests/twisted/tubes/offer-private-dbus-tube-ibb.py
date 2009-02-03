@@ -9,7 +9,7 @@ from dbus.lowlevel import SignalMessage
 from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 from constants import *
-from tubetestutil import *
+import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 from ns import DISCO_INFO, TUBES, SI, FEATURE_NEG, IBB, MUC_BYTESTREAM, X_DATA
@@ -171,7 +171,7 @@ def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     assert len(tubes) == 1
     expected_tube = (dbus_tube_id, self_handle, TUBE_TYPE_DBUS,
         'com.example.TestCase', sample_parameters, TUBE_STATE_REMOTE_PENDING)
-    check_tube_in_tubes(expected_tube, tubes)
+    t.check_tube_in_tubes(expected_tube, tubes)
 
     dbus_stream_id = alice_accepts_tube(q, stream, iq_event, dbus_tube_id)
 
@@ -296,7 +296,7 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     assert len(tubes) == 1
     expected_tube = (None, self_handle, TUBE_TYPE_DBUS, 'com.example.TestCase',
         sample_parameters, TUBE_STATE_REMOTE_PENDING)
-    check_tube_in_tubes(expected_tube, tubes)
+    t.check_tube_in_tubes(expected_tube, tubes)
 
     status = tube_chan.Get(CHANNEL_IFACE_TUBE, 'State', dbus_interface=PROPERTIES_IFACE)
     assert status == TUBE_STATE_REMOTE_PENDING

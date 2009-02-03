@@ -25,7 +25,7 @@
 #include <time.h>
 
 #include <telepathy-glib/enums.h>
-#include "text-mixin.h"
+#include <telepathy-glib/message-mixin.h>
 
 G_BEGIN_DECLS
 
@@ -36,14 +36,13 @@ typedef struct _GabbleIMChannelPrivate GabbleIMChannelPrivate;
 struct _GabbleIMChannelClass {
     GObjectClass parent_class;
 
-    GabbleTextMixinClass text_class;
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleIMChannel {
     GObject parent;
 
-    GabbleTextMixin text;
+    TpMessageMixin message_mixin;
 
     GabbleIMChannelPrivate *priv;
 };
@@ -68,7 +67,8 @@ GType gabble_im_channel_get_type (void);
 
 void _gabble_im_channel_receive (GabbleIMChannel *chan,
     TpChannelTextMessageType type, TpHandle sender, const char *from,
-    time_t timestamp, const char *text);
+    time_t timestamp, const char *text, TpChannelTextSendError send_error,
+    TpDeliveryStatus delivery_status);
 void _gabble_im_channel_state_receive (GabbleIMChannel *chan, guint state);
 
 G_END_DECLS

@@ -42,7 +42,6 @@
 #include "jingle-session.h"
 #include "media-channel.h"
 #include "namespaces.h"
-#include "text-mixin.h"
 #include "util.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);

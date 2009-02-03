@@ -1,4 +1,5 @@
 AMP = "http://jabber.org/protocol/amp"
+CHAT_STATES = 'http://jabber.org/protocol/chatstates'
 CAPS = "http://jabber.org/protocol/caps"
 DISCO_INFO = "http://jabber.org/protocol/disco#info"
 DISCO_ITEMS = "http://jabber.org/protocol/disco#items"

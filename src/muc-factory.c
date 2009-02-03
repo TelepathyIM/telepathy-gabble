@@ -39,10 +39,10 @@
 #include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
+#include "message-util.h"
 #include "muc-channel.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include "text-mixin.h"
 #include "tubes-channel.h"
 #include "tube-stream.h"
 #include "util.h"
@@ -798,11 +798,12 @@ muc_factory_message_cb (LmMessageHandler *handler,
   GabbleMucChannel *chan;
   gint state;
   TpChannelTextSendError send_error;
+  TpDeliveryStatus delivery_status;
   gchar *room;
   LmMessageNode *subj_node;
 
-  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
-        &msgtype, &body, &state, &send_error))
+  if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
+        &msgtype, &body, &state, &send_error, &delivery_status))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   if (conn_olpc_process_activity_properties_message (priv->conn, message,
@@ -874,29 +875,24 @@ muc_factory_message_cb (LmMessageHandler *handler,
         }
     }
 
-  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
-    {
-      tp_svc_channel_type_text_emit_send_error ((TpSvcChannelTypeText *) chan,
-          send_error, stamp, msgtype, body);
-      goto done;
-    }
-
-  if (state != -1 && handle_type == TP_HANDLE_TYPE_CONTACT)
-    _gabble_muc_channel_state_receive (chan, state, handle);
-
   if (body != NULL)
     _gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
-        body, message);
+        body, message, send_error, delivery_status);
 
-  subj_node = lm_message_node_get_child (message->node, "subject");
-  if (subj_node != NULL)
+  if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
-      subject = lm_message_node_get_value (subj_node);
-      _gabble_muc_channel_handle_subject (chan, msgtype, handle_type, handle,
-          stamp, subject, message);
+      if (state != -1 && handle_type == TP_HANDLE_TYPE_CONTACT)
+        _gabble_muc_channel_state_receive (chan, state, handle);
+
+      subj_node = lm_message_node_get_child (message->node, "subject");
+      if (subj_node != NULL)
+        {
+          subject = lm_message_node_get_value (subj_node);
+          _gabble_muc_channel_handle_subject (chan, msgtype, handle_type, handle,
+              stamp, subject, message);
+        }
     }
 
-done:
   tp_handle_unref (handle_source, handle);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

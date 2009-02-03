@@ -60,39 +60,6 @@ class S5BFactory(Factory):
     def clientConnectionLost(self, connector, reason):
         pass
 
-def check_conn_properties(q, conn, channel_list=None):
-    properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface=dbus.PROPERTIES_IFACE)
-
-    if channel_list == None:
-        assert properties.get('Channels') == [], properties['Channels']
-    else:
-        for i in channel_list:
-            assert i in properties['Channels'], \
-                (i, properties['Channels'])
-
-    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Tubes',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-             },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle',
-              'org.freedesktop.Telepathy.Channel.TargetID',
-             ]
-            ) in properties.get('RequestableChannelClasses'),\
-                     properties['RequestableChannelClasses']
-    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-             },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle',
-              'org.freedesktop.Telepathy.Channel.TargetID',
-              'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters',
-              'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service',
-             ]
-            ) in properties.get('RequestableChannelClasses'),\
-                     properties['RequestableChannelClasses']
-
 def check_channel_properties(q, bus, conn, stream, channel, channel_type,
         contact_handle, contact_id, state=None):
     # Exercise basic Channel Properties from spec 0.17.7
@@ -176,7 +143,7 @@ def test(q, bus, conn, stream):
     t.set_up_echo("")
     t.set_up_echo("2")
 
-    check_conn_properties(q, conn)
+    t.check_conn_properties(q, conn)
 
     conn.Connect()
 
@@ -290,7 +257,7 @@ def test(q, bus, conn, stream):
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     old_tubes_channel_properties = new_sig.args[0][0]
 
-    check_conn_properties(q, conn, [old_tubes_channel_properties])
+    t.check_conn_properties(q, conn, [old_tubes_channel_properties])
     # Try to CreateChannel with correct properties
     # Gabble must succeed
     call_async(q, requestotron, 'CreateChannel',
@@ -326,7 +293,7 @@ def test(q, bus, conn, stream):
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     stream_tube_channel_properties = new_sig.args[0][0]
 
-    check_conn_properties(q, conn,
+    t.check_conn_properties(q, conn,
             [old_tubes_channel_properties, stream_tube_channel_properties])
 
     tubes_chan = bus.get_object(conn.bus_name, chan_path)

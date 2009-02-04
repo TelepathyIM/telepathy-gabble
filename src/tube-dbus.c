@@ -1678,6 +1678,8 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *name;
+  GHashTable *added;
+  GArray *removed;
 
   g_assert (priv->handle_type == TP_HANDLE_TYPE_ROOM);
 
@@ -1691,8 +1693,18 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
   g_assert (g_hash_table_size (priv->dbus_names) ==
       g_hash_table_size (priv->dbus_name_to_handle));
 
+  /* Fire DBusNamesChanged (new API) */
+  added = g_hash_table_new (g_direct_hash, g_direct_equal);
+  removed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+
+  g_array_append_val (removed, handle);
+
+  gabble_svc_channel_type_dbus_tube_emit_d_bus_names_changed (self, added,
+      removed);
+
+  g_hash_table_destroy (added);
+  g_array_free (removed, TRUE);
   tp_handle_unref (contact_repo, handle);
-  /* TODO: gabble_svc_channel_type_dbus_tube_emit_d_bus_names_changed */
   return TRUE;
 }
 

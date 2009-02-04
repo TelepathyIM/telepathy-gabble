@@ -1129,6 +1129,10 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleTubeDBusClass, dbus_props_class));
 
+  tp_group_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleTubeDBusClass, group_class),
+      NULL, NULL);
+
   tp_group_mixin_init_dbus_properties (object_class);
 }
 
@@ -1596,6 +1600,7 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   gchar *name_copy;
   GHashTable *added;
   GArray *removed;
+  TpIntSet *handles_added;
 
   g_assert (priv->handle_type == TP_HANDLE_TYPE_ROOM);
   g_assert (g_hash_table_size (priv->dbus_names) ==
@@ -1642,6 +1647,13 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   g_hash_table_insert (priv->dbus_name_to_handle, name_copy,
       GUINT_TO_POINTER (handle));
 
+  /* add as member */
+  handles_added = tp_intset_new ();
+  tp_intset_add (handles_added, handle);
+
+  tp_group_mixin_change_members (G_OBJECT (self), "", handles_added, NULL,
+          NULL, NULL, 0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+
   /* Fire DBusNamesChanged (new API) */
   added = g_hash_table_new (g_direct_hash, g_direct_equal);
   removed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
@@ -1653,6 +1665,7 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
 
   g_hash_table_destroy (added);
   g_array_free (removed, TRUE);
+  tp_intset_destroy (handles_added);
 
   return TRUE;
 }

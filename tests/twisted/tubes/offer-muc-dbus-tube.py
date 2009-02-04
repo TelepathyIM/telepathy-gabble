@@ -244,17 +244,20 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
         byte_arrays=True)
 
+    tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=CHANNEL_IFACE_GROUP)
+
     assert tube_props['Parameters'] == sample_parameters
     assert tube_props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
     call_async(q, dbus_tube_iface, 'OfferDBusTube')
 
-    new_tube_event, presence_event, _, status_event = q.expect_many(
+    new_tube_event, presence_event, _, status_event, dbus_changed_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
         EventPattern('stream-presence', to='chat2@conf.localhost/test'),
         EventPattern('dbus-return', method='OfferDBusTube'),
-        EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[TUBE_CHANNEL_STATE_OPEN]))
+        EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[TUBE_CHANNEL_STATE_OPEN]),
+        EventPattern('dbus-signal', signal='DBusNamesChanged', interface=CHANNEL_TYPE_DBUS_TUBE))
 
     # handle new_tube_event
     dbus_tube_id = new_tube_event.args[0]
@@ -297,6 +300,11 @@ def test(q, bus, conn, stream):
                       'i': ('int', '-123'),
                       'u': ('uint', '123'),
                      }
+
+    # handle dbus_changed_event
+    added, removed = dbus_changed_event.args
+    assert {tube_self_handle: my_bus_name}
+    assert removed == []
 
     # TODO: add a participant to the tube and check DBusNamesChanged signal
 

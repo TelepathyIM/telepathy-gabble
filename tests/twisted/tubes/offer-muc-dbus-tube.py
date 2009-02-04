@@ -244,8 +244,6 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
         byte_arrays=True)
 
-    tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=CHANNEL_IFACE_GROUP)
-
     assert tube_props['Parameters'] == sample_parameters
     assert tube_props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
 
@@ -258,6 +256,9 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-return', method='OfferDBusTube'),
         EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[TUBE_CHANNEL_STATE_OPEN]),
         EventPattern('dbus-signal', signal='DBusNamesChanged', interface=CHANNEL_TYPE_DBUS_TUBE))
+
+    tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=CHANNEL_IFACE_GROUP)
+    assert tube_self_handle != 0
 
     # handle new_tube_event
     dbus_tube_id = new_tube_event.args[0]
@@ -303,7 +304,7 @@ def test(q, bus, conn, stream):
 
     # handle dbus_changed_event
     added, removed = dbus_changed_event.args
-    assert {tube_self_handle: my_bus_name}
+    assert added == {tube_self_handle: my_bus_name}
     assert removed == []
 
     bob_bus_name = ':2.Ym9i'

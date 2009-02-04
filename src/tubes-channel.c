@@ -477,8 +477,17 @@ tube_opened_cb (GabbleTubeIface *tube,
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
   guint tube_id;
+  TpTubeType type;
 
-  g_object_get (tube, "id", &tube_id, NULL);
+  g_object_get (tube,
+      "id", &tube_id,
+      "type", &type,
+      NULL);
+
+  if (type == TP_TUBE_TYPE_DBUS)
+    {
+      add_yourself_in_dbus_names (self, tube_id);
+    }
 
   tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id,
       TP_TUBE_STATE_OPEN);
@@ -515,11 +524,6 @@ tube_offered_cb (GabbleTubeIface *tube,
       state);
 
   update_tubes_presence (self);
-
-  if (type == TP_TUBE_TYPE_DBUS)
-    {
-      add_yourself_in_dbus_names (self, tube_id);
-    }
 
   g_free (service);
   g_hash_table_destroy (parameters);

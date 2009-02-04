@@ -7,7 +7,7 @@ from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, tp_name_prefix
-from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence, elem
 from constants import *
 import ns
 import tubetestutil as t
@@ -306,7 +306,39 @@ def test(q, bus, conn, stream):
     assert {tube_self_handle: my_bus_name}
     assert removed == []
 
-    # TODO: add a participant to the tube and check DBusNamesChanged signal
+    bob_bus_name = ':2.Ym9i'
+    bob_handle = conn.RequestHandles(HT_CONTACT, ['chat2@conf.localhost/bob'])[0]
+
+    # Bob joins the tube
+    # stream-id=dbus_stream_id dbus-name=
+    presence = elem('presence', from_='chat2@conf.localhost/bob', to='chat2@conf.localhost')(
+        elem('x', xmlns=ns.MUC),
+        elem('tubes', xmlns=ns.TUBES)(
+            elem('tube', type='dbus', initiator='chat2@conf.localhost/test',
+                service='com.example.TestCase', id=str(dbus_tube_id))(
+                    elem('parameters')(
+                        elem('parameter', name='ay', type='bytes')(u'aGVsbG8='),
+                        elem('parameter', name='s', type='str')(u'hello'),
+                        elem('parameter', name='i', type='int')(u'-123'),
+                        elem('parameter', name='u', type='uint')(u'123')
+                        ))))
+
+    # have to add stream-id and dbus-name attributes manuallya as we can't use
+    # keyword with '-'...
+    tube_node = xpath.queryForNodes('/presence/tubes/tube', presence)[0]
+    tube_node['stream-id'] = dbus_stream_id
+    tube_node['dbus-name'] = bob_bus_name
+    stream.send(presence)
+
+    dbus_changed_event = q.expect('dbus-signal', signal='DBusNamesChanged',
+        interface=CHANNEL_TYPE_DBUS_TUBE)
+
+    added, removed = dbus_changed_event.args
+    assert added == {bob_handle: bob_bus_name}
+    assert removed == []
+
+    # TODO: use tube
+    # TODO: remove bob
 
     chan_iface.Close()
     q.expect_many(

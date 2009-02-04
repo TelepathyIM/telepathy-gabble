@@ -1680,6 +1680,7 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
   const gchar *name;
   GHashTable *added;
   GArray *removed;
+  TpIntSet *handles_removed;
 
   g_assert (priv->handle_type == TP_HANDLE_TYPE_ROOM);
 
@@ -1692,6 +1693,13 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
 
   g_assert (g_hash_table_size (priv->dbus_names) ==
       g_hash_table_size (priv->dbus_name_to_handle));
+
+  /* remove member */
+  handles_removed = tp_intset_new ();
+  tp_intset_add (handles_removed, handle);
+
+  tp_group_mixin_change_members (G_OBJECT (self), "", NULL, handles_removed,
+          NULL, NULL, 0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
   /* Fire DBusNamesChanged (new API) */
   added = g_hash_table_new (g_direct_hash, g_direct_equal);

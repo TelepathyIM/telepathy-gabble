@@ -77,7 +77,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeDBus, gabble_tube_dbus, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_TUBE,
       NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
-      tp_external_group_mixin_iface_init);
+      tp_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
@@ -599,6 +599,9 @@ gabble_tube_dbus_finalize (GObject *object)
   g_free (priv->service);
   g_hash_table_destroy (priv->parameters);
 
+  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
+    tp_group_mixin_finalize (object);
+
   G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->finalize (object);
 }
 
@@ -865,6 +868,18 @@ gabble_tube_dbus_constructor (GType type,
       g_object_set (self, "bytestream", bytestream, NULL);
 
       g_free (nick);
+
+      /* initialize group mixin */
+      tp_group_mixin_init (obj,
+          G_STRUCT_OFFSET (GabbleTubeDBus, group),
+          contact_repo, priv->self_handle);
+
+      /* set initial group flags */
+      tp_group_mixin_change_flags (obj,
+          TP_CHANNEL_GROUP_FLAG_PROPERTIES |
+          TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES |
+          TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE,
+          0);
     }
   else
     {
@@ -1114,7 +1129,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleTubeDBusClass, dbus_props_class));
 
-  tp_external_group_mixin_init_dbus_properties (object_class);
+  tp_group_mixin_init_dbus_properties (object_class);
 }
 
 static void

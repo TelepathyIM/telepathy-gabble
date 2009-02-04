@@ -23,6 +23,7 @@
 #include <glib-object.h>
 
 #include <telepathy-glib/enums.h>
+#include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/interfaces.h>
 
 #include "connection.h"
@@ -39,10 +40,12 @@ struct _GabbleTubeDBusClass {
   GObjectClass parent_class;
 
   TpDBusPropertiesMixinClass dbus_props_class;
+  TpGroupMixinClass group_class;
 };
 
 struct _GabbleTubeDBus {
   GObject parent;
+  TpGroupMixin group;
 
   GabbleTubeDBusPrivate *priv;
 };

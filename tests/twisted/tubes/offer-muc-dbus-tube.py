@@ -345,7 +345,18 @@ def test(q, bus, conn, stream):
     tube = Connection(dbus_tube_adr)
     fire_signal_on_tube(q, tube, 'chat2@conf.localhost', dbus_stream_id, my_bus_name)
 
-    # TODO: remove bob
+    # Bob leave the tube
+    presence = elem('presence', from_='chat2@conf.localhost/bob', to='chat2@conf.localhost')(
+        elem('x', xmlns=ns.MUC),
+        elem('tubes', xmlns=ns.TUBES))
+    stream.send(presence)
+
+    dbus_changed_event = q.expect('dbus-signal', signal='DBusNamesChanged',
+        interface=CHANNEL_TYPE_DBUS_TUBE)
+
+    added, removed = dbus_changed_event.args
+    assert added == {}
+    assert removed == [bob_handle]
 
     chan_iface.Close()
     q.expect_many(

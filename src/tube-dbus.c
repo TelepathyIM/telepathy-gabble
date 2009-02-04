@@ -1242,9 +1242,6 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       g_object_set (priv->bytestream,
           "state", GABBLE_BYTESTREAM_STATE_OPEN,
           NULL);
-
-      gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (tube,
-          GABBLE_TUBE_CHANNEL_STATE_OPEN);
     }
 
   if (!create_dbus_server (tube, error))

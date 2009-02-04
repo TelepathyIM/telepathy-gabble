@@ -55,15 +55,6 @@ def test(q, bus, conn, stream):
     # Now we request streams before either <presence> or caps have arrived
     call_async(q, media_iface, 'RequestStreams', handle, [0]) # req audio stream
 
-    # Variant of the "make sure disco is processed" test hack, but this time
-    # we want to make sure RequestStreams is processed (and suspended) before
-    # presence arrives, to be able to test it properl.y
-    el = domish.Element(('jabber.client', 'presence'))
-    el['from'] = 'bob@example.com/Bar'
-    stream.send(el.toXml())
-    q.expect('dbus-signal', signal='PresenceUpdate')
-    # OK, now we can continue. End of hack
-
     conn.Disconnect()
 
     # RequestStreams should now return NotAvailable

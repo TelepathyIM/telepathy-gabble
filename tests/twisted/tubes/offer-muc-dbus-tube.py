@@ -23,6 +23,42 @@ sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
+def check_tube_in_presence(presence, dbus_tube_id, initiator):
+    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
+            'protocol/muc"]', presence)
+    assert x_nodes is not None
+    assert len(x_nodes) == 1
+
+    tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
+        % ns.TUBES, presence)
+    assert tubes_nodes is not None
+    assert len(tubes_nodes) == 1
+
+    tube_nodes = xpath.queryForNodes('/tubes/tube', tubes_nodes[0])
+    assert tube_nodes is not None
+    assert len(tube_nodes) == 1
+    for tube in tube_nodes:
+        tube['type'] = 'dbus'
+        assert tube['initiator'] == initiator
+        assert tube['service'] == 'com.example.TestCase'
+        dbus_stream_id = tube['stream-id']
+        my_bus_name = tube['dbus-name']
+        assert tube['id'] == str(dbus_tube_id)
+
+    params = {}
+    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
+    for node in parameter_nodes:
+        assert node['name'] not in params
+        params[node['name']] = (node['type'], str(node))
+    assert params == {'ay': ('bytes', 'aGVsbG8='),
+                      's': ('str', 'hello'),
+                      'i': ('int', '-123'),
+                      'u': ('uint', '123'),
+                     }
+
+    return dbus_stream_id, my_bus_name
+
+
 def fire_signal_on_tube(q, tube, chatroom, dbus_stream_id, my_bus_name):
     signal = SignalMessage('/', 'foo.bar', 'baz')
     signal.append(42, signature='u')
@@ -122,37 +158,7 @@ def test(q, bus, conn, stream):
     # handle presence_event
     # We announce our newly created tube in our muc presence
     presence = presence_event.stanza
-    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
-            'protocol/muc"]', presence)
-    assert x_nodes is not None
-    assert len(x_nodes) == 1
-
-    tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
-        % ns.TUBES, presence)
-    assert tubes_nodes is not None
-    assert len(tubes_nodes) == 1
-
-    tube_nodes = xpath.queryForNodes('/tubes/tube', tubes_nodes[0])
-    assert tube_nodes is not None
-    assert len(tube_nodes) == 1
-    for tube in tube_nodes:
-        tube['type'] = 'dbus'
-        assert tube['initiator'] == 'chat@conf.localhost/test'
-        assert tube['service'] == 'com.example.TestCase'
-        dbus_stream_id = tube['stream-id']
-        my_bus_name = tube['dbus-name']
-        assert tube['id'] == str(dbus_tube_id)
-
-    params = {}
-    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
-    for node in parameter_nodes:
-        assert node['name'] not in params
-        params[node['name']] = (node['type'], str(node))
-    assert params == {'ay': ('bytes', 'aGVsbG8='),
-                      's': ('str', 'hello'),
-                      'i': ('int', '-123'),
-                      'u': ('uint', '123'),
-                     }
+    dbus_stream_id, my_bus_name = check_tube_in_presence(presence, dbus_tube_id, 'chat@conf.localhost/test')
 
     # handle dbus_changed_event
     assert dbus_changed_event.args[0] == dbus_tube_id
@@ -272,37 +278,7 @@ def test(q, bus, conn, stream):
     # handle presence_event
     # We announce our newly created tube in our muc presence
     presence = presence_event.stanza
-    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
-            'protocol/muc"]', presence)
-    assert x_nodes is not None
-    assert len(x_nodes) == 1
-
-    tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
-        % ns.TUBES, presence)
-    assert tubes_nodes is not None
-    assert len(tubes_nodes) == 1
-
-    tube_nodes = xpath.queryForNodes('/tubes/tube', tubes_nodes[0])
-    assert tube_nodes is not None
-    assert len(tube_nodes) == 1
-    for tube in tube_nodes:
-        tube['type'] = 'dbus'
-        assert tube['initiator'] == 'chat2@conf.localhost/test'
-        assert tube['service'] == 'com.example.TestCase'
-        dbus_stream_id = tube['stream-id']
-        my_bus_name = tube['dbus-name']
-        assert tube['id'] == str(dbus_tube_id)
-
-    params = {}
-    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
-    for node in parameter_nodes:
-        assert node['name'] not in params
-        params[node['name']] = (node['type'], str(node))
-    assert params == {'ay': ('bytes', 'aGVsbG8='),
-                      's': ('str', 'hello'),
-                      'i': ('int', '-123'),
-                      'u': ('uint', '123'),
-                     }
+    dbus_stream_id, my_bus_name = check_tube_in_presence(presence, dbus_tube_id, 'chat2@conf.localhost/test')
 
     # handle dbus_changed_event
     added, removed = dbus_changed_event.args

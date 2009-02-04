@@ -14,7 +14,7 @@ import gabbletest
 import dbus
 import time
 
-import constants
+import constants as cs
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -38,10 +38,10 @@ def test(q, bus, conn, stream):
     # unsure whether to treat contact as offline for this purpose, it
     # will tentatively allow channel creation and contact handle addition
 
-    handle = conn.RequestHandles(1, [jt.remote_jid])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
 
-    path = conn.RequestChannel(
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia', 1, handle, True)
+    path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_CONTACT,
+        handle, True)
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
 
     # So it turns out that the calls to RequestStreams and Disconnect could be
@@ -53,13 +53,14 @@ def test(q, bus, conn, stream):
     sync_dbus(bus, q, conn)
 
     # Now we request streams before either <presence> or caps have arrived
-    call_async(q, media_iface, 'RequestStreams', handle, [0]) # req audio stream
+    call_async(q, media_iface, 'RequestStreams', handle,
+        [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     conn.Disconnect()
 
     # RequestStreams should now return NotAvailable
     event = q.expect('dbus-error', method='RequestStreams')
-    assert event.error.get_dbus_name() == constants.NOT_AVAILABLE, event.error
+    assert event.error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
 
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 

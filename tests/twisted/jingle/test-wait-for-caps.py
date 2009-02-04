@@ -14,6 +14,8 @@ import gabbletest
 import dbus
 import time
 
+import constants as cs
+import ns
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -37,10 +39,10 @@ def test(q, bus, conn, stream):
     # unsure whether to treat contact as offline for this purpose, it
     # will tentatively allow channel creation and contact handle addition
 
-    handle = conn.RequestHandles(1, [jt.remote_jid])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
 
-    path = conn.RequestChannel(
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia', 1, handle, True)
+    path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_CONTACT,
+        handle, True)
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
 
     # Now we request streams before either <presence> or caps have arrived
@@ -62,8 +64,7 @@ def test(q, bus, conn, stream):
     jt.send_remote_presence()
 
     # Gabble doesn't trust it, so makes a disco
-    event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to='foo@bar.com/Foo')
+    event = q.expect('stream-iq', query_ns=ns.DISCO_INFO, to='foo@bar.com/Foo')
 
     jt.send_remote_disco_reply(event.stanza)
 

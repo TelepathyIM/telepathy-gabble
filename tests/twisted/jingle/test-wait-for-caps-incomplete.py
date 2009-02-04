@@ -7,7 +7,7 @@ incomplete requests.
 
 from gabbletest import exec_test, make_result_iq, sync_stream
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        call_async, EventPattern
+        call_async, EventPattern, sync_dbus
 from twisted.words.xish import domish
 import jingletest
 import gabbletest
@@ -43,6 +43,14 @@ def test(q, bus, conn, stream):
     path = conn.RequestChannel(
         'org.freedesktop.Telepathy.Channel.Type.StreamedMedia', 1, handle, True)
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
+
+    # So it turns out that the calls to RequestStreams and Disconnect could be
+    # reordered while the first waits on the result of introspecting the
+    # channel's object which is kicked off by making a proxy object for it,
+    # whereas the connection proxy is long ago introspected. Isn't dbus-python
+    # great? Syncing here forces that introspection to finish so we can rely on
+    # the ordering of RequestStreams and Disconnect. Yay.
+    sync_dbus(bus, q, conn)
 
     # Now we request streams before either <presence> or caps have arrived
     call_async(q, media_iface, 'RequestStreams', handle, [0]) # req audio stream

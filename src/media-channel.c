@@ -505,6 +505,15 @@ gabble_media_channel_set_property (GObject     *object,
       break;
     case PROP_INITIAL_PEER:
       priv->initial_peer = g_value_get_uint (value);
+
+      if (priv->initial_peer != 0)
+        {
+          TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
+          TpHandleRepoIface *repo = tp_base_connection_get_handles (base_conn,
+              TP_HANDLE_TYPE_CONTACT);
+          tp_handle_ref (repo, priv->initial_peer);
+        }
+
       break;
     case PROP_SESSION:
       g_assert (priv->session == NULL);
@@ -720,6 +729,12 @@ gabble_media_channel_dispose (GObject *object)
 
   tp_handle_unref (contact_handles, priv->creator);
   priv->creator = 0;
+
+  if (priv->initial_peer != 0)
+    {
+      tp_handle_unref (contact_handles, priv->initial_peer);
+      priv->initial_peer = 0;
+    }
 
   /** In this we set the state to ENDED, then the callback unrefs
    * the session

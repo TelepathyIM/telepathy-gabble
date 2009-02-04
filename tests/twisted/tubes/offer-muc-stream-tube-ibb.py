@@ -380,6 +380,9 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-return', method='OfferStreamTube'),
         EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[TUBE_CHANNEL_STATE_OPEN]))
 
+    tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=CHANNEL_IFACE_GROUP)
+    assert conn.InspectHandles(HT_CONTACT, [tube_self_handle]) == ['chat2@conf.localhost/test']
+
     # handle new_tube_event
     stream_tube_id = new_tube_event.args[0]
     assert new_tube_event.args[2] == 1       # Stream

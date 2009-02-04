@@ -4,15 +4,11 @@ attempts to call a contact. Gabble should delay the RequestStreams
 call until caps have arrived.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        call_async, EventPattern, sync_dbus
-from twisted.words.xish import domish
+from gabbletest import exec_test
+from servicetest import make_channel_proxy, call_async, sync_dbus
 import jingletest
-import gabbletest
 
 import dbus
-import time
 
 import constants as cs
 import ns

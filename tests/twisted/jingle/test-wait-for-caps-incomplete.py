@@ -1,28 +1,18 @@
-
 """
 Test that Gabble properly cleans up delayed RequestStream contexts
 and returns an error when Disconnect is called and there are
 incomplete requests.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        call_async, EventPattern, sync_dbus
-from twisted.words.xish import domish
+from gabbletest import exec_test
+from servicetest import make_channel_proxy, call_async, sync_dbus
 import jingletest
-import gabbletest
-import dbus
-import time
 
 import constants as cs
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
-    # If we need to override remote caps, feats, codecs or caps,
-    # this is a good time to do it
-
-    # Connecting
     conn.Connect()
 
     q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
@@ -31,8 +21,6 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='PresenceUpdate',
         args=[{1L: (0L, {u'available': {}})}])
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
-
-    self_handle = conn.GetSelfHandle()
 
     # We intentionally DON'T set remote presence yet. Since Gabble is still
     # unsure whether to treat contact as offline for this purpose, it

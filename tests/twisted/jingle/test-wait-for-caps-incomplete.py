@@ -14,6 +14,7 @@ import gabbletest
 import dbus
 import time
 
+import constants
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -57,9 +58,9 @@ def test(q, bus, conn, stream):
 
     conn.Disconnect()
 
-    # RequestStreams should now return error
-    q.expect('dbus-error', method='RequestStreams')
-
+    # RequestStreams should now return NotAvailable
+    event = q.expect('dbus-error', method='RequestStreams')
+    assert event.error.get_dbus_name() == constants.NOT_AVAILABLE, event.error
 
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 

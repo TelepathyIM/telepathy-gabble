@@ -291,7 +291,6 @@ def test(q, bus, conn, stream):
     bob_handle = conn.RequestHandles(HT_CONTACT, ['chat2@conf.localhost/bob'])[0]
 
     # Bob joins the tube
-    # stream-id=dbus_stream_id dbus-name=
     presence = elem('presence', from_='chat2@conf.localhost/bob', to='chat2@conf.localhost')(
         elem('x', xmlns=ns.MUC),
         elem('tubes', xmlns=ns.TUBES)(

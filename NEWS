@@ -4,7 +4,7 @@ telepathy-gabble 0.7.21 (UNRELEASED)
 Enhancements:
 
 * Implement new tube API for muc stream tubes
-* Implement new tube API for 1-1 D-Bus tubes
+* Implement new tube API for 1-1 and muc D-Bus tubes
 * Implement the Messages interface for Text channels.
 
 Changes:

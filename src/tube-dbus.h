@@ -22,8 +22,14 @@
 
 #include <glib-object.h>
 
+#include <telepathy-glib/enums.h>
+#include <telepathy-glib/group-mixin.h>
+#include <telepathy-glib/interfaces.h>
+
 #include "connection.h"
 #include "bytestream-iface.h"
+#include "extensions/extensions.h"
+#include "muc-channel.h"
 
 G_BEGIN_DECLS
 
@@ -35,10 +41,12 @@ struct _GabbleTubeDBusClass {
   GObjectClass parent_class;
 
   TpDBusPropertiesMixinClass dbus_props_class;
+  TpGroupMixinClass group_class;
 };
 
 struct _GabbleTubeDBus {
   GObject parent;
+  TpGroupMixin group;
 
   GabbleTubeDBusPrivate *priv;
 };
@@ -64,7 +72,7 @@ GType gabble_tube_dbus_get_type (void);
 GabbleTubeDBus *gabble_tube_dbus_new (GabbleConnection *conn, TpHandle handle,
     TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
     const gchar *service, GHashTable *parameters, const gchar *stream_id,
-    guint id, GabbleBytestreamIface *bytestream);
+    guint id, GabbleBytestreamIface *bytestream, GabbleMucChannel *muc);
 
 gboolean gabble_tube_dbus_add_name (GabbleTubeDBus *tube, TpHandle handle,
     const gchar *name);
@@ -75,6 +83,8 @@ gboolean gabble_tube_dbus_handle_in_names (GabbleTubeDBus *tube,
     TpHandle handle);
 
 gboolean gabble_tube_dbus_offer (GabbleTubeDBus *tube, GError **error);
+
+const gchar * const * gabble_tube_dbus_channel_get_allowed_properties (void);
 
 /* Only extern for the benefit of tests/test-dtube-unique-names.c */
 gchar *_gabble_generate_dbus_unique_name (const gchar *nick);

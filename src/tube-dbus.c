@@ -1220,6 +1220,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       gabble_tube_iface_publish_in_node (GABBLE_TUBE_IFACE (tube),
           (TpBaseConnection *) priv->conn, tube_node);
 
+      tube->priv->offered = TRUE;
       result = gabble_bytestream_factory_negotiate_stream (
           priv->conn->bytestream_factory, msg, priv->stream_id,
           bytestream_negotiate_cb, tube, error);
@@ -1239,6 +1240,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
     }
   else
     {
+      tube->priv->offered = TRUE;
       g_object_set (priv->bytestream,
           "state", GABBLE_BYTESTREAM_STATE_OPEN,
           NULL);
@@ -1247,7 +1249,6 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
   if (!create_dbus_server (tube, error))
     return FALSE;
 
-  tube->priv->offered = TRUE;
   g_signal_emit (G_OBJECT (tube), signals[OFFERED], 0);
 
   return TRUE;

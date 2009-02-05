@@ -27,6 +27,7 @@
 
 #include "connection.h"
 #include "extensions/extensions.h"
+#include "muc-channel.h"
 
 G_BEGIN_DECLS
 
@@ -75,7 +76,7 @@ static const gchar * const gabble_tube_stream_channel_allowed_properties[] = {
 GabbleTubeStream *gabble_tube_stream_new (GabbleConnection *conn,
     TpHandle handle, TpHandleType handle_type, TpHandle self_handle,
     TpHandle initiator, const gchar *service, GHashTable *parameters,
-    guint id);
+    guint id, GabbleMucChannel *muc);
 
 gboolean gabble_tube_stream_check_params (TpSocketAddressType address_type,
     const GValue *address, TpSocketAccessControl access_control,

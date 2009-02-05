@@ -138,6 +138,7 @@ enum
   PROP_INITIATOR_HANDLE,
   PROP_INITIATOR_ID,
   PROP_SUPPORTED_SOCKET_TYPES,
+  PROP_MUC,
   LAST_PROPERTY
 };
 
@@ -183,6 +184,7 @@ struct _GabbleTubeStreamPrivate
 
   /* listen for connections from local applications */
   GibberListener *local_listener;
+  GabbleMucChannel *muc;
 
   gboolean closed;
 
@@ -829,6 +831,11 @@ gabble_tube_stream_dispose (GObject *object)
       priv->local_listener = NULL;
     }
 
+  if (priv->muc != NULL)
+    {
+      tp_external_group_mixin_finalize (object);
+    }
+
   priv->dispose_has_run = TRUE;
 
   if (G_OBJECT_CLASS (gabble_tube_stream_parent_class)->dispose)
@@ -981,6 +988,9 @@ gabble_tube_stream_get_property (GObject *object,
         g_value_take_boxed (value,
             gabble_tube_stream_get_supported_socket_types ());
         break;
+      case PROP_MUC:
+        g_value_set_object (value, priv->muc);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -1055,6 +1065,9 @@ gabble_tube_stream_set_property (GObject *object,
                 g_value_get_pointer (value));
           }
         break;
+      case PROP_MUC:
+        priv->muc = g_value_get_object (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -1092,6 +1105,16 @@ gabble_tube_stream_constructor (GType type,
   else
     {
       priv->state = GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING;
+    }
+
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      g_assert (priv->muc == NULL);
+    }
+  else
+    {
+      g_assert (priv->muc != NULL);
+      tp_external_group_mixin_init (obj, (GObject *) priv->muc);
     }
 
   bus = tp_get_bus ();
@@ -1297,6 +1320,15 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
+  param_spec = g_param_spec_object (
+      "muc",
+      "GabbleMucChannel object",
+      "Gabble text MUC channel corresponding to this Tube channel object, "
+      "if the handle type is ROOM.",
+      GABBLE_TYPE_MUC_CHANNEL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_MUC, param_spec);
+
   signals[OPENED] =
     g_signal_new ("tube-opened",
                   G_OBJECT_CLASS_TYPE (gabble_tube_stream_class),
@@ -1389,7 +1421,8 @@ gabble_tube_stream_new (GabbleConnection *conn,
                         TpHandle initiator,
                         const gchar *service,
                         GHashTable *parameters,
-                        guint id)
+                        guint id,
+                        GabbleMucChannel *muc)
 {
   GabbleTubeStream *obj;
   char *object_path;
@@ -1407,6 +1440,7 @@ gabble_tube_stream_new (GabbleConnection *conn,
       "service", service,
       "parameters", parameters,
       "id", id,
+      "muc", muc,
       NULL);
 
   g_free (object_path);

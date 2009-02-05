@@ -1465,9 +1465,9 @@ CHOOSE_TRANSPORT:
   /* We prefer ICE, Google-P2P, then raw UDP */
 
   if (gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_JINGLE_TRANSPORT_ICE))
+        PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP))
     {
-      *transport_ns = NS_JINGLE_TRANSPORT_ICE;
+      *transport_ns = NS_JINGLE_TRANSPORT_ICEUDP;
     }
   else if (gabble_presence_resource_has_caps (presence, resource,
         PRESENCE_CAP_GOOGLE_TRANSPORT_P2P))
@@ -2482,7 +2482,7 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
 
 #define JINGLE_CAPS \
   ( PRESENCE_CAP_JINGLE015 | PRESENCE_CAP_JINGLE032 \
-  | PRESENCE_CAP_GOOGLE_TRANSPORT_P2P )
+  | PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP )
 
 #define JINGLE_AUDIO_CAPS \
   ( PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE_RTP_AUDIO \
@@ -2496,20 +2496,37 @@ GabblePresenceCapabilities
 _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
 {
   GabblePresenceCapabilities caps = 0;
+  gboolean gtalk_p2p;
 
-  /* currently we can only signal any (GTalk or Jingle calls) using
-   * the GTalk-P2P transport */
-  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P)
+  DEBUG ("adding Jingle caps (%s, %s)",
+    flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO ? "audio" : "no audio",
+    flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO ? "video" : "no video");
+
+  /* We speak Jingle (old and new), and can always do raw UDP */
+  caps |= JINGLE_CAPS;
+
+  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP)
+    caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP;
+
+  gtalk_p2p = flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P;
+
+  if (gtalk_p2p)
+    caps |= PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
+
+  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
     {
-      DEBUG ("adding jingle caps");
+      caps |= JINGLE_AUDIO_CAPS;
 
-      caps |= JINGLE_CAPS;
+      if (gtalk_p2p)
+        caps |= GTALK_CAPS;
+    }
 
-      if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
-        caps |= GTALK_CAPS | JINGLE_AUDIO_CAPS;
+  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
+    {
+      caps |= JINGLE_VIDEO_CAPS;
 
-      if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
-        caps |= GTALK_VIDEO_CAPS | JINGLE_VIDEO_CAPS;
+      if (gtalk_p2p)
+        caps |= GTALK_VIDEO_CAPS;
     }
 
   return caps;

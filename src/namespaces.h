@@ -70,13 +70,12 @@
 /* Video capability in Google's Jingle dialect */
 #define NS_GOOGLE_SESSION_VIDEO "http://www.google.com/session/video"
 
-/* Jingle ICE-UDP transport */
-#define NS_JINGLE_TRANSPORT_ICE     \
-  "http://jabber.org/protocol/jingle/transport/ice"
 /* google-p2p transport */
 #define NS_GOOGLE_TRANSPORT_P2P "http://www.google.com/transport/p2p"
 /* Jingle RAW-UDP transport */
 #define NS_JINGLE_TRANSPORT_RAWUDP "urn:xmpp:jingle:transports:raw-udp:0"
+/* Jingle ICE-UDP transport */
+#define NS_JINGLE_TRANSPORT_ICEUDP "urn:xmpp:jingle:transports:ice-udp:0"
 
 #define NS_MUC                  "http://jabber.org/protocol/muc"
 #define NS_MUC_BYTESTREAM       "http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream"

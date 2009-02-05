@@ -37,6 +37,7 @@
 #include "jingle-session.h"
 #include "jingle-transport-google.h"
 #include "jingle-transport-rawudp.h"
+#include "jingle-transport-iceudp.h"
 #include "namespaces.h"
 #include "util.h"
 
@@ -528,6 +529,7 @@ gabble_jingle_factory_constructor (GType type,
   jingle_media_rtp_register (self);
   jingle_transport_google_register (self);
   jingle_transport_rawudp_register (self);
+  jingle_transport_iceudp_register (self);
 
   return obj;
 }

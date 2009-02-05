@@ -489,6 +489,8 @@ tube_opened_cb (GabbleTubeIface *tube,
       add_yourself_in_dbus_names (self, tube_id);
     }
 
+  update_tubes_presence (self);
+
   tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id,
       TP_TUBE_STATE_OPEN);
 }

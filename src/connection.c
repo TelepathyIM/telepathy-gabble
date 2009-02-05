@@ -70,6 +70,7 @@
 #include "request-pipeline.h"
 #include "roomlist-manager.h"
 #include "roster.h"
+#include "search-manager.h"
 #include "private-tubes-factory.h"
 #include "util.h"
 #include "vcard-manager.h"
@@ -227,6 +228,11 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
 
   g_ptr_array_add (channel_managers,
       g_object_new (GABBLE_TYPE_ROOMLIST_MANAGER,
+        "connection", self,
+        NULL));
+
+  g_ptr_array_add (channel_managers,
+      g_object_new (GABBLE_TYPE_SEARCH_MANAGER,
         "connection", self,
         NULL));
 

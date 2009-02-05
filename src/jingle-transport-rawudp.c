@@ -404,7 +404,7 @@ transmit_candidates (GabbleJingleTransportRawUdp *transport, GList *candidates)
 
 /* Takes in a list of slice-allocated JingleCandidate structs */
 static void
-add_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
+new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
 {
   GabbleJingleTransportRawUdp *transport =
     GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
@@ -485,7 +485,7 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   GabbleJingleTransportIfaceClass *klass = (GabbleJingleTransportIfaceClass *) g_iface;
 
   klass->parse_candidates = parse_candidates;
-  klass->add_candidates = add_candidates;
+  klass->new_local_candidates = new_local_candidates;
   klass->retransmit_candidates = retransmit_candidates;
   klass->get_remote_candidates = get_remote_candidates;
   klass->get_transport_type = get_transport_type;

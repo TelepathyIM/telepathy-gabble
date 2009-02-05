@@ -53,12 +53,12 @@ gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *self
 
 /* Takes in a list of slice-allocated JingleCandidate structs */
 void
-gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *self,
+gabble_jingle_transport_iface_new_local_candidates (GabbleJingleTransportIface *self,
     GList *candidates)
 {
   void (*virtual_method)(GabbleJingleTransportIface *,
       GList *) =
-    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->add_candidates;
+    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->new_local_candidates;
 
   g_assert (virtual_method != NULL);
   virtual_method (self, candidates);

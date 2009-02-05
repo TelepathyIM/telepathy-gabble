@@ -753,7 +753,7 @@ gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
 {
   GabbleJingleContentPrivate *priv = self->priv;
 
-  gabble_jingle_transport_iface_add_candidates (priv->transport, li);
+  gabble_jingle_transport_iface_new_local_candidates (priv->transport, li);
 }
 
 /* Returns whether the content is ready to be signalled (initiated, for local

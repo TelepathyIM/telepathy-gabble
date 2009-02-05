@@ -70,9 +70,12 @@ def sync_stream(q, stream):
     """Used to ensure that Gabble has processed all stanzas sent to it."""
 
     iq = IQ(stream, "get")
+    id = iq['id']
     iq.addElement(('http://jabber.org/protocol/disco#info', 'query'))
     stream.send(iq)
-    q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info')
+    q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
+        predicate=(lambda event:
+            event.stanza['id'] == id and event.iq_type == 'result'))
 
 class JabberAuthenticator(xmlstream.Authenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."

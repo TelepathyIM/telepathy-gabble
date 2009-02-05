@@ -1,0 +1,284 @@
+<?xml version="1.0" ?>
+<node name="/Channel_Type_Contact_Search" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright> Copyright (C) 2005, 2006 Collabora Limited </tp:copyright>
+  <tp:copyright> Copyright (C) 2005, 2006 Nokia Corporation </tp:copyright>
+  <tp:copyright> Copyright (C) 2006 INdT </tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.</p>
+
+<p>This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.</p>
+
+<p>You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</p>
+  </tp:license>
+  <interface name="org.freedesktop.Telepathy.Channel.Type.ContactSearch.DRAFT"
+    tp:causes-havoc='experimental'>
+    <tp:requires interface="org.freedesktop.Telepathy.Channel"/>
+
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      <p>A channel type for searching server-stored user directories. A new
+        channel should be requested by a client for each search attempt, and
+        closed when the search is completed or the required result has been
+        found in order to free unused handles.</p>
+
+      <p>The search can be cancelled at any time by calling the channel's
+        <tp:dbus-ref
+        namespace="org.freedesktop.Telepathy.Channel">Close</tp:dbus-ref>
+        method.  Depending on the protocol, the connection manager may not be
+        able to prevent the server from sending further results; if this is the
+        case, it MUST ignore any further results.</p>
+
+      <p>Before searching, the
+        <tp:member-ref>AvailableSearchKeys</tp:member-ref> property should be
+        inspected to determine the valid search keys which can be provided to
+        the <tp:member-ref>Search</tp:member-ref> method. A search request is
+        then started by providing some of these terms to the Search method, and
+        the <tp:member-ref>SearchState</tp:member-ref> will change from
+        Not_Started to In_Progress.  As results are returned by the server, the
+        <tp:member-ref>SearchResultReceived</tp:member-ref> signal is emitted
+        for each contact found; when the search is complete, the search state
+        will be set to Completed.</p>
+    </tp:docstring>
+
+    <tp:enum name="Channel_Contact_Search_State" type="u">
+      <tp:enumvalue suffix="Not_Started" value="0">
+        <tp:docstring>The search has not started</tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="In_Progress" value="1">
+        <tp:docstring>The search is in progress</tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Completed" value="2">
+        <tp:docstring>The search has been completed</tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
+
+    <property name="SearchState" tp:name-for-bindings="Search_State"
+      access="read" type="u" tp:type="Channel_Contact_Search_State">
+      <tp:docstring>
+        The current state of this search channel object. Change notification
+        is via <tp:member-ref>SearchStateChanged</tp:member-ref>.
+      </tp:docstring>
+    </property>
+
+    <signal name="SearchStateChanged"
+      tp:name-for-bindings="Search_State_Changed">
+      <arg name="State" type="u" tp:type="Channel_Contact_Search_State">
+        <tp:docstring>The new search state</tp:docstring>
+      </arg>
+      <tp:docstring>
+        Emitted when the <tp:member-ref>SearchState</tp:member-ref> property
+        changes.
+      </tp:docstring>
+    </signal>
+
+    <tp:simple-type name="Contact_Search_Key" type="s">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Any of the following search keys, with the indicated result for
+          the search:</p>
+
+        <dl>
+          <dt>The empty string</dt>
+          <dd>Search for the search term in some implementation-dependent
+            set of fields, using an implementation-dependent algorithm
+            (e.g. searching for each word mentioned)
+            <tp:rationale>
+              The "one big search box" approach to searching, as is familiar
+              from Google. The Sametime plugin to Pidgin appears to search in
+              this way.
+            </tp:rationale>
+          </dd>
+
+          <dt>A <tp:type>VCard_Field</tp:type></dt>
+          <dd>Search for the search term in fields matching that name (for
+            instance, <code>nickname</code> would search nicknames, and
+            <code>tel</code> would search any available phone number,
+            regardless of its work/home/mobile/... status).</dd>
+
+          <dt>A <tp:type>VCard_Field</tp:type> followed by
+            "<code>;</code>" and a
+            <tp:type>VCard_Type_Parameter</tp:type> of the form
+            "<code>type=...</code>"</dt>
+          <dd>Search for the search term in fields of that name and type
+            only (for instance, <code>tel;type=mobile</code>).</dd>
+
+          <dt>x-telepathy-identifier</dt>
+          <dd>Search for contacts whose identifier in the IM protocol
+            matches the search term (e.g. contains it as a substring)
+            <tp:rationale>
+              Otherwise, starting a search by identifier would require the UI
+              to know the vCard field name corresponding to identifiers in
+              this protocol, which might be non-standard (like
+              <code>x-jabber</code>) or not exist at all.
+            </tp:rationale>
+          </dd>
+
+          <dt><code>x-gender</code></dt>
+          <dd>For the search term "male" or "female", search only for contacts
+            listed as male or female, respectively. The results for other
+            search terms are undefined; it is likely that contacts with
+            unspecified gender will only be matched if this search key
+            is omitted from the request.
+            <tp:rationale>
+              Examples in XEP-0055 suggest this usage, and at least Gadu-Gadu
+              also supports limiting search results by gender.
+            </tp:rationale>
+          </dd>
+
+          <dt><code>x-n-family</code></dt>
+          <dd>Search for the search term in contacts' family names
+            (the first component of the vCard field <code>n</code>).
+            <tp:rationale>
+              Gadu-Gadu and TOC seem to support this mode of searching.
+            </tp:rationale>
+          </dd>
+
+          <dt><code>x-n-given</code></dt>
+          <dd>Search for the search term in contacts' given names
+            (the second component of the vCard field <code>n</code>).
+            <tp:rationale>
+              As for <code>x-n-family</code>.
+            </tp:rationale>
+          </dd>
+
+          <dt><code>x-online</code></dt>
+          <dd>For the search term "yes", search only for contacts who are
+            currently online. The results for other search terms are undefined.
+            <tp:rationale>Gadu-Gadu appears to support this.</tp:rationale>
+          </dd>
+
+          <dt><code>x-adr-locality</code></dt>
+          <dd>Search for the search term as a locality or city (the fourth
+            component of the vCard field <code>adr</code>).
+            <tp:rationale>
+              Gadu-Gadu and TOC appear to support this.
+            </tp:rationale>
+          </dd>
+        </dl>
+      </tp:docstring>
+    </tp:simple-type>
+
+    <property name="AvailableSearchKeys" type="as" access="read"
+      tp:name-for-bindings="Available_Search_Keys">
+      <tp:docstring>
+        The set of search keys supported by this channel. Example values
+        include [""] (for protocols where several address fields are
+        implicitly searched) or ["x-n-given", "x-n-family", "nickname"]
+        (for XMPP XEP-0055, without extensibility via Data Forms).
+        This property cannot change during the lifetime of a channel.
+
+        <tp:rationale>
+          It can be in the <tp:dbus-ref
+            namespace="org.freedesktop.Telepathy.Connection.Interface.Requests">NewChannels</tp:dbus-ref>
+          signal for round-trip reduction.
+        </tp:rationale>
+      </tp:docstring>
+    </property>
+
+    <tp:mapping name="Contact_Search_Map">
+      <tp:docstring>A map from search keys to search terms.</tp:docstring>
+      <tp:member name="Key" type="s" tp:type="Contact_Search_Key">
+        <tp:docstring>
+          The search key to match against
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member name="Term" type="s">
+        <tp:docstring>
+          The term or terms to be searched for in the search key; depending on
+          the protocol and the server implementation, this may be matched by
+          exact or approximate equality, substring matching, word matching
+          or any other matching algorithm
+        </tp:docstring>
+      </tp:member>
+    </tp:mapping>
+
+    <method name="Search" tp:name-for-bindings="Search">
+      <arg direction="in" name="Terms"
+        type="a{ss}" tp:type="Contact_Search_Map">
+        <tp:docstring>
+          A dictionary mapping search key names to the desired values
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Send a request to start a search for contacts on this connection. This
+        may only be called while the <tp:member-ref>SearchState</tp:member-ref>
+        is Not_Started; a valid search request will cause the
+        <tp:member-ref>SearchStateChanged</tp:member-ref> signal to be emitted
+        with the state In_Progress.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          <tp:docstring>
+            The <tp:member-ref>SearchState</tp:member-ref> is no longer
+            Not_Started, so this method is no longer available.
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument">
+          <tp:docstring>
+            The search terms included something this connection manager cannot
+            search for.
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+      </tp:possible-errors>
+    </method>
+
+    <signal name="SearchResultReceived"
+      tp:name-for-bindings="Search_Result_Received">
+      <arg name="Contact" type="u" tp:type="Contact_Handle">
+        <tp:docstring>An integer handle for the contact, which will remain
+          valid at least until this Channel closes</tp:docstring>
+      </arg>
+      <arg name="Info" type="a(sasas)" tp:type="Contact_Info_Field[]">
+        <tp:docstring>An array of fields representing information about this
+          contact, in the same format used in the <tp:dbus-ref
+            namespace="org.freedesktop.Telepathy.Connection.Interface">ContactInfo.DRAFT</tp:dbus-ref>
+          interface. It is possible that a separate call to <tp:dbus-ref
+            namespace="org.freedesktop.Telepathy.Connection.Interface.ContactInfo.DRAFT">RequestContactInfo</tp:dbus-ref>
+          would return more information than this signal provides.
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Emitted when a search result is received from the server.
+      </tp:docstring>
+    </signal>
+
+    <property name="Server" tp:name-for-bindings="Server"
+      type="s" access="read">
+      <tp:docstring>
+        <p>For protocols which support searching for contacts on multiple
+          servers with different DNS names (like XMPP), the DNS name of the
+          server being searched by this channel, e.g.
+          "characters.shakespeare.lit".  Otherwise, the empty string.</p>
+
+        <tp:rationale>
+          <p>XEP 0055 defines a mechanism for XMPP clients to search services
+            of their choice for contacts, such as users.jabber.org (the "Jabber
+            User Directory").</p>
+        </tp:rationale>
+
+        <p>This property cannot change during the lifetime of the channel.
+          This property SHOULD be in the Allowed_Properties of a
+          <tp:type>Requestable_Channel_Class</tp:type> if and only if the
+          protocol supports querying multiple different servers;
+          implementations SHOULD use a sensible default if possible if this
+          property is not specified in a channel request.</p>
+
+        <tp:rationale>
+          <p>This allows a client to perform searches on a protocol it knows
+            nothing about without requiring the user to guess a valid server's
+            hostname.</p>
+        </tp:rationale>
+      </tp:docstring>
+    </property>
+
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

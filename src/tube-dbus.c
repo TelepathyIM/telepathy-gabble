@@ -77,7 +77,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeDBus, gabble_tube_dbus, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_TUBE,
       NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
-      tp_group_mixin_iface_init);
+      tp_external_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
@@ -127,6 +127,7 @@ enum
   PROP_REQUESTED,
   PROP_TARGET_ID,
   PROP_INITIATOR_ID,
+  PROP_MUC,
   LAST_PROPERTY
 };
 
@@ -143,6 +144,7 @@ struct _GabbleTubeDBusPrivate
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
+  GabbleMucChannel *muc;
 
   /* For outgoing tubes, TRUE if the offer has been sent over the network. For
    * incoming tubes, always TRUE.
@@ -599,8 +601,10 @@ gabble_tube_dbus_finalize (GObject *object)
   g_free (priv->service);
   g_hash_table_destroy (priv->parameters);
 
-  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
-    tp_group_mixin_finalize (object);
+  if (priv->muc != NULL)
+    {
+      tp_external_group_mixin_finalize (object);
+    }
 
   G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->finalize (object);
 }
@@ -724,6 +728,9 @@ gabble_tube_dbus_get_property (GObject *object,
                 tp_handle_inspect (repo, priv->handle));
           }
         break;
+      case PROP_MUC:
+        g_value_set_object (value, priv->muc);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -795,6 +802,9 @@ gabble_tube_dbus_set_property (GObject *object,
         break;
       case PROP_PARAMETERS:
         priv->parameters = g_value_dup_boxed (value);
+        break;
+      case PROP_MUC:
+        priv->muc = g_value_get_object (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -869,17 +879,8 @@ gabble_tube_dbus_constructor (GType type,
 
       g_free (nick);
 
-      /* initialize group mixin */
-      tp_group_mixin_init (obj,
-          G_STRUCT_OFFSET (GabbleTubeDBus, group),
-          contact_repo, priv->self_handle);
-
-      /* set initial group flags */
-      tp_group_mixin_change_flags (obj,
-          TP_CHANNEL_GROUP_FLAG_PROPERTIES |
-          TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES |
-          TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE,
-          0);
+      g_assert (priv->muc != NULL);
+      tp_external_group_mixin_init (obj, (GObject *) priv->muc);
     }
   else
     {
@@ -890,6 +891,8 @@ gabble_tube_dbus_constructor (GType type,
       /* For contact (IBB) tubes we need to be able to reassemble messages. */
       priv->reassembly_buffer = g_string_new ("");
       priv->reassembly_bytes_needed = 0;
+
+      g_assert (priv->muc == NULL);
     }
 
   if (priv->initiator == priv->self_handle)
@@ -1097,6 +1100,13 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
+  param_spec = g_param_spec_object ("muc", "GabbleMucChannel object",
+      "Gabble text MUC channel corresponding to this Tube channel object, "
+      "if the handle type is ROOM.",
+      GABBLE_TYPE_MUC_CHANNEL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+  g_object_class_install_property (object_class, PROP_MUC, param_spec);
 
   signals[OPENED] =
     g_signal_new ("tube-opened",
@@ -1129,11 +1139,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleTubeDBusClass, dbus_props_class));
 
-  tp_group_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleTubeDBusClass, group_class),
-      NULL, NULL);
-
-  tp_group_mixin_init_dbus_properties (object_class);
+  tp_external_group_mixin_init_dbus_properties (object_class);
 }
 
 static void
@@ -1475,7 +1481,8 @@ gabble_tube_dbus_new (GabbleConnection *conn,
                       GHashTable *parameters,
                       const gchar *stream_id,
                       guint id,
-                      GabbleBytestreamIface *bytestream)
+                      GabbleBytestreamIface *bytestream,
+                      GabbleMucChannel *muc)
 {
   GabbleTubeDBus *tube;
   gchar *object_path;
@@ -1494,6 +1501,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
       "parameters", parameters,
       "stream-id", stream_id,
       "id", id,
+      "muc", muc,
       NULL);
 
   if (bytestream != NULL)
@@ -1598,7 +1606,6 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   gchar *name_copy;
   GHashTable *added;
   GArray *removed;
-  TpIntSet *handles_added;
 
   g_assert (priv->handle_type == TP_HANDLE_TYPE_ROOM);
   g_assert (g_hash_table_size (priv->dbus_names) ==
@@ -1645,13 +1652,6 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   g_hash_table_insert (priv->dbus_name_to_handle, name_copy,
       GUINT_TO_POINTER (handle));
 
-  /* add as member */
-  handles_added = tp_intset_new ();
-  tp_intset_add (handles_added, handle);
-
-  tp_group_mixin_change_members (G_OBJECT (self), "", handles_added, NULL,
-          NULL, NULL, 0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
   /* Fire DBusNamesChanged (new API) */
   added = g_hash_table_new (g_direct_hash, g_direct_equal);
   removed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
@@ -1663,7 +1663,6 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
 
   g_hash_table_destroy (added);
   g_array_free (removed, TRUE);
-  tp_intset_destroy (handles_added);
 
   return TRUE;
 }
@@ -1678,7 +1677,6 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
   const gchar *name;
   GHashTable *added;
   GArray *removed;
-  TpIntSet *handles_removed;
 
   g_assert (priv->handle_type == TP_HANDLE_TYPE_ROOM);
 
@@ -1691,13 +1689,6 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
 
   g_assert (g_hash_table_size (priv->dbus_names) ==
       g_hash_table_size (priv->dbus_name_to_handle));
-
-  /* remove member */
-  handles_removed = tp_intset_new ();
-  tp_intset_add (handles_removed, handle);
-
-  tp_group_mixin_change_members (G_OBJECT (self), "", NULL, handles_removed,
-          NULL, NULL, 0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
   /* Fire DBusNamesChanged (new API) */
   added = g_hash_table_new (g_direct_hash, g_direct_equal);

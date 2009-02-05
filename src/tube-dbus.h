@@ -29,6 +29,7 @@
 #include "connection.h"
 #include "bytestream-iface.h"
 #include "extensions/extensions.h"
+#include "muc-channel.h"
 
 G_BEGIN_DECLS
 
@@ -79,7 +80,7 @@ static const gchar * const gabble_tube_dbus_channel_allowed_properties[] = {
 GabbleTubeDBus *gabble_tube_dbus_new (GabbleConnection *conn, TpHandle handle,
     TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
     const gchar *service, GHashTable *parameters, const gchar *stream_id,
-    guint id, GabbleBytestreamIface *bytestream);
+    guint id, GabbleBytestreamIface *bytestream, GabbleMucChannel *muc);
 
 gboolean gabble_tube_dbus_add_name (GabbleTubeDBus *tube, TpHandle handle,
     const gchar *name);

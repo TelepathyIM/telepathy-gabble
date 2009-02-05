@@ -1,7 +1,6 @@
 """Test stream initiation fallback."""
 
 import base64
-import errno
 import os
 
 import dbus
@@ -10,36 +9,16 @@ from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, tp_name_prefix, watch_tube_signals, EventProtocolClientFactory
 from gabbletest import exec_test, acknowledge_iq
+import ns
 
 from twisted.words.xish import domish, xpath
-from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
 
-NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
-NS_SI = 'http://jabber.org/protocol/si'
-NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
-NS_IBB = 'http://jabber.org/protocol/ibb'
-NS_X_DATA = 'jabber:x:data'
-NS_BYTESTREAMS = 'http://jabber.org/protocol/bytestreams'
-NS_SI_MULTIPLE = 'http://telepathy.freedesktop.org/xmpp/si-multiple'
-
-class Echo(Protocol):
-    def dataReceived(self, data):
-        self.transport.write(data.upper())
-
-def set_up_echo():
-    factory = Factory()
-    factory.protocol = Echo
-    try:
-        os.remove(os.getcwd() + '/stream')
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
-    reactor.listenUNIX(os.getcwd() + '/stream', factory)
+import tubetestutil as t
 
 def test(q, bus, conn, stream):
-    set_up_echo()
+    t.set_up_echo('')
 
     conn.Connect()
 
@@ -75,7 +54,7 @@ def test(q, bus, conn, stream):
     assert event.query['node'] == \
         'http://example.com/ICantBelieveItsNotTelepathy#1.2.3'
     feature = event.query.addElement('feature')
-    feature['var'] = NS_TUBES
+    feature['var'] = ns.TUBES
     stream.send(result)
 
     requestotron = dbus.Interface(conn,
@@ -116,7 +95,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-message')
     message = event.stanza
-    tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
+    tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % ns.TUBES,
         message)
     assert tube_nodes is not None
     assert len(tube_nodes) == 1
@@ -131,30 +110,30 @@ def test(q, bus, conn, stream):
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
-    si = iq.addElement((NS_SI, 'si'))
+    si = iq.addElement((ns.SI, 'si'))
     si['id'] = 'alpha'
-    si['profile'] = NS_TUBES
-    feature = si.addElement((NS_FEATURE_NEG, 'feature'))
-    x = feature.addElement((NS_X_DATA, 'x'))
+    si['profile'] = ns.TUBES
+    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
+    x = feature.addElement((ns.X_DATA, 'x'))
     x['type'] = 'form'
     field = x.addElement((None, 'field'))
     field['var'] = 'stream-method'
     field['type'] = 'list-single'
     option = field.addElement((None, 'option'))
     value = option.addElement((None, 'value'))
-    value.addContent(NS_BYTESTREAMS)
+    value.addContent(ns.BYTESTREAMS)
     option = field.addElement((None, 'option'))
     value = option.addElement((None, 'value'))
     value.addContent("invalid-stream-method")
     option = field.addElement((None, 'option'))
     value = option.addElement((None, 'value'))
-    value.addContent(NS_IBB)
+    value.addContent(ns.IBB)
 
-    stream_node = si.addElement((NS_TUBES, 'stream'))
+    stream_node = si.addElement((ns.TUBES, 'stream'))
     stream_node['tube'] = str(stream_tube_id)
 
     # Bob supports multi bytestreams
-    si_multiple = si.addElement((NS_SI_MULTIPLE, 'si-multiple'))
+    si_multiple = si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
 
     stream.send(iq)
 
@@ -166,14 +145,14 @@ def test(q, bus, conn, stream):
     iq = si_reply_event.stanza
     # check if SI reply contains the 2 bytestreams
     methods = xpath.queryForNodes('/iq/si[@xmlns="%s"]/si-multiple[@xmlns="%s"]/value' %
-            (NS_SI, NS_SI_MULTIPLE), iq)
+            (ns.SI, ns.SI_MULTIPLE), iq)
     assert len(methods) == 2
     assert methods[0].name == 'value'
-    assert str(methods[0]) == NS_BYTESTREAMS
+    assert str(methods[0]) == ns.BYTESTREAMS
     assert methods[1].name == 'value'
-    assert str(methods[1]) == NS_IBB
+    assert str(methods[1]) == ns.IBB
     tube = xpath.queryForNodes('/iq/si[@xmlns="%s"]/tube[@xmlns="%s"]' %
-            (NS_SI, NS_TUBES), iq)
+            (ns.SI, ns.TUBES), iq)
     assert len(tube) == 1
 
     q.expect('dbus-signal', signal='StreamTubeNewConnection',
@@ -184,7 +163,7 @@ def test(q, bus, conn, stream):
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
-    query = iq.addElement((NS_BYTESTREAMS, 'query'))
+    query = iq.addElement((ns.BYTESTREAMS, 'query'))
     query['sid'] = 'alpha'
     query['mode'] = 'tcp'
     streamhost = query.addElement('streamhost')
@@ -200,7 +179,7 @@ def test(q, bus, conn, stream):
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
-    open = iq.addElement((NS_IBB, 'open'))
+    open = iq.addElement((ns.IBB, 'open'))
     open['sid'] = 'alpha'
     open['block-size'] = '4096'
     stream.send(iq)
@@ -212,23 +191,23 @@ def test(q, bus, conn, stream):
     message = domish.Element(('jabber:client', 'message'))
     message['to'] = 'test@localhost/Resource'
     message['from'] = 'bob@localhost/Bob'
-    data_node = message.addElement((NS_IBB, 'data'))
+    data_node = message.addElement((ns.IBB, 'data'))
     data_node['sid'] = 'alpha'
     data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hello, world'))
+    data_node.addContent(base64.b64encode('HELLO, WORLD'))
     stream.send(message)
 
     event = q.expect('stream-message', to='bob@localhost/Bob')
     message = event.stanza
 
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
         message)
     assert data_nodes is not None
     assert len(data_nodes) == 1
     ibb_data = data_nodes[0]
     assert ibb_data['sid'] == 'alpha'
     binary = base64.b64decode(str(ibb_data))
-    assert binary == 'HELLO, WORLD'
+    assert binary == 'hello, world'
 
 
     # Test the other side. Bob offers a stream tube.
@@ -236,7 +215,7 @@ def test(q, bus, conn, stream):
     message['to'] = 'test@localhost/Resource'
     message['from'] = 'bob@localhost/Bob'
     message['id'] = 'msg-id'
-    tube = message.addElement((NS_TUBES, 'tube'))
+    tube = message.addElement((ns.TUBES, 'tube'))
     tube['type'] = 'stream'
     tube['id'] = '42'
     tube['service'] = 'foo-service'
@@ -283,7 +262,7 @@ def test(q, bus, conn, stream):
     assert si_nodes is not None
     assert len(si_nodes) == 1
     si = si_nodes[0]
-    assert si['profile'] == NS_TUBES
+    assert si['profile'] == ns.TUBES
     dbus_stream_id = si['id']
 
     feature = xpath.queryForNodes('/si/feature', si)[0]
@@ -293,26 +272,26 @@ def test(q, bus, conn, stream):
     assert field['var'] == 'stream-method'
     assert field['type'] == 'list-single'
     value = xpath.queryForNodes('/field/option/value', field)[0]
-    assert str(value) == NS_BYTESTREAMS
+    assert str(value) == ns.BYTESTREAMS
     value = xpath.queryForNodes('/field/option/value', field)[1]
-    assert str(value) == NS_IBB
+    assert str(value) == ns.IBB
     # Gabble supports multi-bytestreams extension
     si_multiple = xpath.queryForNodes('/si/si-multiple', si)[0]
-    assert si_multiple.uri == NS_SI_MULTIPLE
+    assert si_multiple.uri == ns.SI_MULTIPLE
 
     result = IQ(stream, 'result')
     result['id'] = iq['id']
     result['from'] = iq['to']
     result['to'] = 'test@localhost/Resource'
-    res_si = result.addElement((NS_SI, 'si'))
+    res_si = result.addElement((ns.SI, 'si'))
     # reply using multi-bytestreams extension
-    res_multi = res_si.addElement((NS_SI_MULTIPLE, 'si-multiple'))
+    res_multi = res_si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
     res_value = res_multi.addElement(('', 'value'))
     res_value.addContent('invalid-stream-method')
     res_value = res_multi.addElement(('', 'value'))
-    res_value.addContent(NS_BYTESTREAMS)
+    res_value.addContent(ns.BYTESTREAMS)
     res_value = res_multi.addElement(('', 'value'))
-    res_value.addContent(NS_IBB)
+    res_value.addContent(ns.IBB)
 
     stream.send(result)
 
@@ -320,7 +299,7 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
     iq = event.stanza
     query = xpath.queryForNodes('/iq/query', iq)[0]
-    assert query.uri == NS_BYTESTREAMS
+    assert query.uri == ns.BYTESTREAMS
     sid = query['sid']
     streamhost = xpath.queryForNodes('/iq/query/streamhost', iq)[0]
     assert streamhost
@@ -340,7 +319,7 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
     iq = event.stanza
     open = xpath.queryForNodes('/iq/open', iq)[0]
-    assert open.uri == NS_IBB
+    assert open.uri == ns.IBB
     sid = open['sid']
 
     # IBB is working

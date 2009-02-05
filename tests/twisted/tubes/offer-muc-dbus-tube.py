@@ -9,7 +9,8 @@ from dbus.lowlevel import SignalMessage
 from servicetest import call_async, EventPattern, tp_name_prefix
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 from constants import *
-from tubetestutil import *
+import ns
+import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 
@@ -21,13 +22,6 @@ sample_parameters = dbus.Dictionary({
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
-
-NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
-NS_SI = 'http://jabber.org/protocol/si'
-NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
-NS_IBB = 'http://jabber.org/protocol/ibb'
-NS_MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
-NS_X_DATA = 'jabber:x:data'
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -108,7 +102,7 @@ def test(q, bus, conn, stream):
     assert len(x_nodes) == 1
 
     tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
-        % NS_TUBES, presence)
+        % ns.TUBES, presence)
     assert tubes_nodes is not None
     assert len(tubes_nodes) == 1
 
@@ -146,7 +140,7 @@ def test(q, bus, conn, stream):
     assert len(tubes) == 1
     expected_tube = (dbus_tube_id, tubes_self_handle, TUBE_TYPE_DBUS,
         'com.example.TestCase', sample_parameters, TUBE_STATE_OPEN)
-    check_tube_in_tubes(expected_tube, tubes)
+    t.check_tube_in_tubes(expected_tube, tubes)
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
     tube = Connection(dbus_tube_adr)
@@ -158,7 +152,7 @@ def test(q, bus, conn, stream):
         message_type='groupchat')
     message = event.stanza
 
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_MUC_BYTESTREAM,
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.MUC_BYTESTREAM,
         message)
     assert data_nodes is not None
     assert len(data_nodes) == 1

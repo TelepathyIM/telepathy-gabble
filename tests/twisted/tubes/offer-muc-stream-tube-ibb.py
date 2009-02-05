@@ -10,7 +10,8 @@ from dbus import PROPERTIES_IFACE
 from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
 from constants import *
-from tubetestutil import *
+import ns
+import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -22,13 +23,6 @@ sample_parameters = dbus.Dictionary({
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
-
-NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
-NS_SI = 'http://jabber.org/protocol/si'
-NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
-NS_IBB = 'http://jabber.org/protocol/ibb'
-NS_MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
-NS_X_DATA = 'jabber:x:data'
 
 def set_up_listener_socket(q, path):
     factory = EventProtocolFactory(q)
@@ -157,7 +151,7 @@ def test(q, bus, conn, stream):
     assert len(x_nodes) == 1
 
     tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
-        % NS_TUBES, presence)
+        % ns.TUBES, presence)
     assert tubes_nodes is not None
     assert len(tubes_nodes) == 1
 
@@ -215,7 +209,7 @@ def test(q, bus, conn, stream):
     assert len(tubes) == 1, unwrap(tubes)
     expected_tube = (stream_tube_id, tubes_self_handle, TUBE_TYPE_STREAM,
         'echo', sample_parameters, TUBE_STATE_OPEN)
-    check_tube_in_tubes(expected_tube, tubes)
+    t.check_tube_in_tubes(expected_tube, tubes)
 
     # FIXME: if we use an unknown JID here, everything fails
     # (the code uses lookup where it should use ensure)
@@ -224,20 +218,20 @@ def test(q, bus, conn, stream):
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'chat@conf.localhost/bob'
-    si = iq.addElement((NS_SI, 'si'))
+    si = iq.addElement((ns.SI, 'si'))
     si['id'] = 'alpha'
-    si['profile'] = NS_TUBES
-    feature = si.addElement((NS_FEATURE_NEG, 'feature'))
-    x = feature.addElement((NS_X_DATA, 'x'))
+    si['profile'] = ns.TUBES
+    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
+    x = feature.addElement((ns.X_DATA, 'x'))
     x['type'] = 'form'
     field = x.addElement((None, 'field'))
     field['var'] = 'stream-method'
     field['type'] = 'list-single'
     option = field.addElement((None, 'option'))
     value = option.addElement((None, 'value'))
-    value.addContent(NS_IBB)
+    value.addContent(ns.IBB)
 
-    stream_node = si.addElement((NS_TUBES, 'muc-stream'))
+    stream_node = si.addElement((ns.TUBES, 'muc-stream'))
     stream_node['tube'] = str(stream_tube_id)
 
     stream.send(iq)
@@ -252,20 +246,20 @@ def test(q, bus, conn, stream):
 
     # handle iq_event
     iq = iq_event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI,
+    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
         iq)[0]
     value = xpath.queryForNodes('/si/feature/x/field/value', si)
     assert len(value) == 1
     proto = value[0]
-    assert str(proto) == NS_IBB
-    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
+    assert str(proto) == ns.IBB
+    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % ns.TUBES, si)
     assert len(tube) == 1
 
     # have the fake client open the stream
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'chat@conf.localhost/bob'
-    open = iq.addElement((NS_IBB, 'open'))
+    open = iq.addElement((ns.IBB, 'open'))
     open['sid'] = 'alpha'
     open['block-size'] = '4096'
     stream.send(iq)
@@ -276,7 +270,7 @@ def test(q, bus, conn, stream):
     message = domish.Element(('jabber:client', 'message'))
     message['to'] = 'test@localhost/Resource'
     message['from'] = 'chat@conf.localhost/bob'
-    data_node = message.addElement((NS_IBB, 'data'))
+    data_node = message.addElement((ns.IBB, 'data'))
     data_node['sid'] = 'alpha'
     data_node['seq'] = '0'
     data_node.addContent(base64.b64encode('hello initiator'))
@@ -290,7 +284,7 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-message', to='chat@conf.localhost/bob')
     message = event.stanza
 
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
         message)
     assert data_nodes is not None
     assert len(data_nodes) == 1
@@ -400,7 +394,7 @@ def test(q, bus, conn, stream):
     assert len(x_nodes) == 1
 
     tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
-        % NS_TUBES, presence)
+        % ns.TUBES, presence)
     assert tubes_nodes is not None
     assert len(tubes_nodes) == 1
 

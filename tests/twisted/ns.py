@@ -1,4 +1,5 @@
 AMP = "http://jabber.org/protocol/amp"
+BYTESTREAMS = 'http://jabber.org/protocol/bytestreams'
 CHAT_STATES = 'http://jabber.org/protocol/chatstates'
 CAPS = "http://jabber.org/protocol/caps"
 DISCO_INFO = "http://jabber.org/protocol/disco#info"
@@ -24,6 +25,7 @@ OLPC_CURRENT_ACTIVITY = "http://laptop.org/xmpp/current-activity"
 OLPC_CURRENT_ACTIVITY_NOTIFY = "%s+notify" % OLPC_CURRENT_ACTIVITY
 PUBSUB = "http://jabber.org/protocol/pubsub"
 SI = 'http://jabber.org/protocol/si'
+SI_MULTIPLE = 'http://telepathy.freedesktop.org/xmpp/si-multiple'
 STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"
 TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
 X_DATA = 'jabber:x:data'

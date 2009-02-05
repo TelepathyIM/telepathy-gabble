@@ -6,7 +6,8 @@ import dbus
 from servicetest import call_async, EventPattern, EventProtocolClientFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 from constants import *
-from tubetestutil import *
+import ns
+import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -19,13 +20,6 @@ sample_parameters = dbus.Dictionary({
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
-
-NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
-NS_SI = 'http://jabber.org/protocol/si'
-NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
-NS_IBB = 'http://jabber.org/protocol/ibb'
-NS_MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
-NS_X_DATA = 'jabber:x:data'
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -95,7 +89,7 @@ def test(q, bus, conn, stream):
     item = x.addElement('item')
     item['affiliation'] = 'owner'
     item['role'] = 'moderator'
-    tubes = presence.addElement((NS_TUBES, 'tubes'))
+    tubes = presence.addElement((ns.TUBES, 'tubes'))
     tube = tubes.addElement((None, 'tube'))
     tube['type'] = 'stream'
     tube['service'] = 'echo'
@@ -173,7 +167,7 @@ def test(q, bus, conn, stream):
         )]
 
     assert len(tubes) == 1, unwrap(tubes)
-    check_tube_in_tubes(expected_tube, tubes)
+    t.check_tube_in_tubes(expected_tube, tubes)
 
     # tube channel is also announced (new API)
     new_event = q.expect('dbus-signal', signal='NewChannels')
@@ -215,17 +209,17 @@ def test(q, bus, conn, stream):
     protocol.sendData("hello initiator")
 
     # expect SI request
-    event = q.expect('stream-iq', to='chat@conf.localhost/bob', query_ns=NS_SI,
+    event = q.expect('stream-iq', to='chat@conf.localhost/bob', query_ns=ns.SI,
         query_name='si')
     iq = event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI,
+    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
         iq)[0]
     values = xpath.queryForNodes('/si/feature[@xmlns="%s"]/x[@xmlns="%s"]/field/option/value'
         % ('http://jabber.org/protocol/feature-neg', 'jabber:x:data'), si)
-    assert NS_IBB in [str(v) for v in values]
+    assert ns.IBB in [str(v) for v in values]
 
     muc_stream_node = xpath.queryForNodes('/si/muc-stream[@xmlns="%s"]' %
-        NS_TUBES, si)[0]
+        ns.TUBES, si)[0]
     assert muc_stream_node is not None
     assert muc_stream_node['tube'] == str(stream_tube_id)
     stream_id = si['id']
@@ -235,20 +229,20 @@ def test(q, bus, conn, stream):
     result["id"] = iq["id"]
     result['from'] = 'chat@conf.localhost/bob'
     result['to'] = 'chat@conf.localhost/test'
-    si = result.addElement((NS_SI, 'si'))
-    feature = si.addElement((NS_FEATURE_NEG, 'feature'))
-    x = feature.addElement((NS_X_DATA, 'x'))
+    si = result.addElement((ns.SI, 'si'))
+    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
+    x = feature.addElement((ns.X_DATA, 'x'))
     x['type'] = 'submit'
     field = x.addElement((None, 'field'))
     field['var'] = 'stream-method'
     value = field.addElement((None, 'value'))
-    value.addContent(NS_IBB)
-    si.addElement((NS_TUBES, 'tube'))
+    value.addContent(ns.IBB)
+    si.addElement((ns.TUBES, 'tube'))
     stream.send(result)
 
     # wait IBB init IQ
     event = q.expect('stream-iq', to='chat@conf.localhost/bob',
-        query_name='open', query_ns=NS_IBB)
+        query_name='open', query_ns=ns.IBB)
     iq = event.stanza
     open = xpath.queryForNodes('/iq/open', iq)[0]
     assert open['sid'] == stream_id
@@ -259,7 +253,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-message', to='chat@conf.localhost/bob')
     message = event.stanza
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
         message)
     assert data_nodes is not None
     assert len(data_nodes) == 1
@@ -272,7 +266,7 @@ def test(q, bus, conn, stream):
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'chat@conf.localhost/bob'
     message['to'] = 'chat@conf.localhost/test'
-    data_node = message.addElement((NS_IBB, 'data'))
+    data_node = message.addElement((ns.IBB, 'data'))
     data_node['sid'] = stream_id
     data_node['seq'] = '0'
     data_node.addContent(base64.b64encode('hi joiner!'))

@@ -8,7 +8,6 @@ from dbus import PROPERTIES_IFACE
 from servicetest import call_async
 from gabbletest import exec_test
 from constants import *
-from tubetestutil import *
 
 def is_tube(path, props):
     ct = props[CHANNEL_TYPE]

@@ -69,14 +69,6 @@ GType gabble_tube_dbus_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBE_DBUS,\
                               GabbleTubeDBusClass))
 
-static const gchar * const gabble_tube_dbus_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",
-    TP_IFACE_CHANNEL ".TargetID",
-    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
-    GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName",
-    NULL
-};
-
 GabbleTubeDBus *gabble_tube_dbus_new (GabbleConnection *conn, TpHandle handle,
     TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
     const gchar *service, GHashTable *parameters, const gchar *stream_id,
@@ -91,6 +83,8 @@ gboolean gabble_tube_dbus_handle_in_names (GabbleTubeDBus *tube,
     TpHandle handle);
 
 gboolean gabble_tube_dbus_offer (GabbleTubeDBus *tube, GError **error);
+
+const gchar * const * gabble_tube_dbus_channel_get_allowed_properties (void);
 
 /* Only extern for the benefit of tests/test-dtube-unique-names.c */
 gchar *_gabble_generate_dbus_unique_name (const gchar *nick);

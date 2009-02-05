@@ -1389,7 +1389,7 @@ gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
   /* Muc Channel.Type.DBusTube */
   g_value_set_static_string (channel_type_value,
       GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
-  func (manager, table, gabble_tube_dbus_channel_allowed_properties,
+  func (manager, table, gabble_tube_dbus_channel_get_allowed_properties (),
       user_data);
 
   g_hash_table_destroy (table);
@@ -1626,7 +1626,7 @@ handle_dbus_tube_channel_request (GabbleMucFactory *self,
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
           muc_tubes_channel_fixed_properties,
-          gabble_tube_dbus_channel_allowed_properties,
+          gabble_tube_dbus_channel_get_allowed_properties (),
           error))
     return FALSE;
 

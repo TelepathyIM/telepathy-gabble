@@ -86,6 +86,10 @@ class JingleProtocol:
         "Creates a <transport> element for Google P2P transport"
         return ('transport', ns.GOOGLE_P2P, {}, [])
 
+    def TransportIceUdp(self):
+        "Creates a <transport> element for ICE-UDP transport"
+        return ('transport', ns.JINGLE_TRANSPORT_ICEUDP, {}, [])
+
     def Presence(self, frm, to, caps):
         "Creates <presence> stanza with specified capabilities"
         children = []

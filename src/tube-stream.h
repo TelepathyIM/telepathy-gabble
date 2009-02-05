@@ -64,14 +64,6 @@ GType gabble_tube_stream_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBE_STREAM,\
                               GabbleTubeStreamClass))
 
-static const gchar * const gabble_tube_stream_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",
-    TP_IFACE_CHANNEL ".TargetID",
-    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
-    GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
-    NULL
-};
-
 GabbleTubeStream *gabble_tube_stream_new (GabbleConnection *conn,
     TpHandle handle, TpHandleType handle_type, TpHandle self_handle,
     TpHandle initiator, const gchar *service, GHashTable *parameters,
@@ -84,6 +76,8 @@ gboolean gabble_tube_stream_check_params (TpSocketAddressType address_type,
 gboolean gabble_tube_stream_offer (GabbleTubeStream *self, GError **error);
 
 GHashTable *gabble_tube_stream_get_supported_socket_types (void);
+
+const gchar * const * gabble_tube_stream_channel_get_allowed_properties (void);
 
 G_END_DECLS
 

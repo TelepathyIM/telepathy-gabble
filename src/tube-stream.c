@@ -81,6 +81,14 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
+static const gchar * const gabble_tube_stream_channel_allowed_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
+    GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
+    NULL
+};
+
 static const gchar *gabble_tube_stream_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     /* If more interfaces are added, either keep Group as the first, or change
@@ -2126,6 +2134,12 @@ gabble_tube_stream_get_interfaces (TpSvcChannel *iface,
       tp_svc_channel_return_from_get_interfaces (context,
           gabble_tube_stream_interfaces);
     }
+}
+
+const gchar * const *
+gabble_tube_stream_channel_get_allowed_properties (void)
+{
+  return gabble_tube_stream_channel_allowed_properties;
 }
 
 static void

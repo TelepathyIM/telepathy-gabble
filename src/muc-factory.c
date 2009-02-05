@@ -1383,7 +1383,7 @@ gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
   /* Muc Channel.Type.StreamTube */
   g_value_set_static_string (channel_type_value,
       GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
-  func (manager, table, gabble_tube_stream_channel_allowed_properties,
+  func (manager, table, gabble_tube_stream_channel_get_allowed_properties (),
       user_data);
 
   /* Muc Channel.Type.DBusTube */
@@ -1595,7 +1595,7 @@ handle_stream_tube_channel_request (GabbleMucFactory *self,
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
           muc_tubes_channel_fixed_properties,
-          gabble_tube_stream_channel_allowed_properties,
+          gabble_tube_stream_channel_get_allowed_properties (),
           error))
     return FALSE;
 

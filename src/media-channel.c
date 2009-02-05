@@ -745,7 +745,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   param_spec = g_param_spec_string ("nat-traversal", "NAT traversal",
       "NAT traversal mechanism.",
       "gtalk-p2p",
-      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_NAT_TRAVERSAL,
       param_spec);
 
@@ -1708,6 +1708,18 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
       create_session (chan, peer, peer_resource);
 
       g_object_set (priv->session, "dialect", dialect, NULL);
+
+      /* Change nat-transport type if we need to */
+      if (!tp_strdiff (transport_ns, NS_JINGLE_TRANSPORT_ICEUDP))
+        {
+          DEBUG ("changing nat-traversal property to ice-udp");
+          g_object_set (chan, "nat-traversal", "ice-udp", NULL);
+        }
+      else if (!tp_strdiff (transport_ns, NS_JINGLE_TRANSPORT_RAWUDP))
+        {
+          DEBUG ("changing nat-traversal property to raw-udp");
+          g_object_set (chan, "nat-traversal", "none", NULL);
+        }
     }
 
   /* check it's not a ridiculous number of streams */

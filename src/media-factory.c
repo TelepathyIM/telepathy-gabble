@@ -42,6 +42,7 @@
 #include "jingle-factory.h"
 #include "jingle-media-rtp.h"
 #include "jingle-session.h"
+
 #include "media-channel.h"
 #include "namespaces.h"
 #include "util.h"
@@ -332,6 +333,27 @@ new_jingle_session_cb (GabbleJingleFactory *jf, GabbleJingleSession *sess, gpoin
     {
       GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer,
           FALSE, FALSE, FALSE);
+      GList *cs;
+
+      /* FIXME: we need this detection to properly adjust nat-traversal on
+       * the channel. We hope all contents will have the same transport... */
+      cs = gabble_jingle_session_get_contents (sess);
+
+      if (cs != NULL)
+        {
+          GabbleJingleContent *c = cs->data;
+          gchar *ns;
+
+          g_object_get (c, "transport-ns", &ns, NULL);
+
+          if (!tp_strdiff (ns, NS_JINGLE_TRANSPORT_ICEUDP))
+              g_object_set (chan, "nat-traversal", "ice-udp", NULL);
+          else if (!tp_strdiff (ns, NS_JINGLE_TRANSPORT_RAWUDP))
+              g_object_set (chan, "nat-traversal", "none", NULL);
+
+          g_list_free (cs);
+        }
+
       tp_channel_manager_emit_new_channel (self,
           TP_EXPORTABLE_CHANNEL (chan), NULL);
     }

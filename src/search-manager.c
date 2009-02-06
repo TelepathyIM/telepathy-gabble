@@ -55,6 +55,11 @@ struct _GabbleSearchManagerPrivate
   GabbleConnection *conn;
   gulong status_changed_id;
 
+  /* Used to represent a set of channels.
+   * Keys are GabbleSearchChannel *, values are an arbitrary non-NULL pointer.
+   */
+  GHashTable *channels;
+
   gboolean dispose_has_run;
 };
 
@@ -64,6 +69,9 @@ gabble_search_manager_init (GabbleSearchManager *self)
   self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GABBLE_TYPE_SEARCH_MANAGER,
       GabbleSearchManagerPrivate);
 
+  self->priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      g_object_unref, NULL);
+
   self->priv->conn = NULL;
   self->priv->dispose_has_run = FALSE;
 }
@@ -71,6 +79,17 @@ gabble_search_manager_init (GabbleSearchManager *self)
 static void
 gabble_search_manager_close_all (GabbleSearchManager *self)
 {
+  /* Use a temporary variable because we don't want search_channel_closed_cb to
+   * remove the channel from the hash table a second time
+   */
+  if (self->priv->channels != NULL)
+    {
+      GHashTable *tmp = self->priv->channels;
+
+      DEBUG ("closing channels");
+      self->priv->channels = NULL;
+      g_hash_table_destroy (tmp);
+    }
 }
 
 static void

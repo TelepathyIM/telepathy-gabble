@@ -36,6 +36,10 @@
 #include "namespaces.h"
 #include "util.h"
 
+/* FIXME: need this because rawudp_produce_candidate isn't
+ * virtual method on transport ifaceyet */
+#include "jingle-transport-rawudp.h"
+
 /* signal enum */
 enum
 {
@@ -700,6 +704,18 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
 
       if (trans_node_out != NULL)
         *trans_node_out = trans_node;
+    }
+
+  /* FIXME: We need to special-case rawudp here to include the
+   * candidate in session initiation, until we make a generic
+   * virtual method for adding transport nodes. This adds a second <transport>
+   * node...
+   */
+  if (!tp_strdiff (priv->transport_ns, NS_JINGLE_TRANSPORT_RAWUDP))
+    {
+      jingle_transport_rawudp_produce_candidate (
+          GABBLE_JINGLE_TRANSPORT_RAWUDP(priv->transport),
+          content_node);
     }
 }
 

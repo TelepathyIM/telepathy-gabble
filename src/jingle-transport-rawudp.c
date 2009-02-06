@@ -314,6 +314,47 @@ parse_candidates (GabbleJingleTransportIface *obj,
     }
 }
 
+/* FIXME: this should be turned into a generic virtual method, and be
+ * passed a param with desired jingle action (to know what to produce) */
+LmMessageNode *
+jingle_transport_rawudp_produce_candidate (GabbleJingleTransportRawUdp *transport,
+  LmMessageNode *content_node)
+{
+  GabbleJingleTransportRawUdpPrivate *priv =
+    GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (transport);
+  JingleCandidate *c;
+  gchar port_str[16];
+  LmMessageNode *cnode;
+  LmMessageNode *trans_node =
+      lm_message_node_add_child (content_node, "transport", NULL);
+
+  lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
+
+  if (priv->local_candidates == NULL)
+    {
+      DEBUG ("panic, I don't have local candidates at the required time");
+      return trans_node;
+    }
+
+  if (priv->local_candidates->next)
+      DEBUG ("several candidates available, sending only the first one");
+
+  c = (JingleCandidate *) priv->local_candidates->data;
+  sprintf (port_str, "%d", c->port);
+
+  /* FIXME: we're missing component attrib, and have hardcoded net/gen */
+  cnode = lm_message_node_add_child (trans_node, "candidate", NULL);
+  lm_message_node_set_attributes (cnode,
+      "ip", c->address,
+      "port", port_str,
+      "id", c->username,
+      "network", "0",
+      "generation", "0",
+      NULL);
+
+  return trans_node;
+}
+
 static void
 transmit_candidates (GabbleJingleTransportRawUdp *transport, GList *candidates)
 {

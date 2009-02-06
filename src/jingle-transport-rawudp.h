@@ -61,5 +61,9 @@ struct _GabbleJingleTransportRawUdp {
 
 void jingle_transport_rawudp_register (GabbleJingleFactory *factory);
 
+LmMessageNode *
+jingle_transport_rawudp_produce_candidate (GabbleJingleTransportRawUdp *transport,
+  LmMessageNode *content_node);
+
 #endif /* __JINGLE_TRANSPORT_RAWUDP_H__ */
 

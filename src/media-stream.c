@@ -110,10 +110,10 @@ struct _GabbleMediaStreamPrivate
   guint remote_candidate_count;
 
   /* signal handler ID for content REMOVED signal */
-  gboolean removed_id;
+  gulong removed_id;
 
   /* source ID for initial codecs/candidates getter */
-  gboolean initial_getter_id;
+  gulong initial_getter_id;
 
   /* These are really booleans, but gboolean is signed. Thanks, GLib */
   unsigned closed:1;

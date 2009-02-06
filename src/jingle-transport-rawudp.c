@@ -348,6 +348,7 @@ jingle_transport_rawudp_produce_candidate (GabbleJingleTransportRawUdp *transpor
       "ip", c->address,
       "port", port_str,
       "id", c->username,
+      "component", "1",
       "network", "0",
       "generation", "0",
       NULL);
@@ -401,6 +402,7 @@ transmit_candidates (GabbleJingleTransportRawUdp *transport, GList *candidates)
           "ip", c->address,
           "port", port_str,
           "id", c->username,
+          "component", "1",
           "network", "0",
           "generation", "0",
           NULL);

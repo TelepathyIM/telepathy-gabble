@@ -13,6 +13,7 @@
 #include "namespaces.h"
 #include "pubsub.h"
 #include "presence-cache.h"
+#include "util.h"
 
 static gboolean update_location_from_msg (GabbleConnection *conn,
     const gchar *from, LmMessage *msg);
@@ -291,11 +292,12 @@ update_location_from_msg (GabbleConnection *conn,
                           const gchar *from,
                           LmMessage *msg)
 {
-  LmMessageNode *node, *subloc_node;
+  LmMessageNode *node;
   GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       g_free, (GDestroyNotify) tp_g_value_slice_free);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  NodeIter i;
 
   TpHandle contact = tp_handle_lookup (contact_repo, from, NULL, NULL);
 
@@ -305,10 +307,9 @@ update_location_from_msg (GabbleConnection *conn,
 
   DEBUG ("LocationsUpdate for %s:", from);
 
-  for (subloc_node = node->children;
-       subloc_node != NULL;
-       subloc_node = subloc_node->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *subloc_node = node_iter_data (i);
       GValue *value = NULL;
       gchar *key;
       const gchar *str;

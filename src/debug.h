@@ -31,6 +31,7 @@ typedef enum
   GABBLE_DEBUG_LOCATION      = 1 << 17,
   GABBLE_DEBUG_FT            = 1 << 18,
   GABBLE_DEBUG_SEARCH        = 1 << 19,
+  GABBLE_DEBUG_BASE_CHANNEL  = 1 << 20,
 } GabbleDebugFlags;
 
 void gabble_debug_set_flags_from_env (void);

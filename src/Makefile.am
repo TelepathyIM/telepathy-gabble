@@ -13,6 +13,8 @@ noinst_PROGRAMS = write-mgr-file
 libgabble_convenience_la_SOURCES = \
     base64.h \
     base64.c \
+    base-channel.h \
+    base-channel.c \
     bytestream-factory.h \
     bytestream-factory.c \
     bytestream-ibb.h \

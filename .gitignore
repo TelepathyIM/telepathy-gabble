@@ -78,3 +78,5 @@ cscope.out
 /tests/twisted/tools/gabble-testing.log
 /tests/twisted/tools/refdbg.log
 /tests/twisted/tools/tmp-session-bus.conf
+/tests/twisted/with-session-bus-*.pid
+/tests/twisted/with-session-bus-*.address

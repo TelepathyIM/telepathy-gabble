@@ -453,6 +453,7 @@ transmit_candidates (GabbleJingleTransportIceUdp *transport, GList *candidates)
           "type", type_str,
           "component", comp_str,
           "foundation", found_str,
+          "id", found_str,
           "name", "rtp",
           "network", "0",
           "generation", "0",

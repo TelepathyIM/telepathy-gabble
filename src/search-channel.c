@@ -312,7 +312,6 @@ gabble_search_channel_init (GabbleSearchChannel *self)
       GABBLE_TYPE_SEARCH_CHANNEL, GabbleSearchChannelPrivate);
 
   self->priv = priv;
-
 }
 
 static GObject *
@@ -403,6 +402,14 @@ gabble_search_channel_get_property (GObject *object,
     }
 }
 
+#ifdef ENABLE_DEBUG
+static const gchar *states[] = {
+    "not started",
+    "in progress",
+    "completed"
+};
+#endif
+
 static void
 gabble_search_channel_set_property (GObject *object,
                                     guint property_id,
@@ -410,6 +417,7 @@ gabble_search_channel_set_property (GObject *object,
                                     GParamSpec *pspec)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (object);
+  GabbleSearchChannelPrivate *priv = chan->priv;
 
   switch (property_id)
     {
@@ -417,12 +425,14 @@ gabble_search_channel_set_property (GObject *object,
         {
           GabbleChannelContactSearchState state = g_value_get_uint (value);
 
+          g_return_if_fail (state < NUM_GABBLE_CHANNEL_CONTACT_SEARCH_STATES);
           /* The search state can only go forward because it can't find
            * reverse
            */
-          g_return_if_fail (state > chan->priv->state);
+          g_return_if_fail (state > priv->state);
 
-          chan->priv->state = state;
+          DEBUG ("moving from %s to %s", states[priv->state], states[state]);
+          priv->state = state;
           gabble_svc_channel_type_contact_search_emit_search_state_changed (
               chan, state);
           break;

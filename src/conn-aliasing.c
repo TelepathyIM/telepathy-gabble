@@ -913,7 +913,7 @@ maybe_request_vcard (GabbleConnection *self, TpHandle handle,
             tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
 
           gabble_do_pep_request (self, handle, contact_handles,
-            aliases_request_basic_pep_cb, GINT_TO_POINTER (handle));
+            aliases_request_basic_pep_cb, GUINT_TO_POINTER (handle));
         }
       else
         {

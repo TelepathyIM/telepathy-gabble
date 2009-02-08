@@ -81,7 +81,7 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
       if (location != NULL)
         {
           DEBUG (" - %s: cached", jid);
-          g_hash_table_insert (return_locations, GINT_TO_POINTER (contact),
+          g_hash_table_insert (return_locations, GUINT_TO_POINTER (contact),
               location);
         }
       else if (!pubsub_query (conn, jid, NS_GEOLOC, pep_reply_cb, NULL))

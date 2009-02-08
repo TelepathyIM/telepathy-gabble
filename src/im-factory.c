@@ -240,7 +240,7 @@ im_factory_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
+  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
 
   if (chan == NULL)
     {
@@ -376,7 +376,7 @@ new_im_channel (GabbleImFactory *fac,
 
   g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, fac);
 
-  g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
+  g_hash_table_insert (priv->channels, GUINT_TO_POINTER (handle), chan);
 
   if (request_token != NULL)
     request_tokens = g_slist_prepend (NULL, request_token);

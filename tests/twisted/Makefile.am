@@ -43,6 +43,7 @@ TWISTED_TESTS = \
 	roster/test-roster-item-deletion.py \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
+	search/unextended.py \
 	text/initiate.py \
 	text/initiate-requestotron.py \
 	text/destroy.py \

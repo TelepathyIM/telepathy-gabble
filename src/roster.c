@@ -458,7 +458,7 @@ _gabble_roster_item_get (GabbleRoster *roster,
   g_assert (GABBLE_IS_ROSTER (roster));
   g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
-  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
+  item = g_hash_table_lookup (priv->items, GUINT_TO_POINTER (handle));
 
   if (NULL == item)
     {
@@ -479,7 +479,7 @@ _gabble_roster_item_get (GabbleRoster *roster,
       item->name = alias;
       item->groups = tp_handle_set_new (group_repo);
       tp_handle_ref (contact_repo, handle);
-      g_hash_table_insert (priv->items, GINT_TO_POINTER (handle), item);
+      g_hash_table_insert (priv->items, GUINT_TO_POINTER (handle), item);
     }
 
   return item;
@@ -497,7 +497,7 @@ _gabble_roster_item_remove (GabbleRoster *roster,
   g_assert (GABBLE_IS_ROSTER (roster));
   g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
-  g_hash_table_remove (priv->items, GINT_TO_POINTER (handle));
+  g_hash_table_remove (priv->items, GUINT_TO_POINTER (handle));
   tp_handle_unref (contact_repo, handle);
 }
 
@@ -915,7 +915,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
   g_assert (handle_type == TP_HANDLE_TYPE_LIST ||
             handle_type == TP_HANDLE_TYPE_GROUP);
   g_assert (channels != NULL);
-  g_assert (g_hash_table_lookup (channels, GINT_TO_POINTER (handle)) == NULL);
+  g_assert (g_hash_table_lookup (channels, GUINT_TO_POINTER (handle)) == NULL);
 
   name = tp_handle_inspect (handle_repo, handle);
   DEBUG ("Instantiating channel %u:%u \"%s\"", handle_type, handle, name);
@@ -940,7 +940,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
   g_signal_connect (chan, "closed", (GCallback) roster_channel_closed_cb,
       roster);
 
-  g_hash_table_insert (channels, GINT_TO_POINTER (handle), chan);
+  g_hash_table_insert (channels, GUINT_TO_POINTER (handle), chan);
 
   if (priv->roster_received)
     {
@@ -989,7 +989,7 @@ _gabble_roster_get_channel (GabbleRoster *roster,
 
   DEBUG ("Looking up channel %u:%u \"%s\"", handle_type, handle,
          tp_handle_inspect (handle_repo, handle));
-  chan = g_hash_table_lookup (channels, GINT_TO_POINTER (handle));
+  chan = g_hash_table_lookup (channels, GUINT_TO_POINTER (handle));
 
   if (chan == NULL)
     {
@@ -1025,7 +1025,7 @@ _gabble_roster_emit_one (gpointer key,
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, data_struct->handle_type);
-  TpHandle handle = GPOINTER_TO_INT (key);
+  TpHandle handle = GPOINTER_TO_UINT (key);
   const gchar *name;
 
   g_assert (data_struct->handle_type == TP_HANDLE_TYPE_GROUP ||
@@ -2085,7 +2085,7 @@ gabble_roster_handle_get_subscription (GabbleRoster *roster,
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       GABBLE_ROSTER_SUBSCRIPTION_NONE);
 
-  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
+  item = g_hash_table_lookup (priv->items, GUINT_TO_POINTER (handle));
 
   if (NULL == item)
     return GABBLE_ROSTER_SUBSCRIPTION_NONE;
@@ -2178,7 +2178,7 @@ gabble_roster_handle_has_entry (GabbleRoster *roster,
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
 
-  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
+  item = g_hash_table_lookup (priv->items, GUINT_TO_POINTER (handle));
 
   return (NULL != item);
 }
@@ -2197,7 +2197,7 @@ gabble_roster_handle_get_name (GabbleRoster *roster,
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       NULL);
 
-  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
+  item = g_hash_table_lookup (priv->items, GUINT_TO_POINTER (handle));
 
   if (NULL == item)
     return NULL;

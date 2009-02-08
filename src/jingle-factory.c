@@ -607,7 +607,7 @@ gabble_jingle_factory_register_transport (GabbleJingleFactory *factory,
     gchar *namespace, GType transport_type)
 {
   g_hash_table_insert (factory->transports, namespace,
-      GINT_TO_POINTER (transport_type));
+      GSIZE_TO_POINTER (transport_type));
 }
 
 void
@@ -615,7 +615,7 @@ gabble_jingle_factory_register_content_type (GabbleJingleFactory *factory,
     gchar *namespace, GType content_type)
 {
   g_hash_table_insert (factory->content_types, namespace,
-      GINT_TO_POINTER (content_type));
+      GSIZE_TO_POINTER (content_type));
 }
 
 static void

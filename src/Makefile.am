@@ -126,6 +126,8 @@ libgabble_convenience_la_SOURCES = \
     roomlist-channel.c \
     roomlist-manager.h \
     roomlist-manager.c \
+    search-channel.h \
+    search-channel.c \
     search-manager.h \
     search-manager.c \
     tube-iface.h \

@@ -149,6 +149,8 @@ gabble_search_channel_finalize (GObject *obj)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (obj);
 
+  ensure_closed (chan);
+
   g_free (chan->priv->server);
 }
 

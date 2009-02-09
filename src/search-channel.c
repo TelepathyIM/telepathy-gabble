@@ -73,6 +73,21 @@ G_DEFINE_TYPE_WITH_CODE (GabbleSearchChannel, gabble_search_channel,
         contact_search_iface_init);
     )
 
+static void
+ensure_closed (GabbleSearchChannel *chan)
+{
+  if (chan->base.closed)
+    {
+      DEBUG ("Already closed, doing nothing");
+    }
+  else
+    {
+      DEBUG ("Emitting Closed");
+      chan->base.closed = TRUE;
+      tp_svc_channel_emit_closed (chan);
+    }
+}
+
 static gboolean
 fake_received_search_fields (gpointer data)
 {
@@ -288,16 +303,7 @@ gabble_search_channel_close (TpSvcChannel *iface,
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (iface);
 
-  if (chan->base.closed)
-    {
-      DEBUG ("Already closed, doing nothing");
-    }
-  else
-    {
-      DEBUG ("Emitting Closed");
-      chan->base.closed = TRUE;
-      tp_svc_channel_emit_closed (chan);
-    }
+  ensure_closed (chan);
 
   tp_svc_channel_return_from_close (context);
 }

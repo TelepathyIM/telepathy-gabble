@@ -245,6 +245,58 @@ search_channel_closed_cb (GabbleSearchChannel *chan,
     g_hash_table_remove (self->priv->channels, chan);
 }
 
+typedef struct {
+    GabbleSearchManager *self;
+    gpointer request_token;
+    gchar *server;
+} RequestContext;
+
+static RequestContext *
+request_context_new (GabbleSearchManager *self,
+                     gpointer request_token,
+                     const gchar *server)
+{
+  RequestContext *ctx = g_slice_new (RequestContext);
+
+  ctx->self = g_object_ref (self);
+  ctx->request_token = request_token;
+  ctx->server = g_strdup (server);
+
+  return ctx;
+}
+
+static void
+request_context_free (RequestContext *ctx)
+{
+  g_object_unref (ctx->self);
+  g_free (ctx->server);
+  g_slice_free (RequestContext, ctx);
+}
+
+static void
+search_channel_probed_cb (GabbleSearchChannel *chan,
+                          gboolean success,
+                          RequestContext *ctx)
+{
+  if (success)
+    {
+      GSList *request_tokens = g_slist_prepend (NULL, ctx->request_token);
+
+      tp_channel_manager_emit_new_channel (ctx->self,
+          (TpExportableChannel *) chan, request_tokens);
+
+      g_slist_free (request_tokens);
+    }
+  else
+    {
+      tp_channel_manager_emit_request_failed_printf (ctx->self,
+          ctx->request_token, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "'%s' is not a (working) user directory server", ctx->server);
+    }
+
+  request_context_free (ctx);
+}
+
 static void
 new_search_channel (GabbleSearchManager *self,
                     const gchar *server,
@@ -252,7 +304,6 @@ new_search_channel (GabbleSearchManager *self,
 {
   GabbleSearchManagerPrivate *priv = self->priv;
   GabbleSearchChannel *chan;
-  GSList *request_tokens = g_slist_prepend (NULL, request_token);
 
   g_assert (server != NULL);
 
@@ -263,9 +314,8 @@ new_search_channel (GabbleSearchManager *self,
   g_hash_table_insert (priv->channels, chan, priv->channels);
   g_signal_connect (chan, "closed", (GCallback) search_channel_closed_cb, self);
 
-  tp_channel_manager_emit_new_channel (self, (TpExportableChannel *) chan,
-      request_tokens);
-  g_slist_free (request_tokens);
+  g_signal_connect (chan, "probed", (GCallback) search_channel_probed_cb,
+      request_context_new (self, request_token, server));
 }
 
 static gboolean

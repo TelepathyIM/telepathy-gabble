@@ -45,6 +45,15 @@ enum
   LAST_PROPERTY
 };
 
+/* signal enum */
+enum
+{
+    PROBED,
+    LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = {0};
+
 /* private structure */
 
 struct _GabbleSearchChannelPrivate
@@ -229,6 +238,19 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
       NULL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SERVER, param_spec);
+
+  /* Emitted with argument TRUE if the service's supported search fields have
+   * been discovered, and with argument FALSE if the service isn't actually a
+   * XEP 0055 repository.
+   */
+  signals[PROBED] =
+    g_signal_new ("probed",
+                  G_OBJECT_CLASS_TYPE (klass),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__BOOLEAN,
+                  G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 
   tp_dbus_properties_mixin_implement_interface (object_class,
       GABBLE_IFACE_QUARK_CHANNEL_TYPE_CONTACT_SEARCH,

@@ -167,11 +167,11 @@ $(top_builddir)/lib/gibber/libgibber.la:
 .PHONY: $(top_builddir)/lib/gibber/libgibber.la
 
 gabble-signals-marshal.list: $(libgabble_convenience_la_SOURCES) Makefile.am
-	( cd $(srcdir) && \
+	@( cd $(srcdir) && \
 	sed -n -e 's/.*gabble_marshal_\([[:upper:][:digit:]]*__[[:upper:][:digit:]_]*\).*/\1/p' \
 	$(libgabble_convenience_la_SOURCES) ) \
 	| sed -e 's/__/:/' -e 'y/_/,/' | sort -u > $@.tmp
-	if cmp -s $@.tmp $@; then \
+	@if cmp -s $@.tmp $@; then \
 		rm $@.tmp; \
 	else \
 		mv $@.tmp $@; \

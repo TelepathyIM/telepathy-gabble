@@ -93,6 +93,7 @@ fake_received_search_fields (gpointer data)
 {
   GabbleSearchChannel *chan = data;
 
+  chan->base.closed = FALSE;
   g_signal_emit (chan, signals[PROBED], 0, TRUE);
 
   return FALSE;
@@ -138,6 +139,11 @@ gabble_search_channel_constructor (GType type,
 
   base->object_path = g_strdup_printf ("%s/ContactSearchChannel%p",
       conn->object_path, obj);
+
+  /* The channel only "opens" when it's found out that the server really does
+   * speak XEP 0055 and knows which fields are supported.
+   */
+  base->closed = TRUE;
 
   request_search_fields (chan);
 

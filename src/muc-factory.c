@@ -261,7 +261,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
         }
 
       g_hash_table_remove (priv->text_channels,
-          GINT_TO_POINTER (room_handle));
+          GUINT_TO_POINTER (room_handle));
     }
 }
 
@@ -288,7 +288,7 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
       DEBUG ("removing MUC tubes channel with handle %d", room_handle);
 
       g_hash_table_remove (priv->tubes_channels,
-          GINT_TO_POINTER (room_handle));
+          GUINT_TO_POINTER (room_handle));
     }
 }
 
@@ -443,7 +443,7 @@ new_muc_channel (GabbleMucFactory *fac,
   char *object_path;
 
   g_assert (g_hash_table_lookup (priv->text_channels,
-        GINT_TO_POINTER (handle)) == NULL);
+        GUINT_TO_POINTER (handle)) == NULL);
 
   object_path = g_strdup_printf ("%s/MucChannel%u",
       conn->object_path, handle);
@@ -462,7 +462,7 @@ new_muc_channel (GabbleMucFactory *fac,
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
 
-  g_hash_table_insert (priv->text_channels, GINT_TO_POINTER (handle), chan);
+  g_hash_table_insert (priv->text_channels, GUINT_TO_POINTER (handle), chan);
 
   g_free (object_path);
 
@@ -495,7 +495,7 @@ new_tubes_channel (GabbleMucFactory *fac,
   char *object_path;
 
   g_assert (g_hash_table_lookup (priv->tubes_channels,
-        GINT_TO_POINTER (room)) == NULL);
+        GUINT_TO_POINTER (room)) == NULL);
 
   object_path = g_strdup_printf ("%s/MucTubesChannel%u",
       conn->object_path, room);
@@ -514,7 +514,7 @@ new_tubes_channel (GabbleMucFactory *fac,
 
   g_signal_connect (chan, "closed", (GCallback) tubes_channel_closed_cb, fac);
 
-  g_hash_table_insert (priv->tubes_channels, GINT_TO_POINTER (room), chan);
+  g_hash_table_insert (priv->tubes_channels, GUINT_TO_POINTER (room), chan);
 
   g_free (object_path);
 
@@ -1012,7 +1012,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
       GabbleTubesChannel *tubes_chan;
 
       tubes_chan = g_hash_table_lookup (priv->tubes_channels,
-          GINT_TO_POINTER (room_handle));
+          GUINT_TO_POINTER (room_handle));
       if (tubes_chan == NULL)
         {
           LmMessageNode *tubes_node;
@@ -1278,7 +1278,7 @@ ensure_muc_channel (GabbleMucFactory *fac,
 {
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
 
-  *ret = g_hash_table_lookup (priv->text_channels, GINT_TO_POINTER (handle));
+  *ret = g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
 
   if (*ret == NULL)
     {

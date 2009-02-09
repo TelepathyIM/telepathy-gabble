@@ -246,7 +246,7 @@ aliases_request_basic_pep_cb (GabbleConnection *self,
                               GError *error)
 {
   GabbleConnectionAliasSource source = GABBLE_CONNECTION_ALIAS_NONE;
-  TpHandle handle = GPOINTER_TO_INT (user_data);
+  TpHandle handle = GPOINTER_TO_UINT (user_data);
 
   aliases_request_cache_pep (self, msg, handle, error);
 
@@ -464,7 +464,7 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
 {
   struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach *) user_data;
-  TpHandle handle = GPOINTER_TO_INT (key);
+  TpHandle handle = GPOINTER_TO_UINT (key);
   gchar *alias = (gchar *) value;
   GError *error = NULL;
   TpBaseConnection *base = (TpBaseConnection *) data->conn;
@@ -913,7 +913,7 @@ maybe_request_vcard (GabbleConnection *self, TpHandle handle,
             tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
 
           gabble_do_pep_request (self, handle, contact_handles,
-            aliases_request_basic_pep_cb, GINT_TO_POINTER (handle));
+            aliases_request_basic_pep_cb, GUINT_TO_POINTER (handle));
         }
       else
         {

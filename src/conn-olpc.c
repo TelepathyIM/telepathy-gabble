@@ -1411,7 +1411,7 @@ activity_in_own_set (GabbleConnection *conn,
     return FALSE;
 
   activities_set = g_hash_table_lookup (conn->olpc_pep_activities,
-      GINT_TO_POINTER (base->self_handle));
+      GUINT_TO_POINTER (base->self_handle));
 
   if (activities_set == NULL ||
       !tp_handle_set_is_member (activities_set, room_handle))

@@ -2677,7 +2677,7 @@ gabble_connection_get_contact_capabilities (
 
       gabble_connection_get_handle_contact_capabilities (self, handle, arr);
 
-      g_hash_table_insert (ret, GINT_TO_POINTER (handle), arr);
+      g_hash_table_insert (ret, GUINT_TO_POINTER (handle), arr);
     }
 
   gabble_svc_connection_interface_contact_capabilities_return_from_get_contact_capabilities

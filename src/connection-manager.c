@@ -153,7 +153,7 @@ static const TpCMParamSpec jabber_params[] = {
     tp_cm_param_filter_string_nonempty, NULL },
   { "https-proxy-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
-    GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT),
+    GUINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT),
     G_STRUCT_OFFSET(GabbleParams, https_proxy_port),
     tp_cm_param_filter_uint_nonzero, NULL },
 
@@ -168,7 +168,7 @@ static const TpCMParamSpec jabber_params[] = {
     tp_cm_param_filter_string_nonempty, NULL },
   { "stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
-    GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT),
+    GUINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT),
     G_STRUCT_OFFSET(GabbleParams, stun_port),
     tp_cm_param_filter_uint_nonzero, NULL },
 

@@ -235,14 +235,20 @@ gabble_search_manager_foreach_channel_class (TpChannelManager *manager,
 }
 
 static void
+remove_search_channel (GabbleSearchManager *self,
+                       GabbleSearchChannel *chan)
+{
+  if (self->priv->channels != NULL)
+    g_hash_table_remove (self->priv->channels, chan);
+}
+
+static void
 search_channel_closed_cb (GabbleSearchChannel *chan,
                           GabbleSearchManager *self)
 {
   tp_channel_manager_emit_channel_closed_for_object (self,
       (TpExportableChannel *) chan);
-
-  if (self->priv->channels != NULL)
-    g_hash_table_remove (self->priv->channels, chan);
+  remove_search_channel (self, chan);
 }
 
 typedef struct {
@@ -292,6 +298,7 @@ search_channel_probed_cb (GabbleSearchChannel *chan,
       tp_channel_manager_emit_request_failed_printf (ctx->self,
           ctx->request_token, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "'%s' is not a (working) user directory server", ctx->server);
+      remove_search_channel (ctx->self, chan);
     }
 
   request_context_free (ctx);

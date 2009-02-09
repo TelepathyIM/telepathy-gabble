@@ -73,6 +73,22 @@ G_DEFINE_TYPE_WITH_CODE (GabbleSearchChannel, gabble_search_channel,
         contact_search_iface_init);
     )
 
+static gboolean
+fake_received_search_fields (gpointer data)
+{
+  GabbleSearchChannel *chan = data;
+
+  g_signal_emit (chan, signals[PROBED], 0, TRUE);
+
+  return FALSE;
+}
+
+static void
+request_search_fields (GabbleSearchChannel *chan)
+{
+  g_idle_add (fake_received_search_fields, g_object_ref (chan));
+}
+
 static void
 gabble_search_channel_init (GabbleSearchChannel *self)
 {
@@ -107,6 +123,8 @@ gabble_search_channel_constructor (GType type,
 
   base->object_path = g_strdup_printf ("%s/ContactSearchChannel%p",
       conn->object_path, obj);
+
+  request_search_fields (chan);
 
   return obj;
 }

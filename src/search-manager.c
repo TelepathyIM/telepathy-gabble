@@ -280,11 +280,13 @@ request_context_free (RequestContext *ctx)
 }
 
 static void
-search_channel_probed_cb (GabbleSearchChannel *chan,
-                          gboolean success,
-                          RequestContext *ctx)
+search_channel_ready_or_not_cb (GabbleSearchChannel *chan,
+                                GQuark domain,
+                                gint code,
+                                const gchar *message,
+                                RequestContext *ctx)
 {
-  if (success)
+  if (domain == 0)
     {
       GSList *request_tokens = g_slist_prepend (NULL, ctx->request_token);
 
@@ -295,9 +297,23 @@ search_channel_probed_cb (GabbleSearchChannel *chan,
     }
   else
     {
-      tp_channel_manager_emit_request_failed_printf (ctx->self,
-          ctx->request_token, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "'%s' is not a (working) user directory server", ctx->server);
+      if (domain == GABBLE_XMPP_ERROR)
+        {
+          domain = TP_ERRORS;
+          /* - Maybe CreateChannel should be specced to raise PermissionDenied?
+           *   Then we could map XMPP_ERROR_FORBIDDEN to that.
+           * - Should XMPP_ERROR_JID_MALFORMED be mapped to InvalidArgument?
+           */
+          code = TP_ERROR_NOT_AVAILABLE;
+          /* Do we want to prefix the error string with something? */
+        }
+      else
+        {
+          g_assert (domain == TP_ERRORS);
+        }
+
+      tp_channel_manager_emit_request_failed (ctx->self,
+          ctx->request_token, domain, code, message);
       remove_search_channel (ctx->self, chan);
     }
 
@@ -321,7 +337,8 @@ new_search_channel (GabbleSearchManager *self,
   g_hash_table_insert (priv->channels, chan, priv->channels);
   g_signal_connect (chan, "closed", (GCallback) search_channel_closed_cb, self);
 
-  g_signal_connect (chan, "probed", (GCallback) search_channel_probed_cb,
+  g_signal_connect (chan, "ready-or-not",
+      (GCallback) search_channel_ready_or_not_cb,
       request_context_new (self, request_token, server));
 }
 

@@ -32,6 +32,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
 #include "base-channel.h"
 #include "debug.h"
+#include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"
 
@@ -54,7 +55,7 @@ enum
 /* signal enum */
 enum
 {
-    PROBED,
+    READY_OR_NOT,
     LAST_SIGNAL
 };
 
@@ -95,6 +96,30 @@ ensure_closed (GabbleSearchChannel *chan)
 }
 
 static void
+become_ready (GabbleSearchChannel *chan)
+{
+  DEBUG ("called");
+
+  g_assert (chan->base.closed);
+
+  chan->base.closed = FALSE;
+  g_signal_emit (chan, signals[READY_OR_NOT], 0, 0, 0, NULL);
+}
+
+static void
+give_up (GabbleSearchChannel *chan,
+         const GError *error)
+{
+  DEBUG ("called: %s, %u, %s", g_quark_to_string (error->domain), error->code,
+      error->message);
+
+  g_assert (chan->base.closed);
+
+  g_signal_emit (chan, signals[READY_OR_NOT], 0, error->domain, error->code,
+      error->message);
+}
+
+static void
 parse_search_field_response (GabbleSearchChannel *chan,
                              LmMessageNode *query_node)
 {
@@ -107,10 +132,10 @@ parse_search_field_response (GabbleSearchChannel *chan,
 
   if (x_node != NULL)
     {
-      DEBUG ("response contains an XForm, which is not yet implemented");
-      DEBUG ("failing the channel");
+      GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "server uses data forms, which are not yet implemented in Gabble" };
 
-      g_signal_emit (chan, signals[PROBED], 0, FALSE);
+      give_up (chan, &error);
       return;
     }
 
@@ -135,11 +160,14 @@ parse_search_field_response (GabbleSearchChannel *chan,
 #undef MAP_FIELD_TO
       else
         {
-          DEBUG ("%s is not a field defined in XEP 0055",
-              field->name);
-          DEBUG ("giving up on this channel");
+          GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, NULL };
 
-          g_signal_emit (chan, signals[PROBED], 0, FALSE);
+          error.message = g_strdup_printf (
+              "server is broken: %s is not a field defined in XEP 0055",
+              field->name);
+          give_up (chan, &error);
+          g_free (error.message);
+
           g_ptr_array_free (search_keys, TRUE);
           return;
         }
@@ -148,8 +176,8 @@ parse_search_field_response (GabbleSearchChannel *chan,
   DEBUG ("extracted available fields");
   g_ptr_array_add (search_keys, NULL);
   chan->priv->available_search_keys = (gchar **) g_ptr_array_free (search_keys, FALSE);
-  chan->base.closed = FALSE;
-  g_signal_emit (chan, signals[PROBED], 0, TRUE);
+
+  become_ready (chan);
 }
 
 static LmHandlerResult
@@ -172,19 +200,19 @@ query_reply_cb (GabbleConnection *conn,
 
       if (err == NULL)
         err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "server gave us an error we don't understand");
+            "%s gave us an error we don't understand", chan->priv->server);
     }
   else if (NULL == query_node)
     {
       err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "server is chock-full of bees");
+          "%s is broken: it replied to our <query> with an empty IQ",
+          chan->priv->server);
     }
 
   if (err != NULL)
     {
-      DEBUG ("got an error back from %s: %s", chan->priv->server, err->message);
-
-      g_signal_emit (chan, signals[PROBED], 0, FALSE);
+      give_up (chan, err);
+      g_error_free (err);
     }
   else
     {
@@ -199,6 +227,7 @@ request_search_fields (GabbleSearchChannel *chan)
 {
   LmMessage *msg;
   LmMessageNode *lm_node;
+  GError *error = NULL;
 
   msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_GET);
@@ -206,9 +235,10 @@ request_search_fields (GabbleSearchChannel *chan)
   lm_message_node_set_attribute (lm_node, "xmlns", NS_SEARCH);
 
   if (! _gabble_connection_send_with_reply (chan->base.conn, msg,
-            query_reply_cb, (GObject *) chan, NULL, NULL))
+            query_reply_cb, (GObject *) chan, NULL, &error))
     {
-      g_signal_emit (chan, signals[PROBED], 0, FALSE);
+      give_up (chan, error);
+      g_error_free (error);
     }
 
   lm_message_unref (msg);
@@ -389,18 +419,22 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SERVER, param_spec);
 
-  /* Emitted with argument TRUE if the service's supported search fields have
-   * been discovered, and with argument FALSE if the service isn't actually a
-   * XEP 0055 repository.
+  /* Emitted when we get a reply from the server about which search keys it
+   * supports.  Its three arguments are the components of a GError.  If the
+   * server gave us a set of search keys, and they were sane, all components
+   * will be 0 or %NULL, indicating that this channel can be announced and
+   * used; if the server doesn't actually speak XEP 0055 or is full of bees,
+   * they'll be an error in either the GABBLE_XMPP_ERROR or the TP_ERRORS
+   * domain.
    */
-  signals[PROBED] =
-    g_signal_new ("probed",
+  signals[READY_OR_NOT] =
+    g_signal_new ("ready-or-not",
                   G_OBJECT_CLASS_TYPE (klass),
                   G_SIGNAL_RUN_LAST,
                   0,
                   NULL, NULL,
-                  g_cclosure_marshal_VOID__BOOLEAN,
-                  G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
+                  gabble_marshal_VOID__UINT_INT_STRING,
+                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_INT, G_TYPE_STRING);
 
   tp_dbus_properties_mixin_implement_interface (object_class,
       GABBLE_IFACE_QUARK_CHANNEL_TYPE_CONTACT_SEARCH,

@@ -1176,6 +1176,12 @@ _pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
 
+  if (presence == NULL)
+    {
+      DEBUG ("contact %d has no presence available", peer);
+      return NULL;
+    }
+
   if (gabble_presence_resource_has_caps (presence, resource,
           PRESENCE_CAP_JINGLE_RTP))
     {

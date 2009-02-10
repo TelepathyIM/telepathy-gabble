@@ -1257,6 +1257,8 @@ new_remote_candidates_cb (GabbleJingleContent *content,
           1, transports,
           G_MAXUINT);
 
+      g_free (candidate_id);
+
       g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
     }
 

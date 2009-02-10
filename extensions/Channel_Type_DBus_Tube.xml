@@ -58,6 +58,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       <tp:docstring>
         Offers a D-Bus tube providing the service specified.
       </tp:docstring>
+      <arg direction="in" name="parameters" type="a{sv}"
+        tp:type="String_Variant_Map">
+        <tp:docstring>
+          The dictionary of arbitrary
+          <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT">Parameters</tp:dbus-ref>
+          to send with the tube offer.
+        </tp:docstring>
+      </arg>
       <arg direction="out" name="address" type="s">
         <tp:docstring>
           The string describing the address of the private bus. The client

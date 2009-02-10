@@ -66,6 +66,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
           specified in the documentation for the Socket_Access_Control enum.
         </tp:docstring>
       </arg>
+      <arg direction="in" name="parameters" type="a{sv}"
+        tp:type="String_Variant_Map">
+        <tp:docstring>
+          The dictionary of arbitrary
+          <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT">Parameters</tp:dbus-ref>
+          to send with the tube offer.
+        </tp:docstring>
+      </arg>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
         <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">

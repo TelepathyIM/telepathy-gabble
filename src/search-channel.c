@@ -202,21 +202,21 @@ parse_search_field_response (GabbleSearchChannel *chan,
 
   for (field = query_node->children; field != NULL; field = field->next)
     {
+      gchar *tp_name;
+
       if (!strcmp (field->name, "instructions"))
         {
           DEBUG ("server gave us some instructions: %s",
               lm_message_node_get_value (field));
+          continue;
         }
-#define MAP_FIELD_TO(xep_name, tp_name) \
-      else if (!strcmp (field->name, xep_name)) \
-        { \
-          g_ptr_array_add (search_keys, tp_name); \
+
+      tp_name = g_hash_table_lookup (xmpp_to_tp, field->name);
+
+      if (tp_name != NULL)
+        {
+          g_ptr_array_add (search_keys, tp_name);
         }
-      MAP_FIELD_TO ("first", "x-n-given")
-      MAP_FIELD_TO ("last", "x-n-family")
-      MAP_FIELD_TO ("nick", "nickname")
-      MAP_FIELD_TO ("email", "email")
-#undef MAP_FIELD_TO
       else
         {
           GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, NULL };

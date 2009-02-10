@@ -21,13 +21,19 @@
 #include "config.h"
 #include "search-channel.h"
 
+#include <string.h>
+
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-channel.h>
 
+#include <loudmouth/loudmouth.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
 #include "base-channel.h"
 #include "debug.h"
+#include "namespaces.h"
+#include "util.h"
 
 #include "extensions/extensions.h"
 
@@ -88,21 +94,124 @@ ensure_closed (GabbleSearchChannel *chan)
     }
 }
 
-static gboolean
-fake_received_search_fields (gpointer data)
+static void
+parse_search_field_response (GabbleSearchChannel *chan,
+                             LmMessageNode *query_node)
 {
-  GabbleSearchChannel *chan = data;
+  LmMessageNode *x_node;
+  LmMessageNode *field;
+  GPtrArray *search_keys;
 
+  x_node = lm_message_node_get_child_with_namespace (query_node, "x",
+      NS_X_DATA);
+
+  if (x_node != NULL)
+    {
+      DEBUG ("response contains an XForm, which is not yet implemented");
+      DEBUG ("failing the channel");
+
+      g_signal_emit (chan, signals[PROBED], 0, FALSE);
+      return;
+    }
+
+  search_keys = g_ptr_array_new ();
+
+  for (field = query_node->children; field != NULL; field = field->next)
+    {
+      if (!strcmp (field->name, "instructions"))
+        {
+          DEBUG ("server gave us some instructions: %s",
+              lm_message_node_get_value (field));
+        }
+#define MAP_FIELD_TO(xep_name, tp_name) \
+      else if (!strcmp (field->name, xep_name)) \
+        { \
+          g_ptr_array_add (search_keys, tp_name); \
+        }
+      MAP_FIELD_TO ("first", "x-n-given")
+      MAP_FIELD_TO ("last", "x-n-family")
+      MAP_FIELD_TO ("nick", "nickname")
+      MAP_FIELD_TO ("email", "email")
+#undef MAP_FIELD_TO
+      else
+        {
+          DEBUG ("%s is not a field defined in XEP 0055",
+              field->name);
+          DEBUG ("giving up on this channel");
+
+          g_signal_emit (chan, signals[PROBED], 0, FALSE);
+          g_ptr_array_free (search_keys, TRUE);
+          return;
+        }
+    }
+
+  DEBUG ("extracted available fields");
+  g_ptr_array_add (search_keys, NULL);
+  chan->priv->available_search_keys = (gchar **) g_ptr_array_free (search_keys, FALSE);
   chan->base.closed = FALSE;
   g_signal_emit (chan, signals[PROBED], 0, TRUE);
+}
 
-  return FALSE;
+static LmHandlerResult
+query_reply_cb (GabbleConnection *conn,
+                LmMessage *sent_msg,
+                LmMessage *reply_msg,
+                GObject *object,
+                gpointer user_data)
+{
+  GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (object);
+  LmMessageNode *query_node;
+  GError *err = NULL;
+
+  query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
+      "query", NS_SEARCH);
+
+  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      err = gabble_message_get_xmpp_error (reply_msg);
+
+      if (err == NULL)
+        err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "server gave us an error we don't understand");
+    }
+  else if (NULL == query_node)
+    {
+      err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "server is chock-full of bees");
+    }
+
+  if (err != NULL)
+    {
+      DEBUG ("got an error back from %s: %s", chan->priv->server, err->message);
+
+      g_signal_emit (chan, signals[PROBED], 0, FALSE);
+    }
+  else
+    {
+      parse_search_field_response (chan, query_node);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
 request_search_fields (GabbleSearchChannel *chan)
 {
-  g_idle_add (fake_received_search_fields, g_object_ref (chan));
+  LmMessage *msg;
+  LmMessageNode *lm_node;
+
+  msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_GET);
+  lm_node = lm_message_node_add_child (msg->node, "query", NULL);
+  lm_message_node_set_attribute (lm_node, "xmlns", NS_SEARCH);
+
+  if (! _gabble_connection_send_with_reply (chan->base.conn, msg,
+            query_reply_cb, (GObject *) chan, NULL, NULL))
+    {
+      g_signal_emit (chan, signals[PROBED], 0, FALSE);
+    }
+
+  lm_message_unref (msg);
 }
 
 static void

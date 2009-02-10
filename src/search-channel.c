@@ -264,6 +264,7 @@ gabble_search_channel_constructor (GType type,
   GabbleSearchChannel *chan;
   GabbleBaseChannel *base;
   TpBaseConnection *conn;
+  gchar *escaped;
 
   obj = G_OBJECT_CLASS (gabble_search_channel_parent_class)->constructor (
       type, n_props, props);
@@ -277,8 +278,10 @@ gabble_search_channel_constructor (GType type,
   base->target = 0;
   base->initiator = conn->self_handle;
 
-  base->object_path = g_strdup_printf ("%s/ContactSearchChannel%p",
-      conn->object_path, obj);
+  escaped = tp_escape_as_identifier (chan->priv->server);
+  base->object_path = g_strdup_printf ("%s/SearchChannel_%s_%p",
+      conn->object_path, escaped, obj);
+  g_free (escaped);
 
   /* The channel only "opens" when it's found out that the server really does
    * speak XEP 0055 and knows which fields are supported.

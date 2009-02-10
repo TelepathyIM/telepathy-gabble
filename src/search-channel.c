@@ -80,6 +80,64 @@ G_DEFINE_TYPE_WITH_CODE (GabbleSearchChannel, gabble_search_channel,
         contact_search_iface_init);
     )
 
+/* Mapping between XEP 0055/misc data forms fields seen in the wild and
+ * vCard/Telepathy names.
+ */
+
+typedef struct {
+    gchar *xmpp_name;
+    gchar *tp_name;
+} FieldNameMapping;
+
+static const FieldNameMapping field_mappings[] = {
+  /* Fields specified for non-Data Forms searches */
+  { "first",    "x-n-given" },
+  { "last",     "x-n-family" },
+  { "nick",     "nickname" },
+  { "email",    "email" },
+  /* Fields observed in implementations of Data Forms searches */
+  { NULL, NULL },
+};
+
+#define NUM_UNEXTENDED_FIELDS 4
+
+static GHashTable *xmpp_to_tp = NULL;
+static GHashTable *unextended_xmpp_to_tp = NULL;
+static GHashTable *tp_to_xmpp = NULL;
+
+static void
+build_mapping_tables (void)
+{
+  guint i;
+
+  g_return_if_fail (xmpp_to_tp == NULL);
+  g_return_if_fail (tp_to_xmpp == NULL);
+
+  xmpp_to_tp = g_hash_table_new (g_str_hash, g_str_equal);
+  unextended_xmpp_to_tp = g_hash_table_new (g_str_hash, g_str_equal);
+  tp_to_xmpp = g_hash_table_new (g_str_hash, g_str_equal);
+
+  for (i = 0; i < NUM_UNEXTENDED_FIELDS; i++)
+    {
+      g_hash_table_insert (xmpp_to_tp, field_mappings[i].xmpp_name,
+          field_mappings[i].tp_name);
+      g_hash_table_insert (tp_to_xmpp, field_mappings[i].tp_name,
+          field_mappings[i].xmpp_name);
+    }
+
+  tp_g_hash_table_update (unextended_xmpp_to_tp, xmpp_to_tp, NULL, NULL);
+
+  for (; field_mappings[i].xmpp_name != NULL; i++)
+    {
+      g_hash_table_insert (xmpp_to_tp, field_mappings[i].xmpp_name,
+          field_mappings[i].tp_name);
+      g_hash_table_insert (tp_to_xmpp, field_mappings[i].tp_name,
+          field_mappings[i].xmpp_name);
+    }
+}
+
+/* Search implementation */
+
 static void
 ensure_closed (GabbleSearchChannel *chan)
 {
@@ -244,6 +302,8 @@ request_search_fields (GabbleSearchChannel *chan)
 
   lm_message_unref (msg);
 }
+
+/* GObject implementation */
 
 static void
 gabble_search_channel_init (GabbleSearchChannel *self)
@@ -444,6 +504,8 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
       GABBLE_IFACE_QUARK_CHANNEL_TYPE_CONTACT_SEARCH,
       tp_dbus_properties_mixin_getter_gobject_properties, NULL,
       search_channel_props);
+
+  build_mapping_tables ();
 }
 
 /**

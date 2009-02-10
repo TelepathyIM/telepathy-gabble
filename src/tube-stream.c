@@ -84,7 +84,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
 static const gchar * const gabble_tube_stream_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
-    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
     GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
     NULL
 };

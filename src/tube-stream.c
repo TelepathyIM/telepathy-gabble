@@ -1997,6 +1997,7 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
                                       const GValue *address,
                                       guint access_control,
                                       const GValue *access_control_param,
+                                      GHashTable *parameters,
                                       DBusGMethodInvocation *context)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);

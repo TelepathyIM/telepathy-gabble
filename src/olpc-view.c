@@ -576,6 +576,7 @@ gabble_olpc_view_close_dbus (TpSvcChannel *iface,
         {
           dbus_g_method_return_error (context, error);
           g_error_free (error);
+          return;
         }
     }
 

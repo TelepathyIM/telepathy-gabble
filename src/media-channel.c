@@ -1224,6 +1224,12 @@ _pick_best_resource (GabbleMediaChannel *chan,
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
 
+  if (presence == NULL)
+    {
+      DEBUG ("contact %d has no presence available", peer);
+      return NULL;
+    }
+
   *dialect = JINGLE_DIALECT_ERROR;
   *transport_ns = NULL;
 

@@ -103,6 +103,7 @@ become_ready (GabbleSearchChannel *chan)
   g_assert (chan->base.closed);
 
   chan->base.closed = FALSE;
+  gabble_base_channel_register ((GabbleBaseChannel *) chan);
   g_signal_emit (chan, signals[READY_OR_NOT], 0, 0, 0, NULL);
 }
 

@@ -58,6 +58,8 @@ struct _GabbleBaseChannel {
     GabbleBaseChannelPrivate *priv;
 };
 
+void gabble_base_channel_register (GabbleBaseChannel *chan);
+
 GType gabble_base_channel_get_type (void);
 
 /* TYPE MACROS */

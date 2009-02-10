@@ -94,6 +94,24 @@ G_DEFINE_TYPE_WITH_CODE (GabbleBaseChannel, gabble_base_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
     )
 
+/**
+ * gabble_base_channel_register:
+ * @chan: a channel
+ *
+ * Make the channel appear on the bus.  @chan->object_path must have been set
+ * to a valid path, which must not already be in use as another object's path.
+ */
+void
+gabble_base_channel_register (GabbleBaseChannel *chan)
+{
+  DBusGConnection *bus = tp_get_bus ();
+
+  g_assert (chan->object_path != NULL);
+
+  dbus_g_connection_register_g_object (bus, chan->object_path,
+      (GObject *) chan);
+}
+
 static void
 gabble_base_channel_init (GabbleBaseChannel *self)
 {
@@ -134,22 +152,6 @@ gabble_base_channel_constructor (GType type,
     }
 
   return obj;
-}
-
-static void
-gabble_base_channel_constructed (GObject *obj)
-{
-  GabbleBaseChannel *chan = GABBLE_BASE_CHANNEL (obj);
-  GObjectClass *object_class = G_OBJECT_CLASS (gabble_base_channel_parent_class);
-  DBusGConnection *bus;
-
-  if (object_class->constructed != NULL)
-    object_class->constructed (obj);
-
-  g_assert (chan->object_path != NULL);
-
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, chan->object_path, obj);
 }
 
 static void
@@ -347,7 +349,6 @@ gabble_base_channel_class_init (GabbleBaseChannelClass *gabble_base_channel_clas
       sizeof (GabbleBaseChannelPrivate));
 
   object_class->constructor = gabble_base_channel_constructor;
-  object_class->constructed = gabble_base_channel_constructed;
 
   object_class->get_property = gabble_base_channel_get_property;
   object_class->set_property = gabble_base_channel_set_property;

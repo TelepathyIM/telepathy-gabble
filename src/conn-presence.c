@@ -257,10 +257,12 @@ set_own_status_cb (GObject *obj,
     }
   else
     {
-      gabble_presence_update (conn->self_presence, resource,
-          GABBLE_PRESENCE_AVAILABLE, NULL, prio);
-      emit_one_presence_update (conn, base->self_handle);
-      return _gabble_connection_signal_own_presence (conn, error);
+      if (gabble_presence_update (conn->self_presence, resource,
+          GABBLE_PRESENCE_AVAILABLE, NULL, prio))
+        {
+          emit_one_presence_update (conn, base->self_handle);
+          retval = _gabble_connection_signal_own_presence (conn, error);
+        }
     }
 
 OUT:

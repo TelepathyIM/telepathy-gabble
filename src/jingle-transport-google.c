@@ -475,6 +475,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
     }
 
   _gabble_connection_send (priv->content->conn, msg, NULL);
+  lm_message_unref (msg);
 }
 
 /* Takes in a list of slice-allocated JingleCandidate structs */

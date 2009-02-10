@@ -54,6 +54,35 @@ def test(q, bus, conn, stream):
     assert cs.CONTACT_SEARCH_STATE not in props, pformat(props)
 
     c = make_channel_proxy(conn, path, 'Channel')
+    c_props = dbus.Interface(c, cs.PROPERTIES_IFACE)
+    c_search = dbus.Interface(c, cs.CHANNEL_TYPE_CONTACT_SEARCH)
+
+    state = c_props.Get(cs.CHANNEL_TYPE_CONTACT_SEARCH, 'SearchState')
+    assert state == cs.SEARCH_NOT_STARTED, state
+
+    terms = { 'x-n-family': 'Thomspon' }
+    call_async(q, c_search, 'Search', terms)
+
+    _, ssc_event, iq_event = q.expect_many(
+        EventPattern('dbus-return', method='Search'),
+        EventPattern('dbus-signal', signal='SearchStateChanged'),
+        EventPattern('stream-iq', to=server, query_ns=ns.SEARCH),
+        )
+
+    assert ssc_event.args[0] == cs.SEARCH_IN_PROGRESS
+
+    state = c_props.Get(cs.CHANNEL_TYPE_CONTACT_SEARCH, 'SearchState')
+    assert state == cs.SEARCH_IN_PROGRESS, state
+
+    iq = iq_event.stanza
+    query = iq.firstChildElement()
+    i = 0
+    for field in query.elements():
+        assert field.name == 'last', field.toXml()
+        assert field.children[0] == u'Thomspon', field.children[0]
+        i += 1
+    assert i == 1, query
+
     c.Close()
 
     q.expect_many(

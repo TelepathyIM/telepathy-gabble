@@ -62,12 +62,18 @@ enum
 static guint signals[LAST_SIGNAL] = {0};
 
 /* private structure */
-
 struct _GabbleSearchChannelPrivate
 {
   GabbleChannelContactSearchState state;
   gchar **available_search_keys;
   gchar *server;
+};
+
+/* Human-readable values of GabbleChannelContactSearchState. */
+static const gchar *states[] = {
+    "not started",
+    "in progress",
+    "completed"
 };
 
 static void channel_iface_init (gpointer, gpointer);
@@ -303,6 +309,80 @@ request_search_fields (GabbleSearchChannel *chan)
   lm_message_unref (msg);
 }
 
+static LmHandlerResult
+search_reply_cb (GabbleConnection *conn,
+                 LmMessage *sent_msg,
+                 LmMessage *reply_msg,
+                 GObject *object,
+                 gpointer user_data)
+{
+  DEBUG ("called");
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static gboolean
+do_search (GabbleSearchChannel *chan,
+           GHashTable *terms,
+           GError **error)
+{
+  const gchar * const *asks =
+      (const gchar * const *) chan->priv->available_search_keys;
+  LmMessage *msg;
+  LmMessageNode *query;
+  GHashTableIter iter;
+  gpointer key, value;
+  gboolean ret;
+
+  DEBUG ("called");
+
+  msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_GET);
+  query = lm_message_node_add_child (msg->node, "query", NULL);
+  lm_message_node_set_attribute (query, "xmlns", NS_SEARCH);
+
+  g_hash_table_iter_init (&iter, terms);
+
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      gchar *field = key;
+      gchar *xmpp_field;
+
+      if (!tp_strv_contains (asks, field))
+        {
+          DEBUG ("%s is not in AvailableSearchKeys", field);
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "%s is not in AvailableSearchKeys", field);
+          ret = FALSE;
+          goto out;
+        }
+
+      xmpp_field = g_hash_table_lookup (tp_to_xmpp, field);
+      g_assert (xmpp_field != NULL);
+
+      lm_message_node_add_child (query, xmpp_field, value);
+    }
+
+  DEBUG ("Sending search");
+
+  if (_gabble_connection_send_with_reply (chan->base.conn, msg,
+          search_reply_cb, (GObject *) chan, NULL, error))
+    {
+      ret = TRUE;
+      g_object_set (chan,
+          "search-state", GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS,
+          NULL);
+    }
+  else
+    {
+      ret = FALSE;
+    }
+
+out:
+  lm_message_unref (msg);
+  return ret;
+}
+
 /* GObject implementation */
 
 static void
@@ -401,14 +481,6 @@ gabble_search_channel_get_property (GObject *object,
         break;
     }
 }
-
-#ifdef ENABLE_DEBUG
-static const gchar *states[] = {
-    "not started",
-    "in progress",
-    "completed"
-};
-#endif
 
 static void
 gabble_search_channel_set_property (GObject *object,
@@ -552,7 +624,26 @@ gabble_search_channel_search (GabbleSvcChannelTypeContactSearch *self,
                               GHashTable *terms,
                               DBusGMethodInvocation *context)
 {
-  tp_dbus_g_method_return_not_implemented (context);
+  GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (self);
+  GabbleSearchChannelPrivate *priv = chan->priv;
+  GError *error = NULL;
+
+  if (priv->state != GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED)
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "SearchState is %s", states[priv->state]);
+      goto err;
+    }
+
+  if (do_search (chan, terms, &error))
+    {
+      gabble_svc_channel_type_contact_search_return_from_search (context);
+      return;
+    }
+
+err:
+  dbus_g_method_return_error (context, error);
+  g_error_free (error);
 }
 
 static void

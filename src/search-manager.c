@@ -32,6 +32,7 @@
 #include "caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
+#include "search-channel.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
 static void caps_channel_manager_iface_init (gpointer, gpointer);
@@ -233,6 +234,40 @@ gabble_search_manager_foreach_channel_class (TpChannelManager *manager,
   g_hash_table_destroy (table);
 }
 
+static void
+search_channel_closed_cb (GabbleSearchChannel *chan,
+                          GabbleSearchManager *self)
+{
+  tp_channel_manager_emit_channel_closed_for_object (self,
+      (TpExportableChannel *) chan);
+
+  if (self->priv->channels != NULL)
+    g_hash_table_remove (self->priv->channels, chan);
+}
+
+static void
+new_search_channel (GabbleSearchManager *self,
+                    const gchar *server,
+                    gpointer request_token)
+{
+  GabbleSearchManagerPrivate *priv = self->priv;
+  GabbleSearchChannel *chan;
+  GSList *request_tokens = g_slist_prepend (NULL, request_token);
+
+  g_assert (server != NULL);
+
+  chan = g_object_new (GABBLE_TYPE_SEARCH_CHANNEL,
+      "connection", priv->conn,
+      "server", server,
+      NULL);
+  g_hash_table_insert (priv->channels, chan, priv->channels);
+  g_signal_connect (chan, "closed", (GCallback) search_channel_closed_cb, self);
+
+  tp_channel_manager_emit_new_channel (self, (TpExportableChannel *) chan,
+      request_tokens);
+  g_slist_free (request_tokens);
+}
+
 static gboolean
 gabble_search_manager_create_channel (TpChannelManager *manager,
                                       gpointer request_token,
@@ -241,6 +276,7 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
   GabbleSearchManager *self = GABBLE_SEARCH_MANAGER (manager);
   GError *error = NULL;
   const gchar *channel_type;
+  const gchar *server;
 
   channel_type = tp_asv_get_string (request_properties,
       TP_IFACE_CHANNEL ".ChannelType");
@@ -253,7 +289,18 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
           &error))
     goto error;
 
-  return FALSE;
+  server = tp_asv_get_string (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH ".Server");
+
+  if (server == NULL)
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Server must be specified; default not yet implemented");
+      goto error;
+    }
+
+  new_search_channel (self, server, request_token);
+  return TRUE;
 
 error:
   tp_channel_manager_emit_request_failed (self, request_token,

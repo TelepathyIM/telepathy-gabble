@@ -1178,7 +1178,9 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
   gchar *el = NULL, *ns = NULL;
   gboolean gtalk_mode = FALSE;
 
-  g_assert ((action == JINGLE_ACTION_SESSION_INITIATE) || (priv->state > JS_STATE_PENDING_CREATED));
+  g_assert ((action == JINGLE_ACTION_SESSION_INITIATE) ||
+            (priv->state > JS_STATE_PENDING_CREATED));
+  g_assert (GABBLE_IS_JINGLE_SESSION (sess));
 
   /* possibly this is the first message in an outgoing session,
    * meaning that we have to set up initiator */

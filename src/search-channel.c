@@ -67,6 +67,8 @@ struct _GabbleSearchChannelPrivate
   GabbleChannelContactSearchState state;
   gchar **available_search_keys;
   gchar *server;
+
+  TpHandleSet *result_handles;
 };
 
 /* Human-readable values of GabbleChannelContactSearchState. */
@@ -422,6 +424,9 @@ gabble_search_channel_constructor (GType type,
       conn->object_path, escaped, obj);
   g_free (escaped);
 
+  chan->priv->result_handles = tp_handle_set_new (
+      tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT));
+
   /* The channel only "opens" when it's found out that the server really does
    * speak XEP 0055 and knows which fields are supported.
    */
@@ -440,6 +445,8 @@ gabble_search_channel_finalize (GObject *obj)
   ensure_closed (chan);
 
   g_free (chan->priv->server);
+
+  tp_handle_set_destroy (chan->priv->result_handles);
 
   if (G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize)
     G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize (obj);

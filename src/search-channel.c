@@ -440,6 +440,9 @@ gabble_search_channel_finalize (GObject *obj)
   ensure_closed (chan);
 
   g_free (chan->priv->server);
+
+  if (G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize)
+    G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize (obj);
 }
 
 static void

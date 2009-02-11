@@ -121,20 +121,16 @@ gabble_base_channel_init (GabbleBaseChannel *self)
   self->priv = priv;
 }
 
-static GObject *
-gabble_base_channel_constructor (GType type,
-                                 guint n_props,
-                                 GObjectConstructParam *props)
+static void
+gabble_base_channel_constructed (GObject *object)
 {
-  GObject *obj;
-  GabbleBaseChannel *chan;
-  TpBaseConnection *conn;
+  GObjectClass *parent_class = gabble_base_channel_parent_class;
+  GabbleBaseChannel *chan = GABBLE_BASE_CHANNEL (object);
+  TpBaseConnection *conn = (TpBaseConnection *) chan->conn;
   TpHandleRepoIface *handles;
 
-  obj = G_OBJECT_CLASS (gabble_base_channel_parent_class)->constructor (
-      type, n_props, props);
-  chan = GABBLE_BASE_CHANNEL (obj);
-  conn = (TpBaseConnection *) chan->conn;
+  if (parent_class->constructed != NULL)
+    parent_class->constructed (object);
 
   if (chan->target_type != TP_HANDLE_TYPE_NONE)
     {
@@ -150,8 +146,6 @@ gabble_base_channel_constructor (GType type,
       g_assert (handles != NULL);
       tp_handle_ref (handles, chan->initiator);
     }
-
-  return obj;
 }
 
 static void
@@ -253,7 +247,7 @@ gabble_base_channel_set_property (GObject *object,
       break;
     case PROP_HANDLE:
       /* we don't ref it here because we don't necessarily have access to the
-       * contact repo yet - instead we ref it in the constructor.
+       * contact repo yet - instead we ref it in constructed.
        */
       chan->target = g_value_get_uint (value);
       break;
@@ -348,7 +342,7 @@ gabble_base_channel_class_init (GabbleBaseChannelClass *gabble_base_channel_clas
   g_type_class_add_private (gabble_base_channel_class,
       sizeof (GabbleBaseChannelPrivate));
 
-  object_class->constructor = gabble_base_channel_constructor;
+  object_class->constructed = gabble_base_channel_constructed;
 
   object_class->get_property = gabble_base_channel_get_property;
   object_class->set_property = gabble_base_channel_set_property;

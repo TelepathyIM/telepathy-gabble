@@ -61,6 +61,10 @@ def test(q, bus, conn, stream):
     tube['service'] = 'com.example.Test'
     tube['dbus-name'] = bob_bus_name
     parameters = tube.addElement((None, 'parameters'))
+    parameter = parameters.addElement((None, 'parameter'))
+    parameter['type'] = 'str'
+    parameter['name'] = 'foo'
+    parameter.addContent('bar')
     stream.send(presence)
 
     # tubes channel is created
@@ -80,6 +84,7 @@ def test(q, bus, conn, stream):
     assert props[c.REQUESTED] == False
     assert props[c.TARGET_ID] == 'chat@conf.localhost'
     assert props[c.DBUS_TUBE_SERVICE_NAME] == 'com.example.Test'
+    assert props[c.TUBE_PARAMETERS] == {'foo': 'bar'}
 
     tube_chan = bus.get_object(conn.bus_name, path)
     tube_iface = dbus.Interface(tube_chan, c.CHANNEL_IFACE_TUBE)

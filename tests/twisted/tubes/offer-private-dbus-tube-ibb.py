@@ -193,23 +193,12 @@ def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
 def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     requestotron = dbus.Interface(conn, CONN_IFACE_REQUESTS)
 
-    # Can we request a DBusTube channel?
-    properties = conn.GetAll(CONN_IFACE_REQUESTS, dbus_interface=PROPERTIES_IFACE)
-
-    # check if we can request 1-1 DBus tube
-    assert ({CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
-        TARGET_HANDLE_TYPE: HT_CONTACT},
-         [TARGET_HANDLE, TARGET_ID, TUBE_PARAMETERS, DBUS_TUBE_SERVICE_NAME]
-        ) in properties.get('RequestableChannelClasses'),\
-                 properties['RequestableChannelClasses']
-
     # Offer a tube to Alice (new API)
 
     call_async(q, requestotron, 'CreateChannel',
             {CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
              TARGET_HANDLE_TYPE: HT_CONTACT,
              TARGET_ID: 'alice@localhost',
-             TUBE_PARAMETERS: sample_parameters,
              DBUS_TUBE_SERVICE_NAME: 'com.example.TestCase'
             }, byte_arrays=True)
     cc_ret, nc = q.expect_many(
@@ -267,7 +256,6 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
         byte_arrays=True)
     assert props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
-    assert props['Parameters'] == sample_parameters
 
     # check ServiceName and DBusNames
     props = tube_chan.GetAll(CHANNEL_TYPE_DBUS_TUBE, dbus_interface=PROPERTIES_IFACE)
@@ -278,7 +266,7 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     # IQ be sent to Alice. We sync the stream to ensure the IQ would have
     # arrived if it had been sent.
     sync_stream(q, stream)
-    call_async(q, dbus_tube_iface, 'OfferDBusTube')
+    call_async(q, dbus_tube_iface, 'OfferDBusTube', sample_parameters)
     offer_return_event, iq_event, new_tube_event, state_event = q.expect_many(
         EventPattern('dbus-return', method='OfferDBusTube'),
         EventPattern('stream-iq', to='alice@localhost/Test'),
@@ -311,6 +299,8 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+
+    t.check_conn_properties(q, conn)
 
     self_handle = conn.GetSelfHandle()
     alice_handle = conn.RequestHandles(HT_CONTACT, ["alice@localhost"])[0]

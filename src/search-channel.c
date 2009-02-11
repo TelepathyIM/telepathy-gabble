@@ -144,7 +144,7 @@ build_mapping_tables (void)
     }
 }
 
-/* Search implementation */
+/* Misc */
 
 static void
 ensure_closed (GabbleSearchChannel *chan)
@@ -161,8 +161,10 @@ ensure_closed (GabbleSearchChannel *chan)
     }
 }
 
+/* Supported field */
+
 static void
-become_ready (GabbleSearchChannel *chan)
+supported_fields_discovered (GabbleSearchChannel *chan)
 {
   DEBUG ("called");
 
@@ -174,8 +176,8 @@ become_ready (GabbleSearchChannel *chan)
 }
 
 static void
-give_up (GabbleSearchChannel *chan,
-         const GError *error)
+supported_field_discovery_failed (GabbleSearchChannel *chan,
+                                  const GError *error)
 {
   DEBUG ("called: %s, %u, %s", g_quark_to_string (error->domain), error->code,
       error->message);
@@ -202,7 +204,7 @@ parse_search_field_response (GabbleSearchChannel *chan,
       GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "server uses data forms, which are not yet implemented in Gabble" };
 
-      give_up (chan, &error);
+      supported_field_discovery_failed (chan, &error);
       return;
     }
 
@@ -232,7 +234,7 @@ parse_search_field_response (GabbleSearchChannel *chan,
           error.message = g_strdup_printf (
               "server is broken: %s is not a field defined in XEP 0055",
               field->name);
-          give_up (chan, &error);
+          supported_field_discovery_failed (chan, &error);
           g_free (error.message);
 
           g_ptr_array_free (search_keys, TRUE);
@@ -244,7 +246,7 @@ parse_search_field_response (GabbleSearchChannel *chan,
   g_ptr_array_add (search_keys, NULL);
   chan->priv->available_search_keys = (gchar **) g_ptr_array_free (search_keys, FALSE);
 
-  become_ready (chan);
+  supported_fields_discovered (chan);
 }
 
 static LmHandlerResult
@@ -278,7 +280,7 @@ query_reply_cb (GabbleConnection *conn,
 
   if (err != NULL)
     {
-      give_up (chan, err);
+      supported_field_discovery_failed (chan, err);
       g_error_free (err);
     }
   else
@@ -304,12 +306,14 @@ request_search_fields (GabbleSearchChannel *chan)
   if (! _gabble_connection_send_with_reply (chan->base.conn, msg,
             query_reply_cb, (GObject *) chan, NULL, &error))
     {
-      give_up (chan, error);
+      supported_field_discovery_failed (chan, error);
       g_error_free (error);
     }
 
   lm_message_unref (msg);
 }
+
+/* Search implementation */
 
 static LmHandlerResult
 search_reply_cb (GabbleConnection *conn,

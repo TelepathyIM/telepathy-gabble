@@ -915,37 +915,6 @@ gabble_tube_dbus_constructor (GType type,
   return obj;
 }
 
-static gboolean
-tube_iface_props_setter (GObject *object,
-                         GQuark interface,
-                         GQuark name,
-                         const GValue *value,
-                         gpointer setter_data,
-                         GError **error)
-{
-  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (object);
-
-  g_return_val_if_fail (interface == GABBLE_IFACE_QUARK_CHANNEL_INTERFACE_TUBE,
-      FALSE);
-
-  if (name != g_quark_from_static_string ("Parameters"))
-    {
-      g_object_set_property (object, setter_data, value);
-      return TRUE;
-    }
-
-  if (get_tube_state (self) != GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED)
-  {
-    g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-        "Can change parameters only if the tube is not offered");
-    return FALSE;
-  }
-
-  g_object_set (self, "parameters", g_value_get_boxed (value), NULL);
-
-  return TRUE;
-}
-
 static void
 gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 {
@@ -966,7 +935,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl tube_iface_props[] = {
-      { "Parameters", "parameters", "parameters" },
+      { "Parameters", "parameters", NULL },
       { "State", "state", NULL },
       { NULL }
   };
@@ -983,7 +952,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       },
       { GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
         tp_dbus_properties_mixin_getter_gobject_properties,
-        tube_iface_props_setter,
+        NULL,
         tube_iface_props,
       },
       { NULL }

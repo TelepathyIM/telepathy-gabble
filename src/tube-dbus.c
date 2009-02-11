@@ -707,6 +707,7 @@ gabble_tube_dbus_get_property (GObject *object,
                 TP_IFACE_CHANNEL, "Requested",
                 TP_IFACE_CHANNEL, "Interfaces",
                 GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE, "ServiceName",
+                GABBLE_IFACE_CHANNEL_INTERFACE_TUBE, "Parameters",
                 NULL));
         break;
       case PROP_REQUESTED:

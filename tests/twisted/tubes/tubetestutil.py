@@ -72,7 +72,7 @@ def check_conn_properties(q, conn, channel_list=None):
     assert ({CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
              TARGET_HANDLE_TYPE: HT_CONTACT
              },
-             [TARGET_HANDLE, TARGET_ID, TUBE_PARAMETERS, STREAM_TUBE_SERVICE]
+             [TARGET_HANDLE, TARGET_ID, STREAM_TUBE_SERVICE]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 

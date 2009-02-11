@@ -252,7 +252,6 @@ def test(q, bus, conn, stream):
              TARGET_HANDLE_TYPE: HT_CONTACT,
              TARGET_HANDLE: bob_handle,
              STREAM_TUBE_SERVICE: 'newecho',
-             TUBE_PARAMETERS: dbus.Dictionary({'foo': 'bar'}, signature='sv'),
             });
 
     # the NewTube signal (old API) is not fired now as the tube wasn't offered
@@ -284,7 +283,6 @@ def test(q, bus, conn, stream):
 
     # the tube created using the old API is in the "not offered" state
     assert new_tube_props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
-    assert new_tube_props['Parameters'] == {'foo': 'bar'}
 
     check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_STREAM_TUBE,
             new_chan_path, bob_handle, True)
@@ -383,20 +381,10 @@ def test(q, bus, conn, stream):
     check_channel_properties(q, bus, conn, stream, old_tube_chan,
             CHANNEL_TYPE_STREAM_TUBE, bob_handle, "bob@localhost", TUBE_CHANNEL_STATE_REMOTE_PENDING)
 
-    # change the parameters of the not offered tube (the one created using the
-    # new API)
-    new_tube_chan.Set(CHANNEL_IFACE_TUBE, 'Parameters', new_sample_parameters,
-            dbus_interface=PROPERTIES_IFACE)
-    # check it is correctly changed
-    new_tube_props = new_tube_chan.GetAll(CHANNEL_IFACE_TUBE,
-            dbus_interface=PROPERTIES_IFACE, byte_arrays=True)
-    assert new_tube_props.get("Parameters") == new_sample_parameters, \
-            new_tube_props.get("Parameters")
-
     # Offer the first tube created (new API)
     path2 = os.getcwd() + '/stream2'
     call_async(q, new_tube_iface, 'OfferStreamTube',
-        0, dbus.ByteArray(path2), 0, "")
+        0, dbus.ByteArray(path2), 0, "", new_sample_parameters)
 
     msg_event, new_tube_sig, state_event = q.expect_many(
         EventPattern('stream-message'),

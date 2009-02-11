@@ -1829,6 +1829,8 @@ gabble_tube_dbus_offer_d_bus_tube (GabbleSvcChannelTypeDBusTube *self,
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
   GError *error = NULL;
 
+  g_object_set (self, "parameters", parameters, NULL);
+
   if (gabble_tube_dbus_offer (tube, &error))
     {
       gabble_svc_channel_type_dbus_tube_return_from_offer_d_bus_tube (context,

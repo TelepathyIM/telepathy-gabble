@@ -96,6 +96,9 @@ def test(q, bus, conn, stream):
 
     acknowledge_iq(stream, iq_event.stanza)
 
+    # check if we can request muc D-Bus tube
+    t.check_conn_properties(q, conn)
+
     self_handle = conn.GetSelfHandle()
     self_name = conn.InspectHandles(1, [self_handle])[0]
 
@@ -181,21 +184,11 @@ def test(q, bus, conn, stream):
     # offer a D-Bus tube to another room using new API
     requestotron = dbus.Interface(conn, CONN_IFACE_REQUESTS)
 
-    # check if we can request muc D-Bus tube
-    properties = conn.GetAll(CONN_IFACE_REQUESTS, dbus_interface=PROPERTIES_IFACE)
-
-    assert ({CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
-        TARGET_HANDLE_TYPE: HT_ROOM},
-         [TARGET_HANDLE, TARGET_ID, TUBE_PARAMETERS, DBUS_TUBE_SERVICE_NAME]
-        ) in properties.get('RequestableChannelClasses'),\
-                 properties['RequestableChannelClasses']
-
     call_async(q, requestotron, 'CreateChannel',
             {CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
          TARGET_HANDLE_TYPE: HT_ROOM,
          TARGET_ID: 'chat2@conf.localhost',
          DBUS_TUBE_SERVICE_NAME: 'com.example.TestCase',
-         TUBE_PARAMETERS: sample_parameters,
         })
 
     # Send presence for other member of room.
@@ -252,11 +245,10 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
         byte_arrays=True)
 
-    assert tube_props['Parameters'] == sample_parameters
     assert tube_props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
-    call_async(q, dbus_tube_iface, 'OfferDBusTube')
+    call_async(q, dbus_tube_iface, 'OfferDBusTube', sample_parameters)
 
     new_tube_event, presence_event, return_event, status_event, dbus_changed_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),

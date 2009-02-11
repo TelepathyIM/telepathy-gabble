@@ -71,8 +71,6 @@ def test(q, bus, conn, stream):
                 bob_handle,
              'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service':
                 'echo',
-             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
-                dbus.Dictionary({'foo': 'bar'}, signature='sv'),
             })
     ret, _, _ = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
@@ -91,7 +89,7 @@ def test(q, bus, conn, stream):
 
     path = os.getcwd() + '/stream'
     call_async(q, tube_iface, 'OfferStreamTube',
-        0, dbus.ByteArray(path), 0, "")
+        0, dbus.ByteArray(path), 0, "", {'foo': 'bar'})
 
     event = q.expect('stream-message')
     message = event.stanza

@@ -62,6 +62,7 @@ def check_conn_properties(q, conn, channel_list=None):
             assert i in properties['Channels'], \
                 (i, properties['Channels'])
 
+    # 1-1 tubes channel (old API)
     assert ({CHANNEL_TYPE: CHANNEL_TYPE_TUBES,
              TARGET_HANDLE_TYPE: HT_CONTACT,
              },
@@ -69,10 +70,43 @@ def check_conn_properties(q, conn, channel_list=None):
              ]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
+
+    # muc tubes channel (old API)
+    assert ({CHANNEL_TYPE: CHANNEL_TYPE_TUBES,
+             TARGET_HANDLE_TYPE: HT_ROOM,
+             },
+             [TARGET_HANDLE, TARGET_ID
+             ]
+            ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']
+
+    # 1-1 StreamTube channel
     assert ({CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
              TARGET_HANDLE_TYPE: HT_CONTACT
              },
              [TARGET_HANDLE, TARGET_ID, STREAM_TUBE_SERVICE]
+            ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']
+
+    # muc StreamTube channel
+    assert ({CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
+             TARGET_HANDLE_TYPE: HT_ROOM
+             },
+             [TARGET_HANDLE, TARGET_ID, STREAM_TUBE_SERVICE]
+            ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']
+
+    # 1-1 D-Bus tube channel
+    assert ({CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
+            TARGET_HANDLE_TYPE: HT_CONTACT},
+             [TARGET_HANDLE, TARGET_ID, DBUS_TUBE_SERVICE_NAME]
+            ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']
+
+    # muc D-Bus tube channel
+    assert ({CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
+            TARGET_HANDLE_TYPE: HT_ROOM},
+             [TARGET_HANDLE, TARGET_ID, DBUS_TUBE_SERVICE_NAME]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 

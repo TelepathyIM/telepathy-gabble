@@ -716,6 +716,8 @@ gabble_tube_dbus_get_property (GObject *object,
               /* channel has not been requested so Parameters is immutable */
               GValue *prop_value = g_slice_new0 (GValue);
 
+              /* FIXME: use tp_dbus_properties_mixin_add_properties once it's
+               * added in tp-glib */
               tp_dbus_properties_mixin_get (object,
                   GABBLE_IFACE_CHANNEL_INTERFACE_TUBE, "Parameters",
                   prop_value, NULL);

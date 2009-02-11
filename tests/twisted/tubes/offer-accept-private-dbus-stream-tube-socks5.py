@@ -269,8 +269,6 @@ def test(q, bus, conn, stream):
                 bob_handle,
              'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT.Service':
                 "newecho",
-             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT.Parameters':
-                dbus.Dictionary({'foo': 'bar'}, signature='sv'),
             });
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
@@ -362,20 +360,6 @@ def test(q, bus, conn, stream):
     tube_props = tube_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
             dbus_interface=dbus.PROPERTIES_IFACE)
-    assert tube_props.get("Parameters") == dbus.Dictionary(
-            {dbus.String(u'foo'): dbus.String(u'bar')},
-            signature=dbus.Signature('sv'))
-    # change the parameters
-    tube_chan.Set('org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
-            'Parameters', new_sample_parameters,
-            dbus_interface=dbus.PROPERTIES_IFACE)
-    # check it is correctly changed
-    tube_props = tube_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
-            dbus_interface=dbus.PROPERTIES_IFACE, byte_arrays=True)
-    assert tube_props.get("Parameters") == new_sample_parameters, \
-            tube_props.get("Parameters")
-
     # 3 == Tube_Channel_State_Not_Offered
     assert tube_props.get("State") == 3, tube_props
 
@@ -387,7 +371,7 @@ def test(q, bus, conn, stream):
     # Offer the tube, new API
     path2 = os.getcwd() + '/stream2'
     call_async(q, tube_iface, 'OfferStreamTube',
-        0, dbus.ByteArray(path2), 0, "")
+        0, dbus.ByteArray(path2), 0, "", new_sample_parameters)
 
     event = q.expect('stream-message')
     message = event.stanza

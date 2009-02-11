@@ -963,6 +963,7 @@ gabble_tube_stream_get_property (GObject *object,
                 TP_IFACE_CHANNEL, "Interfaces",
                 GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE, "Service",
                 GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE, "SupportedSocketTypes",
+                GABBLE_IFACE_CHANNEL_INTERFACE_TUBE, "Parameters",
                 NULL));
         break;
       case PROP_REQUESTED:

@@ -429,7 +429,6 @@ add_service_to_array (gchar *service,
     {
         TP_IFACE_CHANNEL ".TargetHandle",
         TP_IFACE_CHANNEL ".TargetID",
-        GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
         NULL
     };
 

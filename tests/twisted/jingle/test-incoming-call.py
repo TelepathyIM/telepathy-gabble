@@ -54,19 +54,29 @@ def test(q, bus, conn, stream):
              args=[u'', [], [], [1L], [], remote_handle, 0])
 
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
+    media_iface = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Type.StreamedMedia')
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
-
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
+    e2, e3 = q.expect_many(
+        EventPattern('dbus-signal', signal='NewStreamHandler'),
+        EventPattern('dbus-signal', signal='StreamDirectionChanged'))
 
     # S-E gets notified about a newly-created stream
-    e = q.expect('dbus-signal', signal='NewStreamHandler')
+    stream_handler = make_channel_proxy(conn, e2.args[0], 'Media.StreamHandler')
 
-    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
+    stream_id = e3.args[0]
+    assert e3.args[1] == 2 # active direction - receive
+    assert e3.args[2] == 1 # pending local send
+    media_iface.RequestStreamDirection(stream_id, 3) # allow local send
+
+    e = q.expect('dbus-signal', signal='StreamDirectionChanged',
+        args=[stream_id, 3, 0])
+
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(

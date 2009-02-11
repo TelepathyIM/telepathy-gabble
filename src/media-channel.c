@@ -2375,6 +2375,10 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   /* A stream being added might cause the "total" hold state to change */
   stream_hold_state_changed (stream, NULL, chan);
 
+  /* Initial stream direction was changed before we had time to hook up
+   * signal handler, so we call the handler manually to pick it up. */
+  stream_direction_changed_cb (stream, NULL, chan);
+
   if (priv->ready)
     {
       /* all of the streams are bidirectional from farsight's point of view, it's

@@ -183,6 +183,7 @@ def test(q, bus, conn, stream):
     assert props[TARGET_HANDLE] == room_handle
     assert props[TARGET_ID] == 'chat@conf.localhost'
     assert props[STREAM_TUBE_SERVICE] == 'echo'
+    assert props[TUBE_PARAMETERS] == {'s': 'hello', 'ay': 'hello', 'u': 123, 'i': -123}
 
     tube_chan = bus.get_object(conn.bus_name, path)
     tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,

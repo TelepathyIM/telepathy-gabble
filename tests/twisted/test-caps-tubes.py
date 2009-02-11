@@ -55,17 +55,17 @@ stream_tube_fixed_properties = dbus.Dictionary({
     CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE
     })
 stream_tube_allowed_properties = dbus.Array([TARGET_HANDLE,
-    TARGET_ID, TUBE_PARAMETERS, STREAM_TUBE_SERVICE])
+    TARGET_ID, STREAM_TUBE_SERVICE])
 
 dbus_tube_fixed_properties = dbus.Dictionary({
     TARGET_HANDLE_TYPE: HT_CONTACT,
     CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE
     })
 dbus_tube_allowed_properties = dbus.Array([TARGET_HANDLE,
-    TARGET_ID, TUBE_PARAMETERS, DBUS_TUBE_SERVICE_NAME])
+    TARGET_ID, DBUS_TUBE_SERVICE_NAME])
 
 specialized_tube_allowed_properties = dbus.Array([TARGET_HANDLE,
-    TARGET_ID, TUBE_PARAMETERS])
+    TARGET_ID])
 
 daap_fixed_properties = dbus.Dictionary({
     TARGET_HANDLE_TYPE: HT_CONTACT,

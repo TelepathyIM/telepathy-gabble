@@ -1999,6 +1999,8 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
   g_assert (priv->access_control_param == NULL);
   priv->access_control_param = tp_g_value_slice_dup (access_control_param);
 
+  g_object_set (self, "parameters", parameters, NULL);
+
   if (!gabble_tube_stream_offer (self, &error))
     {
       gabble_tube_stream_close (GABBLE_TUBE_IFACE (self), TRUE);

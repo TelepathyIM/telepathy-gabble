@@ -308,22 +308,25 @@ parse_candidates (GabbleJingleTransportIface *obj,
   priv->remote_candidates = candidates;
 }
 
-/* FIXME: this should be turned into a generic virtual method, and be
- * passed a param with desired jingle action (to know what to produce) */
-LmMessageNode *
-jingle_transport_rawudp_produce_candidate (GabbleJingleTransportRawUdp *transport,
-  LmMessageNode *content_node)
+static LmMessageNode *
+produce_node (GabbleJingleTransportIface *obj, LmMessageNode *parent,
+    JingleAction action)
 {
+  GabbleJingleTransportRawUdp *transport =
+    GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
   GabbleJingleTransportRawUdpPrivate *priv =
     GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (transport);
   JingleCandidate *c;
   GList *li;
   gchar port_str[16];
   LmMessageNode *cnode;
-  LmMessageNode *trans_node =
-      lm_message_node_add_child (content_node, "transport", NULL);
+  LmMessageNode *trans_node;
 
-  lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
+  /* Note: we're producing the candidate(s) in both transport-info
+   * and -add/-accept until the RAW-UDP XEP is updated */
+
+  trans_node = lm_message_node_add_child (parent, "transport", NULL);
+  lm_message_node_set_attribute (parent, "xmlns", priv->transport_ns);
 
   /* If we don't have the local candidates yet, we should've waited with
    * the session initiation. */
@@ -460,6 +463,7 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   GabbleJingleTransportIfaceClass *klass = (GabbleJingleTransportIfaceClass *) g_iface;
 
   klass->parse_candidates = parse_candidates;
+  klass->produce_node = produce_node;
   klass->new_local_candidates = new_local_candidates;
   klass->get_remote_candidates = get_remote_candidates;
   klass->get_transport_type = get_transport_type;

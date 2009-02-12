@@ -243,6 +243,12 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
   DEBUG ("called");
 
+  if (priv->remote_candidates != NULL)
+    {
+      DEBUG ("already have raw udp candidates, ignoring extra ones");
+      return;
+    }
+
   for (node = transport_node->children; node; node = node->next)
     {
       const gchar *id, *ip, *str;
@@ -256,10 +262,9 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (str != NULL)
           component = atoi (str);
 
-      /* FIXME: are RTCP components usable in raw-udp? */
-      if (component != 1)
+      if ((component != 1) && (component != 2))
         {
-          DEBUG ("Ignoring non-RTP component %d for now", component);
+          DEBUG ("Ignoring non-RTP/RTCP component %d", component);
           continue;
         }
 
@@ -299,19 +304,8 @@ parse_candidates (GabbleJingleTransportIface *obj,
     }
 
   DEBUG ("emitting %d new remote candidates", g_list_length (candidates));
-
   g_signal_emit (obj, signals[NEW_CANDIDATES], 0, candidates);
-
-  /* if we got any candidates, overwrite previous with new ones */
-  if (candidates != NULL)
-    {
-      /* FIXME: we assume there are no RTCP components and just try the
-       * first candidate */
-      JingleCandidate *c = candidates->data;
-
-      jingle_transport_free_candidates (priv->remote_candidates);
-      priv->remote_candidates = candidates;
-    }
+  priv->remote_candidates = candidates;
 }
 
 /* FIXME: this should be turned into a generic virtual method, and be

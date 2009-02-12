@@ -80,8 +80,11 @@ struct _GabbleJingleContentPrivate
 
   GabbleJingleTransportIface *transport;
 
+  /* Whether we've got the codecs (intersection) ready. */
   gboolean media_ready;
-  gboolean transport_ready;
+
+  /* Whether the underlying transport is connected. */
+  gboolean transport_connected;
 
   guint timer_id;
   guint gtalk4_event_id;
@@ -111,7 +114,7 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
   priv->state = JINGLE_CONTENT_STATE_EMPTY;
   priv->created_by_us = TRUE;
   priv->media_ready = FALSE;
-  priv->transport_ready = FALSE;
+  priv->transport_connected = FALSE;
   priv->timer_id = 0;
   priv->gtalk4_event_id = 0;
   priv->dispose_has_run = FALSE;
@@ -771,7 +774,7 @@ gabble_jingle_content_is_ready (GabbleJingleContent *self)
 
   /* If it's created by peer, media and transports ready,
    * and not acknowledged yet, it's ready for acceptance. */
-  if (!priv->created_by_us && priv->media_ready && priv->transport_ready &&
+  if (!priv->created_by_us && priv->media_ready && priv->transport_connected &&
       (priv->state == JINGLE_CONTENT_STATE_NEW))
           return TRUE;
 
@@ -931,7 +934,7 @@ gabble_jingle_content_set_transport_state (GabbleJingleContent *self,
 
   if (state == JINGLE_TRANSPORT_STATE_CONNECTED)
     {
-      priv->transport_ready = TRUE;
+      priv->transport_connected = TRUE;
       _maybe_ready (self);
     }
 }

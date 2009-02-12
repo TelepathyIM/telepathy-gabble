@@ -435,31 +435,6 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
       new_candidates);
 }
 
-static void
-retransmit_candidates (GabbleJingleTransportIface *obj, gboolean all)
-{
-  GabbleJingleTransportRawUdp *transport =
-    GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
-  GabbleJingleTransportRawUdpPrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (transport);
-
-  if (all)
-    {
-      /* for gtalk3, we might have to retransmit everything */
-      transmit_candidates (transport, priv->local_candidates);
-      priv->pending_candidates = NULL;
-    }
-  else
-    {
-      /* in case content was ready after we wanted to transmit
-       * them originally, we are called to retranmit them */
-      if (priv->pending_candidates != NULL) {
-          transmit_candidates (transport, priv->pending_candidates);
-          priv->pending_candidates = NULL;
-      }
-    }
-}
-
 static GList *
 get_remote_candidates (GabbleJingleTransportIface *iface)
 {
@@ -486,7 +461,6 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
 
   klass->parse_candidates = parse_candidates;
   klass->new_local_candidates = new_local_candidates;
-  klass->retransmit_candidates = retransmit_candidates;
   klass->get_remote_candidates = get_remote_candidates;
   klass->get_transport_type = get_transport_type;
 }

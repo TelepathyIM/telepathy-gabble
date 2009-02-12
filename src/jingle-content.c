@@ -127,7 +127,11 @@ gabble_jingle_content_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  g_assert (priv->timer_id == 0);
+  /* If we're in the middle of content-add/-accept when the session is
+   * terminated, we'll get disposed without being explicitly removed from
+   * the session. So, remove the timer here. */
+  if (priv->timer_id != 0)
+      g_source_remove (priv->timer_id);
 
   g_free (priv->name);
   priv->name = NULL;

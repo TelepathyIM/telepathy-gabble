@@ -85,6 +85,8 @@ struct _GabbleJingleContentPrivate
 
   /* Whether the underlying transport is connected. */
   gboolean transport_connected;
+  /* Whether we have at least one local candidate. */
+  gboolean have_local_candidates;
 
   guint timer_id;
   guint gtalk4_event_id;
@@ -100,6 +102,7 @@ G_DEFINE_TYPE(GabbleJingleContent, gabble_jingle_content, G_TYPE_OBJECT);
 
 static void new_transport_candidates_cb (GabbleJingleTransportIface *trans,
     GList *candidates, GabbleJingleContent *content);
+static void _maybe_ready (GabbleJingleContent *self);
 
 static void
 gabble_jingle_content_init (GabbleJingleContent *obj)
@@ -115,6 +118,7 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
   priv->created_by_us = TRUE;
   priv->media_ready = FALSE;
   priv->transport_connected = FALSE;
+  priv->have_local_candidates = FALSE;
   priv->timer_id = 0;
   priv->gtalk4_event_id = 0;
   priv->dispose_has_run = FALSE;
@@ -756,7 +760,16 @@ gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
 {
   GabbleJingleContentPrivate *priv = self->priv;
 
+  DEBUG ("called");
+
   gabble_jingle_transport_iface_new_local_candidates (priv->transport, li);
+
+  if (!priv->have_local_candidates)
+    {
+      priv->have_local_candidates = TRUE;
+      /* Maybe we were waiting for at least one candidate? */
+      _maybe_ready (self);
+    }
 }
 
 /* Returns whether the content is ready to be signalled (initiated, for local
@@ -766,17 +779,22 @@ gabble_jingle_content_is_ready (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
 
-  /* If it's created by us, media ready and not signalled,
-   * it's ready to be added. */
-  if (priv->created_by_us && priv->media_ready &&
-      (priv->state == JINGLE_CONTENT_STATE_EMPTY))
-          return TRUE;
-
-  /* If it's created by peer, media and transports ready,
-   * and not acknowledged yet, it's ready for acceptance. */
-  if (!priv->created_by_us && priv->media_ready && priv->transport_connected &&
-      (priv->state == JINGLE_CONTENT_STATE_NEW))
-          return TRUE;
+  if (priv->created_by_us)
+    {
+      /* If it's created by us, media ready, not signalled, and we have
+       * at least one local candidate, it's ready to be added. */
+      if (priv->media_ready && priv->have_local_candidates &&
+          (priv->state == JINGLE_CONTENT_STATE_EMPTY))
+        return TRUE;
+    }
+  else
+    {
+      /* If it's created by peer, media and transports ready,
+       * and not acknowledged yet, it's ready for acceptance. */
+      if (priv->media_ready && priv->transport_connected &&
+          (priv->state == JINGLE_CONTENT_STATE_NEW))
+        return TRUE;
+    }
 
   return FALSE;
 }

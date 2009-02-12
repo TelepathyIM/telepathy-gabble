@@ -340,8 +340,8 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (str != NULL)
           component = atoi (str);
 
-      c = jingle_candidate_new (component, address, port, proto,
-          pref, ctype, user, pass, net, gen);
+      c = jingle_candidate_new (proto, ctype, NULL, component,
+          address, port, gen, pref, user, pass, net);
 
       candidates = g_list_append (candidates, c);
     }

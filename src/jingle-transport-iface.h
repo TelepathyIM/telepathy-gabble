@@ -73,10 +73,11 @@ JingleTransportType gabble_jingle_transport_iface_get_transport_type (GabbleJing
 GabbleJingleTransportIface *gabble_jingle_transport_iface_new (
     GType type, GabbleJingleContent *content, const gchar *transport_ns);
 
-JingleCandidate *jingle_candidate_new (guint component, const gchar *address,
-    guint port, JingleTransportProtocol proto, gdouble pref,
-    JingleCandidateType type, const gchar *user, const gchar *pass, guint net,
-    guint gen);
+JingleCandidate *jingle_candidate_new (JingleTransportProtocol protocol,
+    JingleCandidateType type, const gchar *id, int component,
+    const gchar *address, int port, int generation, gdouble preference,
+    const gchar *username, const gchar *password, int network);
+
 void jingle_candidate_free (JingleCandidate *c);
 void jingle_transport_free_candidates (GList *candidates);
 

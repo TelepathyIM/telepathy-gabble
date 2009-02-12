@@ -281,10 +281,10 @@ parse_candidates (GabbleJingleTransportIface *obj,
           break;
       gen = atoi (str);
 
-      /* FIXME: we're using "user" Tp field for the candidate ID */
-      c = jingle_candidate_new (component, ip, port,
-          JINGLE_TRANSPORT_PROTOCOL_UDP,
-          1.0, JINGLE_CANDIDATE_TYPE_LOCAL, id, NULL, 0, gen);
+      /* Fixme: candidate might be STUN instead of LOCAL, can we know that? */
+      c = jingle_candidate_new (JINGLE_TRANSPORT_PROTOCOL_UDP,
+          JINGLE_CANDIDATE_TYPE_LOCAL, id, component, ip, port,
+          gen, 1.0, NULL, NULL, 0);
 
       candidates = g_list_append (candidates, c);
     }

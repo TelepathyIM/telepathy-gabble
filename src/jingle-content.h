@@ -43,14 +43,16 @@ typedef enum {
 } JingleContentState;
 
 struct _JingleCandidate {
+  JingleTransportProtocol protocol;
+  JingleCandidateType type;
+
+  gchar *id;
   gchar *address;
-  int component;
   int port;
+  int component;
   int generation;
 
-  JingleTransportProtocol protocol;
   gdouble preference;
-  JingleCandidateType type;
   gchar *username;
   gchar *password;
   int network;

@@ -317,6 +317,7 @@ jingle_transport_rawudp_produce_candidate (GabbleJingleTransportRawUdp *transpor
   GabbleJingleTransportRawUdpPrivate *priv =
     GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (transport);
   JingleCandidate *c;
+  GList *li;
   gchar port_str[16];
   LmMessageNode *cnode;
   LmMessageNode *trans_node =
@@ -324,28 +325,24 @@ jingle_transport_rawudp_produce_candidate (GabbleJingleTransportRawUdp *transpor
 
   lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
 
-  if (priv->local_candidates == NULL)
+  /* If we don't have the local candidates yet, we should've waited with
+   * the session initiation. */
+  g_assert (priv->local_candidates != NULL);
+
+  for (li = priv->local_candidates; li != NULL; li = li->next)
     {
-      DEBUG ("panic, I don't have local candidates at the required time");
-      return trans_node;
+      c = (JingleCandidate *) li->data;
+      sprintf (port_str, "%d", c->port);
+
+      cnode = lm_message_node_add_child (trans_node, "candidate", NULL);
+      lm_message_node_set_attributes (cnode,
+          "ip", c->address,
+          "port", port_str,
+          "generation", "0",
+          "id", c->username,
+          "component", c->component,
+          NULL);
     }
-
-  if (priv->local_candidates->next)
-      DEBUG ("several candidates available, sending only the first one");
-
-  c = (JingleCandidate *) priv->local_candidates->data;
-  sprintf (port_str, "%d", c->port);
-
-  /* FIXME: we're missing component attrib, and have hardcoded net/gen */
-  cnode = lm_message_node_add_child (trans_node, "candidate", NULL);
-  lm_message_node_set_attributes (cnode,
-      "ip", c->address,
-      "port", port_str,
-      "id", c->username,
-      "component", "1",
-      "network", "0",
-      "generation", "0",
-      NULL);
 
   return trans_node;
 }

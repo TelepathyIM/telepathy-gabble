@@ -82,9 +82,6 @@ struct _GabbleJingleTransportRawUdpPrivate
 
 #define GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE(o) ((o)->priv)
 
-static void transmit_candidates (GabbleJingleTransportRawUdp *transport,
-    GList *candidates);
-
 static void
 gabble_jingle_transport_rawudp_init (GabbleJingleTransportRawUdp *obj)
 {
@@ -350,61 +347,6 @@ produce_node (GabbleJingleTransportIface *obj, LmMessageNode *parent,
   return trans_node;
 }
 
-static void
-transmit_candidates (GabbleJingleTransportRawUdp *transport, GList *candidates)
-{
-  GabbleJingleTransportRawUdpPrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (transport);
-  GList *li;
-  LmMessage *msg;
-  LmMessageNode *trans_node, *sess_node;
-  const gchar *cname, *cns;
-  gboolean created_by_initiator = FALSE;
-
-  msg = gabble_jingle_session_new_message (priv->content->session,
-    JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
-
-  g_object_get (GABBLE_JINGLE_CONTENT (priv->content),
-      "name", &cname, "content-ns", &cns, "created-by-initiator",
-      &created_by_initiator, NULL);
-
-  /* we need the <content> ... */
-  trans_node = lm_message_node_add_child (sess_node, "content", NULL);
-  lm_message_node_set_attribute (trans_node, "xmlns", cns);
-  lm_message_node_set_attribute (trans_node, "name", cname);
-  /* FIXME: this also needs to be done for google-p2p, and checked in tests */
-  /* FIXME:2: content object should produce the content node, we shouldn't
-   * have to do it here! */
-  lm_message_node_set_attribute (trans_node, "creator",
-      created_by_initiator ? "initiator" : "responder");
-
-  /* .. and the <transport> node */
-  trans_node = lm_message_node_add_child (trans_node, "transport", NULL);
-  lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
-
-  for (li = candidates; li; li = li->next)
-    {
-      JingleCandidate *c = (JingleCandidate *) li->data;
-      gchar port_str[16];
-      LmMessageNode *cnode;
-
-      sprintf (port_str, "%d", c->port);
-
-      /* FIXME: we're missing component attrib, and have hardcoded net/gen */
-      cnode = lm_message_node_add_child (trans_node, "candidate", NULL);
-      lm_message_node_set_attributes (cnode,
-          "ip", c->address,
-          "port", port_str,
-          "id", c->username,
-          "component", "1",
-          "network", "0",
-          "generation", "0",
-          NULL);
-    }
-
-  gabble_jingle_session_send (priv->content->session, msg, NULL, NULL);
-}
-
 /* Takes in a list of slice-allocated JingleCandidate structs */
 static void
 new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
@@ -415,27 +357,23 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
     GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (transport);
   JingleContentState state;
 
-  g_object_get (priv->content, "state", &state, NULL);
-
-  if (state > JINGLE_CONTENT_STATE_EMPTY)
+  if (priv->local_candidates != NULL)
     {
-      DEBUG ("content already signalled, transmitting candidates");
-      transmit_candidates (transport, new_candidates);
-      priv->pending_candidates = NULL;
+      DEBUG ("ignoring new local candidates for RAW UDP");
+      jingle_transport_free_candidates (new_candidates);
+      return;
     }
-  else
-    {
-      DEBUG ("content not signalled yet, waiting with candidates");
 
-      /* if we already have pending candidates, the new ones will
-       * be in the local_candidates list after them. but these
-       * are the first pending ones, we must mark them. */
-      if (priv->pending_candidates == NULL)
-        priv->pending_candidates = new_candidates;
-  }
+  g_object_get (priv->content, "state", &state, NULL);
 
   priv->local_candidates = g_list_concat (priv->local_candidates,
       new_candidates);
+
+  /* If all previous candidates have been signalled, set the new
+   * ones as pending. If there are existing pending candidates,
+   * the new ones will just be appended to that list. */
+  if (priv->pending_candidates == NULL)
+      priv->pending_candidates = new_candidates;
 }
 
 static GList *

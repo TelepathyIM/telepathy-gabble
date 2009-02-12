@@ -103,7 +103,6 @@ struct _GabbleMediaStreamPrivate
   guint media_type;
 
   GValue native_codecs;     /* intersected codec list */
-  GValue native_candidates;
 
   /* Whether we're waiting for a codec intersection from the streaming
    * implementation. If FALSE, SupportedCodecs is a no-op.
@@ -212,10 +211,6 @@ gabble_media_stream_init (GabbleMediaStream *self)
   g_value_init (&priv->native_codecs, codec_list_type);
   g_value_take_boxed (&priv->native_codecs,
       dbus_g_type_specialized_construct (codec_list_type));
-
-  g_value_init (&priv->native_candidates, candidate_list_type);
-  g_value_take_boxed (&priv->native_candidates,
-      dbus_g_type_specialized_construct (candidate_list_type));
 
   g_value_init (&priv->remote_codecs, codec_list_type);
   g_value_take_boxed (&priv->remote_codecs,
@@ -687,7 +682,6 @@ gabble_media_stream_finalize (GObject *object)
     g_boxed_free (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, priv->relay_info);
 
   g_value_unset (&priv->native_codecs);
-  g_value_unset (&priv->native_candidates);
 
   g_value_unset (&priv->remote_codecs);
   g_value_unset (&priv->remote_candidates);
@@ -884,12 +878,6 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
   JingleSessionState state;
-  GPtrArray *candidates;
-  GValue candidate = { 0, };
-  GValueArray *transport;
-  guint component_id;
-  GType candidate_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE;
-  JingleCandidate *c;
   GList *li = NULL;
   guint i;
 
@@ -908,65 +896,23 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
       return;
     }
 
-  candidates = g_value_get_boxed (&priv->native_candidates);
-
-  g_value_init (&candidate, candidate_struct_type);
-  g_value_take_boxed (&candidate,
-      dbus_g_type_specialized_construct (candidate_struct_type));
-
-  dbus_g_type_struct_set (&candidate,
-      0, candidate_id,
-      1, transports,
-      G_MAXUINT);
-
   for (i = 0; i < transports->len; i++)
     {
+      GValueArray *transport;
       guint component;
+      const gchar *addr;
+      JingleCandidate *c;
 
       transport = g_ptr_array_index (transports, i);
       component = g_value_get_uint (g_value_array_get_nth (transport, 0));
 
-      /* Accept component 0 because old farsight1 stream-engine didn't set the
-       * component */
-      if (component <= 2)
-        {
-          break;
-        }
-      else
-        {
-          transport = NULL;
-        }
-    }
+      /* Farsight 1 compatibility */
+      if (component == 0)
+        component = 1;
 
-
-  if (transport == NULL)
-    {
-      GError only_one = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "You need"
-          " at least a valid component." };
-      DEBUG ("no transport with a known component found; rejecting");
-      dbus_g_method_return_error (context, &only_one);
-      return;
-    }
-
-  g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
-
-  DEBUG ("put native candidates from stream-engine into cache");
-  for (i = 0; i < transports->len; i++)
-    {
-      const gchar *addr;
-
-      transport = g_ptr_array_index (transports, i);
-
-      component_id = g_value_get_uint (g_value_array_get_nth (transport, 0));
-      /* Old farsight1 s-e didn't set the component, make sure it's sane */
-      if (component_id == 0)
-         component_id = 1;
-
-      if (component_id > 2)
-        {
-          DEBUG ("ignoring unknown compontent id %d", component_id);
-          continue;
-        }
+      /* We understand RTP and RTCP, and silently ignore the rest */
+      if ((component != 1) && (component != 2))
+        continue;
 
       addr = g_value_get_string (g_value_array_get_nth (transport, 1));
       if (!strcmp (addr, "127.0.0.1"))
@@ -975,30 +921,35 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
           continue;
         }
 
-      c = jingle_candidate_new (component_id,
-          /* address */
-         g_value_get_string (g_value_array_get_nth (transport, 1)),
-          /* port */
-          g_value_get_uint (g_value_array_get_nth (transport, 2)),
+      c = jingle_candidate_new (
           /* protocol */
           g_value_get_uint (g_value_array_get_nth (transport, 3)),
-          /* preference */
-          g_value_get_double (g_value_array_get_nth (transport, 6)),
           /* candidate type, we're relying on 1:1 candidate type mapping */
           g_value_get_uint (g_value_array_get_nth (transport, 7)),
+          /* id */
+          candidate_id,
+          /* component */
+          component,
+          /* address */
+          g_value_get_string (g_value_array_get_nth (transport, 1)),
+          /* port */
+          g_value_get_uint (g_value_array_get_nth (transport, 2)),
+          /* generation */
+          0,
+          /* preference */
+          g_value_get_double (g_value_array_get_nth (transport, 6)),
           /* username */
           g_value_get_string (g_value_array_get_nth (transport, 8)),
           /* password */
-          g_value_dup_string (g_value_array_get_nth (transport, 9)),
-          /* FIXME: network is hardcoded for now */
-          0,
-          /* FIXME: generation is also hardcoded for now */
+          g_value_get_string (g_value_array_get_nth (transport, 9)),
+          /* network */
           0);
 
-          li = g_list_prepend (li, c);
+      li = g_list_prepend (NULL, c);
     }
 
-  gabble_jingle_content_add_candidates (priv->content, li);
+  if (li != NULL)
+    gabble_jingle_content_add_candidates (priv->content, li);
 
   tp_svc_media_stream_handler_return_from_new_native_candidate (context);
 }

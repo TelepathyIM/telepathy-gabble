@@ -134,6 +134,11 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='ChannelClosed'),
         )
 
+    # Check that now the channel has gone away the handles have become invalid.
+    for h in g_handle, f_handle:
+        call_async(q, conn, 'InspectHandles', cs.HT_CONTACT, [h])
+        q.expect('dbus-error', method='InspectHandles')
+
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 

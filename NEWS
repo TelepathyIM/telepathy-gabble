@@ -7,6 +7,10 @@ Enhancements:
 * Implement new tube API for 1-1 and muc D-Bus tubes
 * Implement the Messages interface for Text channels.
 
+Fixes:
+
+* Fix various tubes related leaks
+
 Changes:
 
 * In multi-user chats, the point at which Sent is emitted has changed.

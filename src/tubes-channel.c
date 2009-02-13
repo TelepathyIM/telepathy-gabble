@@ -1526,20 +1526,9 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
      */
     g_assert_not_reached ();
 
-  parameters = tp_asv_get_boxed (request_properties,
-               GABBLE_IFACE_CHANNEL_INTERFACE_TUBE ".Parameters",
-               TP_HASH_TYPE_STRING_VARIANT_MAP);
-  if (parameters == NULL)
-    {
-      /* If it is not included in the request, the connection manager MUST
-       * consider the property to be empty. */
-      parameters = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-          (GDestroyNotify) tp_g_value_slice_free);
-    }
-  else
-    {
-      g_hash_table_ref (parameters);
-    }
+  /* requested tubes have an empty parameters dict */
+  parameters = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      (GDestroyNotify) tp_g_value_slice_free);
 
   /* if the service property is missing, the requestotron rejects the request
    */
@@ -1552,7 +1541,7 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
   tube = create_new_tube (self, type, priv->self_handle, service,
       parameters, stream_id, tube_id, NULL);
   g_free (stream_id);
-  g_hash_table_unref (parameters);
+  g_hash_table_destroy (parameters);
 
   return tube;
 }

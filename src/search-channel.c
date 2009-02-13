@@ -315,6 +315,182 @@ request_search_fields (GabbleSearchChannel *chan)
 
 /* Search implementation */
 
+/**
+ * make_field:
+ * @field_name: name of a vCard field; must be a static string.
+ * @values: strv of values for the field.
+ *
+ * Returns: the Contact_Info_Field (field_name, [], values).
+ */
+static GValueArray *
+make_field (const gchar *field_name,
+            gchar **values)
+{
+  GValueArray *field = g_value_array_new (3);
+  GValue *value;
+  static const gchar **empty = { NULL };
+
+  g_value_array_append (field, NULL);
+  value = g_value_array_get_nth (field, 0);
+  g_value_init (value, G_TYPE_STRING);
+  g_value_set_static_string (value, field_name);
+
+  g_value_array_append (field, NULL);
+  value = g_value_array_get_nth (field, 1);
+  g_value_init (value, G_TYPE_STRV);
+  g_value_set_static_boxed (value, empty);
+
+  g_value_array_append (field, NULL);
+  value = g_value_array_get_nth (field, 2);
+  g_value_init (value, G_TYPE_STRV);
+  g_value_set_boxed (value, values);
+
+  return field;
+}
+
+static gchar *
+ht_lookup_and_remove (GHashTable *info_map,
+                      gchar *field_name)
+{
+  gchar *ret = g_hash_table_lookup (info_map, field_name);
+
+  g_hash_table_remove (info_map, field_name);
+
+  return ret;
+}
+
+static void
+emit_search_result (GabbleSearchChannel *chan,
+                    TpHandleRepoIface *handles,
+                    GHashTable *info_map)
+{
+  GPtrArray *info = g_ptr_array_new ();
+  gchar *jid, *first, *last, *nick, *email;
+  TpHandle h;
+  GError *e = NULL;
+
+  jid = ht_lookup_and_remove (info_map, "jid");
+  last = ht_lookup_and_remove (info_map, "last");
+  first = ht_lookup_and_remove (info_map, "first");
+  nick = ht_lookup_and_remove (info_map, "nick");
+  email = ht_lookup_and_remove (info_map, "email");
+
+  if (jid == NULL)
+    {
+      DEBUG ("no jid; giving up");
+      goto out;
+    }
+
+  h = tp_handle_ensure (handles, jid, NULL, &e);
+
+  if (h == 0)
+    {
+      DEBUG ("invalid jid: %s", e->message);
+      g_error_free (e);
+      goto out;
+    }
+
+  tp_handle_set_add (chan->priv->result_handles, h);
+
+  {
+    gchar *components[] = { jid, NULL };
+    g_ptr_array_add (info, make_field ("x-telepathy-identifier", components));
+  }
+
+  /* Build 'n' field: Family Name, Given Name, Additional Names, Honorific
+   * Prefixes, and Honorific Suffixes.
+   */
+  if (last != NULL || first != NULL)
+    {
+      gchar *components[] = {
+          (last == NULL ? "" : last),
+          (first == NULL ? "" : first),
+          "",
+          "",
+          "",
+          NULL
+      };
+      g_ptr_array_add (info, make_field ("n", components));
+    }
+
+  /* Build 'nickname' field. */
+  if (nick != NULL)
+    {
+      gchar *components[] = { nick, NULL };
+      g_ptr_array_add (info, make_field ("nickname", components));
+    }
+
+  /* Build 'email' field */
+  if (email != NULL)
+    {
+      gchar *components[] = { email, NULL };
+      g_ptr_array_add (info, make_field ("email", components));
+    }
+
+  if (g_hash_table_size (info_map) > 0)
+    DEBUG ("<item> contained fields we don't understand; ignoring them");
+
+  gabble_svc_channel_type_contact_search_emit_search_result_received (chan, h, info);
+
+out:
+  {
+    GValue v = { 0, };
+
+    g_value_init (&v, GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
+    g_value_take_boxed (&v, info);
+    g_value_unset (&v);
+
+    if (h != 0)
+      tp_handle_unref (handles, h);
+  }
+}
+
+static void
+parse_result_item (GabbleSearchChannel *chan,
+                   TpHandleRepoIface *handles,
+                   LmMessageNode *item)
+{
+  const gchar *jid = lm_message_node_get_attribute (item, "jid");
+  GHashTable *info;
+  LmMessageNode *n;
+
+  if (jid == NULL)
+    {
+      DEBUG ("<item> didn't have a jid attribute; skipping");
+      return;
+    }
+
+  info = g_hash_table_new (g_str_hash, g_str_equal);
+  g_hash_table_insert (info, "jid", (gchar *) jid);
+
+  for (n = item->children; n != NULL; n = n->next)
+    {
+      gchar *value = (gchar *) lm_message_node_get_value (n);
+
+      g_hash_table_insert (info, n->name, value);
+    }
+
+  emit_search_result (chan, handles, info);
+}
+
+static void
+parse_search_results (GabbleSearchChannel *chan,
+                      LmMessageNode *query_node)
+{
+  TpHandleRepoIface *handles = tp_base_connection_get_handles (
+      (TpBaseConnection *) chan->base.conn, TP_HANDLE_TYPE_CONTACT);
+  LmMessageNode *item;
+
+  for (item = query_node->children; item != NULL; item = item->next)
+    {
+      if (!strcmp (item->name, "item"))
+        parse_result_item (chan, handles, item);
+      else
+        DEBUG ("found <%s/> in <query/> rather than <item/>, skipping",
+            item->name);
+    }
+}
+
 static LmHandlerResult
 search_reply_cb (GabbleConnection *conn,
                  LmMessage *sent_msg,
@@ -322,7 +498,43 @@ search_reply_cb (GabbleConnection *conn,
                  GObject *object,
                  gpointer user_data)
 {
+  GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (object);
+  LmMessageNode *query_node;
+  GError *err = NULL;
+
   DEBUG ("called");
+
+  query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
+      "query", NS_SEARCH);
+
+  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      err = gabble_message_get_xmpp_error (reply_msg);
+
+      if (err == NULL)
+        err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "%s gave us an error we don't understand", chan->priv->server);
+    }
+  else if (NULL == query_node)
+    {
+      err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "%s is broken: it replied to our <query> with an empty IQ",
+          chan->priv->server);
+    }
+
+  if (err != NULL)
+    {
+      DEBUG ("Searching failed: %s", err->message);
+      g_error_free (err);
+    }
+  else
+    {
+      parse_search_results (chan, query_node);
+    }
+
+  g_object_set (chan,
+      "search-state", GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED,
+      NULL);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

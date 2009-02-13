@@ -29,9 +29,11 @@ def test(q, bus, conn, stream):
         }, signature='sv')
     call_async(q, requests, 'CreateChannel', request)
 
+    # Gabble asks the server what search fields it supports
     iq_event = q.expect('stream-iq', to=server, query_ns=ns.SEARCH)
     iq = iq_event.stanza
 
+    # The server says it supports all the fields in unextended XEP 0055
     result = IQ(stream, "result")
     result["id"] = iq["id"]
     query = result.addElement((ns.SEARCH, 'query'))
@@ -60,7 +62,8 @@ def test(q, bus, conn, stream):
     state = c_props.Get(cs.CHANNEL_TYPE_CONTACT_SEARCH, 'SearchState')
     assert state == cs.SEARCH_NOT_STARTED, state
 
-    terms = { 'x-n-family': 'Thomspon' }
+    # We make a search.
+    terms = { 'x-n-family': 'Threepwood' }
     call_async(q, c_search, 'Search', terms)
 
     _, ssc_event, iq_event = q.expect_many(
@@ -79,9 +82,50 @@ def test(q, bus, conn, stream):
     i = 0
     for field in query.elements():
         assert field.name == 'last', field.toXml()
-        assert field.children[0] == u'Thomspon', field.children[0]
+        assert field.children[0] == u'Threepwood', field.children[0]
         i += 1
     assert i == 1, query
+
+    # Server sends the results of the search.
+
+    g_jid = 'guybrush.threepwood@lucasarts.example.com'
+    f_jid = 'freddiet@pgwodehouse.example.com'
+    g_results = (g_jid, 'Guybrush', 'Threepwood', 'Fancy Pants')
+    f_results = (f_jid, 'Frederick', 'Threepwood', 'Freddie')
+    results = [g_results, f_results]
+
+    result = IQ(stream, 'result')
+    result['id'] = iq['id']
+    query = result.addElement((ns.SEARCH, 'query'))
+    for jid, first, last, nick in results:
+        item = query.addElement('item')
+        item['jid'] = jid
+        item.addElement('first', content=first)
+        item.addElement('last', content=last)
+        item.addElement('nick', content=nick)
+        item.addElement('email', content=jid)
+    stream.send(result)
+
+    r1 = q.expect('dbus-signal', signal='SearchResultReceived')
+    r2 = q.expect('dbus-signal', signal='SearchResultReceived')
+
+    g_handle, g_info = r1.args
+    f_handle, f_info = r2.args
+
+    jids = conn.InspectHandles(cs.HT_CONTACT, [g_handle, f_handle])
+    assert jids == [g_jid, f_jid], jids
+
+    for i, r in [(g_info, g_results), (f_info, f_results)]:
+        i_ = pformat(unwrap(i))
+        assert ("x-telepathy-identifier", [], [r[0]]) in i, i_
+        assert ("n", [], [r[2], r[1], "", "", ""])    in i, i_
+        assert ("nickname", [], [r[3]])               in i, i_
+        assert ("email", [], [r[0]])                  in i, i_
+
+        assert len(i) == 4, i_
+
+    ssc = q.expect('dbus-signal', signal='SearchStateChanged')
+    assert ssc.args[0] == cs.SEARCH_COMPLETED, ssc.args
 
     c.Close()
 

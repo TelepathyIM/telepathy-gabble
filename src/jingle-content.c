@@ -80,6 +80,7 @@ struct _GabbleJingleContentPrivate
   gboolean transport_ready;
 
   guint timer_id;
+  guint gtalk4_event_id;
 
   gboolean dispose_has_run;
 };
@@ -109,6 +110,7 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
   priv->media_ready = FALSE;
   priv->transport_ready = FALSE;
   priv->timer_id = 0;
+  priv->gtalk4_event_id = 0;
   priv->dispose_has_run = FALSE;
 
   obj->conn = NULL;
@@ -132,6 +134,9 @@ gabble_jingle_content_dispose (GObject *object)
    * the session. So, remove the timer here. */
   if (priv->timer_id != 0)
     g_source_remove (priv->timer_id);
+
+  if (priv->gtalk4_event_id != 0)
+    g_source_remove (priv->gtalk4_event_id);
 
   g_free (priv->name);
   priv->name = NULL;
@@ -570,7 +575,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
    * the transport type? */
   if (dialect == JINGLE_DIALECT_GTALK4)
     {
-      g_idle_add (send_gtalk4_transport_accept, c);
+      priv->gtalk4_event_id = g_idle_add (send_gtalk4_transport_accept, c);
     }
 
   return;

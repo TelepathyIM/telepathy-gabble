@@ -1536,6 +1536,10 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
       parameters = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
           (GDestroyNotify) tp_g_value_slice_free);
     }
+  else
+    {
+      g_hash_table_ref (parameters);
+    }
 
   /* if the service property is missing, the requestotron rejects the request
    */
@@ -1548,6 +1552,7 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
   tube = create_new_tube (self, type, priv->self_handle, service,
       parameters, stream_id, tube_id, NULL);
   g_free (stream_id);
+  g_hash_table_unref (parameters);
 
   return tube;
 }

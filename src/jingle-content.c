@@ -131,7 +131,7 @@ gabble_jingle_content_dispose (GObject *object)
    * terminated, we'll get disposed without being explicitly removed from
    * the session. So, remove the timer here. */
   if (priv->timer_id != 0)
-      g_source_remove (priv->timer_id);
+    g_source_remove (priv->timer_id);
 
   g_free (priv->name);
   priv->name = NULL;

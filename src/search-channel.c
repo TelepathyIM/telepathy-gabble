@@ -188,27 +188,12 @@ supported_field_discovery_failed (GabbleSearchChannel *chan,
       error->message);
 }
 
-static void
-parse_search_field_response (GabbleSearchChannel *chan,
-                             LmMessageNode *query_node)
+static GPtrArray *
+parse_unextended_field_response (LmMessageNode *query_node,
+                                 GError **error)
 {
-  LmMessageNode *x_node;
+  GPtrArray *search_keys = g_ptr_array_new ();
   LmMessageNode *field;
-  GPtrArray *search_keys;
-
-  x_node = lm_message_node_get_child_with_namespace (query_node, "x",
-      NS_X_DATA);
-
-  if (x_node != NULL)
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "server uses data forms, which are not yet implemented in Gabble" };
-
-      supported_field_discovery_failed (chan, &error);
-      return;
-    }
-
-  search_keys = g_ptr_array_new ();
 
   for (field = query_node->children; field != NULL; field = field->next)
     {
@@ -229,17 +214,39 @@ parse_search_field_response (GabbleSearchChannel *chan,
         }
       else
         {
-          GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, NULL };
-
-          error.message = g_strdup_printf (
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "server is broken: %s is not a field defined in XEP 0055",
               field->name);
-          supported_field_discovery_failed (chan, &error);
-          g_free (error.message);
-
           g_ptr_array_free (search_keys, TRUE);
-          return;
+          return NULL;
         }
+    }
+
+  return search_keys;
+}
+
+static void
+parse_search_field_response (GabbleSearchChannel *chan,
+                             LmMessageNode *query_node)
+{
+  LmMessageNode *x_node;
+  GPtrArray *search_keys = NULL;
+  GError *e = NULL;
+
+  x_node = lm_message_node_get_child_with_namespace (query_node, "x",
+      NS_X_DATA);
+
+  if (x_node == NULL)
+    search_keys = parse_unextended_field_response (query_node, &e);
+  else
+    e = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+        "server uses data forms, which are not yet implemented in Gabble");
+
+  if (search_keys == NULL)
+    {
+      supported_field_discovery_failed (chan, e);
+      g_error_free (e);
+      return;
     }
 
   DEBUG ("extracted available fields");

@@ -68,6 +68,8 @@ struct _GabbleSearchChannelPrivate
   gchar **available_search_keys;
   gchar *server;
 
+  gboolean xforms;
+
   TpHandleSet *result_handles;
 };
 
@@ -237,10 +239,16 @@ parse_search_field_response (GabbleSearchChannel *chan,
       NS_X_DATA);
 
   if (x_node == NULL)
-    search_keys = parse_unextended_field_response (query_node, &e);
+    {
+      chan->priv->xforms = FALSE;
+      search_keys = parse_unextended_field_response (query_node, &e);
+    }
   else
-    e = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-        "server uses data forms, which are not yet implemented in Gabble");
+    {
+      chan->priv->xforms = TRUE;
+      e = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "server uses data forms, which are not yet implemented in Gabble");
+    }
 
   if (search_keys == NULL)
     {

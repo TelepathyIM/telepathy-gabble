@@ -555,46 +555,72 @@ search_reply_cb (GabbleConnection *conn,
 }
 
 static gboolean
-do_search (GabbleSearchChannel *chan,
-           GHashTable *terms,
-           GError **error)
+validate_terms (GabbleSearchChannel *chan,
+                GHashTable *terms,
+                GError **error)
 {
   const gchar * const *asks =
       (const gchar * const *) chan->priv->available_search_keys;
-  LmMessage *msg;
-  LmMessageNode *query;
   GHashTableIter iter;
-  gpointer key, value;
-  gboolean ret;
-
-  DEBUG ("called");
-
-  msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_GET);
-  query = lm_message_node_add_child (msg->node, "query", NULL);
-  lm_message_node_set_attribute (query, "xmlns", NS_SEARCH);
+  gpointer key;
 
   g_hash_table_iter_init (&iter, terms);
 
-  while (g_hash_table_iter_next (&iter, &key, &value))
+  while (g_hash_table_iter_next (&iter, &key, NULL))
     {
       gchar *field = key;
-      gchar *xmpp_field;
 
       if (!tp_strv_contains (asks, field))
         {
           DEBUG ("%s is not in AvailableSearchKeys", field);
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "%s is not in AvailableSearchKeys", field);
-          ret = FALSE;
-          goto out;
+          return FALSE;
         }
+    }
 
-      xmpp_field = g_hash_table_lookup (tp_to_xmpp, field);
+  return TRUE;
+}
+
+static void
+build_unextended_query (LmMessageNode *query,
+                        GHashTable *terms)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&iter, terms);
+
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      gchar *xmpp_field = g_hash_table_lookup (tp_to_xmpp, key);
+
       g_assert (xmpp_field != NULL);
 
       lm_message_node_add_child (query, xmpp_field, value);
     }
+}
+
+static gboolean
+do_search (GabbleSearchChannel *chan,
+           GHashTable *terms,
+           GError **error)
+{
+  LmMessage *msg;
+  LmMessageNode *query;
+  gboolean ret;
+
+  DEBUG ("called");
+
+  if (!validate_terms (chan, terms, error))
+    return FALSE;
+
+  msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_GET);
+  query = lm_message_node_add_child (msg->node, "query", NULL);
+  lm_message_node_set_attribute (query, "xmlns", NS_SEARCH);
+
+  build_unextended_query (query, terms);
 
   DEBUG ("Sending search");
 
@@ -611,7 +637,6 @@ do_search (GabbleSearchChannel *chan,
       ret = FALSE;
     }
 
-out:
   lm_message_unref (msg);
   return ret;
 }

@@ -620,7 +620,17 @@ do_search (GabbleSearchChannel *chan,
   query = lm_message_node_add_child (msg->node, "query", NULL);
   lm_message_node_set_attribute (query, "xmlns", NS_SEARCH);
 
-  build_unextended_query (query, terms);
+  if (chan->priv->xforms)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "server uses data forms, which are not yet implemented in Gabble");
+      lm_message_unref (msg);
+      return FALSE;
+    }
+  else
+    {
+      build_unextended_query (query, terms);
+    }
 
   DEBUG ("Sending search");
 

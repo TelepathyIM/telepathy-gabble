@@ -542,6 +542,7 @@ fire_idle_content_reject (GabbleJingleSession *sess, const gchar *name,
   ctx->name = g_strdup (name);
   ctx->creator = g_strdup (creator);
 
+  /* FIXME: add API for ordering IQs rather than using g_idle_add. */
   g_idle_add (idle_content_reject, ctx);
 }
 

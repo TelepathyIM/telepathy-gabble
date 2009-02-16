@@ -200,7 +200,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c);
 static gboolean contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer,
     gboolean *wait);
 
-static gboolean
+static void
 _create_streams (GabbleMediaChannel *chan)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
@@ -213,8 +213,6 @@ _create_streams (GabbleMediaChannel *chan)
     }
 
   g_list_free (contents);
-
-  return FALSE;
 }
 
 static void
@@ -332,11 +330,9 @@ gabble_media_channel_constructor (GType type, guint n_props,
       tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_REMOVE, 0);
 
-      /* We want streams to appear on DBus after the channel is signalled */
-      g_idle_add ((GSourceFunc) _create_streams, GABBLE_MEDIA_CHANNEL (obj));
-
       /* Set up signal callbacks, emit session handler, initialize streams */
       _latch_to_session (GABBLE_MEDIA_CHANNEL (obj));
+      _create_streams (GABBLE_MEDIA_CHANNEL (obj));
     }
 
   return obj;

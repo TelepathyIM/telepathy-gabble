@@ -123,8 +123,6 @@ static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = 
   { JINGLE_ACTION_UNKNOWN }
 };
 
-static gboolean _terminate_delayed (gpointer user_data);
-
 static void
 gabble_jingle_session_init (GabbleJingleSession *obj)
 {
@@ -750,7 +748,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
     {
       /* We ignore initiate from us, and terminate the session immediately
        * afterwards */
-      _terminate_delayed (sess);
+      gabble_jingle_session_terminate (sess);
       return;
     }
 
@@ -1522,14 +1520,6 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess)
   set_state (sess, JS_STATE_ENDED);
 }
 
-static gboolean
-_terminate_delayed (gpointer user_data)
-{
-  GabbleJingleSession *sess = user_data;
-  gabble_jingle_session_terminate (sess);
-  return FALSE;
-}
-
 static void
 _foreach_count_active_contents (gpointer key, gpointer value, gpointer user_data)
 {
@@ -1569,12 +1559,7 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
       return;
 
   if (count_active_contents (sess) == 0)
-    {
-      /* Terminate the session from idle loop
-       * so that content removal can be processed
-       * in media stream before that. */
-      g_idle_add (_terminate_delayed, sess);
-    }
+    gabble_jingle_session_terminate (sess);
 }
 
 

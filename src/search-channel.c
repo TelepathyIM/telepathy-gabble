@@ -68,6 +68,10 @@ struct _GabbleSearchChannelPrivate
   gchar **available_search_keys;
   gchar *server;
 
+  /* An error in the TP_ERRORS domain if the search has failed; NULL otherwise.
+   */
+  GError *failure_reason;
+
   gboolean xforms;
 
   TpHandleSet *result_handles;
@@ -528,8 +532,31 @@ search_reply_cb (GabbleConnection *conn,
       err = gabble_message_get_xmpp_error (reply_msg);
 
       if (err == NULL)
-        err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "%s gave us an error we don't understand", chan->priv->server);
+        {
+          err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "%s gave us an error we don't understand", chan->priv->server);
+        }
+      else
+        {
+          err->domain = TP_ERRORS;
+
+          switch (err->code)
+            {
+            case XMPP_ERROR_NOT_AUTHORIZED:
+            case XMPP_ERROR_NOT_ACCEPTABLE:
+            case XMPP_ERROR_FORBIDDEN:
+            case XMPP_ERROR_NOT_ALLOWED:
+            case XMPP_ERROR_REGISTRATION_REQUIRED:
+            case XMPP_ERROR_SUBSCRIPTION_REQUIRED:
+              err->code = TP_ERROR_PERMISSION_DENIED;
+              break;
+            /* FIXME: other error mappings go here. Maybe we need some kind of
+             *        generic GabbleXmppError -> TpError mapping.
+             */
+            default:
+              err->code = TP_ERROR_NOT_AVAILABLE;
+            }
+        }
     }
   else if (NULL == query_node)
     {
@@ -541,7 +568,9 @@ search_reply_cb (GabbleConnection *conn,
   if (err != NULL)
     {
       DEBUG ("Searching failed: %s", err->message);
-      g_error_free (err);
+
+      g_assert (chan->priv->failure_reason == NULL);
+      chan->priv->failure_reason = err;
     }
   else
     {
@@ -708,12 +737,16 @@ static void
 gabble_search_channel_finalize (GObject *obj)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (obj);
+  GabbleSearchChannelPrivate *priv = chan->priv;
 
   ensure_closed (chan);
 
-  g_free (chan->priv->server);
+  g_free (priv->server);
 
-  tp_handle_set_destroy (chan->priv->result_handles);
+  tp_handle_set_destroy (priv->result_handles);
+
+  if (priv->failure_reason != NULL)
+    g_error_free (priv->failure_reason);
 
   if (G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize)
     G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize (obj);

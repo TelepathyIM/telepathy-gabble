@@ -571,15 +571,19 @@ search_reply_cb (GabbleConnection *conn,
 
       g_assert (chan->priv->failure_reason == NULL);
       chan->priv->failure_reason = err;
+
+      g_object_set (chan,
+          "search-state", GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED,
+          NULL);
     }
   else
     {
       parse_search_results (chan, query_node);
-    }
 
-  g_object_set (chan,
-      "search-state", GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED,
-      NULL);
+      g_object_set (chan,
+          "search-state", GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED,
+          NULL);
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

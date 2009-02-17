@@ -796,6 +796,75 @@ gabble_search_channel_get_property (GObject *object,
     }
 }
 
+static gchar *
+get_error_name (TpError e)
+{
+  gpointer tp_error_tc = g_type_class_ref (TP_TYPE_ERROR);
+  GEnumClass *tp_error_ec = G_ENUM_CLASS (tp_error_tc);
+  GEnumValue *e_value = g_enum_get_value (tp_error_ec, e);
+  const gchar *error_suffix = e_value->value_nick;
+  gchar *error_name = g_strdup_printf ("%s.%s", TP_ERROR_PREFIX, error_suffix);
+
+  g_type_class_unref (tp_error_tc);
+  return error_name;
+}
+
+static void
+set_search_state (GabbleSearchChannel *chan,
+                  GabbleChannelContactSearchState state)
+{
+  GabbleSearchChannelPrivate *priv = chan->priv;
+  GHashTable *details;
+  GError *error = priv->failure_reason;
+  gchar *error_name = NULL;
+  GValue v = { 0, };
+
+  switch (state)
+    {
+    case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED:
+      g_assert (priv->state == state);
+      return;
+    case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS:
+      g_assert (priv->state ==
+          GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED);
+      break;
+    case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED:
+    case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED:
+      g_assert (priv->state ==
+          GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS);
+      break;
+    default:
+      g_assert_not_reached ();
+    }
+
+  details = g_hash_table_new (g_str_hash, g_str_equal);
+
+  if (state == GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED)
+    {
+      g_assert (error != NULL);
+
+      error_name = get_error_name (error->code);
+
+      g_value_init (&v, G_TYPE_STRING);
+      g_value_set_static_string (&v, error->message);
+      g_hash_table_insert (details, "debug-message", &v);
+    }
+  else
+    {
+      g_assert (error == NULL);
+    }
+
+  DEBUG ("moving from %s to %s for reason '%s'", states[priv->state],
+      states[state], error_name == NULL ? "" : error_name);
+  priv->state = state;
+
+  gabble_svc_channel_type_contact_search_emit_search_state_changed (
+      chan, state, (error_name == NULL ? "" : error_name), details);
+
+  g_free (error_name);
+  g_hash_table_unref (details);
+}
+
 static void
 gabble_search_channel_set_property (GObject *object,
                                     guint property_id,
@@ -803,31 +872,12 @@ gabble_search_channel_set_property (GObject *object,
                                     GParamSpec *pspec)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (object);
-  GabbleSearchChannelPrivate *priv = chan->priv;
 
   switch (property_id)
     {
       case PROP_SEARCH_STATE:
-        {
-          GabbleChannelContactSearchState state = g_value_get_uint (value);
-          GHashTable *details;
-
-          g_return_if_fail (state < NUM_GABBLE_CHANNEL_CONTACT_SEARCH_STATES);
-          /* The search state can only go forward because it can't find
-           * reverse
-           */
-          g_return_if_fail (state > priv->state);
-
-          DEBUG ("moving from %s to %s", states[priv->state], states[state]);
-          priv->state = state;
-
-          details = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-              (GDestroyNotify) tp_g_value_slice_free);
-          gabble_svc_channel_type_contact_search_emit_search_state_changed (
-              chan, state, "", details);
-          g_hash_table_unref (details);
-          break;
-        }
+        set_search_state (chan, g_value_get_uint (value));
+        break;
       case PROP_SERVER:
         chan->priv->server = g_value_dup_string (value);
         g_assert (chan->priv->server != NULL);

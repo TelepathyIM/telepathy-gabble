@@ -58,6 +58,7 @@ enum
   PROP_SENDERS,
   PROP_STATE,
   PROP_DISPOSITION,
+  PROP_LOCALLY_CREATED,
   LAST_PROPERTY
 };
 
@@ -185,6 +186,9 @@ gabble_jingle_content_get_property (GObject *object,
       break;
     case PROP_DISPOSITION:
       g_value_set_string (value, priv->disposition);
+      break;
+    case PROP_LOCALLY_CREATED:
+      g_value_set_boolean (value, priv->created_by_us);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -340,6 +344,14 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_DISPOSITION, param_spec);
 
+  param_spec = g_param_spec_boolean ("locally-created", "Locally created",
+                                     "True if the content was created by the "
+                                     "local client.",
+                                     FALSE,
+                                     G_PARAM_READABLE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_LOCALLY_CREATED, param_spec);
 
   /* signal definitions */
 

@@ -2320,8 +2320,10 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   gchar *name;
   guint id;
   gchar *object_path;
+  gboolean locally_created;
 
-  g_object_get (c, "name", &name, "media-type", &type, NULL);
+  g_object_get (c, "name", &name, "media-type", &type,
+      "locally-created", &locally_created, NULL);
 
   if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
@@ -2346,6 +2348,13 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
       "id", id,
       "media-type", mtype,
       NULL);
+
+  if (locally_created)
+    {
+      g_object_set (stream, "combined-direction",
+          MAKE_COMBINED_DIRECTION (TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
+            0), NULL);
+    }
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 

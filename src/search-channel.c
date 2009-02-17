@@ -561,7 +561,7 @@ search_reply_cb (GabbleConnection *conn,
   else if (NULL == query_node)
     {
       err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "%s is broken: it replied to our <query> with an empty IQ",
+          "%s is broken: its iq reply didn't contain a <query/>",
           chan->priv->server);
     }
 

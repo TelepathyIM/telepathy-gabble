@@ -220,7 +220,9 @@ gabble_media_stream_constructor (GType type, guint n_props,
       /* MediaStream is created as soon as GabbleJingleContent is
        * created, but we want to let it parse the initiation (if
        * initiated by remote end) before we pick up initial
-       * codecs and candidates. */
+       * codecs and candidates.
+       * FIXME: add API for ordering IQs rather than using g_idle_add.
+       */
       priv->initial_getter_id =
           g_idle_add (_get_initial_codecs_and_candidates, stream);
     }

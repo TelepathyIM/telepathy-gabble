@@ -8,7 +8,7 @@ import dbus
 from twisted.words.protocols.jabber.client import IQ
 
 from gabbletest import exec_test
-from servicetest import call_async, unwrap
+from servicetest import call_async, unwrap, make_channel_proxy, EventPattern
 
 from pprint import pformat
 
@@ -57,6 +57,75 @@ def returns_invalid_fields(q, stream, requests):
     event = q.expect('dbus-error', method='CreateChannel')
     assert event.error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
 
+def returns_error_from_search(q, stream, conn, requests):
+    server = 'nofunforyou.localhost'
+    iq = call_create(q, requests, server)
+
+    result = IQ(stream, "result")
+    result["id"] = iq["id"]
+    query = result.addElement((ns.SEARCH, 'query'))
+    query.addElement("first")
+    stream.send(result)
+
+    event = q.expect('dbus-return', method='CreateChannel')
+    c = make_channel_proxy(conn, event.value[0], 'Channel')
+    c_search = dbus.Interface(c, cs.CHANNEL_TYPE_CONTACT_SEARCH)
+
+    call_async(q, c_search, 'Search', {'x-n-given': 'World of Goo'})
+    iq_event, _ = q.expect_many(
+        EventPattern('stream-iq', to=server, query_ns=ns.SEARCH),
+        EventPattern('dbus-signal', signal='SearchStateChanged'),
+        )
+    iq = iq_event.stanza
+    iq['type'] = 'error'
+    error = iq.addElement('error')
+    error['type'] = 'modify'
+    error.addElement((ns.STANZA, 'not-acceptable'))
+    error.addElement((ns.STANZA, 'text'), content="We don't believe in games here.")
+    stream.send(iq)
+
+    ssc = q.expect('dbus-signal', signal='SearchStateChanged')
+    new_state, reason, details = ssc.args
+
+    assert new_state == cs.SEARCH_FAILED, new_state
+    assert reason == cs.PERMISSION_DENIED, reason
+
+    c.Close()
+
+def returns_bees_from_search(q, stream, conn, requests):
+    server = 'hivemind.localhost'
+    iq = call_create(q, requests, server)
+
+    result = IQ(stream, "result")
+    result["id"] = iq["id"]
+    query = result.addElement((ns.SEARCH, 'query'))
+    query.addElement("nick")
+    stream.send(result)
+
+    event = q.expect('dbus-return', method='CreateChannel')
+    c = make_channel_proxy(conn, event.value[0], 'Channel')
+    c_search = dbus.Interface(c, cs.CHANNEL_TYPE_CONTACT_SEARCH)
+
+    call_async(q, c_search, 'Search', {'nickname': 'Buzzy'})
+    iq_event, _ = q.expect_many(
+        EventPattern('stream-iq', to=server, query_ns=ns.SEARCH),
+        EventPattern('dbus-signal', signal='SearchStateChanged'),
+        )
+    iq = iq_event.stanza
+
+    result = IQ(stream, 'result')
+    result['id'] = iq['id']
+    result.addElement((ns.SEARCH, 'bees')).addElement('bzzzzzzz')
+    stream.send(result)
+
+    ssc = q.expect('dbus-signal', signal='SearchStateChanged')
+    new_state, reason, details = ssc.args
+
+    assert new_state == cs.SEARCH_FAILED, new_state
+    assert reason == cs.NOT_AVAILABLE, reason
+
+    c.Close()
+
 def disconnected_before_reply(q, stream, conn, requests):
     iq = call_create(q, requests, 'slow.localhost')
 
@@ -73,6 +142,8 @@ def test(q, bus, conn, stream):
 
     not_a_search_server(q, stream, requests)
     returns_invalid_fields(q, stream, requests)
+    returns_error_from_search(q, stream, conn, requests)
+    returns_bees_from_search(q, stream, conn, requests)
     disconnected_before_reply(q, stream, conn, requests)
 
     q.expect('dbus-return', method='Disconnect')

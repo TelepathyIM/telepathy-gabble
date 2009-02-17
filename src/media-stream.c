@@ -945,7 +945,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
           /* network */
           0);
 
-      li = g_list_prepend (NULL, c);
+      li = g_list_prepend (li, c);
     }
 
   if (li != NULL)

@@ -1056,14 +1056,14 @@ gabble_muc_factory_broadcast_presence (GabbleMucFactory *self)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   GHashTableIter iter;
-  GabbleMucChannel *channel = NULL;
+  gpointer channel = NULL;
 
   g_hash_table_iter_init (&iter, priv->text_channels);
 
-  while (g_hash_table_iter_next (&iter, NULL, (gpointer *) &channel))
+  while (g_hash_table_iter_next (&iter, NULL, &channel))
     {
       g_assert (GABBLE_IS_MUC_CHANNEL (channel));
-      gabble_muc_channel_send_presence (channel, NULL);
+      gabble_muc_channel_send_presence (GABBLE_MUC_CHANNEL (channel), NULL);
     }
 }
 

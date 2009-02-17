@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <node name="/Channel_Type_Contact_Search" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
-  <tp:copyright> Copyright (C) 2005, 2006 Collabora Limited </tp:copyright>
-  <tp:copyright> Copyright (C) 2005, 2006 Nokia Corporation </tp:copyright>
-  <tp:copyright> Copyright (C) 2006 INdT </tp:copyright>
+  <tp:copyright> Copyright © 2005-2009 Collabora Limited </tp:copyright>
+  <tp:copyright> Copyright © 2005-2009 Nokia Corporation </tp:copyright>
+  <tp:copyright> Copyright © 2006 INdT </tp:copyright>
   <tp:license xmlns="http://www.w3.org/1999/xhtml">
     <p>This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -28,23 +28,42 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         closed when the search is completed or the required result has been
         found in order to free unused handles.</p>
 
-      <p>The search can be cancelled at any time by calling the channel's
-        <tp:dbus-ref
-        namespace="org.freedesktop.Telepathy.Channel">Close</tp:dbus-ref>
-        method.  Depending on the protocol, the connection manager may not be
-        able to prevent the server from sending further results; if this is the
-        case, it MUST ignore any further results.</p>
-
       <p>Before searching, the
         <tp:member-ref>AvailableSearchKeys</tp:member-ref> property should be
         inspected to determine the valid search keys which can be provided to
         the <tp:member-ref>Search</tp:member-ref> method. A search request is
         then started by providing some of these terms to the Search method, and
         the <tp:member-ref>SearchState</tp:member-ref> will change from
-        Not_Started to In_Progress.  As results are returned by the server, the
+        <code>Not_Started</code> to <code>In_Progress</code>.  As results are
+        returned by the server, the
         <tp:member-ref>SearchResultReceived</tp:member-ref> signal is emitted
         for each contact found; when the search is complete, the search state
-        will be set to Completed.</p>
+        will be set to <code>Completed</code>. If the search fails after Search
+        has been called, the state will change to <code>Failed</code>.  A
+        running search can be cancelled by calling
+        <tp:member-ref>Stop</tp:member-ref>.</p>
+
+      <p>The client should call the channel's <tp:dbus-ref
+        namespace="org.freedesktop.Telepathy.Channel">Close</tp:dbus-ref>
+        method when it is finished with the channel, so that any handles held
+        only by the channel can be released.</p>
+
+      <p>Each channel can only be used for a single search; a new channel
+        should be requested for each subsequent search. Connection managers
+        MUST support multiple ContactSearch channels being open at once (even
+        to the same server, if applicable).</p>
+
+      <p>It does not make sense to request this channel type using <tp:dbus-ref
+          namespace="org.freedesktop.Telepathy.Connection.Interface.Requests">EnsureChannel</tp:dbus-ref>;
+        clients SHOULD request channels of this type using
+        <tp:dbus-ref
+          namespace="org.freedesktop.Telepathy.Connection.Interface.Requests">CreateChannel</tp:dbus-ref>
+        instead.</p>
+
+      <tp:rationale>
+        <p>A contact search channel that is already in use for a different
+          search isn't useful.</p>
+      </tp:rationale>
     </tp:docstring>
 
     <tp:enum name="Channel_Contact_Search_State" type="u">
@@ -56,6 +75,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:enumvalue>
       <tp:enumvalue suffix="Completed" value="2">
         <tp:docstring>The search has been completed</tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Failed" value="3">
+        <tp:docstring>The search has failed</tp:docstring>
       </tp:enumvalue>
     </tp:enum>
 
@@ -72,9 +94,42 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       <arg name="State" type="u" tp:type="Channel_Contact_Search_State">
         <tp:docstring>The new search state</tp:docstring>
       </arg>
-      <tp:docstring>
-        Emitted when the <tp:member-ref>SearchState</tp:member-ref> property
-        changes.
+      <arg name="Error" type="s" tp:type="DBus_Error_Name">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          If the new state is <code>Failed</code>, the name of a D-Bus error
+          describing what went wrong. Otherwise, the empty string.
+        </tp:docstring>
+      </arg>
+      <arg name="Details" type="a{sv}" tp:type="String_Variant_Map">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>Additional information about the state transition, which may
+            include the following well-known keys:</p>
+
+          <dl>
+            <dt>debug-message (s)</dt>
+            <dd>Debugging information on the change, corresponding to the
+              message part of a D-Bus error message, which SHOULD NOT be
+              displayed to users under normal circumstances</dd>
+          </dl>
+
+          <tp:rationale>
+            <p>This argument allows for future extensions. For instance,
+              if moving to state <code>Failed</code> because the server
+              rejected one of our search terms, we could define a key
+              that indicates which terms were invalid.</p>
+          </tp:rationale>
+        </tp:docstring>
+      </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Emitted when the <tp:member-ref>SearchState</tp:member-ref> property
+          changes. The implementation MUST NOT make transitions other than the
+          following:</p>
+
+        <ul>
+          <li><code>Not_Started</code> → <code>In_Progress</code></li>
+          <li><code>In_Progress</code> → <code>Completed</code></li>
+          <li><code>In_Progress</code> → <code>Failed</code></li>
+        </ul>
       </tp:docstring>
     </signal>
 
@@ -108,7 +163,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           <dd>Search for the search term in fields of that name and type
             only (for instance, <code>tel;type=mobile</code>).</dd>
 
-          <dt>x-telepathy-identifier</dt>
+          <dt><code>x-telepathy-identifier</code></dt>
           <dd>Search for contacts whose identifier in the IM protocol
             matches the search term (e.g. contains it as a substring)
             <tp:rationale>
@@ -160,6 +215,31 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
               Gadu-Gadu and TOC appear to support this.
             </tp:rationale>
           </dd>
+
+          <dt><code>x-search-offset</code></dt>
+          <dd>
+            <p>For protocols that support paging results, the offset from the
+              start of the results that should be returned, i.e. the number of
+              contacts from the beginning that should be omitted.</p>
+
+            <p>For example, if the search terms match 50 contacts, this key
+              is set to <code>"20"</code> and <code>x-search-limit</code>
+              is set to <code>"10"</code>, then the ten contacts from the 21st
+              to the 30th should be returned.</p>
+
+            <p>Connection managers for protocols which do not natively support
+              restricting the number of results returned MUST NOT support
+              either this term or <code>x-search-limit</code>: all results
+              should be signalled, and the client can provide its own paging as
+              desired.</p>
+          </dd>
+
+          <dt><code>x-search-limit</code></dt>
+          <dd>For protocols that support limiting results, the maximum number
+            of results that should be returned.  For example, if the search
+            terms match <i>Antonius</i>, <i>Bridget</i> and <i>Charles</i> and
+            this key is set to <code>"2"</code>, the search service SHOULD only
+            return <i>Antonius</i> and <i>Bridget</i>.</dd>
         </dl>
       </tp:docstring>
     </tp:simple-type>
@@ -169,8 +249,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       <tp:docstring>
         The set of search keys supported by this channel. Example values
         include [""] (for protocols where several address fields are
-        implicitly searched) or ["x-n-given", "x-n-family", "nickname"]
-        (for XMPP XEP-0055, without extensibility via Data Forms).
+        implicitly searched) or ["x-n-given", "x-n-family", "nickname",
+        "email"] (for XMPP XEP-0055, without extensibility via Data Forms).
         This property cannot change during the lifetime of a channel.
 
         <tp:rationale>
@@ -230,6 +310,40 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:possible-errors>
     </method>
 
+    <method name="Stop" tp:name-for-bindings="Stop">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Stop the current search. This may not be called while the
+          <tp:member-ref>SearchState</tp:member-ref> is Not_Started. If called
+          while the SearchState is In_Progress,
+          <tp:member-ref>SearchStateChanged</tp:member-ref> will be emitted,
+          with the state Failed and the error
+          <code>org.freedesktop.Telepathy.Errors.Cancelled</code>.</p>
+
+        <p>Calling this method on a search in state Completed or Failed
+          succeeds, but has no effect.</p>
+
+        <tp:rationale>
+          <p>Specifying Stop to succeed when the search has finished means that
+            clients who call Stop just before receiving
+            <tp:member-ref>SearchStateChanged</tp:member-ref> don't have to
+            handle a useless error.</p>
+        </tp:rationale>
+
+        <p>Depending on the protocol, the connection manager may not be
+          able to prevent the server from sending further results after this
+          method returns; if this is the case, it MUST ignore any further
+          results.</p>
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          <tp:docstring>
+            The <tp:member-ref>SearchState</tp:member-ref> is Not_Started, so
+            this method is not yet available.
+          </tp:docstring>
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+
     <signal name="SearchResultReceived"
       tp:name-for-bindings="Search_Result_Received">
       <arg name="Contact" type="u" tp:type="Contact_Handle">
@@ -237,12 +351,25 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           valid at least until this Channel closes</tp:docstring>
       </arg>
       <arg name="Info" type="a(sasas)" tp:type="Contact_Info_Field[]">
-        <tp:docstring>An array of fields representing information about this
-          contact, in the same format used in the <tp:dbus-ref
-            namespace="org.freedesktop.Telepathy.Connection.Interface">ContactInfo.DRAFT</tp:dbus-ref>
-          interface. It is possible that a separate call to <tp:dbus-ref
-            namespace="org.freedesktop.Telepathy.Connection.Interface.ContactInfo.DRAFT">RequestContactInfo</tp:dbus-ref>
-          would return more information than this signal provides.
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>An array of fields representing information about this
+            contact, in the same format used in the <tp:dbus-ref
+              namespace="org.freedesktop.Telepathy.Connection.Interface">ContactInfo.DRAFT</tp:dbus-ref>
+            interface. It is possible that a separate call to <tp:dbus-ref
+              namespace="org.freedesktop.Telepathy.Connection.Interface.ContactInfo.DRAFT">RequestContactInfo</tp:dbus-ref>
+            would return more information than this signal provides.</p>
+
+          <p>This array SHOULD include the <code>x-telepathy-identifier</code>
+            field, whose values matches the result of calling <tp:dbus-ref
+              namespace="org.freedesktop.Telepathy.Connection">InspectHandles</tp:dbus-ref>
+            on the Contact handle.</p>
+
+          <tp:rationale>
+            <p>UIs will most likely want to show the identifier to the user;
+              while they could do this by inspecting the signalled handle,
+              including it in this signal is cheap and removes a roundtrip to
+              look it up.</p>
+          </tp:rationale>
         </tp:docstring>
       </arg>
       <tp:docstring>

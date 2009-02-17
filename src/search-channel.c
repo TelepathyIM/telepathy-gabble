@@ -77,7 +77,8 @@ struct _GabbleSearchChannelPrivate
 static const gchar *states[] = {
     "not started",
     "in progress",
-    "completed"
+    "completed",
+    "failed",
 };
 
 static void channel_iface_init (gpointer, gpointer);
@@ -772,6 +773,7 @@ gabble_search_channel_set_property (GObject *object,
       case PROP_SEARCH_STATE:
         {
           GabbleChannelContactSearchState state = g_value_get_uint (value);
+          GHashTable *details;
 
           g_return_if_fail (state < NUM_GABBLE_CHANNEL_CONTACT_SEARCH_STATES);
           /* The search state can only go forward because it can't find
@@ -781,8 +783,12 @@ gabble_search_channel_set_property (GObject *object,
 
           DEBUG ("moving from %s to %s", states[priv->state], states[state]);
           priv->state = state;
+
+          details = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+              (GDestroyNotify) tp_g_value_slice_free);
           gabble_svc_channel_type_contact_search_emit_search_state_changed (
-              chan, state);
+              chan, state, "", details);
+          g_hash_table_unref (details);
           break;
         }
       case PROP_SERVER:
@@ -821,7 +827,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
   param_spec = g_param_spec_uint ("search-state", "Search state",
       "The current state of the search represented by this channel",
       GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED,
-      GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED,
+      GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED,
       GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED,
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SEARCH_STATE,

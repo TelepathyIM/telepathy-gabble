@@ -968,6 +968,8 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICE;
       else if (!tp_strdiff (var, NS_JINGLE_TRANSPORT_RAWUDP))
         caps |= PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP;
+      else if (0 == strcmp (var, NS_FILE_TRANSFER))
+        caps |= PRESENCE_CAP_SI_FILE_TRANSFER;
     }
 
   handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);

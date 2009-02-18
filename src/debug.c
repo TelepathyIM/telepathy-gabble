@@ -34,6 +34,7 @@ static GDebugKey keys[] = {
   { "bytestream",    GABBLE_DEBUG_BYTESTREAM },
   { "tubes",         GABBLE_DEBUG_TUBES },
   { "location",      GABBLE_DEBUG_LOCATION },
+  { "file-transfer", GABBLE_DEBUG_FT },
   { 0, },
 };
 

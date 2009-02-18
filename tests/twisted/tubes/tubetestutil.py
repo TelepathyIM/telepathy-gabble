@@ -110,6 +110,20 @@ def check_conn_properties(q, conn, channel_list=None):
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
+
+def check_NewChannel_signal(args, channel_type, chan_path, contact_handle,
+                            suppress_handler):
+    """
+    Checks the first argument, a tuple of arguments from NewChannel, matches
+    the other arguments.
+    """
+    if chan_path is not None:
+        assert args[0] == chan_path, (args, chan_path)
+    assert args[1] == channel_type, (args, channel_type)
+    assert args[2] == HT_CONTACT, (args, HT_CONTACT)
+    assert args[3] == contact_handle, (args, contact_handle)
+    assert args[4] == suppress_handler, (args, suppress_handler)
+
 class Echo(Protocol):
     """
     A trivial protocol that just echoes back whatever you send it, in lowercase.

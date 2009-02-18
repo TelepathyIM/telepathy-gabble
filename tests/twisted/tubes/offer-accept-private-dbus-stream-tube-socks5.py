@@ -110,13 +110,6 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
     # there is some support.
     assert len(supported_socket_types) == 3
 
-def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle):
-    assert old_sig[0] == chan_path
-    assert old_sig[1] == tp_name_prefix + '.Channel.Type.' + channel_type
-    assert old_sig[2] == 1         # contact handle
-    assert old_sig[3] == contact_handle
-    assert old_sig[4] == True      # suppress handler
-
 def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
         contact_id, initiator_handle):
     assert len(new_sig) == 1
@@ -252,7 +245,8 @@ def test(q, bus, conn, stream):
     assert len(ret.value) == 1
     chan_path = ret.value[0]
 
-    check_NewChannel_signal(old_sig.args, "Tubes", chan_path, bob_handle)
+    t.check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_TUBES, chan_path,
+        bob_handle, True)
     check_NewChannels_signal(new_sig.args, "Tubes", chan_path,
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     old_tubes_channel_properties = new_sig.args[0][0]
@@ -285,8 +279,8 @@ def test(q, bus, conn, stream):
     # of the Channel.Type.StreamTube object !
     assert chan_path != new_chan_path
 
-    check_NewChannel_signal(old_sig.args, "StreamTube.DRAFT", \
-            new_chan_path, bob_handle)
+    t.check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_STREAM_TUBE,
+            new_chan_path, bob_handle, True)
     check_NewChannels_signal(new_sig.args, "StreamTube.DRAFT", new_chan_path, \
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     stream_tube_channel_properties = new_sig.args[0][0]

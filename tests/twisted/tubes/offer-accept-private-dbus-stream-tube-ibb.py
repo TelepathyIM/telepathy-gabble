@@ -75,14 +75,6 @@ def check_channel_properties(q, bus, conn, stream, channel, channel_type,
     # there is some support.
     assert len(supported_socket_types) == 3
 
-def check_NewChannel_signal(old_sig, channel_type, chan_path, contact_handle, suppress_handler):
-    if chan_path is not None:
-        assert old_sig[0] == chan_path
-    assert old_sig[1] == channel_type
-    assert old_sig[2] == HT_CONTACT
-    assert old_sig[3] == contact_handle
-    assert old_sig[4] == suppress_handler      # suppress handler
-
 def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
         contact_id, initiator_handle):
     assert len(new_sig) == 1
@@ -238,7 +230,7 @@ def test(q, bus, conn, stream):
     assert len(ret.value) == 1
     chan_path = ret.value[0]
 
-    check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_TUBES, chan_path, bob_handle, True)
+    t.check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_TUBES, chan_path, bob_handle, True)
     check_NewChannels_signal(new_sig.args, CHANNEL_TYPE_TUBES, chan_path,
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     old_tubes_channel_properties = new_sig.args[0][0]
@@ -284,7 +276,7 @@ def test(q, bus, conn, stream):
     # the tube created using the old API is in the "not offered" state
     assert new_tube_props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
 
-    check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_STREAM_TUBE,
+    t.check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_STREAM_TUBE,
             new_chan_path, bob_handle, True)
     check_NewChannels_signal(new_sig.args, CHANNEL_TYPE_STREAM_TUBE, new_chan_path, \
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
@@ -338,7 +330,7 @@ def test(q, bus, conn, stream):
 
 
     # the tube channel (new API) is announced
-    check_NewChannel_signal(new_chan.args, CHANNEL_TYPE_STREAM_TUBE,
+    t.check_NewChannel_signal(new_chan.args, CHANNEL_TYPE_STREAM_TUBE,
         None, bob_handle, False)
     check_NewChannels_signal(new_chans.args, CHANNEL_TYPE_STREAM_TUBE, new_chan.args[0],
         bob_handle, "bob@localhost", self_handle)

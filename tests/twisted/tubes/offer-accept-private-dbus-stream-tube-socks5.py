@@ -109,6 +109,10 @@ def test(q, bus, conn, stream):
     # A tube request can be done only if the contact has tube capabilities
     # Ensure that Bob's caps have been received
     sync_stream(q, stream)
+    # Also ensure that all the new contact list channels have been announced,
+    # so that the NewChannel(s) signals we look for after calling
+    # RequestChannel are the ones we wanted.
+    sync_dbus(bus, q, conn)
 
     requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 

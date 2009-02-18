@@ -699,8 +699,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-return', method='AcceptDBusTube'),
         EventPattern('s5b-connected'))
     address = event.value[0]
-    # FIXME: this is currently broken. See FIXME in tubes-channel.c
-    #assert len(address) > 0
+    assert len(address) > 0
 
     # OK, we're done
     conn.Disconnect()

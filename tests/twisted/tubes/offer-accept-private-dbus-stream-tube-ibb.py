@@ -689,8 +689,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-return', method='AcceptDBusTube')
     address = event.value[0]
-    # FIXME: this is currently broken. See FIXME in tubes-channel.c
-    #assert len(address) > 0
+    assert len(address) > 0
 
     event = q.expect('dbus-signal', signal='TubeStateChanged',
         args=[69, 2]) # 2 == OPEN
@@ -713,7 +712,8 @@ def test(q, bus, conn, stream):
     assert props[TARGET_HANDLE] == bob_handle
     assert props[TARGET_ID] == 'bob@localhost'
     assert props[DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase2'
-    # FIXME: check if State and Parameters are *not* in props
+    assert props[TUBE_PARAMETERS] == {'login': 'TEST'}
+    assert TUBE_STATE not in props
 
     tube_chan = bus.get_object(conn.bus_name, path)
     tube_chan_iface = dbus.Interface(tube_chan, CHANNEL)
@@ -758,10 +758,9 @@ def test(q, bus, conn, stream):
     # close the tube
     tube_chan_iface.Close()
 
-    # FIXME: uncomment once the fix-stream-tube-new-api is merged
-    #q.expect_many(
-    #    EventPattern('dbus-signal', signal='Closed'),
-    #    EventPattern('dbus-signal', signal='ChannelClosed'))
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-signal', signal='ChannelClosed'))
 
     # OK, we're done
     conn.Disconnect()

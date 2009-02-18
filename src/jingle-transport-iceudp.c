@@ -300,8 +300,11 @@ parse_candidates (GabbleJingleTransportIface *obj,
         {
           ctype = JINGLE_CANDIDATE_TYPE_LOCAL;
         }
-      else if (!tp_strdiff (str, "srflx"))
+      else if (!tp_strdiff (str, "srflx") || !tp_strdiff (str, "prflx"))
         {
+          /* FIXME Strictly speaking a prflx candidate should be a different
+           * type, but the TP spec has now way to distinguish and it doesn't
+           * matter much anyway.. */
           ctype = JINGLE_CANDIDATE_TYPE_STUN;
         }
       else if (!tp_strdiff (str, "relay"))

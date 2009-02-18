@@ -33,22 +33,6 @@ new_sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
-def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
-        contact_id, initiator_handle):
-    assert len(new_sig) == 1
-    assert len(new_sig[0]) == 1        # one channel
-    assert len(new_sig[0][0]) == 2     # two struct members
-    assert new_sig[0][0][0] == chan_path
-    emitted_props = new_sig[0][0][1]
-
-    assert emitted_props[CHANNEL_TYPE] == channel_type
-    assert emitted_props[TARGET_HANDLE_TYPE] == 1
-    assert emitted_props[TARGET_HANDLE] == contact_handle
-    assert emitted_props[TARGET_ID] == contact_id
-    assert emitted_props[REQUESTED] == True
-    assert emitted_props[INITIATOR_HANDLE] == initiator_handle
-    assert emitted_props[INITIATOR_ID] == 'test@localhost'
-
 def contact_offer_dbus_tube(stream, si_id, tube_id):
     iq = IQ(stream, 'set')
     iq['to'] = 'test@localhost/Resource'
@@ -189,7 +173,7 @@ def test(q, bus, conn, stream):
     chan_path = ret.value[0]
 
     t.check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_TUBES, chan_path, bob_handle, True)
-    check_NewChannels_signal(new_sig.args, CHANNEL_TYPE_TUBES, chan_path,
+    t.check_NewChannels_signal(new_sig.args, CHANNEL_TYPE_TUBES, chan_path,
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     old_tubes_channel_properties = new_sig.args[0][0]
 
@@ -236,8 +220,8 @@ def test(q, bus, conn, stream):
 
     t.check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_STREAM_TUBE,
             new_chan_path, bob_handle, True)
-    check_NewChannels_signal(new_sig.args, CHANNEL_TYPE_STREAM_TUBE, new_chan_path, \
-            bob_handle, 'bob@localhost', conn.GetSelfHandle())
+    t.check_NewChannels_signal(new_sig.args, CHANNEL_TYPE_STREAM_TUBE,
+            new_chan_path, bob_handle, 'bob@localhost', conn.GetSelfHandle())
     stream_tube_channel_properties = new_sig.args[0][0]
     assert TUBE_STATE not in stream_tube_channel_properties
     assert TUBE_PARAMETERS not in stream_tube_channel_properties
@@ -290,8 +274,8 @@ def test(q, bus, conn, stream):
     # the tube channel (new API) is announced
     t.check_NewChannel_signal(new_chan.args, CHANNEL_TYPE_STREAM_TUBE,
         None, bob_handle, False)
-    check_NewChannels_signal(new_chans.args, CHANNEL_TYPE_STREAM_TUBE, new_chan.args[0],
-        bob_handle, "bob@localhost", self_handle)
+    t.check_NewChannels_signal(new_chans.args, CHANNEL_TYPE_STREAM_TUBE,
+        new_chan.args[0], bob_handle, "bob@localhost", self_handle)
 
     props = new_chans.args[0][0][1]
     assert TUBE_STATE not in props

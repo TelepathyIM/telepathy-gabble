@@ -125,6 +125,27 @@ def check_NewChannel_signal(args, channel_type, chan_path, contact_handle,
     assert args[3] == contact_handle, (args, contact_handle)
     assert args[4] == suppress_handler, (args, suppress_handler)
 
+def check_NewChannels_signal(args, channel_type, chan_path, contact_handle,
+                             contact_id, initiator_handle):
+    """
+    Checks the first argument, a one-tuple of arguments from NewChannels,
+    matches the other arguments.
+    """
+    assert len(args) == 1, args
+    assert len(args[0]) == 1        # one channel
+    path, props = args[0][0]
+
+    assert path == chan_path, (emitted_path, chan_path)
+
+    assert props[CHANNEL_TYPE] == channel_type, (props, channel_type)
+    assert props[TARGET_HANDLE_TYPE] == HT_CONTACT, props
+    assert props[TARGET_HANDLE] == contact_handle, (props, contact_handle)
+    assert props[TARGET_ID] == contact_id, (props, contact_id)
+    assert props[REQUESTED] == True, props
+    assert props[INITIATOR_HANDLE] == initiator_handle, \
+        (props, initiator_handle)
+    assert props[INITIATOR_ID] == 'test@localhost', props
+
 def check_channel_properties(q, bus, conn, channel, channel_type,
                              contact_handle, contact_id, state=None):
     """

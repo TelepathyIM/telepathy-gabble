@@ -60,28 +60,6 @@ class S5BFactory(Factory):
     def clientConnectionLost(self, connector, reason):
         pass
 
-def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
-        contact_id, initiator_handle):
-    assert len(new_sig) == 1
-    assert len(new_sig[0]) == 1        # one channel
-    assert len(new_sig[0][0]) == 2     # two struct members
-    assert new_sig[0][0][0] == chan_path
-    emitted_props = new_sig[0][0][1]
-
-    assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            tp_name_prefix + '.Channel.Type.' + channel_type
-    assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 1
-    assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] ==\
-            contact_handle
-    assert emitted_props[tp_name_prefix + '.Channel.TargetID'] == \
-            contact_id
-    assert emitted_props[tp_name_prefix + '.Channel.Requested'] == True
-    assert emitted_props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-            == initiator_handle
-    assert emitted_props[tp_name_prefix + '.Channel.InitiatorID'] == \
-            'test@localhost'
-
-
 def test(q, bus, conn, stream):
     t.set_up_echo("")
     t.set_up_echo("2")
@@ -197,7 +175,7 @@ def test(q, bus, conn, stream):
 
     t.check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_TUBES, chan_path,
         bob_handle, True)
-    check_NewChannels_signal(new_sig.args, "Tubes", chan_path,
+    t.check_NewChannels_signal(new_sig.args, CHANNEL_TYPE_TUBES, chan_path,
             bob_handle, 'bob@localhost', conn.GetSelfHandle())
     old_tubes_channel_properties = new_sig.args[0][0]
 
@@ -231,8 +209,8 @@ def test(q, bus, conn, stream):
 
     t.check_NewChannel_signal(old_sig.args, CHANNEL_TYPE_STREAM_TUBE,
             new_chan_path, bob_handle, True)
-    check_NewChannels_signal(new_sig.args, "StreamTube.DRAFT", new_chan_path, \
-            bob_handle, 'bob@localhost', conn.GetSelfHandle())
+    t.check_NewChannels_signal(new_sig.args, CHANNEL_TYPE_STREAM_TUBE,
+            new_chan_path, bob_handle, 'bob@localhost', conn.GetSelfHandle())
     stream_tube_channel_properties = new_sig.args[0][0]
 
     t.check_conn_properties(q, conn,

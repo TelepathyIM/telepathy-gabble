@@ -5,6 +5,7 @@ Helper functions for writing tubes tests
 import errno
 import os
 
+import dbus
 from dbus import PROPERTIES_IFACE
 
 from servicetest import unwrap
@@ -123,6 +124,55 @@ def check_NewChannel_signal(args, channel_type, chan_path, contact_handle,
     assert args[2] == HT_CONTACT, (args, HT_CONTACT)
     assert args[3] == contact_handle, (args, contact_handle)
     assert args[4] == suppress_handler, (args, suppress_handler)
+
+def check_channel_properties(q, bus, conn, channel, channel_type,
+                             contact_handle, contact_id, state=None):
+    """
+    Checks the D-Bus properties of a 1-1 Tubes, StreamTube or DBusTube channel,
+    initiated by the test user
+    """
+
+    # Check o.fd.T.Channel properties.
+    channel_props = channel.GetAll(CHANNEL, dbus_interface=PROPERTIES_IFACE)
+    assert channel_props.get('TargetHandle') == contact_handle, \
+            (channel_props.get('TargetHandle'), contact_handle)
+    assert channel_props.get('TargetHandleType') == HT_CONTACT, \
+            channel_props.get('TargetHandleType')
+    assert channel_props.get('ChannelType') == channel_type, \
+            channel_props.get('ChannelType')
+    assert 'Interfaces' in channel_props, channel_props
+    assert CHANNEL_IFACE_GROUP not in \
+            channel_props['Interfaces'], \
+            channel_props['Interfaces']
+    assert channel_props['TargetID'] == contact_id
+    assert channel_props['Requested'] == True
+    assert channel_props['InitiatorID'] == 'test@localhost'
+    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
+
+    if channel_type == CHANNEL_TYPE_TUBES:
+        assert state is None
+        assert len(channel_props['Interfaces']) == 0, channel_props['Interfaces']
+        supported_socket_types = channel.GetAvailableStreamTubeTypes()
+    else:
+        assert state is not None
+        tube_props = channel.GetAll(CHANNEL_IFACE_TUBE,
+                dbus_interface=PROPERTIES_IFACE)
+        assert tube_props['State'] == state
+        # no strict check but at least check the properties exist
+        assert tube_props['Parameters'] is not None
+        assert channel_props['Interfaces'] == \
+            dbus.Array([CHANNEL_IFACE_TUBE], signature='s'), \
+            channel_props['Interfaces']
+
+        if channel_type == CHANNEL_TYPE_STREAM_TUBE:
+            supported_socket_types = channel.Get(CHANNEL_TYPE_STREAM_TUBE,
+                'SupportedSocketTypes', dbus_interface=PROPERTIES_IFACE)
+        else:
+            supported_socket_types = None
+
+    if supported_socket_types is not None:
+        # FIXME: this should check for particular types, not just a magic length
+        assert len(supported_socket_types) == 3
 
 class Echo(Protocol):
     """

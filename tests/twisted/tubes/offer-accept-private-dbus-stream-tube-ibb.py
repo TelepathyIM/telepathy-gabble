@@ -33,48 +33,6 @@ new_sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
-def check_channel_properties(q, bus, conn, stream, channel, channel_type,
-        contact_handle, contact_id, state=None):
-    # Exercise basic Channel Properties from spec 0.17.7
-    # on the channel of type channel_type
-    channel_props = channel.GetAll(CHANNEL, dbus_interface=PROPERTIES_IFACE)
-    assert channel_props.get('TargetHandle') == contact_handle,\
-            (channel_props.get('TargetHandle'), contact_handle)
-    assert channel_props.get('TargetHandleType') == 1,\
-            channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == channel_type , channel_props.get('ChannelType')
-    assert 'Interfaces' in channel_props, channel_props
-    assert CHANNEL_IFACE_GROUP not in \
-            channel_props['Interfaces'], \
-            channel_props['Interfaces']
-    assert channel_props['TargetID'] == contact_id
-    assert channel_props['Requested'] == True
-    assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
-
-    if channel_type == CHANNEL_TYPE_TUBES:
-        assert state is None
-        assert len(channel_props['Interfaces']) == 0, channel_props['Interfaces']
-        supported_socket_types = channel.GetAvailableStreamTubeTypes()
-    else:
-        assert state is not None
-        tube_props = channel.GetAll(CHANNEL_IFACE_TUBE,
-                dbus_interface=PROPERTIES_IFACE)
-        assert tube_props['State'] == state
-        # no strict check but at least check the properties exist
-        assert tube_props['Parameters'] is not None
-        assert channel_props['Interfaces'] == \
-            dbus.Array([CHANNEL_IFACE_TUBE], signature='s'), \
-            channel_props['Interfaces']
-
-        stream_tube_props = channel.GetAll(CHANNEL_TYPE_STREAM_TUBE,
-                dbus_interface=PROPERTIES_IFACE)
-        supported_socket_types = stream_tube_props['SupportedSocketTypes']
-
-    # Support for different socket types. no strict check but at least check
-    # there is some support.
-    assert len(supported_socket_types) == 3
-
 def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
         contact_id, initiator_handle):
     assert len(new_sig) == 1
@@ -291,7 +249,7 @@ def test(q, bus, conn, stream):
 
     tubes_iface = dbus.Interface(tubes_chan, CHANNEL_TYPE_TUBES)
 
-    check_channel_properties(q, bus, conn, stream, tubes_chan, CHANNEL_TYPE_TUBES,
+    t.check_channel_properties(q, bus, conn, tubes_chan, CHANNEL_TYPE_TUBES,
             bob_handle, "bob@localhost")
 
     # Create another tube using old API
@@ -368,10 +326,11 @@ def test(q, bus, conn, stream):
     # Tube have been created using the old API and so is already offered
     assert old_tube_props['State'] == TUBE_CHANNEL_STATE_REMOTE_PENDING
 
-    check_channel_properties(q, bus, conn, stream, tubes_chan, CHANNEL_TYPE_TUBES,
+    t.check_channel_properties(q, bus, conn, tubes_chan, CHANNEL_TYPE_TUBES,
             bob_handle, "bob@localhost")
-    check_channel_properties(q, bus, conn, stream, old_tube_chan,
-            CHANNEL_TYPE_STREAM_TUBE, bob_handle, "bob@localhost", TUBE_CHANNEL_STATE_REMOTE_PENDING)
+    t.check_channel_properties(q, bus, conn, old_tube_chan,
+            CHANNEL_TYPE_STREAM_TUBE, bob_handle, "bob@localhost",
+            TUBE_CHANNEL_STATE_REMOTE_PENDING)
 
     # Offer the first tube created (new API)
     path2 = os.getcwd() + '/stream2'

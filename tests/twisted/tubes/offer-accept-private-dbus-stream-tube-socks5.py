@@ -60,56 +60,6 @@ class S5BFactory(Factory):
     def clientConnectionLost(self, connector, reason):
         pass
 
-def check_channel_properties(q, bus, conn, stream, channel, channel_type,
-        contact_handle, contact_id, state=None):
-    # Exercise basic Channel Properties from spec 0.17.7
-    # on the channel of type channel_type
-    channel_props = channel.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props.get('TargetHandle') == contact_handle,\
-            (channel_props.get('TargetHandle'), contact_handle)
-    assert channel_props.get('TargetHandleType') == 1,\
-            channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.' + channel_type,\
-            channel_props.get('ChannelType')
-    assert 'Interfaces' in channel_props, channel_props
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' not in \
-            channel_props['Interfaces'], \
-            channel_props['Interfaces']
-    assert channel_props['TargetID'] == contact_id
-    assert channel_props['Requested'] == True
-    assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
-
-
-    if channel_type == "Tubes":
-        assert state is None
-        assert len(channel_props['Interfaces']) == 0, channel_props['Interfaces']
-        supported_socket_types = channel.GetAvailableStreamTubeTypes()
-    else:
-        assert state is not None
-        tube_props = channel.GetAll(
-                'org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT',
-                dbus_interface=dbus.PROPERTIES_IFACE)
-        assert tube_props['State'] == state
-        # no strict check but at least check the properties exist
-        assert tube_props['Parameters'] is not None
-        assert channel_props['Interfaces'] == \
-            dbus.Array(['org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT'],
-                    signature='s'), \
-            channel_props['Interfaces']
-
-        stream_tube_props = channel.GetAll(
-                'org.freedesktop.Telepathy.Channel.Type.StreamTube.DRAFT',
-                dbus_interface=dbus.PROPERTIES_IFACE)
-        supported_socket_types = stream_tube_props['SupportedSocketTypes']
-
-    # Support for different socket types. no strict check but at least check
-    # there is some support.
-    assert len(supported_socket_types) == 3
-
 def check_NewChannels_signal(new_sig, channel_type, chan_path, contact_handle,
         contact_id, initiator_handle):
     assert len(new_sig) == 1
@@ -292,7 +242,7 @@ def test(q, bus, conn, stream):
     tubes_iface = dbus.Interface(tubes_chan,
         tp_name_prefix + '.Channel.Type.Tubes')
 
-    check_channel_properties(q, bus, conn, stream, tubes_chan, "Tubes",
+    t.check_channel_properties(q, bus, conn, tubes_chan, CHANNEL_TYPE_TUBES,
             bob_handle, "bob@localhost")
 
     # Offer the tube, old API
@@ -357,10 +307,11 @@ def test(q, bus, conn, stream):
     # 3 == Tube_Channel_State_Not_Offered
     assert tube_props.get("State") == 3, tube_props
 
-    check_channel_properties(q, bus, conn, stream, tubes_chan, "Tubes",
+    t.check_channel_properties(q, bus, conn, tubes_chan, CHANNEL_TYPE_TUBES,
             bob_handle, "bob@localhost")
-    check_channel_properties(q, bus, conn, stream, tube_chan,
-            "StreamTube.DRAFT", bob_handle, "bob@localhost", 3)
+    t.check_channel_properties(q, bus, conn, tube_chan,
+            CHANNEL_TYPE_STREAM_TUBE, bob_handle, "bob@localhost",
+            TUBE_STATE_NOT_OFFERED)
 
     # Offer the tube, new API
     path2 = os.getcwd() + '/stream2'

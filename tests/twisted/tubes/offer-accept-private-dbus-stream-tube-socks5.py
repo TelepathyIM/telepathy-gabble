@@ -10,7 +10,7 @@ from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, tp_name_prefix, \
-     watch_tube_signals, sync_dbus
+     watch_tube_signals, sync_dbus, Event
 from gabbletest import exec_test, acknowledge_iq, sync_stream
 import constants as cs
 import ns
@@ -59,6 +59,9 @@ class S5BFactory(Factory):
 
     def clientConnectionLost(self, connector, reason):
         pass
+
+    def clientConnectionFailed(self, connector, reason):
+        self.event_func(Event('s5b-connection-failed', reason=reason))
 
 def test(q, bus, conn, stream):
     t.set_up_echo("")

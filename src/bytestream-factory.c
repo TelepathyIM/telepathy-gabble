@@ -790,6 +790,11 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       si_tube_received (self, msg, si, bytestream, peer_handle, room_handle,
           stream_id);
     }
+  else if (!tp_strdiff (profile, NS_FILE_TRANSFER))
+    {
+      gabble_ft_manager_handle_si_request (priv->conn->ft_manager, bytestream,
+          peer_handle, stream_id, msg);
+    }
   else
     {
       GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_SI_BAD_PROFILE, "" };

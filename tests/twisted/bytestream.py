@@ -30,6 +30,25 @@ def create_si_offer(stream, from_, to, sid, profile, bytestreams):
 
     return iq, si
 
+def parse_si_offer(iq):
+    si_nodes = xpath.queryForNodes('/iq/si', iq)
+    assert si_nodes is not None
+    assert len(si_nodes) == 1
+    si = si_nodes[0]
+
+    feature = xpath.queryForNodes('/si/feature', si)[0]
+    x = xpath.queryForNodes('/feature/x', feature)[0]
+    assert x['type'] == 'form'
+    field = xpath.queryForNodes('/x/field', x)[0]
+    assert field['var'] == 'stream-method'
+    assert field['type'] == 'list-single'
+
+    bytestreams = []
+    for value in xpath.queryForNodes('/field/option/value', field):
+        bytestreams.append(str(value))
+
+    return si['profile'], si['id'], bytestreams
+
 def create_si_reply(stream, iq, to, bytestream):
     result = IQ(stream, 'result')
     result['id'] = iq['id']

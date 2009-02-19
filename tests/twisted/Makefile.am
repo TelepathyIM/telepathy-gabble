@@ -90,6 +90,9 @@ TWISTED_TESTS = \
 	jingle/test-content-complex.py \
 	jingle/test-wait-for-caps.py \
 	jingle/test-wait-for-caps-incomplete.py \
+	file-transfer/test-receive-file.py \
+	file-transfer/test-send-file-provide-immediately.py \
+	file-transfer/test-send-file-wait-to-provide.py \
 	test-capabilities.py \
 	test-caps-cache.py \
 	test-caps-hash.py \
@@ -152,7 +155,8 @@ EXTRA_DIST = \
 	ns.py \
 	olpc/util.py \
 	tubes/muctubeutil.py \
-	tubes/tubetestutil.py
+	tubes/tubetestutil.py \
+	file-transfer/file_transfer_helper.py
 
 noinst_PROGRAMS = \
 	telepathy-gabble-debug

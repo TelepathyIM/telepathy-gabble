@@ -1821,6 +1821,10 @@ _gabble_media_channel_add_member (GObject *obj,
           tp_group_mixin_change_flags (obj,
               0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
+          /* accept any local pending sends */
+          g_ptr_array_foreach (priv->streams,
+              (GFunc) gabble_media_stream_accept_pending_local_send, NULL);
+
           /* signal acceptance */
           gabble_jingle_session_accept (priv->session);
 

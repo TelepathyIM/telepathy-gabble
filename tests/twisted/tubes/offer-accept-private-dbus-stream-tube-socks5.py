@@ -1,16 +1,12 @@
 """Test 1-1 tubes support."""
 
-import base64
-import errno
 import os
-import sha
 
 import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, tp_name_prefix, \
-     watch_tube_signals, sync_dbus, Event
+from servicetest import call_async, EventPattern, watch_tube_signals, sync_dbus
 from gabbletest import exec_test, acknowledge_iq, sync_stream
 import constants as cs
 import ns
@@ -19,7 +15,6 @@ from bytestream import S5BFactory, socks5_expect_connection, socks5_connect, \
     send_socks5_init, expect_socks5_init, expect_socks5_reply
 
 from twisted.words.xish import domish, xpath
-from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
 

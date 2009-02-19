@@ -13,7 +13,7 @@ import ns
 import tubetestutil as t
 from bytestream import S5BFactory, socks5_expect_connection, socks5_connect, \
     send_socks5_init, expect_socks5_init, expect_socks5_reply, \
-    create_si_offer
+    create_si_offer, parse_si_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -263,14 +263,10 @@ def test(q, bus, conn, stream):
             EventPattern('stream-iq', iq_type='result'),
             EventPattern('dbus-signal', signal='TubeStateChanged',
                 args=[stream_tube_id, cs.TUBE_STATE_OPEN]))
-    iq = si_reply_event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    assert str(proto) == ns.BYTESTREAMS
-    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % ns.TUBES, si)
+
+    bytestream = parse_si_reply(si_reply_event.stanza)
+    assert bytestream == ns.BYTESTREAMS
+    tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES, si_reply_event.stanza)
     assert len(tube) == 1
 
     q.expect('dbus-signal', signal='StreamTubeNewConnection',
@@ -294,14 +290,10 @@ def test(q, bus, conn, stream):
             EventPattern('stream-iq', iq_type='result'),
             EventPattern('dbus-signal', signal='TubeChannelStateChanged',
                 args=[cs.TUBE_STATE_OPEN]))
-    iq = si_reply_event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    assert str(proto) == ns.BYTESTREAMS
-    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % ns.TUBES, si)
+
+    bytestream = parse_si_reply(si_reply_event.stanza)
+    assert bytestream == ns.BYTESTREAMS
+    tube = xpath.queryForNodes('/iq//si/tube[@xmlns="%s"]' % ns.TUBES, si_reply_event.stanza)
     assert len(tube) == 1
 
     q.expect('dbus-signal', signal='StreamTubeNewConnection',
@@ -521,14 +513,9 @@ def test(q, bus, conn, stream):
     call_async(q, tubes_iface, 'AcceptDBusTube', id)
 
     event = q.expect('stream-iq', iq_type='result')
-    iq = event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    assert str(proto) == ns.BYTESTREAMS
-    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % ns.TUBES, si)
+    bytestream = parse_si_reply(event.stanza)
+    assert bytestream == ns.BYTESTREAMS
+    tube = xpath.queryForNodes('/iq//si/tube[@xmlns="%s"]' % ns.TUBES, event.stanza)
     assert len(tube) == 1
 
     reactor.listenTCP(5084, S5BFactory(q.append))

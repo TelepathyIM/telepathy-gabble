@@ -30,6 +30,14 @@ def create_si_offer(stream, from_, to, sid, profile, bytestreams):
 
     return iq, si
 
+def parse_si_reply(iq):
+    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
+            iq)[0]
+    value = xpath.queryForNodes('/si/feature/x/field/value', si)
+    assert len(value) == 1
+    proto = value[0]
+    return str(proto)
+
 ##### XEP-0065: SOCKS5 Bytestreams #####
 
 class S5BProtocol(Protocol):

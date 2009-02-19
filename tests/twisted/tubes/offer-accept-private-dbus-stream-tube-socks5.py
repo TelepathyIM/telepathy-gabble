@@ -107,6 +107,20 @@ def socks5_connect(q, host, port, sid,  initiator, target):
 
     return transport
 
+def send_socks5_init(stream, from_, to, sid, mode, hosts):
+    iq = IQ(stream, 'set')
+    iq['to'] = to
+    iq['from'] = from_
+    query = iq.addElement((ns.BYTESTREAMS, 'query'))
+    query['sid'] = sid
+    query['mode'] = mode
+    for jid, host, port in hosts:
+        streamhost = query.addElement('streamhost')
+        streamhost['jid'] = jid
+        streamhost['host'] = host
+        streamhost['port'] = port
+    stream.send(iq)
+
 def test(q, bus, conn, stream):
     t.set_up_echo("")
     t.set_up_echo("2")
@@ -132,10 +146,13 @@ def test(q, bus, conn, stream):
     item['subscription'] = 'both'
     stream.send(roster)
 
+    bob_full_jid = 'bob@localhost/Bob'
+    self_full_jid = 'test@localhost/Resource'
+
     # Send Bob presence and his tube caps
     presence = domish.Element(('jabber:client', 'presence'))
-    presence['from'] = 'bob@localhost/Bob'
-    presence['to'] = 'test@localhost/Resource'
+    presence['from'] = bob_full_jid
+    presence['to'] = self_full_jid
     c = presence.addElement('c')
     c['xmlns'] = 'http://jabber.org/protocol/caps'
     c['node'] = 'http://example.com/ICantBelieveItsNotTelepathy'
@@ -144,7 +161,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-iq', iq_type='get',
         query_ns='http://jabber.org/protocol/disco#info',
-        to='bob@localhost/Bob')
+        to=bob_full_jid)
     result = event.stanza
     result['type'] = 'result'
     assert event.query['node'] == \
@@ -231,7 +248,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-message')
     message = event.stanza
-    assert message['to'] == 'bob@localhost/Bob' # check the resource
+    assert message['to'] == bob_full_jid # check the resource
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % ns.TUBES,
         message)
     assert tube_nodes is not None
@@ -286,7 +303,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-message')
     message = event.stanza
-    assert message['to'] == 'bob@localhost/Bob' # check the resource
+    assert message['to'] == bob_full_jid # check the resource
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % ns.TUBES,
         message)
     assert tube_nodes is not None
@@ -324,8 +341,8 @@ def test(q, bus, conn, stream):
     # The CM is the server, so fake a client wanting to talk to it
     # Old API tube
     iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
+    iq['to'] = self_full_jid
+    iq['from'] = bob_full_jid
     si = iq.addElement((ns.SI, 'si'))
     si['id'] = 'alpha'
     si['profile'] = ns.TUBES
@@ -368,8 +385,8 @@ def test(q, bus, conn, stream):
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
     iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
+    iq['to'] = self_full_jid
+    iq['from'] = bob_full_jid
     si = iq.addElement((ns.SI, 'si'))
     si['id'] = 'beta'
     si['profile'] = ns.TUBES
@@ -418,38 +435,23 @@ def test(q, bus, conn, stream):
 
     # have the fake client open the stream
     # Old tube API
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    query = iq.addElement((ns.BYTESTREAMS, 'query'))
-    query['sid'] = 'alpha'
-    query['mode'] = 'tcp'
-    # Not working streamhost
-    streamhost = query.addElement('streamhost')
-    streamhost['jid'] = 'invalid.invalid'
-    streamhost['host'] = 'invalid.invalid'
-    streamhost['port'] = '5086'
-    # Working streamhost
-    streamhost = query.addElement('streamhost')
-    streamhost['jid'] = 'bob@localhost/Bob'
-    streamhost['host'] = '127.0.0.1'
-    streamhost['port'] = '5086'
-    # This works too but should not be tried as gabble should just
-    # connect to the previous one
-    streamhost = query.addElement('streamhost')
-    streamhost['jid'] = 'bob@localhost'
-    streamhost['host'] = '127.0.0.1'
-    streamhost['port'] = '5086'
-    stream.send(iq)
+    send_socks5_init(stream, bob_full_jid, self_full_jid, 'alpha', 'tcp', [
+        # Not working streamhost
+        ('invalid.invalid', 'invalid.invalid', '5086'),
+        # Working streamhost
+        (bob_full_jid, '127.0.0.1', '5086'),
+        # This works too but should not be tried as gabble should just
+        # connect to the previous one
+        ('bob@localhost', '127.0.0.1', '5086')])
 
-    transport = socks5_expect_connection(q, query['sid'], iq['from'], iq['to'])
+    transport = socks5_expect_connection(q, 'alpha', bob_full_jid, self_full_jid)
 
     event = q.expect('stream-iq', iq_type='result')
     iq = event.stanza
     query = xpath.queryForNodes('/iq/query', iq)[0]
     assert query.uri == ns.BYTESTREAMS
     streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
-    assert streamhost_used['jid'] == 'bob@localhost/Bob'
+    assert streamhost_used['jid'] == bob_full_jid
 
     transport.write("HELLO WORLD")
     event = q.expect('s5b-data-received')
@@ -460,40 +462,23 @@ def test(q, bus, conn, stream):
 
     reactor.listenTCP(5085, S5BFactory(q.append))
 
-    # have the fake client open the stream
-    # New tube API
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    query = iq.addElement((ns.BYTESTREAMS, 'query'))
-    query['sid'] = 'beta'
-    query['mode'] = 'tcp'
-    # Not working streamhost
-    streamhost = query.addElement('streamhost')
-    streamhost['jid'] = 'invalid.invalid'
-    streamhost['host'] = 'invalid.invalid'
-    streamhost['port'] = '5085'
-    # Working streamhost
-    streamhost = query.addElement('streamhost')
-    streamhost['jid'] = 'bob@localhost/Bob'
-    streamhost['host'] = '127.0.0.1'
-    streamhost['port'] = '5085'
-    # This works too but should not be tried as gabble should just
-    # connect to the previous one
-    streamhost = query.addElement('streamhost')
-    streamhost['jid'] = 'bob@localhost'
-    streamhost['host'] = '127.0.0.1'
-    streamhost['port'] = '5085'
-    stream.send(iq)
+    send_socks5_init(stream, bob_full_jid, self_full_jid, 'beta', 'tcp', [
+        # Not working streamhost
+        ('invalid.invalid', 'invalid.invalid', '5086'),
+        # Working streamhost
+        (bob_full_jid, '127.0.0.1', '5086'),
+        # This works too but should not be tried as gabble should just
+        # connect to the previous one
+        ('bob@localhost', '127.0.0.1', '5086')])
 
-    transport = socks5_expect_connection(q, query['sid'], iq['from'], iq['to'])
+    transport = socks5_expect_connection(q, 'beta', bob_full_jid, self_full_jid)
 
     event = q.expect('stream-iq', iq_type='result')
     iq = event.stanza
     query = xpath.queryForNodes('/iq/query', iq)[0]
     assert query.uri == ns.BYTESTREAMS
     streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
-    assert streamhost_used['jid'] == 'bob@localhost/Bob'
+    assert streamhost_used['jid'] == bob_full_jid
 
     transport.write("HELLO, NEW WORLD")
     event = q.expect('s5b-data-received')
@@ -503,7 +488,7 @@ def test(q, bus, conn, stream):
     call_async(q, tubes_iface, 'OfferDBusTube',
         'com.example.TestCase', sample_parameters)
 
-    event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
+    event = q.expect('stream-iq', iq_type='set', to=bob_full_jid)
     iq = event.stanza
     si_nodes = xpath.queryForNodes('/iq/si', iq)
     assert si_nodes is not None
@@ -545,7 +530,7 @@ def test(q, bus, conn, stream):
     result = IQ(stream, 'result')
     result['id'] = iq['id']
     result['from'] = iq['to']
-    result['to'] = 'test@localhost/Resource'
+    result['to'] = self_full_jid
     res_si = result.addElement((ns.SI, 'si'))
     res_feature = res_si.addElement((ns.FEATURE_NEG, 'feature'))
     res_x = res_feature.addElement((ns.X_DATA, 'x'))
@@ -557,7 +542,7 @@ def test(q, bus, conn, stream):
 
     stream.send(result)
 
-    event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
+    event = q.expect('stream-iq', iq_type='set', to=bob_full_jid)
     iq = event.stanza
     query = xpath.queryForNodes('/iq/query', iq)[0]
     assert query.uri == ns.BYTESTREAMS
@@ -566,12 +551,12 @@ def test(q, bus, conn, stream):
     streamhost = xpath.queryForNodes('/query/streamhost', query)[0]
 
     transport = socks5_connect(q, streamhost['host'], int(streamhost['port']),
-        query['sid'], 'test@localhost/Resource', 'bob@localhost/Bob')
+        query['sid'], self_full_jid, bob_full_jid)
 
     result = IQ(stream, 'result')
     result['id'] = iq['id']
     result['from'] = iq['to']
-    result['to'] = 'test@localhost/Resource'
+    result['to'] = self_full_jid
 
     stream.send(result)
 
@@ -628,8 +613,8 @@ def test(q, bus, conn, stream):
 
     # OK, now let's try to accept a D-Bus tube
     iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
+    iq['to'] = self_full_jid
+    iq['from'] = bob_full_jid
     si = iq.addElement((ns.SI, 'si'))
     si['id'] = 'beta'
     si['profile'] = ns.TUBES
@@ -688,17 +673,8 @@ def test(q, bus, conn, stream):
     reactor.listenTCP(5084, S5BFactory(q.append))
 
     # Init the SOCKS5 bytestream
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    query = iq.addElement((ns.BYTESTREAMS, 'query'))
-    query['sid'] = 'beta'
-    query['mode'] = 'tcp'
-    streamhost = query.addElement('streamhost')
-    streamhost['jid'] = 'bob@localhost/Bob'
-    streamhost['host'] = '127.0.0.1'
-    streamhost['port'] = '5084'
-    stream.send(iq)
+    send_socks5_init(stream, bob_full_jid, self_full_jid, 'beta', 'tcp', [
+        (bob_full_jid, '127.0.0.1', '5084')])
 
     event, _ = q.expect_many(
         EventPattern('dbus-return', method='AcceptDBusTube'),

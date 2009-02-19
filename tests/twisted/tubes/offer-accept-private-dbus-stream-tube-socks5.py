@@ -13,7 +13,7 @@ import ns
 import tubetestutil as t
 from bytestream import S5BFactory, socks5_expect_connection, socks5_connect, \
     send_socks5_init, expect_socks5_init, expect_socks5_reply, \
-    create_si_offer, parse_si_reply
+    create_si_offer, parse_si_reply, create_si_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -397,19 +397,7 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    result = IQ(stream, 'result')
-    result['id'] = iq['id']
-    result['from'] = iq['to']
-    result['to'] = self_full_jid
-    res_si = result.addElement((ns.SI, 'si'))
-    res_feature = res_si.addElement((ns.FEATURE_NEG, 'feature'))
-    res_x = res_feature.addElement((ns.X_DATA, 'x'))
-    res_x['type'] = 'submit'
-    res_field = res_x.addElement((None, 'field'))
-    res_field['var'] = 'stream-method'
-    res_value = res_field.addElement((None, 'value'))
-    res_value.addContent(ns.BYTESTREAMS)
-
+    result = create_si_reply(stream, iq, self_full_jid, ns.BYTESTREAMS)
     stream.send(result)
 
     id, mode, sid, hosts = expect_socks5_init(q)

@@ -55,10 +55,11 @@ class S5BFactory(Factory):
         return protocol
 
     def startedConnecting(self, connector):
-        pass
+        self.event_func(Event('s5b-started-connecting', connector=connector))
 
     def clientConnectionLost(self, connector, reason):
-        pass
+        self.event_func(Event('s5b-connection-lost', connector=connector,
+            reason=reason))
 
     def clientConnectionFailed(self, connector, reason):
         self.event_func(Event('s5b-connection-failed', reason=reason))

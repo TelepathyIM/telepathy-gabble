@@ -2354,7 +2354,6 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 
-  /* we will own the only reference to this stream */
   g_ptr_array_add (priv->streams, stream);
 
   g_signal_connect (stream, "close",

@@ -1,5 +1,7 @@
-telepathy-gabble 0.7.21 (UNRELEASED)
+telepathy-gabble 0.7.21 (2009-02-19)
 ====================================
+
+The "what?! why do I have flowers outside of my window?" release.
 
 Dependencies:
 
@@ -10,10 +12,6 @@ Enhancements:
 * Implement new tube API for muc stream tubes
 * Implement new tube API for 1-1 and muc D-Bus tubes
 * Implement the Messages interface for Text channels.
-
-Fixes:
-
-* Fix various tubes related leaks
 
 Changes:
 
@@ -30,9 +28,12 @@ Changes:
 
 Fixes:
 
+* Various tubes related leaks
 * fd.o#20003: fix a crash starting Jingle calls on some 64-bit platforms
+* fd.o#20133: fix various bugs where idle callbacks outlived their user-data.
+* Don't start sending video when the other side adds a video stream.
 
-telepathy-gabble 0.7.20 (2008-01-02)
+telepathy-gabble 0.7.20 (2009-01-02)
 ====================================
 
 The "crêpes du belge" release.

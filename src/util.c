@@ -984,7 +984,7 @@ user_data_destroyed_cb (gpointer ctx_,
 }
 
 /**
- * gabble_signal_connect:
+ * gabble_signal_connect_weak:
  * @instance: the instance to connect to.
  * @detailed_signal: a string of the form "signal-name::detail".
  * @c_handler: the GCallback to connect.
@@ -999,10 +999,10 @@ user_data_destroyed_cb (gpointer ctx_,
  * handlers in their finalizers.
  */
 void
-gabble_signal_connect (gpointer instance,
-                       const gchar *detailed_signal,
-                       GCallback c_handler,
-                       GObject *user_data)
+gabble_signal_connect_weak (gpointer instance,
+                            const gchar *detailed_signal,
+                            GCallback c_handler,
+                            GObject *user_data)
 {
   GObject *instance_obj = G_OBJECT (instance);
   WeakHandlerCtx *ctx = whc_new (instance_obj, user_data);

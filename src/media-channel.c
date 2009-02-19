@@ -2358,15 +2358,17 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
 
   g_ptr_array_add (priv->streams, stream);
 
-  gabble_signal_connect (stream, "close", (GCallback) stream_close_cb, chan_o);
-  gabble_signal_connect (stream, "error", (GCallback) stream_error_cb, chan_o);
-  gabble_signal_connect (stream, "unhold-failed", (GCallback)
-      stream_unhold_failed, chan_o);
-  gabble_signal_connect (stream, "notify::connection-state",
+  gabble_signal_connect_weak (stream, "close", (GCallback) stream_close_cb,
+      chan_o);
+  gabble_signal_connect_weak (stream, "error", (GCallback) stream_error_cb,
+      chan_o);
+  gabble_signal_connect_weak (stream, "unhold-failed",
+      (GCallback) stream_unhold_failed, chan_o);
+  gabble_signal_connect_weak (stream, "notify::connection-state",
       (GCallback) stream_state_changed_cb, chan_o);
-  gabble_signal_connect (stream, "notify::combined-direction",
+  gabble_signal_connect_weak (stream, "notify::combined-direction",
       (GCallback) stream_direction_changed_cb, chan_o);
-  gabble_signal_connect (stream, "notify::local-hold",
+  gabble_signal_connect_weak (stream, "notify::local-hold",
       (GCallback) stream_hold_state_changed, chan_o);
 
   /* emit StreamAdded */

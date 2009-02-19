@@ -38,6 +38,22 @@ def parse_si_reply(iq):
     proto = value[0]
     return str(proto)
 
+def create_si_reply(stream, iq, to, bytestream):
+    result = IQ(stream, 'result')
+    result['id'] = iq['id']
+    result['from'] = iq['to']
+    result['to'] = to
+    res_si = result.addElement((ns.SI, 'si'))
+    res_feature = res_si.addElement((ns.FEATURE_NEG, 'feature'))
+    res_x = res_feature.addElement((ns.X_DATA, 'x'))
+    res_x['type'] = 'submit'
+    res_field = res_x.addElement((None, 'field'))
+    res_field['var'] = 'stream-method'
+    res_value = res_field.addElement((None, 'value'))
+    res_value.addContent(bytestream)
+
+    return result
+
 ##### XEP-0065: SOCKS5 Bytestreams #####
 
 class S5BProtocol(Protocol):

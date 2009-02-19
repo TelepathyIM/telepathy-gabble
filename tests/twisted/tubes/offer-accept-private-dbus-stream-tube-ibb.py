@@ -1,6 +1,5 @@
 """Test 1-1 tubes support."""
 
-import base64
 import os
 
 import dbus
@@ -13,13 +12,12 @@ import constants as cs
 import ns
 import tubetestutil as t
 from bytestream import create_si_offer, parse_si_offer, create_si_reply,\
-    parse_si_reply
+    parse_si_reply, send_ibb_open, send_ibb_msg_data, parse_ibb_msg_data,\
+    parse_ibb_open
 
 from dbus import PROPERTIES_IFACE
 
 from twisted.words.xish import domish, xpath
-from twisted.internet import reactor
-from twisted.words.protocols.jabber.client import IQ
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -382,68 +380,34 @@ def test(q, bus, conn, stream):
 
     # have the fake client open the stream
     # Old tube API
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    open = iq.addElement((ns.IBB, 'open'))
-    open['sid'] = 'alpha'
-    open['block-size'] = '4096'
-    stream.send(iq)
+    send_ibb_open(stream, 'bob@localhost/Bob', 'test@localhost/Resource', 'alpha',
+        4096)
 
     q.expect('stream-iq', iq_type='result')
+
     # have the fake client send us some data
-    message = domish.Element(('jabber:client', 'message'))
-    message['to'] = 'test@localhost/Resource'
-    message['from'] = 'bob@localhost/Bob'
-    data_node = message.addElement((ns.IBB, 'data'))
-    data_node['sid'] = 'alpha'
-    data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hello, world'))
-    stream.send(message)
+    send_ibb_msg_data(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
+        'alpha', 0, 'hello, world')
 
     event = q.expect('stream-message', to='bob@localhost/Bob')
-    message = event.stanza
-
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
-        message)
-    assert data_nodes is not None
-    assert len(data_nodes) == 1
-    ibb_data = data_nodes[0]
-    assert ibb_data['sid'] == 'alpha'
-    binary = base64.b64decode(str(ibb_data))
+    sid, binary = parse_ibb_msg_data(event.stanza)
+    assert sid == 'alpha'
     assert binary == 'hello, world'
 
     # have the fake client open the stream
     # New tube API
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    open = iq.addElement((ns.IBB, 'open'))
-    open['sid'] = 'beta'
-    open['block-size'] = '4096'
-    stream.send(iq)
+    send_ibb_open(stream, 'bob@localhost/Bob', 'test@localhost/Resource', 'beta',
+        4096)
 
     q.expect('stream-iq', iq_type='result')
+
     # have the fake client send us some data
-    message = domish.Element(('jabber:client', 'message'))
-    message['to'] = 'test@localhost/Resource'
-    message['from'] = 'bob@localhost/Bob'
-    data_node = message.addElement((ns.IBB, 'data'))
-    data_node['sid'] = 'beta'
-    data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hello, new world'))
-    stream.send(message)
+    send_ibb_msg_data(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
+        'beta', 0, 'hello, new world')
 
     event = q.expect('stream-message', to='bob@localhost/Bob')
-    message = event.stanza
-
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
-        message)
-    assert data_nodes is not None
-    assert len(data_nodes) == 1
-    ibb_data = data_nodes[0]
-    assert ibb_data['sid'] == 'beta'
-    binary = base64.b64decode(str(ibb_data))
+    sid, binary = parse_ibb_msg_data(event.stanza)
+    assert sid == 'beta'
     assert binary == 'hello, new world'
 
     # OK, how about D-Bus?
@@ -479,17 +443,10 @@ def test(q, bus, conn, stream):
     stream.send(result)
 
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
-    iq = event.stanza
-    open = xpath.queryForNodes('/iq/open', iq)[0]
-    assert open.uri == ns.IBB
-    assert open['sid'] == dbus_stream_id
+    sid = parse_ibb_open(event.stanza)
+    assert sid == dbus_stream_id
 
-    result = IQ(stream, 'result')
-    result['id'] = iq['id']
-    result['from'] = iq['to']
-    result['to'] = 'test@localhost/Resource'
-
-    stream.send(result)
+    acknowledge_iq(stream, event.stanza)
 
     q.expect('dbus-signal', signal='TubeStateChanged',
         args=[dbus_tube_id, cs.TUBE_STATE_OPEN])
@@ -511,18 +468,10 @@ def test(q, bus, conn, stream):
     signal.append(42, signature='u')
     dbus_tube_conn.send_message(signal)
 
-    event = q.expect('stream-message')
-    message = event.stanza
+    event = q.expect('stream-message', to='bob@localhost/Bob')
+    sid, binary = parse_ibb_msg_data(event.stanza)
+    assert sid == dbus_stream_id
 
-    assert message['to'] == 'bob@localhost/Bob'
-
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
-        message)
-    assert data_nodes is not None
-    assert len(data_nodes) == 1
-    ibb_data = data_nodes[0]
-    assert ibb_data['sid'] == dbus_stream_id
-    binary = base64.b64decode(str(ibb_data))
     # little and big endian versions of: SIGNAL, NO_REPLY, protocol v1,
     # 4-byte payload
     assert binary.startswith('l\x04\x01\x01' '\x04\x00\x00\x00') or \
@@ -540,39 +489,21 @@ def test(q, bus, conn, stream):
     seq = 0
 
     # Have the fake client send us a message all in one go...
-    msg = domish.Element(('jabber:client', 'message'))
-    msg['to'] = 'test@localhost/Resource'
-    msg['from'] = 'bob@localhost/Bob'
-    data_node = msg.addElement('data', ns.IBB)
-    data_node['sid'] = dbus_stream_id
-    data_node['seq'] = str(seq)
-    data_node.addContent(base64.b64encode(dbus_message))
-    stream.send(msg)
+    send_ibb_msg_data(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
+        dbus_stream_id, seq, dbus_message)
     seq += 1
 
     # ... and a message one byte at a time ...
 
     for byte in dbus_message:
-        msg = domish.Element(('jabber:client', 'message'))
-        msg['to'] = 'test@localhost/Resource'
-        msg['from'] = 'bob@localhost/Bob'
-        data_node = msg.addElement('data', ns.IBB)
-        data_node['sid'] = dbus_stream_id
-        data_node['seq'] = str(seq)
-        data_node.addContent(base64.b64encode(byte))
-        stream.send(msg)
+        send_ibb_msg_data(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
+            dbus_stream_id, seq, byte)
         seq += 1
 
     # ... and two messages in one go
 
-    msg = domish.Element(('jabber:client', 'message'))
-    msg['to'] = 'test@localhost/Resource'
-    msg['from'] = 'bob@localhost/Bob'
-    data_node = msg.addElement('data', ns.IBB)
-    data_node['sid'] = dbus_stream_id
-    data_node['seq'] = str(seq)
-    data_node.addContent(base64.b64encode(dbus_message + dbus_message))
-    stream.send(msg)
+    send_ibb_msg_data(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
+        dbus_stream_id, seq, dbus_message + dbus_message)
     seq += 1
 
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
@@ -610,13 +541,8 @@ def test(q, bus, conn, stream):
     assert len(tube) == 1
 
     # Init the IBB bytestream
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    open = iq.addElement((ns.IBB, 'open'))
-    open['sid'] = 'beta'
-    open['block-size'] = '4096'
-    stream.send(iq)
+    send_ibb_open(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
+        'beta', 4096)
 
     event = q.expect('dbus-return', method='AcceptDBusTube')
     address = event.value[0]
@@ -663,13 +589,8 @@ def test(q, bus, conn, stream):
     assert len(tube) == 1
 
     # Init the IBB bytestream
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    open = iq.addElement((ns.IBB, 'open'))
-    open['sid'] = 'gamma'
-    open['block-size'] = '4096'
-    stream.send(iq)
+    send_ibb_open(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
+        'gamma', 4096)
 
     return_event, _, state_event = q.expect_many(
         EventPattern('dbus-return', method='AcceptDBusTube'),

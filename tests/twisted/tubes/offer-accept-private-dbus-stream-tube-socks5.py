@@ -82,6 +82,30 @@ def socks5_expect_connection(q, sid, initiator, target):
 
     return transport
 
+def socks5_connect(q, host, port, sid,  initiator, target):
+    reactor.connectTCP(host, port, S5BFactory(q.append))
+
+    event = q.expect('s5b-connected')
+    transport = event.transport
+    transport.write('\x05\x01\x00') #version 5, 1 auth method, no auth
+
+    event = q.expect('s5b-data-received')
+    event.data == '\x05\x00' # version 5, no auth
+
+    # version 5, connect, reserved, domain type
+    connect = '\x05\x01\x00\x03'
+    connect += chr(40) # len (SHA-1)
+    # sha-1(sid + initiator + target)
+    unhashed_domain = sid + initiator + target
+    connect += sha.new(unhashed_domain).hexdigest()
+    connect += '\x00\x00' # port
+    transport.write(connect)
+
+    event = q.expect('s5b-data-received')
+    event.data == '\x05\x00' # version 5, ok
+
+    return transport
+
 def test(q, bus, conn, stream):
     t.set_up_echo("")
     t.set_up_echo("2")
@@ -539,27 +563,9 @@ def test(q, bus, conn, stream):
     assert query['mode'] == 'tcp'
     assert query['sid'] == dbus_stream_id
     streamhost = xpath.queryForNodes('/query/streamhost', query)[0]
-    reactor.connectTCP(streamhost['host'], int(streamhost['port']),
-        S5BFactory(q.append))
 
-    event = q.expect('s5b-connected')
-    transport = event.transport
-    transport.write('\x05\x01\x00') #version 5, 1 auth method, no auth
-
-    event = q.expect('s5b-data-received')
-    event.data == '\x05\x00' # version 5, no auth
-
-    # version 5, connect, reserved, domain type
-    connect = '\x05\x01\x00\x03'
-    connect += chr(40) # len (SHA-1)
-    # sha-1(sid + initiator + target)
-    unhashed_domain = query['sid'] + 'test@localhost/Resource' + 'bob@localhost/Bob'
-    connect += sha.new(unhashed_domain).hexdigest()
-    connect += '\x00\x00' # port
-    transport.write(connect)
-
-    event = q.expect('s5b-data-received')
-    event.data == '\x05\x00' # version 5, ok
+    transport = socks5_connect(q, streamhost['host'], int(streamhost['port']),
+        query['sid'], 'test@localhost/Resource', 'bob@localhost/Bob')
 
     result = IQ(stream, 'result')
     result['id'] = iq['id']

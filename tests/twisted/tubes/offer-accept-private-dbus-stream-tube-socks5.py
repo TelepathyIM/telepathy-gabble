@@ -37,11 +37,11 @@ new_sample_parameters = dbus.Dictionary({
 
 class S5BProtocol(Protocol):
     def connectionMade(self):
-        self.factory.event_func(EventPattern('s5b-connected',
+        self.factory.event_func(Event('s5b-connected',
             transport=self.transport))
 
     def dataReceived(self, data):
-        self.factory.event_func(EventPattern('s5b-data-received', data=data,
+        self.factory.event_func(Event('s5b-data-received', data=data,
             transport=self.transport))
 
 class S5BFactory(Factory):
@@ -399,8 +399,8 @@ def test(q, bus, conn, stream):
     stream.send(iq)
 
     event = q.expect('s5b-data-received')
-    assert event.properties['data'] == '\x05\x01\x00' # version 5, 1 auth method, no auth
-    transport = event.properties['transport']
+    assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
+    transport = event.transport
     transport.write('\x05\x00') # version 5, no auth
     event = q.expect('s5b-data-received')
     # version 5, connect, reserved, domain type
@@ -410,7 +410,7 @@ def test(q, bus, conn, stream):
     unhashed_domain = query['sid'] + iq['from'] + iq['to']
     expected_connect += sha.new(unhashed_domain).hexdigest()
     expected_connect += '\x00\x00' # port
-    assert event.properties['data'] == expected_connect
+    assert event.data == expected_connect
 
     transport.write('\x05\x00') #version 5, ok
 
@@ -423,7 +423,7 @@ def test(q, bus, conn, stream):
 
     transport.write("HELLO WORLD")
     event = q.expect('s5b-data-received')
-    assert event.properties['data'] == 'hello world'
+    assert event.data == 'hello world'
 
     # this connection is disconnected
     transport.loseConnection()
@@ -457,8 +457,8 @@ def test(q, bus, conn, stream):
     stream.send(iq)
 
     event = q.expect('s5b-data-received')
-    assert event.properties['data'] == '\x05\x01\x00' # version 5, 1 auth method, no auth
-    transport = event.properties['transport']
+    assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
+    transport = event.transport
     transport.write('\x05\x00') # version 5, no auth
     event = q.expect('s5b-data-received')
     # version 5, connect, reserved, domain type
@@ -468,7 +468,7 @@ def test(q, bus, conn, stream):
     unhashed_domain = query['sid'] + iq['from'] + iq['to']
     expected_connect += sha.new(unhashed_domain).hexdigest()
     expected_connect += '\x00\x00' # port
-    assert event.properties['data'] == expected_connect
+    assert event.data == expected_connect
 
     transport.write('\x05\x00') #version 5, ok
 
@@ -481,7 +481,7 @@ def test(q, bus, conn, stream):
 
     transport.write("HELLO, NEW WORLD")
     event = q.expect('s5b-data-received')
-    assert event.properties['data'] == 'hello, new world'
+    assert event.data == 'hello, new world'
 
     # OK, how about D-Bus?
     call_async(q, tubes_iface, 'OfferDBusTube',
@@ -552,11 +552,11 @@ def test(q, bus, conn, stream):
         S5BFactory(q.append))
 
     event = q.expect('s5b-connected')
-    transport = event.properties['transport']
+    transport = event.transport
     transport.write('\x05\x01\x00') #version 5, 1 auth method, no auth
 
     event = q.expect('s5b-data-received')
-    event.properties['data'] == '\x05\x00' # version 5, no auth
+    event.data == '\x05\x00' # version 5, no auth
 
     # version 5, connect, reserved, domain type
     connect = '\x05\x01\x00\x03'
@@ -568,7 +568,7 @@ def test(q, bus, conn, stream):
     transport.write(connect)
 
     event = q.expect('s5b-data-received')
-    event.properties['data'] == '\x05\x00' # version 5, ok
+    event.data == '\x05\x00' # version 5, ok
 
     result = IQ(stream, 'result')
     result['id'] = iq['id']
@@ -598,7 +598,7 @@ def test(q, bus, conn, stream):
     dbus_tube_conn.send_message(signal)
 
     event = q.expect('s5b-data-received')
-    dbus_message = event.properties['data']
+    dbus_message = event.data
 
     # little and big endian versions of: SIGNAL, NO_REPLY, protocol v1,
     # 4-byte payload

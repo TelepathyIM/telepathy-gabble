@@ -134,6 +134,8 @@ enum
     PROP_FALLBACK_CONFERENCE_SERVER,
     PROP_STUN_SERVER,
     PROP_STUN_PORT,
+    PROP_FALLBACK_STUN_SERVER,
+    PROP_FALLBACK_STUN_PORT,
     PROP_IGNORE_SSL_ERRORS,
     PROP_ALIAS,
 
@@ -169,6 +171,9 @@ struct _GabbleConnectionPrivate
 
   gchar *stun_server;
   guint16 stun_port;
+
+  gchar *fallback_stun_server;
+  guint16 fallback_stun_port;
 
   gchar *fallback_conference_server;
 
@@ -373,6 +378,12 @@ gabble_connection_get_property (GObject    *object,
     case PROP_STUN_PORT:
       g_value_set_uint (value, priv->stun_port);
       break;
+    case PROP_FALLBACK_STUN_SERVER:
+      g_value_set_string (value, priv->fallback_stun_server);
+      break;
+    case PROP_FALLBACK_STUN_PORT:
+      g_value_set_uint (value, priv->fallback_stun_port);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -451,6 +462,13 @@ gabble_connection_set_property (GObject      *object,
       break;
     case PROP_STUN_PORT:
       priv->stun_port = g_value_get_uint (value);
+      break;
+    case PROP_FALLBACK_STUN_SERVER:
+      g_free (priv->fallback_stun_server);
+      priv->fallback_stun_server = g_value_dup_string (value);
+      break;
+    case PROP_FALLBACK_STUN_PORT:
+      priv->fallback_stun_port = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -696,6 +714,20 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       g_param_spec_uint (
           "stun-port", "STUN port",
           "STUN port.",
+          0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_STUN_PORT,
+          G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (object_class, PROP_FALLBACK_STUN_SERVER,
+      g_param_spec_string (
+          "fallback-stun-server", "fallback STUN server",
+          "Fallback STUN server.",
+          GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (object_class, PROP_FALLBACK_STUN_PORT,
+      g_param_spec_uint (
+          "fallback-stun-port", "fallback STUN port",
+          "Fallback STUN port.",
           0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_STUN_PORT,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 

@@ -72,11 +72,6 @@ def test(q, bus, conn, stream):
     stream_id = e3.args[0]
     assert e3.args[1] == 2 # active direction - receive
     assert e3.args[2] == 1 # pending local send
-    media_iface.RequestStreamDirection(stream_id, 3) # allow local send
-
-    e = q.expect('dbus-signal', signal='StreamDirectionChanged',
-        args=[stream_id, 3, 0])
-
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(
@@ -110,13 +105,18 @@ def test(q, bus, conn, stream):
     # At last, accept the call
     media_chan.AddMembers([dbus.UInt32(1)], 'accepted')
 
-    # Call is accepted and we're in members too
-    memb, acc = q.expect_many(
+    # Call is accepted, we become a member, and the stream that was pending
+    # local send is now sending.
+    memb, acc, _, _ = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged', args=[u'', [1L],
             [], [], [], 0, 0]),
         EventPattern('stream-iq',
             predicate=lambda e: (e.query.name == 'jingle' and
-                e.query['action'] == 'session-accept')))
+                e.query['action'] == 'session-accept')),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[True]),
+        EventPattern('dbus-signal', signal='StreamDirectionChanged',
+            args=[stream_id, 3, 0]),
+        )
 
     # we are now both in members
     members = media_chan.GetMembers()

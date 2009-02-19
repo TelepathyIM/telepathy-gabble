@@ -1,9 +1,10 @@
+import base64
 import sha
 
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
-from twisted.words.xish import xpath
+from twisted.words.xish import xpath, domish
 
 from servicetest import Event
 import ns
@@ -183,3 +184,39 @@ def expect_socks5_reply(q):
     assert query.uri == ns.BYTESTREAMS
     streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
     return streamhost_used
+
+##### XEP-0047: In-Band Bytestreams (IBB) #####
+
+def send_ibb_open(stream, from_, to, sid, block_size):
+    iq = IQ(stream, 'set')
+    iq['to'] = to
+    iq['from'] = from_
+    open = iq.addElement((ns.IBB, 'open'))
+    open['sid'] = sid
+    open['block-size'] = str(block_size)
+    stream.send(iq)
+
+def parse_ibb_open(iq):
+    open = xpath.queryForNodes('/iq/open', iq)[0]
+    assert open.uri == ns.IBB
+    return open['sid']
+
+def send_ibb_msg_data(stream, from_, to, sid, seq, data):
+    message = domish.Element(('jabber:client', 'message'))
+    message['to'] = to
+    message['from'] = from_
+    data_node = message.addElement((ns.IBB, 'data'))
+    data_node['sid'] = sid
+    data_node['seq'] = str(seq)
+    data_node.addContent(base64.b64encode(data))
+    stream.send(message)
+
+def parse_ibb_msg_data(message):
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
+        message)
+    assert data_nodes is not None
+    assert len(data_nodes) == 1
+    ibb_data = data_nodes[0]
+    binary = base64.b64decode(str(ibb_data))
+
+    return ibb_data['sid'], binary

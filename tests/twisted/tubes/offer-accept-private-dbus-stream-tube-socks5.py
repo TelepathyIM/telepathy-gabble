@@ -63,6 +63,25 @@ class S5BFactory(Factory):
     def clientConnectionFailed(self, connector, reason):
         self.event_func(Event('s5b-connection-failed', reason=reason))
 
+def socks5_expect_connection(q, sid, initiator, target):
+    event = q.expect('s5b-data-received')
+    assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
+    transport = event.transport
+    transport.write('\x05\x00') # version 5, no auth
+    event = q.expect('s5b-data-received')
+    # version 5, connect, reserved, domain type
+    expected_connect = '\x05\x01\x00\x03'
+    expected_connect += chr(40) # len (SHA-1)
+    # sha-1(sid + initiator + target)
+    unhashed_domain = sid + initiator + target
+    expected_connect += sha.new(unhashed_domain).hexdigest()
+    expected_connect += '\x00\x00' # port
+    assert event.data == expected_connect
+
+    transport.write('\x05\x00') #version 5, ok
+
+    return transport
+
 def test(q, bus, conn, stream):
     t.set_up_echo("")
     t.set_up_echo("2")
@@ -398,21 +417,7 @@ def test(q, bus, conn, stream):
     streamhost['port'] = '5086'
     stream.send(iq)
 
-    event = q.expect('s5b-data-received')
-    assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
-    transport = event.transport
-    transport.write('\x05\x00') # version 5, no auth
-    event = q.expect('s5b-data-received')
-    # version 5, connect, reserved, domain type
-    expected_connect = '\x05\x01\x00\x03'
-    expected_connect += chr(40) # len (SHA-1)
-    # sha-1(sid + initiator + target)
-    unhashed_domain = query['sid'] + iq['from'] + iq['to']
-    expected_connect += sha.new(unhashed_domain).hexdigest()
-    expected_connect += '\x00\x00' # port
-    assert event.data == expected_connect
-
-    transport.write('\x05\x00') #version 5, ok
+    transport = socks5_expect_connection(q, query['sid'], iq['from'], iq['to'])
 
     event = q.expect('stream-iq', iq_type='result')
     iq = event.stanza
@@ -456,21 +461,7 @@ def test(q, bus, conn, stream):
     streamhost['port'] = '5085'
     stream.send(iq)
 
-    event = q.expect('s5b-data-received')
-    assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
-    transport = event.transport
-    transport.write('\x05\x00') # version 5, no auth
-    event = q.expect('s5b-data-received')
-    # version 5, connect, reserved, domain type
-    expected_connect = '\x05\x01\x00\x03'
-    expected_connect += chr(40) # len (SHA-1)
-    # sha-1(sid + initiator + target)
-    unhashed_domain = query['sid'] + iq['from'] + iq['to']
-    expected_connect += sha.new(unhashed_domain).hexdigest()
-    expected_connect += '\x00\x00' # port
-    assert event.data == expected_connect
-
-    transport.write('\x05\x00') #version 5, ok
+    transport = socks5_expect_connection(q, query['sid'], iq['from'], iq['to'])
 
     event = q.expect('stream-iq', iq_type='result')
     iq = event.stanza

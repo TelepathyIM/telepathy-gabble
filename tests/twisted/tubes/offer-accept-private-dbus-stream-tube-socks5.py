@@ -12,7 +12,8 @@ import constants as cs
 import ns
 import tubetestutil as t
 from bytestream import S5BFactory, socks5_expect_connection, socks5_connect, \
-    send_socks5_init, expect_socks5_init, expect_socks5_reply
+    send_socks5_init, expect_socks5_init, expect_socks5_reply, \
+    create_si_offer
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -251,21 +252,8 @@ def test(q, bus, conn, stream):
 
     # The CM is the server, so fake a client wanting to talk to it
     # Old API tube
-    iq = IQ(stream, 'set')
-    iq['to'] = self_full_jid
-    iq['from'] = bob_full_jid
-    si = iq.addElement((ns.SI, 'si'))
-    si['id'] = 'alpha'
-    si['profile'] = ns.TUBES
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'form'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    field['type'] = 'list-single'
-    option = field.addElement((None, 'option'))
-    value = option.addElement((None, 'value'))
-    value.addContent(ns.BYTESTREAMS)
+    iq, si = create_si_offer(stream, bob_full_jid, self_full_jid, 'alpha', ns.TUBES,
+        [ns.BYTESTREAMS])
 
     stream_node = si.addElement((ns.TUBES, 'stream'))
     stream_node['tube'] = str(stream_tube_id)
@@ -295,21 +283,8 @@ def test(q, bus, conn, stream):
 
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
-    iq = IQ(stream, 'set')
-    iq['to'] = self_full_jid
-    iq['from'] = bob_full_jid
-    si = iq.addElement((ns.SI, 'si'))
-    si['id'] = 'beta'
-    si['profile'] = ns.TUBES
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'form'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    field['type'] = 'list-single'
-    option = field.addElement((None, 'option'))
-    value = option.addElement((None, 'value'))
-    value.addContent(ns.BYTESTREAMS)
+    iq, si = create_si_offer(stream, bob_full_jid, self_full_jid, 'beta', ns.TUBES,
+        [ns.BYTESTREAMS])
 
     stream_node = si.addElement((ns.TUBES, 'stream'))
     stream_node['tube'] = str(new_stream_tube_id)
@@ -511,21 +486,8 @@ def test(q, bus, conn, stream):
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
 
     # OK, now let's try to accept a D-Bus tube
-    iq = IQ(stream, 'set')
-    iq['to'] = self_full_jid
-    iq['from'] = bob_full_jid
-    si = iq.addElement((ns.SI, 'si'))
-    si['id'] = 'beta'
-    si['profile'] = ns.TUBES
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'form'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    field['type'] = 'list-single'
-    option = field.addElement((None, 'option'))
-    value = option.addElement((None, 'value'))
-    value.addContent(ns.BYTESTREAMS)
+    iq, si = create_si_offer(stream, bob_full_jid, self_full_jid, 'beta', ns.TUBES,
+        [ns.BYTESTREAMS])
 
     tube = si.addElement((ns.TUBES, 'tube'))
     tube['type'] = 'dbus'

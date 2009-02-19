@@ -121,6 +121,14 @@ def send_socks5_init(stream, from_, to, sid, mode, hosts):
         streamhost['port'] = port
     stream.send(iq)
 
+def expect_socks5_reply(q):
+    event = q.expect('stream-iq', iq_type='result')
+    iq = event.stanza
+    query = xpath.queryForNodes('/iq/query', iq)[0]
+    assert query.uri == ns.BYTESTREAMS
+    streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
+    return streamhost_used
+
 def test(q, bus, conn, stream):
     t.set_up_echo("")
     t.set_up_echo("2")
@@ -446,11 +454,7 @@ def test(q, bus, conn, stream):
 
     transport = socks5_expect_connection(q, 'alpha', bob_full_jid, self_full_jid)
 
-    event = q.expect('stream-iq', iq_type='result')
-    iq = event.stanza
-    query = xpath.queryForNodes('/iq/query', iq)[0]
-    assert query.uri == ns.BYTESTREAMS
-    streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
+    streamhost_used = expect_socks5_reply(q)
     assert streamhost_used['jid'] == bob_full_jid
 
     transport.write("HELLO WORLD")
@@ -473,11 +477,7 @@ def test(q, bus, conn, stream):
 
     transport = socks5_expect_connection(q, 'beta', bob_full_jid, self_full_jid)
 
-    event = q.expect('stream-iq', iq_type='result')
-    iq = event.stanza
-    query = xpath.queryForNodes('/iq/query', iq)[0]
-    assert query.uri == ns.BYTESTREAMS
-    streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
+    streamhost_used = expect_socks5_reply(q)
     assert streamhost_used['jid'] == bob_full_jid
 
     transport.write("HELLO, NEW WORLD")

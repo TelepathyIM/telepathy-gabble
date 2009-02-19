@@ -8,6 +8,29 @@ from twisted.words.xish import xpath
 from servicetest import Event
 import ns
 
+##### XEP-0095: Stream Initiation #####
+
+def create_si_offer(stream, from_, to, sid, profile, bytestreams):
+    iq = IQ(stream, 'set')
+    iq['to'] = to
+    iq['from'] = from_
+    si = iq.addElement((ns.SI, 'si'))
+    si['id'] = sid
+    si['profile'] = profile
+    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
+    x = feature.addElement((ns.X_DATA, 'x'))
+    x['type'] = 'form'
+    field = x.addElement((None, 'field'))
+    field['var'] = 'stream-method'
+    field['type'] = 'list-single'
+    for bytestream in bytestreams:
+        option = field.addElement((None, 'option'))
+        value = option.addElement((None, 'value'))
+        value.addContent(bytestream)
+
+    return iq, si
+
+##### XEP-0065: SOCKS5 Bytestreams #####
 
 class S5BProtocol(Protocol):
     def connectionMade(self):

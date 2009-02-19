@@ -20,6 +20,12 @@ HANDWRITTEN_SOURCES =             \
   gibber-linklocal-transport.h    \
   gibber-listener.c               \
   gibber-listener.h               \
+  gibber-resolver.c               \
+  gibber-resolver.h               \
+  gibber-linklocal-transport.c    \
+  gibber-linklocal-transport.h    \
+  asyncns.c                       \
+  asyncns.h                       \
   gibber-util.h                   \
   gibber-util.c
 

@@ -13,7 +13,7 @@ import ns
 import tubetestutil as t
 from bytestream import S5BFactory, socks5_expect_connection, socks5_connect, \
     send_socks5_init, expect_socks5_init, expect_socks5_reply, \
-    create_si_offer, parse_si_reply, create_si_reply
+    create_si_offer, parse_si_reply, create_si_reply, parse_si_offer
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -359,26 +359,12 @@ def test(q, bus, conn, stream):
         'com.example.TestCase', sample_parameters)
 
     event = q.expect('stream-iq', iq_type='set', to=bob_full_jid)
-    iq = event.stanza
-    si_nodes = xpath.queryForNodes('/iq/si', iq)
-    assert si_nodes is not None
-    assert len(si_nodes) == 1
-    si = si_nodes[0]
-    assert si['profile'] == ns.TUBES
-    dbus_stream_id = si['id']
+    profile, dbus_stream_id, bytestreams = parse_si_offer(event.stanza)
 
-    feature = xpath.queryForNodes('/si/feature', si)[0]
-    x = xpath.queryForNodes('/feature/x', feature)[0]
-    assert x['type'] == 'form'
-    field = xpath.queryForNodes('/x/field', x)[0]
-    assert field['var'] == 'stream-method'
-    assert field['type'] == 'list-single'
-    value = xpath.queryForNodes('/field/option/value', field)[0]
-    assert str(value) == ns.BYTESTREAMS
-    value = xpath.queryForNodes('/field/option/value', field)[1]
-    assert str(value) == ns.IBB
+    assert profile == ns.TUBES
+    assert bytestreams == [ns.BYTESTREAMS, ns.IBB]
 
-    tube = xpath.queryForNodes('/si/tube', si)[0]
+    tube = xpath.queryForNodes('/iq/si/tube', event.stanza)[0]
     assert tube['initiator'] == 'test@localhost'
     assert tube['service'] == 'com.example.TestCase'
     assert tube['stream-id'] == dbus_stream_id
@@ -397,7 +383,7 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    result = create_si_reply(stream, iq, self_full_jid, ns.BYTESTREAMS)
+    result = create_si_reply(stream, event.stanza, self_full_jid, ns.BYTESTREAMS)
     stream.send(result)
 
     id, mode, sid, hosts = expect_socks5_init(q)

@@ -30,6 +30,7 @@
 #include <telepathy-glib/dbus-properties-mixin.h>
 
 #include "error.h"
+#include "ft-manager.h"
 #include "jingle-factory.h"
 #include "muc-factory.h"
 #include "olpc-gadget-manager.h"
@@ -160,6 +161,9 @@ struct _GabbleConnection {
 
     /* jingle factory */
     GabbleJingleFactory *jingle_factory;
+
+    /* file transfer manager */
+    GabbleFtManager *ft_manager;
 
     /* temporary, for requestotron support */
     GPtrArray *channel_factories;

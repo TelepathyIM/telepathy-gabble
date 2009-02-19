@@ -239,6 +239,9 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
       NULL);
   g_ptr_array_add (channel_managers, self->olpc_gadget_manager);
 
+  self->ft_manager = gabble_ft_manager_new (self);
+  g_ptr_array_add (channel_managers, self->ft_manager);
+
   return channel_managers;
 }
 

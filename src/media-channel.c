@@ -46,6 +46,7 @@
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "presence.h"
+#include "util.h"
 
 #define MAX_STREAMS 99
 
@@ -2309,6 +2310,7 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
 static GabbleMediaStream *
 create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
 {
+  GObject *chan_o = (GObject *) chan;
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabbleMediaStream *stream;
   JingleMediaType type;
@@ -2354,21 +2356,20 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 
-  /* we will own the only reference to this stream */
   g_ptr_array_add (priv->streams, stream);
 
-  g_signal_connect (stream, "close",
-                    (GCallback) stream_close_cb, chan);
-  g_signal_connect (stream, "error",
-                    (GCallback) stream_error_cb, chan);
-  g_signal_connect (stream, "unhold-failed",
-                    (GCallback) stream_unhold_failed, chan);
-  g_signal_connect (stream, "notify::connection-state",
-                    (GCallback) stream_state_changed_cb, chan);
-  g_signal_connect (stream, "notify::combined-direction",
-                    (GCallback) stream_direction_changed_cb, chan);
-  g_signal_connect (stream, "notify::local-hold",
-                    (GCallback) stream_hold_state_changed, chan);
+  gabble_signal_connect_weak (stream, "close", (GCallback) stream_close_cb,
+      chan_o);
+  gabble_signal_connect_weak (stream, "error", (GCallback) stream_error_cb,
+      chan_o);
+  gabble_signal_connect_weak (stream, "unhold-failed",
+      (GCallback) stream_unhold_failed, chan_o);
+  gabble_signal_connect_weak (stream, "notify::connection-state",
+      (GCallback) stream_state_changed_cb, chan_o);
+  gabble_signal_connect_weak (stream, "notify::combined-direction",
+      (GCallback) stream_direction_changed_cb, chan_o);
+  gabble_signal_connect_weak (stream, "notify::local-hold",
+      (GCallback) stream_hold_state_changed, chan_o);
 
   /* emit StreamAdded */
   DEBUG ("emitting StreamAdded with type '%s'",

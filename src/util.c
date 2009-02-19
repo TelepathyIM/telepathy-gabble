@@ -931,3 +931,87 @@ lm_iq_message_make_result (LmMessage *iq_message)
   return result;
 }
 
+typedef struct {
+    GObject *instance;
+    GObject *user_data;
+    gulong handler_id;
+} WeakHandlerCtx;
+
+static WeakHandlerCtx *
+whc_new (GObject *instance,
+         GObject *user_data)
+{
+  WeakHandlerCtx *ctx = g_slice_new0 (WeakHandlerCtx);
+
+  ctx->instance = instance;
+  ctx->user_data = user_data;
+
+  return ctx;
+}
+
+static void
+whc_free (WeakHandlerCtx *ctx)
+{
+  g_slice_free (WeakHandlerCtx, ctx);
+}
+
+static void user_data_destroyed_cb (gpointer, GObject *);
+
+static void
+instance_destroyed_cb (gpointer ctx_,
+                       GObject *where_the_instance_was)
+{
+  WeakHandlerCtx *ctx = ctx_;
+
+  DEBUG ("instance for %p destroyed; cleaning up", ctx);
+
+  /* No need to disconnect the signal here, the instance has gone away. */
+  g_object_weak_unref (ctx->user_data, user_data_destroyed_cb, ctx);
+  whc_free (ctx);
+}
+
+static void
+user_data_destroyed_cb (gpointer ctx_,
+                        GObject *where_the_user_data_was)
+{
+  WeakHandlerCtx *ctx = ctx_;
+
+  DEBUG ("user_data for %p destroyed; disconnecting", ctx);
+
+  g_signal_handler_disconnect (ctx->instance, ctx->handler_id);
+  g_object_weak_unref (ctx->instance, instance_destroyed_cb, ctx);
+  whc_free (ctx);
+}
+
+/**
+ * gabble_signal_connect_weak:
+ * @instance: the instance to connect to.
+ * @detailed_signal: a string of the form "signal-name::detail".
+ * @c_handler: the GCallback to connect.
+ * @user_data: an object to pass as data to c_handler calls.
+ *
+ * Connects a #GCallback function to a signal for a particular object, as if
+ * with g_signal_connect(). Additionally, arranges for the signal handler to be
+ * disconnected if @user_data is destroyed.
+ *
+ * This is intended to be a convenient way for objects to use themselves as
+ * user_data for callbacks without having to explicitly disconnect all the
+ * handlers in their finalizers.
+ */
+void
+gabble_signal_connect_weak (gpointer instance,
+                            const gchar *detailed_signal,
+                            GCallback c_handler,
+                            GObject *user_data)
+{
+  GObject *instance_obj = G_OBJECT (instance);
+  WeakHandlerCtx *ctx = whc_new (instance_obj, user_data);
+
+  DEBUG ("connecting to %p:%s with context %p", instance, detailed_signal, ctx);
+
+  ctx->handler_id = g_signal_connect (instance, detailed_signal, c_handler,
+      user_data);
+
+  g_object_weak_ref (instance_obj, instance_destroyed_cb, ctx);
+  g_object_weak_ref (user_data, user_data_destroyed_cb, ctx);
+}

@@ -81,4 +81,7 @@ LmMessageNode * lm_message_node_get_child_any_ns (LmMessageNode *node,
 LmMessage *
 lm_iq_message_make_result (LmMessage *iq_message);
 
+void gabble_signal_connect (gpointer instance, const gchar *detailed_signal,
+    GCallback c_handler, GObject *user_data);
+
 #endif /* __GABBLE_UTIL_H__ */

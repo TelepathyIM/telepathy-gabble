@@ -569,6 +569,68 @@ static GabbleBytestreamSocks5 *gabble_bytestream_factory_create_socks5 (
     const gchar *stream_init_id, const gchar *peer_resource,
     GabbleBytestreamState state);
 
+static void
+si_tube_received (GabbleBytestreamFactory *self,
+                  LmMessage *msg,
+                  LmMessageNode *si,
+                  GabbleBytestreamIface *bytestream,
+                  TpHandle peer_handle,
+                  TpHandle room_handle,
+                  const gchar *stream_id)
+{
+  GabbleBytestreamFactoryPrivate *priv =
+    GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+
+  /* A Tubes SI request can be:
+   *  - a 1-1 new tube offer
+   *  - a 1-1 tube extra bytestream offer
+   *  - a muc tube extra bytestream offer
+   */
+  if (lm_message_node_get_child_with_namespace (si, "tube", NS_TUBES) != NULL)
+    {
+      /* The SI request is a tube offer */
+       gabble_private_tubes_factory_handle_si_tube_request (
+           priv->conn->private_tubes_factory, bytestream, peer_handle,
+           stream_id, msg);
+    }
+  else if (lm_message_node_get_child_with_namespace (si, "stream", NS_TUBES)
+      != NULL)
+    {
+      /* The SI request is an extra bytestream for a 1-1 tube */
+      gabble_private_tubes_factory_handle_si_stream_request (
+          priv->conn->private_tubes_factory, bytestream, peer_handle,
+          stream_id, msg);
+    }
+  else if (lm_message_node_get_child_with_namespace (si, "muc-stream",
+        NS_TUBES) != NULL)
+    {
+      /* The SI request is an extra bytestream for a muc tube */
+
+      if (room_handle == 0)
+        {
+          GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+              "<muc-stream> is only valid in a MUC context" };
+
+          gabble_bytestream_iface_close (bytestream, &e);
+        }
+      else
+        {
+          gabble_muc_factory_handle_si_stream_request (priv->conn->muc_factory,
+              bytestream, room_handle, stream_id, msg);
+        }
+    }
+  else
+    {
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "Invalid tube SI request: expected <tube>, <stream> or "
+          "<muc-stream>" };
+
+      /* Invalid tube SI request */
+      NODE_DEBUG (msg->node, e.message);
+      gabble_bytestream_iface_close (bytestream, &e);
+    }
+}
+
 /**
  * bytestream_factory_iq_si_cb:
  *
@@ -704,61 +766,16 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
    * if needed. */
 
   /* We inform the right factory we received a SI request */
-  if (tp_strdiff (profile, NS_TUBES))
+  if (!tp_strdiff (profile, NS_TUBES))
+    {
+      si_tube_received (self, msg, si, bytestream, peer_handle, room_handle,
+          stream_id);
+    }
+  else
     {
       GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_SI_BAD_PROFILE, "" };
       DEBUG ("SI profile unsupported: %s", profile);
 
-      gabble_bytestream_iface_close (bytestream, &e);
-      goto out;
-    }
-
-  /* A Tubes SI request can be:
-   *  - a 1-1 new tube offer
-   *  - a 1-1 tube extra bytestream offer
-   *  - a muc tube extra bytestream offer
-   */
-  if (lm_message_node_get_child_with_namespace (si, "tube", NS_TUBES) != NULL)
-    {
-      /* The SI request is a tube offer */
-       gabble_private_tubes_factory_handle_si_tube_request (
-           priv->conn->private_tubes_factory, bytestream, peer_handle,
-           stream_id, msg);
-    }
-  else if (lm_message_node_get_child_with_namespace (si, "stream", NS_TUBES)
-      != NULL)
-    {
-      /* The SI request is an extra bytestream for a 1-1 tube */
-      gabble_private_tubes_factory_handle_si_stream_request (
-          priv->conn->private_tubes_factory, bytestream, peer_handle,
-          stream_id, msg);
-    }
-  else if (lm_message_node_get_child_with_namespace (si, "muc-stream",
-        NS_TUBES) != NULL)
-    {
-      /* The SI request is an extra bytestream for a muc tube */
-
-      if (room_handle == 0)
-        {
-          GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-              "<muc-stream> is only valid in a MUC context" };
-
-          gabble_bytestream_iface_close (bytestream, &e);
-        }
-      else
-        {
-          gabble_muc_factory_handle_si_stream_request (priv->conn->muc_factory,
-              bytestream, room_handle, stream_id, msg);
-        }
-    }
-  else
-    {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "Invalid tube SI request: expected <tube>, <stream> or "
-          "<muc-stream>" };
-
-      /* Invalid tube SI request */
-      NODE_DEBUG (msg->node, e.message);
       gabble_bytestream_iface_close (bytestream, &e);
     }
 

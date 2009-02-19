@@ -76,6 +76,8 @@ struct _GabbleParams {
   gchar *fallback_conference_server;
   gchar *stun_server;
   guint stun_port;
+  gchar *fallback_stun_server;
+  guint fallback_stun_port;
   gboolean ignore_ssl_errors;
   gchar *alias;
 };
@@ -96,6 +98,8 @@ enum {
     JABBER_PARAM_FALLBACK_CONFERENCE_SERVER,
     JABBER_PARAM_STUN_SERVER,
     JABBER_PARAM_STUN_PORT,
+    JABBER_PARAM_FALLBACK_STUN_SERVER,
+    JABBER_PARAM_FALLBACK_STUN_PORT,
     JABBER_PARAM_IGNORE_SSL_ERRORS,
     JABBER_PARAM_ALIAS,
     LAST_JABBER_PARAM
@@ -170,6 +174,18 @@ static const TpCMParamSpec jabber_params[] = {
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
     GUINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT),
     G_STRUCT_OFFSET(GabbleParams, stun_port),
+    tp_cm_param_filter_uint_nonzero, NULL },
+
+  { "fallback-stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+    GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER,
+    G_STRUCT_OFFSET(GabbleParams, fallback_stun_server),
+    /* FIXME: validate properly */
+    tp_cm_param_filter_string_nonempty, NULL },
+  { "fallback-stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+    GUINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT),
+    G_STRUCT_OFFSET(GabbleParams, fallback_stun_port),
     tp_cm_param_filter_uint_nonzero, NULL },
 
   { "ignore-ssl-errors", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,

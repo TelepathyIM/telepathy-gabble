@@ -212,6 +212,21 @@ gabble_bytestream_factory_constructor (GType type,
 }
 
 static void
+disconnect_all_bytestreams (GabbleBytestreamFactory *self,
+                            GHashTable *bytestreams)
+{
+  GHashTableIter iter;
+  gpointer bytestream;
+
+  g_hash_table_iter_init (&iter, bytestreams);
+  while (g_hash_table_iter_next (&iter, NULL, &bytestream))
+  {
+    g_signal_handlers_disconnect_matched (bytestream, G_SIGNAL_MATCH_DATA,
+      0, 0, NULL, NULL, self);
+  }
+}
+
+static void
 gabble_bytestream_factory_dispose (GObject *object)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (object);
@@ -240,15 +255,19 @@ gabble_bytestream_factory_dispose (GObject *object)
       priv->iq_socks5_cb, LM_MESSAGE_TYPE_IQ);
   lm_message_handler_unref (priv->iq_socks5_cb);
 
+  disconnect_all_bytestreams (self, priv->ibb_bytestreams);
   g_hash_table_destroy (priv->ibb_bytestreams);
   priv->ibb_bytestreams = NULL;
 
+  disconnect_all_bytestreams (self, priv->muc_bytestreams);
   g_hash_table_destroy (priv->muc_bytestreams);
   priv->muc_bytestreams = NULL;
 
+  disconnect_all_bytestreams (self, priv->socks5_bytestreams);
   g_hash_table_destroy (priv->socks5_bytestreams);
   priv->socks5_bytestreams = NULL;
 
+  disconnect_all_bytestreams (self, priv->multiple_bytestreams);
   g_hash_table_destroy (priv->multiple_bytestreams);
   priv->multiple_bytestreams = NULL;
 

@@ -12,6 +12,8 @@ from gabbletest import exec_test, acknowledge_iq, sync_stream
 import constants as cs
 import ns
 import tubetestutil as t
+from bytestream import create_si_offer, parse_si_offer, create_si_reply,\
+    parse_si_reply
 
 from dbus import PROPERTIES_IFACE
 
@@ -34,21 +36,8 @@ new_sample_parameters = dbus.Dictionary({
     }, signature='sv')
 
 def contact_offer_dbus_tube(stream, si_id, tube_id):
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    si = iq.addElement((ns.SI, 'si'))
-    si['id'] = si_id
-    si['profile'] = ns.TUBES
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'form'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    field['type'] = 'list-single'
-    option = field.addElement((None, 'option'))
-    value = option.addElement((None, 'value'))
-    value.addContent(ns.IBB)
+    iq, si = create_si_offer(stream, 'bob@localhost/Bob',
+        'test@localhost/Resource', si_id, ns.TUBES, [ns.IBB])
 
     tube = si.addElement((ns.TUBES, 'tube'))
     tube['type'] = 'dbus'
@@ -338,21 +327,8 @@ def test(q, bus, conn, stream):
 
     # The CM is the server, so fake a client wanting to talk to it
     # Old API tube
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    si = iq.addElement((ns.SI, 'si'))
-    si['id'] = 'alpha'
-    si['profile'] = ns.TUBES
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'form'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    field['type'] = 'list-single'
-    option = field.addElement((None, 'option'))
-    value = option.addElement((None, 'value'))
-    value.addContent(ns.IBB)
+    iq, si = create_si_offer(stream, 'bob@localhost/Bob',
+        'test@localhost/Resource', 'alpha', ns.TUBES, [ns.IBB])
 
     stream_node = si.addElement((ns.TUBES, 'stream'))
     stream_node['tube'] = str(stream_tube_id)
@@ -362,14 +338,11 @@ def test(q, bus, conn, stream):
             EventPattern('stream-iq', iq_type='result'),
             EventPattern('dbus-signal', signal='TubeStateChanged',
                 args=[stream_tube_id, cs.TUBE_STATE_OPEN]))
-    iq = si_reply_event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    assert str(proto) == ns.IBB
-    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % ns.TUBES, si)
+
+    bytestream = parse_si_reply(si_reply_event.stanza)
+    assert bytestream == ns.IBB
+    tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
+        si_reply_event.stanza)
     assert len(tube) == 1
 
     q.expect('dbus-signal', signal='StreamTubeNewConnection',
@@ -382,21 +355,8 @@ def test(q, bus, conn, stream):
 
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'bob@localhost/Bob'
-    si = iq.addElement((ns.SI, 'si'))
-    si['id'] = 'beta'
-    si['profile'] = ns.TUBES
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'form'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    field['type'] = 'list-single'
-    option = field.addElement((None, 'option'))
-    value = option.addElement((None, 'value'))
-    value.addContent(ns.IBB)
+    iq, si = create_si_offer(stream, 'bob@localhost/Bob',
+        'test@localhost/Resource', 'beta', ns.TUBES, [ns.IBB])
 
     stream_node = si.addElement((ns.TUBES, 'stream'))
     stream_node['tube'] = str(new_stream_tube_id)
@@ -406,14 +366,11 @@ def test(q, bus, conn, stream):
             EventPattern('stream-iq', iq_type='result'),
             EventPattern('dbus-signal', signal='TubeChannelStateChanged',
                 args=[cs.TUBE_STATE_OPEN]))
-    iq = si_reply_event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    assert str(proto) == ns.IBB
-    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % ns.TUBES, si)
+
+    bytestream = parse_si_reply(si_reply_event.stanza)
+    assert bytestream == ns.IBB
+    tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
+        si_reply_event.stanza)
     assert len(tube) == 1
 
     q.expect('dbus-signal', signal='StreamTubeNewConnection',
@@ -494,26 +451,12 @@ def test(q, bus, conn, stream):
         'com.example.TestCase', sample_parameters)
 
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
-    iq = event.stanza
-    si_nodes = xpath.queryForNodes('/iq/si', iq)
-    assert si_nodes is not None
-    assert len(si_nodes) == 1
-    si = si_nodes[0]
-    assert si['profile'] == ns.TUBES
-    dbus_stream_id = si['id']
+    profile, dbus_stream_id, bytestreams = parse_si_offer(event.stanza)
 
-    feature = xpath.queryForNodes('/si/feature', si)[0]
-    x = xpath.queryForNodes('/feature/x', feature)[0]
-    assert x['type'] == 'form'
-    field = xpath.queryForNodes('/x/field', x)[0]
-    assert field['var'] == 'stream-method'
-    assert field['type'] == 'list-single'
-    value = xpath.queryForNodes('/field/option/value', field)[0]
-    assert str(value) == ns.BYTESTREAMS
-    value = xpath.queryForNodes('/field/option/value', field)[1]
-    assert str(value) == ns.IBB
+    assert profile == ns.TUBES
+    assert bytestreams == [ns.BYTESTREAMS, ns.IBB]
 
-    tube = xpath.queryForNodes('/si/tube', si)[0]
+    tube = xpath.queryForNodes('/iq/si/tube', event.stanza)[0]
     assert tube['initiator'] == 'test@localhost'
     assert tube['service'] == 'com.example.TestCase'
     assert tube['stream-id'] == dbus_stream_id
@@ -532,19 +475,7 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    result = IQ(stream, 'result')
-    result['id'] = iq['id']
-    result['from'] = iq['to']
-    result['to'] = 'test@localhost/Resource'
-    res_si = result.addElement((ns.SI, 'si'))
-    res_feature = res_si.addElement((ns.FEATURE_NEG, 'feature'))
-    res_x = res_feature.addElement((ns.X_DATA, 'x'))
-    res_x['type'] = 'submit'
-    res_field = res_x.addElement((None, 'field'))
-    res_field['var'] = 'stream-method'
-    res_value = res_field.addElement((None, 'value'))
-    res_value.addContent(ns.IBB)
-
+    result = create_si_reply(stream, event.stanza, 'test@localhost/Resource', ns.IBB)
     stream.send(result)
 
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
@@ -672,14 +603,10 @@ def test(q, bus, conn, stream):
     call_async(q, tubes_iface, 'AcceptDBusTube', id)
 
     event = q.expect('stream-iq', iq_type='result')
-    iq = event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    assert str(proto) == ns.IBB
-    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % ns.TUBES, si)
+    bytestream = parse_si_reply (event.stanza)
+    assert bytestream == ns.IBB
+    tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
+        event.stanza)
     assert len(tube) == 1
 
     # Init the IBB bytestream
@@ -730,14 +657,9 @@ def test(q, bus, conn, stream):
     call_async(q, dbus_tube_iface, 'AcceptDBusTube')
 
     event = q.expect('stream-iq', iq_type='result')
-    iq = event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    assert str(proto) == ns.IBB
-    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % ns.TUBES, si)
+    bytestream = parse_si_reply (event.stanza)
+    assert bytestream == ns.IBB
+    tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES, event.stanza)
     assert len(tube) == 1
 
     # Init the IBB bytestream

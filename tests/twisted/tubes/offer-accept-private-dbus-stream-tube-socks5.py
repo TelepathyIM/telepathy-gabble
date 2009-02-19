@@ -121,6 +121,20 @@ def send_socks5_init(stream, from_, to, sid, mode, hosts):
         streamhost['port'] = port
     stream.send(iq)
 
+def expect_socks5_init(q):
+    event = q.expect('stream-iq', iq_type='set')
+    iq = event.stanza
+    query = xpath.queryForNodes('/iq/query', iq)[0]
+    assert query.uri == ns.BYTESTREAMS
+
+    mode = query['mode']
+    sid = query['sid']
+    hosts = []
+
+    for streamhost in xpath.queryForNodes('/query/streamhost', query):
+        hosts.append((streamhost['jid'], streamhost['host'], int(streamhost['port'])))
+    return iq['id'], mode, sid, hosts
+
 def expect_socks5_reply(q):
     event = q.expect('stream-iq', iq_type='result')
     iq = event.stanza
@@ -542,20 +556,16 @@ def test(q, bus, conn, stream):
 
     stream.send(result)
 
-    event = q.expect('stream-iq', iq_type='set', to=bob_full_jid)
-    iq = event.stanza
-    query = xpath.queryForNodes('/iq/query', iq)[0]
-    assert query.uri == ns.BYTESTREAMS
-    assert query['mode'] == 'tcp'
-    assert query['sid'] == dbus_stream_id
-    streamhost = xpath.queryForNodes('/query/streamhost', query)[0]
+    id, mode, sid, hosts = expect_socks5_init(q)
+    assert mode == 'tcp'
+    assert sid == dbus_stream_id
+    jid, host, port = hosts[0]
 
-    transport = socks5_connect(q, streamhost['host'], int(streamhost['port']),
-        query['sid'], self_full_jid, bob_full_jid)
+    transport = socks5_connect(q, host, port, sid, self_full_jid, bob_full_jid)
 
     result = IQ(stream, 'result')
-    result['id'] = iq['id']
-    result['from'] = iq['to']
+    result['id'] = id
+    result['from'] = bob_full_jid
     result['to'] = self_full_jid
 
     stream.send(result)

@@ -41,3 +41,5 @@ class SendFileTransferWaitToProvideTest(SendFileTest):
 if __name__ == '__main__':
     test = SendFileTransferWaitToProvideTest(BytestreamIBB)
     exec_test(test.test)
+    test = SendFileTransferWaitToProvideTest(BytestreamS5B)
+    exec_test(test.test)

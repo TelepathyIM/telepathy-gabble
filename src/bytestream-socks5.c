@@ -1417,7 +1417,9 @@ gabble_bytestream_socks5_block_reading (GabbleBytestreamIface *iface,
   priv->read_blocked = block;
 
   DEBUG ("%s the transport bytestream", block ? "block": "unblock");
-  gibber_transport_block_receiving (priv->transport, block);
+
+  if (priv->transport != NULL)
+    gibber_transport_block_receiving (priv->transport, block);
 }
 
 static void

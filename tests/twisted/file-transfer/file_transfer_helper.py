@@ -7,7 +7,8 @@ from servicetest import EventPattern
 from gabbletest import acknowledge_iq, sync_stream
 import ns
 from bytestream import parse_si_offer, create_si_reply, parse_ibb_open, parse_ibb_msg_data,\
-    create_si_offer, parse_si_reply, send_ibb_open, send_ibb_msg_data
+    create_si_offer, parse_si_reply, send_ibb_open, send_ibb_msg_data, listen_socks5, \
+    send_socks5_init, socks5_expect_connection
 
 from twisted.words.xish import domish, xpath
 
@@ -308,6 +309,30 @@ class ReceiveFileTestIBB(ReceiveFileTest):
         sync_stream(self.q, self.stream)
 
         self.seq += 1
+
+class ReceiveFileTestS5B(ReceiveFileTest):
+    def __init__(self):
+        ReceiveFileTest.__init__(self)
+
+        self.bytestream = ns.BYTESTREAMS
+
+    def open_bytestream(self):
+        port = listen_socks5(self.q)
+
+        send_socks5_init(self.stream, self.contact_name, 'test@localhost/Resource',
+            'alpha', 'tcp', [(self.contact_name, '127.0.0.1', port)])
+
+        self.transport = socks5_expect_connection(self.q, 'alpha',
+            self.contact_name, 'test@localhost/Resource')
+
+        offset_event, state_event = self.q.expect_many(
+            EventPattern('dbus-signal', signal='InitialOffsetDefined'),
+            EventPattern('dbus-signal', signal='FileTransferStateChanged'))
+
+        return offset_event, state_event
+
+    def send_data(self, data):
+        self.transport.write(data)
 
 class SendFileTest(FileTransferTest):
     def __init__(self):

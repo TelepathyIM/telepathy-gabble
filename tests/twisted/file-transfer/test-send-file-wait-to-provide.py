@@ -1,11 +1,11 @@
 from gabbletest import exec_test
-from file_transfer_helper import SendFileTestIBB, CHANNEL_TYPE_FILE_TRANSFER, \
+from file_transfer_helper import SendFileTest, CHANNEL_TYPE_FILE_TRANSFER, \
     FT_STATE_PENDING, FT_STATE_ACCEPTED, FT_STATE_OPEN, FT_STATE_CHANGE_REASON_REQUESTED, \
-    FT_STATE_CHANGE_REASON_NONE
+    FT_STATE_CHANGE_REASON_NONE, BytestreamIBB, BytestreamS5B
 
-class SendFileTransferWaitToProvideTest(SendFileTestIBB):
-    def __init__(self):
-        SendFileTestIBB.__init__(self)
+class SendFileTransferWaitToProvideTest(SendFileTest):
+    def __init__(self, bytestream_cls):
+        SendFileTest.__init__(self, bytestream_cls)
 
         self._actions =  [self.connect, self.check_ft_available, self.announce_contact,
             self.check_ft_available, self.request_ft_channel, self.create_ft_channel, self.got_send_iq,
@@ -16,7 +16,7 @@ class SendFileTransferWaitToProvideTest(SendFileTestIBB):
         state = self.ft_props.Get(CHANNEL_TYPE_FILE_TRANSFER, 'State')
         assert state == FT_STATE_PENDING
 
-        SendFileTestIBB.client_accept_file(self)
+        SendFileTest.client_accept_file(self)
 
         # Remote accepted the transfer
         e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')
@@ -25,7 +25,7 @@ class SendFileTransferWaitToProvideTest(SendFileTestIBB):
         assert reason == FT_STATE_CHANGE_REASON_NONE
 
     def provide_file(self):
-        SendFileTestIBB.provide_file(self)
+        SendFileTest.provide_file(self)
 
         e = self.q.expect('dbus-signal', signal='InitialOffsetDefined')
         offset = e.args[0]
@@ -39,5 +39,5 @@ class SendFileTransferWaitToProvideTest(SendFileTestIBB):
         assert reason == FT_STATE_CHANGE_REASON_REQUESTED
 
 if __name__ == '__main__':
-    test = SendFileTransferWaitToProvideTest()
+    test = SendFileTransferWaitToProvideTest(BytestreamIBB)
     exec_test(test.test)

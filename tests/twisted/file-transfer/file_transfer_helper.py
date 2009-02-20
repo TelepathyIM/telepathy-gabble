@@ -79,8 +79,9 @@ class File(object):
 class FileTransferTest(object):
     CONTACT_NAME = 'test-ft@localhost'
 
-    def __init__(self):
+    def __init__(self, bytestream_cls):
         self.file = File()
+        self.bytestream_cls = bytestream_cls
 
     def connect(self):
         self.conn.Connect()
@@ -151,14 +152,16 @@ class FileTransferTest(object):
         self.conn = conn
         self.stream = stream
 
+        self.bytestream = self.bytestream_cls(stream, q)
+
         for fct in self._actions:
             # stop if a function returns True
             if fct():
                 break
 
 class ReceiveFileTest(FileTransferTest):
-    def __init__(self):
-        FileTransferTest.__init__(self)
+    def __init__(self, bytestream_cls):
+        FileTransferTest.__init__(self, bytestream_cls)
 
         self._actions = [self.connect, self.announce_contact,
             self.send_ft_offer_iq, self.check_new_channel, self.create_ft_channel, self.accept_file,
@@ -166,7 +169,7 @@ class ReceiveFileTest(FileTransferTest):
 
     def send_ft_offer_iq(self):
         iq, si = create_si_offer(self.stream, self.contact_name, 'test@localhost/Resource', 'alpha',
-            ns.FILE_TRANSFER, [self.bytestream])
+            ns.FILE_TRANSFER, [self.bytestream.get_ns()])
 
         file_node = si.addElement((ns.FILE_TRANSFER,'file'))
         file_node['name'] = self.file.name
@@ -228,9 +231,10 @@ class ReceiveFileTest(FileTransferTest):
 
         # Got SI reply
         bytestream = parse_si_reply(iq_event.stanza)
-        assert bytestream == self.bytestream
+        assert bytestream == self.bytestream.get_ns()
 
-        offset_event, state_event = self.open_bytestream()
+        offset_event, state_event = self.bytestream.open_bytestream(
+            self.contact_name, 'test@localhost/Resource')
 
         offset = offset_event.args[0]
         # We don't support resume
@@ -241,15 +245,7 @@ class ReceiveFileTest(FileTransferTest):
         assert reason == FT_STATE_CHANGE_REASON_NONE
 
         # send the beginning of the file (client didn't connect to socket yet)
-        self.send_data(self.file.data[:2])
-
-    def open_bytestream(self):
-        # Open the bytestream and return the InitialOffsetDefined and
-        # FileTransferStateChanged events
-        raise NotImplemented
-
-    def send_data(self, data):
-        raise NotImplemented
+        self.bytestream.send_data(self.contact_name, 'test@localhost/Resource', self.file.data[:2])
 
     def receive_file(self):
         # Connect to Salut's socket
@@ -257,7 +253,7 @@ class ReceiveFileTest(FileTransferTest):
         s.connect(self.address)
 
         # send the rest of the file
-        self.send_data(self.file.data[2:])
+        self.bytestream.send_data(self.contact_name, 'test@localhost/Resource', self.file.data[2:])
 
         self._read_file_from_socket(s)
 
@@ -284,17 +280,40 @@ class ReceiveFileTest(FileTransferTest):
         assert state == FT_STATE_COMPLETED
         assert reason == FT_STATE_CHANGE_REASON_NONE
 
-class ReceiveFileTestIBB(ReceiveFileTest):
-    def __init__(self):
-        ReceiveFileTest.__init__(self)
+class Bytestream(object):
+    def __init__(self, stream, q):
+        self.stream = stream
+        self.q = q
 
-        self.bytestream = ns.IBB
+    def open_bytestream(self, from_, to_):
+        # Open the bytestream and return the InitialOffsetDefined and
+        # FileTransferStateChanged events
+        raise NotImplemented
+
+    def send_data(self, from_, to, data):
+        raise NotImplemented
+
+    def get_ns(self):
+        raise NotImplemented
+
+    def wait_bytestream_open(self):
+        raise NotImplemented
+
+    def get_file(self, ft_channel, size):
+        raise NotImplemented
+
+class BytestreamIBB(Bytestream):
+    def __init__(self, stream, q):
+        Bytestream.__init__(self, stream, q)
+
         self.seq = 0
 
-    def open_bytestream(self):
+    def get_ns(self):
+        return ns.IBB
+
+    def open_bytestream(self, from_, to):
         # open IBB bytestream
-        send_ibb_open(self.stream, self.contact_name, 'test@localhost/Resource',
-            'alpha', 4096)
+        send_ibb_open(self.stream, from_, to, 'alpha', 4096)
 
         _, offset_event, state_event = self.q.expect_many(
             EventPattern('stream-iq', iq_type='result'),
@@ -303,27 +322,70 @@ class ReceiveFileTestIBB(ReceiveFileTest):
 
         return offset_event, state_event
 
-    def send_data(self, data):
-        send_ibb_msg_data(self.stream, self.contact_name, 'test@localhost/Resource',
-            'alpha', 0, data)
+    def send_data(self, from_, to, data):
+        send_ibb_msg_data(self.stream, from_, to, 'alpha', self.seq, data)
         sync_stream(self.q, self.stream)
 
         self.seq += 1
 
-class ReceiveFileTestS5B(ReceiveFileTest):
-    def __init__(self):
-        ReceiveFileTest.__init__(self)
+    def wait_bytestream_open(self):
+        # Wait IBB open iq
+        event = self.q.expect('stream-iq', iq_type='set')
+        sid = parse_ibb_open(event.stanza)
+        # FIXME: pass stream_id to Bytestream
+        #assert sid == self.stream_id
 
-        self.bytestream = ns.BYTESTREAMS
+        # open IBB bytestream
+        acknowledge_iq(self.stream, event.stanza)
 
-    def open_bytestream(self):
+    def get_file(self, ft_channel, size):
+        # FIXME: try to share more code with parent class
+        data = ''
+        self.count = 0
+
+        def bytes_changed_cb(bytes):
+            self.count = bytes
+
+        ft_channel.connect_to_signal('TransferredBytesChanged', bytes_changed_cb)
+
+        # wait for IBB stanzas
+        while len(data) < size:
+            ibb_event = self.q.expect('stream-message')
+            sid, binary = parse_ibb_msg_data(ibb_event.stanza)
+            #assert sid == self.stream_id
+            #FIXME
+            data += binary
+
+        # The bytes transferred has been announced using
+        # TransferredBytesChanged
+        assert self.count == size
+
+        # FileTransferStateChanged could have already been fired
+        e, close_event = self.q.expect_many(
+            EventPattern('dbus-signal', signal='FileTransferStateChanged'),
+            EventPattern('stream-iq', iq_type='set', query_name='close', query_ns=ns.IBB))
+
+        state, reason = e.args
+        assert state == FT_STATE_COMPLETED
+        assert reason == FT_STATE_CHANGE_REASON_NONE
+
+        # sender finish to send the file and so close the bytestream
+        acknowledge_iq(self.stream, close_event.stanza)
+
+        return data
+
+class BytestreamS5B(Bytestream):
+    def get_ns(self):
+        return ns.BYTESTREAMS
+
+    def open_bytestream(self, from_, to):
         port = listen_socks5(self.q)
 
-        send_socks5_init(self.stream, self.contact_name, 'test@localhost/Resource',
-            'alpha', 'tcp', [(self.contact_name, '127.0.0.1', port)])
+        send_socks5_init(self.stream, from_, to,
+            'alpha', 'tcp', [(from_, '127.0.0.1', port)])
 
         self.transport = socks5_expect_connection(self.q, 'alpha',
-            self.contact_name, 'test@localhost/Resource')
+            from_, 'test@localhost/Resource')
 
         offset_event, state_event = self.q.expect_many(
             EventPattern('dbus-signal', signal='InitialOffsetDefined'),
@@ -331,12 +393,12 @@ class ReceiveFileTestS5B(ReceiveFileTest):
 
         return offset_event, state_event
 
-    def send_data(self, data):
+    def send_data(self, from_, to, data):
         self.transport.write(data)
 
 class SendFileTest(FileTransferTest):
-    def __init__(self):
-        FileTransferTest.__init__(self)
+    def __init__(self, bytestream_cls):
+        FileTransferTest.__init__(self, bytestream_cls)
 
         self._actions = [self.connect, self.announce_contact,
             self.check_ft_available, self.request_ft_channel, self.create_ft_channel,
@@ -436,71 +498,16 @@ class SendFileTest(FileTransferTest):
     def client_accept_file(self):
         # accept SI offer
         result = create_si_reply(self.stream, self.iq, 'test@localhost/Resource',
-            self.bytestream)
+            self.bytestream.get_ns())
         self.stream.send(result)
 
-        self.wait_bytestream_open()
-
-    def wait_bytestream_open(self):
-        raise NotImplemented
+        self.bytestream.wait_bytestream_open()
 
     def send_file(self):
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(self.address)
         s.send(self.file.data)
 
-        self.receive_file()
-
-    def receive_file(self):
-        raise NotImplemented
-
-class SendFileTestIBB(SendFileTest):
-    def __init__(self):
-        SendFileTest.__init__(self)
-
-        self.bytestream = ns.IBB
-
-    def wait_bytestream_open(self):
-        # Wait IBB open iq
-        event = self.q.expect('stream-iq', iq_type='set', to=self.contact_full_jid)
-        sid = parse_ibb_open(event.stanza)
-        assert sid == self.stream_id
-
-        # open IBB bytestream
-        acknowledge_iq(self.stream, event.stanza)
-
-    def receive_file(self):
-        # FIXME: try to share more code with parent class
-        data = ''
-        self.count = 0
-
-        def bytes_changed_cb(bytes):
-            self.count = bytes
-
-        self.ft_channel.connect_to_signal('TransferredBytesChanged', bytes_changed_cb)
-
-        # wait for IBB stanzas
-        while len(data) < self.file.size:
-            ibb_event = self.q.expect('stream-message', to=self.contact_full_jid)
-            sid, binary = parse_ibb_msg_data(ibb_event.stanza)
-            assert sid == self.stream_id
-            data += binary
+        data = self.bytestream.get_file(self.ft_channel, self.file.size)
 
         assert data == self.file.data
-        # The bytes transferred has been announced using
-        # TransferredBytesChanged
-        assert self.count == self.file.size
-
-        # FileTransferStateChanged could have already been fired
-        e, close_event = self.q.expect_many(
-            EventPattern('dbus-signal', signal='FileTransferStateChanged'),
-            EventPattern('stream-iq', iq_type='set', query_name='close', query_ns=ns.IBB))
-
-        state, reason = e.args
-        assert state == FT_STATE_COMPLETED
-        assert reason == FT_STATE_CHANGE_REASON_NONE
-
-        # sender finish to send the file and so close the bytestream
-        acknowledge_iq(self.stream, close_event.stanza)
-
-

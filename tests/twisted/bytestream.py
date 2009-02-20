@@ -5,6 +5,7 @@ from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import xpath, domish
+from twisted.internet.error import CannotListenError
 
 from servicetest import Event
 import ns
@@ -148,6 +149,17 @@ def socks5_connect(q, host, port, sid,  initiator, target):
     event.data == '\x05\x00' # version 5, ok
 
     return transport
+
+def listen_socks5(q):
+    for port in range(5000,5100):
+        try:
+            reactor.listenTCP(port, S5BFactory(q.append))
+        except CannotListenError:
+            continue
+        else:
+            return port
+
+    assert False, "Can't find a free port"
 
 def send_socks5_init(stream, from_, to, sid, mode, hosts):
     iq = IQ(stream, 'set')

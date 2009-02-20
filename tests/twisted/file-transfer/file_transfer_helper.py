@@ -409,10 +409,33 @@ class SendFileTest(FileTransferTest):
                 SOCKET_ACCESS_CONTROL_LOCALHOST, "")
 
     def client_accept_file(self):
-        # accept using IBB
-        result = create_si_reply(self.stream, self.iq, 'test@localhost/Resource', ns.IBB)
+        # accept SI offer
+        result = create_si_reply(self.stream, self.iq, 'test@localhost/Resource',
+            self.bytestream)
         self.stream.send(result)
 
+        self.wait_bytestream_open()
+
+    def wait_bytestream_open(self):
+        raise NotImplemented
+
+    def send_file(self):
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.connect(self.address)
+        s.send(self.file.data)
+
+        self.receive_file()
+
+    def receive_file(self):
+        raise NotImplemented
+
+class SendFileTestIBB(SendFileTest):
+    def __init__(self):
+        SendFileTest.__init__(self)
+
+        self.bytestream = ns.IBB
+
+    def wait_bytestream_open(self):
         # Wait IBB open iq
         event = self.q.expect('stream-iq', iq_type='set', to=self.contact_full_jid)
         sid = parse_ibb_open(event.stanza)
@@ -421,20 +444,8 @@ class SendFileTest(FileTransferTest):
         # open IBB bytestream
         acknowledge_iq(self.stream, event.stanza)
 
-    def _get_http_response(self):
-        response = self.http.getresponse()
-        assert (response.status, response.reason) == (200, 'OK')
-        data = response.read(self.file.size)
-        # Did we received the right file?
-
-    def send_file(self):
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(self.address)
-        s.send(self.file.data)
-
-        self._receive_file_ibb()
-
-    def _receive_file_ibb(self):
+    def receive_file(self):
+        # FIXME: try to share more code with parent class
         data = ''
         self.count = 0
 
@@ -466,3 +477,5 @@ class SendFileTest(FileTransferTest):
 
         # sender finish to send the file and so close the bytestream
         acknowledge_iq(self.stream, close_event.stanza)
+
+

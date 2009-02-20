@@ -165,7 +165,7 @@ class ReceiveFileTest(FileTransferTest):
 
     def send_ft_offer_iq(self):
         iq, si = create_si_offer(self.stream, self.contact_name, 'test@localhost/Resource', 'alpha',
-            ns.FILE_TRANSFER, [ns.IBB])
+            ns.FILE_TRANSFER, [self.bytestream])
 
         file_node = si.addElement((ns.FILE_TRANSFER,'file'))
         file_node['name'] = self.file.name
@@ -227,16 +227,9 @@ class ReceiveFileTest(FileTransferTest):
 
         # Got SI reply
         bytestream = parse_si_reply(iq_event.stanza)
-        assert bytestream == ns.IBB
+        assert bytestream == self.bytestream
 
-        # open IBB bytestream
-        send_ibb_open(self.stream, self.contact_name, 'test@localhost/Resource',
-            'alpha', 4096)
-
-        _, offset_event, state_event = self.q.expect_many(
-            EventPattern('stream-iq', iq_type='result'),
-            EventPattern('dbus-signal', signal='InitialOffsetDefined'),
-            EventPattern('dbus-signal', signal='FileTransferStateChanged'))
+        offset_event, state_event = self.open_bytestream()
 
         offset = offset_event.args[0]
         # We don't support resume
@@ -247,9 +240,15 @@ class ReceiveFileTest(FileTransferTest):
         assert reason == FT_STATE_CHANGE_REASON_NONE
 
         # send the beginning of the file (client didn't connect to socket yet)
-        send_ibb_msg_data(self.stream, self.contact_name, 'test@localhost/Resource',
-            'alpha', 0, self.file.data[:2])
-        sync_stream(self.q, self.stream)
+        self.send_data(self.file.data[:2])
+
+    def open_bytestream(self):
+        # Open the bytestream and return the InitialOffsetDefined and
+        # FileTransferStateChanged events
+        raise NotImplemented
+
+    def send_data(self, data):
+        raise NotImplemented
 
     def receive_file(self):
         # Connect to Salut's socket
@@ -257,8 +256,7 @@ class ReceiveFileTest(FileTransferTest):
         s.connect(self.address)
 
         # send the rest of the file using IBB
-        send_ibb_msg_data(self.stream, self.contact_name, 'test@localhost/Resource',
-            'alpha', 0, self.file.data[2:])
+        self.send_data(self.file.data[2:])
 
         self._read_file_from_socket(s)
 
@@ -284,6 +282,32 @@ class ReceiveFileTest(FileTransferTest):
         state, reason = e.args
         assert state == FT_STATE_COMPLETED
         assert reason == FT_STATE_CHANGE_REASON_NONE
+
+class ReceiveFileTestIBB(ReceiveFileTest):
+    def __init__(self):
+        ReceiveFileTest.__init__(self)
+
+        self.bytestream = ns.IBB
+        self.seq = 0
+
+    def open_bytestream(self):
+        # open IBB bytestream
+        send_ibb_open(self.stream, self.contact_name, 'test@localhost/Resource',
+            'alpha', 4096)
+
+        _, offset_event, state_event = self.q.expect_many(
+            EventPattern('stream-iq', iq_type='result'),
+            EventPattern('dbus-signal', signal='InitialOffsetDefined'),
+            EventPattern('dbus-signal', signal='FileTransferStateChanged'))
+
+        return offset_event, state_event
+
+    def send_data(self, data):
+        send_ibb_msg_data(self.stream, self.contact_name, 'test@localhost/Resource',
+            'alpha', 0, data)
+        sync_stream(self.q, self.stream)
+
+        self.seq += 1
 
 class SendFileTest(FileTransferTest):
     def __init__(self):

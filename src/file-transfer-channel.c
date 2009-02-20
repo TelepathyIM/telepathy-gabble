@@ -1263,6 +1263,10 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
 
   /* channel state will change to open once the bytestream is open */
   /* TODO: set a function once we support resume */
+
+  /* Block the bytestream while the user is not connected to the socket */
+  gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
+
   gabble_bytestream_iface_accept (self->priv->bytestream, NULL, NULL);
 
   g_value_unset (&out_address);
@@ -1514,7 +1518,9 @@ file_transfer_send (GabbleFileTransferChannel *self)
 static void
 file_transfer_receive (GabbleFileTransferChannel *self)
 {
-  /* TODO: unblock the bytestream as we can now receive data */
+  /* Client is connected, we can now receive data. Unblock the bytestream */
+  g_assert (self->priv->bytestream != NULL);
+  gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
 }
 
 /*

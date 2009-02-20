@@ -10,6 +10,7 @@ import gabbletest
 import dbus
 import time
 
+import constants as cs
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -28,6 +29,8 @@ def test(q, bus, conn, stream):
             EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
             )
 
+    self_handle = conn.GetSelfHandle()
+
     # We need remote end's presence for capabilities
     jt.send_remote_presence()
 
@@ -40,7 +43,7 @@ def test(q, bus, conn, stream):
     # Force Gabble to process the caps before calling RequestChannel
     sync_stream(q, stream)
 
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
 
     # Remote end calls us
     jt.incoming_call()
@@ -51,10 +54,13 @@ def test(q, bus, conn, stream):
 
     # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], remote_handle, 0])
+             args=[u'', [], [], [self_handle], [], remote_handle, 0])
 
-    media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
-    media_iface = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Type.StreamedMedia')
+    path_suffix = e.path
+    media_chan = make_channel_proxy(conn, tp_path_prefix + path_suffix,
+        'Channel.Interface.Group')
+    media_iface = make_channel_proxy(conn, tp_path_prefix + path_suffix,
+        'Channel.Type.StreamedMedia')
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -70,20 +76,15 @@ def test(q, bus, conn, stream):
     stream_handler = make_channel_proxy(conn, e2.args[0], 'Media.StreamHandler')
 
     stream_id = e3.args[0]
-    assert e3.args[1] == 2 # active direction - receive
-    assert e3.args[2] == 1 # pending local send
-    media_iface.RequestStreamDirection(stream_id, 3) # allow local send
-
-    e = q.expect('dbus-signal', signal='StreamDirectionChanged',
-        args=[stream_id, 3, 0])
-
+    assert e3.args[1] == cs.MEDIA_STREAM_DIRECTION_RECEIVE
+    assert e3.args[2] == cs.MEDIA_STREAM_PENDING_LOCAL_SEND
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
             dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetHandle'] == remote_handle
-    assert channel_props['TargetHandleType'] == 1
+    assert channel_props['TargetHandleType'] == cs.HT_CONTACT
     assert channel_props['TargetID'] == 'foo@bar.com'
     assert channel_props['InitiatorID'] == 'foo@bar.com'
     assert channel_props['InitiatorHandle'] == remote_handle
@@ -92,7 +93,7 @@ def test(q, bus, conn, stream):
     # Connectivity checks happen before we have accepted the call
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler.Ready(jt.get_audio_codecs_dbus())
-    stream_handler.StreamState(2)
+    stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
     stream_handler.SupportedCodecs(jt.get_audio_codecs_dbus())
 
     # peer gets the transport
@@ -108,31 +109,30 @@ def test(q, bus, conn, stream):
     sync_dbus(bus, q, conn)
 
     # At last, accept the call
-    media_chan.AddMembers([dbus.UInt32(1)], 'accepted')
+    media_chan.AddMembers([self_handle], 'accepted')
 
-    # Call is accepted and we're in members too
-    memb, acc = q.expect_many(
-        EventPattern('dbus-signal', signal='MembersChanged', args=[u'', [1L],
-            [], [], [], 0, 0]),
+    # Call is accepted, we become a member, and the stream that was pending
+    # local send is now sending.
+    memb, acc, _, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=[u'', [self_handle], [], [], [], 0, 0]),
         EventPattern('stream-iq',
             predicate=lambda e: (e.query.name == 'jingle' and
-                e.query['action'] == 'session-accept')))
+                e.query['action'] == 'session-accept')),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[True]),
+        EventPattern('dbus-signal', signal='StreamDirectionChanged',
+            args=[stream_id, cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL, 0]),
+        )
 
     # we are now both in members
     members = media_chan.GetMembers()
-    assert set(members) == set([1L, remote_handle]), members
-
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
+    assert set(members) == set([self_handle, remote_handle]), members
 
     # Connected! Blah, blah, ...
 
     # 'Nuff said
     jt.remote_terminate()
-
-
-    # Tests completed, close the connection
-
-    e = q.expect('dbus-signal', signal='Closed') #XXX - match against the path
+    q.expect('dbus-signal', signal='Closed', path=path_suffix)
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

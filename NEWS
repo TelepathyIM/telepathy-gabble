@@ -1,15 +1,17 @@
-telepathy-gabble 0.7.21 (UNRELEASED)
+telepathy-gabble 0.7.21 (2009-02-19)
 ====================================
+
+The "what?! why do I have flowers outside of my window?" release.
+
+Dependencies:
+
+* telepathy-glib 0.7.23 is now required
 
 Enhancements:
 
 * Implement new tube API for muc stream tubes
 * Implement new tube API for 1-1 and muc D-Bus tubes
 * Implement the Messages interface for Text channels.
-
-Fixes:
-
-* Fix various tubes related leaks
 
 Changes:
 
@@ -24,7 +26,14 @@ Changes:
   If clients want to preserve the total ordering of MUC messages, they now need
   to care about the Messages interface and watch out for the delivery report.
 
-telepathy-gabble 0.7.20 (2008-01-02)
+Fixes:
+
+* Various tubes related leaks
+* fd.o#20003: fix a crash starting Jingle calls on some 64-bit platforms
+* fd.o#20133: fix various bugs where idle callbacks outlived their user-data.
+* Don't start sending video when the other side adds a video stream.
+
+telepathy-gabble 0.7.20 (2009-01-02)
 ====================================
 
 The "crêpes du belge" release.
@@ -58,6 +67,8 @@ Fixes:
 * Fix D-Bus muc tubes (dev.sugarlabs.org #60).
 * Fix refcount leak in jingle code (fd.o #19385).
 * Don't crash if "offline" presence status is requested.
+* Raise the appropriate error from RequestHandles for telepathy-spec 0.17.18
+  compliance (fd.o #19611).
 
 telepathy-gabble 0.7.18 (2009-01-06)
 ====================================
@@ -276,6 +287,7 @@ Requirements:
 Enhancements:
 
 * Implement the Requests API introduced in spec 0.17.11 and extended in 0.17.12
+  (fd.o #17248)
 
 * Save contacts' aliases into the roster for massive bandwidth savings (in
   conjunction with avatar caching, this should mean we don't have to fetch

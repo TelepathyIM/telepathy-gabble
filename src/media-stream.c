@@ -1515,6 +1515,28 @@ gabble_media_stream_change_direction (GabbleMediaStream *stream,
   return TRUE;
 }
 
+void
+gabble_media_stream_accept_pending_local_send (GabbleMediaStream *stream)
+{
+  CombinedStreamDirection combined_dir = stream->combined_direction;
+  TpMediaStreamDirection current_dir;
+  TpMediaStreamPendingSend pending_send;
+
+  current_dir = COMBINED_DIRECTION_GET_DIRECTION (combined_dir);
+  pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (combined_dir);
+
+  if ((pending_send & TP_MEDIA_STREAM_PENDING_LOCAL_SEND) != 0)
+    {
+      DEBUG ("accepting pending local send on stream %s", stream->name);
+
+      gabble_media_stream_change_direction (stream,
+          current_dir | TP_MEDIA_STREAM_DIRECTION_SEND, NULL);
+    }
+  else
+    {
+      DEBUG ("stream %s not pending local send", stream->name);
+    }
+}
 
 static void
 update_sending (GabbleMediaStream *stream, gboolean start_sending)

@@ -405,9 +405,9 @@ listen_tcp_af (GibberListener *listener, int port, GibberAddressFamily family,
       if (port == 0 && priv->port != 0)
         {
           if (a->ai_family == AF_INET)
-            addr.in->sin_port = priv->port;
+            addr.in->sin_port = g_htons (priv->port);
           else if (a->ai_family == AF_INET6)
-            addr.in6->sin6_port = priv->port;
+            addr.in6->sin6_port = g_htons (priv->port);
           else
             g_assert_not_reached ();
         }

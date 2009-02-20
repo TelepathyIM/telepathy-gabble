@@ -2,7 +2,7 @@
 
 cd "@abs_top_builddir@/tests/twisted/tools"
 
-export GABBLE_DEBUG=all LM_DEBUG=net
+export GABBLE_DEBUG=all LM_DEBUG=net GIBBER_DEBUG=all
 ulimit -c unlimited
 exec >> gabble-testing.log 2>&1
 

@@ -1068,7 +1068,8 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       "mime-type", self->priv->content_type,
       "hash", self->priv->content_hash,
       NULL);
-  /* TODO: other attributes */
+
+  /* TODO: support initial offset */
 
   desc_node = lm_message_node_add_child (file_node, "desc",
       self->priv->description);

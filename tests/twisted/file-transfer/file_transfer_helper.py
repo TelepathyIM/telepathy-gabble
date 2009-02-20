@@ -4,7 +4,7 @@ import md5
 import time
 
 from servicetest import EventPattern
-from gabbletest import acknowledge_iq
+from gabbletest import acknowledge_iq, sync_stream
 import ns
 from bytestream import parse_si_offer, create_si_reply, parse_ibb_open, parse_ibb_msg_data,\
     create_si_offer, parse_si_reply, send_ibb_open, send_ibb_msg_data
@@ -246,14 +246,19 @@ class ReceiveFileTest(FileTransferTest):
         assert state == FT_STATE_OPEN
         assert reason == FT_STATE_CHANGE_REASON_NONE
 
+        # send the beginning of the file (client didn't connect to socket yet)
+        send_ibb_msg_data(self.stream, self.contact_name, 'test@localhost/Resource',
+            'alpha', 0, self.file.data[:2])
+        sync_stream(self.q, self.stream)
+
     def receive_file(self):
         # Connect to Salut's socket
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(self.address)
 
-        # send file using IBB
+        # send the rest of the file using IBB
         send_ibb_msg_data(self.stream, self.contact_name, 'test@localhost/Resource',
-            'alpha', 0, self.file.data)
+            'alpha', 0, self.file.data[2:])
 
         self._read_file_from_socket(s)
 

@@ -1065,6 +1065,8 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       "xmlns", NS_FILE_TRANSFER,
       "name", self->priv->filename,
       "size", size_str,
+      "mime-type", self->priv->content_type,
+      "hash", self->priv->content_hash,
       NULL);
   /* TODO: other attributes */
 

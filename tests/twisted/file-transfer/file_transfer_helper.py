@@ -171,7 +171,9 @@ class ReceiveFileTest(FileTransferTest):
         file_node['name'] = self.file.name
         file_node['size'] = str(self.file.size)
         file_node['mime-type'] = self.file.content_type
-        # TODO: hash, date
+        file_node['hash'] = self.file.hash
+        # TODO: date
+        # TODO: intial offset
 
         file_node.addElement('desc', content=self.file.description)
         iq.send()
@@ -199,8 +201,8 @@ class ReceiveFileTest(FileTransferTest):
         assert props[CHANNEL_TYPE_FILE_TRANSFER + '.Filename'] == self.file.name
         assert props[CHANNEL_TYPE_FILE_TRANSFER + '.Size'] == self.file.size
         # FT's protocol doesn't allow us the send the hash info
-        assert props[CHANNEL_TYPE_FILE_TRANSFER + '.ContentHashType'] == FILE_HASH_TYPE_NONE
-        assert props[CHANNEL_TYPE_FILE_TRANSFER + '.ContentHash'] == ''
+        assert props[CHANNEL_TYPE_FILE_TRANSFER + '.ContentHashType'] == FILE_HASH_TYPE_MD5
+        assert props[CHANNEL_TYPE_FILE_TRANSFER + '.ContentHash'] == self.file.hash
         assert props[CHANNEL_TYPE_FILE_TRANSFER + '.Description'] == self.file.description
         # FT's protocol doesn't allow us the send the date info
         assert props[CHANNEL_TYPE_FILE_TRANSFER + '.Date'] == 0

@@ -13,7 +13,8 @@ import ns
 import tubetestutil as t
 from bytestream import S5BFactory, socks5_expect_connection, socks5_connect, \
     send_socks5_init, expect_socks5_init, expect_socks5_reply, \
-    create_si_offer, parse_si_reply, create_si_reply, parse_si_offer
+    create_si_offer, parse_si_reply, create_si_reply, parse_si_offer, \
+    listen_socks5
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -309,18 +310,18 @@ def test(q, bus, conn, stream):
         cs.TUBE_STATE_OPEN,
         ) in tubes, tubes
 
-    reactor.listenTCP(5086, S5BFactory(q.append))
+    port = listen_socks5(q)
 
     # have the fake client open the stream
     # Old tube API
     send_socks5_init(stream, bob_full_jid, self_full_jid, 'alpha', 'tcp', [
         # Not working streamhost
-        ('invalid.invalid', 'invalid.invalid', '5086'),
+        ('invalid.invalid', 'invalid.invalid', port),
         # Working streamhost
-        (bob_full_jid, '127.0.0.1', '5086'),
+        (bob_full_jid, '127.0.0.1', port),
         # This works too but should not be tried as gabble should just
         # connect to the previous one
-        ('bob@localhost', '127.0.0.1', '5086')])
+        ('bob@localhost', '127.0.0.1', port)])
 
     transport = socks5_expect_connection(q, 'alpha', bob_full_jid, self_full_jid)
 
@@ -334,16 +335,16 @@ def test(q, bus, conn, stream):
     # this connection is disconnected
     transport.loseConnection()
 
-    reactor.listenTCP(5085, S5BFactory(q.append))
+    port = listen_socks5(q)
 
     send_socks5_init(stream, bob_full_jid, self_full_jid, 'beta', 'tcp', [
         # Not working streamhost
-        ('invalid.invalid', 'invalid.invalid', '5086'),
+        ('invalid.invalid', 'invalid.invalid', port),
         # Working streamhost
-        (bob_full_jid, '127.0.0.1', '5086'),
+        (bob_full_jid, '127.0.0.1', port),
         # This works too but should not be tried as gabble should just
         # connect to the previous one
-        ('bob@localhost', '127.0.0.1', '5086')])
+        ('bob@localhost', '127.0.0.1', port)])
 
     transport = socks5_expect_connection(q, 'beta', bob_full_jid, self_full_jid)
 
@@ -492,11 +493,11 @@ def test(q, bus, conn, stream):
     tube = xpath.queryForNodes('/iq//si/tube[@xmlns="%s"]' % ns.TUBES, event.stanza)
     assert len(tube) == 1
 
-    reactor.listenTCP(5084, S5BFactory(q.append))
+    port = listen_socks5(q)
 
     # Init the SOCKS5 bytestream
     send_socks5_init(stream, bob_full_jid, self_full_jid, 'beta', 'tcp', [
-        (bob_full_jid, '127.0.0.1', '5084')])
+        (bob_full_jid, '127.0.0.1', port)])
 
     event, _ = q.expect_many(
         EventPattern('dbus-return', method='AcceptDBusTube'),

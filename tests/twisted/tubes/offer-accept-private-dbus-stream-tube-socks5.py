@@ -316,12 +316,12 @@ def test(q, bus, conn, stream):
     # Old tube API
     send_socks5_init(stream, bob_full_jid, self_full_jid, 'alpha', 'tcp', [
         # Not working streamhost
-        ('invalid.invalid', 'invalid.invalid', str(port)),
+        ('invalid.invalid', 'invalid.invalid', port),
         # Working streamhost
-        (bob_full_jid, '127.0.0.1', str(port)),
+        (bob_full_jid, '127.0.0.1', port),
         # This works too but should not be tried as gabble should just
         # connect to the previous one
-        ('bob@localhost', '127.0.0.1', str(port))])
+        ('bob@localhost', '127.0.0.1', port)])
 
     transport = socks5_expect_connection(q, 'alpha', bob_full_jid, self_full_jid)
 
@@ -339,12 +339,12 @@ def test(q, bus, conn, stream):
 
     send_socks5_init(stream, bob_full_jid, self_full_jid, 'beta', 'tcp', [
         # Not working streamhost
-        ('invalid.invalid', 'invalid.invalid', str(port)),
+        ('invalid.invalid', 'invalid.invalid', port),
         # Working streamhost
-        (bob_full_jid, '127.0.0.1', str(port)),
+        (bob_full_jid, '127.0.0.1', port),
         # This works too but should not be tried as gabble should just
         # connect to the previous one
-        ('bob@localhost', '127.0.0.1', str(port))])
+        ('bob@localhost', '127.0.0.1', port)])
 
     transport = socks5_expect_connection(q, 'beta', bob_full_jid, self_full_jid)
 
@@ -497,7 +497,7 @@ def test(q, bus, conn, stream):
 
     # Init the SOCKS5 bytestream
     send_socks5_init(stream, bob_full_jid, self_full_jid, 'beta', 'tcp', [
-        (bob_full_jid, '127.0.0.1', str(port))])
+        (bob_full_jid, '127.0.0.1', port)])
 
     event, _ = q.expect_many(
         EventPattern('dbus-return', method='AcceptDBusTube'),

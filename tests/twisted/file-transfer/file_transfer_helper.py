@@ -285,6 +285,8 @@ class Bytestream(object):
         self.stream = stream
         self.q = q
 
+        self.stream_id = None
+
     def open_bytestream(self, from_, to_):
         # Open the bytestream and return the InitialOffsetDefined and
         # FileTransferStateChanged events
@@ -332,8 +334,7 @@ class BytestreamIBB(Bytestream):
         # Wait IBB open iq
         event = self.q.expect('stream-iq', iq_type='set')
         sid = parse_ibb_open(event.stanza)
-        # FIXME: pass stream_id to Bytestream
-        #assert sid == self.stream_id
+        assert sid == self.stream_id
 
         # open IBB bytestream
         acknowledge_iq(self.stream, event.stanza)
@@ -352,8 +353,7 @@ class BytestreamIBB(Bytestream):
         while len(data) < size:
             ibb_event = self.q.expect('stream-message')
             sid, binary = parse_ibb_msg_data(ibb_event.stanza)
-            #assert sid == self.stream_id
-            #FIXME
+            assert sid == self.stream_id
             data += binary
 
         # The bytes transferred has been announced using
@@ -473,7 +473,7 @@ class SendFileTest(FileTransferTest):
 
     def _check_file_transfer_offer_iq(self, iq_event):
         self.iq = iq_event.stanza
-        profile, self.stream_id, bytestreams = parse_si_offer(self.iq)
+        profile, self.bytestream.stream_id, bytestreams = parse_si_offer(self.iq)
         assert self.iq['to'] == self.contact_full_jid
         assert profile == ns.FILE_TRANSFER
         assert bytestreams == [ns.BYTESTREAMS, ns.IBB]

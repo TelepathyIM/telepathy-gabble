@@ -8,9 +8,10 @@ from gabbletest import acknowledge_iq, sync_stream
 import ns
 from bytestream import parse_si_offer, create_si_reply, parse_ibb_open, parse_ibb_msg_data,\
     create_si_offer, parse_si_reply, send_ibb_open, send_ibb_msg_data, listen_socks5, \
-    send_socks5_init, socks5_expect_connection
+    send_socks5_init, socks5_expect_connection, expect_socks5_init, socks5_connect
 
 from twisted.words.xish import domish, xpath
+from twisted.words.protocols.jabber.client import IQ
 
 from dbus import PROPERTIES_IFACE
 
@@ -385,7 +386,7 @@ class SendFileTest(FileTransferTest):
             self.bytestream.get_ns())
         self.stream.send(result)
 
-        self.bytestream.wait_bytestream_open()
+        self.bytestream.wait_bytestream_open(self.contact_name, 'test@localhost/Resource')
 
     def send_file(self):
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -414,7 +415,7 @@ class Bytestream(object):
     def get_ns(self):
         raise NotImplemented
 
-    def wait_bytestream_open(self):
+    def wait_bytestream_open(self, from_, to):
         raise NotImplemented
 
     def get_file(self, ft_channel, size):
@@ -446,7 +447,7 @@ class BytestreamIBB(Bytestream):
 
         self.seq += 1
 
-    def wait_bytestream_open(self):
+    def wait_bytestream_open(self, from_, to):
         # Wait IBB open iq
         event = self.q.expect('stream-iq', iq_type='set')
         sid = parse_ibb_open(event.stanza)
@@ -511,3 +512,49 @@ class BytestreamS5B(Bytestream):
 
     def send_data(self, from_, to, data):
         self.transport.write(data)
+
+    def wait_bytestream_open(self, from_, to):
+        id, mode, sid, hosts = expect_socks5_init(self.q)
+
+        assert mode == 'tcp'
+        assert sid == self.stream_id
+        jid, host, port = hosts[0]
+
+        self.transport = socks5_connect(self.q, host, port, sid, from_, to)
+
+        result = IQ(self.stream, 'result')
+        result['id'] = id
+        result['from'] = from_
+        result['to'] = to
+        # FIXME: should set streamhost-used
+        result.send()
+
+    def get_file(self, ft_channel, size):
+        # FIXME: try to share more code with parent class
+        data = ''
+        self.count = 0
+
+        def bytes_changed_cb(bytes):
+            self.count = bytes
+
+        ft_channel.connect_to_signal('TransferredBytesChanged', bytes_changed_cb)
+
+        # wait for IBB stanzas
+        while len(data) < size:
+            e = self.q.expect('s5b-data-received', transport=self.transport)
+            data += e.data
+
+        # The bytes transferred has been announced using
+        # TransferredBytesChanged
+        assert self.count == size
+
+        # FileTransferStateChanged could have already been fired
+        e, _ = self.q.expect_many(
+            EventPattern('dbus-signal', signal='FileTransferStateChanged'),
+            EventPattern('s5b-connection-lost'))
+
+        state, reason = e.args
+        assert state == FT_STATE_COMPLETED
+        assert reason == FT_STATE_CHANGE_REASON_NONE
+
+        return data

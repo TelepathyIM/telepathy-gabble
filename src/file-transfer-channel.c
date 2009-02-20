@@ -1066,8 +1066,10 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       "name", self->priv->filename,
       "size", size_str,
       "mime-type", self->priv->content_type,
-      "hash", self->priv->content_hash,
       NULL);
+
+  if (self->priv->content_hash != NULL)
+    lm_message_node_set_attribute (file_node, "hash", self->priv->content_hash);
 
   /* TODO: support initial offset */
 

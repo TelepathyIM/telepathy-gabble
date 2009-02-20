@@ -255,7 +255,7 @@ class ReceiveFileTest(FileTransferTest):
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(self.address)
 
-        # send the rest of the file using IBB
+        # send the rest of the file
         self.send_data(self.file.data[2:])
 
         self._read_file_from_socket(s)

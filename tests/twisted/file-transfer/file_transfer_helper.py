@@ -1,11 +1,6 @@
 import dbus
 import socket
 import md5
-import base64
-import BaseHTTPServer
-import urllib
-import httplib
-import urlparse
 import time
 
 from servicetest import EventPattern
@@ -15,8 +10,6 @@ from bytestream import parse_si_offer, create_si_reply, parse_ibb_open, parse_ib
     create_si_offer, parse_si_reply, send_ibb_open, send_ibb_msg_data
 
 from twisted.words.xish import domish, xpath
-from twisted.words.protocols.jabber.client import IQ
-from twisted.internet import reactor
 
 from dbus import PROPERTIES_IFACE
 

@@ -172,7 +172,7 @@ def send_socks5_init(stream, from_, to, sid, mode, hosts):
         streamhost = query.addElement('streamhost')
         streamhost['jid'] = jid
         streamhost['host'] = host
-        streamhost['port'] = port
+        streamhost['port'] = str(port)
     stream.send(iq)
 
 def expect_socks5_init(q):

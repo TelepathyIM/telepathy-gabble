@@ -6,6 +6,7 @@ import BaseHTTPServer
 import urllib
 import httplib
 import urlparse
+import time
 
 from servicetest import EventPattern
 from gabbletest import acknowledge_iq
@@ -69,7 +70,7 @@ class File(object):
 
         self.content_type = content_type
         self.description = description
-        self.date = 0
+        self.date = int(time.time())
 
         self.compute_hash(hash_type)
 
@@ -368,9 +369,11 @@ class SendFileTest(FileTransferTest):
         file_node = xpath.queryForNodes('/iq/si/file', self.iq)[0]
         assert file_node['name'] == self.file.name
         assert file_node['size'] == str(self.file.size)
+        assert file_node['mime-type'] == self.file.content_type
+        assert file_node['hash'] == self.file.hash
 
-        # FIXME: check other properties
-        #assert url_node['mimeType'] == self.file.content_type
+        # TODO: Date
+        # TODO: InitialOffset
 
         desc_node = xpath.queryForNodes("/iq/si/file/desc", self.iq)[0]
         self.desc = desc_node.children[0]

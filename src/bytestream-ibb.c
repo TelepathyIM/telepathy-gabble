@@ -78,7 +78,7 @@ struct _GabbleBytestreamIBBPrivate
   guint16 seq;
   guint16 last_seq_recv;
   /* We can't stop receving IBB data so if user wants to block the bytestream
-   * we bufferize them until he unblocks it. */
+   * we buffer them until he unblocks it. */
   gboolean read_blocked;
   GString *buffer;
   gboolean dispose_has_run;

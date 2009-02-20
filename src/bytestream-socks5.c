@@ -713,6 +713,13 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             lm_message_unref (iq_result);
           }
 
+        if (priv->read_blocked)
+          {
+            DEBUG ("reading has been blocked. Blocking now as the socks5 "
+                "negotiation is done");
+            gibber_transport_block_receiving (priv->transport, TRUE);
+          }
+
         return 2;
 
       case SOCKS5_STATE_AWAITING_AUTH_REQUEST:

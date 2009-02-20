@@ -217,20 +217,16 @@ class ReceiveFileTest(FileTransferTest):
         self.address = self.ft_channel.AcceptFile(SOCKET_ADDRESS_TYPE_UNIX,
                 SOCKET_ACCESS_CONTROL_LOCALHOST, "", 5)
 
-        e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')
-        state, reason = e.args
+        state_event, iq_event = self.q.expect_many(
+            EventPattern('dbus-signal', signal='FileTransferStateChanged'),
+            EventPattern('stream-iq', iq_type='result'))
+
+        state, reason = state_event.args
         assert state == FT_STATE_ACCEPTED
         assert reason == FT_STATE_CHANGE_REASON_REQUESTED
 
-    def receive_file(self):
-        # Connect to Salut's socket
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(self.address)
-
-        # Client connected to socket so Gabble is now ready to receive the
-        # file. Gabble sends the SI reply
-        e = self.q.expect('stream-iq', iq_type='result')
-        bytestream = parse_si_reply(e.stanza)
+        # Got SI reply
+        bytestream = parse_si_reply(iq_event.stanza)
         assert bytestream == ns.IBB
 
         # open IBB bytestream
@@ -249,6 +245,11 @@ class ReceiveFileTest(FileTransferTest):
         state, reason = state_event.args
         assert state == FT_STATE_OPEN
         assert reason == FT_STATE_CHANGE_REASON_NONE
+
+    def receive_file(self):
+        # Connect to Salut's socket
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.connect(self.address)
 
         # send file using IBB
         send_ibb_msg_data(self.stream, self.contact_name, 'test@localhost/Resource',

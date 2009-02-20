@@ -1235,8 +1235,8 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
       "peer-resource", peer_resource,
       NULL);
 
-  g_signal_connect (ibb, "state-changed",
-      G_CALLBACK (bytestream_state_changed_cb), self);
+  gabble_signal_connect_weak (ibb, "state-changed",
+      G_CALLBACK (bytestream_state_changed_cb), G_OBJECT (self));
 
   id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (ibb));
   DEBUG ("add IBB bytestream <%s> from <%s>", id->stream, id->jid);
@@ -1265,8 +1265,8 @@ gabble_bytestream_factory_create_muc (GabbleBytestreamFactory *self,
       "state", state,
       NULL);
 
-  g_signal_connect (bytestream, "state-changed",
-      G_CALLBACK (bytestream_state_changed_cb), self);
+  gabble_signal_connect_weak (bytestream, "state-changed",
+      G_CALLBACK (bytestream_state_changed_cb), G_OBJECT (self));
 
   id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (bytestream));
   DEBUG ("add muc bytestream <%s> from <%s>", id->stream, id->jid);
@@ -1299,8 +1299,8 @@ gabble_bytestream_factory_create_socks5 (GabbleBytestreamFactory *self,
       "peer-resource", peer_resource,
       NULL);
 
-  g_signal_connect (socks5, "state-changed",
-      G_CALLBACK (bytestream_state_changed_cb), self);
+  gabble_signal_connect_weak (socks5, "state-changed",
+      G_CALLBACK (bytestream_state_changed_cb), G_OBJECT (self));
 
   id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (socks5));
   DEBUG ("add SOCKS5 bytestream <%s> from <%s>", id->stream, id->jid);
@@ -1334,8 +1334,8 @@ gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
       "factory", self,
       NULL);
 
-  g_signal_connect (multiple, "state-changed",
-      G_CALLBACK (bytestream_state_changed_cb), self);
+  gabble_signal_connect_weak (multiple, "state-changed",
+      G_CALLBACK (bytestream_state_changed_cb), G_OBJECT (self));
 
   id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (multiple));
   DEBUG ("add multi bytestream <%s> from <%s>", id->stream, id->jid);

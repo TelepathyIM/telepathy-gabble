@@ -206,6 +206,8 @@ fi
 
 AC_CHECK_FUNCS(getifaddrs memset select strndup setresuid setreuid strerror)
 
+SHAVE_INIT(.)
+
 AC_OUTPUT( Makefile \
            docs/Makefile \
            extensions/Makefile \
@@ -217,5 +219,7 @@ AC_OUTPUT( Makefile \
            tests/twisted/Makefile \
            tests/twisted/tools/Makefile \
            lib/Makefile \
-           lib/gibber/Makefile
+           lib/gibber/Makefile \
+           shave \
+           shave-libtool
 )

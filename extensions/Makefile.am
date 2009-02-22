@@ -1,3 +1,5 @@
+QUIET_GEN = $(Q:@=@echo '  GEN   '$@;)
+
 tools_dir = $(top_srcdir)/tools
 
 EXTRA_DIST = \
@@ -52,18 +54,18 @@ XSLTPROCFLAGS = --nonet --novalid
 
 _gen/all.xml: all.xml $(wildcard *.xml) Makefile.am
 	$(mkdir_p) _gen
-	$(XSLTPROC) $(XSLTPROCFLAGS) --xinclude $(tools_dir)/identity.xsl \
+	$(QUIET_GEN)$(XSLTPROC) $(XSLTPROCFLAGS) --xinclude $(tools_dir)/identity.xsl \
 		$< > $@
 
 extensions.html: _gen/all.xml $(tools_dir)/doc-generator.xsl Makefile.am
-	$(XSLTPROC) $(XSLTPROCFLAGS) \
+	$(QUIET_GEN)$(XSLTPROC) $(XSLTPROCFLAGS) \
 		--param "allow-undefined-interfaces" "true()" \
 		$(tools_dir)/doc-generator.xsl \
 		$< > $@
 
 _gen/svc.c _gen/svc.h: _gen/all.xml $(tools_dir)/glib-ginterface-gen.py \
 	Makefile.am
-	$(PYTHON) $(tools_dir)/glib-ginterface-gen.py \
+	$(QUIET_GEN)$(PYTHON) $(tools_dir)/glib-ginterface-gen.py \
 		--filename=_gen/svc --signal-marshal-prefix=_gabble_ext \
 		--include='<telepathy-glib/dbus.h>' \
 		--include='"_gen/signals-marshal.h"' \
@@ -74,26 +76,26 @@ _gen/svc.c _gen/svc.h: _gen/all.xml $(tools_dir)/glib-ginterface-gen.py \
 _gen/signals-marshal.list: _gen/all.xml \
 	$(tools_dir)/glib-signals-marshal-gen.py \
 	Makefile.am
-	$(PYTHON) $(tools_dir)/glib-signals-marshal-gen.py $< > $@
+	$(QUIET_GEN)$(PYTHON) $(tools_dir)/glib-signals-marshal-gen.py $< > $@
 
 _gen/signals-marshal.h: _gen/signals-marshal.list Makefile.am
-	$(GLIB_GENMARSHAL) --header --prefix=_gabble_ext_marshal $< > $@
+	$(QUIET_GEN)$(GLIB_GENMARSHAL) --header --prefix=_gabble_ext_marshal $< > $@
 
 _gen/signals-marshal.c: _gen/signals-marshal.list Makefile.am
-	{ echo '#include "_gen/signals-marshal.h"' && \
+	$(QUIET_GEN){ echo '#include "_gen/signals-marshal.h"' && \
 	$(GLIB_GENMARSHAL) --body --prefix=_gabble_ext_marshal $< ; } > $@
 
 _gen/enums.h: _gen/all.xml $(tools_dir)/c-constants-gen.py \
 	Makefile.am
-	$(PYTHON) $(tools_dir)/c-constants-gen.py Gabble $< > $@
+	$(QUIET_GEN)$(PYTHON) $(tools_dir)/c-constants-gen.py Gabble $< > $@
 
 _gen/interfaces.h _gen/interfaces-body.h: _gen/all.xml \
 	$(tools_dir)/glib-interfaces-gen.py \
 	Makefile.am
-	$(PYTHON) $(tools_dir)/glib-interfaces-gen.py \
+	$(QUIET_GEN)$(PYTHON) $(tools_dir)/glib-interfaces-gen.py \
 		Gabble _gen/interfaces-body.h _gen/interfaces.h $<
 
 _gen/gtypes.h _gen/gtypes-body.h: _gen/all.xml \
 	$(tools_dir)/glib-gtypes-generator.py Makefile.am
-	$(PYTHON) $(tools_dir)/glib-gtypes-generator.py \
+	$(QUIET_GEN)$(PYTHON) $(tools_dir)/glib-gtypes-generator.py \
 		$< _gen/gtypes Gabble

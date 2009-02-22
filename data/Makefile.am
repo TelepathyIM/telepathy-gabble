@@ -1,3 +1,5 @@
+QUIET_GEN = $(Q:@=@echo '  GEN   '$@;)
+
 EXTRA_DIST = gabble.service.in
 
 managerdir = $(datadir)/telepathy/managers
@@ -11,10 +13,10 @@ service_DATA = org.freedesktop.Telepathy.ConnectionManager.gabble.service
 # non-archaic tarballs)
 org.freedesktop.Telepathy.ConnectionManager.gabble.service: gabble.service.in \
 		Makefile
-	@sed -e "s|[@]libexecdir[@]|$(libexecdir)|" $< > $@
+	$(QUIET_GEN)sed -e "s|[@]libexecdir[@]|$(libexecdir)|" $< > $@
 
 CLEANFILES = $(service_DATA) $(manager_DATA)
 
 $(manager_DATA): ../src/connection-manager.c ../src/write-mgr-file.c ../src/connection.h
 	$(MAKE) -C ../src write-mgr-file
-	../src/write-mgr-file > $@
+	$(QUIET_GEN)../src/write-mgr-file > $@

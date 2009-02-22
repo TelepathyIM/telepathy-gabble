@@ -1,3 +1,5 @@
+QUIET_GEN = $(Q:@=@echo '  GEN   '$@;)
+
 EXTRA_DIST = \
     c-constants-gen.py \
     check-coding-style.mk \
@@ -22,12 +24,12 @@ all: $(EXTRA_DIST)
 
 libglibcodegen.py: libtpcodegen.py
 	test -e $@
-	touch $@
+	$(QUIET_GEN)touch $@
 
 glib-ginterface-gen.py glib-gtypes-generator.py glib-interfaces-gen.py \
 glib-signals-marshal-gen.py c-constants-gen.py: %: libglibcodegen.py
 	test -e $@
-	touch $@
+	$(QUIET_GEN)touch $@
 
 maintainer-update-from-xmpp.org:
 	set -e; \

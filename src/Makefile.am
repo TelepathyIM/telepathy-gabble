@@ -1,3 +1,5 @@
+QUIET_GEN = $(Q:@=@echo '  GEN   '$@;)
+
 BUILT_SOURCES = \
     gabble-signals-marshal.h \
     gabble-signals-marshal.c \
@@ -173,7 +175,7 @@ $(top_builddir)/lib/gibber/libgibber.la:
 .PHONY: $(top_builddir)/lib/gibber/libgibber.la
 
 gabble-signals-marshal.list: $(libgabble_convenience_la_SOURCES) Makefile.am
-	@( cd $(srcdir) && \
+	$(QUIET_GEN)( cd $(srcdir) && \
 	sed -n -e 's/.*gabble_marshal_\([[:upper:][:digit:]]*__[[:upper:][:digit:]_]*\).*/\1/p' \
 	$(libgabble_convenience_la_SOURCES) ) \
 	| sed -e 's/__/:/' -e 'y/_/,/' | sort -u > $@.tmp
@@ -184,16 +186,16 @@ gabble-signals-marshal.list: $(libgabble_convenience_la_SOURCES) Makefile.am
 	fi
 
 %-signals-marshal.h: %-signals-marshal.list Makefile.am
-	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $@
+	$(QUIET_GEN)glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $@
 
 %-signals-marshal.c: %-signals-marshal.list Makefile.am
-	{ echo '#include "$*-signals-marshal.h"' && \
+	$(QUIET_GEN){ echo '#include "$*-signals-marshal.h"' && \
 	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< ; \
 	} > $@
 
 # rules for making the glib enum objects
 %-enumtypes.h: %.h Makefile.in
-	glib-mkenums \
+	$(QUIET_GEN)glib-mkenums \
 	--fhead "#ifndef __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n#define __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n\n#include <glib-object.h>\n\nG_BEGIN_DECLS\n" \
 	--fprod "/* enumerations from \"@filename@\" */\n" \
 	--vhead "GType @enum_name@_get_type (void);\n#define $(shell echo $* | tr [:lower:]- [:upper:]_ | sed 's/_.*//')_TYPE_@ENUMSHORT@ (@enum_name@_get_type())\n"         \
@@ -201,7 +203,7 @@ gabble-signals-marshal.list: $(libgabble_convenience_la_SOURCES) Makefile.am
 	$< > $@
 
 %-enumtypes.c: %.h Makefile.in
-	glib-mkenums \
+	$(QUIET_GEN)glib-mkenums \
 	--fhead "#include <$*.h>\n#include <$*-enumtypes.h>" \
 	--fprod "\n/* enumerations from \"@filename@\" */" \
 	--vhead "GType\n@enum_name@_get_type (void)\n{\n  static GType etype = 0;\n  if (etype == 0) {\n    static const G@Type@Value values[] = {"     \

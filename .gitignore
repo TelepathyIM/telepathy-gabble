@@ -80,3 +80,5 @@ cscope.out
 /tests/twisted/tools/tmp-session-bus.conf
 /tests/twisted/with-session-bus-*.pid
 /tests/twisted/with-session-bus-*.address
+/shave
+/shave-libtool

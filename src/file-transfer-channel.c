@@ -1120,10 +1120,9 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   desc_node = lm_message_node_add_child (file_node, "desc",
       self->priv->description);
 
-
   result = gabble_bytestream_factory_negotiate_stream (
       self->priv->connection->bytestream_factory, msg, stream_id,
-      bytestream_negotiate_cb, self, error);
+      bytestream_negotiate_cb, self, G_OBJECT (self), error);
 
   lm_message_unref (msg);
   g_free (stream_id);

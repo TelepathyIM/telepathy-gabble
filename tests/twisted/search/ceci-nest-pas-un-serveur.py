@@ -90,6 +90,10 @@ def returns_error_from_search(q, stream, conn, requests):
     assert new_state == cs.SEARCH_FAILED, new_state
     assert reason == cs.PERMISSION_DENIED, reason
 
+    # We call stop after the search has failed; it should succeed and do nothing.
+    call_async(q, c_search, 'Stop')
+    event = q.expect('dbus-return', method='Stop')
+
     c.Close()
 
 def returns_bees_from_search(q, stream, conn, requests):
@@ -123,6 +127,10 @@ def returns_bees_from_search(q, stream, conn, requests):
 
     assert new_state == cs.SEARCH_FAILED, new_state
     assert reason == cs.NOT_AVAILABLE, reason
+
+    # We call stop after the search has failed; it should succeed and do nothing.
+    call_async(q, c_search, 'Stop')
+    event = q.expect('dbus-return', method='Stop')
 
     c.Close()
 

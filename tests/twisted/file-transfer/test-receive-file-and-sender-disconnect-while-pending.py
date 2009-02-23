@@ -38,3 +38,5 @@ class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
 if __name__ == '__main__':
     test = ReceiveFileAndSenderDisconnectWhilePendingTest(BytestreamIBB)
     exec_test(test.test)
+    test = ReceiveFileAndSenderDisconnectWhilePendingTest(BytestreamS5B)
+    exec_test(test.test)

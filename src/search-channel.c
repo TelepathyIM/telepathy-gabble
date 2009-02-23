@@ -49,6 +49,7 @@ enum
   PROP_SEARCH_STATE,
   PROP_AVAILABLE_SEARCH_KEYS,
   PROP_SERVER,
+  PROP_LIMIT,
   LAST_PROPERTY
 };
 
@@ -77,6 +78,7 @@ struct _GabbleSearchChannelPrivate
 static const gchar *states[] = {
     "not started",
     "in progress",
+    "more available",
     "completed",
     "failed",
 };
@@ -364,6 +366,8 @@ change_search_state (GabbleSearchChannel *chan,
   switch (state)
     {
     case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED:
+    /* Gabble shouldn't ever get into state More_Available */
+    case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_MORE_AVAILABLE:
       g_assert_not_reached ();
       return;
     case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS:
@@ -833,6 +837,9 @@ gabble_search_channel_get_property (GObject *object,
       case PROP_SERVER:
         g_value_set_string (value, chan->priv->server);
         break;
+      case PROP_LIMIT:
+        g_value_set_uint (value, 0);
+        break;
       case PROP_CHANNEL_PROPERTIES:
         g_value_take_boxed (value,
             tp_dbus_properties_mixin_make_properties_hash (object,
@@ -846,6 +853,7 @@ gabble_search_channel_get_property (GObject *object,
                 TP_IFACE_CHANNEL, "Interfaces",
                 GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "AvailableSearchKeys",
                 GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "Server",
+                GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "Limit",
                 NULL));
       break;
       default:
@@ -881,6 +889,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
       { "SearchState", "search-state", NULL },
       { "AvailableSearchKeys", "available-search-keys", NULL },
       { "Server", "server", NULL },
+      { "Limit", "limit", NULL },
       { NULL }
   };
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -919,6 +928,12 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
       NULL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SERVER, param_spec);
+
+  param_spec = g_param_spec_uint ("limit", "Result limit",
+      "Always 0 for unlimited in Gabble",
+      0, 0, 0, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_LIMIT,
+      param_spec);
 
   /* Emitted when we get a reply from the server about which search keys it
    * supports.  Its three arguments are the components of a GError.  If the

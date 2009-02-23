@@ -4,7 +4,7 @@ import md5
 import time
 
 from servicetest import EventPattern
-from gabbletest import acknowledge_iq, sync_stream
+from gabbletest import acknowledge_iq, sync_stream, exec_test
 import ns
 from bytestream import parse_si_offer, create_si_reply, parse_ibb_open, parse_ibb_msg_data,\
     create_si_offer, parse_si_reply, send_ibb_open, send_ibb_msg_data, listen_socks5, \
@@ -420,6 +420,12 @@ class SendFileTest(FileTransferTest):
         state, reason = e.args
         assert state == FT_STATE_COMPLETED
         assert reason == FT_STATE_CHANGE_REASON_NONE
+
+def exec_file_transfer_test(test_cls):
+    test = test_cls(BytestreamIBB)
+    exec_test(test.test)
+    test = test_cls(BytestreamS5B)
+    exec_test(test.test)
 
 class Bytestream(object):
     def __init__(self, stream, q):

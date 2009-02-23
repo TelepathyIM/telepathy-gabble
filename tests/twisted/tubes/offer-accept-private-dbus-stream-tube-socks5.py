@@ -14,7 +14,7 @@ import tubetestutil as t
 from bytestream import S5BFactory, socks5_expect_connection, socks5_connect, \
     send_socks5_init, expect_socks5_init, expect_socks5_reply, \
     create_si_offer, parse_si_reply, create_si_reply, parse_si_offer, \
-    listen_socks5
+    listen_socks5, send_socks5_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -394,12 +394,7 @@ def test(q, bus, conn, stream):
 
     transport = socks5_connect(q, host, port, sid, self_full_jid, bob_full_jid)
 
-    result = IQ(stream, 'result')
-    result['id'] = id
-    result['from'] = bob_full_jid
-    result['to'] = self_full_jid
-
-    stream.send(result)
+    send_socks5_reply(stream, bob_full_jid, self_full_jid, id, jid)
 
     q.expect('dbus-signal', signal='TubeStateChanged',
         args=[dbus_tube_id, cs.TUBE_STATE_OPEN])

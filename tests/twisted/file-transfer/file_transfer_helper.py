@@ -8,7 +8,8 @@ from gabbletest import acknowledge_iq, sync_stream
 import ns
 from bytestream import parse_si_offer, create_si_reply, parse_ibb_open, parse_ibb_msg_data,\
     create_si_offer, parse_si_reply, send_ibb_open, send_ibb_msg_data, listen_socks5, \
-    send_socks5_init, socks5_expect_connection, expect_socks5_init, socks5_connect
+    send_socks5_init, socks5_expect_connection, expect_socks5_init, socks5_connect, \
+    send_socks5_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
@@ -526,12 +527,7 @@ class BytestreamS5B(Bytestream):
 
         self.transport = socks5_connect(self.q, host, port, sid, from_, to)
 
-        result = IQ(self.stream, 'result')
-        result['id'] = id
-        result['from'] = from_
-        result['to'] = to
-        # FIXME: should set streamhost-used
-        result.send()
+        send_socks5_reply(self.stream, from_, to, id, jid)
 
     def get_data(self):
        e = self.q.expect('s5b-data-received', transport=self.transport)

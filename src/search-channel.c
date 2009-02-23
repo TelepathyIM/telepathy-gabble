@@ -593,6 +593,14 @@ search_reply_cb (GabbleConnection *conn,
 
   DEBUG ("called");
 
+  if (chan->priv->state != GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS)
+    {
+      DEBUG ("state is %s, not in progress; ignoring results",
+          states[chan->priv->state]);
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
   query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
       "query", NS_SEARCH);
 
@@ -1017,6 +1025,40 @@ err:
 }
 
 static void
+gabble_search_channel_stop (GabbleSvcChannelTypeContactSearch *self,
+                            DBusGMethodInvocation *context)
+{
+  GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (self);
+  GabbleSearchChannelPrivate *priv = chan->priv;
+
+  switch (priv->state)
+    {
+      case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS:
+        {
+          GError e = { TP_ERRORS, TP_ERROR_CANCELLED, "Stop() called" };
+
+          change_search_state (chan,
+              GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED, &e);
+          /* Deliberately falling through to return from the method: */
+        }
+      case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED:
+      case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED:
+        gabble_svc_channel_type_contact_search_return_from_stop (context);
+        break;
+      case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED:
+        {
+          GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "Search() hasn't been called yet" };
+
+          dbus_g_method_return_error (context, &e);
+          break;
+        }
+      case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_MORE_AVAILABLE:
+        g_assert_not_reached ();
+    }
+}
+
+static void
 contact_search_iface_init (gpointer g_iface,
                            gpointer iface_data)
 {
@@ -1025,5 +1067,6 @@ contact_search_iface_init (gpointer g_iface,
 #define IMPLEMENT(x) gabble_svc_channel_type_contact_search_implement_##x (\
     klass, gabble_search_channel_##x)
   IMPLEMENT(search);
+  IMPLEMENT(stop);
 #undef IMPLEMENT
 }

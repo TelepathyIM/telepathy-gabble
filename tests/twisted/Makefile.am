@@ -96,7 +96,9 @@ TWISTED_TESTS = \
 	file-transfer/test-receive-file-decline.py \
 	file-transfer/test-receive-file.py \
 	file-transfer/test-send-file-and-cancel-immediately.py \
+	file-transfer/test-send-file-declined.py \
 	file-transfer/test-send-file-provide-immediately.py \
+	file-transfer/test-send-file-to-unknown-contact.py \
 	file-transfer/test-send-file-wait-to-provide.py \
 	test-capabilities.py \
 	test-caps-cache.py \

@@ -95,7 +95,7 @@ LmMessage *gabble_bytestream_factory_make_multi_accept_iq (
 gboolean gabble_bytestream_factory_negotiate_stream (
     GabbleBytestreamFactory *fac, LmMessage *msg, const gchar *stream_id,
     GabbleBytestreamFactoryNegotiateReplyFunc func,
-    gpointer user_data, GError **error);
+    gpointer user_data, GObject *object, GError **error);
 
 gchar *gabble_bytestream_factory_generate_stream_id (void);
 

@@ -68,7 +68,7 @@ GType gabble_bytestream_factory_get_type (void);
 
 typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (
     GabbleBytestreamIface *bytestream, const gchar *stream_id, LmMessage *msg,
-    gpointer user_data);
+    GObject *object, gpointer user_data);
 
 GabbleBytestreamFactory *gabble_bytestream_factory_new (
     GabbleConnection *conn);

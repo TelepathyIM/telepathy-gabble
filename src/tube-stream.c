@@ -405,6 +405,7 @@ static void
 extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                                const gchar *stream_id,
                                LmMessage *msg,
+                               GObject *object,
                                gpointer user_data)
 {
   struct _extra_bytestream_negotiate_cb_data *data =

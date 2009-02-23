@@ -1560,7 +1560,7 @@ END:
 
   /* user callback */
   data->func (bytestream, (const gchar*) data->stream_id, reply_msg,
-      data->user_data);
+      data->object, data->user_data);
 
   if (peer_resource != NULL)
     g_free (peer_resource);

@@ -393,9 +393,32 @@ class SendFileTest(FileTransferTest):
         s.connect(self.address)
         s.send(self.file.data)
 
-        data = self.bytestream.get_file(self.ft_channel, self.file.size)
+        self.count = 0
+
+        def bytes_changed_cb(bytes):
+            self.count = bytes
+
+        self.ft_channel.connect_to_signal('TransferredBytesChanged', bytes_changed_cb)
+
+        # get data from bytestream
+        data = ''
+        while len(data) < self.file.size:
+            data += self.bytestream.get_data()
 
         assert data == self.file.data
+
+        # The bytes transferred has been announced using
+        # TransferredBytesChanged
+        assert self.count == self.file.size
+
+        # FileTransferStateChanged could have already been fired
+        e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')
+
+        self.bytestream.wait_bytestream_closed()
+
+        state, reason = e.args
+        assert state == FT_STATE_COMPLETED
+        assert reason == FT_STATE_CHANGE_REASON_NONE
 
 class Bytestream(object):
     def __init__(self, stream, q):
@@ -418,7 +441,10 @@ class Bytestream(object):
     def wait_bytestream_open(self, from_, to):
         raise NotImplemented
 
-    def get_file(self, ft_channel, size):
+    def get_data(self):
+        raise NotImplemented
+
+    def wait_bytestream_closed(self):
         raise NotImplemented
 
 class BytestreamIBB(Bytestream):
@@ -456,40 +482,18 @@ class BytestreamIBB(Bytestream):
         # open IBB bytestream
         acknowledge_iq(self.stream, event.stanza)
 
-    def get_file(self, ft_channel, size):
-        # FIXME: try to share more code with parent class
-        data = ''
-        self.count = 0
-
-        def bytes_changed_cb(bytes):
-            self.count = bytes
-
-        ft_channel.connect_to_signal('TransferredBytesChanged', bytes_changed_cb)
-
+    def get_data(self):
         # wait for IBB stanzas
-        while len(data) < size:
-            ibb_event = self.q.expect('stream-message')
-            sid, binary = parse_ibb_msg_data(ibb_event.stanza)
-            assert sid == self.stream_id
-            data += binary
+        ibb_event = self.q.expect('stream-message')
+        sid, binary = parse_ibb_msg_data(ibb_event.stanza)
+        assert sid == self.stream_id
+        return binary
 
-        # The bytes transferred has been announced using
-        # TransferredBytesChanged
-        assert self.count == size
-
-        # FileTransferStateChanged could have already been fired
-        e, close_event = self.q.expect_many(
-            EventPattern('dbus-signal', signal='FileTransferStateChanged'),
-            EventPattern('stream-iq', iq_type='set', query_name='close', query_ns=ns.IBB))
-
-        state, reason = e.args
-        assert state == FT_STATE_COMPLETED
-        assert reason == FT_STATE_CHANGE_REASON_NONE
+    def wait_bytestream_closed(self):
+        close_event = self.q.expect('stream-iq', iq_type='set', query_name='close', query_ns=ns.IBB)
 
         # sender finish to send the file and so close the bytestream
         acknowledge_iq(self.stream, close_event.stanza)
-
-        return data
 
 class BytestreamS5B(Bytestream):
     def get_ns(self):
@@ -529,32 +533,9 @@ class BytestreamS5B(Bytestream):
         # FIXME: should set streamhost-used
         result.send()
 
-    def get_file(self, ft_channel, size):
-        # FIXME: try to share more code with parent class
-        data = ''
-        self.count = 0
+    def get_data(self):
+       e = self.q.expect('s5b-data-received', transport=self.transport)
+       return e.data
 
-        def bytes_changed_cb(bytes):
-            self.count = bytes
-
-        ft_channel.connect_to_signal('TransferredBytesChanged', bytes_changed_cb)
-
-        # wait for IBB stanzas
-        while len(data) < size:
-            e = self.q.expect('s5b-data-received', transport=self.transport)
-            data += e.data
-
-        # The bytes transferred has been announced using
-        # TransferredBytesChanged
-        assert self.count == size
-
-        # FileTransferStateChanged could have already been fired
-        e, _ = self.q.expect_many(
-            EventPattern('dbus-signal', signal='FileTransferStateChanged'),
-            EventPattern('s5b-connection-lost'))
-
-        state, reason = e.args
-        assert state == FT_STATE_COMPLETED
-        assert reason == FT_STATE_CHANGE_REASON_NONE
-
-        return data
+    def wait_bytestream_closed(self):
+        self.q.expect('s5b-connection-lost')

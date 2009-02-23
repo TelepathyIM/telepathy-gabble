@@ -520,13 +520,8 @@ start_stream_initiation (GabbleTubeStream *self,
   data->transport = g_object_ref (transport);
 
   result = gabble_bytestream_factory_negotiate_stream (
-    priv->conn->bytestream_factory,
-    msg,
-    stream_id,
-    extra_bytestream_negotiate_cb,
-    data,
-    G_OBJECT (self),
-    error);
+      priv->conn->bytestream_factory, msg, stream_id,
+      extra_bytestream_negotiate_cb, data, G_OBJECT (self), error);
 
   /* FIXME: data and one ref on data->transport are leaked if the tube is
    * closed before we got the SI reply. */

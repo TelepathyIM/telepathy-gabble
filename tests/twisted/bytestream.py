@@ -197,6 +197,16 @@ def expect_socks5_reply(q):
     streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
     return streamhost_used
 
+def send_socks5_reply(stream, from_, to, id, stream_used):
+    result = IQ(stream, 'result')
+    result['id'] = id
+    result['from'] = from_
+    result['to'] = to
+    query = result.addElement((ns.BYTESTREAMS, 'query'))
+    streamhost_used = query.addElement((None, 'streamhost-used'))
+    streamhost_used['jid'] = stream_used
+    result.send()
+
 ##### XEP-0047: In-Band Bytestreams (IBB) #####
 
 def send_ibb_open(stream, from_, to, sid, block_size):

@@ -1229,7 +1229,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       tube->priv->offered = TRUE;
       result = gabble_bytestream_factory_negotiate_stream (
           priv->conn->bytestream_factory, msg, priv->stream_id,
-          bytestream_negotiate_cb, tube, error);
+          bytestream_negotiate_cb, tube, G_OBJECT (tube), error);
 
       /* We don't create the bytestream of private D-Bus tube yet.
        * It will be when we'll receive the answer of the SI request */

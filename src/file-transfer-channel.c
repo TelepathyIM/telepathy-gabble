@@ -373,6 +373,43 @@ free_array (GArray *array)
   g_array_free (array, TRUE);
 }
 
+static void
+connection_presences_updated_cb (GabblePresenceCache *cache,
+                                 GArray *handles,
+                                 GabbleFileTransferChannel *self)
+{
+  guint i;
+
+  for (i = 0; i < handles->len ; i++)
+    {
+      TpHandle handle;
+
+      handle = g_array_index (handles, TpHandle, i);
+      if (handle == self->priv->handle)
+        {
+          GabblePresence *presence;
+
+          presence = gabble_presence_cache_get (
+              self->priv->connection->presence_cache, handle);
+
+          if (presence == NULL || presence->status < GABBLE_PRESENCE_XA)
+            {
+              /* Contact is disconnected */
+              if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED &&
+                  self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
+                {
+                  DEBUG ("peer disconnected. FileTransfer is cancelled");
+
+                  gabble_file_transfer_channel_set_state (
+                      TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+                      TP_FILE_TRANSFER_STATE_CANCELLED,
+                      TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED);
+                }
+            }
+        }
+    }
+}
+
 static GObject *
 gabble_file_transfer_channel_constructor (GType type,
                                           guint n_props,
@@ -415,6 +452,9 @@ gabble_file_transfer_channel_constructor (GType type,
   g_array_append_val (unix_access, access_control);
   g_hash_table_insert (self->priv->available_socket_types,
       GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX), unix_access);
+
+  gabble_signal_connect_weak (self->priv->connection->presence_cache,
+      "presences-updated", G_CALLBACK (connection_presences_updated_cb), obj);
 
   return obj;
 }

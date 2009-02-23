@@ -4,7 +4,8 @@ from twisted.words.xish import domish
 
 from gabbletest import exec_test
 from file_transfer_helper import ReceiveFileTest, SOCKET_ADDRESS_TYPE_UNIX,\
-    SOCKET_ACCESS_CONTROL_LOCALHOST, BytestreamIBB, BytestreamS5B
+    SOCKET_ACCESS_CONTROL_LOCALHOST, BytestreamIBB, BytestreamS5B,\
+    FT_STATE_CANCELLED, FT_STATE_CHANGE_REASON_REMOTE_STOPPED
 
 class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
     def accept_file(self):
@@ -15,7 +16,10 @@ class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
         presence['type'] = 'unavailable'
         self.stream.send(presence)
 
-        self.q.expect('dbus-signal', signal='FileTransferStateChanged')
+        e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')
+        state, reason = e.args
+        assert state == FT_STATE_CANCELLED
+        assert reason == FT_STATE_CHANGE_REASON_REMOTE_STOPPED
 
         # We can't accept the transfer now
         try:

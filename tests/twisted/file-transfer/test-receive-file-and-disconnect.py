@@ -1,7 +1,7 @@
 import socket
 
-from gabbletest import exec_test
-from file_transfer_helper import ReceiveFileTest, BytestreamIBB, BytestreamS5B
+from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest,\
+    BytestreamIBB, BytestreamS5B
 
 class ReceiveFileAndDisconnectTest(ReceiveFileTest):
     def receive_file(self):
@@ -14,6 +14,4 @@ class ReceiveFileAndDisconnectTest(ReceiveFileTest):
         return True
 
 if __name__ == '__main__':
-    test = ReceiveFileAndDisconnectTest(BytestreamIBB)
-    test = ReceiveFileAndDisconnectTest(BytestreamS5B)
-    exec_test(test.test)
+    exec_file_transfer_test(ReceiveFileAndDisconnectTest)

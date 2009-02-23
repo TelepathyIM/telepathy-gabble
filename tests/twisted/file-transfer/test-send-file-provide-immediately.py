@@ -1,6 +1,5 @@
-from gabbletest import exec_test
 from file_transfer_helper import SendFileTest, CHANNEL_TYPE_FILE_TRANSFER, FT_STATE_PENDING, \
-    FT_STATE_CHANGE_REASON_NONE, FT_STATE_OPEN, BytestreamIBB, BytestreamS5B
+    FT_STATE_CHANGE_REASON_NONE, FT_STATE_OPEN, BytestreamIBB, BytestreamS5B, exec_file_transfer_test
 
 class SendFileTransferProvideImmediately(SendFileTest):
     def provide_file(self):
@@ -25,7 +24,4 @@ class SendFileTransferProvideImmediately(SendFileTest):
         assert reason == FT_STATE_CHANGE_REASON_NONE
 
 if __name__ == '__main__':
-    test = SendFileTransferProvideImmediately(BytestreamIBB)
-    exec_test(test.test)
-    test = SendFileTransferProvideImmediately(BytestreamS5B)
-    exec_test(test.test)
+    exec_file_transfer_test(SendFileTransferProvideImmediately)

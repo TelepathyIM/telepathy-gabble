@@ -2,8 +2,7 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test
-from file_transfer_helper import ReceiveFileTest, SOCKET_ADDRESS_TYPE_UNIX,\
+from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest, SOCKET_ADDRESS_TYPE_UNIX,\
     SOCKET_ACCESS_CONTROL_LOCALHOST, BytestreamIBB, BytestreamS5B,\
     FT_STATE_CANCELLED, FT_STATE_CHANGE_REASON_REMOTE_STOPPED
 
@@ -36,7 +35,4 @@ class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
         return True
 
 if __name__ == '__main__':
-    test = ReceiveFileAndSenderDisconnectWhilePendingTest(BytestreamIBB)
-    exec_test(test.test)
-    test = ReceiveFileAndSenderDisconnectWhilePendingTest(BytestreamS5B)
-    exec_test(test.test)
+    exec_file_transfer_test(ReceiveFileAndSenderDisconnectWhilePendingTest)

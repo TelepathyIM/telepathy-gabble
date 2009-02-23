@@ -525,6 +525,7 @@ start_stream_initiation (GabbleTubeStream *self,
     stream_id,
     extra_bytestream_negotiate_cb,
     data,
+    G_OBJECT (self),
     error);
 
   /* FIXME: data and one ref on data->transport are leaked if the tube is

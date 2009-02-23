@@ -93,6 +93,7 @@ TWISTED_TESTS = \
 	file-transfer/test-receive-file-and-disconnect.py \
 	file-transfer/test-receive-file-and-sender-disconnect-while-pending.py \
 	file-transfer/test-receive-file-and-sender-disconnect-while-transfering.py \
+	file-transfer/test-receive-file-decline.py \
 	file-transfer/test-receive-file.py \
 	file-transfer/test-send-file-provide-immediately.py \
 	file-transfer/test-send-file-wait-to-provide.py \

@@ -1123,7 +1123,8 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
     }
 
   tmp = lm_message_node_get_attribute (query_node, "mode");
-  if (tp_strdiff (tmp, "tcp"))
+  /* If this attribute is missing, the default value of "tcp" MUST be assumed */
+  if (tmp != NULL && tp_strdiff (tmp, "tcp"))
     {
       DEBUG ("non-TCP SOCKS5 bytestreams are not supported");
       _gabble_connection_send_iq_error (priv->conn, msg,

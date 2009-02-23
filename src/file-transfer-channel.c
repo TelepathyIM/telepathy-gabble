@@ -1032,7 +1032,10 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   if (bytestream == NULL)
     {
       DEBUG ("initiator refused file offer");
-      /* TODO: change channel state */
+      gabble_file_transfer_channel_set_state (
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_FILE_TRANSFER_STATE_CANCELLED,
+          TP_FILE_TRANSFER_STATE_CHANGE_REASON_REMOTE_STOPPED);
       return;
     }
 

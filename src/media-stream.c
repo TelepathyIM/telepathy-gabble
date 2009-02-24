@@ -213,19 +213,18 @@ gabble_media_stream_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  if (priv->content != NULL)
-    {
-      update_direction (stream, priv->content);
+  g_assert (priv->content != NULL);
 
-      /* MediaStream is created as soon as GabbleJingleContent is
-       * created, but we want to let it parse the initiation (if
-       * initiated by remote end) before we pick up initial
-       * codecs and candidates.
-       * FIXME: add API for ordering IQs rather than using g_idle_add.
-       */
-      priv->initial_getter_id =
-          g_idle_add (_get_initial_codecs_and_candidates, stream);
-    }
+  update_direction (stream, priv->content);
+
+  /* MediaStream is created as soon as GabbleJingleContent is
+   * created, but we want to let it parse the initiation (if
+   * initiated by remote end) before we pick up initial
+   * codecs and candidates.
+   * FIXME: add API for ordering IQs rather than using g_idle_add.
+   */
+  priv->initial_getter_id =
+      g_idle_add (_get_initial_codecs_and_candidates, stream);
 
   return obj;
 }

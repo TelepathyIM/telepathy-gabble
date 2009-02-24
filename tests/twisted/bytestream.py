@@ -108,21 +108,34 @@ class S5BFactory(Factory):
         self.event_func(Event('s5b-connection-failed', reason=reason))
 
 def socks5_expect_connection(q, sid, initiator, target):
+    # wait auth
     event = q.expect('s5b-data-received')
     assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
+
+    # send auth reply
     transport = event.transport
     transport.write('\x05\x00') # version 5, no auth
     event = q.expect('s5b-data-received')
+
+    # sha-1(sid + initiator + target)
+    unhashed_domain = sid + initiator + target
+    hashed_domain = sha.new(unhashed_domain).hexdigest()
+
+    # wait CONNECT cmd
     # version 5, connect, reserved, domain type
     expected_connect = '\x05\x01\x00\x03'
     expected_connect += chr(40) # len (SHA-1)
-    # sha-1(sid + initiator + target)
-    unhashed_domain = sid + initiator + target
-    expected_connect += sha.new(unhashed_domain).hexdigest()
+    expected_connect += hashed_domain
     expected_connect += '\x00\x00' # port
     assert event.data == expected_connect
 
-    transport.write('\x05\x00') #version 5, ok
+    # send CONNECT reply
+    # version 5, ok, reserved, domain type
+    connect_reply = '\x05\x00\x00\x03'
+    connect_reply += chr(40) # len (SHA-1)
+    connect_reply += hashed_domain
+    connect_reply += '\x00\x00' # port
+    transport.write(connect_reply)
 
     return transport
 

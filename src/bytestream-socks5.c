@@ -642,6 +642,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         /* We have been authorized, let's send a CONNECT command */
 
+        DEBUG ("Received auth reply. Sending CONNECT command");
+
         from = lm_message_node_get_attribute (
             priv->msg_for_acknowledge_connection->node, "from");
         to = lm_message_node_get_attribute (
@@ -685,7 +687,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        DEBUG ("sock5 stream connected. Bytestream is now open");
+        DEBUG ("Received CONNECT reply. Socks5 stream connected. "
+            "Bytestream is now open");
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
         g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
 
@@ -749,6 +752,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
                 /* Authorize the connection */
                 msg[0] = SOCKS5_VERSION;
                 msg[1] = SOCKS5_AUTH_NONE;
+
+                DEBUG ("Received auth request. Sending auth reply");
                 write_to_transport (self, msg, 2, NULL);
 
                 priv->socks5_state = SOCKS5_STATE_AWAITING_COMMAND;
@@ -793,6 +798,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_STATUS_OK;
 
+        DEBUG ("Received CONNECT cmd. Sending CONNECT reply");
         write_to_transport (self, msg, 2, NULL);
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;

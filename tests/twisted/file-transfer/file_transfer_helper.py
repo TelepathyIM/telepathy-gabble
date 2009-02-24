@@ -527,6 +527,9 @@ class BytestreamS5B(Bytestream):
     def wait_bytestream_open(self, from_, to):
         id, mode, sid, hosts = expect_socks5_init(self.q)
 
+        for jid, host, port in hosts:
+            assert jid == to, jid
+
         assert mode == 'tcp'
         assert sid == self.stream_id
         jid, host, port = hosts[0]

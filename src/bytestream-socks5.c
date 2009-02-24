@@ -746,6 +746,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             DEBUG ("Ignoring to interop with buggy implementations");
           }
 
+        g_free (domain);
+
         DEBUG ("Received CONNECT reply. Socks5 stream connected. "
             "Bytestream is now open");
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
@@ -878,6 +880,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         /* Port: 0 */
         msg[45] = 0x00;
         msg[46] = 0x00;
+
+        g_free (domain);
 
         DEBUG ("Received CONNECT cmd. Sending CONNECT reply");
         write_to_transport (self, msg, 47, NULL);

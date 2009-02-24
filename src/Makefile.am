@@ -126,16 +126,16 @@ libgabble_convenience_la_SOURCES = \
 
 
 libgabble_convenience_la_LIBADD = \
-   $(top_builddir)/extensions/libgabble-extensions.la
+   $(top_builddir)/extensions/libgabble-extensions.la \
+   $(top_builddir)/lib/gibber/libgibber.la \
+   $(ALL_LIBS)
 
 nodist_libgabble_convenience_la_SOURCES = \
     $(BUILT_SOURCES)
 
 write_mgr_file_SOURCES = write-mgr-file.c
 
-write_mgr_file_LDADD = libgabble-convenience.la \
-		       $(top_builddir)/lib/gibber/libgibber.la \
-		       $(ALL_LIBS)
+write_mgr_file_LDADD = libgabble-convenience.la
 
 telepathy_gabble_SOURCES = \
     main.c
@@ -148,9 +148,7 @@ check_c_sources = \
 include $(top_srcdir)/tools/check-coding-style.mk
 check-local: check-coding-style
 
-telepathy_gabble_LDADD = libgabble-convenience.la \
-			 $(top_builddir)/lib/gibber/libgibber.la \
-			 $(ALL_LIBS)
+telepathy_gabble_LDADD = libgabble-convenience.la
 
 noinst_LTLIBRARIES = libgabble-convenience.la
 

@@ -104,6 +104,7 @@ typedef enum _Socks5State Socks5State;
 
 #define SHA1_LENGTH 40
 #define SOCKS5_CONNECT_LENGTH (7 + SHA1_LENGTH)
+#define SOCKS5_CONNECT_REPLY_LENGTH (7 + SHA1_LENGTH)
 
 struct _Streamhost
 {
@@ -696,19 +697,25 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         return 2;
 
       case SOCKS5_STATE_CONNECT_REQUESTED:
-        /* We sent an CONNECT request and we are awaiting for a response, the
-         * response is 2 bytes-long */
-        if (string->len < 2)
+        /* We sent a CONNECT request and are awaiting for the response */
+        if (string->len < SOCKS5_CONNECT_REPLY_LENGTH)
           return 0;
 
         if (string->str[0] != SOCKS5_VERSION ||
-            string->str[1] != SOCKS5_STATUS_OK)
+            string->str[1] != SOCKS5_STATUS_OK ||
+            string->str[2] != SOCKS5_RESERVED ||
+            string->str[3] != SOCKS5_ATYP_DOMAIN ||
+            string->str[4] != SHA1_LENGTH ||
+            string->str[45] != 0 || /* first half of the port number */
+            string->str[46] != 0) /* second half of the port number */
           {
             DEBUG ("Connection refused");
 
             socks5_error (self);
             return string->len;
           }
+
+        /* FIXME: check the domain type */
 
         DEBUG ("Received CONNECT reply. Socks5 stream connected. "
             "Bytestream is now open");
@@ -746,7 +753,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             gibber_transport_block_receiving (priv->transport, TRUE);
           }
 
-        return 2;
+        return SOCKS5_CONNECT_REPLY_LENGTH;
 
       case SOCKS5_STATE_AWAITING_AUTH_REQUEST:
         /* A client connected to us and we are awaiting for the authorization

@@ -505,14 +505,14 @@ socks5_close_transport (GabbleBytestreamSocks5 *self)
   GabbleBytestreamSocks5Private *priv =
     GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
-  if (priv->transport == NULL)
-    return;
-
   if (priv->read_buffer != NULL)
     {
       g_string_free (priv->read_buffer, TRUE);
       priv->read_buffer = NULL;
     }
+
+  if (priv->transport == NULL)
+    return;
 
   g_signal_handlers_disconnect_matched (priv->transport,
       G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, self);

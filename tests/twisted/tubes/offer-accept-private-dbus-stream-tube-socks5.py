@@ -390,6 +390,10 @@ def test(q, bus, conn, stream):
     id, mode, sid, hosts = expect_socks5_init(q)
     assert mode == 'tcp'
     assert sid == dbus_stream_id
+
+    for jid, host, port in hosts:
+        assert jid == self_full_jid
+
     jid, host, port = hosts[0]
 
     transport = socks5_connect(q, host, port, sid, self_full_jid, bob_full_jid)

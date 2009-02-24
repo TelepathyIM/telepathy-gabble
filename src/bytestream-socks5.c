@@ -152,6 +152,7 @@ struct _GabbleBytestreamSocks5Private
   gchar *peer_resource;
   GabbleBytestreamState bytestream_state;
   gchar *peer_jid;
+  gchar *self_full_jid;
 
   /* List of Streamhost */
   GSList *streamhosts;
@@ -239,6 +240,7 @@ gabble_bytestream_socks5_finalize (GObject *object)
   g_free (priv->stream_init_id);
   g_free (priv->peer_resource);
   g_free (priv->peer_jid);
+  g_free (priv->self_full_jid);
 
   g_slist_foreach (priv->streamhosts, (GFunc) streamhost_free, NULL);
   g_slist_free (priv->streamhosts);
@@ -342,8 +344,10 @@ gabble_bytestream_socks5_constructor (GType type,
 {
   GObject *obj;
   GabbleBytestreamSocks5Private *priv;
+  TpBaseConnection *base_conn;
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
+  gchar *resource;
 
   obj = G_OBJECT_CLASS (gabble_bytestream_socks5_parent_class)->
            constructor (type, n_props, props);
@@ -355,8 +359,9 @@ gabble_bytestream_socks5_constructor (GType type,
   g_assert (priv->peer_handle != 0);
   g_assert (priv->stream_id != NULL);
 
-  contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  base_conn = TP_BASE_CONNECTION (priv->conn);
+  contact_repo = tp_base_connection_get_handles (base_conn,
+      TP_HANDLE_TYPE_CONTACT);
 
   tp_handle_ref (contact_repo, priv->peer_handle);
 
@@ -366,6 +371,11 @@ gabble_bytestream_socks5_constructor (GType type,
     priv->peer_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
   else
     priv->peer_jid = g_strdup (jid);
+
+  g_object_get (priv->conn, "resource", &resource, NULL);
+  priv->self_full_jid = g_strdup_printf ("%s/%s", tp_handle_inspect (
+        contact_repo, base_conn->self_handle), resource);
+  g_free (resource);
 
   return obj;
 }
@@ -1359,15 +1369,11 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base_conn,
-      TP_HANDLE_TYPE_CONTACT);
   gchar *port;
   gint port_num;
   LmMessage *msg;
   GList *ips;
   GList *ip;
-  gchar *resource, *self_full_jid;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -1399,11 +1405,6 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
         '@', "mode", "tcp",
       ')', NULL);
 
-  g_object_get (priv->conn, "resource", &resource, NULL);
-  self_full_jid = g_strdup_printf ("%s/%s", tp_handle_inspect (contact_repo,
-        base_conn->self_handle), resource);
-  g_free (resource);
-
   ips = get_local_interfaces_ips (FALSE);
   ip = ips;
   while (ip)
@@ -1411,7 +1412,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       LmMessageNode *node = lm_message_node_add_child (msg->node->children,
           "streamhost", "");
       lm_message_node_set_attributes (node,
-          "jid", self_full_jid,
+          "jid", priv->self_full_jid,
           "host", ip->data,
           "port", port,
           NULL);
@@ -1421,7 +1422,6 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
     }
   g_list_free (ips);
   g_free (port);
-  g_free (self_full_jid);
 
   /* FIXME: for now we support only direct connections, we should also
    * add support for external proxies to have more chances to make the

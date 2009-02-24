@@ -818,11 +818,22 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         /* FIXME: check the domain type */
 
+        domain = compute_domain(priv->stream_id, priv->self_full_jid,
+            priv->peer_jid);
+
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_STATUS_OK;
+        msg[2] = SOCKS5_RESERVED;
+        msg[3] = SOCKS5_ATYP_DOMAIN;
+        msg[4] = SHA1_LENGTH;
+        /* Domain name: SHA-1(sid + initiator + target) */
+        memcpy (&msg[5], domain, 40);
+        /* Port: 0 */
+        msg[45] = 0x00;
+        msg[46] = 0x00;
 
         DEBUG ("Received CONNECT cmd. Sending CONNECT reply");
-        write_to_transport (self, msg, 2, NULL);
+        write_to_transport (self, msg, 47, NULL);
 
         priv->socks5_state = SOCKS5_STATE_CONNECTED;
 

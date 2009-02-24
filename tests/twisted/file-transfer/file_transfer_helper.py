@@ -2,6 +2,7 @@ import dbus
 import socket
 import md5
 import time
+import sha
 
 from servicetest import EventPattern
 from gabbletest import acknowledge_iq, sync_stream, exec_test
@@ -427,6 +428,8 @@ def exec_file_transfer_test(test_cls):
     exec_test(test.test)
     test = test_cls(BytestreamS5B)
     exec_test(test.test)
+    test = test_cls(BytestreamS5BBugged)
+    exec_test(test.test)
 
 class Bytestream(object):
     def __init__(self, stream, q):
@@ -546,3 +549,56 @@ class BytestreamS5B(Bytestream):
 
     def wait_bytestream_closed(self):
         self.q.expect('s5b-connection-lost')
+
+class BytestreamS5BBugged(BytestreamS5B):
+    """Simulate buggy S5B implementation (as Pidgin's one)"""
+    def open_bytestream(self, from_, to):
+        port = listen_socks5(self.q)
+
+        send_socks5_init(self.stream, from_, to,
+            'alpha', 'tcp', [(from_, '127.0.0.1', port)])
+
+        # FIXME: we should share lot of code with socks5_expect_connection
+        # once we'll have refactored Bytestream test objects
+        sid = 'alpha'
+        initiator = from_
+        target = 'test@localhost/Resource'
+
+        # wait auth
+        event = self.q.expect('s5b-data-received')
+        assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
+
+        # send auth reply
+        transport = event.transport
+        transport.write('\x05\x00') # version 5, no auth
+        event = self.q.expect('s5b-data-received')
+
+        # sha-1(sid + initiator + target)
+        unhashed_domain = sid + initiator + target
+        hashed_domain = sha.new(unhashed_domain).hexdigest()
+
+        # wait CONNECT cmd
+        # version 5, connect, reserved, domain type
+        expected_connect = '\x05\x01\x00\x03'
+        expected_connect += chr(40) # len (SHA-1)
+        expected_connect += hashed_domain
+        expected_connect += '\x00\x00' # port
+        assert event.data == expected_connect
+
+        # send CONNECT reply
+        # version 5, ok, reserved, domain type
+        connect_reply = '\x05\x00\x00\x03'
+        # I'm Pidgin, why should I respect SOCKS5 XEP?
+        domain = '127.0.0.1'
+        connect_reply += chr(len(domain))
+        connect_reply += domain
+        connect_reply += '\x00\x00' # port
+        transport.write(connect_reply)
+
+        self.transport = transport
+
+        offset_event, state_event = self.q.expect_many(
+            EventPattern('dbus-signal', signal='InitialOffsetDefined'),
+            EventPattern('dbus-signal', signal='FileTransferStateChanged'))
+
+        return offset_event, state_event

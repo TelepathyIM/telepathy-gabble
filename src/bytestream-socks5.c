@@ -830,17 +830,20 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
          *  - PORT = 0
          *  - DOMAIN = SHA1(sid + initiator + target)
          */
-        if (string->len < SOCKS5_CONNECT_LENGTH)
+        if (string->len < SOCKS5_MIN_LENGTH)
           return 0;
 
         domain_len = (guint8) string->str[4];
+        if ((guint8) string->len < SOCKS5_MIN_LENGTH + domain_len)
+          /* We didn't receive the full packet yet */
+          return 0;
 
         if (string->str[0] != SOCKS5_VERSION ||
             string->str[1] != SOCKS5_CMD_CONNECT ||
             string->str[2] != SOCKS5_RESERVED ||
             string->str[3] != SOCKS5_ATYP_DOMAIN ||
-            string->str[45] != 0 || /* first half of the port number */
-            string->str[46] != 0) /* second half of the port number */
+            string->str[5 + domain_len] != 0 || /* first half of the port number */
+            string->str[5 + domain_len] != 0) /* second half of the port number */
           {
             DEBUG ("Invalid SOCKS5 connect message");
 
@@ -879,7 +882,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         g_object_unref (priv->listener);
         priv->listener = NULL;
 
-        return SOCKS5_CONNECT_LENGTH;
+        return SOCKS5_MIN_LENGTH + domain_len;
 
       case SOCKS5_STATE_CONNECTED:
         /* We are connected, everything we receive now is data */

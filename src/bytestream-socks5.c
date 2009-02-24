@@ -632,6 +632,21 @@ compute_domain (const gchar *sid,
   return domain;
 }
 
+static gboolean
+check_domain (const gchar *domain,
+              guint8 len,
+              const gchar *expected)
+{
+  if (len != SHA1_LENGTH || strncmp (domain, expected, SHA1_LENGTH) != 0)
+    {
+      DEBUG ("Wrong domain hash: %s (expected: %s). Ignoring to interop "
+          "with buggy implementations", domain, expected);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* Process the received data and returns the number of bytes that have been
  * used */
 static gsize
@@ -647,6 +662,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   const gchar *to;
   gchar *domain;
   LmMessage *iq_result;
+  guint8 domain_len;
 
   switch (priv->socks5_state)
     {
@@ -701,6 +717,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (string->len < SOCKS5_CONNECT_REPLY_LENGTH)
           return 0;
 
+        domain_len = (guint8) string->str[4];
+
         if (string->str[0] != SOCKS5_VERSION ||
             string->str[1] != SOCKS5_STATUS_OK ||
             string->str[2] != SOCKS5_RESERVED ||
@@ -715,7 +733,10 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        /* FIXME: check the domain type */
+        domain = compute_domain(priv->stream_id, priv->self_full_jid,
+            priv->peer_jid);
+
+        check_domain (&string->str[5], domain_len, domain);
 
         DEBUG ("Received CONNECT reply. Socks5 stream connected. "
             "Bytestream is now open");
@@ -809,11 +830,12 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (string->len < SOCKS5_CONNECT_LENGTH)
           return 0;
 
+        domain_len = (guint8) string->str[4];
+
         if (string->str[0] != SOCKS5_VERSION ||
             string->str[1] != SOCKS5_CMD_CONNECT ||
             string->str[2] != SOCKS5_RESERVED ||
             string->str[3] != SOCKS5_ATYP_DOMAIN ||
-            string->str[4] != SHA1_LENGTH ||
             string->str[45] != 0 || /* first half of the port number */
             string->str[46] != 0) /* second half of the port number */
           {
@@ -823,10 +845,10 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        /* FIXME: check the domain type */
-
         domain = compute_domain(priv->stream_id, priv->self_full_jid,
             priv->peer_jid);
+
+        check_domain (&string->str[5], domain_len, domain);
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_STATUS_OK;

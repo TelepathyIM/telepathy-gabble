@@ -73,8 +73,7 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
-  PROP_OBJECT_PATH,
+  PROP_OBJECT_PATH = 1,
   PROP_NAME,
   PROP_ID,
   PROP_MEDIA_TYPE,
@@ -93,7 +92,6 @@ struct _GabbleMediaStreamPrivate
 {
   GabbleJingleContent *content;
 
-  GabbleConnection *conn;
   GabbleMediaSessionMode mode;
   gchar *object_path;
   guint id;
@@ -237,9 +235,6 @@ gabble_media_stream_get_property (GObject    *object,
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
-      break;
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
@@ -286,9 +281,6 @@ gabble_media_stream_set_property (GObject      *object,
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
-      break;
     case PROP_OBJECT_PATH:
       g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
@@ -374,16 +366,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
 
   object_class->dispose = gabble_media_stream_dispose;
   object_class->finalize = gabble_media_stream_finalize;
-
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object that owns this "
-                                    "media stream's channel.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_string ("object-path", "D-Bus object path",
                                     "The D-Bus object path used for this "

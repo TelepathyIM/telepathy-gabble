@@ -616,6 +616,21 @@ socks5_error (GabbleBytestreamSocks5 *self)
   gabble_bytestream_socks5_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
 }
 
+static gchar *
+compute_domain (const gchar *sid,
+                const gchar *initiator,
+                const gchar *target)
+{
+  gchar *unhashed_domain;
+  gchar *domain;
+
+  unhashed_domain = g_strconcat (sid, initiator, target, NULL);
+  domain = sha1_hex (unhashed_domain, strlen (unhashed_domain));
+
+  g_free (unhashed_domain);
+  return domain;
+}
+
 /* Process the received data and returns the number of bytes that have been
  * used */
 static gsize
@@ -629,7 +644,6 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   guint i;
   const gchar *from;
   const gchar *to;
-  gchar *unhashed_domain;
   gchar *domain;
   LmMessage *iq_result;
 
@@ -658,8 +672,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             priv->msg_for_acknowledge_connection->node, "from");
         to = lm_message_node_get_attribute (
             priv->msg_for_acknowledge_connection->node, "to"),
-        unhashed_domain = g_strconcat (priv->stream_id, from, to, NULL);
-        domain = sha1_hex (unhashed_domain, strlen (unhashed_domain));
+
+        domain = compute_domain (priv->stream_id, from, to);
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_CMD_CONNECT;
@@ -674,7 +688,6 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         msg[46] = 0x00;
 
         g_free (domain);
-        g_free (unhashed_domain);
 
         write_to_transport (self, msg, SOCKS5_CONNECT_LENGTH, NULL);
 

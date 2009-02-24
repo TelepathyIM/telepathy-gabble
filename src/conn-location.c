@@ -196,10 +196,10 @@ conn_location_properties_getter (GObject *object,
 {
   if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControlTypes"))
     {
-      GabbleRichPresenceAccessControlType access_control_type =
-        GABBLE_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST;
+      guint access_control_type =
+        TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST;
       GArray *access_control = g_array_sized_new (FALSE, FALSE,
-          sizeof (GabbleRichPresenceAccessControlType), 1);
+          sizeof (guint), 1);
 
       g_array_append_val (access_control, access_control_type);
       g_value_take_boxed (value, access_control);
@@ -211,15 +211,16 @@ conn_location_properties_getter (GObject *object,
       GValue variant = {0,};
       GValue *allocated_value;
 
-      /* G_TYPE_UINT is the type of GabbleRichPresenceAccessControlType */
+      /* G_TYPE_UINT is the D-Bus type of TpRichPresenceAccessControlType */
       g_value_init (&type, G_TYPE_UINT);
       g_value_set_uint (&type,
-          GABBLE_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST);
+          TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST);
       g_value_array_append (access_control, &type);
       g_value_unset (&type);
 
       g_value_init (&variant, G_TYPE_VALUE);
-      /* G_TYPE_UINT is a random type, it is not used */
+      /* For Publish_List, the variant isn't used, so we set a dummy value,
+       * (guint) 0 */
       allocated_value = tp_g_value_slice_new (G_TYPE_UINT);
       g_value_set_uint (allocated_value, 0);
       g_value_set_boxed (&variant, allocated_value);
@@ -245,7 +246,7 @@ conn_location_properties_setter (GObject *object,
 {
   GValueArray *access_control;
   GValue *access_control_type_value;
-  GabbleRichPresenceAccessControlType access_control_type;
+  TpRichPresenceAccessControlType access_control_type;
   g_return_val_if_fail (interface ==
       GABBLE_IFACE_QUARK_CONNECTION_INTERFACE_LOCATION, FALSE);
 
@@ -266,7 +267,7 @@ conn_location_properties_setter (GObject *object,
   access_control_type = g_value_get_uint (access_control_type_value);
 
   if (access_control_type !=
-      GABBLE_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST)
+      TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Access control type not implemented");

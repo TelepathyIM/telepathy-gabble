@@ -1447,7 +1447,20 @@ struct _streaminit_reply_cb_data
   gchar *stream_id;
   GabbleBytestreamFactoryNegotiateReplyFunc func;
   gpointer user_data;
+  GObject *object;
+  gboolean object_alive;
 };
+
+static void
+negotiate_stream_object_destroy_notify_cb (gpointer _data,
+                                           GObject *where_the_object_was)
+{
+  struct _streaminit_reply_cb_data *data =
+    (struct _streaminit_reply_cb_data*) _data;
+
+  data->object = NULL;
+  data->object_alive = FALSE;
+}
 
 /* Called when we receive the reply of a SI request */
 static LmHandlerResult
@@ -1470,6 +1483,18 @@ streaminit_reply_cb (GabbleConnection *conn,
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   TpHandle peer_handle = 0;
   gboolean success = FALSE;
+
+  if (data->object != NULL)
+    {
+      g_object_weak_unref (data->object,
+          negotiate_stream_object_destroy_notify_cb, data);
+    }
+
+  if (!data->object_alive)
+    {
+      DEBUG ("Object which requested the bytestream was disposed. Ignoring");
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -1536,7 +1561,7 @@ END:
 
   /* user callback */
   data->func (bytestream, (const gchar*) data->stream_id, reply_msg,
-      data->user_data);
+      data->object, data->user_data);
 
   if (peer_resource != NULL)
     g_free (peer_resource);
@@ -1558,6 +1583,8 @@ END:
  * @stream_id: the stream identifier
  * @func: the callback to call when we receive the answser of the request
  * @user_data: user data to pass to the callback
+ * @object: if non-NULL the handler will follow the lifetime of that object,
+ * which means that if the object is destroyed the callback will not be invoked.
  * @error: pointer in which to return a GError in case of failure.
  *
  * Send a Stream Initiation (XEP-0095) request.
@@ -1568,6 +1595,7 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
                                             const gchar *stream_id,
                                             GabbleBytestreamFactoryNegotiateReplyFunc func,
                                             gpointer user_data,
+                                            GObject *object,
                                             GError **error)
 {
   GabbleBytestreamFactoryPrivate *priv;
@@ -1584,6 +1612,14 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
   data->stream_id = g_strdup (stream_id);
   data->func = func;
   data->user_data = user_data;
+  data->object_alive = TRUE;
+  data->object = object;
+
+  if (object != NULL)
+    {
+      g_object_weak_ref (object, negotiate_stream_object_destroy_notify_cb,
+          data);
+    }
 
   result = _gabble_connection_send_with_reply (priv->conn, msg,
       streaminit_reply_cb, G_OBJECT (self), data, error);

@@ -102,8 +102,7 @@ void gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
 
 void gabble_olpc_view_close (GabbleOlpcView *self);
 
-#define GABBLE_ARRAY_TYPE_HANDLE (dbus_g_type_get_collection ("GArray", \
-    G_TYPE_UINT))
+#define GABBLE_ARRAY_TYPE_HANDLE (DBUS_TYPE_G_UINT_ARRAY)
 
 G_END_DECLS
 

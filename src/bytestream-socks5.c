@@ -726,8 +726,10 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             string->str[1] != SOCKS5_STATUS_OK ||
             string->str[2] != SOCKS5_RESERVED ||
             string->str[3] != SOCKS5_ATYP_DOMAIN ||
-            string->str[5 + domain_len] != 0 || /* first half of the port number */
-            string->str[6 + domain_len] != 0) /* second half of the port number */
+            /* first half of the port number */
+            string->str[5 + domain_len] != 0 ||
+            /* second half of the port number */
+            string->str[6 + domain_len] != 0)
           {
             DEBUG ("Connection refused");
 
@@ -845,8 +847,10 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             string->str[1] != SOCKS5_CMD_CONNECT ||
             string->str[2] != SOCKS5_RESERVED ||
             string->str[3] != SOCKS5_ATYP_DOMAIN ||
-            string->str[5 + domain_len] != 0 || /* first half of the port number */
-            string->str[5 + domain_len] != 0) /* second half of the port number */
+            /* first half of the port number */
+            string->str[5 + domain_len] != 0 ||
+            /* second half of the port number */
+            string->str[5 + domain_len] != 0)
           {
             DEBUG ("Invalid SOCKS5 connect message");
 

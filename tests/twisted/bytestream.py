@@ -136,17 +136,26 @@ def socks5_connect(q, host, port, sid,  initiator, target):
     event = q.expect('s5b-data-received')
     event.data == '\x05\x00' # version 5, no auth
 
+    # sha-1(sid + initiator + target)
+    unhashed_domain = sid + initiator + target
+    hashed_domain = sha.new(unhashed_domain).hexdigest()
+
+    # send CONNECT command
     # version 5, connect, reserved, domain type
     connect = '\x05\x01\x00\x03'
     connect += chr(40) # len (SHA-1)
-    # sha-1(sid + initiator + target)
-    unhashed_domain = sid + initiator + target
-    connect += sha.new(unhashed_domain).hexdigest()
+    connect += hashed_domain
     connect += '\x00\x00' # port
     transport.write(connect)
 
+    # wait for CONNECT reply
     event = q.expect('s5b-data-received')
-    event.data == '\x05\x00' # version 5, ok
+    # version 5, succeed, reserved, domain type
+    expected_reply = '\x05\x00\x00\x03'
+    expected_reply += chr(40) # len (SHA-1)
+    expected_reply += hashed_domain
+    expected_reply += '\x00\x00' # port
+    assert event.data == expected_reply
 
     return transport
 

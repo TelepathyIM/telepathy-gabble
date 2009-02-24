@@ -387,7 +387,8 @@ class SendFileTest(FileTransferTest):
             self.bytestream.get_ns())
         self.stream.send(result)
 
-        self.bytestream.wait_bytestream_open(self.contact_name, 'test@localhost/Resource')
+        self.bytestream.wait_bytestream_open('test@localhost/Resource',
+            self.contact_full_jid)
 
     def send_file(self):
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -445,7 +446,7 @@ class Bytestream(object):
     def get_ns(self):
         raise NotImplemented
 
-    def wait_bytestream_open(self, from_, to):
+    def wait_bytestream_open(self, initiator, receiver):
         raise NotImplemented
 
     def get_data(self):
@@ -480,7 +481,7 @@ class BytestreamIBB(Bytestream):
 
         self.seq += 1
 
-    def wait_bytestream_open(self, from_, to):
+    def wait_bytestream_open(self, initiator, receiver):
         # Wait IBB open iq
         event = self.q.expect('stream-iq', iq_type='set')
         sid = parse_ibb_open(event.stanza)
@@ -524,19 +525,20 @@ class BytestreamS5B(Bytestream):
     def send_data(self, from_, to, data):
         self.transport.write(data)
 
-    def wait_bytestream_open(self, from_, to):
+    def wait_bytestream_open(self, initiator, receiver):
         id, mode, sid, hosts = expect_socks5_init(self.q)
 
         for jid, host, port in hosts:
-            assert jid == to, jid
+            assert jid == initiator, jid
 
         assert mode == 'tcp'
         assert sid == self.stream_id
         jid, host, port = hosts[0]
 
-        self.transport = socks5_connect(self.q, host, port, sid, from_, to)
+        self.transport = socks5_connect(self.q, host, port, sid, initiator,
+            receiver)
 
-        send_socks5_reply(self.stream, from_, to, id, jid)
+        send_socks5_reply(self.stream, receiver, initiator, id, jid)
 
     def get_data(self):
        e = self.q.expect('s5b-data-received', transport=self.transport)

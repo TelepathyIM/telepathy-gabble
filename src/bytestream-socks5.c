@@ -640,8 +640,7 @@ check_domain (const gchar *domain,
 {
   if (len != SHA1_LENGTH || strncmp (domain, expected, SHA1_LENGTH) != 0)
     {
-      DEBUG ("Wrong domain hash: %s (expected: %s). Ignoring to interop "
-          "with buggy implementations", domain, expected);
+      DEBUG ("Wrong domain hash: %s (expected: %s)", domain, expected);
       return FALSE;
     }
 
@@ -739,7 +738,11 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         domain = compute_domain(priv->stream_id, priv->self_full_jid,
             priv->peer_jid);
 
-        check_domain (&string->str[5], domain_len, domain);
+        if (!check_domain (&string->str[5], domain_len, domain))
+          {
+            /* Thanks Pidgin... */
+            DEBUG ("Ignoring to interop with buggy implementations");
+          }
 
         DEBUG ("Received CONNECT reply. Socks5 stream connected. "
             "Bytestream is now open");
@@ -854,7 +857,12 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         domain = compute_domain(priv->stream_id, priv->self_full_jid,
             priv->peer_jid);
 
-        check_domain (&string->str[5], domain_len, domain);
+        if (!check_domain (&string->str[5], domain_len, domain))
+          {
+            DEBUG ("Reject connection to prevent spoofing");
+            socks5_error (self);
+            return string->len;
+          }
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_STATUS_OK;

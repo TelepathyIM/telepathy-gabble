@@ -1353,11 +1353,15 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base_conn,
+      TP_HANDLE_TYPE_CONTACT);
   gchar *port;
   gint port_num;
   LmMessage *msg;
   GList *ips;
   GList *ip;
+  gchar *resource, *self_full_jid;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -1389,6 +1393,11 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
         '@', "mode", "tcp",
       ')', NULL);
 
+  g_object_get (priv->conn, "resource", &resource, NULL);
+  self_full_jid = g_strdup_printf ("%s/%s", tp_handle_inspect (contact_repo,
+        base_conn->self_handle), resource);
+  g_free (resource);
+
   ips = get_local_interfaces_ips (FALSE);
   ip = ips;
   while (ip)
@@ -1396,7 +1405,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       LmMessageNode *node = lm_message_node_add_child (msg->node->children,
           "streamhost", "");
       lm_message_node_set_attributes (node,
-          "jid", priv->peer_jid,
+          "jid", self_full_jid,
           "host", ip->data,
           "port", port,
           NULL);
@@ -1406,6 +1415,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
     }
   g_list_free (ips);
   g_free (port);
+  g_free (self_full_jid);
 
   /* FIXME: for now we support only direct connections, we should also
    * add support for external proxies to have more chances to make the

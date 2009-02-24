@@ -394,42 +394,33 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
     }
 }
 
-struct _extra_bytestream_negotiate_cb_data
-{
-  GabbleTubeStream *self;
-  /* transport from the local application */
-  GibberTransport *transport;
-};
-
 static void
 extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                                const gchar *stream_id,
                                LmMessage *msg,
+                               GObject *object,
                                gpointer user_data)
 {
-  struct _extra_bytestream_negotiate_cb_data *data =
-    (struct _extra_bytestream_negotiate_cb_data *) user_data;
-  GabbleTubeStream *self = data->self;
+  GabbleTubeStream *self = GABBLE_TUBE_STREAM (object);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  GibberTransport *transport = GIBBER_TRANSPORT (user_data);
 
   if (bytestream == NULL)
     {
       DEBUG ("initiator refused new bytestream");
 
-      g_object_unref (data->transport);
-      g_slice_free (struct _extra_bytestream_negotiate_cb_data, data);
+      g_object_unref (transport);
       return;
     }
 
   DEBUG ("extra bytestream accepted");
 
+  /* transport has been refed in start_stream_initiation () */
   g_hash_table_insert (priv->bytestream_to_transport, g_object_ref (bytestream),
-      data->transport);
+      transport);
 
   g_signal_connect (bytestream, "state-changed",
                 G_CALLBACK (extra_bytestream_state_changed_cb), self);
-
-  g_slice_free (struct _extra_bytestream_negotiate_cb_data, data);
 }
 
 static gboolean
@@ -444,7 +435,6 @@ start_stream_initiation (GabbleTubeStream *self,
   const gchar *jid;
   gchar *full_jid, *stream_id, *id_str;
   gboolean result;
-  struct _extra_bytestream_negotiate_cb_data *data;
 
   priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
@@ -515,25 +505,17 @@ start_stream_initiation (GabbleTubeStream *self,
       "tube", id_str,
       NULL);
 
-  data = g_slice_new (struct _extra_bytestream_negotiate_cb_data);
-  data->self = self;
-  data->transport = g_object_ref (transport);
-
   result = gabble_bytestream_factory_negotiate_stream (
-    priv->conn->bytestream_factory,
-    msg,
-    stream_id,
-    extra_bytestream_negotiate_cb,
-    data,
-    error);
+      priv->conn->bytestream_factory, msg, stream_id,
+      extra_bytestream_negotiate_cb, g_object_ref (transport), G_OBJECT (self),
+      error);
 
   /* FIXME: data and one ref on data->transport are leaked if the tube is
    * closed before we got the SI reply. */
 
   if (!result)
     {
-      g_object_unref (data->transport);
-      g_slice_free (struct _extra_bytestream_negotiate_cb_data, data);
+      g_object_unref (transport);
     }
 
   lm_message_unref (msg);

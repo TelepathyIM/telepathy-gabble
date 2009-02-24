@@ -74,7 +74,6 @@ static guint signals[LAST_SIGNAL] = {0};
 enum
 {
   PROP_CONNECTION = 1,
-  PROP_MEDIA_SESSION,
   PROP_OBJECT_PATH,
   PROP_NAME,
   PROP_ID,
@@ -95,7 +94,6 @@ struct _GabbleMediaStreamPrivate
   GabbleJingleContent *content;
 
   GabbleConnection *conn;
-  gpointer session;
   GabbleMediaSessionMode mode;
   gchar *object_path;
   guint id;
@@ -242,9 +240,6 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
-    case PROP_MEDIA_SESSION:
-      g_value_set_object (value, priv->session);
-      break;
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
@@ -293,9 +288,6 @@ gabble_media_stream_set_property (GObject      *object,
   switch (property_id) {
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
-      break;
-    case PROP_MEDIA_SESSION:
-      priv->session = g_value_get_object (value);
       break;
     case PROP_OBJECT_PATH:
       g_free (priv->object_path);
@@ -392,15 +384,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_object ("media-session",
-      "GabbleMediaSession object",
-      "Gabble media session object that owns this media stream object.",
-      GABBLE_TYPE_JINGLE_SESSION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_MEDIA_SESSION,
-      param_spec);
 
   param_spec = g_param_spec_string ("object-path", "D-Bus object path",
                                     "The D-Bus object path used for this "

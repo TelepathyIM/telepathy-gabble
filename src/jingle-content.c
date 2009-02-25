@@ -241,8 +241,8 @@ gabble_jingle_content_set_property (GObject *object,
 
           g_assert (transport_type != 0);
 
-          priv->transport = g_object_new (transport_type,
-              "content", self, "transport-ns", priv->transport_ns, NULL);
+          priv->transport = gabble_jingle_transport_iface_new (transport_type,
+              self, priv->transport_ns);
 
           g_signal_connect (priv->transport, "new-candidates",
               (GCallback) new_transport_candidates_cb, self);
@@ -558,10 +558,8 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
   DEBUG ("content creating new transport type %s", g_type_name (transport_type));
 
-  trans = g_object_new (transport_type,
-                       "content", c,
-                       "transport-ns", priv->transport_ns,
-                       NULL);
+  trans = gabble_jingle_transport_iface_new (transport_type,
+      c, priv->transport_ns);
 
   g_signal_connect (trans, "new-candidates",
       (GCallback) new_transport_candidates_cb, c);

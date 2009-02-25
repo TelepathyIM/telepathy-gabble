@@ -65,6 +65,7 @@ struct _GabbleJingleFactoryPrivate
   GHashTable *transports;
   GHashTable *sessions;
 
+  gboolean get_stun_from_jingle;
   gboolean dispose_has_run;
 };
 
@@ -152,7 +153,7 @@ jingle_info_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  if (fac->get_stun_from_jingle)
+  if (fac->priv->get_stun_from_jingle)
     node = lm_message_node_get_child (query_node, "stun");
   else
     node = NULL;
@@ -404,7 +405,7 @@ connection_status_changed_cb (GabbleConnection *conn,
 
           if (stun_server == NULL)
             {
-              self->get_stun_from_jingle = TRUE;
+              self->priv->get_stun_from_jingle = TRUE;
             }
           else
             {

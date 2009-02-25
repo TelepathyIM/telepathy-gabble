@@ -123,7 +123,6 @@ typedef struct _GabbleJingleFactoryPrivate GabbleJingleFactoryPrivate;
 struct _GabbleJingleFactory {
     GObject parent;
 
-    gboolean get_stun_from_jingle;
     gchar *stun_server;
     guint16 stun_port;
     gchar *relay_token;

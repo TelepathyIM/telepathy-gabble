@@ -218,7 +218,9 @@ def test(q, bus, conn, stream, bytestream_cls):
     bytestream = bytestream_cls(stream, q, 'alpha', 'chat@conf.localhost/bob',
         'chat@conf.localhost/test', True)
 
-    iq, si = create_si_offer(stream, bytestream.initiator, bytestream.target,
+    # set the real jid of the target as 'to' because the XMPP server changes
+    # it when delivering the IQ
+    iq, si = create_si_offer(stream, bytestream.initiator, 'test@localhost/Resource',
         bytestream.stream_id, ns.TUBES, [bytestream.get_ns()])
 
     stream_node = si.addElement((ns.TUBES, 'muc-stream'))

@@ -74,8 +74,10 @@ TWISTED_TESTS = \
 	vcard/test-vcard-set-and-get.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
+	jingle/no-stun-server.py \
 	jingle/payload-types.py \
 	jingle/stream-handler-error.py \
+	jingle/stun-from-google.py \
 	jingle/test-content-adding-removal.py \
 	jingle/test-incoming-call.py \
 	jingle/test-incoming-call-reject.py \

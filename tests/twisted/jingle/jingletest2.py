@@ -306,8 +306,14 @@ class JingleTest2:
         sync_stream(self.q, self.stream)
 
     def get_audio_codecs_dbus(self):
-        return dbus.Array([ (id, name, 0, rate, 0, {} ) for (name, id, rate) in self.audio_codecs ],
-            signature='(usuuua{ss})')
+        codecs = [ (id, name, 0, rate, 0, {} )
+                   for (name, id, rate) in self.audio_codecs ]
+        return dbus.Array(codecs, signature='(usuuua{ss})')
+
+    def get_video_codecs_dbus(self):
+        codecs = [ (id, name, 0, rate, 0, {} )
+                   for (name, id, rate) in self.video_codecs ]
+        return dbus.Array(codecs, signature='(usuuua{ss})')
 
     def get_remote_transports_dbus(self):
         return dbus.Array([

@@ -568,7 +568,8 @@ bytestream_activate_next (GabbleBytestreamMultiple *self)
 
   priv->active_bytestream = gabble_bytestream_factory_create_from_method (
       priv->factory, stream_method, priv->peer_handle, priv->stream_id,
-      priv->stream_init_id, priv->peer_resource, priv->state);
+      priv->stream_init_id, priv->peer_resource, priv->self_full_jid,
+      priv->state);
 
   g_free (stream_method);
 

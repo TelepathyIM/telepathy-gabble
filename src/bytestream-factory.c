@@ -557,7 +557,8 @@ stream_method_supported (const gchar *stream_method)
 static GabbleBytestreamMultiple *gabble_bytestream_factory_create_multiple (
     GabbleBytestreamFactory *self, TpHandle peer_handle,
     const gchar *stream_id, const gchar *stream_init_id,
-    const gchar *peer_resource, GabbleBytestreamState state);
+    const gchar *peer_resource, const gchar *self_jid,
+    GabbleBytestreamState state);
 
 static GabbleBytestreamIBB *gabble_bytestream_factory_create_ibb (
     GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
@@ -567,7 +568,7 @@ static GabbleBytestreamIBB *gabble_bytestream_factory_create_ibb (
 static GabbleBytestreamSocks5 *gabble_bytestream_factory_create_socks5 (
     GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
     const gchar *stream_init_id, const gchar *peer_resource,
-    GabbleBytestreamState state);
+    const gchar *self_jid, GabbleBytestreamState state);
 
 /**
  * bytestream_factory_iq_si_cb:
@@ -597,6 +598,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   GSList *stream_methods = NULL;
   gboolean multiple;
   gchar *peer_resource = NULL;
+  const gchar *self_jid;
 
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -633,13 +635,15 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       gabble_decode_jid (from, NULL, NULL, &peer_resource);
     }
 
+  self_jid = lm_message_node_get_attribute (msg->node, "to");
+
   if (multiple)
     {
       DEBUG ("Receiver supports multi bytestreams");
 
       bytestream = (GabbleBytestreamIface *)
           gabble_bytestream_factory_create_multiple (self, peer_handle,
-            stream_id, stream_init_id, peer_resource,
+            stream_id, stream_init_id, peer_resource, self_jid,
             GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
     }
 
@@ -671,7 +675,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
           bytestream = gabble_bytestream_factory_create_from_method (self,
               l->data, peer_handle, stream_id, stream_init_id, peer_resource,
-              GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
+              self_jid, GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
           if (bytestream != NULL)
             break;
         }
@@ -1192,6 +1196,7 @@ gabble_bytestream_factory_create_from_method (GabbleBytestreamFactory *self,
                                               const gchar *stream_id,
                                               const gchar *stream_init_id,
                                               const gchar *peer_resource,
+                                              const gchar *self_jid,
                                               GabbleBytestreamState state)
 {
   GabbleBytestreamIface *bytestream = NULL;
@@ -1206,7 +1211,7 @@ gabble_bytestream_factory_create_from_method (GabbleBytestreamFactory *self,
     {
       bytestream = GABBLE_BYTESTREAM_IFACE (
           gabble_bytestream_factory_create_socks5 (self, peer_handle,
-            stream_id, stream_init_id, peer_resource, state));
+            stream_id, stream_init_id, peer_resource, self_jid, state));
     }
 
   return bytestream;
@@ -1282,6 +1287,7 @@ gabble_bytestream_factory_create_socks5 (GabbleBytestreamFactory *self,
                                          const gchar *stream_id,
                                          const gchar *stream_init_id,
                                          const gchar *peer_resource,
+                                         const gchar *self_jid,
                                          GabbleBytestreamState state)
 {
   GabbleBytestreamFactoryPrivate *priv;
@@ -1298,6 +1304,7 @@ gabble_bytestream_factory_create_socks5 (GabbleBytestreamFactory *self,
       "state", state,
       "stream-init-id", stream_init_id,
       "peer-resource", peer_resource,
+      "self-jid", self_jid,
       NULL);
 
   gabble_signal_connect_weak (socks5, "state-changed",
@@ -1316,6 +1323,7 @@ gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
                                            const gchar *stream_id,
                                            const gchar *stream_init_id,
                                            const gchar *peer_resource,
+                                           const gchar *self_jid,
                                            GabbleBytestreamState state)
 {
   GabbleBytestreamFactoryPrivate *priv;
@@ -1333,6 +1341,7 @@ gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
       "stream-init-id", stream_init_id,
       "peer-resource", peer_resource,
       "factory", self,
+      "self-jid", self_jid,
       NULL);
 
   gabble_signal_connect_weak (multiple, "state-changed",
@@ -1358,14 +1367,18 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
   LmMessageNode *si_multi, *value;
   const gchar *stream_method;
   GabbleBytestreamMultiple *bytestream = NULL;
+  const gchar *self_jid;
 
   si_multi = lm_message_node_get_child_with_namespace (si, "si-multiple",
       NS_SI_MULTIPLE);
   if (si_multi == NULL)
     return NULL;
 
+  self_jid = lm_message_node_get_attribute (reply_msg->node, "to");
+
   bytestream = gabble_bytestream_factory_create_multiple (self, peer_handle,
-      stream_id, NULL, peer_resource, GABBLE_BYTESTREAM_STATE_INITIATING);
+      stream_id, NULL, peer_resource, self_jid,
+      GABBLE_BYTESTREAM_STATE_INITIATING);
 
   for (value = si_multi->children; value; value = value->next)
     {
@@ -1397,6 +1410,7 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
   LmMessageNode *feature, *x, *field, *value;
   GabbleBytestreamIface *bytestream = NULL;
   const gchar *stream_method;
+  const gchar *self_jid;
 
   feature = lm_message_node_get_child_with_namespace (si, "feature",
       NS_FEATURENEG);
@@ -1429,9 +1443,11 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
           return NULL;
         }
 
+      self_jid = lm_message_node_get_attribute (reply_msg->node, "to");
+
       stream_method = lm_message_node_get_value (value);
       bytestream = gabble_bytestream_factory_create_from_method (self,
-          stream_method, peer_handle, stream_id, NULL, peer_resource,
+          stream_method, peer_handle, stream_id, NULL, peer_resource, self_jid,
           GABBLE_BYTESTREAM_STATE_INITIATING);
 
       /* no need to parse the rest of the fields, we've found the one we

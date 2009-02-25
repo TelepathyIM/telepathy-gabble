@@ -80,7 +80,8 @@ GabbleBytestreamMuc *gabble_bytestream_factory_create_muc (
 GabbleBytestreamIface *gabble_bytestream_factory_create_from_method (
     GabbleBytestreamFactory *self, const gchar *stream_method,
     TpHandle peer_handle, const gchar *stream_id, const gchar *stream_init_id,
-    const gchar *peer_resource, GabbleBytestreamState state);
+    const gchar *peer_resource, const gchar *self_jid,
+    GabbleBytestreamState state);
 
 LmMessage *gabble_bytestream_factory_make_stream_init_iq (
     const gchar *full_jid, const gchar *stream_id, const gchar *profile);

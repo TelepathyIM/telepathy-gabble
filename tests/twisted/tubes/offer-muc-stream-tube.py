@@ -1,4 +1,4 @@
-"""Test IBB stream tube support in the context of a MUC."""
+"""Test stream tube support in the context of a MUC."""
 
 import errno
 import os
@@ -7,7 +7,7 @@ import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolFactory, unwrap
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
-from bytestream import create_si_offer, parse_si_reply, BytestreamIBB
+from bytestream import create_si_offer, parse_si_reply, BytestreamIBB, BytestreamS5B
 import constants as cs
 import ns
 import tubetestutil as t
@@ -33,7 +33,13 @@ def set_up_listener_socket(q, path):
     reactor.listenUNIX(full_path, factory)
     return full_path
 
-def test(q, bus, conn, stream):
+def test_ibb(q, bus, conn, stream):
+    run_test(q, bus, conn, stream, BytestreamIBB)
+
+def test_socks5(q, bus, conn, stream):
+    run_test(q, bus, conn, stream, BytestreamS5B)
+
+def run_test(q, bus, conn, stream, bytestream_cls):
     srv_path = set_up_listener_socket(q, '/stream')
     conn.Connect()
 
@@ -215,7 +221,8 @@ def test(q, bus, conn, stream):
     # (the code uses lookup where it should use ensure)
 
     # The CM is the server, so fake a client wanting to talk to it
-    bytestream = BytestreamIBB(stream, q, 'alpha', 'chat@conf.localhost/bob', 'test@localhost/Resource')
+    bytestream = bytestream_cls(stream, q, 'alpha', 'chat@conf.localhost/bob',
+        'test@localhost/Resource')
 
     iq, si = create_si_offer(stream, bytestream.initiator, bytestream.target,
         bytestream.stream_id, ns.TUBES, [bytestream.get_ns()])
@@ -380,4 +387,5 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(test_ibb)
+    exec_test(test_socks5)

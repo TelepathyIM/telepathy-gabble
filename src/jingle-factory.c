@@ -108,6 +108,16 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
   priv->dispose_has_run = FALSE;
 }
 
+static void
+take_stun_server (GabbleJingleFactory *self,
+                  gchar *stun_server,
+                  guint16 stun_port)
+{
+  g_free (self->priv->stun_server);
+  self->priv->stun_server = stun_server;
+  self->priv->stun_port = stun_port;
+}
+
 /*
  * jingle_info_cb
  *
@@ -181,9 +191,7 @@ jingle_info_cb (LmMessageHandler *handler,
             {
               DEBUG ("jingle info: got stun server %s, port %u", server,
                   port);
-              g_free (priv->stun_server);
-              priv->stun_server = g_strdup (server);
-              priv->stun_port = port;
+              take_stun_server (fac, server, port);
             }
         }
     }
@@ -412,9 +420,7 @@ connection_status_changed_cb (GabbleConnection *conn,
             }
           else
             {
-              g_free (priv->stun_server);
-              priv->stun_server = stun_server;
-              priv->stun_port = stun_port;
+              take_stun_server (self, stun_server, stun_port);
             }
 
           if (priv->conn->features &

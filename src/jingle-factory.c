@@ -65,6 +65,7 @@ struct _GabbleJingleFactoryPrivate
   GHashTable *transports;
   GHashTable *sessions;
 
+  gchar *relay_token;
   gboolean get_stun_from_jingle;
   gboolean dispose_has_run;
 };
@@ -200,8 +201,8 @@ jingle_info_cb (LmMessageHandler *handler,
           if (token != NULL)
             {
               DEBUG ("jingle info: got relay token %s", token);
-              g_free (fac->relay_token);
-              fac->relay_token = g_strdup (token);
+              g_free (fac->priv->relay_token);
+              fac->priv->relay_token = g_strdup (token);
             }
         }
     }
@@ -265,7 +266,7 @@ gabble_jingle_factory_dispose (GObject *object)
   priv->transports = NULL;
 
   g_free (fac->stun_server);
-  g_free (fac->relay_token);
+  g_free (fac->priv->relay_token);
 
   if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose (object);
@@ -651,3 +652,8 @@ session_terminated_cb (GabbleJingleSession *session,
   _jingle_factory_unregister_session (factory, sid);
 }
 
+const gchar *
+gabble_jingle_factory_get_google_relay_token (GabbleJingleFactory *self)
+{
+  return self->priv->relay_token;
+}

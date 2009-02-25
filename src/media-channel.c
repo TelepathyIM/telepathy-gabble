@@ -269,6 +269,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   TpIntSet *set;
   TpHandleRepoIface *contact_handles;
   GabbleJingleFactory *jf;
+  const gchar *relay_token;
 
   obj = G_OBJECT_CLASS (gabble_media_channel_parent_class)->
            constructor (type, n_props, props);
@@ -308,12 +309,20 @@ gabble_media_channel_constructor (GType type, guint n_props,
 
   /* Set up Google relay related properties */
   jf = priv->conn->jingle_factory;
+
   if (jf->stun_server != NULL)
       g_object_set (obj, "stun-server", jf->stun_server, NULL);
   if (jf->stun_port != 0)
       g_object_set (obj, "stun-port", jf->stun_port, NULL);
-  if (jf->relay_token != NULL)
-      g_object_set (obj, "gtalk-p2p-relay-token", jf->relay_token, NULL);
+
+  relay_token = gabble_jingle_factory_get_google_relay_token (jf);
+
+  if (relay_token != NULL)
+    {
+      g_object_set (obj,
+          "gtalk-p2p-relay-token", relay_token,
+          NULL);
+    }
 
   /* act on incoming session */
   if (priv->session != NULL)

@@ -125,7 +125,6 @@ struct _GabbleJingleFactory {
 
     gchar *stun_server;
     guint16 stun_port;
-    gchar *relay_token;
 
     GabbleJingleFactoryPrivate *priv;
 };
@@ -145,6 +144,9 @@ void _jingle_factory_unregister_session (GabbleJingleFactory *factory,
 
 GabbleJingleSession *gabble_jingle_factory_create_session (GabbleJingleFactory
     *fac, TpHandle peer, const gchar *peer_resource);
+
+const gchar *gabble_jingle_factory_get_google_relay_token (
+    GabbleJingleFactory *self);
 
 G_END_DECLS;
 

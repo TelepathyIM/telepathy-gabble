@@ -168,22 +168,22 @@ jingle_info_cb (LmMessageHandler *handler,
       if (node != NULL)
         {
           const gchar *server;
-          const gchar *port;
+          const gchar *port_attr;
+          guint port = 0;
 
           server = lm_message_node_get_attribute (node, "host");
-          port = lm_message_node_get_attribute (node, "udp");
+          port_attr = lm_message_node_get_attribute (node, "udp");
 
-          if (server != NULL)
+          if (port_attr != NULL)
+            port = atoi (port_attr);
+
+          if (server != NULL && port > 0 && port <= G_MAXUINT16)
             {
-              DEBUG ("jingle info: got stun server %s", server);
+              DEBUG ("jingle info: got stun server %s, port %u", server,
+                  port);
               g_free (priv->stun_server);
               priv->stun_server = g_strdup (server);
-            }
-
-          if (port != NULL)
-            {
-              DEBUG ("jingle info: got stun port %s", port);
-              priv->stun_port = atoi (port);
+              priv->stun_port = port;
             }
         }
     }

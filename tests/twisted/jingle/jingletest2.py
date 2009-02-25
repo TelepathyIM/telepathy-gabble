@@ -238,15 +238,6 @@ class JingleTest2:
     remote_caps = { 'ext': '', 'ver': '0.0.0',
              'node': 'http://example.com/fake-client0' }
 
-    # Default feats for remote end - XXX shouldn't be used
-    remote_feats = [ 'http://www.google.com/xmpp/protocol/session',
-          'http://www.google.com/transport/p2p',
-          'http://jabber.org/protocol/jingle',
-          # was previously in bundles:
-          'http://jabber.org/protocol/jingle/description/audio',
-          'http://jabber.org/protocol/jingle/description/video',
-          'http://www.google.com/xmpp/protocol/voice/v1']
-
     # Default audio codecs for the remote end
     audio_codecs = [ ('GSM', 3, 8000), ('PCMA', 8, 8000), ('PCMU', 0, 8000) ]
 

@@ -238,8 +238,7 @@ class ReceiveFileTest(FileTransferTest):
         bytestream = parse_si_reply(iq_event.stanza)
         assert bytestream == self.bytestream.get_ns()
 
-        offset_event, state_event = self.bytestream.open_bytestream(
-            self.contact_name, 'test@localhost/Resource')
+        offset_event, state_event = self.bytestream.open_bytestream()
 
         offset = offset_event.args[0]
         # We don't support resume
@@ -250,7 +249,7 @@ class ReceiveFileTest(FileTransferTest):
         assert reason == FT_STATE_CHANGE_REASON_NONE
 
         # send the beginning of the file (client didn't connect to socket yet)
-        self.bytestream.send_data(self.contact_name, 'test@localhost/Resource', self.file.data[:2])
+        self.bytestream.send_data(self.file.data[:2])
 
     def receive_file(self):
         # Connect to Salut's socket
@@ -258,7 +257,7 @@ class ReceiveFileTest(FileTransferTest):
         s.connect(self.address)
 
         # send the rest of the file
-        self.bytestream.send_data(self.contact_name, 'test@localhost/Resource', self.file.data[2:])
+        self.bytestream.send_data(self.file.data[2:])
 
         self._read_file_from_socket(s)
 
@@ -393,8 +392,7 @@ class SendFileTest(FileTransferTest):
             self.bytestream.get_ns())
         self.stream.send(result)
 
-        self.bytestream.wait_bytestream_open('test@localhost/Resource',
-            self.contact_full_jid)
+        self.bytestream.wait_bytestream_open()
 
     def send_file(self):
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -445,18 +443,18 @@ class Bytestream(object):
         self.initiator = initiator
         self.target = target
 
-    def open_bytestream(self, from_, to_):
+    def open_bytestream(self):
         # Open the bytestream and return the InitialOffsetDefined and
         # FileTransferStateChanged events
         raise NotImplemented
 
-    def send_data(self, from_, to, data):
+    def send_data(self, data):
         raise NotImplemented
 
     def get_ns(self):
         raise NotImplemented
 
-    def wait_bytestream_open(self, initiator, receiver):
+    def wait_bytestream_open(self):
         raise NotImplemented
 
     def get_data(self):
@@ -474,9 +472,9 @@ class BytestreamIBB(Bytestream):
     def get_ns(self):
         return ns.IBB
 
-    def open_bytestream(self, from_, to):
+    def open_bytestream(self):
         # open IBB bytestream
-        send_ibb_open(self.stream, from_, to, self.stream_id, 4096)
+        send_ibb_open(self.stream, self.initiator, self.target, self.stream_id, 4096)
 
         _, offset_event, state_event = self.q.expect_many(
             EventPattern('stream-iq', iq_type='result'),
@@ -485,13 +483,14 @@ class BytestreamIBB(Bytestream):
 
         return offset_event, state_event
 
-    def send_data(self, from_, to, data):
-        send_ibb_msg_data(self.stream, from_, to, self.stream_id, self.seq, data)
+    def send_data(self, data):
+        send_ibb_msg_data(self.stream, self.initiator, self.target, self.stream_id,
+            self.seq, data)
         sync_stream(self.q, self.stream)
 
         self.seq += 1
 
-    def wait_bytestream_open(self, initiator, receiver):
+    def wait_bytestream_open(self):
         # Wait IBB open iq
         event = self.q.expect('stream-iq', iq_type='set')
         sid = parse_ibb_open(event.stanza)
@@ -517,14 +516,14 @@ class BytestreamS5B(Bytestream):
     def get_ns(self):
         return ns.BYTESTREAMS
 
-    def open_bytestream(self, from_, to):
+    def open_bytestream(self):
         port = listen_socks5(self.q)
 
-        send_socks5_init(self.stream, from_, to,
-            self.stream_id, 'tcp', [(from_, '127.0.0.1', port)])
+        send_socks5_init(self.stream, self.initiator, self.target,
+            self.stream_id, 'tcp', [(self.initiator, '127.0.0.1', port)])
 
         self.transport = socks5_expect_connection(self.q, self.stream_id,
-            from_, 'test@localhost/Resource')
+            self.initiator, self.target)
 
         offset_event, state_event = self.q.expect_many(
             EventPattern('dbus-signal', signal='InitialOffsetDefined'),
@@ -532,23 +531,23 @@ class BytestreamS5B(Bytestream):
 
         return offset_event, state_event
 
-    def send_data(self, from_, to, data):
+    def send_data(self, data):
         self.transport.write(data)
 
-    def wait_bytestream_open(self, initiator, receiver):
+    def wait_bytestream_open(self):
         id, mode, sid, hosts = expect_socks5_init(self.q)
 
         for jid, host, port in hosts:
-            assert jid == initiator, jid
+            assert jid == self.initiator, jid
 
         assert mode == 'tcp'
         assert sid == self.stream_id
         jid, host, port = hosts[0]
 
-        self.transport = socks5_connect(self.q, host, port, sid, initiator,
-            receiver)
+        self.transport = socks5_connect(self.q, host, port, sid, self.initiator,
+            self.target)
 
-        send_socks5_reply(self.stream, receiver, initiator, id, jid)
+        send_socks5_reply(self.stream, self.target, self.initiator, id, jid)
 
     def get_data(self):
        e = self.q.expect('s5b-data-received', transport=self.transport)
@@ -559,17 +558,17 @@ class BytestreamS5B(Bytestream):
 
 class BytestreamS5BBugged(BytestreamS5B):
     """Simulate buggy S5B implementation (as Pidgin's one)"""
-    def open_bytestream(self, from_, to):
+    def open_bytestream(self):
         port = listen_socks5(self.q)
 
-        send_socks5_init(self.stream, from_, to,
-            self.stream_id, 'tcp', [(from_, '127.0.0.1', port)])
+        send_socks5_init(self.stream, self.initiator, self.target,
+            self.stream_id, 'tcp', [(self.initiator, '127.0.0.1', port)])
 
         # FIXME: we should share lot of code with socks5_expect_connection
         # once we'll have refactored Bytestream test objects
         sid = self.stream_id
-        initiator = from_
-        target = 'test@localhost/Resource'
+        initiator = self.initiator
+        target = self.target
 
         # wait auth
         event = self.q.expect('s5b-data-received')

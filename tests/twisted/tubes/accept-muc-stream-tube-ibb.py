@@ -1,19 +1,16 @@
 """Test IBB stream tube support in the context of a MUC."""
 
-import base64
 import dbus
 
-from servicetest import call_async, EventPattern, EventProtocolClientFactory
+from servicetest import call_async, EventPattern, EventProtocolClientFactory, unwrap
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import parse_si_offer, create_si_reply, parse_ibb_open, parse_ibb_msg_data, send_ibb_msg_data
+from bytestream import parse_si_offer, create_si_reply, send_ibb_msg_data, BytestreamIBB
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
-from twisted.words.protocols.jabber.client import IQ
-from constants import *
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -215,7 +212,11 @@ def test(q, bus, conn, stream):
         query_name='si')
 
     profile, stream_id, bytestreams = parse_si_offer(event.stanza)
-    assert ns.IBB in bytestreams
+
+    bytestream = BytestreamIBB(stream, q, stream_id, 'chat@conf.localhost/test',
+        event.stanza['to'])
+
+    assert bytestream.get_ns() in bytestreams
     assert profile == ns.TUBES
 
     muc_stream_node = xpath.queryForNodes('/iq/si/muc-stream[@xmlns="%s"]' %
@@ -223,28 +224,19 @@ def test(q, bus, conn, stream):
     assert muc_stream_node is not None
     assert muc_stream_node['tube'] == str(stream_tube_id)
 
-    # reply to SI. We want to use IBB
     result, si = create_si_reply(stream, event.stanza, 'chat@conf.localhost/test',
-        ns.IBB)
+        bytestream.get_ns())
     si.addElement((ns.TUBES, 'tube'))
     stream.send(result)
 
-    # wait IBB init IQ
-    event = q.expect('stream-iq', to='chat@conf.localhost/bob',
-        query_name='open', query_ns=ns.IBB)
-    sid = parse_ibb_open(event.stanza)
-    assert sid == stream_id
+    bytestream.wait_bytestream_open()
 
-    # open the IBB bytestream
-    reply = make_result_iq(stream, event.stanza)
-    stream.send(reply)
-
-    event = q.expect('stream-message', to='chat@conf.localhost/bob')
-    sid, binary = parse_ibb_msg_data(event.stanza)
-    assert sid == stream_id
+    binary = bytestream.get_data()
     assert binary == 'hello initiator'
 
     # reply on the socket
+    # FIXME: we should use bytestream.send_data('hi joiner!') but can't ATM
+    # because the Bytestream (wrongly) send the data from the initiator
     send_ibb_msg_data(stream, 'chat@conf.localhost/bob', 'chat@conf.localhost/test',
         stream_id, 0, 'hi joiner!')
 

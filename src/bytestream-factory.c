@@ -598,7 +598,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   GSList *stream_methods = NULL;
   gboolean multiple;
   gchar *peer_resource = NULL;
-  const gchar *self_jid;
+  gchar *self_jid;
 
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -629,13 +629,32 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     }
 
   room_handle = gabble_get_room_handle_from_jid (room_repo, from);
+
   if (room_handle == 0)
     {
-      /* JID is not a MUC JID so we need contact's resource */
-      gabble_decode_jid (from, NULL, NULL, &peer_resource);
-    }
+     /* jid is not a muc jid so we need contact's resource */
+     gabble_decode_jid (from, NULL, NULL, &peer_resource);
 
-  self_jid = lm_message_node_get_attribute (msg->node, "to");
+     /* we are not in a muc so our own jid is the one in the 'to' attribute */
+     self_jid = g_strdup (lm_message_node_get_attribute (msg->node,
+           "to"));
+    }
+  else
+    {
+      /* we are in a muc so need to get our muc jid */
+      GabbleMucChannel *muc;
+
+      muc = gabble_muc_factory_find_text_channel (priv->conn->muc_factory,
+          room_handle);
+
+      if (muc == NULL)
+        {
+          DEBUG ("Got an IQ from a muc in which we are not. Ignoring");
+          goto out;
+        }
+
+      g_object_get (muc, "self-jid", &self_jid, NULL);
+    }
 
   if (multiple)
     {
@@ -769,6 +788,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 out:
   g_slist_free (stream_methods);
   g_free (peer_resource);
+  g_free (self_jid);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -1360,21 +1380,19 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
                                     LmMessageNode *si,
                                     const gchar *stream_id,
                                     TpHandle peer_handle,
-                                    const gchar *peer_resource)
+                                    const gchar *peer_resource,
+                                    const gchar *self_jid)
 {
   /* If the other client supports si-multiple we have directly a list of
    * supported methods inside <value/> tags */
   LmMessageNode *si_multi, *value;
   const gchar *stream_method;
   GabbleBytestreamMultiple *bytestream = NULL;
-  const gchar *self_jid;
 
   si_multi = lm_message_node_get_child_with_namespace (si, "si-multiple",
       NS_SI_MULTIPLE);
   if (si_multi == NULL)
     return NULL;
-
-  self_jid = lm_message_node_get_attribute (reply_msg->node, "to");
 
   bytestream = gabble_bytestream_factory_create_multiple (self, peer_handle,
       stream_id, NULL, peer_resource, self_jid,
@@ -1405,12 +1423,12 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
                            LmMessageNode *si,
                            const gchar *stream_id,
                            TpHandle peer_handle,
-                           const gchar *peer_resource)
+                           const gchar *peer_resource,
+                           const gchar *self_jid)
 {
   LmMessageNode *feature, *x, *field, *value;
   GabbleBytestreamIface *bytestream = NULL;
   const gchar *stream_method;
-  const gchar *self_jid;
 
   feature = lm_message_node_get_child_with_namespace (si, "feature",
       NS_FEATURENEG);
@@ -1442,8 +1460,6 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
               "doesn't contain stream-method value");
           return NULL;
         }
-
-      self_jid = lm_message_node_get_attribute (reply_msg->node, "to");
 
       stream_method = lm_message_node_get_value (value);
       bytestream = gabble_bytestream_factory_create_from_method (self,
@@ -1487,6 +1503,8 @@ streaminit_reply_cb (GabbleConnection *conn,
                      gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (obj);
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
   struct _streaminit_reply_cb_data *data =
     (struct _streaminit_reply_cb_data*) user_data;
   GabbleBytestreamIface *bytestream = NULL;
@@ -1498,7 +1516,9 @@ streaminit_reply_cb (GabbleConnection *conn,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   TpHandle peer_handle = 0;
+  TpHandle room_handle;
   gboolean success = FALSE;
+  gchar *self_jid = NULL;
 
   if (data->object != NULL)
     {
@@ -1528,11 +1548,32 @@ streaminit_reply_cb (GabbleConnection *conn,
     }
 
   peer_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  room_handle = gabble_get_room_handle_from_jid (room_repo, from);
 
-  if (gabble_get_room_handle_from_jid (room_repo, from) == 0)
+  if (room_handle == 0)
     {
      /* jid is not a muc jid so we need contact's resource */
      gabble_decode_jid (from, NULL, NULL, &peer_resource);
+
+     /* we are not in a muc so our own jid is the one in the 'to' attribute */
+     self_jid = g_strdup (lm_message_node_get_attribute (reply_msg->node,
+           "to"));
+    }
+  else
+    {
+      /* we are in a muc so need to get our muc jid */
+      GabbleMucChannel *muc;
+
+      muc = gabble_muc_factory_find_text_channel (priv->conn->muc_factory,
+          room_handle);
+
+      if (muc == NULL)
+        {
+          DEBUG ("Got an IQ from a muc in which we are not. Ignoring");
+          goto END;
+        }
+
+      g_object_get (muc, "self-jid", &self_jid, NULL);
     }
 
   si = lm_message_node_get_child_with_namespace (reply_msg->node, "si",
@@ -1545,14 +1586,14 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   /* Try to build a multiple bytestream with fallback methods */
   bytestream = streaminit_get_multiple_bytestream (self, reply_msg, si,
-      data->stream_id, peer_handle, peer_resource);
+      data->stream_id, peer_handle, peer_resource, self_jid);
   /* FIXME: check if there is at least one stream method */
 
   if (bytestream == NULL)
     /* The other client doesn't suppport si-multiple, use the normal XEP-095
      * method */
     bytestream = streaminit_get_bytestream (self, reply_msg, si,
-        data->stream_id, peer_handle, peer_resource);
+        data->stream_id, peer_handle, peer_resource, self_jid);
 
   if (bytestream == NULL)
     goto END;
@@ -1582,9 +1623,11 @@ END:
   if (peer_resource != NULL)
     g_free (peer_resource);
 
+
   if (peer_handle != 0)
     tp_handle_unref (contact_repo, peer_handle);
 
+  g_free (self_jid);
   g_free (data->stream_id);
   g_slice_free (struct _streaminit_reply_cb_data, data);
 

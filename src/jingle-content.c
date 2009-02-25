@@ -236,9 +236,8 @@ gabble_jingle_content_set_property (GObject *object,
 
       if (priv->transport_ns != NULL)
         {
-          GType transport_type = GPOINTER_TO_SIZE (
-              g_hash_table_lookup (self->conn->jingle_factory->transports,
-                  priv->transport_ns));
+          GType transport_type = gabble_jingle_factory_lookup_transport (
+              self->conn->jingle_factory, priv->transport_ns);
 
           g_assert (transport_type != 0);
 
@@ -507,8 +506,8 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
           dialect = JINGLE_DIALECT_GTALK3;
           g_object_set (c->session, "dialect", JINGLE_DIALECT_GTALK3, NULL);
-          transport_type = GPOINTER_TO_SIZE (
-              g_hash_table_lookup (c->conn->jingle_factory->transports, ""));
+          transport_type = gabble_jingle_factory_lookup_transport (
+              c->conn->jingle_factory, "");
           priv->transport_ns = g_strdup ("");
         }
     }
@@ -526,8 +525,8 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
     {
       const gchar *ns = lm_message_node_get_namespace (trans_node);
 
-      transport_type = GPOINTER_TO_SIZE (
-          g_hash_table_lookup (c->conn->jingle_factory->transports, ns));
+      transport_type = gabble_jingle_factory_lookup_transport (
+          c->conn->jingle_factory, ns);
 
       if (transport_type == 0)
         {

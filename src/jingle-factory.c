@@ -169,7 +169,7 @@ jingle_info_cb (LmMessageHandler *handler,
         {
           const gchar *server;
           const gchar *port_attr;
-          guint port = 0;
+          guint port = GABBLE_PARAMS_DEFAULT_STUN_PORT;
 
           server = lm_message_node_get_attribute (node, "host");
           port_attr = lm_message_node_get_attribute (node, "udp");

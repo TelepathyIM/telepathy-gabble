@@ -214,7 +214,7 @@ def test(q, bus, conn, stream):
     profile, stream_id, bytestreams = parse_si_offer(event.stanza)
 
     bytestream = BytestreamIBB(stream, q, stream_id, 'chat@conf.localhost/test',
-        event.stanza['to'])
+        event.stanza['to'], False)
 
     assert bytestream.get_ns() in bytestreams
     assert profile == ns.TUBES

@@ -93,7 +93,7 @@ def create_si_reply(stream, iq, to, bytestream):
     res_value = res_field.addElement((None, 'value'))
     res_value.addContent(bytestream)
 
-    return result
+    return result, res_si
 
 def parse_si_reply(iq):
     si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,

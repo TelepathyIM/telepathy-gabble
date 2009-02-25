@@ -72,6 +72,7 @@ TWISTED_TESTS = \
 	vcard/test-vcard-cache.py \
 	vcard/test-vcard-race.py \
 	vcard/test-vcard-set-and-get.py \
+	jingle/accept-extra-stream.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
 	jingle/payload-types.py \

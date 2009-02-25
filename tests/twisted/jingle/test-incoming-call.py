@@ -113,13 +113,14 @@ def test(q, bus, conn, stream):
 
     # Call is accepted, we become a member, and the stream that was pending
     # local send is now sending.
-    memb, acc, _, _ = q.expect_many(
+    memb, acc, _, _, _ = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
             args=[u'', [self_handle], [], [], [], 0, 0]),
         EventPattern('stream-iq',
             predicate=lambda e: (e.query.name == 'jingle' and
                 e.query['action'] == 'session-accept')),
         EventPattern('dbus-signal', signal='SetStreamSending', args=[True]),
+        EventPattern('dbus-signal', signal='SetStreamPlaying', args=[True]),
         EventPattern('dbus-signal', signal='StreamDirectionChanged',
             args=[stream_id, cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL, 0]),
         )

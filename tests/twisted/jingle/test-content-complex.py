@@ -12,6 +12,8 @@ from twisted.words.xish import xpath
 
 from jingletest2 import *
 
+import constants as cs
+
 def worker(jp, q, bus, conn, stream):
 
     def make_stream_request(stream_type):
@@ -24,14 +26,15 @@ def worker(jp, q, bus, conn, stream):
 
         stream_handler.NewNativeCandidate("fake", jt2.get_remote_transports_dbus())
         stream_handler.Ready(jt2.get_audio_codecs_dbus())
-        stream_handler.StreamState(2)
+        stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
         return (stream_handler, stream_id)
 
 
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
     jt2.prepare()
 
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    self_handle = conn.GetSelfHandle()
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
 
     # Remote end calls us
     # jt.incoming_call()
@@ -44,17 +47,13 @@ def worker(jp, q, bus, conn, stream):
             jp.TransportGoogleP2P() ]) ]) ])
     stream.send(jp.xml(node))
 
-    # we don't even need this here, because we've provided a very strict
-    # predicate to expect_racy() so it won't get the wrong event
-    # q.flush_past_events()
-
     # The caller is in members
     e = q.expect('dbus-signal', signal='MembersChanged',
              args=[u'', [remote_handle], [], [], [], 0, 0])
 
     # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], remote_handle, 0])
+             args=[u'', [], [], [self_handle], [], remote_handle, 0])
 
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
     signalling_iface = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.MediaSignalling')
@@ -67,7 +66,7 @@ def worker(jp, q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    media_chan.AddMembers([dbus.UInt32(1)], 'accepted')
+    media_chan.AddMembers([self_handle], 'accepted')
 
     # S-E gets notified about a newly-created stream
     e = q.expect('dbus-signal', signal='NewStreamHandler')
@@ -77,15 +76,15 @@ def worker(jp, q, bus, conn, stream):
 
     # We are now in members too
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [1L], [], [], [], 0, 0])
+             args=[u'', [self_handle], [], [], [], 0, 0])
 
     # we are now both in members
     members = media_chan.GetMembers()
-    assert set(members) == set([1L, remote_handle]), members
+    assert set(members) == set([self_handle, remote_handle]), members
 
     stream_handler.NewNativeCandidate("fake", jt2.get_remote_transports_dbus())
     stream_handler.Ready(jt2.get_audio_codecs_dbus())
-    stream_handler.StreamState(2)
+    stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     # First one is transport-info
     e = q.expect('stream-iq')
@@ -146,7 +145,7 @@ def worker(jp, q, bus, conn, stream):
     # Gabble should return error (content already exists)
     q.expect('stream-iq', iq_type='error')
 
-    (stream_handler2, id2) = make_stream_request(1) # 1 == MEDIA_STREAM_TYPE_VIDEO
+    (stream_handler2, id2) = make_stream_request(cs.MEDIA_STREAM_TYPE_VIDEO)
 
     # Gabble should now send content-add
     e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
@@ -168,7 +167,7 @@ def worker(jp, q, bus, conn, stream):
 
 
     # We try to make the request again, and succeed
-    (stream_handler3, id3) = make_stream_request(1) # 1 == MEDIA_STREAM_TYPE_VIDEO
+    (stream_handler3, id3) = make_stream_request(cs.MEDIA_STREAM_TYPE_VIDEO)
 
     # Gabble should again send content-add
     e = q.expect('stream-iq', iq_type='set', predicate=lambda x:

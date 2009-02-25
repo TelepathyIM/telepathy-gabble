@@ -37,7 +37,7 @@ def test(q, bus, conn, stream,
         jingleinfo = make_result_iq(stream, event.stanza)
         stun = jingleinfo.firstChildElement().addElement('stun')
         server = stun.addElement('server')
-        server['host'] = '1.2.3.4'
+        server['host'] = 'resolves-to-1.2.3.4'
         server['udp'] = '12345'
         relay = jingleinfo.firstChildElement().addElement('relay')
         relay.addElement('token', content='jingle all the way')
@@ -166,9 +166,10 @@ if __name__ == '__main__':
     exec_test(lambda q, b, c, s: test(q, b, c, s,
         google=True, expected_stun_server='5.4.3.2', expected_stun_port=54321),
         protocol=GoogleXmlStream,
-        params={'stun-server': '5.4.3.2', 'stun-port': dbus.UInt16(54321)})
+        params={'stun-server': 'resolves-to-5.4.3.2',
+            'stun-port': dbus.UInt16(54321)})
     exec_test(lambda q, b, c, s: test(q, b, c, s,
         google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
         protocol=GoogleXmlStream,
-        params={'fallback-stun-server': '5.4.3.2',
+        params={'fallback-stun-server': 'resolves-to-5.4.3.2',
             'fallback-stun-port': dbus.UInt16(54321)})

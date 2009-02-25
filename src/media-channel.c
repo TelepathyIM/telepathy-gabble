@@ -1150,6 +1150,8 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
       return;
     }
 
+  DEBUG ("called (stream %s, direction %u)", stream->name, stream_direction);
+
   /* streams with no session? I think not... */
   g_assert (priv->session != NULL);
 
@@ -2286,6 +2288,8 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
 
   direction = COMBINED_DIRECTION_GET_DIRECTION (combined);
   pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (combined);
+
+  DEBUG ("direction: %u, pending_send: %u", direction, pending_send);
 
   tp_svc_channel_type_streamed_media_emit_stream_direction_changed (
       chan, id, direction, pending_send);

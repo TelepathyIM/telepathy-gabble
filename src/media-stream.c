@@ -402,6 +402,8 @@ gabble_media_stream_set_property (GObject      *object,
         }
       break;
     case PROP_COMBINED_DIRECTION:
+      DEBUG ("changing combined direction from %u to %u",
+          stream->combined_direction, g_value_get_uint (value));
       stream->combined_direction = g_value_get_uint (value);
       break;
     case PROP_CONTENT:
@@ -1646,6 +1648,8 @@ gabble_media_stream_change_direction (GabbleMediaStream *stream,
 
       update_sending (stream, start_sending);
     }
+
+  DEBUG ("current_dir: %u, requested_dir: %u", current_dir, requested_dir);
 
   /* short-circuit sending a request if we're not asking for anything new */
   if (current_dir == requested_dir)

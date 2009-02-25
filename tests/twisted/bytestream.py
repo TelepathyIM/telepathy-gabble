@@ -254,39 +254,7 @@ class BytestreamS5B(Bytestream):
 
 class BytestreamS5BPidgin(BytestreamS5B):
     """Simulate buggy S5B implementation (as Pidgin's one)"""
-    def open_bytestream(self, expected=None):
-        port = self._listen_socks5()
-
-        self._send_socks5_init([(self.initiator, '127.0.0.1', port)])
-
-        # FIXME: we should share lot of code with socks5_expect_connection
-        # once we'll have refactored Bytestream test objects
-        sid = self.stream_id
-        initiator = self.initiator
-        target = self.target
-
-        # wait auth
-        event = self.q.expect('s5b-data-received')
-        assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
-
-        # send auth reply
-        transport = event.transport
-        transport.write('\x05\x00') # version 5, no auth
-        event = self.q.expect('s5b-data-received')
-
-        # sha-1(sid + initiator + target)
-        unhashed_domain = sid + initiator + target
-        hashed_domain = sha.new(unhashed_domain).hexdigest()
-
-        # wait CONNECT cmd
-        # version 5, connect, reserved, domain type
-        expected_connect = '\x05\x01\x00\x03'
-        expected_connect += chr(40) # len (SHA-1)
-        expected_connect += hashed_domain
-        expected_connect += '\x00\x00' # port
-        assert event.data == expected_connect
-
-        # send CONNECT reply
+    def _send_connect_reply(self):
         # version 5, ok, reserved, domain type
         connect_reply = '\x05\x00\x00\x03'
         # I'm Pidgin, why should I respect SOCKS5 XEP?
@@ -294,9 +262,7 @@ class BytestreamS5BPidgin(BytestreamS5B):
         connect_reply += chr(len(domain))
         connect_reply += domain
         connect_reply += '\x00\x00' # port
-        transport.write(connect_reply)
-
-        self.transport = transport
+        self.transport.write(connect_reply)
 
 class S5BProtocol(Protocol):
     def connectionMade(self):

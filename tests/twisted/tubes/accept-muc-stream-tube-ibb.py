@@ -235,10 +235,7 @@ def test(q, bus, conn, stream):
     assert binary == 'hello initiator'
 
     # reply on the socket
-    # FIXME: we should use bytestream.send_data('hi joiner!') but can't ATM
-    # because the Bytestream (wrongly) send the data from the initiator
-    send_ibb_msg_data(stream, 'chat@conf.localhost/bob', 'chat@conf.localhost/test',
-        stream_id, 0, 'hi joiner!')
+    bytestream.send_data('hi joiner!')
 
     q.expect('socket-data', protocol=protocol, data="hi joiner!")
 

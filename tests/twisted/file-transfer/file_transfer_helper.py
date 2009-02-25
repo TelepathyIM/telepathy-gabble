@@ -170,7 +170,8 @@ class ReceiveFileTest(FileTransferTest):
             self.receive_file, self.close_channel, self.done]
 
     def send_ft_offer_iq(self):
-        self.bytestream = self.bytestream_cls(self.stream, self.q, 'alpha')
+        self.bytestream = self.bytestream_cls(self.stream, self.q, 'alpha',
+            self.contact_name, 'test@localhost/Resource')
 
         iq, si = create_si_offer(self.stream, self.contact_name, 'test@localhost/Resource',
             self.bytestream.stream_id, ns.FILE_TRANSFER, [self.bytestream.get_ns()])
@@ -379,7 +380,8 @@ class SendFileTest(FileTransferTest):
         self.desc = desc_node.children[0]
         assert self.desc == self.file.description
 
-        self.bytestream = self.bytestream_cls(self.stream, self.q, sid)
+        self.bytestream = self.bytestream_cls(self.stream, self.q, sid,
+            'test@localhost/Resource', self.iq['to'])
 
     def provide_file(self):
         self.address = self.ft_channel.ProvideFile(SOCKET_ADDRESS_TYPE_UNIX,
@@ -435,11 +437,13 @@ def exec_file_transfer_test(test_cls):
     exec_test(test.test)
 
 class Bytestream(object):
-    def __init__(self, stream, q, sid):
+    def __init__(self, stream, q, sid, initiator, target):
         self.stream = stream
         self.q = q
 
         self.stream_id = sid
+        self.initiator = initiator
+        self.target = target
 
     def open_bytestream(self, from_, to_):
         # Open the bytestream and return the InitialOffsetDefined and
@@ -462,8 +466,8 @@ class Bytestream(object):
         raise NotImplemented
 
 class BytestreamIBB(Bytestream):
-    def __init__(self, stream, q, sid):
-        Bytestream.__init__(self, stream, q, sid)
+    def __init__(self, stream, q, sid, initiator, target):
+        Bytestream.__init__(self, stream, q, sid, initiator, target)
 
         self.seq = 0
 

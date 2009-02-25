@@ -12,7 +12,7 @@ import constants as cs
 import ns
 import tubetestutil as t
 from bytestream import expect_socks5_reply, create_si_offer, parse_si_reply,\
-    create_si_reply, parse_si_offer, listen_socks5, BytestreamS5B
+    create_si_reply, parse_si_offer, BytestreamS5B
 
 from twisted.words.xish import domish, xpath
 
@@ -465,8 +465,6 @@ def test(q, bus, conn, stream):
     assert bytestream == ns.BYTESTREAMS
     tube = xpath.queryForNodes('/iq//si/tube[@xmlns="%s"]' % ns.TUBES, event.stanza)
     assert len(tube) == 1
-
-    port = listen_socks5(q)
 
     expected = EventPattern('dbus-return', method='AcceptDBusTube')
 

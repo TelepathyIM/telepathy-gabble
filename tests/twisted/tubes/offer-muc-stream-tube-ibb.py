@@ -1,21 +1,21 @@
 """Test IBB stream tube support in the context of a MUC."""
 
-import base64
 import errno
 import os
 
 import dbus
 from dbus import PROPERTIES_IFACE
 
-from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolFactory
+from servicetest import call_async, EventPattern, EventProtocolFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
+from bytestream import create_si_offer, parse_si_reply, send_ibb_open, send_ibb_msg_data,\
+    parse_ibb_msg_data
 from constants import *
 import ns
 import tubetestutil as t
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 from twisted.internet import reactor
-from twisted.words.protocols.jabber.client import IQ
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -217,21 +217,8 @@ def test(q, bus, conn, stream):
     # (the code uses lookup where it should use ensure)
 
     # The CM is the server, so fake a client wanting to talk to it
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'chat@conf.localhost/bob'
-    si = iq.addElement((ns.SI, 'si'))
-    si['id'] = 'alpha'
-    si['profile'] = ns.TUBES
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'form'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    field['type'] = 'list-single'
-    option = field.addElement((None, 'option'))
-    value = option.addElement((None, 'value'))
-    value.addContent(ns.IBB)
+    iq, si = create_si_offer(stream, 'chat@conf.localhost/bob', 'test@localhost/Resource',
+        'alpha', ns.TUBES, [ns.IBB])
 
     stream_node = si.addElement((ns.TUBES, 'muc-stream'))
     stream_node['tube'] = str(stream_tube_id)
@@ -247,36 +234,20 @@ def test(q, bus, conn, stream):
             args=[stream_tube_id, bob_handle]))
 
     # handle iq_event
-    iq = iq_event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    assert str(proto) == ns.IBB
-    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % ns.TUBES, si)
+    proto = parse_si_reply(iq_event.stanza)
+    assert proto == ns.IBB
+    tube = xpath.queryForNodes('/iq//si/tube[@xmlns="%s"]' % ns.TUBES, iq_event.stanza)
     assert len(tube) == 1
 
     # have the fake client open the stream
-    iq = IQ(stream, 'set')
-    iq['to'] = 'test@localhost/Resource'
-    iq['from'] = 'chat@conf.localhost/bob'
-    open = iq.addElement((ns.IBB, 'open'))
-    open['sid'] = 'alpha'
-    open['block-size'] = '4096'
-    stream.send(iq)
+    send_ibb_open(stream, 'chat@conf.localhost/bob', 'test@localhost/Resource',
+        'alpha', 4096)
 
     q.expect('stream-iq', iq_type='result')
 
     # have the fake client send us some data
-    message = domish.Element(('jabber:client', 'message'))
-    message['to'] = 'test@localhost/Resource'
-    message['from'] = 'chat@conf.localhost/bob'
-    data_node = message.addElement((ns.IBB, 'data'))
-    data_node['sid'] = 'alpha'
-    data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hello initiator'))
-    stream.send(message)
+    send_ibb_msg_data(stream, 'chat@conf.localhost/bob', 'test@localhost/Resource',
+        'alpha', 0, 'hello initiator')
 
     # the server reply
     event = q.expect('socket-data', data='hello initiator', protocol=protocol)
@@ -284,15 +255,7 @@ def test(q, bus, conn, stream):
 
     # we receive server's data
     event = q.expect('stream-message', to='chat@conf.localhost/bob')
-    message = event.stanza
-
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
-        message)
-    assert data_nodes is not None
-    assert len(data_nodes) == 1
-    ibb_data = data_nodes[0]
-    assert ibb_data['sid'] == 'alpha'
-    binary = base64.b64decode(str(ibb_data))
+    sid, binary = parse_ibb_msg_data(event.stanza)
     assert binary == 'hello joiner'
 
     # offer a stream tube to another room (new API)

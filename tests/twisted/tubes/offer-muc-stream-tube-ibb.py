@@ -5,10 +5,9 @@ import os
 
 import dbus
 
-from servicetest import call_async, EventPattern, EventProtocolFactory
+from servicetest import call_async, EventPattern, EventProtocolFactory, unwrap
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
-from bytestream import create_si_offer, parse_si_reply, send_ibb_open, send_ibb_msg_data,\
-    parse_ibb_msg_data
+from bytestream import create_si_offer, parse_si_reply, BytestreamIBB
 import constants as cs
 import ns
 import tubetestutil as t
@@ -216,8 +215,10 @@ def test(q, bus, conn, stream):
     # (the code uses lookup where it should use ensure)
 
     # The CM is the server, so fake a client wanting to talk to it
-    iq, si = create_si_offer(stream, 'chat@conf.localhost/bob', 'test@localhost/Resource',
-        'alpha', ns.TUBES, [ns.IBB])
+    bytestream = BytestreamIBB(stream, q, 'alpha', 'chat@conf.localhost/bob', 'test@localhost/Resource')
+
+    iq, si = create_si_offer(stream, bytestream.initiator, bytestream.target,
+        bytestream.stream_id, ns.TUBES, [bytestream.get_ns()])
 
     stream_node = si.addElement((ns.TUBES, 'muc-stream'))
     stream_node['tube'] = str(stream_tube_id)
@@ -234,28 +235,23 @@ def test(q, bus, conn, stream):
 
     # handle iq_event
     proto = parse_si_reply(iq_event.stanza)
-    assert proto == ns.IBB
+    assert proto == bytestream.get_ns()
     tube = xpath.queryForNodes('/iq//si/tube[@xmlns="%s"]' % ns.TUBES, iq_event.stanza)
     assert len(tube) == 1
 
     # have the fake client open the stream
-    send_ibb_open(stream, 'chat@conf.localhost/bob', 'test@localhost/Resource',
-        'alpha', 4096)
-
+    bytestream.open_bytestream()
     q.expect('stream-iq', iq_type='result')
 
     # have the fake client send us some data
-    send_ibb_msg_data(stream, 'chat@conf.localhost/bob', 'test@localhost/Resource',
-        'alpha', 0, 'hello initiator')
+    bytestream.send_data('hello initiator')
 
     # the server reply
     event = q.expect('socket-data', data='hello initiator', protocol=protocol)
     protocol.sendData('hello joiner')
 
     # we receive server's data
-    event = q.expect('stream-message', to='chat@conf.localhost/bob')
-    sid, binary = parse_ibb_msg_data(event.stanza)
-    assert binary == 'hello joiner'
+    binary = bytestream.get_data()
 
     # offer a stream tube to another room (new API)
     srv_path = set_up_listener_socket(q, '/stream2')

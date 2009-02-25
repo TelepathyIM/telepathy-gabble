@@ -12,13 +12,14 @@ from gabbletest import acknowledge_iq, sync_stream
 import ns
 
 class Bytestream(object):
-    def __init__(self, stream, q, sid, initiator, target):
+    def __init__(self, stream, q, sid, initiator, target, initiated):
         self.stream = stream
         self.q = q
 
         self.stream_id = sid
         self.initiator = initiator
         self.target = target
+        self.initiated = initiated
 
     def open_bytestream(self, expected=None):
         raise NotImplemented
@@ -304,8 +305,8 @@ def expect_socks5_reply(q):
 ##### XEP-0047: In-Band Bytestreams (IBB) #####
 
 class BytestreamIBB(Bytestream):
-    def __init__(self, stream, q, sid, initiator, target):
-        Bytestream.__init__(self, stream, q, sid, initiator, target)
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
 
         self.seq = 0
 
@@ -317,7 +318,14 @@ class BytestreamIBB(Bytestream):
         send_ibb_open(self.stream, self.initiator, self.target, self.stream_id, 4096)
 
     def send_data(self, data):
-        send_ibb_msg_data(self.stream, self.initiator, self.target, self.stream_id,
+        if self.initiated:
+            from_ = self.initiator
+            to = self.target
+        else:
+            from_ = self.target
+            to = self.initiator
+
+        send_ibb_msg_data(self.stream, from_, to, self.stream_id,
             self.seq, data)
         sync_stream(self.q, self.stream)
 

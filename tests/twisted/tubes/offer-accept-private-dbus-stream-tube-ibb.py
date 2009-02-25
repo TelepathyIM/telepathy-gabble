@@ -439,7 +439,7 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    result = create_si_reply(stream, event.stanza, 'test@localhost/Resource', ns.IBB)
+    result, si = create_si_reply(stream, event.stanza, 'test@localhost/Resource', ns.IBB)
     stream.send(result)
 
     event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')

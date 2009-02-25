@@ -61,6 +61,8 @@ struct _GabbleJingleFactoryPrivate
   GabbleConnection *conn;
   LmMessageHandler *jingle_cb;
   LmMessageHandler *jingle_info_cb;
+  GHashTable *content_types;
+  GHashTable *transports;
   GHashTable *sessions;
 
   gboolean dispose_has_run;
@@ -90,10 +92,10 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
   priv->sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_object_unref);
 
-  obj->transports = g_hash_table_new_full (g_str_hash, g_str_equal,
+  priv->transports = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, NULL);
 
-  obj->content_types = g_hash_table_new_full (g_str_hash, g_str_equal,
+  priv->content_types = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, NULL);
 
   priv->jingle_cb = NULL;
@@ -255,11 +257,11 @@ gabble_jingle_factory_dispose (GObject *object)
   g_hash_table_destroy (priv->sessions);
   priv->sessions = NULL;
 
-  g_hash_table_destroy (fac->content_types);
-  fac->content_types = NULL;
+  g_hash_table_destroy (priv->content_types);
+  priv->content_types = NULL;
 
-  g_hash_table_destroy (fac->transports);
-  fac->transports = NULL;
+  g_hash_table_destroy (priv->transports);
+  priv->transports = NULL;
 
   g_free (fac->stun_server);
   g_free (fac->relay_token);
@@ -605,7 +607,7 @@ gabble_jingle_factory_register_transport (GabbleJingleFactory *self,
   g_return_if_fail (g_type_is_a (transport_type,
         GABBLE_TYPE_JINGLE_TRANSPORT_IFACE));
 
-  g_hash_table_insert (self->transports, xmlns,
+  g_hash_table_insert (self->priv->transports, xmlns,
       GSIZE_TO_POINTER (transport_type));
 }
 
@@ -613,7 +615,7 @@ GType
 gabble_jingle_factory_lookup_transport (GabbleJingleFactory *self,
                                         const gchar *xmlns)
 {
-  return GPOINTER_TO_SIZE (g_hash_table_lookup (self->transports,
+  return GPOINTER_TO_SIZE (g_hash_table_lookup (self->priv->transports,
         xmlns));
 }
 
@@ -624,7 +626,7 @@ gabble_jingle_factory_register_content_type (GabbleJingleFactory *self,
 {
   g_return_if_fail (g_type_is_a (content_type, GABBLE_TYPE_JINGLE_CONTENT));
 
-  g_hash_table_insert (self->content_types, xmlns,
+  g_hash_table_insert (self->priv->content_types, xmlns,
       GSIZE_TO_POINTER (content_type));
 }
 
@@ -632,7 +634,7 @@ GType
 gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,
                                            const gchar *xmlns)
 {
-  return GPOINTER_TO_SIZE (g_hash_table_lookup (self->content_types,
+  return GPOINTER_TO_SIZE (g_hash_table_lookup (self->priv->content_types,
         xmlns));
 }
 

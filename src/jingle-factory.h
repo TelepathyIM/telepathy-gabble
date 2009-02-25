@@ -123,9 +123,6 @@ typedef struct _GabbleJingleFactoryPrivate GabbleJingleFactoryPrivate;
 struct _GabbleJingleFactory {
     GObject parent;
 
-    GHashTable *content_types;
-    GHashTable *transports;
-
     gboolean get_stun_from_jingle;
     gchar *stun_server;
     guint16 stun_port;

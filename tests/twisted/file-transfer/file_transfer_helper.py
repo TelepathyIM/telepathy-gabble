@@ -238,7 +238,11 @@ class ReceiveFileTest(FileTransferTest):
         bytestream = parse_si_reply(iq_event.stanza)
         assert bytestream == self.bytestream.get_ns()
 
-        offset_event, state_event = self.bytestream.open_bytestream()
+        self.bytestream.open_bytestream()
+
+        offset_event, state_event = self.q.expect_many(
+            EventPattern('dbus-signal', signal='InitialOffsetDefined'),
+            EventPattern('dbus-signal', signal='FileTransferStateChanged'))
 
         offset = offset_event.args[0]
         # We don't support resume
@@ -431,7 +435,7 @@ def exec_file_transfer_test(test_cls):
     exec_test(test.test)
     test = test_cls(BytestreamS5B)
     exec_test(test.test)
-    test = test_cls(BytestreamS5BBugged)
+    test = test_cls(BytestreamS5BPidgin)
     exec_test(test.test)
 
 class Bytestream(object):
@@ -444,8 +448,6 @@ class Bytestream(object):
         self.target = target
 
     def open_bytestream(self):
-        # Open the bytestream and return the InitialOffsetDefined and
-        # FileTransferStateChanged events
         raise NotImplemented
 
     def send_data(self, data):
@@ -475,13 +477,6 @@ class BytestreamIBB(Bytestream):
     def open_bytestream(self):
         # open IBB bytestream
         send_ibb_open(self.stream, self.initiator, self.target, self.stream_id, 4096)
-
-        _, offset_event, state_event = self.q.expect_many(
-            EventPattern('stream-iq', iq_type='result'),
-            EventPattern('dbus-signal', signal='InitialOffsetDefined'),
-            EventPattern('dbus-signal', signal='FileTransferStateChanged'))
-
-        return offset_event, state_event
 
     def send_data(self, data):
         send_ibb_msg_data(self.stream, self.initiator, self.target, self.stream_id,
@@ -525,12 +520,6 @@ class BytestreamS5B(Bytestream):
         self.transport = socks5_expect_connection(self.q, self.stream_id,
             self.initiator, self.target)
 
-        offset_event, state_event = self.q.expect_many(
-            EventPattern('dbus-signal', signal='InitialOffsetDefined'),
-            EventPattern('dbus-signal', signal='FileTransferStateChanged'))
-
-        return offset_event, state_event
-
     def send_data(self, data):
         self.transport.write(data)
 
@@ -556,7 +545,7 @@ class BytestreamS5B(Bytestream):
     def wait_bytestream_closed(self):
         self.q.expect('s5b-connection-lost')
 
-class BytestreamS5BBugged(BytestreamS5B):
+class BytestreamS5BPidgin(BytestreamS5B):
     """Simulate buggy S5B implementation (as Pidgin's one)"""
     def open_bytestream(self):
         port = listen_socks5(self.q)
@@ -602,9 +591,3 @@ class BytestreamS5BBugged(BytestreamS5B):
         transport.write(connect_reply)
 
         self.transport = transport
-
-        offset_event, state_event = self.q.expect_many(
-            EventPattern('dbus-signal', signal='InitialOffsetDefined'),
-            EventPattern('dbus-signal', signal='FileTransferStateChanged'))
-
-        return offset_event, state_event

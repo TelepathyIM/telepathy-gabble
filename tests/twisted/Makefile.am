@@ -48,7 +48,7 @@ TWISTED_TESTS = \
 	tubes/crash-on-list-channels.py \
 	tubes/create-invalid-tube-channels.py \
 	tubes/test-get-available-tubes.py \
-	tubes/accept-muc-stream-tube-ibb.py \
+	tubes/accept-muc-stream-tube.py \
 	tubes/accept-private-stream-tube.py \
 	tubes/offer-accept-private-dbus-stream-tube-ibb.py \
 	tubes/offer-accept-private-dbus-stream-tube-socks5.py \

@@ -671,8 +671,6 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   gchar msg[SOCKS5_CONNECT_LENGTH];
   guint auth_len;
   guint i;
-  const gchar *from;
-  const gchar *to;
   gchar *domain;
   LmMessage *iq_result;
   guint8 domain_len;
@@ -698,12 +696,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         DEBUG ("Received auth reply. Sending CONNECT command");
 
-        from = lm_message_node_get_attribute (
-            priv->msg_for_acknowledge_connection->node, "from");
-        to = lm_message_node_get_attribute (
-            priv->msg_for_acknowledge_connection->node, "to"),
-
-        domain = compute_domain (priv->stream_id, from, to);
+        domain = compute_domain(priv->stream_id, priv->peer_jid,
+            priv->self_full_jid);
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_CMD_CONNECT;

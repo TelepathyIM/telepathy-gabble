@@ -156,8 +156,6 @@ class FileTransferTest(object):
         self.conn = conn
         self.stream = stream
 
-        self.bytestream = self.bytestream_cls(stream, q)
-
         for fct in self._actions:
             # stop if a function returns True
             if fct():
@@ -172,8 +170,10 @@ class ReceiveFileTest(FileTransferTest):
             self.receive_file, self.close_channel, self.done]
 
     def send_ft_offer_iq(self):
-        iq, si = create_si_offer(self.stream, self.contact_name, 'test@localhost/Resource', 'alpha',
-            ns.FILE_TRANSFER, [self.bytestream.get_ns()])
+        self.bytestream = self.bytestream_cls(self.stream, self.q, 'alpha')
+
+        iq, si = create_si_offer(self.stream, self.contact_name, 'test@localhost/Resource',
+            self.bytestream.stream_id, ns.FILE_TRANSFER, [self.bytestream.get_ns()])
 
         file_node = si.addElement((ns.FILE_TRANSFER,'file'))
         file_node['name'] = self.file.name
@@ -361,7 +361,7 @@ class SendFileTest(FileTransferTest):
 
     def _check_file_transfer_offer_iq(self, iq_event):
         self.iq = iq_event.stanza
-        profile, self.bytestream.stream_id, bytestreams = parse_si_offer(self.iq)
+        profile, sid, bytestreams = parse_si_offer(self.iq)
         assert self.iq['to'] == self.contact_full_jid
         assert profile == ns.FILE_TRANSFER
         assert bytestreams == [ns.BYTESTREAMS, ns.IBB]
@@ -378,6 +378,8 @@ class SendFileTest(FileTransferTest):
         desc_node = xpath.queryForNodes("/iq/si/file/desc", self.iq)[0]
         self.desc = desc_node.children[0]
         assert self.desc == self.file.description
+
+        self.bytestream = self.bytestream_cls(self.stream, self.q, sid)
 
     def provide_file(self):
         self.address = self.ft_channel.ProvideFile(SOCKET_ADDRESS_TYPE_UNIX,
@@ -433,11 +435,11 @@ def exec_file_transfer_test(test_cls):
     exec_test(test.test)
 
 class Bytestream(object):
-    def __init__(self, stream, q):
+    def __init__(self, stream, q, sid):
         self.stream = stream
         self.q = q
 
-        self.stream_id = None
+        self.stream_id = sid
 
     def open_bytestream(self, from_, to_):
         # Open the bytestream and return the InitialOffsetDefined and
@@ -460,8 +462,8 @@ class Bytestream(object):
         raise NotImplemented
 
 class BytestreamIBB(Bytestream):
-    def __init__(self, stream, q):
-        Bytestream.__init__(self, stream, q)
+    def __init__(self, stream, q, sid):
+        Bytestream.__init__(self, stream, q, sid)
 
         self.seq = 0
 
@@ -470,7 +472,7 @@ class BytestreamIBB(Bytestream):
 
     def open_bytestream(self, from_, to):
         # open IBB bytestream
-        send_ibb_open(self.stream, from_, to, 'alpha', 4096)
+        send_ibb_open(self.stream, from_, to, self.stream_id, 4096)
 
         _, offset_event, state_event = self.q.expect_many(
             EventPattern('stream-iq', iq_type='result'),
@@ -480,7 +482,7 @@ class BytestreamIBB(Bytestream):
         return offset_event, state_event
 
     def send_data(self, from_, to, data):
-        send_ibb_msg_data(self.stream, from_, to, 'alpha', self.seq, data)
+        send_ibb_msg_data(self.stream, from_, to, self.stream_id, self.seq, data)
         sync_stream(self.q, self.stream)
 
         self.seq += 1
@@ -515,9 +517,9 @@ class BytestreamS5B(Bytestream):
         port = listen_socks5(self.q)
 
         send_socks5_init(self.stream, from_, to,
-            'alpha', 'tcp', [(from_, '127.0.0.1', port)])
+            self.stream_id, 'tcp', [(from_, '127.0.0.1', port)])
 
-        self.transport = socks5_expect_connection(self.q, 'alpha',
+        self.transport = socks5_expect_connection(self.q, self.stream_id,
             from_, 'test@localhost/Resource')
 
         offset_event, state_event = self.q.expect_many(
@@ -557,11 +559,11 @@ class BytestreamS5BBugged(BytestreamS5B):
         port = listen_socks5(self.q)
 
         send_socks5_init(self.stream, from_, to,
-            'alpha', 'tcp', [(from_, '127.0.0.1', port)])
+            self.stream_id, 'tcp', [(from_, '127.0.0.1', port)])
 
         # FIXME: we should share lot of code with socks5_expect_connection
         # once we'll have refactored Bytestream test objects
-        sid = 'alpha'
+        sid = self.stream_id
         initiator = from_
         target = 'test@localhost/Resource'
 

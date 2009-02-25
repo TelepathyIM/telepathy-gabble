@@ -8,6 +8,7 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq
 import constants as cs
 import ns
 import tubetestutil as t
+from bytestream import parse_si_offer, create_si_reply, parse_ibb_open, parse_ibb_msg_data, send_ibb_msg_data
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -212,66 +213,40 @@ def test(q, bus, conn, stream):
     # expect SI request
     event = q.expect('stream-iq', to='chat@conf.localhost/bob', query_ns=ns.SI,
         query_name='si')
-    iq = event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    values = xpath.queryForNodes('/si/feature[@xmlns="%s"]/x[@xmlns="%s"]/field/option/value'
-        % ('http://jabber.org/protocol/feature-neg', 'jabber:x:data'), si)
-    assert ns.IBB in [str(v) for v in values]
 
-    muc_stream_node = xpath.queryForNodes('/si/muc-stream[@xmlns="%s"]' %
-        ns.TUBES, si)[0]
+    profile, stream_id, bytestreams = parse_si_offer(event.stanza)
+    assert ns.IBB in bytestreams
+    assert profile == ns.TUBES
+
+    muc_stream_node = xpath.queryForNodes('/iq/si/muc-stream[@xmlns="%s"]' %
+        ns.TUBES, event.stanza)[0]
     assert muc_stream_node is not None
     assert muc_stream_node['tube'] == str(stream_tube_id)
-    stream_id = si['id']
 
     # reply to SI. We want to use IBB
-    result = IQ(stream, "result")
-    result["id"] = iq["id"]
-    result['from'] = 'chat@conf.localhost/bob'
-    result['to'] = 'chat@conf.localhost/test'
-    si = result.addElement((ns.SI, 'si'))
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'submit'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    value = field.addElement((None, 'value'))
-    value.addContent(ns.IBB)
+    result, si = create_si_reply(stream, event.stanza, 'chat@conf.localhost/test',
+        ns.IBB)
     si.addElement((ns.TUBES, 'tube'))
     stream.send(result)
 
     # wait IBB init IQ
     event = q.expect('stream-iq', to='chat@conf.localhost/bob',
         query_name='open', query_ns=ns.IBB)
-    iq = event.stanza
-    open = xpath.queryForNodes('/iq/open', iq)[0]
-    assert open['sid'] == stream_id
+    sid = parse_ibb_open(event.stanza)
+    assert sid == stream_id
 
     # open the IBB bytestream
-    reply = make_result_iq(stream, iq)
+    reply = make_result_iq(stream, event.stanza)
     stream.send(reply)
 
     event = q.expect('stream-message', to='chat@conf.localhost/bob')
-    message = event.stanza
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
-        message)
-    assert data_nodes is not None
-    assert len(data_nodes) == 1
-    ibb_data = data_nodes[0]
-    assert ibb_data['sid'] == stream_id
-    binary = base64.b64decode(str(ibb_data))
+    sid, binary = parse_ibb_msg_data(event.stanza)
+    assert sid == stream_id
     assert binary == 'hello initiator'
 
     # reply on the socket
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'chat@conf.localhost/bob'
-    message['to'] = 'chat@conf.localhost/test'
-    data_node = message.addElement((ns.IBB, 'data'))
-    data_node['sid'] = stream_id
-    data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hi joiner!'))
-    stream.send(message)
+    send_ibb_msg_data(stream, 'chat@conf.localhost/bob', 'chat@conf.localhost/test',
+        stream_id, 0, 'hi joiner!')
 
     q.expect('socket-data', protocol=protocol, data="hi joiner!")
 

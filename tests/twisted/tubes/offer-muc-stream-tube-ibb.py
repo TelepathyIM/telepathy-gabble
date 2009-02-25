@@ -4,13 +4,12 @@ import errno
 import os
 
 import dbus
-from dbus import PROPERTIES_IFACE
 
 from servicetest import call_async, EventPattern, EventProtocolFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
 from bytestream import create_si_offer, parse_si_reply, send_ibb_open, send_ibb_msg_data,\
     parse_ibb_msg_data
-from constants import *
+import constants as cs
 import ns
 import tubetestutil as t
 
@@ -51,7 +50,7 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
     self_name = conn.InspectHandles(1, [self_handle])[0]
 
-    call_async(q, conn, 'RequestHandles', HT_ROOM,
+    call_async(q, conn, 'RequestHandles', cs.HT_ROOM,
         ['chat@conf.localhost'])
 
     event = q.expect('stream-iq', to='conf.localhost',
@@ -66,8 +65,8 @@ def test(q, bus, conn, stream):
     chat_handle = handles[0]
 
     # request tubes channel
-    call_async(q, conn, 'RequestChannel', CHANNEL_TYPE_TUBES,
-        HT_ROOM, chat_handle, True)
+    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TUBES,
+        cs.HT_ROOM, chat_handle, True)
 
     _, stream_event = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
@@ -100,31 +99,31 @@ def test(q, bus, conn, stream):
 
     for channel in channels:
         path, props = channel
-        type = props[CHANNEL_TYPE]
+        type = props[cs.CHANNEL_TYPE]
 
-        if type == CHANNEL_TYPE_TEXT:
+        if type == cs.CHANNEL_TYPE_TEXT:
             # check text channel properties
-            assert props[TARGET_HANDLE] == chat_handle
-            assert props[TARGET_HANDLE_TYPE] == HT_ROOM
-            assert props[TARGET_ID] == 'chat@conf.localhost'
-            assert props[REQUESTED] == False
-            assert props[INITIATOR_HANDLE] == self_handle
-            assert props[INITIATOR_ID] == self_name
-        elif type == CHANNEL_TYPE_TUBES:
+            assert props[cs.TARGET_HANDLE] == chat_handle
+            assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
+            assert props[cs.TARGET_ID] == 'chat@conf.localhost'
+            assert props[cs.REQUESTED] == False
+            assert props[cs.INITIATOR_HANDLE] == self_handle
+            assert props[cs.INITIATOR_ID] == self_name
+        elif type == cs.CHANNEL_TYPE_TUBES:
             # check tubes channel properties
-            assert props[TARGET_HANDLE_TYPE] == HT_ROOM
-            assert props[TARGET_HANDLE] == chat_handle
-            assert props[TARGET_ID] == 'chat@conf.localhost'
-            assert props[REQUESTED] == True
-            assert props[INITIATOR_HANDLE] == self_handle
-            assert props[INITIATOR_ID] == self_name
+            assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
+            assert props[cs.TARGET_HANDLE] == chat_handle
+            assert props[cs.TARGET_ID] == 'chat@conf.localhost'
+            assert props[cs.REQUESTED] == True
+            assert props[cs.INITIATOR_HANDLE] == self_handle
+            assert props[cs.INITIATOR_ID] == self_name
         else:
             assert True
 
     tubes_chan = bus.get_object(conn.bus_name, returned.value[0])
-    tubes_iface = dbus.Interface(tubes_chan, CHANNEL_TYPE_TUBES)
+    tubes_iface = dbus.Interface(tubes_chan, cs.CHANNEL_TYPE_TUBES)
 
-    tubes_self_handle = tubes_chan.GetSelfHandle(dbus_interface=CHANNEL_IFACE_GROUP)
+    tubes_self_handle = tubes_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
 
     # offer stream tube (old API) using an Unix socket
     call_async(q, tubes_iface, 'OfferStreamTube',
@@ -142,7 +141,7 @@ def test(q, bus, conn, stream):
     assert new_tube_event.args[2] == 1       # Stream
     assert new_tube_event.args[3] == 'echo'
     assert new_tube_event.args[4] == sample_parameters
-    assert new_tube_event.args[5] == TUBE_CHANNEL_STATE_OPEN
+    assert new_tube_event.args[5] == cs.TUBE_CHANNEL_STATE_OPEN
 
     # handle stream_event
     # We announce our newly created tube in our muc presence
@@ -183,20 +182,20 @@ def test(q, bus, conn, stream):
     channels = new_channels_event.args[0]
     assert len(channels) == 1
     path, props = channels[0]
-    assert props[CHANNEL_TYPE] == CHANNEL_TYPE_STREAM_TUBE
-    assert props[INITIATOR_HANDLE] == tubes_self_handle
-    assert props[INITIATOR_ID] == 'chat@conf.localhost/test'
-    assert props[INTERFACES] == [CHANNEL_IFACE_GROUP, CHANNEL_IFACE_TUBE]
-    assert props[REQUESTED] == True
-    assert props[TARGET_HANDLE] == chat_handle
-    assert props[TARGET_ID] == 'chat@conf.localhost'
-    assert props[STREAM_TUBE_SERVICE] == 'echo'
+    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
+    assert props[cs.INITIATOR_HANDLE] == tubes_self_handle
+    assert props[cs.INITIATOR_ID] == 'chat@conf.localhost/test'
+    assert props[cs.INTERFACES] == [cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_TUBE]
+    assert props[cs.REQUESTED] == True
+    assert props[cs.TARGET_HANDLE] == chat_handle
+    assert props[cs.TARGET_ID] == 'chat@conf.localhost'
+    assert props[cs.STREAM_TUBE_SERVICE] == 'echo'
 
     tube_chan = bus.get_object(conn.bus_name, path)
-    tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
+    tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE,
         byte_arrays=True)
     assert tube_props['Parameters'] == sample_parameters
-    assert tube_props['State'] == TUBE_CHANNEL_STATE_OPEN
+    assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_OPEN
 
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert tubes == [(
@@ -205,12 +204,12 @@ def test(q, bus, conn, stream):
         1,      # Stream
         'echo',
         sample_parameters,
-        TUBE_CHANNEL_STATE_OPEN
+        cs.TUBE_CHANNEL_STATE_OPEN
         )]
 
     assert len(tubes) == 1, unwrap(tubes)
-    expected_tube = (stream_tube_id, tubes_self_handle, TUBE_TYPE_STREAM,
-        'echo', sample_parameters, TUBE_STATE_OPEN)
+    expected_tube = (stream_tube_id, tubes_self_handle, cs.TUBE_TYPE_STREAM,
+        'echo', sample_parameters, cs.TUBE_STATE_OPEN)
     t.check_tube_in_tubes(expected_tube, tubes)
 
     # FIXME: if we use an unknown JID here, everything fails
@@ -260,13 +259,13 @@ def test(q, bus, conn, stream):
 
     # offer a stream tube to another room (new API)
     srv_path = set_up_listener_socket(q, '/stream2')
-    requestotron = dbus.Interface(conn, CONN_IFACE_REQUESTS)
+    requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
     call_async(q, requestotron, 'CreateChannel',
-            {CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
-         TARGET_HANDLE_TYPE: HT_ROOM,
-         TARGET_ID: 'chat2@conf.localhost',
-         STREAM_TUBE_SERVICE: 'newecho',
+            {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+         cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+         cs.TARGET_ID: 'chat2@conf.localhost',
+         cs.STREAM_TUBE_SERVICE: 'newecho',
         })
 
     # Send presence for other member of room.
@@ -284,23 +283,23 @@ def test(q, bus, conn, stream):
     assert len(channels) == 2
     path1, prop1 = channels[0]
     path2, prop2 = channels[1]
-    assert sorted([prop1[CHANNEL_TYPE], prop2[CHANNEL_TYPE]]) == \
-        [CHANNEL_TYPE_TEXT, CHANNEL_TYPE_TUBES]
+    assert sorted([prop1[cs.CHANNEL_TYPE], prop2[cs.CHANNEL_TYPE]]) == \
+        [cs.CHANNEL_TYPE_TEXT, cs.CHANNEL_TYPE_TUBES]
 
     got_text, got_tubes = False, False
     for path, props in channels:
-        if props[CHANNEL_TYPE] == CHANNEL_TYPE_TEXT:
+        if props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT:
             got_text = True
-        elif props[CHANNEL_TYPE] == CHANNEL_TYPE_TUBES:
+        elif props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TUBES:
             got_tubes = True
         else:
             assert False
 
-        assert props[INITIATOR_HANDLE] == self_handle
-        assert props[INITIATOR_ID] == self_name
-        assert CHANNEL_IFACE_GROUP in props[INTERFACES]
-        assert props[TARGET_ID] == 'chat2@conf.localhost'
-        assert props[REQUESTED] == False
+        assert props[cs.INITIATOR_HANDLE] == self_handle
+        assert props[cs.INITIATOR_ID] == self_name
+        assert cs.CHANNEL_IFACE_GROUP in props[cs.INTERFACES]
+        assert props[cs.TARGET_ID] == 'chat2@conf.localhost'
+        assert props[cs.REQUESTED] == False
 
     assert (got_text, got_tubes) == (True, True)
 
@@ -310,40 +309,40 @@ def test(q, bus, conn, stream):
     channels = event.args[0]
     assert len(channels) == 1
     path, prop = channels[0]
-    assert prop[CHANNEL_TYPE] == CHANNEL_TYPE_STREAM_TUBE
-    assert prop[INITIATOR_ID] == 'chat2@conf.localhost/test'
-    assert prop[REQUESTED] == True
-    assert prop[TARGET_HANDLE_TYPE] == HT_ROOM
-    assert prop[TARGET_ID] == 'chat2@conf.localhost'
-    assert prop[STREAM_TUBE_SERVICE] == 'newecho'
+    assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
+    assert prop[cs.INITIATOR_ID] == 'chat2@conf.localhost/test'
+    assert prop[cs.REQUESTED] == True
+    assert prop[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
+    assert prop[cs.TARGET_ID] == 'chat2@conf.localhost'
+    assert prop[cs.STREAM_TUBE_SERVICE] == 'newecho'
 
     tube_chan = bus.get_object(conn.bus_name, path)
-    stream_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_STREAM_TUBE)
-    chan_iface = dbus.Interface(tube_chan, CHANNEL)
-    tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE)
+    stream_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_STREAM_TUBE)
+    chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
+    tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE)
 
-    assert tube_props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
+    assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
     call_async(q, stream_tube_iface, 'OfferStreamTube',
-        SOCKET_ADDRESS_TYPE_UNIX, dbus.ByteArray(srv_path), SOCKET_ACCESS_CONTROL_LOCALHOST, "",
+        cs.SOCKET_ADDRESS_TYPE_UNIX, dbus.ByteArray(srv_path), cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "",
         {'foo': 'bar'})
 
     new_tube_event, stream_event, _, status_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
         EventPattern('stream-presence', to='chat2@conf.localhost/test'),
         EventPattern('dbus-return', method='OfferStreamTube'),
-        EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[TUBE_CHANNEL_STATE_OPEN]))
+        EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[cs.TUBE_CHANNEL_STATE_OPEN]))
 
-    tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=CHANNEL_IFACE_GROUP)
-    assert conn.InspectHandles(HT_CONTACT, [tube_self_handle]) == ['chat2@conf.localhost/test']
+    tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
+    assert conn.InspectHandles(cs.HT_CONTACT, [tube_self_handle]) == ['chat2@conf.localhost/test']
 
     # handle new_tube_event
     stream_tube_id = new_tube_event.args[0]
     assert new_tube_event.args[2] == 1       # Stream
     assert new_tube_event.args[3] == 'newecho'
     assert new_tube_event.args[4] == {'foo': 'bar'}
-    assert new_tube_event.args[5] == TUBE_CHANNEL_STATE_OPEN
+    assert new_tube_event.args[5] == cs.TUBE_CHANNEL_STATE_OPEN
 
     presence = stream_event.stanza
     x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'

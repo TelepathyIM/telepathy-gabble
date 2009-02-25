@@ -222,7 +222,7 @@ def run_test(q, bus, conn, stream, bytestream_cls):
 
     # The CM is the server, so fake a client wanting to talk to it
     bytestream = bytestream_cls(stream, q, 'alpha', 'chat@conf.localhost/bob',
-        'test@localhost/Resource')
+        'test@localhost/Resource', True)
 
     iq, si = create_si_offer(stream, bytestream.initiator, bytestream.target,
         bytestream.stream_id, ns.TUBES, [bytestream.get_ns()])

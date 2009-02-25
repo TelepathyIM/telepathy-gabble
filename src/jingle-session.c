@@ -266,6 +266,22 @@ gabble_jingle_session_set_property (GObject *object,
   }
 }
 
+GabbleJingleSession *
+gabble_jingle_session_new (GabbleConnection *connection,
+                           const gchar *session_id,
+                           gboolean local_initiator,
+                           TpHandle peer,
+                           const gchar *peer_resource)
+{
+  return g_object_new (GABBLE_TYPE_JINGLE_SESSION,
+      "session-id", session_id,
+      "connection", connection,
+      "local-initiator", local_initiator,
+      "peer", peer,
+      "peer-resource", peer_resource,
+      NULL);
+}
+
 static void
 gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 {

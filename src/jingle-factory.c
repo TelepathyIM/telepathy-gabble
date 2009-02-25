@@ -579,13 +579,8 @@ create_session (GabbleJingleFactory *fac,
       local_initiator = TRUE;
     }
 
-  sess = g_object_new (GABBLE_TYPE_JINGLE_SESSION,
-                       "session-id", sid,
-                       "connection", priv->conn,
-                       "local-initiator", local_initiator,
-                       "peer", peer,
-                       "peer-resource", peer_resource,
-                       NULL);
+  sess = gabble_jingle_session_new (priv->conn, sid, local_initiator, peer,
+      peer_resource);
 
   g_signal_connect (sess, "terminated",
     (GCallback) session_terminated_cb, fac);

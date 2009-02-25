@@ -1,18 +1,16 @@
 """Test IBB stream tube support in the context of a MUC."""
 
-import base64
 import dbus
 
-from servicetest import call_async, EventPattern, EventProtocolClientFactory
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
-from constants import *
+from servicetest import call_async, EventPattern, EventProtocolClientFactory, unwrap
+from gabbletest import make_result_iq, acknowledge_iq
+import constants as cs
 import ns
 import tubetestutil as t
+from bytestream import parse_si_offer, create_si_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
-from twisted.words.protocols.jabber.client import IQ
-from constants import *
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -21,7 +19,7 @@ sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream, bytestream_cls):
     conn.Connect()
 
     _, iq_event = q.expect_many(
@@ -46,7 +44,7 @@ def test(q, bus, conn, stream):
     room_handle = handles[0]
 
     # join the muc
-    call_async(q, conn, 'RequestChannel', CHANNEL_TYPE_TEXT, HT_ROOM,
+    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,
         room_handle, True)
 
     _, stream_event = q.expect_many(
@@ -119,26 +117,26 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'))
 
-    assert event.args[1] == CHANNEL_TYPE_TEXT, event.args
+    assert event.args[1] == cs.CHANNEL_TYPE_TEXT, event.args
 
     channels = new_event.args[0]
     assert len(channels) == 1
     path, props = channels[0]
-    assert props[CHANNEL_TYPE] == CHANNEL_TYPE_TEXT
+    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
 
     # tubes channel is automatically created
     event, new_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'))
 
-    assert event.args[1] == CHANNEL_TYPE_TUBES, event.args
-    assert event.args[2] == HT_ROOM
+    assert event.args[1] == cs.CHANNEL_TYPE_TUBES, event.args
+    assert event.args[2] == cs.HT_ROOM
     assert event.args[3] == room_handle
 
     tubes_chan = bus.get_object(conn.bus_name, event.args[0])
     tubes_iface = dbus.Interface(tubes_chan, event.args[1])
 
-    channel_props = tubes_chan.GetAll(CHANNEL, dbus_interface=PROPERTIES_IFACE)
+    channel_props = tubes_chan.GetAll(cs.CHANNEL, dbus_interface=cs.PROPERTIES_IFACE)
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == False
     assert channel_props['InitiatorID'] == ''
@@ -147,15 +145,15 @@ def test(q, bus, conn, stream):
     channels = new_event.args[0]
     assert len(channels) == 1
     path, props = channels[0]
-    assert props[CHANNEL_TYPE] == CHANNEL_TYPE_TUBES
+    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TUBES
 
-    tubes_self_handle = tubes_chan.GetSelfHandle(dbus_interface=CHANNEL_IFACE_GROUP)
+    tubes_self_handle = tubes_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
 
     q.expect('dbus-signal', signal='NewTube',
         args=[stream_tube_id, bob_handle, 1, 'echo', sample_parameters, 0])
 
-    expected_tube = (stream_tube_id, bob_handle, TUBE_TYPE_STREAM, 'echo',
-        sample_parameters, TUBE_STATE_LOCAL_PENDING)
+    expected_tube = (stream_tube_id, bob_handle, cs.TUBE_TYPE_STREAM, 'echo',
+        sample_parameters, cs.TUBE_STATE_LOCAL_PENDING)
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert tubes == [(
         stream_tube_id,
@@ -163,7 +161,7 @@ def test(q, bus, conn, stream):
         1,      # Stream
         'echo',
         sample_parameters,
-        TUBE_CHANNEL_STATE_LOCAL_PENDING
+        cs.TUBE_CHANNEL_STATE_LOCAL_PENDING
         )]
 
     assert len(tubes) == 1, unwrap(tubes)
@@ -175,21 +173,21 @@ def test(q, bus, conn, stream):
     channels = new_event.args[0]
     assert len(channels) == 1
     path, props = channels[0]
-    assert props[CHANNEL_TYPE] == CHANNEL_TYPE_STREAM_TUBE
-    assert props[INITIATOR_HANDLE] == bob_handle
-    assert props[INITIATOR_ID] == 'chat@conf.localhost/bob'
-    assert props[INTERFACES] == [CHANNEL_IFACE_GROUP, CHANNEL_IFACE_TUBE]
-    assert props[REQUESTED] == False
-    assert props[TARGET_HANDLE] == room_handle
-    assert props[TARGET_ID] == 'chat@conf.localhost'
-    assert props[STREAM_TUBE_SERVICE] == 'echo'
-    assert props[TUBE_PARAMETERS] == {'s': 'hello', 'ay': 'hello', 'u': 123, 'i': -123}
+    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
+    assert props[cs.INITIATOR_HANDLE] == bob_handle
+    assert props[cs.INITIATOR_ID] == 'chat@conf.localhost/bob'
+    assert props[cs.INTERFACES] == [cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_TUBE]
+    assert props[cs.REQUESTED] == False
+    assert props[cs.TARGET_HANDLE] == room_handle
+    assert props[cs.TARGET_ID] == 'chat@conf.localhost'
+    assert props[cs.STREAM_TUBE_SERVICE] == 'echo'
+    assert props[cs.TUBE_PARAMETERS] == {'s': 'hello', 'ay': 'hello', 'u': 123, 'i': -123}
 
     tube_chan = bus.get_object(conn.bus_name, path)
-    tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
+    tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE,
         byte_arrays=True)
     assert tube_props['Parameters'] == sample_parameters
-    assert tube_props['State'] == TUBE_CHANNEL_STATE_LOCAL_PENDING
+    assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_LOCAL_PENDING
 
     # Accept the tube
     call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 0, 0, '',
@@ -212,66 +210,32 @@ def test(q, bus, conn, stream):
     # expect SI request
     event = q.expect('stream-iq', to='chat@conf.localhost/bob', query_ns=ns.SI,
         query_name='si')
-    iq = event.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    values = xpath.queryForNodes('/si/feature[@xmlns="%s"]/x[@xmlns="%s"]/field/option/value'
-        % ('http://jabber.org/protocol/feature-neg', 'jabber:x:data'), si)
-    assert ns.IBB in [str(v) for v in values]
 
-    muc_stream_node = xpath.queryForNodes('/si/muc-stream[@xmlns="%s"]' %
-        ns.TUBES, si)[0]
+    profile, stream_id, bytestreams = parse_si_offer(event.stanza)
+
+    bytestream = bytestream_cls(stream, q, stream_id, 'chat@conf.localhost/test',
+        event.stanza['to'], False)
+
+    assert bytestream.get_ns() in bytestreams
+    assert profile == ns.TUBES
+
+    muc_stream_node = xpath.queryForNodes('/iq/si/muc-stream[@xmlns="%s"]' %
+        ns.TUBES, event.stanza)[0]
     assert muc_stream_node is not None
     assert muc_stream_node['tube'] == str(stream_tube_id)
-    stream_id = si['id']
 
-    # reply to SI. We want to use IBB
-    result = IQ(stream, "result")
-    result["id"] = iq["id"]
-    result['from'] = 'chat@conf.localhost/bob'
-    result['to'] = 'chat@conf.localhost/test'
-    si = result.addElement((ns.SI, 'si'))
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'submit'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    value = field.addElement((None, 'value'))
-    value.addContent(ns.IBB)
+    result, si = create_si_reply(stream, event.stanza, 'chat@conf.localhost/test',
+        bytestream.get_ns())
     si.addElement((ns.TUBES, 'tube'))
     stream.send(result)
 
-    # wait IBB init IQ
-    event = q.expect('stream-iq', to='chat@conf.localhost/bob',
-        query_name='open', query_ns=ns.IBB)
-    iq = event.stanza
-    open = xpath.queryForNodes('/iq/open', iq)[0]
-    assert open['sid'] == stream_id
+    bytestream.wait_bytestream_open()
 
-    # open the IBB bytestream
-    reply = make_result_iq(stream, iq)
-    stream.send(reply)
-
-    event = q.expect('stream-message', to='chat@conf.localhost/bob')
-    message = event.stanza
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
-        message)
-    assert data_nodes is not None
-    assert len(data_nodes) == 1
-    ibb_data = data_nodes[0]
-    assert ibb_data['sid'] == stream_id
-    binary = base64.b64decode(str(ibb_data))
+    binary = bytestream.get_data()
     assert binary == 'hello initiator'
 
     # reply on the socket
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'chat@conf.localhost/bob'
-    message['to'] = 'chat@conf.localhost/test'
-    data_node = message.addElement((ns.IBB, 'data'))
-    data_node['sid'] = stream_id
-    data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hi joiner!'))
-    stream.send(message)
+    bytestream.send_data('hi joiner!')
 
     q.expect('socket-data', protocol=protocol, data="hi joiner!")
 
@@ -283,4 +247,4 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged', args=[2, 1]))
 
 if __name__ == '__main__':
-    exec_test(test)
+    t.exec_tube_test(test)

@@ -251,7 +251,7 @@ def test(q, bus, conn, stream):
     # Old API tube
 
     bytestream1 = BytestreamS5B(stream, q, 'alpha', bob_full_jid,
-        self_full_jid)
+        self_full_jid, True)
 
     iq, si = create_si_offer(stream, bytestream1.initiator, bytestream1.target,
             bytestream1.stream_id, ns.TUBES, [bytestream1.get_ns()])
@@ -281,7 +281,7 @@ def test(q, bus, conn, stream):
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
     bytestream2 = BytestreamS5B(stream, q, 'beta', bob_full_jid,
-        self_full_jid)
+        self_full_jid, True)
 
     iq, si = create_si_offer(stream, bytestream2.initiator, bytestream2.target,
             bytestream2.stream_id, ns.TUBES, [bytestream2.get_ns()])
@@ -365,9 +365,9 @@ def test(q, bus, conn, stream):
                      }
 
     bytestream3 = BytestreamS5B(stream, q, dbus_stream_id, self_full_jid,
-        event.stanza['to'])
+        event.stanza['to'], False)
 
-    result = create_si_reply(stream, event.stanza, self_full_jid, bytestream3.get_ns())
+    result, si = create_si_reply(stream, event.stanza, self_full_jid, bytestream3.get_ns())
     stream.send(result)
 
     bytestream3.wait_bytestream_open()
@@ -424,7 +424,7 @@ def test(q, bus, conn, stream):
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
 
     # OK, now let's try to accept a D-Bus tube
-    bytestream4 = BytestreamS5B(stream, q, 'beta', bob_full_jid, self_full_jid)
+    bytestream4 = BytestreamS5B(stream, q, 'beta', bob_full_jid, self_full_jid, True)
 
     iq, si = create_si_offer(stream, bytestream4.initiator, bytestream4.target,
             bytestream4.stream_id, ns.TUBES, [bytestream4.get_ns()])
@@ -470,7 +470,6 @@ def test(q, bus, conn, stream):
 
     # Init the SOCKS5 bytestream
     event = bytestream4.open_bytestream(expected)
-    print event
 
     address = event.value[0]
     assert len(address) > 0

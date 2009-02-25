@@ -38,7 +38,7 @@ def test(q, bus, conn, stream):
     server['host'] = '1.2.3.4'
     server['udp'] = '12345'
     relay = jingleinfo.firstChildElement().addElement('relay')
-    relay.addElement('blah-blah-blah')
+    relay.addElement('token', content='jingle all the way')
     stream.send(jingleinfo)
 
     # We need remote end's presence for capabilities
@@ -105,12 +105,13 @@ def test(q, bus, conn, stream):
     assert tp_props['stun-port']['flags'] == c.PROPERTY_FLAG_READ
     assert 'gtalk-p2p-relay-token' in tp_props
     assert tp_props['gtalk-p2p-relay-token']['sig'] == 's'
-    assert tp_props['gtalk-p2p-relay-token']['flags'] == 0
+    assert tp_props['gtalk-p2p-relay-token']['flags'] == c.PROPERTY_FLAG_READ
 
     tp_prop_values = media_chan.GetProperties(
             [tp_props['nat-traversal']['id'],
              tp_props['stun-server']['id'],
-             tp_props['stun-port']['id']],
+             tp_props['stun-port']['id'],
+             tp_props['gtalk-p2p-relay-token']['id']],
             dbus_interface=c.TP_AWKWARD_PROPERTIES)
 
     for value in tp_prop_values:
@@ -120,6 +121,7 @@ def test(q, bus, conn, stream):
     assert tp_props['nat-traversal']['value'] == 'gtalk-p2p'
     assert tp_props['stun-server']['value'] == '1.2.3.4'
     assert tp_props['stun-port']['value'] == 12345
+    assert tp_props['gtalk-p2p-relay-token']['value'] == 'jingle all the way'
 
     media_chan.RemoveMembers([dbus.UInt32(1)], 'rejected')
 

@@ -3,11 +3,11 @@
 import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolClientFactory, unwrap
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from gabbletest import make_result_iq, acknowledge_iq
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import parse_si_offer, create_si_reply, BytestreamIBB, BytestreamS5B
+from bytestream import parse_si_offer, create_si_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -19,13 +19,7 @@ sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
-def test_ibb(q, bus, conn, stream):
-    run_test(q, bus, conn, stream, BytestreamIBB)
-
-def test_socks5(q, bus, conn, stream):
-    run_test(q, bus, conn, stream, BytestreamS5B)
-
-def run_test(q, bus, conn, stream, bytestream_cls):
+def test(q, bus, conn, stream, bytestream_cls):
     conn.Connect()
 
     _, iq_event = q.expect_many(
@@ -253,5 +247,4 @@ def run_test(q, bus, conn, stream, bytestream_cls):
         EventPattern('dbus-signal', signal='StatusChanged', args=[2, 1]))
 
 if __name__ == '__main__':
-    exec_test(test_ibb)
-    exec_test(test_socks5)
+    t.exec_tube_test(test)

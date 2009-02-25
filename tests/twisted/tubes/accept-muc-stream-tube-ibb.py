@@ -7,7 +7,7 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import parse_si_offer, create_si_reply, send_ibb_msg_data, BytestreamIBB
+from bytestream import parse_si_offer, create_si_reply, BytestreamIBB, BytestreamS5B
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -19,7 +19,13 @@ sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
-def test(q, bus, conn, stream):
+def test_ibb(q, bus, conn, stream):
+    run_test(q, bus, conn, stream, BytestreamIBB)
+
+def test_socks5(q, bus, conn, stream):
+    run_test(q, bus, conn, stream, BytestreamS5B)
+
+def run_test(q, bus, conn, stream, bytestream_cls):
     conn.Connect()
 
     _, iq_event = q.expect_many(
@@ -213,7 +219,7 @@ def test(q, bus, conn, stream):
 
     profile, stream_id, bytestreams = parse_si_offer(event.stanza)
 
-    bytestream = BytestreamIBB(stream, q, stream_id, 'chat@conf.localhost/test',
+    bytestream = bytestream_cls(stream, q, stream_id, 'chat@conf.localhost/test',
         event.stanza['to'], False)
 
     assert bytestream.get_ns() in bytestreams
@@ -247,4 +253,5 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged', args=[2, 1]))
 
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(test_ibb)
+    exec_test(test_socks5)

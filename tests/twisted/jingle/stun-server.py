@@ -163,3 +163,7 @@ if __name__ == '__main__':
     exec_test(lambda q, b, c, s: test(q, b, c, s,
         google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
         protocol=GoogleXmlStream)
+    exec_test(lambda q, b, c, s: test(q, b, c, s,
+        google=True, expected_stun_server='5.4.3.2', expected_stun_port=54321),
+        protocol=GoogleXmlStream,
+        params={'stun-server': '5.4.3.2', 'stun-port': dbus.UInt16(54321)})

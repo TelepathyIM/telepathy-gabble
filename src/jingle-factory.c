@@ -65,6 +65,8 @@ struct _GabbleJingleFactoryPrivate
   GHashTable *transports;
   GHashTable *sessions;
 
+  gchar *stun_server;
+  guint16 stun_port;
   gchar *relay_token;
   gboolean get_stun_from_jingle;
   gboolean dispose_has_run;
@@ -174,14 +176,14 @@ jingle_info_cb (LmMessageHandler *handler,
           if (server != NULL)
             {
               DEBUG ("jingle info: got stun server %s", server);
-              g_free (fac->stun_server);
-              fac->stun_server = g_strdup (server);
+              g_free (priv->stun_server);
+              priv->stun_server = g_strdup (server);
             }
 
           if (port != NULL)
             {
               DEBUG ("jingle info: got stun port %s", port);
-              fac->stun_port = atoi (port);
+              priv->stun_port = atoi (port);
             }
         }
     }
@@ -265,7 +267,7 @@ gabble_jingle_factory_dispose (GObject *object)
   g_hash_table_destroy (priv->transports);
   priv->transports = NULL;
 
-  g_free (fac->stun_server);
+  g_free (fac->priv->stun_server);
   g_free (fac->priv->relay_token);
 
   if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)
@@ -410,9 +412,9 @@ connection_status_changed_cb (GabbleConnection *conn,
             }
           else
             {
-              g_free (self->stun_server);
-              self->stun_server = stun_server;
-              self->stun_port = stun_port;
+              g_free (priv->stun_server);
+              priv->stun_server = stun_server;
+              priv->stun_port = stun_port;
             }
 
           if (priv->conn->features &
@@ -656,4 +658,21 @@ const gchar *
 gabble_jingle_factory_get_google_relay_token (GabbleJingleFactory *self)
 {
   return self->priv->relay_token;
+}
+
+gboolean
+gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
+                                       gchar **stun_server,
+                                       guint *stun_port)
+{
+  if (self->priv->stun_server == NULL || self->priv->stun_port == 0)
+    return FALSE;
+
+  if (stun_server != NULL)
+    *stun_server = g_strdup (self->priv->stun_server);
+
+  if (stun_port != NULL)
+    *stun_port = self->priv->stun_port;
+
+  return TRUE;
 }

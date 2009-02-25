@@ -270,6 +270,8 @@ gabble_media_channel_constructor (GType type, guint n_props,
   TpHandleRepoIface *contact_handles;
   GabbleJingleFactory *jf;
   const gchar *relay_token;
+  gchar *stun_server;
+  guint stun_port;
 
   obj = G_OBJECT_CLASS (gabble_media_channel_parent_class)->
            constructor (type, n_props, props);
@@ -310,10 +312,15 @@ gabble_media_channel_constructor (GType type, guint n_props,
   /* Set up Google relay related properties */
   jf = priv->conn->jingle_factory;
 
-  if (jf->stun_server != NULL)
-      g_object_set (obj, "stun-server", jf->stun_server, NULL);
-  if (jf->stun_port != 0)
-      g_object_set (obj, "stun-port", jf->stun_port, NULL);
+  if (gabble_jingle_factory_get_stun_server (jf, &stun_server,
+        &stun_port))
+    {
+      g_object_set (obj,
+          "stun-server", stun_server,
+          "stun-port", stun_port,
+          NULL);
+      g_free (stun_server);
+    }
 
   relay_token = gabble_jingle_factory_get_google_relay_token (jf);
 

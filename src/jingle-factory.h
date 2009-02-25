@@ -123,9 +123,6 @@ typedef struct _GabbleJingleFactoryPrivate GabbleJingleFactoryPrivate;
 struct _GabbleJingleFactory {
     GObject parent;
 
-    gchar *stun_server;
-    guint16 stun_port;
-
     GabbleJingleFactoryPrivate *priv;
 };
 
@@ -147,6 +144,9 @@ GabbleJingleSession *gabble_jingle_factory_create_session (GabbleJingleFactory
 
 const gchar *gabble_jingle_factory_get_google_relay_token (
     GabbleJingleFactory *self);
+
+gboolean gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
+    gchar **stun_server, guint *stun_port);
 
 G_END_DECLS;
 

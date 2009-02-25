@@ -278,6 +278,10 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
                              params->stun_server);
   SET_PROPERTY_IF_PARAM_SET ("stun-port", JABBER_PARAM_STUN_PORT,
                              params->stun_port);
+  SET_PROPERTY_IF_PARAM_SET ("fallback-stun-server", JABBER_PARAM_FALLBACK_STUN_SERVER,
+                             params->fallback_stun_server);
+  SET_PROPERTY_IF_PARAM_SET ("fallback-stun-port", JABBER_PARAM_FALLBACK_STUN_PORT,
+                             params->fallback_stun_port);
   SET_PROPERTY_IF_PARAM_SET ("ignore-ssl-errors",
                               JABBER_PARAM_IGNORE_SSL_ERRORS,
                               params->ignore_ssl_errors);

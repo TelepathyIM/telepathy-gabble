@@ -124,24 +124,34 @@ class BytestreamS5B(Bytestream):
             streamhost['port'] = str(port)
         self.stream.send(iq)
 
-    def _socks5_expect_connection(self, q, sid, initiator, target):
-        event = q.expect('s5b-data-received')
+    def _wait_auth_request(self):
+        event = self.q.expect('s5b-data-received')
         assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
-        transport = event.transport
-        transport.write('\x05\x00') # version 5, no auth
-        event = q.expect('s5b-data-received')
+        self.transport = event.transport
+
+    def _send_auth_reply(self):
+        self.transport.write('\x05\x00') # version 5, no auth
+
+    def _wait_connect_cmd(self):
+        event = self.q.expect('s5b-data-received', transport=self.transport)
         # version 5, connect, reserved, domain type
         expected_connect = '\x05\x01\x00\x03'
         expected_connect += chr(40) # len (SHA-1)
         # sha-1(sid + initiator + target)
-        unhashed_domain = sid + initiator + target
+        unhashed_domain = self.stream_id + self.initiator + self.target
         expected_connect += sha.new(unhashed_domain).hexdigest()
         expected_connect += '\x00\x00' # port
         assert event.data == expected_connect
 
-        transport.write('\x05\x00') #version 5, ok
+    def _send_connect_reply(self):
+        # FIXME: This is wrong. Change once SOCKS5 is fixed
+        self.transport.write('\x05\x00') #version 5, ok
 
-        return transport
+    def _socks5_expect_connection(self):
+        self._wait_auth_request()
+        self._send_auth_reply()
+        self._wait_connect_cmd()
+        self._send_connect_reply()
 
     def _listen_socks5(self):
         for port in range(5000,5100):
@@ -164,8 +174,7 @@ class BytestreamS5B(Bytestream):
         else:
             event = None
 
-        self.transport = self._socks5_expect_connection(self.q, self.stream_id,
-            self.initiator, self.target)
+        self._socks5_expect_connection()
 
         return event
 

@@ -159,7 +159,9 @@ noinst_PROGRAMS = \
 	telepathy-gabble-debug
 
 telepathy_gabble_debug_SOURCES = \
-    main-debug.c
+    main-debug.c \
+    resolver-fake.c \
+    resolver-fake.h
 
 telepathy_gabble_debug_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la \

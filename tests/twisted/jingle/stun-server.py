@@ -2,7 +2,8 @@
 Test getting STUN server from Google jingleinfo
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
+from gabbletest import exec_test, make_result_iq, sync_stream, \
+        GoogleXmlStream
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
         EventPattern
 import jingletest
@@ -11,7 +12,8 @@ import constants as c
 import dbus
 import time
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream,
+         expected_stun_server=None, expected_stun_port=None, google=False):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
     # If we need to override remote caps, feats, codecs or caps,
@@ -27,6 +29,19 @@ def test(q, bus, conn, stream):
                 args=[{1L: (0L, {u'available': {}})}]),
             EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
             )
+
+    if google:
+        # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
+        event = q.expect('stream-iq', query_ns='google:jingleinfo',
+                to='test@localhost')
+        jingleinfo = make_result_iq(stream, event.stanza)
+        stun = jingleinfo.firstChildElement().addElement('stun')
+        server = stun.addElement('server')
+        server['host'] = '1.2.3.4'
+        server['udp'] = '12345'
+        relay = jingleinfo.firstChildElement().addElement('relay')
+        relay.addElement('token', content='jingle all the way')
+        stream.send(jingleinfo)
 
     # We need remote end's presence for capabilities
     jt.send_remote_presence()
@@ -86,16 +101,28 @@ def test(q, bus, conn, stream):
     assert tp_props['nat-traversal']['flags'] == c.PROPERTY_FLAG_READ
     assert 'stun-server' in tp_props
     assert tp_props['stun-server']['sig'] == 's'
-    assert tp_props['stun-server']['flags'] == 0
     assert 'stun-port' in tp_props
     assert tp_props['stun-port']['sig'] in ('u', 'q')
-    assert tp_props['stun-port']['flags'] == 0
     assert 'gtalk-p2p-relay-token' in tp_props
     assert tp_props['gtalk-p2p-relay-token']['sig'] == 's'
-    assert tp_props['gtalk-p2p-relay-token']['flags'] == 0
+
+    if expected_stun_server is None:
+        assert tp_props['stun-server']['flags'] == 0
+    else:
+        assert tp_props['stun-server']['flags'] == c.PROPERTY_FLAG_READ
+
+    if expected_stun_port is None:
+        assert tp_props['stun-port']['flags'] == 0
+    else:
+        assert tp_props['stun-port']['flags'] == c.PROPERTY_FLAG_READ
+
+    if google:
+        assert tp_props['gtalk-p2p-relay-token']['flags'] == c.PROPERTY_FLAG_READ
+    else:
+        assert tp_props['gtalk-p2p-relay-token']['flags'] == 0
 
     tp_prop_values = media_chan.GetProperties(
-            [tp_props['nat-traversal']['id']],
+            [tp_props[k]['id'] for k in tp_props if tp_props[k]['flags']],
             dbus_interface=c.TP_AWKWARD_PROPERTIES)
 
     for value in tp_prop_values:
@@ -103,6 +130,15 @@ def test(q, bus, conn, stream):
         tp_props[tp_prop_ids[value[0]]]['value'] = value[1]
 
     assert tp_props['nat-traversal']['value'] == 'gtalk-p2p'
+
+    if expected_stun_server is not None:
+        assert tp_props['stun-server']['value'] == expected_stun_server
+
+    if expected_stun_port is not None:
+        assert tp_props['stun-port']['value'] == expected_stun_port
+
+    if google:
+        assert tp_props['gtalk-p2p-relay-token']['value'] == 'jingle all the way'
 
     media_chan.RemoveMembers([dbus.UInt32(1)], 'rejected')
 
@@ -122,5 +158,8 @@ def test(q, bus, conn, stream):
 
 
 if __name__ == '__main__':
-    exec_test(test)
-
+    exec_test(lambda q, b, c, s: test(q, b, c, s,
+        google=False, expected_stun_server=None, expected_stun_port=None))
+    exec_test(lambda q, b, c, s: test(q, b, c, s,
+        google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
+        protocol=GoogleXmlStream)

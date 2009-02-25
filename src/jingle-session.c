@@ -569,6 +569,9 @@ create_content (GabbleJingleSession *sess, GType content_type,
   GabbleJingleContent *c;
 
   DEBUG ("session creating new content type, conn == %p, jf == %p", priv->conn, priv->conn->jingle_factory);
+
+  /* FIXME: media-type is introduced by GabbleJingleMediaRTP, not by the
+   * superclass, so this call is unsafe in the general case */
   c = g_object_new (content_type,
                     "connection", priv->conn,
                     "session", sess,

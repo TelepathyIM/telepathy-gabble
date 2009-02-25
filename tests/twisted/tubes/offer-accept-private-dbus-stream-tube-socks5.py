@@ -470,7 +470,6 @@ def test(q, bus, conn, stream):
 
     # Init the SOCKS5 bytestream
     event = bytestream4.open_bytestream(expected)
-    print event
 
     address = event.value[0]
     assert len(address) > 0

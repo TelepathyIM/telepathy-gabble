@@ -77,6 +77,7 @@ enum
   PROP_PEER_RESOURCE,
   PROP_STATE,
   PROP_PROTOCOL,
+  PROP_SELF_JID,
   LAST_PROPERTY
 };
 
@@ -289,6 +290,9 @@ gabble_bytestream_socks5_get_property (GObject *object,
       case PROP_PROTOCOL:
         g_value_set_string (value, NS_BYTESTREAMS);
         break;
+      case PROP_SELF_JID:
+        g_value_set_string (value, priv->self_full_jid);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -333,6 +337,10 @@ gabble_bytestream_socks5_set_property (GObject *object,
                   priv->bytestream_state);
             }
         break;
+      case PROP_SELF_JID:
+        g_free (priv->self_full_jid);
+        priv->self_full_jid = g_value_dup_string (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -349,7 +357,6 @@ gabble_bytestream_socks5_constructor (GType type,
   TpBaseConnection *base_conn;
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
-  gchar *resource;
 
   obj = G_OBJECT_CLASS (gabble_bytestream_socks5_parent_class)->
            constructor (type, n_props, props);
@@ -374,10 +381,7 @@ gabble_bytestream_socks5_constructor (GType type,
   else
     priv->peer_jid = g_strdup (jid);
 
-  g_object_get (priv->conn, "resource", &resource, NULL);
-  priv->self_full_jid = g_strdup_printf ("%s/%s", tp_handle_inspect (
-        contact_repo, base_conn->self_handle), resource);
-  g_free (resource);
+  g_assert (priv->self_full_jid != NULL);
 
   return obj;
 }
@@ -431,6 +435,15 @@ gabble_bytestream_socks5_class_init (
       NULL,
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STREAM_INIT_ID,
+      param_spec);
+
+  param_spec = g_param_spec_string (
+      "self-jid",
+      "Our self jid",
+      "Either a contact full jid or a muc jid",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY  | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SELF_JID,
       param_spec);
 }
 

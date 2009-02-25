@@ -367,7 +367,7 @@ def test(q, bus, conn, stream):
     bytestream3 = BytestreamS5B(stream, q, dbus_stream_id, self_full_jid,
         event.stanza['to'])
 
-    result = create_si_reply(stream, event.stanza, self_full_jid, bytestream3.get_ns())
+    result, si = create_si_reply(stream, event.stanza, self_full_jid, bytestream3.get_ns())
     stream.send(result)
 
     bytestream3.wait_bytestream_open()

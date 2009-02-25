@@ -624,9 +624,8 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
     {
       content_ns = lm_message_node_get_namespace (desc_node);
       DEBUG ("namespace: %s", content_ns);
-      content_type =
-          GPOINTER_TO_SIZE (g_hash_table_lookup (priv->conn->jingle_factory->content_types,
-          content_ns));
+      content_type = gabble_jingle_factory_lookup_content_type (
+          priv->conn->jingle_factory, content_ns);
     }
 
   if (content_type == 0)
@@ -1612,9 +1611,8 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
     }
   while (g_hash_table_lookup (priv->contents, name) != NULL);
 
-  content_type =
-      GPOINTER_TO_SIZE (g_hash_table_lookup (priv->conn->jingle_factory->content_types,
-      content_ns));
+  content_type = gabble_jingle_factory_lookup_content_type (
+      priv->conn->jingle_factory, content_ns);
 
   g_assert (content_type != 0);
 

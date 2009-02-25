@@ -5,7 +5,11 @@ BUILT_SOURCES = \
   gibber-signals-marshal.h \
   gibber-signals-marshal.c
 
-HANDWRITTEN_SOURCES =             \
+IMPORTED_SOURCES =                \
+  asyncns.c                       \
+  asyncns.h
+
+OUR_SOURCES =                     \
   gibber-debug.c                  \
   gibber-debug.h                  \
   gibber-transport.c              \
@@ -24,16 +28,14 @@ HANDWRITTEN_SOURCES =             \
   gibber-resolver.h               \
   gibber-linklocal-transport.c    \
   gibber-linklocal-transport.h    \
-  asyncns.c                       \
-  asyncns.h                       \
   gibber-util.h                   \
   gibber-util.c
 
-libgibber_la_SOURCES = $(HANDWRITTEN_SOURCES) $(BUILT_SOURCES)
+libgibber_la_SOURCES = $(OUR_SOURCES) $(BUILT_SOURCES) $(IMPORTED_SOURCES)
 
 # Coding style checks
 check_c_sources = \
-    $(HANDWRITTEN_SOURCES)
+    $(OUR_SOURCES)
 
 include $(top_srcdir)/tools/check-coding-style.mk
 check-local: check-coding-style
@@ -42,10 +44,10 @@ CLEANFILES=$(BUILT_SOURCES)
 dist-hook:
 	$(shell for x in $(BUILT_SOURCES); do rm -f $(distdir)/$$x ; done)
 
-gibber-signals-marshal.list: $(HANDWRITTEN_SOURCES) Makefile.am
+gibber-signals-marshal.list: $(OUR_SOURCES) Makefile.am
 	( cd $(srcdir) && \
 	sed -n -e 's/.*_gibber_signals_marshal_\([[:upper:][:digit:]]*__[[:upper:][:digit:]_]*\).*/\1/p' \
-	$(HANDWRITTEN_SOURCES) ) \
+	$(OUR_SOURCES) ) \
 	| sed -e 's/__/:/' -e 'y/_/,/' | sort -u > $@.tmp
 	if cmp -s $@.tmp $@; then \
 		rm $@.tmp; \

@@ -598,19 +598,42 @@ gabble_jingle_factory_create_session (GabbleJingleFactory *fac,
 }
 
 void
-gabble_jingle_factory_register_transport (GabbleJingleFactory *factory,
-    gchar *namespace, GType transport_type)
+gabble_jingle_factory_register_transport (GabbleJingleFactory *self,
+                                          gchar *xmlns,
+                                          GType transport_type)
 {
-  g_hash_table_insert (factory->transports, namespace,
+  g_return_if_fail (g_type_is_a (transport_type,
+        GABBLE_TYPE_JINGLE_TRANSPORT_IFACE));
+
+  g_hash_table_insert (self->transports, xmlns,
       GSIZE_TO_POINTER (transport_type));
 }
 
-void
-gabble_jingle_factory_register_content_type (GabbleJingleFactory *factory,
-    gchar *namespace, GType content_type)
+GType
+gabble_jingle_factory_lookup_transport (GabbleJingleFactory *self,
+                                        const gchar *xmlns)
 {
-  g_hash_table_insert (factory->content_types, namespace,
+  return GPOINTER_TO_SIZE (g_hash_table_lookup (self->transports,
+        xmlns));
+}
+
+void
+gabble_jingle_factory_register_content_type (GabbleJingleFactory *self,
+                                             gchar *xmlns,
+                                             GType content_type)
+{
+  g_return_if_fail (g_type_is_a (content_type, GABBLE_TYPE_JINGLE_CONTENT));
+
+  g_hash_table_insert (self->content_types, xmlns,
       GSIZE_TO_POINTER (content_type));
+}
+
+GType
+gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,
+                                           const gchar *xmlns)
+{
+  return GPOINTER_TO_SIZE (g_hash_table_lookup (self->content_types,
+        xmlns));
 }
 
 static void

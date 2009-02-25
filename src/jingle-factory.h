@@ -134,10 +134,16 @@ struct _GabbleJingleFactory {
     GabbleJingleFactoryPrivate *priv;
 };
 
-void gabble_jingle_factory_register_content_type (GabbleJingleFactory *factory,
-    gchar *namespace, GType content_type);
-void gabble_jingle_factory_register_transport (GabbleJingleFactory *factory,
-    gchar *namespace, GType transport_type);
+void gabble_jingle_factory_register_content_type (GabbleJingleFactory *self,
+    gchar *xmlns, GType content_type);
+GType gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,
+    const gchar *xmlns);
+
+void gabble_jingle_factory_register_transport (GabbleJingleFactory *self,
+    gchar *xmlns, GType transport_type);
+GType gabble_jingle_factory_lookup_transport (GabbleJingleFactory *self,
+    const gchar *xmlns);
+
 void _jingle_factory_unregister_session (GabbleJingleFactory *factory,
     const gchar *sid);
 

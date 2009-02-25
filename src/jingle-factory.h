@@ -123,26 +123,30 @@ typedef struct _GabbleJingleFactoryPrivate GabbleJingleFactoryPrivate;
 struct _GabbleJingleFactory {
     GObject parent;
 
-    GHashTable *content_types;
-    GHashTable *transports;
-
-    gboolean get_stun_from_jingle;
-    gchar *stun_server;
-    guint16 stun_port;
-    gchar *relay_token;
-
     GabbleJingleFactoryPrivate *priv;
 };
 
-void gabble_jingle_factory_register_content_type (GabbleJingleFactory *factory,
-    gchar *namespace, GType content_type);
-void gabble_jingle_factory_register_transport (GabbleJingleFactory *factory,
-    gchar *namespace, GType transport_type);
+void gabble_jingle_factory_register_content_type (GabbleJingleFactory *self,
+    gchar *xmlns, GType content_type);
+GType gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,
+    const gchar *xmlns);
+
+void gabble_jingle_factory_register_transport (GabbleJingleFactory *self,
+    gchar *xmlns, GType transport_type);
+GType gabble_jingle_factory_lookup_transport (GabbleJingleFactory *self,
+    const gchar *xmlns);
+
 void _jingle_factory_unregister_session (GabbleJingleFactory *factory,
     const gchar *sid);
 
 GabbleJingleSession *gabble_jingle_factory_create_session (GabbleJingleFactory
     *fac, TpHandle peer, const gchar *peer_resource);
+
+const gchar *gabble_jingle_factory_get_google_relay_token (
+    GabbleJingleFactory *self);
+
+gboolean gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
+    gchar **stun_server, guint *stun_port);
 
 G_END_DECLS;
 

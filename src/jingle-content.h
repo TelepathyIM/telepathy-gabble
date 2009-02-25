@@ -92,7 +92,6 @@ struct _GabbleJingleContent {
     GabbleJingleContentPrivate *priv;
 
     GabbleConnection *conn;
-    GabbleJingleFactory *factory;
     GabbleJingleSession *session;
 };
 

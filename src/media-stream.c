@@ -73,9 +73,7 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
-  PROP_MEDIA_SESSION,
-  PROP_OBJECT_PATH,
+  PROP_OBJECT_PATH = 1,
   PROP_NAME,
   PROP_ID,
   PROP_MEDIA_TYPE,
@@ -94,8 +92,6 @@ struct _GabbleMediaStreamPrivate
 {
   GabbleJingleContent *content;
 
-  GabbleConnection *conn;
-  gpointer session;
   GabbleMediaSessionMode mode;
   gchar *object_path;
   guint id;
@@ -213,19 +209,18 @@ gabble_media_stream_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  if (priv->content != NULL)
-    {
-      update_direction (stream, priv->content);
+  g_assert (priv->content != NULL);
 
-      /* MediaStream is created as soon as GabbleJingleContent is
-       * created, but we want to let it parse the initiation (if
-       * initiated by remote end) before we pick up initial
-       * codecs and candidates.
-       * FIXME: add API for ordering IQs rather than using g_idle_add.
-       */
-      priv->initial_getter_id =
-          g_idle_add (_get_initial_codecs_and_candidates, stream);
-    }
+  update_direction (stream, priv->content);
+
+  /* MediaStream is created as soon as GabbleJingleContent is
+   * created, but we want to let it parse the initiation (if
+   * initiated by remote end) before we pick up initial
+   * codecs and candidates.
+   * FIXME: add API for ordering IQs rather than using g_idle_add.
+   */
+  priv->initial_getter_id =
+      g_idle_add (_get_initial_codecs_and_candidates, stream);
 
   return obj;
 }
@@ -240,12 +235,6 @@ gabble_media_stream_get_property (GObject    *object,
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
-      break;
-    case PROP_MEDIA_SESSION:
-      g_value_set_object (value, priv->session);
-      break;
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
@@ -292,12 +281,6 @@ gabble_media_stream_set_property (GObject      *object,
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
-      break;
-    case PROP_MEDIA_SESSION:
-      priv->session = g_value_get_object (value);
-      break;
     case PROP_OBJECT_PATH:
       g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
@@ -383,25 +366,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
 
   object_class->dispose = gabble_media_stream_dispose;
   object_class->finalize = gabble_media_stream_finalize;
-
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object that owns this "
-                                    "media stream's channel.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_object ("media-session",
-      "GabbleMediaSession object",
-      "Gabble media session object that owns this media stream object.",
-      GABBLE_TYPE_JINGLE_SESSION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_MEDIA_SESSION,
-      param_spec);
 
   param_spec = g_param_spec_string ("object-path", "D-Bus object path",
                                     "The D-Bus object path used for this "

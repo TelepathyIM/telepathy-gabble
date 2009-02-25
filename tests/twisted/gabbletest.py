@@ -260,6 +260,24 @@ class JabberXmlStream(BaseXmlStream):
 class XmppXmlStream(BaseXmlStream):
     version = (1, 0)
 
+class GoogleXmlStream(BaseXmlStream):
+    # ???
+    version = (0, 9)
+
+    def _cb_disco_iq(self, iq):
+        if iq.getAttribute('to') == 'localhost':
+            nodes = xpath.queryForNodes(
+                "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
+                iq)
+            query = nodes[0]
+            feature = query.addElement('feature')
+            feature['var'] = ns.GOOGLE_ROSTER
+            feature = query.addElement('feature')
+            feature['var'] = ns.GOOGLE_JINGLE_INFO
+
+            iq['type'] = 'result'
+            self.send(iq)
+
 def make_connection(bus, event_func, params=None):
     default_params = {
         'account': 'test@localhost/Resource',

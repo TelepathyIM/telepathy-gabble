@@ -25,6 +25,20 @@
 #include "jingle-content.h"
 #include "jingle-session.h"
 
+GabbleJingleTransportIface *
+gabble_jingle_transport_iface_new (GType type,
+                                   GabbleJingleContent *content,
+                                   const gchar *transport_ns)
+{
+  g_return_val_if_fail (g_type_is_a (type, GABBLE_TYPE_JINGLE_TRANSPORT_IFACE),
+      NULL);
+
+  return g_object_new (type,
+      "content", content,
+      "transport-ns", transport_ns,
+      NULL);
+}
+
 void
 gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *self,
     LmMessageNode *node, GError **error)

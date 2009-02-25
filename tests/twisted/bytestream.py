@@ -20,7 +20,7 @@ class Bytestream(object):
         self.initiator = initiator
         self.target = target
 
-    def open_bytestream(self):
+    def open_bytestream(self, expected=None):
         raise NotImplemented
 
     def send_data(self, data):
@@ -110,14 +110,21 @@ class BytestreamS5B(Bytestream):
     def get_ns(self):
         return ns.BYTESTREAMS
 
-    def open_bytestream(self):
+    def open_bytestream(self, expected=None):
         port = listen_socks5(self.q)
 
         send_socks5_init(self.stream, self.initiator, self.target,
             self.stream_id, 'tcp', [(self.initiator, '127.0.0.1', port)])
 
+        if expected is not None:
+            event = self.q.expect_many(expected)[0]
+        else:
+            event = None
+
         self.transport = socks5_expect_connection(self.q, self.stream_id,
             self.initiator, self.target)
+
+        return event
 
     def send_data(self, data):
         self.transport.write(data)
@@ -146,7 +153,7 @@ class BytestreamS5B(Bytestream):
 
 class BytestreamS5BPidgin(BytestreamS5B):
     """Simulate buggy S5B implementation (as Pidgin's one)"""
-    def open_bytestream(self):
+    def open_bytestream(self, expected=None):
         port = listen_socks5(self.q)
 
         send_socks5_init(self.stream, self.initiator, self.target,
@@ -331,7 +338,7 @@ class BytestreamIBB(Bytestream):
     def get_ns(self):
         return ns.IBB
 
-    def open_bytestream(self):
+    def open_bytestream(self, expected=None):
         # open IBB bytestream
         send_ibb_open(self.stream, self.initiator, self.target, self.stream_id, 4096)
 

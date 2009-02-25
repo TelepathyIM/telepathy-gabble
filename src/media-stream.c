@@ -1439,8 +1439,20 @@ gabble_media_stream_change_direction (GabbleMediaStream *stream,
   new_combined_dir = MAKE_COMBINED_DIRECTION (requested_dir, pending_send);
   if (new_combined_dir != stream->combined_direction)
     {
+      JingleContentState state;
+      gboolean start_sending;
+
       g_object_set (stream, "combined-direction", new_combined_dir, NULL);
-      update_sending (stream, FALSE);
+
+      /* We would like to emit SetStreamSending(True) (if appropriate) only if:
+       *  - the content was locally created, or
+       *  - the user explicitly okayed the content.
+       * This appears to be the meaning of Acknowledged. :-)
+       */
+      g_object_get (stream->priv->content, "state", &state, NULL);
+      start_sending = (state == JINGLE_CONTENT_STATE_ACKNOWLEDGED);
+
+      update_sending (stream, start_sending);
     }
 
   /* short-circuit sending a request if we're not asking for anything new */

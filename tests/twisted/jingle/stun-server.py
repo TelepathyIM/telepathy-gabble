@@ -173,3 +173,7 @@ if __name__ == '__main__':
         protocol=GoogleXmlStream,
         params={'fallback-stun-server': 'resolves-to-5.4.3.2',
             'fallback-stun-port': dbus.UInt16(54321)})
+    exec_test(lambda q, b, c, s: test(q, b, c, s,
+        google=False, expected_stun_server='5.4.3.2', expected_stun_port=54321),
+        params={'fallback-stun-server': 'resolves-to-5.4.3.2',
+            'fallback-stun-port': dbus.UInt16(54321)})

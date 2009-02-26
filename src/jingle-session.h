@@ -79,6 +79,10 @@ struct _GabbleJingleSession {
     TpHandle peer;
 };
 
+GabbleJingleSession *gabble_jingle_session_new (GabbleConnection *connection,
+    const gchar *session_id, gboolean local_initiator, TpHandle peer,
+    const gchar *peer_resource);
+
 const gchar * gabble_jingle_session_detect (LmMessage *message,
     JingleAction *action, JingleDialect *dialect);
 gboolean gabble_jingle_session_parse (GabbleJingleSession *sess,

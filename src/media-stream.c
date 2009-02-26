@@ -1224,13 +1224,22 @@ gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
                                     DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  gboolean codecs_set =
+      (g_value_get_boxed (&self->priv->native_codecs) != NULL);
 
-  /* FIXME: we assume codecs have already been set (by set_local_codecs
-   * or supported_codecs(), depending on who's stream creator. */
+  if (codecs_set)
+    {
+      pass_local_codecs (self, codecs);
+      tp_svc_media_stream_handler_return_from_codecs_updated (context);
+    }
+  else
+    {
+      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "CodecsUpdated may only be called once an initial set of codecs "
+          "has been set" };
 
-  pass_local_codecs (self, codecs);
-
-  tp_svc_media_stream_handler_return_from_codecs_updated (context);
+      dbus_g_method_return_error (context, &e);
+    }
 }
 
 void

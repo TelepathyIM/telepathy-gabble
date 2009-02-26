@@ -2341,12 +2341,16 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   gchar *nat_traversal;
   gboolean locally_created;
 
-  g_object_get (c, "name", &name, "media-type", &type,
-      "locally-created", &locally_created, NULL);
+  g_object_get (c,
+      "name", &name,
+      "media-type", &type,
+      "locally-created", &locally_created,
+      NULL);
 
   if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
       DEBUG ("ignoring non MediaRtp content '%s'", name);
+      g_free (name);
       return NULL;
     }
 

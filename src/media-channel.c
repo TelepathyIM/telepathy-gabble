@@ -2359,13 +2359,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   mtype = (type == JINGLE_MEDIA_TYPE_AUDIO) ?
     TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO;
 
-  stream = g_object_new (GABBLE_TYPE_MEDIA_STREAM,
-      "object-path", object_path,
-      "content", c,
-      "name", name,
-      "id", id,
-      "media-type", mtype,
-      NULL);
+  stream = gabble_media_stream_new (object_path, c, name, id, mtype);
 
   if (locally_created)
     {

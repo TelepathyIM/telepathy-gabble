@@ -139,6 +139,24 @@ static void content_removed_cb (GabbleJingleContent *content,
 static void update_direction (GabbleMediaStream *stream, GabbleJingleContent *c);
 static void update_sending (GabbleMediaStream *stream, gboolean start_sending);
 
+GabbleMediaStream *
+gabble_media_stream_new (const gchar *object_path,
+                         GabbleJingleContent *content,
+                         const gchar *name,
+                         guint id,
+                         TpMediaStreamType mtype)
+{
+  g_return_val_if_fail (GABBLE_IS_JINGLE_MEDIA_RTP (content), NULL);
+
+  return g_object_new (GABBLE_TYPE_MEDIA_STREAM,
+      "object-path", object_path,
+      "content", content,
+      "name", name,
+      "id", id,
+      "media-type", mtype,
+      NULL);
+}
+
 static void
 gabble_media_stream_init (GabbleMediaStream *self)
 {

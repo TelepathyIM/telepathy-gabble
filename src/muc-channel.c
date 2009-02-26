@@ -121,6 +121,7 @@ enum
   PROP_INITIATOR_ID,
   PROP_CHANNEL_DESTROYED,
   PROP_CHANNEL_PROPERTIES,
+  PROP_SELF_JID,
   LAST_PROPERTY
 };
 
@@ -875,6 +876,9 @@ gabble_muc_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "Interfaces",
               NULL));
       break;
+    case PROP_SELF_JID:
+      g_value_set_string (value, priv->self_jid->str);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -1052,6 +1056,13 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       NULL,
       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INVITATION_MESSAGE,
+      param_spec);
+
+  param_spec = g_param_spec_string ("self-jid", "Our self JID",
+      "Our self muc jid in this room",
+      NULL,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SELF_JID,
       param_spec);
 
   signals[READY] =

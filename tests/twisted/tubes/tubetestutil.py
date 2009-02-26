@@ -9,7 +9,9 @@ import dbus
 from dbus import PROPERTIES_IFACE
 
 from servicetest import unwrap
+from gabbletest import exec_test
 from constants import *
+from bytestream import BytestreamIBB, BytestreamS5B
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
@@ -214,3 +216,13 @@ def set_up_echo(name):
         if e.errno != errno.ENOENT:
             raise
     reactor.listenUNIX(os.getcwd() + '/stream' + name, factory)
+
+def exec_tube_test(test):
+    def test_ibb(q, bus, conn, stream):
+        test(q, bus, conn, stream, BytestreamIBB)
+
+    def test_socks5(q, bus, conn, stream):
+        test(q, bus, conn, stream, BytestreamS5B)
+
+    exec_test(test_ibb)
+    exec_test(test_socks5)

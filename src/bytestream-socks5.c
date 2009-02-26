@@ -77,6 +77,7 @@ enum
   PROP_PEER_RESOURCE,
   PROP_STATE,
   PROP_PROTOCOL,
+  PROP_SELF_JID,
   LAST_PROPERTY
 };
 
@@ -289,6 +290,9 @@ gabble_bytestream_socks5_get_property (GObject *object,
       case PROP_PROTOCOL:
         g_value_set_string (value, NS_BYTESTREAMS);
         break;
+      case PROP_SELF_JID:
+        g_value_set_string (value, priv->self_full_jid);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -333,6 +337,10 @@ gabble_bytestream_socks5_set_property (GObject *object,
                   priv->bytestream_state);
             }
         break;
+      case PROP_SELF_JID:
+        g_free (priv->self_full_jid);
+        priv->self_full_jid = g_value_dup_string (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -349,7 +357,6 @@ gabble_bytestream_socks5_constructor (GType type,
   TpBaseConnection *base_conn;
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
-  gchar *resource;
 
   obj = G_OBJECT_CLASS (gabble_bytestream_socks5_parent_class)->
            constructor (type, n_props, props);
@@ -374,10 +381,7 @@ gabble_bytestream_socks5_constructor (GType type,
   else
     priv->peer_jid = g_strdup (jid);
 
-  g_object_get (priv->conn, "resource", &resource, NULL);
-  priv->self_full_jid = g_strdup_printf ("%s/%s", tp_handle_inspect (
-        contact_repo, base_conn->self_handle), resource);
-  g_free (resource);
+  g_assert (priv->self_full_jid != NULL);
 
   return obj;
 }
@@ -431,6 +435,15 @@ gabble_bytestream_socks5_class_init (
       NULL,
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STREAM_INIT_ID,
+      param_spec);
+
+  param_spec = g_param_spec_string (
+      "self-jid",
+      "Our self jid",
+      "Either a contact full jid or a muc jid",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY  | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SELF_JID,
       param_spec);
 }
 
@@ -503,22 +516,22 @@ static void
 socks5_close_transport (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv =
-      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+    GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+
+  if (priv->read_buffer != NULL)
+    {
+      g_string_free (priv->read_buffer, TRUE);
+      priv->read_buffer = NULL;
+    }
 
   if (priv->transport == NULL)
     return;
 
- if (priv->read_buffer)
-   {
-     g_string_free (priv->read_buffer, TRUE);
-     priv->read_buffer = NULL;
-   }
+  g_signal_handlers_disconnect_matched (priv->transport,
+      G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, self);
 
- g_signal_handlers_disconnect_matched (priv->transport,
-        G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, self);
-
- g_object_unref (priv->transport);
- priv->transport = NULL;
+  g_object_unref (priv->transport);
+  priv->transport = NULL;
 }
 
 static void
@@ -658,8 +671,6 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   gchar msg[SOCKS5_CONNECT_LENGTH];
   guint auth_len;
   guint i;
-  const gchar *from;
-  const gchar *to;
   gchar *domain;
   LmMessage *iq_result;
   guint8 domain_len;
@@ -685,12 +696,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         DEBUG ("Received auth reply. Sending CONNECT command");
 
-        from = lm_message_node_get_attribute (
-            priv->msg_for_acknowledge_connection->node, "from");
-        to = lm_message_node_get_attribute (
-            priv->msg_for_acknowledge_connection->node, "to"),
-
-        domain = compute_domain (priv->stream_id, from, to);
+        domain = compute_domain(priv->stream_id, priv->peer_jid,
+            priv->self_full_jid);
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_CMD_CONNECT;
@@ -737,8 +744,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        domain = compute_domain(priv->stream_id, priv->self_full_jid,
-            priv->peer_jid);
+        domain = compute_domain(priv->stream_id, priv->peer_jid,
+            priv->self_full_jid);
 
         if (!check_domain (&string->str[5], domain_len, domain))
           {
@@ -943,6 +950,11 @@ transport_handler (GibberTransport *transport,
   g_string_append_len (priv->read_buffer, (const gchar *) data->data,
       data->length);
 
+  /* If something goes wrong in socks5_handle_received_data, the bytestream
+   * could be closed and disposed. Ref it to artificially keep this bytestream
+   * object alive while we are in this function. */
+  g_object_ref (self);
+
   do
     {
       /* socks5_handle_received_data() processes the data and returns the
@@ -953,11 +965,13 @@ transport_handler (GibberTransport *transport,
       if (priv->read_buffer == NULL)
         /* If something did wrong in socks5_handle_received_data, the
          * bytestream can be closed and so destroyed. */
-        return;
+        break;
 
       g_string_erase (priv->read_buffer, 0, used_bytes);
     }
   while (used_bytes > 0 && priv->read_buffer->len > 0);
+
+  g_object_unref (self);
 }
 
 static void

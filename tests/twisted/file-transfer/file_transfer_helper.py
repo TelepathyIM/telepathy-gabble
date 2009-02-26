@@ -166,7 +166,7 @@ class ReceiveFileTest(FileTransferTest):
 
     def send_ft_offer_iq(self):
         self.bytestream = self.bytestream_cls(self.stream, self.q, 'alpha',
-            self.contact_name, 'test@localhost/Resource')
+            self.contact_name, 'test@localhost/Resource', True)
 
         iq, si = create_si_offer(self.stream, self.contact_name, 'test@localhost/Resource',
             self.bytestream.stream_id, ns.FILE_TRANSFER, [self.bytestream.get_ns()])
@@ -379,7 +379,7 @@ class SendFileTest(FileTransferTest):
         assert self.desc == self.file.description
 
         self.bytestream = self.bytestream_cls(self.stream, self.q, sid,
-            'test@localhost/Resource', self.iq['to'])
+            'test@localhost/Resource', self.iq['to'], False)
 
     def provide_file(self):
         self.address = self.ft_channel.ProvideFile(SOCKET_ADDRESS_TYPE_UNIX,
@@ -387,7 +387,7 @@ class SendFileTest(FileTransferTest):
 
     def client_accept_file(self):
         # accept SI offer
-        result = create_si_reply(self.stream, self.iq, 'test@localhost/Resource',
+        result, si = create_si_reply(self.stream, self.iq, 'test@localhost/Resource',
             self.bytestream.get_ns())
         self.stream.send(result)
 
@@ -428,7 +428,7 @@ class SendFileTest(FileTransferTest):
 def exec_file_transfer_test(test_cls):
     test = test_cls(BytestreamIBB)
     exec_test(test.test)
-    test = test_cls(BytestreamS5B)
-    exec_test(test.test)
-    test = test_cls(BytestreamS5BPidgin)
-    exec_test(test.test)
+    #test = test_cls(BytestreamS5B)
+    #exec_test(test.test)
+    #test = test_cls(BytestreamS5BPidgin)
+    #exec_test(test.test)

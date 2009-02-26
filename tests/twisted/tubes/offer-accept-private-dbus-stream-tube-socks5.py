@@ -11,14 +11,10 @@ from gabbletest import exec_test, acknowledge_iq, sync_stream
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import S5BFactory, socks5_expect_connection, socks5_connect, \
-    send_socks5_init, expect_socks5_init, expect_socks5_reply, \
-    create_si_offer, parse_si_reply, create_si_reply, parse_si_offer, \
-    listen_socks5, send_socks5_reply
+from bytestream import expect_socks5_reply, create_si_offer, parse_si_reply,\
+    create_si_reply, parse_si_offer, BytestreamS5B
 
 from twisted.words.xish import domish, xpath
-from twisted.internet import reactor
-from twisted.words.protocols.jabber.client import IQ
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -253,8 +249,12 @@ def test(q, bus, conn, stream):
 
     # The CM is the server, so fake a client wanting to talk to it
     # Old API tube
-    iq, si = create_si_offer(stream, bob_full_jid, self_full_jid, 'alpha', ns.TUBES,
-        [ns.BYTESTREAMS])
+
+    bytestream1 = BytestreamS5B(stream, q, 'alpha', bob_full_jid,
+        self_full_jid, True)
+
+    iq, si = create_si_offer(stream, bytestream1.initiator, bytestream1.target,
+            bytestream1.stream_id, ns.TUBES, [bytestream1.get_ns()])
 
     stream_node = si.addElement((ns.TUBES, 'stream'))
     stream_node['tube'] = str(stream_tube_id)
@@ -280,8 +280,11 @@ def test(q, bus, conn, stream):
 
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
-    iq, si = create_si_offer(stream, bob_full_jid, self_full_jid, 'beta', ns.TUBES,
-        [ns.BYTESTREAMS])
+    bytestream2 = BytestreamS5B(stream, q, 'beta', bob_full_jid,
+        self_full_jid, True)
+
+    iq, si = create_si_offer(stream, bytestream2.initiator, bytestream2.target,
+            bytestream2.stream_id, ns.TUBES, [bytestream2.get_ns()])
 
     stream_node = si.addElement((ns.TUBES, 'stream'))
     stream_node['tube'] = str(new_stream_tube_id)
@@ -310,48 +313,25 @@ def test(q, bus, conn, stream):
         cs.TUBE_STATE_OPEN,
         ) in tubes, tubes
 
-    port = listen_socks5(q)
 
-    # have the fake client open the stream
-    # Old tube API
-    send_socks5_init(stream, bob_full_jid, self_full_jid, 'alpha', 'tcp', [
-        # Not working streamhost
-        ('invalid.invalid', 'invalid.invalid', port),
-        # Working streamhost
-        (bob_full_jid, '127.0.0.1', port),
-        # This works too but should not be tried as gabble should just
-        # connect to the previous one
-        ('bob@localhost', '127.0.0.1', port)])
-
-    transport = socks5_expect_connection(q, 'alpha', bob_full_jid, self_full_jid)
+    bytestream1.open_bytestream()
 
     streamhost_used = expect_socks5_reply(q)
     assert streamhost_used['jid'] == bob_full_jid
 
-    transport.write("HELLO WORLD")
+    bytestream1.send_data("HELLO WORLD")
     event = q.expect('s5b-data-received')
     assert event.data == 'hello world'
 
     # this connection is disconnected
-    transport.loseConnection()
+    bytestream1.transport.loseConnection()
 
-    port = listen_socks5(q)
-
-    send_socks5_init(stream, bob_full_jid, self_full_jid, 'beta', 'tcp', [
-        # Not working streamhost
-        ('invalid.invalid', 'invalid.invalid', port),
-        # Working streamhost
-        (bob_full_jid, '127.0.0.1', port),
-        # This works too but should not be tried as gabble should just
-        # connect to the previous one
-        ('bob@localhost', '127.0.0.1', port)])
-
-    transport = socks5_expect_connection(q, 'beta', bob_full_jid, self_full_jid)
+    bytestream2.open_bytestream()
 
     streamhost_used = expect_socks5_reply(q)
     assert streamhost_used['jid'] == bob_full_jid
 
-    transport.write("HELLO, NEW WORLD")
+    bytestream2.send_data("HELLO, NEW WORLD")
     event = q.expect('s5b-data-received')
     assert event.data == 'hello, new world'
 
@@ -384,21 +364,13 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    result = create_si_reply(stream, event.stanza, self_full_jid, ns.BYTESTREAMS)
+    bytestream3 = BytestreamS5B(stream, q, dbus_stream_id, self_full_jid,
+        event.stanza['to'], False)
+
+    result, si = create_si_reply(stream, event.stanza, self_full_jid, bytestream3.get_ns())
     stream.send(result)
 
-    id, mode, sid, hosts = expect_socks5_init(q)
-    assert mode == 'tcp'
-    assert sid == dbus_stream_id
-
-    for jid, host, port in hosts:
-        assert jid == self_full_jid
-
-    jid, host, port = hosts[0]
-
-    transport = socks5_connect(q, host, port, sid, self_full_jid, bob_full_jid)
-
-    send_socks5_reply(stream, bob_full_jid, self_full_jid, id, jid)
+    bytestream3.wait_bytestream_open()
 
     q.expect('dbus-signal', signal='TubeStateChanged',
         args=[dbus_tube_id, cs.TUBE_STATE_OPEN])
@@ -437,14 +409,14 @@ def test(q, bus, conn, stream):
     watch_tube_signals(q, dbus_tube_conn)
 
     # Have the fake client send us a message all in one go...
-    transport.write(dbus_message)
+    bytestream3.send_data(dbus_message)
 
     # ... and a message one byte at a time ...
     for byte in dbus_message:
-        transport.write(byte)
+        bytestream3.send_data(byte)
 
     # ... and two messages in one go
-    transport.write(dbus_message + dbus_message)
+    bytestream3.send_data(dbus_message + dbus_message)
 
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
@@ -452,8 +424,10 @@ def test(q, bus, conn, stream):
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
 
     # OK, now let's try to accept a D-Bus tube
-    iq, si = create_si_offer(stream, bob_full_jid, self_full_jid, 'beta', ns.TUBES,
-        [ns.BYTESTREAMS])
+    bytestream4 = BytestreamS5B(stream, q, 'beta', bob_full_jid, self_full_jid, True)
+
+    iq, si = create_si_offer(stream, bytestream4.initiator, bytestream4.target,
+            bytestream4.stream_id, ns.TUBES, [bytestream4.get_ns()])
 
     tube = si.addElement((ns.TUBES, 'tube'))
     tube['type'] = 'dbus'
@@ -492,15 +466,11 @@ def test(q, bus, conn, stream):
     tube = xpath.queryForNodes('/iq//si/tube[@xmlns="%s"]' % ns.TUBES, event.stanza)
     assert len(tube) == 1
 
-    port = listen_socks5(q)
+    expected = EventPattern('dbus-return', method='AcceptDBusTube')
 
     # Init the SOCKS5 bytestream
-    send_socks5_init(stream, bob_full_jid, self_full_jid, 'beta', 'tcp', [
-        (bob_full_jid, '127.0.0.1', port)])
+    event = bytestream4.open_bytestream(expected)
 
-    event, _ = q.expect_many(
-        EventPattern('dbus-return', method='AcceptDBusTube'),
-        EventPattern('s5b-connected'))
     address = event.value[0]
     assert len(address) > 0
 

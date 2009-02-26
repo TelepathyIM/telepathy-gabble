@@ -12,15 +12,16 @@ from gabbletest import acknowledge_iq, sync_stream
 import ns
 
 class Bytestream(object):
-    def __init__(self, stream, q, sid, initiator, target):
+    def __init__(self, stream, q, sid, initiator, target, initiated):
         self.stream = stream
         self.q = q
 
         self.stream_id = sid
         self.initiator = initiator
         self.target = target
+        self.initiated = initiated
 
-    def open_bytestream(self):
+    def open_bytestream(self, expected=None):
         raise NotImplemented
 
     def send_data(self, data):
@@ -93,7 +94,7 @@ def create_si_reply(stream, iq, to, bytestream):
     res_value = res_field.addElement((None, 'value'))
     res_value.addContent(bytestream)
 
-    return result
+    return result, res_si
 
 def parse_si_reply(iq):
     si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
@@ -110,20 +111,137 @@ class BytestreamS5B(Bytestream):
     def get_ns(self):
         return ns.BYTESTREAMS
 
-    def open_bytestream(self):
-        port = listen_socks5(self.q)
+    def _send_socks5_init(self, hosts):
+        iq = IQ(self.stream, 'set')
+        iq['to'] = self.target
+        iq['from'] = self.initiator
+        query = iq.addElement((ns.BYTESTREAMS, 'query'))
+        query['sid'] = self.stream_id
+        query['mode'] = 'tcp'
+        for jid, host, port in hosts:
+            streamhost = query.addElement('streamhost')
+            streamhost['jid'] = jid
+            streamhost['host'] = host
+            streamhost['port'] = str(port)
+        self.stream.send(iq)
 
-        send_socks5_init(self.stream, self.initiator, self.target,
-            self.stream_id, 'tcp', [(self.initiator, '127.0.0.1', port)])
+    def _wait_auth_request(self):
+        event = self.q.expect('s5b-data-received')
+        assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
+        self.transport = event.transport
 
-        self.transport = socks5_expect_connection(self.q, self.stream_id,
-            self.initiator, self.target)
+    def _send_auth_reply(self):
+        self.transport.write('\x05\x00') # version 5, no auth
+
+    def _compute_hash_domain(self):
+        # sha-1(sid + initiator + target)
+        unhashed_domain = self.stream_id + self.initiator + self.target
+        return sha.new(unhashed_domain).hexdigest()
+
+    def _wait_connect_cmd(self):
+        event = self.q.expect('s5b-data-received', transport=self.transport)
+        # version 5, connect, reserved, domain type
+        expected_connect = '\x05\x01\x00\x03'
+        expected_connect += chr(40) # len (SHA-1)
+        expected_connect += self._compute_hash_domain()
+        expected_connect += '\x00\x00' # port
+        assert event.data == expected_connect
+
+    def _send_connect_reply(self):
+        connect_reply = '\x05\x00\x00\x03'
+        connect_reply += chr(40) # len (SHA-1)
+        connect_reply += self._compute_hash_domain()
+        connect_reply += '\x00\x00' # port
+        self.transport.write(connect_reply)
+
+    def _socks5_expect_connection(self):
+        self._wait_auth_request()
+        self._send_auth_reply()
+        self._wait_connect_cmd()
+        self._send_connect_reply()
+
+    def _listen_socks5(self):
+        for port in range(5000,5100):
+            try:
+                reactor.listenTCP(port, S5BFactory(self.q.append))
+            except CannotListenError:
+                continue
+            else:
+                return port
+
+        assert False, "Can't find a free port"
+
+    def open_bytestream(self, expected=None):
+        port = self._listen_socks5()
+
+        self._send_socks5_init([(self.initiator, '127.0.0.1', port)])
+
+        if expected is not None:
+            event = self.q.expect_many(expected)[0]
+        else:
+            event = None
+
+        self._socks5_expect_connection()
+
+        return event
 
     def send_data(self, data):
         self.transport.write(data)
 
+    def _expect_socks5_init(self):
+        event = self.q.expect('stream-iq', iq_type='set')
+        iq = event.stanza
+        query = xpath.queryForNodes('/iq/query', iq)[0]
+        assert query.uri == ns.BYTESTREAMS
+
+        mode = query['mode']
+        sid = query['sid']
+        hosts = []
+
+        for streamhost in xpath.queryForNodes('/query/streamhost', query):
+            hosts.append((streamhost['jid'], streamhost['host'], int(streamhost['port'])))
+        return iq['id'], mode, sid, hosts
+
+    def _socks5_connect(self, host, port):
+        reactor.connectTCP(host, port, S5BFactory(self.q.append))
+
+        event = self.q.expect('s5b-connected')
+        transport = event.transport
+        transport.write('\x05\x01\x00') #version 5, 1 auth method, no auth
+
+        event = self.q.expect('s5b-data-received')
+        event.data == '\x05\x00' # version 5, no auth
+
+        # version 5, connect, reserved, domain type
+        connect = '\x05\x01\x00\x03'
+        connect += chr(40) # len (SHA-1)
+        connect += self._compute_hash_domain()
+        connect += '\x00\x00' # port
+        transport.write(connect)
+
+        # wait for CONNECT reply
+        event = self.q.expect('s5b-data-received')
+        # version 5, succeed, reserved, domain type
+        expected_reply = '\x05\x00\x00\x03'
+        expected_reply += chr(40) # len (SHA-1)
+        expected_reply += self._compute_hash_domain()
+        expected_reply += '\x00\x00' # port
+        assert event.data == expected_reply
+
+        return transport
+
+    def _send_socks5_reply(self, id, stream_used):
+        result = IQ(self.stream, 'result')
+        result['id'] = id
+        result['from'] = self.target
+        result['to'] = self.initiator
+        query = result.addElement((ns.BYTESTREAMS, 'query'))
+        streamhost_used = query.addElement((None, 'streamhost-used'))
+        streamhost_used['jid'] = stream_used
+        result.send()
+
     def wait_bytestream_open(self):
-        id, mode, sid, hosts = expect_socks5_init(self.q)
+        id, mode, sid, hosts = self._expect_socks5_init()
 
         for jid, host, port in hosts:
             assert jid == self.initiator, jid
@@ -132,10 +250,9 @@ class BytestreamS5B(Bytestream):
         assert sid == self.stream_id
         jid, host, port = hosts[0]
 
-        self.transport = socks5_connect(self.q, host, port, sid, self.initiator,
-            self.target)
+        self.transport = self._socks5_connect(host, port)
 
-        send_socks5_reply(self.stream, self.target, self.initiator, id, jid)
+        self._send_socks5_reply(id, jid)
 
     def get_data(self):
        e = self.q.expect('s5b-data-received', transport=self.transport)
@@ -146,40 +263,7 @@ class BytestreamS5B(Bytestream):
 
 class BytestreamS5BPidgin(BytestreamS5B):
     """Simulate buggy S5B implementation (as Pidgin's one)"""
-    def open_bytestream(self):
-        port = listen_socks5(self.q)
-
-        send_socks5_init(self.stream, self.initiator, self.target,
-            self.stream_id, 'tcp', [(self.initiator, '127.0.0.1', port)])
-
-        # FIXME: we should share lot of code with socks5_expect_connection
-        # once we'll have refactored Bytestream test objects
-        sid = self.stream_id
-        initiator = self.initiator
-        target = self.target
-
-        # wait auth
-        event = self.q.expect('s5b-data-received')
-        assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
-
-        # send auth reply
-        transport = event.transport
-        transport.write('\x05\x00') # version 5, no auth
-        event = self.q.expect('s5b-data-received')
-
-        # sha-1(sid + initiator + target)
-        unhashed_domain = sid + initiator + target
-        hashed_domain = sha.new(unhashed_domain).hexdigest()
-
-        # wait CONNECT cmd
-        # version 5, connect, reserved, domain type
-        expected_connect = '\x05\x01\x00\x03'
-        expected_connect += chr(40) # len (SHA-1)
-        expected_connect += hashed_domain
-        expected_connect += '\x00\x00' # port
-        assert event.data == expected_connect
-
-        # send CONNECT reply
+    def _send_connect_reply(self):
         # version 5, ok, reserved, domain type
         connect_reply = '\x05\x00\x00\x03'
         # I'm Pidgin, why should I respect SOCKS5 XEP?
@@ -187,9 +271,7 @@ class BytestreamS5BPidgin(BytestreamS5B):
         connect_reply += chr(len(domain))
         connect_reply += domain
         connect_reply += '\x00\x00' # port
-        transport.write(connect_reply)
-
-        self.transport = transport
+        self.transport.write(connect_reply)
 
 class S5BProtocol(Protocol):
     def connectionMade(self):
@@ -220,110 +302,6 @@ class S5BFactory(Factory):
     def clientConnectionFailed(self, connector, reason):
         self.event_func(Event('s5b-connection-failed', reason=reason))
 
-def socks5_expect_connection(q, sid, initiator, target):
-    # wait auth
-    event = q.expect('s5b-data-received')
-    assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
-
-    # send auth reply
-    transport = event.transport
-    transport.write('\x05\x00') # version 5, no auth
-    event = q.expect('s5b-data-received')
-
-    # sha-1(sid + initiator + target)
-    unhashed_domain = sid + initiator + target
-    hashed_domain = sha.new(unhashed_domain).hexdigest()
-
-    # wait CONNECT cmd
-    # version 5, connect, reserved, domain type
-    expected_connect = '\x05\x01\x00\x03'
-    expected_connect += chr(40) # len (SHA-1)
-    expected_connect += hashed_domain
-    expected_connect += '\x00\x00' # port
-    assert event.data == expected_connect
-
-    # send CONNECT reply
-    # version 5, ok, reserved, domain type
-    connect_reply = '\x05\x00\x00\x03'
-    connect_reply += chr(40) # len (SHA-1)
-    connect_reply += hashed_domain
-    connect_reply += '\x00\x00' # port
-    transport.write(connect_reply)
-
-    return transport
-
-def socks5_connect(q, host, port, sid,  initiator, target):
-    reactor.connectTCP(host, port, S5BFactory(q.append))
-
-    event = q.expect('s5b-connected')
-    transport = event.transport
-    transport.write('\x05\x01\x00') #version 5, 1 auth method, no auth
-
-    event = q.expect('s5b-data-received')
-    event.data == '\x05\x00' # version 5, no auth
-
-    # sha-1(sid + initiator + target)
-    unhashed_domain = sid + initiator + target
-    hashed_domain = sha.new(unhashed_domain).hexdigest()
-
-    # send CONNECT command
-    # version 5, connect, reserved, domain type
-    connect = '\x05\x01\x00\x03'
-    connect += chr(40) # len (SHA-1)
-    connect += hashed_domain
-    connect += '\x00\x00' # port
-    transport.write(connect)
-
-    # wait for CONNECT reply
-    event = q.expect('s5b-data-received')
-    # version 5, succeed, reserved, domain type
-    expected_reply = '\x05\x00\x00\x03'
-    expected_reply += chr(40) # len (SHA-1)
-    expected_reply += hashed_domain
-    expected_reply += '\x00\x00' # port
-    assert event.data == expected_reply
-
-    return transport
-
-def listen_socks5(q):
-    for port in range(5000,5100):
-        try:
-            reactor.listenTCP(port, S5BFactory(q.append))
-        except CannotListenError:
-            continue
-        else:
-            return port
-
-    assert False, "Can't find a free port"
-
-def send_socks5_init(stream, from_, to, sid, mode, hosts):
-    iq = IQ(stream, 'set')
-    iq['to'] = to
-    iq['from'] = from_
-    query = iq.addElement((ns.BYTESTREAMS, 'query'))
-    query['sid'] = sid
-    query['mode'] = mode
-    for jid, host, port in hosts:
-        streamhost = query.addElement('streamhost')
-        streamhost['jid'] = jid
-        streamhost['host'] = host
-        streamhost['port'] = str(port)
-    stream.send(iq)
-
-def expect_socks5_init(q):
-    event = q.expect('stream-iq', iq_type='set')
-    iq = event.stanza
-    query = xpath.queryForNodes('/iq/query', iq)[0]
-    assert query.uri == ns.BYTESTREAMS
-
-    mode = query['mode']
-    sid = query['sid']
-    hosts = []
-
-    for streamhost in xpath.queryForNodes('/query/streamhost', query):
-        hosts.append((streamhost['jid'], streamhost['host'], int(streamhost['port'])))
-    return iq['id'], mode, sid, hosts
-
 def expect_socks5_reply(q):
     event = q.expect('stream-iq', iq_type='result')
     iq = event.stanza
@@ -332,33 +310,30 @@ def expect_socks5_reply(q):
     streamhost_used = xpath.queryForNodes('/query/streamhost-used', query)[0]
     return streamhost_used
 
-def send_socks5_reply(stream, from_, to, id, stream_used):
-    result = IQ(stream, 'result')
-    result['id'] = id
-    result['from'] = from_
-    result['to'] = to
-    query = result.addElement((ns.BYTESTREAMS, 'query'))
-    streamhost_used = query.addElement((None, 'streamhost-used'))
-    streamhost_used['jid'] = stream_used
-    result.send()
-
 ##### XEP-0047: In-Band Bytestreams (IBB) #####
 
 class BytestreamIBB(Bytestream):
-    def __init__(self, stream, q, sid, initiator, target):
-        Bytestream.__init__(self, stream, q, sid, initiator, target)
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
 
         self.seq = 0
 
     def get_ns(self):
         return ns.IBB
 
-    def open_bytestream(self):
+    def open_bytestream(self, expected=None):
         # open IBB bytestream
         send_ibb_open(self.stream, self.initiator, self.target, self.stream_id, 4096)
 
     def send_data(self, data):
-        send_ibb_msg_data(self.stream, self.initiator, self.target, self.stream_id,
+        if self.initiated:
+            from_ = self.initiator
+            to = self.target
+        else:
+            from_ = self.target
+            to = self.initiator
+
+        send_ibb_msg_data(self.stream, from_, to, self.stream_id,
             self.seq, data)
         sync_stream(self.q, self.stream)
 

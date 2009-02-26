@@ -58,6 +58,7 @@ enum
   PROP_STATE,
   PROP_PROTOCOL,
   PROP_FACTORY,
+  PROP_SELF_JID,
   LAST_PROPERTY
 };
 
@@ -71,6 +72,7 @@ struct _GabbleBytestreamMultiplePrivate
   GabbleBytestreamState state;
   gchar *peer_jid;
   GabbleBytestreamFactory *factory;
+  gchar *self_full_jid;
 
   /* List of (gchar *) containing the NS of a stream method */
   GList *fallback_stream_methods;
@@ -132,6 +134,7 @@ gabble_bytestream_multiple_finalize (GObject *object)
   g_free (priv->stream_init_id);
   g_free (priv->peer_resource);
   g_free (priv->peer_jid);
+  g_free (priv->self_full_jid);
 
   G_OBJECT_CLASS (gabble_bytestream_multiple_parent_class)->finalize (object);
 }
@@ -177,6 +180,9 @@ gabble_bytestream_multiple_get_property (GObject *object,
         break;
       case PROP_FACTORY:
         g_value_set_object (value, priv->factory);
+        break;
+      case PROP_SELF_JID:
+        g_value_set_string (value, priv->self_full_jid);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -224,6 +230,10 @@ gabble_bytestream_multiple_set_property (GObject *object,
       case PROP_FACTORY:
         priv->factory = g_value_get_object (value);
         break;
+      case PROP_SELF_JID:
+        g_free (priv->self_full_jid);
+        priv->self_full_jid = g_value_dup_string (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -261,6 +271,8 @@ gabble_bytestream_multiple_constructor (GType type,
     priv->peer_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
   else
     priv->peer_jid = g_strdup (jid);
+
+  g_assert (priv->self_full_jid != NULL);
 
   return obj;
 }
@@ -323,6 +335,15 @@ gabble_bytestream_multiple_class_init (
       GABBLE_TYPE_BYTESTREAM_FACTORY,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_FACTORY,
+      param_spec);
+
+  param_spec = g_param_spec_string (
+      "self-jid",
+      "Our self jid",
+      "Either a contact full jid or a muc jid",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY  | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SELF_JID,
       param_spec);
 }
 
@@ -547,7 +568,8 @@ bytestream_activate_next (GabbleBytestreamMultiple *self)
 
   priv->active_bytestream = gabble_bytestream_factory_create_from_method (
       priv->factory, stream_method, priv->peer_handle, priv->stream_id,
-      priv->stream_init_id, priv->peer_resource, priv->state);
+      priv->stream_init_id, priv->peer_resource, priv->self_full_jid,
+      priv->state);
 
   g_free (stream_method);
 

@@ -231,7 +231,6 @@ parse_description (GabbleJingleContent *content,
   GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
   GabbleJingleMediaRtpPrivate *priv = self->priv;
   JingleMediaType mtype = JINGLE_MEDIA_TYPE_NONE;
-  gboolean google_mode = FALSE;
   GList *codecs = NULL;
   LmMessageNode *node;
 
@@ -271,7 +270,6 @@ parse_description (GabbleJingleContent *content,
         NS_GOOGLE_SESSION_PHONE, NULL))
     {
       mtype = JINGLE_MEDIA_TYPE_AUDIO;
-      google_mode = TRUE;
     }
   else
     {

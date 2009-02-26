@@ -84,6 +84,7 @@ enum
   PROP_LOCAL_HOLD,
   PROP_CONTENT,
   PROP_STUN_SERVERS,
+  PROP_RELAY_INFO,
   LAST_PROPERTY
 };
 
@@ -319,6 +320,10 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_STUN_SERVERS:
       g_value_set_boxed (value, priv->stun_servers);
       break;
+    case PROP_RELAY_INFO:
+      /* a stub implementation, for now */
+      g_value_take_boxed (value, g_ptr_array_sized_new (0));
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -528,6 +533,12 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
       tp_type_dbus_array_su (),
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STUN_SERVERS, param_spec);
+
+  param_spec = g_param_spec_boxed ("relay-info", "Relay info",
+      "Array of mappings containing relay server information",
+      TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_RELAY_INFO, param_spec);
 
   /* signals not exported by D-Bus interface */
 

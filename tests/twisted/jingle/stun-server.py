@@ -97,6 +97,9 @@ def test(q, bus, conn, stream,
             'org.freedesktop.Telepathy.Media.StreamHandler',
             dbus_interface=dbus.PROPERTIES_IFACE)
 
+    assert sh_props['NATTraversal'] == 'gtalk-p2p'
+    assert sh_props['CreatedLocally'] == False
+
     if expected_stun_server is None:
         assert sh_props['STUNServers'] == [], sh_props['STUNServers']
     else:

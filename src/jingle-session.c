@@ -266,6 +266,22 @@ gabble_jingle_session_set_property (GObject *object,
   }
 }
 
+GabbleJingleSession *
+gabble_jingle_session_new (GabbleConnection *connection,
+                           const gchar *session_id,
+                           gboolean local_initiator,
+                           TpHandle peer,
+                           const gchar *peer_resource)
+{
+  return g_object_new (GABBLE_TYPE_JINGLE_SESSION,
+      "session-id", session_id,
+      "connection", connection,
+      "local-initiator", local_initiator,
+      "peer", peer,
+      "peer-resource", peer_resource,
+      NULL);
+}
+
 static void
 gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 {
@@ -553,6 +569,9 @@ create_content (GabbleJingleSession *sess, GType content_type,
   GabbleJingleContent *c;
 
   DEBUG ("session creating new content type, conn == %p, jf == %p", priv->conn, priv->conn->jingle_factory);
+
+  /* FIXME: media-type is introduced by GabbleJingleMediaRTP, not by the
+   * superclass, so this call is unsafe in the general case */
   c = g_object_new (content_type,
                     "connection", priv->conn,
                     "session", sess,
@@ -608,9 +627,8 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
     {
       content_ns = lm_message_node_get_namespace (desc_node);
       DEBUG ("namespace: %s", content_ns);
-      content_type =
-          GPOINTER_TO_SIZE (g_hash_table_lookup (priv->conn->jingle_factory->content_types,
-          content_ns));
+      content_type = gabble_jingle_factory_lookup_content_type (
+          priv->conn->jingle_factory, content_ns);
     }
 
   if (content_type == 0)
@@ -1596,9 +1614,8 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
     }
   while (g_hash_table_lookup (priv->contents, name) != NULL);
 
-  content_type =
-      GPOINTER_TO_SIZE (g_hash_table_lookup (priv->conn->jingle_factory->content_types,
-      content_ns));
+  content_type = gabble_jingle_factory_lookup_content_type (
+      priv->conn->jingle_factory, content_ns);
 
   g_assert (content_type != 0);
 

@@ -68,6 +68,9 @@ void gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *,
 void gabble_jingle_transport_iface_retransmit_candidates (GabbleJingleTransportIface *, gboolean);
 GList *gabble_jingle_transport_iface_get_remote_candidates (GabbleJingleTransportIface *);
 
+GabbleJingleTransportIface *gabble_jingle_transport_iface_new (
+    GType type, GabbleJingleContent *content, const gchar *transport_ns);
+
 JingleCandidate *jingle_candidate_new (guint component, const gchar *address,
     guint port, JingleTransportProtocol proto, gdouble pref,
     JingleCandidateType type, const gchar *user, const gchar *pass, guint net,

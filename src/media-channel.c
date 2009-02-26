@@ -2371,13 +2371,6 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
       nat_traversal, locally_created);
   g_free (nat_traversal);
 
-  if (locally_created)
-    {
-      g_object_set (stream, "combined-direction",
-          MAKE_COMBINED_DIRECTION (TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
-            0), NULL);
-    }
-
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 
   g_ptr_array_add (priv->streams, stream);

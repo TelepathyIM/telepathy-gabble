@@ -286,6 +286,13 @@ gabble_media_stream_constructor (GType type, guint n_props,
   priv->initial_getter_id =
       g_idle_add (_get_initial_codecs_and_candidates, stream);
 
+  if (priv->created_locally)
+    {
+      g_object_set (stream, "combined-direction",
+          MAKE_COMBINED_DIRECTION (TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
+            0), NULL);
+    }
+
   return obj;
 }
 

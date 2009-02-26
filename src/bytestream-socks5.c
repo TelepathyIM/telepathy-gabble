@@ -1263,6 +1263,14 @@ socks5_init_reply_cb (GabbleConnection *conn,
     {
       LmMessageNode *query, *streamhost = NULL;
 
+      if (priv->socks5_state != SOCKS5_STATE_CONNECTED)
+        {
+          DEBUG ("Target claims that the bytestream is open but SOCKS5 is not "
+              "connected (state: %u). Closing the bytestream",
+              priv->socks5_state);
+          goto socks5_init_error;
+        }
+
       query = lm_message_node_get_child_with_namespace (reply_msg->node,
           "query", NS_BYTESTREAMS);
 
@@ -1272,19 +1280,19 @@ socks5_init_reply_cb (GabbleConnection *conn,
       if (streamhost == NULL)
         {
           DEBUG ("no streamhost-used has been defined. Closing the bytestream");
+          goto socks5_init_error;
         }
-      else
-        {
-          /* yeah, stream initiated */
-          DEBUG ("Socks5 stream initiated using stream: %s",
-              lm_message_node_get_attribute (streamhost, "jid"));
-          g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
-          /* We can read data from the sock5 socket now */
-          gibber_transport_block_receiving (priv->transport, FALSE);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
+
+      /* yeah, stream initiated */
+      DEBUG ("Socks5 stream initiated using stream: %s",
+          lm_message_node_get_attribute (streamhost, "jid"));
+      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
+      /* We can read data from the sock5 socket now */
+      gibber_transport_block_receiving (priv->transport, FALSE);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
+socks5_init_error:
   DEBUG ("error during Socks5 initiation");
 
   g_signal_emit_by_name (self, "connection-error");

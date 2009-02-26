@@ -172,6 +172,12 @@ gabble_media_stream_new (const gchar *object_path,
       NULL);
 }
 
+TpMediaStreamType
+gabble_media_stream_get_media_type (GabbleMediaStream *self)
+{
+  return self->priv->media_type;
+}
+
 static void
 gabble_media_stream_init (GabbleMediaStream *self)
 {

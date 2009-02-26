@@ -33,6 +33,7 @@
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-media-interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
@@ -47,12 +48,15 @@
 #include "namespaces.h"
 
 static void stream_handler_iface_init (gpointer, gpointer);
+static void dbus_properties_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleMediaStream,
     gabble_media_stream,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_MEDIA_STREAM_HANDLER,
-      stream_handler_iface_init)
+      stream_handler_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
+      dbus_properties_iface_init)
     )
 
 /* signal enum */
@@ -1612,5 +1616,99 @@ stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(stream_state,);
   IMPLEMENT(supported_codecs,);
   IMPLEMENT(unhold_failure,);
+#undef IMPLEMENT
+}
+
+static void
+gabble_media_stream_props_get (TpSvcDBusProperties *iface,
+                               const gchar *interface_name,
+                               const gchar *property_name,
+                               DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+
+  if (!tp_strdiff (interface_name, TP_IFACE_MEDIA_STREAM_HANDLER))
+    {
+      if (!tp_strdiff (property_name, "RelayInfo"))
+        {
+          GValue value = { 0 };
+
+          g_value_init (&value, TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST);
+          g_object_get_property ((GObject *) self, "relay-info", &value);
+          tp_svc_dbus_properties_return_from_get (context, &value);
+          g_value_unset (&value);
+        }
+      else if (!tp_strdiff (property_name, "STUNServers"))
+        {
+          GValue value = { 0 };
+
+          /* FIXME: use correct macro when available */
+          g_value_init (&value, tp_type_dbus_array_su ());
+          g_object_get_property ((GObject *) self, "stun-servers", &value);
+          tp_svc_dbus_properties_return_from_get (context, &value);
+          g_value_unset (&value);
+        }
+      else
+        {
+          GError not_implemented = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+              "Property not implemented" };
+
+          dbus_g_method_return_error (context, &not_implemented);
+        }
+    }
+  else
+    {
+      GError not_implemented = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Interface not implemented" };
+
+      dbus_g_method_return_error (context, &not_implemented);
+    }
+}
+
+static void
+gabble_media_stream_props_get_all (TpSvcDBusProperties *iface,
+                                   const gchar *interface_name,
+                                   DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+
+  if (!tp_strdiff (interface_name, TP_IFACE_MEDIA_STREAM_HANDLER))
+    {
+      GValue *value;
+      GHashTable *values = g_hash_table_new_full (g_str_hash, g_str_equal,
+          NULL, (GDestroyNotify) tp_g_value_slice_free);
+
+      value = tp_g_value_slice_new (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST);
+      g_object_get_property ((GObject *) self, "relay-info", value);
+      g_hash_table_insert (values, "RelayInfo", value);
+
+      /* FIXME: use correct macro when available */
+      value = tp_g_value_slice_new (tp_type_dbus_array_su ());
+      g_object_get_property ((GObject *) self, "stun-servers", value);
+      g_hash_table_insert (values, "STUNServers", value);
+
+      tp_svc_dbus_properties_return_from_get_all (context, values);
+      g_hash_table_destroy (values);
+    }
+  else
+    {
+      GError not_implemented = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Interface not implemented" };
+
+      dbus_g_method_return_error (context, &not_implemented);
+    }
+}
+
+static void
+dbus_properties_iface_init (gpointer g_iface,
+                            gpointer iface_data G_GNUC_UNUSED)
+{
+  TpSvcDBusPropertiesClass *cls = g_iface;
+
+#define IMPLEMENT(x) \
+    tp_svc_dbus_properties_implement_##x (cls, gabble_media_stream_props_##x)
+  IMPLEMENT (get);
+  IMPLEMENT (get_all);
+  /* set not implemented in this class */
 #undef IMPLEMENT
 }

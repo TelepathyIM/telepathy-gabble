@@ -950,6 +950,11 @@ transport_handler (GibberTransport *transport,
   g_string_append_len (priv->read_buffer, (const gchar *) data->data,
       data->length);
 
+  /* If something goes wrong in socks5_handle_received_data, the bytestream
+   * could be closed and disposed. Ref it to artificially keep this bytestream
+   * object alive while we are in this function. */
+  g_object_ref (self);
+
   do
     {
       /* socks5_handle_received_data() processes the data and returns the
@@ -960,11 +965,13 @@ transport_handler (GibberTransport *transport,
       if (priv->read_buffer == NULL)
         /* If something did wrong in socks5_handle_received_data, the
          * bytestream can be closed and so destroyed. */
-        return;
+        break;
 
       g_string_erase (priv->read_buffer, 0, used_bytes);
     }
   while (used_bytes > 0 && priv->read_buffer->len > 0);
+
+  g_object_unref (self);
 }
 
 static void

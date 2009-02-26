@@ -13,7 +13,8 @@ import dbus
 import time
 
 def test(q, bus, conn, stream,
-         expected_stun_server=None, expected_stun_port=None, google=False):
+         expected_stun_server=None, expected_stun_port=None, google=False,
+         expected_relays=[]):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
     # If we need to override remote caps, feats, codecs or caps,
@@ -75,6 +76,9 @@ def test(q, bus, conn, stream,
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
+    e = q.expect('dbus-signal', signal='NewStreamHandler')
+    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
+
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
 
     # Exercise channel properties
@@ -88,6 +92,27 @@ def test(q, bus, conn, stream,
     assert channel_props['InitiatorID'] == 'foo@bar.com'
     assert channel_props['InitiatorHandle'] == remote_handle
 
+    # The new API for STUN servers etc.
+    sh_props = stream_handler.GetAll(
+            'org.freedesktop.Telepathy.Media.StreamHandler',
+            dbus_interface=dbus.PROPERTIES_IFACE)
+
+    if expected_stun_server is None:
+        assert sh_props['STUNServers'] == [], sh_props['STUNServers']
+    else:
+        assert sh_props['STUNServers'] == \
+            [(expected_stun_server, expected_stun_port)], \
+            sh_props['STUNServers']
+
+    assert sh_props['RelayInfo'] == expected_relays
+
+    # consistency check, since we currently reimplement Get separately
+    for k in sh_props:
+        assert sh_props[k] == stream_handler.Get(
+                'org.freedesktop.Telepathy.Media.StreamHandler', k,
+                dbus_interface=dbus.PROPERTIES_IFACE), k
+
+    # The old API for STUN servers etc. still needs supporting, for farsight 1
     tp_prop_list = media_chan.ListProperties(dbus_interface=c.TP_AWKWARD_PROPERTIES)
     tp_props = {}
     tp_prop_ids = {}

@@ -7,7 +7,7 @@ from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import xpath, domish
 from twisted.internet.error import CannotListenError
 
-from servicetest import Event
+from servicetest import Event, EventPattern
 from gabbletest import acknowledge_iq, sync_stream
 import ns
 
@@ -154,11 +154,20 @@ class BytestreamS5B(Bytestream):
         connect_reply += '\x00\x00' # port
         self.transport.write(connect_reply)
 
-    def _socks5_expect_connection(self):
+    def _socks5_expect_connection(self, expected):
+        if expected is not None:
+            event, _ = self.q.expect_many(expected,
+                EventPattern('s5b-connected'))
+        else:
+            event = None
+            self.q.expect('s5b-connected')
+
         self._wait_auth_request()
         self._send_auth_reply()
         self._wait_connect_cmd()
         self._send_connect_reply()
+
+        return event
 
     def _listen_socks5(self):
         for port in range(5000,5100):
@@ -174,16 +183,17 @@ class BytestreamS5B(Bytestream):
     def open_bytestream(self, expected=None):
         port = self._listen_socks5()
 
-        self._send_socks5_init([(self.initiator, '127.0.0.1', port)])
+        self._send_socks5_init([
+            # Not working streamhost
+            ('invalid.invalid', 'invalid.invalid', port),
+            # Working streamhost
+            (self.initiator, '127.0.0.1', port),
+            # This works too but should not be tried as Gabble should just
+            # connect to the previous one
+            ('Not me', '127.0.0.1', port),
+            ])
 
-        if expected is not None:
-            event = self.q.expect_many(expected)[0]
-        else:
-            event = None
-
-        self._socks5_expect_connection()
-
-        return event
+        return self._socks5_expect_connection(expected)
 
     def send_data(self, data):
         self.transport.write(data)

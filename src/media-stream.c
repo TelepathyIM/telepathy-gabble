@@ -108,9 +108,9 @@ struct _GabbleMediaStreamPrivate
   GValue native_codecs;     /* intersected codec list */
   GValue native_candidates;
 
-  /* Whether we're in the process of updating the remote
-   * codecs. Changes our behaviour on SupportedCodecs/Error
-   * (turns it into ACK/NAK for description-info from peer). */
+  /* Whether we're updating, as opposed to discovering, remote codecs.
+   * Changes SupportedCodecs/Error to no-ops.
+   */
   gboolean updating_remote_codecs;
 
   GValue remote_codecs;
@@ -766,18 +766,12 @@ gabble_media_stream_error_async (TpSvcMediaStreamHandler *iface,
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
   GError *error = NULL;
 
-  if (priv->updating_remote_codecs)
-    {
-      /* FIXME: description-info is purely advisory, and jingle-factory
-       * automatically acks stanzas that don't cause errors when they're
-       * interpreted, so we just never send error to the peer.
-      gabble_jingle_content_ack_description_info (priv->content, FALSE);
-      */
-      priv->updating_remote_codecs = FALSE;
-      return;
-    }
-
-  if (gabble_media_stream_error (self, errno, message, &error))
+  /* description-info is purely advisory; if the streaming implementation
+   * doesn't like the new codec parameters, we don't want to terminate the
+   * session. So we don't error out the media stream in that case.
+   */
+  if (priv->updating_remote_codecs ||
+      gabble_media_stream_error (self, errno, message, &error))
     {
       tp_svc_media_stream_handler_return_from_error (context);
     }
@@ -1217,15 +1211,10 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  if (priv->updating_remote_codecs)
-    {
-      /* FIXME: jingle-factory already ack'd, so we don't do it now (see
-       * comment for _error() implementation).
-      gabble_jingle_content_ack_description_info (priv->content, TRUE);
-      */
-      priv->updating_remote_codecs = FALSE;
-    }
-  else
+  /* We don't need to do anything in response to the streaming implementation
+   * deciding it likes the new codec paramaters.
+   */
+  if (!priv->updating_remote_codecs)
     {
       pass_local_codecs (self, codecs, TRUE);
       g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
@@ -1292,16 +1281,16 @@ new_remote_codecs_cb (GabbleJingleContent *content,
 
   codecs = g_value_get_boxed (&priv->remote_codecs);
 
-  /* If the codecs have already been set, this means the
-   * peer is updating their parameters. We set a flag so
-   * when CM calls SupportedCodecs or Error, we can
-   * turn that into ack/nak for description-info from
-   * peer. */
+  /* If the codecs have already been set, this means the peer is updating their
+   * parameters. XEP-0167 says that description-info is advisory, so regardless
+   * of whether the streaming implementation calls SupportedCodecs or Error we
+   * don't want to do anything. So, set a flag to indicate that we've entered
+   * this situation.
+   */
   if (codecs->len != 0)
     {
       priv->updating_remote_codecs = TRUE;
       g_value_reset (&priv->remote_codecs);
-      priv->updating_remote_codecs = TRUE;
     }
 
   for (li = clist; li; li = li->next)

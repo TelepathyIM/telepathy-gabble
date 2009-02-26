@@ -2333,7 +2333,6 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   GObject *chan_o = (GObject *) chan;
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabbleMediaStream *stream;
-  JingleMediaType type;
   TpMediaStreamType mtype;
   gchar *name;
   guint id;
@@ -2343,7 +2342,6 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
 
   g_object_get (c,
       "name", &name,
-      "media-type", &type,
       "locally-created", &locally_created,
       NULL);
 
@@ -2360,9 +2358,6 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
 
   object_path = g_strdup_printf ("%s/MediaStream%u",
       priv->object_path, id);
-
-  mtype = (type == JINGLE_MEDIA_TYPE_AUDIO) ?
-    TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO;
 
   g_object_get (chan,
       "nat-traversal", &nat_traversal,
@@ -2389,8 +2384,10 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
       (GCallback) stream_hold_state_changed, chan_o);
 
   /* emit StreamAdded */
+  mtype = gabble_media_stream_get_media_type (stream);
+
   DEBUG ("emitting StreamAdded with type '%s'",
-    type == JINGLE_MEDIA_TYPE_AUDIO ? "audio" : "video");
+    mtype == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video");
 
   tp_svc_channel_type_streamed_media_emit_stream_added (
       chan, id, priv->session->peer, mtype);

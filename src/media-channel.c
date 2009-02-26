@@ -2367,7 +2367,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   g_object_get (chan,
       "nat-traversal", &nat_traversal,
       NULL);
-  stream = gabble_media_stream_new (object_path, c, name, id, mtype,
+  stream = gabble_media_stream_new (object_path, c, name, id,
       nat_traversal, locally_created);
   g_free (nat_traversal);
 

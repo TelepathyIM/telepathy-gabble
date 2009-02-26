@@ -157,7 +157,6 @@ gabble_media_stream_new (const gchar *object_path,
                          GabbleJingleContent *content,
                          const gchar *name,
                          guint id,
-                         TpMediaStreamType mtype,
                          const gchar *nat_traversal,
                          gboolean created_locally)
 {
@@ -168,7 +167,6 @@ gabble_media_stream_new (const gchar *object_path,
       "content", content,
       "name", name,
       "id", id,
-      "media-type", mtype,
       "nat-traversal", nat_traversal,
       "created-locally", created_locally,
       NULL);
@@ -376,9 +374,6 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_ID:
       priv->id = g_value_get_uint (value);
       break;
-    case PROP_MEDIA_TYPE:
-      priv->media_type = g_value_get_uint (value);
-      break;
     case PROP_CONNECTION_STATE:
       DEBUG ("stream %s connection state %d",
           stream->name, stream->connection_state);
@@ -402,6 +397,19 @@ gabble_media_stream_set_property (GObject      *object,
       g_assert (priv->content == NULL);
 
       priv->content = g_value_get_object (value);
+
+        {
+          guint jtype;
+
+          g_object_get (priv->content,
+              "media-type", &jtype,
+              NULL);
+
+          if (jtype == JINGLE_MEDIA_TYPE_VIDEO)
+            priv->media_type = TP_MEDIA_STREAM_TYPE_VIDEO;
+          else
+            priv->media_type = TP_MEDIA_STREAM_TYPE_AUDIO;
+        }
 
       DEBUG ("%p: connecting to content %p signals", stream, priv->content);
       g_signal_connect (priv->content, "new-candidates",
@@ -485,15 +493,10 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   g_object_class_install_property (object_class, PROP_ID, param_spec);
 
   param_spec = g_param_spec_uint ("media-type", "Stream media type",
-                                  "A constant indicating which media type the "
-                                  "stream carries.",
-                                  TP_MEDIA_STREAM_TYPE_AUDIO,
-                                  TP_MEDIA_STREAM_TYPE_VIDEO,
-                                  TP_MEDIA_STREAM_TYPE_AUDIO,
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "A constant indicating which media type the stream carries.",
+      TP_MEDIA_STREAM_TYPE_AUDIO, TP_MEDIA_STREAM_TYPE_VIDEO,
+      TP_MEDIA_STREAM_TYPE_AUDIO,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
   param_spec = g_param_spec_uint ("connection-state", "Stream connection state",

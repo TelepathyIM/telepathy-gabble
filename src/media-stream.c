@@ -1660,27 +1660,20 @@ gabble_media_stream_props_get (TpSvcDBusProperties *iface,
                                DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GValue value = { 0 };
 
   if (!tp_strdiff (interface_name, TP_IFACE_MEDIA_STREAM_HANDLER))
     {
       if (!tp_strdiff (property_name, "RelayInfo"))
         {
-          GValue value = { 0 };
-
           g_value_init (&value, TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST);
           g_object_get_property ((GObject *) self, "relay-info", &value);
-          tp_svc_dbus_properties_return_from_get (context, &value);
-          g_value_unset (&value);
         }
       else if (!tp_strdiff (property_name, "STUNServers"))
         {
-          GValue value = { 0 };
-
           /* FIXME: use correct macro when available */
           g_value_init (&value, tp_type_dbus_array_su ());
           g_object_get_property ((GObject *) self, "stun-servers", &value);
-          tp_svc_dbus_properties_return_from_get (context, &value);
-          g_value_unset (&value);
         }
       else
         {
@@ -1688,6 +1681,7 @@ gabble_media_stream_props_get (TpSvcDBusProperties *iface,
               "Property not implemented" };
 
           dbus_g_method_return_error (context, &not_implemented);
+          return;
         }
     }
   else
@@ -1696,7 +1690,11 @@ gabble_media_stream_props_get (TpSvcDBusProperties *iface,
           "Interface not implemented" };
 
       dbus_g_method_return_error (context, &not_implemented);
+      return;
     }
+
+  tp_svc_dbus_properties_return_from_get (context, &value);
+  g_value_unset (&value);
 }
 
 static void

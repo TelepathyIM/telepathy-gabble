@@ -83,6 +83,7 @@ enum
   PROP_COMBINED_DIRECTION,
   PROP_LOCAL_HOLD,
   PROP_CONTENT,
+  PROP_STUN_SERVERS,
   LAST_PROPERTY
 };
 
@@ -110,6 +111,9 @@ struct _GabbleMediaStreamPrivate
 
   /* source ID for initial codecs/candidates getter */
   gulong initial_getter_id;
+
+  /* GPtrArray(GValueArray(STRING, UINT)) */
+  GPtrArray *stun_servers;
 
   /* These are really booleans, but gboolean is signed. Thanks, GLib */
   unsigned closed:1;
@@ -184,6 +188,8 @@ gabble_media_stream_init (GabbleMediaStream *self)
   g_value_init (&priv->remote_candidates, candidate_list_type);
   g_value_take_boxed (&priv->remote_candidates,
       dbus_g_type_specialized_construct (candidate_list_type));
+
+  priv->stun_servers = g_ptr_array_sized_new (1);
 }
 
 static gboolean
@@ -216,6 +222,9 @@ gabble_media_stream_constructor (GType type, guint n_props,
   GabbleMediaStream *stream;
   GabbleMediaStreamPrivate *priv;
   DBusGConnection *bus;
+  GabbleConnection *connection;
+  gchar *stun_server;
+  guint stun_port;
 
   /* call base class constructor */
   obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
@@ -223,11 +232,35 @@ gabble_media_stream_constructor (GType type, guint n_props,
   stream = GABBLE_MEDIA_STREAM (obj);
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
+  g_assert (priv->content != NULL);
+
+  /* STUN servers are needed as soon as the stream appears, so there's little
+   * point in waiting for them - either they've already been resolved, or
+   * we're too late to use them for this stream */
+  g_object_get (priv->content,
+      "connection", &connection,
+      NULL);
+
+  /* maybe one day we'll support multiple STUN servers */
+  if (gabble_jingle_factory_get_stun_server (connection->jingle_factory,
+        &stun_server, &stun_port))
+    {
+      GValueArray *va = g_value_array_new (2);
+
+      g_value_array_append (va, NULL);
+      g_value_array_append (va, NULL);
+      g_value_init (va->values + 0, G_TYPE_STRING);
+      g_value_init (va->values + 1, G_TYPE_UINT);
+      g_value_take_string (va->values + 0, stun_server);
+      g_value_set_uint (va->values + 1, stun_port);
+      g_ptr_array_add (priv->stun_servers, va);
+    }
+
+  g_object_unref (connection);
+
   /* go for the bus */
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
-
-  g_assert (priv->content != NULL);
 
   update_direction (stream, priv->content);
 
@@ -282,6 +315,9 @@ gabble_media_stream_get_property (GObject    *object,
       break;
     case PROP_CONTENT:
       g_value_set_object (value, priv->content);
+      break;
+    case PROP_STUN_SERVERS:
+      g_value_set_boxed (value, priv->stun_servers);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -485,6 +521,13 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONTENT, param_spec);
+
+  param_spec = g_param_spec_boxed ("stun-servers", "STUN servers",
+      "Array of (STRING: address literal, UINT: port) pairs",
+      /* FIXME: use correct macro when available */
+      tp_type_dbus_array_su (),
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_STUN_SERVERS, param_spec);
 
   /* signals not exported by D-Bus interface */
 

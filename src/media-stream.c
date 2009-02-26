@@ -1675,6 +1675,16 @@ gabble_media_stream_props_get (TpSvcDBusProperties *iface,
           g_value_init (&value, tp_type_dbus_array_su ());
           g_object_get_property ((GObject *) self, "stun-servers", &value);
         }
+      else if (!tp_strdiff (property_name, "NATTraversal"))
+        {
+          g_value_init (&value, G_TYPE_STRING);
+          g_object_get_property ((GObject *) self, "nat-traversal", &value);
+        }
+      else if (!tp_strdiff (property_name, "CreatedLocally"))
+        {
+          g_value_init (&value, G_TYPE_BOOLEAN);
+          g_object_get_property ((GObject *) self, "created-locally", &value);
+        }
       else
         {
           GError not_implemented = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
@@ -1718,6 +1728,14 @@ gabble_media_stream_props_get_all (TpSvcDBusProperties *iface,
       value = tp_g_value_slice_new (tp_type_dbus_array_su ());
       g_object_get_property ((GObject *) self, "stun-servers", value);
       g_hash_table_insert (values, "STUNServers", value);
+
+      value = tp_g_value_slice_new (G_TYPE_STRING);
+      g_object_get_property ((GObject *) self, "nat-traversal", value);
+      g_hash_table_insert (values, "NATTraversal", value);
+
+      value = tp_g_value_slice_new (G_TYPE_BOOLEAN);
+      g_object_get_property ((GObject *) self, "created-locally", value);
+      g_hash_table_insert (values, "CreatedLocally", value);
 
       tp_svc_dbus_properties_return_from_get_all (context, values);
       g_hash_table_destroy (values);

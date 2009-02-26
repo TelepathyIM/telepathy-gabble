@@ -168,7 +168,6 @@ gabble_media_stream_new (const gchar *object_path,
       "name", name,
       "id", id,
       "nat-traversal", nat_traversal,
-      "created-locally", created_locally,
       NULL);
 }
 
@@ -406,15 +405,19 @@ gabble_media_stream_set_property (GObject      *object,
 
         {
           guint jtype;
+          gboolean locally_created;
 
           g_object_get (priv->content,
               "media-type", &jtype,
+              "locally-created", &locally_created,
               NULL);
 
           if (jtype == JINGLE_MEDIA_TYPE_VIDEO)
             priv->media_type = TP_MEDIA_STREAM_TYPE_VIDEO;
           else
             priv->media_type = TP_MEDIA_STREAM_TYPE_AUDIO;
+
+          priv->created_locally = locally_created;
         }
 
       DEBUG ("%p: connecting to content %p signals", stream, priv->content);
@@ -438,9 +441,6 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_NAT_TRAVERSAL:
       g_assert (priv->nat_traversal == NULL);
       priv->nat_traversal = g_value_dup_string (value);
-      break;
-    case PROP_CREATED_LOCALLY:
-      priv->created_locally = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -589,7 +589,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
 
   param_spec = g_param_spec_boolean ("created-locally", "Created locally?",
       "True if this stream was created by the local user", FALSE,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CREATED_LOCALLY,
       param_spec);
 

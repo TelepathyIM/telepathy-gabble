@@ -176,7 +176,15 @@ class BytestreamS5B(Bytestream):
     def open_bytestream(self, expected=None):
         port = self._listen_socks5()
 
-        self._send_socks5_init([(self.initiator, '127.0.0.1', port)])
+        self._send_socks5_init([
+            # Not working streamhost
+            ('invalid.invalid', 'invalid.invalid', port),
+            # Working streamhost
+            (self.initiator, '127.0.0.1', port),
+            # This works too but should not be tried as Gabble should just
+            # connect to the previous one
+            ('Not me', '127.0.0.1', port),
+            ])
 
         return self._socks5_expect_connection(expected)
 

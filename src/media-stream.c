@@ -89,6 +89,8 @@ enum
   PROP_CONTENT,
   PROP_STUN_SERVERS,
   PROP_RELAY_INFO,
+  PROP_NAT_TRAVERSAL,
+  PROP_CREATED_LOCALLY,
   LAST_PROPERTY
 };
 
@@ -117,6 +119,7 @@ struct _GabbleMediaStreamPrivate
   /* source ID for initial codecs/candidates getter */
   gulong initial_getter_id;
 
+  gchar *nat_traversal;
   /* GPtrArray(GValueArray(STRING, UINT)) */
   GPtrArray *stun_servers;
 
@@ -126,6 +129,7 @@ struct _GabbleMediaStreamPrivate
   unsigned local_hold:1;
   unsigned ready:1;
   unsigned sending:1;
+  unsigned created_locally:1;
 };
 
 #define GABBLE_MEDIA_STREAM_GET_PRIVATE(obj) ((obj)->priv)
@@ -153,7 +157,9 @@ gabble_media_stream_new (const gchar *object_path,
                          GabbleJingleContent *content,
                          const gchar *name,
                          guint id,
-                         TpMediaStreamType mtype)
+                         TpMediaStreamType mtype,
+                         const gchar *nat_traversal,
+                         gboolean created_locally)
 {
   g_return_val_if_fail (GABBLE_IS_JINGLE_MEDIA_RTP (content), NULL);
 
@@ -163,6 +169,8 @@ gabble_media_stream_new (const gchar *object_path,
       "name", name,
       "id", id,
       "media-type", mtype,
+      "nat-traversal", nat_traversal,
+      "created-locally", created_locally,
       NULL);
 }
 
@@ -324,6 +332,12 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_STUN_SERVERS:
       g_value_set_boxed (value, priv->stun_servers);
       break;
+    case PROP_NAT_TRAVERSAL:
+      g_value_set_string (value, priv->nat_traversal);
+      break;
+    case PROP_CREATED_LOCALLY:
+      g_value_set_boolean (value, priv->created_locally);
+      break;
     case PROP_RELAY_INFO:
       /* a stub implementation, for now */
       g_value_take_boxed (value, g_ptr_array_sized_new (0));
@@ -399,6 +413,13 @@ gabble_media_stream_set_property (GObject      *object,
 
       priv->removed_id = g_signal_connect (priv->content, "removed",
           (GCallback) content_removed_cb, stream);
+      break;
+    case PROP_NAT_TRAVERSAL:
+      g_assert (priv->nat_traversal == NULL);
+      priv->nat_traversal = g_value_dup_string (value);
+      break;
+    case PROP_CREATED_LOCALLY:
+      priv->created_locally = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -544,6 +565,18 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_RELAY_INFO, param_spec);
 
+  param_spec = g_param_spec_string ("nat-traversal", "NAT traversal",
+      "NAT traversal mechanism for this stream", NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_NAT_TRAVERSAL,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("created-locally", "Created locally?",
+      "True if this stream was created by the local user", FALSE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CREATED_LOCALLY,
+      param_spec);
+
   /* signals not exported by D-Bus interface */
 
   signals[DESTROY] =
@@ -639,6 +672,7 @@ gabble_media_stream_finalize (GObject *object)
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   g_free (priv->object_path);
+  g_free (priv->nat_traversal);
 
   g_value_unset (&priv->native_codecs);
   g_value_unset (&priv->native_candidates);

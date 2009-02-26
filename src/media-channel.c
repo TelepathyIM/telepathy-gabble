@@ -2338,6 +2338,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   gchar *name;
   guint id;
   gchar *object_path;
+  gchar *nat_traversal;
   gboolean locally_created;
 
   g_object_get (c, "name", &name, "media-type", &type,
@@ -2359,7 +2360,12 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   mtype = (type == JINGLE_MEDIA_TYPE_AUDIO) ?
     TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO;
 
-  stream = gabble_media_stream_new (object_path, c, name, id, mtype);
+  g_object_get (chan,
+      "nat-traversal", &nat_traversal,
+      NULL);
+  stream = gabble_media_stream_new (object_path, c, name, id, mtype,
+      nat_traversal, locally_created);
+  g_free (nat_traversal);
 
   if (locally_created)
     {

@@ -266,6 +266,72 @@ extract_media_type (LmMessageNode *desc_node,
   g_assert_not_reached ();
 }
 
+/**
+ * parse_payload_type:
+ * @node: a <payload-type> node.
+ *
+ * Returns: a newly-allocated JingleCodec if parsing succeeds, or %NULL
+ *          otherwise.
+ */
+static JingleCodec *
+parse_payload_type (LmMessageNode *node)
+{
+  JingleCodec *p;
+  const char *txt;
+  guchar id;
+  const gchar *name;
+  guint clockrate = 0;
+  guint channels = 1;
+  LmMessageNode *param;
+
+  txt = lm_message_node_get_attribute (node, "id");
+  if (txt == NULL)
+    return NULL;
+
+  id = atoi (txt);
+
+  name = lm_message_node_get_attribute (node, "name");
+  if (name == NULL)
+    name = "";
+
+  /* xep-0167 v0.22, gtalk libjingle 0.3/0.4 use "clockrate" */
+  txt = lm_message_node_get_attribute (node, "clockrate");
+  /* older jingle rtp used "rate" ? */
+  if (txt == NULL)
+    txt = lm_message_node_get_attribute (node, "rate");
+
+  if (txt != NULL)
+    clockrate = atoi (txt);
+
+  txt = lm_message_node_get_attribute (node, "channels");
+  if (txt != NULL)
+    channels = atoi (txt);
+
+  p = jingle_media_rtp_codec_new (id, name, clockrate, channels, NULL);
+
+  for (param = node->children; param != NULL; param = param->next)
+    {
+      const gchar *param_name, *param_value;
+
+      if (tp_strdiff (lm_message_node_get_name (param), "parameter"))
+        continue;
+
+      param_name = lm_message_node_get_attribute (param, "name");
+      param_value = lm_message_node_get_attribute (param, "value");
+
+      if (param_name == NULL || param_value == NULL)
+        continue;
+
+      g_hash_table_insert (p->params, g_strdup (param_name),
+          g_strdup (param_value));
+    }
+
+  DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",
+      p->id, p->name, p->clockrate, p->channels);
+
+  return p;
+}
+
 static void
 parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error)
@@ -274,6 +340,7 @@ parse_description (GabbleJingleContent *content,
   GabbleJingleMediaRtpPrivate *priv = self->priv;
   JingleMediaType mtype = JINGLE_MEDIA_TYPE_NONE;
   GList *codecs = NULL;
+  JingleCodec *p;
   LmMessageNode *node;
 
   DEBUG ("node: %s", desc_node->name);
@@ -289,74 +356,15 @@ parse_description (GabbleJingleContent *content,
 
   for (node = desc_node->children; node; node = node->next)
     {
-      JingleCodec *p;
-      const char *txt;
-      guchar id;
-      const gchar *name;
-      guint clockrate, channels;
-      LmMessageNode *param;
-
       if (tp_strdiff (lm_message_node_get_name (node), "payload-type"))
-          continue;
+        continue;
 
-      txt = lm_message_node_get_attribute (node, "id");
-      if (txt == NULL)
-          break;
+      p = parse_payload_type (node);
 
-      id = atoi (txt);
-
-      name = lm_message_node_get_attribute (node, "name");
-      if (name == NULL)
-          name = "";
-
-      /* xep-0167 v0.22, gtalk libjingle 0.3/0.4 use "clockrate" */
-      txt = lm_message_node_get_attribute (node, "clockrate");
-      /* older jingle rtp used "rate" ? */
-      if (txt == NULL)
-          txt = lm_message_node_get_attribute (node, "rate");
-
-      if (txt != NULL)
-        {
-          clockrate = atoi (txt);
-        }
+      if (p == NULL)
+        break;
       else
-        {
-          clockrate = 0;
-        }
-
-      txt = lm_message_node_get_attribute (node, "channels");
-      if (txt != NULL)
-        {
-          channels = atoi (txt);
-        }
-      else
-        {
-          channels = 1;
-        }
-
-      p = jingle_media_rtp_codec_new (id, name, clockrate, channels, NULL);
-
-      for (param = node->children; param != NULL; param = param->next)
-        {
-          const gchar *param_name, *param_value;
-
-          if (tp_strdiff (lm_message_node_get_name (param), "parameter"))
-            continue;
-
-          param_name = lm_message_node_get_attribute (param, "name");
-          param_value = lm_message_node_get_attribute (param, "value");
-
-          if (param_name == NULL || param_value == NULL)
-            continue;
-
-          g_hash_table_insert (p->params, g_strdup (param_name),
-              g_strdup (param_value));
-        }
-
-      DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",
-          p->id, p->name, p->clockrate, p->channels);
-
-      codecs = g_list_append (codecs, p);
+        codecs = g_list_append (codecs, p);
     }
 
   if (node != NULL)

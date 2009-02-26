@@ -96,7 +96,7 @@ void gabble_media_stream_accept_pending_local_send (GabbleMediaStream *stream);
 
 GabbleMediaStream *gabble_media_stream_new (const gchar *object_path,
     GabbleJingleContent *content, const gchar *name, guint id,
-    const gchar *nat_traversal, gboolean created_locally);
+    const gchar *nat_traversal);
 TpMediaStreamType gabble_media_stream_get_media_type (GabbleMediaStream *self);
 
 G_END_DECLS

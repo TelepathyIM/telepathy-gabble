@@ -157,8 +157,7 @@ gabble_media_stream_new (const gchar *object_path,
                          GabbleJingleContent *content,
                          const gchar *name,
                          guint id,
-                         const gchar *nat_traversal,
-                         gboolean created_locally)
+                         const gchar *nat_traversal)
 {
   g_return_val_if_fail (GABBLE_IS_JINGLE_MEDIA_RTP (content), NULL);
 

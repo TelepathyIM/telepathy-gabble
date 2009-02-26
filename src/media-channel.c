@@ -2338,11 +2338,9 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   guint id;
   gchar *object_path;
   gchar *nat_traversal;
-  gboolean locally_created;
 
   g_object_get (c,
       "name", &name,
-      "locally-created", &locally_created,
       NULL);
 
   if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
@@ -2363,7 +2361,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
       "nat-traversal", &nat_traversal,
       NULL);
   stream = gabble_media_stream_new (object_path, c, name, id,
-      nat_traversal, locally_created);
+      nat_traversal);
   g_free (nat_traversal);
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);

@@ -1080,32 +1080,13 @@ gabble_media_stream_ready (TpSvcMediaStreamHandler *iface,
 }
 
 static void
-pass_local_codecs (GabbleMediaStream *stream, const GPtrArray *codecs,
-    gboolean intersection)
+pass_local_codecs (GabbleMediaStream *stream,
+                   const GPtrArray *codecs)
 {
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
   GList *li = NULL;
   JingleCodec *c;
   guint i;
-
-  /* if content is created by us, we want all the codecs, else we want the
-   * intersection. */
-  if (gabble_jingle_content_is_created_by_us (priv->content))
-    {
-      if (intersection)
-        {
-          DEBUG ("we already sent our codecs, ignoring codec intersection");
-          return;
-        }
-    }
-  else
-    {
-      if (!intersection)
-        {
-          DEBUG ("ignoring local codecs, waiting for codec intersection");
-          return;
-        }
-    }
 
   DEBUG ("putting list of %d supported codecs from stream-engine into cache",
       codecs->len);
@@ -1155,7 +1136,11 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
 
-  pass_local_codecs (self, codecs, FALSE);
+  if (gabble_jingle_content_is_created_by_us (self->priv->content))
+    pass_local_codecs (self, codecs);
+  else
+    DEBUG ("ignoring local codecs, waiting for codec intersection");
+
   tp_svc_media_stream_handler_return_from_set_local_codecs (context);
 }
 
@@ -1216,7 +1201,11 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
    */
   if (!priv->updating_remote_codecs)
     {
-      pass_local_codecs (self, codecs, TRUE);
+      if (gabble_jingle_content_is_created_by_us (self->priv->content))
+        DEBUG ("we already sent our codecs, ignoring codec intersection");
+      else
+        pass_local_codecs (self, codecs);
+
       g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
     }
 
@@ -1235,15 +1224,11 @@ gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
                                     DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   /* FIXME: we assume codecs have already been set (by set_local_codecs
    * or supported_codecs(), depending on who's stream creator. */
 
-  /* trick pass_local_codecs() into always pushing the codecs, no matter
-   * whether we're creator or not. */
-  pass_local_codecs (self, codecs,
-    !gabble_jingle_content_is_created_by_us (priv->content));
+  pass_local_codecs (self, codecs);
 
   tp_svc_media_stream_handler_return_from_codecs_updated (context);
 }

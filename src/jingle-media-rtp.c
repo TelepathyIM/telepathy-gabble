@@ -224,6 +224,48 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 #define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
 
 
+static JingleMediaType
+extract_media_type (LmMessageNode *desc_node,
+                    GError **error)
+{
+  if (lm_message_node_has_namespace (desc_node, NS_JINGLE_RTP, NULL))
+    {
+      const gchar *type = lm_message_node_get_attribute (desc_node, "media");
+
+      if (type == NULL)
+        {
+          SET_BAD_REQ("missing required media type attribute");
+          return JINGLE_MEDIA_TYPE_NONE;
+        }
+
+      if (!tp_strdiff (type, "audio"))
+          return JINGLE_MEDIA_TYPE_AUDIO;
+
+      if (!tp_strdiff (type, "video"))
+        return JINGLE_MEDIA_TYPE_VIDEO;
+
+      SET_BAD_REQ("unknown media type %s", type);
+      return JINGLE_MEDIA_TYPE_NONE;
+    }
+
+  if (lm_message_node_has_namespace (desc_node,
+        NS_JINGLE_DESCRIPTION_AUDIO, NULL))
+    return JINGLE_MEDIA_TYPE_AUDIO;
+
+  if (lm_message_node_has_namespace (desc_node,
+        NS_JINGLE_DESCRIPTION_VIDEO, NULL))
+    return JINGLE_MEDIA_TYPE_VIDEO;
+
+  if (lm_message_node_has_namespace (desc_node,
+        NS_GOOGLE_SESSION_PHONE, NULL))
+    return JINGLE_MEDIA_TYPE_AUDIO;
+
+  /* If we get here, namespace in use is not one of namespaces we signed up
+   * with, so obviously a bug somewhere.
+   */
+  g_assert_not_reached ();
+}
+
 static void
 parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error)
@@ -236,48 +278,10 @@ parse_description (GabbleJingleContent *content,
 
   DEBUG ("node: %s", desc_node->name);
 
-  if (lm_message_node_has_namespace (desc_node, NS_JINGLE_RTP, NULL))
-    {
-      const gchar *type = lm_message_node_get_attribute (desc_node, "media");
+  mtype = extract_media_type (desc_node, error);
 
-      if (type == NULL)
-        {
-          SET_BAD_REQ("missing required media type attribute");
-          return;
-        }
-
-      if (!tp_strdiff (type, "audio"))
-          mtype = JINGLE_MEDIA_TYPE_AUDIO;
-      else if (!tp_strdiff (type, "video"))
-          mtype = JINGLE_MEDIA_TYPE_VIDEO;
-      else
-        {
-          SET_BAD_REQ("unknown media type %s", type);
-          return;
-        }
-    }
-  else if (lm_message_node_has_namespace (desc_node,
-        NS_JINGLE_DESCRIPTION_AUDIO, NULL))
-    {
-      mtype = JINGLE_MEDIA_TYPE_AUDIO;
-    }
-  else if (lm_message_node_has_namespace (desc_node,
-        NS_JINGLE_DESCRIPTION_VIDEO, NULL))
-    {
-      mtype = JINGLE_MEDIA_TYPE_VIDEO;
-    }
-  else if (lm_message_node_has_namespace (desc_node,
-        NS_GOOGLE_SESSION_PHONE, NULL))
-    {
-      mtype = JINGLE_MEDIA_TYPE_AUDIO;
-    }
-  else
-    {
-      /* If we get here, namespace in use is not one of
-       * namespaces we signed up with, so obviously a bug
-       * somewhere. */
-      g_assert_not_reached ();
-    }
+  if (mtype == JINGLE_MEDIA_TYPE_NONE)
+    return;
 
   DEBUG ("detected media type %u", mtype);
 

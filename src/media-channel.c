@@ -196,8 +196,8 @@ static void session_terminated_cb (GabbleJingleSession *session,
     gboolean local_terminator, gpointer user_data);
 static void session_new_content_cb (GabbleJingleSession *session,
     GabbleJingleContent *c, gpointer user_data);
-static GabbleMediaStream *
-create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c);
+static void create_stream_from_content (GabbleMediaChannel *chan,
+    GabbleJingleContent *c);
 static gboolean contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer,
     gboolean *wait);
 
@@ -2327,8 +2327,9 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
   return caps;
 }
 
-static GabbleMediaStream *
-create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
+static void
+create_stream_from_content (GabbleMediaChannel *chan,
+                            GabbleJingleContent *c)
 {
   GObject *chan_o = (GObject *) chan;
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
@@ -2347,7 +2348,7 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
     {
       DEBUG ("ignoring non MediaRtp content '%s'", name);
       g_free (name);
-      return NULL;
+      return;
     }
 
   /* This onelier replaces "get_channel_stream_id()" function */
@@ -2407,8 +2408,6 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
     }
 
   g_free (object_path);
-
-  return stream;
 }
 
 static void

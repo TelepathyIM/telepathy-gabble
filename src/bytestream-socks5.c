@@ -108,6 +108,8 @@ typedef enum _Socks5State Socks5State;
 /* VER + CMD/REP + RSV + ATYP + DOMAIN_LEN + PORT (2) */
 #define SOCKS5_MIN_LENGTH 7
 
+#define CONNECT_REPLY_TIMEOUT 30
+
 struct _Streamhost
 {
   gchar *jid;
@@ -169,6 +171,7 @@ struct _GabbleBytestreamSocks5Private
   gboolean write_blocked;
   gboolean read_blocked;
   GibberListener *listener;
+  guint timer_id;
 
   GString *read_buffer;
 
@@ -197,6 +200,19 @@ gabble_bytestream_socks5_init (GabbleBytestreamSocks5 *self)
 }
 
 static void
+stop_timer (GabbleBytestreamSocks5 *self)
+{
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
+      self);
+
+  if (priv->timer_id == 0)
+    return;
+
+  g_source_remove (priv->timer_id);
+  priv->timer_id = 0;
+}
+
+static void
 gabble_bytestream_socks5_dispose (GObject *object)
 {
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (object);
@@ -209,6 +225,8 @@ gabble_bytestream_socks5_dispose (GObject *object)
     return;
 
   priv->dispose_has_run = TRUE;
+
+  stop_timer (self);
 
   tp_handle_unref (contact_repo, priv->peer_handle);
 
@@ -589,6 +607,8 @@ socks5_error (GabbleBytestreamSocks5 *self)
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   Socks5State previous_state;
 
+  stop_timer (self);
+
   previous_state = priv->socks5_state;
   priv->socks5_state = SOCKS5_STATE_ERROR;
 
@@ -664,6 +684,29 @@ check_domain (const gchar *domain,
   return TRUE;
 }
 
+static gboolean
+socks5_timer_cb (gpointer data)
+{
+  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (data);
+
+  DEBUG ("Timed out; closing SOCKS5 connection");
+
+  socks5_error (self);
+  return FALSE;
+}
+
+static void
+start_timer (GabbleBytestreamSocks5 *self,
+             guint seconds)
+{
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
+      self);
+
+  g_assert (priv->timer_id == 0);
+
+  priv->timer_id = g_timeout_add_seconds (seconds, socks5_timer_cb, self);
+}
+
 /* Process the received data and returns the number of bytes that have been
  * used */
 static gsize
@@ -721,6 +764,13 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         priv->socks5_state = SOCKS5_STATE_CONNECT_REQUESTED;
 
+        /* Older version of Gabble (pre 0.7.22) are bugged and just send 2
+         * bytes as CONNECT reply. We set a timer to not wait the full reply
+         * forever if we are connected to such Gabble.
+         * Once timed out, the SOCKS5 negotiation will fail and Gabble
+         * will switch to IBB as a fallback. */
+        start_timer (self, CONNECT_REPLY_TIMEOUT);
+
         return 2;
 
       case SOCKS5_STATE_CONNECT_REQUESTED:
@@ -732,6 +782,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if ((guint8) string->len < SOCKS5_MIN_LENGTH + domain_len)
           /* We didn't receive the full packet yet */
           return 0;
+
+        stop_timer (self);
 
         if (string->str[0] != SOCKS5_VERSION ||
             string->str[1] != SOCKS5_STATUS_OK ||

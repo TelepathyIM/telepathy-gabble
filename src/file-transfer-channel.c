@@ -1052,10 +1052,9 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
                                          GError **error)
 {
   GabblePresence *presence;
-  const gchar *resource;
   gboolean result;
   LmMessage *msg;
-  TpHandleRepoIface *contact_repo;
+  TpHandleRepoIface *contact_repo, *room_repo;
   LmMessageNode *si_node, *file_node, *desc_node;
   const gchar *jid;
   gchar *full_jid, *stream_id, *size_str;
@@ -1076,25 +1075,38 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       return FALSE;
     }
 
-  /* FIXME: we should probably look for PRESENCE_CAP_SI_FILE_TRANSFER but it
-   * seems all client doesn't announce it. */
-  resource = gabble_presence_pick_resource_by_caps (presence, 0);
-  if (resource == NULL)
-    {
-      DEBUG ("contact doesn't have file transfer capabilities");
-      if (error != NULL)
-        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "contact doesn't have file transfer capabilities");
-
-      return FALSE;
-    }
-
   contact_repo = tp_base_connection_get_handles (
      (TpBaseConnection *) self->priv->connection, TP_HANDLE_TYPE_CONTACT);
+  room_repo = tp_base_connection_get_handles (
+     (TpBaseConnection *) self->priv->connection, TP_HANDLE_TYPE_ROOM);
 
   jid = tp_handle_inspect (contact_repo, self->priv->handle);
 
-  full_jid = g_strdup_printf ("%s/%s", jid, resource);
+  if (gabble_get_room_handle_from_jid (room_repo, jid) == 0)
+    {
+      /* Not a MUC jid, need to get a resource */
+      const gchar *resource;
+
+      /* FIXME: we should probably look for PRESENCE_CAP_SI_FILE_TRANSFER but it
+       * seems all client doesn't announce it. */
+      resource = gabble_presence_pick_resource_by_caps (presence, 0);
+      if (resource == NULL)
+        {
+          DEBUG ("contact doesn't have file transfer capabilities");
+          if (error != NULL)
+            g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+                "contact doesn't have file transfer capabilities");
+
+          return FALSE;
+        }
+
+      full_jid = g_strdup_printf ("%s/%s", jid, resource);
+    }
+  else
+    {
+      /* MUC jid, we already have the full jid */
+      full_jid = g_strdup (jid);
+    }
 
   DEBUG ("Offering file transfer to %s", full_jid);
 

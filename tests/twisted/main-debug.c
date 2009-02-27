@@ -20,12 +20,19 @@
 #include "gabble.h"
 #include "connection.h"
 
+#include <lib/gibber/gibber-resolver.h>
+
+#include "resolver-fake.h"
+
 int
 main (int argc,
       char **argv)
 {
   /* needed for test-disco-no-reply.py */
   gabble_connection_set_disco_reply_timeout (3000);
+
+  g_type_init ();
+  gibber_resolver_set_resolver (GABBLE_TYPE_RESOLVER_FAKE);
 
   return gabble_main (argc, argv);
 }

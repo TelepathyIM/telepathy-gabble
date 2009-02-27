@@ -196,8 +196,8 @@ static void session_terminated_cb (GabbleJingleSession *session,
     gboolean local_terminator, gpointer user_data);
 static void session_new_content_cb (GabbleJingleSession *session,
     GabbleJingleContent *c, gpointer user_data);
-static GabbleMediaStream *
-create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c);
+static void create_stream_from_content (GabbleMediaChannel *chan,
+    GabbleJingleContent *c);
 static gboolean contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer,
     gboolean *wait);
 
@@ -2327,26 +2327,28 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
   return caps;
 }
 
-static GabbleMediaStream *
-create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
+static void
+create_stream_from_content (GabbleMediaChannel *chan,
+                            GabbleJingleContent *c)
 {
   GObject *chan_o = (GObject *) chan;
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabbleMediaStream *stream;
-  JingleMediaType type;
   TpMediaStreamType mtype;
   gchar *name;
   guint id;
   gchar *object_path;
-  gboolean locally_created;
+  gchar *nat_traversal;
 
-  g_object_get (c, "name", &name, "media-type", &type,
-      "locally-created", &locally_created, NULL);
+  g_object_get (c,
+      "name", &name,
+      NULL);
 
   if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
       DEBUG ("ignoring non MediaRtp content '%s'", name);
-      return NULL;
+      g_free (name);
+      return;
     }
 
   /* This onelier replaces "get_channel_stream_id()" function */
@@ -2356,23 +2358,12 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
   object_path = g_strdup_printf ("%s/MediaStream%u",
       priv->object_path, id);
 
-  mtype = (type == JINGLE_MEDIA_TYPE_AUDIO) ?
-    TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO;
-
-  stream = g_object_new (GABBLE_TYPE_MEDIA_STREAM,
-      "object-path", object_path,
-      "content", c,
-      "name", name,
-      "id", id,
-      "media-type", mtype,
+  g_object_get (chan,
+      "nat-traversal", &nat_traversal,
       NULL);
-
-  if (locally_created)
-    {
-      g_object_set (stream, "combined-direction",
-          MAKE_COMBINED_DIRECTION (TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
-            0), NULL);
-    }
+  stream = gabble_media_stream_new (object_path, c, name, id,
+      nat_traversal);
+  g_free (nat_traversal);
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 
@@ -2392,8 +2383,10 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
       (GCallback) stream_hold_state_changed, chan_o);
 
   /* emit StreamAdded */
+  mtype = gabble_media_stream_get_media_type (stream);
+
   DEBUG ("emitting StreamAdded with type '%s'",
-    type == JINGLE_MEDIA_TYPE_AUDIO ? "audio" : "video");
+    mtype == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video");
 
   tp_svc_channel_type_streamed_media_emit_stream_added (
       chan, id, priv->session->peer, mtype);
@@ -2415,8 +2408,6 @@ create_stream_from_content (GabbleMediaChannel *chan, GabbleJingleContent *c)
     }
 
   g_free (object_path);
-
-  return stream;
 }
 
 static void

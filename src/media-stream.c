@@ -1,7 +1,7 @@
 /*
  * gabble-media-stream.c - Source for GabbleMediaStream
- * Copyright (C) 2006 Collabora Ltd.
- * Copyright (C) 2006 Nokia Corporation
+ * Copyright © 2006-2009 Collabora Ltd.
+ * Copyright © 2006-2009 Nokia Corporation
  *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or
@@ -33,6 +33,7 @@
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-media-interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
@@ -47,12 +48,15 @@
 #include "namespaces.h"
 
 static void stream_handler_iface_init (gpointer, gpointer);
+static void dbus_properties_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleMediaStream,
     gabble_media_stream,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_MEDIA_STREAM_HANDLER,
-      stream_handler_iface_init)
+      stream_handler_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
+      dbus_properties_iface_init)
     )
 
 /* signal enum */
@@ -83,6 +87,10 @@ enum
   PROP_COMBINED_DIRECTION,
   PROP_LOCAL_HOLD,
   PROP_CONTENT,
+  PROP_STUN_SERVERS,
+  PROP_RELAY_INFO,
+  PROP_NAT_TRAVERSAL,
+  PROP_CREATED_LOCALLY,
   LAST_PROPERTY
 };
 
@@ -111,12 +119,17 @@ struct _GabbleMediaStreamPrivate
   /* source ID for initial codecs/candidates getter */
   gulong initial_getter_id;
 
+  gchar *nat_traversal;
+  /* GPtrArray(GValueArray(STRING, UINT)) */
+  GPtrArray *stun_servers;
+
   /* These are really booleans, but gboolean is signed. Thanks, GLib */
   unsigned closed:1;
   unsigned dispose_has_run:1;
   unsigned local_hold:1;
   unsigned ready:1;
   unsigned sending:1;
+  unsigned created_locally:1;
 };
 
 #define GABBLE_MEDIA_STREAM_GET_PRIVATE(obj) ((obj)->priv)
@@ -138,6 +151,30 @@ static void content_removed_cb (GabbleJingleContent *content,
       GabbleMediaStream *stream);
 static void update_direction (GabbleMediaStream *stream, GabbleJingleContent *c);
 static void update_sending (GabbleMediaStream *stream, gboolean start_sending);
+
+GabbleMediaStream *
+gabble_media_stream_new (const gchar *object_path,
+                         GabbleJingleContent *content,
+                         const gchar *name,
+                         guint id,
+                         const gchar *nat_traversal)
+{
+  g_return_val_if_fail (GABBLE_IS_JINGLE_MEDIA_RTP (content), NULL);
+
+  return g_object_new (GABBLE_TYPE_MEDIA_STREAM,
+      "object-path", object_path,
+      "content", content,
+      "name", name,
+      "id", id,
+      "nat-traversal", nat_traversal,
+      NULL);
+}
+
+TpMediaStreamType
+gabble_media_stream_get_media_type (GabbleMediaStream *self)
+{
+  return self->priv->media_type;
+}
 
 static void
 gabble_media_stream_init (GabbleMediaStream *self)
@@ -166,6 +203,8 @@ gabble_media_stream_init (GabbleMediaStream *self)
   g_value_init (&priv->remote_candidates, candidate_list_type);
   g_value_take_boxed (&priv->remote_candidates,
       dbus_g_type_specialized_construct (candidate_list_type));
+
+  priv->stun_servers = g_ptr_array_sized_new (1);
 }
 
 static gboolean
@@ -198,6 +237,9 @@ gabble_media_stream_constructor (GType type, guint n_props,
   GabbleMediaStream *stream;
   GabbleMediaStreamPrivate *priv;
   DBusGConnection *bus;
+  GabbleConnection *connection;
+  gchar *stun_server;
+  guint stun_port;
 
   /* call base class constructor */
   obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
@@ -205,11 +247,35 @@ gabble_media_stream_constructor (GType type, guint n_props,
   stream = GABBLE_MEDIA_STREAM (obj);
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
+  g_assert (priv->content != NULL);
+
+  /* STUN servers are needed as soon as the stream appears, so there's little
+   * point in waiting for them - either they've already been resolved, or
+   * we're too late to use them for this stream */
+  g_object_get (priv->content,
+      "connection", &connection,
+      NULL);
+
+  /* maybe one day we'll support multiple STUN servers */
+  if (gabble_jingle_factory_get_stun_server (connection->jingle_factory,
+        &stun_server, &stun_port))
+    {
+      GValueArray *va = g_value_array_new (2);
+
+      g_value_array_append (va, NULL);
+      g_value_array_append (va, NULL);
+      g_value_init (va->values + 0, G_TYPE_STRING);
+      g_value_init (va->values + 1, G_TYPE_UINT);
+      g_value_take_string (va->values + 0, stun_server);
+      g_value_set_uint (va->values + 1, stun_port);
+      g_ptr_array_add (priv->stun_servers, va);
+    }
+
+  g_object_unref (connection);
+
   /* go for the bus */
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
-
-  g_assert (priv->content != NULL);
 
   update_direction (stream, priv->content);
 
@@ -221,6 +287,13 @@ gabble_media_stream_constructor (GType type, guint n_props,
    */
   priv->initial_getter_id =
       g_idle_add (_get_initial_codecs_and_candidates, stream);
+
+  if (priv->created_locally)
+    {
+      g_object_set (stream, "combined-direction",
+          MAKE_COMBINED_DIRECTION (TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
+            0), NULL);
+    }
 
   return obj;
 }
@@ -265,6 +338,19 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_CONTENT:
       g_value_set_object (value, priv->content);
       break;
+    case PROP_STUN_SERVERS:
+      g_value_set_boxed (value, priv->stun_servers);
+      break;
+    case PROP_NAT_TRAVERSAL:
+      g_value_set_string (value, priv->nat_traversal);
+      break;
+    case PROP_CREATED_LOCALLY:
+      g_value_set_boolean (value, priv->created_locally);
+      break;
+    case PROP_RELAY_INFO:
+      /* a stub implementation, for now */
+      g_value_take_boxed (value, g_ptr_array_sized_new (0));
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -292,9 +378,6 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_ID:
       priv->id = g_value_get_uint (value);
       break;
-    case PROP_MEDIA_TYPE:
-      priv->media_type = g_value_get_uint (value);
-      break;
     case PROP_CONNECTION_STATE:
       DEBUG ("stream %s connection state %d",
           stream->name, stream->connection_state);
@@ -319,6 +402,23 @@ gabble_media_stream_set_property (GObject      *object,
 
       priv->content = g_value_get_object (value);
 
+        {
+          guint jtype;
+          gboolean locally_created;
+
+          g_object_get (priv->content,
+              "media-type", &jtype,
+              "locally-created", &locally_created,
+              NULL);
+
+          if (jtype == JINGLE_MEDIA_TYPE_VIDEO)
+            priv->media_type = TP_MEDIA_STREAM_TYPE_VIDEO;
+          else
+            priv->media_type = TP_MEDIA_STREAM_TYPE_AUDIO;
+
+          priv->created_locally = locally_created;
+        }
+
       DEBUG ("%p: connecting to content %p signals", stream, priv->content);
       g_signal_connect (priv->content, "new-candidates",
           (GCallback) new_remote_candidates_cb, stream);
@@ -336,6 +436,10 @@ gabble_media_stream_set_property (GObject      *object,
 
       priv->removed_id = g_signal_connect (priv->content, "removed",
           (GCallback) content_removed_cb, stream);
+      break;
+    case PROP_NAT_TRAVERSAL:
+      g_assert (priv->nat_traversal == NULL);
+      priv->nat_traversal = g_value_dup_string (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -394,15 +498,10 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   g_object_class_install_property (object_class, PROP_ID, param_spec);
 
   param_spec = g_param_spec_uint ("media-type", "Stream media type",
-                                  "A constant indicating which media type the "
-                                  "stream carries.",
-                                  TP_MEDIA_STREAM_TYPE_AUDIO,
-                                  TP_MEDIA_STREAM_TYPE_VIDEO,
-                                  TP_MEDIA_STREAM_TYPE_AUDIO,
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "A constant indicating which media type the stream carries.",
+      TP_MEDIA_STREAM_TYPE_AUDIO, TP_MEDIA_STREAM_TYPE_VIDEO,
+      TP_MEDIA_STREAM_TYPE_AUDIO,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
   param_spec = g_param_spec_uint ("connection-state", "Stream connection state",
@@ -467,6 +566,31 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONTENT, param_spec);
+
+  param_spec = g_param_spec_boxed ("stun-servers", "STUN servers",
+      "Array of (STRING: address literal, UINT: port) pairs",
+      /* FIXME: use correct macro when available */
+      tp_type_dbus_array_su (),
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_STUN_SERVERS, param_spec);
+
+  param_spec = g_param_spec_boxed ("relay-info", "Relay info",
+      "Array of mappings containing relay server information",
+      TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_RELAY_INFO, param_spec);
+
+  param_spec = g_param_spec_string ("nat-traversal", "NAT traversal",
+      "NAT traversal mechanism for this stream", NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_NAT_TRAVERSAL,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("created-locally", "Created locally?",
+      "True if this stream was created by the local user", FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CREATED_LOCALLY,
+      param_spec);
 
   /* signals not exported by D-Bus interface */
 
@@ -563,6 +687,7 @@ gabble_media_stream_finalize (GObject *object)
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   g_free (priv->object_path);
+  g_free (priv->nat_traversal);
 
   g_value_unset (&priv->native_codecs);
   g_value_unset (&priv->native_candidates);
@@ -1552,5 +1677,115 @@ stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(stream_state,);
   IMPLEMENT(supported_codecs,);
   IMPLEMENT(unhold_failure,);
+#undef IMPLEMENT
+}
+
+static void
+gabble_media_stream_props_get (TpSvcDBusProperties *iface,
+                               const gchar *interface_name,
+                               const gchar *property_name,
+                               DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GValue value = { 0 };
+
+  if (!tp_strdiff (interface_name, TP_IFACE_MEDIA_STREAM_HANDLER))
+    {
+      if (!tp_strdiff (property_name, "RelayInfo"))
+        {
+          g_value_init (&value, TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST);
+          g_object_get_property ((GObject *) self, "relay-info", &value);
+        }
+      else if (!tp_strdiff (property_name, "STUNServers"))
+        {
+          /* FIXME: use correct macro when available */
+          g_value_init (&value, tp_type_dbus_array_su ());
+          g_object_get_property ((GObject *) self, "stun-servers", &value);
+        }
+      else if (!tp_strdiff (property_name, "NATTraversal"))
+        {
+          g_value_init (&value, G_TYPE_STRING);
+          g_object_get_property ((GObject *) self, "nat-traversal", &value);
+        }
+      else if (!tp_strdiff (property_name, "CreatedLocally"))
+        {
+          g_value_init (&value, G_TYPE_BOOLEAN);
+          g_object_get_property ((GObject *) self, "created-locally", &value);
+        }
+      else
+        {
+          GError not_implemented = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+              "Property not implemented" };
+
+          dbus_g_method_return_error (context, &not_implemented);
+          return;
+        }
+    }
+  else
+    {
+      GError not_implemented = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Interface not implemented" };
+
+      dbus_g_method_return_error (context, &not_implemented);
+      return;
+    }
+
+  tp_svc_dbus_properties_return_from_get (context, &value);
+  g_value_unset (&value);
+}
+
+static void
+gabble_media_stream_props_get_all (TpSvcDBusProperties *iface,
+                                   const gchar *interface_name,
+                                   DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+
+  if (!tp_strdiff (interface_name, TP_IFACE_MEDIA_STREAM_HANDLER))
+    {
+      GValue *value;
+      GHashTable *values = g_hash_table_new_full (g_str_hash, g_str_equal,
+          NULL, (GDestroyNotify) tp_g_value_slice_free);
+
+      value = tp_g_value_slice_new (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST);
+      g_object_get_property ((GObject *) self, "relay-info", value);
+      g_hash_table_insert (values, "RelayInfo", value);
+
+      /* FIXME: use correct macro when available */
+      value = tp_g_value_slice_new (tp_type_dbus_array_su ());
+      g_object_get_property ((GObject *) self, "stun-servers", value);
+      g_hash_table_insert (values, "STUNServers", value);
+
+      value = tp_g_value_slice_new (G_TYPE_STRING);
+      g_object_get_property ((GObject *) self, "nat-traversal", value);
+      g_hash_table_insert (values, "NATTraversal", value);
+
+      value = tp_g_value_slice_new (G_TYPE_BOOLEAN);
+      g_object_get_property ((GObject *) self, "created-locally", value);
+      g_hash_table_insert (values, "CreatedLocally", value);
+
+      tp_svc_dbus_properties_return_from_get_all (context, values);
+      g_hash_table_destroy (values);
+    }
+  else
+    {
+      GError not_implemented = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Interface not implemented" };
+
+      dbus_g_method_return_error (context, &not_implemented);
+    }
+}
+
+static void
+dbus_properties_iface_init (gpointer g_iface,
+                            gpointer iface_data G_GNUC_UNUSED)
+{
+  TpSvcDBusPropertiesClass *cls = g_iface;
+
+#define IMPLEMENT(x) \
+    tp_svc_dbus_properties_implement_##x (cls, gabble_media_stream_props_##x)
+  IMPLEMENT (get);
+  IMPLEMENT (get_all);
+  /* set not implemented in this class */
 #undef IMPLEMENT
 }

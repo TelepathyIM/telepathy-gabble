@@ -39,8 +39,15 @@ class Bytestream(object):
     def wait_bytestream_closed(self):
         raise NotImplemented
 
+    def create_si_offer(self, profile):
+        assert self.initiated
+        return create_si_offer(self.stream,
+            self.initiator, self.target, self.stream_id, profile,
+            [self.get_ns()])
+
 ##### XEP-0095: Stream Initiation #####
 
+# FIXME: remove once all tests use the method
 def create_si_offer(stream, from_, to, sid, profile, bytestreams):
     iq = IQ(stream, 'set')
     iq['to'] = to

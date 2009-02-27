@@ -451,6 +451,46 @@ _produce_extra_param (gpointer key, gpointer value, gpointer user_data)
 }
 
 static void
+produce_payload_type (LmMessageNode *desc_node,
+                      JingleCodec *p,
+                      JingleDialect dialect)
+{
+  LmMessageNode *pt_node;
+  gchar buf[16];
+
+  pt_node = lm_message_node_add_child (desc_node, "payload-type", NULL);
+
+  /* id: required */
+  sprintf (buf, "%d", p->id);
+  lm_message_node_set_attribute (pt_node, "id", buf);
+
+  /* name: optional */
+  if (*p->name != '\0')
+    lm_message_node_set_attribute (pt_node, "name", p->name);
+
+  /* clock rate: optional */
+  if (p->clockrate != 0)
+    {
+      const gchar *attname = "clockrate";
+
+      if (dialect == JINGLE_DIALECT_V015)
+        attname = "rate";
+
+      sprintf (buf, "%u", p->clockrate);
+      lm_message_node_set_attribute (pt_node, attname, buf);
+    }
+
+  if (p->channels != 0)
+    {
+      sprintf (buf, "%u", p->channels);
+      lm_message_node_set_attribute (pt_node, "channels", buf);
+    }
+
+  if (p->params != NULL)
+    g_hash_table_foreach (p->params, _produce_extra_param, pt_node);
+}
+
+static void
 produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 {
   GabbleJingleMediaRtp *desc =
@@ -499,46 +539,7 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
   lm_message_node_set_attribute (desc_node, "xmlns", xmlns);
 
   for (li = priv->local_codecs; li; li = li->next)
-    {
-      LmMessageNode *pt_node;
-      gchar buf[16];
-      JingleCodec *p = li->data;
-
-      pt_node = lm_message_node_add_child (desc_node, "payload-type", NULL);
-
-      /* id: required */
-      sprintf (buf, "%d", p->id);
-      lm_message_node_set_attribute (pt_node, "id", buf);
-
-      /* name: optional */
-      if (*p->name != '\0')
-        {
-          lm_message_node_set_attribute (pt_node, "name", p->name);
-        }
-
-      /* clock rate: optional */
-      if (p->clockrate != 0)
-        {
-          const gchar *attname = "clockrate";
-
-          if (dialect == JINGLE_DIALECT_V015)
-              attname = "rate";
-
-          sprintf (buf, "%u", p->clockrate);
-          lm_message_node_set_attribute (pt_node, attname, buf);
-        }
-
-      if (p->channels != 0)
-        {
-          sprintf (buf, "%u", p->channels);
-          lm_message_node_set_attribute (pt_node, "channels", buf);
-        }
-
-      if (p->params != NULL)
-        {
-          g_hash_table_foreach (p->params, _produce_extra_param, pt_node);
-        }
-    }
+    produce_payload_type (desc_node, li->data, dialect);
 }
 
 /* Takes in a list of slice-allocated JingleCodec structs */

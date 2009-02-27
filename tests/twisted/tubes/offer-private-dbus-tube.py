@@ -4,8 +4,8 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, unwrap
-from gabbletest import exec_test, make_result_iq, sync_stream
+from servicetest import call_async, EventPattern, unwrap, watch_tube_signals
+from gabbletest import make_result_iq, sync_stream
 import constants as cs
 import tubetestutil as t
 
@@ -105,6 +105,24 @@ def send_dbus_message_to_alice(q, stream, dbus_tube_adr, bytestream):
            (binary[0] == 'B' and binary.endswith('\x00\x00\x00\x2a'))
     # XXX: verify that it's actually in the "sender" slot, rather than just
     # being in the message somewhere
+
+    watch_tube_signals(q, tube)
+
+    dbus_message = binary
+
+    # Have the fake client send us a message all in one go...
+    bytestream.send_data(dbus_message)
+    q.expect('tube-signal', signal='baz', args=[42], tube=tube)
+
+    # ... and a message one byte at a time ...
+    for byte in dbus_message:
+        bytestream.send_data(byte)
+    q.expect('tube-signal', signal='baz', args=[42], tube=tube)
+
+    # ... and two messages in one go
+    bytestream.send_data(dbus_message + dbus_message)
+    q.expect('tube-signal', signal='baz', args=[42], tube=tube)
+    q.expect('tube-signal', signal='baz', args=[42], tube=tube)
 
 def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls):
     # request tubes channel (old API)

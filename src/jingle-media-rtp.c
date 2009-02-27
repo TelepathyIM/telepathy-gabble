@@ -568,6 +568,82 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
   priv->local_codec_updates = NULL;
 }
 
+/**
+ * string_string_maps_equal:
+ *
+ * Returns: TRUE iff @a and @b contain exactly the same keys and values when
+ *          compared as strings.
+ */
+static gboolean
+string_string_maps_equal (GHashTable *a,
+                          GHashTable *b)
+{
+  /* FIXME */
+  return TRUE;
+}
+
+/**
+ * codec_info_equal:
+ * Compares the clockrate, channels and params of the supplied codecs,
+ * returning TRUE iff they are all equal.
+ *
+ * Does *not* compare the codecs' id or name.
+ */
+static gboolean
+codec_info_equal (const JingleCodec *c,
+                  const JingleCodec *d)
+{
+  return (c->clockrate == d->clockrate &&
+    c->channels == d->channels &&
+    string_string_maps_equal (c->params, d->params));
+}
+
+static GList *
+changed_codecs (GList *old,
+                GList *new)
+{
+  GList *changed = NULL;
+  GList *k, *l;
+
+  for (k = new; k != NULL; k = k->next)
+    {
+      JingleCodec *new_c = k->data;
+
+      for (l = old; l != NULL; l = l->next)
+        {
+          JingleCodec *old_c = l->data;
+
+          if (new_c->id != old_c->id)
+            continue;
+
+          if (tp_strdiff (new_c->name, old_c->name))
+            {
+              DEBUG ("streaming implementation has changed codec %u's name "
+                  "from %s to %s!", new_c->id, old_c->name, new_c->name);
+
+              /* FIXME: make CodecsUpdated fail. */
+            }
+
+          if (!codec_info_equal (old_c, new_c))
+            {
+              changed = g_list_prepend (changed, new_c);
+              break;
+            }
+        }
+
+      if (l == NULL)
+        {
+          DEBUG ("streaming implementation tried to update codec %u (%s) which "
+              "wasn't there before", new_c->id, new_c->name);
+          /* FIXME: make CodecsUpdated fail. */
+        }
+    }
+
+  /* FIXME: this doesn't detect the streaming implementation trying to remove codecs. */
+
+  return changed;
+}
+
 /* Takes in a list of slice-allocated JingleCodec structs */
 void
 jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
@@ -576,10 +652,18 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
 
   DEBUG ("setting new local codecs");
 
-  /* TODO: if priv->local_codecs is non-empty, set priv->local_codec_updates to
-   * the changed codecs.
-   */
-  jingle_media_rtp_free_codecs (priv->local_codecs);
+  if (priv->local_codecs != NULL)
+    {
+      /* Calling _gabble_jingle_content_set_media_ready () should use and unset
+       * these right after we set them.
+       */
+      g_assert (priv->local_codec_updates == NULL);
+      priv->local_codec_updates = changed_codecs (priv->local_codecs, codecs);
+
+      jingle_media_rtp_free_codecs (priv->local_codecs);
+      priv->local_codecs = codecs;
+    }
+
   priv->local_codecs = codecs;
 
   _gabble_jingle_content_set_media_ready (GABBLE_JINGLE_CONTENT (self));

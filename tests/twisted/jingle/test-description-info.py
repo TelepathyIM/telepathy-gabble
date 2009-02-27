@@ -116,16 +116,14 @@ def test(q, bus, conn, stream):
             x.stanza))
     payload_types = xpath.queryForNodes(
         "/iq/jingle/content[@name='stream1']/description/payload-type", e.stanza)
-    # FIXME: Gabble should only include the changed codecs in description-info
-    #assert len(payload_types) == 2, payload_types
-    # The order, strictly speaking, doesn't matter.
-    for i in [0,1]:
-        assert payload_types[i]['name'] == new_codecs[i][0], \
-            (payload_types[i], new_codecs[i])
-        assert payload_types[i]['id'] == str(new_codecs[i][1]), \
-            (payload_types[i], new_codecs[i])
-        assert payload_types[i]['clockrate'] == str(new_codecs[i][2]), \
-            (payload_types[i], new_codecs[i])
+    # Gabble SHOULD only include the changed codecs in description-info
+    assert len(payload_types) == 2, payload_types
+
+    # FIXME: this should check the parameters too.
+    payload_types_tupled = [ (pt['name'], int(pt['id']), int(pt['clockrate']))
+                             for pt in payload_types ]
+    assert sorted(payload_types_tupled) == sorted(new_codecs[0:2]), \
+        (payload_types_tupled, new_codecs[0:2])
 
     # Instead, the remote end decides to change the clockrate of the third codec.
     new_codecs = [ ('GSM', 3, 8000), ('PCMA', 8, 8000), ('PCMU', 0, 1600) ]

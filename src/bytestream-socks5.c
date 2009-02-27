@@ -635,6 +635,8 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       DEBUG ("no more streamhosts to try");
 
+      g_signal_emit_by_name (self, "connection-error");
+
       g_assert (priv->msg_for_acknowledge_connection != NULL);
       _gabble_connection_send_iq_error (priv->conn,
           priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
@@ -642,12 +644,6 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       lm_message_unref (priv->msg_for_acknowledge_connection);
       priv->msg_for_acknowledge_connection = NULL;
-    }
-
-  if (previous_state != SOCKS5_STATE_CONNECTED &&
-      previous_state != SOCKS5_STATE_ERROR)
-    {
-      g_signal_emit_by_name (self, "connection-error");
     }
 
   DEBUG ("error, closing the connection\n");

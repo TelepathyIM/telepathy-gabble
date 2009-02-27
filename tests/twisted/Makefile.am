@@ -43,6 +43,7 @@ TWISTED_TESTS = \
 	text/test-text-no-body.py \
 	text/test-text.py \
 	tubes/accept-muc-dbus-tube.py \
+	tubes/accept-private-dbus-tube.py \
 	tubes/muc-presence.py \
 	tubes/close-muc-with-closed-tube.py \
 	tubes/crash-on-list-channels.py \

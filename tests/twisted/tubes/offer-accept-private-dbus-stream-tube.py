@@ -9,9 +9,7 @@ from gabbletest import acknowledge_iq, sync_stream
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import parse_si_offer, create_si_reply, parse_si_reply
-
-from dbus import PROPERTIES_IFACE
+from bytestream import parse_si_offer, create_si_reply
 
 from twisted.words.xish import domish, xpath
 
@@ -29,25 +27,7 @@ new_sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
-def contact_offer_dbus_tube(bytestream, tube_id):
-    iq, si = bytestream.create_si_offer(ns.TUBES)
-
-    tube = si.addElement((ns.TUBES, 'tube'))
-    tube['type'] = 'dbus'
-    tube['service'] = 'com.example.TestCase2'
-    tube['id'] = tube_id
-    parameters = tube.addElement((None, 'parameters'))
-    parameter = parameters.addElement((None, 'parameter'))
-    parameter['type'] = 'str'
-    parameter['name'] = 'login'
-    parameter.addContent('TEST')
-
-    bytestream.stream.send(iq)
-
 def test(q, bus, conn, stream, bytestream_cls):
-    t.set_up_echo("")
-    t.set_up_echo("2")
-
     t.check_conn_properties(q, conn)
 
     conn.Connect()
@@ -198,102 +178,6 @@ def test(q, bus, conn, stream, bytestream_cls):
     # OK, now let's try to accept a D-Bus tube using the old API
     bytestream4 = bytestream_cls(stream, q, 'beta', bob_full_jid,
         'test@localhost/Reource', True)
-
-    contact_offer_dbus_tube(bytestream4, '69')
-
-    event = q.expect('dbus-signal', signal='NewTube')
-    id = event.args[0]
-    initiator = event.args[1]
-    type = event.args[2]
-    service = event.args[3]
-    parameters = event.args[4]
-    state = event.args[5]
-
-    assert id == 69
-    initiator_jid = conn.InspectHandles(1, [initiator])[0]
-    assert initiator_jid == 'bob@localhost'
-    assert type == cs.TUBE_TYPE_DBUS
-    assert service == 'com.example.TestCase2'
-    assert parameters == {'login': 'TEST'}
-    assert state == cs.TUBE_STATE_LOCAL_PENDING
-
-    # accept the tube (old API)
-    call_async(q, tubes_iface, 'AcceptDBusTube', id)
-
-    event = q.expect('stream-iq', iq_type='result')
-    bytestream = parse_si_reply (event.stanza)
-    assert bytestream == bytestream4.get_ns()
-    tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
-        event.stanza)
-    assert len(tube) == 1
-
-    # Init the bytestream
-    event = bytestream4.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
-
-    address = event.value[0]
-    assert len(address) > 0
-
-    event = q.expect('dbus-signal', signal='TubeStateChanged',
-        args=[69, 2]) # 2 == OPEN
-    id = event.args[0]
-    state = event.args[1]
-
-    # OK, now let's try to accept a D-Bus tube using the new API
-    bytestream5 = bytestream_cls(stream, q, 'gamma', bob_full_jid,
-        self_full_jid, True)
-
-    contact_offer_dbus_tube(bytestream5, '70')
-
-    e = q.expect('dbus-signal', signal='NewChannels')
-    channels = e.args[0]
-    assert len(channels) == 1
-    path, props = channels[0]
-
-    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
-    assert props[cs.INITIATOR_HANDLE] == bob_handle
-    assert props[cs.INITIATOR_ID] == 'bob@localhost'
-    assert props[cs.INTERFACES] == [cs.CHANNEL_IFACE_TUBE]
-    assert props[cs.REQUESTED] == False
-    assert props[cs.TARGET_HANDLE] == bob_handle
-    assert props[cs.TARGET_ID] == 'bob@localhost'
-    assert props[cs.DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase2'
-    assert props[cs.TUBE_PARAMETERS] == {'login': 'TEST'}
-    assert cs.TUBE_STATE not in props
-
-    tube_chan = bus.get_object(conn.bus_name, path)
-    tube_chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
-    dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
-
-    status = tube_chan.Get(cs.CHANNEL_IFACE_TUBE, 'State', dbus_interface=PROPERTIES_IFACE)
-    assert status == cs.TUBE_STATE_LOCAL_PENDING
-
-    # accept the tube (new API)
-    call_async(q, dbus_tube_iface, 'AcceptDBusTube')
-
-    event = q.expect('stream-iq', iq_type='result')
-    bytestream = parse_si_reply (event.stanza)
-    assert bytestream == bytestream5.get_ns()
-    tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES, event.stanza)
-    assert len(tube) == 1
-
-    # Init the bytestream
-    return_event = bytestream5.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
-
-    _, state_event = q.expect_many(
-        EventPattern('stream-iq', iq_type='result'),
-        EventPattern('dbus-signal', signal='TubeChannelStateChanged'))
-
-    addr = return_event.value[0]
-    assert len(addr) > 0
-
-    assert state_event.args[0] == cs.TUBE_STATE_OPEN
-
-    # close the tube
-    tube_chan_iface.Close()
-
-    q.expect_many(
-        EventPattern('dbus-signal', signal='Closed'),
-        EventPattern('dbus-signal', signal='ChannelClosed'))
 
     # OK, we're done
     conn.Disconnect()

@@ -72,8 +72,6 @@ struct _GabbleJingleMediaRtpPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE(o) ((o)->priv)
-
 static void
 gabble_jingle_media_rtp_init (GabbleJingleMediaRtp *obj)
 {

@@ -71,10 +71,13 @@ def test(q, bus, conn, stream, bytestream_cls):
     item['subscription'] = 'both'
     stream.send(roster)
 
+    bob_full_jid = 'bob@localhost/Bob'
+    self_full_jid = 'test@localhost/Resource'
+
     # Send Bob presence and his tube caps
     presence = domish.Element(('jabber:client', 'presence'))
-    presence['from'] = 'bob@localhost/Bob'
-    presence['to'] = 'test@localhost/Resource'
+    presence['from'] = bob_full_jid
+    presence['to'] = self_full_jid
     c = presence.addElement('c')
     c['xmlns'] = 'http://jabber.org/protocol/caps'
     c['node'] = 'http://example.com/ICantBelieveItsNotTelepathy'
@@ -83,7 +86,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     event = q.expect('stream-iq', iq_type='get',
         query_ns='http://jabber.org/protocol/disco#info',
-        to='bob@localhost/Bob')
+        to=bob_full_jid)
     result = event.stanza
     result['type'] = 'result'
     assert event.query['node'] == \
@@ -192,7 +195,7 @@ def test(q, bus, conn, stream, bytestream_cls):
         EventPattern('dbus-signal', signal='NewChannels'))
 
     message = event.stanza
-    assert message['to'] == 'bob@localhost/Bob' # check the resource
+    assert message['to'] == bob_full_jid
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % ns.TUBES,
         message)
     assert tube_nodes is not None
@@ -274,7 +277,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert state_event.args[0] == cs.TUBE_CHANNEL_STATE_REMOTE_PENDING
 
     message = msg_event.stanza
-    assert message['to'] == 'bob@localhost/Bob' # check the resource
+    assert message['to'] == bob_full_jid
     tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % ns.TUBES,
         message)
     assert tube_nodes is not None
@@ -322,8 +325,8 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # The CM is the server, so fake a client wanting to talk to it
     # Old API tube
-    bytestream1 = bytestream_cls(stream, q, 'alpha', 'bob@localhost/Bob',
-        'test@localhost/Resource', True)
+    bytestream1 = bytestream_cls(stream, q, 'alpha', bob_full_jid,
+        self_full_jid, True)
     iq, si = bytestream1.create_si_offer(ns.TUBES)
 
     stream_node = si.addElement((ns.TUBES, 'stream'))
@@ -351,8 +354,8 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
-    bytestream2 = bytestream_cls(stream, q, 'beta', 'bob@localhost/Bob',
-        'test@localhost/Resource', True)
+    bytestream2 = bytestream_cls(stream, q, 'beta', bob_full_jid,
+        self_full_jid, True)
     iq, si = bytestream2.create_si_offer(ns.TUBES)
 
     stream_node = si.addElement((ns.TUBES, 'stream'))
@@ -400,7 +403,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     call_async(q, tubes_iface, 'OfferDBusTube',
         'com.example.TestCase', sample_parameters)
 
-    event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
+    event = q.expect('stream-iq', iq_type='set', to=bob_full_jid)
     profile, dbus_stream_id, bytestreams = parse_si_offer(event.stanza)
 
     assert profile == ns.TUBES
@@ -425,8 +428,8 @@ def test(q, bus, conn, stream, bytestream_cls):
                       'u': ('uint', '123'),
                      }
 
-    bytestream3 = bytestream_cls(stream, q, dbus_stream_id, 'test@localhost/Resource',
-        'bob@localhost/Bob', False)
+    bytestream3 = bytestream_cls(stream, q, dbus_stream_id, self_full_jid,
+        bob_full_jid, False)
     result, si = create_si_reply(stream, event.stanza, bytestream3.initiator, bytestream3.get_ns())
     stream.send(result)
 
@@ -485,8 +488,8 @@ def test(q, bus, conn, stream, bytestream_cls):
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
 
     # OK, now let's try to accept a D-Bus tube using the old API
-    bytestream4 = bytestream_cls(stream, q, 'beta', 'bob@localhost/Bob',
-        'test@localhost/Resource', True)
+    bytestream4 = bytestream_cls(stream, q, 'beta', bob_full_jid,
+        'test@localhost/Reource', True)
 
     contact_offer_dbus_tube(bytestream4, '69')
 
@@ -528,8 +531,8 @@ def test(q, bus, conn, stream, bytestream_cls):
     state = event.args[1]
 
     # OK, now let's try to accept a D-Bus tube using the new API
-    bytestream5 = bytestream_cls(stream, q, 'gamma', 'bob@localhost/Bob',
-        'test@localhost/Resource', True)
+    bytestream5 = bytestream_cls(stream, q, 'gamma', bob_full_jid,
+        self_full_jid, True)
 
     contact_offer_dbus_tube(bytestream5, '70')
 

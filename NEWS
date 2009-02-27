@@ -1,6 +1,14 @@
 telepathy-gabble 0.7.22 (UNRELEASED)
 ====================================
 
+Dependencies:
+
+* telepathy-glib 0.7.24 is now required
+
+Fixes:
+
+* fd.o #20102: fix byte ordering of port in GibberListener
+
 telepathy-gabble 0.7.21 (2009-02-19)
 ====================================
 

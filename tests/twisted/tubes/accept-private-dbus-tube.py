@@ -96,10 +96,10 @@ def test(q, bus, conn, stream, bytestream_cls):
     sync_dbus(bus, q, conn)
 
     # let's try to accept a D-Bus tube using the old API
-    bytestream4 = bytestream_cls(stream, q, 'beta', bob_full_jid,
+    bytestream = bytestream_cls(stream, q, 'beta', bob_full_jid,
         'test@localhost/Reource', True)
 
-    contact_offer_dbus_tube(bytestream4, '69')
+    contact_offer_dbus_tube(bytestream, '69')
 
     # tubes channel is created
     event = q.expect('dbus-signal', signal='NewChannel')
@@ -132,14 +132,14 @@ def test(q, bus, conn, stream, bytestream_cls):
     call_async(q, tubes_iface, 'AcceptDBusTube', id)
 
     event = q.expect('stream-iq', iq_type='result')
-    bytestream = parse_si_reply (event.stanza)
-    assert bytestream == bytestream4.get_ns()
+    bytestream_type = parse_si_reply (event.stanza)
+    assert bytestream_type == bytestream.get_ns()
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
         event.stanza)
     assert len(tube) == 1
 
     # Init the bytestream
-    event = bytestream4.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
+    event = bytestream.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
 
     address = event.value[0]
     assert len(address) > 0
@@ -150,10 +150,10 @@ def test(q, bus, conn, stream, bytestream_cls):
     state = event.args[1]
 
     # OK, now let's try to accept a D-Bus tube using the new API
-    bytestream5 = bytestream_cls(stream, q, 'gamma', bob_full_jid,
+    bytestream = bytestream_cls(stream, q, 'gamma', bob_full_jid,
         self_full_jid, True)
 
-    contact_offer_dbus_tube(bytestream5, '70')
+    contact_offer_dbus_tube(bytestream, '70')
 
     e = q.expect('dbus-signal', signal='NewChannels')
     channels = e.args[0]
@@ -182,13 +182,13 @@ def test(q, bus, conn, stream, bytestream_cls):
     call_async(q, dbus_tube_iface, 'AcceptDBusTube')
 
     event = q.expect('stream-iq', iq_type='result')
-    bytestream = parse_si_reply (event.stanza)
-    assert bytestream == bytestream5.get_ns()
+    bytestream_type = parse_si_reply (event.stanza)
+    assert bytestream_type == bytestream.get_ns()
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES, event.stanza)
     assert len(tube) == 1
 
     # Init the bytestream
-    return_event = bytestream5.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
+    return_event = bytestream.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
 
     _, state_event = q.expect_many(
         EventPattern('stream-iq', iq_type='result'),

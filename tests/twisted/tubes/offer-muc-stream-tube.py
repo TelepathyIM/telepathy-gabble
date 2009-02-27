@@ -218,8 +218,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     bytestream = bytestream_cls(stream, q, 'alpha', 'chat@conf.localhost/bob',
         'test@localhost/Resource', True)
 
-    iq, si = create_si_offer(stream, bytestream.initiator, bytestream.target,
-        bytestream.stream_id, ns.TUBES, [bytestream.get_ns()])
+    iq, si = bytestream.create_si_offer(ns.TUBES)
 
     stream_node = si.addElement((ns.TUBES, 'muc-stream'))
     stream_node['tube'] = str(stream_tube_id)

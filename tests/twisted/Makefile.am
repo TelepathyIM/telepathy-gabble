@@ -56,7 +56,7 @@ TWISTED_TESTS = \
 	tubes/offer-muc-dbus-tube.py \
 	tubes/offer-muc-stream-tube.py \
 	tubes/offer-no-caps.py \
-	tubes/offer-private-dbus-tube-ibb.py \
+	tubes/offer-private-dbus-tube.py \
 	tubes/offer-private-stream-tube.py \
 	tubes/request-invalid-dbus-tube.py \
 	tubes/ensure-si-tube.py \

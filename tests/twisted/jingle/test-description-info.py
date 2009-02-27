@@ -12,6 +12,13 @@ from twisted.words.xish import xpath
 
 from jingletest2 import *
 
+def extract_params(payload_type):
+    ret = {}
+    for node in payload_type.elements():
+        assert node.name == 'parameter'
+        ret[node['name']] = node['value']
+    return ret
+
 def test(q, bus, conn, stream):
 
     jp = JingleProtocol031()
@@ -111,10 +118,12 @@ def test(q, bus, conn, stream):
     e = q.expect('stream-iq')
     assert jp.match_jingle_action(e.query, 'session-accept')
 
-    # We decide we want to update the clockrates of the first two codecs, not
-    # changing the third.
-    new_codecs = [ ('GSM', 3, 4000), ('PCMA', 8, 4000), ('PCMU', 0, 8000) ]
-    stream_handler.CodecsUpdated(jt2.dbusify_codecs(new_codecs))
+    # We decide we want to update the clockrate of the first codec, and add a
+    # parameter to the second, not changing the third.
+    new_codecs = [ ('GSM', 3, 4000, {}),
+                   ('PCMA', 8, 8000, {'helix': 'BUFFERING'}),
+                   ('PCMU', 0, 8000, {}) ]
+    stream_handler.CodecsUpdated(jt2.dbusify_codecs_with_params(new_codecs))
 
     e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
         xpath.queryForNodes("/iq/jingle[@action='description-info']",
@@ -124,8 +133,8 @@ def test(q, bus, conn, stream):
     # Gabble SHOULD only include the changed codecs in description-info
     assert len(payload_types) == 2, payload_types
 
-    # FIXME: this should check the parameters too.
-    payload_types_tupled = [ (pt['name'], int(pt['id']), int(pt['clockrate']))
+    payload_types_tupled = [ (pt['name'], int(pt['id']), int(pt['clockrate']),
+                              extract_params(pt))
                              for pt in payload_types ]
     assert sorted(payload_types_tupled) == sorted(new_codecs[0:2]), \
         (payload_types_tupled, new_codecs[0:2])

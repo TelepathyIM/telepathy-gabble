@@ -578,7 +578,23 @@ static gboolean
 string_string_maps_equal (GHashTable *a,
                           GHashTable *b)
 {
-  /* FIXME */
+  GHashTableIter iter;
+  gpointer a_key, a_value, b_value;
+
+  if (g_hash_table_size (a) != g_hash_table_size (b))
+    return FALSE;
+
+  g_hash_table_iter_init (&iter, a);
+
+  while (g_hash_table_iter_next (&iter, &a_key, &a_value))
+    {
+      if (!g_hash_table_lookup_extended (b, a_key, NULL, &b_value))
+        return FALSE;
+
+      if (tp_strdiff (a_value, b_value))
+        return FALSE;
+    }
+
   return TRUE;
 }
 

@@ -11,7 +11,7 @@ import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 import ns
-from bytestream import parse_si_offer, create_si_reply
+from bytestream import parse_si_offer
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -77,7 +77,7 @@ def alice_accepts_tube(q, stream, iq_event, dbus_tube_id, bytestream_cls):
     bytestream = bytestream_cls(stream, q, dbus_stream_id, 'test@localhost/Resource',
         'alice@localhost/Test', False)
 
-    result, si = create_si_reply(stream, iq, bytestream.initiator, bytestream.get_ns())
+    result, si = bytestream.create_si_reply(iq)
     si.addElement((ns.TUBES, 'tube'))
     stream.send(result)
 

@@ -13,7 +13,7 @@ import ns
 import tubetestutil as t
 from bytestream import create_si_offer, parse_si_offer, create_si_reply,\
     parse_si_reply, send_ibb_open, send_ibb_msg_data, parse_ibb_msg_data,\
-    parse_ibb_open
+    parse_ibb_open, BytestreamIBB
 
 from dbus import PROPERTIES_IFACE
 
@@ -33,9 +33,8 @@ new_sample_parameters = dbus.Dictionary({
     'i': dbus.Int32(-123),
     }, signature='sv')
 
-def contact_offer_dbus_tube(stream, si_id, tube_id):
-    iq, si = create_si_offer(stream, 'bob@localhost/Bob',
-        'test@localhost/Resource', si_id, ns.TUBES, [ns.IBB])
+def contact_offer_dbus_tube(bytestream, tube_id):
+    iq, si = bytestream.create_si_offer(ns.TUBES)
 
     tube = si.addElement((ns.TUBES, 'tube'))
     tube['type'] = 'dbus'
@@ -47,7 +46,7 @@ def contact_offer_dbus_tube(stream, si_id, tube_id):
     parameter['name'] = 'login'
     parameter.addContent('TEST')
 
-    stream.send(iq)
+    bytestream.stream.send(iq)
 
 def test(q, bus, conn, stream):
     t.set_up_echo("")
@@ -325,8 +324,9 @@ def test(q, bus, conn, stream):
 
     # The CM is the server, so fake a client wanting to talk to it
     # Old API tube
-    iq, si = create_si_offer(stream, 'bob@localhost/Bob',
-        'test@localhost/Resource', 'alpha', ns.TUBES, [ns.IBB])
+    bytestream1 = BytestreamIBB(stream, q, 'alpha', 'bob@localhost/Bob',
+        'test@localhost/Resource', True)
+    iq, si = bytestream1.create_si_offer(ns.TUBES)
 
     stream_node = si.addElement((ns.TUBES, 'stream'))
     stream_node['tube'] = str(stream_tube_id)
@@ -338,7 +338,7 @@ def test(q, bus, conn, stream):
                 args=[stream_tube_id, cs.TUBE_STATE_OPEN]))
 
     bytestream = parse_si_reply(si_reply_event.stanza)
-    assert bytestream == ns.IBB
+    assert bytestream == bytestream1.get_ns()
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
         si_reply_event.stanza)
     assert len(tube) == 1
@@ -353,8 +353,9 @@ def test(q, bus, conn, stream):
 
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
-    iq, si = create_si_offer(stream, 'bob@localhost/Bob',
-        'test@localhost/Resource', 'beta', ns.TUBES, [ns.IBB])
+    bytestream2 = BytestreamIBB(stream, q, 'beta', 'bob@localhost/Bob',
+        'test@localhost/Resource', True)
+    iq, si = bytestream2.create_si_offer(ns.TUBES)
 
     stream_node = si.addElement((ns.TUBES, 'stream'))
     stream_node['tube'] = str(new_stream_tube_id)
@@ -366,7 +367,7 @@ def test(q, bus, conn, stream):
                 args=[cs.TUBE_STATE_OPEN]))
 
     bytestream = parse_si_reply(si_reply_event.stanza)
-    assert bytestream == ns.IBB
+    assert bytestream == bytestream2.get_ns()
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
         si_reply_event.stanza)
     assert len(tube) == 1
@@ -380,34 +381,21 @@ def test(q, bus, conn, stream):
 
     # have the fake client open the stream
     # Old tube API
-    send_ibb_open(stream, 'bob@localhost/Bob', 'test@localhost/Resource', 'alpha',
-        4096)
-
-    q.expect('stream-iq', iq_type='result')
+    bytestream1.open_bytestream()
 
     # have the fake client send us some data
-    send_ibb_msg_data(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
-        'alpha', 0, 'hello, world')
+    bytestream1.send_data('hello, world')
 
-    event = q.expect('stream-message', to='bob@localhost/Bob')
-    sid, binary = parse_ibb_msg_data(event.stanza)
-    assert sid == 'alpha'
+    binary = bytestream1.get_data()
     assert binary == 'hello, world'
 
     # have the fake client open the stream
-    # New tube API
-    send_ibb_open(stream, 'bob@localhost/Bob', 'test@localhost/Resource', 'beta',
-        4096)
-
-    q.expect('stream-iq', iq_type='result')
+    bytestream2.open_bytestream()
 
     # have the fake client send us some data
-    send_ibb_msg_data(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
-        'beta', 0, 'hello, new world')
+    bytestream2.send_data('hello, new world')
 
-    event = q.expect('stream-message', to='bob@localhost/Bob')
-    sid, binary = parse_ibb_msg_data(event.stanza)
-    assert sid == 'beta'
+    binary = bytestream2.get_data()
     assert binary == 'hello, new world'
 
     # OK, how about D-Bus?
@@ -439,14 +427,12 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    result, si = create_si_reply(stream, event.stanza, 'test@localhost/Resource', ns.IBB)
+    bytestream3 = BytestreamIBB(stream, q, dbus_stream_id, 'test@localhost/Resource',
+        'bob@localhost/Bob', False)
+    result, si = create_si_reply(stream, event.stanza, bytestream3.initiator, bytestream3.get_ns())
     stream.send(result)
 
-    event = q.expect('stream-iq', iq_type='set', to='bob@localhost/Bob')
-    sid = parse_ibb_open(event.stanza)
-    assert sid == dbus_stream_id
-
-    acknowledge_iq(stream, event.stanza)
+    bytestream3.wait_bytestream_open()
 
     q.expect('dbus-signal', signal='TubeStateChanged',
         args=[dbus_tube_id, cs.TUBE_STATE_OPEN])
@@ -468,9 +454,7 @@ def test(q, bus, conn, stream):
     signal.append(42, signature='u')
     dbus_tube_conn.send_message(signal)
 
-    event = q.expect('stream-message', to='bob@localhost/Bob')
-    sid, binary = parse_ibb_msg_data(event.stanza)
-    assert sid == dbus_stream_id
+    binary = bytestream3.get_data()
 
     # little and big endian versions of: SIGNAL, NO_REPLY, protocol v1,
     # 4-byte payload
@@ -489,30 +473,24 @@ def test(q, bus, conn, stream):
     seq = 0
 
     # Have the fake client send us a message all in one go...
-    send_ibb_msg_data(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
-        dbus_stream_id, seq, dbus_message)
-    seq += 1
+    bytestream3.send_data(dbus_message)
+    q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
 
     # ... and a message one byte at a time ...
-
     for byte in dbus_message:
-        send_ibb_msg_data(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
-            dbus_stream_id, seq, byte)
-        seq += 1
+        bytestream3.send_data(byte)
+    q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
 
     # ... and two messages in one go
-
-    send_ibb_msg_data(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
-        dbus_stream_id, seq, dbus_message + dbus_message)
-    seq += 1
-
-    q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
-    q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
+    bytestream3.send_data(dbus_message + dbus_message)
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
 
     # OK, now let's try to accept a D-Bus tube using the old API
-    contact_offer_dbus_tube(stream, 'beta', '69')
+    bytestream4 = BytestreamIBB(stream, q, 'beta', 'bob@localhost/Bob',
+        'test@localhost/Resource', True)
+
+    contact_offer_dbus_tube(bytestream4, '69')
 
     event = q.expect('dbus-signal', signal='NewTube')
     id = event.args[0]
@@ -535,16 +513,14 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-iq', iq_type='result')
     bytestream = parse_si_reply (event.stanza)
-    assert bytestream == ns.IBB
+    assert bytestream == bytestream4.get_ns()
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
         event.stanza)
     assert len(tube) == 1
 
-    # Init the IBB bytestream
-    send_ibb_open(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
-        'beta', 4096)
+    # Init the bytestream
+    event = bytestream4.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
 
-    event = q.expect('dbus-return', method='AcceptDBusTube')
     address = event.value[0]
     assert len(address) > 0
 
@@ -554,7 +530,10 @@ def test(q, bus, conn, stream):
     state = event.args[1]
 
     # OK, now let's try to accept a D-Bus tube using the new API
-    contact_offer_dbus_tube(stream, 'gamma', '70')
+    bytestream5 = BytestreamIBB(stream, q, 'gamma', 'bob@localhost/Bob',
+        'test@localhost/Resource', True)
+
+    contact_offer_dbus_tube(bytestream5, '70')
 
     e = q.expect('dbus-signal', signal='NewChannels')
     channels = e.args[0]
@@ -584,16 +563,14 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-iq', iq_type='result')
     bytestream = parse_si_reply (event.stanza)
-    assert bytestream == ns.IBB
+    assert bytestream == bytestream5.get_ns()
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES, event.stanza)
     assert len(tube) == 1
 
-    # Init the IBB bytestream
-    send_ibb_open(stream, 'bob@localhost/Bob', 'test@localhost/Resource',
-        'gamma', 4096)
+    # Init the bytestream
+    return_event = bytestream5.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
 
-    return_event, _, state_event = q.expect_many(
-        EventPattern('dbus-return', method='AcceptDBusTube'),
+    _, state_event = q.expect_many(
         EventPattern('stream-iq', iq_type='result'),
         EventPattern('dbus-signal', signal='TubeChannelStateChanged'))
 

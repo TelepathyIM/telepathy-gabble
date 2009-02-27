@@ -5,9 +5,26 @@ Dependencies:
 
 * telepathy-glib 0.7.24 is now required
 
+Enhancements:
+
+* Resolve STUN servers' IP addresses as required by telepathy-spec changes
+  currently under development
+
+* Add NATTraversal, STUNServers and CreatedLocally properties to
+  Media.StreamHandler as required by telepathy-spec changes currently under
+  development
+
+* Add fallback-stun-server, fallback-stun-port ConnectionManager parameters
+
 Fixes:
 
+* Correctly deal with streams that are added after a call is accepted, fixing
+  video streaming in calls that start off audio-only
+
 * fd.o #20102: fix byte ordering of port in GibberListener
+
+* Drain some swamps in Jingle call handling for better maintainability,
+  and improve Jingle regression test coverage significantly
 
 telepathy-gabble 0.7.21 (2009-02-19)
 ====================================

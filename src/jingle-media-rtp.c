@@ -352,8 +352,6 @@ parse_description (GabbleJingleContent *content,
 
   DEBUG ("detected media type %u", mtype);
 
-  /* FIXME: we ignore "profile" attribute */
-
   for (node = desc_node->children; node; node = node->next)
     {
       if (tp_strdiff (lm_message_node_get_name (node), "payload-type"))

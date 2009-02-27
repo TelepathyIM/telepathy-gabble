@@ -210,12 +210,14 @@ def set_up_echo(name):
     """
     factory = Factory()
     factory.protocol = Echo
+    full_path = os.getcwd() + '/stream' + name
     try:
-        os.remove(os.getcwd() + '/stream' + name)
+        os.remove(full_path)
     except OSError, e:
         if e.errno != errno.ENOENT:
             raise
-    reactor.listenUNIX(os.getcwd() + '/stream' + name, factory)
+    reactor.listenUNIX(full_path, factory)
+    return full_path
 
 def exec_tube_test(test):
     def test_ibb(q, bus, conn, stream):

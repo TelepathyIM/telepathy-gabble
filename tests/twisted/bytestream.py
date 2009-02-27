@@ -41,32 +41,26 @@ class Bytestream(object):
 
     def create_si_offer(self, profile):
         assert self.initiated
-        return create_si_offer(self.stream,
-            self.initiator, self.target, self.stream_id, profile,
-            [self.get_ns()])
 
-##### XEP-0095: Stream Initiation #####
-
-# FIXME: remove once all tests use the method
-def create_si_offer(stream, from_, to, sid, profile, bytestreams):
-    iq = IQ(stream, 'set')
-    iq['to'] = to
-    iq['from'] = from_
-    si = iq.addElement((ns.SI, 'si'))
-    si['id'] = sid
-    si['profile'] = profile
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'form'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    field['type'] = 'list-single'
-    for bytestream in bytestreams:
+        iq = IQ(self.stream, 'set')
+        iq['from'] = self.initiator
+        iq['to'] = self.target
+        si = iq.addElement((ns.SI, 'si'))
+        si['id'] = self.stream_id
+        si['profile'] = profile
+        feature = si.addElement((ns.FEATURE_NEG, 'feature'))
+        x = feature.addElement((ns.X_DATA, 'x'))
+        x['type'] = 'form'
+        field = x.addElement((None, 'field'))
+        field['var'] = 'stream-method'
+        field['type'] = 'list-single'
         option = field.addElement((None, 'option'))
         value = option.addElement((None, 'value'))
-        value.addContent(bytestream)
+        value.addContent(self.get_ns())
 
-    return iq, si
+        return iq, si
+
+##### XEP-0095: Stream Initiation #####
 
 def parse_si_offer(iq):
     si_nodes = xpath.queryForNodes('/iq/si', iq)

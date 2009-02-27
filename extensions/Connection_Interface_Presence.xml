@@ -127,7 +127,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:possible-errors>
     </method>
     <method name="GetStatuses" tp:name-for-bindings="Get_Statuses">
-      <arg direction="out" type="a{s(ubba{ss})}" tp:type="Status_Spec_Map">
+      <arg direction="out" type="a{s(ubba{ss})}" tp:type="Status_Spec_Map"
+           name="Available_Statuses">
         <tp:docstring>
         A dictionary of string identifiers mapped to a struct for each status, containing:
         <ul>

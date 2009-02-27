@@ -98,18 +98,18 @@ def test(q, bus, conn, stream, bytestream_cls):
     # A tube request can be done only if the contact has tube capabilities
     # Ensure that Bob's caps have been received
     sync_stream(q, stream)
+
     # Also ensure that all the new contact list channels have been announced,
     # so that the NewChannel(s) signals we look for after calling
     # RequestChannel are the ones we wanted.
     sync_dbus(bus, q, conn)
 
-    # new requestotron
     requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
-    # Test tubes with Bob. Bob does not have tube capabilities.
+    # Test tubes with Bob. Bob have tube capabilities.
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
 
-    # old requestotron
+    # old tubes API
     call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TUBES, cs.HT_CONTACT,
         bob_handle, True)
 
@@ -130,7 +130,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     t.check_conn_properties(q, conn, [old_tubes_channel_properties])
 
-    # Try to CreateChannel with correct properties
+    # Try CreateChannel with correct properties
     # Gabble must succeed
     call_async(q, requestotron, 'CreateChannel',
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
@@ -166,7 +166,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     new_tube_props = new_tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE,
             dbus_interface=PROPERTIES_IFACE)
 
-    # the tube created using the old API is in the "not offered" state
+    # the tube created using the new API is in the "not offered" state
     assert new_tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     t.check_NewChannel_signal(old_sig.args, cs.CHANNEL_TYPE_STREAM_TUBE,
@@ -327,7 +327,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert new_tube_props.get("Parameters") == new_sample_parameters, \
             new_tube_props.get("Parameters")
 
-    # The CM is the server, so fake a client wanting to talk to it
+    # The CM is the server, so fake a client wants to talk to it
     # Old API tube
     bytestream1 = bytestream_cls(stream, q, 'alpha', bob_full_jid,
         self_full_jid, True)
@@ -356,7 +356,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     t.check_tube_in_tubes(expected_tube, tubes)
 
-    # The CM is the server, so fake a client wanting to talk to it
+    # The CM is the server, so fake a client wants to talk to it
     # New API tube
     bytestream2 = bytestream_cls(stream, q, 'beta', bob_full_jid,
         self_full_jid, True)
@@ -385,7 +385,6 @@ def test(q, bus, conn, stream, bytestream_cls):
     t.check_tube_in_tubes (expected_tube, tubes_iface.ListTubes(byte_arrays=True))
 
     # have the fake client open the stream
-    # Old tube API
     bytestream1.open_bytestream()
 
     # have the fake client send us some data

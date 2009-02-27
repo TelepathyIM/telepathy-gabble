@@ -7,7 +7,7 @@ import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolFactory, unwrap
 from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
-from bytestream import create_si_offer, parse_si_reply
+from bytestream import parse_si_reply
 import constants as cs
 import ns
 import tubetestutil as t

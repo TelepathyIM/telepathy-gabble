@@ -84,12 +84,12 @@ enum
 enum _Socks5State
 {
   SOCKS5_STATE_INVALID,
-  SOCKS5_STATE_TRYING_CONNECT,
-  SOCKS5_STATE_AUTH_REQUEST_SENT,
-  SOCKS5_STATE_CONNECT_REQUESTED,
+  SOCKS5_STATE_TARGET_TRYING_CONNECT,
+  SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT,
+  SOCKS5_STATE_TARGET_CONNECT_REQUESTED,
   SOCKS5_STATE_CONNECTED,
-  SOCKS5_STATE_AWAITING_AUTH_REQUEST,
-  SOCKS5_STATE_AWAITING_COMMAND,
+  SOCKS5_STATE_INITIATOR_AWAITING_AUTH_REQUEST,
+  SOCKS5_STATE_INITIATOR_AWAITING_COMMAND,
   SOCKS5_STATE_ERROR
 };
 
@@ -490,7 +490,7 @@ transport_connected_cb (GibberTransport *transport,
   GabbleBytestreamSocks5Private *priv =
     GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
-  if (priv->socks5_state == SOCKS5_STATE_TRYING_CONNECT)
+  if (priv->socks5_state == SOCKS5_STATE_TARGET_TRYING_CONNECT)
     {
       gchar msg[3];
 
@@ -504,7 +504,7 @@ transport_connected_cb (GibberTransport *transport,
 
       write_to_transport (self, msg, 3, NULL);
 
-      priv->socks5_state = SOCKS5_STATE_AUTH_REQUEST_SENT;
+      priv->socks5_state = SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT;
     }
 }
 
@@ -612,9 +612,9 @@ socks5_error (GabbleBytestreamSocks5 *self)
   previous_state = priv->socks5_state;
   priv->socks5_state = SOCKS5_STATE_ERROR;
 
-  if (previous_state == SOCKS5_STATE_TRYING_CONNECT ||
-      previous_state == SOCKS5_STATE_AUTH_REQUEST_SENT ||
-      previous_state == SOCKS5_STATE_CONNECT_REQUESTED)
+  if (previous_state == SOCKS5_STATE_TARGET_TRYING_CONNECT ||
+      previous_state == SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT ||
+      previous_state == SOCKS5_STATE_TARGET_CONNECT_REQUESTED)
     {
       /* The attempt for connect to the streamhost failed */
       socks5_close_transport (self);
@@ -720,7 +720,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
   switch (priv->socks5_state)
     {
-      case SOCKS5_STATE_AUTH_REQUEST_SENT:
+      case SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT:
         /* We sent an authorization request and we are awaiting for a
          * response, the response is 2 bytes-long */
         if (string->len < 2)
@@ -758,7 +758,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         write_to_transport (self, msg, SOCKS5_CONNECT_LENGTH, NULL);
 
-        priv->socks5_state = SOCKS5_STATE_CONNECT_REQUESTED;
+        priv->socks5_state = SOCKS5_STATE_TARGET_CONNECT_REQUESTED;
 
         /* Older version of Gabble (pre 0.7.22) are bugged and just send 2
          * bytes as CONNECT reply. We set a timer to not wait the full reply
@@ -769,7 +769,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         return 2;
 
-      case SOCKS5_STATE_CONNECT_REQUESTED:
+      case SOCKS5_STATE_TARGET_CONNECT_REQUESTED:
         /* We sent a CONNECT request and are awaiting for the response */
         if (string->len < SOCKS5_MIN_LENGTH)
           return 0;
@@ -845,7 +845,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         return SOCKS5_MIN_LENGTH + domain_len;
 
-      case SOCKS5_STATE_AWAITING_AUTH_REQUEST:
+      case SOCKS5_STATE_INITIATOR_AWAITING_AUTH_REQUEST:
         /* A client connected to us and we are awaiting for the authorization
          * request (at least 2 bytes) */
         if (string->len < 2)
@@ -876,7 +876,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
                 DEBUG ("Received auth request. Sending auth reply");
                 write_to_transport (self, msg, 2, NULL);
 
-                priv->socks5_state = SOCKS5_STATE_AWAITING_COMMAND;
+                priv->socks5_state = SOCKS5_STATE_INITIATOR_AWAITING_COMMAND;
 
                 return auth_len;
               }
@@ -888,7 +888,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         return auth_len;
 
-      case SOCKS5_STATE_AWAITING_COMMAND:
+      case SOCKS5_STATE_INITIATOR_AWAITING_COMMAND:
         /* The client has been authorized and we are waiting for a command,
          * the only one supported by the SOCKS5 bytestreams XEP is
          * CONNECT with:
@@ -972,7 +972,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         DEBUG ("An error occurred, throwing away received data");
         return string->len;
 
-      case SOCKS5_STATE_TRYING_CONNECT:
+      case SOCKS5_STATE_TARGET_TRYING_CONNECT:
         DEBUG ("Impossible to receive data when not yet connected to the "
             "socket");
         break;
@@ -1034,7 +1034,7 @@ socks5_connect (GabbleBytestreamSocks5 *self)
   Streamhost* streamhost;
   GibberTCPTransport *transport;
 
-  priv->socks5_state = SOCKS5_STATE_TRYING_CONNECT;
+  priv->socks5_state = SOCKS5_STATE_TARGET_TRYING_CONNECT;
 
   if (priv->streamhosts != NULL)
     {
@@ -1503,7 +1503,7 @@ new_connection_cb (GibberListener *listener,
 
   DEBUG ("New connection...");
 
-  priv->socks5_state = SOCKS5_STATE_AWAITING_AUTH_REQUEST;
+  priv->socks5_state = SOCKS5_STATE_INITIATOR_AWAITING_AUTH_REQUEST;
   set_transport (self, transport);
 }
 

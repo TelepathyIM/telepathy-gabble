@@ -7,7 +7,6 @@ from gabbletest import acknowledge_iq, sync_stream
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import parse_si_reply
 
 from twisted.words.xish import domish, xpath
 
@@ -333,8 +332,7 @@ def test(q, bus, conn, stream, bytestream_cls):
             EventPattern('dbus-signal', signal='TubeStateChanged',
                 args=[stream_tube_id, cs.TUBE_STATE_OPEN]))
 
-    bytestream = parse_si_reply(si_reply_event.stanza)
-    assert bytestream == bytestream1.get_ns()
+    bytestream1.check_si_reply(si_reply_event.stanza)
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
         si_reply_event.stanza)
     assert len(tube) == 1
@@ -362,8 +360,7 @@ def test(q, bus, conn, stream, bytestream_cls):
             EventPattern('dbus-signal', signal='TubeChannelStateChanged',
                 args=[cs.TUBE_STATE_OPEN]))
 
-    bytestream = parse_si_reply(si_reply_event.stanza)
-    assert bytestream == bytestream2.get_ns()
+    bytestream2.check_si_reply(si_reply_event.stanza)
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
         si_reply_event.stanza)
     assert len(tube) == 1

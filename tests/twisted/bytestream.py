@@ -78,6 +78,14 @@ class Bytestream(object):
 
         return result, res_si
 
+    def check_si_reply(self, iq):
+        si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
+                iq)[0]
+        value = xpath.queryForNodes('/si/feature/x/field/value', si)
+        assert len(value) == 1
+        proto = value[0]
+        assert str(proto) == self.get_ns()
+
 def parse_si_offer(iq):
     si_nodes = xpath.queryForNodes('/iq/si', iq)
     assert si_nodes is not None
@@ -96,15 +104,6 @@ def parse_si_offer(iq):
         bytestreams.append(str(value))
 
     return si['profile'], si['id'], bytestreams
-
-def parse_si_reply(iq):
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-            iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    return str(proto)
-
 
 ##### XEP-0065: SOCKS5 Bytestreams #####
 

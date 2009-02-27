@@ -7,7 +7,6 @@ from gabbletest import acknowledge_iq, sync_stream
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import parse_si_reply
 
 from twisted.words.xish import domish, xpath
 
@@ -132,8 +131,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     call_async(q, tubes_iface, 'AcceptDBusTube', id)
 
     event = q.expect('stream-iq', iq_type='result')
-    bytestream_type = parse_si_reply (event.stanza)
-    assert bytestream_type == bytestream.get_ns()
+    bytestream.check_si_reply(event.stanza)
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
         event.stanza)
     assert len(tube) == 1
@@ -182,8 +180,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     call_async(q, dbus_tube_iface, 'AcceptDBusTube')
 
     event = q.expect('stream-iq', iq_type='result')
-    bytestream_type = parse_si_reply (event.stanza)
-    assert bytestream_type == bytestream.get_ns()
+    bytestream.check_si_reply(event.stanza)
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES, event.stanza)
     assert len(tube) == 1
 

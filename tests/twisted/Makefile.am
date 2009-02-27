@@ -51,7 +51,6 @@ TWISTED_TESTS = \
 	tubes/test-get-available-tubes.py \
 	tubes/accept-muc-stream-tube.py \
 	tubes/accept-private-stream-tube.py \
-	tubes/offer-accept-private-dbus-stream-tube.py \
 	tubes/offer-accept-private-stream-tube-si-fallback.py \
 	tubes/offer-muc-dbus-tube.py \
 	tubes/offer-muc-stream-tube.py \

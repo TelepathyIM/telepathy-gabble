@@ -11,7 +11,7 @@ import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 import ns
-from bytestream import parse_si_offer, create_si_reply, BytestreamIBB
+from bytestream import parse_si_offer, create_si_reply
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -45,7 +45,7 @@ def make_caps_disco_reply(stream, req, features):
 
     return iq
 
-def alice_accepts_tube(q, stream, iq_event, dbus_tube_id):
+def alice_accepts_tube(q, stream, iq_event, dbus_tube_id, bytestream_cls):
     iq = iq_event.stanza
 
     profile, dbus_stream_id, bytestreams = parse_si_offer(iq)
@@ -74,7 +74,7 @@ def alice_accepts_tube(q, stream, iq_event, dbus_tube_id):
                      }
 
     # Alice accepts the tube
-    bytestream = BytestreamIBB(stream, q, dbus_stream_id, 'test@localhost/Resource',
+    bytestream = bytestream_cls(stream, q, dbus_stream_id, 'test@localhost/Resource',
         'alice@localhost/Test', False)
 
     result, si = create_si_reply(stream, iq, bytestream.initiator, bytestream.get_ns())
@@ -106,7 +106,7 @@ def send_dbus_message_to_alice(q, stream, dbus_tube_adr, bytestream):
     # XXX: verify that it's actually in the "sender" slot, rather than just
     # being in the message somewhere
 
-def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
+def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls):
     # request tubes channel (old API)
     tubes_path = conn.RequestChannel(cs.CHANNEL_TYPE_TUBES, cs.HT_CONTACT,
             alice_handle, True)
@@ -156,7 +156,7 @@ def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
         'com.example.TestCase', sample_parameters, cs.TUBE_STATE_REMOTE_PENDING)
     t.check_tube_in_tubes(expected_tube, tubes)
 
-    bytestream = alice_accepts_tube(q, stream, iq_event, dbus_tube_id)
+    bytestream = alice_accepts_tube(q, stream, iq_event, dbus_tube_id, bytestream_cls)
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
     send_dbus_message_to_alice(q, stream, dbus_tube_adr, bytestream)
@@ -170,7 +170,7 @@ def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
     q.expect('dbus-signal', signal='Closed')
 
 
-def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
+def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls):
     requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
     # Offer a tube to Alice (new API)
@@ -275,7 +275,7 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle):
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'))
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream, bytestream_cls):
     conn.Connect()
 
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
@@ -300,12 +300,12 @@ def test(q, bus, conn, stream):
 
     sync_stream(q, stream)
 
-    offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle)
-    offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle)
+    offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls)
+    offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls)
 
     # OK, we're done
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    exec_test(test)
+    t.exec_tube_test(test)

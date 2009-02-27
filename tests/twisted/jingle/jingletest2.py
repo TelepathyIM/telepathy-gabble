@@ -305,15 +305,16 @@ class JingleTest2:
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
 
+    def dbusify_codecs(self, codecs):
+        dbussed_codecs = [ (id, name, 0, rate, 1, {} )
+                            for (name, id, rate) in codecs ]
+        return dbus.Array(dbussed_codecs, signature='(usuuua{ss})')
+
     def get_audio_codecs_dbus(self):
-        codecs = [ (id, name, 0, rate, 0, {} )
-                   for (name, id, rate) in self.audio_codecs ]
-        return dbus.Array(codecs, signature='(usuuua{ss})')
+        return self.dbusify_codecs(self.audio_codecs)
 
     def get_video_codecs_dbus(self):
-        codecs = [ (id, name, 0, rate, 0, {} )
-                   for (name, id, rate) in self.video_codecs ]
-        return dbus.Array(codecs, signature='(usuuua{ss})')
+        return self.dbusify_codecs(self.video_codecs)
 
     def get_remote_transports_dbus(self):
         return dbus.Array([

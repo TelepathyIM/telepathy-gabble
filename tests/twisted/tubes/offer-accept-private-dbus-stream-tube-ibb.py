@@ -7,13 +7,11 @@ from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, watch_tube_signals
-from gabbletest import exec_test, acknowledge_iq, sync_stream
+from gabbletest import acknowledge_iq, sync_stream
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import create_si_offer, parse_si_offer, create_si_reply,\
-    parse_si_reply, send_ibb_open, send_ibb_msg_data, parse_ibb_msg_data,\
-    parse_ibb_open, BytestreamIBB
+from bytestream import parse_si_offer, create_si_reply, parse_si_reply
 
 from dbus import PROPERTIES_IFACE
 
@@ -48,7 +46,7 @@ def contact_offer_dbus_tube(bytestream, tube_id):
 
     bytestream.stream.send(iq)
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream, bytestream_cls):
     t.set_up_echo("")
     t.set_up_echo("2")
 
@@ -324,7 +322,7 @@ def test(q, bus, conn, stream):
 
     # The CM is the server, so fake a client wanting to talk to it
     # Old API tube
-    bytestream1 = BytestreamIBB(stream, q, 'alpha', 'bob@localhost/Bob',
+    bytestream1 = bytestream_cls(stream, q, 'alpha', 'bob@localhost/Bob',
         'test@localhost/Resource', True)
     iq, si = bytestream1.create_si_offer(ns.TUBES)
 
@@ -353,7 +351,7 @@ def test(q, bus, conn, stream):
 
     # The CM is the server, so fake a client wanting to talk to it
     # New API tube
-    bytestream2 = BytestreamIBB(stream, q, 'beta', 'bob@localhost/Bob',
+    bytestream2 = bytestream_cls(stream, q, 'beta', 'bob@localhost/Bob',
         'test@localhost/Resource', True)
     iq, si = bytestream2.create_si_offer(ns.TUBES)
 
@@ -427,7 +425,7 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    bytestream3 = BytestreamIBB(stream, q, dbus_stream_id, 'test@localhost/Resource',
+    bytestream3 = bytestream_cls(stream, q, dbus_stream_id, 'test@localhost/Resource',
         'bob@localhost/Bob', False)
     result, si = create_si_reply(stream, event.stanza, bytestream3.initiator, bytestream3.get_ns())
     stream.send(result)
@@ -487,7 +485,7 @@ def test(q, bus, conn, stream):
     q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
 
     # OK, now let's try to accept a D-Bus tube using the old API
-    bytestream4 = BytestreamIBB(stream, q, 'beta', 'bob@localhost/Bob',
+    bytestream4 = bytestream_cls(stream, q, 'beta', 'bob@localhost/Bob',
         'test@localhost/Resource', True)
 
     contact_offer_dbus_tube(bytestream4, '69')
@@ -530,7 +528,7 @@ def test(q, bus, conn, stream):
     state = event.args[1]
 
     # OK, now let's try to accept a D-Bus tube using the new API
-    bytestream5 = BytestreamIBB(stream, q, 'gamma', 'bob@localhost/Bob',
+    bytestream5 = bytestream_cls(stream, q, 'gamma', 'bob@localhost/Bob',
         'test@localhost/Resource', True)
 
     contact_offer_dbus_tube(bytestream5, '70')
@@ -593,4 +591,4 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    exec_test(test)
+    t.exec_tube_test(test)

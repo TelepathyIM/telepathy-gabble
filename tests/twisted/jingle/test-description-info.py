@@ -80,8 +80,13 @@ def test(q, bus, conn, stream):
     members = media_chan.GetMembers()
     assert set(members) == set([1L, remote_handle]), members
 
+    local_codecs = [('GSM', 3, 8000, {}),
+                    ('PCMA', 8, 8000, {'helix':'woo yay'}),
+                    ('PCMU', 0, 8000, {}) ]
+    local_codecs_dbus = jt2.dbusify_codecs_with_params(local_codecs)
+
     stream_handler.NewNativeCandidate("fake", jt2.get_remote_transports_dbus())
-    stream_handler.Ready(jt2.get_audio_codecs_dbus())
+    stream_handler.Ready(local_codecs_dbus)
     stream_handler.StreamState(2)
 
     # First IQ is transport-info; also, we expect to be told what codecs the
@@ -100,7 +105,7 @@ def test(q, bus, conn, stream):
     stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
 
     # S-E reports codec intersection, after which gabble can send acceptance
-    stream_handler.SupportedCodecs(jt2.get_audio_codecs_dbus())
+    stream_handler.SupportedCodecs(local_codecs_dbus)
 
     # Second one is session-accept
     e = q.expect('stream-iq')

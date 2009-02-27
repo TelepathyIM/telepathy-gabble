@@ -67,6 +67,13 @@ typedef enum {
 struct _GabbleJingleMediaRtpPrivate
 {
   GList *local_codecs;
+  /* Holds (JingleCodec *)s borrowed from local_codecs, namely those which have
+   * changed from local_codecs' previous value. Since the contents are
+   * borrowed, this must be freed with g_list_free, not
+   * jingle_media_rtp_free_codecs().
+   */
+  GList *local_codec_updates;
+
   GList *remote_codecs;
   JingleMediaType media_type;
   gboolean dispose_has_run;
@@ -138,6 +145,14 @@ gabble_jingle_media_rtp_dispose (GObject *object)
 
   jingle_media_rtp_free_codecs (priv->local_codecs);
   priv->local_codecs = NULL;
+
+  if (priv->local_codec_updates != NULL)
+    {
+      DEBUG ("We have an unsent codec parameter update! Weird.");
+
+      g_list_free (priv->local_codec_updates);
+      priv->local_codec_updates = NULL;
+    }
 
   if (G_OBJECT_CLASS (gabble_jingle_media_rtp_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_media_rtp_parent_class)->dispose (object);
@@ -493,8 +508,7 @@ produce_payload_type (LmMessageNode *desc_node,
 static void
 produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 {
-  GabbleJingleMediaRtp *desc =
-    GABBLE_JINGLE_MEDIA_RTP (obj);
+  GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (obj);
   GabbleJingleSession *sess;
   GabbleJingleMediaRtpPrivate *priv = desc->priv;
   LmMessageNode *desc_node;
@@ -538,8 +552,20 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 
   lm_message_node_set_attribute (desc_node, "xmlns", xmlns);
 
-  for (li = priv->local_codecs; li; li = li->next)
+  /* If we're only updating our codec parameters, only generate payload-types
+   * for those.
+   */
+  if (priv->local_codec_updates != NULL)
+    li = priv->local_codec_updates;
+  else
+    li = priv->local_codecs;
+
+  for (; li != NULL; li = li->next)
     produce_payload_type (desc_node, li->data, dialect);
+
+  /* If we were updating, then we're done with the diff. */
+  g_list_free (priv->local_codec_updates);
+  priv->local_codec_updates = NULL;
 }
 
 /* Takes in a list of slice-allocated JingleCodec structs */
@@ -550,6 +576,9 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
 
   DEBUG ("setting new local codecs");
 
+  /* TODO: if priv->local_codecs is non-empty, set priv->local_codec_updates to
+   * the changed codecs.
+   */
   jingle_media_rtp_free_codecs (priv->local_codecs);
   priv->local_codecs = codecs;
 

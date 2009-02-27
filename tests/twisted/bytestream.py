@@ -334,6 +334,9 @@ class BytestreamIBB(Bytestream):
         # open IBB bytestream
         send_ibb_open(self.stream, self.initiator, self.target, self.stream_id, 4096)
 
+        if expected is not None:
+            return self.q.expect_many(expected)[0]
+
     def send_data(self, data):
         if self.initiated:
             from_ = self.initiator

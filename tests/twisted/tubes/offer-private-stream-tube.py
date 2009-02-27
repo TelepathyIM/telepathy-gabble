@@ -1,7 +1,5 @@
 """Test 1-1 tubes support."""
 
-import os
-
 import dbus
 
 from servicetest import call_async, EventPattern, sync_dbus
@@ -43,8 +41,8 @@ def contact_offer_dbus_tube(bytestream, tube_id):
     bytestream.stream.send(iq)
 
 def test(q, bus, conn, stream, bytestream_cls):
-    t.set_up_echo("")
-    t.set_up_echo("2")
+    echo_path = t.set_up_echo("")
+    echo2_path = t.set_up_echo("2")
 
     t.check_conn_properties(q, conn)
 
@@ -183,10 +181,8 @@ def test(q, bus, conn, stream, bytestream_cls):
             bob_handle, "bob@localhost")
 
     # Create another tube using old API
-    # FIXME: make set_up_echo return this
-    path = os.getcwd() + '/stream'
     call_async(q, tubes_iface, 'OfferStreamTube',
-        'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
+        'echo', sample_parameters, 0, dbus.ByteArray(echo_path), 0, "")
 
     event, return_event, new_chan, new_chans = q.expect_many(
         EventPattern('stream-message'),
@@ -265,9 +261,8 @@ def test(q, bus, conn, stream, bytestream_cls):
             cs.TUBE_CHANNEL_STATE_REMOTE_PENDING)
 
     # Offer the first tube created (new API)
-    path2 = os.getcwd() + '/stream2'
     call_async(q, new_tube_iface, 'OfferStreamTube',
-        0, dbus.ByteArray(path2), 0, "", new_sample_parameters)
+        0, dbus.ByteArray(echo2_path), 0, "", new_sample_parameters)
 
     msg_event, new_tube_sig, state_event = q.expect_many(
         EventPattern('stream-message'),

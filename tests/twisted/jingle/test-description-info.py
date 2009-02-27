@@ -106,28 +106,44 @@ def test(q, bus, conn, stream):
     e = q.expect('stream-iq')
     assert jp.match_jingle_action(e.query, 'session-accept')
 
-    # We decide we want to update our codec parameters
-    jt2.audio_codecs = [ ('A', 3, 8000), ('B', 8, 8000), ('C', 0, 8000) ]
-    stream_handler.CodecsUpdated(jt2.get_audio_codecs_dbus())
+    # We decide we want to update the clockrates of the first two codecs, not
+    # changing the third.
+    new_codecs = [ ('GSM', 3, 4000), ('PCMA', 8, 4000), ('PCMU', 0, 8000) ]
+    stream_handler.CodecsUpdated(jt2.dbusify_codecs(new_codecs))
 
     e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
         xpath.queryForNodes("/iq/jingle[@action='description-info']",
             x.stanza))
-    assert xpath.queryForNodes("/iq/jingle/content[@name='stream1']/description/payload-type[@name='A']", e.stanza) is not None
+    payload_types = xpath.queryForNodes(
+        "/iq/jingle/content[@name='stream1']/description/payload-type", e.stanza)
+    # FIXME: Gabble should only include the changed codecs in description-info
+    #assert len(payload_types) == 2, payload_types
+    # The order, strictly speaking, doesn't matter.
+    for i in [0,1]:
+        assert payload_types[i]['name'] == new_codecs[i][0], \
+            (payload_types[i], new_codecs[i])
+        assert payload_types[i]['id'] == str(new_codecs[i][1]), \
+            (payload_types[i], new_codecs[i])
+        assert payload_types[i]['clockrate'] == str(new_codecs[i][2]), \
+            (payload_types[i], new_codecs[i])
 
-    # Now the remote end decides to change something
+    # Instead, the remote end decides to change the clockrate of the third codec.
+    new_codecs = [ ('GSM', 3, 8000), ('PCMA', 8, 8000), ('PCMU', 0, 1600) ]
+    # As per the XEP, it only sends the ones which have changed.
+    c = new_codecs[2]
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'description-info', [
             jp.Content('stream1', 'initiator', 'both', [
                 jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]) ]) ]) ])
+                    jp.PayloadType(c[0], str(c[2]), str(c[1])) ]) ]) ]) ])
     stream.send(jp.xml(node))
 
+    # Gabble should patch its idea of the remote codecs with the update it just
+    # got, and emit SetRemoteCodecs for them all.
     e = q.expect('dbus-signal', signal='SetRemoteCodecs')
-    assert jt2.audio_codecs == [ (name, id, rate)
-        for id, name, type, rate, channels, parameters in unwrap(e.args[0]) ], \
-        (jt2.audio_codecs, unwrap(e.args[0]))
+    new_codecs_dbus = unwrap(jt2.dbusify_codecs(new_codecs))
+    announced = unwrap(e.args[0])
+    assert new_codecs_dbus == announced, (new_codecs_dbus, announced)
 
     # We close the session by removing the stream
     media_iface.RemoveStreams([id1])

@@ -333,6 +333,67 @@ parse_payload_type (LmMessageNode *node)
 }
 
 static void
+update_remote_codecs (GabbleJingleMediaRtp *self,
+                      GList *new_codecs,
+                      GError **error)
+{
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
+  GList *k, *l;
+
+  if (priv->remote_codecs == NULL)
+    {
+      priv->remote_codecs = new_codecs;
+      goto out;
+    }
+
+  /* We already know some remote codecs, so this is just the other end updating
+   * some parameters.
+   */
+  for (k = new_codecs; k != NULL; k = k->next)
+    {
+      JingleCodec *new_codec = k->data;
+
+      for (l = priv->remote_codecs; l != NULL; l = l->next)
+        {
+          JingleCodec *old_codec = l->data;
+          GHashTable *tmp;
+
+          if (old_codec->id != new_codec->id)
+            continue;
+
+          if (tp_strdiff (old_codec->name, new_codec->name))
+            {
+              DEBUG ("Codec with id %u has changed from %s to %s! Rejecting",
+                  old_codec->id, old_codec->name, new_codec->name);
+              SET_BAD_REQ ("Codec with id %u is %s, not %s", old_codec->id,
+                  old_codec->name, new_codec->name);
+              jingle_media_rtp_free_codecs (new_codecs);
+              return;
+            }
+
+          old_codec->clockrate = new_codec->clockrate;
+          old_codec->channels = new_codec->channels;
+
+          tmp = old_codec->params;
+          old_codec->params = new_codec->params;
+          new_codec->params = tmp;
+
+          break;
+        }
+
+      if (l == NULL)
+        {
+          DEBUG ("Codec with id %u ('%s') unknown; ignoring update",
+              new_codec->id, new_codec->name);
+        }
+    }
+
+out:
+  DEBUG ("emitting remote-codecs signal");
+  g_signal_emit (self, signals[REMOTE_CODECS], 0, priv->remote_codecs);
+}
+
+static void
 parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error)
 {
@@ -375,12 +436,7 @@ parse_description (GabbleJingleContent *content,
 
   priv->media_type = mtype;
 
-  DEBUG ("emitting remote-codecs signal");
-  g_signal_emit (self, signals[REMOTE_CODECS], 0, codecs);
-
-  /* set them as the known remote codecs */
-  jingle_media_rtp_free_codecs (priv->remote_codecs);
-  priv->remote_codecs = codecs;
+  update_remote_codecs (self, codecs, error);
 }
 
 static void

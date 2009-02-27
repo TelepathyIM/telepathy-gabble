@@ -84,10 +84,18 @@ def test(q, bus, conn, stream):
     stream_handler.Ready(jt2.get_audio_codecs_dbus())
     stream_handler.StreamState(2)
 
-    # First one is transport-info
-    e = q.expect('stream-iq')
+    # First IQ is transport-info; also, we expect to be told what codecs the
+    # other end wants.
+    e, src = q.expect_many(
+        EventPattern('stream-iq'),
+        EventPattern('dbus-signal', signal='SetRemoteCodecs')
+        )
     assert jp.match_jingle_action(e.query, 'transport-info')
     assert e.query['initiator'] == 'foo@bar.com/Foo'
+
+    assert jt2.audio_codecs == [ (name, id, rate)
+        for id, name, type, rate, channels, parameters in unwrap(src.args[0]) ], \
+        (jt2.audio_codecs, unwrap(src.args[0]))
 
     stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
 
@@ -118,7 +126,8 @@ def test(q, bus, conn, stream):
 
     e = q.expect('dbus-signal', signal='SetRemoteCodecs')
     assert jt2.audio_codecs == [ (name, id, rate)
-        for id, name, type, rate, channels, parameters in unwrap(e.args[0]) ]
+        for id, name, type, rate, channels, parameters in unwrap(e.args[0]) ], \
+        (jt2.audio_codecs, unwrap(e.args[0]))
 
     # We close the session by removing the stream
     media_iface.RemoveStreams([id1])

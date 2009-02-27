@@ -1079,9 +1079,10 @@ gabble_media_stream_ready (TpSvcMediaStreamHandler *iface,
   gabble_media_stream_set_local_codecs (iface, codecs, context);
 }
 
-static void
+static gboolean
 pass_local_codecs (GabbleMediaStream *stream,
-                   const GPtrArray *codecs)
+                   const GPtrArray *codecs,
+                   GError **error)
 {
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
   GList *li = NULL;
@@ -1120,7 +1121,8 @@ pass_local_codecs (GabbleMediaStream *stream,
       li = g_list_append (li, c);
     }
 
-  jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content), li);
+  return jingle_media_rtp_set_local_codecs (
+      GABBLE_JINGLE_MEDIA_RTP (priv->content), li, error);
 }
 
 /**
@@ -1135,11 +1137,25 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
                                       DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GError *error = NULL;
+
+  DEBUG ("called");
 
   if (gabble_jingle_content_is_created_by_us (self->priv->content))
-    pass_local_codecs (self, codecs);
+    {
+      if (!pass_local_codecs (self, codecs, &error))
+        {
+          DEBUG ("failed: %s", error->message);
+
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return;
+        }
+    }
   else
-    DEBUG ("ignoring local codecs, waiting for codec intersection");
+    {
+      DEBUG ("ignoring local codecs, waiting for codec intersection");
+    }
 
   tp_svc_media_stream_handler_return_from_set_local_codecs (context);
 }
@@ -1195,6 +1211,9 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
+  GError *error = NULL;
+
+  DEBUG ("called");
 
   /* We don't need to do anything in response to the streaming implementation
    * deciding it likes the new codec paramaters.
@@ -1202,11 +1221,22 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
   if (!priv->updating_remote_codecs)
     {
       if (gabble_jingle_content_is_created_by_us (self->priv->content))
-        DEBUG ("we already sent our codecs, ignoring codec intersection");
+        {
+          DEBUG ("we already sent our codecs, ignoring codec intersection");
+        }
       else
-        pass_local_codecs (self, codecs);
+        {
+          if (!pass_local_codecs (self, codecs, &error))
+            {
+              DEBUG ("failed: %s", error->message);
 
-      g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+              return;
+            }
+
+          g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
+        }
     }
 
   tp_svc_media_stream_handler_return_from_supported_codecs (context);
@@ -1226,19 +1256,28 @@ gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   gboolean codecs_set =
       (g_value_get_boxed (&self->priv->native_codecs) != NULL);
+  GError *error = NULL;
 
-  if (codecs_set)
-    {
-      pass_local_codecs (self, codecs);
-      tp_svc_media_stream_handler_return_from_codecs_updated (context);
-    }
-  else
+  if (!codecs_set)
     {
       GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "CodecsUpdated may only be called once an initial set of codecs "
           "has been set" };
 
       dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  if (pass_local_codecs (self, codecs, &error))
+    {
+      tp_svc_media_stream_handler_return_from_codecs_updated (context);
+    }
+  else
+    {
+      DEBUG ("failed: %s", error->message);
+
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
     }
 }
 

@@ -614,12 +614,33 @@ codec_info_equal (const JingleCodec *c,
     string_string_maps_equal (c->params, d->params));
 }
 
-static GList *
-changed_codecs (GList *old,
-                GList *new)
+/**
+ * compare_codecs:
+ * @old: previous local codecs
+ * @new: new local codecs supplied by streaming implementation
+ * @changed: location at which to store the changed codecs
+ * @error: location at which to store an error if the update was invalid
+ *
+ * Returns: %TRUE if the update made sense, %FALSE with @error set otherwise
+ */
+static gboolean
+compare_codecs (GList *old,
+                GList *new,
+                GList **changed,
+                GError **e)
 {
-  GList *changed = NULL;
   GList *k, *l;
+
+  g_assert (changed != NULL && *changed == NULL);
+
+#define FAIL(msg, ...) \
+  G_STMT_START { \
+    g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, msg, ##__VA_ARGS__); \
+    goto err; \
+  } G_STMT_END
+
+  if (g_list_length (new) != g_list_length (old))
+    FAIL ("tried to change the number of codecs!");
 
   for (k = new; k != NULL; k = k->next)
     {
@@ -633,36 +654,35 @@ changed_codecs (GList *old,
             continue;
 
           if (tp_strdiff (new_c->name, old_c->name))
-            {
-              DEBUG ("streaming implementation has changed codec %u's name "
-                  "from %s to %s!", new_c->id, old_c->name, new_c->name);
-
-              /* FIXME: make CodecsUpdated fail. */
-            }
+            FAIL ("tried to change codec %u's name from %s to %s",
+                new_c->id, old_c->name, new_c->name);
 
           if (!codec_info_equal (old_c, new_c))
-            {
-              changed = g_list_prepend (changed, new_c);
-              break;
-            }
+            *changed = g_list_prepend (*changed, new_c);
+
+          break;
         }
 
       if (l == NULL)
-        {
-          DEBUG ("streaming implementation tried to update codec %u (%s) which "
-              "wasn't there before", new_c->id, new_c->name);
-          /* FIXME: make CodecsUpdated fail. */
-        }
+        FAIL ("tried to update codec %u (%s) which wasn't there before",
+            new_c->id, new_c->name);
     }
 
-  /* FIXME: this doesn't detect the streaming implementation trying to remove codecs. */
+#undef FAIL
 
-  return changed;
+  return TRUE;
+
+err:
+  g_list_free (*changed);
+  *changed = NULL;
+  return FALSE;
 }
 
 /* Takes in a list of slice-allocated JingleCodec structs */
-void
-jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
+gboolean
+jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
+                                   GList *codecs,
+                                   GError **error)
 {
   GabbleJingleMediaRtpPrivate *priv = self->priv;
 
@@ -670,19 +690,38 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
 
   if (priv->local_codecs != NULL)
     {
+      GList *changed = NULL;
+      GError *err = NULL;
+
       /* Calling _gabble_jingle_content_set_media_ready () should use and unset
        * these right after we set them.
        */
       g_assert (priv->local_codec_updates == NULL);
-      priv->local_codec_updates = changed_codecs (priv->local_codecs, codecs);
+
+      if (!compare_codecs (priv->local_codecs, codecs, &changed, &err))
+        {
+          DEBUG ("codec update was illegal: %s", err->message);
+          g_propagate_error (error, err);
+          return FALSE;
+        }
+
+      if (changed == NULL)
+        {
+          DEBUG ("codec update changed nothing!");
+          jingle_media_rtp_free_codecs (codecs);
+          return TRUE;
+        }
+
+      DEBUG ("%u codecs changed", g_list_length (changed));
+      priv->local_codec_updates = changed;
 
       jingle_media_rtp_free_codecs (priv->local_codecs);
-      priv->local_codecs = codecs;
     }
 
   priv->local_codecs = codecs;
 
   _gabble_jingle_content_set_media_ready (GABBLE_JINGLE_CONTENT (self));
+  return TRUE;
 }
 
 void

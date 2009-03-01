@@ -67,13 +67,17 @@ void gibber_debug_stanza (DebugFlags flag, GibberXmppStanza *stanza,
 #ifdef DEBUG_FLAG
 
 #define DEBUG(format, ...) \
-  gibber_debug (DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
+  G_STMT_START { \
+  gibber_debug (DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__); \
+  } G_STMT_END
 
 #define DEBUG_STANZA(stanza, format, ...) \
+  G_STMT_START { \
   gibber_debug_stanza (DEBUG_FLAG, stanza, "%s: " format, G_STRFUNC,\
-      ##__VA_ARGS__)
+      ##__VA_ARGS__); \
+  } G_STMT_END
 
-#define DEBUGGING debug_flag_is_set(DEBUG_FLAG)
+#define DEBUGGING (debug_flag_is_set (DEBUG_FLAG))
 
 #endif /* DEBUG_FLAG */
 
@@ -81,13 +85,11 @@ void gibber_debug_stanza (DebugFlags flag, GibberXmppStanza *stanza,
 
 #ifdef DEBUG_FLAG
 
-#define DEBUG(format, ...)
+#define DEBUG(format, ...) G_STMT_START { } G_STMT_END
 
-#define DEBUG_STANZA(stanza, format, ...)
+#define DEBUG_STANZA(stanza, format, ...) G_STMT_START { } G_STMT_END
 
-#define DEBUGGING 0
-
-#define NODE_DEBUG(n, s)
+#define DEBUGGING (0)
 
 #endif /* DEBUG_FLAG */
 

@@ -746,8 +746,10 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
   g_object_get (c, "state", &state, NULL);
   if (state != JINGLE_CONTENT_STATE_SENT)
     {
+#ifdef ENABLE_DEBUG
       const gchar *name = lm_message_node_get_attribute (content_node, "name");
       DEBUG ("ignoring content \"%s\"s acceptance for content not in SENT state", name);
+#endif
       return;
     }
 

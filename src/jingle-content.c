@@ -641,6 +641,10 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   if (*error != NULL)
       return;
 
+  if (priv->timer_id != 0)
+      g_source_remove (priv->timer_id);
+  priv->timer_id = 0;
+
   priv->state = JINGLE_CONTENT_STATE_ACKNOWLEDGED;
   g_object_notify ((GObject *) c, "state");
 }

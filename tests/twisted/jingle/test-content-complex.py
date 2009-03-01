@@ -151,9 +151,12 @@ def worker(jp, q, bus, conn, stream):
     e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
         xpath.queryForNodes("/iq/jingle[@action='content-add']",
             x.stanza))
-    stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
 
     c = e.query.firstChildElement()
+    assert c['creator'] == 'responder', c['creator']
+
+    stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
+
 
     # Remote end rejects it
     node = jp.SetIq(jt2.peer, jt2.jid, [

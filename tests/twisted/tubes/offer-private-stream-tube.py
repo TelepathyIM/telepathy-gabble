@@ -99,7 +99,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
-    # Test tubes with Bob. Bob have tube capabilities.
+    # Test tubes with Bob. Bob has tube capabilities.
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
 
     # old tubes API
@@ -317,7 +317,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert new_tube_props.get("Parameters") == new_sample_parameters, \
             new_tube_props.get("Parameters")
 
-    # The CM is the server, so fake a client wants to talk to it
+    # The CM is the server, so fake a client wanting to talk to it
     # Old API tube
     bytestream1 = bytestream_cls(stream, q, 'alpha', bob_full_jid,
         self_full_jid, True)
@@ -345,7 +345,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     t.check_tube_in_tubes(expected_tube, tubes)
 
-    # The CM is the server, so fake a client wants to talk to it
+    # The CM is the server, so fake a client wanting to talk to it
     # New API tube
     bytestream2 = bytestream_cls(stream, q, 'beta', bob_full_jid,
         self_full_jid, True)

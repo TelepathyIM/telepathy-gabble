@@ -1,11 +1,13 @@
 import dbus
 
 from servicetest import call_async, EventPattern
-from gabbletest import exec_test, acknowledge_iq, make_muc_presence
+from gabbletest import exec_test, acknowledge_iq
 import constants as c
 
 from twisted.words.xish import domish, xpath
 import ns
+
+from mucutil import join_muc_and_check
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -23,26 +25,10 @@ def test(q, bus, conn, stream):
             query_name='vCard'))
 
     acknowledge_iq(stream, iq_event.stanza)
-    requestotron = dbus.Interface(conn, c.CONN_IFACE_REQUESTS)
 
-    # join room
-    call_async(q, requestotron, 'CreateChannel', {
-        c.CHANNEL_TYPE: c.CHANNEL_TYPE_TEXT,
-        c.TARGET_HANDLE_TYPE: c.HT_ROOM,
-        c.TARGET_ID: 'chat@conf.localhost'})
-
-    event = q.expect('stream-presence', to='chat@conf.localhost/test')
-
-    # Send presence for other member of room.
-    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
-
-    # Send presence for own membership of room.
-    stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost', 'test'))
-
-    event = q.expect('dbus-return', method='CreateChannel')
-
-    # text channel is announced
-    q.expect('dbus-signal', signal='NewChannels')
+    muc = 'chat@conf.localhost'
+    _, _, test_handle, bob_handle = \
+        join_muc_and_check(q, bus, conn, stream, muc)
 
     # Bob offers a stream tube
     bob_bus_name = ':2.Ym9i'

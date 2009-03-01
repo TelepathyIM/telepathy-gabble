@@ -41,25 +41,50 @@ class Bytestream(object):
 
 ##### XEP-0095: Stream Initiation #####
 
-def create_si_offer(stream, from_, to, sid, profile, bytestreams):
-    iq = IQ(stream, 'set')
-    iq['to'] = to
-    iq['from'] = from_
-    si = iq.addElement((ns.SI, 'si'))
-    si['id'] = sid
-    si['profile'] = profile
-    feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-    x = feature.addElement((ns.X_DATA, 'x'))
-    x['type'] = 'form'
-    field = x.addElement((None, 'field'))
-    field['var'] = 'stream-method'
-    field['type'] = 'list-single'
-    for bytestream in bytestreams:
+    def create_si_offer(self, profile):
+        assert self.initiated
+
+        iq = IQ(self.stream, 'set')
+        iq['from'] = self.initiator
+        iq['to'] = self.target
+        si = iq.addElement((ns.SI, 'si'))
+        si['id'] = self.stream_id
+        si['profile'] = profile
+        feature = si.addElement((ns.FEATURE_NEG, 'feature'))
+        x = feature.addElement((ns.X_DATA, 'x'))
+        x['type'] = 'form'
+        field = x.addElement((None, 'field'))
+        field['var'] = 'stream-method'
+        field['type'] = 'list-single'
         option = field.addElement((None, 'option'))
         value = option.addElement((None, 'value'))
-        value.addContent(bytestream)
+        value.addContent(self.get_ns())
 
-    return iq, si
+        return iq, si
+
+    def create_si_reply(self, iq):
+        result = IQ(self.stream, 'result')
+        result['id'] = iq['id']
+        result['from'] = iq['to']
+        result['to'] = self.initiator
+        res_si = result.addElement((ns.SI, 'si'))
+        res_feature = res_si.addElement((ns.FEATURE_NEG, 'feature'))
+        res_x = res_feature.addElement((ns.X_DATA, 'x'))
+        res_x['type'] = 'submit'
+        res_field = res_x.addElement((None, 'field'))
+        res_field['var'] = 'stream-method'
+        res_value = res_field.addElement((None, 'value'))
+        res_value.addContent(self.get_ns())
+
+        return result, res_si
+
+    def check_si_reply(self, iq):
+        si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
+                iq)[0]
+        value = xpath.queryForNodes('/si/feature/x/field/value', si)
+        assert len(value) == 1
+        proto = value[0]
+        assert str(proto) == self.get_ns()
 
 def parse_si_offer(iq):
     si_nodes = xpath.queryForNodes('/iq/si', iq)
@@ -79,31 +104,6 @@ def parse_si_offer(iq):
         bytestreams.append(str(value))
 
     return si['profile'], si['id'], bytestreams
-
-def create_si_reply(stream, iq, to, bytestream):
-    result = IQ(stream, 'result')
-    result['id'] = iq['id']
-    result['from'] = iq['to']
-    result['to'] = to
-    res_si = result.addElement((ns.SI, 'si'))
-    res_feature = res_si.addElement((ns.FEATURE_NEG, 'feature'))
-    res_x = res_feature.addElement((ns.X_DATA, 'x'))
-    res_x['type'] = 'submit'
-    res_field = res_x.addElement((None, 'field'))
-    res_field['var'] = 'stream-method'
-    res_value = res_field.addElement((None, 'value'))
-    res_value.addContent(bytestream)
-
-    return result, res_si
-
-def parse_si_reply(iq):
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-            iq)[0]
-    value = xpath.queryForNodes('/si/feature/x/field/value', si)
-    assert len(value) == 1
-    proto = value[0]
-    return str(proto)
-
 
 ##### XEP-0065: SOCKS5 Bytestreams #####
 
@@ -326,6 +326,9 @@ class BytestreamIBB(Bytestream):
     def open_bytestream(self, expected=None):
         # open IBB bytestream
         send_ibb_open(self.stream, self.initiator, self.target, self.stream_id, 4096)
+
+        if expected is not None:
+            return self.q.expect_many(expected)[0]
 
     def send_data(self, data):
         if self.initiated:

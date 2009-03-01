@@ -1,7 +1,6 @@
 """Test stream initiation fallback."""
 
 import base64
-import os
 
 import dbus
 from dbus.connection import Connection
@@ -18,7 +17,7 @@ from twisted.words.protocols.jabber.client import IQ
 import tubetestutil as t
 
 def test(q, bus, conn, stream):
-    t.set_up_echo('')
+    echo_path = t.set_up_echo('')
 
     conn.Connect()
 
@@ -87,9 +86,8 @@ def test(q, bus, conn, stream):
     tube_iface = dbus.Interface(tube_chan,
         tp_name_prefix + '.Channel.Type.StreamTube.DRAFT')
 
-    path = os.getcwd() + '/stream'
     call_async(q, tube_iface, 'OfferStreamTube',
-        0, dbus.ByteArray(path), 0, "", {'foo': 'bar'})
+        0, dbus.ByteArray(echo_path), 0, "", {'foo': 'bar'})
 
     event = q.expect('stream-message')
     message = event.stanza

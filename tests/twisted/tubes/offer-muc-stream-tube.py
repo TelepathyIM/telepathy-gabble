@@ -7,7 +7,6 @@ import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolFactory, unwrap
 from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
-from bytestream import create_si_offer, parse_si_reply
 import constants as cs
 import ns
 import tubetestutil as t
@@ -218,8 +217,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     bytestream = bytestream_cls(stream, q, 'alpha', 'chat@conf.localhost/bob',
         'test@localhost/Resource', True)
 
-    iq, si = create_si_offer(stream, bytestream.initiator, bytestream.target,
-        bytestream.stream_id, ns.TUBES, [bytestream.get_ns()])
+    iq, si = bytestream.create_si_offer(ns.TUBES)
 
     stream_node = si.addElement((ns.TUBES, 'muc-stream'))
     stream_node['tube'] = str(stream_tube_id)
@@ -235,8 +233,7 @@ def test(q, bus, conn, stream, bytestream_cls):
             args=[stream_tube_id, bob_handle]))
 
     # handle iq_event
-    proto = parse_si_reply(iq_event.stanza)
-    assert proto == bytestream.get_ns()
+    bytestream.check_si_reply(iq_event.stanza)
     tube = xpath.queryForNodes('/iq//si/tube[@xmlns="%s"]' % ns.TUBES, iq_event.stanza)
     assert len(tube) == 1
 

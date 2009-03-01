@@ -7,7 +7,7 @@ from gabbletest import make_result_iq, acknowledge_iq
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import parse_si_offer, create_si_reply
+from bytestream import parse_si_offer
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -224,8 +224,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert muc_stream_node is not None
     assert muc_stream_node['tube'] == str(stream_tube_id)
 
-    result, si = create_si_reply(stream, event.stanza, 'chat@conf.localhost/test',
-        bytestream.get_ns())
+    result, si = bytestream.create_si_reply(event.stanza)
     si.addElement((ns.TUBES, 'tube'))
     stream.send(result)
 

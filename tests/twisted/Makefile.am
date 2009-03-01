@@ -43,22 +43,22 @@ TWISTED_TESTS = \
 	text/test-text-no-body.py \
 	text/test-text.py \
 	tubes/accept-muc-dbus-tube.py \
-	tubes/muc-presence.py \
+	tubes/accept-muc-stream-tube.py \
+	tubes/accept-private-dbus-tube.py \
+	tubes/accept-private-stream-tube.py \
 	tubes/close-muc-with-closed-tube.py \
 	tubes/crash-on-list-channels.py \
 	tubes/create-invalid-tube-channels.py \
-	tubes/test-get-available-tubes.py \
-	tubes/accept-muc-stream-tube.py \
-	tubes/accept-private-stream-tube.py \
-	tubes/offer-accept-private-dbus-stream-tube-ibb.py \
-	tubes/offer-accept-private-dbus-stream-tube-socks5.py \
+	tubes/ensure-si-tube.py \
+	tubes/muc-presence.py \
 	tubes/offer-accept-private-stream-tube-si-fallback.py \
 	tubes/offer-muc-dbus-tube.py \
 	tubes/offer-muc-stream-tube.py \
 	tubes/offer-no-caps.py \
-	tubes/offer-private-dbus-tube-ibb.py \
+	tubes/offer-private-dbus-tube.py \
+	tubes/offer-private-stream-tube.py \
 	tubes/request-invalid-dbus-tube.py \
-	tubes/ensure-si-tube.py \
+	tubes/test-get-available-tubes.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \

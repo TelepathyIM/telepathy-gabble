@@ -10,9 +10,9 @@
 #include "gibber-xmpp-stanza.h"
 #endif
 
-#ifdef ENABLE_DEBUG
-
 G_BEGIN_DECLS
+
+#ifdef ENABLE_DEBUG
 
 typedef enum
 {

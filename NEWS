@@ -24,7 +24,7 @@ Fixes:
 * fd.o #20102: fix byte ordering of port in GibberListener
 
 * Drain some swamps in Jingle call handling for better maintainability,
-  and improve Jingle regression test coverage significantly
+  and improve Jingle regression test coverage
 
 telepathy-gabble 0.7.21 (2009-02-19)
 ====================================

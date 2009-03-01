@@ -11,7 +11,7 @@ def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    m = domish.Element(('', 'iq'))
+    m = domish.Element((None, 'iq'))
     m['from'] = 'foo@bar.com'
     m['id'] = '1'
     m.addElement(('http://jabber.org/protocol/disco#info', 'query'))

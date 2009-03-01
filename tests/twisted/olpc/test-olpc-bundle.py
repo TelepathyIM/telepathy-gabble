@@ -22,7 +22,7 @@ def test(q, bus, conn, stream):
     acknowledge_iq(stream, iq_event.stanza)
 
     # send diso request
-    m = domish.Element(('', 'iq'))
+    m = domish.Element((None, 'iq'))
     m['from'] = 'alice@jabber.laptop.org'
     m['id'] = '1'
     query = m.addElement('query')
@@ -52,7 +52,7 @@ def test(q, bus, conn, stream):
     assert len(c_nodes) == 1
 
     # send diso request
-    m = domish.Element(('', 'iq'))
+    m = domish.Element((None, 'iq'))
     m['from'] = 'alice@jabber.laptop.org'
     m['id'] = '2'
     query = m.addElement('query')

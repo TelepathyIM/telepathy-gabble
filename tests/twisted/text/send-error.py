@@ -45,12 +45,12 @@ def test_temporary_error(q, bus, conn, stream):
     # </message>
     message_body = 'what is up, my good sir?'
 
-    m = domish.Element(('', 'message'))
+    m = domish.Element((None, 'message'))
     m['from'] = 'foo@bar.com'
     m['type'] = 'error'
     m.addElement('body', content=message_body)
 
-    e = domish.Element(('', 'error'))
+    e = domish.Element((None, 'error'))
     e['type'] = 'wait'
     e.addElement((ns.STANZA, 'resource-constraint'))
 
@@ -132,12 +132,12 @@ def test_permanent_error(q, bus, conn, stream):
     # </message>
     message_body = 'hello? is there anyone there?'
 
-    m = domish.Element(('', 'message'))
+    m = domish.Element((None, 'message'))
     m['from'] = 'wee@ninja.jp'
     m['type'] = 'error'
     m.addElement('body', content=message_body)
 
-    e = domish.Element(('', 'error'))
+    e = domish.Element((None, 'error'))
     e['type'] = 'cancel'
     e.addElement((ns.STANZA, 'item-not-found'))
 

@@ -15,7 +15,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     # <message type="chat"><body>hello</body</message>
-    m = domish.Element(('', 'message'))
+    m = domish.Element((None, 'message'))
     m['from'] = 'foo@bar.com/Pidgin'
     m['type'] = 'chat'
     m.addElement('body', content='hello')

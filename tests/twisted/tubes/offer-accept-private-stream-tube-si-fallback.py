@@ -282,11 +282,11 @@ def test(q, bus, conn, stream):
     res_si = result.addElement((ns.SI, 'si'))
     # reply using multi-bytestreams extension
     res_multi = res_si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
-    res_value = res_multi.addElement(('', 'value'))
+    res_value = res_multi.addElement('value')
     res_value.addContent('invalid-stream-method')
-    res_value = res_multi.addElement(('', 'value'))
+    res_value = res_multi.addElement('value')
     res_value.addContent(ns.BYTESTREAMS)
-    res_value = res_multi.addElement(('', 'value'))
+    res_value = res_multi.addElement('value')
     res_value.addContent(ns.IBB)
 
     stream.send(result)
@@ -306,7 +306,7 @@ def test(q, bus, conn, stream):
     iq['to'] = 'test@localhost/Resource'
     iq['from'] = 'bob@localhost/Bob'
     iq['id'] = response_id
-    error = iq.addElement(('', 'error'))
+    error = iq.addElement('error')
     error['type'] = 'auth'
     error['code'] = '403'
     stream.send(iq)

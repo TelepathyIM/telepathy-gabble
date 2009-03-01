@@ -151,6 +151,7 @@ EXTRA_DIST = \
 	servicetest.py \
 	jingle/jingletest.py \
 	jingle/jingletest2.py \
+	mucutil.py \
 	ns.py \
 	olpc/util.py \
 	tubes/muctubeutil.py \

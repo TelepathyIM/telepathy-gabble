@@ -6,14 +6,15 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, tp_name_prefix
-from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence, elem
+from servicetest import call_async, EventPattern
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, elem
 from constants import *
 import ns
 import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 
+from mucutil import join_muc
 from muctubeutil import get_muc_tubes_channel
 
 sample_parameters = dbus.Dictionary({
@@ -182,23 +183,14 @@ def test(q, bus, conn, stream):
     fire_signal_on_tube(q, tube, 'chat@conf.localhost', dbus_stream_id, my_bus_name)
 
     # offer a D-Bus tube to another room using new API
-    requestotron = dbus.Interface(conn, CONN_IFACE_REQUESTS)
-
-    call_async(q, requestotron, 'CreateChannel',
-            {CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
-         TARGET_HANDLE_TYPE: HT_ROOM,
-         TARGET_ID: 'chat2@conf.localhost',
-         DBUS_TUBE_SERVICE_NAME: 'com.example.TestCase',
-        })
-
-    # Send presence for other member of room.
-    stream.send(make_muc_presence('owner', 'moderator', 'chat2@conf.localhost', 'bob'))
-
-    # Send presence for own membership of room.
-    stream.send(make_muc_presence('none', 'participant', 'chat2@conf.localhost', 'test'))
-
-    event = q.expect('dbus-return', method='CreateChannel')
-    new_tube_path, new_tube_props = event.value
+    muc = 'chat2@conf.localhost'
+    request = {
+        CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
+        TARGET_HANDLE_TYPE: HT_ROOM,
+        TARGET_ID: 'chat2@conf.localhost',
+        DBUS_TUBE_SERVICE_NAME: 'com.example.TestCase',
+    }
+    join_muc(q, bus, conn, stream, muc, request=request)
 
     # first text and tubes channels are announced
     event = q.expect('dbus-signal', signal='NewChannels')

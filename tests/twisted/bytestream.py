@@ -456,15 +456,22 @@ class BytestreamSIFallback(Bytestream):
             (self.initiator, 'invalid.invalid', 12345),
             ])
 
-        e = self.q.expect('stream-iq', iq_type='error', to=self.initiator)
-        error = xpath.queryForNodes('/iq/error', e.stanza)[0]
+        if expected is not None:
+            event, iq_event = self.q.expect_many(expected,
+                EventPattern('stream-iq', iq_type='error', to=self.initiator))
+        else:
+            event = None
+            iq_event = self.q.expect('stream-iq', iq_type='error', to=self.initiator)
+
+        error = xpath.queryForNodes('/iq/error', iq_event.stanza)[0]
         assert error['code'] == '404'
         assert error['type'] == 'cancel'
 
         # socks5 failed, let's try IBB
         self.active = self.ibb
 
-        return self.ibb.open_bytestream(expected)
+        self.ibb.open_bytestream()
+        return event
 
     def send_data(self, data):
         self.active.send_data(data)

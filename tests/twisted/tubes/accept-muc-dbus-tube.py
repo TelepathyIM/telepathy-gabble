@@ -9,13 +9,6 @@ import ns
 
 from mucutil import join_muc_and_check
 
-sample_parameters = dbus.Dictionary({
-    's': 'hello',
-    'ay': dbus.ByteArray('hello'),
-    'u': dbus.UInt32(123),
-    'i': dbus.Int32(-123),
-    }, signature='sv')
-
 def test(q, bus, conn, stream):
     conn.Connect()
 

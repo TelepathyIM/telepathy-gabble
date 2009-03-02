@@ -10,20 +10,6 @@ import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 
-sample_parameters = dbus.Dictionary({
-    's': 'hello',
-    'ay': dbus.ByteArray('hello'),
-    'u': dbus.UInt32(123),
-    'i': dbus.Int32(-123),
-    }, signature='sv')
-
-new_sample_parameters = dbus.Dictionary({
-    's': 'newhello',
-    'ay': dbus.ByteArray('newhello'),
-    'u': dbus.UInt32(123),
-    'i': dbus.Int32(-123),
-    }, signature='sv')
-
 def contact_offer_dbus_tube(bytestream, tube_id):
     iq, si = bytestream.create_si_offer(ns.TUBES)
 

@@ -356,6 +356,65 @@ class BytestreamS5BCannotConnect(BytestreamS5B):
         # Pretend we can't connect to it
         self.send_not_found(id)
 
+class BytestreamS5BWrongHash(BytestreamS5B):
+    """Connection is closed because target sends the wrong hash"""
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        BytestreamS5B.__init__(self, stream, q, sid, initiator, target, initiated)
+
+        self.hosts = [(self.initiator, '127.0.0.1')]
+
+    def _send_connect_cmd(self):
+        # version 5, connect, reserved, domain type
+        connect = '\x05\x01\x00\x03'
+        # send wrong hash as domain
+        domain = 'this is wrong'
+        connect += chr(len(domain))
+        connect += domain
+        connect += '\x00\x00' # port
+        self.transport.write(connect)
+
+    def _socks5_connect(self, host, port):
+        reactor.connectTCP(host, port, S5BFactory(self.q.append))
+
+        event = self.q.expect('s5b-connected')
+        self.transport = event.transport
+
+        self._send_auth_cmd()
+        self._wait_auth_reply()
+        self._send_connect_cmd()
+
+        # Gabble disconnects the connection because we sent a wrong hash
+        self.q.expect('s5b-connection-lost')
+
+    def wait_bytestream_open(self):
+        id, mode, sid, hosts = self._expect_socks5_init()
+        jid, host, port = hosts[0]
+
+        self._socks5_connect(host, port)
+
+        # Connection failed
+        self.send_not_found(id)
+
+    def _socks5_expect_connection(self, expected):
+        if expected is not None:
+            event, _ = self.q.expect_many(expected,
+                EventPattern('s5b-connected'))
+        else:
+            event = None
+            self.q.expect('s5b-connected')
+
+        self._wait_auth_request()
+        self._send_auth_reply()
+        self._wait_connect_cmd()
+
+        # pretend the hash was wrong and close the transport
+        self.transport.loseConnection()
+
+        iq_event = self.q.expect('stream-iq', iq_type='error', to=self.initiator)
+        self.check_error_stanza(iq_event.stanza)
+
+        return event
+
 class S5BProtocol(Protocol):
     def connectionMade(self):
         self.factory.event_func(Event('s5b-connected',
@@ -576,6 +635,34 @@ class BytestreamSIFallbackS5CannotConnect(BytestreamSIFallback):
 
     def wait_bytestream_open(self):
         # Gabble tries SOCKS5 first
+        self.socks5.wait_bytestream_open()
+
+        # Gabble now tries IBB
+        self.ibb.wait_bytestream_open()
+
+class BytestreamSIFallbackS5WrongHash(BytestreamSIFallback):
+    """Try to use SOCKS5 and fallback to IBB because target send the wrong has
+    as domain in the CONNECT command."""
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        BytestreamSIFallback.__init__(self, stream, q, sid, initiator, target, initiated)
+
+        self.socks5 = BytestreamS5BWrongHash(stream, q, sid, initiator, target,
+            initiated)
+
+        self.used = self.ibb
+
+    def open_bytestream(self, expected=None):
+        # SOCKS5 won't work because we'll pretend the hash was wrong and
+        # close the connection
+        event = self.socks5.open_bytestream(expected)
+
+        # socks5 failed, let's try IBB
+        self.ibb.open_bytestream()
+        return event
+
+    def wait_bytestream_open(self):
+        # BytestreamS5BWrongHash will send a wrong hash so Gabble will
+        # disconnect the connection
         self.socks5.wait_bytestream_open()
 
         # Gabble now tries IBB

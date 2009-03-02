@@ -276,6 +276,11 @@ class BytestreamS5B(Bytestream):
     def wait_bytestream_closed(self):
         self.q.expect('s5b-connection-lost')
 
+    def check_error_stanza(self, iq):
+        error = xpath.queryForNodes('/iq/error', iq)
+        assert error['code'] == '404'
+        assert error['type'] == 'cancel'
+
 class BytestreamS5BPidgin(BytestreamS5B):
     """Simulate buggy S5B implementation (as Pidgin's one)"""
     def _send_connect_reply(self):
@@ -466,9 +471,7 @@ class BytestreamSIFallback(Bytestream):
             event = None
             iq_event = self.q.expect('stream-iq', iq_type='error', to=self.initiator)
 
-        error = xpath.queryForNodes('/iq/error', iq_event.stanza)[0]
-        assert error['code'] == '404'
-        assert error['type'] == 'cancel'
+        self.socks5.check_error_stanza(iq_event.stanza)
 
         # socks5 failed, let's try IBB
         self.ibb.open_bytestream()

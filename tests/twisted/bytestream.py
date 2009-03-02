@@ -269,6 +269,7 @@ class BytestreamS5B(Bytestream):
         self._wait_auth_reply()
         self._send_connect_cmd()
         self._wait_connect_reply()
+        return True
 
     def _send_socks5_reply(self, id, stream_used):
         result = IQ(self.stream, 'result')
@@ -290,9 +291,11 @@ class BytestreamS5B(Bytestream):
         assert sid == self.stream_id
         jid, host, port = hosts[0]
 
-        self._socks5_connect(host, port)
-
-        self._send_socks5_reply(id, jid)
+        if self._socks5_connect(host, port):
+            self._send_socks5_reply(id, jid)
+        else:
+            # Connection failed
+            self.send_not_found(id)
 
     def get_data(self):
        e = self.q.expect('s5b-data-received', transport=self.transport)
@@ -350,11 +353,9 @@ class BytestreamS5BCannotConnect(BytestreamS5B):
 
         return event
 
-    def wait_bytestream_open(self):
-        id, mode, sid, hosts = self._expect_socks5_init()
-
+    def _socks5_connect(self, host, port):
         # Pretend we can't connect to it
-        self.send_not_found(id)
+        return False
 
 class BytestreamS5BWrongHash(BytestreamS5B):
     """Connection is closed because target sends the wrong hash"""
@@ -385,15 +386,7 @@ class BytestreamS5BWrongHash(BytestreamS5B):
 
         # Gabble disconnects the connection because we sent a wrong hash
         self.q.expect('s5b-connection-lost')
-
-    def wait_bytestream_open(self):
-        id, mode, sid, hosts = self._expect_socks5_init()
-        jid, host, port = hosts[0]
-
-        self._socks5_connect(host, port)
-
-        # Connection failed
-        self.send_not_found(id)
+        return False
 
     def _socks5_expect_connection(self, expected):
         if expected is not None:

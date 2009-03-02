@@ -288,7 +288,7 @@ class BytestreamS5B(Bytestream):
         iq['id'] = id
         error = iq.addElement(('', 'error'))
         error['type'] = 'cancel'
-        error['code'] = '403'
+        error['code'] = '404'
         self.stream.send(iq)
 
 class BytestreamS5BPidgin(BytestreamS5B):

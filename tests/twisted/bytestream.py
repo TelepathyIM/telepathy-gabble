@@ -30,7 +30,8 @@ def create_from_si_offer(stream, q, bytestream_cls, iq, initiator):
 
     bytestream = bytestream_cls(stream, q, si['id'], initiator,
         iq['to'], False)
-    # TODO: check if the bytestream is proposed in the SI offer
+
+    bytestream.check_si_offer(iq, bytestreams)
 
     return bytestream, si['profile']
 
@@ -61,6 +62,9 @@ class Bytestream(object):
 
     def wait_bytestream_closed(self):
         raise NotImplemented
+
+    def check_si_offer(self, iq, bytestreams):
+        assert self.get_ns() in bytestreams
 
 ##### XEP-0095: Stream Initiation #####
 
@@ -516,3 +520,13 @@ class BytestreamSIFallback(Bytestream):
 
     def wait_bytestream_closed(self):
         self.active.wait_bytestream_closed()
+
+    def check_si_offer(self, iq, bytestreams):
+        assert self.socks5.get_ns() in bytestreams
+        assert self.ibb.get_ns() in bytestreams
+
+        # check if si-multiple is supported
+        si_multiple = xpath.queryForNodes(
+            '/iq/si[@xmlns="%s"]/si-multiple[@xmlns="%s"]'
+            % (ns.SI, ns.SI_MULTIPLE), iq)
+        assert si_multiple is not None

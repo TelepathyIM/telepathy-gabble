@@ -11,6 +11,15 @@ from servicetest import Event, EventPattern
 from gabbletest import acknowledge_iq, sync_stream
 import ns
 
+def create_from_si_offer(stream, q, bytestream_cls, iq, initiator):
+    profile, sid, bytestream = parse_si_offer(iq)
+
+    bytestream = bytestream_cls(stream, q, sid, initiator,
+        iq['to'], False)
+    # TODO: check if the bytestream is proposed in the SI offer
+
+    return bytestream, profile
+
 class Bytestream(object):
     def __init__(self, stream, q, sid, initiator, target, initiated):
         self.stream = stream

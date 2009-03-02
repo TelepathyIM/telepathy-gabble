@@ -344,6 +344,12 @@ class BytestreamS5BCannotConnect(BytestreamS5B):
 
         return event
 
+    def wait_bytestream_open(self):
+        id, mode, sid, hosts = self._expect_socks5_init()
+
+        # Pretend we can't connect to it
+        self.send_not_found(id)
+
 class S5BProtocol(Protocol):
     def connectionMade(self):
         self.factory.event_func(Event('s5b-connected',
@@ -564,10 +570,7 @@ class BytestreamSIFallbackS5CannotConnect(BytestreamSIFallback):
 
     def wait_bytestream_open(self):
         # Gabble tries SOCKS5 first
-        id, mode, sid, hosts = self.socks5._expect_socks5_init()
-
-        # Pretend we can't connect to it
-        self.socks5.send_not_found(id)
+        self.socks5.wait_bytestream_open()
 
         # Gabble now tries IBB
         self.ibb.wait_bytestream_open()

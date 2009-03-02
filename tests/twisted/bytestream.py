@@ -467,3 +467,41 @@ class BytestreamSIFallback(Bytestream):
 
     def get_data(self):
         return self.active.get_data()
+
+    def create_si_reply(self, iq):
+        result = IQ(self.stream, 'result')
+        result['id'] = iq['id']
+        result['from'] = iq['to']
+        result['to'] = self.initiator
+        res_si = result.addElement((ns.SI, 'si'))
+        si_multiple = res_si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
+        # add SOCKS5
+        res_value = si_multiple.addElement((None, 'value'))
+        res_value.addContent(self.socks5.get_ns())
+        # add IBB
+        res_value = si_multiple.addElement((None, 'value'))
+        res_value.addContent(self.ibb.get_ns())
+
+        return result, res_si
+
+    def wait_bytestream_open(self):
+        # Gabble tries SOCKS5 first
+        self.active = self.socks5
+        id, mode, sid, hosts = self.socks5._expect_socks5_init()
+
+        # Pretend we can't connect to it
+        iq = IQ(self.stream, 'error')
+        iq['to'] = self.initiator
+        iq['from'] = self.target
+        iq['id'] = id
+        error = iq.addElement(('', 'error'))
+        error['type'] = 'auth'
+        error['code'] = '403'
+        self.stream.send(iq)
+
+        # Gabble now tries IBB
+        self.active = self.ibb
+        self.ibb.wait_bytestream_open()
+
+    def wait_bytestream_closed(self):
+        self.active.wait_bytestream_closed()

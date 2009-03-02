@@ -126,17 +126,30 @@ class Bytestream(object):
 ##### XEP-0065: SOCKS5 Bytestreams #####
 
 class BytestreamS5B(Bytestream):
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
+
+        # hosts that will be announced when sending S5B open IQ
+        self.hosts = [
+            # Not working streamhost
+            ('invalid.invalid', 'invalid.invalid'),
+            # Working streamhost
+            (self.initiator, '127.0.0.1'),
+            # This works too but should not be tried as Gabble should just
+            # connect to the previous one
+            ('Not me', '127.0.0.1')]
+
     def get_ns(self):
         return ns.BYTESTREAMS
 
-    def _send_socks5_init(self, hosts):
+    def _send_socks5_init(self, port):
         iq = IQ(self.stream, 'set')
         iq['to'] = self.target
         iq['from'] = self.initiator
         query = iq.addElement((ns.BYTESTREAMS, 'query'))
         query['sid'] = self.stream_id
         query['mode'] = 'tcp'
-        for jid, host, port in hosts:
+        for jid, host in self.hosts:
             streamhost = query.addElement('streamhost')
             streamhost['jid'] = jid
             streamhost['host'] = host
@@ -201,16 +214,7 @@ class BytestreamS5B(Bytestream):
     def open_bytestream(self, expected=None):
         port = self._listen_socks5()
 
-        self._send_socks5_init([
-            # Not working streamhost
-            ('invalid.invalid', 'invalid.invalid', port),
-            # Working streamhost
-            (self.initiator, '127.0.0.1', port),
-            # This works too but should not be tried as Gabble should just
-            # connect to the previous one
-            ('Not me', '127.0.0.1', port),
-            ])
-
+        self._send_socks5_init(port)
         return self._socks5_expect_connection(expected)
 
     def send_data(self, data):
@@ -327,11 +331,13 @@ class BytestreamS5BPidgin(BytestreamS5B):
 class BytestreamS5BCannotConnect(BytestreamS5B):
     """SOCKS5 bytestream not working because target can't connect
     to initiator."""
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        BytestreamS5B.__init__(self, stream, q, sid, initiator, target, initiated)
+
+        self.hosts = [('invalid.invalid', 'invalid.invalid')]
+
     def open_bytestream(self, expected=None):
-        self._send_socks5_init([
-            # Not working streamhost
-            ('invalid.invalid', 'invalid.invalid', 12345),
-            ])
+        self._send_socks5_init(12345)
 
         if expected is not None:
             event, iq_event = self.q.expect_many(expected,

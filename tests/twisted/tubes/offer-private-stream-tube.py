@@ -3,7 +3,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern, sync_dbus
-from gabbletest import acknowledge_iq, sync_stream
+from gabbletest import acknowledge_iq, sync_stream, exec_test
 import constants as cs
 import ns
 import tubetestutil as t

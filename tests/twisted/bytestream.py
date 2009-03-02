@@ -8,8 +8,32 @@ from twisted.words.xish import xpath, domish
 from twisted.internet.error import CannotListenError
 
 from servicetest import Event, EventPattern
-from gabbletest import acknowledge_iq, sync_stream
+from gabbletest import acknowledge_iq, sync_stream, make_result_iq
 import ns
+
+def create_from_si_offer(stream, q, bytestream_cls, iq, initiator):
+    si_nodes = xpath.queryForNodes('/iq/si', iq)
+    assert si_nodes is not None
+    assert len(si_nodes) == 1
+    si = si_nodes[0]
+
+    feature = xpath.queryForNodes('/si/feature', si)[0]
+    x = xpath.queryForNodes('/feature/x', feature)[0]
+    assert x['type'] == 'form'
+    field = xpath.queryForNodes('/x/field', x)[0]
+    assert field['var'] == 'stream-method'
+    assert field['type'] == 'list-single'
+
+    bytestreams = []
+    for value in xpath.queryForNodes('/field/option/value', field):
+        bytestreams.append(str(value))
+
+    bytestream = bytestream_cls(stream, q, si['id'], initiator,
+        iq['to'], False)
+
+    bytestream.check_si_offer(iq, bytestreams)
+
+    return bytestream, si['profile']
 
 class Bytestream(object):
     def __init__(self, stream, q, sid, initiator, target, initiated):
@@ -39,9 +63,12 @@ class Bytestream(object):
     def wait_bytestream_closed(self):
         raise NotImplemented
 
+    def check_si_offer(self, iq, bytestreams):
+        assert self.get_ns() in bytestreams
+
 ##### XEP-0095: Stream Initiation #####
 
-    def create_si_offer(self, profile):
+    def _create_si_offer(self, profile):
         assert self.initiated
 
         iq = IQ(self.stream, 'set')
@@ -56,6 +83,11 @@ class Bytestream(object):
         field = x.addElement((None, 'field'))
         field['var'] = 'stream-method'
         field['type'] = 'list-single'
+
+        return iq, si, field
+
+    def create_si_offer(self, profile):
+        iq, si, field = self._create_si_offer(profile)
         option = field.addElement((None, 'option'))
         value = option.addElement((None, 'value'))
         value.addContent(self.get_ns())
@@ -85,25 +117,6 @@ class Bytestream(object):
         assert len(value) == 1
         proto = value[0]
         assert str(proto) == self.get_ns()
-
-def parse_si_offer(iq):
-    si_nodes = xpath.queryForNodes('/iq/si', iq)
-    assert si_nodes is not None
-    assert len(si_nodes) == 1
-    si = si_nodes[0]
-
-    feature = xpath.queryForNodes('/si/feature', si)[0]
-    x = xpath.queryForNodes('/feature/x', feature)[0]
-    assert x['type'] == 'form'
-    field = xpath.queryForNodes('/x/field', x)[0]
-    assert field['var'] == 'stream-method'
-    assert field['type'] == 'list-single'
-
-    bytestreams = []
-    for value in xpath.queryForNodes('/field/option/value', field):
-        bytestreams.append(str(value))
-
-    return si['profile'], si['id'], bytestreams
 
 ##### XEP-0065: SOCKS5 Bytestreams #####
 
@@ -263,6 +276,21 @@ class BytestreamS5B(Bytestream):
     def wait_bytestream_closed(self):
         self.q.expect('s5b-connection-lost')
 
+    def check_error_stanza(self, iq):
+        error = xpath.queryForNodes('/iq/error', iq)[0]
+        assert error['code'] == '404'
+        assert error['type'] == 'cancel'
+
+    def send_not_found(self, id):
+        iq = IQ(self.stream, 'error')
+        iq['to'] = self.initiator
+        iq['from'] = self.target
+        iq['id'] = id
+        error = iq.addElement(('', 'error'))
+        error['type'] = 'cancel'
+        error['code'] = '404'
+        self.stream.send(iq)
+
 class BytestreamS5BPidgin(BytestreamS5B):
     """Simulate buggy S5B implementation (as Pidgin's one)"""
     def _send_connect_reply(self):
@@ -399,3 +427,105 @@ def parse_ibb_msg_data(message):
     binary = base64.b64decode(str(ibb_data))
 
     return ibb_data['sid'], binary
+
+##### SI Fallback (Gabble specific extension) #####
+
+class BytestreamSIFallback(Bytestream):
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
+
+        self.socks5 = BytestreamS5B(stream, q, sid, initiator, target,
+            initiated)
+
+        self.ibb = BytestreamIBB(stream, q, sid, initiator, target,
+            initiated)
+
+        self.used = self.ibb
+
+    def create_si_offer(self, profile):
+        iq, si, field = self._create_si_offer(profile)
+
+        # add SOCKS5
+        option = field.addElement((None, 'option'))
+        value = option.addElement((None, 'value'))
+        value.addContent(self.socks5.get_ns())
+        # add IBB
+        option = field.addElement((None, 'option'))
+        value = option.addElement((None, 'value'))
+        value.addContent(self.ibb.get_ns())
+
+        si_multiple = si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
+
+        return iq, si
+
+    def check_si_reply(self, iq):
+        value = xpath.queryForNodes(
+            '/iq/si[@xmlns="%s"]/si-multiple[@xmlns="%s"]/value' %
+            (ns.SI, ns.SI_MULTIPLE), iq)
+        assert len(value) == 2
+        assert str(value[0]) == self.socks5.get_ns()
+        assert str(value[1]) == self.ibb.get_ns()
+
+    def open_bytestream(self, expected=None):
+        # first propose to peer to connect using SOCKS5
+        # We set an invalid IP so that won't work
+        self.socks5._send_socks5_init([
+            # Not working streamhost
+            (self.initiator, 'invalid.invalid', 12345),
+            ])
+
+        if expected is not None:
+            event, iq_event = self.q.expect_many(expected,
+                EventPattern('stream-iq', iq_type='error', to=self.initiator))
+        else:
+            event = None
+            iq_event = self.q.expect('stream-iq', iq_type='error', to=self.initiator)
+
+        self.socks5.check_error_stanza(iq_event.stanza)
+
+        # socks5 failed, let's try IBB
+        self.ibb.open_bytestream()
+        return event
+
+    def send_data(self, data):
+        self.used.send_data(data)
+
+    def get_data(self):
+        return self.used.get_data()
+
+    def create_si_reply(self, iq):
+        result = make_result_iq(self.stream, iq)
+        result['from'] = iq['to']
+        res_si = result.firstChildElement()
+        si_multiple = res_si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
+        # add SOCKS5
+        res_value = si_multiple.addElement((None, 'value'))
+        res_value.addContent(self.socks5.get_ns())
+        # add IBB
+        res_value = si_multiple.addElement((None, 'value'))
+        res_value.addContent(self.ibb.get_ns())
+
+        return result, res_si
+
+    def wait_bytestream_open(self):
+        # Gabble tries SOCKS5 first
+        id, mode, sid, hosts = self.socks5._expect_socks5_init()
+
+        # Pretend we can't connect to it
+        self.socks5.send_not_found(id)
+
+        # Gabble now tries IBB
+        self.ibb.wait_bytestream_open()
+
+    def wait_bytestream_closed(self):
+        self.used.wait_bytestream_closed()
+
+    def check_si_offer(self, iq, bytestreams):
+        assert self.socks5.get_ns() in bytestreams
+        assert self.ibb.get_ns() in bytestreams
+
+        # check if si-multiple is supported
+        si_multiple = xpath.queryForNodes(
+            '/iq/si[@xmlns="%s"]/si-multiple[@xmlns="%s"]'
+            % (ns.SI, ns.SI_MULTIPLE), iq)
+        assert si_multiple is not None

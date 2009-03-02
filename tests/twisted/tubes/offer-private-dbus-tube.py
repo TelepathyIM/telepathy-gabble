@@ -11,7 +11,7 @@ import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 import ns
-from bytestream import parse_si_offer
+from bytestream import create_from_si_offer
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -48,10 +48,10 @@ def make_caps_disco_reply(stream, req, features):
 def alice_accepts_tube(q, stream, iq_event, dbus_tube_id, bytestream_cls):
     iq = iq_event.stanza
 
-    profile, dbus_stream_id, bytestreams = parse_si_offer(iq)
+    bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, iq,
+        'test@localhost/Resource')
 
     assert profile == ns.TUBES
-    assert bytestreams == [ns.BYTESTREAMS, ns.IBB]
 
     tube_nodes = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]'
         % ns.TUBES, iq)
@@ -74,9 +74,6 @@ def alice_accepts_tube(q, stream, iq_event, dbus_tube_id, bytestream_cls):
                      }
 
     # Alice accepts the tube
-    bytestream = bytestream_cls(stream, q, dbus_stream_id, 'test@localhost/Resource',
-        'alice@localhost/Test', False)
-
     result, si = bytestream.create_si_reply(iq)
     si.addElement((ns.TUBES, 'tube'))
     stream.send(result)

@@ -10,14 +10,14 @@ Receives several tube offers:
 
 import dbus
 
-from servicetest import call_async, EventPattern, EventProtocolClientFactory
+from servicetest import call_async, EventPattern, EventProtocolClientFactory, sync_dbus
 from gabbletest import acknowledge_iq
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
 import ns
 import constants as cs
-from bytestream import parse_si_offer
+from bytestream import create_from_si_offer
 import tubetestutil as t
 
 bob_jid = 'bob@localhost/Bob'
@@ -82,18 +82,15 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls):
     protocol = event_socket.protocol
     protocol.sendData("hello initiator")
 
-    profile, sid, bytestreams = parse_si_offer(event_iq.stanza)
+    bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, event_iq.stanza,
+        'test@localhost/Resource')
+
     assert profile == ns.TUBES
-    assert ns.IBB in bytestreams
-    assert ns.BYTESTREAMS in bytestreams
 
     stream_node = xpath.queryForNodes('/iq/si/stream[@xmlns="%s"]' %
         ns.TUBES, event_iq.stanza)[0]
     assert stream_node is not None
     assert stream_node['tube'] == str(stream_tube_id)
-
-    bytestream = bytestream_cls(stream, q, sid, 'test@localhost/Resource',
-        event_iq.stanza['to'], False)
 
     result, si = bytestream.create_si_reply(event_iq.stanza)
     si.addElement((ns.TUBES, 'tube'))
@@ -150,6 +147,8 @@ def test(q, bus, conn, stream, bytestream_cls):
     feature = event.query.addElement('feature')
     feature['var'] = ns.TUBES
     stream.send(result)
+
+    sync_dbus(bus, q, conn)
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \

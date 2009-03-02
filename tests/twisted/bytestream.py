@@ -12,13 +12,27 @@ from gabbletest import acknowledge_iq, sync_stream
 import ns
 
 def create_from_si_offer(stream, q, bytestream_cls, iq, initiator):
-    profile, sid, bytestream = parse_si_offer(iq)
+    si_nodes = xpath.queryForNodes('/iq/si', iq)
+    assert si_nodes is not None
+    assert len(si_nodes) == 1
+    si = si_nodes[0]
 
-    bytestream = bytestream_cls(stream, q, sid, initiator,
+    feature = xpath.queryForNodes('/si/feature', si)[0]
+    x = xpath.queryForNodes('/feature/x', feature)[0]
+    assert x['type'] == 'form'
+    field = xpath.queryForNodes('/x/field', x)[0]
+    assert field['var'] == 'stream-method'
+    assert field['type'] == 'list-single'
+
+    bytestreams = []
+    for value in xpath.queryForNodes('/field/option/value', field):
+        bytestreams.append(str(value))
+
+    bytestream = bytestream_cls(stream, q, si['id'], initiator,
         iq['to'], False)
     # TODO: check if the bytestream is proposed in the SI offer
 
-    return bytestream, profile
+    return bytestream, si['profile']
 
 class Bytestream(object):
     def __init__(self, stream, q, sid, initiator, target, initiated):
@@ -99,25 +113,6 @@ class Bytestream(object):
         assert len(value) == 1
         proto = value[0]
         assert str(proto) == self.get_ns()
-
-def parse_si_offer(iq):
-    si_nodes = xpath.queryForNodes('/iq/si', iq)
-    assert si_nodes is not None
-    assert len(si_nodes) == 1
-    si = si_nodes[0]
-
-    feature = xpath.queryForNodes('/si/feature', si)[0]
-    x = xpath.queryForNodes('/feature/x', feature)[0]
-    assert x['type'] == 'form'
-    field = xpath.queryForNodes('/x/field', x)[0]
-    assert field['var'] == 'stream-method'
-    assert field['type'] == 'list-single'
-
-    bytestreams = []
-    for value in xpath.queryForNodes('/field/option/value', field):
-        bytestreams.append(str(value))
-
-    return si['profile'], si['id'], bytestreams
 
 ##### XEP-0065: SOCKS5 Bytestreams #####
 

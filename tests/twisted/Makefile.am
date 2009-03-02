@@ -51,7 +51,6 @@ TWISTED_TESTS = \
 	tubes/create-invalid-tube-channels.py \
 	tubes/ensure-si-tube.py \
 	tubes/muc-presence.py \
-	tubes/offer-accept-private-stream-tube-si-fallback.py \
 	tubes/offer-muc-dbus-tube.py \
 	tubes/offer-muc-stream-tube.py \
 	tubes/offer-no-caps.py \

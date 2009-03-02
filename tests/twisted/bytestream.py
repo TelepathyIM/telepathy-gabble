@@ -230,24 +230,23 @@ class BytestreamS5B(Bytestream):
             hosts.append((streamhost['jid'], streamhost['host'], int(streamhost['port'])))
         return iq['id'], mode, sid, hosts
 
-    def _socks5_connect(self, host, port):
-        reactor.connectTCP(host, port, S5BFactory(self.q.append))
+    def _send_auth_cmd(self):
+        #version 5, 1 auth method, no auth
+        self.transport.write('\x05\x01\x00')
 
-        event = self.q.expect('s5b-connected')
-        transport = event.transport
-        transport.write('\x05\x01\x00') #version 5, 1 auth method, no auth
-
+    def _wait_auth_reply(self):
         event = self.q.expect('s5b-data-received')
-        event.data == '\x05\x00' # version 5, no auth
+        assert event.data == '\x05\x00' # version 5, no auth
 
+    def _send_connect_cmd(self):
         # version 5, connect, reserved, domain type
         connect = '\x05\x01\x00\x03'
         connect += chr(40) # len (SHA-1)
         connect += self._compute_hash_domain()
         connect += '\x00\x00' # port
-        transport.write(connect)
+        self.transport.write(connect)
 
-        # wait for CONNECT reply
+    def _wait_connect_reply(self):
         event = self.q.expect('s5b-data-received')
         # version 5, succeed, reserved, domain type
         expected_reply = '\x05\x00\x00\x03'
@@ -256,7 +255,16 @@ class BytestreamS5B(Bytestream):
         expected_reply += '\x00\x00' # port
         assert event.data == expected_reply
 
-        return transport
+    def _socks5_connect(self, host, port):
+        reactor.connectTCP(host, port, S5BFactory(self.q.append))
+
+        event = self.q.expect('s5b-connected')
+        self.transport = event.transport
+
+        self._send_auth_cmd()
+        self._wait_auth_reply()
+        self._send_connect_cmd()
+        self._wait_connect_reply()
 
     def _send_socks5_reply(self, id, stream_used):
         result = IQ(self.stream, 'result')
@@ -280,7 +288,7 @@ class BytestreamS5B(Bytestream):
         assert sid == self.stream_id
         jid, host, port = hosts[0]
 
-        self.transport = self._socks5_connect(host, port)
+        self._socks5_connect(host, port)
 
         self._send_socks5_reply(id, jid)
 

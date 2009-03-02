@@ -8,7 +8,7 @@ from twisted.words.xish import xpath, domish
 from twisted.internet.error import CannotListenError
 
 from servicetest import Event, EventPattern
-from gabbletest import acknowledge_iq, sync_stream
+from gabbletest import acknowledge_iq, sync_stream, make_result_iq
 import ns
 
 def create_from_si_offer(stream, q, bytestream_cls, iq, initiator):
@@ -494,11 +494,9 @@ class BytestreamSIFallback(Bytestream):
         return self.used.get_data()
 
     def create_si_reply(self, iq):
-        result = IQ(self.stream, 'result')
-        result['id'] = iq['id']
+        result = make_result_iq(self.stream, iq)
         result['from'] = iq['to']
-        result['to'] = self.initiator
-        res_si = result.addElement((ns.SI, 'si'))
+        res_si = result.firstChildElement()
         si_multiple = res_si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
         # add SOCKS5
         res_value = si_multiple.addElement((None, 'value'))

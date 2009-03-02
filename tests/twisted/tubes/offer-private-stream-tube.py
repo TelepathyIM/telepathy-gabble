@@ -7,7 +7,6 @@ from gabbletest import acknowledge_iq, sync_stream, exec_test
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import BytestreamSIFallback
 
 from twisted.words.xish import domish, xpath
 
@@ -397,8 +396,4 @@ def test(q, bus, conn, stream, bytestream_cls):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    def test_si_fallback(q, bus, conn, stream):
-        test(q, bus, conn, stream, BytestreamSIFallback)
-
     t.exec_tube_test(test)
-    exec_test(test_si_fallback)

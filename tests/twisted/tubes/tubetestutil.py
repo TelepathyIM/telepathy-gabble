@@ -220,15 +220,5 @@ def set_up_echo(name):
     return full_path
 
 def exec_tube_test(test):
-    def test_ibb(q, bus, conn, stream):
-        test(q, bus, conn, stream, BytestreamIBB)
-
-    def test_socks5(q, bus, conn, stream):
-        test(q, bus, conn, stream, BytestreamS5B)
-
-    def test_si_fallback(q, bus, conn, stream):
-        test(q, bus, conn, stream, BytestreamSIFallbackS5CannotConnect)
-
-    exec_test(test_ibb)
-    exec_test(test_socks5)
-    exec_test(test_si_fallback)
+    for bytestream_cls in [BytestreamIBB, BytestreamS5B, BytestreamSIFallbackS5CannotConnect]:
+        exec_test(lambda q, bus, conn, stream: test(q, bus, conn, stream, bytestream_cls))

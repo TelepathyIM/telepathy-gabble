@@ -6,8 +6,7 @@ import time
 from servicetest import EventPattern
 from gabbletest import exec_test
 import ns
-from bytestream import parse_si_offer, create_si_reply, create_si_offer, parse_si_reply,\
-    BytestreamIBB, BytestreamS5B, BytestreamS5BPidgin
+from bytestream import create_from_si_offer, BytestreamIBB, BytestreamS5B, BytestreamS5BPidgin
 
 from twisted.words.xish import domish, xpath
 
@@ -168,8 +167,7 @@ class ReceiveFileTest(FileTransferTest):
         self.bytestream = self.bytestream_cls(self.stream, self.q, 'alpha',
             self.contact_name, 'test@localhost/Resource', True)
 
-        iq, si = create_si_offer(self.stream, self.contact_name, 'test@localhost/Resource',
-            self.bytestream.stream_id, ns.FILE_TRANSFER, [self.bytestream.get_ns()])
+        iq, si = self.bytestream.create_si_offer(ns.FILE_TRANSFER)
 
         file_node = si.addElement((ns.FILE_TRANSFER,'file'))
         file_node['name'] = self.file.name
@@ -230,8 +228,7 @@ class ReceiveFileTest(FileTransferTest):
         assert reason == FT_STATE_CHANGE_REASON_REQUESTED
 
         # Got SI reply
-        bytestream = parse_si_reply(iq_event.stanza)
-        assert bytestream == self.bytestream.get_ns()
+        self.bytestream.check_si_reply(iq_event.stanza)
 
         self.bytestream.open_bytestream()
 
@@ -360,10 +357,11 @@ class SendFileTest(FileTransferTest):
 
     def _check_file_transfer_offer_iq(self, iq_event):
         self.iq = iq_event.stanza
-        profile, sid, bytestreams = parse_si_offer(self.iq)
+        self.bytestream, profile = create_from_si_offer(self.stream, self.q,
+            self.bytestream_cls, iq_event.stanza, 'test@localhost/Resource')
+
         assert self.iq['to'] == self.contact_full_jid
         assert profile == ns.FILE_TRANSFER
-        assert bytestreams == [ns.BYTESTREAMS, ns.IBB]
 
         file_node = xpath.queryForNodes('/iq/si/file', self.iq)[0]
         assert file_node['name'] == self.file.name
@@ -378,17 +376,13 @@ class SendFileTest(FileTransferTest):
         self.desc = desc_node.children[0]
         assert self.desc == self.file.description
 
-        self.bytestream = self.bytestream_cls(self.stream, self.q, sid,
-            'test@localhost/Resource', self.iq['to'], False)
-
     def provide_file(self):
         self.address = self.ft_channel.ProvideFile(SOCKET_ADDRESS_TYPE_UNIX,
                 SOCKET_ACCESS_CONTROL_LOCALHOST, "")
 
     def client_accept_file(self):
         # accept SI offer
-        result, si = create_si_reply(self.stream, self.iq, 'test@localhost/Resource',
-            self.bytestream.get_ns())
+        result, si = self.bytestream.create_si_reply(self.iq)
         self.stream.send(result)
 
         self.bytestream.wait_bytestream_open()

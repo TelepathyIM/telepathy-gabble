@@ -280,9 +280,7 @@ class BytestreamS5B(Bytestream):
         id, mode, sid, hosts = self._expect_socks5_init()
 
         for jid, host, port in hosts:
-            pass
-            # FIXME: re-enabled once SOCKS5 is fixed
-            #assert jid == self.initiator, jid
+            assert jid == self.initiator, jid
 
         assert mode == 'tcp'
         assert sid == self.stream_id

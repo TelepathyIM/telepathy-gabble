@@ -26,6 +26,12 @@ Fixes:
 * Drain some swamps in Jingle call handling for better maintainability,
   and improve Jingle regression test coverage
 
+* Don't end calls a minute after an extra content is added, and correctly set
+  the creator attribute on contents. This has the side-effect of not causing
+  older Gabbles to assert.
+
+* Improve Tubes test coverage, and fix various races in the tests.
+
 telepathy-gabble 0.7.21 (2009-02-19)
 ====================================
 

@@ -8,7 +8,7 @@ from twisted.words.xish import xpath, domish
 from twisted.internet.error import CannotListenError
 
 from servicetest import Event, EventPattern
-from gabbletest import acknowledge_iq, sync_stream
+from gabbletest import acknowledge_iq, sync_stream, make_result_iq
 import ns
 
 def create_from_si_offer(stream, q, bytestream_cls, iq, initiator):
@@ -98,14 +98,13 @@ class Bytestream(object):
         return iq, si
 
     def create_si_reply(self, iq, to=None):
-        result = IQ(self.stream, 'result')
-        result['id'] = iq['id']
+        result = make_result_iq(self.stream, iq)
         result['from'] = iq['to']
         if to is None:
             result['to'] = self.initiator
         else:
             result['to'] = to
-        res_si = result.addElement((ns.SI, 'si'))
+        res_si = result.firstChildElement()
         res_feature = res_si.addElement((ns.FEATURE_NEG, 'feature'))
         res_x = res_feature.addElement((ns.X_DATA, 'x'))
         res_x['type'] = 'submit'
@@ -304,7 +303,7 @@ class BytestreamS5B(Bytestream):
         iq['id'] = id
         error = iq.addElement(('', 'error'))
         error['type'] = 'cancel'
-        error['code'] = '403'
+        error['code'] = '404'
         self.stream.send(iq)
 
 class BytestreamS5BPidgin(BytestreamS5B):
@@ -481,14 +480,13 @@ class BytestreamSIFallback(Bytestream):
         assert str(value[1]) == self.ibb.get_ns()
 
     def create_si_reply(self, iq, to=None):
-        result = IQ(self.stream, 'result')
-        result['id'] = iq['id']
+        result = make_result_iq(self.stream, iq)
         result['from'] = iq['to']
         if to is None:
             result['to'] = self.initiator
         else:
             result['to'] = to
-        res_si = result.addElement((ns.SI, 'si'))
+        res_si = result.firstChildElement()
         si_multiple = res_si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
         # add SOCKS5
         res_value = si_multiple.addElement((None, 'value'))

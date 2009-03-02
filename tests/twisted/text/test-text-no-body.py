@@ -15,14 +15,14 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     # message without body
-    m = domish.Element(('', 'message'))
+    m = domish.Element((None, 'message'))
     m['from'] = 'alice@foo.com'
     m['type'] = 'chat'
     m.addElement((ns.CHAT_STATES, 'composing'))
     stream.send(m)
 
     # message with body
-    m = domish.Element(('', 'message'))
+    m = domish.Element((None, 'message'))
     m['from'] = 'bob@foo.com'
     m['type'] = 'chat'
     m.addElement((ns.CHAT_STATES, 'active'))

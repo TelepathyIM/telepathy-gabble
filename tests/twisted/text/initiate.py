@@ -75,7 +75,7 @@ def test(q, bus, conn, stream):
     assert body.children[0] == u'hey'
 
     # <message type="chat"><body>hello</body</message>
-    m = domish.Element(('', 'message'))
+    m = domish.Element((None, 'message'))
     m['from'] = 'foo@bar.com/Pidgin'
     m['type'] = 'chat'
     m.addElement('body', content='hello')

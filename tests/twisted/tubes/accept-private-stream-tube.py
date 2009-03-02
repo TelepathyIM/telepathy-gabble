@@ -17,6 +17,7 @@ from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
 import ns
 from constants import *
+from bytestream import parse_si_offer
 
 bob_jid = 'bob@localhost/Bob'
 stream_tube_id = 49
@@ -76,24 +77,21 @@ def expect_tube_activity(q, bus, conn, stream):
             EventPattern('socket-connected'),
             EventPattern('stream-iq', to=bob_jid, query_ns=ns.SI,
                 query_name='si'))
+
     protocol = event_socket.protocol
     protocol.sendData("hello initiator")
 
-    iq = event_iq.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    values = xpath.queryForNodes(
-        '/si/feature[@xmlns="%s"]/x[@xmlns="%s"]/field/option/value'
-        % ('http://jabber.org/protocol/feature-neg', 'jabber:x:data'), si)
-    assert ns.IBB in [str(v) for v in values]
+    profile, sid, bytestreams = parse_si_offer(event_iq.stanza)
+    assert profile == ns.TUBES
+    assert ns.IBB in bytestreams
+    assert ns.BYTESTREAMS in bytestreams
 
-    stream_node = xpath.queryForNodes('/si/stream[@xmlns="%s"]' %
-        ns.TUBES, si)[0]
+    stream_node = xpath.queryForNodes('/iq/si/stream[@xmlns="%s"]' %
+        ns.TUBES, event_iq.stanza)[0]
     assert stream_node is not None
     assert stream_node['tube'] == str(stream_tube_id)
-    stream_id = si['id']
 
-    send_error_reply(stream, iq)
+    send_error_reply(stream, event_iq.stanza)
 
 def test(q, bus, conn, stream):
     conn.Connect()

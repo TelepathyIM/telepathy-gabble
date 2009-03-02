@@ -11,7 +11,7 @@ from dbus import PROPERTIES_IFACE
 from servicetest import unwrap
 from gabbletest import exec_test
 from constants import *
-from bytestream import BytestreamIBB, BytestreamS5B, BytestreamSIFallback
+from bytestream import BytestreamIBB, BytestreamS5B, BytestreamSIFallbackS5CannotConnect
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
@@ -227,7 +227,7 @@ def exec_tube_test(test):
         test(q, bus, conn, stream, BytestreamS5B)
 
     def test_si_fallback(q, bus, conn, stream):
-        test(q, bus, conn, stream, BytestreamSIFallback)
+        test(q, bus, conn, stream, BytestreamSIFallbackS5CannotConnect)
 
     exec_test(test_ibb)
     exec_test(test_socks5)

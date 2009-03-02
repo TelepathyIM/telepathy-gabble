@@ -446,7 +446,9 @@ def parse_ibb_msg_data(message):
 
 ##### SI Fallback (Gabble specific extension) #####
 
-class BytestreamSIFallback(Bytestream):
+class BytestreamSIFallbackS5CannotConnect(Bytestream):
+    """Try to use SOCKS5 and fallback to IBB because the target can't connect
+    to the receiver."""
     def __init__(self, stream, q, sid, initiator, target, initiated):
         Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
 

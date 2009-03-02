@@ -399,3 +399,79 @@ def parse_ibb_msg_data(message):
     binary = base64.b64decode(str(ibb_data))
 
     return ibb_data['sid'], binary
+
+##### SI Fallback (Gabble specific extension) #####
+
+class BytestreamSIFallback(Bytestream):
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
+
+        self.socks5 = BytestreamS5B(stream, q, sid, initiator, target,
+            initiated)
+
+        self.ibb = BytestreamIBB(stream, q, sid, initiator, target,
+            initiated)
+
+        self.active = None
+
+    def create_si_offer(self, profile):
+        assert self.initiated
+
+        # TODO: share this with other classes
+        iq = IQ(self.stream, 'set')
+        iq['from'] = self.initiator
+        iq['to'] = self.target
+        si = iq.addElement((ns.SI, 'si'))
+        si['id'] = self.stream_id
+        si['profile'] = profile
+        feature = si.addElement((ns.FEATURE_NEG, 'feature'))
+        x = feature.addElement((ns.X_DATA, 'x'))
+        x['type'] = 'form'
+        field = x.addElement((None, 'field'))
+        field['var'] = 'stream-method'
+        field['type'] = 'list-single'
+        # add SOCKS5
+        option = field.addElement((None, 'option'))
+        value = option.addElement((None, 'value'))
+        value.addContent(self.socks5.get_ns())
+        # add IBB
+        option = field.addElement((None, 'option'))
+        value = option.addElement((None, 'value'))
+        value.addContent(self.ibb.get_ns())
+
+        si_multiple = si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
+
+        return iq, si
+
+    def check_si_reply(self, iq):
+        value = xpath.queryForNodes(
+            '/iq/si[@xmlns="%s"]/si-multiple[@xmlns="%s"]/value' %
+            (ns.SI, ns.SI_MULTIPLE), iq)
+        assert len(value) == 2
+        assert str(value[0]) == self.socks5.get_ns()
+        assert str(value[1]) == self.ibb.get_ns()
+
+    def open_bytestream(self, expected=None):
+        self.active = self.socks5
+        # first propose to peer to connect using SOCKS5
+        # We set an invalid IP so that won't work
+        self.socks5._send_socks5_init([
+            # Not working streamhost
+            (self.initiator, 'invalid.invalid', 12345),
+            ])
+
+        e = self.q.expect('stream-iq', iq_type='error', to=self.initiator)
+        error = xpath.queryForNodes('/iq/error', e.stanza)[0]
+        assert error['code'] == '404'
+        assert error['type'] == 'cancel'
+
+        # socks5 failed, let's try IBB
+        self.active = self.ibb
+
+        return self.ibb.open_bytestream(expected)
+
+    def send_data(self, data):
+        self.active.send_data(data)
+
+    def get_data(self):
+        return self.active.get_data()

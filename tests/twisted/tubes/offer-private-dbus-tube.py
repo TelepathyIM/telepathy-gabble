@@ -306,12 +306,15 @@ def test(q, bus, conn, stream, bytestream_cls):
     presence = make_presence('alice@localhost/Test', 'test@localhost', caps)
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='PresencesChanged',
-        args = [{alice_handle: (2L, u'available', u'')}])
+    _, disco_event = q.expect_many(
+        EventPattern('dbus-signal', signal='PresencesChanged',
+            args = [{alice_handle: (2L, u'available', u'')}]),
+        EventPattern('stream-iq', to='alice@localhost/Test',
+            query_ns=ns.DISCO_INFO),
+        )
 
     # reply to disco query
-    event = q.expect('stream-iq', to='alice@localhost/Test', query_ns=ns.DISCO_INFO)
-    stream.send(make_caps_disco_reply(stream, event.stanza, [ns.TUBES]))
+    stream.send(make_caps_disco_reply(stream, disco_event.stanza, [ns.TUBES]))
 
     sync_stream(q, stream)
 

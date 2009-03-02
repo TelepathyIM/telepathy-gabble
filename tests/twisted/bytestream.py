@@ -324,6 +324,26 @@ class BytestreamS5BPidgin(BytestreamS5B):
         connect_reply += '\x00\x00' # port
         self.transport.write(connect_reply)
 
+class BytestreamS5BCannotConnect(BytestreamS5B):
+    """SOCKS5 bytestream not working because target can't connect
+    to initiator."""
+    def open_bytestream(self, expected=None):
+        self._send_socks5_init([
+            # Not working streamhost
+            ('invalid.invalid', 'invalid.invalid', 12345),
+            ])
+
+        if expected is not None:
+            event, iq_event = self.q.expect_many(expected,
+                EventPattern('stream-iq', iq_type='error', to=self.initiator))
+        else:
+            event = None
+            iq_event = self.q.expect('stream-iq', iq_type='error', to=self.initiator)
+
+        self.check_error_stanza(iq_event.stanza)
+
+        return event
+
 class S5BProtocol(Protocol):
     def connectionMade(self):
         self.factory.event_func(Event('s5b-connected',
@@ -528,24 +548,15 @@ class BytestreamSIFallbackS5CannotConnect(BytestreamSIFallback):
     def __init__(self, stream, q, sid, initiator, target, initiated):
         BytestreamSIFallback.__init__(self, stream, q, sid, initiator, target, initiated)
 
+        self.socks5 = BytestreamS5BCannotConnect(stream, q, sid, initiator, target,
+            initiated)
+
         self.used = self.ibb
 
     def open_bytestream(self, expected=None):
-        # first propose to peer to connect using SOCKS5
-        # We set an invalid IP so that won't work
-        self.socks5._send_socks5_init([
-            # Not working streamhost
-            (self.initiator, 'invalid.invalid', 12345),
-            ])
-
-        if expected is not None:
-            event, iq_event = self.q.expect_many(expected,
-                EventPattern('stream-iq', iq_type='error', to=self.initiator))
-        else:
-            event = None
-            iq_event = self.q.expect('stream-iq', iq_type='error', to=self.initiator)
-
-        self.socks5.check_error_stanza(iq_event.stanza)
+        # First propose to peer to connect using SOCKS5
+        # That won't work as target can't connect
+        event = self.socks5.open_bytestream(expected)
 
         # socks5 failed, let's try IBB
         self.ibb.open_bytestream()

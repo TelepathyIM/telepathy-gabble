@@ -11,13 +11,14 @@ Receives several tube offers:
 import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolClientFactory
-from gabbletest import exec_test, acknowledge_iq, send_error_reply
+from gabbletest import acknowledge_iq
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
 import ns
 from constants import *
 from bytestream import parse_si_offer
+import tubetestutil as t
 
 bob_jid = 'bob@localhost/Bob'
 stream_tube_id = 49
@@ -72,7 +73,7 @@ def receive_tube_offer(q, bus, conn, stream):
 
     return (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface)
 
-def expect_tube_activity(q, bus, conn, stream):
+def expect_tube_activity(q, bus, conn, stream, bytestream_cls):
     event_socket, event_iq = q.expect_many(
             EventPattern('socket-connected'),
             EventPattern('stream-iq', to=bob_jid, query_ns=ns.SI,
@@ -91,9 +92,27 @@ def expect_tube_activity(q, bus, conn, stream):
     assert stream_node is not None
     assert stream_node['tube'] == str(stream_tube_id)
 
-    send_error_reply(stream, event_iq.stanza)
+    bytestream = bytestream_cls(stream, q, sid, 'test@localhost/Resource',
+        event_iq.stanza['to'], False)
 
-def test(q, bus, conn, stream):
+    result, si = bytestream.create_si_reply(event_iq.stanza)
+    si.addElement((ns.TUBES, 'tube'))
+    stream.send(result)
+
+    bytestream.wait_bytestream_open()
+
+    data = bytestream.get_data()
+    assert data == 'hello initiator'
+
+    # reply to the initiator
+    bytestream.send_data('hello joiner')
+
+    e = q.expect('socket-data')
+    assert e.data == 'hello joiner'
+
+    return bytestream
+
+def test(q, bus, conn, stream, bytestream_cls):
     conn.Connect()
 
     _, vcard_event, roster_event = q.expect_many(
@@ -171,8 +190,9 @@ def test(q, bus, conn, stream):
     factory = EventProtocolClientFactory(q)
     reactor.connectTCP(ip, port, factory)
 
-    expect_tube_activity(q, bus, conn, stream)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
+    bytestream.wait_bytestream_closed()
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -192,8 +212,9 @@ def test(q, bus, conn, stream):
     factory = EventProtocolClientFactory(q)
     reactor.connectUNIX(socket_address, factory)
 
-    expect_tube_activity(q, bus, conn, stream)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
+    bytestream.wait_bytestream_closed()
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -215,8 +236,9 @@ def test(q, bus, conn, stream):
     factory = EventProtocolClientFactory(q)
     reactor.connectTCP(ip, port, factory)
 
-    expect_tube_activity(q, bus, conn, stream)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
+    bytestream.wait_bytestream_closed()
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -236,8 +258,9 @@ def test(q, bus, conn, stream):
     factory = EventProtocolClientFactory(q)
     reactor.connectUNIX(socket_address, factory)
 
-    expect_tube_activity(q, bus, conn, stream)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
+    bytestream.wait_bytestream_closed()
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -261,4 +284,4 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    exec_test(test)
+    t.exec_tube_test(test)

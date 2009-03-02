@@ -445,10 +445,8 @@ def parse_ibb_msg_data(message):
     return ibb_data['sid'], binary
 
 ##### SI Fallback (Gabble specific extension) #####
-
-class BytestreamSIFallbackS5CannotConnect(Bytestream):
-    """Try to use SOCKS5 and fallback to IBB because the target can't connect
-    to the receiver."""
+class BytestreamSIFallback(Bytestream):
+    """Abstract class used for all the SI fallback scenarios"""
     def __init__(self, stream, q, sid, initiator, target, initiated):
         Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
 
@@ -457,8 +455,6 @@ class BytestreamSIFallbackS5CannotConnect(Bytestream):
 
         self.ibb = BytestreamIBB(stream, q, sid, initiator, target,
             initiated)
-
-        self.used = self.ibb
 
     def create_si_offer(self, profile, to=None):
         iq, si, field = self._create_si_offer(profile, to)
@@ -484,6 +480,52 @@ class BytestreamSIFallbackS5CannotConnect(Bytestream):
         assert str(value[0]) == self.socks5.get_ns()
         assert str(value[1]) == self.ibb.get_ns()
 
+    def create_si_reply(self, iq, to=None):
+        result = IQ(self.stream, 'result')
+        result['id'] = iq['id']
+        result['from'] = iq['to']
+        if to is None:
+            result['to'] = self.initiator
+        else:
+            result['to'] = to
+        res_si = result.addElement((ns.SI, 'si'))
+        si_multiple = res_si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
+        # add SOCKS5
+        res_value = si_multiple.addElement((None, 'value'))
+        res_value.addContent(self.socks5.get_ns())
+        # add IBB
+        res_value = si_multiple.addElement((None, 'value'))
+        res_value.addContent(self.ibb.get_ns())
+
+        return result, res_si
+
+    def send_data(self, data):
+        self.used.send_data(data)
+
+    def get_data(self):
+        return self.used.get_data()
+
+    def wait_bytestream_closed(self):
+        self.used.wait_bytestream_closed()
+
+    def check_si_offer(self, iq, bytestreams):
+        assert self.socks5.get_ns() in bytestreams
+        assert self.ibb.get_ns() in bytestreams
+
+        # check if si-multiple is supported
+        si_multiple = xpath.queryForNodes(
+            '/iq/si[@xmlns="%s"]/si-multiple[@xmlns="%s"]'
+            % (ns.SI, ns.SI_MULTIPLE), iq)
+        assert si_multiple is not None
+
+class BytestreamSIFallbackS5CannotConnect(BytestreamSIFallback):
+    """Try to use SOCKS5 and fallback to IBB because the target can't connect
+    to the receiver."""
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        BytestreamSIFallback.__init__(self, stream, q, sid, initiator, target, initiated)
+
+        self.used = self.ibb
+
     def open_bytestream(self, expected=None):
         # first propose to peer to connect using SOCKS5
         # We set an invalid IP so that won't work
@@ -505,31 +547,6 @@ class BytestreamSIFallbackS5CannotConnect(Bytestream):
         self.ibb.open_bytestream()
         return event
 
-    def send_data(self, data):
-        self.used.send_data(data)
-
-    def get_data(self):
-        return self.used.get_data()
-
-    def create_si_reply(self, iq, to=None):
-        result = IQ(self.stream, 'result')
-        result['id'] = iq['id']
-        result['from'] = iq['to']
-        if to is None:
-            result['to'] = self.initiator
-        else:
-            result['to'] = to
-        res_si = result.addElement((ns.SI, 'si'))
-        si_multiple = res_si.addElement((ns.SI_MULTIPLE, 'si-multiple'))
-        # add SOCKS5
-        res_value = si_multiple.addElement((None, 'value'))
-        res_value.addContent(self.socks5.get_ns())
-        # add IBB
-        res_value = si_multiple.addElement((None, 'value'))
-        res_value.addContent(self.ibb.get_ns())
-
-        return result, res_si
-
     def wait_bytestream_open(self):
         # Gabble tries SOCKS5 first
         id, mode, sid, hosts = self.socks5._expect_socks5_init()
@@ -539,16 +556,3 @@ class BytestreamSIFallbackS5CannotConnect(Bytestream):
 
         # Gabble now tries IBB
         self.ibb.wait_bytestream_open()
-
-    def wait_bytestream_closed(self):
-        self.used.wait_bytestream_closed()
-
-    def check_si_offer(self, iq, bytestreams):
-        assert self.socks5.get_ns() in bytestreams
-        assert self.ibb.get_ns() in bytestreams
-
-        # check if si-multiple is supported
-        si_multiple = xpath.queryForNodes(
-            '/iq/si[@xmlns="%s"]/si-multiple[@xmlns="%s"]'
-            % (ns.SI, ns.SI_MULTIPLE), iq)
-        assert si_multiple is not None

@@ -157,7 +157,7 @@ def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestr
     # handle new_tube_event
     dbus_tube_id = new_tube_event.args[0]
     assert new_tube_event.args[1] == self_handle
-    assert new_tube_event.args[2] == 0       # DBUS
+    assert new_tube_event.args[2] == cs.TUBE_TYPE_DBUS
     assert new_tube_event.args[3] == 'com.example.TestCase'
     assert new_tube_event.args[4] == sample_parameters
     assert new_tube_event.args[5] == cs.TUBE_STATE_REMOTE_PENDING

@@ -425,7 +425,7 @@ class BytestreamSIFallback(Bytestream):
         self.ibb = BytestreamIBB(stream, q, sid, initiator, target,
             initiated)
 
-        self.active = None
+        self.used = self.ibb
 
     def create_si_offer(self, profile):
         iq, si, field = self._create_si_offer(profile)
@@ -452,7 +452,6 @@ class BytestreamSIFallback(Bytestream):
         assert str(value[1]) == self.ibb.get_ns()
 
     def open_bytestream(self, expected=None):
-        self.active = self.socks5
         # first propose to peer to connect using SOCKS5
         # We set an invalid IP so that won't work
         self.socks5._send_socks5_init([
@@ -472,16 +471,14 @@ class BytestreamSIFallback(Bytestream):
         assert error['type'] == 'cancel'
 
         # socks5 failed, let's try IBB
-        self.active = self.ibb
-
         self.ibb.open_bytestream()
         return event
 
     def send_data(self, data):
-        self.active.send_data(data)
+        self.used.send_data(data)
 
     def get_data(self):
-        return self.active.get_data()
+        return self.used.get_data()
 
     def create_si_reply(self, iq):
         result = IQ(self.stream, 'result')
@@ -501,7 +498,6 @@ class BytestreamSIFallback(Bytestream):
 
     def wait_bytestream_open(self):
         # Gabble tries SOCKS5 first
-        self.active = self.socks5
         id, mode, sid, hosts = self.socks5._expect_socks5_init()
 
         # Pretend we can't connect to it
@@ -515,11 +511,10 @@ class BytestreamSIFallback(Bytestream):
         self.stream.send(iq)
 
         # Gabble now tries IBB
-        self.active = self.ibb
         self.ibb.wait_bytestream_open()
 
     def wait_bytestream_closed(self):
-        self.active.wait_bytestream_closed()
+        self.used.wait_bytestream_closed()
 
     def check_si_offer(self, iq, bytestreams):
         assert self.socks5.get_ns() in bytestreams

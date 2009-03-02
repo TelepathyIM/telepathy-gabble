@@ -439,6 +439,7 @@ nick_publish_msg_reply_cb (GabbleConnection *conn,
                            GObject *object,
                            gpointer user_data)
 {
+#ifdef ENABLE_DEBUG
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
       LmMessageNode *error_node;
@@ -455,6 +456,7 @@ nick_publish_msg_reply_cb (GabbleConnection *conn,
               gabble_xmpp_error_description (error));
         }
     }
+#endif
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

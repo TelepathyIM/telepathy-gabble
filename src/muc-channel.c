@@ -2770,11 +2770,9 @@ kick_request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                        LmMessage *reply_msg, GObject *object,
                        gpointer user_data)
 {
-  const gchar *jid = user_data;
-
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      DEBUG ("Failed to kick user %s from room", jid);
+      DEBUG ("Failed to kick user %s from room", (const char *) user_data);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

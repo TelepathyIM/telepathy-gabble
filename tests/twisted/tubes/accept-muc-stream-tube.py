@@ -7,7 +7,7 @@ from gabbletest import make_result_iq, acknowledge_iq
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import parse_si_offer, create_si_reply
+from bytestream import create_from_si_offer
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -211,12 +211,9 @@ def test(q, bus, conn, stream, bytestream_cls):
     event = q.expect('stream-iq', to='chat@conf.localhost/bob', query_ns=ns.SI,
         query_name='si')
 
-    profile, stream_id, bytestreams = parse_si_offer(event.stanza)
+    bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, event.stanza,
+            'chat@conf.localhost/test')
 
-    bytestream = bytestream_cls(stream, q, stream_id, 'chat@conf.localhost/test',
-        event.stanza['to'], False)
-
-    assert bytestream.get_ns() in bytestreams
     assert profile == ns.TUBES
 
     muc_stream_node = xpath.queryForNodes('/iq/si/muc-stream[@xmlns="%s"]' %
@@ -226,8 +223,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # set the real jid of the target as 'to' because the XMPP server changes
     # it when delivering the IQ
-    result, si = create_si_reply(stream, event.stanza, 'test@localhost/Resource',
-        bytestream.get_ns())
+    result, si = bytestream.create_si_reply(event.stanza, 'test@localhost/Resource')
     si.addElement((ns.TUBES, 'tube'))
     stream.send(result)
 

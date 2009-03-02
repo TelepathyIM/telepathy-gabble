@@ -11,7 +11,7 @@ from dbus import PROPERTIES_IFACE
 from servicetest import unwrap
 from gabbletest import exec_test
 from constants import *
-from bytestream import BytestreamIBB, BytestreamS5B
+from bytestream import BytestreamIBB, BytestreamS5B, BytestreamSIFallback
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
@@ -210,12 +210,14 @@ def set_up_echo(name):
     """
     factory = Factory()
     factory.protocol = Echo
+    full_path = os.getcwd() + '/stream' + name
     try:
-        os.remove(os.getcwd() + '/stream' + name)
+        os.remove(full_path)
     except OSError, e:
         if e.errno != errno.ENOENT:
             raise
-    reactor.listenUNIX(os.getcwd() + '/stream' + name, factory)
+    reactor.listenUNIX(full_path, factory)
+    return full_path
 
 def exec_tube_test(test):
     def test_ibb(q, bus, conn, stream):
@@ -224,5 +226,9 @@ def exec_tube_test(test):
     def test_socks5(q, bus, conn, stream):
         test(q, bus, conn, stream, BytestreamS5B)
 
+    def test_si_fallback(q, bus, conn, stream):
+        test(q, bus, conn, stream, BytestreamSIFallback)
+
     exec_test(test_ibb)
     exec_test(test_socks5)
+    exec_test(test_si_fallback)

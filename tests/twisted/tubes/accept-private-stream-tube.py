@@ -10,13 +10,15 @@ Receives several tube offers:
 
 import dbus
 
-from servicetest import call_async, EventPattern, EventProtocolClientFactory
-from gabbletest import exec_test, acknowledge_iq, send_error_reply
+from servicetest import call_async, EventPattern, EventProtocolClientFactory, sync_dbus
+from gabbletest import acknowledge_iq
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
 import ns
-from constants import *
+import constants as cs
+from bytestream import create_from_si_offer
+import tubetestutil as t
 
 bob_jid = 'bob@localhost/Bob'
 stream_tube_id = 49
@@ -36,8 +38,8 @@ def receive_tube_offer(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='NewChannels'),
         )
     chan_path = old_sig.args[0]
-    assert old_sig.args[1] == CHANNEL_TYPE_TUBES, old_sig.args[1]
-    assert old_sig.args[2] == HT_CONTACT
+    assert old_sig.args[1] == cs.CHANNEL_TYPE_TUBES, old_sig.args[1]
+    assert old_sig.args[2] == cs.HT_CONTACT
     bob_handle = old_sig.args[3]
     assert old_sig.args[2] == 1, old_sig.args[2] # Suppress_Handler
     assert len(new_sig.args) == 1
@@ -53,8 +55,8 @@ def receive_tube_offer(q, bus, conn, stream):
         )
     new_chan_path = old_sig.args[0]
     assert new_chan_path != chan_path
-    assert old_sig.args[1] == CHANNEL_TYPE_STREAM_TUBE, old_sig.args[1]
-    assert old_sig.args[2] == HT_CONTACT
+    assert old_sig.args[1] == cs.CHANNEL_TYPE_STREAM_TUBE, old_sig.args[1]
+    assert old_sig.args[2] == cs.HT_CONTACT
     bob_handle = old_sig.args[3]
     assert old_sig.args[2] == 1, old_sig.args[2] # Suppress_Handler
     assert len(new_sig.args) == 1
@@ -64,38 +66,50 @@ def receive_tube_offer(q, bus, conn, stream):
 
     # create channel proxies
     tubes_chan = bus.get_object(conn.bus_name, chan_path)
-    tubes_iface = dbus.Interface(tubes_chan, CHANNEL_TYPE_TUBES)
+    tubes_iface = dbus.Interface(tubes_chan, cs.CHANNEL_TYPE_TUBES)
 
     new_tube_chan = bus.get_object(conn.bus_name, new_chan_path)
-    new_tube_iface = dbus.Interface(new_tube_chan, CHANNEL_TYPE_STREAM_TUBE)
+    new_tube_iface = dbus.Interface(new_tube_chan, cs.CHANNEL_TYPE_STREAM_TUBE)
 
     return (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface)
 
-def expect_tube_activity(q, bus, conn, stream):
+def expect_tube_activity(q, bus, conn, stream, bytestream_cls):
     event_socket, event_iq = q.expect_many(
             EventPattern('socket-connected'),
             EventPattern('stream-iq', to=bob_jid, query_ns=ns.SI,
                 query_name='si'))
+
     protocol = event_socket.protocol
     protocol.sendData("hello initiator")
 
-    iq = event_iq.stanza
-    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % ns.SI,
-        iq)[0]
-    values = xpath.queryForNodes(
-        '/si/feature[@xmlns="%s"]/x[@xmlns="%s"]/field/option/value'
-        % ('http://jabber.org/protocol/feature-neg', 'jabber:x:data'), si)
-    assert ns.IBB in [str(v) for v in values]
+    bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, event_iq.stanza,
+        'test@localhost/Resource')
 
-    stream_node = xpath.queryForNodes('/si/stream[@xmlns="%s"]' %
-        ns.TUBES, si)[0]
+    assert profile == ns.TUBES
+
+    stream_node = xpath.queryForNodes('/iq/si/stream[@xmlns="%s"]' %
+        ns.TUBES, event_iq.stanza)[0]
     assert stream_node is not None
     assert stream_node['tube'] == str(stream_tube_id)
-    stream_id = si['id']
 
-    send_error_reply(stream, iq)
+    result, si = bytestream.create_si_reply(event_iq.stanza)
+    si.addElement((ns.TUBES, 'tube'))
+    stream.send(result)
 
-def test(q, bus, conn, stream):
+    bytestream.wait_bytestream_open()
+
+    data = bytestream.get_data()
+    assert data == 'hello initiator'
+
+    # reply to the initiator
+    bytestream.send_data('hello joiner')
+
+    e = q.expect('socket-data')
+    assert e.data == 'hello joiner'
+
+    return bytestream
+
+def test(q, bus, conn, stream, bytestream_cls):
     conn.Connect()
 
     _, vcard_event, roster_event = q.expect_many(
@@ -133,6 +147,8 @@ def test(q, bus, conn, stream):
     feature = event.query.addElement('feature')
     feature['var'] = ns.TUBES
     stream.send(result)
+
+    sync_dbus(bus, q, conn)
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -173,8 +189,9 @@ def test(q, bus, conn, stream):
     factory = EventProtocolClientFactory(q)
     reactor.connectTCP(ip, port, factory)
 
-    expect_tube_activity(q, bus, conn, stream)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
+    bytestream.wait_bytestream_closed()
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -194,8 +211,9 @@ def test(q, bus, conn, stream):
     factory = EventProtocolClientFactory(q)
     reactor.connectUNIX(socket_address, factory)
 
-    expect_tube_activity(q, bus, conn, stream)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
+    bytestream.wait_bytestream_closed()
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -217,8 +235,9 @@ def test(q, bus, conn, stream):
     factory = EventProtocolClientFactory(q)
     reactor.connectTCP(ip, port, factory)
 
-    expect_tube_activity(q, bus, conn, stream)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
+    bytestream.wait_bytestream_closed()
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -238,8 +257,9 @@ def test(q, bus, conn, stream):
     factory = EventProtocolClientFactory(q)
     reactor.connectUNIX(socket_address, factory)
 
-    expect_tube_activity(q, bus, conn, stream)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
+    bytestream.wait_bytestream_closed()
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -263,4 +283,4 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    exec_test(test)
+    t.exec_tube_test(test)

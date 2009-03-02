@@ -238,15 +238,6 @@ class JingleTest2:
     remote_caps = { 'ext': '', 'ver': '0.0.0',
              'node': 'http://example.com/fake-client0' }
 
-    # Default feats for remote end - XXX shouldn't be used
-    remote_feats = [ 'http://www.google.com/xmpp/protocol/session',
-          'http://www.google.com/transport/p2p',
-          'http://jabber.org/protocol/jingle',
-          # was previously in bundles:
-          'http://jabber.org/protocol/jingle/description/audio',
-          'http://jabber.org/protocol/jingle/description/video',
-          'http://www.google.com/xmpp/protocol/voice/v1']
-
     # Default audio codecs for the remote end
     audio_codecs = [ ('GSM', 3, 8000), ('PCMA', 8, 8000), ('PCMU', 0, 8000) ]
 
@@ -315,8 +306,14 @@ class JingleTest2:
         sync_stream(self.q, self.stream)
 
     def get_audio_codecs_dbus(self):
-        return dbus.Array([ (id, name, 0, rate, 0, {} ) for (name, id, rate) in self.audio_codecs ],
-            signature='(usuuua{ss})')
+        codecs = [ (id, name, 0, rate, 0, {} )
+                   for (name, id, rate) in self.audio_codecs ]
+        return dbus.Array(codecs, signature='(usuuua{ss})')
+
+    def get_video_codecs_dbus(self):
+        codecs = [ (id, name, 0, rate, 0, {} )
+                   for (name, id, rate) in self.video_codecs ]
+        return dbus.Array(codecs, signature='(usuuua{ss})')
 
     def get_remote_transports_dbus(self):
         return dbus.Array([

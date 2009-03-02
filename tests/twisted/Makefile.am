@@ -43,22 +43,21 @@ TWISTED_TESTS = \
 	text/test-text-no-body.py \
 	text/test-text.py \
 	tubes/accept-muc-dbus-tube.py \
-	tubes/muc-presence.py \
+	tubes/accept-muc-stream-tube.py \
+	tubes/accept-private-dbus-tube.py \
+	tubes/accept-private-stream-tube.py \
 	tubes/close-muc-with-closed-tube.py \
 	tubes/crash-on-list-channels.py \
 	tubes/create-invalid-tube-channels.py \
-	tubes/test-get-available-tubes.py \
-	tubes/accept-muc-stream-tube.py \
-	tubes/accept-private-stream-tube.py \
-	tubes/offer-accept-private-dbus-stream-tube-ibb.py \
-	tubes/offer-accept-private-dbus-stream-tube-socks5.py \
-	tubes/offer-accept-private-stream-tube-si-fallback.py \
+	tubes/ensure-si-tube.py \
+	tubes/muc-presence.py \
 	tubes/offer-muc-dbus-tube.py \
 	tubes/offer-muc-stream-tube.py \
 	tubes/offer-no-caps.py \
-	tubes/offer-private-dbus-tube-ibb.py \
+	tubes/offer-private-dbus-tube.py \
+	tubes/offer-private-stream-tube.py \
 	tubes/request-invalid-dbus-tube.py \
-	tubes/ensure-si-tube.py \
+	tubes/test-get-available-tubes.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \
@@ -72,8 +71,10 @@ TWISTED_TESTS = \
 	vcard/test-vcard-cache.py \
 	vcard/test-vcard-race.py \
 	vcard/test-vcard-set-and-get.py \
+	jingle/accept-extra-stream.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
+	jingle/stun-server.py \
 	jingle/payload-types.py \
 	jingle/stream-handler-error.py \
 	jingle/test-content-adding-removal.py \
@@ -149,6 +150,7 @@ EXTRA_DIST = \
 	servicetest.py \
 	jingle/jingletest.py \
 	jingle/jingletest2.py \
+	mucutil.py \
 	ns.py \
 	olpc/util.py \
 	tubes/muctubeutil.py \
@@ -158,7 +160,9 @@ noinst_PROGRAMS = \
 	telepathy-gabble-debug
 
 telepathy_gabble_debug_SOURCES = \
-    main-debug.c
+    main-debug.c \
+    resolver-fake.c \
+    resolver-fake.h
 
 telepathy_gabble_debug_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la \
@@ -167,7 +171,8 @@ telepathy_gabble_debug_LDADD = \
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
     @TP_GLIB_CFLAGS@ \
-    -I $(top_srcdir)/src -I $(top_builddir)/src
+    -I $(top_srcdir)/src -I $(top_builddir)/src \
+    -I $(top_srcdir) -I $(top_builddir)
 ALL_LIBS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
 CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc config.py

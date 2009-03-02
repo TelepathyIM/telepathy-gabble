@@ -66,7 +66,6 @@ struct _GabbleJingleContentPrivate
 {
   gchar *name;
   gchar *creator;
-  gboolean created_by_initiator;
   gboolean created_by_us;
   JingleContentState state;
   JingleContentSenders senders;
@@ -106,7 +105,6 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
   obj->priv = priv;
 
   priv->state = JINGLE_CONTENT_STATE_EMPTY;
-  priv->created_by_initiator = TRUE;
   priv->created_by_us = TRUE;
   priv->media_ready = FALSE;
   priv->transport_ready = FALSE;
@@ -538,7 +536,6 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
     }
 
   priv->created_by_us = FALSE;
-  priv->created_by_initiator = (!tp_strdiff (creator, "initiator"));
   priv->senders = parse_senders (senders);
   if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
     {
@@ -644,6 +641,10 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   if (*error != NULL)
       return;
 
+  if (priv->timer_id != 0)
+      g_source_remove (priv->timer_id);
+  priv->timer_id = 0;
+
   priv->state = JINGLE_CONTENT_STATE_ACKNOWLEDGED;
   g_object_notify ((GObject *) c, "state");
 }
@@ -671,12 +672,21 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
     }
   else
     {
+      gboolean session_created_by_us;
+
       content_node = lm_message_node_add_child (parent, "content", NULL);
       lm_message_node_set_attributes (content_node,
-          "creator", priv->created_by_initiator ? "initiator" : "responder",
           "name", priv->name,
           "senders", produce_senders (priv->senders),
           NULL);
+
+      g_object_get (c->session, "local-initiator", &session_created_by_us,
+        NULL);
+
+      if (priv->created_by_us == session_created_by_us)
+        lm_message_node_set_attribute (content_node, "creator", "initiator");
+      else
+        lm_message_node_set_attribute (content_node, "creator", "responder");
     }
 
   if (!full)

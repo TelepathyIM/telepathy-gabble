@@ -41,7 +41,7 @@ class Bytestream(object):
 
 ##### XEP-0095: Stream Initiation #####
 
-    def create_si_offer(self, profile):
+    def _create_si_offer(self, profile):
         assert self.initiated
 
         iq = IQ(self.stream, 'set')
@@ -56,6 +56,11 @@ class Bytestream(object):
         field = x.addElement((None, 'field'))
         field['var'] = 'stream-method'
         field['type'] = 'list-single'
+
+        return iq, si, field
+
+    def create_si_offer(self, profile):
+        iq, si, field = self._create_si_offer(profile)
         option = field.addElement((None, 'option'))
         value = option.addElement((None, 'value'))
         value.addContent(self.get_ns())
@@ -415,21 +420,8 @@ class BytestreamSIFallback(Bytestream):
         self.active = None
 
     def create_si_offer(self, profile):
-        assert self.initiated
+        iq, si, field = self._create_si_offer(profile)
 
-        # TODO: share this with other classes
-        iq = IQ(self.stream, 'set')
-        iq['from'] = self.initiator
-        iq['to'] = self.target
-        si = iq.addElement((ns.SI, 'si'))
-        si['id'] = self.stream_id
-        si['profile'] = profile
-        feature = si.addElement((ns.FEATURE_NEG, 'feature'))
-        x = feature.addElement((ns.X_DATA, 'x'))
-        x['type'] = 'form'
-        field = x.addElement((None, 'field'))
-        field['var'] = 'stream-method'
-        field['type'] = 'list-single'
         # add SOCKS5
         option = field.addElement((None, 'option'))
         value = option.addElement((None, 'value'))

@@ -277,7 +277,7 @@ class BytestreamS5B(Bytestream):
         self.q.expect('s5b-connection-lost')
 
     def check_error_stanza(self, iq):
-        error = xpath.queryForNodes('/iq/error', iq)
+        error = xpath.queryForNodes('/iq/error', iq)[0]
         assert error['code'] == '404'
         assert error['type'] == 'cancel'
 

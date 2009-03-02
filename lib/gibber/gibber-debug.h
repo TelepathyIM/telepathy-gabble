@@ -10,9 +10,9 @@
 #include "gibber-xmpp-stanza.h"
 #endif
 
-#ifdef ENABLE_DEBUG
-
 G_BEGIN_DECLS
+
+#ifdef ENABLE_DEBUG
 
 typedef enum
 {
@@ -42,38 +42,20 @@ void gibber_debug_stanza (DebugFlags flag, GibberXmppStanza *stanza,
     G_GNUC_PRINTF (3, 4);
 #endif
 
-#define gibber_goto_if_reached(label) G_STMT_START{ \
-    g_log (G_LOG_DOMAIN, \
-        G_LOG_LEVEL_CRITICAL, \
-        "file %s: line %d: should not be reached", \
-        __FILE__, \
-        __LINE__); \
-    goto label; }G_STMT_END;
-
-#define gibber_goto_if_fail(expr, label)  G_STMT_START{ \
-    if (expr) {} \
-    else \
-      { \
-        g_log (G_LOG_DOMAIN, \
-            G_LOG_LEVEL_CRITICAL, \
-            "file %s: line %d: assertion `%s' failed", \
-            __FILE__, \
-            __LINE__, \
-            #expr); \
-        goto label; \
-      }; }G_STMT_END
-
-
 #ifdef DEBUG_FLAG
 
 #define DEBUG(format, ...) \
-  gibber_debug (DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
+  G_STMT_START { \
+  gibber_debug (DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__); \
+  } G_STMT_END
 
 #define DEBUG_STANZA(stanza, format, ...) \
+  G_STMT_START { \
   gibber_debug_stanza (DEBUG_FLAG, stanza, "%s: " format, G_STRFUNC,\
-      ##__VA_ARGS__)
+      ##__VA_ARGS__); \
+  } G_STMT_END
 
-#define DEBUGGING debug_flag_is_set(DEBUG_FLAG)
+#define DEBUGGING (debug_flag_is_set (DEBUG_FLAG))
 
 #endif /* DEBUG_FLAG */
 
@@ -81,13 +63,11 @@ void gibber_debug_stanza (DebugFlags flag, GibberXmppStanza *stanza,
 
 #ifdef DEBUG_FLAG
 
-#define DEBUG(format, ...)
+#define DEBUG(format, ...) G_STMT_START { } G_STMT_END
 
-#define DEBUG_STANZA(stanza, format, ...)
+#define DEBUG_STANZA(stanza, format, ...) G_STMT_START { } G_STMT_END
 
-#define DEBUGGING 0
-
-#define NODE_DEBUG(n, s)
+#define DEBUGGING (0)
 
 #endif /* DEBUG_FLAG */
 
@@ -96,4 +76,3 @@ void gibber_debug_stanza (DebugFlags flag, GibberXmppStanza *stanza,
 G_END_DECLS
 
 #endif
-

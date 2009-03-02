@@ -42,6 +42,7 @@ G_BEGIN_DECLS
 #define GABBLE_PARAMS_DEFAULT_RESOURCE                   "Telepathy"
 #define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT           443
 #define GABBLE_PARAMS_DEFAULT_STUN_PORT                  3478
+#define GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER       "stun.collabora.co.uk"
 
 /* order must match array of statuses in conn-presence.c */
 /* in increasing order of presence */

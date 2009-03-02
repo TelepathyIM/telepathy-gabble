@@ -125,6 +125,8 @@ def test(q, bus, conn, stream):
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'content-add'
+    c = e.query.firstChildElement ()
+    assert c['creator'] == 'initiator', c['creator'] + " should be initiator"
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 
     iq, jingle = jt._jingle_stanza('content-accept')

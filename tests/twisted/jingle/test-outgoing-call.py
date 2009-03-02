@@ -142,6 +142,12 @@ def test(q, bus, conn, stream):
     stream_handler.Ready(jt.get_audio_codecs_dbus())
     stream_handler.StreamState(2)
 
+    sh_props = stream_handler.GetAll(
+            'org.freedesktop.Telepathy.Media.StreamHandler',
+            dbus_interface=dbus.PROPERTIES_IFACE)
+    assert sh_props['NATTraversal'] == 'gtalk-p2p'
+    assert sh_props['CreatedLocally'] == True
+
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-initiate'

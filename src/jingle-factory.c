@@ -25,6 +25,7 @@
 #include <string.h>
 #include <glib.h>
 
+#include <lib/gibber/gibber-resolver.h>
 #include <loudmouth/loudmouth.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
@@ -64,9 +65,12 @@ struct _GabbleJingleFactoryPrivate
   GHashTable *content_types;
   GHashTable *transports;
   GHashTable *sessions;
+  GibberResolver *resolver;
 
   gchar *stun_server;
   guint16 stun_port;
+  gchar *fallback_stun_server;
+  guint16 fallback_stun_port;
   gchar *relay_token;
   gboolean get_stun_from_jingle;
   gboolean dispose_has_run;
@@ -106,6 +110,100 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
+  priv->resolver = gibber_resolver_get_resolver ();
+}
+
+typedef struct {
+    gchar *stun_server;
+    guint16 stun_port;
+    gboolean fallback;
+} PendingStunServer;
+
+static void
+pending_stun_server_free (gpointer p)
+{
+  PendingStunServer *data = p;
+
+  g_free (data->stun_server);
+  g_slice_free (PendingStunServer, p);
+}
+
+static void
+stun_server_resolved_cb (GibberResolver *resolver,
+                         GList *entries,
+                         GError *error,
+                         gpointer user_data,
+                         GObject *object)
+{
+  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (object);
+  PendingStunServer *data = user_data;
+  GibberResolverAddrInfo *info;
+  GError *e = NULL;
+  gchar *stun_server;
+
+  if (error != NULL)
+    {
+      DEBUG ("Failed to resolve STUN server %s:%u: %s",
+          data->stun_server, data->stun_port, error->message);
+      return;
+    }
+
+  if (entries == NULL)
+    {
+      DEBUG ("No results for STUN server %s:%u",
+          data->stun_server, data->stun_port);
+      return;
+    }
+
+  info = entries->data;
+
+  if (!gibber_resolver_sockaddr_to_str ((struct sockaddr *) &(info->sockaddr),
+        info->sockaddr_len, &stun_server, NULL, &e))
+    {
+      DEBUG ("Couldn't convert resolved address of %s to string: %s",
+          data->stun_server, e->message);
+      g_error_free (e);
+      return;
+    }
+
+  DEBUG ("Resolved STUN server %s:%u to %s:%u", data->stun_server,
+      data->stun_port, stun_server, data->stun_port);
+
+  if (data->fallback)
+    {
+      g_free (self->priv->fallback_stun_server);
+      self->priv->fallback_stun_server = stun_server;
+      self->priv->fallback_stun_port = data->stun_port;
+    }
+  else
+    {
+      g_free (self->priv->stun_server);
+      self->priv->stun_server = stun_server;
+      self->priv->stun_port = data->stun_port;
+    }
+}
+
+static void
+take_stun_server (GabbleJingleFactory *self,
+                  gchar *stun_server,
+                  guint16 stun_port,
+                  gboolean fallback)
+{
+  PendingStunServer *data = g_slice_new0 (PendingStunServer);
+
+  if (stun_server == NULL)
+    return;
+
+  DEBUG ("Resolving %s STUN server %s:%u",
+      fallback ? "fallback" : "primary", stun_server, stun_port);
+  data->stun_server = stun_server;
+  data->stun_port = stun_port;
+  data->fallback = fallback;
+
+  gibber_resolver_addrinfo (self->priv->resolver, stun_server, NULL,
+      AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0,
+      stun_server_resolved_cb, data, pending_stun_server_free,
+      G_OBJECT (self));
 }
 
 /*
@@ -168,22 +266,20 @@ jingle_info_cb (LmMessageHandler *handler,
       if (node != NULL)
         {
           const gchar *server;
-          const gchar *port;
+          const gchar *port_attr;
+          guint port = GABBLE_PARAMS_DEFAULT_STUN_PORT;
 
           server = lm_message_node_get_attribute (node, "host");
-          port = lm_message_node_get_attribute (node, "udp");
+          port_attr = lm_message_node_get_attribute (node, "udp");
 
-          if (server != NULL)
-            {
-              DEBUG ("jingle info: got stun server %s", server);
-              g_free (priv->stun_server);
-              priv->stun_server = g_strdup (server);
-            }
+          if (port_attr != NULL)
+            port = atoi (port_attr);
 
-          if (port != NULL)
+          if (server != NULL && port > 0 && port <= G_MAXUINT16)
             {
-              DEBUG ("jingle info: got stun port %s", port);
-              priv->stun_port = atoi (port);
+              DEBUG ("jingle info: got stun server %s, port %u", server,
+                  port);
+              take_stun_server (fac, g_strdup (server), port, FALSE);
             }
         }
     }
@@ -268,6 +364,7 @@ gabble_jingle_factory_dispose (GObject *object)
   priv->transports = NULL;
 
   g_free (fac->priv->stun_server);
+  g_free (fac->priv->fallback_stun_server);
   g_free (fac->priv->relay_token);
 
   if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)
@@ -412,9 +509,17 @@ connection_status_changed_cb (GabbleConnection *conn,
             }
           else
             {
-              g_free (priv->stun_server);
-              priv->stun_server = stun_server;
-              priv->stun_port = stun_port;
+              take_stun_server (self, stun_server, stun_port, FALSE);
+            }
+
+          g_object_get (priv->conn,
+              "fallback-stun-server", &stun_server,
+              "fallback-stun-port", &stun_port,
+              NULL);
+
+          if (stun_server != NULL)
+            {
+              take_stun_server (self, stun_server, stun_port, TRUE);
             }
 
           if (priv->conn->features &
@@ -666,7 +771,19 @@ gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
                                        guint *stun_port)
 {
   if (self->priv->stun_server == NULL || self->priv->stun_port == 0)
-    return FALSE;
+    {
+      if (self->priv->fallback_stun_server == NULL ||
+          self->priv->fallback_stun_port == 0)
+        return FALSE;
+
+      if (stun_server != NULL)
+        *stun_server = g_strdup (self->priv->fallback_stun_server);
+
+      if (stun_port != NULL)
+        *stun_port = self->priv->fallback_stun_port;
+
+      return TRUE;
+    }
 
   if (stun_server != NULL)
     *stun_server = g_strdup (self->priv->stun_server);

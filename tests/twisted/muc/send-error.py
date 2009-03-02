@@ -6,41 +6,19 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test, make_muc_presence, request_muc_handle
-from servicetest import call_async, EventPattern
+from gabbletest import exec_test
+from servicetest import EventPattern
 import ns
+
+from mucutil import join_muc_and_check
 
 def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    room_handle = request_muc_handle(q, conn, stream, 'chat@conf.localhost')
-    call_async(q, conn, 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.Text', 2, room_handle, True)
-
-    gfc, _, _ = q.expect_many(
-        EventPattern('dbus-signal', signal='GroupFlagsChanged'),
-        EventPattern('dbus-signal', signal='MembersChanged',
-            args=[u'', [], [], [], [2], 0, 0]),
-        EventPattern('stream-presence', to='chat@conf.localhost/test'))
-    assert gfc.args[1] == 0
-
-    # Send presence for other member of room.
-    stream.send(make_muc_presence(
-        'owner', 'moderator', 'chat@conf.localhost', 'bob'))
-
-    # Send presence for own membership of room.
-    stream.send(make_muc_presence(
-        'none', 'participant', 'chat@conf.localhost', 'test'))
-
-    event = q.expect('dbus-signal', signal='MembersChanged',
-        args=[u'', [2, 3], [], [], [], 0, 0])
-    assert conn.InspectHandles(1, [2]) == ['chat@conf.localhost/test']
-    assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
-
-    event = q.expect('dbus-return', method='RequestChannel')
-    text_chan = bus.get_object(conn.bus_name, event.value[0])
-
+    muc = 'chat@conf.localhost'
+    _, text_chan, test_handle, bob_handle = \
+        join_muc_and_check(q, bus, conn, stream, muc)
 
     # Suppose we don't have permission to speak in this MUC.  Send a message to
     # the channel, and have the MUC reject it as unauthorized.
@@ -119,8 +97,7 @@ def test(q, bus, conn, stream):
     assert 'delivery-echo' in part, part
     echo = part['delivery-echo']
     assert len(echo) == len(greeting), (echo, greeting)
-    # Earlier in this test we checked that handle 2 is us.
-    assert echo[0]['message-sender'] == 2, echo[0]
+    assert echo[0]['message-sender'] == test_handle, echo[0]
     for i in range(0, len(echo)):
         for key in greeting[i]:
             assert key in echo[i], (i, key, echo)

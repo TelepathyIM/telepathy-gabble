@@ -368,7 +368,6 @@ class BytestreamIBB(Bytestream):
 
         send_ibb_msg_data(self.stream, from_, to, self.stream_id,
             self.seq, data)
-        sync_stream(self.q, self.stream)
 
         self.seq += 1
 

@@ -10,7 +10,7 @@ Receives several tube offers:
 
 import dbus
 
-from servicetest import call_async, EventPattern, EventProtocolClientFactory
+from servicetest import call_async, EventPattern, EventProtocolClientFactory, sync_dbus
 from gabbletest import acknowledge_iq
 
 from twisted.words.xish import domish, xpath
@@ -147,6 +147,8 @@ def test(q, bus, conn, stream, bytestream_cls):
     feature = event.query.addElement('feature')
     feature['var'] = ns.TUBES
     stream.send(result)
+
+    sync_dbus(bus, q, conn)
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \

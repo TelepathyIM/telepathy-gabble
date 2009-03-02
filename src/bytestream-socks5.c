@@ -612,43 +612,51 @@ socks5_error (GabbleBytestreamSocks5 *self)
   previous_state = priv->socks5_state;
   priv->socks5_state = SOCKS5_STATE_ERROR;
 
-  if (previous_state == SOCKS5_STATE_TARGET_TRYING_CONNECT ||
-      previous_state == SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT ||
-      previous_state == SOCKS5_STATE_TARGET_CONNECT_REQUESTED)
+  switch (previous_state)
     {
-      /* The attempt for connect to the streamhost failed */
-      socks5_close_transport (self);
+      case SOCKS5_STATE_TARGET_TRYING_CONNECT:
+      case SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT:
+      case SOCKS5_STATE_TARGET_CONNECT_REQUESTED:
+        /* The attempt for connect to the streamhost failed */
+        socks5_close_transport (self);
 
-      /* Remove the failed streamhost */
-      g_assert (priv->streamhosts);
-      streamhost_free (priv->streamhosts->data);
-      priv->streamhosts = g_slist_delete_link (priv->streamhosts,
-          priv->streamhosts);
+        /* Remove the failed streamhost */
+        g_assert (priv->streamhosts);
+        streamhost_free (priv->streamhosts->data);
+        priv->streamhosts = g_slist_delete_link (priv->streamhosts,
+            priv->streamhosts);
 
-      if (priv->streamhosts != NULL)
-        {
-          DEBUG ("connection to streamhost failed, trying the next one");
+        if (priv->streamhosts != NULL)
+          {
+            DEBUG ("connection to streamhost failed, trying the next one");
 
-          socks5_connect (self);
-          return;
-        }
+            socks5_connect (self);
+            return;
+          }
 
-      DEBUG ("no more streamhosts to try");
+        DEBUG ("no more streamhosts to try");
 
-      g_signal_emit_by_name (self, "connection-error");
+        g_signal_emit_by_name (self, "connection-error");
 
-      g_assert (priv->msg_for_acknowledge_connection != NULL);
-      _gabble_connection_send_iq_error (priv->conn,
-          priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
-          "impossible to connect to any streamhost");
+        g_assert (priv->msg_for_acknowledge_connection != NULL);
+        _gabble_connection_send_iq_error (priv->conn,
+            priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
+            "impossible to connect to any streamhost");
 
-      lm_message_unref (priv->msg_for_acknowledge_connection);
-      priv->msg_for_acknowledge_connection = NULL;
+        lm_message_unref (priv->msg_for_acknowledge_connection);
+        priv->msg_for_acknowledge_connection = NULL;
+        break;
+
+      case SOCKS5_STATE_INITIATOR_AWAITING_AUTH_REQUEST:
+      case SOCKS5_STATE_INITIATOR_AWAITING_COMMAND:
+        DEBUG ("Something goes wrong during SOCKS5 negotation. Don't close "
+            "the bytestream yet as the target can still try other streamhosts");
+        break;
+
+      default:
+        DEBUG ("error, closing the connection\n");
+        gabble_bytestream_socks5_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
     }
-
-  DEBUG ("error, closing the connection\n");
-
-  gabble_bytestream_socks5_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
 }
 
 static gchar *
@@ -925,6 +933,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (!check_domain (&string->str[5], domain_len, domain))
           {
             DEBUG ("Reject connection to prevent spoofing");
+            socks5_close_transport (self);
             socks5_error (self);
             return string->len;
           }

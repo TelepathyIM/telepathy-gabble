@@ -281,6 +281,16 @@ class BytestreamS5B(Bytestream):
         assert error['code'] == '404'
         assert error['type'] == 'cancel'
 
+    def send_not_found(self, id):
+        iq = IQ(self.stream, 'error')
+        iq['to'] = self.initiator
+        iq['from'] = self.target
+        iq['id'] = id
+        error = iq.addElement(('', 'error'))
+        error['type'] = 'cancel'
+        error['code'] = '403'
+        self.stream.send(iq)
+
 class BytestreamS5BPidgin(BytestreamS5B):
     """Simulate buggy S5B implementation (as Pidgin's one)"""
     def _send_connect_reply(self):
@@ -504,14 +514,7 @@ class BytestreamSIFallback(Bytestream):
         id, mode, sid, hosts = self.socks5._expect_socks5_init()
 
         # Pretend we can't connect to it
-        iq = IQ(self.stream, 'error')
-        iq['to'] = self.initiator
-        iq['from'] = self.target
-        iq['id'] = id
-        error = iq.addElement(('', 'error'))
-        error['type'] = 'auth'
-        error['code'] = '403'
-        self.stream.send(iq)
+        self.socks5.send_not_found(id)
 
         # Gabble now tries IBB
         self.ibb.wait_bytestream_open()

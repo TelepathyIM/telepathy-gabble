@@ -959,12 +959,14 @@ gabble_jingle_factory_create_google_relay_session (
     {
       DEBUG ("No relay server provided, not creating google relay session");
       callback (NULL, user_data);
+      return;
     }
 
   if (fac->priv->relay_token == NULL)
     {
       DEBUG ("No relay token provided, not creating google relay session");
       callback (NULL, user_data);
+      return;
     }
 
   if (priv->soup == NULL)

@@ -296,18 +296,16 @@ class BytestreamS5B(Bytestream):
     def wait_bytestream_open(self):
         id, mode, sid, hosts = self._expect_socks5_init()
 
-        for jid, host, port in hosts:
-            assert jid == self.initiator, jid
-
         assert mode == 'tcp'
         assert sid == self.stream_id
-        jid, host, port = hosts[0]
 
-        if self._socks5_connect(host, port):
-            self._send_socks5_reply(id, jid)
-        else:
-            # Connection failed
-            self.send_not_found(id)
+        for jid, host, port in hosts:
+            if jid == self.initiator:
+                if self._socks5_connect(host, port):
+                    self._send_socks5_reply(id, jid)
+                else:
+                    # Connection failed
+                    self.send_not_found(id)
 
     def get_data(self, size=0):
         binary = ''

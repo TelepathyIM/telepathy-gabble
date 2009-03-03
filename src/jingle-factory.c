@@ -935,6 +935,7 @@ on_http_response (SoupSession *soup,
         }
 
       rsd->callback (map, rsd->user_data);
+      g_hash_table_unref (map);
       g_strfreev (lines);
     }
 

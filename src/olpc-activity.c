@@ -42,7 +42,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleOlpcActivityPrivate GabbleOlpcActivityPrivate;
 struct _GabbleOlpcActivityPrivate
 {
   GabbleConnection *conn;
@@ -51,9 +50,6 @@ struct _GabbleOlpcActivityPrivate
 };
 
 G_DEFINE_TYPE (GabbleOlpcActivity, gabble_olpc_activity, G_TYPE_OBJECT);
-
-#define GABBLE_OLPC_ACTIVITY_GET_PRIVATE(obj) \
-    ((GabbleOlpcActivityPrivate *) obj->priv)
 
 static void
 gabble_olpc_activity_init (GabbleOlpcActivity *self)
@@ -70,7 +66,7 @@ static void
 gabble_olpc_activity_dispose (GObject *object)
 {
   GabbleOlpcActivity *self = GABBLE_OLPC_ACTIVITY (object);
-  GabbleOlpcActivityPrivate *priv = GABBLE_OLPC_ACTIVITY_GET_PRIVATE (self);
+  GabbleOlpcActivityPrivate *priv = self->priv;
   TpHandleRepoIface *room_repo;
 
   if (priv->dispose_has_run)
@@ -113,7 +109,7 @@ gabble_olpc_activity_get_property (GObject *object,
                                    GParamSpec *pspec)
 {
   GabbleOlpcActivity *self = GABBLE_OLPC_ACTIVITY (object);
-  GabbleOlpcActivityPrivate *priv = GABBLE_OLPC_ACTIVITY_GET_PRIVATE (self);
+  GabbleOlpcActivityPrivate *priv = self->priv;
 
   switch (property_id)
     {
@@ -142,7 +138,7 @@ gabble_olpc_activity_set_property (GObject *object,
                                    GParamSpec *pspec)
 {
   GabbleOlpcActivity *self = GABBLE_OLPC_ACTIVITY (object);
-  GabbleOlpcActivityPrivate *priv = GABBLE_OLPC_ACTIVITY_GET_PRIVATE (self);
+  GabbleOlpcActivityPrivate *priv = self->priv;
 
   switch (property_id)
     {
@@ -182,7 +178,7 @@ gabble_olpc_activity_constructor (GType type,
            constructor (type, n_props, props);
 
   self = GABBLE_OLPC_ACTIVITY (obj);
-  priv = GABBLE_OLPC_ACTIVITY_GET_PRIVATE (self);
+  priv = self->priv;
 
   room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn,
@@ -261,9 +257,8 @@ gabble_olpc_activity_new (GabbleConnection *conn,
 const gchar *
 gabble_olpc_activity_get_room (GabbleOlpcActivity *self)
 {
-  GabbleOlpcActivityPrivate *priv = GABBLE_OLPC_ACTIVITY_GET_PRIVATE (self);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn,
+      (TpBaseConnection *) self->priv->conn,
       TP_HANDLE_TYPE_ROOM);
 
   return tp_handle_inspect (room_repo, self->room);

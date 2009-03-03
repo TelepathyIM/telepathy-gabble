@@ -54,7 +54,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleOlpcBuddyViewPrivate GabbleOlpcBuddyViewPrivate;
 struct _GabbleOlpcBuddyViewPrivate
 {
   GHashTable *properties;
@@ -68,10 +67,6 @@ G_DEFINE_TYPE_WITH_CODE (
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_CHANNEL_TYPE_BUDDY_VIEW,
       NULL);
     );
-
-#define GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE(obj) \
-    ((GabbleOlpcBuddyViewPrivate *) obj->priv)
-
 
 static void
 gabble_olpc_buddy_view_init (GabbleOlpcBuddyView *self)
@@ -88,7 +83,7 @@ static void
 gabble_olpc_buddy_view_dispose (GObject *object)
 {
   GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (object);
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcBuddyViewPrivate *priv = self->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -103,7 +98,7 @@ static void
 gabble_olpc_buddy_view_finalize (GObject *object)
 {
   GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (object);
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcBuddyViewPrivate *priv = self->priv;
 
   g_hash_table_destroy (priv->properties);
   g_free (priv->alias);
@@ -119,7 +114,7 @@ gabble_olpc_buddy_view_get_property (GObject *object,
                                GParamSpec *pspec)
 {
   GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (object);
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcBuddyViewPrivate *priv = self->priv;
 
   switch (property_id)
     {
@@ -163,7 +158,7 @@ gabble_olpc_buddy_view_set_property (GObject *object,
                                      GParamSpec *pspec)
 {
   GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (object);
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcBuddyViewPrivate *priv = self->priv;
 
   switch (property_id)
     {
@@ -200,7 +195,7 @@ gabble_olpc_buddy_view_constructor (GType type,
 
   view = GABBLE_OLPC_VIEW (obj);
 
-  priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (GABBLE_OLPC_BUDDY_VIEW (obj));
+  priv = GABBLE_OLPC_BUDDY_VIEW (obj)->priv;
   conn = (TpBaseConnection *) view->conn;
 
   bus = tp_get_bus ();
@@ -262,7 +257,7 @@ gabble_olpc_buddy_view_send_request (GabbleOlpcView *view,
                                      GError **error)
 {
   GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (view);
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcBuddyViewPrivate *priv = self->priv;
   LmMessage *query;
   LmMessageNode *buddy_node;
   gchar *max_str, *id_str;

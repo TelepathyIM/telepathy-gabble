@@ -1,3 +1,10 @@
+telepathy-gabble 0.7.23 (UNRELEASED)
+====================================
+
+Fixes:
+
+* Fix write flow control in tubes when using a SI fallback bytestream
+
 telepathy-gabble 0.7.22 (2009-03-02)
 ====================================
 

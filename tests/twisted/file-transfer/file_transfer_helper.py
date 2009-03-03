@@ -6,7 +6,8 @@ import time
 from servicetest import EventPattern
 from gabbletest import exec_test
 import ns
-from bytestream import create_from_si_offer, BytestreamIBB, BytestreamS5B, BytestreamS5BPidgin
+from bytestream import create_from_si_offer, BytestreamIBB, BytestreamS5B, BytestreamS5BPidgin, \
+    BytestreamSIFallbackS5CannotConnect, BytestreamSIFallbackS5WrongHash
 
 from twisted.words.xish import domish, xpath
 
@@ -425,4 +426,8 @@ def exec_file_transfer_test(test_cls):
     test = test_cls(BytestreamS5B)
     exec_test(test.test)
     test = test_cls(BytestreamS5BPidgin)
+    exec_test(test.test)
+    test = test_cls(BytestreamSIFallbackS5CannotConnect)
+    exec_test(test.test)
+    test = test_cls(BytestreamSIFallbackS5WrongHash)
     exec_test(test.test)

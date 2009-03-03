@@ -421,13 +421,7 @@ class SendFileTest(FileTransferTest):
         assert reason == FT_STATE_CHANGE_REASON_NONE
 
 def exec_file_transfer_test(test_cls):
-    test = test_cls(BytestreamIBB)
-    exec_test(test.test)
-    test = test_cls(BytestreamS5B)
-    exec_test(test.test)
-    test = test_cls(BytestreamS5BPidgin)
-    exec_test(test.test)
-    test = test_cls(BytestreamSIFallbackS5CannotConnect)
-    exec_test(test.test)
-    test = test_cls(BytestreamSIFallbackS5WrongHash)
-    exec_test(test.test)
+    for bytestream_cls  in [BytestreamIBB, BytestreamS5B, BytestreamS5BPidgin, BytestreamSIFallbackS5CannotConnect,
+            BytestreamSIFallbackS5WrongHash]:
+        test = test_cls(bytestream_cls)
+        exec_test(test.test)

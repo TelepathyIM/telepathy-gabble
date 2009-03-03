@@ -1544,10 +1544,13 @@ transport_disconnected_cb (GibberTransport *transport,
 {
   DEBUG ("transport to local socket has been disconnected");
 
-  gabble_file_transfer_channel_set_state (
-      TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
-      TP_FILE_TRANSFER_STATE_CANCELLED,
-      TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
+  if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED)
+    {
+      gabble_file_transfer_channel_set_state (
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_FILE_TRANSFER_STATE_CANCELLED,
+          TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
+    }
 }
 
 static void

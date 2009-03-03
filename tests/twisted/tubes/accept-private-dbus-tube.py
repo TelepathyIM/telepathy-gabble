@@ -173,10 +173,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     # Init the bytestream
     return_event = bytestream.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
 
-    _, state_event = q.expect_many(
-        EventPattern('stream-iq', iq_type='result'),
-        EventPattern('dbus-signal', signal='TubeChannelStateChanged'))
-
+    state_event = q.expect('dbus-signal', signal='TubeChannelStateChanged')
     addr = return_event.value[0]
     assert len(addr) > 0
 

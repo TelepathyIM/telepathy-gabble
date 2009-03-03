@@ -239,7 +239,6 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # have the fake client open the stream
     bytestream.open_bytestream()
-    q.expect('stream-iq', iq_type='result')
 
     # have the fake client send us some data
     bytestream.send_data('hello initiator')

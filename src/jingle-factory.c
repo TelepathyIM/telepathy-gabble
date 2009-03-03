@@ -954,6 +954,12 @@ gabble_jingle_factory_create_google_relay_session (
 
   g_return_if_fail (callback != NULL);
 
+  if (fac->priv->relay_server == NULL)
+    {
+      DEBUG ("No relay server provided, not creating google relay session");
+      callback (NULL, user_data);
+    }
+
   if (fac->priv->relay_token == NULL)
     {
       DEBUG ("No relay token provided, not creating google relay session");

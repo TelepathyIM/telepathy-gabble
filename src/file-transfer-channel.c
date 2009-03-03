@@ -33,6 +33,9 @@
 
 #include <loudmouth/loudmouth.h>
 
+#include <gibber/gibber-listener.h>
+#include <gibber/gibber-transport.h>
+
 #include "bytestream-factory.h"
 #include "connection.h"
 #include "file-transfer-channel.h"
@@ -119,9 +122,8 @@ struct _GabbleFileTransferChannelPrivate {
   gboolean remote_accepted;
 
   GabbleBytestreamIface *bytestream;
-  GIOChannel *channel;
-  /* the watch id on the channel */
-  guint watch_id;
+  GibberListener *listener;
+  GibberTransport *transport;
 
   /* properties */
   TpFileTransferState state;
@@ -767,16 +769,16 @@ gabble_file_transfer_channel_dispose (GObject *object)
       self->priv->bytestream = NULL;
     }
 
-  if (self->priv->watch_id != 0)
+  if (self->priv->listener != NULL)
     {
-      g_source_remove (self->priv->watch_id);
-      self->priv->watch_id = 0;
+      g_object_unref (self->priv->listener);
+      self->priv->listener = NULL;
     }
 
-  if (self->priv->channel != NULL)
+  if (self->priv->transport != NULL)
     {
-      g_io_channel_unref (self->priv->channel);
-      self->priv->channel = NULL;
+      g_object_unref (self->priv->transport);
+      self->priv->transport = NULL;
     }
 
   /* release any references held by the object here */
@@ -1239,13 +1241,24 @@ data_received_cb (GabbleBytestreamIface *stream,
                   gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  GIOStatus status;
+  GError *error = NULL;
 
-  g_assert (self->priv->channel != NULL);
+  g_assert (self->priv->transport != NULL);
+
+  if (!gibber_transport_send (self->priv->transport, (const guint8 *) data->str,
+        data->len, &error))
+    {
+      DEBUG ("sending to transport failed: %s", error->message);
+      g_error_free (error);
+
+      gabble_file_transfer_channel_set_state (
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_FILE_TRANSFER_STATE_CANCELLED,
+          TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
+      return;
+    }
 
   DEBUG ("received %u bytes from bytestream. Writing to socket", data->len);
-  status = g_io_channel_write_chars (self->priv->channel, data->str,
-      data->len, NULL, NULL);
 
   transferred_chunk (self, (guint64) data->len);
 
@@ -1448,130 +1461,46 @@ get_local_unix_socket_path (GabbleFileTransferChannel *self)
 }
 
 /*
- * Return a GIOChannel for the local unix socket path.
- */
-static GIOChannel *
-get_socket_channel (GabbleFileTransferChannel *self)
-{
-  gint fd;
-  const gchar *path;
-  size_t path_len;
-  struct sockaddr_un addr;
-  GIOChannel *io_channel;
-
-  path = get_local_unix_socket_path (self);
-
-  /* FIXME: should use the socket type and access control chosen by
-   * the user. */
-  fd = socket (PF_UNIX, SOCK_STREAM, 0);
-  if (fd < 0)
-    {
-      DEBUG("socket() failed");
-      return NULL;
-    }
-
-  memset (&addr, 0, sizeof (addr));
-  addr.sun_family = AF_UNIX;
-  path_len = strlen (path);
-  strncpy (addr.sun_path, path, path_len);
-  g_unlink (path);
-
-  if (bind (fd, (struct sockaddr*) &addr,
-        G_STRUCT_OFFSET (struct sockaddr_un, sun_path) + path_len) < 0)
-    {
-      DEBUG ("bind failed");
-      close (fd);
-      return NULL;
-    }
-
-  if (listen (fd, 1) < 0)
-    {
-      DEBUG ("listen failed");
-      close (fd);
-      return NULL;
-    }
-
-  io_channel = g_io_channel_unix_new (fd);
-  g_io_channel_set_close_on_unref (io_channel, TRUE);
-  return io_channel;
-}
-
-/*
  * Data is available from the channel so we can send it.
  */
-static gboolean
-input_channel_readable_cb (GIOChannel *source,
-                           GIOCondition condition,
-                           gpointer user_data)
+static void
+transport_handler (GibberTransport *transport,
+                   GibberBuffer *data,
+                   gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  GIOStatus status;
 
-#define BUFF_SIZE 4096
+  DEBUG("Data available, writing a %"G_GSIZE_FORMAT" bytes chunk",
+      data->length);
 
-  if (condition & G_IO_IN)
+  if (!gabble_bytestream_iface_send (self->priv->bytestream, data->length,
+        (const gchar *) data->data))
     {
-      gchar *buff;
-      gsize bytes_read;
-
-      buff = g_malloc (BUFF_SIZE);
-      status = g_io_channel_read_chars (source, buff, BUFF_SIZE,
-          &bytes_read, NULL);
-      switch (status)
-        {
-        case G_IO_STATUS_NORMAL:
-          if (!gabble_bytestream_iface_send (self->priv->bytestream, bytes_read,
-              buff))
-            {
-              DEBUG ("Sending failed. Closing the bytestream");
-              gabble_bytestream_iface_close (self->priv->bytestream, NULL);
-              return FALSE;
-            }
-
-          DEBUG("Data available, writing a %"G_GSIZE_FORMAT" bytes chunk",
-              bytes_read);
-          transferred_chunk (self, (guint64) bytes_read);
-
-          if (self->priv->transferred_bytes >= self->priv->size)
-            {
-              DEBUG ("All the file has been sent. Closing the bytestream");
-
-              gabble_file_transfer_channel_set_state (
-                  TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
-                  TP_FILE_TRANSFER_STATE_COMPLETED,
-                  TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
-
-              gabble_bytestream_iface_close (self->priv->bytestream, NULL);
-              return FALSE;
-            }
-          return TRUE;
-        case G_IO_STATUS_AGAIN:
-          DEBUG("Data available, try again");
-          g_free (buff);
-          return TRUE;
-        case G_IO_STATUS_EOF:
-          DEBUG("EOF received on input");
-          break;
-        default:
-          DEBUG ("Read from the channel failed");
-      }
-      g_free (buff);
+      DEBUG ("Sending failed. Closing the bytestream");
+      gabble_bytestream_iface_close (self->priv->bytestream, NULL);
+      return;
     }
 
-#undef BUFF_SIZE
+  transferred_chunk (self, (guint64) data->length);
 
-  DEBUG("Closing transfer");
+  if (self->priv->transferred_bytes >= self->priv->size)
+    {
+      DEBUG ("All the file has been sent. Closing the bytestream");
 
-  g_io_channel_unref (self->priv->channel);
-  self->priv->channel = NULL;
-  return FALSE;
+      gabble_file_transfer_channel_set_state (
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_FILE_TRANSFER_STATE_COMPLETED,
+          TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
+
+      gabble_bytestream_iface_close (self->priv->bytestream, NULL);
+      return;
+    }
 }
 
 static void
 file_transfer_send (GabbleFileTransferChannel *self)
 {
-  self->priv->watch_id = g_io_add_watch (self->priv->channel,
-          G_IO_IN | G_IO_HUP, input_channel_readable_cb, self);
+  gibber_transport_set_handler (self->priv->transport, transport_handler, self);
 }
 
 static void
@@ -1582,68 +1511,77 @@ file_transfer_receive (GabbleFileTransferChannel *self)
   gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
 }
 
+static void
+transport_disconnected_cb (GibberTransport *transport,
+                           GabbleFileTransferChannel *self)
+{
+  DEBUG ("transport to local socket has been disconnected");
+
+  gabble_file_transfer_channel_set_state (
+      TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+      TP_FILE_TRANSFER_STATE_CANCELLED,
+      TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
+}
+
 /*
  * Some client is connecting to the Unix socket.
  */
-static gboolean
-accept_local_socket_connection (GIOChannel *source,
-                                GIOCondition condition,
-                                gpointer user_data)
+static void
+new_connection_cb (GibberListener *listener,
+                   GibberTransport *transport,
+                   struct sockaddr_storage *addr,
+                   guint size,
+                   gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  int new_fd;
-  struct sockaddr_un addr;
-  socklen_t addrlen;
+  gboolean requested;
+  TpBaseConnection *base_conn = (TpBaseConnection *) \
+      self->priv->connection;
 
-  if (condition & G_IO_IN)
-    {
-      gboolean requested;
-      TpBaseConnection *base_conn = (TpBaseConnection *) \
-          self->priv->connection;
+  DEBUG ("Client connected to local socket");
 
-      DEBUG ("Client connected to local socket");
+  self->priv->transport = g_object_ref (transport);
+  gabble_signal_connect_weak (transport, "disconnected",
+    G_CALLBACK (transport_disconnected_cb), G_OBJECT (self));
 
-      addrlen = sizeof (addr);
-      new_fd = accept (g_io_channel_unix_get_fd (source),
-          (struct sockaddr *) &addr, &addrlen);
-      if (new_fd < 0)
-        {
-          DEBUG ("accept() failed");
-          return FALSE;
-        }
+  requested = (self->priv->initiator == base_conn->self_handle);
 
-      self->priv->channel = g_io_channel_unix_new (new_fd);
-      g_io_channel_set_close_on_unref (self->priv->channel, TRUE);
-      g_io_channel_set_encoding (self->priv->channel, NULL, NULL);
-      g_io_channel_set_buffered (self->priv->channel, FALSE);
+  if (!requested)
+    /* Incoming file transfer */
+    file_transfer_receive (self);
+  else
+    /* Outgoing file transfer */
+    file_transfer_send (self);
 
-      requested = (self->priv->initiator == base_conn->self_handle);
-
-      if (!requested)
-        /* Incoming file transfer */
-        file_transfer_receive (self);
-      else
-        /* Outgoing file transfer */
-        file_transfer_send (self);
-    }
-
-  return FALSE;
+  /* stop listening on local socket */
+  g_object_unref (self->priv->listener);
+  self->priv->listener = NULL;
 }
 
 static gboolean
 setup_local_socket (GabbleFileTransferChannel *self)
 {
-  GIOChannel *io_channel;
+  const gchar *path;
+  GError *error = NULL;
 
-  io_channel = get_socket_channel (self);
-  if (io_channel == NULL)
+  path = get_local_unix_socket_path (self);
+
+  self->priv->listener = gibber_listener_new ();
+
+  /* FIXME: should use the socket type and access control chosen by
+   * the user. */
+  if (!gibber_listener_listen_socket (self->priv->listener, (gchar *) path,
+        FALSE, &error))
     {
+      DEBUG ("listen_socket failed: %s", error->message);
+      g_error_free (error);
+      g_object_unref (self->priv->listener);
+      self->priv->listener = NULL;
       return FALSE;
     }
 
-  g_io_add_watch (io_channel, G_IO_IN | G_IO_HUP,
-      accept_local_socket_connection, self);
-  g_io_channel_unref (io_channel);
+  g_signal_connect (self->priv->listener, "new-connection",
+    G_CALLBACK (new_connection_cb), self);
 
   return TRUE;
 }

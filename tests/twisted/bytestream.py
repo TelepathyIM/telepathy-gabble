@@ -161,6 +161,10 @@ class BytestreamS5B(Bytestream):
         # FIXME: This is wrong. Change once SOCKS5 is fixed
         self.transport.write('\x05\x00') #version 5, ok
 
+    def _check_s5b_reply(self, iq):
+        streamhost = xpath.queryForNodes('/iq/query/streamhost-used', iq)[0]
+        assert streamhost['jid'] == self.initiator
+
     def _socks5_expect_connection(self, expected):
         if expected is not None:
             event, _ = self.q.expect_many(expected,
@@ -173,6 +177,10 @@ class BytestreamS5B(Bytestream):
         self._send_auth_reply()
         self._wait_connect_cmd()
         self._send_connect_reply()
+
+        # wait for S5B IQ reply
+        e = self.q.expect('stream-iq', iq_type='result', to=self.initiator)
+        self._check_s5b_reply(e.stanza)
 
         return event
 

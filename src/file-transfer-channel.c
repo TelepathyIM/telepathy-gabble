@@ -1498,8 +1498,28 @@ transport_handler (GibberTransport *transport,
 }
 
 static void
+bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
+                             gboolean blocked,
+                             GabbleFileTransferChannel *self)
+{
+  if (blocked)
+    {
+      DEBUG ("bytestream blocked, stop to read data from FT socket");
+    }
+  else
+    {
+      DEBUG ("bytestream unblocked, restart to read data from FT socket");
+    }
+
+  gibber_transport_block_receiving (self->priv->transport, blocked);
+
+}
+
+static void
 file_transfer_send (GabbleFileTransferChannel *self)
 {
+  gabble_signal_connect_weak (self->priv->bytestream, "write-blocked",
+    G_CALLBACK (bytestream_write_blocked_cb), G_OBJECT (self));
   gibber_transport_set_handler (self->priv->transport, transport_handler, self);
 }
 

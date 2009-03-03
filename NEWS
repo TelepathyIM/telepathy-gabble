@@ -3,7 +3,7 @@ telepathy-gabble 0.7.23 (UNRELEASED)
 
 Fixes:
 
-* Fix write flow control in tubes when using a SI fallback bytestream
+* Fix flow control in tubes when using a SI fallback bytestream
 
 * Fix SOCKS5 implementation to actually respect XEP-0065.
   One of the changes would cause interoperability issues with

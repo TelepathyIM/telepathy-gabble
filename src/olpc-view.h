@@ -30,6 +30,7 @@
 G_BEGIN_DECLS
 
 typedef struct _GabbleOlpcViewClass GabbleOlpcViewClass;
+typedef struct _GabbleOlpcViewPrivate GabbleOlpcViewPrivate;
 
 struct _GabbleOlpcViewClass {
   GObjectClass parent_class;
@@ -52,7 +53,7 @@ struct _GabbleOlpcView {
   guint id;
   guint max_size;
 
-  gpointer priv;
+  GabbleOlpcViewPrivate *priv;
 };
 
 GType gabble_olpc_view_get_type (void);

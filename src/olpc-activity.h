@@ -31,6 +31,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleOlpcActivity GabbleOlpcActivity;
 typedef struct _GabbleOlpcActivityClass GabbleOlpcActivityClass;
+typedef struct _GabbleOlpcActivityPrivate GabbleOlpcActivityPrivate;
 
 struct _GabbleOlpcActivityClass {
   GObjectClass parent_class;
@@ -43,7 +44,7 @@ struct _GabbleOlpcActivity {
   gchar *id;
   GHashTable *properties;
 
-  gpointer priv;
+  GabbleOlpcActivityPrivate *priv;
 };
 
 GType gabble_olpc_activity_get_type (void);

@@ -31,6 +31,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleOlpcBuddyView GabbleOlpcBuddyView;
 typedef struct _GabbleOlpcBuddyViewClass GabbleOlpcBuddyViewClass;
+typedef struct _GabbleOlpcBuddyViewPrivate GabbleOlpcBuddyViewPrivate;
 
 struct _GabbleOlpcBuddyViewClass {
   GabbleOlpcViewClass parent_class;
@@ -41,7 +42,7 @@ struct _GabbleOlpcBuddyViewClass {
 struct _GabbleOlpcBuddyView {
   GabbleOlpcView parent;
 
-  gpointer priv;
+  GabbleOlpcBuddyViewPrivate *priv;
 };
 
 GType gabble_olpc_buddy_view_get_type (void);

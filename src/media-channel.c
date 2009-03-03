@@ -2328,6 +2328,29 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
 }
 
 static void
+google_relay_session_cb (GHashTable *relay_info,
+                         gpointer user_data)
+{
+  if (relay_info == NULL)
+    {
+      DEBUG ("Failed to get a Google relay session");
+    }
+  else
+    {
+      GHashTableIter iter;
+      gpointer key, value;
+
+      DEBUG ("Google relay session:");
+      g_hash_table_iter_init (&iter, relay_info);
+
+      while (g_hash_table_iter_next (&iter, &key, &value))
+        {
+          DEBUG ("\t%s = %s", (gchar *) key, (gchar *) value);
+        }
+    }
+}
+
+static void
 create_stream_from_content (GabbleMediaChannel *chan,
                             GabbleJingleContent *c)
 {
@@ -2361,6 +2384,16 @@ create_stream_from_content (GabbleMediaChannel *chan,
   g_object_get (chan,
       "nat-traversal", &nat_traversal,
       NULL);
+
+  if (!tp_strdiff (nat_traversal, "gtalk-p2p"))
+    {
+      /* See if our server is Google, and if it is, ask them for a relay.
+       * For now, don't wait for the result (we don't actually use it yet). */
+      DEBUG ("Attempting to create Google relay session");
+      gabble_jingle_factory_create_google_relay_session (
+          priv->conn->jingle_factory, google_relay_session_cb, NULL);
+    }
+
   stream = gabble_media_stream_new (object_path, c, name, id,
       nat_traversal);
   g_free (nat_traversal);

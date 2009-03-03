@@ -92,6 +92,8 @@ static void session_terminated_cb (GabbleJingleSession *sess,
 static void connection_status_changed_cb (GabbleConnection *conn,
     guint status, guint reason, GabbleJingleFactory *self);
 
+#define RELAY_HTTP_TIMEOUT 5
+
 static void
 gabble_jingle_factory_init (GabbleJingleFactory *obj)
 {
@@ -944,6 +946,7 @@ gabble_jingle_factory_create_google_relay_session (
   GabbleJingleFactoryPrivate *priv =
       GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
   SoupMessage *msg;
+  gchar *url;
 
   g_return_if_fail (callback != NULL);
 
@@ -961,11 +964,16 @@ gabble_jingle_factory_create_google_relay_session (
         g_thread_init (NULL);
 
       priv->soup = soup_session_async_new ();
+
+      /* If we don't get answer in a few seconds, relay won't do
+       * us much help anyways. */
+      g_object_set (priv->soup, "timeout", RELAY_HTTP_TIMEOUT, NULL);
     }
 
-  msg = soup_message_new ("GET", "http://relay.google.com/create_session");
+  url = g_strdup_printf ("http://%s/create_session", fac->relay_server);
+  msg = soup_message_new ("GET", url);
 
-  DEBUG ("Trying to create a new relay session");
+  DEBUG ("Trying to create a new relay session on %s", url);
 
   /* libjingle sets both headers, so shall we */
   soup_message_headers_append (msg->request_headers,
@@ -975,4 +983,5 @@ gabble_jingle_factory_create_google_relay_session (
 
   soup_session_queue_message (priv->soup, msg, on_http_response,
       relay_session_data_new (callback, user_data));
+  g_free (url);
 }

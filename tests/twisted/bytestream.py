@@ -299,13 +299,18 @@ class BytestreamS5B(Bytestream):
         assert mode == 'tcp'
         assert sid == self.stream_id
 
+        stream_host_found = False
+
         for jid, host, port in hosts:
             if jid == self.initiator:
+                stream_host_found = True
                 if self._socks5_connect(host, port):
                     self._send_socks5_reply(id, jid)
                 else:
                     # Connection failed
                     self.send_not_found(id)
+                break
+        assert stream_host_found
 
     def get_data(self, size=0):
         binary = ''

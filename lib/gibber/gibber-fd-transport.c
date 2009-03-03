@@ -335,12 +335,6 @@ _channel_io_err (GIOChannel *source, GIOCondition condition, gpointer data)
       code = GIBBER_FD_TRANSPORT_ERROR_FAILED;
       msg = "Error on GIOChannel";
     }
-  else if (condition & G_IO_HUP)
-    {
-      DEBUG ("Connection has been broken. Closing the transport");
-      code = GIBBER_FD_TRANSPORT_ERROR_PIPE;
-      msg = "Connection has been broken";
-    }
   else
     {
       g_assert_not_reached ();
@@ -430,7 +424,7 @@ gibber_fd_transport_set_fd (GibberFdTransport *self, int fd)
   priv->watch_in =
     g_io_add_watch (priv->channel, G_IO_IN, _channel_io_in, self);
   priv->watch_err =
-    g_io_add_watch (priv->channel, G_IO_ERR|G_IO_HUP, _channel_io_err, self);
+    g_io_add_watch (priv->channel, G_IO_ERR, _channel_io_err, self);
 
   gibber_transport_set_state (GIBBER_TRANSPORT(self),
       GIBBER_TRANSPORT_CONNECTED);

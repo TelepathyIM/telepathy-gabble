@@ -803,24 +803,56 @@ gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
   return TRUE;
 }
 
+typedef struct
+{
+  GabbleJingleFactoryRelaySessionCb callback;
+  gpointer user_data;
+} RelaySessionData;
+
+static RelaySessionData *
+relay_session_data_new (GabbleJingleFactoryRelaySessionCb callback,
+                        gpointer user_data)
+{
+  RelaySessionData *rsd = g_slice_new0 (RelaySessionData);
+
+  rsd->callback = callback;
+  rsd->user_data = user_data;
+
+  return rsd;
+}
+
+static void
+relay_session_data_destroy (gpointer p)
+{
+  RelaySessionData *rsd = p;
+
+  g_slice_free (RelaySessionData, rsd);
+}
+
 static void
 on_http_response (SoupSession *soup,
                   SoupMessage *msg,
                   gpointer user_data)
 {
+  RelaySessionData *rsd = user_data;
+
   if (msg->status_code != 200)
     {
       DEBUG ("Google session creation failed, relaying not used: %d %s",
           msg->status_code, msg->reason_phrase);
+
+      rsd->callback (NULL, rsd->user_data);
     }
   else
     {
       /* parse a=b lines into GHashTable */
-      GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
       GHashTable *map = g_hash_table_new_full (g_str_hash, g_str_equal,
           g_free, g_free);
       gchar **lines;
       guint i;
+
+      DEBUG ("Response from Google:\n====\n%s\n====",
+          msg->response_body->data);
 
       lines = g_strsplit (msg->response_body->data, "\n", 0);
 
@@ -848,25 +880,29 @@ on_http_response (SoupSession *soup,
             }
         }
 
-      g_object_set (sess, "relay-info", map, NULL);
+      rsd->callback (map, rsd->user_data);
       g_strfreev (lines);
     }
+
+  relay_session_data_destroy (rsd);
 }
 
-/* If we have a relay token, we'll try to use it and get relay info.
- * When/if we do, we'll set "relay-info" property on the given session. */
 void
-gabble_jingle_factory_create_google_relay_session (GabbleJingleFactory *fac,
-  GabbleJingleSession *sess)
+gabble_jingle_factory_create_google_relay_session (
+    GabbleJingleFactory *fac,
+    GabbleJingleFactoryRelaySessionCb callback,
+    gpointer user_data)
 {
   GabbleJingleFactoryPrivate *priv =
       GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
   SoupMessage *msg;
 
+  g_return_if_fail (callback != NULL);
+
   if (fac->priv->relay_token == NULL)
     {
       DEBUG ("No relay token provided, not creating google relay session");
-      return;
+      callback (NULL, user_data);
     }
 
   if (priv->soup == NULL)
@@ -889,5 +925,6 @@ gabble_jingle_factory_create_google_relay_session (GabbleJingleFactory *fac,
   soup_message_headers_append (msg->request_headers,
       "X-Google-Relay-Auth", fac->priv->relay_token);
 
-  soup_session_queue_message (priv->soup, msg, on_http_response, sess);
+  soup_session_queue_message (priv->soup, msg, on_http_response,
+      relay_session_data_new (callback, user_data));
 }

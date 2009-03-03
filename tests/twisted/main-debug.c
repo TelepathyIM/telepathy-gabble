@@ -19,6 +19,7 @@
 
 #include "gabble.h"
 #include "connection.h"
+#include "jingle-factory.h"
 
 #include <lib/gibber/gibber-resolver.h>
 
@@ -33,6 +34,7 @@ main (int argc,
 
   g_type_init ();
   gibber_resolver_set_resolver (GABBLE_TYPE_RESOLVER_FAKE);
+  gabble_jingle_factory_set_test_mode ();
 
   return gabble_main (argc, argv);
 }

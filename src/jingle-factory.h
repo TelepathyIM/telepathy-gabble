@@ -154,6 +154,8 @@ const gchar *gabble_jingle_factory_get_google_relay_token (
 gboolean gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
     gchar **stun_server, guint *stun_port);
 
+void gabble_jingle_factory_set_test_mode (void);
+
 G_END_DECLS;
 
 #endif /* __JINGLE_FACTORY_H__ */

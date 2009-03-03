@@ -76,6 +76,7 @@ struct _GabbleJingleFactoryPrivate
   gchar *relay_token;
   gboolean get_stun_from_jingle;
   gchar *relay_server;
+  guint16 relay_http_port;
   guint16 relay_udp;
   guint16 relay_tcp;
   guint16 relay_ssltcp;
@@ -97,6 +98,14 @@ static void connection_status_changed_cb (GabbleConnection *conn,
     guint status, guint reason, GabbleJingleFactory *self);
 
 #define RELAY_HTTP_TIMEOUT 5
+
+static gboolean test_mode = FALSE;
+
+void
+gabble_jingle_factory_set_test_mode (void)
+{
+  test_mode = TRUE;
+}
 
 static void
 gabble_jingle_factory_init (GabbleJingleFactory *obj)
@@ -120,6 +129,7 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
   priv->resolver = gibber_resolver_get_resolver ();
+  priv->relay_http_port = 80;
 }
 
 typedef struct {
@@ -328,6 +338,21 @@ jingle_info_cb (LmMessageHandler *handler,
               DEBUG ("jingle info: got relay server %s", server);
               g_free (fac->priv->relay_server);
               fac->priv->relay_server = g_strdup (server);
+            }
+
+          if (test_mode)
+            {
+              /* this is not part of the real protocol, but we can't listen on
+               * port 80 in an unprivileged regression test */
+              port = lm_message_node_get_attribute (subnode,
+                  "gabble-test-http-port");
+
+              if (port != NULL)
+                {
+                  DEBUG ("jingle info: diverting 'Google' HTTP requests to "
+                      "port %s", port);
+                  fac->priv->relay_http_port = atoi (port);
+                }
             }
 
           /* FIXME: these are not really actually used anywhere at
@@ -983,7 +1008,8 @@ gabble_jingle_factory_create_google_relay_session (
       g_object_set (priv->soup, "timeout", RELAY_HTTP_TIMEOUT, NULL);
     }
 
-  url = g_strdup_printf ("http://%s/create_session", fac->priv->relay_server);
+  url = g_strdup_printf ("http://%s:%d/create_session",
+      fac->priv->relay_server, fac->priv->relay_http_port);
   msg = soup_message_new ("GET", url);
 
   DEBUG ("Trying to create a new relay session on %s", url);

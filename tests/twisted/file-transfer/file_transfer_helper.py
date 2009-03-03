@@ -422,7 +422,7 @@ class SendFileTest(FileTransferTest):
 def exec_file_transfer_test(test_cls):
     test = test_cls(BytestreamIBB)
     exec_test(test.test)
-    #test = test_cls(BytestreamS5B)
-    #exec_test(test.test)
-    #test = test_cls(BytestreamS5BPidgin)
-    #exec_test(test.test)
+    test = test_cls(BytestreamS5B)
+    exec_test(test.test)
+    test = test_cls(BytestreamS5BPidgin)
+    exec_test(test.test)

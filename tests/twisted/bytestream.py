@@ -423,6 +423,20 @@ class BytestreamS5BWrongHash(BytestreamS5B):
 
         return events_before, []
 
+class BytestreamS5BRelay(BytestreamS5B):
+    """Direct connection doesn't work so we use a relay"""
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        BytestreamS5B.__init__(self, stream, q, sid, initiator, target, initiated)
+
+        self.hosts = [(self.initiator, 'invalid.invalid'),
+                ('proxy.localhost', '127.0.0.1')]
+
+    # This is the only thing we need to check to test the Target side as the
+    # protocol is similar from this side.
+    def _check_s5b_reply(self, iq):
+        streamhost = xpath.queryForNodes('/iq/query/streamhost-used', iq)[0]
+        assert streamhost['jid'] == 'proxy.localhost'
+
 class S5BProtocol(Protocol):
     def connectionMade(self):
         self.factory.event_func(Event('s5b-connected',

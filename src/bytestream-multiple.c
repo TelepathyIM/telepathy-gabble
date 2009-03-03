@@ -514,6 +514,15 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 }
 
 static void
+bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
+                             gboolean blocked,
+                             gpointer self)
+{
+  /* Forward signal */
+  g_signal_emit_by_name (G_OBJECT (self), "write-blocked", blocked);
+}
+
+static void
 bytestream_connection_error_cb (GabbleBytestreamIface *failed,
                                 gpointer user_data)
 {
@@ -532,6 +541,8 @@ bytestream_connection_error_cb (GabbleBytestreamIface *failed,
       bytestream_data_received_cb, self);
   g_signal_handlers_disconnect_by_func (failed,
       bytestream_state_changed_cb, self);
+  g_signal_handlers_disconnect_by_func (failed,
+      bytestream_write_blocked_cb, self);
 
   /* We don't have to unref it because the reference is kept by the
    * factory */
@@ -579,6 +590,8 @@ bytestream_activate_next (GabbleBytestreamMultiple *self)
       G_CALLBACK (bytestream_data_received_cb), self);
   g_signal_connect (priv->active_bytestream, "state-changed",
       G_CALLBACK (bytestream_state_changed_cb), self);
+  g_signal_connect (priv->active_bytestream, "write-blocked",
+      G_CALLBACK (bytestream_write_blocked_cb), self);
 }
 
 /*

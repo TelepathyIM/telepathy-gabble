@@ -1271,6 +1271,13 @@ data_received_cb (GabbleBytestreamIface *stream,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
       return;
     }
+
+  if (!gibber_transport_buffer_is_empty (self->priv->transport))
+    {
+      /* We don't want to send more data while the buffer isn't empty */
+      DEBUG ("file transfer buffer isn't empty. Block the bytestream");
+      gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
+    }
 }
 
 /**
@@ -1543,6 +1550,15 @@ transport_disconnected_cb (GibberTransport *transport,
       TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
 }
 
+static void
+transport_buffer_empty_cb (GibberTransport *transport,
+                           GabbleFileTransferChannel *self)
+{
+  /* Buffer is empty so we can unblock the buffer if it was blocked */
+  DEBUG ("file transfer buffer is empty. Unblock the bytestream");
+  gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
+}
+
 /*
  * Some client is connecting to the Unix socket.
  */
@@ -1563,6 +1579,8 @@ new_connection_cb (GibberListener *listener,
   self->priv->transport = g_object_ref (transport);
   gabble_signal_connect_weak (transport, "disconnected",
     G_CALLBACK (transport_disconnected_cb), G_OBJECT (self));
+  gabble_signal_connect_weak (transport, "buffer-empty",
+    G_CALLBACK (transport_buffer_empty_cb), G_OBJECT (self));
 
   requested = (self->priv->initiator == base_conn->self_handle);
 

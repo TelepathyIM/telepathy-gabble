@@ -75,6 +75,10 @@ struct _GabbleJingleFactoryPrivate
   guint16 fallback_stun_port;
   gchar *relay_token;
   gboolean get_stun_from_jingle;
+  gchar *relay_server;
+  guint16 relay_udp;
+  guint16 relay_tcp;
+  guint16 relay_ssltcp;
 
   gboolean dispose_has_run;
 };
@@ -322,8 +326,8 @@ jingle_info_cb (LmMessageHandler *handler,
           if (server != NULL)
             {
               DEBUG ("jingle info: got relay server %s", server);
-              g_free (fac->relay_server);
-              fac->relay_server = g_strdup (server);
+              g_free (fac->priv->relay_server);
+              fac->priv->relay_server = g_strdup (server);
             }
 
           /* FIXME: these are not really actually used anywhere at
@@ -334,7 +338,7 @@ jingle_info_cb (LmMessageHandler *handler,
           if (port != NULL)
             {
               DEBUG ("jingle info: got relay udp port %s", port);
-              fac->relay_udp = atoi (port);
+              fac->priv->relay_udp = atoi (port);
             }
 
           port = lm_message_node_get_attribute (subnode, "tcp");
@@ -342,7 +346,7 @@ jingle_info_cb (LmMessageHandler *handler,
           if (port != NULL)
             {
               DEBUG ("jingle info: got relay tcp port %s", port);
-              fac->relay_tcp = atoi (port);
+              fac->priv->relay_tcp = atoi (port);
             }
 
           port = lm_message_node_get_attribute (subnode, "tcpssl");
@@ -350,7 +354,7 @@ jingle_info_cb (LmMessageHandler *handler,
           if (port != NULL)
             {
               DEBUG ("jingle info: got relay tcpssl port %s", port);
-              fac->relay_ssltcp = atoi (port);
+              fac->priv->relay_ssltcp = atoi (port);
             }
 
         }
@@ -418,7 +422,7 @@ gabble_jingle_factory_dispose (GObject *object)
   g_free (fac->priv->stun_server);
   g_free (fac->priv->fallback_stun_server);
   g_free (fac->priv->relay_token);
-  g_free (fac->relay_server);
+  g_free (fac->priv->relay_server);
 
   if (priv->soup != NULL)
     {
@@ -970,7 +974,7 @@ gabble_jingle_factory_create_google_relay_session (
       g_object_set (priv->soup, "timeout", RELAY_HTTP_TIMEOUT, NULL);
     }
 
-  url = g_strdup_printf ("http://%s/create_session", fac->relay_server);
+  url = g_strdup_printf ("http://%s/create_session", fac->priv->relay_server);
   msg = soup_message_new ("GET", url);
 
   DEBUG ("Trying to create a new relay session on %s", url);

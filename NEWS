@@ -1,5 +1,37 @@
-telepathy-gabble 0.7.22 (UNRELEASED)
+telepathy-gabble 0.7.23 (UNRELEASED)
 ====================================
+
+Fixes:
+
+* Fix write flow control in tubes when using a SI fallback bytestream
+
+* Fix SOCKS5 implementation to actually respect XEP-0065.
+  One of the changes would cause interoperability issues with
+  older, buggy, Gabble implementing SOCKS5 (0.7.{18,19,20,21}):
+
+  - A stream tube (muc or private) offers from a new Gabble to an old one will
+    takes 30 extra seconds trying to connect and will then timed out and
+    fallback to IBB.
+
+  - A MUC stream tube offered from an old Gabble to a new one will fail
+    during SOCKS5 negotiation and then fallback to IBB.
+
+  - A private stream tube offered from an old Gabble to a new one will,
+    apparantely, connect properly but the server application (tube offer side)
+    will receive crap data from the tube socket.
+
+  - Same problem with a private D-Bus tube offered by a new Gabble to an
+    old one: the receiver of the tube will receive wrong data.
+
+  These problems only appear when a SOCKS5 connection is possible, so
+  generally when both peers are on the same network. If they are not,
+  SOCKS5 connection will probably be impossible because of NAT's and
+  they'll fallback to IBB as usual.
+
+telepathy-gabble 0.7.22 (2009-03-02)
+====================================
+
+The "box without a good key" release.
 
 Dependencies:
 
@@ -25,29 +57,6 @@ Fixes:
 
 * Drain some swamps in Jingle call handling for better maintainability,
   and improve Jingle regression test coverage
-
-* Fix SOCKS5 implementation to actually respect XEP-0065.
-  One of the changes would cause interoperability issues with
-  older, buggy, Gabble implementing SOCKS5 (0.7.{18,19,20,21}):
-
-  - A stream tube (muc or private) offers from a new Gabble to an old one will
-    takes 30 extra seconds trying to connect and will then timed out and
-    fallback to IBB.
-
-  - A MUC stream tube offered from an old Gabble to a new one will fail
-    during SOCKS5 negotiation and then fallback to IBB.
-
-  - A private stream tube offered from an old Gabble to a new one will,
-    apparantely, connect properly but the server application (tube offer side)
-    will receive crap data from the tube socket.
-
-  - Same problem with a private D-Bus tube offered by a new Gabble to an
-    old one: the receiver of the tube will receive wrong data.
-
-  These problems only appear when a SOCKS5 connection is possible, so
-  generally when both peers are on the same network. If they are not,
-  SOCKS5 connection will probably be impossible because of NAT's and
-  they'll fallback to IBB as usual.
 
 telepathy-gabble 0.7.21 (2009-02-19)
 ====================================

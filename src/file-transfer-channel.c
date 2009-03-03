@@ -763,8 +763,6 @@ gabble_file_transfer_channel_dispose (GObject *object)
 
   if (self->priv->bytestream != NULL)
     {
-      g_signal_handlers_disconnect_matched (self->priv->bytestream,
-          G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, self);
       g_object_unref (self->priv->bytestream);
       self->priv->bytestream = NULL;
     }
@@ -1019,8 +1017,8 @@ set_bytestream (GabbleFileTransferChannel *self,
 
   self->priv->bytestream = g_object_ref (bytestream);
 
-  g_signal_connect (bytestream, "state-changed",
-      G_CALLBACK (bytestream_state_changed_cb), self);
+  gabble_signal_connect_weak (bytestream, "state-changed",
+      G_CALLBACK (bytestream_state_changed_cb), G_OBJECT (self));
 }
 
 static void
@@ -1337,8 +1335,8 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
   self->priv->initial_offset = 0;
 
   g_assert (self->priv->bytestream != NULL);
-  g_signal_connect (self->priv->bytestream, "data-received",
-      G_CALLBACK (data_received_cb), self);
+  gabble_signal_connect_weak (self->priv->bytestream, "data-received",
+      G_CALLBACK (data_received_cb), G_OBJECT (self));
 
   /* channel state will change to open once the bytestream is open */
   /* TODO: set a function once we support resume */

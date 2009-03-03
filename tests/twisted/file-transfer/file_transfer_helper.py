@@ -407,8 +407,11 @@ class SendFileTest(FileTransferTest):
 
         assert data == self.file.data
 
-        # The bytes transferred has been announced using
-        # TransferredBytesChanged
+        # If not all the bytes transferred have been announced using
+        # TransferredBytesChanged, wait for them
+        while self.count < self.file.size:
+            self.q.expect('dbus-signal', signal='TransferredBytesChanged')
+
         assert self.count == self.file.size
 
         # FileTransferStateChanged could have already been fired

@@ -939,23 +939,25 @@ on_http_response (SoupSession *soup,
         {
           for (i = 0; lines[i] != NULL; i++)
             {
-              gchar ** fields = g_strsplit (lines[i], "=", 2);
+              gchar *delim = strchr (lines[i], '=');
+              size_t len;
 
-              /* we only want lines of format a=b */
-              if ((fields != NULL) &&
-                  (fields[0] != NULL) && (fields[1] != NULL) &&
-                  (fields[2] == NULL))
+              if (delim == NULL || delim == lines[i])
                 {
-                  gchar *key = g_strdup (fields[0]);
-                  gchar *val = g_strdup (fields[1]);
-                  gchar *cr = g_utf8_strchr (val, -1, '\r');
-                  if (cr != NULL)
-                      *cr = 0;
-
-                  g_hash_table_insert (map, key, val);
+                  /* ignore empty keys or lines without '=' */
+                  continue;
                 }
 
-              g_strfreev (fields);
+              len = strlen (lines[i]);
+
+              if (lines[i][len - 1] == '\r')
+                {
+                  lines[i][len - 1] = '\0';
+                }
+
+              *delim = '\0';
+              g_hash_table_insert (map, g_strdup (lines[i]),
+                  g_strdup (delim + 1));
             }
         }
 

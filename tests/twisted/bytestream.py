@@ -517,6 +517,14 @@ class BytestreamS5BRelay(BytestreamS5B):
     def wait_bytestream_closed(self):
         pass
 
+
+class BytestreamS5BRelayBugged(BytestreamS5BRelay):
+    """Simulate bugged ejabberd (< 2.0.2) proxy sending wrong CONNECT reply"""
+    def _send_connect_reply(self):
+        # send a 6 bytes wrong reply
+        connect_reply = '\x05\x00\x00\x00\x00\x00'
+        self.transport.write(connect_reply)
+
 class S5BProtocol(Protocol):
     def connectionMade(self):
         self.factory.event_func(Event('s5b-connected',

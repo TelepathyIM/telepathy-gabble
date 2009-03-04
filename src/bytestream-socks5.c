@@ -1489,7 +1489,7 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
       return;
     }
 
-  DEBUG ("connect to proxy: %s (%s;%s)", proxy->jid, proxy->host, proxy->port);
+  DEBUG ("connect to proxy: %s (%s:%s)", proxy->jid, proxy->host, proxy->port);
   priv->socks5_state = SOCKS5_STATE_INITIATOR_TRYING_CONNECT;
 
   transport = gibber_tcp_transport_new ();

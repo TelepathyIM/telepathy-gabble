@@ -7,7 +7,7 @@ from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import create_from_si_offer
+from bytestream import create_from_si_offer, announce_socks5_proxy
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -22,12 +22,15 @@ sample_parameters = dbus.Dictionary({
 def test(q, bus, conn, stream, bytestream_cls):
     conn.Connect()
 
-    _, iq_event = q.expect_many(
+    _, iq_event, disco_event = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
-            query_name='vCard'))
+            query_name='vCard'),
+        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
 
     acknowledge_iq(stream, iq_event.stanza)
+
+    announce_socks5_proxy(q, stream, disco_event.stanza)
 
     call_async(q, conn, 'RequestHandles', 2,
         ['chat@conf.localhost'])

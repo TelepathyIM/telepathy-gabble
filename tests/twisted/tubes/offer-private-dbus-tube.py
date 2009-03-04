@@ -11,7 +11,7 @@ import tubetestutil as t
 
 from twisted.words.xish import xpath
 import ns
-from bytestream import create_from_si_offer
+from bytestream import create_from_si_offer, announce_socks5_proxy
 from caps_helper import make_caps_disco_reply
 
 sample_parameters = dbus.Dictionary({
@@ -268,7 +268,11 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestr
 def test(q, bus, conn, stream, bytestream_cls):
     conn.Connect()
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    _, disco_event = q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
+
+    announce_socks5_proxy(q, stream, disco_event.stanza)
 
     t.check_conn_properties(q, conn)
 

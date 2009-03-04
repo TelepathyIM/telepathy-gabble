@@ -37,6 +37,7 @@
 #include "bytestream-socks5.h"
 #include "connection.h"
 #include "debug.h"
+#include "disco.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "private-tubes-factory.h"
@@ -105,6 +106,31 @@ bytestream_id_free (gpointer v)
   g_slice_free (BytestreamIdentifier, bsid);
 }
 
+static GabbleSocks5Proxy *
+gabble_socks5_proxy_new (const gchar *jid,
+                         const gchar *host,
+                         const gchar *port)
+{
+  GabbleSocks5Proxy *proxy;
+
+  proxy = g_slice_new (GabbleSocks5Proxy);
+  proxy->jid = g_strdup (jid);
+  proxy->host = g_strdup (host);
+  proxy->port = g_strdup (port);
+
+  return proxy;
+}
+
+static void
+gabble_socks5_proxy_free (GabbleSocks5Proxy *proxy)
+{
+  g_free (proxy->jid);
+  g_free (proxy->host);
+  g_free (proxy->port);
+
+  g_slice_free (GabbleSocks5Proxy, proxy);
+}
+
 struct _GabbleBytestreamFactoryPrivate
 {
   GabbleConnection *conn;
@@ -130,6 +156,9 @@ struct _GabbleBytestreamFactoryPrivate
    *
    * BytestreamIdentifier -> GabbleBytestreamMultiple */
   GHashTable *multiple_bytestreams;
+
+  /* List of GabbleSocks5Proxy discovered on the connection */
+  GSList *socks5_proxies;
 
   gboolean dispose_has_run;
 };
@@ -173,6 +202,74 @@ gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
       bytestream_id_equal, bytestream_id_free, g_object_unref);
 }
 
+static LmHandlerResult
+socks5_proxy_query_reply_cb (GabbleConnection *conn,
+                             LmMessage *sent_msg,
+                             LmMessage *reply_msg,
+                             GObject *obj,
+                             gpointer user_data)
+{
+  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+  LmMessageNode *query, *streamhost;
+  const gchar *jid, *host, *port;
+  GabbleSocks5Proxy *proxy;
+
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  query = lm_message_node_get_child_with_namespace (reply_msg->node, "query",
+      NS_BYTESTREAMS);
+  if (query == NULL)
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  streamhost = lm_message_node_get_child (query, "streamhost");
+  if (streamhost == NULL)
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  jid = lm_message_node_get_attribute (streamhost, "jid");
+  host = lm_message_node_get_attribute (streamhost, "host");
+  port = lm_message_node_get_attribute (streamhost, "port");
+
+  if (jid == NULL || host == NULL || port == NULL)
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  DEBUG ("Found SOCKS5 proxy: %s %s:%s", jid, host, port);
+
+  proxy = gabble_socks5_proxy_new (jid, host, port);
+  priv->socks5_proxies = g_slist_prepend (priv->socks5_proxies, proxy);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+disco_item_found_cb (GabbleDisco *disco,
+                     GabbleDiscoItem *item,
+                     GabbleBytestreamFactory *self)
+{
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+  LmMessage *query;
+
+  if (tp_strdiff (item->category, "proxy") ||
+      tp_strdiff (item->type, "bytestreams"))
+    return;
+
+  DEBUG ("send SOCKS5 query to %s", item->jid);
+
+  query = lm_message_build (item->jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "get",
+      '(', "query", "",
+        '@', "xmlns", NS_BYTESTREAMS,
+      ')', NULL);
+
+  _gabble_connection_send_with_reply (priv->conn, query,
+      socks5_proxy_query_reply_cb, G_OBJECT (self), self, NULL);
+
+  lm_message_unref (query);
+}
+
 static GObject *
 gabble_bytestream_factory_constructor (GType type,
                                        guint n_props,
@@ -208,6 +305,10 @@ gabble_bytestream_factory_constructor (GType type,
   lm_connection_register_message_handler (priv->conn->lmconn,
       priv->iq_socks5_cb, LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
 
+  /* Track SOCKS5 proxy available on the connection */
+  gabble_signal_connect_weak (priv->conn->disco, "item-found",
+      G_CALLBACK (disco_item_found_cb), G_OBJECT (self));
+
   return obj;
 }
 
@@ -217,6 +318,7 @@ gabble_bytestream_factory_dispose (GObject *object)
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (object);
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  GSList *l;
 
   if (priv->dispose_has_run)
     return;
@@ -251,6 +353,15 @@ gabble_bytestream_factory_dispose (GObject *object)
 
   g_hash_table_destroy (priv->multiple_bytestreams);
   priv->multiple_bytestreams = NULL;
+
+  for (l = priv->socks5_proxies; l != NULL; l = g_slist_next (l))
+    {
+      GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
+
+      gabble_socks5_proxy_free (proxy);
+    }
+  g_slist_free (priv->socks5_proxies);
+  priv->socks5_proxies = NULL;
 
   if (G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose (object);
@@ -1760,4 +1871,13 @@ gabble_bytestream_factory_make_multi_accept_iq (const gchar *full_jid,
     }
 
   return msg;
+}
+
+const GSList *
+gabble_bytestream_factory_get_socks_proxies (GabbleBytestreamFactory *self)
+{
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+
+  return priv->socks5_proxies;
 }

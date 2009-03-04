@@ -884,6 +884,8 @@ gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
 
 typedef struct
 {
+  GPtrArray *relays;
+  guint component;
   guint requests_to_do;
   GabbleJingleFactoryRelaySessionCb callback;
   gpointer user_data;
@@ -896,6 +898,8 @@ relay_session_data_new (guint requests_to_do,
 {
   RelaySessionData *rsd = g_slice_new0 (RelaySessionData);
 
+  rsd->relays = g_ptr_array_sized_new (requests_to_do);
+  rsd->component = 1;
   rsd->requests_to_do = requests_to_do;
   rsd->callback = callback;
   rsd->user_data = user_data;
@@ -910,7 +914,58 @@ relay_session_data_destroy (gpointer p)
 
   g_assert (rsd->requests_to_do == 0);
 
+  g_ptr_array_foreach (rsd->relays, (GFunc) g_hash_table_destroy, NULL);
+  g_ptr_array_free (rsd->relays, TRUE);
+
   g_slice_free (RelaySessionData, rsd);
+}
+
+static void
+translate_relay_info (GPtrArray *relays,
+                      const gchar *relay_ip,
+                      const gchar *username,
+                      const gchar *password,
+                      const gchar *static_type,
+                      const gchar *port_string,
+                      guint component)
+{
+  GHashTable *asv;
+  guint port = 0;
+
+  if (port_string == NULL)
+    {
+      DEBUG ("no relay port for %s found", static_type);
+      return;
+    }
+
+  port = atoi (port_string);
+
+  if (port == 0 || port > G_MAXUINT16)
+    {
+      DEBUG ("failed to parse relay port '%s' for %s", port_string,
+          static_type);
+      return;
+    }
+
+  DEBUG ("type=%s ip=%s port=%u username=%s password=%s component=%u",
+      static_type, relay_ip, port, username, password, component);
+  /* keys are static, values are slice-allocated */
+  asv = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) tp_g_value_slice_free);
+  g_hash_table_insert (asv, "ip",
+      gabble_g_value_slice_new_string (relay_ip));
+  g_hash_table_insert (asv, "type",
+      gabble_g_value_slice_new_static_string (static_type));
+  g_hash_table_insert (asv, "port",
+      gabble_g_value_slice_new_uint (port));
+  g_hash_table_insert (asv, "username",
+      gabble_g_value_slice_new_string (username));
+  g_hash_table_insert (asv, "password",
+      gabble_g_value_slice_new_string (password));
+  g_hash_table_insert (asv, "component",
+      gabble_g_value_slice_new_uint (component));
+
+  g_ptr_array_add (relays, asv);
 }
 
 static void
@@ -919,7 +974,6 @@ on_http_response (SoupSession *soup,
                   gpointer user_data)
 {
   RelaySessionData *rsd = user_data;
-  GHashTable *map = NULL;
 
   if (msg->status_code != 200)
     {
@@ -928,12 +982,17 @@ on_http_response (SoupSession *soup,
     }
   else
     {
-      /* parse a=b lines into GHashTable */
+      /* parse a=b lines into GHashTable
+       * (key, value both borrowed from items of the strv 'lines') */
+      GHashTable *map = g_hash_table_new (g_str_hash, g_str_equal);
       gchar **lines;
       guint i;
-
-      map = g_hash_table_new_full (g_str_hash, g_str_equal,
-          g_free, g_free);
+      const gchar *relay_ip;
+      const gchar *relay_udp_port;
+      const gchar *relay_tcp_port;
+      const gchar *relay_ssltcp_port;
+      const gchar *username;
+      const gchar *password;
 
       DEBUG ("Response from Google:\n====\n%s\n====",
           msg->response_body->data);
@@ -961,21 +1020,50 @@ on_http_response (SoupSession *soup,
                 }
 
               *delim = '\0';
-              g_hash_table_insert (map, g_strdup (lines[i]),
-                  g_strdup (delim + 1));
+              g_hash_table_insert (map, lines[i], delim + 1);
             }
         }
+
+      relay_ip = g_hash_table_lookup (map, "relay.ip");
+      relay_udp_port = g_hash_table_lookup (map, "relay.udp_port");
+      relay_tcp_port = g_hash_table_lookup (map, "relay.tcp_port");
+      relay_ssltcp_port = g_hash_table_lookup (map, "relay.ssltcp_port");
+      username = g_hash_table_lookup (map, "username");
+      password = g_hash_table_lookup (map, "password");
+
+      if (relay_ip == NULL)
+        {
+          DEBUG ("No relay.ip found");
+        }
+      else if (username == NULL)
+        {
+          DEBUG ("No username found");
+        }
+      else if (password == NULL)
+        {
+          DEBUG ("No password found");
+        }
+      else
+        {
+          translate_relay_info (rsd->relays, relay_ip, username, password,
+              "udp", relay_udp_port, rsd->component);
+          translate_relay_info (rsd->relays, relay_ip, username, password,
+              "tcp", relay_tcp_port, rsd->component);
+          translate_relay_info (rsd->relays, relay_ip, username, password,
+              "tls", relay_ssltcp_port, rsd->component);
+        }
+
       g_strfreev (lines);
+      g_hash_table_destroy (map);
     }
+
+  rsd->component++;
 
   if ((--rsd->requests_to_do) == 0)
     {
-      rsd->callback (map, rsd->user_data);
+      rsd->callback (rsd->relays, rsd->user_data);
       relay_session_data_destroy (rsd);
     }
-
-  if (map != NULL)
-    g_hash_table_unref (map);
 }
 
 void

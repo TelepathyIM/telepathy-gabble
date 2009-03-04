@@ -2328,24 +2328,33 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
 }
 
 static void
-google_relay_session_cb (GHashTable *relay_info,
+google_relay_session_cb (GPtrArray *relays,
                          gpointer user_data)
 {
-  if (relay_info == NULL)
+  if (relays == NULL || relays->len == 0)
     {
-      DEBUG ("Failed to get a Google relay session");
+      DEBUG ("No relays found");
     }
   else
     {
-      GHashTableIter iter;
-      gpointer key, value;
+      guint i;
 
-      DEBUG ("Google relay session:");
-      g_hash_table_iter_init (&iter, relay_info);
-
-      while (g_hash_table_iter_next (&iter, &key, &value))
+      for (i = 0; i < relays->len; i++)
         {
-          DEBUG ("\t%s = %s", (gchar *) key, (gchar *) value);
+          GHashTableIter iter;
+          gpointer key, value;
+
+          DEBUG ("Relay %u:", i);
+          g_hash_table_iter_init (&iter, g_ptr_array_index (relays, i));
+
+          while (g_hash_table_iter_next (&iter, &key, &value))
+            {
+              gchar *contents = g_strdup_value_contents (value);
+
+              DEBUG ("\t%s = %s", (gchar *) key,
+                  contents);
+              g_free (contents);
+            }
         }
     }
 }

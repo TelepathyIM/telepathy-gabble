@@ -122,6 +122,8 @@ struct _GabbleMediaStreamPrivate
   gchar *nat_traversal;
   /* GPtrArray(GValueArray(STRING, UINT)) */
   GPtrArray *stun_servers;
+  /* GPtrArray(GHashTable(string => GValue)) */
+  GPtrArray *relay_info;
 
   /* These are really booleans, but gboolean is signed. Thanks, GLib */
   unsigned closed:1;
@@ -348,8 +350,7 @@ gabble_media_stream_get_property (GObject    *object,
       g_value_set_boolean (value, priv->created_locally);
       break;
     case PROP_RELAY_INFO:
-      /* a stub implementation, for now */
-      g_value_take_boxed (value, g_ptr_array_sized_new (0));
+      g_value_set_boxed (value, priv->relay_info);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -440,6 +441,10 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_NAT_TRAVERSAL:
       g_assert (priv->nat_traversal == NULL);
       priv->nat_traversal = g_value_dup_string (value);
+      break;
+    case PROP_RELAY_INFO:
+      g_assert (priv->relay_info == NULL);
+      priv->relay_info = g_value_dup_boxed (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -577,7 +582,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   param_spec = g_param_spec_boxed ("relay-info", "Relay info",
       "Array of mappings containing relay server information",
       TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_RELAY_INFO, param_spec);
 
   param_spec = g_param_spec_string ("nat-traversal", "NAT traversal",
@@ -692,6 +697,9 @@ gabble_media_stream_finalize (GObject *object)
   /* FIXME: use correct macro when available */
   if (priv->stun_servers != NULL)
     g_boxed_free (tp_type_dbus_array_su (), priv->stun_servers);
+
+  if (priv->relay_info != NULL)
+    g_boxed_free (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, priv->relay_info);
 
   g_value_unset (&priv->native_codecs);
   g_value_unset (&priv->native_candidates);

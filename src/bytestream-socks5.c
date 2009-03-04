@@ -110,8 +110,8 @@ typedef enum _Socks5State Socks5State;
 
 #define SHA1_LENGTH 40
 #define SOCKS5_CONNECT_LENGTH (7 + SHA1_LENGTH)
-/* VER + CMD/REP + RSV + ATYP + DOMAIN_LEN + PORT (2) */
-#define SOCKS5_MIN_LENGTH 7
+/* VER + CMD/REP + RSV + ATYP + PORT (2) */
+#define SOCKS5_MIN_LENGTH 6
 
 #define CONNECT_REPLY_TIMEOUT 30
 #define CONNECT_TIMEOUT 30
@@ -853,7 +853,8 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   guint auth_len;
   guint i;
   gchar *domain;
-  guint8 domain_len;
+  /* the length of the BND.ADDR field */
+  guint8 addr_len;
   gsize len;
 
   switch (priv->socks5_state)
@@ -925,21 +926,48 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (string->len < SOCKS5_MIN_LENGTH)
           return 0;
 
-        domain_len = (guint8) string->str[4];
-        if ((guint8) string->len < SOCKS5_MIN_LENGTH + domain_len)
+        if (string->str[0] != SOCKS5_VERSION ||
+            string->str[1] != SOCKS5_STATUS_OK ||
+            string->str[2] != SOCKS5_RESERVED)
+          {
+            DEBUG ("Connection refused");
+
+            socks5_error (self);
+            return string->len;
+          }
+
+        if (string->str[3] == SOCKS5_ATYP_DOMAIN)
+          {
+            /* correct domain. The first byte of the domain contains its
+             * length */
+            addr_len = (guint8) string->str[4];
+            addr_len += 1;
+          }
+        else if (string->str[3] == 0x00)
+          {
+            DEBUG ("Got 0x00 as domain. Pretend it's ok to be able to interop "
+                "with ejabber < 2.0.2");
+            addr_len = 0;
+          }
+        else
+          {
+            DEBUG ("Wrong domain");
+
+            socks5_error (self);
+            return string->len;
+          }
+
+        if ((guint8) string->len < SOCKS5_MIN_LENGTH + addr_len)
           /* We didn't receive the full packet yet */
           return 0;
 
         stop_timer (self);
 
-        if (string->str[0] != SOCKS5_VERSION ||
-            string->str[1] != SOCKS5_STATUS_OK ||
-            string->str[2] != SOCKS5_RESERVED ||
-            string->str[3] != SOCKS5_ATYP_DOMAIN ||
+        if (
             /* first half of the port number */
-            string->str[5 + domain_len] != 0 ||
+            string->str[4 + addr_len] != 0 ||
             /* second half of the port number */
-            string->str[6 + domain_len] != 0)
+            string->str[5 + addr_len] != 0)
           {
             DEBUG ("Connection refused");
 
@@ -958,10 +986,13 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
                 priv->peer_jid);
           }
 
-        if (!check_domain (&string->str[5], domain_len, domain))
+        if (addr_len > 0)
           {
-            /* Thanks Pidgin... */
-            DEBUG ("Ignoring to interop with buggy implementations");
+            if (!check_domain (&string->str[5], addr_len - 1, domain))
+              {
+                /* Thanks Pidgin... */
+                DEBUG ("Ignoring to interop with buggy implementations");
+              }
           }
 
         g_free (domain);
@@ -971,7 +1002,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         else
           initiator_got_connect_reply (self);
 
-        return SOCKS5_MIN_LENGTH + domain_len;
+        return SOCKS5_MIN_LENGTH + addr_len;
 
       case SOCKS5_STATE_INITIATOR_AWAITING_AUTH_REQUEST:
         /* A client connected to us and we are awaiting for the authorization
@@ -1027,8 +1058,11 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (string->len < SOCKS5_MIN_LENGTH)
           return 0;
 
-        domain_len = (guint8) string->str[4];
-        if ((guint8) string->len < SOCKS5_MIN_LENGTH + domain_len)
+        addr_len = (guint8) string->str[4];
+        /* the first byte is the length */
+        addr_len += 1;
+
+        if ((guint8) string->len < SOCKS5_MIN_LENGTH + addr_len)
           /* We didn't receive the full packet yet */
           return 0;
 
@@ -1037,9 +1071,9 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             string->str[2] != SOCKS5_RESERVED ||
             string->str[3] != SOCKS5_ATYP_DOMAIN ||
             /* first half of the port number */
-            string->str[5 + domain_len] != 0 ||
+            string->str[4 + addr_len] != 0 ||
             /* second half of the port number */
-            string->str[5 + domain_len] != 0)
+            string->str[5 + addr_len] != 0)
           {
             DEBUG ("Invalid SOCKS5 connect message");
 
@@ -1050,7 +1084,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         domain = compute_domain (priv->stream_id, priv->self_full_jid,
             priv->peer_jid);
 
-        if (!check_domain (&string->str[5], domain_len, domain))
+        if (!check_domain (&string->str[5], addr_len - 1, domain))
           {
             DEBUG ("Reject connection to prevent spoofing");
             socks5_close_transport (self);
@@ -1086,7 +1120,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         g_object_unref (priv->listener);
         priv->listener = NULL;
 
-        return SOCKS5_MIN_LENGTH + domain_len;
+        return SOCKS5_MIN_LENGTH + addr_len;
 
       case SOCKS5_STATE_CONNECTED:
         /* We are connected, everything we receive now is data */

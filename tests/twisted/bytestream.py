@@ -465,6 +465,58 @@ class BytestreamS5BRelay(BytestreamS5B):
         streamhost = xpath.queryForNodes('/iq/query/streamhost-used', iq)[0]
         assert streamhost['jid'] == 'proxy.localhost'
 
+    def wait_bytestream_open(self):
+        # The only difference of using a relay on the Target side is to
+        # connect to another streamhost.
+        id, mode, sid, hosts = self._expect_socks5_init()
+
+        assert mode == 'tcp'
+        assert sid == self.stream_id
+
+        proxy_found = False
+
+        for jid, host, port in hosts:
+            if jid != self.initiator:
+                proxy_found = True
+                # connect to the (fake) relay
+                if self._socks5_connect(host, port):
+                    self._send_socks5_reply(id, jid)
+                else:
+                    assert False
+                break
+        assert proxy_found
+
+        # The initiator (Gabble) is now supposed to connect to the proxy too
+        e = self.q.expect('s5b-connected')
+        self.transport = e.transport
+
+        self._wait_auth_request()
+        self._send_auth_reply()
+        self._wait_connect_cmd()
+        self._send_connect_reply()
+
+        # wait for activation IQ
+        e = self.q.expect('stream-iq', iq_type='set', to='proxy.localhost',
+            query_ns=ns.BYTESTREAMS)
+
+        query = xpath.queryForNodes('/iq/query', e.stanza)[0]
+        assert query['sid'] == self.stream_id
+        activate = xpath.queryForNodes('/iq/query/activate', e.stanza)[0]
+        assert str(activate) == self.target
+
+        # send reply
+        reply = make_result_iq(self.stream, e.stanza)
+        reply.send()
+
+
+    def _socks5_connect(self, host, port):
+        # No point to emulate the proxy. Just pretend the Target properly
+        # connects, auth and requests connection
+        return True
+
+    def wait_bytestream_closed(self):
+        pass
+
 class S5BProtocol(Protocol):
     def connectionMade(self):
         self.factory.event_func(Event('s5b-connected',

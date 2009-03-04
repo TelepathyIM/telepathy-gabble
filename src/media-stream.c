@@ -159,9 +159,18 @@ gabble_media_stream_new (const gchar *object_path,
                          GabbleJingleContent *content,
                          const gchar *name,
                          guint id,
-                         const gchar *nat_traversal)
+                         const gchar *nat_traversal,
+                         const GPtrArray *relay_info)
 {
+  GPtrArray *empty = NULL;
+
   g_return_val_if_fail (GABBLE_IS_JINGLE_MEDIA_RTP (content), NULL);
+
+  if (relay_info == NULL)
+    {
+      empty = g_ptr_array_sized_new (0);
+      relay_info = empty;
+    }
 
   return g_object_new (GABBLE_TYPE_MEDIA_STREAM,
       "object-path", object_path,
@@ -169,7 +178,11 @@ gabble_media_stream_new (const gchar *object_path,
       "name", name,
       "id", id,
       "nat-traversal", nat_traversal,
+      "relay-info", relay_info,
       NULL);
+
+  if (empty != NULL)
+    g_ptr_array_free (empty, TRUE);
 }
 
 TpMediaStreamType

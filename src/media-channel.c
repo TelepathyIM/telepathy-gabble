@@ -2347,7 +2347,7 @@ construct_stream (GabbleMediaChannel *chan,
       priv->object_path, id);
 
   stream = gabble_media_stream_new (object_path, c, name, id,
-      nat_traversal);
+      nat_traversal, relays);
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 

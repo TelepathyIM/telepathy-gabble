@@ -10,7 +10,8 @@ from twisted.words.xish import xpath, domish
 from twisted.internet.error import CannotListenError
 
 from servicetest import Event, EventPattern
-from gabbletest import acknowledge_iq, sync_stream, make_result_iq, elem, elem_iq
+from gabbletest import acknowledge_iq, sync_stream, make_result_iq, elem_iq,\
+    elem
 import ns
 
 def wait_events(q, expected, my_event):
@@ -131,6 +132,43 @@ class Bytestream(object):
         assert str(proto) == self.get_ns()
 
 ##### XEP-0065: SOCKS5 Bytestreams #####
+def listen_socks5(q):
+    for port in range(5000, 5100):
+        try:
+            reactor.listenTCP(port, S5BFactory(q.append))
+        except CannotListenError:
+            continue
+        else:
+            return port
+
+    assert False, "Can't find a free port"
+
+def announce_socks5_proxy(q, stream, disco_stanza):
+    reply = make_result_iq(stream, disco_stanza)
+    query = xpath.queryForNodes('/iq/query', reply)[0]
+    item = query.addElement((None, 'item'))
+    item['jid'] = 'proxy.localhost'
+    stream.send(reply)
+
+    # wait for proxy disco#info query
+    event = q.expect('stream-iq', to='proxy.localhost', query_ns=ns.DISCO_INFO,
+        iq_type='get')
+
+    reply = elem_iq(stream, 'result', id=event.stanza['id'])(
+        elem(ns.DISCO_INFO, 'query')(
+            elem('identity', category='proxy', type='bytestreams', name='SOCKS5 Bytestreams')(),
+            elem('feature', var=ns.BYTESTREAMS)()))
+    stream.send(reply)
+
+    # Gabble asks for SOCKS5 info
+    event = q.expect('stream-iq', to='proxy.localhost', query_ns=ns.BYTESTREAMS,
+        iq_type='get')
+
+    port = listen_socks5(q)
+    reply = elem_iq(stream, 'result', id=event.stanza['id'])(
+        elem(ns.BYTESTREAMS, 'query')(
+            elem('streamhost', jid='proxy.localhost', host='127.0.0.1', port=str(port))()))
+    stream.send(reply)
 
 class BytestreamS5B(Bytestream):
     def __init__(self, stream, q, sid, initiator, target, initiated):
@@ -213,19 +251,9 @@ class BytestreamS5B(Bytestream):
 
         return events_before, events_after
 
-    def _listen_socks5(self):
-        for port in range(5000,5100):
-            try:
-                reactor.listenTCP(port, S5BFactory(self.q.append))
-            except CannotListenError:
-                continue
-            else:
-                return port
-
-        assert False, "Can't find a free port"
-
     def open_bytestream(self, expected_before=[], expected_after=[]):
-        port = self._listen_socks5()
+        port = listen_socks5(self.q)
+
         self._send_socks5_init(port)
         return self._socks5_expect_connection(expected_before, expected_after)
 

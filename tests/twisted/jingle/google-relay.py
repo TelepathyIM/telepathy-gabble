@@ -192,7 +192,43 @@ def test(q, bus, conn, stream):
     assert sh_props['STUNServers'] == \
         [(expected_stun_server, expected_stun_port)], \
         sh_props['STUNServers']
-    #assert sh_props['RelayInfo'] == expected_relays
+
+    credentials_used = {}
+    credentials = {}
+
+    for relay in sh_props['RelayInfo']:
+        assert relay['ip'] == '127.0.0.1', sh_props['RelayInfo']
+        assert relay['type'] in ('udp', 'tcp', 'tls')
+        assert relay['component'] in (1, 2)
+
+        if relay['type'] == 'udp':
+            assert relay['port'] == 11111, sh_props['RelayInfo']
+        elif relay['type'] == 'tcp':
+            assert relay['port'] == 22222, sh_props['RelayInfo']
+        elif relay['type'] == 'tls':
+            assert relay['port'] == 443, sh_props['RelayInfo']
+
+        assert relay['username'][:8] == 'UUUUUUUU', sh_props['RelayInfo']
+        assert relay['password'][:8] == 'PPPPPPPP', sh_props['RelayInfo']
+        assert relay['password'][8:] == relay['username'][8:], \
+                sh_props['RelayInfo']
+        assert (relay['password'][8:], relay['type']) not in credentials_used
+        credentials_used[(relay['password'][8:], relay['type'])] = 1
+        credentials[(relay['component'], relay['type'])] = relay['password'][8:]
+
+    assert (1, 'udp') in credentials
+    assert (1, 'tcp') in credentials
+    assert (1, 'tls') in credentials
+    assert (2, 'udp') in credentials
+    assert (2, 'tcp') in credentials
+    assert (2, 'tls') in credentials
+
+    assert ('0', 'udp') in credentials_used
+    assert ('0', 'tcp') in credentials_used
+    assert ('0', 'tls') in credentials_used
+    assert ('1', 'udp') in credentials_used
+    assert ('1', 'tcp') in credentials_used
+    assert ('1', 'tls') in credentials_used
 
     # consistency check, since we currently reimplement Get separately
     for k in sh_props:

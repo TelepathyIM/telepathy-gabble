@@ -13,7 +13,10 @@ import dbus
 import time
 import BaseHTTPServer
 
+http_req = 0
+
 class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
     def do_GET(self):
         # A real request/response looks like this:
         #
@@ -45,6 +48,8 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         #
         # 0
 
+        global http_req
+
         assert self.path == '/create_session'
         self.send_response(200)
         self.send_header('Content-Type', 'text/plain')
@@ -57,10 +62,11 @@ relay.tcp_port=22222
 relay.ssltcp_port=443
 stun.ip=1.2.3.4
 stun.port=12345
-username=UUUUUUUU
-password=PPPPPPPP
+username=UUUUUUUU%d
+password=PPPPPPPP%d
 magic_cookie=MMMMMMMM
-""")
+""" % (http_req, http_req))
+        http_req += 1
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -152,7 +158,9 @@ def test(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
 
-    # In response to the call, we (should) have a http request
+    # In response to the call, we (should) have two http requests (one for
+    # RTP and one for RTCP)
+    httpd.handle_request()
     httpd.handle_request()
 
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')

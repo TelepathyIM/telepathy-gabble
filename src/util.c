@@ -1015,3 +1015,39 @@ gabble_signal_connect_weak (gpointer instance,
   g_object_weak_ref (instance_obj, instance_destroyed_cb, ctx);
   g_object_weak_ref (user_data, user_data_destroyed_cb, ctx);
 }
+
+GValue *
+gabble_g_value_slice_new_uint (guint n)
+{
+  GValue *value = tp_g_value_slice_new (G_TYPE_UINT);
+
+  g_value_set_uint (value, n);
+  return value;
+}
+
+GValue *
+gabble_g_value_slice_new_string (const gchar *string)
+{
+  GValue *value = tp_g_value_slice_new (G_TYPE_STRING);
+
+  g_value_set_string (value, string);
+  return value;
+}
+
+GValue *
+gabble_g_value_slice_new_static_string (const gchar *string)
+{
+  GValue *value = tp_g_value_slice_new (G_TYPE_STRING);
+
+  g_value_set_static_string (value, string);
+  return value;
+}
+
+GValue *
+gabble_g_value_slice_new_take_string (gchar *string)
+{
+  GValue *value = tp_g_value_slice_new (G_TYPE_STRING);
+
+  g_value_take_string (value, string);
+  return value;
+}

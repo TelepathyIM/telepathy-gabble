@@ -689,6 +689,10 @@ gabble_media_stream_finalize (GObject *object)
   g_free (priv->object_path);
   g_free (priv->nat_traversal);
 
+  /* FIXME: use correct macro when available */
+  if (priv->stun_servers != NULL)
+    g_boxed_free (tp_type_dbus_array_su (), priv->stun_servers);
+
   g_value_unset (&priv->native_codecs);
   g_value_unset (&priv->native_candidates);
 

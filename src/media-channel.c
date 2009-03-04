@@ -2388,10 +2388,12 @@ create_stream_from_content (GabbleMediaChannel *chan,
   if (!tp_strdiff (nat_traversal, "gtalk-p2p"))
     {
       /* See if our server is Google, and if it is, ask them for a relay.
-       * For now, don't wait for the result (we don't actually use it yet). */
+       * For now, don't wait for the result (we don't actually use it yet).
+       * We ask for enough relays for 2 components (RTP and RTCP) since we
+       * don't yet know whether there will be RTCP. */
       DEBUG ("Attempting to create Google relay session");
       gabble_jingle_factory_create_google_relay_session (
-          priv->conn->jingle_factory, google_relay_session_cb, NULL);
+          priv->conn->jingle_factory, 2, google_relay_session_cb, NULL);
     }
 
   stream = gabble_media_stream_new (object_path, c, name, id,

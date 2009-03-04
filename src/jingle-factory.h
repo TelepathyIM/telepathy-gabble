@@ -145,8 +145,8 @@ GabbleJingleSession *gabble_jingle_factory_create_session (GabbleJingleFactory
 typedef void (*GabbleJingleFactoryRelaySessionCb) (GHashTable *relay,
     gpointer user_data);
 void gabble_jingle_factory_create_google_relay_session (
-    GabbleJingleFactory *self, GabbleJingleFactoryRelaySessionCb callback,
-    gpointer user_data);
+    GabbleJingleFactory *self, guint components,
+    GabbleJingleFactoryRelaySessionCb callback, gpointer user_data);
 
 const gchar *gabble_jingle_factory_get_google_relay_token (
     GabbleJingleFactory *self);

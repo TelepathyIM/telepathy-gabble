@@ -487,6 +487,9 @@ class BytestreamS5BRelay(BytestreamS5B):
         assert proxy_found
 
         # The initiator (Gabble) is now supposed to connect to the proxy too
+        self._wait_connect_to_proxy()
+
+    def _wait_connect_to_proxy(self):
         e = self.q.expect('s5b-connected')
         self.transport = e.transport
 
@@ -495,7 +498,9 @@ class BytestreamS5BRelay(BytestreamS5B):
         self._wait_connect_cmd()
         self._send_connect_reply()
 
-        # wait for activation IQ
+        self._wait_activation_iq()
+
+    def _wait_activation_iq(self):
         e = self.q.expect('stream-iq', iq_type='set', to='proxy.localhost',
             query_ns=ns.BYTESTREAMS)
 
@@ -504,10 +509,11 @@ class BytestreamS5BRelay(BytestreamS5B):
         activate = xpath.queryForNodes('/iq/query/activate', e.stanza)[0]
         assert str(activate) == self.target
 
-        # send reply
-        reply = make_result_iq(self.stream, e.stanza)
-        reply.send()
+        self._reply_activation_iq(e.stanza)
 
+    def _reply_activation_iq(self, iq):
+        reply = make_result_iq(self.stream, iq)
+        reply.send()
 
     def _socks5_connect(self, host, port):
         # No point to emulate the proxy. Just pretend the Target properly

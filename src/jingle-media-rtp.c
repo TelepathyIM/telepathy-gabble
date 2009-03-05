@@ -401,6 +401,8 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
         }
     }
 
+  jingle_media_rtp_free_codecs (new_codecs);
+
 out:
   DEBUG ("emitting remote-codecs signal");
   g_signal_emit (self, signals[REMOTE_CODECS], 0, priv->remote_codecs);

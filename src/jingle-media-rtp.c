@@ -686,53 +686,45 @@ compare_codecs (GList *old,
                 GList **changed,
                 GError **e)
 {
-  GList *k, *l;
+  gboolean ret = FALSE;
+  GHashTable *old_table = build_codec_table (old);
+  GList *l;
+  JingleCodec *old_c, *new_c;
 
   g_assert (changed != NULL && *changed == NULL);
 
-#define FAIL(msg, ...) \
-  G_STMT_START { \
-    g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, msg, ##__VA_ARGS__); \
-    goto err; \
-  } G_STMT_END
-
   if (g_list_length (new) != g_list_length (old))
-    FAIL ("tried to change the number of codecs!");
-
-  for (k = new; k != NULL; k = k->next)
     {
-      JingleCodec *new_c = k->data;
-
-      for (l = old; l != NULL; l = l->next)
-        {
-          JingleCodec *old_c = l->data;
-
-          if (new_c->id != old_c->id)
-            continue;
-
-          if (!codec_update_coherent (old_c, new_c, TP_ERRORS,
-                TP_ERROR_INVALID_ARGUMENT, e))
-            goto err;
-
-          if (!string_string_maps_equal (old_c->params, new_c->params))
-            *changed = g_list_prepend (*changed, new_c);
-
-          break;
-        }
-
-      if (l == NULL)
-        FAIL ("tried to update codec %u (%s) which wasn't there before",
-            new_c->id, new_c->name);
+      g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "tried to change the number of codecs from %u to %u",
+          g_list_length (old), g_list_length (new));
+      goto out;
     }
 
-#undef FAIL
+  for (l = new; l != NULL; l = l->next)
+    {
+      new_c = l->data;
+      old_c = g_hash_table_lookup (old_table, GUINT_TO_POINTER (new_c->id));
 
-  return TRUE;
+      if (!codec_update_coherent (old_c, new_c, TP_ERRORS,
+            TP_ERROR_INVALID_ARGUMENT, e))
+        goto out;
 
-err:
-  g_list_free (*changed);
-  *changed = NULL;
-  return FALSE;
+      if (!string_string_maps_equal (old_c->params, new_c->params))
+        *changed = g_list_prepend (*changed, new_c);
+    }
+
+  ret = TRUE;
+
+out:
+  if (!ret)
+    {
+      g_list_free (*changed);
+      *changed = NULL;
+    }
+
+  g_hash_table_unref (old_table);
+  return ret;
 }
 
 /* Takes in a list of slice-allocated JingleCodec structs */

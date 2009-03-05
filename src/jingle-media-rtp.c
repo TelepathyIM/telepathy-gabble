@@ -109,7 +109,7 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
   return p;
 }
 
-void
+static void
 jingle_media_rtp_codec_free (JingleCodec *p)
 {
   g_hash_table_destroy (p->params);
@@ -117,7 +117,7 @@ jingle_media_rtp_codec_free (JingleCodec *p)
   g_slice_free (JingleCodec, p);
 }
 
-void
+static void
 jingle_media_rtp_free_codecs (GList *codecs)
 {
   while (codecs != NULL)

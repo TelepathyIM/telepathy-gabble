@@ -123,16 +123,12 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert len(tube) == 1
 
     # Init the bytestream
-    events, _ = bytestream.open_bytestream([EventPattern('dbus-return', method='AcceptDBusTube')])
-    return_event = events[0]
+    events, _ = bytestream.open_bytestream([EventPattern('dbus-return', method='AcceptDBusTube')],
+        [EventPattern('dbus-signal', signal='TubeStateChanged', args=[69, 2])])
 
+    return_event = events[0]
     address = return_event.value[0]
     assert len(address) > 0
-
-    event = q.expect('dbus-signal', signal='TubeStateChanged',
-        args=[69, 2]) # 2 == OPEN
-    id = event.args[0]
-    state = event.args[1]
 
     # OK, now let's try to accept a D-Bus tube using the new API
     bytestream = bytestream_cls(stream, q, 'gamma', bob_full_jid,

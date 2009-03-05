@@ -815,7 +815,8 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
       self);
   LmMessage *iq;
 
-  DEBUG ("SOCKS5 negotiation with proxy is done. Sending activation IQ");
+  DEBUG ("Got CONNECT reply. SOCKS5 negotiation with proxy is done. "
+      "Sending activation IQ");
 
   iq = lm_message_build (priv->proxy_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",

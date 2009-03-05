@@ -345,13 +345,54 @@ parse_payload_type (LmMessageNode *node)
   return p;
 }
 
+static gboolean
+update_one_codec (GabbleJingleMediaRtp *self,
+                  JingleCodec *new_codec,
+                  GError **error)
+{
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
+  GList *l;
+
+  for (l = priv->remote_codecs; l != NULL; l = l->next)
+    {
+      JingleCodec *old_codec = l->data;
+      GHashTable *tmp;
+
+      if (old_codec->id != new_codec->id)
+        continue;
+
+      if (tp_strdiff (old_codec->name, new_codec->name))
+        {
+          SET_BAD_REQ ("Codec with id %u is called %s, not %s", old_codec->id,
+              old_codec->name, new_codec->name);
+          return FALSE;
+        }
+
+      old_codec->clockrate = new_codec->clockrate;
+      old_codec->channels = new_codec->channels;
+
+      tmp = old_codec->params;
+      old_codec->params = new_codec->params;
+      new_codec->params = tmp;
+
+      break;
+    }
+
+  if (l == NULL)
+    DEBUG ("Codec with id %u ('%s') unknown; ignoring update",
+        new_codec->id, new_codec->name);
+
+  return TRUE;
+}
+
 static void
 update_remote_codecs (GabbleJingleMediaRtp *self,
                       GList *new_codecs,
                       GError **error)
 {
   GabbleJingleMediaRtpPrivate *priv = self->priv;
-  GList *k, *l;
+  GList *k;
+  GError *e = NULL;
 
   if (priv->remote_codecs == NULL)
     {
@@ -363,45 +404,17 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
    * some parameters.
    */
   for (k = new_codecs; k != NULL; k = k->next)
-    {
-      JingleCodec *new_codec = k->data;
-
-      for (l = priv->remote_codecs; l != NULL; l = l->next)
-        {
-          JingleCodec *old_codec = l->data;
-          GHashTable *tmp;
-
-          if (old_codec->id != new_codec->id)
-            continue;
-
-          if (tp_strdiff (old_codec->name, new_codec->name))
-            {
-              DEBUG ("Codec with id %u has changed from %s to %s! Rejecting",
-                  old_codec->id, old_codec->name, new_codec->name);
-              SET_BAD_REQ ("Codec with id %u is %s, not %s", old_codec->id,
-                  old_codec->name, new_codec->name);
-              jingle_media_rtp_free_codecs (new_codecs);
-              return;
-            }
-
-          old_codec->clockrate = new_codec->clockrate;
-          old_codec->channels = new_codec->channels;
-
-          tmp = old_codec->params;
-          old_codec->params = new_codec->params;
-          new_codec->params = tmp;
-
-          break;
-        }
-
-      if (l == NULL)
-        {
-          DEBUG ("Codec with id %u ('%s') unknown; ignoring update",
-              new_codec->id, new_codec->name);
-        }
-    }
+    if (!update_one_codec (self, k->data, &e))
+      break;
 
   jingle_media_rtp_free_codecs (new_codecs);
+
+  if (e != NULL)
+    {
+      DEBUG ("Rejecting codec update: %s", e->message);
+      g_propagate_error (error, e);
+      return;
+    }
 
 out:
   DEBUG ("emitting remote-codecs signal");

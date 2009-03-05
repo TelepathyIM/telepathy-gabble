@@ -152,11 +152,22 @@ def test(q, bus, conn, stream):
     assert sorted(payload_types_tupled) == sorted(new_codecs[0:2]), \
         (payload_types_tupled, new_codecs[0:2])
 
-    # Instead, the remote end decides to change the clockrate of and add a
-    # parameter to the third codec.
+    # The remote end decides it wants to change the number of channels in the
+    # third codec. This is not meant to happen, so Gabble should send it an IQ
+    # error back.
+    node = jp.SetIq(jt2.peer, jt2.jid, [
+        jp.Jingle(jt2.sid, jt2.peer, 'description-info', [
+            jp.Content('stream1', 'initiator', 'both', [
+                jp.Description('audio', [
+                    jp.PayloadType('PCMU', '1600', '0') ]) ]) ]) ])
+    stream.send(jp.xml(node))
+    q.expect('stream-iq', iq_type='error',
+        predicate=lambda x: x.stanza['id'] == node[2]['id'])
+
+    # Instead, the remote end decides to add a parameter to the third codec.
     new_codecs = [ ('GSM', 3, 8000, {}),
                    ('PCMA', 8, 8000, {}),
-                   ('PCMU', 0, 1600, {'choppy': 'false'}),
+                   ('PCMU', 0, 8000, {'choppy': 'false'}),
                  ]
     # As per the XEP, it only sends the ones which have changed.
     c = new_codecs[2]

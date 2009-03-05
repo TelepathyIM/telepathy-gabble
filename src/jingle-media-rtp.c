@@ -368,8 +368,21 @@ update_one_codec (GabbleJingleMediaRtp *self,
           return FALSE;
         }
 
-      old_codec->clockrate = new_codec->clockrate;
-      old_codec->channels = new_codec->channels;
+      if (old_codec->clockrate != new_codec->clockrate)
+        {
+          SET_BAD_REQ ("Changing clockrate (of payload-type %u from %u to %u) "
+              "is meaningless", old_codec->id, old_codec->clockrate,
+              new_codec->clockrate);
+          return FALSE;
+        }
+
+      if (old_codec->channels != new_codec->channels)
+        {
+          SET_BAD_REQ ("Changing channels (of payload-type %u from %u to %u) "
+              "is meaningless", old_codec->id, old_codec->channels,
+              new_codec->channels);
+          return FALSE;
+        }
 
       tmp = old_codec->params;
       old_codec->params = new_codec->params;
@@ -379,8 +392,11 @@ update_one_codec (GabbleJingleMediaRtp *self,
     }
 
   if (l == NULL)
-    DEBUG ("Codec with id %u ('%s') unknown; ignoring update",
-        new_codec->id, new_codec->name);
+    {
+      SET_BAD_REQ ("Codec with id %u ('%s') unknown", new_codec->id,
+          new_codec->name);
+      return FALSE;
+    }
 
   return TRUE;
 }

@@ -138,9 +138,8 @@ jingle_media_rtp_free_codecs (GList *codecs)
 {
   while (codecs != NULL)
     {
-      JingleCodec *p = (JingleCodec *) codecs->data;
-      jingle_media_rtp_codec_free (p);
-      codecs = g_list_remove (codecs, p);
+      jingle_media_rtp_codec_free (codecs->data);
+      codecs = g_list_delete_link (codecs, codecs);
     }
 }
 

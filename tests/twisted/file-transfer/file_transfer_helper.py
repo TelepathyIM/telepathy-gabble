@@ -231,11 +231,11 @@ class ReceiveFileTest(FileTransferTest):
         # Got SI reply
         self.bytestream.check_si_reply(iq_event.stanza)
 
-        self.bytestream.open_bytestream()
-
-        offset_event, state_event = self.q.expect_many(
+        _, events = self.bytestream.open_bytestream([], [
             EventPattern('dbus-signal', signal='InitialOffsetDefined'),
-            EventPattern('dbus-signal', signal='FileTransferStateChanged'))
+            EventPattern('dbus-signal', signal='FileTransferStateChanged')])
+
+        offset_event, state_event = events
 
         offset = offset_event.args[0]
         # We don't support resume

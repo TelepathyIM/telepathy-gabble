@@ -291,7 +291,7 @@ parse_payload_type (LmMessageNode *node)
 {
   JingleCodec *p;
   const char *txt;
-  guchar id;
+  guint8 id;
   const gchar *name;
   guint clockrate = 0;
   guint channels = 1;

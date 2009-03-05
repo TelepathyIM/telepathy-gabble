@@ -579,15 +579,13 @@ static void
 produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 {
   GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (obj);
-  GabbleJingleSession *sess;
   GabbleJingleMediaRtpPrivate *priv = desc->priv;
   LmMessageNode *desc_node;
   GList *li;
   JingleDialect dialect;
   const gchar *xmlns = NULL;
 
-  sess = GABBLE_JINGLE_CONTENT(obj)->session;
-  g_object_get (sess, "dialect", &dialect, NULL);
+  g_object_get (obj->session, "dialect", &dialect, NULL);
 
   desc_node = lm_message_node_add_child (content_node, "description", NULL);
 

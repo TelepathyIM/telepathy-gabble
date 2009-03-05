@@ -599,19 +599,44 @@ string_string_maps_equal (GHashTable *a,
 }
 
 /**
- * codec_info_equal:
- * Compares the clockrate, channels and params of the supplied codecs,
- * returning TRUE iff they are all equal.
+ * codec_update_coherent:
  *
- * Does *not* compare the codecs' id or name.
+ * Compares @old_c and @new_c, which are assumed to have the same id, to check
+ * that the name, clockrate and number of channels hasn't changed. If they
+ * have, returns %FALSE and sets @e.
  */
 static gboolean
-codec_info_equal (const JingleCodec *c,
-                  const JingleCodec *d)
+codec_update_coherent (const JingleCodec *old_c,
+                       const JingleCodec *new_c,
+                       GError **e)
 {
-  return (c->clockrate == d->clockrate &&
-    c->channels == d->channels &&
-    string_string_maps_equal (c->params, d->params));
+#define INVALID(msg, ...) \
+    g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, msg, ##__VA_ARGS__);
+
+  if (tp_strdiff (new_c->name, old_c->name))
+    {
+      INVALID ("tried to change codec %u's name from %s to %s",
+          new_c->id, old_c->name, new_c->name);
+      return FALSE;
+    }
+
+  if (new_c->clockrate != old_c->clockrate)
+    {
+      INVALID ("tried to change codec %u (%s)'s clockrate from %u to %u",
+          new_c->id, new_c->name, new_c->clockrate, old_c->clockrate);
+      return FALSE;
+    }
+
+  if (new_c->channels != old_c->channels)
+    {
+      INVALID ("tried to change codec %u (%s)'s channels from %u to %u",
+          new_c->id, new_c->name, new_c->channels, old_c->channels);
+      return FALSE;
+    }
+
+#undef INVALID
+
+  return TRUE;
 }
 
 /**
@@ -653,11 +678,10 @@ compare_codecs (GList *old,
           if (new_c->id != old_c->id)
             continue;
 
-          if (tp_strdiff (new_c->name, old_c->name))
-            FAIL ("tried to change codec %u's name from %s to %s",
-                new_c->id, old_c->name, new_c->name);
+          if (!codec_update_coherent (old_c, new_c, e))
+            goto err;
 
-          if (!codec_info_equal (old_c, new_c))
+          if (!string_string_maps_equal (old_c->params, new_c->params))
             *changed = g_list_prepend (*changed, new_c);
 
           break;

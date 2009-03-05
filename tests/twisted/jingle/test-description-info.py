@@ -4,13 +4,15 @@ Test emition and handling of codec update using description-info
 
 from gabbletest import exec_test, make_result_iq, sync_stream, exec_tests
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern
+        EventPattern, call_async
 import gabbletest
 import dbus
 import time
 from twisted.words.xish import xpath
 
 from jingletest2 import *
+
+import constants as cs
 
 def extract_params(payload_type):
     ret = {}
@@ -118,9 +120,20 @@ def test(q, bus, conn, stream):
     e = q.expect('stream-iq')
     assert jp.match_jingle_action(e.query, 'session-accept')
 
-    # We decide we want to update the clockrate of the first codec, and add a
-    # parameter to the second, not changing the third.
-    new_codecs = [ ('GSM', 3, 4000, {}),
+    # farstream is buggy, and tells tp-fs to tell Gabble to change the third
+    # codec's clockrate. This isn't legal, so Gabble says no.
+    new_codecs = [ ('GSM', 3, 8000),
+                   ('PCMA', 8, 8000),
+                   ('PCMU', 0, 4000) ]
+    call_async(q, stream_handler, 'CodecsUpdated',
+        jt2.dbusify_codecs(new_codecs))
+    event = q.expect('dbus-error', method='CodecsUpdated')
+    assert event.error.get_dbus_name() == cs.INVALID_ARGUMENT, \
+        event.error.get_dbus_name()
+
+    # With its tail between its legs, tp-fs decides it wants to add some
+    # parameters to the first two codecs, not changing the third.
+    new_codecs = [ ('GSM', 3, 8000, {'type': 'banana'}),
                    ('PCMA', 8, 8000, {'helix': 'BUFFERING'}),
                    ('PCMU', 0, 8000, {}) ]
     stream_handler.CodecsUpdated(jt2.dbusify_codecs_with_params(new_codecs))

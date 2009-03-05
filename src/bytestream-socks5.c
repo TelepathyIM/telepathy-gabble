@@ -882,12 +882,12 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         if (priv->socks5_state == SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT)
           {
-            domain = compute_domain(priv->stream_id, priv->peer_jid,
+            domain = compute_domain (priv->stream_id, priv->peer_jid,
                 priv->self_full_jid);
           }
         else
           {
-            domain = compute_domain(priv->stream_id, priv->self_full_jid,
+            domain = compute_domain (priv->stream_id, priv->self_full_jid,
                 priv->peer_jid);
           }
 
@@ -978,12 +978,12 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         if (priv->socks5_state == SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT)
           {
-            domain = compute_domain(priv->stream_id, priv->peer_jid,
+            domain = compute_domain (priv->stream_id, priv->peer_jid,
                 priv->self_full_jid);
           }
         else
           {
-            domain = compute_domain(priv->stream_id, priv->self_full_jid,
+            domain = compute_domain (priv->stream_id, priv->self_full_jid,
                 priv->peer_jid);
           }
 

@@ -976,7 +976,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        if (priv->socks5_state == SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT)
+        if (priv->socks5_state == SOCKS5_STATE_TARGET_CONNECT_REQUESTED)
           {
             domain = compute_domain (priv->stream_id, priv->peer_jid,
                 priv->self_full_jid);

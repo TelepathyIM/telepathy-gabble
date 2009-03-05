@@ -248,11 +248,6 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
         G_TYPE_NONE, 1, G_TYPE_POINTER);
 }
 
-#define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
-#define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
-#define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
-
-
 static JingleMediaType
 extract_media_type (LmMessageNode *desc_node,
                     GError **error)
@@ -263,7 +258,8 @@ extract_media_type (LmMessageNode *desc_node,
 
       if (type == NULL)
         {
-          SET_BAD_REQ("missing required media type attribute");
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+              "missing required media type attribute");
           return JINGLE_MEDIA_TYPE_NONE;
         }
 
@@ -273,7 +269,8 @@ extract_media_type (LmMessageNode *desc_node,
       if (!tp_strdiff (type, "video"))
         return JINGLE_MEDIA_TYPE_VIDEO;
 
-      SET_BAD_REQ("unknown media type %s", type);
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "unknown media type %s", type);
       return JINGLE_MEDIA_TYPE_NONE;
     }
 
@@ -516,7 +513,8 @@ parse_description (GabbleJingleContent *content,
     {
       /* rollback these */
       jingle_media_rtp_free_codecs (codecs);
-      SET_BAD_REQ ("invalid payload");
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "invalid payload");
       return;
     }
 

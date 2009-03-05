@@ -27,6 +27,7 @@
 
 #include <lib/gibber/gibber-resolver.h>
 #include <loudmouth/loudmouth.h>
+#include <libsoup/soup.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -66,6 +67,7 @@ struct _GabbleJingleFactoryPrivate
   GHashTable *transports;
   GHashTable *sessions;
   GibberResolver *resolver;
+  SoupSession *soup;
 
   gchar *stun_server;
   guint16 stun_port;
@@ -73,6 +75,12 @@ struct _GabbleJingleFactoryPrivate
   guint16 fallback_stun_port;
   gchar *relay_token;
   gboolean get_stun_from_jingle;
+  gchar *relay_server;
+  guint16 relay_http_port;
+  guint16 relay_udp;
+  guint16 relay_tcp;
+  guint16 relay_ssltcp;
+
   gboolean dispose_has_run;
 };
 
@@ -88,6 +96,16 @@ static void session_terminated_cb (GabbleJingleSession *sess,
 
 static void connection_status_changed_cb (GabbleConnection *conn,
     guint status, guint reason, GabbleJingleFactory *self);
+
+#define RELAY_HTTP_TIMEOUT 5
+
+static gboolean test_mode = FALSE;
+
+void
+gabble_jingle_factory_set_test_mode (void)
+{
+  test_mode = TRUE;
+}
 
 static void
 gabble_jingle_factory_init (GabbleJingleFactory *obj)
@@ -111,6 +129,7 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
   priv->resolver = gibber_resolver_get_resolver ();
+  priv->relay_http_port = 80;
 }
 
 typedef struct {
@@ -288,21 +307,83 @@ jingle_info_cb (LmMessageHandler *handler,
 
   if (node != NULL)
     {
-      node = lm_message_node_get_child (node, "token");
+      LmMessageNode *subnode;
 
-      if (node != NULL)
+      subnode = lm_message_node_get_child (node, "token");
+
+      if (subnode != NULL)
         {
           const gchar *token;
 
-          token = lm_message_node_get_value (node);
-
+          token = lm_message_node_get_value (subnode);
           if (token != NULL)
             {
-              DEBUG ("jingle info: got relay token %s", token);
+              DEBUG ("jingle info: got Google relay token %s", token);
               g_free (fac->priv->relay_token);
               fac->priv->relay_token = g_strdup (token);
             }
         }
+
+      subnode = lm_message_node_get_child (node, "server");
+
+      if (subnode != NULL)
+        {
+          const gchar *server;
+          const gchar *port;
+
+          server = lm_message_node_get_attribute (subnode, "host");
+
+          if (server != NULL)
+            {
+              DEBUG ("jingle info: got relay server %s", server);
+              g_free (fac->priv->relay_server);
+              fac->priv->relay_server = g_strdup (server);
+            }
+
+          if (test_mode)
+            {
+              /* this is not part of the real protocol, but we can't listen on
+               * port 80 in an unprivileged regression test */
+              port = lm_message_node_get_attribute (subnode,
+                  "gabble-test-http-port");
+
+              if (port != NULL)
+                {
+                  DEBUG ("jingle info: diverting 'Google' HTTP requests to "
+                      "port %s", port);
+                  fac->priv->relay_http_port = atoi (port);
+                }
+            }
+
+          /* FIXME: these are not really actually used anywhere at
+           * the moment, because we get the same info when creating
+           * relay session. */
+          port = lm_message_node_get_attribute (subnode, "udp");
+
+          if (port != NULL)
+            {
+              DEBUG ("jingle info: got relay udp port %s", port);
+              fac->priv->relay_udp = atoi (port);
+            }
+
+          port = lm_message_node_get_attribute (subnode, "tcp");
+
+          if (port != NULL)
+            {
+              DEBUG ("jingle info: got relay tcp port %s", port);
+              fac->priv->relay_tcp = atoi (port);
+            }
+
+          port = lm_message_node_get_attribute (subnode, "tcpssl");
+
+          if (port != NULL)
+            {
+              DEBUG ("jingle info: got relay tcpssl port %s", port);
+              fac->priv->relay_ssltcp = atoi (port);
+            }
+
+        }
+
     }
 
   if (sub_type == LM_MESSAGE_SUB_TYPE_SET)
@@ -366,6 +447,13 @@ gabble_jingle_factory_dispose (GObject *object)
   g_free (fac->priv->stun_server);
   g_free (fac->priv->fallback_stun_server);
   g_free (fac->priv->relay_token);
+  g_free (fac->priv->relay_server);
+
+  if (priv->soup != NULL)
+    {
+      g_object_unref (priv->soup);
+      priv->soup = NULL;
+    }
 
   if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose (object);
@@ -792,4 +880,253 @@ gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
     *stun_port = self->priv->stun_port;
 
   return TRUE;
+}
+
+typedef struct
+{
+  GPtrArray *relays;
+  guint component;
+  guint requests_to_do;
+  GabbleJingleFactoryRelaySessionCb callback;
+  gpointer user_data;
+} RelaySessionData;
+
+static RelaySessionData *
+relay_session_data_new (guint requests_to_do,
+                        GabbleJingleFactoryRelaySessionCb callback,
+                        gpointer user_data)
+{
+  RelaySessionData *rsd = g_slice_new0 (RelaySessionData);
+
+  rsd->relays = g_ptr_array_sized_new (requests_to_do);
+  rsd->component = 1;
+  rsd->requests_to_do = requests_to_do;
+  rsd->callback = callback;
+  rsd->user_data = user_data;
+
+  return rsd;
+}
+
+static void
+relay_session_data_destroy (gpointer p)
+{
+  RelaySessionData *rsd = p;
+
+  g_assert (rsd->requests_to_do == 0);
+
+  g_ptr_array_foreach (rsd->relays, (GFunc) g_hash_table_destroy, NULL);
+  g_ptr_array_free (rsd->relays, TRUE);
+
+  g_slice_free (RelaySessionData, rsd);
+}
+
+static void
+translate_relay_info (GPtrArray *relays,
+                      const gchar *relay_ip,
+                      const gchar *username,
+                      const gchar *password,
+                      const gchar *static_type,
+                      const gchar *port_string,
+                      guint component)
+{
+  GHashTable *asv;
+  guint port = 0;
+
+  if (port_string == NULL)
+    {
+      DEBUG ("no relay port for %s found", static_type);
+      return;
+    }
+
+  port = atoi (port_string);
+
+  if (port == 0 || port > G_MAXUINT16)
+    {
+      DEBUG ("failed to parse relay port '%s' for %s", port_string,
+          static_type);
+      return;
+    }
+
+  DEBUG ("type=%s ip=%s port=%u username=%s password=%s component=%u",
+      static_type, relay_ip, port, username, password, component);
+  /* keys are static, values are slice-allocated */
+  asv = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) tp_g_value_slice_free);
+  g_hash_table_insert (asv, "ip",
+      gabble_g_value_slice_new_string (relay_ip));
+  g_hash_table_insert (asv, "type",
+      gabble_g_value_slice_new_static_string (static_type));
+  g_hash_table_insert (asv, "port",
+      gabble_g_value_slice_new_uint (port));
+  g_hash_table_insert (asv, "username",
+      gabble_g_value_slice_new_string (username));
+  g_hash_table_insert (asv, "password",
+      gabble_g_value_slice_new_string (password));
+  g_hash_table_insert (asv, "component",
+      gabble_g_value_slice_new_uint (component));
+
+  g_ptr_array_add (relays, asv);
+}
+
+static void
+on_http_response (SoupSession *soup,
+                  SoupMessage *msg,
+                  gpointer user_data)
+{
+  RelaySessionData *rsd = user_data;
+
+  if (msg->status_code != 200)
+    {
+      DEBUG ("Google session creation failed, relaying not used: %d %s",
+          msg->status_code, msg->reason_phrase);
+    }
+  else
+    {
+      /* parse a=b lines into GHashTable
+       * (key, value both borrowed from items of the strv 'lines') */
+      GHashTable *map = g_hash_table_new (g_str_hash, g_str_equal);
+      gchar **lines;
+      guint i;
+      const gchar *relay_ip;
+      const gchar *relay_udp_port;
+      const gchar *relay_tcp_port;
+      const gchar *relay_ssltcp_port;
+      const gchar *username;
+      const gchar *password;
+
+      DEBUG ("Response from Google:\n====\n%s\n====",
+          msg->response_body->data);
+
+      lines = g_strsplit (msg->response_body->data, "\n", 0);
+
+      if (lines != NULL)
+        {
+          for (i = 0; lines[i] != NULL; i++)
+            {
+              gchar *delim = strchr (lines[i], '=');
+              size_t len;
+
+              if (delim == NULL || delim == lines[i])
+                {
+                  /* ignore empty keys or lines without '=' */
+                  continue;
+                }
+
+              len = strlen (lines[i]);
+
+              if (lines[i][len - 1] == '\r')
+                {
+                  lines[i][len - 1] = '\0';
+                }
+
+              *delim = '\0';
+              g_hash_table_insert (map, lines[i], delim + 1);
+            }
+        }
+
+      relay_ip = g_hash_table_lookup (map, "relay.ip");
+      relay_udp_port = g_hash_table_lookup (map, "relay.udp_port");
+      relay_tcp_port = g_hash_table_lookup (map, "relay.tcp_port");
+      relay_ssltcp_port = g_hash_table_lookup (map, "relay.ssltcp_port");
+      username = g_hash_table_lookup (map, "username");
+      password = g_hash_table_lookup (map, "password");
+
+      if (relay_ip == NULL)
+        {
+          DEBUG ("No relay.ip found");
+        }
+      else if (username == NULL)
+        {
+          DEBUG ("No username found");
+        }
+      else if (password == NULL)
+        {
+          DEBUG ("No password found");
+        }
+      else
+        {
+          translate_relay_info (rsd->relays, relay_ip, username, password,
+              "udp", relay_udp_port, rsd->component);
+          translate_relay_info (rsd->relays, relay_ip, username, password,
+              "tcp", relay_tcp_port, rsd->component);
+          translate_relay_info (rsd->relays, relay_ip, username, password,
+              "tls", relay_ssltcp_port, rsd->component);
+        }
+
+      g_strfreev (lines);
+      g_hash_table_destroy (map);
+    }
+
+  rsd->component++;
+
+  if ((--rsd->requests_to_do) == 0)
+    {
+      rsd->callback (rsd->relays, rsd->user_data);
+      relay_session_data_destroy (rsd);
+    }
+}
+
+void
+gabble_jingle_factory_create_google_relay_session (
+    GabbleJingleFactory *fac,
+    guint components,
+    GabbleJingleFactoryRelaySessionCb callback,
+    gpointer user_data)
+{
+  GabbleJingleFactoryPrivate *priv =
+      GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
+  gchar *url;
+  guint i;
+  RelaySessionData *rsd;
+
+  g_return_if_fail (callback != NULL);
+
+  if (fac->priv->relay_server == NULL)
+    {
+      DEBUG ("No relay server provided, not creating google relay session");
+      callback (NULL, user_data);
+      return;
+    }
+
+  if (fac->priv->relay_token == NULL)
+    {
+      DEBUG ("No relay token provided, not creating google relay session");
+      callback (NULL, user_data);
+      return;
+    }
+
+  if (priv->soup == NULL)
+    {
+      /* libsoup uses glib in multiple threads and don't have this, so we have to
+       * enable it manually here */
+      if (!g_thread_supported ())
+        g_thread_init (NULL);
+
+      priv->soup = soup_session_async_new ();
+
+      /* If we don't get answer in a few seconds, relay won't do
+       * us much help anyways. */
+      g_object_set (priv->soup, "timeout", RELAY_HTTP_TIMEOUT, NULL);
+    }
+
+  url = g_strdup_printf ("http://%s:%d/create_session",
+      fac->priv->relay_server, fac->priv->relay_http_port);
+  rsd = relay_session_data_new (components, callback, user_data);
+
+  for (i = 0; i < components; i++)
+    {
+      SoupMessage *msg = soup_message_new ("GET", url);
+
+      DEBUG ("Trying to create a new relay session on %s", url);
+
+      /* libjingle sets both headers, so shall we */
+      soup_message_headers_append (msg->request_headers,
+          "X-Talk-Google-Relay-Auth", fac->priv->relay_token);
+      soup_message_headers_append (msg->request_headers,
+          "X-Google-Relay-Auth", fac->priv->relay_token);
+
+      soup_session_queue_message (priv->soup, msg, on_http_response, rsd);
+    }
+
+  g_free (url);
 }

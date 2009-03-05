@@ -11,6 +11,11 @@ from servicetest import Event, EventPattern
 from gabbletest import acknowledge_iq, sync_stream, make_result_iq
 import ns
 
+def wait_events(q, expected, my_event):
+    tmp = expected + [my_event]
+    events = q.expect_many(*tmp)
+    return events[:-1], events[-1]
+
 def create_from_si_offer(stream, q, bytestream_cls, iq, initiator):
     si_nodes = xpath.queryForNodes('/iq/si', iq)
     assert si_nodes is not None
@@ -45,7 +50,7 @@ class Bytestream(object):
         self.target = target
         self.initiated = initiated
 
-    def open_bytestream(self, expected=None):
+    def open_bytestream(self, expected_before=[], expected_after=[]):
         raise NotImplemented
 
     def send_data(self, data):
@@ -185,20 +190,26 @@ class BytestreamS5B(Bytestream):
         connect_reply += '\x00\x00' # port
         self.transport.write(connect_reply)
 
-    def _socks5_expect_connection(self, expected):
-        if expected is not None:
-            event, _ = self.q.expect_many(expected,
-                EventPattern('s5b-connected'))
-        else:
-            event = None
-            self.q.expect('s5b-connected')
+    def _check_s5b_reply(self, iq):
+        streamhost = xpath.queryForNodes('/iq/query/streamhost-used', iq)[0]
+        assert streamhost['jid'] == self.initiator
+
+    def _socks5_expect_connection(self, expected_before, expected_after):
+        events_before, _ = wait_events(self.q, expected_before,
+            EventPattern('s5b-connected'))
 
         self._wait_auth_request()
         self._send_auth_reply()
         self._wait_connect_cmd()
         self._send_connect_reply()
 
-        return event
+        # wait for S5B IQ reply
+        events_after, e = wait_events(self.q, expected_after,
+            EventPattern('stream-iq', iq_type='result', to=self.initiator))
+
+        self._check_s5b_reply(e.stanza)
+
+        return events_before, events_after
 
     def _listen_socks5(self):
         for port in range(5000,5100):
@@ -211,11 +222,10 @@ class BytestreamS5B(Bytestream):
 
         assert False, "Can't find a free port"
 
-    def open_bytestream(self, expected=None):
+    def open_bytestream(self, expected_before=[], expected_after=[]):
         port = self._listen_socks5()
-
         self._send_socks5_init(port)
-        return self._socks5_expect_connection(expected)
+        return self._socks5_expect_connection(expected_before, expected_after)
 
     def send_data(self, data):
         self.transport.write(data)
@@ -339,19 +349,15 @@ class BytestreamS5BCannotConnect(BytestreamS5B):
 
         self.hosts = [('invalid.invalid', 'invalid.invalid')]
 
-    def open_bytestream(self, expected=None):
+    def open_bytestream(self, expected_before=[], expected_after=[]):
         self._send_socks5_init(12345)
 
-        if expected is not None:
-            event, iq_event = self.q.expect_many(expected,
-                EventPattern('stream-iq', iq_type='error', to=self.initiator))
-        else:
-            event = None
-            iq_event = self.q.expect('stream-iq', iq_type='error', to=self.initiator)
+        events_before, iq_event = wait_events(self.q, expected_before,
+            EventPattern('stream-iq', iq_type='error', to=self.initiator))
 
         self.check_error_stanza(iq_event.stanza)
 
-        return event
+        return events_before, []
 
     def _socks5_connect(self, host, port):
         # Pretend we can't connect to it
@@ -388,13 +394,9 @@ class BytestreamS5BWrongHash(BytestreamS5B):
         self.q.expect('s5b-connection-lost')
         return False
 
-    def _socks5_expect_connection(self, expected):
-        if expected is not None:
-            event, _ = self.q.expect_many(expected,
-                EventPattern('s5b-connected'))
-        else:
-            event = None
-            self.q.expect('s5b-connected')
+    def _socks5_expect_connection(self, expected_before, expected_after):
+        events_before, _ = wait_events(self.q, expected_before,
+            EventPattern('s5b-connected'))
 
         self._wait_auth_request()
         self._send_auth_reply()
@@ -406,7 +408,7 @@ class BytestreamS5BWrongHash(BytestreamS5B):
         iq_event = self.q.expect('stream-iq', iq_type='error', to=self.initiator)
         self.check_error_stanza(iq_event.stanza)
 
-        return event
+        return events_before, []
 
 class S5BProtocol(Protocol):
     def connectionMade(self):
@@ -456,12 +458,14 @@ class BytestreamIBB(Bytestream):
     def get_ns(self):
         return ns.IBB
 
-    def open_bytestream(self, expected=None):
+    def open_bytestream(self, expected_before=[], expected_after=[]):
         # open IBB bytestream
         send_ibb_open(self.stream, self.initiator, self.target, self.stream_id, 4096)
 
-        if expected is not None:
-            return self.q.expect_many(expected)[0]
+        events_before = self.q.expect_many(*expected_before)
+        events_after = self.q.expect_many(*expected_after)
+
+        return events_before, events_after
 
     def send_data(self, data):
         if self.initiated:
@@ -586,6 +590,30 @@ class BytestreamSIFallback(Bytestream):
 
         return result, res_si
 
+    def open_bytestream(self, expected_before=[], expected_after=[]):
+        # first propose to peer to connect using SOCKS5
+        # We set an invalid IP so that won't work
+        self.socks5._send_socks5_init([
+            # Not working streamhost
+            (self.initiator, 'invalid.invalid', 12345),
+            ])
+
+        events_before, iq_event = wait_events(self.q, expected_before,
+            EventPattern('stream-iq', iq_type='error', to=self.initiator))
+
+        self.socks5.check_error_stanza(iq_event.stanza)
+
+        # socks5 failed, let's try IBB
+        _, events_after = self.ibb.open_bytestream([], expected_after)
+
+        return events_before, events_after
+
+    def send_data(self, data):
+        self.used.send_data(data)
+
+    def get_data(self):
+        return self.used.get_data()
+
     def send_data(self, data):
         self.used.send_data(data)
 
@@ -616,14 +644,15 @@ class BytestreamSIFallbackS5CannotConnect(BytestreamSIFallback):
 
         self.used = self.ibb
 
-    def open_bytestream(self, expected=None):
+    def open_bytestream(self, expected_before=[], expected_after=[]):
         # First propose to peer to connect using SOCKS5
         # That won't work as target can't connect
-        event = self.socks5.open_bytestream(expected)
+        events_before, _ = self.socks5.open_bytestream(expected_before)
 
         # socks5 failed, let's try IBB
-        self.ibb.open_bytestream()
-        return event
+        _, events_after = self.ibb.open_bytestream([], expected_after)
+
+        return events_before, events_after
 
     def wait_bytestream_open(self):
         # Gabble tries SOCKS5 first
@@ -643,14 +672,14 @@ class BytestreamSIFallbackS5WrongHash(BytestreamSIFallback):
 
         self.used = self.ibb
 
-    def open_bytestream(self, expected=None):
+    def open_bytestream(self, expected_before=[], expected_after=[]):
         # SOCKS5 won't work because we'll pretend the hash was wrong and
         # close the connection
-        event = self.socks5.open_bytestream(expected)
+        events_before, _ = self.socks5.open_bytestream(expected_before)
 
         # socks5 failed, let's try IBB
-        self.ibb.open_bytestream()
-        return event
+        _, events_after = self.ibb.open_bytestream([], expected_after)
+        return events_before, events_after
 
     def wait_bytestream_open(self):
         # BytestreamS5BWrongHash will send a wrong hash so Gabble will

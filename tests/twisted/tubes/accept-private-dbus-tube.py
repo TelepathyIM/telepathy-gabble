@@ -123,15 +123,12 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert len(tube) == 1
 
     # Init the bytestream
-    event = bytestream.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
+    events, _ = bytestream.open_bytestream([EventPattern('dbus-return', method='AcceptDBusTube')],
+        [EventPattern('dbus-signal', signal='TubeStateChanged', args=[69, 2])])
 
-    address = event.value[0]
+    return_event = events[0]
+    address = return_event.value[0]
     assert len(address) > 0
-
-    event = q.expect('dbus-signal', signal='TubeStateChanged',
-        args=[69, 2]) # 2 == OPEN
-    id = event.args[0]
-    state = event.args[1]
 
     # OK, now let's try to accept a D-Bus tube using the new API
     bytestream = bytestream_cls(stream, q, 'gamma', bob_full_jid,
@@ -165,21 +162,22 @@ def test(q, bus, conn, stream, bytestream_cls):
     # accept the tube (new API)
     call_async(q, dbus_tube_iface, 'AcceptDBusTube')
 
-    event = q.expect('stream-iq', iq_type='result')
-    bytestream.check_si_reply(event.stanza)
-    tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES, event.stanza)
+    # Init the bytestream
+    events, state_event = bytestream.open_bytestream(
+            [EventPattern('stream-iq', iq_type='result'),
+                EventPattern('dbus-return', method='AcceptDBusTube')],
+            [EventPattern('dbus-signal', signal='TubeChannelStateChanged')])
+
+    iq_event = events[0]
+    bytestream.check_si_reply(iq_event.stanza)
+    tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES, iq_event.stanza)
     assert len(tube) == 1
 
-    # Init the bytestream
-    return_event = bytestream.open_bytestream(EventPattern('dbus-return', method='AcceptDBusTube'))
-
-    _, state_event = q.expect_many(
-        EventPattern('stream-iq', iq_type='result'),
-        EventPattern('dbus-signal', signal='TubeChannelStateChanged'))
-
+    return_event = events[1]
     addr = return_event.value[0]
     assert len(addr) > 0
 
+    state_event = state_event[0]
     assert state_event.args[0] == cs.TUBE_STATE_OPEN
 
     # close the tube

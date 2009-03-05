@@ -2328,42 +2328,26 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
 }
 
 static void
-create_stream_from_content (GabbleMediaChannel *chan,
-                            GabbleJingleContent *c)
+construct_stream (GabbleMediaChannel *chan,
+                  GabbleJingleContent *c,
+                  const gchar *name,
+                  const gchar *nat_traversal,
+                  const GPtrArray *relays)
 {
   GObject *chan_o = (GObject *) chan;
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabbleMediaStream *stream;
   TpMediaStreamType mtype;
-  gchar *name;
   guint id;
   gchar *object_path;
-  gchar *nat_traversal;
-
-  g_object_get (c,
-      "name", &name,
-      NULL);
-
-  if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
-    {
-      DEBUG ("ignoring non MediaRtp content '%s'", name);
-      g_free (name);
-      return;
-    }
-
-  /* This onelier replaces "get_channel_stream_id()" function */
 
   id = priv->next_stream_id++;
 
   object_path = g_strdup_printf ("%s/MediaStream%u",
       priv->object_path, id);
 
-  g_object_get (chan,
-      "nat-traversal", &nat_traversal,
-      NULL);
   stream = gabble_media_stream_new (object_path, c, name, id,
-      nat_traversal);
-  g_free (nat_traversal);
+      nat_traversal, relays);
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 
@@ -2408,6 +2392,73 @@ create_stream_from_content (GabbleMediaChannel *chan,
     }
 
   g_free (object_path);
+}
+
+typedef struct {
+    GabbleMediaChannel *self;
+    GabbleJingleContent *content;
+    gchar *nat_traversal;
+    gchar *name;
+} StreamCreationData;
+
+static void
+google_relay_session_cb (GPtrArray *relays,
+                         gpointer user_data)
+{
+  StreamCreationData *d = user_data;
+
+  construct_stream (d->self, d->content, d->name, d->nat_traversal, relays);
+
+  g_free (d->name);
+  g_free (d->nat_traversal);
+  g_object_unref (d->content);
+  g_object_unref (d->self);
+  g_slice_free (StreamCreationData, d);
+}
+
+static void
+create_stream_from_content (GabbleMediaChannel *self,
+                            GabbleJingleContent *c)
+{
+  gchar *name, *nat_traversal;
+
+  g_object_get (c,
+      "name", &name,
+      NULL);
+
+  if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
+    {
+      DEBUG ("ignoring non MediaRtp content '%s'", name);
+      g_free (name);
+      return;
+    }
+
+  g_object_get (self,
+      "nat-traversal", &nat_traversal,
+      NULL);
+
+  if (!tp_strdiff (nat_traversal, "gtalk-p2p"))
+    {
+      StreamCreationData *d = g_slice_new0 (StreamCreationData);
+
+      d->self = g_object_ref (self);
+      d->nat_traversal = nat_traversal;
+      d->name = name;
+      d->content = g_object_ref (c);
+
+      /* See if our server is Google, and if it is, ask them for a relay.
+       * We ask for enough relays for 2 components (RTP and RTCP) since we
+       * don't yet know whether there will be RTCP. */
+      DEBUG ("Attempting to create Google relay session");
+      gabble_jingle_factory_create_google_relay_session (
+          self->priv->conn->jingle_factory, 2, google_relay_session_cb, d);
+    }
+  else
+    {
+      construct_stream (self, c, name, nat_traversal, NULL);
+      g_free (name);
+      g_free (nat_traversal);
+    }
 }
 
 static void

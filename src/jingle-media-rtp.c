@@ -118,6 +118,22 @@ jingle_media_rtp_codec_free (JingleCodec *p)
 }
 
 static void
+add_codec_to_table (JingleCodec *codec,
+                    GHashTable *table)
+{
+  g_hash_table_insert (table, GUINT_TO_POINTER (codec->id), codec);
+}
+
+static GHashTable *
+build_codec_table (GList *codecs)
+{
+  GHashTable *table = g_hash_table_new (NULL, NULL);
+
+  g_list_foreach (codecs, (GFunc) add_codec_to_table, table);
+  return table;
+}
+
+static void
 jingle_media_rtp_free_codecs (GList *codecs)
 {
   while (codecs != NULL)
@@ -345,56 +361,54 @@ parse_payload_type (LmMessageNode *node)
   return p;
 }
 
+/**
+ * codec_update_coherent:
+ * @old_c: Gabble's old cache of the codec, or %NULL if it hasn't heard of it.
+ * @new_c: the proposed update, whose id must equal that of @old_c if the
+ *         latter is non-NULL.
+ * @domain: the error domain to set @e to if necessary
+ * @code: the error code to set @e to if necessary
+ * @e: location to hold an error
+ *
+ * Compares @old_c and @new_c, which are assumed to have the same id, to check
+ * that the name, clockrate and number of channels hasn't changed. If they
+ * have, returns %FALSE and sets @e.
+ */
 static gboolean
-update_one_codec (GabbleJingleMediaRtp *self,
-                  JingleCodec *new_codec,
-                  GError **error)
+codec_update_coherent (const JingleCodec *old_c,
+                       const JingleCodec *new_c,
+                       GQuark domain,
+                       gint code,
+                       GError **e)
 {
-  GabbleJingleMediaRtpPrivate *priv = self->priv;
-  GList *l;
-
-  for (l = priv->remote_codecs; l != NULL; l = l->next)
+  if (old_c == NULL)
     {
-      JingleCodec *old_codec = l->data;
-      GHashTable *tmp;
-
-      if (old_codec->id != new_codec->id)
-        continue;
-
-      if (tp_strdiff (old_codec->name, new_codec->name))
-        {
-          SET_BAD_REQ ("Codec with id %u is called %s, not %s", old_codec->id,
-              old_codec->name, new_codec->name);
-          return FALSE;
-        }
-
-      if (old_codec->clockrate != new_codec->clockrate)
-        {
-          SET_BAD_REQ ("Changing clockrate (of payload-type %u from %u to %u) "
-              "is meaningless", old_codec->id, old_codec->clockrate,
-              new_codec->clockrate);
-          return FALSE;
-        }
-
-      if (old_codec->channels != new_codec->channels)
-        {
-          SET_BAD_REQ ("Changing channels (of payload-type %u from %u to %u) "
-              "is meaningless", old_codec->id, old_codec->channels,
-              new_codec->channels);
-          return FALSE;
-        }
-
-      tmp = old_codec->params;
-      old_codec->params = new_codec->params;
-      new_codec->params = tmp;
-
-      break;
+      g_set_error (e, domain, code, "Codec with id %u ('%s') unknown",
+          new_c->id, new_c->name);
+      return FALSE;
     }
 
-  if (l == NULL)
+  if (tp_strdiff (new_c->name, old_c->name))
     {
-      SET_BAD_REQ ("Codec with id %u ('%s') unknown", new_codec->id,
-          new_codec->name);
+      g_set_error (e, domain, code,
+          "tried to change codec %u's name from %s to %s",
+          new_c->id, old_c->name, new_c->name);
+      return FALSE;
+    }
+
+  if (new_c->clockrate != old_c->clockrate)
+    {
+      g_set_error (e, domain, code,
+          "tried to change codec %u (%s)'s clockrate from %u to %u",
+          new_c->id, new_c->name, new_c->clockrate, old_c->clockrate);
+      return FALSE;
+    }
+
+  if (new_c->channels != old_c->channels)
+    {
+      g_set_error (e, domain, code,
+          "tried to change codec %u (%s)'s channels from %u to %u",
+          new_c->id, new_c->name, new_c->channels, old_c->channels);
       return FALSE;
     }
 
@@ -407,34 +421,62 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
                       GError **error)
 {
   GabbleJingleMediaRtpPrivate *priv = self->priv;
-  GList *k;
+  GHashTable *rc = NULL;
+  JingleCodec *old_c, *new_c;
+  GList *l;
   GError *e = NULL;
 
   if (priv->remote_codecs == NULL)
     {
       priv->remote_codecs = new_codecs;
+      new_codecs = NULL;
       goto out;
     }
+
+  rc = build_codec_table (priv->remote_codecs);
 
   /* We already know some remote codecs, so this is just the other end updating
    * some parameters.
    */
-  for (k = new_codecs; k != NULL; k = k->next)
-    if (!update_one_codec (self, k->data, &e))
-      break;
+  for (l = new_codecs; l != NULL; l = l->next)
+    {
+      new_c = l->data;
+      old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER (new_c->id));
 
+      if (!codec_update_coherent (old_c, new_c, GABBLE_XMPP_ERROR,
+            XMPP_ERROR_BAD_REQUEST, &e))
+        goto out;
+    }
+
+  /* Okay, all the updates are cool. Let's switch the parameters around. */
+  for (l = new_codecs; l != NULL; l = l->next)
+    {
+      GHashTable *params;
+
+      new_c = l->data;
+      old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER (new_c->id));
+
+      params = old_c->params;
+      old_c->params = new_c->params;
+      new_c->params = params;
+    }
+
+out:
   jingle_media_rtp_free_codecs (new_codecs);
+
+  if (rc != NULL)
+    g_hash_table_unref (rc);
 
   if (e != NULL)
     {
       DEBUG ("Rejecting codec update: %s", e->message);
       g_propagate_error (error, e);
-      return;
     }
-
-out:
-  DEBUG ("emitting remote-codecs signal");
-  g_signal_emit (self, signals[REMOTE_CODECS], 0, priv->remote_codecs);
+  else
+    {
+      DEBUG ("Emitting remote-codecs signal");
+      g_signal_emit (self, signals[REMOTE_CODECS], 0, priv->remote_codecs);
+    }
 }
 
 static void
@@ -630,47 +672,6 @@ string_string_maps_equal (GHashTable *a,
 }
 
 /**
- * codec_update_coherent:
- *
- * Compares @old_c and @new_c, which are assumed to have the same id, to check
- * that the name, clockrate and number of channels hasn't changed. If they
- * have, returns %FALSE and sets @e.
- */
-static gboolean
-codec_update_coherent (const JingleCodec *old_c,
-                       const JingleCodec *new_c,
-                       GError **e)
-{
-#define INVALID(msg, ...) \
-    g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, msg, ##__VA_ARGS__);
-
-  if (tp_strdiff (new_c->name, old_c->name))
-    {
-      INVALID ("tried to change codec %u's name from %s to %s",
-          new_c->id, old_c->name, new_c->name);
-      return FALSE;
-    }
-
-  if (new_c->clockrate != old_c->clockrate)
-    {
-      INVALID ("tried to change codec %u (%s)'s clockrate from %u to %u",
-          new_c->id, new_c->name, new_c->clockrate, old_c->clockrate);
-      return FALSE;
-    }
-
-  if (new_c->channels != old_c->channels)
-    {
-      INVALID ("tried to change codec %u (%s)'s channels from %u to %u",
-          new_c->id, new_c->name, new_c->channels, old_c->channels);
-      return FALSE;
-    }
-
-#undef INVALID
-
-  return TRUE;
-}
-
-/**
  * compare_codecs:
  * @old: previous local codecs
  * @new: new local codecs supplied by streaming implementation
@@ -709,7 +710,8 @@ compare_codecs (GList *old,
           if (new_c->id != old_c->id)
             continue;
 
-          if (!codec_update_coherent (old_c, new_c, e))
+          if (!codec_update_coherent (old_c, new_c, TP_ERRORS,
+                TP_ERROR_INVALID_ARGUMENT, e))
             goto err;
 
           if (!string_string_maps_equal (old_c->params, new_c->params))

@@ -152,21 +152,26 @@ def test(q, bus, conn, stream):
     assert sorted(payload_types_tupled) == sorted(new_codecs[0:2]), \
         (payload_types_tupled, new_codecs[0:2])
 
-    # Instead, the remote end decides to change the clockrate of the third codec.
-    new_codecs = [ ('GSM', 3, 8000), ('PCMA', 8, 8000), ('PCMU', 0, 1600) ]
+    # Instead, the remote end decides to change the clockrate of and add a
+    # parameter to the third codec.
+    new_codecs = [ ('GSM', 3, 8000, {}),
+                   ('PCMA', 8, 8000, {}),
+                   ('PCMU', 0, 1600, {'choppy': 'false'}),
+                 ]
     # As per the XEP, it only sends the ones which have changed.
     c = new_codecs[2]
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'description-info', [
             jp.Content('stream1', 'initiator', 'both', [
                 jp.Description('audio', [
-                    jp.PayloadType(c[0], str(c[2]), str(c[1])) ]) ]) ]) ])
+                    jp.PayloadType(c[0], str(c[2]), str(c[1]), c[3])
+                ]) ]) ]) ])
     stream.send(jp.xml(node))
 
     # Gabble should patch its idea of the remote codecs with the update it just
     # got, and emit SetRemoteCodecs for them all.
     e = q.expect('dbus-signal', signal='SetRemoteCodecs')
-    new_codecs_dbus = unwrap(jt2.dbusify_codecs(new_codecs))
+    new_codecs_dbus = unwrap(jt2.dbusify_codecs_with_params(new_codecs))
     announced = unwrap(e.args[0])
     assert new_codecs_dbus == announced, (new_codecs_dbus, announced)
 

@@ -67,12 +67,18 @@ class JingleProtocol:
                 ('error', None, { 'type': errtype, 'xmlns':
                     'urn:ietf:params:xml:ns:xmpp-stanzas' }, [ errchild ]) ])
 
-    def PayloadType(self, name, rate, id, **kw):
+    def PayloadType(self, name, rate, id, parameters={}, **kw):
         "Creates a <payload-type> element"
         kw['name'] = name
         kw['rate'] = rate
         kw['id'] = id
-        return ('payload-type', None, kw, [])
+        chrilden = [self.Parameter(name, value)
+                    for name, value in parameters.iteritems()]
+        return ('payload-type', None, kw, chrilden)
+
+    def Parameter(self, name, value):
+        "Creates a <parameter> element"
+        return ('parameter', None, {'name': name, 'value': value}, [])
 
     def TransportGoogleP2P(self):
         "Creates a <transport> element for Google P2P transport"

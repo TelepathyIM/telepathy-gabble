@@ -142,11 +142,19 @@ void _jingle_factory_unregister_session (GabbleJingleFactory *factory,
 GabbleJingleSession *gabble_jingle_factory_create_session (GabbleJingleFactory
     *fac, TpHandle peer, const gchar *peer_resource);
 
+typedef void (*GabbleJingleFactoryRelaySessionCb) (GPtrArray *relays,
+    gpointer user_data);
+void gabble_jingle_factory_create_google_relay_session (
+    GabbleJingleFactory *self, guint components,
+    GabbleJingleFactoryRelaySessionCb callback, gpointer user_data);
+
 const gchar *gabble_jingle_factory_get_google_relay_token (
     GabbleJingleFactory *self);
 
 gboolean gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
     gchar **stun_server, guint *stun_port);
+
+void gabble_jingle_factory_set_test_mode (void);
 
 G_END_DECLS;
 

@@ -84,4 +84,9 @@ lm_iq_message_make_result (LmMessage *iq_message);
 void gabble_signal_connect_weak (gpointer instance, const gchar *detailed_signal,
     GCallback c_handler, GObject *user_data);
 
+GValue *gabble_g_value_slice_new_uint (guint n);
+GValue *gabble_g_value_slice_new_string (const gchar *string);
+GValue *gabble_g_value_slice_new_static_string (const gchar *string);
+GValue *gabble_g_value_slice_new_take_string (gchar *string);
+
 #endif /* __GABBLE_UTIL_H__ */

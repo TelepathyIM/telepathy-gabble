@@ -1,9 +1,13 @@
 telepathy-gabble 0.7.23 (UNRELEASED)
 ====================================
 
+Dependencies:
+
+* telepathy-glib 0.7.26 is now required (as it was for 0.7.22, in fact).
+
 Fixes:
 
-* Fix write flow control in tubes when using a SI fallback bytestream
+* Fix flow control in tubes when using a SI fallback bytestream
 
 * Fix SOCKS5 implementation to actually respect XEP-0065.
   One of the changes would cause interoperability issues with

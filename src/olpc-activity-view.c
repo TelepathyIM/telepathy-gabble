@@ -54,7 +54,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleOlpcActivityViewPrivate GabbleOlpcActivityViewPrivate;
 struct _GabbleOlpcActivityViewPrivate
 {
   GHashTable *properties;
@@ -68,10 +67,6 @@ G_DEFINE_TYPE_WITH_CODE (
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW,
       NULL);
     );
-
-#define GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE(obj) \
-    ((GabbleOlpcActivityViewPrivate *) obj->priv)
-
 
 static void
 gabble_olpc_activity_view_init (GabbleOlpcActivityView *self)
@@ -88,8 +83,7 @@ static void
 gabble_olpc_activity_view_dispose (GObject *object)
 {
   GabbleOlpcActivityView *self = GABBLE_OLPC_ACTIVITY_VIEW (object);
-  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (
-      self);
+  GabbleOlpcActivityViewPrivate *priv = self->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -104,8 +98,7 @@ static void
 gabble_olpc_activity_view_finalize (GObject *object)
 {
   GabbleOlpcActivityView *self = GABBLE_OLPC_ACTIVITY_VIEW (object);
-  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (
-      self);
+  GabbleOlpcActivityViewPrivate *priv = self->priv;
 
   g_hash_table_destroy (priv->properties);
   tp_handle_set_destroy (priv->participants);
@@ -121,8 +114,7 @@ gabble_olpc_activity_view_get_property (GObject *object,
                                         GParamSpec *pspec)
 {
   GabbleOlpcActivityView *self = GABBLE_OLPC_ACTIVITY_VIEW (object);
-  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (
-      self);
+  GabbleOlpcActivityViewPrivate *priv = self->priv;
 
   switch (property_id)
     {
@@ -166,8 +158,7 @@ gabble_olpc_activity_view_set_property (GObject *object,
                                         GParamSpec *pspec)
 {
   GabbleOlpcActivityView *self = GABBLE_OLPC_ACTIVITY_VIEW (object);
-  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (
-      self);
+  GabbleOlpcActivityViewPrivate *priv = self->priv;
 
   switch (property_id)
     {
@@ -228,8 +219,7 @@ gabble_olpc_activity_view_constructor (GType type,
 
   view = GABBLE_OLPC_VIEW (obj);
 
-  priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (GABBLE_OLPC_ACTIVITY_VIEW (
-        obj));
+  priv = GABBLE_OLPC_ACTIVITY_VIEW (obj)->priv;
   conn = (TpBaseConnection *) view->conn;
 
   bus = tp_get_bus ();
@@ -299,8 +289,7 @@ gabble_olpc_activity_view_send_request (GabbleOlpcView *view,
                                         GError **error)
 {
   GabbleOlpcActivityView *self = GABBLE_OLPC_ACTIVITY_VIEW (view);
-  GabbleOlpcActivityViewPrivate *priv = \
-      GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcActivityViewPrivate *priv = self->priv;
   LmMessage *query;
   LmMessageNode *activity_node;
   gchar *max_str, *id_str;

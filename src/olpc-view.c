@@ -79,7 +79,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleOlpcViewPrivate GabbleOlpcViewPrivate;
 struct _GabbleOlpcViewPrivate
 {
   gboolean closed;
@@ -113,10 +112,6 @@ static const gchar *gabble_olpc_view_interfaces[] = {
     NULL
 };
 
-#define GABBLE_OLPC_VIEW_GET_PRIVATE(obj) \
-    ((GabbleOlpcViewPrivate *) obj->priv)
-
-
 static void
 gabble_olpc_view_init (GabbleOlpcView *self)
 {
@@ -132,7 +127,7 @@ static void
 gabble_olpc_view_dispose (GObject *object)
 {
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (object);
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = self->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -198,12 +193,11 @@ add_activity_to_array (TpHandle handle,
 static GPtrArray *
 create_activities_array (GabbleOlpcView *self)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   GPtrArray *activities;
 
   activities = g_ptr_array_new ();
 
-  g_hash_table_foreach (priv->activities, (GHFunc) add_activity_to_array,
+  g_hash_table_foreach (self->priv->activities, (GHFunc) add_activity_to_array,
       activities);
 
   return activities;
@@ -216,7 +210,7 @@ gabble_olpc_view_get_property (GObject *object,
                                GParamSpec *pspec)
 {
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (object);
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = self->priv;
   TpBaseConnection *base_conn = (TpBaseConnection *) self->conn;
 
   switch (property_id)
@@ -334,7 +328,7 @@ gabble_olpc_view_constructor (GType type,
            constructor (type, n_props, props);
 
   self = GABBLE_OLPC_VIEW (obj);
-  priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  priv = self->priv;
   conn = (TpBaseConnection *) self->conn;
 
   contact_handles = tp_base_connection_get_handles (conn,
@@ -506,10 +500,8 @@ buddy_left_activities_foreach (TpHandleSet *set,
                                TpHandle buddy,
                                GabbleOlpcView *self)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
-
   /* Remove all the activity of this buddy */
-  if (!g_hash_table_remove (priv->buddy_rooms, GUINT_TO_POINTER (buddy)))
+  if (!g_hash_table_remove (self->priv->buddy_rooms, GUINT_TO_POINTER (buddy)))
     return;
 
   g_signal_emit (G_OBJECT (self), signals[BUDDY_ACTIVITIES_CHANGED],
@@ -520,7 +512,7 @@ static gboolean
 do_close (GabbleOlpcView *self,
           GError **error)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = self->priv;
   LmMessage *msg;
 
   msg = GABBLE_OLPC_VIEW_GET_CLASS (self)->create_close_msg (self);
@@ -563,10 +555,9 @@ gabble_olpc_view_close_dbus (TpSvcChannel *iface,
                              DBusGMethodInvocation *context)
 {
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   GError *error = NULL;
 
-  if (priv->closed)
+  if (self->priv->closed)
     {
       DEBUG ("Already closed. Doing nothing");
     }
@@ -636,7 +627,7 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
                               GPtrArray *buddies_properties,
                               TpHandle room)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = self->priv;
   guint i;
   GArray *empty;
   TpHandleRepoIface *room_repo, *contact_repo;
@@ -732,11 +723,9 @@ remove_buddy_foreach (TpHandleSet *buddies,
                       TpHandle handle,
                       GabbleOlpcView *self)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
-
-  tp_handle_set_remove (priv->buddies, handle);
-  g_hash_table_remove (priv->buddy_properties, GUINT_TO_POINTER (handle));
-  g_hash_table_remove (priv->buddy_rooms, GUINT_TO_POINTER (handle));
+  tp_handle_set_remove (self->priv->buddies, handle);
+  g_hash_table_remove (self->priv->buddy_properties, GUINT_TO_POINTER (handle));
+  g_hash_table_remove (self->priv->buddy_rooms, GUINT_TO_POINTER (handle));
 }
 
 void
@@ -769,7 +758,7 @@ gabble_olpc_view_set_buddy_properties (GabbleOlpcView *self,
                                        TpHandle buddy,
                                        GHashTable *properties)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = self->priv;
 
   if (!tp_handle_set_is_member (priv->buddies, buddy))
     {
@@ -789,9 +778,7 @@ GHashTable *
 gabble_olpc_view_get_buddy_properties (GabbleOlpcView *self,
                                        TpHandle buddy)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
-
-  return g_hash_table_lookup (priv->buddy_properties,
+  return g_hash_table_lookup (self->priv->buddy_properties,
       GUINT_TO_POINTER (buddy));
 }
 
@@ -799,7 +786,7 @@ void
 gabble_olpc_view_add_activities (GabbleOlpcView *self,
                                  GHashTable *activities)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = self->priv;
   GPtrArray *added, *empty;
 
   if (g_hash_table_size (activities) == 0)
@@ -852,7 +839,7 @@ void
 gabble_olpc_view_remove_activities (GabbleOlpcView *self,
                                     TpHandleSet *rooms)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = self->priv;
   GPtrArray *removed, *empty;
   GArray *array;
   guint i;
@@ -911,7 +898,7 @@ GPtrArray *
 gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
                                        TpHandle buddy)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = self->priv;
   GPtrArray *activities;
   TpHandleSet *rooms_set;
   GArray *rooms;
@@ -963,7 +950,7 @@ gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
                                         GArray *buddies,
                                         TpHandle room)
 {
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = self->priv;
   guint i;
   TpHandleRepoIface *contact_repo;
   TpHandleSet *removed;

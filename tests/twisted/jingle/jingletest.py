@@ -3,22 +3,11 @@ Jingle (XEP-0166) testing support.
 """
 
 import random
-from gabbletest import make_result_iq, make_presence
+from gabbletest import make_presence
 from twisted.words.xish import domish
 from twisted.words.protocols.jabber.client import IQ
 import dbus
-
-def make_caps_disco_reply(stream, req, features):
-    iq = make_result_iq(stream, req)
-    query = iq.firstChildElement()
-
-    for f in features:
-        el = domish.Element((None, 'feature'))
-        el['var'] = f
-        query.addChild(el)
-
-    return iq
-
+from caps_helper import make_caps_disco_reply
 
 class JingleTest:
 

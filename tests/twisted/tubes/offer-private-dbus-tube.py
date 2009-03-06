@@ -5,13 +5,14 @@ from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, unwrap, watch_tube_signals
-from gabbletest import make_result_iq, sync_stream, make_presence
+from gabbletest import sync_stream, make_presence
 import constants as cs
 import tubetestutil as t
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 import ns
 from bytestream import create_from_si_offer
+from caps_helper import make_caps_disco_reply
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -19,17 +20,6 @@ sample_parameters = dbus.Dictionary({
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
-
-def make_caps_disco_reply(stream, req, features):
-    iq = make_result_iq(stream, req)
-    query = iq.firstChildElement()
-
-    for f in features:
-        el = domish.Element((None, 'feature'))
-        el['var'] = f
-        query.addChild(el)
-
-    return iq
 
 def alice_accepts_tube(q, stream, iq_event, dbus_tube_id, bytestream_cls):
     iq = iq_event.stanza

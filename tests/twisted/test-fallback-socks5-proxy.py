@@ -1,38 +1,13 @@
 import dbus
-from gabbletest import exec_test, make_result_iq, elem, elem_iq, sync_stream
-from servicetest import call_async, EventPattern
+from gabbletest import exec_test, elem, elem_iq, sync_stream, make_presence
+from servicetest import EventPattern
+from caps_helper import make_caps_disco_reply
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 
 import ns
 import constants as cs
 from bytestream import create_from_si_offer, BytestreamS5B
-
-# FIXME: stolen from offer-private-dbus-tube
-def make_caps_disco_reply(stream, req, features):
-    iq = make_result_iq(stream, req)
-    query = iq.firstChildElement()
-
-    for f in features:
-        el = domish.Element((None, 'feature'))
-        el['var'] = f
-        query.addChild(el)
-
-    return iq
-
-# FIXME: stolen from offer-private-dbus-tube
-def make_presence(fromjid, tojid, caps=None):
-    el = domish.Element(('jabber:client', 'presence',))
-    el['from'] = fromjid
-    el['to'] = tojid
-
-    if caps:
-        cel = domish.Element(('http://jabber.org/protocol/caps', 'c'))
-        for key,value in caps.items():
-            cel[key] = value
-        el.addChild(cel)
-
-    return el
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -54,7 +29,7 @@ def test(q, bus, conn, stream):
     # Send Alice's presence
     caps =  { 'ext': '', 'ver': '0.0.0',
         'node': 'http://example.com/fake-client0' }
-    presence = make_presence('alice@localhost/Test', 'test@localhost', caps)
+    presence = make_presence('alice@localhost/Test', caps=caps)
     stream.send(presence)
 
     disco_event = q.expect('stream-iq', to='alice@localhost/Test',

@@ -103,6 +103,7 @@ TWISTED_TESTS = \
 	connect/test-nonblocking-tls.py \
 	test-disco.py \
 	test-disco-no-reply.py \
+	test-fallback-socks5-proxy.py \
 	test-register.py \
 	test-set-status-idempotence.py \
         test-location.py

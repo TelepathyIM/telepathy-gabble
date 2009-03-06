@@ -8,7 +8,7 @@ import dbus
 from twisted.words.xish import domish
 
 from servicetest import EventPattern
-from gabbletest import exec_test, make_result_iq
+from gabbletest import exec_test, make_result_iq, make_presence
 
 text = 'org.freedesktop.Telepathy.Channel.Type.Text'
 sm = 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
@@ -16,25 +16,11 @@ icaps = 'org.freedesktop.Telepathy.Connection.Interface.Capabilities'
 icaps_attr  = icaps + "/caps"
 basic_caps = [(2, text, 3, 0)]
 
-def make_presence(from_jid, type, status):
-    presence = domish.Element((None, 'presence'))
-
-    if from_jid is not None:
-        presence['from'] = from_jid
-
-    if type is not None:
-        presence['type'] = type
-
-    if status is not None:
-        presence.addElement('status', content=status)
-
-    return presence
-
 def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    presence = make_presence('bob@foo.com/Foo', None, 'hello')
+    presence = make_presence('bob@foo.com/Foo', status='hello')
     stream.send(presence)
 
     q.expect_many(
@@ -53,7 +39,7 @@ def test(q, bus, conn, stream):
     # send updated presence with Jingle audio/video caps info. we turn on both
     # audio and video at the same time to test that all of the capabilities are
     # discovered before any capabilities change signal is emitted
-    presence = make_presence('bob@foo.com/Foo', None, 'hello')
+    presence = make_presence('bob@foo.com/Foo', status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = 'http://telepathy.freedesktop.org/fake-client'
     c['ver'] = '0.1'
@@ -101,7 +87,7 @@ def test(q, bus, conn, stream):
     assert (2, sm, 3, 3) in caps[2L][icaps_attr]
 
     # send updated presence without video support
-    presence = make_presence('bob@foo.com/Foo', None, 'hello')
+    presence = make_presence('bob@foo.com/Foo', status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = 'http://telepathy.freedesktop.org/fake-client'
     c['ver'] = '0.1'
@@ -119,7 +105,7 @@ def test(q, bus, conn, stream):
     assert (2, sm, 3, 1) in caps[2L][icaps_attr]
 
     # go offline
-    presence = make_presence('bob@foo.com/Foo', 'unavailable', None)
+    presence = make_presence('bob@foo.com/Foo', type='unavailable')
     stream.send(presence)
 
     # can't do audio calls any more

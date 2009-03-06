@@ -25,7 +25,7 @@ import sys
 
 from twisted.words.xish import domish, xpath
 
-from gabbletest import exec_test, make_result_iq
+from gabbletest import exec_test, make_result_iq, make_presence
 from servicetest import sync_dbus, EventPattern
 
 gabble_service = 'org.freedesktop.Telepathy.ConnectionManager.gabble'
@@ -42,20 +42,6 @@ def caps_changed_cb(dummy):
     global caps_changed_flag
     caps_changed_flag = True
 
-def make_presence(from_jid, type, status):
-    presence = domish.Element((None, 'presence'))
-
-    if from_jid is not None:
-        presence['from'] = from_jid
-
-    if type is not None:
-        presence['type'] = type
-
-    if status is not None:
-        presence.addElement('status', content=status)
-
-    return presence
-
 def presence_add_caps(presence, ver, client, hash=None):
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
@@ -67,7 +53,7 @@ def presence_add_caps(presence, ver, client, hash=None):
 def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     global caps_changed_flag
 
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     stream.send(presence)
 
     q.expect_many(
@@ -83,7 +69,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
 
     # send updated presence with Jingle caps info
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     presence = presence_add_caps(presence, '0.1', client)
     stream.send(presence)
 
@@ -110,7 +96,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     caps_changed_flag = False
 
     # send bogus presence
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
     c['ver'] = 'KyuUmfhC34jP1sDjs489RjkJfsg=' # good hash
@@ -137,7 +123,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     assert caps_changed_flag == False
 
     # send presence with empty caps
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     presence = presence_add_caps(presence, '0.0', client)
     stream.send(presence)
 
@@ -163,7 +149,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     caps_changed_flag = False
 
     # send correct presence
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
     c['ver'] = 'CzO+nkbflbxu1pgzOQSIi8gOyDc=' # good hash
@@ -222,7 +208,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
         contact_handle1, contact_handle2, client, broken_hash):
     global caps_changed_flag
 
-    presence = make_presence(contact1, None, 'hello')
+    presence = make_presence(contact1, status='hello')
     stream.send(presence)
 
     event = q.expect_many(
@@ -233,7 +219,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
             args=[{contact_handle1:
                 (2, u'available', 'hello')}]))
 
-    presence = make_presence(contact2, None, 'hello')
+    presence = make_presence(contact2, status='hello')
     stream.send(presence)
 
     event = q.expect_many(
@@ -251,12 +237,12 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     assert conn.Capabilities.GetCapabilities([contact_handle2]) == basic_caps
 
     # send updated presence with Jingle caps info
-    presence = make_presence(contact1, None, 'hello')
+    presence = make_presence(contact1, status='hello')
     ver = 'JpaYgiKL0y4fUOCTwN3WLGpaftM='
     presence = presence_add_caps(presence, ver, client,
             hash='sha-1')
     stream.send(presence)
-    presence = make_presence(contact2, None, 'hello')
+    presence = make_presence(contact2, status='hello')
     presence = presence_add_caps(presence, ver, client,
             hash='sha-1')
     stream.send(presence)

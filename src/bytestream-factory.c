@@ -244,21 +244,16 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
 }
 
 static void
-disco_item_found_cb (GabbleDisco *disco,
-                     GabbleDiscoItem *item,
-                     GabbleBytestreamFactory *self)
+send_proxy_query (GabbleBytestreamFactory *self,
+                  const gchar *jid)
 {
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
   LmMessage *query;
 
-  if (tp_strdiff (item->category, "proxy") ||
-      tp_strdiff (item->type, "bytestreams"))
-    return;
+  DEBUG ("send SOCKS5 query to %s", jid);
 
-  DEBUG ("send SOCKS5 query to %s", item->jid);
-
-  query = lm_message_build (item->jid, LM_MESSAGE_TYPE_IQ,
+  query = lm_message_build (jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "get",
       '(', "query", "",
         '@', "xmlns", NS_BYTESTREAMS,
@@ -268,6 +263,42 @@ disco_item_found_cb (GabbleDisco *disco,
       socks5_proxy_query_reply_cb, G_OBJECT (self), self, NULL);
 
   lm_message_unref (query);
+}
+
+static void
+disco_item_found_cb (GabbleDisco *disco,
+                     GabbleDiscoItem *item,
+                     GabbleBytestreamFactory *self)
+{
+  if (tp_strdiff (item->category, "proxy") ||
+      tp_strdiff (item->type, "bytestreams"))
+    return;
+
+  send_proxy_query (self, item->jid);
+}
+
+static void
+conn_status_changed_cb (GabbleConnection *conn,
+                        TpConnectionStatus status,
+                        TpConnectionStatusReason reason,
+                        gpointer user_data)
+{
+  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+
+  if (status == TP_CONNECTION_STATUS_CONNECTED)
+    {
+      /* Send SOCKS5 query to fallback SOCKS5 proxy if any */
+      gchar *jid;
+
+      g_object_get (priv->conn, "fallback-socks5-proxy", &jid, NULL);
+      if (jid == NULL)
+        return;
+
+      send_proxy_query (self, jid);
+      g_free (jid);
+    }
 }
 
 static GObject *
@@ -308,6 +339,9 @@ gabble_bytestream_factory_constructor (GType type,
   /* Track SOCKS5 proxy available on the connection */
   gabble_signal_connect_weak (priv->conn->disco, "item-found",
       G_CALLBACK (disco_item_found_cb), G_OBJECT (self));
+
+  gabble_signal_connect_weak (priv->conn, "status-changed",
+      G_CALLBACK (conn_status_changed_cb), G_OBJECT (self));
 
   return obj;
 }

@@ -3,24 +3,10 @@ Jingle (XEP-0166) testing support.
 """
 
 import random
-from gabbletest import make_result_iq
+from gabbletest import make_result_iq, make_presence
 from twisted.words.xish import domish
 from twisted.words.protocols.jabber.client import IQ
 import dbus
-
-def make_presence(fromjid, tojid, caps=None):
-    el = domish.Element(('jabber:client', 'presence',))
-    el['from'] = fromjid
-    el['to'] = tojid
-
-    if caps:
-        cel = domish.Element(('http://jabber.org/protocol/caps', 'c'))
-        for key,value in caps.items():
-            cel[key] = value
-        el.addChild(cel)
-
-    return el
-
 
 def make_caps_disco_reply(stream, req, features):
     iq = make_result_iq(stream, req)
@@ -129,7 +115,7 @@ class JingleTest:
 
     def send_remote_presence(self):
         presence = make_presence(self.remote_jid, self.local_jid,
-            self.remote_caps)
+            caps=self.remote_caps)
         self.stream.send(presence.toXml())
 
 

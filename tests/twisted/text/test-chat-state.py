@@ -9,26 +9,12 @@ import dbus
 from twisted.words.xish import domish
 
 from servicetest import call_async, make_channel_proxy
-from gabbletest import exec_test, make_result_iq, sync_stream
+from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 
 import ns
 
 CHAT_STATE_ACTIVE = 2
 CHAT_STATE_COMPOSING = 4
-
-def make_presence(from_jid, type, status):
-    presence = domish.Element((None, 'presence'))
-
-    if from_jid is not None:
-        presence['from'] = from_jid
-
-    if type is not None:
-        presence['type'] = type
-
-    if status is not None:
-        presence.addElement('status', content=status)
-
-    return presence
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -55,7 +41,7 @@ def test(q, bus, conn, stream):
     chat_state_iface = make_channel_proxy(conn, path,
         'Channel.Interface.ChatState')
 
-    presence = make_presence('foo@bar.com/Foo', None, 'hello')
+    presence = make_presence('foo@bar.com/Foo', status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = 'http://telepathy.freedesktop.org/homeopathy'
     c['ver'] = '0.1'

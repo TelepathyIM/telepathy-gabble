@@ -10,25 +10,11 @@ import sys
 from twisted.words.xish import domish, xpath
 
 from servicetest import EventPattern
-from gabbletest import exec_test, make_result_iq
+from gabbletest import exec_test, make_result_iq, make_presence
 
 text = 'org.freedesktop.Telepathy.Channel.Type.Text'
 sm = 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
 caps_iface = 'org.freedesktop.Telepathy.Connection.Interface.Capabilities'
-
-def make_presence(from_jid, type, status):
-    presence = domish.Element((None, 'presence'))
-
-    if from_jid is not None:
-        presence['from'] = from_jid
-
-    if type is not None:
-        presence['type'] = type
-
-    if status is not None:
-        presence.addElement('status', content=status)
-
-    return presence
 
 def presence_add_caps(presence, ver, client, hash=None):
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
@@ -40,7 +26,7 @@ def presence_add_caps(presence, ver, client, hash=None):
 
 def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, disco):
 
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     stream.send(presence)
 
     q.expect_many(
@@ -57,7 +43,7 @@ def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, di
     assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
 
     # send updated presence with Jingle caps info
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     presence = presence_add_caps(presence, '0.1', client)
     stream.send(presence)
 
@@ -85,7 +71,7 @@ def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, di
 
 def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco):
 
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     stream.send(presence)
 
     q.expect_many(
@@ -101,7 +87,7 @@ def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco
     assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
 
     # send updated presence with Jingle caps info
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
     c['ver'] = 'CzO+nkbflbxu1pgzOQSIi8gOyDc=' # good hash

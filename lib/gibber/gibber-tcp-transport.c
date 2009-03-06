@@ -22,7 +22,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <errno.h>
+#include <fcntl.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "gibber-tcp-transport.h"
 
@@ -39,6 +42,11 @@ typedef struct _GibberTCPTransportPrivate GibberTCPTransportPrivate;
 
 struct _GibberTCPTransportPrivate
 {
+  GIOChannel *channel;
+  struct addrinfo *ans;
+  struct addrinfo *tmpaddr;
+  guint watch_in;
+
   gboolean dispose_has_run;
 };
 
@@ -71,6 +79,42 @@ gibber_tcp_transport_class_init (
   object_class->finalize = gibber_tcp_transport_finalize;
 }
 
+static void
+clean_connect_attempt (GibberTCPTransport *self)
+{
+  GibberTCPTransportPrivate *priv = GIBBER_TCP_TRANSPORT_GET_PRIVATE (
+      self);
+
+  if (priv->watch_in != 0)
+    {
+      g_source_remove (priv->watch_in);
+      priv->watch_in = 0;
+    }
+
+  if (priv->channel != NULL)
+    {
+      g_io_channel_unref (priv->channel);
+      priv->channel = NULL;
+    }
+}
+
+static void
+clean_all_connect_attempts (GibberTCPTransport *self)
+{
+  GibberTCPTransportPrivate *priv = GIBBER_TCP_TRANSPORT_GET_PRIVATE (
+      self);
+
+  clean_connect_attempt (self);
+
+  if (priv->ans != NULL)
+    {
+      freeaddrinfo (priv->ans);
+      priv->ans = NULL;
+    }
+
+  priv->tmpaddr = NULL;
+}
+
 void
 gibber_tcp_transport_dispose (GObject *object)
 {
@@ -82,6 +126,7 @@ gibber_tcp_transport_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  clean_all_connect_attempts (self);
   /* release any references held by the object here */
 
   if (G_OBJECT_CLASS (gibber_tcp_transport_parent_class)->dispose)
@@ -107,13 +152,109 @@ gibber_tcp_transport_new ()
   return g_object_new (GIBBER_TYPE_TCP_TRANSPORT, NULL);
 }
 
+static void new_connect_attempt (GibberTCPTransport *self);
+
+static gboolean
+try_to_connect (GibberTCPTransport *self)
+{
+  GibberTCPTransportPrivate *priv = GIBBER_TCP_TRANSPORT_GET_PRIVATE (
+      self);
+  gint fd;
+  int ret;
+
+  g_assert (priv->channel != NULL);
+
+  fd = g_io_channel_unix_get_fd (priv->channel);
+  ret = connect (fd, priv->tmpaddr->ai_addr, priv->tmpaddr->ai_addrlen);
+
+  if (ret == 0)
+    {
+      DEBUG ("connect succeeded");
+
+      clean_all_connect_attempts (self);
+      gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (self), fd);
+      return FALSE;
+    }
+
+  if (errno == EALREADY || errno == EINPROGRESS)
+    {
+      /* We have to wait longer */
+      return TRUE;
+    }
+
+  clean_connect_attempt (self);
+  priv->tmpaddr = priv->tmpaddr->ai_next;
+  new_connect_attempt (self);
+  return FALSE;
+}
+
+static gboolean
+_channel_io (GIOChannel *source,
+             GIOCondition condition,
+             gpointer data)
+{
+  GibberTCPTransport *self = GIBBER_TCP_TRANSPORT (data);
+
+  return try_to_connect (self);
+}
+
+static void
+new_connect_attempt (GibberTCPTransport *self)
+{
+  GibberTCPTransportPrivate *priv = GIBBER_TCP_TRANSPORT_GET_PRIVATE (
+      self);
+  int fd;
+  char name[NI_MAXHOST], portname[NI_MAXSERV];
+
+  if (priv->tmpaddr == NULL)
+    {
+      /* no more candidate to try */
+      DEBUG ("connection failed");
+      goto failed;
+    }
+
+  getnameinfo (priv->tmpaddr->ai_addr, priv->tmpaddr->ai_addrlen,
+      name, sizeof (name), portname, sizeof (portname),
+      NI_NUMERICHOST | NI_NUMERICSERV);
+
+  DEBUG ("Trying %s port %s...", name, portname);
+
+  fd = socket (priv->tmpaddr->ai_family, priv->tmpaddr->ai_socktype,
+      priv->tmpaddr->ai_protocol);
+
+  if (fd < 0)
+    {
+      DEBUG("socket failed: %s", strerror (errno));
+      goto failed;
+    }
+
+  fcntl (fd, F_SETFL, O_NONBLOCK);
+  priv->channel = g_io_channel_unix_new (fd);
+  g_io_channel_set_close_on_unref (priv->channel, FALSE);
+  g_io_channel_set_encoding (priv->channel, NULL, NULL);
+  g_io_channel_set_buffered (priv->channel, FALSE);
+
+  priv->watch_in = g_io_add_watch (priv->channel, G_IO_IN | G_IO_PRI | G_IO_OUT,
+      _channel_io, self);
+
+  try_to_connect (self);
+  return;
+
+failed:
+  clean_all_connect_attempts (self);
+
+  gibber_transport_set_state (GIBBER_TRANSPORT (self),
+      GIBBER_TRANSPORT_DISCONNECTED);
+}
+
 void
 gibber_tcp_transport_connect (GibberTCPTransport *tcp_transport,
     const gchar *host, const gchar *port)
 {
-  int fd = -1, ret = -1;
-  struct addrinfo req, *ans = NULL, *tmpaddr;
-  char name[NI_MAXHOST], portname[NI_MAXSERV];
+  GibberTCPTransportPrivate *priv = GIBBER_TCP_TRANSPORT_GET_PRIVATE (
+      tcp_transport);
+  int ret = -1;
+  struct addrinfo req;
 
   gibber_transport_set_state (GIBBER_TRANSPORT (tcp_transport),
                              GIBBER_TRANSPORT_CONNECTING);
@@ -124,58 +265,21 @@ gibber_tcp_transport_connect (GibberTCPTransport *tcp_transport,
   req.ai_socktype = SOCK_STREAM;
   req.ai_protocol = IPPROTO_TCP;
 
-  ret = getaddrinfo (host, port, &req, &ans);
+  g_assert (priv->ans == NULL);
+  g_assert (priv->tmpaddr == NULL);
+  g_assert (priv->channel == NULL);
+
+  ret = getaddrinfo (host, port, &req, &priv->ans);
   if (ret != 0)
     {
       DEBUG("getaddrinfo failed: %s", gai_strerror (ret));
-      goto failed;
+
+      gibber_transport_set_state (GIBBER_TRANSPORT (tcp_transport),
+          GIBBER_TRANSPORT_DISCONNECTED);
+      return;
     }
 
-  tmpaddr = ans;
-  while (tmpaddr != NULL)
-    {
-      getnameinfo (tmpaddr->ai_addr, tmpaddr->ai_addrlen,
-          name, sizeof (name), portname, sizeof (portname),
-          NI_NUMERICHOST | NI_NUMERICSERV);
+  priv->tmpaddr = priv->ans;
 
-      DEBUG ( "Trying %s port %s...", name, portname);
-
-      fd = socket (tmpaddr->ai_family, tmpaddr->ai_socktype,
-          tmpaddr->ai_protocol);
-
-      if (fd < 0)
-        {
-          DEBUG("socket failed: %s", strerror (errno));
-        }
-      else if ((ret = connect (fd, tmpaddr->ai_addr, tmpaddr->ai_addrlen)) < 0)
-        {
-          DEBUG( "connect failed: %s", strerror (errno));
-        }
-      else
-        {
-          break;
-        }
-
-      tmpaddr = tmpaddr->ai_next;
-    }
-
-  if (ret != 0 || fd < 0)
-    {
-      goto failed;
-    }
-
-  DEBUG ("succeeded");
-
-  gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (tcp_transport), fd);
-
-  freeaddrinfo (ans);
-  return;
-
-failed:
-  if (ans != NULL)
-    freeaddrinfo (ans);
-
-  gibber_transport_set_state (GIBBER_TRANSPORT (tcp_transport),
-      GIBBER_TRANSPORT_DISCONNECTED);
-
+  new_connect_attempt (tcp_transport);
 }

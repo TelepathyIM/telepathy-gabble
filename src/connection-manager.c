@@ -80,6 +80,7 @@ struct _GabbleParams {
   guint fallback_stun_port;
   gboolean ignore_ssl_errors;
   gchar *alias;
+  gchar *fallback_socks5_proxy;
 };
 
 enum {
@@ -102,6 +103,7 @@ enum {
     JABBER_PARAM_FALLBACK_STUN_PORT,
     JABBER_PARAM_IGNORE_SSL_ERRORS,
     JABBER_PARAM_ALIAS,
+    JABBER_PARAM_FALLBACK_SOCKS5_PROXY,
     LAST_JABBER_PARAM
 };
 
@@ -197,6 +199,14 @@ static const TpCMParamSpec jabber_params[] = {
     /* setting a 0-length alias makes no sense */
     tp_cm_param_filter_string_nonempty, NULL },
 
+  /* FIXME: we should have "fallback-socks5-proxies" but we currently can't
+   * define a boxed G_TYPE_STRV parameter */
+  { "fallback-socks5-proxy", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
+    0, NULL,
+    G_STRUCT_OFFSET(GabbleParams, fallback_socks5_proxy),
+    /* setting a 0-length proxy makes no sense */
+    tp_cm_param_filter_string_nonempty, NULL },
+
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -219,6 +229,7 @@ free_params (void *p)
   g_free (params->fallback_conference_server);
   g_free (params->stun_server);
   g_free (params->alias);
+  g_free (params->fallback_socks5_proxy);
 
   g_slice_free (GabbleParams, params);
 }
@@ -286,6 +297,8 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
                               JABBER_PARAM_IGNORE_SSL_ERRORS,
                               params->ignore_ssl_errors);
   SET_PROPERTY_IF_PARAM_SET ("alias", JABBER_PARAM_ALIAS, params->alias);
+  SET_PROPERTY_IF_PARAM_SET ("fallback-socks5-proxy",
+      JABBER_PARAM_FALLBACK_SOCKS5_PROXY, params->fallback_socks5_proxy);
 
   /* split up account into username, stream-server and resource */
   if (!_gabble_connection_set_properties_from_account (conn, params->account,

@@ -1342,10 +1342,10 @@ CHOOSE_TRANSPORT:
 }
 
 static gboolean
-_gabble_media_channel_request_streams (GabbleMediaChannel *chan,
-                                       const GArray *media_types,
-                                       GPtrArray **ret,
-                                       GError **error)
+_gabble_media_channel_request_contents (GabbleMediaChannel *chan,
+                                        const GArray *media_types,
+                                        GPtrArray **ret,
+                                        GError **error)
 {
   GabbleMediaChannelPrivate *priv;
   gboolean want_audio, want_video;
@@ -1468,7 +1468,7 @@ _gabble_media_channel_request_streams (GabbleMediaChannel *chan,
       return FALSE;
     }
 
-  /* if we've got here, we're good to make the streams */
+  /* if we've got here, we're good to make the Jingle contents */
 
   *ret = g_ptr_array_sized_new (media_types->len);
 
@@ -1476,7 +1476,6 @@ _gabble_media_channel_request_streams (GabbleMediaChannel *chan,
     {
       guint media_type = g_array_index (media_types, guint, idx);
       GabbleJingleContent *c;
-      GabbleMediaStream *stream;
       const gchar *content_ns;
 
       content_ns = _pick_best_content_type (chan, peer, peer_resource,
@@ -1495,11 +1494,12 @@ _gabble_media_channel_request_streams (GabbleMediaChannel *chan,
             JINGLE_MEDIA_TYPE_AUDIO : JINGLE_MEDIA_TYPE_VIDEO,
             content_ns, transport_ns);
 
+      /* The stream is created in "new-content" callback, and appended to
+       * priv->streams. This may or may not happen synchronously (adding
+       * streams can take time due to the relay info lookup) so here we just
+       * return the contents. */
       g_assert (c != NULL);
-
-      /* stream is created in "new-content" callback, and appended to streams */
-      stream = g_ptr_array_index (priv->streams, priv->streams->len - 1);
-      g_ptr_array_add (*ret, stream);
+      g_ptr_array_add (*ret, c);
     }
 
   return TRUE;
@@ -1620,11 +1620,13 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv;
   TpBaseConnection *conn;
-  GPtrArray *streams;
+  GPtrArray *contents;
   GError *error = NULL;
+  GPtrArray *streams;
   GPtrArray *ret;
   TpHandleRepoIface *contact_handles;
   gboolean wait;
+  guint i;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
@@ -1682,13 +1684,27 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
         }
     }
 
-  if (!_gabble_media_channel_request_streams (self, types, &streams,
+  if (!_gabble_media_channel_request_contents (self, types, &contents,
         &error))
     goto error;
+
+  streams = g_ptr_array_sized_new (types->len);
+
+  for (i = 0; i < types->len; i++)
+    {
+      /* For now, preserve the incorrect assumption that streams are added
+       * synchronously. The n last streams are the ones we just created,
+       * where n = types->len. */
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams,
+          priv->streams->len - types->len + i);
+
+      g_ptr_array_add (streams, stream);
+    }
 
   ret = make_stream_list (self, streams);
 
   g_ptr_array_free (streams, TRUE);
+  g_ptr_array_free (contents, TRUE);
 
   tp_svc_channel_type_streamed_media_return_from_request_streams (context, ret);
   g_ptr_array_free (ret, TRUE);

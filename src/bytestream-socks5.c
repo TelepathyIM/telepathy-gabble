@@ -109,6 +109,7 @@ typedef enum _Socks5State Socks5State;
 #define SOCKS5_MIN_LENGTH 7
 
 #define CONNECT_REPLY_TIMEOUT 30
+#define CONNECT_TIMEOUT 30
 
 struct _Streamhost
 {
@@ -490,6 +491,8 @@ transport_connected_cb (GibberTransport *transport,
   GabbleBytestreamSocks5Private *priv =
     GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
+  stop_timer (self);
+
   if (priv->socks5_state == SOCKS5_STATE_TARGET_TRYING_CONNECT)
     {
       gchar msg[3];
@@ -512,6 +515,7 @@ static void
 transport_disconnected_cb (GibberTransport *transport,
                            GabbleBytestreamSocks5 *self)
 {
+  stop_timer (self);
   DEBUG ("Sock5 transport disconnected");
   socks5_error (self);
 }
@@ -1063,6 +1067,9 @@ socks5_connect (GabbleBytestreamSocks5 *self)
   transport = gibber_tcp_transport_new ();
   set_transport (self, GIBBER_TRANSPORT (transport));
   g_object_unref (transport);
+
+  /* We don't wait to wait for the TCP timeout is the host is unreachable */
+  start_timer (self, CONNECT_REPLY_TIMEOUT);
 
   gibber_tcp_transport_connect (transport, streamhost->host,
       streamhost->port);

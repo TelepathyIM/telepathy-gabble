@@ -353,7 +353,7 @@ def expect_socks5_reply(q):
 
 ##### XEP-0047: In-Band Bytestreams (IBB) #####
 
-class BytestreamIBBMsg(Bytestream):
+class BytestreamIBB(Bytestream):
     def __init__(self, stream, q, sid, initiator, target, initiated):
         Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
 
@@ -377,6 +377,9 @@ class BytestreamIBBMsg(Bytestream):
 
         return events_before, events_after
 
+    def _send(self, from_, to, data):
+        raise NotImplemented
+
     def send_data(self, data):
         if self.initiated:
             from_ = self.initiator
@@ -385,15 +388,7 @@ class BytestreamIBBMsg(Bytestream):
             from_ = self.target
             to = self.initiator
 
-        message = domish.Element(('jabber:client', 'message'))
-        message['to'] = to
-        message['from'] = from_
-        data_node = message.addElement((ns.IBB, 'data'))
-        data_node['sid'] = self.stream_id
-        data_node['seq'] = str(self.seq)
-        data_node.addContent(base64.b64encode(data))
-        self.stream.send(message)
-
+        self._send(from_, to, data)
         self.seq += 1
 
     def wait_bytestream_open(self):
@@ -407,7 +402,7 @@ class BytestreamIBBMsg(Bytestream):
         acknowledge_iq(self.stream, event.stanza)
 
     def get_data(self):
-        # wait for IBB stanzas
+        # wait for IBB stanza. Gabble always use messages
         ibb_event = self.q.expect('stream-message')
 
         data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
@@ -425,6 +420,28 @@ class BytestreamIBBMsg(Bytestream):
 
         # sender finish to send the file and so close the bytestream
         acknowledge_iq(self.stream, close_event.stanza)
+
+class BytestreamIBBMsg(BytestreamIBB):
+    def _send(self, from_, to, data):
+        message = domish.Element(('jabber:client', 'message'))
+        message['to'] = to
+        message['from'] = from_
+        data_node = message.addElement((ns.IBB, 'data'))
+        data_node['sid'] = self.stream_id
+        data_node['seq'] = str(self.seq)
+        data_node.addContent(base64.b64encode(data))
+        self.stream.send(message)
+
+    def _wait_data_event(self):
+        ibb_event = self.q.expect('stream-message')
+
+        data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
+            ibb_event.stanza)
+        assert data_nodes is not None
+        assert len(data_nodes) == 1
+        ibb_data = data_nodes[0]
+        assert ibb_data['sid'] == self.stream_id
+        return str(ibb_data), ibb_data['sid']
 
 ##### SI Fallback (Gabble specific extension) #####
 

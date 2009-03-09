@@ -245,10 +245,12 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # the server reply
     event = q.expect('socket-data', data='hello initiator', protocol=protocol)
-    protocol.sendData('hello joiner')
+    data = 'hello joiner'
+    protocol.sendData(data)
 
     # we receive server's data
-    binary = bytestream.get_data()
+    binary = bytestream.get_data(len(data))
+    assert binary == data, binary
 
     # offer a stream tube to another room (new API)
     srv_path = set_up_listener_socket(q, '/stream2')

@@ -376,19 +376,21 @@ def test(q, bus, conn, stream, bytestream_cls):
     bytestream1.open_bytestream()
 
     # have the fake client send us some data
-    bytestream1.send_data('hello, world')
+    data = 'hello, world'
+    bytestream1.send_data(data)
 
-    binary = bytestream1.get_data()
-    assert binary == 'hello, world'
+    binary = bytestream1.get_data(len(data))
+    assert binary == data, binary
 
     # have the fake client open the stream
     bytestream2.open_bytestream()
 
     # have the fake client send us some data
-    bytestream2.send_data('hello, new world')
+    data = 'hello, new world'
+    bytestream2.send_data(data)
 
-    binary = bytestream2.get_data()
-    assert binary == 'hello, new world'
+    binary = bytestream2.get_data(len(data))
+    assert binary == data, binary
 
     # OK, we're done
     conn.Disconnect()

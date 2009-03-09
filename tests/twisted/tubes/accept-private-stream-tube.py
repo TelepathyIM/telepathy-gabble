@@ -80,7 +80,8 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls):
                 query_name='si'))
 
     protocol = event_socket.protocol
-    protocol.sendData("hello initiator")
+    data = "hello initiator"
+    protocol.sendData(data)
 
     bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, event_iq.stanza,
         'test@localhost/Resource')
@@ -98,8 +99,8 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls):
 
     bytestream.wait_bytestream_open()
 
-    data = bytestream.get_data()
-    assert data == 'hello initiator'
+    binary = bytestream.get_data(len(data))
+    assert data == binary, binary
 
     # reply to the initiator
     bytestream.send_data('hello joiner')

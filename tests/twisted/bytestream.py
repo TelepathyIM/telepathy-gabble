@@ -1,5 +1,7 @@
 import base64
 import sha
+import sys
+import random
 
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
@@ -8,7 +10,7 @@ from twisted.words.xish import xpath, domish
 from twisted.internet.error import CannotListenError
 
 from servicetest import Event, EventPattern
-from gabbletest import acknowledge_iq, sync_stream, make_result_iq
+from gabbletest import acknowledge_iq, sync_stream, make_result_iq, elem, elem_iq
 import ns
 
 def wait_events(q, expected, my_event):
@@ -442,6 +444,16 @@ class BytestreamIBBMsg(BytestreamIBB):
         ibb_data = data_nodes[0]
         assert ibb_data['sid'] == self.stream_id
         return str(ibb_data), ibb_data['sid']
+
+class BytestreamIBBIQ(BytestreamIBB):
+    def _send(self, from_, to, data):
+        id = random.randint(0, sys.maxint)
+
+        iq = elem_iq(self.stream, 'set', to=to, from_=from_, to=to, id=str(id))(
+            elem('data', xmlns=ns.IBB, sid=self.stream_id, seq=str(self.seq))(
+                (unicode(base64.b64encode(data)))))
+
+        self.stream.send(iq)
 
 ##### SI Fallback (Gabble specific extension) #####
 

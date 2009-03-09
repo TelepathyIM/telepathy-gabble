@@ -81,13 +81,17 @@ struct _GabbleBytestreamIBBPrivate
 
   guint16 seq;
   guint16 last_seq_recv;
+
   /* We can't stop receving IBB data so if user wants to block the bytestream
    * we buffer them until he unblocks it. */
   gboolean read_blocked;
   GString *read_buffer;
+
   /* (LmMessage *) -> TRUE */
   GHashTable *sent_stanzas_not_acked;
   GString *write_buffer;
+  gboolean write_blocked;
+
   gboolean dispose_has_run;
 };
 
@@ -105,6 +109,7 @@ gabble_bytestream_ibb_init (GabbleBytestreamIBB *self)
   priv->sent_stanzas_not_acked = g_hash_table_new (g_direct_hash,
       g_direct_equal);
   priv->write_buffer = NULL;
+  priv->write_blocked = FALSE;
 }
 
 static void
@@ -338,6 +343,20 @@ gabble_bytestream_ibb_class_init (
       param_spec);
 }
 
+static void
+change_write_blocked_state (GabbleBytestreamIBB *self,
+                            gboolean blocked)
+{
+  GabbleBytestreamIBBPrivate *priv =
+      GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+
+  if (priv->write_blocked == blocked)
+    return;
+
+  priv->write_blocked = blocked;
+  g_signal_emit_by_name (self, "write-blocked", blocked);
+}
+
 static gboolean
 send_data (GabbleBytestreamIBB *self, const gchar *str, guint len,
     gboolean *result);
@@ -364,9 +383,11 @@ iq_acked_cb (GabbleConnection *conn,
           NULL);
       if (sent == priv->write_buffer->len)
         {
-          DEBUG ("buffer has been flushed");
+          DEBUG ("buffer has been flushed; unblock write the bytestream");
           g_string_free (priv->write_buffer, TRUE);
           priv->write_buffer = NULL;
+
+          change_write_blocked_state (self, FALSE);
         }
       else
         {
@@ -493,6 +514,11 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
       return FALSE;
     }
 
+  if (priv->write_blocked)
+    {
+      DEBUG ("sending data while the bytestream was blocked");
+    }
+
   if (priv->write_buffer != NULL)
     {
       DEBUG ("Write buffer is not empty. Buffering data");
@@ -506,7 +532,8 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
     {
       guint remaining;
 
-      DEBUG ("Some data have not been sent. Buffer them");
+      DEBUG ("Some data have not been sent. Buffer them and write "
+          "block the bytestream");
 
       remaining = (len - sent);
 
@@ -520,6 +547,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
         }
 
       DEBUG ("write buffer size: %u", priv->write_buffer->len);
+      change_write_blocked_state (self, TRUE);
     }
 
   return result;

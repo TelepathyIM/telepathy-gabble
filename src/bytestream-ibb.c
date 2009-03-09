@@ -80,7 +80,7 @@ struct _GabbleBytestreamIBBPrivate
   /* We can't stop receving IBB data so if user wants to block the bytestream
    * we buffer them until he unblocks it. */
   gboolean read_blocked;
-  GString *buffer;
+  GString *read_buffer;
   gboolean dispose_has_run;
 };
 
@@ -94,7 +94,7 @@ gabble_bytestream_ibb_init (GabbleBytestreamIBB *self)
 
   self->priv = priv;
 
-  priv->buffer = NULL;
+  priv->read_buffer = NULL;
 }
 
 static void
@@ -131,8 +131,8 @@ gabble_bytestream_ibb_finalize (GObject *object)
   g_free (priv->peer_resource);
   g_free (priv->peer_jid);
 
-  if (priv->buffer != NULL)
-    g_string_free (priv->buffer, TRUE);
+  if (priv->read_buffer != NULL)
+    g_string_free (priv->read_buffer, TRUE);
 
   G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->finalize (object);
 }
@@ -456,8 +456,8 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
       gsize current_buffer_len = 0;
 
       DEBUG ("Bytestream is blocked. Buffering data");
-      if (priv->buffer != NULL)
-        current_buffer_len = priv->buffer->len;
+      if (priv->read_buffer != NULL)
+        current_buffer_len = priv->read_buffer->len;
 
       if (current_buffer_len + str->len > BUFFER_MAX_SIZE)
         {
@@ -472,13 +472,13 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
           return;
         }
 
-      if (priv->buffer == NULL)
+      if (priv->read_buffer == NULL)
         {
-          priv->buffer = str;
+          priv->read_buffer = str;
         }
       else
         {
-          g_string_append_len (priv->buffer, str->str, str->len);
+          g_string_append_len (priv->read_buffer, str->str, str->len);
           g_string_free (str, TRUE);
         }
 
@@ -699,15 +699,15 @@ gabble_bytestream_ibb_block_reading (GabbleBytestreamIface *iface,
 
   DEBUG ("%s the transport bytestream", block ? "block": "unblock");
 
-  if (priv->buffer != NULL && !block)
+  if (priv->read_buffer != NULL && !block)
     {
       DEBUG ("Bytestream unblocked, flushing the buffer");
 
       g_signal_emit_by_name (G_OBJECT (self), "data-received",
-          priv->peer_handle, priv->buffer);
+          priv->peer_handle, priv->read_buffer);
 
-      g_string_free (priv->buffer, TRUE);
-      priv->buffer = NULL;
+      g_string_free (priv->read_buffer, TRUE);
+      priv->read_buffer = NULL;
     }
 }
 

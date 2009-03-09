@@ -62,7 +62,7 @@ enum
   LAST_PROPERTY
 };
 
-#define BUFFER_MAX_SIZE (512 * 1024)
+#define READ_BUFFER_MAX_SIZE (512 * 1024)
 
 struct _GabbleBytestreamIBBPrivate
 {
@@ -459,7 +459,7 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
       if (priv->read_buffer != NULL)
         current_buffer_len = priv->read_buffer->len;
 
-      if (current_buffer_len + str->len > BUFFER_MAX_SIZE)
+      if (current_buffer_len + str->len > READ_BUFFER_MAX_SIZE)
         {
           DEBUG ("Buffer is full. Closing the bytestream");
 

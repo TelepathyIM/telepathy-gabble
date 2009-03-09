@@ -64,7 +64,7 @@ class Bytestream(object):
     def wait_bytestream_open(self):
         raise NotImplemented
 
-    def get_data(self):
+    def get_data(self, size=0):
         raise NotImplemented
 
     def wait_bytestream_closed(self):
@@ -282,7 +282,8 @@ class BytestreamS5B(Bytestream):
 
         self._send_socks5_reply(id, jid)
 
-    def get_data(self):
+    def get_data(self, size=0):
+       # TODO: check size
        e = self.q.expect('s5b-data-received', transport=self.transport)
        return e.data
 
@@ -403,22 +404,29 @@ class BytestreamIBB(Bytestream):
         # open IBB bytestream
         acknowledge_iq(self.stream, event.stanza)
 
-    def get_data(self):
+    def get_data(self, size=0):
         # wait for IBB stanza. Gabble always uses IQ
-        ibb_event = self.q.expect('stream-iq', query_ns=ns.IBB)
 
-        data_nodes = xpath.queryForNodes('/iq/data[@xmlns="%s"]' % ns.IBB,
-            ibb_event.stanza)
-        assert data_nodes is not None
-        assert len(data_nodes) == 1
-        ibb_data = data_nodes[0]
-        binary = base64.b64decode(str(ibb_data))
+        binary = ''
+        received = False
+        while not received:
+            ibb_event = self.q.expect('stream-iq', query_ns=ns.IBB)
 
-        assert ibb_data['sid'] == self.stream_id
+            data_nodes = xpath.queryForNodes('/iq/data[@xmlns="%s"]' % ns.IBB,
+                ibb_event.stanza)
+            assert data_nodes is not None
+            assert len(data_nodes) == 1
+            ibb_data = data_nodes[0]
+            binary += base64.b64decode(str(ibb_data))
 
-        # ack the IQ
-        result = make_result_iq(self.stream, ibb_event.stanza)
-        result.send()
+            assert ibb_data['sid'] == self.stream_id
+
+            # ack the IQ
+            result = make_result_iq(self.stream, ibb_event.stanza)
+            result.send()
+
+            if len(binary) >= size or size == 0:
+                received = True
 
         return binary
 
@@ -519,8 +527,8 @@ class BytestreamSIFallback(Bytestream):
     def send_data(self, data):
         self.used.send_data(data)
 
-    def get_data(self):
-        return self.used.get_data()
+    def get_data(self, size=0):
+        return self.used.get_data(size)
 
     def create_si_reply(self, iq):
         result = make_result_iq(self.stream, iq)

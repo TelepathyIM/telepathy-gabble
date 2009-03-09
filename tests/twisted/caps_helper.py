@@ -1,6 +1,9 @@
 import hashlib
 import base64
 
+from twisted.words.xish import domish
+from gabbletest import make_result_iq
+
 def compute_caps_hash(identities, features, dataforms):
     S = ''
 
@@ -15,6 +18,17 @@ def compute_caps_hash(identities, features, dataforms):
     m = hashlib.sha1()
     m.update(S)
     return base64.b64encode(m.digest())
+
+def make_caps_disco_reply(stream, req, features):
+    iq = make_result_iq(stream, req)
+    query = iq.firstChildElement()
+
+    for f in features:
+        el = domish.Element((None, 'feature'))
+        el['var'] = f
+        query.addChild(el)
+
+    return iq
 
 if __name__ == '__main__':
     # example from XEP-0115

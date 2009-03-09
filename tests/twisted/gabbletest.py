@@ -513,3 +513,21 @@ def elem_iq(server, type, **kw):
             iq[k] = v
 
     return iq
+
+def make_presence(_from, to='test@localhost', type=None, status=None, caps=None):
+    presence = domish.Element((None, 'presence'))
+    presence['from'] = _from
+    presence['to'] = to
+
+    if type is not None:
+        presence['type'] = type
+
+    if status is not None:
+        presence.addElement('status', content=status)
+
+    if caps is not None:
+        cel = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
+        for key,value in caps.items():
+            cel[key] = value
+
+    return presence

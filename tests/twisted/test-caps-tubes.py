@@ -37,7 +37,7 @@ import sys
 from twisted.words.xish import domish, xpath
 
 from servicetest import EventPattern
-from gabbletest import exec_test, make_result_iq, sync_stream
+from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 from constants import *
 
 from caps_helper import compute_caps_hash
@@ -89,20 +89,6 @@ go_fixed_properties = dbus.Dictionary({
     CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
     DBUS_TUBE_SERVICE_NAME: 'com.example.Go'
     })
-
-def make_presence(from_jid, type, status):
-    presence = domish.Element((None, 'presence'))
-
-    if from_jid is not None:
-        presence['from'] = from_jid
-
-    if type is not None:
-        presence['type'] = type
-
-    if status is not None:
-        presence.addElement('status', content=status)
-
-    return presence
 
 def presence_add_caps(presence, ver, client, hash=None):
     c = presence.addElement((ns.CAPS, 'c'))
@@ -173,7 +159,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
     conn_contacts_iface = dbus.Interface(conn, CONN_IFACE_CONTACTS)
 
     # send presence with no tube cap
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
     c['ver'] = compute_caps_hash([], [], [])
@@ -211,7 +197,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
                                     caps_via_contacts_iface
 
     # send presence with generic tubes caps
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
     c['ver'] = compute_caps_hash([], [ns.TUBES], [])
@@ -255,7 +241,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
 
 
     # send presence with 1 stream tube cap
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
     c['ver'] = compute_caps_hash([], [ns.TUBES + '/stream#daap'], [])
@@ -299,7 +285,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
                                     caps_via_contacts_iface
 
     # send presence with 1 D-Bus tube cap
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
     c['ver'] = compute_caps_hash([], [ns.TUBES + '/dbus#com.example.Xiangqi'], [])
@@ -343,7 +329,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
                                     caps_via_contacts_iface
 
     # send presence with both D-Bus and stream tube caps
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
     c['ver'] = compute_caps_hash([], [ns.TUBES + '/dbus#com.example.Xiangqi',
@@ -391,7 +377,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
                                     caps_via_contacts_iface
 
     # send presence with 4 tube caps
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
     c['ver'] = compute_caps_hash([], [ns.TUBES + '/dbus#com.example.Xiangqi',
@@ -446,7 +432,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, c
                                     caps_via_contacts_iface
 
     # send presence with both D-Bus and stream tube caps
-    presence = make_presence(contact, None, 'hello')
+    presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
     c['ver'] = compute_caps_hash([], [ns.TUBES + '/dbus#com.example.Xiangqi',

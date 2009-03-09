@@ -415,6 +415,11 @@ class BytestreamIBB(Bytestream):
         binary = base64.b64decode(str(ibb_data))
 
         assert ibb_data['sid'] == self.stream_id
+
+        # ack the IQ
+        result = make_result_iq(self.stream, ibb_event.stanza)
+        result.send()
+
         return binary
 
     def wait_bytestream_closed(self):

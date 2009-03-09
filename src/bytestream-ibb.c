@@ -335,7 +335,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessage *msg;
+  LmMessage *iq;
   guint sent, stanza_count;
   LmMessageNode *data;
 
@@ -346,24 +346,12 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
       return FALSE;
     }
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_MESSAGE,
+  iq = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "set",
       '(', "data", "",
         '*', &data,
         '@', "xmlns", NS_IBB,
         '@', "sid", priv->stream_id,
-      ')',
-      '(', "amp", "",
-        '@', "xmlns", NS_AMP,
-        '(', "rule", "",
-          '@', "condition", "deliver-at",
-          '@', "value", "stored",
-          '@', "action", "error",
-        ')',
-        '(', "rule", "",
-          '@', "condition", "match-resource",
-          '@', "value", "exact",
-          '@', "action", "error",
-        ')',
       ')', NULL);
 
   sent = 0;
@@ -395,7 +383,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
       lm_message_node_set_attribute (data, "seq", seq);
 
       DEBUG ("send %d bytes", send_now);
-      ret = _gabble_connection_send (priv->conn, msg, &error);
+      ret = _gabble_connection_send (priv->conn, iq, &error);
 
       g_free (encoded);
       g_free (seq);
@@ -405,7 +393,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
           DEBUG ("error sending IBB stanza: %s. Close the bytestream",
               error->message);
           g_error_free (error);
-          lm_message_unref (msg);
+          lm_message_unref (iq);
 
           gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
           return FALSE;
@@ -417,7 +405,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
 
   DEBUG ("finished to send %d bytes (%d stanzas needed)", len, stanza_count);
 
-  lm_message_unref (msg);
+  lm_message_unref (iq);
 
   return TRUE;
 }

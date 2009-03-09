@@ -404,10 +404,10 @@ class BytestreamIBB(Bytestream):
         acknowledge_iq(self.stream, event.stanza)
 
     def get_data(self):
-        # wait for IBB stanza. Gabble always use messages
-        ibb_event = self.q.expect('stream-message')
+        # wait for IBB stanza. Gabble always uses IQ
+        ibb_event = self.q.expect('stream-iq', query_ns=ns.IBB)
 
-        data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
+        data_nodes = xpath.queryForNodes('/iq/data[@xmlns="%s"]' % ns.IBB,
             ibb_event.stanza)
         assert data_nodes is not None
         assert len(data_nodes) == 1

@@ -86,6 +86,8 @@ struct _GabbleBytestreamIBBPrivate
    * we buffer them until he unblocks it. */
   gboolean read_blocked;
   GString *read_buffer;
+  /* list of reffed (LmMessage *) */
+  GSList *received_stanzas_not_acked;
 
   /* (LmMessage *) -> TRUE */
   GHashTable *sent_stanzas_not_acked;
@@ -106,6 +108,8 @@ gabble_bytestream_ibb_init (GabbleBytestreamIBB *self)
   self->priv = priv;
 
   priv->read_buffer = NULL;
+  priv->received_stanzas_not_acked = NULL;
+
   priv->sent_stanzas_not_acked = g_hash_table_new (g_direct_hash,
       g_direct_equal);
   priv->write_buffer = NULL;
@@ -625,9 +629,11 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
           g_string_free (str, TRUE);
         }
 
-      /* FIXME: we shouldn't ack until we consume data */
       if (is_iq)
-        _gabble_connection_acknowledge_set_iq (priv->conn, msg);
+        {
+          priv->received_stanzas_not_acked = g_slist_prepend (
+              priv->received_stanzas_not_acked, lm_message_ref (msg));
+        }
 
       return;
     }
@@ -725,10 +731,29 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+  GSList *l;
 
   if (priv->state == GABBLE_BYTESTREAM_STATE_CLOSED)
      /* bytestream already closed, do nothing */
      return;
+
+  /* Send error for pending IQ's */
+  priv->received_stanzas_not_acked = g_slist_reverse (
+      priv->received_stanzas_not_acked);
+
+  for (l = priv->received_stanzas_not_acked; l != NULL;
+      l = g_slist_next (l))
+    {
+      LmMessage *iq = (LmMessage *) l->data;
+
+      _gabble_connection_send_iq_error (priv->conn, iq,
+          XMPP_ERROR_ITEM_NOT_FOUND, NULL);
+
+      lm_message_unref (iq);
+    }
+
+  g_slist_free (priv->received_stanzas_not_acked);
+  priv->received_stanzas_not_acked = NULL;
 
   if (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {
@@ -844,6 +869,8 @@ gabble_bytestream_ibb_block_reading (GabbleBytestreamIface *iface,
 
   if (priv->read_buffer != NULL && !block)
     {
+      GSList *l;
+
       DEBUG ("Bytestream unblocked, flushing the buffer");
 
       g_signal_emit_by_name (G_OBJECT (self), "data-received",
@@ -851,6 +878,23 @@ gabble_bytestream_ibb_block_reading (GabbleBytestreamIface *iface,
 
       g_string_free (priv->read_buffer, TRUE);
       priv->read_buffer = NULL;
+
+      /* ack pending stanzas */
+      priv->received_stanzas_not_acked = g_slist_reverse (
+          priv->received_stanzas_not_acked);
+
+      for (l = priv->received_stanzas_not_acked; l != NULL;
+          l = g_slist_next (l))
+        {
+          LmMessage *iq = (LmMessage *) l->data;
+
+          _gabble_connection_acknowledge_set_iq (priv->conn, iq);
+
+          lm_message_unref (iq);
+        }
+
+      g_slist_free (priv->received_stanzas_not_acked);
+      priv->received_stanzas_not_acked = NULL;
     }
 }
 

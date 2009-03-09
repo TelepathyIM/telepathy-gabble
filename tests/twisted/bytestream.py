@@ -372,7 +372,8 @@ class BytestreamIBB(Bytestream):
         iq['from'] = self.initiator
         open = iq.addElement((ns.IBB, 'open'))
         open['sid'] = self.stream_id
-        open['block-size'] = '4096'
+        # set a ridiculously small block size to stress test IBB buffering
+        open['block-size'] = '1'
         self.stream.send(iq)
 
         events_before = self.q.expect_many(*expected_before)

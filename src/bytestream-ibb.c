@@ -64,6 +64,10 @@ enum
 
 #define READ_BUFFER_MAX_SIZE (512 * 1024)
 
+/* the number of not acked stanzas allowed. Once this number reached, we stop
+ * sending and wait for acks. */
+#define WINDOW_SIZE 10
+
 struct _GabbleBytestreamIBBPrivate
 {
   GabbleConnection *conn;
@@ -323,28 +327,15 @@ gabble_bytestream_ibb_class_init (
       param_spec);
 }
 
-/*
- * gabble_bytestream_ibb_send
- *
- * Implements gabble_bytestream_iface_send on GabbleBytestreamIface
- */
 static gboolean
-gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
-                            guint len,
-                            const gchar *str)
+send_data (GabbleBytestreamIBB *self,
+           const gchar *str,
+           guint len)
 {
-  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *iq;
   guint sent, stanza_count;
   LmMessageNode *data;
-
-  if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
-    {
-      DEBUG ("can't send data through a not open bytestream (state: %d)",
-          priv->state);
-      return FALSE;
-    }
 
   iq = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
@@ -408,6 +399,29 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
   lm_message_unref (iq);
 
   return TRUE;
+}
+
+/*
+ * gabble_bytestream_ibb_send
+ *
+ * Implements gabble_bytestream_iface_send on GabbleBytestreamIface
+ */
+static gboolean
+gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
+                            guint len,
+                            const gchar *str)
+{
+  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+
+  if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
+    {
+      DEBUG ("can't send data through a not open bytestream (state: %d)",
+          priv->state);
+      return FALSE;
+    }
+
+  return send_data (self, str, len);;
 }
 
 void

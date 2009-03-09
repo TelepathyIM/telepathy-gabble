@@ -353,7 +353,7 @@ def expect_socks5_reply(q):
 
 ##### XEP-0047: In-Band Bytestreams (IBB) #####
 
-class BytestreamIBB(Bytestream):
+class BytestreamIBBMsg(Bytestream):
     def __init__(self, stream, q, sid, initiator, target, initiated):
         Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
 
@@ -435,7 +435,7 @@ class BytestreamSIFallback(Bytestream):
         self.socks5 = BytestreamS5B(stream, q, sid, initiator, target,
             initiated)
 
-        self.ibb = BytestreamIBB(stream, q, sid, initiator, target,
+        self.ibb = BytestreamIBBMsg(stream, q, sid, initiator, target,
             initiated)
 
         self.used = self.ibb

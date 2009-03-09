@@ -2418,12 +2418,9 @@ typedef struct {
 } StreamCreationData;
 
 static void
-google_relay_session_cb (GPtrArray *relays,
-                         gpointer user_data)
+stream_creation_data_free (gpointer p)
 {
-  StreamCreationData *d = user_data;
-
-  construct_stream (d->self, d->content, d->name, d->nat_traversal, relays);
+  StreamCreationData *d = p;
 
   g_free (d->name);
   g_free (d->nat_traversal);
@@ -2432,11 +2429,31 @@ google_relay_session_cb (GPtrArray *relays,
   g_slice_free (StreamCreationData, d);
 }
 
+static gboolean
+construct_stream_later_cb (gpointer user_data)
+{
+  StreamCreationData *d = user_data;
+
+  construct_stream (d->self, d->content, d->name, d->nat_traversal, NULL);
+  return FALSE;
+}
+
+static void
+google_relay_session_cb (GPtrArray *relays,
+                         gpointer user_data)
+{
+  StreamCreationData *d = user_data;
+
+  construct_stream (d->self, d->content, d->name, d->nat_traversal, relays);
+  stream_creation_data_free (d);
+}
+
 static void
 create_stream_from_content (GabbleMediaChannel *self,
                             GabbleJingleContent *c)
 {
   gchar *name, *nat_traversal;
+  StreamCreationData *d;
 
   g_object_get (c,
       "name", &name,
@@ -2453,15 +2470,15 @@ create_stream_from_content (GabbleMediaChannel *self,
       "nat-traversal", &nat_traversal,
       NULL);
 
+  StreamCreationData *d = g_slice_new0 (StreamCreationData);
+
+  d->self = g_object_ref (self);
+  d->nat_traversal = nat_traversal;
+  d->name = name;
+  d->content = g_object_ref (c);
+
   if (!tp_strdiff (nat_traversal, "gtalk-p2p"))
     {
-      StreamCreationData *d = g_slice_new0 (StreamCreationData);
-
-      d->self = g_object_ref (self);
-      d->nat_traversal = nat_traversal;
-      d->name = name;
-      d->content = g_object_ref (c);
-
       /* See if our server is Google, and if it is, ask them for a relay.
        * We ask for enough relays for 2 components (RTP and RTCP) since we
        * don't yet know whether there will be RTCP. */
@@ -2471,9 +2488,10 @@ create_stream_from_content (GabbleMediaChannel *self,
     }
   else
     {
-      construct_stream (self, c, name, nat_traversal, NULL);
-      g_free (name);
-      g_free (nat_traversal);
+      /* just create the stream (do it asynchronously so that the behaviour
+       * is the same in each case) */
+      g_idle_add_full (G_PRIORITY_DEFAULT, construct_stream_later_cb,
+          d, stream_creation_data_free);
     }
 }
 

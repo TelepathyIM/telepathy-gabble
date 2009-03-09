@@ -907,12 +907,24 @@ relay_session_data_new (guint requests_to_do,
   return rsd;
 }
 
+/* This is a GSourceFunc */
+static gboolean
+relay_session_data_call (gpointer p)
+{
+  RelaySessionData *rsd = p;
+
+  g_assert (rsd->callback != NULL);
+
+  rsd->callback (rsd->relays, rsd->user_data);
+
+  return FALSE;
+}
+
+/* This is a GDestroyNotify */
 static void
 relay_session_data_destroy (gpointer p)
 {
   RelaySessionData *rsd = p;
-
-  g_assert (rsd->requests_to_do == 0);
 
   g_ptr_array_foreach (rsd->relays, (GFunc) g_hash_table_destroy, NULL);
   g_ptr_array_free (rsd->relays, TRUE);
@@ -1061,7 +1073,7 @@ on_http_response (SoupSession *soup,
 
   if ((--rsd->requests_to_do) == 0)
     {
-      rsd->callback (rsd->relays, rsd->user_data);
+      relay_session_data_call (rsd);
       relay_session_data_destroy (rsd);
     }
 }
@@ -1081,17 +1093,21 @@ gabble_jingle_factory_create_google_relay_session (
 
   g_return_if_fail (callback != NULL);
 
+  rsd = relay_session_data_new (components, callback, user_data);
+
   if (fac->priv->relay_server == NULL)
     {
       DEBUG ("No relay server provided, not creating google relay session");
-      callback (NULL, user_data);
+      g_idle_add_full (G_PRIORITY_DEFAULT, relay_session_data_call, rsd,
+          relay_session_data_destroy);
       return;
     }
 
   if (fac->priv->relay_token == NULL)
     {
       DEBUG ("No relay token provided, not creating google relay session");
-      callback (NULL, user_data);
+      g_idle_add_full (G_PRIORITY_DEFAULT, relay_session_data_call, rsd,
+          relay_session_data_destroy);
       return;
     }
 
@@ -1111,7 +1127,6 @@ gabble_jingle_factory_create_google_relay_session (
 
   url = g_strdup_printf ("http://%s:%d/create_session",
       fac->priv->relay_server, fac->priv->relay_http_port);
-  rsd = relay_session_data_new (components, callback, user_data);
 
   for (i = 0; i < components; i++)
     {

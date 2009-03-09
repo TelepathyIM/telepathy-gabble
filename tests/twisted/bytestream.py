@@ -283,9 +283,16 @@ class BytestreamS5B(Bytestream):
         self._send_socks5_reply(id, jid)
 
     def get_data(self, size=0):
-       # TODO: check size
-       e = self.q.expect('s5b-data-received', transport=self.transport)
-       return e.data
+        binary = ''
+        received = False
+        while not received:
+            e = self.q.expect('s5b-data-received', transport=self.transport)
+            binary += e.data
+
+            if len(binary) >= size or size == 0:
+                received = True
+
+        return binary
 
     def wait_bytestream_closed(self):
         self.q.expect('s5b-connection-lost')

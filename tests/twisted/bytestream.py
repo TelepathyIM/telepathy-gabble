@@ -449,7 +449,7 @@ def expect_socks5_reply(q):
 
 ##### XEP-0047: In-Band Bytestreams (IBB) #####
 
-class BytestreamIBB(Bytestream):
+class BytestreamIBBMsg(Bytestream):
     def __init__(self, stream, q, sid, initiator, target, initiated):
         Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
 
@@ -460,7 +460,13 @@ class BytestreamIBB(Bytestream):
 
     def open_bytestream(self, expected_before=[], expected_after=[]):
         # open IBB bytestream
-        send_ibb_open(self.stream, self.initiator, self.target, self.stream_id, 4096)
+        iq = IQ(self.stream, 'set')
+        iq['to'] = self.target
+        iq['from'] = self.initiator
+        open = iq.addElement((ns.IBB, 'open'))
+        open['sid'] = self.stream_id
+        open['block-size'] = '4096'
+        self.stream.send(iq)
 
         events_before = self.q.expect_many(*expected_before)
         events_after = self.q.expect_many(*expected_after)
@@ -475,16 +481,23 @@ class BytestreamIBB(Bytestream):
             from_ = self.target
             to = self.initiator
 
-        send_ibb_msg_data(self.stream, from_, to, self.stream_id,
-            self.seq, data)
+        message = domish.Element(('jabber:client', 'message'))
+        message['to'] = to
+        message['from'] = from_
+        data_node = message.addElement((ns.IBB, 'data'))
+        data_node['sid'] = self.stream_id
+        data_node['seq'] = str(self.seq)
+        data_node.addContent(base64.b64encode(data))
+        self.stream.send(message)
 
         self.seq += 1
 
     def wait_bytestream_open(self):
         # Wait IBB open iq
         event = self.q.expect('stream-iq', iq_type='set')
-        sid = parse_ibb_open(event.stanza)
-        assert sid == self.stream_id
+        open = xpath.queryForNodes('/iq/open', event.stanza)[0]
+        assert open.uri == ns.IBB
+        assert open['sid'] == self.stream_id
 
         # open IBB bytestream
         acknowledge_iq(self.stream, event.stanza)
@@ -492,8 +505,15 @@ class BytestreamIBB(Bytestream):
     def get_data(self):
         # wait for IBB stanzas
         ibb_event = self.q.expect('stream-message')
-        sid, binary = parse_ibb_msg_data(ibb_event.stanza)
-        assert sid == self.stream_id
+
+        data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
+            ibb_event.stanza)
+        assert data_nodes is not None
+        assert len(data_nodes) == 1
+        ibb_data = data_nodes[0]
+        binary = base64.b64decode(str(ibb_data))
+
+        assert ibb_data['sid'] == self.stream_id
         return binary
 
     def wait_bytestream_closed(self):
@@ -501,40 +521,6 @@ class BytestreamIBB(Bytestream):
 
         # sender finish to send the file and so close the bytestream
         acknowledge_iq(self.stream, close_event.stanza)
-
-def send_ibb_open(stream, from_, to, sid, block_size):
-    iq = IQ(stream, 'set')
-    iq['to'] = to
-    iq['from'] = from_
-    open = iq.addElement((ns.IBB, 'open'))
-    open['sid'] = sid
-    open['block-size'] = str(block_size)
-    stream.send(iq)
-
-def parse_ibb_open(iq):
-    open = xpath.queryForNodes('/iq/open', iq)[0]
-    assert open.uri == ns.IBB
-    return open['sid']
-
-def send_ibb_msg_data(stream, from_, to, sid, seq, data):
-    message = domish.Element(('jabber:client', 'message'))
-    message['to'] = to
-    message['from'] = from_
-    data_node = message.addElement((ns.IBB, 'data'))
-    data_node['sid'] = sid
-    data_node['seq'] = str(seq)
-    data_node.addContent(base64.b64encode(data))
-    stream.send(message)
-
-def parse_ibb_msg_data(message):
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
-        message)
-    assert data_nodes is not None
-    assert len(data_nodes) == 1
-    ibb_data = data_nodes[0]
-    binary = base64.b64decode(str(ibb_data))
-
-    return ibb_data['sid'], binary
 
 ##### SI Fallback (Gabble specific extension) #####
 class BytestreamSIFallback(Bytestream):
@@ -545,7 +531,7 @@ class BytestreamSIFallback(Bytestream):
         self.socks5 = BytestreamS5B(stream, q, sid, initiator, target,
             initiated)
 
-        self.ibb = BytestreamIBB(stream, q, sid, initiator, target,
+        self.ibb = BytestreamIBBMsg(stream, q, sid, initiator, target,
             initiated)
 
     def create_si_offer(self, profile, to=None):

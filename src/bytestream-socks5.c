@@ -1399,7 +1399,6 @@ static GList *
 get_local_interfaces_ips (gboolean include_loopback)
 {
   GList *ips = NULL;
-  struct sockaddr_in *sa;
   struct ifaddrs *ifa, *results;
   gchar *loopback = NULL;
 
@@ -1409,27 +1408,51 @@ get_local_interfaces_ips (gboolean include_loopback)
   /* Loop through the interface list and get the IP address of each IF */
   for (ifa = results; ifa; ifa = ifa->ifa_next)
     {
+      char straddr[INET6_ADDRSTRLEN];
+
       /* no ip address from interface that is down */
       if ((ifa->ifa_flags & IFF_UP) == 0)
         continue;
 
-      if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET)
+      if (ifa->ifa_addr == NULL)
         continue;
 
-      sa = (struct sockaddr_in *) ifa->ifa_addr;
+      if (ifa->ifa_addr->sa_family == AF_INET)
+        {
+          struct sockaddr_in *sa = (struct sockaddr_in *) ifa->ifa_addr;
+
+          inet_ntop (AF_INET, &sa->sin_addr, straddr, sizeof (straddr));
+        }
+      else if (ifa->ifa_addr->sa_family == AF_INET6)
+        {
+          struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *) ifa->ifa_addr;
+
+          inet_ntop (AF_INET6, &sa6->sin6_addr, straddr, sizeof (straddr));
+
+          if (IN6_IS_ADDR_LINKLOCAL (&sa6->sin6_addr))
+            {
+              DEBUG ("Ignoring link-local address: %s", straddr);
+              continue;
+            }
+        }
+      else
+        {
+          continue;
+        }
+
 
       DEBUG ("Interface:  %s", ifa->ifa_name);
-      DEBUG ("IP Address: %s", inet_ntoa (sa->sin_addr));
+      DEBUG ("IP Address: %s", straddr);
       if ((ifa->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK)
         {
           if (include_loopback)
-            loopback = g_strdup (inet_ntoa (sa->sin_addr));
+            loopback = g_strdup (straddr);
           else
             DEBUG ("Ignoring loopback interface");
         }
       else
         {
-          ips = g_list_append (ips, g_strdup (inet_ntoa (sa->sin_addr)));
+          ips = g_list_append (ips, g_strdup (straddr));
         }
     }
 

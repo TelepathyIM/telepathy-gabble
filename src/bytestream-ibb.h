@@ -65,6 +65,9 @@ GType gabble_bytestream_ibb_get_type (void);
 void gabble_bytestream_ibb_receive (GabbleBytestreamIBB *ibb,
    LmMessage *msg, gboolean is_iq);
 
+void gabble_bytestream_ibb_close_received (GabbleBytestreamIBB *ibb,
+    LmMessage *iq);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_BYTESTREAM_IBB_H__ */

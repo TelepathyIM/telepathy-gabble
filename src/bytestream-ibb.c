@@ -920,6 +920,19 @@ gabble_bytestream_ibb_block_reading (GabbleBytestreamIface *iface,
     }
 }
 
+void
+gabble_bytestream_ibb_close_received (GabbleBytestreamIBB *self,
+                                      LmMessage *iq)
+{
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+
+  DEBUG ("received IBB close stanza. Bytestream closed");
+
+  g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED,
+      NULL);
+
+  _gabble_connection_acknowledge_set_iq (priv->conn, iq);
+}
 
 static void
 bytestream_iface_init (gpointer g_iface,

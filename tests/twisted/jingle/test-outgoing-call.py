@@ -13,6 +13,7 @@ import gabbletest
 import dbus
 import time
 
+import constants as cs
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -95,6 +96,7 @@ def test(q, bus, conn, stream):
             channel_props.get('TargetHandle')
     assert channel_props.get('TargetHandleType') == 0,\
             channel_props.get('TargetHandleType')
+    assert media_iface.GetHandle(dbus_interface=cs.CHANNEL) == (0, 0)
     assert channel_props.get('ChannelType') == \
             'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',\
             channel_props.get('ChannelType')

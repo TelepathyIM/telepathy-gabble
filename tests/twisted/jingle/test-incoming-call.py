@@ -85,6 +85,8 @@ def test(q, bus, conn, stream):
             dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetHandle'] == remote_handle
     assert channel_props['TargetHandleType'] == cs.HT_CONTACT
+    assert media_chan.GetHandle(dbus_interface=cs.CHANNEL) == (cs.HT_CONTACT,
+            remote_handle)
     assert channel_props['TargetID'] == 'foo@bar.com'
     assert channel_props['InitiatorID'] == 'foo@bar.com'
     assert channel_props['InitiatorHandle'] == remote_handle

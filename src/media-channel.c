@@ -852,7 +852,13 @@ static void
 gabble_media_channel_get_handle (TpSvcChannel *iface,
                                  DBusGMethodInvocation *context)
 {
-  tp_svc_channel_return_from_get_handle (context, 0, 0);
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+
+  if (self->priv->initial_peer == 0)
+    tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_NONE, 0);
+  else
+    tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_CONTACT,
+        self->priv->initial_peer);
 }
 
 

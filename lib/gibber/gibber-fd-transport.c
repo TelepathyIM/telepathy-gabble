@@ -74,6 +74,7 @@ struct _GibberFdTransportPrivate
   guint watch_out;
   guint watch_err;
   GString *output_buffer;
+  gboolean receiving_blocked;
 };
 
 #define GIBBER_FD_TRANSPORT_GET_PRIVATE(o)  \
@@ -421,8 +422,12 @@ gibber_fd_transport_set_fd (GibberFdTransport *self, int fd)
   g_io_channel_set_encoding (priv->channel, NULL, NULL);
   g_io_channel_set_buffered (priv->channel, FALSE);
 
-  priv->watch_in =
-    g_io_add_watch (priv->channel, G_IO_IN, _channel_io_in, self);
+  if (!priv->receiving_blocked)
+    {
+      priv->watch_in =
+        g_io_add_watch (priv->channel, G_IO_IN, _channel_io_in, self);
+    }
+
   priv->watch_err =
     g_io_add_watch (priv->channel, G_IO_ERR, _channel_io_err, self);
 
@@ -491,4 +496,6 @@ gibber_fd_transport_block_receiving (GibberTransport *transport,
       priv->watch_in = g_io_add_watch (priv->channel, G_IO_IN,
           _channel_io_in, self);
     }
+
+  priv->receiving_blocked = block;
 }

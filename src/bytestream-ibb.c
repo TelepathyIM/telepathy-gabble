@@ -81,6 +81,7 @@ struct _GabbleBytestreamIBBPrivate
 
   guint16 seq;
   guint16 last_seq_recv;
+  LmMessage *close_iq_to_ack;
 
   /* We can't stop receving IBB data so if user wants to block the bytestream
    * we buffer them until he unblocks it. */
@@ -134,6 +135,13 @@ gabble_bytestream_ibb_dispose (GObject *object)
   if (priv->state != GABBLE_BYTESTREAM_STATE_CLOSED)
     {
       gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
+    }
+
+  if (priv->close_iq_to_ack != NULL)
+    {
+      _gabble_connection_acknowledge_set_iq (priv->conn, priv->close_iq_to_ack);
+      lm_message_unref (priv->close_iq_to_ack);
+      priv->close_iq_to_ack = NULL;
     }
 
   G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->dispose (object);
@@ -366,6 +374,14 @@ send_close_stanza (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
+
+  if (priv->close_iq_to_ack != NULL)
+    {
+      /* We received a close IQ and just need to ACK it */
+      _gabble_connection_acknowledge_set_iq (priv->conn, priv->close_iq_to_ack);
+      lm_message_unref (priv->close_iq_to_ack);
+      priv->close_iq_to_ack = NULL;
+    }
 
   DEBUG ("send IBB close stanza");
 
@@ -926,12 +942,10 @@ gabble_bytestream_ibb_close_received (GabbleBytestreamIBB *self,
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 
-  DEBUG ("received IBB close stanza. Bytestream closed");
+  DEBUG ("received IBB close stanza. Closing bytestream");
 
-  g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED,
-      NULL);
-
-  _gabble_connection_acknowledge_set_iq (priv->conn, iq);
+  priv->close_iq_to_ack = lm_message_ref (iq);
+  gabble_bytestream_ibb_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
 }
 
 static void

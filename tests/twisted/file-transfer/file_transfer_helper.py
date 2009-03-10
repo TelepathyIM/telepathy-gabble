@@ -6,7 +6,7 @@ import time
 from servicetest import EventPattern
 from gabbletest import exec_test
 import ns
-from bytestream import create_from_si_offer, BytestreamIBB, BytestreamS5B, BytestreamS5BPidgin, \
+from bytestream import create_from_si_offer, BytestreamIBBMsg, BytestreamS5B, BytestreamS5BPidgin, \
     BytestreamSIFallbackS5CannotConnect, BytestreamSIFallbackS5WrongHash
 
 from twisted.words.xish import domish, xpath
@@ -424,7 +424,7 @@ class SendFileTest(FileTransferTest):
         assert reason == FT_STATE_CHANGE_REASON_NONE
 
 def exec_file_transfer_test(test_cls):
-    for bytestream_cls  in [BytestreamIBB, BytestreamS5B, BytestreamS5BPidgin, BytestreamSIFallbackS5CannotConnect,
+    for bytestream_cls  in [BytestreamIBBMsg, BytestreamS5B, BytestreamS5BPidgin, BytestreamSIFallbackS5CannotConnect,
             BytestreamSIFallbackS5WrongHash]:
         test = test_cls(bytestream_cls)
         exec_test(test.test)

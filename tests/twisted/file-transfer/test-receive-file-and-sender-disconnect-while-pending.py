@@ -3,8 +3,7 @@ import dbus
 from twisted.words.xish import domish
 
 from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest, SOCKET_ADDRESS_TYPE_UNIX,\
-    SOCKET_ACCESS_CONTROL_LOCALHOST, BytestreamIBB, BytestreamS5B,\
-    FT_STATE_CANCELLED, FT_STATE_CHANGE_REASON_REMOTE_STOPPED
+    SOCKET_ACCESS_CONTROL_LOCALHOST, FT_STATE_CANCELLED, FT_STATE_CHANGE_REASON_REMOTE_STOPPED
 
 class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
     def accept_file(self):

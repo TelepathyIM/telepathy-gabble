@@ -1,7 +1,6 @@
 import socket
 
-from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest,\
-    BytestreamIBB, BytestreamS5B
+from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest
 
 class ReceiveFileAndDisconnectTest(ReceiveFileTest):
     def receive_file(self):

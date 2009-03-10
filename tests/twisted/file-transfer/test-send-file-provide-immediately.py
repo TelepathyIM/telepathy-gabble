@@ -1,5 +1,5 @@
 from file_transfer_helper import SendFileTest, CHANNEL_TYPE_FILE_TRANSFER, FT_STATE_PENDING, \
-    FT_STATE_CHANGE_REASON_NONE, FT_STATE_OPEN, BytestreamIBB, BytestreamS5B, exec_file_transfer_test
+    FT_STATE_CHANGE_REASON_NONE, FT_STATE_OPEN, exec_file_transfer_test
 
 class SendFileTransferProvideImmediately(SendFileTest):
     def provide_file(self):

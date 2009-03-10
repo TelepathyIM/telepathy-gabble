@@ -1,6 +1,6 @@
 from file_transfer_helper import SendFileTest, CHANNEL_TYPE_FILE_TRANSFER, \
     FT_STATE_PENDING, FT_STATE_ACCEPTED, FT_STATE_OPEN, FT_STATE_CHANGE_REASON_REQUESTED, \
-    FT_STATE_CHANGE_REASON_NONE, BytestreamIBB, BytestreamS5B, exec_file_transfer_test
+    FT_STATE_CHANGE_REASON_NONE, exec_file_transfer_test
 
 class SendFileTransferWaitToProvideTest(SendFileTest):
     def __init__(self, bytestream_cls):

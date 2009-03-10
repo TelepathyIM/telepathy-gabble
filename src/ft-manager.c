@@ -391,7 +391,6 @@ static const gchar * const file_transfer_channel_allowed_properties[] =
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentHash",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Description",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Date",
-   TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".InitialOffset",
    NULL
 };
 

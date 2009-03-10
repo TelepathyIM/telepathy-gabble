@@ -305,8 +305,7 @@ class SendFileTest(FileTransferTest):
                  CHANNEL_TYPE_FILE_TRANSFER + '.ContentHashType',
                  CHANNEL_TYPE_FILE_TRANSFER + '.ContentHash',
                  CHANNEL_TYPE_FILE_TRANSFER + '.Description',
-                 CHANNEL_TYPE_FILE_TRANSFER + '.Date',
-                 CHANNEL_TYPE_FILE_TRANSFER + '.InitialOffset'],
+                 CHANNEL_TYPE_FILE_TRANSFER + '.Date']
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -371,7 +370,6 @@ class SendFileTest(FileTransferTest):
         assert file_node['hash'] == self.file.hash
 
         # TODO: Date
-        # TODO: InitialOffset
 
         desc_node = xpath.queryForNodes("/iq/si/file/desc", self.iq)[0]
         self.desc = desc_node.children[0]

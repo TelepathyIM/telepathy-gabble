@@ -361,6 +361,29 @@ change_write_blocked_state (GabbleBytestreamIBB *self,
   g_signal_emit_by_name (self, "write-blocked", blocked);
 }
 
+static void
+send_close_stanza (GabbleBytestreamIBB *self)
+{
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+  LmMessage *msg;
+
+  DEBUG ("send IBB close stanza");
+
+  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "set",
+      '(', "close", "",
+        '@', "xmlns", NS_IBB,
+        '@', "sid", priv->stream_id,
+      ')', NULL);
+
+  /* We don't really care about the answer as the bytestream
+   * is closed anyway. */
+  _gabble_connection_send_with_reply (priv->conn, msg,
+      NULL, NULL, NULL, NULL);
+
+  lm_message_unref (msg);
+}
+
 static gboolean
 send_data (GabbleBytestreamIBB *self, const gchar *str, guint len,
     gboolean *result);
@@ -392,6 +415,14 @@ iq_acked_cb (GabbleConnection *conn,
           priv->write_buffer = NULL;
 
           change_write_blocked_state (self, FALSE);
+
+          if (priv->state == GABBLE_BYTESTREAM_STATE_CLOSING)
+            {
+              DEBUG ("Can close the bystream now the buffer is flushed");
+              send_close_stanza (self);
+              g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED,
+                  NULL);
+            }
         }
       else
         {
@@ -762,25 +793,16 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
     }
   else
     {
-      LmMessage *msg;
-
-      DEBUG ("send IBB close stanza");
-
-      msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-          '@', "type", "set",
-          '(', "close", "",
-            '@', "xmlns", NS_IBB,
-            '@', "sid", priv->stream_id,
-          ')', NULL);
-
-      /* We don't really care about the answer as the bytestream
-       * is closed anyway. */
-      _gabble_connection_send_with_reply (priv->conn, msg,
-          NULL, NULL, NULL, NULL);
-
-      lm_message_unref (msg);
-
-      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+      if (priv->write_buffer != NULL)
+        {
+          DEBUG ("write buffer is not empty. Wait before sending close stanza");
+          g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSING, NULL);
+        }
+      else
+        {
+          send_close_stanza (self);
+          g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+        }
     }
 }
 

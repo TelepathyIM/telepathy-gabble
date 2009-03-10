@@ -120,7 +120,7 @@ def test(q, bus, conn, stream):
     relay = jingleinfo.firstChildElement().addElement('relay')
     relay.addElement('token', content='jingle all the way')
     server = relay.addElement('server')
-    server['host'] = 'localhost'
+    server['host'] = '127.0.0.1'
     server['udp'] = '11111'
     server['tcp'] = '22222'
     server['tcpssl'] = '443'

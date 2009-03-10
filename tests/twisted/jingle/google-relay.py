@@ -5,7 +5,7 @@ Test getting relay from Google jingleinfo
 from gabbletest import exec_test, make_result_iq, sync_stream, \
         GoogleXmlStream
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern
+        EventPattern, call_async
 import jingletest
 import gabbletest
 import constants as c
@@ -68,7 +68,7 @@ magic_cookie=MMMMMMMM
 """ % (http_req, http_req))
         http_req += 1
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream, incoming=True):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
     # If we need to override remote caps, feats, codecs or caps,
@@ -138,30 +138,55 @@ def test(q, bus, conn, stream):
 
     jt.send_remote_disco_reply(event.stanza)
 
-    # Force Gabble to process the caps before calling RequestChannel
+    # Force Gabble to process the capabilities
     sync_stream(q, stream)
 
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
 
-    # Remote end calls us
-    jt.incoming_call()
+    if incoming:
+        # Remote end calls us
+        jt.incoming_call()
 
-    # The caller is in members
-    e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [remote_handle], [], [], [], 0, 0])
+        # The caller is in members
+        e = q.expect('dbus-signal', signal='MembersChanged',
+                 args=[u'', [remote_handle], [], [], [], 0, 0])
 
-    # We're pending because of remote_handle
-    e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], remote_handle, 0])
+        # We're pending because of remote_handle
+        e = q.expect('dbus-signal', signal='MembersChanged',
+                 args=[u'', [], [], [1L], [], remote_handle, 0])
+    else:
+        requestotron = dbus.Interface(conn,
+                'org.freedesktop.Telepathy.Connection.Interface.Requests')
+        call_async(q, requestotron, 'CreateChannel',
+                { 'org.freedesktop.Telepathy.Channel.ChannelType':
+                    'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
+                  'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
+                  'org.freedesktop.Telepathy.Channel.TargetHandle':
+                    remote_handle,
+                  })
+        ret, old_sig, new_sig = q.expect_many(
+            EventPattern('dbus-return', method='CreateChannel'),
+            EventPattern('dbus-signal', signal='NewChannel'),
+            EventPattern('dbus-signal', signal='NewChannels'),
+            )
+        path = ret.value[0]
+        media_iface = make_channel_proxy(conn, path,
+                'Channel.Type.StreamedMedia')
+        call_async(q, media_iface, 'RequestStreams',
+                remote_handle, [c.MEDIA_STREAM_TYPE_AUDIO])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
 
-    # In response to the call, we (should) have two http requests (one for
-    # RTP and one for RTCP)
+    # In response to the streams call, we now have two HTTP requests
+    # (for RTP and RTCP)
     httpd.handle_request()
     httpd.handle_request()
+
+    if not incoming:
+        # Now that we have the relay info, RequestStreams can return
+        q.expect('dbus-return', method='RequestStreams')
 
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
@@ -178,9 +203,7 @@ def test(q, bus, conn, stream):
     assert channel_props['TargetHandle'] == remote_handle
     assert channel_props['TargetHandleType'] == 1
     assert channel_props['TargetID'] == 'foo@bar.com'
-    assert channel_props['Requested'] == False
-    assert channel_props['InitiatorID'] == 'foo@bar.com'
-    assert channel_props['InitiatorHandle'] == remote_handle
+    assert channel_props['Requested'] == (not incoming)
 
     # The new API for STUN servers etc.
     sh_props = stream_handler.GetAll(
@@ -188,7 +211,7 @@ def test(q, bus, conn, stream):
             dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert sh_props['NATTraversal'] == 'gtalk-p2p'
-    assert sh_props['CreatedLocally'] == False
+    assert sh_props['CreatedLocally'] == (not incoming)
     assert sh_props['STUNServers'] == \
         [(expected_stun_server, expected_stun_port)], \
         sh_props['STUNServers']
@@ -223,12 +246,21 @@ def test(q, bus, conn, stream):
     assert (2, 'tcp') in credentials
     assert (2, 'tls') in credentials
 
-    assert ('0', 'udp') in credentials_used
-    assert ('0', 'tcp') in credentials_used
-    assert ('0', 'tls') in credentials_used
-    assert ('1', 'udp') in credentials_used
-    assert ('1', 'tcp') in credentials_used
-    assert ('1', 'tls') in credentials_used
+    if incoming:
+        # this one runs first so it gets the smaller numbers
+        assert ('0', 'udp') in credentials_used
+        assert ('0', 'tcp') in credentials_used
+        assert ('0', 'tls') in credentials_used
+        assert ('1', 'udp') in credentials_used
+        assert ('1', 'tcp') in credentials_used
+        assert ('1', 'tls') in credentials_used
+    else:
+        assert ('2', 'udp') in credentials_used
+        assert ('2', 'tcp') in credentials_used
+        assert ('2', 'tls') in credentials_used
+        assert ('3', 'udp') in credentials_used
+        assert ('3', 'tcp') in credentials_used
+        assert ('3', 'tls') in credentials_used
 
     # consistency check, since we currently reimplement Get separately
     for k in sh_props:
@@ -236,7 +268,28 @@ def test(q, bus, conn, stream):
                 'org.freedesktop.Telepathy.Media.StreamHandler', k,
                 dbus_interface=dbus.PROPERTIES_IFACE), k
 
-    media_chan.RemoveMembers([dbus.UInt32(1)], 'rejected')
+    if not incoming:
+        # we can't terminate outgoing calls until the session-initiate
+        # has been sent, so do that first
+
+        stream_handler.NewNativeCandidate("fake",
+                jt.get_remote_transports_dbus())
+        stream_handler.Ready(jt.get_audio_codecs_dbus())
+        stream_handler.StreamState(2)
+
+        e = q.expect('stream-iq')
+        assert e.query.name == 'jingle'
+        assert e.query['action'] == 'session-initiate'
+        stream.send(gabbletest.make_result_iq(stream, e.stanza))
+
+        jt.outgoing_call_reply(e.query['sid'], True)
+
+        q.expect('stream-iq', iq_type='result')
+
+        # Call accepted
+        q.expect('dbus-signal', signal='MembersChanged')
+
+    media_chan.RemoveMembers([dbus.UInt32(1)], '')
 
     iq, signal = q.expect_many(
             EventPattern('stream-iq'),
@@ -254,4 +307,7 @@ def test(q, bus, conn, stream):
 
 
 if __name__ == '__main__':
-    exec_test(test, protocol=GoogleXmlStream)
+    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True),
+            protocol=GoogleXmlStream)
+    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False),
+            protocol=GoogleXmlStream)

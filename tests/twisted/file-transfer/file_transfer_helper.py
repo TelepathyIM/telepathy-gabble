@@ -176,7 +176,8 @@ class ReceiveFileTest(FileTransferTest):
         file_node['size'] = str(self.file.size)
         file_node['mime-type'] = self.file.content_type
         file_node['hash'] = self.file.hash
-        # TODO: date
+        date = datetime.datetime.utcfromtimestamp(self.file.date).strftime('%FT%H:%M:%SZ')
+        file_node['date'] = date
         # TODO: intial offset
 
         file_node.addElement('desc', content=self.file.description)
@@ -208,8 +209,7 @@ class ReceiveFileTest(FileTransferTest):
         assert props[CHANNEL_TYPE_FILE_TRANSFER + '.ContentHashType'] == FILE_HASH_TYPE_MD5
         assert props[CHANNEL_TYPE_FILE_TRANSFER + '.ContentHash'] == self.file.hash
         assert props[CHANNEL_TYPE_FILE_TRANSFER + '.Description'] == self.file.description
-        # FT's protocol doesn't allow us the send the date info
-        assert props[CHANNEL_TYPE_FILE_TRANSFER + '.Date'] == 0
+        assert props[CHANNEL_TYPE_FILE_TRANSFER + '.Date'] == self.file.date
         assert props[CHANNEL_TYPE_FILE_TRANSFER + '.AvailableSocketTypes'] == \
             {SOCKET_ADDRESS_TYPE_UNIX: [SOCKET_ACCESS_CONTROL_LOCALHOST]}
         assert props[CHANNEL_TYPE_FILE_TRANSFER + '.TransferredBytes'] == 0

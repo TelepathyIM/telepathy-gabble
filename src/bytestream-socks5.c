@@ -931,7 +931,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        domain = compute_domain(priv->stream_id, priv->self_full_jid,
+        domain = compute_domain (priv->stream_id, priv->self_full_jid,
             priv->peer_jid);
 
         if (!check_domain (&string->str[5], domain_len, domain))

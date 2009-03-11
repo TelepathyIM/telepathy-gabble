@@ -2,6 +2,7 @@ import dbus
 import socket
 import md5
 import time
+import datetime
 
 from servicetest import EventPattern
 from gabbletest import exec_test
@@ -369,7 +370,8 @@ class SendFileTest(FileTransferTest):
         assert file_node['mime-type'] == self.file.content_type
         assert file_node['hash'] == self.file.hash
 
-        # TODO: Date
+        date = datetime.datetime.utcfromtimestamp(self.file.date).strftime('%FT%H:%M:%SZ')
+        assert file_node['date'] == date, file_node['date']
 
         desc_node = xpath.queryForNodes("/iq/si/file/desc", self.iq)[0]
         self.desc = desc_node.children[0]

@@ -252,9 +252,8 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # offer a stream tube to another room (new API)
     srv_path = set_up_listener_socket(q, '/stream2')
-    requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
          cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
          cs.TARGET_ID: 'chat2@conf.localhost',

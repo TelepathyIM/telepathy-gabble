@@ -25,9 +25,7 @@ def test_temporary_error(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
 
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
@@ -112,9 +110,7 @@ def test_permanent_error(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Connection.Interface.Requests',
             dbus_interface='org.freedesktop.DBus.Properties')
 
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,

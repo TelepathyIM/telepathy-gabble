@@ -100,9 +100,7 @@ def test(q, bus, conn, stream):
 
 
     # Ensure a tube to the same person; check it's the same one.
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Tubes',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
@@ -120,7 +118,7 @@ def test(q, bus, conn, stream):
 
 
     # Now let's try ensuring a new tube.
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Tubes',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,

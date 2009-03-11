@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#define _XOPEN_SOURCE /* glibc2 needs this */
+#include <time.h>
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -428,7 +430,9 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   GabbleFtManagerPrivate *priv = GABBLE_FT_MANAGER_GET_PRIVATE (self);
   LmMessageNode *si_node, *file_node, *desc_node;
   const gchar *filename, *size_str, *content_type, *content_hash, *description;
+  const gchar *date_str;
   guint64 size;
+  guint64 date;
   TpFileHashType content_hash_type;
   GabbleFileTransferChannel *chan;
   gchar *path;
@@ -486,13 +490,27 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   else
     description = NULL;
 
+  date_str = lm_message_node_get_attribute (file_node, "date");
+  if (date_str != NULL)
+    {
+      struct tm tm;
+
+      /* FIXME: this assume the timezone is always UTC */
+      strptime (date_str, "%FT%H:%M:%SZ", &tm);
+      date = (guint64) mktime (&tm);
+    }
+  else
+    {
+      date = 0;
+    }
+
   path = generate_object_path (self, handle);
 
-  /* TODO: date and initial offset */
+  /* TODO: initial offset */
   chan = gabble_file_transfer_channel_new (priv->connection, path,
       handle, handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
-      description, 0, 0, bytestream);
+      description, date, 0, bytestream);
 
   gabble_ft_manager_channel_created (self, chan, NULL);
 

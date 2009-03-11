@@ -1386,7 +1386,10 @@ pending_stream_request_maybe_satisfy (PendingStreamRequest *p,
                                       GabbleJingleContent *content,
                                       GabbleMediaStream *stream)
 {
-  g_hash_table_remove (p->contents, content);
+  if (g_hash_table_remove (p->contents, content))
+    {
+      g_ptr_array_add (p->streams, stream);
+    }
 
   if (g_hash_table_size (p->contents) == 0 && p->context != NULL)
     {

@@ -146,7 +146,11 @@ struct _GabbleMediaChannelPrivate
 
   GabbleMediaFactory *factory;
   GabbleJingleSession *session;
+
+  /* array of referenced GabbleMediaStream* */
   GPtrArray *streams;
+  /* list of PendingStreamRequest* in no particular order */
+  GList *pending_stream_requests;
 
   guint next_stream_id;
 
@@ -848,7 +852,13 @@ static void
 gabble_media_channel_get_handle (TpSvcChannel *iface,
                                  DBusGMethodInvocation *context)
 {
-  tp_svc_channel_return_from_get_handle (context, 0, 0);
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+
+  if (self->priv->initial_peer == 0)
+    tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_NONE, 0);
+  else
+    tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_CONTACT,
+        self->priv->initial_peer);
 }
 
 
@@ -1341,11 +1351,101 @@ CHOOSE_TRANSPORT:
   return resource;
 }
 
+typedef struct {
+    /* borrowed content => itself, used as a set */
+    GHashTable *contents;
+    /* accumulates borrowed pointers to streams */
+    GPtrArray *streams;
+    DBusGMethodInvocation *context;
+} PendingStreamRequest;
+
+static PendingStreamRequest *
+pending_stream_request_new (GPtrArray *contents,
+                            DBusGMethodInvocation *context)
+{
+  PendingStreamRequest *p = g_slice_new0 (PendingStreamRequest);
+  guint i;
+
+  p->contents = g_hash_table_new (NULL, NULL);
+  p->streams = g_ptr_array_sized_new (contents->len);
+  p->context = context;
+
+  for (i = 0; i < contents->len; i++)
+    {
+      g_hash_table_insert (p->contents, g_ptr_array_index (contents, i),
+          g_ptr_array_index (contents, i));
+    }
+
+  return p;
+}
+
 static gboolean
-_gabble_media_channel_request_streams (GabbleMediaChannel *chan,
-                                       const GArray *media_types,
-                                       GPtrArray **ret,
-                                       GError **error)
+pending_stream_request_maybe_satisfy (PendingStreamRequest *p,
+                                      GabbleMediaChannel *channel,
+                                      GabbleJingleContent *content,
+                                      GabbleMediaStream *stream)
+{
+  g_hash_table_remove (p->contents, content);
+
+  if (g_hash_table_size (p->contents) == 0 && p->context != NULL)
+    {
+      GPtrArray *ret = make_stream_list (channel, p->streams);
+
+      tp_svc_channel_type_streamed_media_return_from_request_streams (
+          p->context, ret);
+      g_ptr_array_free (ret, TRUE);
+      p->context = NULL;
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
+static gboolean
+pending_stream_request_maybe_fail (PendingStreamRequest *p,
+                                   GabbleMediaChannel *channel,
+                                   GabbleJingleContent *content)
+{
+  g_hash_table_remove (p->contents, content);
+
+  if (g_hash_table_size (p->contents) == 0 && p->context != NULL)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "The stream was removed before it could be fully set up" };
+
+      dbus_g_method_return_error (p->context, &e);
+      p->context = NULL;
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
+static void
+pending_stream_request_free (gpointer data)
+{
+  PendingStreamRequest *p = data;
+
+  if (p->context != NULL)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_CANCELLED,
+          "The session terminated before the requested stream could be added"
+      };
+
+      dbus_g_method_return_error (p->context, &e);
+    }
+
+  g_hash_table_destroy (p->contents);
+  g_ptr_array_free (p->streams, TRUE);
+
+  g_slice_free (PendingStreamRequest, p);
+}
+
+static gboolean
+_gabble_media_channel_request_contents (GabbleMediaChannel *chan,
+                                        const GArray *media_types,
+                                        GPtrArray **ret,
+                                        GError **error)
 {
   GabbleMediaChannelPrivate *priv;
   gboolean want_audio, want_video;
@@ -1468,7 +1568,7 @@ _gabble_media_channel_request_streams (GabbleMediaChannel *chan,
       return FALSE;
     }
 
-  /* if we've got here, we're good to make the streams */
+  /* if we've got here, we're good to make the Jingle contents */
 
   *ret = g_ptr_array_sized_new (media_types->len);
 
@@ -1476,7 +1576,6 @@ _gabble_media_channel_request_streams (GabbleMediaChannel *chan,
     {
       guint media_type = g_array_index (media_types, guint, idx);
       GabbleJingleContent *c;
-      GabbleMediaStream *stream;
       const gchar *content_ns;
 
       content_ns = _pick_best_content_type (chan, peer, peer_resource,
@@ -1495,11 +1594,12 @@ _gabble_media_channel_request_streams (GabbleMediaChannel *chan,
             JINGLE_MEDIA_TYPE_AUDIO : JINGLE_MEDIA_TYPE_VIDEO,
             content_ns, transport_ns);
 
+      /* The stream is created in "new-content" callback, and appended to
+       * priv->streams. This is now guaranteed to happen asynchronously (adding
+       * streams can take time due to the relay info lookup, and if it doesn't,
+       * we use an idle so it does). */
       g_assert (c != NULL);
-
-      /* stream is created in "new-content" callback, and appended to streams */
-      stream = g_ptr_array_index (priv->streams, priv->streams->len - 1);
-      g_ptr_array_add (*ret, stream);
+      g_ptr_array_add (*ret, c);
     }
 
   return TRUE;
@@ -1620,9 +1720,8 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv;
   TpBaseConnection *conn;
-  GPtrArray *streams;
+  GPtrArray *contents;
   GError *error = NULL;
-  GPtrArray *ret;
   TpHandleRepoIface *contact_handles;
   gboolean wait;
 
@@ -1682,16 +1781,14 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
         }
     }
 
-  if (!_gabble_media_channel_request_streams (self, types, &streams,
+  if (!_gabble_media_channel_request_contents (self, types, &contents,
         &error))
     goto error;
 
-  ret = make_stream_list (self, streams);
-
-  g_ptr_array_free (streams, TRUE);
-
-  tp_svc_channel_type_streamed_media_return_from_request_streams (context, ret);
-  g_ptr_array_free (ret, TRUE);
+  priv->pending_stream_requests = g_list_prepend (
+      priv->pending_stream_requests,
+      pending_stream_request_new (contents, context));
+  g_ptr_array_free (contents, TRUE);
   return;
 
 error:
@@ -1938,6 +2035,12 @@ session_terminated_cb (GabbleJingleSession *session,
   tp_group_mixin_change_flags ((GObject *) channel,
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
+
+  /* any contents that we were waiting for have now lost */
+  g_list_foreach (priv->pending_stream_requests,
+      (GFunc) pending_stream_request_free, NULL);
+  g_list_free (priv->pending_stream_requests);
+  priv->pending_stream_requests = NULL;
 
   /* unref streams */
   if (priv->streams != NULL)
@@ -2353,6 +2456,30 @@ construct_stream (GabbleMediaChannel *chan,
 
   g_ptr_array_add (priv->streams, stream);
 
+  /* return from RequestStreams */
+    {
+      GList *link = priv->pending_stream_requests;
+
+      while (link != NULL)
+        {
+          if (pending_stream_request_maybe_satisfy (link->data,
+                chan, c, stream))
+            {
+              GList *dead = link;
+
+              pending_stream_request_free (dead->data);
+
+              link = dead->next;
+              priv->pending_stream_requests = g_list_delete_link (
+                  priv->pending_stream_requests, dead);
+            }
+          else
+            {
+              link = link->next;
+            }
+        }
+    }
+
   gabble_signal_connect_weak (stream, "close", (GCallback) stream_close_cb,
       chan_o);
   gabble_signal_connect_weak (stream, "error", (GCallback) stream_error_cb,
@@ -2397,9 +2524,39 @@ construct_stream (GabbleMediaChannel *chan,
 typedef struct {
     GabbleMediaChannel *self;
     GabbleJingleContent *content;
+    gulong removed_id;
     gchar *nat_traversal;
     gchar *name;
 } StreamCreationData;
+
+static void
+stream_creation_data_free (gpointer p)
+{
+  StreamCreationData *d = p;
+
+  g_free (d->name);
+  g_free (d->nat_traversal);
+
+  if (d->content != NULL)
+    {
+      g_signal_handler_disconnect (d->content, d->removed_id);
+      g_object_unref (d->content);
+    }
+
+  g_object_unref (d->self);
+  g_slice_free (StreamCreationData, d);
+}
+
+static gboolean
+construct_stream_later_cb (gpointer user_data)
+{
+  StreamCreationData *d = user_data;
+
+  if (d->content != NULL)
+    construct_stream (d->self, d->content, d->name, d->nat_traversal, NULL);
+
+  return FALSE;
+}
 
 static void
 google_relay_session_cb (GPtrArray *relays,
@@ -2407,13 +2564,45 @@ google_relay_session_cb (GPtrArray *relays,
 {
   StreamCreationData *d = user_data;
 
-  construct_stream (d->self, d->content, d->name, d->nat_traversal, relays);
+  if (d->content != NULL)
+    construct_stream (d->self, d->content, d->name, d->nat_traversal, relays);
 
-  g_free (d->name);
-  g_free (d->nat_traversal);
-  g_object_unref (d->content);
-  g_object_unref (d->self);
-  g_slice_free (StreamCreationData, d);
+  stream_creation_data_free (d);
+}
+
+static void
+content_removed_cb (GabbleJingleContent *content,
+                    StreamCreationData *d)
+{
+  if (d->content != NULL)
+    {
+      GList *link = d->self->priv->pending_stream_requests;
+
+      g_signal_handler_disconnect (d->content, d->removed_id);
+
+      /* return from RequestStreams unsuccessfully */
+      while (link != NULL)
+        {
+          if (pending_stream_request_maybe_fail (link->data,
+                d->self, d->content))
+            {
+              GList *dead = link;
+
+              pending_stream_request_free (dead->data);
+
+              link = dead->next;
+              d->self->priv->pending_stream_requests = g_list_delete_link (
+                  d->self->priv->pending_stream_requests, dead);
+            }
+          else
+            {
+              link = link->next;
+            }
+        }
+
+      g_object_unref (d->content);
+      d->content = NULL;
+    }
 }
 
 static void
@@ -2421,6 +2610,7 @@ create_stream_from_content (GabbleMediaChannel *self,
                             GabbleJingleContent *c)
 {
   gchar *name, *nat_traversal;
+  StreamCreationData *d;
 
   g_object_get (c,
       "name", &name,
@@ -2437,15 +2627,21 @@ create_stream_from_content (GabbleMediaChannel *self,
       "nat-traversal", &nat_traversal,
       NULL);
 
+  d = g_slice_new0 (StreamCreationData);
+
+  d->self = g_object_ref (self);
+  d->nat_traversal = nat_traversal;
+  d->name = name;
+  d->content = g_object_ref (c);
+
+  /* If the content gets removed before we've finished looking up its
+   * relay (can this happen?) we need to cancel the creation of the stream,
+   * and make any PendingStreamRequests fail */
+  d->removed_id = g_signal_connect (c, "removed",
+      G_CALLBACK (content_removed_cb), d);
+
   if (!tp_strdiff (nat_traversal, "gtalk-p2p"))
     {
-      StreamCreationData *d = g_slice_new0 (StreamCreationData);
-
-      d->self = g_object_ref (self);
-      d->nat_traversal = nat_traversal;
-      d->name = name;
-      d->content = g_object_ref (c);
-
       /* See if our server is Google, and if it is, ask them for a relay.
        * We ask for enough relays for 2 components (RTP and RTCP) since we
        * don't yet know whether there will be RTCP. */
@@ -2455,9 +2651,10 @@ create_stream_from_content (GabbleMediaChannel *self,
     }
   else
     {
-      construct_stream (self, c, name, nat_traversal, NULL);
-      g_free (name);
-      g_free (nat_traversal);
+      /* just create the stream (do it asynchronously so that the behaviour
+       * is the same in each case) */
+      g_idle_add_full (G_PRIORITY_DEFAULT, construct_stream_later_cb,
+          d, stream_creation_data_free);
     }
 }
 

@@ -92,6 +92,21 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorHandle'] == remote_handle
     assert channel_props['Requested'] == False
 
+    streams = media_chan.ListStreams(
+            dbus_interface=cs.CHANNEL_TYPE_STREAMED_MEDIA)
+    assert len(streams) == 1, streams
+    assert len(streams[0]) == 6, streams[0]
+    # streams[0][0] is the stream identifier, which in principle we can't
+    # make any assertion about (although in practice it's probably 1)
+    assert streams[0][1] == remote_handle, (streams[0], remote_handle)
+    assert streams[0][2] == cs.MEDIA_STREAM_TYPE_AUDIO, streams[0]
+    # We haven't connected yet
+    assert streams[0][3] == cs.MEDIA_STREAM_STATE_DISCONNECTED, streams[0]
+    # In Gabble, incoming streams start off with remote send enabled, and
+    # local send requested
+    assert streams[0][4] == cs.MEDIA_STREAM_DIRECTION_RECEIVE, streams[0]
+    assert streams[0][5] == cs.MEDIA_STREAM_PENDING_LOCAL_SEND, streams[0]
+
     # Connectivity checks happen before we have accepted the call
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler.Ready(jt.get_audio_codecs_dbus())

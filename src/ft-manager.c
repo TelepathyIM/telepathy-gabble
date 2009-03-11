@@ -432,7 +432,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   const gchar *filename, *size_str, *content_type, *content_hash, *description;
   const gchar *date_str;
   guint64 size;
-  guint64 date;
+  guint64 date = 0;
   TpFileHashType content_hash_type;
   GabbleFileTransferChannel *chan;
   gchar *path;
@@ -496,12 +496,8 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
       struct tm tm;
 
       /* FIXME: this assume the timezone is always UTC */
-      strptime (date_str, "%FT%H:%M:%SZ", &tm);
-      date = (guint64) mktime (&tm);
-    }
-  else
-    {
-      date = 0;
+      if (strptime (date_str, "%FT%H:%M:%SZ", &tm) != NULL)
+        date = (guint64) mktime (&tm);
     }
 
   path = generate_object_path (self, handle);

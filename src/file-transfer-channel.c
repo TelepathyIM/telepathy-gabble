@@ -1131,6 +1131,20 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   if (self->priv->content_hash != NULL)
     lm_message_node_set_attribute (file_node, "hash", self->priv->content_hash);
 
+  if (self->priv->date != 0)
+    {
+      time_t t;
+      struct tm *tm;
+      char date_str[21];
+
+      t = (time_t) self->priv->date;
+      tm = gmtime (&t);
+
+      strftime (date_str, sizeof (date_str), "%FT%H:%M:%SZ", tm);
+
+      lm_message_node_set_attribute (file_node, "date", date_str);
+    }
+
   /* TODO: support initial offset */
 
   desc_node = lm_message_node_add_child (file_node, "desc",

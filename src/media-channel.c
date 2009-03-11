@@ -2461,7 +2461,8 @@ construct_stream (GabbleMediaChannel *chan,
 
   g_ptr_array_add (priv->streams, stream);
 
-  /* return from RequestStreams */
+  /* if any RequestStreams call was waiting for a stream to be created for
+   * that content, return from it successfully */
     {
       GList *link = priv->pending_stream_requests;
 
@@ -2585,7 +2586,8 @@ content_removed_cb (GabbleJingleContent *content,
 
       g_signal_handler_disconnect (d->content, d->removed_id);
 
-      /* return from RequestStreams unsuccessfully */
+      /* if any RequestStreams call was waiting for a stream to be created for
+       * that content, return from it unsuccessfully */
       while (link != NULL)
         {
           if (pending_stream_request_maybe_fail (link->data,

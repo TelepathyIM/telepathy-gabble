@@ -1006,6 +1006,7 @@ gabble_media_channel_list_streams (TpSvcChannelTypeStreamedMedia *iface,
     }
 
   tp_svc_channel_type_streamed_media_return_from_list_streams (context, ret);
+  g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
   g_ptr_array_free (ret, TRUE);
 }
 
@@ -1393,6 +1394,7 @@ pending_stream_request_maybe_satisfy (PendingStreamRequest *p,
 
       tp_svc_channel_type_streamed_media_return_from_request_streams (
           p->context, ret);
+      g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
       g_ptr_array_free (ret, TRUE);
       p->context = NULL;
       return TRUE;

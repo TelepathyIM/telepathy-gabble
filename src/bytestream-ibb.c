@@ -446,7 +446,8 @@ iq_acked_cb (GabbleConnection *conn,
         {
           g_string_erase (priv->write_buffer, 0, sent);
 
-          DEBUG ("buffer has not been completely flushed; %d bytes left",
+          DEBUG ("buffer has not been completely flushed; %" G_GSIZE_FORMAT
+              " bytes left",
               priv->write_buffer->len);
         }
     }
@@ -599,7 +600,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
           g_string_append_len (priv->write_buffer, str + sent, remaining);
         }
 
-      DEBUG ("write buffer size: %u", priv->write_buffer->len);
+      DEBUG ("write buffer size: %" G_GSIZE_FORMAT, priv->write_buffer->len);
       change_write_blocked_state (self, TRUE);
     }
 

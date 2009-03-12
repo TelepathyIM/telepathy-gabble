@@ -1,7 +1,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix
-from gabbletest import make_result_iq, acknowledge_iq
+from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
 
 from twisted.words.xish import domish, xpath
 
@@ -36,22 +36,10 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
         EventPattern('stream-presence', to=test_jid))
 
     # Send presence for other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = bob_jid
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    stream.send(make_muc_presence('owner', 'moderator', muc_jid, 'bob'))
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = test_jid
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    stream.send(make_muc_presence('none', 'participant', muc_jid, 'test'))
 
     q.expect('dbus-signal', signal='MembersChanged',
             args=[u'', [2, 3], [], [], [], 0, 0])

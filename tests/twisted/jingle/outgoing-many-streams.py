@@ -45,14 +45,13 @@ def test(q, bus, conn, stream):
     # Force Gabble to process the caps before calling RequestChannel
     sync_stream(q, stream)
 
-    handle = conn.RequestHandles(1, [jt.remote_jid])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
 
     call_async(q, conn.Requests, 'CreateChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': handle,
-              })
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+              cs.TARGET_HANDLE: handle,
+            })
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
@@ -65,9 +64,8 @@ def test(q, bus, conn, stream):
     sig_path, sig_ct, sig_ht, sig_h, sig_sh = old_sig.args
 
     assert sig_path == path, (sig_path, path)
-    assert sig_ct == u'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',\
-            sig_ct
-    assert sig_ht == 1, sig_ht      # HandleType = Contact
+    assert sig_ct == cs.CHANNEL_TYPE_STREAMED_MEDIA, sig_ct
+    assert sig_ht == cs.HT_CONTACT, sig_ht
     assert sig_h == handle, sig_h
     assert sig_sh == True           # suppress handler
 
@@ -77,58 +75,42 @@ def test(q, bus, conn, stream):
     assert new_sig.args[0][0][0] == path
     emitted_props = new_sig.args[0][0][1]
 
-    assert emitted_props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'TargetHandleType'] == 1        # Contact
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] ==\
-            'foo@bar.com', emitted_props
-    assert emitted_props['org.freedesktop.Telepathy.Channel.Requested'] \
-            == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorHandle'] \
-            == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorID'] \
-            == 'test@localhost'
+    assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA
+    assert emitted_props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
+    assert emitted_props[cs.TARGET_HANDLE] == handle
+    assert emitted_props[cs.TARGET_ID] == 'foo@bar.com', emitted_props
+    assert emitted_props[cs.REQUESTED] == True
+    assert emitted_props[cs.INITIATOR_HANDLE] == self_handle
+    assert emitted_props[cs.INITIATOR_ID]  == 'test@localhost'
 
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
 
     # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+    channel_props = group_iface.GetAll(cs.CHANNEL,
+        dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == handle, \
             channel_props.get('TargetHandle')
-    assert channel_props.get('TargetHandleType') == 1,\
+    assert channel_props.get('TargetHandleType') == cs.HT_CONTACT,\
             channel_props.get('TargetHandleType')
     assert media_iface.GetHandle(dbus_interface=cs.CHANNEL) == (cs.HT_CONTACT,
             handle)
-    assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',\
+    assert channel_props.get('ChannelType') == cs.CHANNEL_TYPE_STREAMED_MEDIA,\
             channel_props.get('ChannelType')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.MediaSignalling' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Properties' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Hold' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
+
+    interfaces = channel_props['Interfaces']
+    for i in [cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_MEDIA_SIGNALLING,
+              cs.TP_AWKWARD_PROPERTIES, cs.CHANNEL_IFACE_HOLD]:
+        assert i in interfaces, (i, interfaces)
+
     assert channel_props['TargetID'] == 'foo@bar.com', channel_props
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['InitiatorHandle'] == self_handle
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
-    group_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel.Interface.Group',
+    group_props = group_iface.GetAll(cs.CHANNEL_IFACE_GROUP,
             dbus_interface=dbus.PROPERTIES_IFACE)
     assert 'HandleOwners' in group_props, group_props
     assert 'Members' in group_props, group_props
@@ -218,7 +200,7 @@ def test(q, bus, conn, stream):
         stream_handler.NewNativeCandidate("fake",
                 jt.get_remote_transports_dbus())
         stream_handler.Ready(jt.get_audio_codecs_dbus())
-        stream_handler.StreamState(2)
+        stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
@@ -231,39 +213,18 @@ def test(q, bus, conn, stream):
 
     # Time passes ... afterwards we close the chan
 
-    group_iface.RemoveMembers([dbus.UInt32(1)], 'closed')
+    group_iface.RemoveMembers([self_handle], 'closed')
 
     # Everything closes
+    closes = [ EventPattern('dbus-signal', signal='Close',
+                   path=stream_handler_paths[i][len(tp_path_prefix):])
+               for i in range(0,7) ]
+    removeds = [ EventPattern('dbus-signal', signal='StreamRemoved',
+                     args=[stream_ids[i]], path=path[len(tp_path_prefix):])
+               for i in range(0,7) ]
     q.expect_many(
-    EventPattern('dbus-signal', signal='ChannelClosed', args=[path]),
-    EventPattern('dbus-signal', signal='Close',
-        path=stream_handler_paths[0][len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='Close',
-        path=stream_handler_paths[1][len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='Close',
-        path=stream_handler_paths[2][len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='Close',
-        path=stream_handler_paths[3][len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='Close',
-        path=stream_handler_paths[4][len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='Close',
-        path=stream_handler_paths[5][len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='Close',
-        path=stream_handler_paths[6][len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='StreamRemoved', args=[stream_ids[0]],
-        path=path[len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='StreamRemoved', args=[stream_ids[1]],
-        path=path[len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='StreamRemoved', args=[stream_ids[2]],
-        path=path[len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='StreamRemoved', args=[stream_ids[3]],
-        path=path[len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='StreamRemoved', args=[stream_ids[4]],
-        path=path[len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='StreamRemoved', args=[stream_ids[5]],
-        path=path[len(tp_path_prefix):]),
-    EventPattern('dbus-signal', signal='StreamRemoved', args=[stream_ids[6]],
-        path=path[len(tp_path_prefix):]),
+        EventPattern('dbus-signal', signal='ChannelClosed', args=[path]),
+        *(closes + removeds)
     )
 
     # Test completed, close the connection.

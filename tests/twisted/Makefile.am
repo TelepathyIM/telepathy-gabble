@@ -76,6 +76,7 @@ TWISTED_TESTS = \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
 	jingle/stun-server.py \
+	jingle/outgoing-many-streams.py \
 	jingle/payload-types.py \
 	jingle/stream-handler-error.py \
 	jingle/test-content-adding-removal.py \

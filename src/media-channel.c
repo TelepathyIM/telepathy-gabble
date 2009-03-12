@@ -930,18 +930,18 @@ gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling 
 
 static GPtrArray *
 make_stream_list (GabbleMediaChannel *self,
-                  GPtrArray *streams)
+                  guint len,
+                  GabbleMediaStream **streams)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
   GPtrArray *ret;
   guint i;
   GType info_type = TP_STRUCT_TYPE_MEDIA_STREAM_INFO;
 
-  ret = g_ptr_array_sized_new (streams->len);
+  ret = g_ptr_array_sized_new (len);
 
-  for (i = 0; i < streams->len; i++)
+  for (i = 0; i < len; i++)
     {
-      GabbleMediaStream *stream = g_ptr_array_index (streams, i);
       GValue entry = { 0, };
       guint id;
       TpHandle peer;
@@ -949,7 +949,7 @@ make_stream_list (GabbleMediaChannel *self,
       TpMediaStreamState connection_state;
       CombinedStreamDirection combined_direction;
 
-      g_object_get (stream,
+      g_object_get (streams[i],
           "id", &id,
           "media-type", &type,
           "connection-state", &connection_state,
@@ -1002,10 +1002,12 @@ gabble_media_channel_list_streams (TpSvcChannelTypeStreamedMedia *iface,
     }
   else
     {
-      ret = make_stream_list (self, priv->streams);
+      ret = make_stream_list (self, priv->streams->len,
+          (GabbleMediaStream **) priv->streams->pdata);
     }
 
   tp_svc_channel_type_streamed_media_return_from_list_streams (context, ret);
+  g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
   g_ptr_array_free (ret, TRUE);
 }
 
@@ -1352,10 +1354,16 @@ CHOOSE_TRANSPORT:
 }
 
 typedef struct {
-    /* borrowed content => itself, used as a set */
-    GHashTable *contents;
-    /* accumulates borrowed pointers to streams */
-    GPtrArray *streams;
+    /* number of streams requested == number of content objects */
+    guint len;
+    /* array of @len borrowed pointers */
+    GabbleJingleContent **contents;
+    /* accumulates borrowed pointers to streams. Initially @len NULL pointers;
+     * when the stream for contents[i] is created, it is stored at streams[i].
+     */
+    GabbleMediaStream **streams;
+    /* number of non-NULL elements in streams (0 <= satisfied <= contents) */
+    guint satisfied;
     DBusGMethodInvocation *context;
 } PendingStreamRequest;
 
@@ -1364,17 +1372,12 @@ pending_stream_request_new (GPtrArray *contents,
                             DBusGMethodInvocation *context)
 {
   PendingStreamRequest *p = g_slice_new0 (PendingStreamRequest);
-  guint i;
 
-  p->contents = g_hash_table_new (NULL, NULL);
-  p->streams = g_ptr_array_sized_new (contents->len);
+  p->len = contents->len;
+  p->contents = g_memdup (contents->pdata, contents->len * sizeof (gpointer));
+  p->streams = g_new0 (GabbleMediaStream *, contents->len);
+  p->satisfied = 0;
   p->context = context;
-
-  for (i = 0; i < contents->len; i++)
-    {
-      g_hash_table_insert (p->contents, g_ptr_array_index (contents, i),
-          g_ptr_array_index (contents, i));
-    }
 
   return p;
 }
@@ -1385,17 +1388,27 @@ pending_stream_request_maybe_satisfy (PendingStreamRequest *p,
                                       GabbleJingleContent *content,
                                       GabbleMediaStream *stream)
 {
-  g_hash_table_remove (p->contents, content);
+  guint i;
 
-  if (g_hash_table_size (p->contents) == 0 && p->context != NULL)
+  for (i = 0; i < p->len; i++)
     {
-      GPtrArray *ret = make_stream_list (channel, p->streams);
+      if (p->contents[i] == content)
+        {
+          g_assert (p->streams[i] == NULL);
+          p->streams[i] = stream;
 
-      tp_svc_channel_type_streamed_media_return_from_request_streams (
-          p->context, ret);
-      g_ptr_array_free (ret, TRUE);
-      p->context = NULL;
-      return TRUE;
+          if (++p->satisfied == p->len && p->context != NULL)
+            {
+              GPtrArray *ret = make_stream_list (channel, p->len, p->streams);
+
+              tp_svc_channel_type_streamed_media_return_from_request_streams (
+                  p->context, ret);
+              g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
+              g_ptr_array_free (ret, TRUE);
+              p->context = NULL;
+              return TRUE;
+            }
+        }
     }
 
   return FALSE;
@@ -1406,16 +1419,20 @@ pending_stream_request_maybe_fail (PendingStreamRequest *p,
                                    GabbleMediaChannel *channel,
                                    GabbleJingleContent *content)
 {
-  g_hash_table_remove (p->contents, content);
+  guint i;
 
-  if (g_hash_table_size (p->contents) == 0 && p->context != NULL)
+  for (i = 0; i < p->len; i++)
     {
-      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "The stream was removed before it could be fully set up" };
+      if (content == p->contents[i])
+        {
+          GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "A stream was removed before it could be fully set up" };
 
-      dbus_g_method_return_error (p->context, &e);
-      p->context = NULL;
-      return TRUE;
+          /* return early */
+          dbus_g_method_return_error (p->context, &e);
+          p->context = NULL;
+          return TRUE;
+        }
     }
 
   return FALSE;
@@ -1429,14 +1446,14 @@ pending_stream_request_free (gpointer data)
   if (p->context != NULL)
     {
       GError e = { TP_ERRORS, TP_ERROR_CANCELLED,
-          "The session terminated before the requested stream could be added"
+          "The session terminated before the requested streams could be added"
       };
 
       dbus_g_method_return_error (p->context, &e);
     }
 
-  g_hash_table_destroy (p->contents);
-  g_ptr_array_free (p->streams, TRUE);
+  g_free (p->contents);
+  g_free (p->streams);
 
   g_slice_free (PendingStreamRequest, p);
 }
@@ -2456,7 +2473,8 @@ construct_stream (GabbleMediaChannel *chan,
 
   g_ptr_array_add (priv->streams, stream);
 
-  /* return from RequestStreams */
+  /* if any RequestStreams call was waiting for a stream to be created for
+   * that content, return from it successfully */
     {
       GList *link = priv->pending_stream_requests;
 
@@ -2580,7 +2598,8 @@ content_removed_cb (GabbleJingleContent *content,
 
       g_signal_handler_disconnect (d->content, d->removed_id);
 
-      /* return from RequestStreams unsuccessfully */
+      /* if any RequestStreams call was waiting for a stream to be created for
+       * that content, return from it unsuccessfully */
       while (link != NULL)
         {
           if (pending_stream_request_maybe_fail (link->data,

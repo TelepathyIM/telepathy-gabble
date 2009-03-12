@@ -109,9 +109,7 @@ def test(q, bus, conn, stream):
 
     # FIXME: actually list the rooms!
 
-    requestotron = dbus.Interface(conn,
-            tp_name_prefix + '.Connection.Interface.Requests')
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             { tp_name_prefix + '.Channel.ChannelType':
                 tp_name_prefix + '.Channel.Type.RoomList',
               tp_name_prefix + '.Channel.TargetHandleType': 0,
@@ -157,8 +155,7 @@ def test(q, bus, conn, stream):
 
     # FIXME: actually list the rooms!
 
-
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
             { tp_name_prefix + '.Channel.ChannelType':
                 tp_name_prefix + '.Channel.Type.RoomList',
               tp_name_prefix + '.Channel.TargetHandleType': 0,

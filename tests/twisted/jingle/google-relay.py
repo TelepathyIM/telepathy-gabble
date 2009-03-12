@@ -155,9 +155,7 @@ def test(q, bus, conn, stream, incoming=True):
         e = q.expect('dbus-signal', signal='MembersChanged',
                  args=[u'', [], [], [1L], [], remote_handle, 0])
     else:
-        requestotron = dbus.Interface(conn,
-                'org.freedesktop.Telepathy.Connection.Interface.Requests')
-        call_async(q, requestotron, 'CreateChannel',
+        call_async(q, conn.Requests, 'CreateChannel',
                 { 'org.freedesktop.Telepathy.Channel.ChannelType':
                     'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
                   'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,

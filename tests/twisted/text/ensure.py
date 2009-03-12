@@ -35,24 +35,21 @@ def test(q, bus, conn, stream):
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
-
-    test_ensure_ensure(q, requestotron, conn, self_handle, jids[0], handles[0])
-    test_request_ensure(q, requestotron, conn, self_handle, jids[1], handles[1])
+    test_ensure_ensure(q, conn, self_handle, jids[0], handles[0])
+    test_request_ensure(q, conn, self_handle, jids[1], handles[1])
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 
-def test_ensure_ensure(q, requestotron, conn, self_handle, jid, handle):
+def test_ensure_ensure(q, conn, self_handle, jid, handle):
     """
     Test ensuring a non-existant channel twice.  The first call should succeed
     with Yours=True; the subsequent call should succeed with Yours=False
     """
 
     # Check that Ensuring a channel that doesn't exist succeeds
-    call_async(q, requestotron, 'EnsureChannel', request_props (handle))
+    call_async(q, conn.Requests, 'EnsureChannel', request_props (handle))
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='EnsureChannel'),
@@ -94,7 +91,7 @@ def test_ensure_ensure(q, requestotron, conn, self_handle, jid, handle):
 
 
     # Now try Ensuring a channel which already exists
-    call_async(q, requestotron, 'EnsureChannel', request_props (handle))
+    call_async(q, conn.Requests, 'EnsureChannel', request_props (handle))
     ret_ = q.expect('dbus-return', method='EnsureChannel')
 
     assert len(ret_.value) == 3
@@ -107,13 +104,13 @@ def test_ensure_ensure(q, requestotron, conn, self_handle, jid, handle):
     assert emitted_props == emitted_props_, (emitted_props, emitted_props_)
 
 
-def test_request_ensure(q, requestotron, conn, self_handle, jid, handle):
+def test_request_ensure(q, conn, self_handle, jid, handle):
     """
     Test Creating a non-existant channel, then Ensuring the same channel.
     The call to Ensure should succeed with Yours=False.
     """
 
-    call_async(q, requestotron, 'CreateChannel', request_props (handle))
+    call_async(q, conn.Requests, 'CreateChannel', request_props (handle))
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
@@ -151,7 +148,7 @@ def test_request_ensure(q, requestotron, conn, self_handle, jid, handle):
 
 
     # Now try Ensuring that same channel.
-    call_async(q, requestotron, 'EnsureChannel', request_props (handle))
+    call_async(q, conn.Requests, 'EnsureChannel', request_props (handle))
     ret_ = q.expect('dbus-return', method='EnsureChannel')
 
     assert len(ret_.value) == 3

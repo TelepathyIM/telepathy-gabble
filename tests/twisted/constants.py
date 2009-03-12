@@ -9,6 +9,8 @@ HT_ROOM = 2
 
 CHANNEL = "org.freedesktop.Telepathy.Channel"
 CHANNEL_IFACE_GROUP = CHANNEL + ".Interface.Group"
+CHANNEL_IFACE_HOLD = CHANNEL + ".Interface.Hold"
+CHANNEL_IFACE_MEDIA_SIGNALLING = CHANNEL + ".Interface.MediaSignalling"
 CHANNEL_TYPE_TEXT = CHANNEL + ".Type.Text"
 CHANNEL_TYPE_TUBES = CHANNEL + ".Type.Tubes"
 CHANNEL_IFACE_TUBE = CHANNEL + ".Interface.Tube.DRAFT"

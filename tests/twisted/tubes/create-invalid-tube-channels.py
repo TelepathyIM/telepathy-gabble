@@ -24,11 +24,10 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1]),
 
     conn_props = dbus.Interface(conn, PROPERTIES_IFACE)
-    requestotron = dbus.Interface(conn, CONN_IFACE_REQUESTS)
 
     # Try to CreateChannel with unknown properties
     # Gabble must return an error
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             {CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
              TARGET_HANDLE_TYPE: HT_CONTACT,
              TARGET_ID: "foo@example.com",
@@ -41,7 +40,7 @@ def test(q, bus, conn, stream):
 
     # Try to CreateChannel with missing properties ("Service")
     # Gabble must return an error
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             {CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
              TARGET_HANDLE_TYPE: HT_CONTACT,
              TARGET_ID: "foo@example.com",

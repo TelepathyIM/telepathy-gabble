@@ -97,8 +97,6 @@ def test(q, bus, conn, stream, bytestream_cls):
     # RequestChannel are the ones we wanted.
     sync_dbus(bus, q, conn)
 
-    requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
-
     # Test tubes with Bob. Bob has tube capabilities.
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
 
@@ -125,7 +123,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # Try CreateChannel with correct properties
     # Gabble must succeed
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              cs.TARGET_HANDLE: bob_handle,

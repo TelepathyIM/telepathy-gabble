@@ -103,14 +103,14 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
     self_name = conn.InspectHandles(1, [self_handle])[0]
 
-    handles, tubes_chan, tubes_iface = get_muc_tubes_channel(q, bus, conn,
+    handle, tubes_chan, tubes_iface = get_muc_tubes_channel(q, bus, conn,
         stream, 'chat@conf.localhost')
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = tubes_chan.GetAll(CHANNEL,
             dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props.get('TargetHandle') == handles[0],\
-            (channel_props.get('TargetHandle'), handles[0])
+    assert channel_props.get('TargetHandle') == handle,\
+            (channel_props.get('TargetHandle'), handle)
     assert channel_props.get('TargetHandleType') == 2,\
             channel_props.get('TargetHandleType')
     assert channel_props.get('ChannelType') == CHANNEL_TYPE_TUBES,\

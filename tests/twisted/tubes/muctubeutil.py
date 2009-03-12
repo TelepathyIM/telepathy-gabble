@@ -6,7 +6,7 @@ import constants as cs
 
 from twisted.words.xish import domish, xpath
 
-def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
+def get_muc_tubes_channel(q, bus, conn, stream, muc_jid, anonymous=True):
     """
     Returns a singleton list containing the MUC's handle, a proxy for the Tubes
     channel, and a proxy for the Tubes iface on that channel.
@@ -41,7 +41,12 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
         EventPattern('stream-presence', to=test_jid))
 
     # Send presence for other member of room.
-    stream.send(make_muc_presence('owner', 'moderator', muc_jid, 'bob'))
+    if not anonymous:
+        real_jid = 'bob@localhost'
+    else:
+        real_jid = None
+
+    stream.send(make_muc_presence('owner', 'moderator', muc_jid, 'bob', real_jid))
 
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', muc_jid, 'test'))

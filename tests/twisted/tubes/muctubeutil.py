@@ -16,9 +16,9 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
     bob_jid = muc_jid + "/bob"
 
     self_handle = conn.GetSelfHandle()
-    self_name = conn.InspectHandles(1, [self_handle])[0]
+    self_name = conn.InspectHandles(cs.HT_CONTACT, [self_handle])[0]
 
-    call_async(q, conn, 'RequestHandles', 2, [muc_jid])
+    call_async(q, conn, 'RequestHandles', cs.HT_ROOM, [muc_jid])
 
     event = q.expect('stream-iq', to=muc_server,
             query_ns='http://jabber.org/protocol/disco#info')
@@ -32,7 +32,7 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
 
     # request tubes channel
     call_async(q, conn, 'RequestChannel',
-        tp_name_prefix + '.Channel.Type.Tubes', 2, handles[0], True)
+        tp_name_prefix + '.Channel.Type.Tubes', cs.HT_ROOM, handles[0], True)
 
     _, stream_event = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
@@ -48,8 +48,8 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
     q.expect('dbus-signal', signal='MembersChanged',
             args=[u'', [2, 3], [], [], [], 0, 0])
 
-    assert conn.InspectHandles(1, [2]) == [test_jid]
-    assert conn.InspectHandles(1, [3]) == [bob_jid]
+    assert conn.InspectHandles(cs.HT_CONTACT, [2]) == [test_jid]
+    assert conn.InspectHandles(cs.HT_CONTACT, [3]) == [bob_jid]
 
     # text and tubes channels are created
     # FIXME: We can't check NewChannel signals (old API) because two of them

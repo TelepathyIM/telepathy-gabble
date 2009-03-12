@@ -1358,9 +1358,11 @@ typedef struct {
     guint len;
     /* array of @len borrowed pointers */
     GabbleJingleContent **contents;
-    /* accumulates borrowed pointers to streams */
+    /* accumulates borrowed pointers to streams. Initially @len NULL pointers;
+     * when the stream for contents[i] is created, it is stored at streams[i].
+     */
     GabbleMediaStream **streams;
-    /* number of streams in streams (0 <= satisfied <= contents) */
+    /* number of non-NULL elements in streams (0 <= satisfied <= contents) */
     guint satisfied;
     DBusGMethodInvocation *context;
 } PendingStreamRequest;

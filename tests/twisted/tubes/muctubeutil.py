@@ -2,6 +2,7 @@ import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix
 from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
+import constants as cs
 
 from twisted.words.xish import domish, xpath
 
@@ -13,6 +14,9 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
     muc_server = muc_jid.split('@')[1]
     test_jid = muc_jid + "/test"
     bob_jid = muc_jid + "/bob"
+
+    self_handle = conn.GetSelfHandle()
+    self_name = conn.InspectHandles(1, [self_handle])[0]
 
     call_async(q, conn, 'RequestHandles', 2, [muc_jid])
 
@@ -47,9 +51,41 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
     assert conn.InspectHandles(1, [2]) == [test_jid]
     assert conn.InspectHandles(1, [3]) == [bob_jid]
 
-    event = q.expect('dbus-return', method='RequestChannel')
+    # text and tubes channels are created
+    # FIXME: We can't check NewChannel signals (old API) because two of them
+    # would be fired and we can't catch twice the same signals without specifying
+    # all their arguments.
+    new_sig, returned = q.expect_many(
+        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-return', method='RequestChannel'))
 
-    tubes_chan = bus.get_object(conn.bus_name, event.value[0])
+    channels = new_sig.args[0]
+    assert len(channels) == 2
+
+    for channel in channels:
+        path, props = channel
+        type = props[cs.CHANNEL_TYPE]
+
+        if type == cs.CHANNEL_TYPE_TEXT:
+            # check text channel properties
+            assert props[cs.TARGET_HANDLE] == handles[0]
+            assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
+            assert props[cs.TARGET_ID] == 'chat@conf.localhost'
+            assert props[cs.REQUESTED] == False
+            assert props[cs.INITIATOR_HANDLE] == self_handle
+            assert props[cs.INITIATOR_ID] == self_name
+        elif type == cs.CHANNEL_TYPE_TUBES:
+            # check tubes channel properties
+            assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
+            assert props[cs.TARGET_HANDLE] == handles[0]
+            assert props[cs.TARGET_ID] == 'chat@conf.localhost'
+            assert props[cs.REQUESTED] == True
+            assert props[cs.INITIATOR_HANDLE] == self_handle
+            assert props[cs.INITIATOR_ID] == self_name
+        else:
+            assert True
+
+    tubes_chan = bus.get_object(conn.bus_name, returned.value[0])
     tubes_iface = dbus.Interface(tubes_chan,
             tp_name_prefix + '.Channel.Type.Tubes')
 

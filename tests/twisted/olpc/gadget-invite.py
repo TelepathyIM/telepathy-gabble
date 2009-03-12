@@ -5,7 +5,8 @@ test gadget invitation when an activity becomes public
 import dbus
 
 from servicetest import call_async, EventPattern, sync_dbus
-from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream,\
+    make_muc_presence
 
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
@@ -31,13 +32,7 @@ def join_channel(name, q, conn, stream):
 
     event = q.expect('stream-presence', to='myroom@conference.localhost/test')
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'myroom@conference.localhost/test'
-    x = presence.addElement((ns.MUC_USER, 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    stream.send(make_muc_presence('none', 'participant', 'myroom@conference.localhost', 'test'))
 
     event = q.expect('dbus-return', method='RequestChannel')
     return handles[0], event.value[0]
@@ -109,14 +104,8 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-return', method='SetProperties')
 
     # Gadget joins the room
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'myroom@conference.localhost/inspector'
-    x = presence.addElement((ns.MUC_USER, 'x'))
-    item = x.addElement('item')
-    item['jid'] = 'gadget.localhost'
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    stream.send(make_muc_presence('none', 'participant', 'myroom@conference.localhost',
+        'inspector', 'gadget.localhost'))
 
     muc = bus.get_object(conn.bus_name, room_path)
     muc_group = dbus.Interface(muc, "org.freedesktop.Telepathy.Channel.Interface.Group")

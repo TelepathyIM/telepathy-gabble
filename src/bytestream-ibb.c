@@ -90,7 +90,9 @@ struct _GabbleBytestreamIBBPrivate
   /* list of reffed (LmMessage *) */
   GSList *received_stanzas_not_acked;
 
-  /* (LmMessage *) -> TRUE */
+  /* (LmMessage *) -> TRUE
+   * We don't keep a ref on the LmMessage as we just use this table to track
+   * stanzas waiting for reply. The stanza is never used (and so deferenced). */
   GHashTable *sent_stanzas_not_acked;
   GString *write_buffer;
   gboolean write_blocked;

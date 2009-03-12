@@ -3,7 +3,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
 import ns
 
 from twisted.words.xish import domish
@@ -48,22 +48,10 @@ def test(q, bus, conn, stream):
         EventPattern('stream-presence', to='chat@conf.localhost/test'))
 
     # Send presence for other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/bob'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
 
     new_chans, members, event = q.expect_many(
         EventPattern('dbus-signal', signal='NewChannels'),

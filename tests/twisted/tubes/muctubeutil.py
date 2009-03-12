@@ -29,10 +29,11 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
 
     event = q.expect('dbus-return', method='RequestHandles')
     handles = event.value[0]
+    room_handle = handles[0]
 
     # request tubes channel
     call_async(q, conn, 'RequestChannel',
-        tp_name_prefix + '.Channel.Type.Tubes', cs.HT_ROOM, handles[0], True)
+        tp_name_prefix + '.Channel.Type.Tubes', cs.HT_ROOM, room_handle, True)
 
     _, stream_event = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
@@ -68,7 +69,7 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
 
         if type == cs.CHANNEL_TYPE_TEXT:
             # check text channel properties
-            assert props[cs.TARGET_HANDLE] == handles[0]
+            assert props[cs.TARGET_HANDLE] == room_handle
             assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
             assert props[cs.TARGET_ID] == 'chat@conf.localhost'
             assert props[cs.REQUESTED] == False
@@ -77,7 +78,7 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
         elif type == cs.CHANNEL_TYPE_TUBES:
             # check tubes channel properties
             assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
-            assert props[cs.TARGET_HANDLE] == handles[0]
+            assert props[cs.TARGET_HANDLE] == room_handle
             assert props[cs.TARGET_ID] == 'chat@conf.localhost'
             assert props[cs.REQUESTED] == True
             assert props[cs.INITIATOR_HANDLE] == self_handle
@@ -89,4 +90,4 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid):
     tubes_iface = dbus.Interface(tubes_chan,
             tp_name_prefix + '.Channel.Type.Tubes')
 
-    return (handles, tubes_chan, tubes_iface)
+    return (room_handle, tubes_chan, tubes_iface)

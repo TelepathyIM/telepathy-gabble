@@ -13,7 +13,7 @@ def test(q, bus, conn, stream):
 
     _ = q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    handles, tubes_chan, tubes_iface = get_muc_tubes_channel(q, bus, conn,
+    handle, tubes_chan, tubes_iface = get_muc_tubes_channel(q, bus, conn,
         stream, 'chat@conf.localhost')
 
     conn.Presence.SetStatus({'away':{'message':'Christmas lunch!'}})

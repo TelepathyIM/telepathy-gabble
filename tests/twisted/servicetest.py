@@ -400,6 +400,9 @@ class ProxyWrapper:
     def __init__(self, object, default, others):
         self.object = object
         self.default_interface = dbus.Interface(object, default)
+        self.Properties = dbus.Interface(object, dbus.PROPERTIES_IFACE)
+        self.TpProperties = \
+            dbus.Interface(object, tp_name_prefix + '.Properties')
         self.interfaces = dict([
             (name, dbus.Interface(object, iface))
             for name, iface in others.iteritems()])

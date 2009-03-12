@@ -80,6 +80,7 @@ TWISTED_TESTS = \
 	jingle/payload-types.py \
 	jingle/stream-handler-error.py \
 	jingle/test-content-adding-removal.py \
+	jingle/test-description-info.py \
 	jingle/test-incoming-call.py \
 	jingle/test-incoming-call-reject.py \
 	jingle/test-outgoing-call.py \

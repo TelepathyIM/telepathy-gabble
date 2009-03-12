@@ -106,6 +106,8 @@ void gabble_jingle_content_parse_accept (GabbleJingleContent *c,
 
 void gabble_jingle_content_parse_transport_info (GabbleJingleContent *self,
   LmMessageNode *trans_node, GError **error);
+void gabble_jingle_content_parse_description_info (GabbleJingleContent *self,
+  LmMessageNode *trans_node, GError **error);
 void gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li);
 void _gabble_jingle_content_set_media_ready (GabbleJingleContent *self);
 gboolean gabble_jingle_content_is_ready (GabbleJingleContent *self);

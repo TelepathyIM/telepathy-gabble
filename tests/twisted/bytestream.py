@@ -648,7 +648,7 @@ class BytestreamSIFallbackS5CannotConnect(BytestreamSIFallback):
         self.ibb.wait_bytestream_open()
 
 class BytestreamSIFallbackS5WrongHash(BytestreamSIFallback):
-    """Try to use SOCKS5 and fallback to IBB because target send the wrong has
+    """Try to use SOCKS5 and fallback to IBB because target sent the wrong hash
     as domain in the CONNECT command."""
     def __init__(self, stream, q, sid, initiator, target, initiated):
         BytestreamSIFallback.__init__(self, stream, q, sid, initiator, target, initiated)

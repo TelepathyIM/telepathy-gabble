@@ -85,8 +85,6 @@ struct _GabbleJingleSessionPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_SESSION_GET_PRIVATE(o) ((o)->priv)
-
 #define DEFAULT_SESSION_TIMEOUT 60000
 
 typedef struct {
@@ -147,7 +145,7 @@ static void
 gabble_jingle_session_dispose (GObject *object)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (object);
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
@@ -193,7 +191,7 @@ gabble_jingle_session_get_property (GObject *object,
                                     GParamSpec *pspec)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (object);
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -230,7 +228,7 @@ gabble_jingle_session_set_property (GObject *object,
                                     GParamSpec *pspec)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (object);
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -493,7 +491,7 @@ static void
 _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
   ContentHandlerFunc func, GError **error)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c;
   LmMessageNode *content_node;
   const gchar *name;
@@ -571,7 +569,7 @@ create_content (GabbleJingleSession *sess, GType content_type,
   JingleMediaType type, const gchar *content_ns, const gchar *transport_ns,
   const gchar *name, LmMessageNode *content_node, GError **error)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c;
 
   DEBUG ("session creating new content type, conn == %p, jf == %p", priv->conn, priv->conn->jingle_factory);
@@ -622,7 +620,7 @@ static void
 _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   const gchar *name = lm_message_node_get_attribute (content_node, "name");
   LmMessageNode *desc_node = lm_message_node_get_child_any_ns (content_node,
       "description");
@@ -687,7 +685,7 @@ static void
 _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   const gchar *name = lm_message_node_get_attribute (content_node, "name");
 
   if (c == NULL)
@@ -739,7 +737,7 @@ static void
 _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node ,GError **error)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   JingleContentState state;
 
   if (c == NULL)
@@ -781,7 +779,7 @@ static void
 on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
   GError **error)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   /* we can't call ourselves at the moment */
   if (priv->local_initiator)
@@ -831,7 +829,7 @@ static void
 on_content_remove (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   _foreach_content (sess, node, _each_content_remove, error);
 
@@ -869,7 +867,7 @@ static void
 on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   DEBUG ("called");
 
@@ -903,7 +901,7 @@ static void
 on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c = NULL;
 
   if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
@@ -996,7 +994,7 @@ static void
 jingle_state_machine_dance (GabbleJingleSession *sess, JingleAction action,
     LmMessageNode *node, GError **error)
   {
-    GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+    GabbleJingleSessionPrivate *priv = sess->priv;
 
     /* parser should've checked this already */
     g_assert (action_is_allowed (action, priv->state));
@@ -1080,7 +1078,7 @@ gboolean
 gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmMessage *message, GError **error)
 {
   TpHandleRepoIface *contact_repo;
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessageNode *iq_node, *session_node;
   const gchar *from, *to, *resource;
   const gchar *initiator, *responder;
@@ -1190,7 +1188,7 @@ get_jid_for_contact (GabbleJingleSession *session,
 
   g_assert (GABBLE_IS_JINGLE_SESSION (session));
 
-  priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (session);
+  priv = session->priv;
   conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -1219,7 +1217,7 @@ LmMessage *
 gabble_jingle_session_new_message (GabbleJingleSession *sess,
     JingleAction action, LmMessageNode **sess_node)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessage *msg;
   LmMessageNode *iq_node, *session_node;
   gchar *el = NULL, *ns = NULL;
@@ -1382,7 +1380,7 @@ void
 gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
     JingleReplyHandler cb, gpointer user_data)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   if (cb != NULL)
     {
@@ -1440,7 +1438,7 @@ timeout_session (gpointer data)
 static void
 try_session_initiate_or_accept (GabbleJingleSession *sess)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessage *msg;
   LmMessageNode *sess_node;
   gboolean contents_ready = TRUE;
@@ -1499,7 +1497,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 static void
 set_state (GabbleJingleSession *sess, JingleState state)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   if (state <= priv->state)
     {
@@ -1534,7 +1532,7 @@ set_state (GabbleJingleSession *sess, JingleState state)
 void
 gabble_jingle_session_accept (GabbleJingleSession *sess)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   priv->locally_accepted = TRUE;
 
@@ -1544,7 +1542,7 @@ gabble_jingle_session_accept (GabbleJingleSession *sess)
 void
 gabble_jingle_session_terminate (GabbleJingleSession *sess)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   if (priv->state == JS_STATE_ENDED)
     {
@@ -1586,7 +1584,7 @@ _foreach_count_active_contents (gpointer key, gpointer value, gpointer user_data
 static gboolean
 count_active_contents (GabbleJingleSession *sess)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   guint n_contents = 0;
 
   g_hash_table_foreach (priv->contents, _foreach_count_active_contents, &n_contents);
@@ -1597,7 +1595,7 @@ static void
 content_removed_cb (GabbleJingleContent *c, gpointer user_data)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   const gchar *name;
 
   g_object_get (c, "name", &name, NULL);
@@ -1631,7 +1629,7 @@ GabbleJingleContent *
 gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mtype,
     const gchar *content_ns, const gchar *transport_ns)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c;
   GType content_type;
   gchar *name = NULL;
@@ -1693,7 +1691,7 @@ gabble_jingle_session_get_content_type (GabbleJingleSession *sess)
 GList *
 gabble_jingle_session_get_contents (GabbleJingleSession *sess)
 {
-  GabbleJingleSessionPrivate *priv = GABBLE_JINGLE_SESSION_GET_PRIVATE (sess);
+  GabbleJingleSessionPrivate *priv = sess->priv;
   return g_hash_table_get_values (priv->contents);
 }
 

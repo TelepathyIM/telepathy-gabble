@@ -84,8 +84,6 @@ struct _GabbleJingleFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_FACTORY_GET_PRIVATE(o) ((o)->priv)
-
 static LmHandlerResult jingle_cb (LmMessageHandler *handler,
     LmConnection *lmconn, LmMessage *message, gpointer user_data);
 static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
@@ -238,7 +236,7 @@ jingle_info_cb (LmMessageHandler *handler,
                 gpointer user_data)
 {
   GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (user_data);
-  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
+  GabbleJingleFactoryPrivate *priv = fac->priv;
   LmMessageSubType sub_type;
   LmMessageNode *query_node, *node;
 
@@ -397,7 +395,7 @@ jingle_info_cb (LmMessageHandler *handler,
 static void
 jingle_info_send_request (GabbleJingleFactory *fac)
 {
-  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
+  GabbleJingleFactoryPrivate *priv = fac->priv;
   TpBaseConnection *base = (TpBaseConnection *) priv->conn;
   LmMessage *msg;
   LmMessageNode *node;
@@ -427,7 +425,7 @@ static void
 gabble_jingle_factory_dispose (GObject *object)
 {
   GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (object);
-  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
+  GabbleJingleFactoryPrivate *priv = fac->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -466,7 +464,7 @@ gabble_jingle_factory_get_property (GObject *object,
                                    GParamSpec *pspec)
 {
   GabbleJingleFactory *chan = GABBLE_JINGLE_FACTORY (object);
-  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (chan);
+  GabbleJingleFactoryPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -485,7 +483,7 @@ gabble_jingle_factory_set_property (GObject *object,
                                    GParamSpec *pspec)
 {
   GabbleJingleFactory *chan = GABBLE_JINGLE_FACTORY (object);
-  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (chan);
+  GabbleJingleFactoryPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -510,7 +508,7 @@ gabble_jingle_factory_constructor (GType type,
       constructor (type, n_props, props);
 
   self = GABBLE_JINGLE_FACTORY (obj);
-  priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (self);
+  priv = self->priv;
 
   /* FIXME: why was this in _constructed in media factory? */
   g_signal_connect (priv->conn,
@@ -556,7 +554,7 @@ connection_status_changed_cb (GabbleConnection *conn,
                               guint reason,
                               GabbleJingleFactory *self)
 {
-  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (self);
+  GabbleJingleFactoryPrivate *priv = self->priv;
 
   switch (status)
     {
@@ -640,7 +638,7 @@ connection_status_changed_cb (GabbleConnection *conn,
 static gboolean
 sid_in_use (GabbleJingleFactory *factory, const gchar *sid)
 {
-  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (factory);
+  GabbleJingleFactoryPrivate *priv = factory->priv;
   gpointer key, value;
 
   return g_hash_table_lookup_extended (priv->sessions, sid, &key, &value);
@@ -671,7 +669,7 @@ register_session (GabbleJingleFactory *factory,
                   const gchar *sid,
                   GabbleJingleSession *sess)
 {
-  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (factory);
+  GabbleJingleFactoryPrivate *priv = factory->priv;
   gchar *sid_copy;
 
   sid_copy = g_strdup (sid);
@@ -683,7 +681,7 @@ void
 _jingle_factory_unregister_session (GabbleJingleFactory *factory,
                                     const gchar *sid)
 {
-  GabbleJingleFactoryPrivate *priv = GABBLE_JINGLE_FACTORY_GET_PRIVATE (factory);
+  GabbleJingleFactoryPrivate *priv = factory->priv;
   g_hash_table_remove (priv->sessions, sid);
 }
 
@@ -694,8 +692,7 @@ jingle_cb (LmMessageHandler *handler,
            gpointer user_data)
 {
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
-  GabbleJingleFactoryPrivate *priv =
-      GABBLE_JINGLE_FACTORY_GET_PRIVATE (self);
+  GabbleJingleFactoryPrivate *priv = self->priv;
   GError *error = NULL;
   const gchar *sid;
   GabbleJingleSession *sess;
@@ -762,8 +759,7 @@ static GabbleJingleSession *
 create_session (GabbleJingleFactory *fac,
     const gchar *sid, TpHandle peer, const gchar *peer_resource)
 {
-  GabbleJingleFactoryPrivate *priv =
-      GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
+  GabbleJingleFactoryPrivate *priv = fac->priv;
   GabbleJingleSession *sess;
   gboolean local_initiator;
 
@@ -1085,8 +1081,7 @@ gabble_jingle_factory_create_google_relay_session (
     GabbleJingleFactoryRelaySessionCb callback,
     gpointer user_data)
 {
-  GabbleJingleFactoryPrivate *priv =
-      GABBLE_JINGLE_FACTORY_GET_PRIVATE (fac);
+  GabbleJingleFactoryPrivate *priv = fac->priv;
   gchar *url;
   guint i;
   RelaySessionData *rsd;

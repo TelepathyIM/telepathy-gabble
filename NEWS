@@ -25,6 +25,9 @@ Fixes:
 * Implement flow control in bytestream IBB. This should avoid flooding the
   XMPP connection when trying to send a large amount of data using IBB.
 
+* Make GetHandle() correspond to the TargetHandle[Type] properties on streamed
+  media channels, and further improve Jingle regression test coverage.
+
 telepathy-gabble 0.7.22 (2009-03-02)
 ====================================
 

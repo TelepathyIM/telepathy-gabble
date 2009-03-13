@@ -11,6 +11,11 @@ Enhancements:
 * Add functionality to ask for a Google-specific relay session, so Google Talk
   users can use Google's relay servers to make and receive Jingle calls
 
+* The CodecsUpdated method, introduced in spec version 0.17.19 and used to send
+  updated parameters for codecs such as Theora and H264 to the other party in a
+  call, is now implemented; incoming description-info stanzas containing
+  updated codec parameters are exposed as emissions of SetRemoteCodecs.
+
 Fixes:
 
 * Fix flow control in tubes when using a SI fallback bytestream

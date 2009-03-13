@@ -121,7 +121,7 @@ static void
 add_codec_to_table (JingleCodec *codec,
                     GHashTable *table)
 {
-  g_hash_table_insert (table, GUINT_TO_POINTER (codec->id), codec);
+  g_hash_table_insert (table, GUINT_TO_POINTER ((guint) codec->id), codec);
 }
 
 static GHashTable *
@@ -437,7 +437,7 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
   for (l = new_codecs; l != NULL; l = l->next)
     {
       new_c = l->data;
-      old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER (new_c->id));
+      old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER ((guint) new_c->id));
 
       if (!codec_update_coherent (old_c, new_c, GABBLE_XMPP_ERROR,
             XMPP_ERROR_BAD_REQUEST, &e))
@@ -450,7 +450,7 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
       GHashTable *params;
 
       new_c = l->data;
-      old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER (new_c->id));
+      old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER ((guint) new_c->id));
 
       params = old_c->params;
       old_c->params = new_c->params;
@@ -699,7 +699,8 @@ compare_codecs (GList *old,
   for (l = new; l != NULL; l = l->next)
     {
       new_c = l->data;
-      old_c = g_hash_table_lookup (old_table, GUINT_TO_POINTER (new_c->id));
+      old_c = g_hash_table_lookup (old_table, GUINT_TO_POINTER (
+            (guint) new_c->id));
 
       if (!codec_update_coherent (old_c, new_c, TP_ERRORS,
             TP_ERROR_INVALID_ARGUMENT, e))

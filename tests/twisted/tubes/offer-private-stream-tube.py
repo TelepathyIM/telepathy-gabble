@@ -97,8 +97,6 @@ def test(q, bus, conn, stream, bytestream_cls):
     # RequestChannel are the ones we wanted.
     sync_dbus(bus, q, conn)
 
-    requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
-
     # Test tubes with Bob. Bob has tube capabilities.
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
 
@@ -125,7 +123,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # Try CreateChannel with correct properties
     # Gabble must succeed
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              cs.TARGET_HANDLE: bob_handle,
@@ -376,19 +374,21 @@ def test(q, bus, conn, stream, bytestream_cls):
     bytestream1.open_bytestream()
 
     # have the fake client send us some data
-    bytestream1.send_data('hello, world')
+    data = 'hello, world'
+    bytestream1.send_data(data)
 
-    binary = bytestream1.get_data()
-    assert binary == 'hello, world'
+    binary = bytestream1.get_data(len(data))
+    assert binary == data, binary
 
     # have the fake client open the stream
     bytestream2.open_bytestream()
 
     # have the fake client send us some data
-    bytestream2.send_data('hello, new world')
+    data = 'hello, new world'
+    bytestream2.send_data(data)
 
-    binary = bytestream2.get_data()
-    assert binary == 'hello, new world'
+    binary = bytestream2.get_data(len(data))
+    assert binary == data, binary
 
     # OK, we're done
     conn.Disconnect()

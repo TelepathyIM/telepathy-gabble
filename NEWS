@@ -15,6 +15,9 @@ Fixes:
 
 * Fix flow control in tubes when using a SI fallback bytestream
 
+* Implement flow control in bytestream IBB. This should avoid flooding the
+  XMPP connection when trying to send a large amount of data using IBB.
+
 * Fix SOCKS5 implementation to actually respect XEP-0065.
   One of the changes would cause interoperability issues with
   older, buggy, Gabble implementing SOCKS5 (0.7.{18,19,20,21,22}):

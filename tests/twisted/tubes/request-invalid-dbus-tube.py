@@ -14,11 +14,9 @@ def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[0L, 1L])
 
-    requestotron = dbus.Interface(conn, CONN_IFACE_REQUESTS)
-
     for invalid_service_name in invalid_service_names:
         try:
-            requestotron.CreateChannel(
+            conn.Requests.CreateChannel(
                     {CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
                      TARGET_HANDLE_TYPE: HT_CONTACT,
                      TARGET_ID: 'alice@localhost',

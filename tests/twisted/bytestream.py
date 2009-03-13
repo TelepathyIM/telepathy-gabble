@@ -1,5 +1,7 @@
 import base64
 import sha
+import sys
+import random
 
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
@@ -8,7 +10,7 @@ from twisted.words.xish import xpath, domish
 from twisted.internet.error import CannotListenError
 
 from servicetest import Event, EventPattern
-from gabbletest import acknowledge_iq, sync_stream, make_result_iq
+from gabbletest import acknowledge_iq, sync_stream, make_result_iq, elem, elem_iq
 import ns
 
 def wait_events(q, expected, my_event):
@@ -62,7 +64,7 @@ class Bytestream(object):
     def wait_bytestream_open(self):
         raise NotImplemented
 
-    def get_data(self):
+    def get_data(self, size=0):
         raise NotImplemented
 
     def wait_bytestream_closed(self):
@@ -307,9 +309,17 @@ class BytestreamS5B(Bytestream):
             # Connection failed
             self.send_not_found(id)
 
-    def get_data(self):
-       e = self.q.expect('s5b-data-received', transport=self.transport)
-       return e.data
+    def get_data(self, size=0):
+        binary = ''
+        received = False
+        while not received:
+            e = self.q.expect('s5b-data-received', transport=self.transport)
+            binary += e.data
+
+            if len(binary) >= size or size == 0:
+                received = True
+
+        return binary
 
     def wait_bytestream_closed(self):
         self.q.expect('s5b-connection-lost')
@@ -449,7 +459,7 @@ def expect_socks5_reply(q):
 
 ##### XEP-0047: In-Band Bytestreams (IBB) #####
 
-class BytestreamIBBMsg(Bytestream):
+class BytestreamIBB(Bytestream):
     def __init__(self, stream, q, sid, initiator, target, initiated):
         Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
 
@@ -465,13 +475,17 @@ class BytestreamIBBMsg(Bytestream):
         iq['from'] = self.initiator
         open = iq.addElement((ns.IBB, 'open'))
         open['sid'] = self.stream_id
-        open['block-size'] = '4096'
+        # set a ridiculously small block size to stress test IBB buffering
+        open['block-size'] = '1'
         self.stream.send(iq)
 
         events_before = self.q.expect_many(*expected_before)
         events_after = self.q.expect_many(*expected_after)
 
         return events_before, events_after
+
+    def _send(self, from_, to, data):
+        raise NotImplemented
 
     def send_data(self, data):
         if self.initiated:
@@ -481,15 +495,7 @@ class BytestreamIBBMsg(Bytestream):
             from_ = self.target
             to = self.initiator
 
-        message = domish.Element(('jabber:client', 'message'))
-        message['to'] = to
-        message['from'] = from_
-        data_node = message.addElement((ns.IBB, 'data'))
-        data_node['sid'] = self.stream_id
-        data_node['seq'] = str(self.seq)
-        data_node.addContent(base64.b64encode(data))
-        self.stream.send(message)
-
+        self._send(from_, to, data)
         self.seq += 1
 
     def wait_bytestream_open(self):
@@ -502,18 +508,30 @@ class BytestreamIBBMsg(Bytestream):
         # open IBB bytestream
         acknowledge_iq(self.stream, event.stanza)
 
-    def get_data(self):
-        # wait for IBB stanzas
-        ibb_event = self.q.expect('stream-message')
+    def get_data(self, size=0):
+        # wait for IBB stanza. Gabble always uses IQ
 
-        data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
-            ibb_event.stanza)
-        assert data_nodes is not None
-        assert len(data_nodes) == 1
-        ibb_data = data_nodes[0]
-        binary = base64.b64decode(str(ibb_data))
+        binary = ''
+        received = False
+        while not received:
+            ibb_event = self.q.expect('stream-iq', query_ns=ns.IBB)
 
-        assert ibb_data['sid'] == self.stream_id
+            data_nodes = xpath.queryForNodes('/iq/data[@xmlns="%s"]' % ns.IBB,
+                ibb_event.stanza)
+            assert data_nodes is not None
+            assert len(data_nodes) == 1
+            ibb_data = data_nodes[0]
+            binary += base64.b64decode(str(ibb_data))
+
+            assert ibb_data['sid'] == self.stream_id
+
+            # ack the IQ
+            result = make_result_iq(self.stream, ibb_event.stanza)
+            result.send()
+
+            if len(binary) >= size or size == 0:
+                received = True
+
         return binary
 
     def wait_bytestream_closed(self):
@@ -521,6 +539,38 @@ class BytestreamIBBMsg(Bytestream):
 
         # sender finish to send the file and so close the bytestream
         acknowledge_iq(self.stream, close_event.stanza)
+
+class BytestreamIBBMsg(BytestreamIBB):
+    def _send(self, from_, to, data):
+        message = domish.Element(('jabber:client', 'message'))
+        message['to'] = to
+        message['from'] = from_
+        data_node = message.addElement((ns.IBB, 'data'))
+        data_node['sid'] = self.stream_id
+        data_node['seq'] = str(self.seq)
+        data_node.addContent(base64.b64encode(data))
+        self.stream.send(message)
+
+    def _wait_data_event(self):
+        ibb_event = self.q.expect('stream-message')
+
+        data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.IBB,
+            ibb_event.stanza)
+        assert data_nodes is not None
+        assert len(data_nodes) == 1
+        ibb_data = data_nodes[0]
+        assert ibb_data['sid'] == self.stream_id
+        return str(ibb_data), ibb_data['sid']
+
+class BytestreamIBBIQ(BytestreamIBB):
+    def _send(self, from_, to, data):
+        id = random.randint(0, sys.maxint)
+
+        iq = elem_iq(self.stream, 'set', to=to, from_=from_, to=to, id=str(id))(
+            elem('data', xmlns=ns.IBB, sid=self.stream_id, seq=str(self.seq))(
+                (unicode(base64.b64encode(data)))))
+
+        self.stream.send(iq)
 
 ##### SI Fallback (Gabble specific extension) #####
 class BytestreamSIFallback(Bytestream):
@@ -597,14 +647,8 @@ class BytestreamSIFallback(Bytestream):
     def send_data(self, data):
         self.used.send_data(data)
 
-    def get_data(self):
-        return self.used.get_data()
-
-    def send_data(self, data):
-        self.used.send_data(data)
-
-    def get_data(self):
-        return self.used.get_data()
+    def get_data(self, size=0):
+        return self.used.get_data(size)
 
     def wait_bytestream_closed(self):
         self.used.wait_bytestream_closed()

@@ -164,7 +164,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # Init the bytestream
     events, state_event = bytestream.open_bytestream(
-            [EventPattern('stream-iq', iq_type='result'),
+            [EventPattern('stream-iq', iq_type='result', query_ns=ns.SI),
                 EventPattern('dbus-return', method='AcceptDBusTube')],
             [EventPattern('dbus-signal', signal='TubeChannelStateChanged')])
 

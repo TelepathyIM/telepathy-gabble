@@ -7,7 +7,7 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import go, make_result_iq
+from gabbletest import go, make_result_iq, make_muc_presence
 from servicetest import call_async, lazy, match, tp_name_prefix
 
 def aliasing_iface(proxy):
@@ -48,22 +48,10 @@ def expect_members_changed1(event, data):
 @match('stream-presence', to='chat@conf.localhost/test')
 def expect_presence(event, data):
     # Send presence for other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/bob'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    data['stream'].send(presence)
+    data['stream'].send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    data['stream'].send(presence)
+    data['stream'].send(make_muc_presence('none', 'participant', 'chat@conf.localhost', 'test'))
     return True
 
 @match('dbus-signal', signal='MembersChanged',

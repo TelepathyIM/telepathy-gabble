@@ -1,7 +1,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern
-from gabbletest import exec_test, acknowledge_iq
+from gabbletest import exec_test, acknowledge_iq, make_muc_presence
 import constants as c
 
 from twisted.words.xish import domish, xpath
@@ -25,12 +25,7 @@ def test(q, bus, conn, stream):
 
     # Bob offers a stream tube
     bob_bus_name = ':2.Ym9i'
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/bob'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
+    presence = make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob')
     tubes = presence.addElement((ns.TUBES, 'tubes'))
     tube = tubes.addElement((None, 'tube'))
     tube['type'] = 'dbus'

@@ -7,7 +7,7 @@ import dbus
 
 from twisted.words.xish import domish, xpath
 
-from gabbletest import go, make_result_iq, acknowledge_iq
+from gabbletest import go, make_result_iq, acknowledge_iq, make_muc_presence
 from servicetest import call_async, lazy, match
 
 @match('dbus-signal', signal='StatusChanged', args=[0, 1])
@@ -44,13 +44,7 @@ def expect_members_changed1(event, data):
 @match('stream-presence', to='chat@conf.localhost/test')
 def expect_presence(event, data):
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    data['stream'].send(presence)
+    data['stream'].send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
     return True
 
 def add_field(elem, type, var, value):

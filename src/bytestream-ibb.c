@@ -62,7 +62,11 @@ enum
   LAST_PROPERTY
 };
 
-#define BUFFER_MAX_SIZE (512 * 1024)
+#define READ_BUFFER_MAX_SIZE (512 * 1024)
+
+/* the number of not acked stanzas allowed. Once this number reached, we stop
+ * sending and wait for acks. */
+#define WINDOW_SIZE 10
 
 struct _GabbleBytestreamIBBPrivate
 {
@@ -77,10 +81,22 @@ struct _GabbleBytestreamIBBPrivate
 
   guint16 seq;
   guint16 last_seq_recv;
+  LmMessage *close_iq_to_ack;
+
   /* We can't stop receving IBB data so if user wants to block the bytestream
    * we buffer them until he unblocks it. */
   gboolean read_blocked;
-  GString *buffer;
+  GString *read_buffer;
+  /* list of reffed (LmMessage *) */
+  GSList *received_stanzas_not_acked;
+
+  /* (LmMessage *) -> TRUE
+   * We don't keep a ref on the LmMessage as we just use this table to track
+   * stanzas waiting for reply. The stanza is never used (and so deferenced). */
+  GHashTable *sent_stanzas_not_acked;
+  GString *write_buffer;
+  gboolean write_blocked;
+
   gboolean dispose_has_run;
 };
 
@@ -94,7 +110,13 @@ gabble_bytestream_ibb_init (GabbleBytestreamIBB *self)
 
   self->priv = priv;
 
-  priv->buffer = NULL;
+  priv->read_buffer = NULL;
+  priv->received_stanzas_not_acked = NULL;
+
+  priv->sent_stanzas_not_acked = g_hash_table_new (g_direct_hash,
+      g_direct_equal);
+  priv->write_buffer = NULL;
+  priv->write_blocked = FALSE;
 }
 
 static void
@@ -117,6 +139,13 @@ gabble_bytestream_ibb_dispose (GObject *object)
       gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
     }
 
+  if (priv->close_iq_to_ack != NULL)
+    {
+      _gabble_connection_acknowledge_set_iq (priv->conn, priv->close_iq_to_ack);
+      lm_message_unref (priv->close_iq_to_ack);
+      priv->close_iq_to_ack = NULL;
+    }
+
   G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->dispose (object);
 }
 
@@ -131,8 +160,13 @@ gabble_bytestream_ibb_finalize (GObject *object)
   g_free (priv->peer_resource);
   g_free (priv->peer_jid);
 
-  if (priv->buffer != NULL)
-    g_string_free (priv->buffer, TRUE);
+  if (priv->read_buffer != NULL)
+    g_string_free (priv->read_buffer, TRUE);
+
+  if (priv->write_buffer != NULL)
+    g_string_free (priv->write_buffer, TRUE);
+
+  g_hash_table_destroy (priv->sent_stanzas_not_acked);
 
   G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->finalize (object);
 }
@@ -323,60 +357,135 @@ gabble_bytestream_ibb_class_init (
       param_spec);
 }
 
-/*
- * gabble_bytestream_ibb_send
- *
- * Implements gabble_bytestream_iface_send on GabbleBytestreamIface
- */
-static gboolean
-gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
-                            guint len,
-                            const gchar *str)
+static void
+change_write_blocked_state (GabbleBytestreamIBB *self,
+                            gboolean blocked)
 {
-  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
+  GabbleBytestreamIBBPrivate *priv =
+      GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+
+  if (priv->write_blocked == blocked)
+    return;
+
+  priv->write_blocked = blocked;
+  g_signal_emit_by_name (self, "write-blocked", blocked);
+}
+
+static void
+send_close_stanza (GabbleBytestreamIBB *self)
+{
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
-  guint sent, stanza_count;
-  LmMessageNode *data;
 
-  if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
+  if (priv->close_iq_to_ack != NULL)
     {
-      DEBUG ("can't send data through a not open bytestream (state: %d)",
-          priv->state);
-      return FALSE;
+      /* We received a close IQ and just need to ACK it */
+      _gabble_connection_acknowledge_set_iq (priv->conn, priv->close_iq_to_ack);
+      lm_message_unref (priv->close_iq_to_ack);
+      priv->close_iq_to_ack = NULL;
     }
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_MESSAGE,
-      '(', "data", "",
-        '*', &data,
+  DEBUG ("send IBB close stanza");
+
+  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "set",
+      '(', "close", "",
         '@', "xmlns", NS_IBB,
         '@', "sid", priv->stream_id,
-      ')',
-      '(', "amp", "",
-        '@', "xmlns", NS_AMP,
-        '(', "rule", "",
-          '@', "condition", "deliver-at",
-          '@', "value", "stored",
-          '@', "action", "error",
-        ')',
-        '(', "rule", "",
-          '@', "condition", "match-resource",
-          '@', "value", "exact",
-          '@', "action", "error",
-        ')',
       ')', NULL);
+
+  /* We don't really care about the answer as the bytestream
+   * is closed anyway. */
+  _gabble_connection_send_with_reply (priv->conn, msg,
+      NULL, NULL, NULL, NULL);
+
+  lm_message_unref (msg);
+}
+
+static gboolean
+send_data (GabbleBytestreamIBB *self, const gchar *str, guint len,
+    gboolean *result);
+
+static LmHandlerResult
+iq_acked_cb (GabbleConnection *conn,
+             LmMessage *sent_msg,
+             LmMessage *reply_msg,
+             GObject *obj,
+             gpointer user_data)
+{
+  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (obj);
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+
+  g_hash_table_remove (priv->sent_stanzas_not_acked, sent_msg);
+
+  if (priv->write_buffer != NULL)
+    {
+      guint sent;
+
+      DEBUG ("A stanza has been acked. Try to flush the buffer");
+
+      sent = send_data (self, priv->write_buffer->str, priv->write_buffer->len,
+          NULL);
+      if (sent == priv->write_buffer->len)
+        {
+          DEBUG ("buffer has been flushed; unblock write the bytestream");
+          g_string_free (priv->write_buffer, TRUE);
+          priv->write_buffer = NULL;
+
+          change_write_blocked_state (self, FALSE);
+
+          if (priv->state == GABBLE_BYTESTREAM_STATE_CLOSING)
+            {
+              DEBUG ("Can close the bystream now the buffer is flushed");
+              send_close_stanza (self);
+              g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED,
+                  NULL);
+            }
+        }
+      else
+        {
+          g_string_erase (priv->write_buffer, 0, sent);
+
+          DEBUG ("buffer has not been completely flushed; %" G_GSIZE_FORMAT
+              " bytes left",
+              priv->write_buffer->len);
+        }
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static gboolean
+send_data (GabbleBytestreamIBB *self,
+           const gchar *str,
+           guint len,
+           gboolean *result)
+{
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+  guint sent, stanza_count;
 
   sent = 0;
   stanza_count = 0;
   while (sent < len)
     {
+      LmMessage *iq;
       guint send_now, remaining;
       gchar *seq, *encoded;
       GError *error = NULL;
       gboolean ret;
+      guint nb_stanzas_waiting;
 
       remaining = (len - sent);
 
+      nb_stanzas_waiting = g_hash_table_size (priv->sent_stanzas_not_acked);
+      if (nb_stanzas_waiting >= WINDOW_SIZE)
+        {
+          DEBUG ("Window is full (%u). Stop sending stanzas",
+              nb_stanzas_waiting);
+          break;
+        }
+
+      /* We can send stanzas */
       if (remaining > priv->block_size)
         {
           /* We can't send all the remaining data in one stanza */
@@ -389,37 +498,113 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
         }
 
       encoded = base64_encode (send_now, str + sent, FALSE);
-      lm_message_node_set_value (data, encoded);
-
       seq = g_strdup_printf ("%u", priv->seq++);
-      lm_message_node_set_attribute (data, "seq", seq);
 
-      DEBUG ("send %d bytes", send_now);
-      ret = _gabble_connection_send (priv->conn, msg, &error);
+      iq = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
+          '@', "type", "set",
+          '(', "data", encoded,
+            '@', "xmlns", NS_IBB,
+            '@', "sid", priv->stream_id,
+            '@', "seq", seq,
+          ')', NULL);
+
+      ret = _gabble_connection_send_with_reply (priv->conn, iq, iq_acked_cb,
+          G_OBJECT (self), NULL, &error);
 
       g_free (encoded);
       g_free (seq);
+      lm_message_unref (iq);
 
       if (!ret)
         {
-          DEBUG ("error sending IBB Muc stanza: %s. Close the bytestream",
+          DEBUG ("error sending IBB stanza: %s. Close the bytestream",
               error->message);
           g_error_free (error);
-          lm_message_unref (msg);
 
           gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
-          return FALSE;
+
+          if (result != NULL)
+            *result = FALSE;
+
+          return sent;
         }
+
+      g_hash_table_insert (priv->sent_stanzas_not_acked, iq,
+          GUINT_TO_POINTER (TRUE));
+
+      DEBUG ("send %d bytes (window size: %u)", send_now,
+          nb_stanzas_waiting + 1);
 
       sent += send_now;
       stanza_count++;
     }
 
-  DEBUG ("finished to send %d bytes (%d stanzas needed)", len, stanza_count);
+  DEBUG ("sent %d bytes (%d stanzas needed)", sent, stanza_count);
 
-  lm_message_unref (msg);
+  if (result != NULL)
+    *result = TRUE;
+  return sent;
+}
 
-  return TRUE;
+/*
+ * gabble_bytestream_ibb_send
+ *
+ * Implements gabble_bytestream_iface_send on GabbleBytestreamIface
+ */
+static gboolean
+gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
+                            guint len,
+                            const gchar *str)
+{
+  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+  gboolean result;
+  guint sent;
+
+  if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
+    {
+      DEBUG ("can't send data through a not open bytestream (state: %d)",
+          priv->state);
+      return FALSE;
+    }
+
+  if (priv->write_blocked)
+    {
+      DEBUG ("sending data while the bytestream was blocked");
+    }
+
+  if (priv->write_buffer != NULL)
+    {
+      DEBUG ("Write buffer is not empty. Buffering data");
+
+      g_string_append_len (priv->write_buffer, str, len);
+      return TRUE;
+    }
+
+  sent = send_data (self, str, len, &result);
+  if (sent < len)
+    {
+      guint remaining;
+
+      DEBUG ("Some data have not been sent. Buffer them and write "
+          "block the bytestream");
+
+      remaining = (len - sent);
+
+      if (priv->write_buffer == NULL)
+        {
+          priv->write_buffer = g_string_new_len (str + sent, remaining);
+        }
+      else
+        {
+          g_string_append_len (priv->write_buffer, str + sent, remaining);
+        }
+
+      DEBUG ("write buffer size: %" G_GSIZE_FORMAT, priv->write_buffer->len);
+      change_write_blocked_state (self, TRUE);
+    }
+
+  return result;
 }
 
 void
@@ -468,10 +653,10 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
       gsize current_buffer_len = 0;
 
       DEBUG ("Bytestream is blocked. Buffering data");
-      if (priv->buffer != NULL)
-        current_buffer_len = priv->buffer->len;
+      if (priv->read_buffer != NULL)
+        current_buffer_len = priv->read_buffer->len;
 
-      if (current_buffer_len + str->len > BUFFER_MAX_SIZE)
+      if (current_buffer_len + str->len > READ_BUFFER_MAX_SIZE)
         {
           DEBUG ("Buffer is full. Closing the bytestream");
 
@@ -484,19 +669,21 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
           return;
         }
 
-      if (priv->buffer == NULL)
+      if (priv->read_buffer == NULL)
         {
-          priv->buffer = str;
+          priv->read_buffer = str;
         }
       else
         {
-          g_string_append_len (priv->buffer, str->str, str->len);
+          g_string_append_len (priv->read_buffer, str->str, str->len);
           g_string_free (str, TRUE);
         }
 
-      /* FIXME: we shouldn't ack until we consume data */
       if (is_iq)
-        _gabble_connection_acknowledge_set_iq (priv->conn, msg);
+        {
+          priv->received_stanzas_not_acked = g_slist_prepend (
+              priv->received_stanzas_not_acked, lm_message_ref (msg));
+        }
 
       return;
     }
@@ -594,10 +781,29 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+  GSList *l;
 
   if (priv->state == GABBLE_BYTESTREAM_STATE_CLOSED)
      /* bytestream already closed, do nothing */
      return;
+
+  /* Send error for pending IQ's */
+  priv->received_stanzas_not_acked = g_slist_reverse (
+      priv->received_stanzas_not_acked);
+
+  for (l = priv->received_stanzas_not_acked; l != NULL;
+      l = g_slist_next (l))
+    {
+      LmMessage *iq = (LmMessage *) l->data;
+
+      _gabble_connection_send_iq_error (priv->conn, iq,
+          XMPP_ERROR_ITEM_NOT_FOUND, NULL);
+
+      lm_message_unref (iq);
+    }
+
+  g_slist_free (priv->received_stanzas_not_acked);
+  priv->received_stanzas_not_acked = NULL;
 
   if (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {
@@ -606,25 +812,16 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
     }
   else
     {
-      LmMessage *msg;
-
-      DEBUG ("send IBB close stanza");
-
-      msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-          '@', "type", "set",
-          '(', "close", "",
-            '@', "xmlns", NS_IBB,
-            '@', "sid", priv->stream_id,
-          ')', NULL);
-
-      /* We don't really care about the answer as the bytestream
-       * is closed anyway. */
-      _gabble_connection_send_with_reply (priv->conn, msg,
-          NULL, NULL, NULL, NULL);
-
-      lm_message_unref (msg);
-
-      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+      if (priv->write_buffer != NULL)
+        {
+          DEBUG ("write buffer is not empty. Wait before sending close stanza");
+          g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSING, NULL);
+        }
+      else
+        {
+          send_close_stanza (self);
+          g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+        }
     }
 }
 
@@ -711,18 +908,48 @@ gabble_bytestream_ibb_block_reading (GabbleBytestreamIface *iface,
 
   DEBUG ("%s the transport bytestream", block ? "block": "unblock");
 
-  if (priv->buffer != NULL && !block)
+  if (priv->read_buffer != NULL && !block)
     {
+      GSList *l;
+
       DEBUG ("Bytestream unblocked, flushing the buffer");
 
       g_signal_emit_by_name (G_OBJECT (self), "data-received",
-          priv->peer_handle, priv->buffer);
+          priv->peer_handle, priv->read_buffer);
 
-      g_string_free (priv->buffer, TRUE);
-      priv->buffer = NULL;
+      g_string_free (priv->read_buffer, TRUE);
+      priv->read_buffer = NULL;
+
+      /* ack pending stanzas */
+      priv->received_stanzas_not_acked = g_slist_reverse (
+          priv->received_stanzas_not_acked);
+
+      for (l = priv->received_stanzas_not_acked; l != NULL;
+          l = g_slist_next (l))
+        {
+          LmMessage *iq = (LmMessage *) l->data;
+
+          _gabble_connection_acknowledge_set_iq (priv->conn, iq);
+
+          lm_message_unref (iq);
+        }
+
+      g_slist_free (priv->received_stanzas_not_acked);
+      priv->received_stanzas_not_acked = NULL;
     }
 }
 
+void
+gabble_bytestream_ibb_close_received (GabbleBytestreamIBB *self,
+                                      LmMessage *iq)
+{
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+
+  DEBUG ("received IBB close stanza. Closing bytestream");
+
+  priv->close_iq_to_ack = lm_message_ref (iq);
+  gabble_bytestream_ibb_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
+}
 
 static void
 bytestream_iface_init (gpointer g_iface,

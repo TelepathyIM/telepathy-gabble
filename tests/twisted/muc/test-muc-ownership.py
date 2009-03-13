@@ -11,7 +11,7 @@ import dbus
 
 from twisted.words.xish import domish, xpath
 
-from gabbletest import go, make_result_iq, exec_test
+from gabbletest import go, make_result_iq, exec_test, make_muc_presence
 from servicetest import call_async, lazy, match, tp_name_prefix, EventPattern
 
 def test(q, bus, conn, stream):
@@ -47,51 +47,21 @@ def test(q, bus, conn, stream):
     assert event.args == [0, 1]
 
     # Send presence for anonymous other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/bob'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
 
     # Send presence for anonymous other member of room (2)
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/brian'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'brian'))
 
     # Send presence for nonymous other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/che'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    item['jid'] = 'che@foo.com'
-    stream.send(presence)
+    stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost',
+        'che', 'che@foo.com'))
 
     # Send presence for nonymous other member of room (2)
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/chris'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    item['jid'] = 'chris@foo.com'
-    stream.send(presence)
+    stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost',
+        'chris', 'chris@foo.com'))
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost', 'test'))
 
     event = q.expect('dbus-signal', signal='GroupFlagsChanged')
     # Since we received MUC presence that contains an owner JID, the

@@ -162,11 +162,10 @@ def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestr
 
 
 def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls):
-    requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
     # Offer a tube to Alice (new API)
 
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              cs.TARGET_ID: 'alice@localhost',

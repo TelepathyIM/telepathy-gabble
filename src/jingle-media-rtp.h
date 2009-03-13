@@ -61,7 +61,7 @@ struct _GabbleJingleMediaRtp {
 };
 
 typedef struct {
-  guchar id;
+  guint8 id;
   gchar *name;
   guint clockrate;
   guint channels;
@@ -71,14 +71,12 @@ typedef struct {
 const gchar *gabble_jingle_media_rtp_parse (GabbleJingleMediaRtp *sess,
     LmMessage *message, GError **error);
 void jingle_media_rtp_register (GabbleJingleFactory *factory);
-void jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
-    GList *codecs);
+gboolean jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
+    GList *codecs, GError **error);
 GList *gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self);
 
 JingleCodec * jingle_media_rtp_codec_new (guint id, const gchar *name,
     guint clockrate, guint channels, GHashTable *params);
-void jingle_media_rtp_codec_free (JingleCodec *p);
-void jingle_media_rtp_free_codecs (GList *codecs);
 
 #endif /* __JINGLE_MEDIA_RTP_H__ */
 

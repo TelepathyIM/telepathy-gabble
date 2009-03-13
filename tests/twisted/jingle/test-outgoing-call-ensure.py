@@ -46,12 +46,8 @@ def test(q, bus, conn, stream):
 
     handle = conn.RequestHandles(1, [jt.remote_jid])[0]
 
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
-
-
     # Ensure a channel that doesn't exist yet.
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
@@ -103,7 +99,7 @@ def test(q, bus, conn, stream):
 
     # Now ensure a media channel with the same contact, and check it's the
     # same.
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
@@ -173,7 +169,7 @@ def test(q, bus, conn, stream):
     # Now, Ensuring a media channel with handle should yield the channel just
     # created.
 
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,

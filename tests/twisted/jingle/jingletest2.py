@@ -67,12 +67,18 @@ class JingleProtocol:
                 ('error', None, { 'type': errtype, 'xmlns':
                     'urn:ietf:params:xml:ns:xmpp-stanzas' }, [ errchild ]) ])
 
-    def PayloadType(self, name, rate, id, **kw):
+    def PayloadType(self, name, rate, id, parameters={}, **kw):
         "Creates a <payload-type> element"
         kw['name'] = name
         kw['rate'] = rate
         kw['id'] = id
-        return ('payload-type', None, kw, [])
+        chrilden = [self.Parameter(name, value)
+                    for name, value in parameters.iteritems()]
+        return ('payload-type', None, kw, chrilden)
+
+    def Parameter(self, name, value):
+        "Creates a <parameter> element"
+        return ('parameter', None, {'name': name, 'value': value}, [])
 
     def TransportGoogleP2P(self):
         "Creates a <transport> element for Google P2P transport"
@@ -305,15 +311,21 @@ class JingleTest2:
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
 
+    def dbusify_codecs(self, codecs):
+        dbussed_codecs = [ (id, name, 0, rate, 1, {} )
+                            for (name, id, rate) in codecs ]
+        return dbus.Array(dbussed_codecs, signature='(usuuua{ss})')
+
+    def dbusify_codecs_with_params(self, codecs):
+        dbussed_codecs = [ (id, name, 0, rate, 1, params)
+                            for (name, id, rate, params) in codecs ]
+        return dbus.Array(dbussed_codecs, signature='(usuuua{ss})')
+
     def get_audio_codecs_dbus(self):
-        codecs = [ (id, name, 0, rate, 0, {} )
-                   for (name, id, rate) in self.audio_codecs ]
-        return dbus.Array(codecs, signature='(usuuua{ss})')
+        return self.dbusify_codecs(self.audio_codecs)
 
     def get_video_codecs_dbus(self):
-        codecs = [ (id, name, 0, rate, 0, {} )
-                   for (name, id, rate) in self.video_codecs ]
-        return dbus.Array(codecs, signature='(usuuua{ss})')
+        return self.dbusify_codecs(self.video_codecs)
 
     def get_remote_transports_dbus(self):
         return dbus.Array([

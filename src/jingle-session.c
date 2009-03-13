@@ -103,21 +103,23 @@ static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = 
   /* JS_STATE_PENDING_INITIATE_SENT */
   { JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_SESSION_ACCEPT,
     JINGLE_ACTION_TRANSPORT_ACCEPT, /* required for GTalk4 */
+    JINGLE_ACTION_DESCRIPTION_INFO,
     JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_INITIATED */
   { JINGLE_ACTION_SESSION_ACCEPT, JINGLE_ACTION_SESSION_TERMINATE,
     JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_CONTENT_REJECT,
     JINGLE_ACTION_CONTENT_MODIFY, JINGLE_ACTION_CONTENT_ACCEPT,
-    JINGLE_ACTION_CONTENT_REMOVE, 
+    JINGLE_ACTION_CONTENT_REMOVE,  JINGLE_ACTION_DESCRIPTION_INFO,
     JINGLE_ACTION_TRANSPORT_ACCEPT, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_ACCEPT_SENT */
-  { JINGLE_ACTION_TRANSPORT_INFO,
+  { JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_DESCRIPTION_INFO,
     JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_ACTIVE */
   { JINGLE_ACTION_CONTENT_MODIFY, JINGLE_ACTION_CONTENT_ADD,
     JINGLE_ACTION_CONTENT_REMOVE, JINGLE_ACTION_CONTENT_REPLACE,
     JINGLE_ACTION_CONTENT_ACCEPT, JINGLE_ACTION_CONTENT_REJECT,
     JINGLE_ACTION_SESSION_INFO, JINGLE_ACTION_TRANSPORT_INFO,
+    JINGLE_ACTION_DESCRIPTION_INFO,
     JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_ENDED */
   { JINGLE_ACTION_UNKNOWN }
@@ -417,6 +419,8 @@ parse_action (const gchar *txt)
       return JINGLE_ACTION_SESSION_INFO;
   else if (!tp_strdiff (txt, "transport-accept"))
       return JINGLE_ACTION_TRANSPORT_ACCEPT;
+  else if (!tp_strdiff (txt, "description-info"))
+      return JINGLE_ACTION_DESCRIPTION_INFO;
 
   return JINGLE_ACTION_UNKNOWN;
 }
@@ -453,6 +457,8 @@ produce_action (JingleAction action, JingleDialect dialect)
       return "session-info";
     case JINGLE_ACTION_TRANSPORT_ACCEPT:
       return "transport-accept";
+    case JINGLE_ACTION_DESCRIPTION_INFO:
+      return "description-info";
     default:
       DEBUG ("unknown action %u", action);
       g_assert_not_reached ();
@@ -758,6 +764,20 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
 }
 
 static void
+_each_description_info (GabbleJingleSession *sess, GabbleJingleContent *c,
+    LmMessageNode *content_node, GError **error)
+{
+  if (c == NULL)
+    {
+      const gchar *name = lm_message_node_get_attribute (content_node, "name");
+      SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
+      return;
+    }
+
+  gabble_jingle_content_parse_description_info (c, content_node, error);
+}
+
+static void
 on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
   GError **error)
 {
@@ -947,6 +967,13 @@ on_transport_accept (GabbleJingleSession *sess, LmMessageNode *node,
   DEBUG ("Ignoring 'transport-accept' action from peer");
 }
 
+static void
+on_description_info (GabbleJingleSession *sess, LmMessageNode *node,
+    GError **error)
+{
+  _foreach_content (sess, node, _each_description_info, error);
+}
+
 
 static HandlerFunc handlers[] = {
   NULL, /* for unknown action */
@@ -961,7 +988,8 @@ static HandlerFunc handlers[] = {
   on_session_initiate,
   on_session_terminate, /* jingle_on_session_terminate */
   on_transport_info, /* jingle_on_transport_info */
-  on_transport_accept
+  on_transport_accept,
+  on_description_info
 };
 
 static void

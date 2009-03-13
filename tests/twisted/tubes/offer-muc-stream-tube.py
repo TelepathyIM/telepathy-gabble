@@ -10,6 +10,7 @@ from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
 import constants as cs
 import ns
 import tubetestutil as t
+from muctubeutil import get_muc_tubes_channel
 
 from twisted.words.xish import xpath
 from twisted.internet import reactor
@@ -43,85 +44,17 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     acknowledge_iq(stream, iq_event.stanza)
 
+    self_handle = conn.GetSelfHandle()
+    self_name = conn.InspectHandles(cs.HT_CONTACT, [self_handle])[0]
+
     t.check_conn_properties(q, conn)
 
-    self_handle = conn.GetSelfHandle()
-    self_name = conn.InspectHandles(1, [self_handle])[0]
-
-    call_async(q, conn, 'RequestHandles', cs.HT_ROOM,
-        ['chat@conf.localhost'])
-
-    event = q.expect('stream-iq', to='conf.localhost',
-            query_ns='http://jabber.org/protocol/disco#info')
-    result = make_result_iq(stream, event.stanza)
-    feature = result.firstChildElement().addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/muc'
-    stream.send(result)
-
-    event = q.expect('dbus-return', method='RequestHandles')
-    handles = event.value[0]
-    chat_handle = handles[0]
-
-    # request tubes channel
-    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TUBES,
-        cs.HT_ROOM, chat_handle, True)
-
-    _, stream_event = q.expect_many(
-        EventPattern('dbus-signal', signal='MembersChanged',
-            args=[u'', [], [], [], [2], 0, 0]),
-        EventPattern('stream-presence', to='chat@conf.localhost/test'))
-
-    # Send presence for other member of room.
-    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
-
-    # Send presence for own membership of room.
-    stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost', 'test'))
-
-    q.expect('dbus-signal', signal='MembersChanged',
-            args=[u'', [2, 3], [], [], [], 0, 0])
-
-    assert conn.InspectHandles(1, [2]) == ['chat@conf.localhost/test']
-    assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
-    bob_handle = 3
-
-    # text and tubes channels are created
-    # FIXME: We can't check NewChannel signals (old API) because two of them
-    # would be fired and we can't catch twice the same signals without specifying
-    # all their arguments.
-    new_sig, returned = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannels'),
-        EventPattern('dbus-return', method='RequestChannel'))
-
-    channels = new_sig.args[0]
-    assert len(channels) == 2
-
-    for channel in channels:
-        path, props = channel
-        type = props[cs.CHANNEL_TYPE]
-
-        if type == cs.CHANNEL_TYPE_TEXT:
-            # check text channel properties
-            assert props[cs.TARGET_HANDLE] == chat_handle
-            assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
-            assert props[cs.TARGET_ID] == 'chat@conf.localhost'
-            assert props[cs.REQUESTED] == False
-            assert props[cs.INITIATOR_HANDLE] == self_handle
-            assert props[cs.INITIATOR_ID] == self_name
-        elif type == cs.CHANNEL_TYPE_TUBES:
-            # check tubes channel properties
-            assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
-            assert props[cs.TARGET_HANDLE] == chat_handle
-            assert props[cs.TARGET_ID] == 'chat@conf.localhost'
-            assert props[cs.REQUESTED] == True
-            assert props[cs.INITIATOR_HANDLE] == self_handle
-            assert props[cs.INITIATOR_ID] == self_name
-        else:
-            assert True
-
-    tubes_chan = bus.get_object(conn.bus_name, returned.value[0])
-    tubes_iface = dbus.Interface(tubes_chan, cs.CHANNEL_TYPE_TUBES)
+    room_handle, tubes_chan, tubes_iface = get_muc_tubes_channel(q, bus, conn,
+        stream, 'chat@conf.localhost')
 
     tubes_self_handle = tubes_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
+
+    bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['chat@conf.localhost/bob'])[0]
 
     # offer stream tube (old API) using an Unix socket
     call_async(q, tubes_iface, 'OfferStreamTube',
@@ -185,7 +118,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert props[cs.INITIATOR_ID] == 'chat@conf.localhost/test'
     assert props[cs.INTERFACES] == [cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_TUBE]
     assert props[cs.REQUESTED] == True
-    assert props[cs.TARGET_HANDLE] == chat_handle
+    assert props[cs.TARGET_HANDLE] == room_handle
     assert props[cs.TARGET_ID] == 'chat@conf.localhost'
     assert props[cs.STREAM_TUBE_SERVICE] == 'echo'
 
@@ -247,16 +180,17 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # the server reply
     event = q.expect('socket-data', data='hello initiator', protocol=protocol)
-    protocol.sendData('hello joiner')
+    data = 'hello joiner'
+    protocol.sendData(data)
 
     # we receive server's data
-    binary = bytestream.get_data()
+    binary = bytestream.get_data(len(data))
+    assert binary == data, binary
 
     # offer a stream tube to another room (new API)
     srv_path = set_up_listener_socket(q, '/stream2')
-    requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
          cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
          cs.TARGET_ID: 'chat2@conf.localhost',

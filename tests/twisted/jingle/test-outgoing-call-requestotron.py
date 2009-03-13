@@ -47,9 +47,7 @@ def test(q, bus, conn, stream):
 
     handle = conn.RequestHandles(1, [jt.remote_jid])[0]
 
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
@@ -143,7 +141,26 @@ def test(q, bus, conn, stream):
     assert handle not in group_props['RemotePendingMembers'], group_props
     assert handle not in group_props['Members'], group_props
 
-    media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
+    list_streams_result = media_iface.ListStreams()
+    assert len(list_streams_result) == 0, streams
+
+    streams = media_iface.RequestStreams(handle,
+            [cs.MEDIA_STREAM_TYPE_AUDIO])
+
+    list_streams_result = media_iface.ListStreams()
+    assert streams == list_streams_result, (streams, list_streams_result)
+
+    assert len(streams) == 1, streams
+    assert len(streams[0]) == 6, streams[0]
+    # streams[0][0] is the stream identifier, which in principle we can't
+    # make any assertion about (although in practice it's probably 1)
+    assert streams[0][1] == handle, (streams[0], handle)
+    assert streams[0][2] == cs.MEDIA_STREAM_TYPE_AUDIO, streams[0]
+    # We haven't connected yet
+    assert streams[0][3] == cs.MEDIA_STREAM_STATE_DISCONNECTED, streams[0]
+    # In Gabble, requested streams start off bidirectional
+    assert streams[0][4] == cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL, streams[0]
+    assert streams[0][5] == 0, streams[0]
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')

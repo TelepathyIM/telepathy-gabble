@@ -108,6 +108,11 @@ struct _GabbleMediaStreamPrivate
   GValue native_codecs;     /* intersected codec list */
   GValue native_candidates;
 
+  /* Whether we're updating, as opposed to discovering, remote codecs.
+   * Changes SupportedCodecs/Error to no-ops.
+   */
+  gboolean updating_remote_codecs;
+
   GValue remote_codecs;
   GValue remote_candidates;
 
@@ -220,6 +225,8 @@ gabble_media_stream_init (GabbleMediaStream *self)
       dbus_g_type_specialized_construct (candidate_list_type));
 
   priv->stun_servers = g_ptr_array_sized_new (1);
+
+  priv->updating_remote_codecs = FALSE;
 }
 
 static gboolean
@@ -409,6 +416,8 @@ gabble_media_stream_set_property (GObject      *object,
         }
       break;
     case PROP_COMBINED_DIRECTION:
+      DEBUG ("changing combined direction from %u to %u",
+          stream->combined_direction, g_value_get_uint (value));
       stream->combined_direction = g_value_get_uint (value);
       break;
     case PROP_CONTENT:
@@ -779,9 +788,15 @@ gabble_media_stream_error_async (TpSvcMediaStreamHandler *iface,
                                  DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
   GError *error = NULL;
 
-  if (gabble_media_stream_error (self, errno, message, &error))
+  /* description-info is purely advisory; if the streaming implementation
+   * doesn't like the new codec parameters, we don't want to terminate the
+   * session. So we don't error out the media stream in that case.
+   */
+  if (priv->updating_remote_codecs ||
+      gabble_media_stream_error (self, errno, message, &error))
     {
       tp_svc_media_stream_handler_return_from_error (context);
     }
@@ -1089,33 +1104,15 @@ gabble_media_stream_ready (TpSvcMediaStreamHandler *iface,
   gabble_media_stream_set_local_codecs (iface, codecs, context);
 }
 
-static void
-pass_local_codecs (GabbleMediaStream *stream, const GPtrArray *codecs,
-    gboolean intersection)
+static gboolean
+pass_local_codecs (GabbleMediaStream *stream,
+                   const GPtrArray *codecs,
+                   GError **error)
 {
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
   GList *li = NULL;
   JingleCodec *c;
   guint i;
-
-  /* if content is created by us, we want all the codecs, else we want the
-   * intersection. */
-  if (gabble_jingle_content_is_created_by_us (priv->content))
-    {
-      if (intersection)
-        {
-          DEBUG ("we already sent our codecs, ignoring codec intersection");
-          return;
-        }
-    }
-  else
-    {
-      if (!intersection)
-        {
-          DEBUG ("ignoring local codecs, waiting for codec intersection");
-          return;
-        }
-    }
 
   DEBUG ("putting list of %d supported codecs from stream-engine into cache",
       codecs->len);
@@ -1149,7 +1146,8 @@ pass_local_codecs (GabbleMediaStream *stream, const GPtrArray *codecs,
       li = g_list_append (li, c);
     }
 
-  jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content), li);
+  return jingle_media_rtp_set_local_codecs (
+      GABBLE_JINGLE_MEDIA_RTP (priv->content), li, error);
 }
 
 /**
@@ -1164,8 +1162,26 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
                                       DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GError *error = NULL;
 
-  pass_local_codecs (self, codecs, FALSE);
+  DEBUG ("called");
+
+  if (gabble_jingle_content_is_created_by_us (self->priv->content))
+    {
+      if (!pass_local_codecs (self, codecs, &error))
+        {
+          DEBUG ("failed: %s", error->message);
+
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return;
+        }
+    }
+  else
+    {
+      DEBUG ("ignoring local codecs, waiting for codec intersection");
+    }
+
   tp_svc_media_stream_handler_return_from_set_local_codecs (context);
 }
 
@@ -1219,10 +1235,75 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
                                       DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
+  GError *error = NULL;
 
-  pass_local_codecs (self, codecs, TRUE);
-  g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
+  DEBUG ("called");
+
+  /* We don't need to do anything in response to the streaming implementation
+   * deciding it likes the new codec paramaters.
+   */
+  if (!priv->updating_remote_codecs)
+    {
+      if (gabble_jingle_content_is_created_by_us (self->priv->content))
+        {
+          DEBUG ("we already sent our codecs, ignoring codec intersection");
+        }
+      else
+        {
+          if (!pass_local_codecs (self, codecs, &error))
+            {
+              DEBUG ("failed: %s", error->message);
+
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+              return;
+            }
+
+          g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
+        }
+    }
+
   tp_svc_media_stream_handler_return_from_supported_codecs (context);
+}
+
+/**
+ * gabble_media_stream_codecs_updated
+ *
+ * Implements D-Bus method CodecsUpdated
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ */
+static void
+gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
+                                    const GPtrArray *codecs,
+                                    DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  gboolean codecs_set =
+      (g_value_get_boxed (&self->priv->native_codecs) != NULL);
+  GError *error = NULL;
+
+  if (!codecs_set)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "CodecsUpdated may only be called once an initial set of codecs "
+          "has been set" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  if (pass_local_codecs (self, codecs, &error))
+    {
+      tp_svc_media_stream_handler_return_from_codecs_updated (context);
+    }
+  else
+    {
+      DEBUG ("failed: %s", error->message);
+
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 void
@@ -1258,7 +1339,17 @@ new_remote_codecs_cb (GabbleJingleContent *content,
 
   codecs = g_value_get_boxed (&priv->remote_codecs);
 
-  g_assert (codecs->len == 0);
+  /* If the codecs have already been set, this means the peer is updating their
+   * parameters. XEP-0167 says that description-info is advisory, so regardless
+   * of whether the streaming implementation calls SupportedCodecs or Error we
+   * don't want to do anything. So, set a flag to indicate that we've entered
+   * this situation.
+   */
+  if (codecs->len != 0)
+    {
+      priv->updating_remote_codecs = TRUE;
+      g_value_reset (&priv->remote_codecs);
+    }
 
   for (li = clist; li; li = li->next)
     {
@@ -1605,6 +1696,8 @@ gabble_media_stream_change_direction (GabbleMediaStream *stream,
       update_sending (stream, start_sending);
     }
 
+  DEBUG ("current_dir: %u, requested_dir: %u", current_dir, requested_dir);
+
   /* short-circuit sending a request if we're not asking for anything new */
   if (current_dir == requested_dir)
     return TRUE;
@@ -1702,6 +1795,7 @@ stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(stream_state,);
   IMPLEMENT(supported_codecs,);
   IMPLEMENT(unhold_failure,);
+  IMPLEMENT(codecs_updated,);
 #undef IMPLEMENT
 }
 

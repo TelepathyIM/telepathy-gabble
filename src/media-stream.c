@@ -46,6 +46,7 @@
 #include "jingle-media-rtp.h"
 #include "media-channel.h"
 #include "namespaces.h"
+#include "util.h"
 
 static void stream_handler_iface_init (gpointer, gpointer);
 static void dbus_properties_iface_init (gpointer, gpointer);
@@ -117,9 +118,6 @@ struct _GabbleMediaStreamPrivate
   GValue remote_candidates;
 
   guint remote_candidate_count;
-
-  /* signal handler ID for content REMOVED signal */
-  gulong removed_id;
 
   /* source ID for initial codecs/candidates getter */
   gulong initial_getter_id;
@@ -423,7 +421,7 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_CONTENT:
       g_assert (priv->content == NULL);
 
-      priv->content = g_value_get_object (value);
+      priv->content = g_value_dup_object (value);
 
         {
           guint jtype;
@@ -443,22 +441,23 @@ gabble_media_stream_set_property (GObject      *object,
         }
 
       DEBUG ("%p: connecting to content %p signals", stream, priv->content);
-      g_signal_connect (priv->content, "new-candidates",
-          (GCallback) new_remote_candidates_cb, stream);
+
+      gabble_signal_connect_weak (priv->content, "new-candidates",
+          (GCallback) new_remote_candidates_cb, object);
 
       /* we need this also, if we're the initiator of the stream
        * (so remote codecs arrive later) */
-      g_signal_connect (priv->content, "remote-codecs",
-          (GCallback) new_remote_codecs_cb, stream);
+      gabble_signal_connect_weak (priv->content, "remote-codecs",
+          (GCallback) new_remote_codecs_cb, object);
 
-      g_signal_connect (priv->content, "notify::state",
-          (GCallback) content_state_changed_cb, stream);
+      gabble_signal_connect_weak (priv->content, "notify::state",
+          (GCallback) content_state_changed_cb, object);
 
-      g_signal_connect (priv->content, "notify::senders",
-          (GCallback) content_senders_changed_cb, stream);
+      gabble_signal_connect_weak (priv->content, "notify::senders",
+          (GCallback) content_senders_changed_cb, object);
 
-      priv->removed_id = g_signal_connect (priv->content, "removed",
-          (GCallback) content_removed_cb, stream);
+      gabble_signal_connect_weak (priv->content, "removed",
+          (GCallback) content_removed_cb, object);
       break;
     case PROP_NAT_TRAVERSAL:
       g_assert (priv->nat_traversal == NULL);
@@ -695,13 +694,8 @@ gabble_media_stream_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* If content wasn't removed already, it will emit REMOVED signal
-   * later on. We don't want to catch that. */
-  if (priv->removed_id)
-    {
-      g_signal_handler_disconnect (priv->content, priv->removed_id);
-      priv->removed_id = 0;
-    }
+  g_object_unref (priv->content);
+  priv->content = NULL;
 
   if (G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose (object);

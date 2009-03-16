@@ -1395,10 +1395,10 @@ socks5_init_error:
  */
 #ifdef HAVE_GETIFADDRS
 
-static GList *
+static GSList *
 get_local_interfaces_ips (gboolean include_loopback)
 {
-  GList *ips = NULL;
+  GSList *ips = NULL;
   struct ifaddrs *ifa, *results;
   gchar *loopback = NULL;
 
@@ -1452,24 +1452,24 @@ get_local_interfaces_ips (gboolean include_loopback)
         }
       else
         {
-          ips = g_list_append (ips, g_strdup (straddr));
+          ips = g_slist_append (ips, g_strdup (straddr));
         }
     }
 
   freeifaddrs (results);
 
   if (loopback)
-    ips = g_list_append (ips, loopback);
+    ips = g_slist_append (ips, loopback);
 
   return ips;
 }
 
 #else /* ! HAVE_GETIFADDRS */
 
-static GList *
+static GSList *
 get_local_interfaces_ips (gboolean include_loopback)
 {
-  GList *ips = NULL;
+  GSList *ips = NULL;
   gint sockfd;
   gint size = 0;
   struct ifreq *ifr;
@@ -1534,7 +1534,7 @@ get_local_interfaces_ips (gboolean include_loopback)
         }
       else
         {
-          ips = g_list_append (ips, g_strdup (inet_ntoa (sa->sin_addr)));
+          ips = g_slist_append (ips, g_strdup (inet_ntoa (sa->sin_addr)));
         }
     }
 
@@ -1542,7 +1542,7 @@ get_local_interfaces_ips (gboolean include_loopback)
   free (ifc.ifc_req);
 
   if (loopback)
-    ips = g_list_append (ips, loopback);
+    ips = g_slist_append (ips, loopback);
 
   return ips;
 }
@@ -1580,8 +1580,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   gchar *port;
   gint port_num;
   LmMessage *msg;
-  GList *ips;
-  GList *ip;
+  GSList *ips, *ip;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -1615,7 +1614,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 
   ips = get_local_interfaces_ips (FALSE);
 
-  for (ip = ips; ip != NULL; ip = g_list_next (ip))
+  for (ip = ips; ip != NULL; ip = g_slist_next (ip))
     {
       LmMessageNode *node = lm_message_node_add_child (msg->node->children,
           "streamhost", "");
@@ -1627,7 +1626,8 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 
       g_free (ip->data);
     }
-  g_list_free (ips);
+
+  g_slist_free (ips);
   g_free (port);
 
   /* FIXME: for now we support only direct connections, we should also

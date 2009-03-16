@@ -1388,7 +1388,7 @@ socks5_init_error:
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-/* get_local_interfaces_ips copied from Farsight 2 (function
+/* get_local_interfaces_ips original code from Farsight 2 (function
  * fs_interfaces_get_local_ips in /gst-libs/gst/farsight/fs-interfaces.c).
  *   Copyright (C) 2006 Youness Alaoui <kakaroto@kakaroto.homelinux.net>
  *   Copyright (C) 2007 Collabora

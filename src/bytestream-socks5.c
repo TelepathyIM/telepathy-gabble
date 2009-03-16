@@ -1837,10 +1837,6 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   g_list_free (ips);
   g_free (port);
 
-  /* FIXME: for now we support only direct connections, we should also
-   * add support for external proxies to have more chances to make the
-   * bytestream work */
-
   proxies = gabble_bytestream_factory_get_socks_proxies(
       priv->conn->bytestream_factory);
 

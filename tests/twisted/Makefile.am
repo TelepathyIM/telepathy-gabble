@@ -58,6 +58,7 @@ TWISTED_TESTS = \
 	tubes/offer-private-stream-tube.py \
 	tubes/request-invalid-dbus-tube.py \
 	tubes/test-get-available-tubes.py \
+	tubes/test-socks5-muc.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \

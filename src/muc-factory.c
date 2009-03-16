@@ -344,7 +344,7 @@ muc_ready_cb (GabbleMucChannel *text_chan,
       /* Announce text and tubes text_chan together */
       GHashTable *channels;
 
-      channels = g_hash_table_new(g_direct_hash, g_direct_equal);
+      channels = g_hash_table_new (g_direct_hash, g_direct_equal);
       g_hash_table_insert (channels, text_chan, requests_satisfied_text);
       g_hash_table_insert (channels, tubes_chan, requests_satisfied_tubes);
 

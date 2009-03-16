@@ -751,7 +751,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         DEBUG ("Received auth reply. Sending CONNECT command");
 
-        domain = compute_domain(priv->stream_id, priv->peer_jid,
+        domain = compute_domain (priv->stream_id, priv->peer_jid,
             priv->self_full_jid);
 
         msg[0] = SOCKS5_VERSION;
@@ -808,7 +808,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        domain = compute_domain(priv->stream_id, priv->peer_jid,
+        domain = compute_domain (priv->stream_id, priv->peer_jid,
             priv->self_full_jid);
 
         if (!check_domain (&string->str[5], domain_len, domain))
@@ -931,7 +931,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        domain = compute_domain(priv->stream_id, priv->self_full_jid,
+        domain = compute_domain (priv->stream_id, priv->self_full_jid,
             priv->peer_jid);
 
         if (!check_domain (&string->str[5], domain_len, domain))

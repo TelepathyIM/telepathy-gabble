@@ -1,5 +1,35 @@
-telepathy-gabble 0.7.23 (UNRELEASED)
+telepathy-gabble 0.7.24 (UNRELEASED)
 ====================================
+
+Fixes:
+
+* Fix SOCKS5 implementation to actually respect XEP-0065.
+  One of the changes would cause interoperability issues with
+  older, buggy, Gabble implementing SOCKS5 (0.7.{18,19,20,21,22}):
+
+  - A stream tube (muc or private) offers from a new Gabble to an old one will
+    takes 30 extra seconds trying to connect and will then timed out and
+    fallback to IBB.
+
+  - A MUC stream tube offered from an old Gabble to a new one will fail
+    during SOCKS5 negotiation and then fallback to IBB.
+
+  - A private stream tube offered by an old Gabble to a new one will appear
+    to connect properly, but the application offering the tube will receive
+    garbage from the tube socket.
+
+  - Same problem with a private D-Bus tube offered by a new Gabble to an
+    old one: the receiver of the tube will receive wrong data.
+
+  These problems only appear when a SOCKS5 connection is possible, so
+  generally when both peers are on the same network. If they are not,
+  SOCKS5 connection will probably be impossible because of NAT's and
+  they'll fallback to IBB as usual.
+
+telepathy-gabble 0.7.23 (2009-03-13)
+====================================
+
+The "bolt the door and pace the floor" release.
 
 Dependencies:
 
@@ -11,6 +41,11 @@ Enhancements:
 * Add functionality to ask for a Google-specific relay session, so Google Talk
   users can use Google's relay servers to make and receive Jingle calls
 
+* The CodecsUpdated method, introduced in spec version 0.17.19 and used to send
+  updated parameters for codecs such as Theora and H264 to the other party in a
+  call, is now implemented; incoming description-info stanzas containing
+  updated codec parameters are exposed as emissions of SetRemoteCodecs.
+
 Fixes:
 
 * Fix flow control in tubes when using a SI fallback bytestream
@@ -18,28 +53,8 @@ Fixes:
 * Implement flow control in bytestream IBB. This should avoid flooding the
   XMPP connection when trying to send a large amount of data using IBB.
 
-* Fix SOCKS5 implementation to actually respect XEP-0065.
-  One of the changes would cause interoperability issues with
-  older, buggy, Gabble implementing SOCKS5 (0.7.{18,19,20,21}):
-
-  - A stream tube (muc or private) offers from a new Gabble to an old one will
-    takes 30 extra seconds trying to connect and will then timed out and
-    fallback to IBB.
-
-  - A MUC stream tube offered from an old Gabble to a new one will fail
-    during SOCKS5 negotiation and then fallback to IBB.
-
-  - A private stream tube offered from an old Gabble to a new one will,
-    apparantely, connect properly but the server application (tube offer side)
-    will receive crap data from the tube socket.
-
-  - Same problem with a private D-Bus tube offered by a new Gabble to an
-    old one: the receiver of the tube will receive wrong data.
-
-  These problems only appear when a SOCKS5 connection is possible, so
-  generally when both peers are on the same network. If they are not,
-  SOCKS5 connection will probably be impossible because of NAT's and
-  they'll fallback to IBB as usual.
+* Make GetHandle() correspond to the TargetHandle[Type] properties on streamed
+  media channels, and further improve Jingle regression test coverage.
 
 telepathy-gabble 0.7.22 (2009-03-02)
 ====================================

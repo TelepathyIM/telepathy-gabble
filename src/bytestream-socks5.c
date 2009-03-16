@@ -642,11 +642,13 @@ socks5_error (GabbleBytestreamSocks5 *self)
         /* The attempt for connect to the streamhost failed */
         socks5_close_transport (self);
 
-        /* Remove the failed streamhost */
-        g_assert (priv->streamhosts);
-        streamhost_free (priv->streamhosts->data);
-        priv->streamhosts = g_slist_delete_link (priv->streamhosts,
-            priv->streamhosts);
+        if (priv->streamhosts != NULL)
+          {
+            /* Remove the failed streamhost */
+            streamhost_free (priv->streamhosts->data);
+            priv->streamhosts = g_slist_delete_link (priv->streamhosts,
+                priv->streamhosts);
+          }
 
         if (priv->streamhosts != NULL)
           {
@@ -1295,6 +1297,13 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
   if (port == NULL)
     {
       DEBUG ("streamhost doesn't contain a port");
+      return;
+    }
+
+  if (tp_strdiff (jid, priv->peer_jid) && priv->muc_contact)
+    {
+      DEBUG ("skip streamhost %s (%s:%s); we don't support relay with muc "
+          "contact", jid, host, port);
       return;
     }
 

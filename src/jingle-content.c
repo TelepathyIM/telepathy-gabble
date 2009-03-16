@@ -953,7 +953,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 
   msg = gabble_jingle_session_new_message (c->session,
       JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
-  gabble_jingle_content_produce_node (c, sess_node, FALSE); 
+  gabble_jingle_content_produce_node (c, sess_node, FALSE);
   gabble_jingle_session_send (c->session, msg, NULL, NULL);
 
   /* FIXME: actually check whether remote end accepts our content-modify */

@@ -11,130 +11,53 @@ Regression test for https://bugs.freedesktop.org/show_bug.cgi?id=11201
 
 import base64
 
-import dbus
 from twisted.words.xish import xpath
 
-from servicetest import call_async, lazy, match, tp_name_prefix
-from gabbletest import go
+from servicetest import call_async, sync_dbus
+from gabbletest import exec_test, \
+    expect_and_handle_get_vcard, expect_and_handle_set_vcard
 
-def aliasing_iface(proxy):
-    return dbus.Interface(proxy, tp_name_prefix +
-        '.Connection.Interface.Aliasing')
+import ns
 
-def avatars_iface(proxy):
-    return dbus.Interface(proxy, tp_name_prefix +
-        '.Connection.Interface.Avatars')
+def test(q, bus, conn, stream):
+    conn.Connect()
 
-@lazy
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
-    return True
+    expect_and_handle_get_vcard(q, stream)
 
-@match('stream-iq')
-def expect_get_vcard(event, data):
-    # Looking for something like this:
-    #   <iq xmlns='jabber:client' type='get' id='262286393608'>
-    #      <vCard xmlns='vcard-temp'/>
-
-    iq = event.stanza
-
-    if iq['type'] != 'get':
-        return False
-
-    if iq.uri != 'jabber:client':
-        return False
-
-    vcard = list(iq.elements())[0]
-
-    if vcard.name != 'vCard':
-        return False
-    if vcard.uri != 'vcard-temp':
-        return False
-
-    # Send empty vCard back.
-    iq['type'] = 'result'
-    data['stream'].send(iq)
-
-    call_async(data['test'], data['conn_iface'],
-               'GetSelfHandle')
-    return True
-
-@match('dbus-return', method='GetSelfHandle')
-def expect_got_self_handle(event, data):
+    call_async(q, conn, 'GetSelfHandle')
+    event = q.expect('dbus-return', method='GetSelfHandle')
     handle = event.value[0]
 
-    call_async(data['test'], aliasing_iface(data['conn']),
-               'SetAliases', {handle: 'Some Guy'})
-    call_async(data['test'], avatars_iface(data['conn']),
-               'SetAvatar', 'hello', 'image/png')
+    call_async(q, conn.Aliasing, 'SetAliases', {handle: 'Some Guy'})
+    call_async(q, conn.Avatars, 'SetAvatar', 'hello', 'image/png')
 
-    return True
+    # Gabble asks for the self-vCard again (FIXME: why? Interestingly, when I
+    # called GetSelfHandle synchronously Gabble *didn't* ask for the vCard
+    # again.)
+    expect_and_handle_get_vcard(q, stream)
 
-@match('stream-iq')
-def expect_get_vcard_again(event, data):
-    # Looking for something like this:
-    #   <iq xmlns='jabber:client' type='get' id='262286393608'>
-    #      <vCard xmlns='vcard-temp'/>
+    def has_nickname_and_photo(vcard):
+        nicknames = xpath.queryForNodes('/vCard/NICKNAME', vcard)
+        assert nicknames is not None
+        assert len(nicknames) == 1
+        assert str(nicknames[0]) == 'Some Guy'
 
-    iq = event.stanza
+        photos = xpath.queryForNodes('/vCard/PHOTO', vcard)
+        assert photos is not None and len(photos) == 1, repr(photos)
+        types = xpath.queryForNodes('/PHOTO/TYPE', photos[0])
+        binvals = xpath.queryForNodes('/PHOTO/BINVAL', photos[0])
+        assert types is not None and len(types) == 1, repr(types)
+        assert binvals is not None and len(binvals) == 1, repr(binvals)
+        assert str(types[0]) == 'image/png'
+        got = str(binvals[0])
+        exp = base64.b64encode('hello')
+        assert got == exp, (got, exp)
 
-    if iq['type'] != 'get':
-        return False
+    # Now Gabble should set a new vCard with both of the above changes.
+    expect_and_handle_set_vcard(q, stream, has_nickname_and_photo)
 
-    if iq.uri != 'jabber:client':
-        return False
-
-    vcard = list(iq.elements())[0]
-
-    if vcard.name != 'vCard':
-        return False
-    if vcard.uri != 'vcard-temp':
-        return False
-
-    iq['type'] = 'result'
-    data['stream'].send(iq)
-
-    return True
-
-@match('stream-iq')
-def expect_set_vcard(event, data):
-    iq = event.stanza
-
-    if iq['type'] != 'set':
-        return False
-
-    if iq.uri != 'jabber:client':
-        return False
-
-    vcard = list(iq.elements())[0]
-
-    if vcard.name != 'vCard':
-        return False
-    if vcard.uri != 'vcard-temp':
-        return False
-
-    nicknames = xpath.queryForNodes('/vCard/NICKNAME', vcard)
-    assert nicknames is not None
-    assert len(nicknames) == 1
-    assert str(nicknames[0]) == 'Some Guy'
-
-    photos = xpath.queryForNodes('/vCard/PHOTO', vcard)
-    assert photos is not None and len(photos) == 1, repr(photos)
-    types = xpath.queryForNodes('/PHOTO/TYPE', photos[0])
-    binvals = xpath.queryForNodes('/PHOTO/BINVAL', photos[0])
-    assert types is not None and len(types) == 1, repr(types)
-    assert binvals is not None and len(binvals) == 1, repr(binvals)
-    assert str(types[0]) == 'image/png'
-    got = str(binvals[0])
-    exp = base64.b64encode('hello')
-    assert got == exp, (got, exp)
-
-    data['conn_iface'].Disconnect()
-    return True
-
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
+    exec_test(test)

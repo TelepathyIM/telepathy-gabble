@@ -63,7 +63,7 @@ GType gabble_file_transfer_channel_get_type (void);
                               GabbleFileTransferChannelClass))
 
 GabbleFileTransferChannel *
-gabble_file_transfer_channel_new (GabbleConnection *conn, const gchar *path,
+gabble_file_transfer_channel_new (GabbleConnection *conn,
     TpHandle handle, TpHandle initiator_handle, TpFileTransferState state,
     const gchar *content_type, const gchar *filename, guint64 size,
     TpFileHashType content_hash_type, const gchar *content_hash,

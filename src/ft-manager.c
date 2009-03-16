@@ -79,23 +79,6 @@ gabble_ft_manager_init (GabbleFtManager *obj)
   priv->channels = NULL;
 }
 
-static gchar *
-generate_object_path (GabbleFtManager *self,
-                      TpHandle handle)
-{
-  GabbleFtManagerPrivate *priv = GABBLE_FT_MANAGER_GET_PRIVATE (self);
-  TpBaseConnection *base_connection = TP_BASE_CONNECTION (priv->connection);
-  /* Increasing guint to make sure object paths are random */
-  static guint id = 0;
-  gchar *path;
-
-  path = g_strdup_printf ("%s/FileTransferChannel/%u/%u",
-      base_connection->object_path, handle, id++);
-
-  DEBUG ("Object path of file channel is %s", path);
-  return path;
-}
-
 static void gabble_ft_manager_dispose (GObject *object);
 static void gabble_ft_manager_finalize (GObject *object);
 
@@ -245,7 +228,6 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
   TpFileHashType content_hash_type;
   GError *error = NULL;
   gboolean valid;
-  gchar *path = NULL;
 
   DEBUG ("File transfer request");
 
@@ -347,14 +329,10 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
 
   DEBUG ("Requested outgoing channel for handle: %d", handle);
 
-  path = generate_object_path (self, handle);
-
-  chan = gabble_file_transfer_channel_new (priv->connection, path,
+  chan = gabble_file_transfer_channel_new (priv->connection,
       handle, base_connection->self_handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
       description, date, initial_offset, NULL);
-
-  g_free (path);
 
   if (!gabble_file_transfer_channel_offer_file (chan, &error))
     {
@@ -435,7 +413,6 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   guint64 date = 0;
   TpFileHashType content_hash_type;
   GabbleFileTransferChannel *chan;
-  gchar *path;
 
   si_node = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
   g_assert (si_node != NULL);
@@ -500,17 +477,13 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
         date = (guint64) mktime (&tm);
     }
 
-  path = generate_object_path (self, handle);
-
   /* TODO: initial offset */
-  chan = gabble_file_transfer_channel_new (priv->connection, path,
+  chan = gabble_file_transfer_channel_new (priv->connection,
       handle, handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
       description, date, 0, bytestream);
 
   gabble_ft_manager_channel_created (self, chan, NULL);
-
-  g_free (path);
 }
 
 static void

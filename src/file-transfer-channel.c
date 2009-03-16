@@ -439,6 +439,9 @@ gabble_file_transfer_channel_constructor (GType type,
 
   tp_handle_ref (contact_repo, self->priv->handle);
 
+  self->priv->object_path = g_strdup_printf ("%s/FileTransferChannel/%p",
+      base_conn->object_path, self);
+
   /* Connect to the bus */
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, self->priv->object_path, obj);
@@ -1641,7 +1644,6 @@ setup_local_socket (GabbleFileTransferChannel *self)
 
 GabbleFileTransferChannel *
 gabble_file_transfer_channel_new (GabbleConnection *conn,
-                                  const gchar *path,
                                   TpHandle handle,
                                   TpHandle initiator_handle,
                                   TpFileTransferState state,
@@ -1658,7 +1660,6 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
 {
   return g_object_new (GABBLE_TYPE_FILE_TRANSFER_CHANNEL,
       "connection", conn,
-      "object-path", path,
       "handle", handle,
       "initiator-handle", initiator_handle,
       "state", state,

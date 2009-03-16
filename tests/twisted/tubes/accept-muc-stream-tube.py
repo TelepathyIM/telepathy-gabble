@@ -7,7 +7,7 @@ from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
 import constants as cs
 import ns
 import tubetestutil as t
-from bytestream import create_from_si_offer, announce_socks5_proxy
+from bytestream import create_from_si_offer, announce_socks5_proxy, BytestreamS5BRelay, BytestreamS5BRelayBugged
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -20,6 +20,11 @@ sample_parameters = dbus.Dictionary({
     }, signature='sv')
 
 def test(q, bus, conn, stream, bytestream_cls):
+    if bytestream_cls in [BytestreamS5BRelay, BytestreamS5BRelayBugged]:
+        # disable SOCKS5 relay tests because proxy can't be used with muc
+        # contacts atm
+        return
+
     conn.Connect()
 
     _, iq_event, disco_event = q.expect_many(

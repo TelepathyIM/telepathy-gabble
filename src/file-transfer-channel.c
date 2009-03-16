@@ -461,6 +461,13 @@ gabble_file_transfer_channel_constructor (GType type,
   gabble_signal_connect_weak (self->priv->connection->presence_cache,
       "presences-updated", G_CALLBACK (connection_presences_updated_cb), obj);
 
+  DEBUG ("New FT channel created: %s (contact: %s, initiator: %s, "
+      "file: \"%s\", size: %" G_GUINT64_FORMAT ")",
+       self->priv->object_path,
+       tp_handle_inspect (contact_repo, self->priv->handle),
+       tp_handle_inspect (contact_repo, self->priv->initiator),
+       self->priv->filename, self->priv->size);
+
   return obj;
 }
 

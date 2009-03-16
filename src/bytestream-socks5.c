@@ -1396,12 +1396,10 @@ socks5_init_error:
 #ifdef HAVE_GETIFADDRS
 
 static gboolean
-get_local_interfaces_ips (gboolean include_loopback,
-                          GSList **ips4,
+get_local_interfaces_ips (GSList **ips4,
                           GSList **ips6)
 {
   struct ifaddrs *ifa, *results;
-  gchar *loopback = NULL;
 
   if (getifaddrs (&results) < 0)
     return FALSE;
@@ -1420,10 +1418,7 @@ get_local_interfaces_ips (gboolean include_loopback,
 
       if ((ifa->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK)
         {
-          if (include_loopback)
-            loopback = g_strdup (straddr);
-          else
-            DEBUG ("Ignoring loopback interface");
+          DEBUG ("Ignoring loopback interface");
         }
 
       if (ifa->ifa_addr->sa_family == AF_INET)
@@ -1459,17 +1454,13 @@ get_local_interfaces_ips (gboolean include_loopback,
 
   freeifaddrs (results);
 
-  if (loopback)
-    *ips4 = g_slist_append (*ips4, loopback);
-
   return TRUE;
 }
 
 #else /* ! HAVE_GETIFADDRS */
 
 static gboolean
-get_local_interfaces_ips (gboolean include_loopback,
-                          GSList **ips4,
+get_local_interfaces_ips (GSList **ips4,
                           GSList **ips6)
 {
   gint sockfd;
@@ -1477,7 +1468,6 @@ get_local_interfaces_ips (gboolean include_loopback,
   struct ifreq *ifr;
   struct ifconf ifc;
   struct sockaddr_in *sa;
-  gchar *loopback = NULL;
 
   /* FIXME: add IPv6 addresses */
   if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0)
@@ -1529,10 +1519,7 @@ get_local_interfaces_ips (gboolean include_loopback,
       DEBUG ("IP Address: %s", inet_ntoa (sa->sin_addr));
       if ((ifr->ifr_flags & IFF_LOOPBACK) == IFF_LOOPBACK)
         {
-          if (include_loopback)
-            loopback = g_strdup (inet_ntoa (sa->sin_addr));
-          else
-            DEBUG ("Ignoring loopback interface");
+          DEBUG ("Ignoring loopback interface");
         }
       else
         {
@@ -1543,8 +1530,6 @@ get_local_interfaces_ips (gboolean include_loopback,
   close (sockfd);
   free (ifc.ifc_req);
 
-  if (loopback)
-    *ips4 = g_slist_append (*ips4, loopback);
   return TRUE;
 }
 
@@ -1614,7 +1599,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
         '@', "mode", "tcp",
       ')', NULL);
 
-  if (!get_local_interfaces_ips (FALSE, &ips4, &ips6))
+  if (!get_local_interfaces_ips (&ips4, &ips6))
     {
       DEBUG ("Can't get IP addresses");
       return FALSE;

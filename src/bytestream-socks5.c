@@ -165,6 +165,8 @@ struct _GabbleBytestreamSocks5Private
   gchar *peer_jid;
   gchar *self_full_jid;
   gchar *proxy_jid;
+  /* TRUE if the peer of this bytestream is a muc contact */
+  gboolean muc_contact;
 
   /* List of Streamhost */
   GSList *streamhosts;
@@ -381,7 +383,7 @@ gabble_bytestream_socks5_constructor (GType type,
   GObject *obj;
   GabbleBytestreamSocks5Private *priv;
   TpBaseConnection *base_conn;
-  TpHandleRepoIface *contact_repo;
+  TpHandleRepoIface *contact_repo, *room_repo;
   const gchar *jid;
 
   obj = G_OBJECT_CLASS (gabble_bytestream_socks5_parent_class)->
@@ -397,6 +399,8 @@ gabble_bytestream_socks5_constructor (GType type,
   base_conn = TP_BASE_CONNECTION (priv->conn);
   contact_repo = tp_base_connection_get_handles (base_conn,
       TP_HANDLE_TYPE_CONTACT);
+  room_repo = tp_base_connection_get_handles (base_conn,
+      TP_HANDLE_TYPE_ROOM);
 
   tp_handle_ref (contact_repo, priv->peer_handle);
 
@@ -408,6 +412,9 @@ gabble_bytestream_socks5_constructor (GType type,
     priv->peer_jid = g_strdup (jid);
 
   g_assert (priv->self_full_jid != NULL);
+
+  priv->muc_contact = (gabble_get_room_handle_from_jid (room_repo,
+        priv->peer_jid) != 0);
 
   return obj;
 }
@@ -1784,8 +1791,6 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   LmMessage *msg;
   GList *ips;
   GList *ip;
-  const GSList *proxies;
-  GSList *l;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -1837,22 +1842,33 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   g_list_free (ips);
   g_free (port);
 
-  proxies = gabble_bytestream_factory_get_socks_proxies(
-      priv->conn->bytestream_factory);
-
-  for (l = (GSList *) proxies; l != NULL; l = g_slist_next (l))
+  if (!priv->muc_contact)
     {
-      LmMessageNode *node;
-      GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
+      const GSList *proxies;
+      GSList *l;
 
-      node = lm_message_node_add_child (msg->node->children,
-          "streamhost", "");
+      proxies = gabble_bytestream_factory_get_socks_proxies(
+          priv->conn->bytestream_factory);
 
-      lm_message_node_set_attributes (node,
-          "jid", proxy->jid,
-          "host", proxy->host,
-          "port", proxy->port,
-          NULL);
+      for (l = (GSList *) proxies; l != NULL; l = g_slist_next (l))
+        {
+          LmMessageNode *node;
+          GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
+
+          node = lm_message_node_add_child (msg->node->children,
+              "streamhost", "");
+
+          lm_message_node_set_attributes (node,
+              "jid", proxy->jid,
+              "host", proxy->host,
+              "port", proxy->port,
+              NULL);
+        }
+    }
+  else
+    {
+      DEBUG ("don't propose to use SOCKS5 relays as we are offering bytestream "
+          "to a muc contact");
     }
 
   priv->socks5_state = SOCKS5_STATE_INITIATOR_OFFER_SENT;

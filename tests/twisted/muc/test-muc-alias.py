@@ -7,7 +7,7 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import go, make_result_iq, acknowledge_iq, exec_test
+from gabbletest import go, make_result_iq, acknowledge_iq, exec_test, make_muc_presence
 from servicetest import call_async, lazy, match, EventPattern
 
 def test(q, bus, conn, stream):
@@ -54,22 +54,10 @@ def test(q, bus, conn, stream):
     assert gfc.args[1] == 0
 
     # Send presence for other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/bob'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/lala'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost', 'lala'))
 
     event = q.expect('dbus-signal', signal='MembersChanged',
         args=[u'', [2, 3], [], [], [], 0, 0])

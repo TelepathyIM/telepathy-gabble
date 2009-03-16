@@ -25,15 +25,13 @@ def test(q, bus, conn, stream):
     # send an empty roster
     stream.send(roster_event.stanza)
 
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.ContactList',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': HT_GROUP,
               'org.freedesktop.Telepathy.Channel.TargetHandle': test_handle,
               })
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.ContactList',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': HT_GROUP,

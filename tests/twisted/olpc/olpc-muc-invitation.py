@@ -6,7 +6,7 @@ import dbus
 
 from twisted.words.xish import domish, xpath
 
-from gabbletest import go, make_result_iq, exec_test
+from gabbletest import go, make_result_iq, exec_test, make_muc_presence
 from servicetest import call_async, EventPattern
 import ns
 
@@ -129,13 +129,7 @@ def test(q, bus, conn, stream):
             [handles['chat_self']], 0, handles['chat_self']]
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement((ns.MUC_USER, 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
 
     event = q.expect('dbus-signal', signal='MembersChanged')
     assert event.args == ['', [handles['chat_self']], [], [], [], 0, 0]

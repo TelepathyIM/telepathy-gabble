@@ -11,6 +11,7 @@ import gabbletest
 import dbus
 import time
 
+import constants as cs
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -52,8 +53,10 @@ def test(q, bus, conn, stream):
     channel_props = group_iface.GetAll(
             'org.freedesktop.Telepathy.Channel',
             dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props['TargetHandleType'] == 1, channel_props
+    assert channel_props['TargetHandleType'] == cs.HT_CONTACT, channel_props
     assert channel_props['TargetHandle'] == handle, channel_props
+    assert media_iface.GetHandle(dbus_interface=cs.CHANNEL) == (cs.HT_CONTACT,
+            handle)
     assert channel_props['TargetID'] == 'foo@bar.com', channel_props
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'

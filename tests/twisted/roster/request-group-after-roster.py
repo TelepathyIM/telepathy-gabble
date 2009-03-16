@@ -29,9 +29,7 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
     sync_dbus(bus, q, conn)
 
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.ContactList',
               'org.freedesktop.Telepathy.Channel.TargetHandleType': HT_GROUP,

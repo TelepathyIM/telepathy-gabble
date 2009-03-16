@@ -67,12 +67,17 @@ typedef enum {
 struct _GabbleJingleMediaRtpPrivate
 {
   GList *local_codecs;
+  /* Holds (JingleCodec *)s borrowed from local_codecs, namely those which have
+   * changed from local_codecs' previous value. Since the contents are
+   * borrowed, this must be freed with g_list_free, not
+   * jingle_media_rtp_free_codecs().
+   */
+  GList *local_codec_updates;
+
   GList *remote_codecs;
   JingleMediaType media_type;
   gboolean dispose_has_run;
 };
-
-#define GABBLE_JINGLE_MEDIA_RTP_GET_PRIVATE(o) ((o)->priv)
 
 static void
 gabble_jingle_media_rtp_init (GabbleJingleMediaRtp *obj)
@@ -104,7 +109,7 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
   return p;
 }
 
-void
+static void
 jingle_media_rtp_codec_free (JingleCodec *p)
 {
   g_hash_table_destroy (p->params);
@@ -112,14 +117,29 @@ jingle_media_rtp_codec_free (JingleCodec *p)
   g_slice_free (JingleCodec, p);
 }
 
-void
+static void
+add_codec_to_table (JingleCodec *codec,
+                    GHashTable *table)
+{
+  g_hash_table_insert (table, GUINT_TO_POINTER ((guint) codec->id), codec);
+}
+
+static GHashTable *
+build_codec_table (GList *codecs)
+{
+  GHashTable *table = g_hash_table_new (NULL, NULL);
+
+  g_list_foreach (codecs, (GFunc) add_codec_to_table, table);
+  return table;
+}
+
+static void
 jingle_media_rtp_free_codecs (GList *codecs)
 {
   while (codecs != NULL)
     {
-      JingleCodec *p = (JingleCodec *) codecs->data;
-      jingle_media_rtp_codec_free (p);
-      codecs = g_list_remove (codecs, p);
+      jingle_media_rtp_codec_free (codecs->data);
+      codecs = g_list_delete_link (codecs, codecs);
     }
 }
 
@@ -140,6 +160,14 @@ gabble_jingle_media_rtp_dispose (GObject *object)
 
   jingle_media_rtp_free_codecs (priv->local_codecs);
   priv->local_codecs = NULL;
+
+  if (priv->local_codec_updates != NULL)
+    {
+      DEBUG ("We have an unsent codec parameter update! Weird.");
+
+      g_list_free (priv->local_codec_updates);
+      priv->local_codec_updates = NULL;
+    }
 
   if (G_OBJECT_CLASS (gabble_jingle_media_rtp_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_media_rtp_parent_class)->dispose (object);
@@ -219,10 +247,233 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
         G_TYPE_NONE, 1, G_TYPE_POINTER);
 }
 
-#define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
-#define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
-#define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
+static JingleMediaType
+extract_media_type (LmMessageNode *desc_node,
+                    GError **error)
+{
+  if (lm_message_node_has_namespace (desc_node, NS_JINGLE_RTP, NULL))
+    {
+      const gchar *type = lm_message_node_get_attribute (desc_node, "media");
 
+      if (type == NULL)
+        {
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+              "missing required media type attribute");
+          return JINGLE_MEDIA_TYPE_NONE;
+        }
+
+      if (!tp_strdiff (type, "audio"))
+          return JINGLE_MEDIA_TYPE_AUDIO;
+
+      if (!tp_strdiff (type, "video"))
+        return JINGLE_MEDIA_TYPE_VIDEO;
+
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "unknown media type %s", type);
+      return JINGLE_MEDIA_TYPE_NONE;
+    }
+
+  if (lm_message_node_has_namespace (desc_node,
+        NS_JINGLE_DESCRIPTION_AUDIO, NULL))
+    return JINGLE_MEDIA_TYPE_AUDIO;
+
+  if (lm_message_node_has_namespace (desc_node,
+        NS_JINGLE_DESCRIPTION_VIDEO, NULL))
+    return JINGLE_MEDIA_TYPE_VIDEO;
+
+  if (lm_message_node_has_namespace (desc_node,
+        NS_GOOGLE_SESSION_PHONE, NULL))
+    return JINGLE_MEDIA_TYPE_AUDIO;
+
+  /* If we get here, namespace in use is not one of namespaces we signed up
+   * with, so obviously a bug somewhere.
+   */
+  g_assert_not_reached ();
+}
+
+/**
+ * parse_payload_type:
+ * @node: a <payload-type> node.
+ *
+ * Returns: a newly-allocated JingleCodec if parsing succeeds, or %NULL
+ *          otherwise.
+ */
+static JingleCodec *
+parse_payload_type (LmMessageNode *node)
+{
+  JingleCodec *p;
+  const char *txt;
+  guint8 id;
+  const gchar *name;
+  guint clockrate = 0;
+  guint channels = 1;
+  LmMessageNode *param;
+
+  txt = lm_message_node_get_attribute (node, "id");
+  if (txt == NULL)
+    return NULL;
+
+  id = atoi (txt);
+
+  name = lm_message_node_get_attribute (node, "name");
+  if (name == NULL)
+    name = "";
+
+  /* xep-0167 v0.22, gtalk libjingle 0.3/0.4 use "clockrate" */
+  txt = lm_message_node_get_attribute (node, "clockrate");
+  /* older jingle rtp used "rate" ? */
+  if (txt == NULL)
+    txt = lm_message_node_get_attribute (node, "rate");
+
+  if (txt != NULL)
+    clockrate = atoi (txt);
+
+  txt = lm_message_node_get_attribute (node, "channels");
+  if (txt != NULL)
+    channels = atoi (txt);
+
+  p = jingle_media_rtp_codec_new (id, name, clockrate, channels, NULL);
+
+  for (param = node->children; param != NULL; param = param->next)
+    {
+      const gchar *param_name, *param_value;
+
+      if (tp_strdiff (lm_message_node_get_name (param), "parameter"))
+        continue;
+
+      param_name = lm_message_node_get_attribute (param, "name");
+      param_value = lm_message_node_get_attribute (param, "value");
+
+      if (param_name == NULL || param_value == NULL)
+        continue;
+
+      g_hash_table_insert (p->params, g_strdup (param_name),
+          g_strdup (param_value));
+    }
+
+  DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",
+      p->id, p->name, p->clockrate, p->channels);
+
+  return p;
+}
+
+/**
+ * codec_update_coherent:
+ * @old_c: Gabble's old cache of the codec, or %NULL if it hasn't heard of it.
+ * @new_c: the proposed update, whose id must equal that of @old_c if the
+ *         latter is non-NULL.
+ * @domain: the error domain to set @e to if necessary
+ * @code: the error code to set @e to if necessary
+ * @e: location to hold an error
+ *
+ * Compares @old_c and @new_c, which are assumed to have the same id, to check
+ * that the name, clockrate and number of channels hasn't changed. If they
+ * have, returns %FALSE and sets @e.
+ */
+static gboolean
+codec_update_coherent (const JingleCodec *old_c,
+                       const JingleCodec *new_c,
+                       GQuark domain,
+                       gint code,
+                       GError **e)
+{
+  if (old_c == NULL)
+    {
+      g_set_error (e, domain, code, "Codec with id %u ('%s') unknown",
+          new_c->id, new_c->name);
+      return FALSE;
+    }
+
+  if (tp_strdiff (new_c->name, old_c->name))
+    {
+      g_set_error (e, domain, code,
+          "tried to change codec %u's name from %s to %s",
+          new_c->id, old_c->name, new_c->name);
+      return FALSE;
+    }
+
+  if (new_c->clockrate != old_c->clockrate)
+    {
+      g_set_error (e, domain, code,
+          "tried to change codec %u (%s)'s clockrate from %u to %u",
+          new_c->id, new_c->name, new_c->clockrate, old_c->clockrate);
+      return FALSE;
+    }
+
+  if (new_c->channels != old_c->channels)
+    {
+      g_set_error (e, domain, code,
+          "tried to change codec %u (%s)'s channels from %u to %u",
+          new_c->id, new_c->name, new_c->channels, old_c->channels);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
+update_remote_codecs (GabbleJingleMediaRtp *self,
+                      GList *new_codecs,
+                      GError **error)
+{
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
+  GHashTable *rc = NULL;
+  JingleCodec *old_c, *new_c;
+  GList *l;
+  GError *e = NULL;
+
+  if (priv->remote_codecs == NULL)
+    {
+      priv->remote_codecs = new_codecs;
+      new_codecs = NULL;
+      goto out;
+    }
+
+  rc = build_codec_table (priv->remote_codecs);
+
+  /* We already know some remote codecs, so this is just the other end updating
+   * some parameters.
+   */
+  for (l = new_codecs; l != NULL; l = l->next)
+    {
+      new_c = l->data;
+      old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER ((guint) new_c->id));
+
+      if (!codec_update_coherent (old_c, new_c, GABBLE_XMPP_ERROR,
+            XMPP_ERROR_BAD_REQUEST, &e))
+        goto out;
+    }
+
+  /* Okay, all the updates are cool. Let's switch the parameters around. */
+  for (l = new_codecs; l != NULL; l = l->next)
+    {
+      GHashTable *params;
+
+      new_c = l->data;
+      old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER ((guint) new_c->id));
+
+      params = old_c->params;
+      old_c->params = new_c->params;
+      new_c->params = params;
+    }
+
+out:
+  jingle_media_rtp_free_codecs (new_codecs);
+
+  if (rc != NULL)
+    g_hash_table_unref (rc);
+
+  if (e != NULL)
+    {
+      DEBUG ("Rejecting codec update: %s", e->message);
+      g_propagate_error (error, e);
+    }
+  else
+    {
+      DEBUG ("Emitting remote-codecs signal");
+      g_signal_emit (self, signals[REMOTE_CODECS], 0, priv->remote_codecs);
+    }
+}
 
 static void
 parse_description (GabbleJingleContent *content,
@@ -231,147 +482,44 @@ parse_description (GabbleJingleContent *content,
   GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
   GabbleJingleMediaRtpPrivate *priv = self->priv;
   JingleMediaType mtype = JINGLE_MEDIA_TYPE_NONE;
-  gboolean google_mode = FALSE;
   GList *codecs = NULL;
+  JingleCodec *p;
   LmMessageNode *node;
 
   DEBUG ("node: %s", desc_node->name);
 
-  if (lm_message_node_has_namespace (desc_node, NS_JINGLE_RTP, NULL))
-    {
-      const gchar *type = lm_message_node_get_attribute (desc_node, "media");
+  mtype = extract_media_type (desc_node, error);
 
-      if (type == NULL)
-        {
-          SET_BAD_REQ("missing required media type attribute");
-          return;
-        }
-
-      if (!tp_strdiff (type, "audio"))
-          mtype = JINGLE_MEDIA_TYPE_AUDIO;
-      else if (!tp_strdiff (type, "video"))
-          mtype = JINGLE_MEDIA_TYPE_VIDEO;
-      else
-        {
-          SET_BAD_REQ("unknown media type %s", type);
-          return;
-        }
-    }
-  else if (lm_message_node_has_namespace (desc_node,
-        NS_JINGLE_DESCRIPTION_AUDIO, NULL))
-    {
-      mtype = JINGLE_MEDIA_TYPE_AUDIO;
-    }
-  else if (lm_message_node_has_namespace (desc_node,
-        NS_JINGLE_DESCRIPTION_VIDEO, NULL))
-    {
-      mtype = JINGLE_MEDIA_TYPE_VIDEO;
-    }
-  else if (lm_message_node_has_namespace (desc_node,
-        NS_GOOGLE_SESSION_PHONE, NULL))
-    {
-      mtype = JINGLE_MEDIA_TYPE_AUDIO;
-      google_mode = TRUE;
-    }
-  else
-    {
-      /* If we get here, namespace in use is not one of
-       * namespaces we signed up with, so obviously a bug
-       * somewhere. */
-      g_assert_not_reached ();
-    }
+  if (mtype == JINGLE_MEDIA_TYPE_NONE)
+    return;
 
   DEBUG ("detected media type %u", mtype);
 
-  /* FIXME: we ignore "profile" attribute */
-
   for (node = desc_node->children; node; node = node->next)
     {
-      JingleCodec *p;
-      const char *txt;
-      guchar id;
-      const gchar *name;
-      guint clockrate, channels;
-      LmMessageNode *param;
-
       if (tp_strdiff (lm_message_node_get_name (node), "payload-type"))
-          continue;
+        continue;
 
-      txt = lm_message_node_get_attribute (node, "id");
-      if (txt == NULL)
-          break;
+      p = parse_payload_type (node);
 
-      id = atoi (txt);
-
-      name = lm_message_node_get_attribute (node, "name");
-      if (name == NULL)
-          name = "";
-
-      /* xep-0167 v0.22, gtalk libjingle 0.3/0.4 use "clockrate" */
-      txt = lm_message_node_get_attribute (node, "clockrate");
-      /* older jingle rtp used "rate" ? */
-      if (txt == NULL)
-          txt = lm_message_node_get_attribute (node, "rate");
-
-      if (txt != NULL)
-        {
-          clockrate = atoi (txt);
-        }
+      if (p == NULL)
+        break;
       else
-        {
-          clockrate = 0;
-        }
-
-      txt = lm_message_node_get_attribute (node, "channels");
-      if (txt != NULL)
-        {
-          channels = atoi (txt);
-        }
-      else
-        {
-          channels = 1;
-        }
-
-      p = jingle_media_rtp_codec_new (id, name, clockrate, channels, NULL);
-
-      for (param = node->children; param != NULL; param = param->next)
-        {
-          const gchar *param_name, *param_value;
-
-          if (tp_strdiff (lm_message_node_get_name (param), "parameter"))
-            continue;
-
-          param_name = lm_message_node_get_attribute (param, "name");
-          param_value = lm_message_node_get_attribute (param, "value");
-
-          if (param_name == NULL || param_value == NULL)
-            continue;
-
-          g_hash_table_insert (p->params, g_strdup (param_name),
-              g_strdup (param_value));
-        }
-
-      DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",
-          p->id, p->name, p->clockrate, p->channels);
-
-      codecs = g_list_append (codecs, p);
+        codecs = g_list_append (codecs, p);
     }
 
   if (node != NULL)
     {
       /* rollback these */
       jingle_media_rtp_free_codecs (codecs);
-      SET_BAD_REQ ("invalid payload");
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "invalid payload");
       return;
     }
 
   priv->media_type = mtype;
 
-  DEBUG ("emitting remote-codecs signal");
-  g_signal_emit (self, signals[REMOTE_CODECS], 0, codecs);
-
-  /* append them to the known remote codecs */
-  priv->remote_codecs = g_list_concat (priv->remote_codecs, codecs);
+  update_remote_codecs (self, codecs, error);
 }
 
 static void
@@ -388,19 +536,56 @@ _produce_extra_param (gpointer key, gpointer value, gpointer user_data)
 }
 
 static void
+produce_payload_type (LmMessageNode *desc_node,
+                      JingleCodec *p,
+                      JingleDialect dialect)
+{
+  LmMessageNode *pt_node;
+  gchar buf[16];
+
+  pt_node = lm_message_node_add_child (desc_node, "payload-type", NULL);
+
+  /* id: required */
+  sprintf (buf, "%d", p->id);
+  lm_message_node_set_attribute (pt_node, "id", buf);
+
+  /* name: optional */
+  if (*p->name != '\0')
+    lm_message_node_set_attribute (pt_node, "name", p->name);
+
+  /* clock rate: optional */
+  if (p->clockrate != 0)
+    {
+      const gchar *attname = "clockrate";
+
+      if (dialect == JINGLE_DIALECT_V015)
+        attname = "rate";
+
+      sprintf (buf, "%u", p->clockrate);
+      lm_message_node_set_attribute (pt_node, attname, buf);
+    }
+
+  if (p->channels != 0)
+    {
+      sprintf (buf, "%u", p->channels);
+      lm_message_node_set_attribute (pt_node, "channels", buf);
+    }
+
+  if (p->params != NULL)
+    g_hash_table_foreach (p->params, _produce_extra_param, pt_node);
+}
+
+static void
 produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 {
-  GabbleJingleMediaRtp *desc =
-    GABBLE_JINGLE_MEDIA_RTP (obj);
-  GabbleJingleSession *sess;
+  GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (obj);
   GabbleJingleMediaRtpPrivate *priv = desc->priv;
   LmMessageNode *desc_node;
   GList *li;
   JingleDialect dialect;
   const gchar *xmlns = NULL;
 
-  sess = GABBLE_JINGLE_CONTENT(obj)->session;
-  g_object_get (sess, "dialect", &dialect, NULL);
+  g_object_get (obj->session, "dialect", &dialect, NULL);
 
   desc_node = lm_message_node_add_child (content_node, "description", NULL);
 
@@ -435,60 +620,153 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 
   lm_message_node_set_attribute (desc_node, "xmlns", xmlns);
 
-  for (li = priv->local_codecs; li; li = li->next)
+  /* If we're only updating our codec parameters, only generate payload-types
+   * for those.
+   */
+  if (priv->local_codec_updates != NULL)
+    li = priv->local_codec_updates;
+  else
+    li = priv->local_codecs;
+
+  for (; li != NULL; li = li->next)
+    produce_payload_type (desc_node, li->data, dialect);
+
+  /* If we were updating, then we're done with the diff. */
+  g_list_free (priv->local_codec_updates);
+  priv->local_codec_updates = NULL;
+}
+
+/**
+ * string_string_maps_equal:
+ *
+ * Returns: TRUE iff @a and @b contain exactly the same keys and values when
+ *          compared as strings.
+ */
+static gboolean
+string_string_maps_equal (GHashTable *a,
+                          GHashTable *b)
+{
+  GHashTableIter iter;
+  gpointer a_key, a_value, b_value;
+
+  if (g_hash_table_size (a) != g_hash_table_size (b))
+    return FALSE;
+
+  g_hash_table_iter_init (&iter, a);
+
+  while (g_hash_table_iter_next (&iter, &a_key, &a_value))
     {
-      LmMessageNode *pt_node;
-      gchar buf[16];
-      JingleCodec *p = li->data;
+      if (!g_hash_table_lookup_extended (b, a_key, NULL, &b_value))
+        return FALSE;
 
-      pt_node = lm_message_node_add_child (desc_node, "payload-type", NULL);
-
-      /* id: required */
-      sprintf (buf, "%d", p->id);
-      lm_message_node_set_attribute (pt_node, "id", buf);
-
-      /* name: optional */
-      if (*p->name != '\0')
-        {
-          lm_message_node_set_attribute (pt_node, "name", p->name);
-        }
-
-      /* clock rate: optional */
-      if (p->clockrate != 0)
-        {
-          const gchar *attname = "clockrate";
-
-          if (dialect == JINGLE_DIALECT_V015)
-              attname = "rate";
-
-          sprintf (buf, "%u", p->clockrate);
-          lm_message_node_set_attribute (pt_node, attname, buf);
-        }
-
-      if (p->channels != 0)
-        {
-          sprintf (buf, "%u", p->channels);
-          lm_message_node_set_attribute (pt_node, "channels", buf);
-        }
-
-      if (p->params != NULL)
-        {
-          g_hash_table_foreach (p->params, _produce_extra_param, pt_node);
-        }
+      if (tp_strdiff (a_value, b_value))
+        return FALSE;
     }
+
+  return TRUE;
+}
+
+/**
+ * compare_codecs:
+ * @old: previous local codecs
+ * @new: new local codecs supplied by streaming implementation
+ * @changed: location at which to store the changed codecs
+ * @error: location at which to store an error if the update was invalid
+ *
+ * Returns: %TRUE if the update made sense, %FALSE with @error set otherwise
+ */
+static gboolean
+compare_codecs (GList *old,
+                GList *new,
+                GList **changed,
+                GError **e)
+{
+  gboolean ret = FALSE;
+  GHashTable *old_table = build_codec_table (old);
+  GList *l;
+  JingleCodec *old_c, *new_c;
+
+  g_assert (changed != NULL && *changed == NULL);
+
+  if (g_list_length (new) != g_list_length (old))
+    {
+      g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "tried to change the number of codecs from %u to %u",
+          g_list_length (old), g_list_length (new));
+      goto out;
+    }
+
+  for (l = new; l != NULL; l = l->next)
+    {
+      new_c = l->data;
+      old_c = g_hash_table_lookup (old_table, GUINT_TO_POINTER (
+            (guint) new_c->id));
+
+      if (!codec_update_coherent (old_c, new_c, TP_ERRORS,
+            TP_ERROR_INVALID_ARGUMENT, e))
+        goto out;
+
+      if (!string_string_maps_equal (old_c->params, new_c->params))
+        *changed = g_list_prepend (*changed, new_c);
+    }
+
+  ret = TRUE;
+
+out:
+  if (!ret)
+    {
+      g_list_free (*changed);
+      *changed = NULL;
+    }
+
+  g_hash_table_unref (old_table);
+  return ret;
 }
 
 /* Takes in a list of slice-allocated JingleCodec structs */
-void
-jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self, GList *codecs)
+gboolean
+jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
+                                   GList *codecs,
+                                   GError **error)
 {
   GabbleJingleMediaRtpPrivate *priv = self->priv;
 
-  DEBUG ("adding new local codecs");
+  DEBUG ("setting new local codecs");
 
-  priv->local_codecs = g_list_concat (priv->local_codecs, codecs);
+  if (priv->local_codecs != NULL)
+    {
+      GList *changed = NULL;
+      GError *err = NULL;
+
+      /* Calling _gabble_jingle_content_set_media_ready () should use and unset
+       * these right after we set them.
+       */
+      g_assert (priv->local_codec_updates == NULL);
+
+      if (!compare_codecs (priv->local_codecs, codecs, &changed, &err))
+        {
+          DEBUG ("codec update was illegal: %s", err->message);
+          g_propagate_error (error, err);
+          return FALSE;
+        }
+
+      if (changed == NULL)
+        {
+          DEBUG ("codec update changed nothing!");
+          jingle_media_rtp_free_codecs (codecs);
+          return TRUE;
+        }
+
+      DEBUG ("%u codecs changed", g_list_length (changed));
+      priv->local_codec_updates = changed;
+
+      jingle_media_rtp_free_codecs (priv->local_codecs);
+    }
+
+  priv->local_codecs = codecs;
 
   _gabble_jingle_content_set_media_ready (GABBLE_JINGLE_CONTENT (self));
+  return TRUE;
 }
 
 void

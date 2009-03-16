@@ -3,11 +3,20 @@ telepathy-gabble 0.7.23 (UNRELEASED)
 
 Dependencies:
 
-* telepathy-glib 0.7.26 is now required (as it was for 0.7.22, in fact).
+* telepathy-glib >= 0.7.26 is now required (as it was for 0.7.22, in fact).
+* libsoup >= 2.4 is now required
+
+Enhancements:
+
+* Add functionality to ask for a Google-specific relay session, so Google Talk
+  users can use Google's relay servers to make and receive Jingle calls
 
 Fixes:
 
 * Fix flow control in tubes when using a SI fallback bytestream
+
+* Implement flow control in bytestream IBB. This should avoid flooding the
+  XMPP connection when trying to send a large amount of data using IBB.
 
 * Fix SOCKS5 implementation to actually respect XEP-0065.
   One of the changes would cause interoperability issues with

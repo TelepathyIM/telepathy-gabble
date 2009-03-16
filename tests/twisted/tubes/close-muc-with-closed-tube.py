@@ -4,7 +4,7 @@ import base64
 import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolClientFactory
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
 from constants import *
 import ns
 import tubetestutil as t
@@ -54,22 +54,10 @@ def test(q, bus, conn, stream):
         EventPattern('stream-presence', to='chat@conf.localhost/test'))
 
     # Send presence for other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/bob'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/test'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost', 'test'))
 
     q.expect('dbus-signal', signal='MembersChanged',
             args=[u'', [2, 3], [], [], [], 0, 0])
@@ -84,12 +72,7 @@ def test(q, bus, conn, stream):
     # Bob offers a muc tube
     tube_id = 666
     stream_id = 1234
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'chat@conf.localhost/bob'
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
+    presence = make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob')
     tubes = presence.addElement((ns.TUBES, 'tubes'))
     tube = tubes.addElement((None, 'tube'))
     tube['type'] = 'dbus'

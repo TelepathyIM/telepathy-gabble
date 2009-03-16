@@ -7,7 +7,7 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import go, make_result_iq, exec_test
+from gabbletest import go, make_result_iq, exec_test, make_muc_presence
 from servicetest import call_async, lazy, match, EventPattern
 
 def test(q, bus, conn, stream):
@@ -42,17 +42,14 @@ def test(q, bus, conn, stream):
     return True
 
 def test_create_ensure(q, conn, bus, stream, room_jid, room_handle):
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
-
     # Call both Create and Ensure for the same channel.
-    call_async(q, requestotron, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
            { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 2,
              'org.freedesktop.Telepathy.Channel.TargetHandle': room_handle,
            })
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
            { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 2,
@@ -70,22 +67,10 @@ def test_create_ensure(q, conn, bus, stream, room_jid, room_handle):
     assert len(remote_pending) == 1, mc.args
 
     # Send presence for other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = '%s/bob' % room_jid
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    stream.send(make_muc_presence('owner', 'moderator', room_jid, 'bob'))
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = '%s/test' % room_jid
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    stream.send(make_muc_presence('none', 'participant', room_jid, 'test'))
 
     mc = q.expect('dbus-signal', signal='MembersChanged')
     msg, added, removed, local_pending, remote_pending, actor, reason = mc.args
@@ -116,17 +101,14 @@ def test_create_ensure(q, conn, bus, stream, room_jid, room_handle):
 
 
 def test_ensure_ensure(q, conn, bus, stream, room_jid, room_handle):
-    requestotron = dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection.Interface.Requests')
-
     # Call Ensure twice for the same channel.
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
            { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 2,
              'org.freedesktop.Telepathy.Channel.TargetHandle': room_handle,
            })
-    call_async(q, requestotron, 'EnsureChannel',
+    call_async(q, conn.Requests, 'EnsureChannel',
            { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.Text',
              'org.freedesktop.Telepathy.Channel.TargetHandleType': 2,
@@ -144,22 +126,10 @@ def test_ensure_ensure(q, conn, bus, stream, room_jid, room_handle):
     assert len(remote_pending) == 1, mc.args
 
     # Send presence for other member of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = '%s/bob' % room_jid
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'owner'
-    item['role'] = 'moderator'
-    stream.send(presence)
+    stream.send(make_muc_presence('owner', 'moderator', room_jid, 'bob'))
 
     # Send presence for own membership of room.
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = '%s/test' % room_jid
-    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
-    item = x.addElement('item')
-    item['affiliation'] = 'none'
-    item['role'] = 'participant'
-    stream.send(presence)
+    stream.send(make_muc_presence('none', 'participant', room_jid, 'test'))
 
     mc = q.expect('dbus-signal', signal='MembersChanged')
     msg, added, removed, local_pending, remote_pending, actor, reason = mc.args

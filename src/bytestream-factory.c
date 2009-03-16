@@ -924,12 +924,7 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
     }
   else
     {
-      DEBUG ("received IBB close stanza. Bytestream closed");
-
-      g_object_set (bytestream, "state", GABBLE_BYTESTREAM_STATE_CLOSED,
-          NULL);
-
-      _gabble_connection_acknowledge_set_iq (priv->conn, msg);
+      gabble_bytestream_ibb_close_received (bytestream, msg);
     }
 
   return TRUE;

@@ -12,7 +12,7 @@ from servicetest import unwrap
 from gabbletest import exec_test
 from constants import *
 from bytestream import BytestreamIBBMsg, BytestreamS5B, BytestreamSIFallbackS5CannotConnect,\
-    BytestreamSIFallbackS5WrongHash
+    BytestreamSIFallbackS5WrongHash, BytestreamIBBIQ
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
@@ -221,6 +221,6 @@ def set_up_echo(name):
     return full_path
 
 def exec_tube_test(test):
-    for bytestream_cls in [BytestreamIBBMsg, BytestreamS5B, BytestreamSIFallbackS5CannotConnect,
+    for bytestream_cls in [BytestreamIBBMsg, BytestreamIBBIQ, BytestreamS5B, BytestreamSIFallbackS5CannotConnect,
             BytestreamSIFallbackS5WrongHash]:
         exec_test(lambda q, bus, conn, stream: test(q, bus, conn, stream, bytestream_cls))

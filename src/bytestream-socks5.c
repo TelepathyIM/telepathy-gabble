@@ -1515,14 +1515,13 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
       self);
-  const GSList *proxies;
-  GSList *l;
+  GSList *proxies, *l;
   GabbleSocks5Proxy *proxy = NULL;
   GibberTCPTransport *transport;
 
   proxies = gabble_bytestream_factory_get_socks5_proxies (
       priv->conn->bytestream_factory);
-  for (l = (GSList *) proxies; l != NULL; l = g_slist_next (l))
+  for (l = proxies; l != NULL; l = g_slist_next (l))
      {
        proxy = (GabbleSocks5Proxy *) l->data;
 
@@ -1531,6 +1530,7 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
 
        proxy = NULL;
      }
+  g_slist_free (proxies);
 
   if (proxy == NULL)
     {
@@ -1853,13 +1853,12 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 
   if (!priv->muc_contact)
     {
-      const GSList *proxies;
-      GSList *l;
+      GSList *proxies, *l;
 
       proxies = gabble_bytestream_factory_get_socks5_proxies (
           priv->conn->bytestream_factory);
 
-      for (l = (GSList *) proxies; l != NULL; l = g_slist_next (l))
+      for (l = proxies; l != NULL; l = g_slist_next (l))
         {
           LmMessageNode *node;
           GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
@@ -1873,6 +1872,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
               "port", proxy->port,
               NULL);
         }
+      g_slist_free (proxies);
     }
   else
     {

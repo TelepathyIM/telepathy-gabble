@@ -159,6 +159,8 @@ struct _GabbleBytestreamFactoryPrivate
 
   /* List of GabbleSocks5Proxy discovered on the connection */
   GSList *socks5_proxies;
+  /* List of GabbleSocks5Proxy found using the fallback-socks5-proxy param */
+  GSList *socks5_fallback_proxies;
 
   gboolean dispose_has_run;
 };
@@ -209,12 +211,13 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
                              GObject *obj,
                              gpointer user_data)
 {
-  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (obj);
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
   LmMessageNode *query, *streamhost;
   const gchar *jid, *host, *port;
   GabbleSocks5Proxy *proxy;
+  gboolean fallback = (gboolean) user_data;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -235,17 +238,27 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
   if (jid == NULL || host == NULL || port == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  DEBUG ("Found SOCKS5 proxy: %s %s:%s", jid, host, port);
-
   proxy = gabble_socks5_proxy_new (jid, host, port);
-  priv->socks5_proxies = g_slist_prepend (priv->socks5_proxies, proxy);
+
+  if (fallback)
+    {
+      DEBUG ("Add fallback SOCKS5 proxy: %s %s:%s", jid, host, port);
+      priv->socks5_fallback_proxies = g_slist_prepend (priv->socks5_proxies,
+          proxy);
+    }
+  else
+    {
+      DEBUG ("Discovered SOCKS5 proxy: %s %s:%s", jid, host, port);
+      priv->socks5_proxies = g_slist_prepend (priv->socks5_proxies, proxy);
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
 send_proxy_query (GabbleBytestreamFactory *self,
-                  const gchar *jid)
+                  const gchar *jid,
+                  gboolean fallback)
 {
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
@@ -260,7 +273,7 @@ send_proxy_query (GabbleBytestreamFactory *self,
       ')', NULL);
 
   _gabble_connection_send_with_reply (priv->conn, query,
-      socks5_proxy_query_reply_cb, G_OBJECT (self), self, NULL);
+      socks5_proxy_query_reply_cb, G_OBJECT (self), (gpointer) fallback, NULL);
 
   lm_message_unref (query);
 }
@@ -274,7 +287,7 @@ disco_item_found_cb (GabbleDisco *disco,
       tp_strdiff (item->type, "bytestreams"))
     return;
 
-  send_proxy_query (self, item->jid);
+  send_proxy_query (self, item->jid, FALSE);
 }
 
 static void
@@ -296,7 +309,7 @@ conn_status_changed_cb (GabbleConnection *conn,
       if (jid == NULL)
         return;
 
-      send_proxy_query (self, jid);
+      send_proxy_query (self, jid, TRUE);
       g_free (jid);
     }
 }
@@ -352,7 +365,7 @@ gabble_bytestream_factory_dispose (GObject *object)
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (object);
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
-  GSList *l;
+  GSList *proxies, *l;
 
   if (priv->dispose_has_run)
     return;
@@ -388,14 +401,19 @@ gabble_bytestream_factory_dispose (GObject *object)
   g_hash_table_destroy (priv->multiple_bytestreams);
   priv->multiple_bytestreams = NULL;
 
-  for (l = priv->socks5_proxies; l != NULL; l = g_slist_next (l))
+  proxies = g_slist_concat (priv->socks5_proxies,
+      priv->socks5_fallback_proxies);
+
+  for (l = proxies; l != NULL; l = g_slist_next (l))
     {
       GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
 
       gabble_socks5_proxy_free (proxy);
     }
-  g_slist_free (priv->socks5_proxies);
+  g_slist_free (proxies);
+
   priv->socks5_proxies = NULL;
+  priv->socks5_fallback_proxies = NULL;
 
   if (G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose (object);
@@ -1907,11 +1925,15 @@ gabble_bytestream_factory_make_multi_accept_iq (const gchar *full_jid,
   return msg;
 }
 
-const GSList *
+GSList *
 gabble_bytestream_factory_get_socks5_proxies (GabbleBytestreamFactory *self)
 {
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
 
-  return priv->socks5_proxies;
+  /* TODO: randomize priv->socks5_fallback_proxies once we can have more than
+   * one proxy in it */
+
+  return g_slist_concat (g_slist_copy (priv->socks5_proxies),
+      g_slist_copy (priv->socks5_fallback_proxies));
 }

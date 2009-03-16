@@ -327,7 +327,8 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
   initial_offset = tp_asv_get_uint64 (request_properties,
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".InitialOffset", NULL);
 
-  DEBUG ("Requested outgoing channel for handle: %d", handle);
+  DEBUG ("Requested outgoing channel with contact: %s",
+      tp_handle_inspect (contact_repo, handle));
 
   chan = gabble_file_transfer_channel_new (priv->connection,
       handle, base_connection->self_handle, TP_FILE_TRANSFER_STATE_PENDING,

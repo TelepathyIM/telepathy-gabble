@@ -1701,7 +1701,7 @@ delay_stream_request (GabbleMediaChannel *chan,
   ctx->chan = chan;
   ctx->contact_handle = contact_handle;
   ctx->context = context;
-  ctx->types = g_array_sized_new (FALSE, FALSE, sizeof(guint), types->len);
+  ctx->types = g_array_sized_new (FALSE, FALSE, sizeof (guint), types->len);
   g_array_append_vals (ctx->types, types->data, types->len);
 
   if (disco_in_progress)

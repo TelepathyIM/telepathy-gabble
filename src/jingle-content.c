@@ -85,8 +85,6 @@ struct _GabbleJingleContentPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_CONTENT_GET_PRIVATE(o) ((o)->priv)
-
 #define DEFAULT_CONTENT_TIMEOUT 60000
 
 /* lookup tables */
@@ -120,7 +118,7 @@ static void
 gabble_jingle_content_dispose (GObject *object)
 {
   GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (object);
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (content);
+  GabbleJingleContentPrivate *priv = content->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -169,7 +167,7 @@ gabble_jingle_content_get_property (GObject *object,
                                     GParamSpec *pspec)
 {
   GabbleJingleContent *self = GABBLE_JINGLE_CONTENT (object);
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  GabbleJingleContentPrivate *priv = self->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -212,7 +210,7 @@ gabble_jingle_content_set_property (GObject *object,
                                     GParamSpec *pspec)
 {
   GabbleJingleContent *self = GABBLE_JINGLE_CONTENT (object);
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  GabbleJingleContentPrivate *priv = self->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -451,7 +449,7 @@ static gboolean
 send_gtalk4_transport_accept (gpointer user_data)
 {
   GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (user_data);
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  GabbleJingleContentPrivate *priv = c->priv;
   LmMessageNode *sess_node, *tnode;
   LmMessage *msg = gabble_jingle_session_new_message (c->session,
       JINGLE_ACTION_TRANSPORT_ACCEPT, &sess_node);
@@ -469,7 +467,7 @@ void
 gabble_jingle_content_parse_add (GabbleJingleContent *c,
     LmMessageNode *content_node, gboolean google_mode, GError **error)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  GabbleJingleContentPrivate *priv = c->priv;
   const gchar *name, *creator, *senders, *disposition;
   LmMessageNode *trans_node, *desc_node;
   GType transport_type = 0;
@@ -597,7 +595,7 @@ void
 gabble_jingle_content_parse_accept (GabbleJingleContent *c,
     LmMessageNode *content_node, gboolean google_mode, GError **error)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  GabbleJingleContentPrivate *priv = c->priv;
   const gchar *senders;
   LmMessageNode *trans_node, *desc_node;
   JingleDialect dialect;
@@ -669,7 +667,7 @@ void
 gabble_jingle_content_produce_node (GabbleJingleContent *c,
   LmMessageNode *parent, gboolean full)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  GabbleJingleContentPrivate *priv = c->priv;
   LmMessageNode *content_node, *trans_node;
   JingleDialect dialect;
   void (*produce_desc)(GabbleJingleContent *, LmMessageNode *) =
@@ -719,7 +717,7 @@ void
 gabble_jingle_content_update_senders (GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  GabbleJingleContentPrivate *priv = c->priv;
   JingleContentSenders senders;
 
   senders = parse_senders (lm_message_node_get_attribute (content_node, "senders"));
@@ -738,7 +736,7 @@ void
 gabble_jingle_content_parse_transport_info (GabbleJingleContent *self,
   LmMessageNode *trans_node, GError **error)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  GabbleJingleContentPrivate *priv = self->priv;
 
   gabble_jingle_transport_iface_parse_candidates (priv->transport, trans_node, error);
 }
@@ -747,7 +745,7 @@ gabble_jingle_content_parse_transport_info (GabbleJingleContent *self,
 void
 gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  GabbleJingleContentPrivate *priv = self->priv;
 
   gabble_jingle_transport_iface_add_candidates (priv->transport, li);
 }
@@ -757,7 +755,7 @@ gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
 gboolean
 gabble_jingle_content_is_ready (GabbleJingleContent *self)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  GabbleJingleContentPrivate *priv = self->priv;
 
   /* If it's created by us, media ready and not signalled,
    * it's ready to be added. */
@@ -790,7 +788,7 @@ timeout_content (gpointer data)
 static void
 send_content_add_or_accept (GabbleJingleContent *self)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  GabbleJingleContentPrivate *priv = self->priv;
   LmMessage *msg;
   LmMessageNode *sess_node;
   JingleAction action = JINGLE_ACTION_UNKNOWN;
@@ -826,7 +824,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
 static void
 _maybe_ready (GabbleJingleContent *self)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  GabbleJingleContentPrivate *priv = self->priv;
   JingleSessionState state;
 
   if (!gabble_jingle_content_is_ready (self))
@@ -894,7 +892,7 @@ gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self)
 void
 _gabble_jingle_content_set_media_ready (GabbleJingleContent *self)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  GabbleJingleContentPrivate *priv = self->priv;
 
   /* If media was already ready, media info was changed and we need to
    * push description-info action to the peer. */
@@ -913,7 +911,7 @@ void
 gabble_jingle_content_set_transport_state (GabbleJingleContent *self,
     JingleTransportState state)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (self);
+  GabbleJingleContentPrivate *priv = self->priv;
 
   g_object_set (priv->transport, "state", state, NULL);
 
@@ -927,7 +925,7 @@ gabble_jingle_content_set_transport_state (GabbleJingleContent *self,
 GList *
 gabble_jingle_content_get_remote_candidates (GabbleJingleContent *c)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  GabbleJingleContentPrivate *priv = c->priv;
 
   return gabble_jingle_transport_iface_get_remote_candidates (priv->transport);
 }
@@ -936,7 +934,7 @@ gboolean
 gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  GabbleJingleContentPrivate *priv = c->priv;
   LmMessage *msg;
   LmMessageNode *sess_node;
   JingleDialect dialect;
@@ -953,7 +951,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 
   msg = gabble_jingle_session_new_message (c->session,
       JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
-  gabble_jingle_content_produce_node (c, sess_node, FALSE); 
+  gabble_jingle_content_produce_node (c, sess_node, FALSE);
   gabble_jingle_session_send (c->session, msg, NULL, NULL);
 
   /* FIXME: actually check whether remote end accepts our content-modify */
@@ -965,7 +963,7 @@ _on_remove_reply (GabbleJingleSession *sess, gboolean success,
     LmMessage *reply, gpointer user_data)
 {
   GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (user_data);
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  GabbleJingleContentPrivate *priv = c->priv;
 
   g_assert (priv->state == JINGLE_CONTENT_STATE_REMOVING);
 
@@ -977,7 +975,7 @@ _on_remove_reply (GabbleJingleSession *sess, gboolean success,
 void
 gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
 {
-  GabbleJingleContentPrivate *priv = GABBLE_JINGLE_CONTENT_GET_PRIVATE (c);
+  GabbleJingleContentPrivate *priv = c->priv;
   LmMessage *msg;
   LmMessageNode *sess_node;
 

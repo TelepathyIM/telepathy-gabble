@@ -116,27 +116,27 @@ create_msg_foreach (gpointer key,
       struct tm *ptm = gmtime (&stamp);
       gchar str[30];
 
-      if (strftime (str, sizeof(str), "%Y%m%dT%TZ", ptm) == 0)
+      if (strftime (str, sizeof (str), "%Y%m%dT%TZ", ptm) == 0)
         return;
 
       lm_message_node_add_child (geoloc, key, str);
-      DEBUG ("\t - %s: %s", (gchar*) key, str);
+      DEBUG ("\t - %s: %s", (gchar *) key, str);
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)
     {
       gchar *str;
       str = g_strdup_printf ("%.6f", g_value_get_double (value));
       lm_message_node_add_child (geoloc, key, str);
-      DEBUG ("\t - %s: %s", (gchar*) key, str);
+      DEBUG ("\t - %s: %s", (gchar *) key, str);
       g_free (str);
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_STRING)
     {
-      lm_message_node_add_child (geoloc, key, g_value_get_string(value));
-      DEBUG ("\t - %s: %s", (gchar*) key, g_value_get_string (value));
+      lm_message_node_add_child (geoloc, key, g_value_get_string (value));
+      DEBUG ("\t - %s: %s", (gchar *) key, g_value_get_string (value));
     }
   else
-    DEBUG ("\t - Unknown key dropped: %s", (gchar*) key);
+    DEBUG ("\t - Unknown key dropped: %s", (gchar *) key);
 
 
 }

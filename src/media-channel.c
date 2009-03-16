@@ -177,8 +177,6 @@ struct _delayed_request_streams_ctx {
 static void destroy_request (struct _delayed_request_streams_ctx *ctx,
     gpointer user_data);
 
-#define GABBLE_MEDIA_CHANNEL_GET_PRIVATE(obj) (obj->priv)
-
 static void
 gabble_media_channel_init (GabbleMediaChannel *self)
 {
@@ -208,7 +206,7 @@ static gboolean contact_is_media_capable (GabbleMediaChannel *chan, TpHandle pee
 static void
 _create_streams (GabbleMediaChannel *chan)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   GList *contents, *li;
 
   contents = gabble_jingle_session_get_contents (priv->session);
@@ -223,7 +221,7 @@ _create_streams (GabbleMediaChannel *chan)
 static void
 _latch_to_session (GabbleMediaChannel *chan)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
 
   g_assert (priv->session != NULL);
 
@@ -249,7 +247,7 @@ _latch_to_session (GabbleMediaChannel *chan)
 static void
 create_session (GabbleMediaChannel *chan, TpHandle peer)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
 
   g_assert (priv->session == NULL);
 
@@ -280,7 +278,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   obj = G_OBJECT_CLASS (gabble_media_channel_parent_class)->
            constructor (type, n_props, props);
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (GABBLE_MEDIA_CHANNEL (obj));
+  priv = GABBLE_MEDIA_CHANNEL (obj)->priv;
   conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -366,7 +364,7 @@ gabble_media_channel_get_property (GObject    *object,
                                    GParamSpec *pspec)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (object);
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   const gchar *param_name;
   guint tp_property_id;
@@ -496,7 +494,7 @@ gabble_media_channel_set_property (GObject     *object,
                                    GParamSpec   *pspec)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (object);
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   const gchar *param_name;
   guint tp_property_id;
 
@@ -725,7 +723,7 @@ void
 gabble_media_channel_dispose (GObject *object)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (object);
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  GabbleMediaChannelPrivate *priv = self->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_CONTACT);
@@ -772,7 +770,7 @@ void
 gabble_media_channel_finalize (GObject *object)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (object);
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  GabbleMediaChannelPrivate *priv = self->priv;
 
   g_free (priv->object_path);
 
@@ -809,7 +807,7 @@ gabble_media_channel_close (GabbleMediaChannel *self)
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   if (priv->closed)
     {
@@ -894,7 +892,7 @@ gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling 
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   if (priv->session)
     {
@@ -933,7 +931,7 @@ make_stream_list (GabbleMediaChannel *self,
                   guint len,
                   GabbleMediaStream **streams)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  GabbleMediaChannelPrivate *priv = self->priv;
   GPtrArray *ret;
   guint i;
   GType info_type = TP_STRUCT_TYPE_MEDIA_STREAM_INFO;
@@ -993,7 +991,7 @@ gabble_media_channel_list_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   /* no session yet? return an empty array */
   if (priv->session == NULL)
@@ -1020,7 +1018,7 @@ _find_stream_by_id (GabbleMediaChannel *chan, guint stream_id)
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (chan));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  priv = chan->priv;
 
   for (i = 0; i < priv->streams->len; i++)
     {
@@ -1054,7 +1052,7 @@ gabble_media_channel_remove_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+  priv = obj->priv;
 
   stream_objs = g_ptr_array_sized_new (streams->len);
 
@@ -1141,7 +1139,7 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   if (stream_direction > TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
     {
@@ -1198,7 +1196,7 @@ static const gchar *
 _pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
   const gchar *resource, JingleMediaType type)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
@@ -1244,7 +1242,7 @@ _pick_best_resource (GabbleMediaChannel *chan,
   TpHandle peer, gboolean want_audio, gboolean want_video,
   const char **transport_ns, JingleDialect *dialect)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
   GabblePresenceCapabilities caps;
   const gchar *resource = NULL;
@@ -1466,15 +1464,13 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
                                         GPtrArray **ret,
                                         GError **error)
 {
-  GabbleMediaChannelPrivate *priv;
+  GabbleMediaChannelPrivate *priv = chan->priv;
   gboolean want_audio, want_video;
   JingleDialect dialect;
   guint idx;
   TpHandle peer;
   const gchar *peer_resource;
   const gchar *transport_ns = NULL;
-
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
 
   DEBUG ("called");
 
@@ -1629,7 +1625,7 @@ static void
 destroy_request (struct _delayed_request_streams_ctx *ctx,
     gpointer user_data G_GNUC_UNUSED)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (ctx->chan);
+  GabbleMediaChannelPrivate *priv = ctx->chan->priv;
 
   if (ctx->timeout_id)
     g_source_remove (ctx->timeout_id);
@@ -1694,14 +1690,14 @@ delay_stream_request (GabbleMediaChannel *chan,
                       DBusGMethodInvocation *context,
                       gboolean disco_in_progress)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   struct _delayed_request_streams_ctx *ctx =
     g_slice_new0 (struct _delayed_request_streams_ctx);
 
   ctx->chan = chan;
   ctx->contact_handle = contact_handle;
   ctx->context = context;
-  ctx->types = g_array_sized_new (FALSE, FALSE, sizeof(guint), types->len);
+  ctx->types = g_array_sized_new (FALSE, FALSE, sizeof (guint), types->len);
   g_array_append_vals (ctx->types, types->data, types->len);
 
   if (disco_in_progress)
@@ -1748,7 +1744,7 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   /* FIXME: disallow this if we've put the other guy on hold? */
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
   conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -1819,7 +1815,7 @@ error:
 static gboolean
 contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer, gboolean *wait)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
   GabblePresenceCapabilities caps;
 #ifdef ENABLE_DEBUG
@@ -1867,7 +1863,7 @@ _gabble_media_channel_add_member (GObject *obj,
                                   GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
   /* did we create this channel? */
@@ -1976,7 +1972,7 @@ gabble_media_channel_remove_member (GObject *obj,
                                     GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   TpIntSet *set;
 
@@ -2021,7 +2017,7 @@ session_terminated_cb (GabbleJingleSession *session,
                        gpointer user_data)
 {
   GabbleMediaChannel *channel = (GabbleMediaChannel *) user_data;
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
+  GabbleMediaChannelPrivate *priv = channel->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   guint reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
   guint terminator;
@@ -2093,7 +2089,7 @@ session_state_changed_cb (GabbleJingleSession *session,
                           GParamSpec *arg1,
                           GabbleMediaChannel *channel)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
+  GabbleMediaChannelPrivate *priv = channel->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   JingleSessionState state;
   TpHandle peer;
@@ -2179,7 +2175,7 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
                            gpointer data)
 {
   GabbleMediaChannel *self = data;
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  GabbleMediaChannelPrivate *priv = self->priv;
   gboolean all_held = TRUE, any_held = FALSE;
   guint i;
 
@@ -2297,7 +2293,7 @@ stream_unhold_failed (GabbleMediaStream *stream,
                       gpointer data)
 {
   GabbleMediaChannel *self = data;
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  GabbleMediaChannelPrivate *priv = self->priv;
   guint i;
 
   DEBUG ("%p: %p", self, stream);
@@ -2330,7 +2326,7 @@ static void
 stream_close_cb (GabbleMediaStream *stream,
                  GabbleMediaChannel *chan)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   guint id;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (chan));
@@ -2360,7 +2356,7 @@ stream_error_cb (GabbleMediaStream *stream,
                  const gchar *message,
                  GabbleMediaChannel *chan)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   GabbleJingleContent *c;
   guint id;
 
@@ -2459,7 +2455,7 @@ construct_stream (GabbleMediaChannel *chan,
                   const GPtrArray *relays)
 {
   GObject *chan_o = (GObject *) chan;
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaChannelPrivate *priv = chan->priv;
   GabbleMediaStream *stream;
   TpMediaStreamType mtype;
   guint id;
@@ -2735,7 +2731,7 @@ gabble_media_channel_get_hold_state (TpSvcChannelInterfaceHold *iface,
                                      DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = (GabbleMediaChannel *) iface;
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  GabbleMediaChannelPrivate *priv = self->priv;
 
   tp_svc_channel_interface_hold_return_from_get_hold_state (context,
       priv->hold_state, priv->hold_state_reason);
@@ -2748,7 +2744,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
                                    DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  GabbleMediaChannelPrivate *priv = self->priv;
   guint i;
   TpLocalHoldState old_state = priv->hold_state;
 
@@ -2826,8 +2822,7 @@ gabble_media_channel_ready (TpSvcMediaSessionHandler *iface,
                             DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
-  GabbleMediaChannelPrivate *priv =
-    GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  GabbleMediaChannelPrivate *priv = self->priv;
 
   if (!priv->ready)
     {
@@ -2856,7 +2851,7 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   DEBUG ("Media.SessionHandler::Error called, error %u (%s) -- "
       "emitting error on each stream", errno, message);

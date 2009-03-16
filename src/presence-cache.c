@@ -1817,7 +1817,7 @@ gabble_presence_cache_get_location (GabblePresenceCache *cache,
   location = g_hash_table_lookup (priv->location, GUINT_TO_POINTER (handle));
   if (location != NULL)
     {
-      g_hash_table_ref(location);
+      g_hash_table_ref (location);
       return location;
     }
 

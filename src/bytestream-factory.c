@@ -1908,7 +1908,7 @@ gabble_bytestream_factory_make_multi_accept_iq (const gchar *full_jid,
 }
 
 const GSList *
-gabble_bytestream_factory_get_socks_proxies (GabbleBytestreamFactory *self)
+gabble_bytestream_factory_get_socks5_proxies (GabbleBytestreamFactory *self)
 {
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);

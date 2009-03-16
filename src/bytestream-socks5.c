@@ -1520,7 +1520,7 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
   GabbleSocks5Proxy *proxy = NULL;
   GibberTCPTransport *transport;
 
-  proxies = gabble_bytestream_factory_get_socks_proxies(
+  proxies = gabble_bytestream_factory_get_socks5_proxies (
       priv->conn->bytestream_factory);
   for (l = (GSList *) proxies; l != NULL; l = g_slist_next (l))
      {
@@ -1856,7 +1856,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       const GSList *proxies;
       GSList *l;
 
-      proxies = gabble_bytestream_factory_get_socks_proxies(
+      proxies = gabble_bytestream_factory_get_socks5_proxies (
           priv->conn->bytestream_factory);
 
       for (l = (GSList *) proxies; l != NULL; l = g_slist_next (l))

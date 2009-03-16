@@ -106,7 +106,7 @@ gboolean gabble_bytestream_factory_negotiate_stream (
 
 gchar *gabble_bytestream_factory_generate_stream_id (void);
 
-const GSList *gabble_bytestream_factory_get_socks_proxies (
+const GSList *gabble_bytestream_factory_get_socks5_proxies (
     GabbleBytestreamFactory *self);
 
 G_END_DECLS

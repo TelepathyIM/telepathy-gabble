@@ -142,7 +142,7 @@ telepathy_gabble_SOURCES = \
 
 check_c_sources = \
     $(telepathy_gabble_SOURCES) \
-    $(libgabble_convenience_la_our_sources) \
+    $(libgabble_convenience_la_SOURCES) \
     $(telepathy_gabble_SOURCES) \
     $(write_mgr_file_SOURCES)
 include $(top_srcdir)/tools/check-coding-style.mk

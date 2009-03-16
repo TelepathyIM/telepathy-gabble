@@ -1614,8 +1614,8 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       ')', NULL);
 
   ips = get_local_interfaces_ips (FALSE);
-  ip = ips;
-  while (ip)
+
+  for (ip = ips; ip != NULL; ip = g_list_next (ip))
     {
       LmMessageNode *node = lm_message_node_add_child (msg->node->children,
           "streamhost", "");
@@ -1626,7 +1626,6 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
           NULL);
 
       g_free (ip->data);
-      ip = ip->next;
     }
   g_list_free (ips);
   g_free (port);

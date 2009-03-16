@@ -80,8 +80,6 @@ struct _GabbleJingleTransportGooglePrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE(o) ((o)->priv)
-
 static void transmit_candidates (GabbleJingleTransportGoogle *transport,
     GList *candidates);
 
@@ -100,7 +98,7 @@ static void
 gabble_jingle_transport_google_dispose (GObject *object)
 {
   GabbleJingleTransportGoogle *trans = GABBLE_JINGLE_TRANSPORT_GOOGLE (object);
-  GabbleJingleTransportGooglePrivate *priv = GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (trans);
+  GabbleJingleTransportGooglePrivate *priv = trans->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -128,7 +126,7 @@ gabble_jingle_transport_google_get_property (GObject *object,
                                              GParamSpec *pspec)
 {
   GabbleJingleTransportGoogle *trans = GABBLE_JINGLE_TRANSPORT_GOOGLE (object);
-  GabbleJingleTransportGooglePrivate *priv = GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (trans);
+  GabbleJingleTransportGooglePrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_CONTENT:
@@ -153,8 +151,7 @@ gabble_jingle_transport_google_set_property (GObject *object,
                                              GParamSpec *pspec)
 {
   GabbleJingleTransportGoogle *trans = GABBLE_JINGLE_TRANSPORT_GOOGLE (object);
-  GabbleJingleTransportGooglePrivate *priv =
-      GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (trans);
+  GabbleJingleTransportGooglePrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_CONTENT:
@@ -236,8 +233,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
     LmMessageNode *transport_node, GError **error)
 {
   GabbleJingleTransportGoogle *t = GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
-  GabbleJingleTransportGooglePrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (t);
+  GabbleJingleTransportGooglePrivate *priv = t->priv;
   GList *candidates = NULL;
   LmMessageNode *node;
 
@@ -375,8 +371,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
 static void
 transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
 {
-  GabbleJingleTransportGooglePrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
+  GabbleJingleTransportGooglePrivate *priv = transport->priv;
   JingleDialect dialect;
   GList *li;
   LmMessage *msg;
@@ -484,8 +479,7 @@ add_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
 {
   GabbleJingleTransportGoogle *transport =
     GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
-  GabbleJingleTransportGooglePrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
+  GabbleJingleTransportGooglePrivate *priv = transport->priv;
   JingleContentState state;
 
   g_object_get (priv->content, "state", &state, NULL);
@@ -516,8 +510,7 @@ retransmit_candidates (GabbleJingleTransportIface *obj, gboolean all)
 {
   GabbleJingleTransportGoogle *transport =
     GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
-  GabbleJingleTransportGooglePrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
+  GabbleJingleTransportGooglePrivate *priv = transport->priv;
 
   if (all)
     {
@@ -541,8 +534,7 @@ get_remote_candidates (GabbleJingleTransportIface *iface)
 {
   GabbleJingleTransportGoogle *transport =
     GABBLE_JINGLE_TRANSPORT_GOOGLE (iface);
-  GabbleJingleTransportGooglePrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_PRIVATE (transport);
+  GabbleJingleTransportGooglePrivate *priv = transport->priv;
 
   return priv->remote_candidates;
 }

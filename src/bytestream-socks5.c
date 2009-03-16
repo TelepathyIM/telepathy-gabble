@@ -1477,6 +1477,7 @@ get_local_interfaces_ips (gboolean include_loopback)
   struct sockaddr_in *sa;
   gchar *loopback = NULL;
 
+  /* FIXME: add IPv6 addresses */
   if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0)
     {
       DEBUG ("Cannot open socket to retreive interface list");

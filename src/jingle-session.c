@@ -1091,7 +1091,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   from = lm_message_node_get_attribute (iq_node, "from");
   to = lm_message_node_get_attribute (iq_node, "to");
 
-  DEBUG("jingle action '%s' from '%s' in session '%s' dialect %u state %u", 
+  DEBUG ("jingle action '%s' from '%s' in session '%s' dialect %u state %u",
       produce_action (action, priv->dialect), from, priv->sid,
       priv->dialect, priv->state);
 

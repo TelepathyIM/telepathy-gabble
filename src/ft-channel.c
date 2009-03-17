@@ -117,7 +117,8 @@ struct _GabbleFileTransferChannelPrivate {
   GabbleConnection *connection;
   GTimeVal last_transferred_bytes_emitted;
   guint progress_timer;
-  gchar *socket_path;
+  TpSocketAddressType socket_type;
+  GValue *socket_address;
   TpHandle initiator;
   gboolean remote_accepted;
 
@@ -774,22 +775,35 @@ gabble_file_transfer_channel_dispose (GObject *object)
 }
 
 static void
+erase_socket (GabbleFileTransferChannel *self)
+{
+  const gchar *path;
+
+  if (self->priv->socket_type != TP_SOCKET_ADDRESS_TYPE_UNIX)
+    /* only UNIX sockets have to be erased */
+    return;
+
+  if (self->priv->socket_address == NULL)
+    return;
+
+  path = g_value_get_string (self->priv->socket_address);
+  if (g_unlink (path) != 0)
+    {
+      DEBUG ("unlink failed: %s", g_strerror (errno));
+    }
+}
+
+static void
 gabble_file_transfer_channel_finalize (GObject *object)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (object);
 
   /* free any data held directly by the object here */
-  if (self->priv->socket_path != NULL)
-    {
-      if (g_unlink (self->priv->socket_path) != 0)
-        {
-          DEBUG ("unlink failed: %s", g_strerror (errno));
-        }
-    }
-  g_free (self->priv->socket_path);
-
+  erase_socket (self);
   g_free (self->priv->object_path);
   g_free (self->priv->filename);
+  if (self->priv->socket_address != NULL)
+    tp_g_value_slice_free (self->priv->socket_address);
   g_free (self->priv->content_type);
   g_free (self->priv->content_hash);
   g_free (self->priv->description);
@@ -960,7 +974,7 @@ check_address_and_access_control (GabbleFileTransferChannel *self,
 static void
 bytestream_open (GabbleFileTransferChannel *self)
 {
-  if (self->priv->socket_path != NULL)
+  if (self->priv->socket_address != NULL)
     {
       /* ProvideFile has already been called. Channel is Open */
       tp_svc_channel_type_file_transfer_emit_initial_offset_defined (self,
@@ -1319,7 +1333,6 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (iface);
   GError *error = NULL;
-  GValue out_address = { 0 };
 
   if (self->priv->state != TP_FILE_TRANSFER_STATE_PENDING)
     {
@@ -1346,17 +1359,12 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
       dbus_g_method_return_error (context, error);
     }
 
-  DEBUG ("local socket %s", self->priv->socket_path);
-
   gabble_file_transfer_channel_set_state (iface,
       TP_FILE_TRANSFER_STATE_ACCEPTED,
       TP_FILE_TRANSFER_STATE_CHANGE_REASON_REQUESTED);
 
-  g_value_init (&out_address, G_TYPE_STRING);
-  g_value_set_string (&out_address, self->priv->socket_path);
-
   tp_svc_channel_type_file_transfer_return_from_accept_file (context,
-      &out_address);
+      self->priv->socket_address);
 
   self->priv->initial_offset = 0;
 
@@ -1371,8 +1379,6 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
   gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
 
   gabble_bytestream_iface_accept (self->priv->bytestream, NULL, NULL);
-
-  g_value_unset (&out_address);
 }
 
 /**
@@ -1391,7 +1397,6 @@ gabble_file_transfer_channel_provide_file (
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (iface);
   TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->connection;
-  GValue out_address = { 0 };
   GError *error = NULL;
 
   if (self->priv->initiator != base_conn->self_handle)
@@ -1402,7 +1407,7 @@ gabble_file_transfer_channel_provide_file (
       return;
     }
 
-  if (self->priv->socket_path != NULL)
+  if (self->priv->socket_address != NULL)
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "ProvideFile has already been called for this channel");
@@ -1427,9 +1432,6 @@ gabble_file_transfer_channel_provide_file (
       dbus_g_method_return_error (context, error);
     }
 
-  g_value_init (&out_address, G_TYPE_STRING);
-  g_value_set_string (&out_address, self->priv->socket_path);
-
   if (self->priv->remote_accepted)
     {
       /* Remote already accepted the file. Channel is Open.
@@ -1443,9 +1445,7 @@ gabble_file_transfer_channel_provide_file (
     }
 
   tp_svc_channel_type_file_transfer_return_from_provide_file (context,
-      &out_address);
-
-  g_value_unset (&out_address);
+      self->priv->socket_address);
 }
 
 static void
@@ -1462,7 +1462,7 @@ file_transfer_iface_init (gpointer g_iface,
 #undef IMPLEMENT
 }
 
-static const gchar *
+static gchar *
 get_local_unix_socket_path (GabbleFileTransferChannel *self)
 {
   const gchar *tmp_dir;
@@ -1484,11 +1484,6 @@ get_local_unix_socket_path (GabbleFileTransferChannel *self)
       DEBUG ("file %s already exists", path);
       g_assert_not_reached ();
     }
-
-  if (self->priv->socket_path)
-    g_free (self->priv->socket_path);
-
-  self->priv->socket_path = path;
 
   return path;
 }
@@ -1633,12 +1628,7 @@ setup_local_socket (GabbleFileTransferChannel *self,
                     TpSocketAccessControl access_control,
                     const GValue *access_control_param)
 {
-  const gchar *path;
   GError *error = NULL;
-
-  path = get_local_unix_socket_path (self);
-  if (path == NULL)
-    return FALSE;
 
   self->priv->listener = gibber_listener_new ();
 
@@ -1646,9 +1636,13 @@ setup_local_socket (GabbleFileTransferChannel *self,
    * are supposed to be valid */
   if (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
+      gchar *path;
+
       g_assert (access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST);
 
       path = get_local_unix_socket_path (self);
+      if (path == NULL)
+        return FALSE;
 
       /* FIXME: should use the socket type and access control chosen by
        * the user. */
@@ -1661,11 +1655,19 @@ setup_local_socket (GabbleFileTransferChannel *self,
           self->priv->listener = NULL;
           return FALSE;
         }
+
+      self->priv->socket_address = tp_g_value_slice_new (G_TYPE_STRING);
+      g_value_set_string (self->priv->socket_address, path);
+
+      DEBUG ("local socket %s", path);
+      g_free (path);
     }
   else
     {
       g_assert_not_reached ();
     }
+
+  self->priv->socket_type = address_type;
 
   g_signal_connect (self->priv->listener, "new-connection",
     G_CALLBACK (new_connection_cb), self);

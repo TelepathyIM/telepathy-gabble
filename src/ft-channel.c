@@ -1673,6 +1673,8 @@ setup_local_socket (GabbleFileTransferChannel *self,
     {
       int ret;
 
+      g_assert (access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST);
+
       ret = gibber_listener_listen_tcp_loopback_af (self->priv->listener, 0,
           GIBBER_AF_IPV4, &error);
       if (!ret)
@@ -1696,6 +1698,8 @@ setup_local_socket (GabbleFileTransferChannel *self,
   else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
     {
       int ret;
+
+      g_assert (access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST);
 
       ret = gibber_listener_listen_tcp_loopback_af (self->priv->listener, 0,
           GIBBER_AF_IPV6, &error);

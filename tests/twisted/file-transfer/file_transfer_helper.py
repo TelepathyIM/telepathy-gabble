@@ -128,6 +128,12 @@ class FileTransferTest(object):
             if fct():
                 break
 
+    def create_socket(self):
+        if self.address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
+            return socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        else:
+            assert False
+
 class ReceiveFileTest(FileTransferTest):
     def __init__(self, bytestream_cls, address_type, access_control, access_control_param):
         FileTransferTest.__init__(self, bytestream_cls, address_type, access_control, access_control_param)
@@ -222,7 +228,7 @@ class ReceiveFileTest(FileTransferTest):
 
     def receive_file(self):
         # Connect to Gabble's socket
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s = self.create_socket()
         s.connect(self.address)
 
         # send the rest of the file
@@ -362,7 +368,7 @@ class SendFileTest(FileTransferTest):
         self.bytestream.wait_bytestream_open()
 
     def send_file(self):
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s = self.create_socket()
         s.connect(self.address)
         s.send(self.file.data)
 

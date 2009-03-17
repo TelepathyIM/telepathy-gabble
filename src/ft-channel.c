@@ -1653,8 +1653,6 @@ setup_local_socket (GabbleFileTransferChannel *self,
       if (path == NULL)
         return FALSE;
 
-      /* FIXME: should use the socket type and access control chosen by
-       * the user. */
       if (!gibber_listener_listen_socket (self->priv->listener, (gchar *) path,
             FALSE, &error))
         {

@@ -1097,9 +1097,8 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       /* Not a MUC jid, need to get a resource */
       const gchar *resource;
 
-      /* FIXME: we should probably look for PRESENCE_CAP_SI_FILE_TRANSFER but it
-       * seems all client doesn't announce it. */
-      resource = gabble_presence_pick_resource_by_caps (presence, 0);
+      resource = gabble_presence_pick_resource_by_caps (presence,
+          PRESENCE_CAP_SI_FILE_TRANSFER);
       if (resource == NULL)
         {
           DEBUG ("contact doesn't have file transfer capabilities");

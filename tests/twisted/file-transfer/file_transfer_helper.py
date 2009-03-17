@@ -5,7 +5,7 @@ import time
 import datetime
 
 from servicetest import EventPattern
-from gabbletest import exec_test
+from gabbletest import exec_test, sync_stream
 import ns
 from bytestream import create_from_si_offer, BytestreamIBBMsg, BytestreamS5B, BytestreamS5BPidgin, \
     BytestreamSIFallbackS5CannotConnect, BytestreamSIFallbackS5WrongHash
@@ -131,6 +131,8 @@ class FileTransferTest(object):
 
         h = presence_event.args[0].keys()[0]
         assert h == self.handle
+
+        sync_stream(self.q, self.stream)
 
     def create_ft_channel(self):
         ft_chan = self.bus.get_object(self.conn.object.bus_name, self.ft_path)

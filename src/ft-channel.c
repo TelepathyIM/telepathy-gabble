@@ -900,7 +900,9 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 #undef IMPLEMENT
 }
 
-static gboolean setup_local_socket (GabbleFileTransferChannel *self);
+static gboolean setup_local_socket (GabbleFileTransferChannel *self,
+    TpSocketAddressType address_type, TpSocketAccessControl access_control,
+    const GValue *access_control_param);
 
 static void
 gabble_file_transfer_channel_set_state (
@@ -1335,7 +1337,8 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
       return;
     }
 
-  if (!setup_local_socket (self))
+  if (!setup_local_socket (self, address_type, access_control,
+        access_control_param))
     {
       DEBUG ("Could not set up local socket");
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -1415,7 +1418,8 @@ gabble_file_transfer_channel_provide_file (
       return;
     }
 
-  if (!setup_local_socket (self))
+  if (!setup_local_socket (self, address_type, access_control,
+        access_control_param))
     {
       DEBUG ("Could not set up local socket");
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -1624,7 +1628,10 @@ new_connection_cb (GibberListener *listener,
 }
 
 static gboolean
-setup_local_socket (GabbleFileTransferChannel *self)
+setup_local_socket (GabbleFileTransferChannel *self,
+                    TpSocketAddressType address_type,
+                    TpSocketAccessControl access_control,
+                    const GValue *access_control_param)
 {
   const gchar *path;
   GError *error = NULL;
@@ -1635,16 +1642,29 @@ setup_local_socket (GabbleFileTransferChannel *self)
 
   self->priv->listener = gibber_listener_new ();
 
-  /* FIXME: should use the socket type and access control chosen by
-   * the user. */
-  if (!gibber_listener_listen_socket (self->priv->listener, (gchar *) path,
-        FALSE, &error))
+  /* Add this stage the address_type and access_control have been checked and
+   * are supposed to be valid */
+  if (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
-      DEBUG ("listen_socket failed: %s", error->message);
-      g_error_free (error);
-      g_object_unref (self->priv->listener);
-      self->priv->listener = NULL;
-      return FALSE;
+      g_assert (access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST);
+
+      path = get_local_unix_socket_path (self);
+
+      /* FIXME: should use the socket type and access control chosen by
+       * the user. */
+      if (!gibber_listener_listen_socket (self->priv->listener, (gchar *) path,
+            FALSE, &error))
+        {
+          DEBUG ("listen_socket failed: %s", error->message);
+          g_error_free (error);
+          g_object_unref (self->priv->listener);
+          self->priv->listener = NULL;
+          return FALSE;
+        }
+    }
+  else
+    {
+      g_assert_not_reached ();
     }
 
   g_signal_connect (self->priv->listener, "new-connection",

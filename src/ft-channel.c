@@ -422,7 +422,7 @@ gabble_file_transfer_channel_constructor (GType type,
   DBusGConnection *bus;
   TpBaseConnection *base_conn;
   TpHandleRepoIface *contact_repo;
-  GArray *unix_access;
+  GArray *socket_access;
   TpSocketAccessControl access_control;
 
   /* Parent constructor chain */
@@ -451,12 +451,20 @@ gabble_file_transfer_channel_constructor (GType type,
       g_direct_equal, NULL, (GDestroyNotify) free_array);
 
   /* Socket_Address_Type_Unix */
-  unix_access = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
-      1);
+  socket_access = g_array_sized_new (FALSE, FALSE,
+      sizeof (TpSocketAccessControl), 1);
   access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
-  g_array_append_val (unix_access, access_control);
+  g_array_append_val (socket_access, access_control);
   g_hash_table_insert (self->priv->available_socket_types,
-      GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX), unix_access);
+      GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX), socket_access);
+
+  /* Socket_Address_Type_IPv4 */
+  socket_access = g_array_sized_new (FALSE, FALSE,
+      sizeof (TpSocketAccessControl), 1);
+  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (socket_access, access_control);
+  g_hash_table_insert (self->priv->available_socket_types,
+      GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV4), socket_access);
 
   gabble_signal_connect_weak (self->priv->connection->presence_cache,
       "presences-updated", G_CALLBACK (connection_presences_updated_cb), obj);

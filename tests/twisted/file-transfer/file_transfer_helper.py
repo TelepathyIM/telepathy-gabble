@@ -203,7 +203,8 @@ class ReceiveFileTest(FileTransferTest):
 
     def accept_file(self):
         self.address = self.ft_channel.AcceptFile(self.address_type,
-                self.access_control, self.access_control_param, 0)
+                self.access_control, self.access_control_param, 0,
+                byte_arrays=True)
 
         state_event, iq_event = self.q.expect_many(
             EventPattern('dbus-signal', signal='FileTransferStateChanged'),
@@ -368,7 +369,8 @@ class SendFileTest(FileTransferTest):
 
     def provide_file(self):
         self.address = self.ft_channel.ProvideFile(self.address_type,
-                self.access_control, self.access_control_param)
+                self.access_control, self.access_control_param,
+                byte_arrays=True)
 
     def client_accept_file(self):
         # accept SI offer

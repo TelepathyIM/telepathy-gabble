@@ -786,7 +786,7 @@ gabble_file_transfer_channel_dispose (GObject *object)
 static void
 erase_socket (GabbleFileTransferChannel *self)
 {
-  const gchar *path;
+  GArray *array;
 
   if (self->priv->socket_type != TP_SOCKET_ADDRESS_TYPE_UNIX)
     /* only UNIX sockets have to be erased */
@@ -795,8 +795,8 @@ erase_socket (GabbleFileTransferChannel *self)
   if (self->priv->socket_address == NULL)
     return;
 
-  path = g_value_get_string (self->priv->socket_address);
-  if (g_unlink (path) != 0)
+  array = g_value_get_boxed (self->priv->socket_address);
+  if (g_unlink (array->data) != 0)
     {
       DEBUG ("unlink failed: %s", g_strerror (errno));
     }
@@ -1646,6 +1646,7 @@ setup_local_socket (GabbleFileTransferChannel *self,
   if (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       gchar *path;
+      GArray *array;
 
       g_assert (access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST);
 
@@ -1663,11 +1664,16 @@ setup_local_socket (GabbleFileTransferChannel *self,
           return FALSE;
         }
 
-      self->priv->socket_address = tp_g_value_slice_new (G_TYPE_STRING);
-      g_value_set_string (self->priv->socket_address, path);
+      array = g_array_sized_new (TRUE, FALSE, sizeof (gchar), strlen (path));
+      g_array_insert_vals (array, 0, path, strlen (path));
+
+      self->priv->socket_address = tp_g_value_slice_new (
+          DBUS_TYPE_G_UCHAR_ARRAY);
+      g_value_set_boxed (self->priv->socket_address, array);
 
       DEBUG ("local socket %s", path);
       g_free (path);
+      g_array_free (array, TRUE);
     }
   else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
     {

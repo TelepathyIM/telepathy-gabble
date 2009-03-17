@@ -4,8 +4,8 @@ import constants as cs
 from file_transfer_helper import SendFileTest, exec_file_transfer_test
 
 class SendFileTransferToUnknownContactTest(SendFileTest):
-    def __init__(self, bytestream_cls):
-        SendFileTest.__init__(self, bytestream_cls)
+    def __init__(self, bytestream_cls, address_type, access_control, acces_control_param):
+        SendFileTest.__init__(self, bytestream_cls, address_type, access_control, acces_control_param)
 
         self._actions = [self.connect, self.check_ft_available, self.my_request_ft_channel]
 

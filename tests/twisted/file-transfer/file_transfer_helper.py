@@ -45,9 +45,12 @@ class File(object):
 class FileTransferTest(object):
     CONTACT_NAME = 'test-ft@localhost'
 
-    def __init__(self, bytestream_cls):
+    def __init__(self, bytestream_cls, address_type, access_control, access_control_param):
         self.file = File()
         self.bytestream_cls = bytestream_cls
+        self.address_type = address_type
+        self.access_control = access_control
+        self.access_control_param = access_control_param
 
     def connect(self):
         self.conn.Connect()
@@ -126,8 +129,8 @@ class FileTransferTest(object):
                 break
 
 class ReceiveFileTest(FileTransferTest):
-    def __init__(self, bytestream_cls):
-        FileTransferTest.__init__(self, bytestream_cls)
+    def __init__(self, bytestream_cls, address_type, access_control, access_control_param):
+        FileTransferTest.__init__(self, bytestream_cls, address_type, access_control, access_control_param)
 
         self._actions = [self.connect, self.announce_contact,
             self.send_ft_offer_iq, self.check_new_channel, self.create_ft_channel, self.accept_file,
@@ -186,8 +189,8 @@ class ReceiveFileTest(FileTransferTest):
         self.ft_path = path
 
     def accept_file(self):
-        self.address = self.ft_channel.AcceptFile(cs.SOCKET_ADDRESS_TYPE_UNIX,
-                cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "", 0)
+        self.address = self.ft_channel.AcceptFile(self.address_type,
+                self.access_control, self.access_control_param, 0)
 
         state_event, iq_event = self.q.expect_many(
             EventPattern('dbus-signal', signal='FileTransferStateChanged'),
@@ -251,8 +254,8 @@ class ReceiveFileTest(FileTransferTest):
         assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 
 class SendFileTest(FileTransferTest):
-    def __init__(self, bytestream_cls):
-        FileTransferTest.__init__(self, bytestream_cls)
+    def __init__(self, bytestream_cls, address_type, access_control, acces_control_param):
+        FileTransferTest.__init__(self, bytestream_cls, address_type, access_control, acces_control_param)
 
         self._actions = [self.connect, self.announce_contact,
             self.check_ft_available, self.request_ft_channel, self.create_ft_channel,
@@ -348,8 +351,8 @@ class SendFileTest(FileTransferTest):
         assert self.desc == self.file.description
 
     def provide_file(self):
-        self.address = self.ft_channel.ProvideFile(cs.SOCKET_ADDRESS_TYPE_UNIX,
-                cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")
+        self.address = self.ft_channel.ProvideFile(self.address_type,
+                self.access_control, self.access_control_param)
 
     def client_accept_file(self):
         # accept SI offer
@@ -396,5 +399,7 @@ class SendFileTest(FileTransferTest):
 def exec_file_transfer_test(test_cls):
     for bytestream_cls  in [BytestreamIBBMsg, BytestreamS5B, BytestreamS5BPidgin, BytestreamSIFallbackS5CannotConnect,
             BytestreamSIFallbackS5WrongHash]:
-        test = test_cls(bytestream_cls)
-        exec_test(test.test)
+        for addr_type, access_control, access_control_param in [
+                (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")]:
+            test = test_cls(bytestream_cls, addr_type, access_control, access_control_param)
+            exec_test(test.test)

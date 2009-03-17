@@ -131,6 +131,8 @@ class FileTransferTest(object):
     def create_socket(self):
         if self.address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
             return socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        elif self.address_type == cs.SOCKET_ADDRESS_TYPE_IPV4:
+            return socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
             assert False
 
@@ -410,6 +412,7 @@ def exec_file_transfer_test(test_cls):
     for bytestream_cls  in [BytestreamIBBMsg, BytestreamS5B, BytestreamS5BPidgin, BytestreamSIFallbackS5CannotConnect,
             BytestreamSIFallbackS5WrongHash]:
         for addr_type, access_control, access_control_param in [
-                (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")]:
+                (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
+                (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")]:
             test = test_cls(bytestream_cls, addr_type, access_control, access_control_param)
             exec_test(test.test)

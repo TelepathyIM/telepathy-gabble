@@ -6,7 +6,7 @@ from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest
 class ReceiveFileAndCancelWhileReceiving(ReceiveFileTest):
     def receive_file(self):
         # Connect to Gabble's socket
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s = self.create_socket()
         s.connect(self.address)
 
         # for some reason the socket is closed

@@ -133,6 +133,8 @@ class FileTransferTest(object):
             return socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         elif self.address_type == cs.SOCKET_ADDRESS_TYPE_IPV4:
             return socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        elif self.address_type == cs.SOCKET_ADDRESS_TYPE_IPV6:
+            return socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         else:
             assert False
 
@@ -191,7 +193,8 @@ class ReceiveFileTest(FileTransferTest):
         assert props[cs.FT_DATE] == self.file.date
         assert props[cs.FT_AVAILABLE_SOCKET_TYPES] == \
             {cs.SOCKET_ADDRESS_TYPE_UNIX: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
-            cs.SOCKET_ADDRESS_TYPE_IPV4: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]}, \
+            cs.SOCKET_ADDRESS_TYPE_IPV4: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
+            cs.SOCKET_ADDRESS_TYPE_IPV6: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]}, \
             props[cs.FT_AVAILABLE_SOCKET_TYPES]
         assert props[cs.FT_TRANSFERRED_BYTES] == 0
         assert props[cs.FT_INITIAL_OFFSET] == 0
@@ -331,7 +334,8 @@ class SendFileTest(FileTransferTest):
         assert props[cs.FT_DATE] == self.file.date
         assert props[cs.FT_AVAILABLE_SOCKET_TYPES] == \
             {cs.SOCKET_ADDRESS_TYPE_UNIX: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
-            cs.SOCKET_ADDRESS_TYPE_IPV4: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]}, \
+            cs.SOCKET_ADDRESS_TYPE_IPV4: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
+            cs.SOCKET_ADDRESS_TYPE_IPV6: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]}, \
             props[cs.FT_AVAILABLE_SOCKET_TYPES]
         assert props[cs.FT_TRANSFERRED_BYTES] == 0
         assert props[cs.FT_INITIAL_OFFSET] == 0
@@ -413,6 +417,7 @@ def exec_file_transfer_test(test_cls):
             BytestreamSIFallbackS5WrongHash]:
         for addr_type, access_control, access_control_param in [
                 (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
-                (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")]:
+                (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
+                (cs.SOCKET_ADDRESS_TYPE_IPV6, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")]:
             test = test_cls(bytestream_cls, addr_type, access_control, access_control_param)
             exec_test(test.test)

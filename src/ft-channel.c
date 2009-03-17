@@ -468,6 +468,14 @@ gabble_file_transfer_channel_constructor (GType type,
   g_hash_table_insert (self->priv->available_socket_types,
       GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV4), socket_access);
 
+  /* Socket_Address_Type_IPv6 */
+  socket_access = g_array_sized_new (FALSE, FALSE,
+      sizeof (TpSocketAccessControl), 1);
+  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (socket_access, access_control);
+  g_hash_table_insert (self->priv->available_socket_types,
+      GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV6), socket_access);
+
   gabble_signal_connect_weak (self->priv->connection->presence_cache,
       "presences-updated", G_CALLBACK (connection_presences_updated_cb), obj);
 
@@ -1684,6 +1692,30 @@ setup_local_socket (GabbleFileTransferChannel *self,
 
       dbus_g_type_struct_set (self->priv->socket_address,
           0, "127.0.0.1",
+          1, gibber_listener_get_port (self->priv->listener),
+          G_MAXUINT);
+    }
+  else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
+    {
+      int ret;
+
+      ret = gibber_listener_listen_tcp_loopback_af (self->priv->listener, 0,
+          GIBBER_AF_IPV6, &error);
+      if (!ret)
+        {
+          DEBUG ("Error listening on socket: %s", error->message);
+          g_error_free (error);
+          return FALSE;
+        }
+
+      self->priv->socket_address = tp_g_value_slice_new (
+          TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV6);
+      g_value_take_boxed (self->priv->socket_address,
+          dbus_g_type_specialized_construct (
+            TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV6));
+
+      dbus_g_type_struct_set (self->priv->socket_address,
+          0, "::1",
           1, gibber_listener_get_port (self->priv->listener),
           G_MAXUINT);
     }

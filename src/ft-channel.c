@@ -46,6 +46,7 @@
 #include "util.h"
 
 #include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/gtypes.h>
@@ -1661,6 +1662,30 @@ setup_local_socket (GabbleFileTransferChannel *self,
 
       DEBUG ("local socket %s", path);
       g_free (path);
+    }
+  else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+    {
+      int ret;
+
+      ret = gibber_listener_listen_tcp_loopback_af (self->priv->listener, 0,
+          GIBBER_AF_IPV4, &error);
+      if (!ret)
+        {
+          DEBUG ("Error listening on socket: %s", error->message);
+          g_error_free (error);
+          return FALSE;
+        }
+
+      self->priv->socket_address = tp_g_value_slice_new (
+          TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV4);
+      g_value_take_boxed (self->priv->socket_address,
+          dbus_g_type_specialized_construct (
+              TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV4));
+
+      dbus_g_type_struct_set (self->priv->socket_address,
+          0, "127.0.0.1",
+          1, gibber_listener_get_port (self->priv->listener),
+          G_MAXUINT);
     }
   else
     {

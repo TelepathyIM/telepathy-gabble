@@ -1248,7 +1248,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
     {
       if (channel == NULL)
         {
-          channel = new_tubes_channel (self, handle, base_conn->self_handle,
+          new_tubes_channel (self, handle, base_conn->self_handle,
               request_token, TRUE);
           return TRUE;
         }

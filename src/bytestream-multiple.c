@@ -583,6 +583,9 @@ bytestream_activate_next (GabbleBytestreamMultiple *self)
       priv->stream_init_id, priv->peer_resource, priv->self_full_jid,
       priv->state);
 
+  /* Methods have already been checked so this shouldn't fail */
+  g_assert (priv->active_bytestream != NULL);
+
   g_free (stream_method);
 
   /* block the new bytestream if needed */

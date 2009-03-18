@@ -47,8 +47,8 @@ class File(object):
 class FileTransferTest(object):
     CONTACT_NAME = 'test-ft@localhost'
 
-    def __init__(self, bytestream_cls, address_type, access_control, access_control_param):
-        self.file = File()
+    def __init__(self, bytestream_cls, file, address_type, access_control, access_control_param):
+        self.file = file
         self.bytestream_cls = bytestream_cls
         self.address_type = address_type
         self.access_control = access_control
@@ -144,8 +144,8 @@ class FileTransferTest(object):
             assert False
 
 class ReceiveFileTest(FileTransferTest):
-    def __init__(self, bytestream_cls, address_type, access_control, access_control_param):
-        FileTransferTest.__init__(self, bytestream_cls, address_type, access_control, access_control_param)
+    def __init__(self, bytestream_cls, file, address_type, access_control, access_control_param):
+        FileTransferTest.__init__(self, bytestream_cls, file, address_type, access_control, access_control_param)
 
         self._actions = [self.connect, self.announce_contact,
             self.send_ft_offer_iq, self.check_new_channel, self.create_ft_channel, self.accept_file,
@@ -279,8 +279,8 @@ class ReceiveFileTest(FileTransferTest):
         assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 
 class SendFileTest(FileTransferTest):
-    def __init__(self, bytestream_cls, address_type, access_control, acces_control_param):
-        FileTransferTest.__init__(self, bytestream_cls, address_type, access_control, acces_control_param)
+    def __init__(self, bytestream_cls, file, address_type, access_control, acces_control_param):
+        FileTransferTest.__init__(self, bytestream_cls, file, address_type, access_control, acces_control_param)
 
         self._actions = [self.connect, self.announce_contact,
             self.check_ft_available, self.request_ft_channel, self.create_ft_channel,
@@ -437,5 +437,12 @@ def exec_file_transfer_test(test_cls):
                 (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
                 (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
                 (cs.SOCKET_ADDRESS_TYPE_IPV6, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")]:
-            test = test_cls(bytestream_cls, addr_type, access_control, access_control_param)
+
+            file = File()
+            test = test_cls(bytestream_cls, file, addr_type, access_control, access_control_param)
+            exec_test(test.test)
+
+            # test resume
+            file.offset = 5
+            test = test_cls(bytestream_cls, file, addr_type, access_control, access_control_param)
             exec_test(test.test)

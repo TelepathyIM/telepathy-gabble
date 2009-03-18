@@ -8,7 +8,7 @@ from servicetest import make_channel_proxy, tp_path_prefix, \
         EventPattern, call_async, sync_dbus
 import jingletest
 import gabbletest
-import constants as c
+import constants as cs
 import dbus
 import time
 import BaseHTTPServer
@@ -175,7 +175,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
         media_iface = make_channel_proxy(conn, path,
                 'Channel.Type.StreamedMedia')
         call_async(q, media_iface, 'RequestStreams',
-                remote_handle, [c.MEDIA_STREAM_TYPE_AUDIO])
+                remote_handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -314,7 +314,7 @@ def test_too_slow(q, bus, conn, stream, httpd, media_chan):
     """
 
     # User gets bored, and closes the channel.
-    call_async(q, media_chan, 'Close', dbus_interface=c.CHANNEL)
+    call_async(q, media_chan, 'Close', dbus_interface=cs.CHANNEL)
     q.expect('dbus-signal', signal='Closed')
 
     # Now Google answers!

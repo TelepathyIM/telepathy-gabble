@@ -45,7 +45,8 @@ def test(q, bus, conn, stream):
     # Force Gabble to process the caps before calling RequestChannel
     sync_stream(q, stream)
 
-    handle = conn.RequestHandles(1, [jt.remote_jid])[0]
+    self_handle = conn.GetSelfHandle()
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
 
     call_async(q, conn, 'RequestChannel',
         'org.freedesktop.Telepathy.Channel.Type.StreamedMedia', 0, 0, True)
@@ -183,7 +184,7 @@ def test(q, bus, conn, stream):
 
     # Time passes ... afterwards we close the chan
 
-    group_iface.RemoveMembers([dbus.UInt32(1)], 'closed')
+    group_iface.RemoveMembers([self_handle], 'closed')
 
     # Check that we're the actor
     e = q.expect('dbus-signal', signal='MembersChanged')

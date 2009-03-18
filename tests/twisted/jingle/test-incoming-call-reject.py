@@ -10,6 +10,8 @@ import gabbletest
 import dbus
 import time
 
+import constants as cs
+
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
@@ -39,7 +41,8 @@ def test(q, bus, conn, stream):
     # Force Gabble to process the caps before calling RequestChannel
     sync_stream(q, stream)
 
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    self_handle = conn.GetSelfHandle()
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
 
     # Remote end calls us
     jt.incoming_call()
@@ -50,7 +53,7 @@ def test(q, bus, conn, stream):
 
     # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], remote_handle, 0])
+             args=[u'', [], [], [self_handle], [], remote_handle, 0])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -72,7 +75,7 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorID'] == 'foo@bar.com'
     assert channel_props['InitiatorHandle'] == remote_handle
 
-    media_chan.RemoveMembers([dbus.UInt32(1)], 'rejected')
+    media_chan.RemoveMembers([self_handle], 'rejected')
 
     iq, signal = q.expect_many(
             EventPattern('stream-iq'),

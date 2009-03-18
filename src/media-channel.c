@@ -307,7 +307,8 @@ gabble_media_channel_constructor (GType type, guint n_props,
   set = tp_intset_new ();
   tp_intset_add (set, priv->creator);
 
-  tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0, 0);
+  tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0,
+      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
   tp_intset_destroy (set);
 
@@ -345,7 +346,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
       tp_intset_add (set, ((TpBaseConnection *) priv->conn)->self_handle);
 
       tp_group_mixin_change_members (obj, "", NULL, NULL, set, NULL,
-          priv->session->peer, 0);
+          priv->session->peer, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
       tp_intset_destroy (set);
 

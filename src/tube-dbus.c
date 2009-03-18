@@ -240,7 +240,8 @@ filter_cb (DBusConnection *conn,
 
   if (priv->dbus_local_name != NULL)
     {
-      dbus_message_set_sender (msg, priv->dbus_local_name);
+      if (!dbus_message_set_sender (msg, priv->dbus_local_name))
+        DEBUG ("dbus_message_set_sender failed");
     }
 
   if (!dbus_message_marshal (msg, &marshalled, &len))

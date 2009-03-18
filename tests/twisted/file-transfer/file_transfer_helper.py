@@ -219,7 +219,7 @@ class ReceiveFileTest(FileTransferTest):
 
     def accept_file(self):
         self.address = self.ft_channel.AcceptFile(SOCKET_ADDRESS_TYPE_UNIX,
-                SOCKET_ACCESS_CONTROL_LOCALHOST, "", 5)
+                SOCKET_ACCESS_CONTROL_LOCALHOST, "", 0)
 
         state_event, iq_event = self.q.expect_many(
             EventPattern('dbus-signal', signal='FileTransferStateChanged'),

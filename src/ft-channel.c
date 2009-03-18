@@ -259,7 +259,7 @@ gabble_file_transfer_channel_get_property (GObject *object,
       case PROP_DATE:
         g_value_set_uint64 (value, self->priv->date);
         break;
-     case PROP_CHANNEL_DESTROYED:
+      case PROP_CHANNEL_DESTROYED:
         g_value_set_boolean (value, self->priv->closed);
         break;
       case PROP_CHANNEL_PROPERTIES:

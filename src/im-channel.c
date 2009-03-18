@@ -42,6 +42,7 @@
 #include "presence.h"
 #include "presence-cache.h"
 #include "roster.h"
+#include "util.h"
 
 static void channel_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
@@ -508,6 +509,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
                             TpHandle sender,
                             const char *from,
                             time_t timestamp,
+                            const gchar *id,
                             const char *text,
                             TpChannelTextSendError send_error,
                             TpDeliveryStatus delivery_status)
@@ -537,6 +539,9 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   if (timestamp != 0)
     tp_message_set_uint64 (msg, 0, "message-sent", timestamp);
 
+  if (id != NULL)
+    tp_message_set_string (msg, 0, "message-token", id);
+
   /* Body */
   tp_message_set_string (msg, 1, "content-type", "text/plain");
   tp_message_set_string (msg, 1, "content", text);
@@ -547,11 +552,22 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
           sender);
       tp_message_set_uint64 (msg, 0, "message-received", time (NULL));
 
+      /* Ensure that all incoming messages have an ID, either from the
+       * protocol or just a locally generated UUID */
+      if (id == NULL)
+        {
+          gchar *tmp = gabble_generate_id ();
+
+          tp_message_set_string (msg, 0, "message-token", tmp);
+          g_free (tmp);
+        }
+
       tp_message_mixin_take_received (G_OBJECT (chan), msg);
     }
   else
     {
       TpMessage *delivery_report = tp_message_new (base_conn, 1, 1);
+      gchar *tmp;
 
       tp_message_set_uint32 (delivery_report, 0, "message-type",
           TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
@@ -560,9 +576,16 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
       tp_message_set_uint64 (delivery_report, 0, "message-received",
           time (NULL));
 
+      tmp = gabble_generate_id ();
+      tp_message_set_string (delivery_report, 0, "message-token", tmp);
+      g_free (tmp);
+
       tp_message_set_uint32 (delivery_report, 0, "delivery-status",
           delivery_status);
       tp_message_set_uint32 (delivery_report, 0, "delivery-error", send_error);
+
+      if (id != NULL)
+        tp_message_set_string (delivery_report, 0, "delivery-token", id);
 
       /* We're getting a send error, so the original sender of the echoed
        * message must be us! */

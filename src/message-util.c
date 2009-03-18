@@ -97,6 +97,7 @@ gabble_message_util_send_message (GObject *obj,
   guint type = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
   gboolean result = TRUE;
   const gchar *content_type, *text;
+  gchar *id = NULL;
   guint n_parts;
 
 #define INVALID_ARGUMENT(msg, args...) \
@@ -152,6 +153,10 @@ gabble_message_util_send_message (GObject *obj,
 
   msg = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE,
       subtype);
+  /* Generate a UUID for the message */
+  id = gabble_generate_id ();
+  lm_message_node_set_attribute (msg->node, "id", id);
+  tp_message_set_string (message, 0, "message-token", id);
 
   if (send_nick)
     lm_message_node_add_own_nick (msg->node, conn);
@@ -176,7 +181,8 @@ gabble_message_util_send_message (GObject *obj,
   if (!result)
     goto despair_island;
 
-  tp_message_mixin_sent (obj, message, flags, "", NULL);
+  tp_message_mixin_sent (obj, message, flags, id, NULL);
+  g_free (id);
 
   return;
 
@@ -184,6 +190,7 @@ despair_island:
   g_assert (error != NULL);
   tp_message_mixin_sent (obj, message, 0, NULL, error);
   g_error_free (error);
+  g_free (id);
 }
 
 
@@ -320,6 +327,7 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
                                             const gchar **from,
                                             time_t *stamp,
                                             TpChannelTextMessageType *msgtype,
+                                            const gchar **id,
                                             const gchar **body_ret,
                                             gint *state,
                                             TpChannelTextSendError *send_error,
@@ -339,6 +347,8 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
 
       *send_error = _tp_send_error_from_error_node (error_node, delivery_status);
     }
+
+  *id = lm_message_node_get_attribute (message->node, "id");
 
   *from = lm_message_node_get_attribute (message->node, "from");
   if (*from == NULL)

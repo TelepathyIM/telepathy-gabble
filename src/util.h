@@ -38,6 +38,8 @@ gchar *sha1_hex (const gchar *bytes, guint len);
 #define SHA1_HASH_SIZE 20
 void sha1_bin (const gchar *bytes, guint len, guchar out[SHA1_HASH_SIZE]);
 
+gchar *gabble_generate_id (void);
+
 void lm_message_node_add_own_nick (LmMessageNode *node,
     GabbleConnection *conn);
 void lm_message_node_unlink (LmMessageNode *orphan);

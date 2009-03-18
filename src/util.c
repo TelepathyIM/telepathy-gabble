@@ -29,6 +29,10 @@
 
 #include <telepathy-glib/handle-repo-dynamic.h>
 
+#ifdef HAVE_UUID
+# include <uuid.h>
+#endif
+
 #define DEBUG_FLAG GABBLE_DEBUG_JID
 
 #include "base64.h"
@@ -68,6 +72,29 @@ sha1_bin (const gchar *bytes,
   g_checksum_get_digest (checksum, out, &out_len);
   g_assert (out_len == SHA1_HASH_SIZE);
   g_checksum_free (checksum);
+}
+
+gchar *
+gabble_generate_id (void)
+{
+#ifdef HAVE_UUID
+  /* generate random UUIDs */
+  uuid_t uu;
+  gchar *str;
+
+  str = g_new0 (gchar, 37);
+  uuid_generate_random (uu);
+  uuid_unparse_lower (uu, str);
+  return str;
+#else
+  /* generate from the time, a counter, and a random integer */
+  static gulong last = 0;
+  GTimeVal tv;
+
+  g_get_current_time (&tv);
+  return g_strdup_printf ("%lx.%lx/%lx/%x", tv.tv_sec, tv.tv_usec,
+      last++, g_random_int ());
+#endif
 }
 
 static void

@@ -5,6 +5,11 @@ Dependencies:
 
 Enhancements:
 
+* Discover SOCKS5 proxies on the connection and try to use them when offering
+  a SOCKS5 bytestream.
+* Add fallback-socks5-proxy connection parameter to hardcode a SOCKS5 proxy
+  to use as fallback.
+
 Fixes:
 
 telepathy-gabble 0.7.24 (2009-03-23)

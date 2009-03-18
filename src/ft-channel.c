@@ -103,6 +103,7 @@ enum
   PROP_AVAILABLE_SOCKET_TYPES,
   PROP_TRANSFERRED_BYTES,
   PROP_INITIAL_OFFSET,
+  PROP_RESUME_SUPPORTED,
 
   PROP_CONNECTION,
   PROP_BYTESTREAM,
@@ -122,6 +123,7 @@ struct _GabbleFileTransferChannelPrivate {
   GValue *socket_address;
   TpHandle initiator;
   gboolean remote_accepted;
+  gboolean resume_supported;
 
   GabbleBytestreamIface *bytestream;
   GibberListener *listener;
@@ -262,6 +264,9 @@ gabble_file_transfer_channel_get_property (GObject *object,
       case PROP_CHANNEL_DESTROYED:
         g_value_set_boolean (value, self->priv->closed);
         break;
+      case PROP_RESUME_SUPPORTED:
+        g_value_set_boolean (value, self->priv->resume_supported);
+        break;
       case PROP_CHANNEL_PROPERTIES:
         g_value_take_boxed (value,
             tp_dbus_properties_mixin_make_properties_hash (object,
@@ -364,6 +369,9 @@ gabble_file_transfer_channel_set_property (GObject *object,
       case PROP_BYTESTREAM:
         set_bytestream (self,
             GABBLE_BYTESTREAM_IFACE (g_value_get_object (value)));
+        break;
+      case PROP_RESUME_SUPPORTED:
+        self->priv->resume_supported = g_value_get_boolean (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -727,6 +735,15 @@ gabble_file_transfer_channel_class_init (
       G_TYPE_OBJECT,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_BYTESTREAM,
+      param_spec);
+
+  param_spec = g_param_spec_boolean (
+      "resume-supported",
+      "resume is supported",
+      "TRUE if resume is supported on this file transfer channel",
+      FALSE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_RESUME_SUPPORTED,
       param_spec);
 
   gabble_file_transfer_channel_class->dbus_props_class.interfaces =
@@ -1753,7 +1770,8 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
                                   const gchar *description,
                                   guint64 date,
                                   guint64 initial_offset,
-                                  GabbleBytestreamIface *bytestream)
+                                  GabbleBytestreamIface *bytestream,
+                                  gboolean resume_supported)
 
 {
   return g_object_new (GABBLE_TYPE_FILE_TRANSFER_CHANNEL,
@@ -1770,5 +1788,6 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
       "date", date,
       "initial-offset", initial_offset,
       "bytestream", bytestream,
+      "resume-supported", resume_supported,
       NULL);
 }

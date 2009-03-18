@@ -1081,7 +1081,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessageNode *iq_node, *session_node;
   const gchar *from, *resource;
-  const gchar *initiator, *responder;
+  const gchar *initiator;
 
   iq_node = lm_message_get_node (message);
 
@@ -1137,9 +1137,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
       return FALSE;
     }
   resource++;
-
-  /* this one is not required, so it can be NULL */
-  responder = lm_message_node_get_attribute (session_node, "responder");
 
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);

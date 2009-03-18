@@ -1080,14 +1080,13 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   TpHandleRepoIface *contact_repo;
   GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessageNode *iq_node, *session_node;
-  const gchar *from, *to, *resource;
+  const gchar *from, *resource;
   const gchar *initiator, *responder;
 
   iq_node = lm_message_get_node (message);
 
   /* IQ from/to can come in handy */
   from = lm_message_node_get_attribute (iq_node, "from");
-  to = lm_message_node_get_attribute (iq_node, "to");
 
   DEBUG ("jingle action '%s' from '%s' in session '%s' dialect %u state %u",
       produce_action (action, priv->dialect), from, priv->sid,

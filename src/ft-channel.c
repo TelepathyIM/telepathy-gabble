@@ -1250,7 +1250,8 @@ transferred_chunk (GabbleFileTransferChannel *self,
 
   self->priv->transferred_bytes += count;
 
-  if (self->priv->transferred_bytes >= self->priv->size)
+  if (self->priv->transferred_bytes + self->priv->initial_offset >=
+      self->priv->size)
     {
       /* If the transfer has finished send an update right away */
       emit_progress_update (self);
@@ -1325,7 +1326,8 @@ data_received_cb (GabbleBytestreamIface *stream,
 
   transferred_chunk (self, (guint64) data->len);
 
-  if (self->priv->transferred_bytes >= self->priv->size)
+  if (self->priv->transferred_bytes + self->priv->initial_offset >=
+      self->priv->size)
     {
       DEBUG ("Received all the file. Transfer is complete");
       gabble_file_transfer_channel_set_state (
@@ -1572,7 +1574,8 @@ transport_handler (GibberTransport *transport,
 
   transferred_chunk (self, (guint64) data->length);
 
-  if (self->priv->transferred_bytes >= self->priv->size)
+  if (self->priv->transferred_bytes + self->priv->initial_offset >=
+      self->priv->size)
     {
       DEBUG ("All the file has been sent. Closing the bytestream");
 

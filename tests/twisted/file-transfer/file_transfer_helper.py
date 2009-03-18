@@ -34,6 +34,8 @@ class File(object):
 
         self.compute_hash(hash_type)
 
+        self.offset = 0
+
     def compute_hash(self, hash_type):
         assert hash_type == cs.FILE_HASH_TYPE_MD5
 
@@ -162,9 +164,10 @@ class ReceiveFileTest(FileTransferTest):
         file_node['hash'] = self.file.hash
         date = datetime.datetime.utcfromtimestamp(self.file.date).strftime('%FT%H:%M:%SZ')
         file_node['date'] = date
-        # TODO: intial offset
 
         file_node.addElement('desc', content=self.file.description)
+        # we support range transfer
+        file_node.addElement('range')
         iq.send()
 
     def check_new_channel(self):
@@ -206,7 +209,7 @@ class ReceiveFileTest(FileTransferTest):
 
     def accept_file(self):
         self.address = self.ft_channel.AcceptFile(self.address_type,
-                self.access_control, self.access_control_param, 0,
+                self.access_control, self.access_control_param, self.file.offset,
                 byte_arrays=True)
 
         state_event, iq_event = self.q.expect_many(
@@ -220,6 +223,10 @@ class ReceiveFileTest(FileTransferTest):
         # Got SI reply
         self.bytestream.check_si_reply(iq_event.stanza)
 
+        if self.file.offset != 0:
+            range = xpath.queryForNodes('/iq/si/file/range', iq_event.stanza)[0]
+            assert range['offset'] == str(self.file.offset)
+
         _, events = self.bytestream.open_bytestream([], [
             EventPattern('dbus-signal', signal='InitialOffsetDefined'),
             EventPattern('dbus-signal', signal='FileTransferStateChanged')])
@@ -227,15 +234,14 @@ class ReceiveFileTest(FileTransferTest):
         offset_event, state_event = events
 
         offset = offset_event.args[0]
-        # We don't support resume
-        assert offset == 0
+        assert offset == self.file.offset
 
         state, reason = state_event.args
         assert state == cs.FT_STATE_OPEN
         assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 
         # send the beginning of the file (client didn't connect to socket yet)
-        self.bytestream.send_data(self.file.data[:2])
+        self.bytestream.send_data(self.file.data[self.file.offset:self.file.offset + 2])
 
     def receive_file(self):
         # Connect to Gabble's socket
@@ -243,7 +249,8 @@ class ReceiveFileTest(FileTransferTest):
         s.connect(self.address)
 
         # send the rest of the file
-        self.bytestream.send_data(self.file.data[2:])
+        i = self.file.offset + 2
+        self.bytestream.send_data(self.file.data[i:])
 
         self._read_file_from_socket(s)
 
@@ -251,16 +258,17 @@ class ReceiveFileTest(FileTransferTest):
         # Read the file from Gabble's socket
         data = ''
         read = 0
+        to_receive = self.file.size - self.file.offset
 
         e = self.q.expect('dbus-signal', signal='TransferredBytesChanged')
         count = e.args[0]
 
-        while read < self.file.size:
-            data += s.recv(self.file.size - read)
+        while read < to_receive:
+            data += s.recv(to_receive - read)
             read = len(data)
-        assert data == self.file.data
+        assert data == self.file.data[self.file.offset:]
 
-        while count < self.file.size:
+        while count < to_receive:
             # Catch TransferredBytesChanged until we transfered all the data
             e = self.q.expect('dbus-signal', signal='TransferredBytesChanged')
             count = e.args[0]

@@ -1343,6 +1343,33 @@ data_received_cb (GabbleBytestreamIface *stream,
     }
 }
 
+static void
+augment_si_reply (LmMessageNode *si,
+                  gpointer user_data)
+{
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+  LmMessageNode *file;
+
+  file = lm_message_node_add_child (si, "file", NULL);
+  lm_message_node_set_attribute (file, "xmlns", NS_FILE_TRANSFER);
+
+  if (self->priv->initial_offset != 0)
+    {
+      LmMessageNode *range;
+      gchar *offset_str;
+
+      range = lm_message_node_add_child (file, "range", NULL);
+      offset_str = g_strdup_printf ("%" G_GUINT64_FORMAT,
+          self->priv->initial_offset);
+      lm_message_node_set_attribute (range, "offset", offset_str);
+
+      /* Don't set "length" attribute as the default is the length of the file
+       * from offset to the end which is what we want when resuming a FT. */
+
+      g_free (offset_str);
+    }
+}
+
 /**
  * gabble_file_transfer_channel_accept_file
  *
@@ -1392,19 +1419,27 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
   tp_svc_channel_type_file_transfer_return_from_accept_file (context,
       self->priv->socket_address);
 
-  self->priv->initial_offset = 0;
+  if (self->priv->resume_supported)
+    {
+      self->priv->initial_offset = offset;
+    }
+  else
+    {
+      DEBUG ("Resume is not supported on this file transfer");
+      self->priv->initial_offset = 0;
+    }
 
   g_assert (self->priv->bytestream != NULL);
   gabble_signal_connect_weak (self->priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), G_OBJECT (self));
 
-  /* channel state will change to open once the bytestream is open */
-  /* TODO: set a function once we support resume */
 
   /* Block the bytestream while the user is not connected to the socket */
   gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
 
-  gabble_bytestream_iface_accept (self->priv->bytestream, NULL, NULL);
+  /* channel state will change to open once the bytestream is open */
+  gabble_bytestream_iface_accept (self->priv->bytestream, augment_si_reply,
+      self);
 }
 
 /**

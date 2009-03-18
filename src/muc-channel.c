@@ -2460,11 +2460,8 @@ _gabble_muc_channel_state_receive (GabbleMucChannel *chan,
                                    guint state,
                                    guint from_handle)
 {
-  GabbleMucChannelPrivate *priv;
-
   g_assert (state < NUM_TP_CHANNEL_CHAT_STATES);
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
   tp_svc_channel_interface_chat_state_emit_chat_state_changed (chan,
       from_handle, state);

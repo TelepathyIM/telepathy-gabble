@@ -5,6 +5,8 @@ Dependencies:
 
 Enhancements:
 
+* Use IPv6 addresses when trying to establish a SOCKS5 bytestream.
+
 Fixes:
 
 telepathy-gabble 0.7.24 (2009-03-23)

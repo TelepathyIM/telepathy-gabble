@@ -378,6 +378,10 @@ class SendFileTest(FileTransferTest):
         self.desc = desc_node.children[0]
         assert self.desc == self.file.description
 
+        # Gabble supports resume
+        range = xpath.queryForNodes('/iq/si/file/range', self.iq)[0]
+        assert range is not None
+
     def provide_file(self):
         self.address = self.ft_channel.ProvideFile(self.address_type,
                 self.access_control, self.access_control_param,

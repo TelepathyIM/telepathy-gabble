@@ -14,8 +14,7 @@ class SendFileTransferProvideImmediately(SendFileTest):
 
         e = self.q.expect('dbus-signal', signal='InitialOffsetDefined')
         offset = e.args[0]
-        # We don't support resume
-        assert offset == 0
+        assert offset == self.file.offset
 
         # Channel is open. We can start to send the file
         e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')

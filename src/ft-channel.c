@@ -1080,6 +1080,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                          gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+  LmMessageNode *file;
 
   if (bytestream == NULL)
     {
@@ -1091,7 +1092,27 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       return;
     }
 
-  DEBUG ("receiver accepted file offer");
+  file = lm_message_node_find_child (msg->node, "file");
+  if (file != NULL)
+    {
+      LmMessageNode *range;
+
+      range = lm_message_node_get_child_any_ns (file, "range");
+      if (range != NULL)
+        {
+          const gchar *offset_str;
+
+          offset_str = lm_message_node_get_attribute (range, "offset");
+          if (offset_str != NULL)
+            {
+              self->priv->initial_offset = g_ascii_strtoull (offset_str, NULL,
+                  0);
+            }
+        }
+    }
+
+  DEBUG ("receiver accepted file offer (offset: %" G_GUINT64_FORMAT ")",
+      self->priv->initial_offset);
 
   set_bytestream (self, bytestream);
 

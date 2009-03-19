@@ -390,6 +390,9 @@ class SendFileTest(FileTransferTest):
     def client_accept_file(self):
         # accept SI offer
         result, si = self.bytestream.create_si_reply(self.iq)
+        file_node = si.addElement((ns.FILE_TRANSFER, 'file'))
+        range = file_node.addElement('range')
+        range['offset'] = str(self.file.offset)
         self.stream.send(result)
 
         self.bytestream.wait_bytestream_open()
@@ -397,8 +400,9 @@ class SendFileTest(FileTransferTest):
     def send_file(self):
         s = self.create_socket()
         s.connect(self.address)
-        s.send(self.file.data)
+        s.send(self.file.data[self.file.offset:])
 
+        to_receive = self.file.size - self.file.offset
         self.count = 0
 
         def bytes_changed_cb(bytes):
@@ -408,17 +412,17 @@ class SendFileTest(FileTransferTest):
 
         # get data from bytestream
         data = ''
-        while len(data) < self.file.size:
+        while len(data) < to_receive:
             data += self.bytestream.get_data()
 
-        assert data == self.file.data
+        assert data == self.file.data[self.file.offset:]
 
         # If not all the bytes transferred have been announced using
         # TransferredBytesChanged, wait for them
-        while self.count < self.file.size:
+        while self.count < to_receive:
             self.q.expect('dbus-signal', signal='TransferredBytesChanged')
 
-        assert self.count == self.file.size
+        assert self.count == to_receive
 
         # FileTransferStateChanged could have already been fired
         events = self.bytestream.wait_bytestream_closed(

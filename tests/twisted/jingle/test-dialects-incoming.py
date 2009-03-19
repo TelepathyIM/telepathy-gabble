@@ -66,7 +66,7 @@ def worker(jp, q, bus, conn, stream):
 
     # We are now in members too
     e = q.expect_racy('dbus-signal', signal='MembersChanged',
-             args=[u'', [self_handle], [], [], [], 0, 0])
+             args=[u'', [self_handle], [], [], [], self_handle, 0])
 
     # we are now both in members
     members = media_chan.GetMembers()

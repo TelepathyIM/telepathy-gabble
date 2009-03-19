@@ -180,7 +180,8 @@ def test(q, bus, conn, stream):
     q.expect('stream-iq', iq_type='result')
 
     # Call accepted
-    q.expect('dbus-signal', signal='MembersChanged')
+    q.expect('dbus-signal', signal='MembersChanged',
+        args=['', [handle], [], [], [], handle, cs.GC_REASON_NONE])
 
     # Time passes ... afterwards we close the chan
 

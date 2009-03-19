@@ -293,7 +293,9 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
 
         q.expect_many(
             EventPattern('stream-iq', iq_type='result'),
-            EventPattern('dbus-signal', signal='MembersChanged'),
+            EventPattern('dbus-signal', signal='MembersChanged',
+                args=["", [remote_handle], [], [], [], remote_handle,
+                      cs.GC_REASON_NONE])
             )
 
     media_chan.RemoveMembers([dbus.UInt32(1)], '')

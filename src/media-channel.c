@@ -1936,7 +1936,8 @@ _gabble_media_channel_add_member (GObject *obj,
       set = tp_intset_new ();
       tp_intset_add (set, handle);
 
-      tp_group_mixin_change_members (obj, "", NULL, NULL, NULL, set, 0, 0);
+      tp_group_mixin_change_members (obj, "", NULL, NULL, NULL, set,
+          mixin->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
       tp_intset_destroy (set);
 
@@ -1964,8 +1965,8 @@ _gabble_media_channel_add_member (GObject *obj,
           set = tp_intset_new ();
           tp_intset_add (set, handle);
 
-          tp_group_mixin_change_members (obj,
-              "", set, NULL, NULL, NULL, 0, 0);
+          tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL,
+              handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
           tp_intset_destroy (set);
 
@@ -2136,8 +2137,8 @@ session_state_changed_cb (GabbleJingleSession *session,
       /* The first time we send anything to the other user, they materialise
        * in remote-pending if necessary */
 
-      tp_group_mixin_change_members ((GObject *) channel,
-          "", NULL, NULL, NULL, set, 0, 0);
+      tp_group_mixin_change_members ((GObject *) channel, "", NULL, NULL, NULL,
+          set, mixin->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
       tp_group_mixin_change_flags ((GObject *) channel,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
@@ -2152,7 +2153,8 @@ session_state_changed_cb (GabbleJingleSession *session,
 
       /* add the peer to the member list */
       tp_group_mixin_change_members ((GObject *) channel,
-          "", set, NULL, NULL, NULL, 0, 0);
+          "", set, NULL, NULL, NULL, peer,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
       /* update flags accordingly -- allow removal, deny adding and
        * rescinding */

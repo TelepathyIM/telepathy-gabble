@@ -1195,10 +1195,11 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       lm_message_node_set_attribute (file_node, "date", date_str);
     }
 
-  /* TODO: support initial offset */
-
   desc_node = lm_message_node_add_child (file_node, "desc",
       self->priv->description);
+
+  /* we support resume */
+  lm_message_node_add_child (file_node, "range", NULL);
 
   result = gabble_bytestream_factory_negotiate_stream (
       self->priv->connection->bytestream_factory, msg, stream_id,

@@ -48,22 +48,20 @@ def test(q, bus, conn, stream):
     # Remote end calls us
     jt.incoming_call()
 
-    # The caller is in members
-    e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [remote_handle], [], [], [], 0, 0])
+    nc, e = q.expect_many(
+        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewSessionHandler'),
+        )
+    path, ct, ht, h, _ = nc.args
 
-    # We're pending because of remote_handle
-    e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [self_handle], [], remote_handle, 0])
+    assert ct == cs.CHANNEL_TYPE_STREAMED_MEDIA, ct
+    assert ht == cs.HT_CONTACT, ht
+    assert h == remote_handle, h
 
-    path_suffix = e.path
-    media_chan = make_channel_proxy(conn, tp_path_prefix + path_suffix,
-        'Channel.Interface.Group')
-    media_iface = make_channel_proxy(conn, tp_path_prefix + path_suffix,
-        'Channel.Type.StreamedMedia')
+    media_chan = make_channel_proxy(conn, path, 'Channel.Interface.Group')
+    media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
 
-    # S-E gets notified about new session handler, and calls Ready on it
-    e = q.expect('dbus-signal', signal='NewSessionHandler')
+    # S-E was notified about new session handler, and calls Ready on it
     assert e.args[1] == 'rtp'
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
@@ -106,6 +104,14 @@ def test(q, bus, conn, stream):
     assert not flags & cs.GF_CAN_ADD, flags
     assert not flags & cs.GF_CAN_REMOVE, flags
     assert not flags & cs.GF_CAN_RESCIND, flags
+
+    assert group_props['Members'] == [remote_handle], group_props['Members']
+    assert group_props['RemotePendingMembers'] == [], \
+        group_props['RemotePendingMembers']
+    # We're local pending because remote_handle invited us.
+    assert group_props['LocalPendingMembers'] == \
+        [(self_handle, remote_handle, cs.GC_REASON_INVITED, '')], \
+        unwrap(group_props['LocalPendingMembers'])
 
     streams = media_chan.ListStreams(
             dbus_interface=cs.CHANNEL_TYPE_STREAMED_MEDIA)
@@ -165,7 +171,7 @@ def test(q, bus, conn, stream):
 
     # 'Nuff said
     jt.remote_terminate()
-    q.expect('dbus-signal', signal='Closed', path=path_suffix)
+    q.expect('dbus-signal', signal='Closed', path=path[len(tp_path_prefix):])
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

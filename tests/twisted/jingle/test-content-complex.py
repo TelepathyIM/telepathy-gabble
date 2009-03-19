@@ -47,13 +47,16 @@ def worker(jp, q, bus, conn, stream):
             jp.TransportGoogleP2P() ]) ]) ])
     stream.send(jp.xml(node))
 
+    # FIXME: these signals are not observable by real clients, since they
+    #        happen before NewChannels.
     # The caller is in members
     e = q.expect('dbus-signal', signal='MembersChanged',
              args=[u'', [remote_handle], [], [], [], 0, 0])
 
     # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [self_handle], [], remote_handle, 0])
+             args=[u'', [], [], [self_handle], [], remote_handle,
+                   cs.GC_REASON_INVITED])
 
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
     signalling_iface = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.MediaSignalling')

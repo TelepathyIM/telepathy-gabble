@@ -1984,7 +1984,6 @@ gabble_media_channel_remove_member (GObject *obj,
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = chan->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
-  TpIntSet *set;
 
   if (priv->session == NULL)
     {
@@ -2004,19 +2003,12 @@ gabble_media_channel_remove_member (GObject *obj,
       return FALSE;
     }
 
-  gabble_jingle_session_terminate (priv->session);
-
-  /* remove the member */
-  set = tp_intset_new ();
-  tp_intset_add (set, handle);
-
-  tp_group_mixin_change_members (obj, "", NULL, set, NULL, NULL, 0, 0);
-
-  tp_intset_destroy (set);
-
-  /* and update flags accordingly */
-  tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD,
+  /* We're terminating the session, any further changes to the members are
+   * meaningless, since the channel will go away RSN. */
+  tp_group_mixin_change_flags (obj, 0,
       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+
+  gabble_jingle_session_terminate (priv->session);
 
   return TRUE;
 }
@@ -2056,10 +2048,13 @@ session_terminated_cb (GabbleJingleSession *session,
   tp_group_mixin_change_members ((GObject *) channel,
       "", NULL, set, NULL, NULL, terminator, reason);
 
-  /* update flags accordingly -- allow adding, deny removal */
-  tp_group_mixin_change_flags ((GObject *) channel,
-      TP_CHANNEL_GROUP_FLAG_CAN_ADD,
-      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
+  /* update flags accordingly -- no operations are meaningful any more, because
+   * the channel is about to close.
+   */
+  tp_group_mixin_change_flags ((GObject *) channel, 0,
+      TP_CHANNEL_GROUP_FLAG_CAN_ADD |
+      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
+      TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 
   /* Ignore any Google relay session responses we're waiting for. */
   g_list_foreach (priv->stream_creation_datas, stream_creation_data_cancel,

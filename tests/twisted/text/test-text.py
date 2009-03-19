@@ -17,6 +17,7 @@ def test(q, bus, conn, stream):
     # <message type="chat"><body>hello</body</message>
     m = domish.Element((None, 'message'))
     m['from'] = 'foo@bar.com/Pidgin'
+    m['id'] = '1845a1a9-f7bc-4a2e-a885-633aadc81e1b'
     m['type'] = 'chat'
     m.addElement('body', content='hello')
     stream.send(m)
@@ -81,6 +82,7 @@ def test(q, bus, conn, stream):
     # the spec says that message-type "SHOULD be omitted for normal chat
     # messages."
     assert 'message-type' not in header, header
+    assert header['message-token'] == '1845a1a9-f7bc-4a2e-a885-633aadc81e1b'
 
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == 'hello', body
@@ -108,7 +110,7 @@ def test(q, bus, conn, stream):
         }
     ]
 
-    dbus.Interface(text_chan,
+    sent_token = dbus.Interface(text_chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Messages'
         ).SendMessage(greeting, dbus.UInt32(0))
 
@@ -129,9 +131,12 @@ def test(q, bus, conn, stream):
     assert len(sent_message) == 2, sent_message
     header = sent_message[0]
     assert header['message-type'] == 2, header # Notice
+    assert header['message-token'] == sent_token, header
     body = sent_message[1]
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'what up', body
+
+    assert message_sent.args[2] == sent_token
 
     assert sent.args[1] == 2, sent.args # Notice
     assert sent.args[2] == u'what up', sent.args

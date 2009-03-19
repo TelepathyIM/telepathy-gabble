@@ -45,6 +45,7 @@ def test_temporary_error(q, bus, conn, stream):
 
     m = domish.Element((None, 'message'))
     m['from'] = 'foo@bar.com'
+    m['id'] = '1845a1a9-f7bc-4a2e-a885-633aadc81e1b'
     m['type'] = 'error'
     m.addElement('body', content=message_body)
 
@@ -82,14 +83,16 @@ def test_temporary_error(q, bus, conn, stream):
     assert header['message-sender'] == foo_handle, header
     assert header['message-type'] == 4, header # Channel_Text_Message_Type_Delivery_Report
     assert header['delivery-status'] == 2, header # Delivery_Status_Temporarily_Failed
-    assert 'delivery-token' not in header, header
+    assert header['delivery-token'] == '1845a1a9-f7bc-4a2e-a885-633aadc81e1b',\
+            header
     assert header['delivery-error'] == expected_send_error, header
 
     delivery_echo = header['delivery-echo']
     assert len(delivery_echo) == 2, delivery_echo
 
     assert delivery_echo[0]['message-sender'] == self_handle, delivery_echo
-    assert 'message-token' not in delivery_echo[0], delivery_echo
+    assert delivery_echo[0]['message-token'] == \
+            '1845a1a9-f7bc-4a2e-a885-633aadc81e1b', delivery_echo
     # FIXME: see above
     #assert delivery_echo[0]['message-type'] == 0, delivery_echo
 
@@ -167,6 +170,8 @@ def test_permanent_error(q, bus, conn, stream):
     assert header['message-sender'] == ninja_handle, header
     assert header['message-type'] == 4, header # Channel_Text_Message_Type_Delivery_Report
     assert header['delivery-status'] == 3, header # Delivery_Status_Permanently_Failed
+    # the error has no ID, therefore its Telepathy rendition has no
+    # delivery-token
     assert 'delivery-token' not in header, header
     assert header['delivery-error'] == expected_send_error, header
 
@@ -174,6 +179,8 @@ def test_permanent_error(q, bus, conn, stream):
     assert len(delivery_echo) == 2, delivery_echo
 
     assert delivery_echo[0]['message-sender'] == self_handle, delivery_echo
+    # the error has no ID, therefore the echo's Telepathy rendition has no
+    # message-token
     assert 'message-token' not in delivery_echo[0], delivery_echo
     # FIXME: see above
     #assert delivery_echo[0]['message-type'] == 0, delivery_echo

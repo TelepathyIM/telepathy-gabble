@@ -93,8 +93,9 @@ void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
     TpHandle sender, time_t timestamp, const gchar *subject, LmMessage *msg);
 void _gabble_muc_channel_receive (GabbleMucChannel *chan,
     TpChannelTextMessageType msg_type, TpHandleType handle_type,
-    TpHandle sender, time_t timestamp, const gchar *text, LmMessage *msg,
-    TpChannelTextSendError send_error, TpDeliveryStatus delivery_status);
+    TpHandle sender, time_t timestamp, const gchar *id, const gchar *text,
+    LmMessage *msg, TpChannelTextSendError send_error,
+    TpDeliveryStatus delivery_status);
 
 void _gabble_muc_channel_state_receive (GabbleMucChannel *chan,
     guint state, guint from_handle);

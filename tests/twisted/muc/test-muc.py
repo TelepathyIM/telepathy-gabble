@@ -124,9 +124,11 @@ def test(q, bus, conn, stream):
         }
     ]
 
-    dbus.Interface(text_chan,
+    sent_token = dbus.Interface(text_chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Messages'
         ).SendMessage(greeting, dbus.UInt32(0))
+
+    assert sent_token
 
     stream_message, sent, message_sent = q.expect_many(
         EventPattern('stream-message'),
@@ -145,9 +147,12 @@ def test(q, bus, conn, stream):
     assert sent.args[1] == 1, sent.args # Action
     assert sent.args[2] == u'peers through a gap in the curtains', sent.args
 
+    assert message_sent.args[2] == sent_token
+
     elem = stream_message.stanza
     assert elem.name == 'message'
     assert elem['type'] == 'groupchat', repr(elem)
+    assert elem['id'] == sent_token, repr(elem)
     assert elem['to'] == 'chat@conf.localhost', repr(elem)
     for sub_elem in stream_message.stanza.elements():
         if sub_elem.name == 'body':
@@ -177,9 +182,7 @@ def test(q, bus, conn, stream):
     assert 'message-sender' not in part or part['message-sender'] == 0, part
     assert part['message-type'] == 4, part # Message_Type_Delivery_Report
     assert part['delivery-status'] == 1, part # Delivery_Status_Delivered
-    # Gabble doesn't issue tokens for messages you send, so no token should be
-    # in the report
-    assert 'delivery-token' not in part, part
+    assert part['delivery-token'] == sent_token, part
     assert 'delivery-error' not in part, part
     assert 'delivery-echo' in part, part
 
@@ -188,6 +191,7 @@ def test(q, bus, conn, stream):
     echo = part['delivery-echo']
     assert len(echo) == len(greeting), (echo, greeting)
     assert echo[0]['message-sender'] == test_handle, echo[0]
+    assert echo[0]['message-token'] == sent_token, echo[0]
     for i in range(0, len(echo)):
         for key in greeting[i]:
             assert key in echo[i], (i, key, echo)
@@ -223,9 +227,12 @@ def test(q, bus, conn, stream):
     assert sent.args[1] == 0, sent.args # Normal
     assert sent.args[2] == u'goodbye', sent.args
 
+    sent_token = message_sent.args[2]
+
     elem = event.stanza
     assert elem.name == 'message'
     assert elem['type'] == 'groupchat'
+    assert elem['id'] == message_sent.args[2]
     body = list(event.stanza.elements())[0]
     assert body.name == 'body'
     assert body.children[0] == u'goodbye'

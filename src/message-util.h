@@ -43,8 +43,8 @@ gboolean gabble_message_util_send_chat_state (GObject *obj,
 
 gboolean gabble_message_util_parse_incoming_message (LmMessage *message,
     const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype,
-    const gchar **body_ret, gint *state, TpChannelTextSendError *send_error,
-    TpDeliveryStatus *delivery_status);
+    const gchar **id, const gchar **body_ret, gint *state,
+    TpChannelTextSendError *send_error, TpDeliveryStatus *delivery_status);
 
 G_END_DECLS
 

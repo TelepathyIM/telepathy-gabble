@@ -17,15 +17,19 @@ test1 (void)
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  const gchar *id;
   const gchar *body;
   gint state;
 
   msg = lm_message_build (NULL, LM_MESSAGE_TYPE_MESSAGE,
+        '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
         '@', "from", "foo@bar.com",
         NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &body, &state, &send_error, &delivery_status);
+      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status);
   g_assert (ret == TRUE);
+  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
   g_assert (0 == strcmp (from, "foo@bar.com"));
   g_assert (stamp == 0);
   g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
@@ -49,16 +53,20 @@ test2 (void)
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  const gchar *id;
   const gchar *body;
   gint state;
 
   msg = lm_message_build (NULL, LM_MESSAGE_TYPE_MESSAGE,
         '@', "from", "foo@bar.com",
+        '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
         '(', "body", "hello", ')',
         NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &body, &state, &send_error, &delivery_status);
+      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status);
   g_assert (ret == TRUE);
+  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
   g_assert (0 == strcmp (from, "foo@bar.com"));
   g_assert (stamp == 0);
   g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
@@ -80,17 +88,21 @@ test3 (void)
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  const gchar *id;
   const gchar *body;
   gint state;
 
   msg = lm_message_build (NULL, LM_MESSAGE_TYPE_MESSAGE,
         '@', "from", "foo@bar.com",
+        '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
         '@', "type", "chat",
         '(', "body", "hello", ')',
         NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &body, &state, &send_error, &delivery_status);
+      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status);
   g_assert (ret == TRUE);
+  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
   g_assert (0 == strcmp (from, "foo@bar.com"));
   g_assert (stamp == 0);
   g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL);
@@ -112,18 +124,22 @@ test_error (void)
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  const gchar *id;
   const gchar *body;
   gint state;
 
   msg = lm_message_build_with_sub_type (NULL, LM_MESSAGE_TYPE_MESSAGE,
       LM_MESSAGE_SUB_TYPE_ERROR,
       '@', "from", "foo@bar.com",
+      '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
       '@', "type", "error",
       '(', "error", "oops", ')',
       NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &body, &state, &send_error, &delivery_status);
+      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status);
   g_assert (ret == TRUE);
+  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
   g_assert (0 == strcmp (from, "foo@bar.com"));
   g_assert (stamp == 0);
   g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
@@ -147,6 +163,7 @@ test_another_error (void)
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  const gchar *id;
   const gchar *body;
   gint state;
   const gchar *message = "Wherefore art thou, Romeo?";
@@ -154,6 +171,7 @@ test_another_error (void)
   msg = lm_message_build_with_sub_type (NULL, LM_MESSAGE_TYPE_MESSAGE,
       LM_MESSAGE_SUB_TYPE_ERROR,
       '@', "to", "juliet@capulet.com/balcony",
+      '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
       '@', "from", "romeo@montague.net/garden",
       '@', "type", "error",
       '(', "body", message, ')',
@@ -166,8 +184,10 @@ test_another_error (void)
       ')',
       NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &body, &state, &send_error, &delivery_status);
+      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status);
   g_assert (ret == TRUE);
+  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
   g_assert (0 == strcmp (from, "romeo@montague.net/garden"));
   g_assert (stamp == 0);
   g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
@@ -192,6 +212,7 @@ test_yet_another_error (void)
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  const gchar *id;
   const gchar *body;
   gint state;
   const gchar *message = "Its trilling seems to have a tranquilizing effect on "
@@ -200,6 +221,7 @@ test_yet_another_error (void)
   msg = lm_message_build_with_sub_type (NULL, LM_MESSAGE_TYPE_MESSAGE,
       LM_MESSAGE_SUB_TYPE_ERROR,
       '@', "to", "spock@starfleet.us/Enterprise",
+      '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
       '@', "from", "other@starfleet.us/Enterprise",
       '@', "type", "error",
       '(', "body", message, ')',
@@ -212,8 +234,10 @@ test_yet_another_error (void)
       ')',
       NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &body, &state, &send_error, &delivery_status);
+      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status);
   g_assert (ret == TRUE);
+  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
   g_assert (0 == strcmp (from, "other@starfleet.us/Enterprise"));
   g_assert (stamp == 0);
   g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
@@ -235,10 +259,12 @@ test_google_offline (void)
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  const gchar *id;
   const gchar *body;
   gint state;
 
   msg = lm_message_build (NULL, LM_MESSAGE_TYPE_MESSAGE,
+      '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
       '@', "from", "foo@bar.com",
       '(', "body", "hello", ')',
       '(', "x", "",
@@ -251,8 +277,10 @@ test_google_offline (void)
       ')',
       NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &body, &state, &send_error, &delivery_status);
+      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status);
   g_assert (ret == TRUE);
+  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
   g_assert (0 == strcmp (from, "foo@bar.com"));
   g_assert (stamp == 1190899454);
   g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL);

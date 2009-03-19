@@ -92,6 +92,21 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorHandle'] == remote_handle
     assert channel_props['Requested'] == False
 
+    group_props = media_chan.GetAll(cs.CHANNEL_IFACE_GROUP,
+        dbus_interface=dbus.PROPERTIES_IFACE)
+
+    assert group_props['SelfHandle'] == self_handle, \
+        (group_props['SelfHandle'], self_handle)
+
+    flags = group_props['GroupFlags']
+    assert flags & cs.GF_PROPERTIES, flags
+    # Changing members in any way other than adding or removing yourself is
+    # meaningless for incoming calls, and the flags need not be sent to change
+    # your own membership.
+    assert not flags & cs.GF_CAN_ADD, flags
+    assert not flags & cs.GF_CAN_REMOVE, flags
+    assert not flags & cs.GF_CAN_RESCIND, flags
+
     streams = media_chan.ListStreams(
             dbus_interface=cs.CHANNEL_TYPE_STREAMED_MEDIA)
     assert len(streams) == 1, streams

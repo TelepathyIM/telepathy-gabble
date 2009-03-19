@@ -312,9 +312,8 @@ gabble_media_channel_constructor (GType type, guint n_props,
 
   tp_intset_destroy (set);
 
-  /* Allow member adding; also, we implement the 0.17.6 properties correctly */
-  tp_group_mixin_change_flags (obj,
-      TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_PROPERTIES, 0);
+  /* We implement the 0.17.6 properties correctly */
+  tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_PROPERTIES, 0);
 
   /* Set up Google relay related properties */
   jf = priv->conn->jingle_factory;
@@ -338,10 +337,12 @@ gabble_media_channel_constructor (GType type, guint n_props,
           NULL);
     }
 
-  /* act on incoming session */
   if (priv->session != NULL)
     {
-      /* make us local pending */
+      /* This is an incoming call; make us local pending and don't set any
+       * group flags (all we can do is add or remove ourselves, which is always
+       * valid per the spec)
+       */
       set = tp_intset_new ();
       tp_intset_add (set, ((TpBaseConnection *) priv->conn)->self_handle);
 
@@ -350,13 +351,26 @@ gabble_media_channel_constructor (GType type, guint n_props,
 
       tp_intset_destroy (set);
 
-      /* and update flags accordingly */
-      tp_group_mixin_change_flags (obj,
-          TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_REMOVE, 0);
-
       /* Set up signal callbacks, emit session handler, initialize streams */
       _latch_to_session (GABBLE_MEDIA_CHANNEL (obj));
       _create_streams (GABBLE_MEDIA_CHANNEL (obj));
+    }
+  else
+    {
+      /* This is an outgoing call. We'll set CanAdd here, in case the UI is
+       * using the "RequestChannel(StreamedMedia, HandleTypeNone, 0);
+       * AddMembers([h], ""); RequestStreams(h, [...])" legacy API. If the
+       * channel request came via one of the APIs where the peer is added
+       * immediately, that'll happen in media-factory.c before the channel is
+       * returned, and CanAdd will be cleared.
+       *
+       * If this channel was made with Create or Ensure, the CanAdd flag will
+       * stick around, but it shouldn't.
+       *
+       * FIXME: refactor this so we know which calling convention is in use
+       *        here, rather than poking it from media-factory.c.
+       */
+      tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
     }
 
   return obj;

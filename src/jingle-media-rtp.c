@@ -688,14 +688,6 @@ compare_codecs (GList *old,
 
   g_assert (changed != NULL && *changed == NULL);
 
-  if (g_list_length (new) != g_list_length (old))
-    {
-      g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "tried to change the number of codecs from %u to %u",
-          g_list_length (old), g_list_length (new));
-      goto out;
-    }
-
   for (l = new; l != NULL; l = l->next)
     {
       new_c = l->data;

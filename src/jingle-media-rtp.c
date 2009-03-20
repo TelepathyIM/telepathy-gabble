@@ -306,7 +306,7 @@ parse_payload_type (LmMessageNode *node)
   guint8 id;
   const gchar *name;
   guint clockrate = 0;
-  guint channels = 1;
+  guint channels = 0;
   LmMessageNode *param;
 
   txt = lm_message_node_get_attribute (node, "id");

@@ -4,8 +4,8 @@ Test getting relay from Google jingleinfo
 
 from gabbletest import exec_test, make_result_iq, sync_stream, \
         GoogleXmlStream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern, call_async
+from servicetest import make_channel_proxy, tp_path_prefix, \
+        EventPattern, call_async, sync_dbus
 import jingletest
 import gabbletest
 import constants as c
@@ -68,7 +68,7 @@ magic_cookie=MMMMMMMM
 """ % (http_req, http_req))
         http_req += 1
 
-def test(q, bus, conn, stream, incoming=True):
+def test(q, bus, conn, stream, incoming=True, too_slow=False):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
     # If we need to override remote caps, feats, codecs or caps,
@@ -154,6 +154,9 @@ def test(q, bus, conn, stream, incoming=True):
         # We're pending because of remote_handle
         e = q.expect('dbus-signal', signal='MembersChanged',
                  args=[u'', [], [], [1L], [], remote_handle, 0])
+
+        media_chan = make_channel_proxy(conn, tp_path_prefix + e.path,
+            'Channel.Interface.Group')
     else:
         call_async(q, conn.Requests, 'CreateChannel',
                 { 'org.freedesktop.Telepathy.Channel.ChannelType':
@@ -168,6 +171,7 @@ def test(q, bus, conn, stream, incoming=True):
             EventPattern('dbus-signal', signal='NewChannels'),
             )
         path = ret.value[0]
+        media_chan = make_channel_proxy(conn, path, 'Channel.Interface.Group')
         media_iface = make_channel_proxy(conn, path,
                 'Channel.Type.StreamedMedia')
         call_async(q, media_iface, 'RequestStreams',
@@ -176,6 +180,10 @@ def test(q, bus, conn, stream, incoming=True):
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
+
+    if too_slow:
+        test_too_slow(q, bus, conn, stream, httpd, media_chan)
+        return
 
     # In response to the streams call, we now have two HTTP requests
     # (for RTP and RTCP)
@@ -191,8 +199,6 @@ def test(q, bus, conn, stream, incoming=True):
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
     stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
-
-    media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(
@@ -301,11 +307,35 @@ def test(q, bus, conn, stream, incoming=True):
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
-    return True
+def test_too_slow(q, bus, conn, stream, httpd, media_chan):
+    """
+    Regression test for a bug where if the channel was closed before the HTTP
+    responses arrived, the responses finally arriving crashed Gabble.
+    """
+
+    # User gets bored, and closes the channel.
+    call_async(q, media_chan, 'Close', dbus_interface=c.CHANNEL)
+    q.expect('dbus-signal', signal='Closed')
+
+    # Now Google answers!
+    httpd.handle_request()
+    httpd.handle_request()
+
+    # Make a misc method call to check that Gabble's still alive.
+    sync_dbus(bus, q, conn)
+
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 
 if __name__ == '__main__':
     exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True),
             protocol=GoogleXmlStream)
     exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False),
+            protocol=GoogleXmlStream)
+    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True,
+                                      too_slow=True),
+            protocol=GoogleXmlStream)
+    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False,
+                                      too_slow=True),
             protocol=GoogleXmlStream)

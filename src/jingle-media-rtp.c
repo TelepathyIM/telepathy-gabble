@@ -400,7 +400,8 @@ codec_update_coherent (const JingleCodec *old_c,
       return FALSE;
     }
 
-  if (new_c->channels != old_c->channels)
+  if (old_c->channels != 0 &&
+      new_c->channels != old_c->channels)
     {
       g_set_error (e, domain, code,
           "tried to change codec %u (%s)'s channels from %u to %u",

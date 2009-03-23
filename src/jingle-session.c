@@ -30,6 +30,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "gabble-signals-marshal.h"
 #include "jingle-content.h"
 #include "jingle-factory.h"
 #include "namespaces.h"
@@ -372,8 +373,8 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 
   signals[TERMINATED] = g_signal_new ("terminated",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
-        0, NULL, NULL, g_cclosure_marshal_VOID__BOOLEAN,
-        G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
+        0, NULL, NULL, gabble_marshal_VOID__BOOLEAN_UINT,
+        G_TYPE_NONE, 2, G_TYPE_BOOLEAN, G_TYPE_UINT);
 }
 
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
@@ -1522,7 +1523,8 @@ set_state (GabbleJingleSession *sess, JingleState state)
     }
 
   if (state == JS_STATE_ENDED)
-      g_signal_emit (sess, signals[TERMINATED], 0, priv->locally_terminated);
+    g_signal_emit (sess, signals[TERMINATED], 0, priv->locally_terminated,
+        TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 }
 
 void

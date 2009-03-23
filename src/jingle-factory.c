@@ -90,7 +90,8 @@ static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     const gchar *sid, TpHandle peer, const gchar *peer_resource);
 
 static void session_terminated_cb (GabbleJingleSession *sess,
-    gboolean local_terminator, GabbleJingleFactory *fac);
+    gboolean local_terminator, TpChannelGroupChangeReason reason,
+    GabbleJingleFactory *fac);
 
 static void connection_status_changed_cb (GabbleConnection *conn,
     guint status, guint reason, GabbleJingleFactory *self);
@@ -777,8 +778,7 @@ create_session (GabbleJingleFactory *fac,
   sess = gabble_jingle_session_new (priv->conn, sid, local_initiator, peer,
       peer_resource);
 
-  g_signal_connect (sess, "terminated",
-    (GCallback) session_terminated_cb, fac);
+  g_signal_connect (sess, "terminated", (GCallback) session_terminated_cb, fac);
 
   DEBUG ("new session %s @ %p created", sid, sess);
   register_session (fac, sid, sess);
@@ -833,7 +833,9 @@ gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,
 
 static void
 session_terminated_cb (GabbleJingleSession *session,
-    gboolean local_terminator, GabbleJingleFactory *factory)
+                       gboolean local_terminator,
+                       TpChannelGroupChangeReason reason,
+                       GabbleJingleFactory *factory)
 {
   const gchar *sid;
   DEBUG ("removing terminated session");

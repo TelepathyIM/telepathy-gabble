@@ -94,6 +94,7 @@ TWISTED_TESTS = \
 	jingle/test-content-complex.py \
 	jingle/test-wait-for-caps.py \
 	jingle/test-wait-for-caps-incomplete.py \
+	file-transfer/test-receive-file-and-close-socket-while-receiving.py \
 	file-transfer/test-receive-file-and-disconnect.py \
 	file-transfer/test-receive-file-and-sender-disconnect-while-pending.py \
 	file-transfer/test-receive-file-and-sender-disconnect-while-transfering.py \

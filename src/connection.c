@@ -195,8 +195,6 @@ struct _GabbleConnectionPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_CONNECTION_GET_PRIVATE(obj) ((obj)->priv)
-
 static void connection_capabilities_update_cb (GabblePresenceCache *,
     TpHandle, GabblePresenceCapabilities, GabblePresenceCapabilities,
     GHashTable *, GHashTable *, gpointer);
@@ -321,7 +319,7 @@ gabble_connection_get_property (GObject    *object,
                                 GParamSpec *pspec)
 {
   GabbleConnection *self = (GabbleConnection *) object;
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  GabbleConnectionPrivate *priv = self->priv;
 
   switch (property_id) {
     case PROP_CONNECT_SERVER:
@@ -397,7 +395,7 @@ gabble_connection_set_property (GObject      *object,
                                 GParamSpec   *pspec)
 {
   GabbleConnection *self = (GabbleConnection *) object;
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  GabbleConnectionPrivate *priv = self->priv;
 
   switch (property_id) {
     case PROP_CONNECT_SERVER:
@@ -487,8 +485,7 @@ static gboolean _gabble_connection_connect (TpBaseConnection *base,
 static gchar *
 gabble_connection_get_unique_name (TpBaseConnection *self)
 {
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (
-      GABBLE_CONNECTION (self));
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION (self)->priv;
 
   return g_strdup_printf ("%s@%s/%s",
                           priv->username,
@@ -771,7 +768,7 @@ gabble_connection_dispose (GObject *object)
 {
   GabbleConnection *self = GABBLE_CONNECTION (object);
   TpBaseConnection *base = (TpBaseConnection *) self;
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  GabbleConnectionPrivate *priv = self->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -840,7 +837,7 @@ static void
 gabble_connection_finalize (GObject *object)
 {
   GabbleConnection *self = GABBLE_CONNECTION (object);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  GabbleConnectionPrivate *priv = self->priv;
 
   DEBUG ("called with %p", object);
 
@@ -885,7 +882,7 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   g_assert (GABBLE_IS_CONNECTION (conn));
   g_assert (account != NULL);
 
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  priv = conn->priv;
 
   username = server = resource = NULL;
   result = TRUE;
@@ -932,7 +929,7 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 
   g_assert (GABBLE_IS_CONNECTION (conn));
 
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  priv = conn->priv;
 
   if (!lm_connection_send (conn->lmconn, msg, &lmerror))
     {
@@ -1045,7 +1042,7 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 
   g_assert (GABBLE_IS_CONNECTION (conn));
 
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  priv = conn->priv;
 
   lm_message_ref (msg);
 
@@ -1128,7 +1125,7 @@ static void
 connect_callbacks (TpBaseConnection *base)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (base);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleConnectionPrivate *priv = conn->priv;
 
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
@@ -1178,7 +1175,7 @@ static void
 disconnect_callbacks (TpBaseConnection *base)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (base);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleConnectionPrivate *priv = conn->priv;
 
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
@@ -1237,7 +1234,7 @@ _gabble_connection_connect (TpBaseConnection *base,
                             GError **error)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (base);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleConnectionPrivate *priv = conn->priv;
   char *jid;
 
   g_assert (priv->port <= G_MAXUINT16);
@@ -1696,7 +1693,7 @@ connection_ssl_cb (LmSSL      *lmssl,
                    gpointer    data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleConnectionPrivate *priv = conn->priv;
   const char *reason;
   TpConnectionStatusReason tp_reason;
 
@@ -1752,7 +1749,7 @@ connection_ssl_cb (LmSSL      *lmssl,
 static void
 do_auth (GabbleConnection *conn)
 {
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleConnectionPrivate *priv = conn->priv;
   GError *error = NULL;
 
   DEBUG ("authenticating with username: %s, password: <hidden>, resource: %s",
@@ -1837,7 +1834,7 @@ connection_open_cb (LmConnection *lmconn,
                     gpointer      data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleConnectionPrivate *priv = conn->priv;
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if ((base->status != TP_CONNECTION_STATUS_CONNECTING) &&
@@ -1906,7 +1903,7 @@ connection_auth_cb (LmConnection *lmconn,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleConnectionPrivate *priv = conn->priv;
   GError *error = NULL;
   const gchar *jid;
 
@@ -2019,7 +2016,7 @@ connection_disco_cb (GabbleDisco *disco,
     }
 
   g_assert (GABBLE_IS_CONNECTION (conn));
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  priv = conn->priv;
 
   if (disco_error)
     {
@@ -2306,7 +2303,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   guint i;
   GabblePresence *pres = self->self_presence;
   GabblePresenceCapabilities add_caps = 0, remove_caps = 0, caps, save_caps;
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  GabbleConnectionPrivate *priv = self->priv;
   const CapabilityConversionData *ccd;
   GPtrArray *ret;
   GError *error = NULL;
@@ -2419,7 +2416,7 @@ gabble_connection_set_self_capabilities (
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  GabbleConnectionPrivate *priv = self->priv;
   guint i;
   GabblePresence *pres = self->self_presence;
   GHashTable *save_caps;
@@ -2726,7 +2723,7 @@ _gabble_connection_find_conference_server (GabbleConnection *conn)
 
   g_assert (GABBLE_IS_CONNECTION (conn));
 
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  priv = conn->priv;
 
   if (priv->conference_server == NULL)
     {
@@ -3117,7 +3114,7 @@ void
 gabble_connection_ensure_capabilities (GabbleConnection *self,
                                        GabblePresenceCapabilities caps)
 {
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  GabbleConnectionPrivate *priv = self->priv;
   GabblePresenceCapabilities old_caps, new_caps;
 
   old_caps = self->self_presence->caps;

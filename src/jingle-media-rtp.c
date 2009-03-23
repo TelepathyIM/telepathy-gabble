@@ -306,7 +306,7 @@ parse_payload_type (LmMessageNode *node)
   guint8 id;
   const gchar *name;
   guint clockrate = 0;
-  guint channels = 1;
+  guint channels = 0;
   LmMessageNode *param;
 
   txt = lm_message_node_get_attribute (node, "id");
@@ -400,7 +400,8 @@ codec_update_coherent (const JingleCodec *old_c,
       return FALSE;
     }
 
-  if (new_c->channels != old_c->channels)
+  if (old_c->channels != 0 &&
+      new_c->channels != old_c->channels)
     {
       g_set_error (e, domain, code,
           "tried to change codec %u (%s)'s channels from %u to %u",
@@ -687,14 +688,6 @@ compare_codecs (GList *old,
   JingleCodec *old_c, *new_c;
 
   g_assert (changed != NULL && *changed == NULL);
-
-  if (g_list_length (new) != g_list_length (old))
-    {
-      g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "tried to change the number of codecs from %u to %u",
-          g_list_length (old), g_list_length (new));
-      goto out;
-    }
 
   for (l = new; l != NULL; l = l->next)
     {

@@ -98,8 +98,6 @@ struct _GabbleRoomlistChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE(obj) ((obj)->priv)
-
 #define ROOM_SIGNAL_INTERVAL 300
 
 static gboolean emit_room_signal (gpointer data);
@@ -126,7 +124,7 @@ gabble_roomlist_channel_constructor (GType type, guint n_props,
 
   obj = G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->
            constructor (type, n_props, props);
-  priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (GABBLE_ROOMLIST_CHANNEL (obj));
+  priv = GABBLE_ROOMLIST_CHANNEL (obj)->priv;
 
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
@@ -142,7 +140,7 @@ gabble_roomlist_channel_get_property (GObject    *object,
 {
   GabbleRoomlistChannel *chan = GABBLE_ROOMLIST_CHANNEL (object);
   GabbleRoomlistChannelPrivate *priv =
-    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+    chan->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
 
   switch (property_id) {
@@ -217,7 +215,7 @@ gabble_roomlist_channel_set_property (GObject     *object,
 {
   GabbleRoomlistChannel *chan = GABBLE_ROOMLIST_CHANNEL (object);
   GabbleRoomlistChannelPrivate *priv =
-    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+    chan->priv;
   TpBaseConnection *conn;
   TpHandleRepoIface *room_handles;
   TpHandleSet *new_signalled_rooms;
@@ -382,7 +380,7 @@ gabble_roomlist_channel_dispose (GObject *object)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (object);
   GabbleRoomlistChannelPrivate *priv =
-    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
+    self->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -411,7 +409,7 @@ gabble_roomlist_channel_finalize (GObject *object)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (object);
   GabbleRoomlistChannelPrivate *priv =
-    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
+    self->priv;
 
   /* free any data held directly by the object here */
 
@@ -445,7 +443,7 @@ emit_room_signal (gpointer data)
 {
   GabbleRoomlistChannel *chan = data;
   GabbleRoomlistChannelPrivate *priv =
-    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+    chan->priv;
   GType room_info_type = TP_STRUCT_TYPE_ROOM_INFO;
 
   if (!priv->listing)
@@ -490,7 +488,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
     } while (0)
 
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (chan));
-  priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+  priv = chan->priv;
   room_handles = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
 
@@ -600,7 +598,7 @@ rooms_end_cb (gpointer data, gpointer user_data)
 {
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv =
-    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+    chan->priv;
 
   emit_room_signal (chan);
 
@@ -616,7 +614,7 @@ static void
 stop_listing (GabbleRoomlistChannel *self)
 {
   GabbleRoomlistChannelPrivate *priv =
-    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
+    self->priv;
 
   if (priv->listing)
     {
@@ -730,7 +728,7 @@ gabble_roomlist_channel_get_listing_rooms (TpSvcChannelTypeRoomList *iface,
 
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
 
-  priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
   tp_svc_channel_type_room_list_return_from_get_listing_rooms (
       context, priv->listing);
 }
@@ -757,7 +755,7 @@ gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList *iface,
 
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
 
-  priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   priv->listing = TRUE;
   tp_svc_channel_type_room_list_emit_listing_rooms (iface, TRUE);

@@ -729,6 +729,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   gchar *domain;
   LmMessage *iq_result;
   guint8 domain_len;
+  gsize len;
 
   switch (priv->socks5_state)
     {
@@ -974,10 +975,15 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
       case SOCKS5_STATE_CONNECTED:
         /* We are connected, everything we receive now is data */
+
+        /* store the buffer len because if something went wront in the
+         * data-received callback, the bytestream could be freed and so the
+         * priv->read_buffer */
+        len = string->len;
         g_signal_emit_by_name (G_OBJECT (self), "data-received",
             priv->peer_handle, string);
 
-        return string->len;
+        return len;
 
       case SOCKS5_STATE_ERROR:
         /* An error occurred and the channel will be closed in an idle

@@ -108,6 +108,8 @@ typedef void (*JingleReplyHandler) (GabbleJingleSession *, gboolean success,
 void gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
     JingleReplyHandler cb, gpointer user_data);
 
+/* Only to be used for the test suite */
+void gabble_set_jingle_session_timeout (guint seconds);
 
 #endif /* __JINGLE_SESSION_H__ */
 

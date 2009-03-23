@@ -86,7 +86,7 @@ struct _GabbleJingleSessionPrivate
   gboolean dispose_has_run;
 };
 
-#define DEFAULT_SESSION_TIMEOUT 60000
+static guint session_timeout_time = 60000;
 
 typedef struct {
   JingleState state;
@@ -1522,7 +1522,7 @@ set_state (GabbleJingleSession *sess,
       (!priv->local_initiator && (state == JS_STATE_PENDING_INITIATED)))
     {
       g_assert (priv->timer_id == 0);
-      priv->timer_id = g_timeout_add (DEFAULT_SESSION_TIMEOUT,
+      priv->timer_id = g_timeout_add (session_timeout_time,
         timeout_session, sess);
     }
   /* if we're active or ended, we can clear the timer */
@@ -1718,4 +1718,9 @@ content_ready_cb (GabbleJingleContent *c, gpointer user_data)
   try_session_initiate_or_accept (sess);
 }
 
-
+/* Only to be used for the test suite */
+void
+gabble_set_jingle_session_timeout (guint ms)
+{
+  session_timeout_time = ms;
+}

@@ -20,6 +20,7 @@
 #include "gabble.h"
 #include "connection.h"
 #include "jingle-factory.h"
+#include "jingle-session.h"
 
 #include <lib/gibber/gibber-resolver.h>
 
@@ -31,6 +32,8 @@ main (int argc,
 {
   /* needed for test-disco-no-reply.py */
   gabble_connection_set_disco_reply_timeout (3000);
+
+  gabble_set_jingle_session_timeout (500);
 
   g_type_init ();
   gibber_resolver_set_resolver (GABBLE_TYPE_RESOLVER_FAKE);

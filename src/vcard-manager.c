@@ -171,8 +171,6 @@ gabble_vcard_manager_cache_quark (void)
   return quark;
 }
 
-#define GABBLE_VCARD_MANAGER_GET_PRIVATE(o) ((o)->priv)
-
 static void cache_entry_free (void *data);
 static gint cache_entry_compare (gconstpointer a, gconstpointer b);
 
@@ -248,7 +246,7 @@ gabble_vcard_manager_get_property (GObject *object,
                                    GParamSpec *pspec)
 {
   GabbleVCardManager *chan = GABBLE_VCARD_MANAGER (object);
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (chan);
+  GabbleVCardManagerPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -270,7 +268,7 @@ gabble_vcard_manager_set_property (GObject *object,
                                    GParamSpec *pspec)
 {
   GabbleVCardManager *chan = GABBLE_VCARD_MANAGER (object);
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (chan);
+  GabbleVCardManagerPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -298,8 +296,7 @@ static void
 cache_entry_free (gpointer data)
 {
   GabbleVCardCacheEntry *entry = data;
-  GabbleVCardManagerPrivate *priv =
-      GABBLE_VCARD_MANAGER_GET_PRIVATE (entry->manager);
+  GabbleVCardManagerPrivate *priv = entry->manager->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles
       ((TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
 
@@ -326,7 +323,7 @@ cache_entry_free (gpointer data)
 static GabbleVCardCacheEntry *
 cache_entry_get (GabbleVCardManager *manager, TpHandle handle)
 {
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  GabbleVCardManagerPrivate *priv = manager->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
   GabbleVCardCacheEntry *entry;
@@ -349,7 +346,7 @@ static gboolean
 cache_entry_timeout (gpointer data)
 {
   GabbleVCardManager *manager = data;
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  GabbleVCardManagerPrivate *priv = manager->priv;
   GabbleVCardCacheEntry *entry;
 
   time_t now = time (NULL);
@@ -381,8 +378,7 @@ cache_entry_timeout (gpointer data)
 static void
 cache_entry_attempt_to_free (GabbleVCardCacheEntry *entry)
 {
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE
-      (entry->manager);
+  GabbleVCardManagerPrivate *priv = entry->manager->priv;
   TpBaseConnection *base = (TpBaseConnection *) priv->connection;
 
   if (entry->vcard_node != NULL)
@@ -422,7 +418,7 @@ void
 gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager,
                                        TpHandle handle)
 {
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  GabbleVCardManagerPrivate *priv = manager->priv;
   GabbleVCardCacheEntry *entry = g_hash_table_lookup (priv->cache,
       GUINT_TO_POINTER (handle));
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -497,7 +493,7 @@ static void
 gabble_vcard_manager_dispose (GObject *object)
 {
   GabbleVCardManager *self = GABBLE_VCARD_MANAGER (object);
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  GabbleVCardManagerPrivate *priv = self->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -584,7 +580,7 @@ initial_request_cb (GabbleVCardManager *self,
                     GError *error,
                     gpointer user_data)
 {
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  GabbleVCardManagerPrivate *priv = self->priv;
   gchar *alias = (gchar *) user_data;
   gchar *sha1;
 
@@ -615,7 +611,7 @@ status_changed_cb (GObject *object,
                    gpointer user_data)
 {
   GabbleVCardManager *self = GABBLE_VCARD_MANAGER (user_data);
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  GabbleVCardManagerPrivate *priv = self->priv;
   GabbleConnection *conn = GABBLE_CONNECTION (object);
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
@@ -862,7 +858,7 @@ replace_reply_cb (GabbleConnection *conn,
                   GError *error)
 {
   GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (user_data);
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  GabbleVCardManagerPrivate *priv = manager->priv;
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
   GError *err = get_error_from_pipeline_reply (reply_msg, error);
@@ -998,7 +994,7 @@ static void
 manager_patch_vcard (GabbleVCardManager *manager,
                      LmMessageNode *vcard_node)
 {
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  GabbleVCardManagerPrivate *priv = manager->priv;
   LmMessage *msg;
   LmMessageNode *patched_vcard;
   GList *li;
@@ -1054,7 +1050,7 @@ pipeline_reply_cb (GabbleConnection *conn,
 {
   GabbleVCardCacheEntry *entry = user_data;
   GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (entry->manager);
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  GabbleVCardManagerPrivate *priv = manager->priv;
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
@@ -1149,8 +1145,7 @@ notify_delete_request (gpointer data, GObject *obj)
 static void
 cache_entry_ensure_queued (GabbleVCardCacheEntry *entry, guint timeout)
 {
-  GabbleConnection *conn =
-    GABBLE_VCARD_MANAGER_GET_PRIVATE (entry->manager)->connection;
+  GabbleConnection *conn = entry->manager->priv->connection;
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
@@ -1205,7 +1200,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
                               gpointer user_data,
                               GObject *object)
 {
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *connection = (TpBaseConnection *) priv->connection;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       connection, TP_HANDLE_TYPE_CONTACT);
@@ -1249,7 +1244,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
 {
   va_list ap;
   size_t i;
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) priv->connection;
   GabbleVCardManagerEditRequest *req;
   GabbleVCardCacheEntry *entry;
@@ -1307,7 +1302,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
 void
 gabble_vcard_manager_remove_edit_request (GabbleVCardManagerEditRequest *request)
 {
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (request->manager);
+  GabbleVCardManagerPrivate *priv = request->manager->priv;
 
   DEBUG("request == %p", request);
 
@@ -1336,7 +1331,7 @@ notify_delete_edit_request (gpointer data, GObject *obj)
 static void
 cancel_all_edit_requests (GabbleVCardManager *manager)
 {
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  GabbleVCardManagerPrivate *priv = manager->priv;
   GError cancelled = { GABBLE_VCARD_MANAGER_ERROR,
       GABBLE_VCARD_MANAGER_ERROR_CANCELLED,
       "Request cancelled" };
@@ -1374,7 +1369,7 @@ gabble_vcard_manager_get_cached (GabbleVCardManager *self,
                                  TpHandle handle,
                                  LmMessageNode **node)
 {
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  GabbleVCardManagerPrivate *priv = self->priv;
   GabbleVCardCacheEntry *entry = g_hash_table_lookup (priv->cache,
       GUINT_TO_POINTER (handle));
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -1406,7 +1401,7 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
 
   g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (manager), NULL);
 
-  priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  priv = manager->priv;
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
 
@@ -1434,7 +1429,7 @@ gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
 
   g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (manager), FALSE);
 
-  priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  priv = manager->priv;
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
 

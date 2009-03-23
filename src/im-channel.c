@@ -108,8 +108,6 @@ struct _GabbleIMChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_IM_CHANNEL_GET_PRIVATE(obj) ((obj)->priv)
-
 static void
 gabble_im_channel_init (GabbleIMChannel *self)
 {
@@ -144,7 +142,7 @@ gabble_im_channel_constructor (GType type, guint n_props,
 
   obj = G_OBJECT_CLASS (gabble_im_channel_parent_class)->
            constructor (type, n_props, props);
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (GABBLE_IM_CHANNEL (obj));
+  priv = GABBLE_IM_CHANNEL (obj)->priv;
   conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -185,7 +183,7 @@ gabble_im_channel_get_property (GObject    *object,
                                 GParamSpec *pspec)
 {
   GabbleIMChannel *chan = GABBLE_IM_CHANNEL (object);
-  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+  GabbleIMChannelPrivate *priv = chan->priv;
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
 
   switch (property_id) {
@@ -260,7 +258,7 @@ gabble_im_channel_set_property (GObject     *object,
                                 GParamSpec   *pspec)
 {
   GabbleIMChannel *chan = GABBLE_IM_CHANNEL (object);
-  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+  GabbleIMChannelPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_OBJECT_PATH:
@@ -392,7 +390,7 @@ static void
 gabble_im_channel_dispose (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
-  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+  GabbleIMChannelPrivate *priv = self->priv;
   GabblePresence *presence;
   GabbleRosterSubscription subscription;
   gboolean cap_chat_states = FALSE;
@@ -444,7 +442,7 @@ static void
 gabble_im_channel_finalize (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
-  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+  GabbleIMChannelPrivate *priv = self->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -478,7 +476,7 @@ _gabble_im_channel_send_message (GObject *object,
   gint state = -1;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache,
       priv->handle);
@@ -519,7 +517,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   TpMessage *msg;
 
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+  priv = chan->priv;
   base_conn = (TpBaseConnection *) priv->conn;
 
   /* update peer's full JID if it's changed */
@@ -612,7 +610,7 @@ _gabble_im_channel_state_receive (GabbleIMChannel *chan,
 
   g_assert (state < NUM_TP_CHANNEL_CHAT_STATES);
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+  priv = chan->priv;
 
   tp_svc_channel_interface_chat_state_emit_chat_state_changed (
       (TpSvcChannelInterfaceChatState *) chan,
@@ -637,7 +635,7 @@ gabble_im_channel_close (TpSvcChannel *iface,
 
   DEBUG ("called on %p", self);
 
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache,
       priv->handle);
@@ -745,7 +743,7 @@ gabble_im_channel_get_handle (TpSvcChannel *iface,
   GabbleIMChannelPrivate *priv;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_CONTACT,
       priv->handle);
@@ -784,7 +782,7 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
   GError *error = NULL;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache,
       priv->handle);

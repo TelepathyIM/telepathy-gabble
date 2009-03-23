@@ -87,8 +87,6 @@ struct _GabbleRosterChannelPrivate
   gboolean closed;
 };
 
-#define GABBLE_ROSTER_CHANNEL_GET_PRIVATE(obj) ((obj)->priv)
-
 static void
 gabble_roster_channel_init (GabbleRosterChannel *self)
 {
@@ -114,7 +112,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
 
   obj = G_OBJECT_CLASS (gabble_roster_channel_parent_class)->
            constructor (type, n_props, props);
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
+  priv = GABBLE_ROSTER_CHANNEL (obj)->priv;
   conn = (TpBaseConnection *) priv->conn;
   handle_type = priv->handle_type;
   handle_repo = tp_base_connection_get_handles (conn, handle_type);
@@ -201,7 +199,7 @@ gabble_roster_channel_get_property (GObject    *object,
                                     GParamSpec *pspec)
 {
   GabbleRosterChannel *chan = GABBLE_ROSTER_CHANNEL (object);
-  GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
+  GabbleRosterChannelPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_OBJECT_PATH:
@@ -268,7 +266,7 @@ gabble_roster_channel_set_property (GObject     *object,
                                     GParamSpec   *pspec)
 {
   GabbleRosterChannel *chan = GABBLE_ROSTER_CHANNEL (object);
-  GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
+  GabbleRosterChannelPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_OBJECT_PATH:
@@ -404,7 +402,7 @@ void
 gabble_roster_channel_dispose (GObject *object)
 {
   GabbleRosterChannel *self = GABBLE_ROSTER_CHANNEL (object);
-  GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self);
+  GabbleRosterChannelPrivate *priv = self->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -424,7 +422,7 @@ void
 gabble_roster_channel_finalize (GObject *object)
 {
   GabbleRosterChannel *self = GABBLE_ROSTER_CHANNEL (object);
-  GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self);
+  GabbleRosterChannelPrivate *priv = self->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (conn,
       priv->handle_type);
@@ -459,7 +457,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   TpHandleRepoIface *contact_repo;
   const gchar *contact_id;
 
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
+  priv = GABBLE_ROSTER_CHANNEL (obj)->priv;
 
 #ifdef ENABLE_DEBUG
   handle_repo = tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
@@ -538,7 +536,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   gboolean ret = FALSE;
   const gchar *contact_id;
 
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
+  priv = GABBLE_ROSTER_CHANNEL (obj)->priv;
   conn = (TpBaseConnection *) priv->conn;
 #ifdef ENABLE_DEBUG
   handle_repo = tp_base_connection_get_handles (conn, priv->handle_type);
@@ -627,7 +625,7 @@ gabble_roster_channel_close (TpSvcChannel *iface,
 
   g_assert (GABBLE_IS_ROSTER_CHANNEL (self));
 
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   if (priv->handle_type == TP_HANDLE_TYPE_LIST)
     {
@@ -690,8 +688,7 @@ gabble_roster_channel_get_handle (TpSvcChannel *iface,
 
   g_assert (GABBLE_IS_ROSTER_CHANNEL (self));
 
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self);
-
+  priv = self->priv;
   tp_svc_channel_return_from_get_handle (context, priv->handle_type,
       priv->handle);
 }

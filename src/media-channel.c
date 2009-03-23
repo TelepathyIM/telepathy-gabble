@@ -843,7 +843,8 @@ gabble_media_channel_close (GabbleMediaChannel *self)
 
   if (priv->session)
     {
-      gabble_jingle_session_terminate (priv->session);
+      gabble_jingle_session_terminate (priv->session,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
     }
 
   tp_svc_channel_emit_closed (self);
@@ -2024,7 +2025,8 @@ gabble_media_channel_remove_member (GObject *obj,
   tp_group_mixin_change_flags (obj, 0,
       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 
-  gabble_jingle_session_terminate (priv->session);
+  gabble_jingle_session_terminate (priv->session,
+      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
   return TRUE;
 }

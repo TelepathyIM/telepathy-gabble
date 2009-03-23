@@ -91,7 +91,8 @@ LmMessage *gabble_jingle_session_new_message (GabbleJingleSession *sess,
     JingleAction action, LmMessageNode **sess_node);
 
 void gabble_jingle_session_accept (GabbleJingleSession *sess);
-void gabble_jingle_session_terminate (GabbleJingleSession *sess);
+void gabble_jingle_session_terminate (GabbleJingleSession *sess,
+    TpChannelGroupChangeReason reason);
 void gabble_jingle_session_remove_content (GabbleJingleSession *sess,
     GabbleJingleContent *c);
 

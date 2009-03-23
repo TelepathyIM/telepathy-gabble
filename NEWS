@@ -1,5 +1,14 @@
-telepathy-gabble 0.7.24 (UNRELEASED)
+telepathy-gabble 0.7.24 (2009-03-23)
 ====================================
+
+The "glass eye, a flash of green" release.
+
+Enhancements:
+
+* All messages on the Messages interface now have a message token, using the
+  XMPP id attribute. Identifiers for messages that Gabble sends, and those it
+  receives that lack one, are generated with libuuid if available, or with a
+  unique-ish time-based fallback otherwise.
 
 Fixes:
 
@@ -25,6 +34,11 @@ Fixes:
   generally when both peers are on the same network. If they are not,
   SOCKS5 connection will probably be impossible because of NAT's and
   they'll fallback to IBB as usual.
+
+* Don't crash if Google relay responses arrive after the call has ended (fd.o
+  #20764).
+
+* Relax overly-strict checks made by CodecsUpdated.
 
 telepathy-gabble 0.7.23 (2009-03-13)
 ====================================

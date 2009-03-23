@@ -92,8 +92,6 @@ gabble_disco_error_quark (void)
   return quark;
 }
 
-#define GABBLE_DISCO_GET_PRIVATE(o) ((o)->priv)
-
 static void
 gabble_disco_init (GabbleDisco *obj)
 {
@@ -150,7 +148,7 @@ gabble_disco_get_property (GObject    *object,
                                 GParamSpec *pspec)
 {
   GabbleDisco *chan = GABBLE_DISCO (object);
-  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (chan);
+  GabbleDiscoPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -169,7 +167,7 @@ gabble_disco_set_property (GObject     *object,
                            GParamSpec   *pspec)
 {
   GabbleDisco *chan = GABBLE_DISCO (object);
-  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (chan);
+  GabbleDiscoPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -195,7 +193,7 @@ gabble_disco_constructor (GType type, guint n_props,
   obj = G_OBJECT_CLASS (gabble_disco_parent_class)-> constructor (type,
       n_props, props);
   disco = GABBLE_DISCO (obj);
-  priv = GABBLE_DISCO_GET_PRIVATE (disco);
+  priv = disco->priv;
 
   g_signal_connect (priv->connection, "status-changed",
       G_CALLBACK (gabble_disco_conn_status_changed_cb), disco);
@@ -209,7 +207,7 @@ static void
 gabble_disco_dispose (GObject *object)
 {
   GabbleDisco *self = GABBLE_DISCO (object);
-  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (self);
+  GabbleDiscoPrivate *priv = self->priv;
   GSList *l;
 
   if (priv->dispose_has_run)
@@ -282,7 +280,7 @@ delete_request (GabbleDiscoRequest *request)
   g_assert (NULL != request);
   g_assert (GABBLE_IS_DISCO (disco));
 
-  priv = GABBLE_DISCO_GET_PRIVATE (disco);
+  priv = disco->priv;
 
   g_assert (NULL != g_list_find (priv->requests, request));
 
@@ -381,7 +379,7 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 {
   GabbleDiscoRequest *request = (GabbleDiscoRequest *) user_data;
   GabbleDisco *disco = GABBLE_DISCO (object);
-  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
+  GabbleDiscoPrivate *priv = disco->priv;
   LmMessageNode *query_node;
   GError *err = NULL;
 
@@ -478,7 +476,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
                                    gpointer user_data, GObject *object,
                                    GError **error)
 {
-  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (self);
+  GabbleDiscoPrivate *priv = self->priv;
   GabbleDiscoRequest *request;
   LmMessage *msg;
   LmMessageNode *lm_node;
@@ -535,7 +533,7 @@ gabble_disco_cancel_request (GabbleDisco *disco, GabbleDiscoRequest *request)
   g_return_if_fail (GABBLE_IS_DISCO (disco));
   g_return_if_fail (NULL != request);
 
-  priv = GABBLE_DISCO_GET_PRIVATE (disco);
+  priv = disco->priv;
 
   g_return_if_fail (NULL != g_list_find (priv->requests, request));
 
@@ -852,7 +850,7 @@ static void
 services_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 {
   GabbleDisco *disco = GABBLE_DISCO (user_data);
-  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
+  GabbleDiscoPrivate *priv = disco->priv;
   GabbleDiscoItem *my_item = g_new0 (GabbleDiscoItem, 1);
 
   my_item->jid = g_strdup (item->jid);
@@ -874,7 +872,7 @@ static void
 end_cb (gpointer pipeline, gpointer user_data)
 {
   GabbleDisco *disco = GABBLE_DISCO (user_data);
-  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
+  GabbleDiscoPrivate *priv = disco->priv;
 
   gabble_disco_pipeline_destroy (pipeline);
   priv->service_cache = g_slist_reverse (priv->service_cache);
@@ -889,7 +887,7 @@ gabble_disco_conn_status_changed_cb (GabbleConnection *conn,
                                      gpointer data)
 {
   GabbleDisco *disco = GABBLE_DISCO (data);
-  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
+  GabbleDiscoPrivate *priv = disco->priv;
 
   if (status == TP_CONNECTION_STATUS_CONNECTED)
     {
@@ -919,7 +917,7 @@ gabble_disco_service_find (GabbleDisco *disco,
   GSList *l;
 
   g_assert (GABBLE_IS_DISCO (disco));
-  priv = GABBLE_DISCO_GET_PRIVATE (disco);
+  priv = disco->priv;
 
   for (l = priv->service_cache; l; l = g_slist_next (l))
     {

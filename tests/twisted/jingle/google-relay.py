@@ -288,10 +288,10 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
 
         jt.outgoing_call_reply(e.query['sid'], True)
 
-        q.expect('stream-iq', iq_type='result')
-
-        # Call accepted
-        q.expect('dbus-signal', signal='MembersChanged')
+        q.expect_many(
+            EventPattern('stream-iq', iq_type='result'),
+            EventPattern('dbus-signal', signal='MembersChanged'),
+            )
 
     media_chan.RemoveMembers([dbus.UInt32(1)], '')
 

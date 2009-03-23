@@ -79,9 +79,9 @@ def test(q, bus, conn, stream):
     header, body = message
 
     assert header['message-sender'] == foo_at_bar_dot_com_handle, header
-    # the spec says that message-type "SHOULD be omitted for normal chat
+    # the spec says that message-type "MAY be omitted for normal chat
     # messages."
-    assert 'message-type' not in header, header
+    assert 'message-type' not in header or header['message-type'] == 0, header
     assert header['message-token'] == '1845a1a9-f7bc-4a2e-a885-633aadc81e1b'
 
     assert body['content-type'] == 'text/plain', body
@@ -162,8 +162,9 @@ def test(q, bus, conn, stream):
     sent_message = message_sent.args[0]
     assert len(sent_message) == 2, sent_message
     header = sent_message[0]
-    # if it would be Normal, message-type SHOULD be omitted
-    assert 'message-type' not in header, header
+    # the spec says that message-type "MAY be omitted for normal chat
+    # messages."
+    assert 'message-type' not in header or header['message-type'] == 0, header
     body = sent_message[1]
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'goodbye', body

@@ -312,12 +312,12 @@ class JingleTest2:
         sync_stream(self.q, self.stream)
 
     def dbusify_codecs(self, codecs):
-        dbussed_codecs = [ (id, name, 0, rate, 1, {} )
+        dbussed_codecs = [ (id, name, 0, rate, 0, {} )
                             for (name, id, rate) in codecs ]
         return dbus.Array(dbussed_codecs, signature='(usuuua{ss})')
 
     def dbusify_codecs_with_params(self, codecs):
-        dbussed_codecs = [ (id, name, 0, rate, 1, params)
+        dbussed_codecs = [ (id, name, 0, rate, 0, params)
                             for (name, id, rate, params) in codecs ]
         return dbus.Array(dbussed_codecs, signature='(usuuua{ss})')
 

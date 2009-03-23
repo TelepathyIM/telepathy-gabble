@@ -1244,11 +1244,11 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
   channel = g_hash_table_lookup (self->priv->tubes_channels,
       GUINT_TO_POINTER (handle));
 
-  if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
+  if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
     {
       if (channel == NULL)
         {
-          channel = new_tubes_channel (self, handle, base_conn->self_handle,
+          new_tubes_channel (self, handle, base_conn->self_handle,
               request_token, TRUE);
           return TRUE;
         }

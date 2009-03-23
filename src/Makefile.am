@@ -158,11 +158,11 @@ noinst_LTLIBRARIES = libgabble-convenience.la
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
 	    @HANDLE_LEAK_DEBUG_CFLAGS@ @TP_GLIB_CFLAGS@ \
-	    @SOUP_CFLAGS@ \
+	    @SOUP_CFLAGS@ @UUID_CFLAGS@ \
 	    -I $(top_srcdir)/lib -I $(top_builddir)/lib
 
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@ \
-	    @SOUP_LIBS@
+	    @SOUP_LIBS@ @UUID_LIBS@
 
 # Teach it how to make libgibber.la
 $(top_builddir)/lib/gibber/libgibber.la:

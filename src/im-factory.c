@@ -215,7 +215,7 @@ im_factory_message_cb (LmMessageHandler *handler,
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
-  const gchar *from, *body;
+  const gchar *from, *body, *id;
   time_t stamp;
   TpChannelTextMessageType msgtype;
   TpHandle handle;
@@ -225,7 +225,7 @@ im_factory_message_cb (LmMessageHandler *handler,
   TpDeliveryStatus delivery_status;
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
-        &msgtype, &body, &state, &send_error, &delivery_status))
+        &msgtype, &id, &body, &state, &send_error, &delivery_status))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   if (body == NULL && state == -1)
@@ -287,7 +287,7 @@ im_factory_message_cb (LmMessageHandler *handler,
     _gabble_im_channel_state_receive (chan, state);
 
   if (body != NULL)
-    _gabble_im_channel_receive (chan, msgtype, handle, from, stamp, body,
+    _gabble_im_channel_receive (chan, msgtype, handle, from, stamp, id, body,
         send_error, delivery_status);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

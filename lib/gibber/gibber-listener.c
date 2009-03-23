@@ -301,7 +301,16 @@ add_listener (GibberListener *self, int family, int type, int protocol,
       goto error;
     }
 
-  getsockname (fd, &baddress.addr, &baddrlen);
+  ret = getsockname (fd, &baddress.addr, &baddrlen);
+  if (ret == -1)
+    {
+      DEBUG ("getsockname failed: %s", g_strerror (errno));
+      g_set_error (error, GIBBER_LISTENER_ERROR,
+          GIBBER_LISTENER_ERROR_FAILED,
+          "%s", g_strerror (errno));
+      goto error;
+    }
+
   getnameinfo (&baddress.addr, baddrlen, name, sizeof (name),
       portname, sizeof (portname), NI_NUMERICHOST | NI_NUMERICSERV);
 

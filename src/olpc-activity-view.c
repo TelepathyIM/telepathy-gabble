@@ -212,7 +212,6 @@ gabble_olpc_activity_view_constructor (GType type,
   GabbleOlpcActivityViewPrivate *priv;
   DBusGConnection *bus;
   TpBaseConnection *conn;
-  TpHandleRepoIface *contact_handles;
 
   obj = G_OBJECT_CLASS (gabble_olpc_activity_view_parent_class)->
            constructor (type, n_props, props);
@@ -224,9 +223,6 @@ gabble_olpc_activity_view_constructor (GType type,
 
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, view->object_path, obj);
-
-  contact_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
 
   if (priv->properties == NULL)
     {

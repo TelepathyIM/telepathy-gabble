@@ -846,8 +846,11 @@ check_activity_properties (GabbleConnection *conn,
 
   if (query_needed)
     {
-      pubsub_query (conn, from, NS_OLPC_ACTIVITY_PROPS,
-          get_activity_properties_reply_cb, NULL);
+      if (!pubsub_query (conn, from, NS_OLPC_ACTIVITY_PROPS,
+          get_activity_properties_reply_cb, NULL))
+        {
+          DEBUG ("Failed to send activity properties request to server");
+        }
     }
 }
 

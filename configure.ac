@@ -195,6 +195,15 @@ PKG_CHECK_MODULES(SOUP, libsoup-2.4)
 AC_SUBST(SOUP_CFLAGS)
 AC_SUBST(SOUP_LIBS)
 
+PKG_CHECK_MODULES([UUID], [uuid], [HAVE_UUID=yes], [HAVE_UUID=no])
+AC_SUBST([UUID_CFLAGS])
+AC_SUBST([UUID_LIBS])
+if test x"$HAVE_UUID" = xyes; then
+  AC_DEFINE([HAVE_UUID], [1], [Define if libuuid is available])
+else
+  AC_MSG_WARN([libuuid not found, falling back to generating random IDs])
+fi
+
 AC_CHECK_FUNCS(getifaddrs memset select strndup setresuid setreuid strerror)
 
 AC_OUTPUT( Makefile \

@@ -30,7 +30,7 @@ def test(q, bus, conn, stream):
         }
     ]
 
-    dbus.Interface(text_chan,
+    sent_token = dbus.Interface(text_chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Messages'
         ).SendMessage(greeting, dbus.UInt32(0))
 
@@ -88,9 +88,7 @@ def test(q, bus, conn, stream):
     assert part['message-type'] == 4, part # Message_Type_Delivery_Report
     assert part['delivery-status'] == 3, part # Delivery_Status_Permanently_Failed
     assert part['delivery-error'] == PERMISSION_DENIED, part
-    # Gabble doesn't issue tokens for messages you send, so no token should be
-    # in the report
-    assert 'delivery-token' not in part, part
+    assert part['delivery-token'] == sent_token, part
 
     # Check that the included echo is from us, and matches all the keys in the
     # message we sent.
@@ -98,6 +96,7 @@ def test(q, bus, conn, stream):
     echo = part['delivery-echo']
     assert len(echo) == len(greeting), (echo, greeting)
     assert echo[0]['message-sender'] == test_handle, echo[0]
+    assert echo[0]['message-token'] == sent_token, echo[0]
     for i in range(0, len(echo)):
         for key in greeting[i]:
             assert key in echo[i], (i, key, echo)

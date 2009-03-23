@@ -1178,6 +1178,11 @@ gabble_bytestream_socks5_send (GabbleBytestreamIface *iface,
       DEBUG ("sending data while the bytestream was blocked");
     }
 
+  /* if something goes wrong during the sending, the bytestream could be
+   * closed and so disposed by the bytestream factory. Ref it to keep it
+   * artifically alive if such case happen. */
+  g_object_ref (self);
+
   DEBUG ("send %u bytes through bytestream", len);
   if (!write_to_transport (self, str, len, &error))
     {
@@ -1185,13 +1190,20 @@ gabble_bytestream_socks5_send (GabbleBytestreamIface *iface,
 
       g_error_free (error);
       gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
+      g_object_unref (self);
       return FALSE;
     }
 
-  /* If something did wrong during the writting, the transport has been closed
+  /* If something wennt wrong during the writting, the transport has been closed
    * and so set to NULL. */
   if (priv->transport == NULL)
-    return FALSE;
+    {
+      g_object_unref (self);
+      return FALSE;
+    }
+
+  /* At this point we know that the bytestream has not been closed */
+  g_object_unref (self);
 
   if (!gibber_transport_buffer_is_empty (priv->transport))
     {

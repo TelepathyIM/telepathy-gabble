@@ -1567,6 +1567,9 @@ transport_disconnected_cb (GibberTransport *transport,
 
   if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED)
     {
+      if (self->priv->bytestream != NULL)
+        gabble_bytestream_iface_close (self->priv->bytestream, NULL);
+
       gabble_file_transfer_channel_set_state (
           TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
           TP_FILE_TRANSFER_STATE_CANCELLED,

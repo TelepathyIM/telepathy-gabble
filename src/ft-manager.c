@@ -34,6 +34,7 @@
 #include "error.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
+#include "presence-cache.h"
 #include "util.h"
 
 #include "ft-channel.h"
@@ -41,6 +42,7 @@
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/channel-manager.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/util.h>
@@ -54,10 +56,14 @@ channel_manager_iface_init (gpointer, gpointer);
 static void gabble_ft_manager_channel_created (GabbleFtManager *mgr,
     GabbleFileTransferChannel *chan, gpointer request_token);
 
+static void caps_channel_manager_iface_init (gpointer g_iface,
+    gpointer iface_data);
+
 G_DEFINE_TYPE_WITH_CODE (GabbleFtManager, gabble_ft_manager, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
+      caps_channel_manager_iface_init));
 
 /* properties */
 enum
@@ -590,4 +596,127 @@ gabble_ft_manager_get_tmp_dir (GabbleFtManager *self)
     DEBUG ("mkdtemp failed: %s\n", g_strerror (errno));
 
   return self->priv->tmp_dir;
+}
+
+static void
+add_file_transfer_channel_class (GPtrArray *arr,
+                                 TpHandle handle)
+{
+  GValue monster = {0, };
+  GHashTable *fixed_properties;
+  GValue *channel_type_value;
+  GValue *target_handle_type_value;
+
+  g_assert (handle != 0);
+
+  g_value_init (&monster, TP_STRUCT_TYPE_REQUESTABLE_CHANNEL_CLASS);
+  g_value_take_boxed (&monster,
+      dbus_g_type_specialized_construct (
+        TP_STRUCT_TYPE_REQUESTABLE_CHANNEL_CLASS));
+
+  fixed_properties = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (channel_type_value,
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER);
+  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".ChannelType",
+      channel_type_value);
+
+  target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
+  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".TargetHandleType",
+      target_handle_type_value);
+
+  dbus_g_type_struct_set (&monster,
+      0, fixed_properties,
+      1, file_transfer_channel_allowed_properties,
+      G_MAXUINT);
+
+  g_hash_table_destroy (fixed_properties);
+
+  g_ptr_array_add (arr, g_value_get_boxed (&monster));
+}
+
+static void
+gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
+                                    GabbleConnection *conn,
+                                    TpHandle handle,
+                                    GPtrArray *arr)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  GabblePresence *presence;
+
+  g_assert (handle != 0);
+
+  if (handle == base->self_handle)
+    {
+      /* We support file transfer */
+      add_file_transfer_channel_class (arr, handle);
+      return;
+    }
+
+ presence = gabble_presence_cache_get (conn->presence_cache, handle);
+ if (presence == NULL)
+   return;
+
+ if (g_hash_table_lookup (presence->per_channel_manager_caps, manager) == NULL)
+   return;
+
+  /* FT is supported */
+  add_file_transfer_channel_class (arr, handle);
+}
+
+static gpointer
+gabble_ft_manager_parse_caps (GabbleCapsChannelManager *manager,
+                              LmMessageNode *children)
+{
+  LmMessageNode *child;
+
+  for (child = children; NULL != child; child = child->next)
+    {
+      const gchar *var;
+
+      if (0 != strcmp (child->name, "feature"))
+        continue;
+
+      var = lm_message_node_get_attribute (child, "var");
+
+      if (NULL == var)
+        continue;
+
+      if (!tp_strdiff (var, NS_FILE_TRANSFER))
+        return GUINT_TO_POINTER (TRUE);
+    }
+
+  return NULL;
+}
+
+static void
+gabble_ft_manager_copy_caps (GabbleCapsChannelManager *manager,
+                             gpointer *specific_caps_out,
+                             gpointer specific_caps_in)
+{
+  *specific_caps_out = specific_caps_in;
+}
+
+static gboolean
+gabble_ft_manager_caps_diff (GabbleCapsChannelManager *manager,
+                             TpHandle handle,
+                             gpointer specific_old_caps,
+                             gpointer specific_new_caps)
+{
+  return specific_old_caps != specific_new_caps;
+}
+
+static void
+caps_channel_manager_iface_init (gpointer g_iface,
+                                 gpointer iface_data)
+{
+  GabbleCapsChannelManagerIface *iface = g_iface;
+
+  iface->get_contact_caps = gabble_ft_manager_get_contact_caps;
+  iface->parse_caps = gabble_ft_manager_parse_caps;
+  iface->copy_caps = gabble_ft_manager_copy_caps;
+  iface->caps_diff = gabble_ft_manager_caps_diff;
 }

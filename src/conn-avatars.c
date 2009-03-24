@@ -108,6 +108,17 @@ connection_got_self_initial_avatar_cb (GObject *obj,
   update_own_avatar_sha1 (conn, sha1, NULL);
 }
 
+/* Jabber prescribes no MIME type for avatars, but XEP-0153 says support
+ * for image/png is REQUIRED, with image/jpeg and image/gif RECOMMENDED */
+static const char *mimetypes[] = {
+    "image/png", "image/jpeg", "image/gif", NULL };
+
+/* Jabber has no min/max width/height or max size, but XEP-0153 says
+ * you SHOULD use 32-96px either way, and no more than 8K of data */
+#define AVATAR_MIN_PX 32
+#define AVATAR_REC_PX 64
+#define AVATAR_MAX_PX 96
+#define AVATAR_MAX_BYTES 8192
 
 /**
  * gabble_connection_get_avatar_requirements
@@ -125,19 +136,13 @@ static void
 gabble_connection_get_avatar_requirements (TpSvcConnectionInterfaceAvatars *iface,
                                            DBusGMethodInvocation *context)
 {
-  /* Jabber prescribes no MIME type for avatars, but XEP-0153 says support
-   * for image/png is REQUIRED, with image/jpeg and image/gif RECOMMENDED */
-  static const char *mimetypes[] = {
-      "image/png", "image/jpeg", "image/gif", NULL };
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (TP_BASE_CONNECTION (iface),
       context);
 
-  /* Jabber has no min/max width/height or max size, but XEP-0153 says
-   * you SHOULD use 32-96px either way, and no more than 8K of data */
-
   tp_svc_connection_interface_avatars_return_from_get_avatar_requirements (
-      context, mimetypes, 32, 32, 96, 96, 8192);
+      context, mimetypes, AVATAR_MIN_PX, AVATAR_MIN_PX,
+      AVATAR_MAX_PX, AVATAR_MAX_PX, AVATAR_MAX_BYTES);
 }
 
 /* begin deprecated code */
@@ -886,3 +891,36 @@ conn_avatars_iface_init (gpointer g_iface, gpointer iface_data)
 #undef IMPLEMENT
 }
 
+static const TpDBusPropertiesMixinPropImpl props[] = {
+      { "MinimumAvatarWidth", GUINT_TO_POINTER (AVATAR_MIN_PX), NULL },
+      { "RecommendedAvatarWidth", GUINT_TO_POINTER (AVATAR_REC_PX), NULL },
+      { "MaximumAvatarWidth", GUINT_TO_POINTER (AVATAR_MAX_PX), NULL },
+      { "MinimumAvatarHeight", GUINT_TO_POINTER (AVATAR_MIN_PX), NULL },
+      { "RecommendedAvatarHeight", GUINT_TO_POINTER (AVATAR_REC_PX), NULL },
+      { "MaximumAvatarHeight", GUINT_TO_POINTER (AVATAR_MAX_PX), NULL },
+      { "MaximumAvatarBytes", GUINT_TO_POINTER (AVATAR_MAX_BYTES), NULL },
+      /* special-cased - it's the only one with a non-guint value */
+      { "SupportedAvatarMIMETypes", NULL, NULL },
+      { NULL }
+};
+const TpDBusPropertiesMixinPropImpl *conn_avatars_properties = props;
+
+void
+conn_avatars_properties_getter (GObject *object,
+                                GQuark interface,
+                                GQuark name,
+                                GValue *value,
+                                gpointer getter_data)
+{
+  GQuark q_mime_types = g_quark_from_static_string (
+      "SupportedAvatarMIMETypes");
+
+  if (name == q_mime_types)
+    {
+      g_value_set_static_boxed (value, mimetypes);
+    }
+  else
+    {
+      g_value_set_uint (value, GPOINTER_TO_UINT (getter_data));
+    }
+}

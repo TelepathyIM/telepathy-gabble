@@ -2,6 +2,7 @@ import base64
 import sha
 import sys
 import random
+import socket
 
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet import reactor
@@ -42,6 +43,13 @@ def create_from_si_offer(stream, q, bytestream_cls, iq, initiator):
     bytestream.check_si_offer(iq, bytestreams)
 
     return bytestream, si['profile']
+
+def is_ipv4(address):
+    try:
+        socket.inet_pton(socket.AF_INET, address)
+    except (ValueError, socket.error):
+        return False
+    return True
 
 class Bytestream(object):
     def __init__(self, stream, q, sid, initiator, target, initiated):
@@ -330,6 +338,9 @@ class BytestreamS5B(Bytestream):
         stream_host_found = False
 
         for jid, host, port in hosts:
+            if not is_ipv4(host):
+                continue
+
             if jid == self.initiator:
                 stream_host_found = True
                 if self._socks5_connect(host, port):

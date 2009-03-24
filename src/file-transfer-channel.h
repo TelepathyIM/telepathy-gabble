@@ -1,5 +1,5 @@
 /*
- * gabble-file-transfer-channel.h - Header for GabbleFileTransferChannel
+ * file-transfer-channel.h - Header for GabbleFileTransferChannel
  * Copyright (C) 2009 Collabora Ltd.
  *   @author: Guillaume Desmottes <guillaume.desmottes@collabora.co.uk>
  *

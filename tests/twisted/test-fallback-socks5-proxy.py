@@ -12,7 +12,6 @@ from bytestream import create_from_si_offer, BytestreamS5B
 def test(q, bus, conn, stream):
     conn.Connect()
 
-    # discard activities request and status change
     _, e = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to='fallback-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS))

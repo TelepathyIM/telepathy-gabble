@@ -428,16 +428,16 @@ gabble_file_transfer_channel_constructor (GType type,
   /* Parent constructor chain */
   obj = G_OBJECT_CLASS (gabble_file_transfer_channel_parent_class)->
           constructor (type, n_props, props);
-
   self = GABBLE_FILE_TRANSFER_CHANNEL (obj);
-
-  /* Ref our handle */
   base_conn = TP_BASE_CONNECTION (self->priv->connection);
 
+  /* Ref the target and initiator handles; they can't be reffed in
+   * _set_property as we may not have the TpConnection at that point.
+   */
   contact_repo = tp_base_connection_get_handles (base_conn,
       TP_HANDLE_TYPE_CONTACT);
-
   tp_handle_ref (contact_repo, self->priv->handle);
+  tp_handle_ref (contact_repo, self->priv->initiator);
 
   self->priv->object_path = g_strdup_printf ("%s/FileTransferChannel/%p",
       base_conn->object_path, self);
@@ -762,6 +762,7 @@ gabble_file_transfer_channel_dispose (GObject *object)
   self->priv->dispose_has_run = TRUE;
 
   tp_handle_unref (handle_repo, self->priv->handle);
+  tp_handle_unref (handle_repo, self->priv->initiator);
 
   gabble_file_transfer_channel_do_close (self);
 

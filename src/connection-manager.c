@@ -203,7 +203,7 @@ static const TpCMParamSpec jabber_params[] = {
    * define a boxed G_TYPE_STRV parameter */
   { "fallback-socks5-proxy", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
     0, NULL,
-    G_STRUCT_OFFSET(GabbleParams, fallback_socks5_proxy),
+    G_STRUCT_OFFSET (GabbleParams, fallback_socks5_proxy),
     /* setting a 0-length proxy makes no sense */
     tp_cm_param_filter_string_nonempty, NULL },
 

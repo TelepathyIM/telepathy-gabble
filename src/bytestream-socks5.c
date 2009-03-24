@@ -896,6 +896,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
           }
         else
           {
+            /* SOCKS5_STATE_INITIATOR_AUTH_REQUEST_SENT */
             domain = compute_domain (priv->stream_id, priv->self_full_jid,
                 priv->peer_jid);
           }
@@ -919,6 +920,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (priv->socks5_state == SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT)
           priv->socks5_state = SOCKS5_STATE_TARGET_CONNECT_REQUESTED;
         else
+          /* SOCKS5_STATE_INITIATOR_AUTH_REQUEST_SENT */
           priv->socks5_state = SOCKS5_STATE_INITIATOR_CONNECT_REQUESTED;
 
         /* Older version of Gabble (pre 0.7.22) are bugged and just send 2
@@ -992,6 +994,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
           }
         else
           {
+            /* SOCKS5_STATE_INITIATOR_CONNECT_REQUESTED */
             domain = compute_domain (priv->stream_id, priv->self_full_jid,
                 priv->peer_jid);
           }
@@ -1010,6 +1013,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (priv->socks5_state == SOCKS5_STATE_TARGET_CONNECT_REQUESTED)
           target_got_connect_reply (self);
         else
+          /* SOCKS5_STATE_INITIATOR_CONNECT_REQUESTED */
           initiator_got_connect_reply (self);
 
         return SOCKS5_MIN_LENGTH + addr_len;

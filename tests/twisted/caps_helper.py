@@ -30,6 +30,21 @@ dbus_tube_fixed_properties = dbus.Dictionary({
 dbus_tube_allowed_properties = dbus.Array([cs.TARGET_HANDLE,
     cs.TARGET_ID, cs.DBUS_TUBE_SERVICE_NAME])
 
+ft_fixed_properties = dbus.Dictionary({
+    cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+    cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
+    })
+ft_allowed_properties = dbus.Array([
+    cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHashType',
+    cs.TARGET_HANDLE,
+    cs.TARGET_ID,
+    cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentType',
+    cs.CHANNEL_TYPE_FILE_TRANSFER + '.Filename',
+    cs.CHANNEL_TYPE_FILE_TRANSFER + '.Size',
+    cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHash',
+    cs.CHANNEL_TYPE_FILE_TRANSFER + '.Description',
+    cs.CHANNEL_TYPE_FILE_TRANSFER + '.Date'])
+
 def compute_caps_hash(identities, features, dataforms):
     S = ''
 

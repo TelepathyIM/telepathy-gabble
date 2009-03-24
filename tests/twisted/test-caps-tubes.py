@@ -32,37 +32,17 @@ results.
 """
 
 import dbus
-import sys
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 
-from servicetest import EventPattern
 from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 from constants import *
 
-from caps_helper import compute_caps_hash
-from config import PACKAGE_STRING
+from caps_helper import compute_caps_hash, text_fixed_properties,\
+    text_allowed_properties, stream_tube_fixed_properties, stream_tube_allowed_properties,\
+    dbus_tube_fixed_properties, dbus_tube_allowed_properties, receive_presence_and_ask_caps,\
+    caps_contain
 import ns
-
-text_fixed_properties = dbus.Dictionary({
-    TARGET_HANDLE_TYPE: HT_CONTACT,
-    CHANNEL_TYPE: CHANNEL_TYPE_TEXT
-    })
-text_allowed_properties = dbus.Array([TARGET_HANDLE])
-
-stream_tube_fixed_properties = dbus.Dictionary({
-    TARGET_HANDLE_TYPE: HT_CONTACT,
-    CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE
-    })
-stream_tube_allowed_properties = dbus.Array([TARGET_HANDLE,
-    TARGET_ID, STREAM_TUBE_SERVICE])
-
-dbus_tube_fixed_properties = dbus.Dictionary({
-    TARGET_HANDLE_TYPE: HT_CONTACT,
-    CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE
-    })
-dbus_tube_allowed_properties = dbus.Array([TARGET_HANDLE,
-    TARGET_ID, DBUS_TUBE_SERVICE_NAME])
 
 specialized_tube_allowed_properties = dbus.Array([TARGET_HANDLE,
     TARGET_ID])
@@ -89,69 +69,6 @@ go_fixed_properties = dbus.Dictionary({
     CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
     DBUS_TUBE_SERVICE_NAME: 'com.example.Go'
     })
-
-def presence_add_caps(presence, ver, client, hash=None):
-    c = presence.addElement((ns.CAPS, 'c'))
-    c['node'] = client
-    c['ver'] = ver
-    if hash is not None:
-        c['hash'] = hash
-    return presence
-
-def receive_presence_and_ask_caps(q, stream):
-    # receive presence stanza
-    event_stream, event_dbus = q.expect_many(
-            EventPattern('stream-presence'),
-            EventPattern('dbus-signal', signal='ContactCapabilitiesChanged')
-        )
-    assert len(event_dbus.args) == 1
-    signaled_caps = event_dbus.args[0]
-
-    c_nodes = xpath.queryForNodes('/presence/c', event_stream.stanza)
-    assert c_nodes is not None
-    assert len(c_nodes) == 1
-    hash = c_nodes[0].attributes['hash']
-    ver = c_nodes[0].attributes['ver']
-    node = c_nodes[0].attributes['node']
-    assert hash == 'sha-1'
-
-    # ask caps
-    request = """
-<iq from='fake_contact@jabber.org/resource' 
-    id='disco1'
-    to='gabble@jabber.org/resource' 
-    type='get'>
-  <query xmlns='""" + ns.DISCO_INFO + """'
-         node='""" + node + '#' + ver + """'/>
-</iq>
-"""
-    stream.send(request)
-
-    # receive caps
-    event = q.expect('stream-iq', query_ns=ns.DISCO_INFO)
-    caps_str = str(xpath.queryForNodes('/iq/query/feature', event.stanza))
-
-    features = []
-    for feature in xpath.queryForNodes('/iq/query/feature', event.stanza):
-        features.append(feature['var'])
-
-    # Check if the hash matches the announced capabilities
-    assert ver == compute_caps_hash(['client/pc//%s' % PACKAGE_STRING], features, [])
-
-    return (event, caps_str, signaled_caps)
-
-def caps_contain(event, cap):
-    node = xpath.queryForNodes('/iq/query/feature[@var="%s"]'
-            % cap,
-            event.stanza)
-    if node is None:
-        return False
-    if len(node) != 1:
-        return False
-    var = node[0].attributes['var']
-    if var is None:
-        return False
-    return var == cap
 
 def test_tube_caps_from_contact(q, bus, conn, stream, contact, contact_handle, client):
 

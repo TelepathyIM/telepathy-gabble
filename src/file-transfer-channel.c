@@ -50,10 +50,8 @@
 #include <telepathy-glib/svc-generic.h>
 #include <telepathy-glib/svc-channel.h>
 
-static void
-channel_iface_init (gpointer g_iface, gpointer iface_data);
-static void
-file_transfer_iface_init (gpointer g_iface, gpointer iface_data);
+static void channel_iface_init (gpointer g_iface, gpointer iface_data);
+static void file_transfer_iface_init (gpointer g_iface, gpointer iface_data);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel,
     G_TYPE_OBJECT,
@@ -471,10 +469,8 @@ gabble_file_transfer_channel_constructor (GType type,
   return obj;
 }
 
-static void
-gabble_file_transfer_channel_dispose (GObject *object);
-static void
-gabble_file_transfer_channel_finalize (GObject *object);
+static void gabble_file_transfer_channel_dispose (GObject *object);
+static void gabble_file_transfer_channel_finalize (GObject *object);
 
 static void
 gabble_file_transfer_channel_class_init (
@@ -1259,7 +1255,7 @@ transferred_chunk (GabbleFileTransferChannel *self,
   /* Protect against clock skew, if the interval is negative the worst thing
    * that can happen is that we wait an extra second before emitting the signal
    */
-  interval = ABS(interval);
+  interval = ABS (interval);
 
   if (interval > 1000)
     emit_progress_update (self);
@@ -1513,7 +1509,7 @@ transport_handler (GibberTransport *transport,
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
 
-  DEBUG("Data available, writing a %"G_GSIZE_FORMAT" bytes chunk",
+  DEBUG ("Data available, writing a %"G_GSIZE_FORMAT" bytes chunk",
       data->length);
 
   if (!gabble_bytestream_iface_send (self->priv->bytestream, data->length,

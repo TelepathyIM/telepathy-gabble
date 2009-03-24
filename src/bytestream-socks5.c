@@ -1395,14 +1395,14 @@ socks5_init_error:
  */
 #ifdef HAVE_GETIFADDRS
 
-static gboolean
-get_local_interfaces_ips (GSList **ips4,
-                          GSList **ips6)
+static GSList *
+get_local_interfaces_ips (void)
 {
   struct ifaddrs *ifa, *results;
+  GSList *ips = NULL;
 
   if (getifaddrs (&results) < 0)
-    return FALSE;
+    return NULL;
 
   /* Loop through the interface list and get the IP address of each IF */
   for (ifa = results; ifa; ifa = ifa->ifa_next)
@@ -1419,6 +1419,7 @@ get_local_interfaces_ips (GSList **ips4,
       if ((ifa->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK)
         {
           DEBUG ("Ignoring loopback interface");
+          continue;
         }
 
       if (ifa->ifa_addr->sa_family == AF_INET)
@@ -1427,7 +1428,8 @@ get_local_interfaces_ips (GSList **ips4,
 
           inet_ntop (AF_INET, &sa->sin_addr, straddr, sizeof (straddr));
 
-          *ips4 = g_slist_append (*ips4, g_strdup (straddr));
+          /* Add IPv4 addresses to the end of the list */
+          ips = g_slist_append (ips, g_strdup (straddr));
         }
       else if (ifa->ifa_addr->sa_family == AF_INET6)
         {
@@ -1441,7 +1443,8 @@ get_local_interfaces_ips (GSList **ips4,
               continue;
             }
 
-          *ips6 = g_slist_append (*ips6, g_strdup (straddr));
+          /* Add IPv6 addresss to the begin of the list */
+          ips = g_slist_prepend (ips, g_strdup (straddr));
         }
       else
         {
@@ -1454,26 +1457,26 @@ get_local_interfaces_ips (GSList **ips4,
 
   freeifaddrs (results);
 
-  return TRUE;
+  return ips;
 }
 
 #else /* ! HAVE_GETIFADDRS */
 
-static gboolean
-get_local_interfaces_ips (GSList **ips4,
-                          GSList **ips6)
+static GSList *
+get_local_interfaces_ips (void)
 {
   gint sockfd;
   gint size = 0;
   struct ifreq *ifr;
   struct ifconf ifc;
   struct sockaddr_in *sa;
+  GSList *ips = NULL;
 
   /* FIXME: add IPv6 addresses */
   if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0)
     {
       DEBUG ("Cannot open socket to retreive interface list");
-      return FALSE;
+      return NULL;
     }
 
   ifc.ifc_len = 0;
@@ -1489,7 +1492,7 @@ get_local_interfaces_ips (GSList **ips4,
           DEBUG ("Out of memory while allocation interface configuration"
               " structure");
           close (sockfd);
-          return FALSE;
+          return NULL;
         }
       ifc.ifc_len = size;
 
@@ -1498,7 +1501,7 @@ get_local_interfaces_ips (GSList **ips4,
           DEBUG ("ioctl SIOCFIFCONF");
           close (sockfd);
           free (ifc.ifc_req);
-          return FALSE;
+          return NULL;
         }
     } while  (size <= ifc.ifc_len);
 
@@ -1523,14 +1526,14 @@ get_local_interfaces_ips (GSList **ips4,
         }
       else
         {
-          *ips4 = g_slist_append (*ips4, g_strdup (inet_ntoa (sa->sin_addr)));
+          ips = g_slist_prepend (ips, g_strdup (inet_ntoa (sa->sin_addr)));
         }
     }
 
   close (sockfd);
   free (ifc.ifc_req);
 
-  return TRUE;
+  return ips;
 }
 
 #endif /* ! HAVE_GETIFADDRS */
@@ -1567,7 +1570,6 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   gint port_num;
   LmMessage *msg;
   GSList *ips, *ip;
-  GSList *ips4 = NULL, *ips6 = NULL;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -1599,14 +1601,12 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
         '@', "mode", "tcp",
       ')', NULL);
 
-  if (!get_local_interfaces_ips (&ips4, &ips6))
+  ips = get_local_interfaces_ips ();
+  if (ips == NULL)
     {
       DEBUG ("Can't get IP addresses");
       return FALSE;
     }
-
-  /* list IP6 first */
-  ips = g_slist_concat (ips6, ips4);
 
   for (ip = ips; ip != NULL; ip = g_slist_next (ip))
     {

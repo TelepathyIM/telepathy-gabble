@@ -23,7 +23,6 @@ def test(q, bus, conn, stream):
 
     # Offer a private D-Bus tube just to check if the proxy is present in the
     # SOCKS5 offer
-    requestotron = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
     # Send Alice's presence
     caps =  { 'ext': '', 'ver': '0.0.0',
@@ -37,7 +36,7 @@ def test(q, bus, conn, stream):
     stream.send(make_caps_disco_reply(stream, disco_event.stanza, [ns.TUBES]))
     sync_stream(q, stream)
 
-    path, props = requestotron.CreateChannel({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
+    path, props = conn.Requests.CreateChannel({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
         cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
         cs.TARGET_ID: 'alice@localhost',
         cs.DBUS_TUBE_SERVICE_NAME: 'com.example.TestCase'})

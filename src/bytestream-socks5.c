@@ -1538,7 +1538,7 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
 
   if (proxy == NULL)
     {
-      DEBUG ("Uknown proxy: %s. Closing the bytestream", priv->proxy_jid);
+      DEBUG ("Unknown proxy: %s. Closing the bytestream", priv->proxy_jid);
       g_signal_emit_by_name (self, "connection-error");
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
       return;

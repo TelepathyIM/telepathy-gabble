@@ -1292,7 +1292,8 @@ data_received_cb (GabbleBytestreamIface *stream,
       return;
     }
 
-  DEBUG ("received %u bytes from bytestream. Writing to socket", data->len);
+  DEBUG ("received %"G_GSIZE_FORMAT" bytes from bytestream. Writing to socket",
+      data->len);
 
   transferred_chunk (self, (guint64) data->len);
 

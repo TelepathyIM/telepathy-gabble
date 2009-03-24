@@ -41,7 +41,7 @@ import constants as cs
 from caps_helper import compute_caps_hash, text_fixed_properties,\
     text_allowed_properties, stream_tube_fixed_properties, stream_tube_allowed_properties,\
     dbus_tube_fixed_properties, dbus_tube_allowed_properties, receive_presence_and_ask_caps,\
-    caps_contain
+    caps_contain, ft_fixed_properties, ft_allowed_properties
 import ns
 
 specialized_tube_allowed_properties = dbus.Array([cs.TARGET_HANDLE,
@@ -386,23 +386,27 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
     basic_caps = dbus.Dictionary({1:
         [(text_fixed_properties, text_allowed_properties),
          (stream_tube_fixed_properties, stream_tube_allowed_properties),
-         (dbus_tube_fixed_properties, dbus_tube_allowed_properties)]})
+         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
+         (ft_fixed_properties, ft_allowed_properties)]})
     daap_caps = dbus.Dictionary({1:
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-        (daap_fixed_properties, specialized_tube_allowed_properties)]})
+        (daap_fixed_properties, specialized_tube_allowed_properties),
+        (ft_fixed_properties, ft_allowed_properties)]})
     xiangqi_caps = dbus.Dictionary({1:
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-        (xiangqi_fixed_properties, specialized_tube_allowed_properties)]})
+        (xiangqi_fixed_properties, specialized_tube_allowed_properties),
+        (ft_fixed_properties, ft_allowed_properties)]})
     daap_xiangqi_caps = dbus.Dictionary({1:
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, specialized_tube_allowed_properties),
-        (xiangqi_fixed_properties, specialized_tube_allowed_properties)]})
+        (xiangqi_fixed_properties, specialized_tube_allowed_properties),
+        (ft_fixed_properties, ft_allowed_properties)]})
     all_tubes_caps = dbus.Dictionary({1:
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
@@ -410,7 +414,8 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
         (daap_fixed_properties, specialized_tube_allowed_properties),
         (http_fixed_properties, specialized_tube_allowed_properties),
         (xiangqi_fixed_properties, specialized_tube_allowed_properties),
-        (go_fixed_properties, specialized_tube_allowed_properties)]})
+        (go_fixed_properties, specialized_tube_allowed_properties),
+        (ft_fixed_properties, ft_allowed_properties)]})
 
     conn_caps_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACT_CAPS)
     conn_contacts_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACTS)

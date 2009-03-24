@@ -217,7 +217,7 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
   LmMessageNode *query, *streamhost;
   const gchar *jid, *host, *port;
   GabbleSocks5Proxy *proxy;
-  gboolean fallback = (gboolean) user_data;
+  gboolean fallback = GPOINTER_TO_INT (user_data);
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -273,7 +273,8 @@ send_proxy_query (GabbleBytestreamFactory *self,
       ')', NULL);
 
   _gabble_connection_send_with_reply (priv->conn, query,
-      socks5_proxy_query_reply_cb, G_OBJECT (self), (gpointer) fallback, NULL);
+      socks5_proxy_query_reply_cb, G_OBJECT (self), GINT_TO_POINTER (fallback),
+      NULL);
 
   lm_message_unref (query);
 }

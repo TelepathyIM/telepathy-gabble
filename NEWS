@@ -3,6 +3,9 @@ telepathy-gabble 0.7.25 (UNRELEASED)
 
 Dependencies:
 
+* telepathy-glib >= 0.7.28 is now required  so Gabble emits the correct
+  D-Bus errors.
+
 Enhancements:
 
 * Use IPv6 addresses when trying to establish a SOCKS5 bytestream.

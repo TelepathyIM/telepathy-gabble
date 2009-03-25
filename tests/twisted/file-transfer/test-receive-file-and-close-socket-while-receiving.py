@@ -5,7 +5,7 @@ from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest
 
 class ReceiveFileAndCancelWhileReceiving(ReceiveFileTest):
     def receive_file(self):
-        # Connect to Salut's socket
+        # Connect to Gabble's socket
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(self.address)
 

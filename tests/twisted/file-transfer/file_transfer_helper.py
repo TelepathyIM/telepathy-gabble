@@ -218,7 +218,7 @@ class ReceiveFileTest(FileTransferTest):
         self.bytestream.send_data(self.file.data[:2])
 
     def receive_file(self):
-        # Connect to Salut's socket
+        # Connect to Gabble's socket
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(self.address)
 
@@ -228,7 +228,7 @@ class ReceiveFileTest(FileTransferTest):
         self._read_file_from_socket(s)
 
     def _read_file_from_socket(self, s):
-        # Read the file from Salut's socket
+        # Read the file from Gabble's socket
         data = ''
         read = 0
 

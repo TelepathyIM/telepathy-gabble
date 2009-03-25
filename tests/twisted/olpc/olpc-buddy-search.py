@@ -13,6 +13,7 @@ from twisted.words.protocols.jabber.client import IQ
 from util import (announce_gadget, properties_to_xml, parse_properties,
     create_gadget_message, close_view)
 import ns
+import constants as cs
 
 tp_name_prefix = 'org.freedesktop.Telepathy'
 olpc_name_prefix = 'org.laptop.Telepathy'
@@ -397,7 +398,7 @@ def test(q, bus, conn, stream):
           })
 
     event = q.expect('dbus-error', method='CreateChannel')
-    assert event.error.get_dbus_name() == 'org.freedesktop.Telepathy.Errors.InvalidArgument'
+    assert event.error.get_dbus_name() == cs.INVALID_ARGUMENT
 
     # test alias and properties search
     props = dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')

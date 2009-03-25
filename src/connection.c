@@ -138,7 +138,7 @@ enum
     PROP_FALLBACK_STUN_PORT,
     PROP_IGNORE_SSL_ERRORS,
     PROP_ALIAS,
-    PROP_FALLBACK_SOCKS5_PROXY,
+    PROP_FALLBACK_SOCKS5_PROXIES,
 
     LAST_PROPERTY
 };
@@ -178,7 +178,7 @@ struct _GabbleConnectionPrivate
 
   gchar *fallback_conference_server;
 
-  gchar *fallback_socks5_proxy;
+  GStrv fallback_socks5_proxies;
 
   /* authentication properties */
   gchar *stream_server;
@@ -385,8 +385,8 @@ gabble_connection_get_property (GObject    *object,
     case PROP_FALLBACK_STUN_PORT:
       g_value_set_uint (value, priv->fallback_stun_port);
       break;
-    case PROP_FALLBACK_SOCKS5_PROXY:
-      g_value_set_string (value, priv->fallback_socks5_proxy);
+    case PROP_FALLBACK_SOCKS5_PROXIES:
+      g_value_set_boxed (value, priv->fallback_socks5_proxies);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -474,8 +474,8 @@ gabble_connection_set_property (GObject      *object,
     case PROP_FALLBACK_STUN_PORT:
       priv->fallback_stun_port = g_value_get_uint (value);
       break;
-    case PROP_FALLBACK_SOCKS5_PROXY:
-      priv->fallback_socks5_proxy = g_value_dup_string (value);
+    case PROP_FALLBACK_SOCKS5_PROXIES:
+      priv->fallback_socks5_proxies = g_value_dup_boxed (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -752,11 +752,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  g_object_class_install_property (object_class, PROP_FALLBACK_SOCKS5_PROXY,
-      g_param_spec_string (
-          "fallback-socks5-proxy", "fallback SOCKS5 proxy",
-          "Fallback SOCKS5 proxy.",
-          NULL,
+  g_object_class_install_property (object_class, PROP_FALLBACK_SOCKS5_PROXIES,
+      g_param_spec_boxed (
+          "fallback-socks5-proxies", "fallback SOCKS5 proxies",
+          "Fallback SOCKS5 proxies.",
+          G_TYPE_STRV,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   gabble_connection_class->properties_class.interfaces = prop_interfaces;
@@ -866,7 +866,7 @@ gabble_connection_finalize (GObject *object)
   g_free (priv->https_proxy_server);
   g_free (priv->stun_server);
   g_free (priv->fallback_conference_server);
-  g_free (priv->fallback_socks5_proxy);
+  g_strfreev (priv->fallback_socks5_proxies);
 
   g_free (priv->alias);
 

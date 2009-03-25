@@ -159,7 +159,7 @@ struct _GabbleBytestreamFactoryPrivate
 
   /* List of GabbleSocks5Proxy discovered on the connection */
   GSList *socks5_proxies;
-  /* List of GabbleSocks5Proxy found using the fallback-socks5-proxy param */
+  /* List of GabbleSocks5Proxy found using the fallback-socks5-proxies param */
   GSList *socks5_fallback_proxies;
 
   gboolean dispose_has_run;
@@ -304,14 +304,19 @@ conn_status_changed_cb (GabbleConnection *conn,
   if (status == TP_CONNECTION_STATUS_CONNECTED)
     {
       /* Send SOCKS5 query to fallback SOCKS5 proxy if any */
-      gchar *jid;
+      GStrv jids;
+      guint i;
 
-      g_object_get (priv->conn, "fallback-socks5-proxy", &jid, NULL);
-      if (jid == NULL)
+      g_object_get (priv->conn, "fallback-socks5-proxies", &jids, NULL);
+      if (jids == NULL)
         return;
 
-      send_proxy_query (self, jid, TRUE);
-      g_free (jid);
+      for (i = 0; jids[i] != NULL; i++)
+        {
+          send_proxy_query (self, jids[i], TRUE);
+        }
+
+      g_strfreev (jids);
     }
 }
 

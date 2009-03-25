@@ -12,14 +12,25 @@ from bytestream import create_from_si_offer, BytestreamS5B
 def test(q, bus, conn, stream):
     conn.Connect()
 
-    _, e = q.expect_many(
+    _, e1, e2 = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
-        EventPattern('stream-iq', to='fallback-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS))
+        EventPattern('stream-iq', to='fallback1-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS),
+        EventPattern('stream-iq', to='fallback2-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS),
+        )
 
-    reply = elem_iq(stream, 'result', id=e.stanza['id'])(
-        elem(ns.BYTESTREAMS, 'query')(
-            elem('streamhost', jid='fallback-proxy.localhost', host='127.0.0.1', port='12345')()))
-    stream.send(reply)
+    proxy_port = {'fallback1-proxy.localhost': '12345', 'fallback2-proxy.localhost': '6789'}
+
+    def send_socks5_reply(iq):
+        jid = iq['to']
+        port = proxy_port[jid]
+
+        reply = elem_iq(stream, 'result', id=iq['id'])(
+            elem(ns.BYTESTREAMS, 'query')(
+                elem('streamhost', jid=jid, host='127.0.0.1', port=port)()))
+        stream.send(reply)
+
+    send_socks5_reply(e1.stanza)
+    send_socks5_reply(e2.stanza)
 
     # Offer a private D-Bus tube just to check if the proxy is present in the
     # SOCKS5 offer
@@ -61,17 +72,15 @@ def test(q, bus, conn, stream):
     found = False
     nodes = xpath.queryForNodes('/iq/query/streamhost', e.stanza)
     for node in nodes:
-        if node['jid'] == 'fallback-proxy.localhost':
-            found = True
+        if node['jid'] in proxy_port:
             assert node['host'] == '127.0.0.1'
-            assert node['port'] == '12345'
-            break
-    assert found
+            assert node['port'] == proxy_port.pop(node['jid'])
+    assert proxy_port == {}
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
     return True
 
 if __name__ == '__main__':
-    exec_test(test, params={'fallback-socks5-proxy': 'fallback-proxy.localhost'})
-
+    exec_test(test, params={'fallback-socks5-proxies':
+        ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']})

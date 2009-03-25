@@ -891,7 +891,7 @@ conn_avatars_iface_init (gpointer g_iface, gpointer iface_data)
 #undef IMPLEMENT
 }
 
-static const TpDBusPropertiesMixinPropImpl props[] = {
+static TpDBusPropertiesMixinPropImpl props[] = {
       { "MinimumAvatarWidth", GUINT_TO_POINTER (AVATAR_MIN_PX), NULL },
       { "RecommendedAvatarWidth", GUINT_TO_POINTER (AVATAR_REC_PX), NULL },
       { "MaximumAvatarWidth", GUINT_TO_POINTER (AVATAR_MAX_PX), NULL },
@@ -903,7 +903,7 @@ static const TpDBusPropertiesMixinPropImpl props[] = {
       { "SupportedAvatarMIMETypes", NULL, NULL },
       { NULL }
 };
-const TpDBusPropertiesMixinPropImpl *conn_avatars_properties = props;
+TpDBusPropertiesMixinPropImpl *conn_avatars_properties = props;
 
 void
 conn_avatars_properties_getter (GObject *object,

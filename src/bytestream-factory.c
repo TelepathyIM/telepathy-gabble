@@ -243,8 +243,8 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
   if (fallback)
     {
       DEBUG ("Add fallback SOCKS5 proxy: %s %s:%s", jid, host, port);
-      priv->socks5_fallback_proxies = g_slist_prepend (priv->socks5_proxies,
-          proxy);
+      priv->socks5_fallback_proxies = g_slist_prepend (
+          priv->socks5_fallback_proxies, proxy);
     }
   else
     {

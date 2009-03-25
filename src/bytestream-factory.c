@@ -1936,9 +1936,33 @@ gabble_bytestream_factory_get_socks5_proxies (GabbleBytestreamFactory *self)
 {
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
+  guint len;
 
-  /* TODO: randomize priv->socks5_fallback_proxies once we can have more than
-   * one proxy in it */
+  len = g_slist_length (priv->socks5_fallback_proxies);
+  if (len > 1)
+    {
+      /* randomize fallback proxies to avoid to use always the same one */
+      guint i;
+
+      i = g_random_int_range (0, len);
+      if (i != 0)
+        {
+          GSList *new_head, *new_tail;
+
+          /* Cut the list at the i th position and make it the new head of the
+           * list */
+          new_tail = g_slist_nth (priv->socks5_fallback_proxies, i - 1);
+          g_assert (new_tail != NULL);
+
+          new_head = new_tail->next;
+          g_assert (new_head != NULL);
+
+          new_tail->next = NULL;
+
+          priv->socks5_fallback_proxies = g_slist_concat (new_head,
+              priv->socks5_fallback_proxies);
+        }
+    }
 
   return g_slist_concat (g_slist_copy (priv->socks5_proxies),
       g_slist_copy (priv->socks5_fallback_proxies));

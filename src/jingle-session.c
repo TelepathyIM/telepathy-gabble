@@ -1547,11 +1547,36 @@ gabble_jingle_session_accept (GabbleJingleSession *sess)
   try_session_initiate_or_accept (sess);
 }
 
+static const gchar *
+_get_jingle_reason (GabbleJingleSession *sess,
+                    TpChannelGroupChangeReason reason)
+{
+  switch (reason)
+    {
+    case TP_CHANNEL_GROUP_CHANGE_REASON_NONE:
+      if (sess->priv->state == JS_STATE_ACTIVE)
+        return "success";
+      else
+        return "cancel";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE:
+      return "gone";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_BUSY:
+      return "busy";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_ERROR:
+      return "general-error";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER:
+      return "timeout";
+    default:
+      return NULL;
+    }
+}
+
 void
 gabble_jingle_session_terminate (GabbleJingleSession *sess,
                                  TpChannelGroupChangeReason reason)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
+  const gchar *reason_elt;
 
   if (priv->state == JS_STATE_ENDED)
     {
@@ -1559,11 +1584,23 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
       return;
     }
 
+  reason_elt = _get_jingle_reason (sess, reason);
+
+  if (reason_elt == NULL)
+    g_warning ("%u doesn't make sense as a reason to end a call", reason);
+
   if (priv->state != JS_STATE_PENDING_CREATED)
     {
-      gabble_jingle_session_send (sess,
-          gabble_jingle_session_new_message (sess,
-              JINGLE_ACTION_SESSION_TERMINATE, NULL), NULL, NULL);
+      LmMessageNode *session_node;
+      LmMessage *msg = gabble_jingle_session_new_message (sess,
+          JINGLE_ACTION_SESSION_TERMINATE, &session_node);
+
+      if (priv->dialect == JINGLE_DIALECT_V032 && reason_elt != NULL)
+        lm_message_node_add_child (
+            lm_message_node_add_child (session_node, "reason", NULL),
+            reason_elt, NULL);
+
+      gabble_jingle_session_send (sess, msg, NULL, NULL);
     }
 
   /* NOTE: on "terminated", jingle factory and media channel will unref

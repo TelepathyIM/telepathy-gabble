@@ -23,15 +23,7 @@ def worker(jp, q, bus, conn, stream):
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
 
     # Remote end calls us
-    # jt.incoming_call()
-    node = jp.SetIq(jt2.peer, jt2.jid, [
-        jp.Jingle(jt2.sid, jt2.peer, 'session-initiate', [
-            jp.Content('stream1', 'initiator', 'both', [
-                jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
-    stream.send(jp.xml(node))
+    jt2.incoming_call()
 
     # we don't even need this here, because we've provided a very strict
     # predicate to expect_racy() so it won't get the wrong event

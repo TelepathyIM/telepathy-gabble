@@ -9,7 +9,7 @@
 
 from twisted.words.xish import domish
 import random
-from gabbletest import sync_stream
+from gabbletest import sync_stream, exec_test
 from servicetest import EventPattern
 import dbus
 
@@ -336,5 +336,20 @@ class JingleTest2:
                 in enumerate(self.remote_transports) ],
             signature='(usuussduss)')
 
+def test_all_dialects(f):
+    def test015(q, bus, conn, stream):
+        f(JingleProtocol015(), q, bus, conn, stream)
 
+    def test031(q, bus, conn, stream):
+        f(JingleProtocol031(),q, bus, conn, stream)
 
+    def testg3(q, bus, conn, stream):
+        f(GtalkProtocol03(), q, bus, conn, stream)
+
+    def testg4(q, bus, conn, stream):
+        f(GtalkProtocol04(), q, bus, conn, stream)
+
+    exec_test(testg3)
+    exec_test(testg4)
+    exec_test(test015)
+    exec_test(test031)

@@ -207,6 +207,8 @@ def make_iq_event(iq):
 
         if query.getAttribute("node"):
             event.query_node = query.getAttribute("node")
+    else:
+        event.query = None
 
     return event
 

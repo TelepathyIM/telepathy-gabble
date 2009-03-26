@@ -104,7 +104,7 @@ class JingleProtocol:
         return ('feature', None, { 'var': var }, [])
 
     def match_jingle_action(self, q, action):
-        return q.name == 'jingle' and q['action'] == action
+        return q is not None and q.name == 'jingle' and q['action'] == action
 
     def extract_session_id(self, query):
         return query['sid']
@@ -148,7 +148,7 @@ class GtalkProtocol03(JingleProtocol):
 
     def match_jingle_action(self, q, action):
         action = self._action_map(action)
-        return q.name == 'session' and q['type'] == action
+        return q is not None and q.name == 'session' and q['type'] == action
 
     # Content will never pick up transport, so this can return invalid value
     def TransportGoogleP2P(self):
@@ -194,7 +194,7 @@ class GtalkProtocol04(JingleProtocol):
 
     def match_jingle_action(self, q, action):
         action = self._action_map(action)
-        return q.name == 'session' and q['type'] == action
+        return q is not None and q.name == 'session' and q['type'] == action
 
     def extract_session_id(self, query):
         return query['id']

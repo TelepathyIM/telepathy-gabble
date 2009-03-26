@@ -256,6 +256,8 @@ gabble_connection_constructor (GType type,
   GabbleConnection *self = GABBLE_CONNECTION (
       G_OBJECT_CLASS (gabble_connection_parent_class)->constructor (
         type, n_construct_properties, construct_params));
+  GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate);
 
   DEBUG("Post-construction: (GabbleConnection *)%p", self);
 
@@ -294,6 +296,15 @@ gabble_connection_constructor (GType type,
   self->bytestream_factory = gabble_bytestream_factory_new (self);
 
   self->avatar_requests = g_hash_table_new (NULL, NULL);
+
+  if (priv->fallback_socks5_proxies == NULL)
+    {
+      /* No proxies have been defined, set the default ones */
+      gchar *default_socks5_proxies[] = GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES;
+
+      g_object_set (self, "fallback-socks5-proxies", default_socks5_proxies,
+          NULL);
+    }
 
   return (GObject *) self;
 }

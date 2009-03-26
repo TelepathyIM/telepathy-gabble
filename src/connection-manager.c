@@ -200,7 +200,7 @@ static TpCMParamSpec jabber_params[] = {
     tp_cm_param_filter_string_nonempty, NULL },
 
   { "fallback-socks5-proxies", "as", 0,
-    0, NULL,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, NULL,
     G_STRUCT_OFFSET (GabbleParams, fallback_socks5_proxies),
     NULL, NULL },
 
@@ -236,10 +236,14 @@ const TpCMProtocolSpec gabble_protocols[] = {
   { NULL, NULL }
 };
 
+const gchar *default_socks5_proxies[] = GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES;
+
 const TpCMProtocolSpec *
 gabble_connection_manager_get_protocols (void)
 {
   jabber_params[JABBER_PARAM_FALLBACK_SOCKS5_PROXIES].gtype = G_TYPE_STRV;
+  jabber_params[JABBER_PARAM_FALLBACK_SOCKS5_PROXIES].def =
+    default_socks5_proxies;
 
   return gabble_protocols;
 }

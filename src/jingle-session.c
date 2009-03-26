@@ -789,7 +789,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
       /* We ignore initiate from us, and terminate the session immediately
        * afterwards */
       gabble_jingle_session_terminate (sess,
-          TP_CHANNEL_GROUP_CHANGE_REASON_BUSY);
+          TP_CHANNEL_GROUP_CHANGE_REASON_BUSY, NULL);
       return;
     }
 
@@ -839,7 +839,7 @@ on_content_remove (GabbleJingleSession *sess, LmMessageNode *node,
   if (g_hash_table_size (priv->contents) == 0)
     {
       gabble_jingle_session_terminate (sess,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
     }
 }
 
@@ -1471,7 +1471,7 @@ timeout_session (gpointer data)
   session->priv->timer_id = 0;
 
   gabble_jingle_session_terminate (session,
-      TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER);
+      TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER, NULL);
   return FALSE;
 }
 
@@ -1613,9 +1613,10 @@ _get_jingle_reason (GabbleJingleSession *sess,
     }
 }
 
-void
+gboolean
 gabble_jingle_session_terminate (GabbleJingleSession *sess,
-                                 TpChannelGroupChangeReason reason)
+                                 TpChannelGroupChangeReason reason,
+                                 GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   const gchar *reason_elt;
@@ -1623,13 +1624,17 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
   if (priv->state == JS_STATE_ENDED)
     {
       DEBUG ("session already terminated, ignoring terminate request");
-      return;
+      return TRUE;
     }
 
   reason_elt = _get_jingle_reason (sess, reason);
 
   if (reason_elt == NULL)
-    g_warning ("%u doesn't make sense as a reason to end a call", reason);
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "%u doesn't make sense as a reason to end a call", reason);
+      return FALSE;
+    }
 
   if (priv->state != JS_STATE_PENDING_CREATED)
     {
@@ -1652,6 +1657,8 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
   DEBUG ("we are terminating this session");
   priv->locally_terminated = TRUE;
   set_state (sess, JS_STATE_ENDED, reason);
+
+  return TRUE;
 }
 
 static void
@@ -1693,7 +1700,7 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
       return;
 
   if (count_active_contents (sess) == 0)
-    gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
 }
 
 

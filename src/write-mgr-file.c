@@ -76,6 +76,16 @@ mgr_file_contents (const char *busname,
                 case G_TYPE_BOOLEAN:
                   g_key_file_set_boolean (f, section_name, default_name,
                                          GPOINTER_TO_INT(row->def) ? 1 : 0);
+                  break;
+                default:
+                  /* can't be in the case because G_TYPE_STRV is actually a
+                   * function */
+                  if (row->gtype == G_TYPE_STRV)
+                    {
+                      g_key_file_set_string_list (f, section_name, default_name,
+                          (const gchar **) row->def,
+                          g_strv_length ((gchar **) row->def));
+                    }
                 }
               g_free (default_name);
             }
@@ -89,10 +99,15 @@ int
 main (void)
 {
   GError *error = NULL;
+  gchar *s;
 
-  gchar *s = mgr_file_contents (TP_CM_BUS_NAME_BASE "gabble",
-                               TP_CM_OBJECT_PATH_BASE "gabble",
-                               gabble_protocols, &error);
+  g_type_init ();
+  dbus_g_type_specialized_init ();
+
+  s = mgr_file_contents (TP_CM_BUS_NAME_BASE "gabble",
+      TP_CM_OBJECT_PATH_BASE "gabble",
+      gabble_connection_manager_get_protocols (), &error);
+
   if (!s)
     {
       fprintf (stderr, "%s", error->message);

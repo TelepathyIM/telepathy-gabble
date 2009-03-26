@@ -1,63 +1,48 @@
 """
 Test that our alias is used to create MUC JIDs.
-Mash-up of vcard/test-set-alias.py and muc/test-muc.py.
 """
 
 import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import go, make_result_iq, acknowledge_iq, exec_test, make_muc_presence
-from servicetest import call_async, lazy, match, EventPattern
+from gabbletest import exec_test, make_muc_presence, request_muc_handle, \
+    expect_and_handle_get_vcard, expect_and_handle_set_vcard
+from servicetest import call_async, EventPattern
+
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
 
-    _, iq_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
-        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
-            query_name='vCard'))
+    expect_and_handle_get_vcard(q, stream)
 
-    acknowledge_iq(stream, iq_event.stanza)
+    self_handle = conn.GetSelfHandle()
+    conn.Aliasing.SetAliases({self_handle: 'lala'})
 
-    conn.Aliasing.SetAliases({1: 'lala'})
-
-    iq_event = q.expect('stream-iq', iq_type='set', query_ns='vcard-temp',
-        query_name='vCard')
-    acknowledge_iq(stream, iq_event.stanza)
+    expect_and_handle_set_vcard(q, stream)
 
     event = q.expect('dbus-signal', signal='AliasesChanged',
-        args=[[(1, u'lala')]])
+        args=[[(self_handle, u'lala')]])
 
-    # Need to call this asynchronously as it involves Gabble sending us a
-    # query.
-    call_async(q, conn, 'RequestHandles', 2, ['chat@conf.localhost'])
+    room_jid = 'chat@conf.localhost'
+    room_handle = request_muc_handle(q, conn, stream, room_jid)
 
-    event = q.expect('stream-iq', to='conf.localhost',
-        query_ns='http://jabber.org/protocol/disco#info')
-    result = make_result_iq(stream, event.stanza)
-    feature = result.firstChildElement().addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/muc'
-    stream.send(result)
-
-    event = q.expect('dbus-return', method='RequestHandles')
-    room_handle = event.value[0][0]
-
-    call_async(q, conn, 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.Text', 2, room_handle, True)
+    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,
+        room_handle, True)
 
     gfc, _, _ = q.expect_many(
         EventPattern('dbus-signal', signal='GroupFlagsChanged'),
         EventPattern('dbus-signal', signal='MembersChanged',
             args=[u'', [], [], [], [2], 0, 0]),
-        EventPattern('stream-presence', to='chat@conf.localhost/lala'))
+        EventPattern('stream-presence', to='%s/lala' % room_jid))
     assert gfc.args[1] == 0
 
     # Send presence for other member of room.
-    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
+    stream.send(make_muc_presence('owner', 'moderator', room_jid, 'bob'))
 
     # Send presence for own membership of room.
-    stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost', 'lala'))
+    stream.send(make_muc_presence('none', 'participant', room_jid, 'lala'))
 
     event = q.expect('dbus-signal', signal='MembersChanged',
         args=[u'', [2, 3], [], [], [], 0, 0])

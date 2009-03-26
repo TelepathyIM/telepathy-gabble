@@ -1,4 +1,3 @@
-
 """
 Regression test.
 
@@ -8,83 +7,28 @@ Regression test.
    parameter
 """
 
-from servicetest import lazy
-from gabbletest import go
+from gabbletest import exec_test, acknowledge_iq, \
+    expect_and_handle_get_vcard, expect_and_handle_set_vcard
 
-@lazy
-def expect_connected(event, data):
-    if event.type != 'dbus-signal':
-        return False
+import ns
 
-    if event.signal != 'StatusChanged':
-        return False
+def test(q, bus, conn, stream):
+    conn.Connect()
 
-    if event.args != [0, 1]:
-        return False
+    expect_and_handle_get_vcard(q, stream)
 
-    return True
+    def check_vcard(vcard):
+        for e in vcard.elements():
+            if e.name == 'NICKNAME':
+                assert str(e) == 'Some Guy', e.toXml()
+                return
+        assert False, vcard.toXml()
 
-def expect_get_vcard(event, data):
-    if event.type != 'stream-iq':
-        return False
+    expect_and_handle_set_vcard(q, stream, check_vcard)
 
-    # Looking for something like this:
-    #   <iq xmlns='jabber:client' type='get' id='262286393608'>
-    #      <vCard xmlns='vcard-temp'/>
-
-    iq = event.stanza
-
-    if iq['type'] != 'get':
-        return False
-
-    if iq.uri != 'jabber:client':
-        return False
-
-    vcard = list(iq.elements())[0]
-
-    if vcard.name != 'vCard':
-        return False
-
-    # Send empty vCard back.
-    iq['type'] = 'result'
-    data['stream'].send(iq)
-    return True
-
-def expect_set_vcard(event, data):
-    if event.type != 'stream-iq':
-        return False
-
-    iq = event.stanza
-
-    if iq['type'] != 'set':
-        return False
-
-    if iq.uri != 'jabber:client':
-        return False
-
-    vcard = list(iq.elements())[0]
-
-    if vcard.name != 'vCard':
-        return False
-
-    nickname = vcard.firstChildElement()
-    assert nickname.name == 'NICKNAME'
-    assert str(nickname) == 'Some Guy'
-    data['conn_iface'].Disconnect()
-    return True
-
-def expect_disconnected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [2, 1]:
-        return False
-
-    return True
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go({'alias': 'Some Guy'})
+    exec_test(test, params={'alias': 'Some Guy'})
 

@@ -2,6 +2,7 @@ from gabbletest import exec_test, make_result_iq
 from servicetest import call_async, EventPattern
 
 from twisted.words.xish import domish, xpath
+import constants as cs
 
 location_iface = \
     'org.freedesktop.Telepathy.Connection.Interface.Location.DRAFT'
@@ -68,9 +69,7 @@ def test(q, bus, conn, stream):
         conn.Set (location_iface, 'LocationAccessControl', bad_access_control,
             dbus_interface ='org.freedesktop.DBus.Properties')
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == \
-            'org.freedesktop.Telepathy.Errors.InvalidArgument', \
-            e.get_dbus_name()
+        assert e.get_dbus_name() == cs.INVALID_ARGUMENT, e.get_dbus_name()
     else:
         assert False, "Should have had an error!"
 
@@ -82,9 +81,7 @@ def test(q, bus, conn, stream):
         conn.Set (location_iface, 'LocationAccessControl', bad_access_control,
             dbus_interface ='org.freedesktop.DBus.Properties')
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == \
-            'org.freedesktop.Telepathy.Errors.InvalidArgument', \
-            e.get_dbus_name()
+        assert e.get_dbus_name() == cs.INVALID_ARGUMENT, e.get_dbus_name()
     else:
         assert False, "Should have had an error!"
 
@@ -99,9 +96,7 @@ def test(q, bus, conn, stream):
             access_control_types,
             dbus_interface ='org.freedesktop.DBus.Properties')
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == \
-            'org.freedesktop.Telepathy.Errors.PermissionDenied', \
-            e.get_dbus_name()
+        assert e.get_dbus_name() == cs.PERMISSION_DENIED, e.get_dbus_name()
     else:
         assert False, "Should have had an error!"
 

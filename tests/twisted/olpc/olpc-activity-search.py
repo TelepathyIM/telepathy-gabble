@@ -13,6 +13,7 @@ from util import (announce_gadget, request_random_activity_view,
     answer_error_to_pubsub_request, send_reply_to_activity_view_request,
     parse_properties, properties_to_xml, create_gadget_message, close_view)
 import ns
+import constants as cs
 
 tp_name_prefix = 'org.freedesktop.Telepathy'
 olpc_name_prefix = 'org.laptop.Telepathy'
@@ -507,7 +508,7 @@ def test(q, bus, conn, stream):
           })
 
     event = q.expect('dbus-error', method='CreateChannel')
-    assert event.error.get_dbus_name() == 'org.freedesktop.Telepathy.Errors.InvalidArgument'
+    assert event.error.get_dbus_name() == cs.INVALID_ARGUMENT
 
     # test participants and properties search
     props = dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')

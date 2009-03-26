@@ -53,7 +53,7 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *klass)
 
   base_class->new_connection = _gabble_connection_manager_new_connection;
   base_class->cm_dbus_name = "gabble";
-  base_class->protocol_params = gabble_protocols;
+  base_class->protocol_params = gabble_connection_manager_get_protocols ();
 }
 
 /* private data */
@@ -227,6 +227,12 @@ const TpCMProtocolSpec gabble_protocols[] = {
   { "jabber", jabber_params, alloc_params, free_params },
   { NULL, NULL }
 };
+
+const TpCMProtocolSpec *
+gabble_connection_manager_get_protocols (void)
+{
+  return gabble_protocols;
+}
 
 #define SET_PROPERTY_IF_PARAM_SET(prop, param, member) \
   if (tp_intset_is_member (params_present, param)) \

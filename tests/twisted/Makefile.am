@@ -65,12 +65,10 @@ TWISTED_TESTS = \
 	vcard/test-avatar.py \
 	vcard/test-avatar-retrieved.py \
 	vcard/test-avatar-tokens.py \
-	vcard/test-muc-alias.py \
 	vcard/test-save-alias-to-vcard.py \
 	vcard/test-set-alias.py \
 	vcard/test-vcard-cache.py \
 	vcard/test-vcard-race.py \
-	vcard/test-vcard-set-and-get.py \
 	jingle/accept-extra-stream.py \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \

@@ -416,6 +416,34 @@ def exec_test(fun, params=None, protocol=None, timeout=None):
 # Useful routines for server-side vCard handling
 current_vcard = domish.Element(('vcard-temp', 'vCard'))
 
+def expect_and_handle_get_vcard(q, stream):
+    get_vcard_event = q.expect('stream-iq', query_ns=ns.VCARD_TEMP,
+        query_name='vCard', iq_type='get')
+
+    iq = get_vcard_event.stanza
+    vcard = iq.firstChildElement()
+    assert vcard.name == 'vCard', vcard.toXml()
+
+    # Send back current vCard
+    result = make_result_iq(stream, iq)
+    result.addChild(current_vcard)
+    stream.send(result)
+
+def expect_and_handle_set_vcard(q, stream, check=None):
+    set_vcard_event = q.expect('stream-iq', query_ns=ns.VCARD_TEMP,
+        query_name='vCard', iq_type='set')
+    iq = set_vcard_event.stanza
+    vcard = iq.firstChildElement()
+    assert vcard.name == 'vCard', vcard.toXml()
+
+    if check is not None:
+        check(vcard)
+
+    # Update current vCard
+    current_vcard = vcard
+
+    stream.send(make_result_iq(stream, iq))
+
 def handle_get_vcard(event, data):
     iq = event.stanza
 

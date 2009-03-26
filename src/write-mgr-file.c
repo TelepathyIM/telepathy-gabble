@@ -92,7 +92,8 @@ main (void)
 
   gchar *s = mgr_file_contents (TP_CM_BUS_NAME_BASE "gabble",
                                TP_CM_OBJECT_PATH_BASE "gabble",
-                               gabble_protocols, &error);
+                               gabble_connection_manager_get_protocols (),
+                               &error);
   if (!s)
     {
       fprintf (stderr, "%s", error->message);

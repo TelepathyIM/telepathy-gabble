@@ -40,8 +40,6 @@ struct _GabbleConnectionManager {
     GabbleConnectionManagerPrivate *priv;
 };
 
-extern const TpCMProtocolSpec gabble_protocols[];
-
 GType gabble_connection_manager_get_type (void);
 
 /* TYPE MACROS */
@@ -60,6 +58,8 @@ GType gabble_connection_manager_get_type (void);
 #define GABBLE_CONNECTION_MANAGER_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION_MANAGER, \
                               GabbleConnectionManagerClass))
+
+const TpCMProtocolSpec * gabble_connection_manager_get_protocols (void);
 
 G_END_DECLS
 

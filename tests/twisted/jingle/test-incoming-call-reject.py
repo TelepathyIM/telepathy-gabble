@@ -2,47 +2,21 @@
 Test incoming call handling - reject a call
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern
-import jingletest
-import gabbletest
-import dbus
-import time
+from twisted.words.xish import xpath
+
+from servicetest import make_channel_proxy, tp_path_prefix, EventPattern
+from jingletest2 import JingleTest2, test_all_dialects
 
 import constants as cs
 
-def test(q, bus, conn, stream):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
+def test(jp, q, bus, conn, stream):
+    remote_jid = 'foo@bar.com/Foo'
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
 
-    # If we need to override remote caps, feats, codecs or caps,
-    # this is a good time to do it
-
-    # Connecting
-    conn.Connect()
-
-    q.expect_many(
-            EventPattern('dbus-signal', signal='StatusChanged', args=[1, 1]),
-            EventPattern('stream-authenticated'),
-            EventPattern('dbus-signal', signal='PresenceUpdate',
-                args=[{1L: (0L, {u'available': {}})}]),
-            EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
-            )
-
-    # We need remote end's presence for capabilities
-    jt.send_remote_presence()
-
-    # Gabble doesn't trust it, so makes a disco
-    event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to='foo@bar.com/Foo')
-
-    jt.send_remote_disco_reply(event.stanza)
-
-    # Force Gabble to process the caps before calling RequestChannel
-    sync_stream(q, stream)
+    jt.prepare()
 
     self_handle = conn.GetSelfHandle()
-    remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
 
     # Remote end calls us
     jt.incoming_call()
@@ -68,9 +42,8 @@ def test(q, bus, conn, stream):
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
 
     # Exercise channel properties
-    channel_props = media_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+    channel_props = media_chan.GetAll(cs.CHANNEL,
+            dbus_interface=cs.PROPERTIES_IFACE)
     assert channel_props['TargetHandle'] == remote_handle
     assert channel_props['TargetHandleType'] == 1
     assert channel_props['TargetID'] == 'foo@bar.com'
@@ -81,14 +54,12 @@ def test(q, bus, conn, stream):
     media_chan.RemoveMembers([self_handle], 'rejected')
 
     iq, signal = q.expect_many(
-            EventPattern('stream-iq'),
-            EventPattern('dbus-signal', signal='Closed'),
-            )
-    assert iq.query.name == 'jingle'
-    assert iq.query['action'] == 'session-terminate'
+        EventPattern('stream-iq', predicate=lambda e:
+            jp.match_jingle_action(e.query, 'session-terminate')),
+        EventPattern('dbus-signal', signal='Closed'),
+        )
 
     # Tests completed, close the connection
-
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
@@ -96,5 +67,5 @@ def test(q, bus, conn, stream):
 
 
 if __name__ == '__main__':
-    exec_test(test)
+    test_all_dialects(test)
 

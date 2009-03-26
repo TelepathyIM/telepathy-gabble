@@ -581,7 +581,7 @@ gabble_media_channel_set_property (GObject     *object,
 static void gabble_media_channel_dispose (GObject *object);
 static void gabble_media_channel_finalize (GObject *object);
 static gboolean gabble_media_channel_remove_member (GObject *obj,
-    TpHandle handle, const gchar *message, GError **error);
+    TpHandle handle, const gchar *message, guint reason, GError **error);
 
 static void
 gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_class)
@@ -734,7 +734,8 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 
   tp_group_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
-      _gabble_media_channel_add_member,
+      _gabble_media_channel_add_member, NULL);
+  tp_group_mixin_class_set_remove_with_reason_func (object_class,
       gabble_media_channel_remove_member);
   tp_group_mixin_init_dbus_properties (object_class);
 }
@@ -1996,6 +1997,7 @@ static gboolean
 gabble_media_channel_remove_member (GObject *obj,
                                     TpHandle handle,
                                     const gchar *message,
+                                    guint reason,
                                     GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
@@ -2020,13 +2022,13 @@ gabble_media_channel_remove_member (GObject *obj,
       return FALSE;
     }
 
+  if (!gabble_jingle_session_terminate (priv->session, reason, error))
+    return FALSE;
+
   /* We're terminating the session, any further changes to the members are
    * meaningless, since the channel will go away RSN. */
   tp_group_mixin_change_flags (obj, 0,
       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
-
-  gabble_jingle_session_terminate (priv->session,
-      TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
 
   return TRUE;
 }

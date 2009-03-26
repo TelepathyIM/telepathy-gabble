@@ -49,7 +49,18 @@ def test(jp, q, bus, conn, stream):
     jt.set_sid_from_initiate(e.query)
     jt.terminate(reason="busy")
 
-    e = q.expect('dbus-signal', signal='Close') #XXX - match against the path
+    mc = q.expect('dbus-signal', signal='MembersChanged')
+    _, added, removed, lp, rp, actor, reason = mc.args
+    assert added == [], added
+    assert set(removed) == set([self_handle, remote_handle]), \
+        (removed, self_handle, remote_handle)
+    assert lp == [], lp
+    assert rp == [], rp
+    assert actor == remote_handle, (actor, remote_handle)
+    if jp.supports_termination_reason():
+        assert reason == cs.GC_REASON_BUSY, reason
+
+    q.expect('dbus-signal', signal='Close') #XXX - match against the path
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

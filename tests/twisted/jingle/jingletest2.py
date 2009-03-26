@@ -109,6 +109,9 @@ class JingleProtocol:
     def extract_session_id(self, query):
         return query['sid']
 
+    def supports_termination_reason(self):
+        return False
+
 class GtalkProtocol03(JingleProtocol):
     features = [ 'http://www.google.com/xmpp/protocol/voice/v1' ]
 
@@ -246,6 +249,9 @@ class JingleProtocol031(JingleProtocol):
         return ('description', 'urn:xmpp:jingle:apps:rtp:0',
             { 'media': type }, children)
 
+    def supports_termination_reason(self):
+        return True
+
 
 class JingleTest2:
     # Default caps for the remote end
@@ -325,7 +331,7 @@ class JingleTest2:
     def terminate(self, reason=None):
         jp = self.jp
 
-        if reason is not None and jp.dialect == 'jingle-v0.31':
+        if reason is not None and jp.supports_termination_reason():
             body = [("reason", None, {}, [(reason, None, {}, [])])]
         else:
             body = []

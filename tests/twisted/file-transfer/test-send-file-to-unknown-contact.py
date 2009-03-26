@@ -1,5 +1,6 @@
 import dbus
 
+import constants as cs
 from file_transfer_helper import SendFileTest, HT_CONTACT, exec_file_transfer_test
 
 class SendFileTransferToUnknownContactTest(SendFileTest):
@@ -15,7 +16,7 @@ class SendFileTransferToUnknownContactTest(SendFileTest):
         try:
             self.request_ft_channel()
         except dbus.DBusException, e:
-            assert e.get_dbus_name() == 'org.freedesktop.Telepathy.Errors.NotAvailable'
+            assert e.get_dbus_name() == cs.NOT_AVAILABLE
         else:
             assert False
 

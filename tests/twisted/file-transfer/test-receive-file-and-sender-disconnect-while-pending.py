@@ -2,6 +2,7 @@ import dbus
 
 from twisted.words.xish import domish
 
+import constants as cs
 from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest, SOCKET_ADDRESS_TYPE_UNIX,\
     SOCKET_ACCESS_CONTROL_LOCALHOST, FT_STATE_CANCELLED, FT_STATE_CHANGE_REASON_REMOTE_STOPPED
 
@@ -24,7 +25,7 @@ class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
             self.ft_channel.AcceptFile(SOCKET_ADDRESS_TYPE_UNIX,
                 SOCKET_ACCESS_CONTROL_LOCALHOST, "", 0)
         except dbus.DBusException, e:
-            assert e.get_dbus_name() == 'org.freedesktop.Telepathy.Errors.NotAvailable'
+            assert e.get_dbus_name() == cs.NOT_AVAILABLE
         else:
             assert False
 

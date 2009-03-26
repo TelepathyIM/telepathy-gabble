@@ -893,12 +893,54 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
   set_state (sess, JS_STATE_ACTIVE, 0);
 }
 
+typedef struct {
+    const gchar *element;
+    TpChannelGroupChangeReason reason;
+} ReasonMapping;
+
+/* Taken from the schema in XEP 0166 */
+ReasonMapping reasons[] = {
+    { "alternative-session", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
+    { "busy", TP_CHANNEL_GROUP_CHANGE_REASON_BUSY },
+    { "cancel", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
+    { "connectivity-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "decline", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
+    { "expired", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
+    { "failed-application", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "failed-transport", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "general-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "gone", TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE },
+    { "incompatible-parameters", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "media-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "security-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "success", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
+    { "timeout", TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER },
+    { "unsupported-applications", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "unsupported-transports", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { NULL, }
+};
+
 static void
 on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  DEBUG ("remote end terminates the session");
-  set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+  TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+  LmMessageNode *n = lm_message_node_get_child (node, "reason");
+  ReasonMapping *m = NULL;
+
+  if (n != NULL)
+    for (n = n->children; n != NULL; n = n->next)
+      for (m = reasons; m->element != NULL; m++)
+        if (!tp_strdiff (m->element, lm_message_node_get_name (n)))
+          {
+            reason = m->reason;
+            goto pub;
+          }
+
+pub:
+  DEBUG ("remote end terminated the session with reason %s (%u)",
+      (m != NULL && m->element != NULL ? m->element : "(none)"), reason);
+  set_state (sess, JS_STATE_ENDED, reason);
 }
 
 static void

@@ -1,15 +1,23 @@
 """
-Test incoming call handling - reject a call
+Test incoming call handling - reject a call because we're busy, and for no
+reason.
 """
 
 from twisted.words.xish import xpath
 
-from servicetest import make_channel_proxy, tp_path_prefix, EventPattern
+from servicetest import make_channel_proxy, tp_path_prefix, EventPattern, \
+    call_async
 from jingletest2 import JingleTest2, test_all_dialects
 
 import constants as cs
 
-def test(jp, q, bus, conn, stream):
+def test_busy(jp, q, bus, conn, stream):
+    test(jp, q, bus, conn, stream, True)
+
+def test_no_reason(jp, q, bus, conn, stream):
+    test(jp, q, bus, conn, stream, False)
+
+def test(jp, q, bus, conn, stream, busy):
     remote_jid = 'foo@bar.com/Foo'
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
 
@@ -51,13 +59,47 @@ def test(jp, q, bus, conn, stream):
     assert channel_props['InitiatorID'] == 'foo@bar.com'
     assert channel_props['InitiatorHandle'] == remote_handle
 
-    media_chan.RemoveMembers([self_handle], 'rejected')
+    if busy:
+        # First, try using a reason that doesn't make any sense
+        call_async(q, media_chan, 'RemoveMembersWithReason',
+            [self_handle], "what kind of a reason is Separated?!",
+            cs.GC_REASON_SEPARATED)
+        e = q.expect('dbus-error', method='RemoveMembersWithReason')
+        assert e.error.get_dbus_name() == cs.INVALID_ARGUMENT
 
-    iq, signal = q.expect_many(
+        # Now try a more sensible reason.
+        media_chan.RemoveMembersWithReason([self_handle],
+            "which part of 'Do Not Disturb' don't you understand?",
+            cs.GC_REASON_BUSY)
+    else:
+        media_chan.RemoveMembers([self_handle], 'rejected')
+
+    iq, mc, _ = q.expect_many(
         EventPattern('stream-iq', predicate=lambda e:
             jp.match_jingle_action(e.query, 'session-terminate')),
+        EventPattern('dbus-signal', signal='MembersChanged'),
         EventPattern('dbus-signal', signal='Closed'),
         )
+
+    _, added, removed, lp, rp, actor, reason = mc.args
+    assert added == [], added
+    assert set(removed) == set([self_handle, remote_handle]), \
+        (removed, self_handle, remote_handle)
+    assert lp == [], lp
+    assert rp == [], rp
+    assert actor == self_handle, (actor, self_handle)
+    if busy:
+        assert reason == cs.GC_REASON_BUSY, reason
+    else:
+        assert reason == cs.GC_REASON_NONE, reason
+
+    if jp.supports_termination_reason():
+        jingle = iq.query
+        if busy:
+            r = "/jingle/reason/busy"
+        else:
+            r = "/jingle/reason/cancel"
+        assert xpath.queryForNodes(r, jingle) is not None, (jingle.toXml(), r)
 
     # Tests completed, close the connection
     conn.Disconnect()
@@ -67,5 +109,6 @@ def test(jp, q, bus, conn, stream):
 
 
 if __name__ == '__main__':
-    test_all_dialects(test)
+    test_all_dialects(test_busy)
+    test_all_dialects(test_no_reason)
 

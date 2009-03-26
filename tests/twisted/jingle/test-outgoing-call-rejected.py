@@ -1,54 +1,30 @@
-
 """
 Test outgoing call handling. This tests the case when the
-remote party rejects our call.
+remote party rejects our call because they're busy.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
+from gabbletest import make_result_iq
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix
-import jingletest
-import gabbletest
-import dbus
-import time
+import constants as cs
 
-def test(q, bus, conn, stream):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
+from jingletest2 import JingleTest2, test_all_dialects
 
-    # If we need to override remote caps, feats, codecs or caps,
-    # this is a good time to do it
+def test(jp, q, bus, conn, stream):
+    remote_jid = 'foo@bar.com/Foo'
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
 
-    # Connecting
-    conn.Connect()
+    jt.prepare()
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
-    q.expect('stream-authenticated')
-    q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{1L: (0L, {u'available': {}})}])
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    self_handle = conn.GetSelfHandle()
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
 
-    # We need remote end's presence for capabilities
-    jt.send_remote_presence()
-
-    # Gabble doesn't trust it, so makes a disco
-    event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to='foo@bar.com/Foo')
-
-    jt.send_remote_disco_reply(event.stanza)
-
-    # Force Gabble to process the caps before calling RequestChannel
-    sync_stream(q, stream)
-
-    handle = conn.RequestHandles(1, [jt.remote_jid])[0]
-
-    path = conn.RequestChannel(
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-        1, handle, True)
+    path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
+        cs.HT_CONTACT, remote_handle, True)
 
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
 
-
-    media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
+    media_iface.RequestStreams(remote_handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -64,25 +40,19 @@ def test(q, bus, conn, stream):
 
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler.Ready(jt.get_audio_codecs_dbus())
-    stream_handler.StreamState(2)
+    stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'session-initiate'
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
+    e = q.expect('stream-iq', predicate=lambda e:
+        jp.match_jingle_action(e.query, 'session-initiate'))
+    stream.send(make_result_iq(stream, e.stanza))
 
-    jt.outgoing_call_reply(e.query['sid'], False)
-
-    # Test completed, close the connection
+    jt.set_sid_from_initiate(e.query)
+    jt.terminate(reason="busy")
 
     e = q.expect('dbus-signal', signal='Close') #XXX - match against the path
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
-    return True
-
-
 if __name__ == '__main__':
-    exec_test(test)
-
+    test_all_dialects(test)

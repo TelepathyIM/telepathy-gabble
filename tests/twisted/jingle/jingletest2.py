@@ -106,6 +106,9 @@ class JingleProtocol:
     def match_jingle_action(self, q, action):
         return q.name == 'jingle' and q['action'] == action
 
+    def extract_session_id(self, query):
+        return query['sid']
+
 class GtalkProtocol03(JingleProtocol):
     features = [ 'http://www.google.com/xmpp/protocol/voice/v1' ]
 
@@ -148,6 +151,9 @@ class GtalkProtocol03(JingleProtocol):
     def TransportGoogleP2P(self):
         return None
 
+    def extract_session_id(self, query):
+        return query['id']
+
 class GtalkProtocol04(JingleProtocol):
     features = [ 'http://www.google.com/xmpp/protocol/voice/v1',
           'http://www.google.com/transport/p2p' ]
@@ -187,6 +193,8 @@ class GtalkProtocol04(JingleProtocol):
         action = self._action_map(action)
         return q.name == 'session' and q['type'] == action
 
+    def extract_session_id(self, query):
+        return query['id']
 
 class JingleProtocol015(JingleProtocol):
     features = [ 'http://www.google.com/transport/p2p',
@@ -310,6 +318,21 @@ class JingleTest2:
 
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
+
+    def set_sid_from_initiate(self, query):
+        self.sid = self.jp.extract_session_id(query)
+
+    def terminate(self, reason=None):
+        jp = self.jp
+
+        if reason is not None and jp.dialect == 'jingle-v0.31':
+            body = [("reason", None, {}, [(reason, None, {}, [])])]
+        else:
+            body = []
+
+        iq = jp.SetIq(self.peer, self.jid, [
+            jp.Jingle(self.sid, self.peer, 'session-terminate', body) ])
+        self.stream.send(jp.xml(iq))
 
     def dbusify_codecs(self, codecs):
         dbussed_codecs = [ (id, name, 0, rate, 0, {} )

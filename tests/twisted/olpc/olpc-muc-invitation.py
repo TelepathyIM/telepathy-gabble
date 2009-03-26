@@ -201,7 +201,11 @@ def test(q, bus, conn, stream):
     call_async(q, act_prop_iface, 'SetProperties',
         handles['chat'], {'color': '#f00baa,#f00baa', 'private': True})
 
-    event = q.expect('stream-message', to='alice@localhost')
+    event, apc_event, _ = q.expect_many(
+        EventPattern('stream-message', to='alice@localhost'),
+        EventPattern('dbus-signal', signal='ActivityPropertiesChanged'),
+        EventPattern('dbus-return', method='SetProperties'),
+        )
     message = event.stanza
 
     properties = xpath.queryForNodes('/message/properties', message)
@@ -226,12 +230,9 @@ def test(q, bus, conn, stream):
     assert 'color' in seen, seen
     assert 'private' in seen, seen
 
-    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
-    chat_handle, props = event.args
+    chat_handle, props = apc_event.args
     assert chat_handle == handles['chat']
     assert props == {'color': '#f00baa,#f00baa', 'private' : True}
-
-    q.expect('dbus-return', method='SetProperties')
 
     conn.Disconnect()
 

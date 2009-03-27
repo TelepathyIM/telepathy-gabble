@@ -1,6 +1,8 @@
 telepathy-gabble 0.7.25 (UNRELEASED)
 ====================================
 
+The “my buffered linear sock-pairing algorithm is unstoppable!” release.
+
 Dependencies:
 
 * telepathy-glib >= 0.7.28 is now required  so Gabble emits the correct

@@ -1,5 +1,5 @@
 /*
- * gabble-file-transfer-channel.c - Source for GabbleFileTransferChannel
+ * file-transfer-channel.c - Source for GabbleFileTransferChannel
  * Copyright (C) 2009 Collabora Ltd.
  *   @author: Guillaume Desmottes <guillaume.desmottes@collabora.co.uk>
  *
@@ -50,10 +50,8 @@
 #include <telepathy-glib/svc-generic.h>
 #include <telepathy-glib/svc-channel.h>
 
-static void
-channel_iface_init (gpointer g_iface, gpointer iface_data);
-static void
-file_transfer_iface_init (gpointer g_iface, gpointer iface_data);
+static void channel_iface_init (gpointer g_iface, gpointer iface_data);
+static void file_transfer_iface_init (gpointer g_iface, gpointer iface_data);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel,
     G_TYPE_OBJECT,
@@ -428,16 +426,16 @@ gabble_file_transfer_channel_constructor (GType type,
   /* Parent constructor chain */
   obj = G_OBJECT_CLASS (gabble_file_transfer_channel_parent_class)->
           constructor (type, n_props, props);
-
   self = GABBLE_FILE_TRANSFER_CHANNEL (obj);
-
-  /* Ref our handle */
   base_conn = TP_BASE_CONNECTION (self->priv->connection);
 
+  /* Ref the target and initiator handles; they can't be reffed in
+   * _set_property as we may not have the TpConnection at that point.
+   */
   contact_repo = tp_base_connection_get_handles (base_conn,
       TP_HANDLE_TYPE_CONTACT);
-
   tp_handle_ref (contact_repo, self->priv->handle);
+  tp_handle_ref (contact_repo, self->priv->initiator);
 
   self->priv->object_path = g_strdup_printf ("%s/FileTransferChannel/%p",
       base_conn->object_path, self);
@@ -471,10 +469,8 @@ gabble_file_transfer_channel_constructor (GType type,
   return obj;
 }
 
-static void
-gabble_file_transfer_channel_dispose (GObject *object);
-static void
-gabble_file_transfer_channel_finalize (GObject *object);
+static void gabble_file_transfer_channel_dispose (GObject *object);
+static void gabble_file_transfer_channel_finalize (GObject *object);
 
 static void
 gabble_file_transfer_channel_class_init (
@@ -762,6 +758,7 @@ gabble_file_transfer_channel_dispose (GObject *object)
   self->priv->dispose_has_run = TRUE;
 
   tp_handle_unref (handle_repo, self->priv->handle);
+  tp_handle_unref (handle_repo, self->priv->initiator);
 
   gabble_file_transfer_channel_do_close (self);
 
@@ -947,7 +944,7 @@ check_address_and_access_control (GabbleFileTransferChannel *self,
       GUINT_TO_POINTER (address_type));
   if (access_arr == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "AddressType %u is not implemented", address_type);
       return FALSE;
     }
@@ -962,7 +959,7 @@ check_address_and_access_control (GabbleFileTransferChannel *self,
         return TRUE;
     }
 
-  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
       "AccesControl %u is not implemented with AddressType %u",
       access_control, address_type);
 
@@ -1258,7 +1255,7 @@ transferred_chunk (GabbleFileTransferChannel *self,
   /* Protect against clock skew, if the interval is negative the worst thing
    * that can happen is that we wait an extra second before emitting the signal
    */
-  interval = ABS(interval);
+  interval = ABS (interval);
 
   if (interval > 1000)
     emit_progress_update (self);
@@ -1292,7 +1289,8 @@ data_received_cb (GabbleBytestreamIface *stream,
       return;
     }
 
-  DEBUG ("received %u bytes from bytestream. Writing to socket", data->len);
+  DEBUG ("received %"G_GSIZE_FORMAT" bytes from bytestream. Writing to socket",
+      data->len);
 
   transferred_chunk (self, (guint64) data->len);
 
@@ -1511,7 +1509,7 @@ transport_handler (GibberTransport *transport,
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
 
-  DEBUG("Data available, writing a %"G_GSIZE_FORMAT" bytes chunk",
+  DEBUG ("Data available, writing a %"G_GSIZE_FORMAT" bytes chunk",
       data->length);
 
   if (!gabble_bytestream_iface_send (self->priv->bytestream, data->length,

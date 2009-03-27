@@ -1,5 +1,5 @@
 /*
- * gabble-ft-manager.c - Source for GabbleFtManager
+ * ft-manager.c - Source for GabbleFtManager
  * Copyright (C) 2009 Collabora Ltd.
  *   @author: Guillaume Desmottes <guillaume.desmottes@collabora.co.uk>
  *

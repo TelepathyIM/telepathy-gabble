@@ -1,5 +1,5 @@
 /*
- * gabble-ft-manager.h - Header for GabbleFtManager
+ * ft-manager.h - Header for GabbleFtManager
  * Copyright (C) 2009 Collabora Ltd.
  *   @author: Guillaume Desmottes <guillaume.desmottes@collabora.co.uk>
  *

@@ -494,16 +494,16 @@ gabble_file_transfer_channel_class_init (
 
   static TpDBusPropertiesMixinPropImpl file_props[] = {
     { "State", "state", NULL },
-    { "ContentType", "content-type", "content-type" },
-    { "Filename", "filename", "filename" },
-    { "Size", "size", "size" },
-    { "ContentHashType", "content-hash-type", "content-hash-type" },
-    { "ContentHash", "content-hash", "content-hash" },
-    { "Description", "description", "description" },
+    { "ContentType", "content-type", NULL },
+    { "Filename", "filename", NULL },
+    { "Size", "size", NULL },
+    { "ContentHashType", "content-hash-type", NULL },
+    { "ContentHash", "content-hash", NULL },
+    { "Description", "description", NULL },
     { "AvailableSocketTypes", "available-socket-types", NULL },
     { "TransferredBytes", "transferred-bytes", NULL },
     { "InitialOffset", "initial-offset", NULL },
-    { "Date", "date", "date" },
+    { "Date", "date", NULL },
     { NULL }
   };
 
@@ -515,7 +515,7 @@ gabble_file_transfer_channel_class_init (
     },
     { TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER,
       tp_dbus_properties_mixin_getter_gobject_properties,
-      tp_dbus_properties_mixin_setter_gobject_properties,
+      NULL,
       file_props
     },
     { NULL }

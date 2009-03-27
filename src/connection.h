@@ -46,7 +46,7 @@ G_BEGIN_DECLS
  * http://coccinella.im/servers/servers_by_proxy_bytestreams.html */
 #define GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES             \
     { "proxy.jabber.org", "proxy.jabberfr.org", "proxy.isgeek.info",\
-      "proxy2.isgeek.info", "proxy65.rooyee.biz", "proxy.4business.nl",\
+      "proxy2.isgeek.info", "proxy65.rooyee.biz", "proxy.jabbim.cz",\
       "proxy.911910.cn", "proxy.aszlig.net", "proxy.brauchen.info",\
       "proxy.core.im", "proxy.deshalbfrei.org", "proxy.downtempo.de",\
       "proxy.draugr.de", "proxy.egbers.info", "proxy.headcounter.org",\
@@ -54,14 +54,17 @@ G_BEGIN_DECLS
       "proxy.jabber.bluendo.com", "proxy.jabber.dk", "proxy.jabber.freenet.de",\
       "proxy.fsinf.at", "proxy.jabber.kg", "proxy.jabber.minus273.org",\
       "proxy.jabber.planetteamspeak.com", "proxy.jabber.tf-network.de",\
-      "proxy.jabberchat.eu", "proxy.jabbernet.eu", "proxy.jabbim.cz",\
-      "proxy.jabjab.de", "proxy.jabster.pl", "proxy.nedbsd.be",\
-      "proxy.nedbsd.eu", "proxy.nedbsd.nl", "proxy.noicq.org",\
-      "proxy.schokokeks.org", "proxy.shady.nl", "proxy.silper.cz",\
+      "proxy.jabjab.de", "proxy.jabster.pl", "proxy.noicq.org",\
+      "proxy.schokokeks.org", "proxy.silper.cz",\
       "proxy.ubuntu-jabber.de", "proxy.ubuntu-jabber.net",\
       "proxy65.unstable.nl", "proxy.verdammung.org", "proxy.vke.ru",\
-      "proxy.vodka-pomme.net", "proxy.xabber.de",\
+      "proxy.vodka-pomme.net", "proxy.xabber.de", "proxy.jabbernet.eu",\
       NULL }
+
+/* These proxies appeared to be the same as proxy.jabbernet.eu
+    "proxy.jabberchat.eu", "proxy.shady.nl", "proxy.nedbsd.be",\
+    "proxy.nedbsd.eu", "proxy.nedbsd.nl", "proxy.4business.nl"\
+*/
 
 /* order must match array of statuses in conn-presence.c */
 /* in increasing order of presence */

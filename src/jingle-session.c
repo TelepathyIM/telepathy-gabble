@@ -1833,3 +1833,28 @@ gabble_set_jingle_session_timeout (guint ms)
 {
   session_timeout_time = ms;
 }
+
+void
+gabble_jingle_session_send_held (GabbleJingleSession *sess,
+                                 gboolean held)
+{
+  LmMessage *message;
+  LmMessageNode *jingle, *notification;
+
+  if (sess->priv->dialect != JINGLE_DIALECT_V032)
+    {
+      DEBUG ("FIXME: fake hold for Ye Olde Jingle and GTalk.");
+      return;
+    }
+
+  message = gabble_jingle_session_new_message (sess,
+      JINGLE_ACTION_SESSION_INFO, &jingle);
+
+  notification = lm_message_node_add_child (jingle,
+      (held ? "hold" : "active"), NULL);
+  lm_message_node_set_attributes (notification, "xmlns", NS_JINGLE_RTP_INFO,
+      NULL);
+
+  /* This is just informational, so ignoring the reply. */
+  gabble_jingle_session_send (sess, message, NULL, NULL);
+}

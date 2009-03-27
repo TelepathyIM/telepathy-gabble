@@ -2176,26 +2176,14 @@ session_state_changed_cb (GabbleJingleSession *session,
 static void
 inform_peer_of_unhold (GabbleMediaChannel *self)
 {
-  /* FIXME: when we upgrade to current Jingle, signal to the peer that
-   * we've taken them off hold, via a session-info message;
-   * ignore success or failure, since there's nothing we could really
-   * do differently, and the message is only advisory.
-   *
-   * For now, we don't signal the unhold in the XMPP stream */
-  DEBUG ("TODO: tell peer we've taken them off hold");
+  gabble_jingle_session_send_held (self->priv->session, FALSE);
 }
 
 
 static void
 inform_peer_of_hold (GabbleMediaChannel *self)
 {
-  /* FIXME: when we upgrade to current Jingle, signal to the peer that
-   * we're putting them on hold, via a session-info message;
-   * ignore success or failure, since there's nothing we could really
-   * do differently, and the message is only advisory.
-   *
-   * For now, we don't signal the hold in the XMPP stream */
-  DEBUG ("TODO: tell peer we're putting them on hold");
+  gabble_jingle_session_send_held (self->priv->session, TRUE);
 }
 
 

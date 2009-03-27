@@ -33,7 +33,7 @@ def test(jp, q, bus, conn, stream):
     stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler.Ready(jt.get_audio_codecs_dbus())
-    stream_handler.StreamState(2)
+    stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     q.expect('stream-iq', predicate=lambda e:
         jp.match_jingle_action(e.query, 'session-initiate'))

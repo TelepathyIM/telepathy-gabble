@@ -66,7 +66,7 @@ def worker(jp, q, bus, conn, stream):
 
     stream_handler.NewNativeCandidate("fake", jt2.get_remote_transports_dbus())
     stream_handler.Ready(jt2.get_audio_codecs_dbus())
-    stream_handler.StreamState(2)
+    stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     # In gtalk4, first one will be transport-accept, telling us that GTalk
     # is ok with our choice of transports.

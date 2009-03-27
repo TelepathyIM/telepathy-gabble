@@ -35,7 +35,7 @@ def test(q, bus, conn, stream):
 
         stream_handler.NewNativeCandidate("fake", jt2.get_remote_transports_dbus())
         stream_handler.Ready(jt2.get_audio_codecs_dbus())
-        stream_handler.StreamState(2)
+        stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
         return (stream_handler, stream_id)
 
 
@@ -101,7 +101,7 @@ def test(q, bus, conn, stream):
 
     stream_handler.NewNativeCandidate("fake", jt2.get_remote_transports_dbus())
     stream_handler.Ready(local_codecs_dbus)
-    stream_handler.StreamState(2)
+    stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     # First IQ is transport-info; also, we expect to be told what codecs the
     # other end wants.

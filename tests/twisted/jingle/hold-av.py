@@ -10,6 +10,8 @@ import gabbletest
 import dbus
 import time
 
+import constants as cs
+
 
 MEDIA_STREAM_TYPE_AUDIO = 0
 MEDIA_STREAM_TYPE_VIDEO = 0
@@ -84,7 +86,7 @@ def test(q, bus, conn, stream):
     audio_stream_handler.NewNativeCandidate("fake",
             jt.get_remote_transports_dbus())
     audio_stream_handler.Ready(jt.get_audio_codecs_dbus())
-    audio_stream_handler.StreamState(2)
+    audio_stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
 
@@ -95,7 +97,7 @@ def test(q, bus, conn, stream):
     video_stream_handler.NewNativeCandidate("fake",
             jt.get_remote_transports_dbus())
     video_stream_handler.Ready(jt.get_video_codecs_dbus())
-    video_stream_handler.StreamState(2)
+    video_stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'

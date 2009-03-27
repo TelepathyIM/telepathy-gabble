@@ -10,6 +10,8 @@ import dbus
 import time
 from twisted.words.xish import xpath
 
+import constants as cs
+
 from jingletest2 import *
 
 def worker(jp, q, bus, conn, stream):
@@ -49,7 +51,7 @@ def worker(jp, q, bus, conn, stream):
 
     stream_handler.NewNativeCandidate("fake", jt2.get_remote_transports_dbus())
     stream_handler.Ready(jt2.get_audio_codecs_dbus())
-    stream_handler.StreamState(2)
+    stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     e = q.expect('stream-iq')
     if jp.dialect.startswith('gtalk'):

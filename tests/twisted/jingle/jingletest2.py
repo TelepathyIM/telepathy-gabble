@@ -339,6 +339,17 @@ class JingleTest2:
     def set_sid_from_initiate(self, query):
         self.sid = self.jp.extract_session_id(query)
 
+    def accept(self):
+        jp = self.jp
+        node = jp.SetIq(self.peer, self.jid, [
+            jp.Jingle(self.sid, self.peer, 'session-accept', [
+                jp.Content('stream1', 'initiator', 'both', [
+                    jp.Description('audio', [
+                        jp.PayloadType(name, str(rate), str(id)) for
+                            (name, id, rate) in self.audio_codecs ]),
+                jp.TransportGoogleP2P() ]) ]) ])
+        self.stream.send(jp.xml(node))
+
     def terminate(self, reason=None):
         jp = self.jp
 

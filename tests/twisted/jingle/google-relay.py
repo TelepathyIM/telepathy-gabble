@@ -8,7 +8,7 @@ from servicetest import make_channel_proxy, tp_path_prefix, \
         EventPattern, call_async, sync_dbus
 import jingletest
 import gabbletest
-import constants as c
+import constants as cs
 import dbus
 import time
 import BaseHTTPServer
@@ -147,13 +147,16 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
         # Remote end calls us
         jt.incoming_call()
 
+        # FIXME: these signals are not observable by real clients, since they
+        #        happen before NewChannels.
         # The caller is in members
         e = q.expect('dbus-signal', signal='MembersChanged',
                  args=[u'', [remote_handle], [], [], [], 0, 0])
 
         # We're pending because of remote_handle
         e = q.expect('dbus-signal', signal='MembersChanged',
-                 args=[u'', [], [], [1L], [], remote_handle, 0])
+                 args=[u'', [], [], [1L], [], remote_handle,
+                       cs.GC_REASON_INVITED])
 
         media_chan = make_channel_proxy(conn, tp_path_prefix + e.path,
             'Channel.Interface.Group')
@@ -175,7 +178,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
         media_iface = make_channel_proxy(conn, path,
                 'Channel.Type.StreamedMedia')
         call_async(q, media_iface, 'RequestStreams',
-                remote_handle, [c.MEDIA_STREAM_TYPE_AUDIO])
+                remote_handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -279,7 +282,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
         stream_handler.NewNativeCandidate("fake",
                 jt.get_remote_transports_dbus())
         stream_handler.Ready(jt.get_audio_codecs_dbus())
-        stream_handler.StreamState(2)
+        stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
         e = q.expect('stream-iq')
         assert e.query.name == 'jingle'
@@ -290,7 +293,9 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
 
         q.expect_many(
             EventPattern('stream-iq', iq_type='result'),
-            EventPattern('dbus-signal', signal='MembersChanged'),
+            EventPattern('dbus-signal', signal='MembersChanged',
+                args=["", [remote_handle], [], [], [], remote_handle,
+                      cs.GC_REASON_NONE])
             )
 
     media_chan.RemoveMembers([dbus.UInt32(1)], '')
@@ -314,7 +319,7 @@ def test_too_slow(q, bus, conn, stream, httpd, media_chan):
     """
 
     # User gets bored, and closes the channel.
-    call_async(q, media_chan, 'Close', dbus_interface=c.CHANNEL)
+    call_async(q, media_chan, 'Close', dbus_interface=cs.CHANNEL)
     q.expect('dbus-signal', signal='Closed')
 
     # Now Google answers!

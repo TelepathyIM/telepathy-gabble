@@ -9,7 +9,7 @@
 
 from twisted.words.xish import domish
 import random
-from gabbletest import sync_stream
+from gabbletest import sync_stream, exec_test
 from servicetest import EventPattern
 import dbus
 
@@ -104,7 +104,13 @@ class JingleProtocol:
         return ('feature', None, { 'var': var }, [])
 
     def match_jingle_action(self, q, action):
-        return q.name == 'jingle' and q['action'] == action
+        return q is not None and q.name == 'jingle' and q['action'] == action
+
+    def extract_session_id(self, query):
+        return query['sid']
+
+    def supports_termination_reason(self):
+        return False
 
 class GtalkProtocol03(JingleProtocol):
     features = [ 'http://www.google.com/xmpp/protocol/voice/v1' ]
@@ -142,11 +148,14 @@ class GtalkProtocol03(JingleProtocol):
 
     def match_jingle_action(self, q, action):
         action = self._action_map(action)
-        return q.name == 'session' and q['type'] == action
+        return q is not None and q.name == 'session' and q['type'] == action
 
     # Content will never pick up transport, so this can return invalid value
     def TransportGoogleP2P(self):
         return None
+
+    def extract_session_id(self, query):
+        return query['id']
 
 class GtalkProtocol04(JingleProtocol):
     features = [ 'http://www.google.com/xmpp/protocol/voice/v1',
@@ -185,8 +194,10 @@ class GtalkProtocol04(JingleProtocol):
 
     def match_jingle_action(self, q, action):
         action = self._action_map(action)
-        return q.name == 'session' and q['type'] == action
+        return q is not None and q.name == 'session' and q['type'] == action
 
+    def extract_session_id(self, query):
+        return query['id']
 
 class JingleProtocol015(JingleProtocol):
     features = [ 'http://www.google.com/transport/p2p',
@@ -237,6 +248,9 @@ class JingleProtocol031(JingleProtocol):
     def Description(self, type, children):
         return ('description', 'urn:xmpp:jingle:apps:rtp:0',
             { 'media': type }, children)
+
+    def supports_termination_reason(self):
+        return True
 
 
 class JingleTest2:
@@ -311,6 +325,32 @@ class JingleTest2:
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
 
+    def incoming_call(self):
+        jp = self.jp
+        node = jp.SetIq(self.peer, self.jid, [
+            jp.Jingle(self.sid, self.peer, 'session-initiate', [
+                jp.Content('stream1', 'initiator', 'both', [
+                    jp.Description('audio', [
+                        jp.PayloadType(name, str(rate), str(id)) for
+                            (name, id, rate) in self.audio_codecs ]),
+                jp.TransportGoogleP2P() ]) ]) ])
+        self.stream.send(jp.xml(node))
+
+    def set_sid_from_initiate(self, query):
+        self.sid = self.jp.extract_session_id(query)
+
+    def terminate(self, reason=None):
+        jp = self.jp
+
+        if reason is not None and jp.supports_termination_reason():
+            body = [("reason", None, {}, [(reason, None, {}, [])])]
+        else:
+            body = []
+
+        iq = jp.SetIq(self.peer, self.jid, [
+            jp.Jingle(self.sid, self.peer, 'session-terminate', body) ])
+        self.stream.send(jp.xml(iq))
+
     def dbusify_codecs(self, codecs):
         dbussed_codecs = [ (id, name, 0, rate, 0, {} )
                             for (name, id, rate) in codecs ]
@@ -336,5 +376,20 @@ class JingleTest2:
                 in enumerate(self.remote_transports) ],
             signature='(usuussduss)')
 
+def test_all_dialects(f):
+    def test015(q, bus, conn, stream):
+        f(JingleProtocol015(), q, bus, conn, stream)
 
+    def test031(q, bus, conn, stream):
+        f(JingleProtocol031(),q, bus, conn, stream)
 
+    def testg3(q, bus, conn, stream):
+        f(GtalkProtocol03(), q, bus, conn, stream)
+
+    def testg4(q, bus, conn, stream):
+        f(GtalkProtocol04(), q, bus, conn, stream)
+
+    exec_test(testg3)
+    exec_test(testg4)
+    exec_test(test015)
+    exec_test(test031)

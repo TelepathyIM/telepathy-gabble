@@ -10,6 +10,8 @@ import dbus
 import time
 from twisted.words.xish import xpath
 
+import constants as cs
+
 from jingletest2 import *
 
 def worker(jp, q, bus, conn, stream):
@@ -17,30 +19,25 @@ def worker(jp, q, bus, conn, stream):
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
     jt2.prepare()
 
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    self_handle = conn.GetSelfHandle()
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
 
     # Remote end calls us
-    # jt.incoming_call()
-    node = jp.SetIq(jt2.peer, jt2.jid, [
-        jp.Jingle(jt2.sid, jt2.peer, 'session-initiate', [
-            jp.Content('stream1', 'initiator', 'both', [
-                jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
-    stream.send(jp.xml(node))
+    jt2.incoming_call()
 
     # we don't even need this here, because we've provided a very strict
     # predicate to expect_racy() so it won't get the wrong event
     # q.flush_past_events()
 
+    # FIXME: these signals are not observable by real clients, since they
+    #        happen before NewChannels.
     # The caller is in members
     e = q.expect('dbus-signal', signal='MembersChanged',
              args=[u'', [remote_handle], [], [], [], 0, 0])
 
     # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], remote_handle, 0])
+             args=[u'', [], [], [1L], [], remote_handle, cs.GC_REASON_INVITED])
 
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
 
@@ -52,7 +49,7 @@ def worker(jp, q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    media_chan.AddMembers([dbus.UInt32(1)], 'accepted')
+    media_chan.AddMembers([self_handle], 'accepted')
 
     # S-E gets notified about a newly-created stream
     e = q.expect('dbus-signal', signal='NewStreamHandler')
@@ -61,15 +58,15 @@ def worker(jp, q, bus, conn, stream):
 
     # We are now in members too
     e = q.expect_racy('dbus-signal', signal='MembersChanged',
-             args=[u'', [1L], [], [], [], 0, 0])
+             args=[u'', [self_handle], [], [], [], self_handle, 0])
 
     # we are now both in members
     members = media_chan.GetMembers()
-    assert set(members) == set([1L, remote_handle]), members
+    assert set(members) == set([self_handle, remote_handle]), members
 
     stream_handler.NewNativeCandidate("fake", jt2.get_remote_transports_dbus())
     stream_handler.Ready(jt2.get_audio_codecs_dbus())
-    stream_handler.StreamState(2)
+    stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     # In gtalk4, first one will be transport-accept, telling us that GTalk
     # is ok with our choice of transports.

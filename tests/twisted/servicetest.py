@@ -424,6 +424,19 @@ def wrap_connection(conn):
               'Presence', 'SimplePresence', 'Requests']] +
         [('Peer', 'org.freedesktop.DBus.Peer')]))
 
+def wrap_channel(chan, type_, extra=None):
+    interfaces = {
+        type_: tp_name_prefix + '.Channel.Type.' + type_,
+        'Group': tp_name_prefix + '.Channel.Interface.Group',
+        }
+
+    if extra:
+        interfaces.update(dict([
+            (name, tp_name_prefix + '.Channel.Interface.' + name)
+            for name in extra]))
+
+    return ProxyWrapper(chan, tp_name_prefix + '.Channel', interfaces)
+
 def make_connection(bus, event_func, name, proto, params):
     cm = bus.get_object(
         tp_name_prefix + '.ConnectionManager.%s' % name,

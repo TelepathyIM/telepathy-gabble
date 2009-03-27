@@ -1539,7 +1539,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
  * @sess: a jingle session
  * @state: the new state for the session
  * @termination_reason: if @state is JS_STATE_ENDED, the reason the session
- *                      ended. Otherwise, ignored.
+ *                      ended. Otherwise, must be 0.
  */
 static void
 set_state (GabbleJingleSession *sess,
@@ -1553,6 +1553,9 @@ set_state (GabbleJingleSession *sess,
       DEBUG ("ignoring request to set state from %u back to %u", priv->state, state);
       return;
     }
+
+  if (state != JS_STATE_ENDED)
+    g_assert (termination_reason == 0);
 
   DEBUG ("Setting state of JingleSession: %p (priv = %p) from %u to %u", sess, priv, priv->state, state);
 

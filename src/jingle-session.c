@@ -928,6 +928,13 @@ on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
   LmMessageNode *n = lm_message_node_get_child (node, "reason");
   ReasonMapping *m = NULL;
 
+  /* If the session-terminate stanza has a <reason> child, then iterate across
+   * its children, looking for a child whose name we recognise as a
+   * machine-readable reason for the call ending (looked up from the table
+   * above). (The XEP also defines <text> for a human-readable message. TODO:
+   * expose and send that as the group change message.) Once we find a reason
+   * we recognise, break out of both loops.
+   */
   if (n != NULL)
     for (n = n->children; n != NULL; n = n->next)
       for (m = reasons; m->element != NULL; m++)

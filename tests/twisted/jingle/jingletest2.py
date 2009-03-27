@@ -109,7 +109,7 @@ class JingleProtocol:
     def extract_session_id(self, query):
         return query['sid']
 
-    def supports_termination_reason(self):
+    def is_modern_jingle(self):
         return False
 
 class GtalkProtocol03(JingleProtocol):
@@ -249,7 +249,7 @@ class JingleProtocol031(JingleProtocol):
         return ('description', 'urn:xmpp:jingle:apps:rtp:0',
             { 'media': type }, children)
 
-    def supports_termination_reason(self):
+    def is_modern_jingle(self):
         return True
 
 
@@ -353,7 +353,7 @@ class JingleTest2:
     def terminate(self, reason=None):
         jp = self.jp
 
-        if reason is not None and jp.supports_termination_reason():
+        if reason is not None and jp.is_modern_jingle():
             body = [("reason", None, {}, [(reason, None, {}, [])])]
         else:
             body = []

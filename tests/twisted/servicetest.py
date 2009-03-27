@@ -416,6 +416,14 @@ class ProxyWrapper:
 
         return getattr(self.default_interface, name)
 
+def wrap_connection(conn):
+    return ProxyWrapper(conn, tp_name_prefix + '.Connection',
+        dict([
+            (name, tp_name_prefix + '.Connection.Interface.' + name)
+            for name in ['Aliasing', 'Avatars', 'Capabilities', 'Contacts',
+              'Presence', 'SimplePresence', 'Requests']] +
+        [('Peer', 'org.freedesktop.DBus.Peer')]))
+
 def make_connection(bus, event_func, name, proto, params):
     cm = bus.get_object(
         tp_name_prefix + '.ConnectionManager.%s' % name,
@@ -424,13 +432,7 @@ def make_connection(bus, event_func, name, proto, params):
 
     connection_name, connection_path = cm_iface.RequestConnection(
         proto, params)
-    conn = bus.get_object(connection_name, connection_path)
-    conn = ProxyWrapper(conn, tp_name_prefix + '.Connection',
-        dict([
-            (name, tp_name_prefix + '.Connection.Interface.' + name)
-            for name in ['Aliasing', 'Avatars', 'Capabilities', 'Contacts',
-              'Presence', 'SimplePresence', 'Requests']] +
-        [('Peer', 'org.freedesktop.DBus.Peer')]))
+    conn = wrap_connection(bus.get_object(connection_name, connection_path))
 
     bus.add_signal_receiver(
         lambda *args, **kw:

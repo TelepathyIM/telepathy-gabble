@@ -109,6 +109,9 @@ class JingleProtocol:
     def extract_session_id(self, query):
         return query['sid']
 
+    def is_gtalk(self):
+        return False
+
     def is_modern_jingle(self):
         return False
 
@@ -157,6 +160,9 @@ class GtalkProtocol03(JingleProtocol):
     def extract_session_id(self, query):
         return query['id']
 
+    def is_gtalk(self):
+        return True
+
 class GtalkProtocol04(JingleProtocol):
     features = [ 'http://www.google.com/xmpp/protocol/voice/v1',
           'http://www.google.com/transport/p2p' ]
@@ -198,6 +204,9 @@ class GtalkProtocol04(JingleProtocol):
 
     def extract_session_id(self, query):
         return query['id']
+
+    def is_gtalk(self):
+        return True
 
 class JingleProtocol015(JingleProtocol):
     features = [ 'http://www.google.com/transport/p2p',
@@ -339,15 +348,30 @@ class JingleTest2:
     def set_sid_from_initiate(self, query):
         self.sid = self.jp.extract_session_id(query)
 
-    def accept(self):
+    def accept(self, with_video=False):
         jp = self.jp
-        node = jp.SetIq(self.peer, self.jid, [
-            jp.Jingle(self.sid, self.peer, 'session-accept', [
-                jp.Content('stream1', 'initiator', 'both', [
-                    jp.Description('audio', [
+        audio = [
+            jp.Content('stream1', 'initiator', 'both', [
+                jp.Description('audio', [
+                    jp.PayloadType(name, str(rate), str(id)) for
+                        (name, id, rate) in self.audio_codecs ]),
+                jp.TransportGoogleP2P() ])
+            ]
+
+        if with_video:
+            video = [
+                jp.Content('stream2', 'initiator', 'both', [
+                    jp.Description('video', [
                         jp.PayloadType(name, str(rate), str(id)) for
-                            (name, id, rate) in self.audio_codecs ]),
-                jp.TransportGoogleP2P() ]) ]) ])
+                            (name, id, rate) in self.video_codecs ]),
+                    jp.TransportGoogleP2P() ])
+                ]
+        else:
+            video = []
+
+        node = jp.SetIq(self.peer, self.jid, [
+            jp.Jingle(self.sid, self.peer, 'session-accept',
+                audio + video) ])
         self.stream.send(jp.xml(node))
 
     def terminate(self, reason=None):

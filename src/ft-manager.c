@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "caps-channel-manager.h"
+#include "connection.h"
 #include "ft-manager.h"
 #include "error.h"
 #include "gabble-signals-marshal.h"
@@ -55,6 +56,13 @@ G_DEFINE_TYPE_WITH_CODE (GabbleFtManager, gabble_ft_manager, G_TYPE_OBJECT,
       channel_manager_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
+/* properties */
+enum
+{
+  PROP_CONNECTION = 1,
+  LAST_PROPERTY
+};
+
 /* private structure */
 struct _GabbleFtManagerPrivate
 {
@@ -78,15 +86,65 @@ static void gabble_ft_manager_dispose (GObject *object);
 static void gabble_ft_manager_finalize (GObject *object);
 
 static void
+gabble_ft_manager_get_property (GObject *object,
+                                guint property_id,
+                                GValue *value,
+                                GParamSpec *pspec)
+{
+  GabbleFtManager *self = GABBLE_FT_MANAGER (object);
+
+  switch (property_id)
+    {
+      case PROP_CONNECTION:
+        g_value_set_object (value, self->priv->connection);
+        break;
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+        break;
+    }
+}
+
+static void
+gabble_ft_manager_set_property (GObject *object,
+                                guint property_id,
+                                const GValue *value,
+                                GParamSpec *pspec)
+{
+  GabbleFtManager *self = GABBLE_FT_MANAGER (object);
+
+  switch (property_id)
+    {
+      case PROP_CONNECTION:
+        self->priv->connection = g_value_get_object (value);
+        break;
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+        break;
+    }
+}
+
+static void
 gabble_ft_manager_class_init (GabbleFtManagerClass *gabble_ft_manager_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_ft_manager_class);
+  GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_ft_manager_class,
                             sizeof (GabbleFtManagerPrivate));
 
+  object_class->get_property = gabble_ft_manager_get_property;
+  object_class->set_property = gabble_ft_manager_set_property;
+
   object_class->dispose = gabble_ft_manager_dispose;
   object_class->finalize = gabble_ft_manager_finalize;
+
+  param_spec = g_param_spec_object ("connection",
+      "GabbleConnection object",
+      "Gabble Connection that owns the connection for this FT manager",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 }
 
 void
@@ -492,13 +550,9 @@ channel_manager_iface_init (gpointer g_iface,
 GabbleFtManager *
 gabble_ft_manager_new (GabbleConnection *connection)
 {
-  GabbleFtManager *ret = NULL;
-
   g_assert (connection != NULL);
 
-  ret = g_object_new (GABBLE_TYPE_FT_MANAGER, NULL);
-
-  ret->priv->connection = connection;
-
-  return ret;
+  return g_object_new (GABBLE_TYPE_FT_MANAGER,
+      "connection", connection,
+      NULL);
 }

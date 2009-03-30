@@ -1061,7 +1061,7 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
     {
       DEBUG ("can't find contact's presence");
       if (error != NULL)
-        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
             "can't find contact's presence");
 
       return FALSE;

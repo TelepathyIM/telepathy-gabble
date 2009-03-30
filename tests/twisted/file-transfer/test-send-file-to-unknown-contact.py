@@ -16,7 +16,7 @@ class SendFileTransferToUnknownContactTest(SendFileTest):
         try:
             self.request_ft_channel()
         except dbus.DBusException, e:
-            assert e.get_dbus_name() == cs.NOT_AVAILABLE
+            assert e.get_dbus_name() == cs.OFFLINE
         else:
             assert False
 

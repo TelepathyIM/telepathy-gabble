@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -770,9 +771,17 @@ gabble_file_transfer_channel_finalize (GObject *object)
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (object);
 
   /* free any data held directly by the object here */
+  if (self->priv->socket_path != NULL)
+    {
+      if (g_unlink (self->priv->socket_path) != 0)
+        {
+          DEBUG ("unlink failed: %s", g_strerror (errno));
+        }
+    }
+  g_free (self->priv->socket_path);
+
   g_free (self->priv->object_path);
   g_free (self->priv->filename);
-  g_free (self->priv->socket_path);
   g_free (self->priv->content_type);
   g_free (self->priv->content_hash);
   g_free (self->priv->description);

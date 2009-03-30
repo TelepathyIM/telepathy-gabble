@@ -263,11 +263,20 @@ class SendFileTest(FileTransferTest):
         properties = self.conn.GetAll(cs.CONN_IFACE_REQUESTS,
                 dbus_interface=cs.PROPERTIES_IFACE)
 
+        # general FT class
         assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
                  cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT},
+                [cs.FT_CONTENT_HASH_TYPE, cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE,
+                 cs.FT_FILENAME, cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE]
+             ) in properties.get('RequestableChannelClasses'),\
+                     properties['RequestableChannelClasses']
+
+        # FT class with MD5 as HashType
+        assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
+                 cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+                 cs.FT_CONTENT_HASH_TYPE: cs.FILE_HASH_TYPE_MD5},
                 [cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE, cs.FT_FILENAME,
-                 cs.FT_SIZE, cs.FT_CONTENT_HASH_TYPE, cs.FT_CONTENT_HASH,
-                 cs.FT_DESCRIPTION, cs.FT_DATE]
+                 cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 

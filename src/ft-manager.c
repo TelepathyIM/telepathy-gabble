@@ -421,12 +421,13 @@ static const gchar * const file_transfer_channel_fixed_properties[] = {
 
 static const gchar * const file_transfer_channel_allowed_properties[] =
 {
+   /* ContentHashType has to be first so we can easily skip it when needed */
+   TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentHashType",
    TP_IFACE_CHANNEL ".TargetHandle",
    TP_IFACE_CHANNEL ".TargetID",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentType",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Filename",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Size",
-   TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentHashType",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentHash",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Description",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Date",
@@ -441,6 +442,7 @@ gabble_ft_manager_foreach_channel_class (TpChannelManager *manager,
   GHashTable *table;
   GValue *value;
 
+  /* general FT class */
   table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) tp_g_value_slice_free);
 
@@ -453,6 +455,15 @@ gabble_ft_manager_foreach_channel_class (TpChannelManager *manager,
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
 
   func (manager, table, file_transfer_channel_allowed_properties,
+      user_data);
+
+  /* MD5 HashType class */
+  g_hash_table_insert (table,
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentHashType",
+      tp_g_value_slice_new_uint (TP_FILE_HASH_TYPE_MD5));
+
+  /* skip ContentHashType in allowed properties */
+  func (manager, table, file_transfer_channel_allowed_properties + 1,
       user_data);
 
   g_hash_table_destroy (table);

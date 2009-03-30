@@ -217,14 +217,20 @@ static void
 file_channel_closed (GabbleFtManager *self,
                      GabbleFileTransferChannel *chan)
 {
-  TpHandle handle;
-
   if (self->priv->channels)
     {
-      g_object_get (chan, "handle", &handle, NULL);
-      DEBUG ("Removing channel with handle %d", handle);
+      gchar *path, *id;
+
+      g_object_get (chan,
+          "target-id", &id,
+          "object-path", &path,
+          NULL);
+
+      DEBUG ("Removing channel %s with %s", path, id);
       self->priv->channels = g_list_remove (self->priv->channels, chan);
       g_object_unref (chan);
+      g_free (id);
+      g_free (path);
     }
 }
 

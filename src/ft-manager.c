@@ -537,7 +537,6 @@ channel_manager_iface_init (gpointer g_iface,
 
   iface->foreach_channel = gabble_ft_manager_foreach_channel;
   iface->foreach_channel_class = gabble_ft_manager_foreach_channel_class;
-  iface->request_channel = gabble_ft_manager_handle_request;
   iface->create_channel = gabble_ft_manager_handle_request;
   iface->ensure_channel = gabble_ft_manager_handle_request;
 }

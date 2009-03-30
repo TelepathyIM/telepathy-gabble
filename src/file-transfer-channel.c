@@ -1085,7 +1085,7 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
         {
           DEBUG ("contact doesn't have file transfer capabilities");
           if (error != NULL)
-            g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
                 "contact doesn't have file transfer capabilities");
 
           return FALSE;

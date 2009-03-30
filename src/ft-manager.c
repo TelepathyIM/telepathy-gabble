@@ -56,8 +56,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleFtManager, gabble_ft_manager, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
 
 /* private structure */
-typedef struct _GabbleFtManagerPrivate GabbleFtManagerPrivate;
-
 struct _GabbleFtManagerPrivate
 {
   gboolean dispose_has_run;
@@ -65,18 +63,15 @@ struct _GabbleFtManagerPrivate
   GList *channels;
 };
 
-#define GABBLE_FT_MANAGER_GET_PRIVATE(o) \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_FT_MANAGER, \
-                                GabbleFtManagerPrivate))
-
 static void
 gabble_ft_manager_init (GabbleFtManager *obj)
 {
-  GabbleFtManagerPrivate *priv = GABBLE_FT_MANAGER_GET_PRIVATE (obj);
-  priv->connection = NULL;
+  obj->priv = G_TYPE_INSTANCE_GET_PRIVATE (obj,
+      GABBLE_TYPE_FT_MANAGER, GabbleFtManagerPrivate);
+  obj->priv->connection = NULL;
 
   /* allocate any data required by the object here */
-  priv->channels = NULL;
+  obj->priv->channels = NULL;
 }
 
 static void gabble_ft_manager_dispose (GObject *object);
@@ -98,23 +93,22 @@ void
 gabble_ft_manager_dispose (GObject *object)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (object);
-  GabbleFtManagerPrivate *priv = GABBLE_FT_MANAGER_GET_PRIVATE (self);
   GList *l;
 
-  if (priv->dispose_has_run)
+  if (self->priv->dispose_has_run)
     return;
 
-  priv->dispose_has_run = TRUE;
+  self->priv->dispose_has_run = TRUE;
 
-  for (l = priv->channels; l != NULL; l = g_list_next (l))
+  for (l = self->priv->channels; l != NULL; l = g_list_next (l))
     {
       g_signal_handlers_disconnect_matched (l->data,
           G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, self);
       g_object_unref (l->data);
     }
 
-  if (priv->channels)
-    g_list_free (priv->channels);
+  if (self->priv->channels)
+    g_list_free (self->priv->channels);
 
   if (G_OBJECT_CLASS (gabble_ft_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_ft_manager_parent_class)->dispose (object);
@@ -124,7 +118,6 @@ void
 gabble_ft_manager_finalize (GObject *object)
 {
   /*GabbleFtManager *self = GABBLE_FT_MANAGER (object);*/
-  /*GabbleFtManagerPrivate *priv = GABBLE_FT_MANAGER_GET_PRIVATE (self);*/
 
   G_OBJECT_CLASS (gabble_ft_manager_parent_class)->finalize (object);
 }
@@ -156,28 +149,26 @@ gabble_ft_manager_foreach_channel (TpChannelManager *iface,
                                   TpExportableChannelFunc func,
                                   gpointer data)
 {
-  GabbleFtManager *mgr = GABBLE_FT_MANAGER (iface);
-  GabbleFtManagerPrivate *priv = GABBLE_FT_MANAGER_GET_PRIVATE (mgr);
+  GabbleFtManager *self = GABBLE_FT_MANAGER (iface);
   struct foreach_data f;
   f.func = func;
   f.data = data;
 
-  g_list_foreach (priv->channels, (GFunc) gabble_ft_manager_iface_foreach_one,
-      &f);
+  g_list_foreach (self->priv->channels,
+      (GFunc) gabble_ft_manager_iface_foreach_one, &f);
 }
 
 static void
 file_channel_closed (GabbleFtManager *self,
                      GabbleFileTransferChannel *chan)
 {
-  GabbleFtManagerPrivate *priv = GABBLE_FT_MANAGER_GET_PRIVATE (self);
   TpHandle handle;
 
-  if (priv->channels)
+  if (self->priv->channels)
     {
       g_object_get (chan, "handle", &handle, NULL);
       DEBUG ("Removing channel with handle %d", handle);
-      priv->channels = g_list_remove (priv->channels, chan);
+      self->priv->channels = g_list_remove (self->priv->channels, chan);
       g_object_unref (chan);
     }
 }
@@ -195,12 +186,11 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
                                    GabbleFileTransferChannel *chan,
                                    gpointer request_token)
 {
-  GabbleFtManagerPrivate *priv = GABBLE_FT_MANAGER_GET_PRIVATE (self);
   GSList *requests = NULL;
 
   g_signal_connect (chan, "closed", G_CALLBACK (file_channel_closed_cb), self);
 
-  priv->channels = g_list_append (priv->channels, chan);
+  self->priv->channels = g_list_append (self->priv->channels, chan);
 
   if (request_token != NULL)
     requests = g_slist_prepend (requests, request_token);
@@ -217,9 +207,8 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
                                  GHashTable *request_properties)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (manager);
-  GabbleFtManagerPrivate *priv = GABBLE_FT_MANAGER_GET_PRIVATE (self);
   GabbleFileTransferChannel *chan;
-  TpBaseConnection *base_connection = TP_BASE_CONNECTION (priv->connection);
+  TpBaseConnection *base_connection = TP_BASE_CONNECTION (self->priv->connection);
   TpHandleRepoIface *contact_repo =
       tp_base_connection_get_handles (base_connection, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
@@ -330,7 +319,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
   DEBUG ("Requested outgoing channel with contact: %s",
       tp_handle_inspect (contact_repo, handle));
 
-  chan = gabble_file_transfer_channel_new (priv->connection,
+  chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, base_connection->self_handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
       description, date, initial_offset, NULL);
@@ -406,7 +395,6 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
                                           const gchar *stream_id,
                                           LmMessage *msg)
 {
-  GabbleFtManagerPrivate *priv = GABBLE_FT_MANAGER_GET_PRIVATE (self);
   LmMessageNode *si_node, *file_node, *desc_node;
   const gchar *filename, *size_str, *content_type, *content_hash, *description;
   const gchar *date_str;
@@ -479,7 +467,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
     }
 
   /* TODO: initial offset */
-  chan = gabble_file_transfer_channel_new (priv->connection,
+  chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
       description, date, 0, bytestream);
@@ -505,14 +493,12 @@ GabbleFtManager *
 gabble_ft_manager_new (GabbleConnection *connection)
 {
   GabbleFtManager *ret = NULL;
-  GabbleFtManagerPrivate *priv;
 
   g_assert (connection != NULL);
 
   ret = g_object_new (GABBLE_TYPE_FT_MANAGER, NULL);
-  priv = GABBLE_FT_MANAGER_GET_PRIVATE (ret);
 
-  priv->connection = connection;
+  ret->priv->connection = connection;
 
   return ret;
 }

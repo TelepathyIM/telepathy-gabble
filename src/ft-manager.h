@@ -32,6 +32,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleFtManager GabbleFtManager;
 typedef struct _GabbleFtManagerClass GabbleFtManagerClass;
+typedef struct _GabbleFtManagerPrivate GabbleFtManagerPrivate;
 
 struct _GabbleFtManagerClass {
     GObjectClass parent_class;
@@ -39,6 +40,8 @@ struct _GabbleFtManagerClass {
 
 struct _GabbleFtManager {
     GObject parent;
+
+    GabbleFtManagerPrivate *priv;
 };
 
 GType gabble_ft_manager_get_type (void);

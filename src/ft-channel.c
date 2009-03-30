@@ -1453,7 +1453,8 @@ get_local_unix_socket_path (GabbleFileTransferChannel *self)
     {
       random_int = g_random_int_range (0, G_MAXINT32);
       random_str = g_strdup_printf ("tp-ft-%i", random_int);
-      path = g_build_filename (g_get_tmp_dir (), random_str, NULL);
+      path = g_build_filename (gabble_ft_manager_get_tmp_dir (
+            self->priv->connection->ft_manager), random_str, NULL);
       g_free (random_str);
 
       if (g_stat (path, &buf) != 0)

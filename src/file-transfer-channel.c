@@ -1371,7 +1371,6 @@ gabble_file_transfer_channel_provide_file (
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (iface);
   TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->connection;
-  GabbleFileTransferChannel *channel = GABBLE_FILE_TRANSFER_CHANNEL (iface);
   GValue out_address = { 0 };
   GError *error = NULL;
 
@@ -1408,7 +1407,7 @@ gabble_file_transfer_channel_provide_file (
     }
 
   g_value_init (&out_address, G_TYPE_STRING);
-  g_value_set_string (&out_address, channel->priv->socket_path);
+  g_value_set_string (&out_address, self->priv->socket_path);
 
   if (self->priv->remote_accepted)
     {

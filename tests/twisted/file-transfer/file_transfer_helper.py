@@ -169,19 +169,19 @@ class ReceiveFileTest(FileTransferTest):
         assert props[cs.INITIATOR_ID] == self.contact_name
 
         # org.freedesktop.Telepathy.Channel.Type.FileTransfer D-Bus properties
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.State'] == cs.FT_STATE_PENDING
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentType'] == self.file.content_type
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.Filename'] == self.file.name
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.Size'] == self.file.size
+        assert props[cs.FT_STATE] == cs.FT_STATE_PENDING
+        assert props[cs.FT_CONTENT_TYPE] == self.file.content_type
+        assert props[cs.FT_FILENAME] == self.file.name
+        assert props[cs.FT_SIZE] == self.file.size
         # FT's protocol doesn't allow us the send the hash info
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHashType'] == cs.FILE_HASH_TYPE_MD5
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHash'] == self.file.hash
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.Description'] == self.file.description
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.Date'] == self.file.date
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.AvailableSocketTypes'] == \
+        assert props[cs.FT_CONTENT_HASH_TYPE] == cs.FILE_HASH_TYPE_MD5
+        assert props[cs.FT_CONTENT_HASH] == self.file.hash
+        assert props[cs.FT_DESCRIPTION] == self.file.description
+        assert props[cs.FT_DATE] == self.file.date
+        assert props[cs.FT_AVAILABLE_SOCKET_TYPES] == \
             {cs.SOCKET_ADDRESS_TYPE_UNIX: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]}
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.TransferredBytes'] == 0
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.InitialOffset'] == 0
+        assert props[cs.FT_TRANSFERRED_BYTES] == 0
+        assert props[cs.FT_INITIAL_OFFSET] == 0
 
         self.ft_path = path
 
@@ -265,14 +265,9 @@ class SendFileTest(FileTransferTest):
 
         assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
                  cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT},
-                [cs.TARGET_HANDLE, cs.TARGET_ID,
-                 cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentType',
-                 cs.CHANNEL_TYPE_FILE_TRANSFER + '.Filename',
-                 cs.CHANNEL_TYPE_FILE_TRANSFER + '.Size',
-                 cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHashType',
-                 cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHash',
-                 cs.CHANNEL_TYPE_FILE_TRANSFER + '.Description',
-                 cs.CHANNEL_TYPE_FILE_TRANSFER + '.Date']
+                [cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE, cs.FT_FILENAME,
+                 cs.FT_SIZE, cs.FT_CONTENT_HASH_TYPE, cs.FT_CONTENT_HASH,
+                 cs.FT_DESCRIPTION, cs.FT_DATE]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -283,14 +278,14 @@ class SendFileTest(FileTransferTest):
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
             cs.TARGET_HANDLE: self.handle,
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentType': self.file.content_type,
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.Filename': self.file.name,
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.Size': self.file.size,
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHashType': self.file.hash_type,
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHash': self.file.hash,
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.Description': self.file.description,
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.Date':  self.file.date,
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.InitialOffset': 0,
+            cs.FT_CONTENT_TYPE: self.file.content_type,
+            cs.FT_FILENAME: self.file.name,
+            cs.FT_SIZE: self.file.size,
+            cs.FT_CONTENT_HASH_TYPE: self.file.hash_type,
+            cs.FT_CONTENT_HASH: self.file.hash,
+            cs.FT_DESCRIPTION: self.file.description,
+            cs.FT_DATE:  self.file.date,
+            cs.FT_INITIAL_OFFSET: 0,
             })
 
         # org.freedesktop.Telepathy.Channel D-Bus properties
@@ -304,18 +299,18 @@ class SendFileTest(FileTransferTest):
         assert props[cs.INITIATOR_ID] == self.self_handle_name
 
         # org.freedesktop.Telepathy.Channel.Type.FileTransfer D-Bus properties
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.State'] == cs.FT_STATE_PENDING
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentType'] == self.file.content_type
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.Filename'] == self.file.name
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.Size'] == self.file.size
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHashType'] == self.file.hash_type
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHash'] == self.file.hash
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.Description'] == self.file.description
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.Date'] == self.file.date
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.AvailableSocketTypes'] == \
+        assert props[cs.FT_STATE] == cs.FT_STATE_PENDING
+        assert props[cs.FT_CONTENT_TYPE] == self.file.content_type
+        assert props[cs.FT_FILENAME] == self.file.name
+        assert props[cs.FT_SIZE] == self.file.size
+        assert props[cs.FT_CONTENT_HASH_TYPE] == self.file.hash_type
+        assert props[cs.FT_CONTENT_HASH] == self.file.hash
+        assert props[cs.FT_DESCRIPTION] == self.file.description
+        assert props[cs.FT_DATE] == self.file.date
+        assert props[cs.FT_AVAILABLE_SOCKET_TYPES] == \
             {cs.SOCKET_ADDRESS_TYPE_UNIX: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]}
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.TransferredBytes'] == 0
-        assert props[cs.CHANNEL_TYPE_FILE_TRANSFER + '.InitialOffset'] == 0
+        assert props[cs.FT_TRANSFERRED_BYTES] == 0
+        assert props[cs.FT_INITIAL_OFFSET] == 0
 
     def got_send_iq(self):
         iq_event = self.q.expect('stream-iq', to=self.contact_full_jid)

@@ -151,22 +151,22 @@ void
 gabble_ft_manager_dispose (GObject *object)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (object);
-  GList *l;
+  GList *tmp, *l;
 
   if (self->priv->dispose_has_run)
     return;
 
   self->priv->dispose_has_run = TRUE;
 
-  for (l = self->priv->channels; l != NULL; l = g_list_next (l))
+  tmp = self->priv->channels;
+  self->priv->channels = NULL;
+
+  for (l = tmp; l != NULL; l = g_list_next (l))
     {
-      g_signal_handlers_disconnect_matched (l->data,
-          G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, self);
       g_object_unref (l->data);
     }
 
-  if (self->priv->channels)
-    g_list_free (self->priv->channels);
+  g_list_free (tmp);
 
   if (G_OBJECT_CLASS (gabble_ft_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_ft_manager_parent_class)->dispose (object);
@@ -243,7 +243,8 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
 {
   GSList *requests = NULL;
 
-  g_signal_connect (chan, "closed", G_CALLBACK (file_channel_closed_cb), self);
+  gabble_signal_connect_weak (chan, "closed",
+      G_CALLBACK (file_channel_closed_cb), G_OBJECT (self));
 
   self->priv->channels = g_list_append (self->priv->channels, chan);
 

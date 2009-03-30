@@ -389,9 +389,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
 
   if (!gabble_file_transfer_channel_offer_file (chan, &error))
     {
-      /* Pretend the chan was closed so it's removed from the channels
-       * list and unreffed. */
-      file_channel_closed (self, chan);
+      g_object_unref (chan);
       goto error;
     }
 

@@ -33,7 +33,7 @@
 #include "namespaces.h"
 #include "util.h"
 
-#include "file-transfer-channel.h"
+#include "ft-channel.h"
 
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/channel-factory-iface.h>

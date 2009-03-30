@@ -1,5 +1,5 @@
 /*
- * file-transfer-channel.c - Source for GabbleFileTransferChannel
+ * ft-channel.c - Source for GabbleFileTransferChannel
  * Copyright (C) 2009 Collabora Ltd.
  *   @author: Guillaume Desmottes <guillaume.desmottes@collabora.co.uk>
  *
@@ -38,7 +38,7 @@
 
 #include "bytestream-factory.h"
 #include "connection.h"
-#include "file-transfer-channel.h"
+#include "ft-channel.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "presence-cache.h"

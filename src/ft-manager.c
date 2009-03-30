@@ -189,7 +189,7 @@ struct foreach_data {
 
 static void
 gabble_ft_manager_iface_foreach_one (gpointer value,
-                                    gpointer data)
+                                     gpointer data)
 {
   TpExportableChannel *chan;
   struct foreach_data *f = (struct foreach_data *) data;
@@ -232,7 +232,8 @@ file_channel_closed (GabbleFtManager *self,
 }
 
 static void
-file_channel_closed_cb (GabbleFileTransferChannel *chan, gpointer user_data)
+file_channel_closed_cb (GabbleFileTransferChannel *chan,
+                        gpointer user_data)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (user_data);
 
@@ -266,7 +267,8 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (manager);
   GabbleFileTransferChannel *chan;
-  TpBaseConnection *base_connection = TP_BASE_CONNECTION (self->priv->connection);
+  TpBaseConnection *base_connection = TP_BASE_CONNECTION (
+      self->priv->connection);
   TpHandleRepoIface *contact_repo =
       tp_base_connection_get_handles (base_connection, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;

@@ -194,9 +194,6 @@ gabble_ft_manager_iface_foreach_one (gpointer value,
   TpExportableChannel *chan;
   struct foreach_data *f = (struct foreach_data *) data;
 
-  if (!value)
-    return;
-
   chan = TP_EXPORTABLE_CHANNEL (value);
 
   f->func (chan, f->data);

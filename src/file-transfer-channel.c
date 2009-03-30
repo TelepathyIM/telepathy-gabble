@@ -47,6 +47,7 @@
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/svc-generic.h>
 #include <telepathy-glib/svc-channel.h>
 
@@ -682,7 +683,7 @@ gabble_file_transfer_channel_class_init (
       "available-socket-types",
       "GabbleSupportedSocketMap available-socket-types",
       "Available socket types",
-      dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, DBUS_TYPE_G_UINT_ARRAY),
+      TP_HASH_TYPE_SUPPORTED_SOCKET_MAP,
       G_PARAM_READABLE |
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);

@@ -10,8 +10,8 @@ Enhancements:
 
 * Discover SOCKS5 proxies on the connection and try to use them when offering
   a SOCKS5 bytestream.
-* Add fallback-socks5-proxy connection parameter to hardcode a SOCKS5 proxy
-  to use as fallback.
+* Add fallback-socks5-proxies connection parameter to hardcode SOCKS5 proxies
+  to use as fallback. Set lot of public proxies as default.
 * Use IPv6 addresses when trying to establish a SOCKS5 bytestream.
 
 Fixes:

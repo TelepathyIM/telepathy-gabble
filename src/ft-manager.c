@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <glib/gstdio.h>
 
 #include "caps-channel-manager.h"
 #include "connection.h"
@@ -181,6 +182,13 @@ gabble_ft_manager_finalize (GObject *object)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (object);
 
+  if (self->priv->tmp_dir != NULL)
+    {
+      if (g_rmdir (self->priv->tmp_dir) != 0)
+        {
+          DEBUG ("rmdir failed: %s", g_strerror (errno));
+        }
+    }
   g_free (self->priv->tmp_dir);
 
   G_OBJECT_CLASS (gabble_ft_manager_parent_class)->finalize (object);

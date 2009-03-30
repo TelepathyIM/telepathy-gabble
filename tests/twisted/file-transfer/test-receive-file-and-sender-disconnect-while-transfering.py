@@ -1,7 +1,7 @@
 from twisted.words.xish import domish
 
-from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest,\
-    FT_STATE_CANCELLED, FT_STATE_CHANGE_REASON_REMOTE_STOPPED
+import constants as cs
+from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest
 
 class ReceiveFileAndSenderDisconnectWhileTransfering(ReceiveFileTest):
     def accept_file(self):
@@ -15,8 +15,8 @@ class ReceiveFileAndSenderDisconnectWhileTransfering(ReceiveFileTest):
 
         e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')
         state, reason = e.args
-        assert state == FT_STATE_CANCELLED
-        assert reason == FT_STATE_CHANGE_REASON_REMOTE_STOPPED
+        assert state == cs.FT_STATE_CANCELLED
+        assert reason == cs.FT_STATE_CHANGE_REASON_REMOTE_STOPPED
 
         return True
 

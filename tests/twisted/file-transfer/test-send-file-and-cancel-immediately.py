@@ -1,5 +1,5 @@
-from file_transfer_helper import SendFileTest, FT_STATE_CANCELLED, \
-    FT_STATE_CHANGE_REASON_LOCAL_STOPPED, exec_file_transfer_test
+import constants as cs
+from file_transfer_helper import SendFileTest, exec_file_transfer_test
 
 class SendFileAndCancelImmediatelyTest(SendFileTest):
     def provide_file(self):
@@ -10,8 +10,8 @@ class SendFileAndCancelImmediatelyTest(SendFileTest):
 
         e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')
         state, reason = e.args
-        assert state == FT_STATE_CANCELLED
-        assert reason == FT_STATE_CHANGE_REASON_LOCAL_STOPPED
+        assert state == cs.FT_STATE_CANCELLED
+        assert reason == cs.FT_STATE_CHANGE_REASON_LOCAL_STOPPED
 
         self.q.expect('dbus-signal', signal='Closed')
 

@@ -3,8 +3,7 @@ import dbus
 from twisted.words.xish import domish
 
 import constants as cs
-from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest, SOCKET_ADDRESS_TYPE_UNIX,\
-    SOCKET_ACCESS_CONTROL_LOCALHOST, FT_STATE_CANCELLED, FT_STATE_CHANGE_REASON_REMOTE_STOPPED
+from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest
 
 class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
     def accept_file(self):
@@ -17,13 +16,13 @@ class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
 
         e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')
         state, reason = e.args
-        assert state == FT_STATE_CANCELLED
-        assert reason == FT_STATE_CHANGE_REASON_REMOTE_STOPPED
+        assert state == cs.FT_STATE_CANCELLED
+        assert reason == cs.FT_STATE_CHANGE_REASON_REMOTE_STOPPED
 
         # We can't accept the transfer now
         try:
-            self.ft_channel.AcceptFile(SOCKET_ADDRESS_TYPE_UNIX,
-                SOCKET_ACCESS_CONTROL_LOCALHOST, "", 0)
+            self.ft_channel.AcceptFile(cs.SOCKET_ADDRESS_TYPE_UNIX,
+                cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "", 0)
         except dbus.DBusException, e:
             assert e.get_dbus_name() == cs.NOT_AVAILABLE
         else:

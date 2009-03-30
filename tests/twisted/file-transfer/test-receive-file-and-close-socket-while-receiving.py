@@ -1,7 +1,7 @@
 import socket
 
-from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest,\
-    FT_STATE_CANCELLED, FT_STATE_CHANGE_REASON_LOCAL_ERROR
+import constants as cs
+from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest
 
 class ReceiveFileAndCancelWhileReceiving(ReceiveFileTest):
     def receive_file(self):
@@ -16,7 +16,7 @@ class ReceiveFileAndCancelWhileReceiving(ReceiveFileTest):
         self.bytestream.send_data(self.file.data[2:3])
 
         self.q.expect('dbus-signal', signal='FileTransferStateChanged',
-            args=[FT_STATE_CANCELLED, FT_STATE_CHANGE_REASON_LOCAL_ERROR])
+            args=[cs.FT_STATE_CANCELLED, cs.FT_STATE_CHANGE_REASON_LOCAL_ERROR])
 
         self.channel.Close()
         self.q.expect('dbus-signal', signal='Closed')

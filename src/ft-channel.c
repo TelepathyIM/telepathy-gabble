@@ -1454,22 +1454,19 @@ static const gchar *
 get_local_unix_socket_path (GabbleFileTransferChannel *self)
 {
   gchar *path = NULL;
-  gint32 random_int;
-  gchar *random_str;
+  gchar *name;
   struct stat buf;
 
-  while (TRUE)
+  name = g_strdup_printf ("ft-channel-%p", self);
+  path = g_build_filename (gabble_ft_manager_get_tmp_dir (
+        self->priv->connection->ft_manager), name, NULL);
+  g_free (name);
+
+  if (g_stat (path, &buf) == 0)
     {
-      random_int = g_random_int_range (0, G_MAXINT32);
-      random_str = g_strdup_printf ("tp-ft-%i", random_int);
-      path = g_build_filename (gabble_ft_manager_get_tmp_dir (
-            self->priv->connection->ft_manager), random_str, NULL);
-      g_free (random_str);
-
-      if (g_stat (path, &buf) != 0)
-        break;
-
-      g_free (path);
+      /* The file is not supposed to exist */
+      DEBUG ("file %s already exists", path);
+      g_assert_not_reached ();
     }
 
   if (self->priv->socket_path)

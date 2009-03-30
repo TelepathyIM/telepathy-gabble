@@ -18,9 +18,11 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#define _BSD_SOURCE
 #define _XOPEN_SOURCE /* glibc2 needs this */
 #include <time.h>
 #include <dbus/dbus-glib.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,6 +71,8 @@ struct _GabbleFtManagerPrivate
   gboolean dispose_has_run;
   GabbleConnection *connection;
   GList *channels;
+  /* path of the temporary directory used to store UNIX sockets */
+  gchar *tmp_dir;
 };
 
 static void
@@ -175,7 +179,9 @@ gabble_ft_manager_dispose (GObject *object)
 void
 gabble_ft_manager_finalize (GObject *object)
 {
-  /*GabbleFtManager *self = GABBLE_FT_MANAGER (object);*/
+  GabbleFtManager *self = GABBLE_FT_MANAGER (object);
+
+  g_free (self->priv->tmp_dir);
 
   G_OBJECT_CLASS (gabble_ft_manager_parent_class)->finalize (object);
 }
@@ -551,4 +557,19 @@ gabble_ft_manager_new (GabbleConnection *connection)
   return g_object_new (GABBLE_TYPE_FT_MANAGER,
       "connection", connection,
       NULL);
+}
+
+const gchar *
+gabble_ft_manager_get_tmp_dir (GabbleFtManager *self)
+{
+  if (self->priv->tmp_dir != NULL)
+    return self->priv->tmp_dir;
+
+  self->priv->tmp_dir = g_strdup_printf ("%s/gabble-ft-XXXXXX",
+      g_get_tmp_dir ());
+  self->priv->tmp_dir = mkdtemp (self->priv->tmp_dir);
+  if (self->priv->tmp_dir == NULL)
+    g_critical ("mkdtemp failed: %s\n", g_strerror (errno));
+
+  return self->priv->tmp_dir;
 }

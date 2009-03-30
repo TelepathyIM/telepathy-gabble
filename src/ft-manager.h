@@ -66,6 +66,8 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
     GabbleBytestreamIface *bytestream, TpHandle handle, const gchar *stream_id,
     LmMessage *msg);
 
+const gchar * gabble_ft_manager_get_tmp_dir (GabbleFtManager *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_FT_MANAGER_H__*/

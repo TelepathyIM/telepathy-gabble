@@ -214,10 +214,12 @@ gabble_ft_manager_foreach_channel (TpChannelManager *iface,
 }
 
 static void
-file_channel_closed (GabbleFtManager *self,
-                     GabbleFileTransferChannel *chan)
+file_channel_closed_cb (GabbleFileTransferChannel *chan,
+                        gpointer user_data)
 {
-  if (self->priv->channels)
+  GabbleFtManager *self = GABBLE_FT_MANAGER (user_data);
+
+  if (self->priv->channels != NULL)
     {
       gchar *path, *id;
 
@@ -232,15 +234,6 @@ file_channel_closed (GabbleFtManager *self,
       g_free (id);
       g_free (path);
     }
-}
-
-static void
-file_channel_closed_cb (GabbleFileTransferChannel *chan,
-                        gpointer user_data)
-{
-  GabbleFtManager *self = GABBLE_FT_MANAGER (user_data);
-
-  file_channel_closed (self, chan);
 }
 
 static void

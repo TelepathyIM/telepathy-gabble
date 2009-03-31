@@ -7,11 +7,9 @@ import dbus
 from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 
-from twisted.words.xish import domish, xpath
-from twisted.words.protocols.jabber.client import IQ
+from twisted.words.xish import xpath
 
-from util import (announce_gadget, properties_to_xml, parse_properties,
-    create_gadget_message, close_view, elem)
+from util import announce_gadget, create_gadget_message, elem
 import ns
 
 tp_name_prefix = 'org.freedesktop.Telepathy'

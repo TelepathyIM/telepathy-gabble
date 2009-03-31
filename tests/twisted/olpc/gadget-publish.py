@@ -4,12 +4,8 @@ test OLPC search activity
 
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix
-from gabbletest import (exec_test, make_result_iq, acknowledge_iq, sync_stream,
-    elem)
-
-from twisted.words.xish import domish, xpath
-from twisted.words.protocols.jabber.client import IQ
+from servicetest import EventPattern
+from gabbletest import exec_test, acknowledge_iq
 
 from util import announce_gadget, gadget_publish
 import ns

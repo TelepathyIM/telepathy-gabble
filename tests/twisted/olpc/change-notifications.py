@@ -3,12 +3,8 @@ test OLPC Buddy properties change notifications
 """
 # FIXME: merge this file to other tests ?
 
-import dbus
-
-from servicetest import call_async, EventPattern
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
-
-from twisted.words.xish import domish, xpath
+from servicetest import EventPattern
+from gabbletest import exec_test, acknowledge_iq
 
 from util import announce_gadget, send_buddy_changed_properties_msg
 import ns

@@ -7,7 +7,7 @@ import dbus
 from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 from twisted.words.protocols.jabber.client import IQ
 
 from util import (announce_gadget, properties_to_xml, parse_properties,

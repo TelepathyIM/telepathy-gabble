@@ -6,7 +6,8 @@ Test MUC properties support.
 from twisted.words.xish import xpath
 
 from gabbletest import (
-    exec_test, make_result_iq, acknowledge_iq, make_muc_presence)
+    exec_test, make_result_iq, acknowledge_iq, make_muc_presence,
+    request_muc_handle)
 from servicetest import call_async, wrap_channel, EventPattern
 
 import constants
@@ -40,20 +41,10 @@ def handle_muc_get_iq(stream, stanza):
 def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
-    # Need to call this asynchronously as it involves Gabble sending us a
-    # query.
-    call_async(q, conn, 'RequestHandles', 2, ['chat@conf.localhost'])
+    muc_handle = request_muc_handle(q, conn, stream, 'chat@conf.localhost')
 
-    event = q.expect('stream-iq', to='conf.localhost', query_ns=ns.DISCO_INFO)
-    result = make_result_iq(stream, event.stanza)
-    feature = result.firstChildElement().addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/muc'
-    stream.send(result)
-
-    event = q.expect('dbus-return', method='RequestHandles')
-    handles = event.value[0]
     call_async(q, conn, 'RequestChannel', constants.CHANNEL_TYPE_TEXT, 2,
-        handles[0], True)
+        muc_handle, True)
 
     q.expect('stream-presence', to='chat@conf.localhost/test')
 

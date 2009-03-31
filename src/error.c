@@ -272,26 +272,6 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
     },
 
     {
-      "unsupported-transports",
-      "the recipient does not support any of the desired content transport "
-      "methods",
-      "cancel",
-      XMPP_ERROR_FEATURE_NOT_IMPLEMENTED,
-      NS_JINGLE_ERRORS,
-      { 0, },
-    },
-
-    {
-      "unsupported-content",
-      "the recipient does not support any of the desired content description"
-      "formats",
-      "cancel",
-      XMPP_ERROR_FEATURE_NOT_IMPLEMENTED,
-      NS_JINGLE_ERRORS,
-      { 0, },
-    },
-
-    {
       "no-valid-streams",
       "None of the available streams are acceptable.",
       "cancel",

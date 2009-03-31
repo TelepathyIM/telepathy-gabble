@@ -55,19 +55,15 @@ def test(q, bus, conn, stream):
     call_async(q, conn, 'RequestChannel', constants.CHANNEL_TYPE_TEXT, 2,
         handles[0], True)
 
-    q.expect('dbus-signal', signal='MembersChanged',
-        args=[u'', [], [], [], [2], 0, 0])
     q.expect('stream-presence', to='chat@conf.localhost/test')
 
     # Send presence for own membership of room.
     stream.send(
         make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
 
-    iq, _, ret = q.expect_many(
+    iq, ret = q.expect_many(
         EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
             query_ns=ns.MUC_OWNER),
-        EventPattern('dbus-signal', signal='MembersChanged',
-            args=[u'', [2], [], [], [], 0, 0]),
         EventPattern('dbus-return', method='RequestChannel'))
     handle_muc_get_iq(stream, iq.stanza)
 

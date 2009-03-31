@@ -4,18 +4,15 @@ Test dealing with the server giving you a nick you didn't ask for.
 
 import dbus
 
-from twisted.words.xish import domish
-
 from gabbletest import (
-    exec_test, make_muc_presence, request_muc_handle, sync_stream
+    exec_test, make_muc_presence, request_muc_handle
     )
-from servicetest import call_async, EventPattern, unwrap, sync_dbus
+from servicetest import call_async, unwrap
 from constants import (
     HT_CONTACT, HT_ROOM,
     CONN_IFACE_REQUESTS, CHANNEL_TYPE_TEXT, CHANNEL_IFACE_GROUP,
     CHANNEL_TYPE, TARGET_HANDLE_TYPE, TARGET_HANDLE,
     )
-import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()

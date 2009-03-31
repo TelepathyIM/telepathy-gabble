@@ -10,7 +10,7 @@ from twisted.words.xish import domish
 from gabbletest import (
     exec_test, make_muc_presence, request_muc_handle, sync_stream
     )
-from servicetest import call_async, EventPattern, unwrap, sync_dbus
+from servicetest import call_async, unwrap, sync_dbus
 from constants import (
     HT_CONTACT, HT_ROOM,
     CONN_IFACE_REQUESTS, CHANNEL_TYPE_TEXT, CHANNEL_IFACE_GROUP,

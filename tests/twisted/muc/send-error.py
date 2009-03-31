@@ -4,8 +4,6 @@ Test incoming error messages in MUC channels.
 
 import dbus
 
-from twisted.words.xish import domish
-
 from gabbletest import exec_test
 from servicetest import EventPattern
 import ns

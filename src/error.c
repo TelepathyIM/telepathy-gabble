@@ -266,7 +266,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the 'sid' attribute specifies a session that is unknown to the "
       "recipient",
       "cancel",
-      XMPP_ERROR_BAD_REQUEST,
+      XMPP_ERROR_ITEM_NOT_FOUND,
       NS_JINGLE_ERRORS,
       { 0, },
     },

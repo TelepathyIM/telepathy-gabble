@@ -11,6 +11,7 @@ GOOGLE_ROSTER = 'google:roster'
 IBB = 'http://jabber.org/protocol/ibb'
 JINGLE = "http://jabber.org/protocol/jingle"
 JINGLE_AUDIO = "http://jabber.org/protocol/jingle/description/audio"
+JINGLE_RTP_INFO_1 = "urn:xmpp:jingle:apps:rtp:info:1"
 MUC = 'http://jabber.org/protocol/muc'
 MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
 MUC_OWNER = '%s#owner' % MUC

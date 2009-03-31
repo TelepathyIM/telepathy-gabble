@@ -26,10 +26,10 @@ def parse_properties(elems):
             continue
 
         if type not in valid_types:
-            raise PropertyTypeError(type, elems.uri)
+            raise ValueError
 
         if type == 'bool' and value not in ['1', '0', 'true', 'false']:
-            raise PropertyTypeError(type, elems.uri)
+            raise ValueError
 
         properties[name] = (type, value)
 

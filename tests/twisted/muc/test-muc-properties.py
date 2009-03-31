@@ -3,49 +3,14 @@
 Test MUC properties support.
 """
 
-import dbus
+from twisted.words.xish import xpath
 
-from twisted.words.xish import domish, xpath
+from gabbletest import (
+    exec_test, make_result_iq, acknowledge_iq, make_muc_presence)
+from servicetest import call_async, wrap_channel, EventPattern
 
-from gabbletest import go, make_result_iq, acknowledge_iq, make_muc_presence
-from servicetest import call_async, lazy, match
-
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
-    # Need to call this asynchronously as it involves Gabble sending us a
-    # query.
-    call_async(data['test'], data['conn_iface'], 'RequestHandles', 2,
-        ['chat@conf.localhost'])
-    return True
-
-@match('stream-iq', to='conf.localhost',
-    query_ns='http://jabber.org/protocol/disco#info')
-def expect_disco(event, data):
-    result = make_result_iq(data['stream'], event.stanza)
-    feature = result.firstChildElement().addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/muc'
-    data['stream'].send(result)
-    return True
-
-@match('dbus-return', method='RequestHandles')
-def expect_request_handles_return(event, data):
-    handles = event.value[0]
-
-    call_async(data['test'], data['conn_iface'], 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.Text', 2, handles[0], True)
-    return True
-
-@lazy
-@match('dbus-signal', signal='MembersChanged',
-    args=[u'', [], [], [], [2], 0, 0])
-def expect_members_changed1(event, data):
-    return True
-
-@match('stream-presence', to='chat@conf.localhost/test')
-def expect_presence(event, data):
-    # Send presence for own membership of room.
-    data['stream'].send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
-    return True
+import constants
+import ns
 
 def add_field(elem, type, var, value):
     field = elem.addElement('field')
@@ -72,45 +37,54 @@ def handle_muc_get_iq(stream, stanza):
     stream.send(iq)
     return True
 
-@lazy
-@match('stream-iq', to='chat@conf.localhost', iq_type='get',
-    query_ns='http://jabber.org/protocol/muc#owner')
-def expect_muc_get_iq1(event, data):
-    handle_muc_get_iq(data['stream'], event.stanza)
-    return True
+def test(q, bus, conn, stream):
+    conn.Connect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    # Need to call this asynchronously as it involves Gabble sending us a
+    # query.
+    call_async(q, conn, 'RequestHandles', 2, ['chat@conf.localhost'])
 
-@match('dbus-signal', signal='MembersChanged',
-    args=[u'', [2], [], [], [], 0, 0])
-def expect_members_changed2(event, data):
-    return True
+    event = q.expect('stream-iq', to='conf.localhost', query_ns=ns.DISCO_INFO)
+    result = make_result_iq(stream, event.stanza)
+    feature = result.firstChildElement().addElement('feature')
+    feature['var'] = 'http://jabber.org/protocol/muc'
+    stream.send(result)
 
-@match('dbus-return', method='RequestChannel')
-def expect_request_channel_return(event, data):
-    bus = data['conn']._bus
-    data['text_chan'] = bus.get_object(
-        data['conn'].bus_name, event.value[0])
+    event = q.expect('dbus-return', method='RequestHandles')
+    handles = event.value[0]
+    call_async(q, conn, 'RequestChannel', constants.CHANNEL_TYPE_TEXT, 2,
+        handles[0], True)
 
-    props_iface = dbus.Interface(data['text_chan'],
-        'org.freedesktop.Telepathy.Properties')
+    q.expect('dbus-signal', signal='MembersChanged',
+        args=[u'', [], [], [], [2], 0, 0])
+    q.expect('stream-presence', to='chat@conf.localhost/test')
+
+    # Send presence for own membership of room.
+    stream.send(
+        make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
+
+    iq, _, ret = q.expect_many(
+        EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
+            query_ns=ns.MUC_OWNER),
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=[u'', [2], [], [], [], 0, 0]),
+        EventPattern('dbus-return', method='RequestChannel'))
+    handle_muc_get_iq(stream, iq.stanza)
+
+    text_chan = wrap_channel(
+        bus.get_object(conn.bus_name, ret.value[0]), 'Text')
+
     props = dict([(name, id)
-        for id, name, sig, flags in props_iface.ListProperties()])
-    call_async(data['test'], props_iface, 'SetProperties',
+        for id, name, sig, flags in text_chan.TpProperties.ListProperties()])
+    call_async(q, text_chan.TpProperties, 'SetProperties',
         [(props['password'], 'foo'), (props['password-required'], True)])
 
-    data['props_iface'] = props_iface
-    data['props'] = props
-    return True
+    event = q.expect('stream-iq', to='chat@conf.localhost', iq_type='get',
+        query_ns=ns.MUC_OWNER)
+    handle_muc_get_iq(stream, event.stanza)
 
-
-@match('stream-iq', to='chat@conf.localhost', iq_type='get',
-    query_ns='http://jabber.org/protocol/muc#owner')
-def expect_muc_get_iq2(event, data):
-    handle_muc_get_iq(data['stream'], event.stanza)
-    return True
-
-@match('stream-iq', to='chat@conf.localhost', iq_type='set',
-    query_ns='http://jabber.org/protocol/muc#owner')
-def expect_muc_set_iq(event, data):
+    event = q.expect('stream-iq', to='chat@conf.localhost', iq_type='set',
+        query_ns=ns.MUC_OWNER)
     fields = xpath.queryForNodes('/iq/query/x/field', event.stanza)
     form = {}
     for field in fields:
@@ -119,24 +93,17 @@ def expect_muc_set_iq(event, data):
     assert form == {'password': ['foo'], 'password_protected': ['1'],
             'muc#roomconfig_presencebroadcast' :
             ['moderator', 'participant', 'visitor']}
-    acknowledge_iq(data['stream'], event.stanza)
-    return True
+    acknowledge_iq(stream, event.stanza)
 
-@match('dbus-signal', signal='PropertiesChanged')
-def expect_properties_changed(event, data):
-    assert event.args == [[(data['props']['password'], 'foo'),
-        (data['props']['password-required'], True)]]
-    return True
+    event = q.expect('dbus-signal', signal='PropertiesChanged')
+    assert event.args == [[(props['password'], 'foo'),
+        (props['password-required'], True)]]
 
-@match('dbus-return', method='SetProperties', value=())
-def expect_set_properties_return(event, data):
-    data['conn_iface'].Disconnect()
-    return True
+    q.expect('dbus-return', method='SetProperties', value=())
 
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
+    exec_test(test)
 

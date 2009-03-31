@@ -272,6 +272,26 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
     },
 
     {
+      "tie-break",
+      "The request is rejected because it was sent while the initiator was "
+      "awaiting a reply on a similar request.",
+      "cancel",
+      XMPP_ERROR_CONFLICT,
+      NS_JINGLE_ERRORS,
+      { 0, },
+    },
+
+    {
+      "unsupported-info",
+      "The recipient does not support the informational payload of a "
+      "session-info action.",
+      "cancel",
+      XMPP_ERROR_FEATURE_NOT_IMPLEMENTED,
+      NS_JINGLE_ERRORS,
+      { 0, },
+    },
+
+    {
       "no-valid-streams",
       "None of the available streams are acceptable.",
       "cancel",

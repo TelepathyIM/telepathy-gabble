@@ -1044,14 +1044,16 @@ static HandlerFunc handlers[] = {
 };
 
 static void
-jingle_state_machine_dance (GabbleJingleSession *sess, JingleAction action,
-    LmMessageNode *node, GError **error)
-  {
-    GabbleJingleSessionPrivate *priv = sess->priv;
+jingle_state_machine_dance (GabbleJingleSession *sess,
+    JingleAction action,
+    LmMessageNode *node,
+    GError **error)
+{
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
-    /* parser should've checked this already */
-    g_assert (action_is_allowed (action, priv->state));
-    g_assert (handlers[action] != NULL);
+  /* parser should've checked this already */
+  g_assert (action_is_allowed (action, priv->state));
+  g_assert (handlers[action] != NULL);
 
   handlers[action] (sess, node, error);
 }

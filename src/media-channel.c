@@ -2792,7 +2792,10 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
           return;
         }
 
-      inform_peer_of_hold (self);
+      if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD)
+        {
+          inform_peer_of_hold (self);
+        }
 
       priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_HOLD;
     }

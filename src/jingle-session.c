@@ -893,6 +893,17 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
   set_state (sess, JS_STATE_ACTIVE, 0);
 }
 
+static void
+on_session_info (GabbleJingleSession *sess,
+    LmMessageNode *node,
+    GError **error)
+{
+  DEBUG ("got session-info, but no payloads are implemented");
+
+  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
+      "session-info is not supported");
+}
+
 typedef struct {
     const gchar *element;
     TpChannelGroupChangeReason reason;
@@ -1035,7 +1046,7 @@ static HandlerFunc handlers[] = {
   on_content_replace,
   on_content_reject,
   on_session_accept, /* jingle_on_session_accept */
-  NULL, /* jingle_on_session_info */
+  on_session_info,
   on_session_initiate,
   on_session_terminate, /* jingle_on_session_terminate */
   on_transport_info, /* jingle_on_transport_info */

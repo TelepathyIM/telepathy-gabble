@@ -9,10 +9,8 @@ when presence is received that includes the MUC JID's owner JID.
 
 import dbus
 
-from twisted.words.xish import domish, xpath
-
-from gabbletest import go, make_result_iq, exec_test, make_muc_presence
-from servicetest import call_async, lazy, match, tp_name_prefix, EventPattern
+from gabbletest import make_result_iq, exec_test, make_muc_presence
+from servicetest import call_async, EventPattern
 
 def test(q, bus, conn, stream):
     conn.Connect()

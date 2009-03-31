@@ -2,10 +2,6 @@
 Test that our alias is used to create MUC JIDs.
 """
 
-import dbus
-
-from twisted.words.xish import domish
-
 from gabbletest import exec_test, make_muc_presence, request_muc_handle, \
     expect_and_handle_get_vcard, expect_and_handle_set_vcard
 from servicetest import call_async, EventPattern

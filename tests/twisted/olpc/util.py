@@ -1,7 +1,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern
-from gabbletest import make_result_iq, acknowledge_iq, elem, elem_iq
+from gabbletest import make_result_iq, elem, elem_iq
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 import ns

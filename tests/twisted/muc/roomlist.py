@@ -5,10 +5,8 @@ Test MUC support.
 
 import dbus
 
-from twisted.words.xish import domish
-
-from gabbletest import go, make_result_iq, exec_test, sync_stream
-from servicetest import call_async, lazy, match, EventPattern, \
+from gabbletest import make_result_iq, exec_test, sync_stream
+from servicetest import call_async, EventPattern, \
         tp_name_prefix, tp_path_prefix
 
 def test(q, bus, conn, stream):

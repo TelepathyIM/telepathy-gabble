@@ -312,34 +312,6 @@ def make_stream(event_func, authenticator=None, protocol=None, port=4242):
     port = reactor.listenTCP(port, factory)
     return (stream, port)
 
-def go(params=None, authenticator=None, protocol=None, start=None):
-    # hack to ease debugging
-    domish.Element.__repr__ = domish.Element.toXml
-
-    bus = dbus.SessionBus()
-    handler = servicetest.EventTest()
-    conn = make_connection(bus, handler.handle_event, params)
-    (stream, _) = make_stream(handler.handle_event, authenticator, protocol)
-    handler.data = {
-        'bus': bus,
-        'conn': conn,
-        'conn_iface': dbus.Interface(conn,
-            'org.freedesktop.Telepathy.Connection'),
-        'stream': stream}
-    handler.data['test'] = handler
-    handler.verbose = (os.environ.get('CHECK_TWISTED_VERBOSE', '') != '')
-    map(handler.expect, servicetest.load_event_handlers())
-
-    if '-v' in sys.argv:
-        handler.verbose = True
-
-    if start is None:
-        handler.data['conn'].Connect()
-    else:
-        start(handler.data)
-
-    reactor.run()
-
 def install_colourer():
     def red(s):
         return '\x1b[31m%s\x1b[0m' % s
@@ -445,50 +417,6 @@ def expect_and_handle_set_vcard(q, stream, check=None):
     current_vcard = vcard
 
     stream.send(make_result_iq(stream, iq))
-
-def handle_get_vcard(event, data):
-    iq = event.stanza
-
-    if iq['type'] != 'get':
-        return False
-
-    if iq.uri != 'jabber:client':
-        return False
-
-    vcard = list(iq.elements())[0]
-
-    if vcard.name != 'vCard':
-        return False
-
-    # Send back current vCard
-    new_iq = IQ(data['stream'], 'result')
-    new_iq['id'] = iq['id']
-    new_iq.addChild(current_vcard)
-    data['stream'].send(new_iq)
-    return True
-
-def handle_set_vcard(event, data):
-    global current_vcard
-    iq = event.stanza
-
-    if iq['type'] != 'set':
-        return False
-
-    if iq.uri != 'jabber:client':
-        return False
-
-    vcard = list(iq.elements())[0]
-
-    if vcard.name != 'vCard':
-        return False
-
-    current_vcard = iq.firstChildElement()
-
-    new_iq = IQ(data['stream'], 'result')
-    new_iq['id'] = iq['id']
-    data['stream'].send(new_iq)
-    return True
-
 
 def _elem_add(elem, *children):
     for child in children:

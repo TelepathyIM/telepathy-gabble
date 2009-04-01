@@ -56,6 +56,11 @@ struct _JingleCandidate {
   int network;
 };
 
+typedef gboolean (*GabbleJingleContentHandleInfoFunc)(GabbleJingleContent *self,
+    LmMessageNode *session_info_payload,
+    gboolean *handled,
+    GError **error);
+
 typedef struct _GabbleJingleContentClass GabbleJingleContentClass;
 
 GType gabble_jingle_content_get_type (void);
@@ -83,6 +88,8 @@ struct _GabbleJingleContentClass {
     void  (*parse_description) (GabbleJingleContent *, LmMessageNode *,
         GError **);
     void  (*produce_description) (GabbleJingleContent *, LmMessageNode *);
+
+    GabbleJingleContentHandleInfoFunc handle_info;
 };
 
 typedef struct _GabbleJingleContentPrivate GabbleJingleContentPrivate;
@@ -119,6 +126,11 @@ gboolean gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders);
 void gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self);
 gboolean gabble_jingle_content_is_created_by_us (GabbleJingleContent *c);
+
+gboolean gabble_jingle_content_handle_info (GabbleJingleContent *self,
+    LmMessageNode *session_info_payload,
+    gboolean *handled,
+    GError **error);
 
 #endif /* __JINGLE_CONTENT_H__ */
 

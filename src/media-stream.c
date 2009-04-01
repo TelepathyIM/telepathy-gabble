@@ -1928,3 +1928,12 @@ dbus_properties_iface_init (gpointer g_iface,
   /* set not implemented in this class */
 #undef IMPLEMENT
 }
+
+GabbleJingleMediaRtp *
+gabble_media_stream_get_content (GabbleMediaStream *self)
+{
+  /* FIXME: we should fix this whole class up. It relies throughout on
+   *        self->priv->content actually secretly being a GabbleJingleMediaRtp.
+   */
+  return GABBLE_JINGLE_MEDIA_RTP (self->priv->content);
+}

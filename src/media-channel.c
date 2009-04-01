@@ -160,6 +160,11 @@ struct _GabbleMediaChannelPrivate
   TpLocalHoldState hold_state;
   TpLocalHoldStateReason hold_state_reason;
 
+  /* The "most held" of all associated contents' current states, which is what
+   * we present on CallState.
+   */
+  JingleRtpRemoteState remote_state;
+
   GPtrArray *delayed_request_streams;
 
   /* These are really booleans, but gboolean is signed. Thanks, GLib */
@@ -2429,6 +2434,86 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
       chan, id, direction, pending_send);
 }
 
+static TpChannelCallStateFlags
+jingle_remote_state_to_csf (JingleRtpRemoteState state)
+{
+  switch (state)
+    {
+    case JINGLE_RTP_REMOTE_STATE_ACTIVE:
+    /* FIXME: we should be able to expose <mute/> through CallState */
+    case JINGLE_RTP_REMOTE_STATE_MUTE:
+      return 0;
+    case JINGLE_RTP_REMOTE_STATE_RINGING:
+      return TP_CHANNEL_CALL_STATE_RINGING;
+    case JINGLE_RTP_REMOTE_STATE_HOLD:
+      return TP_CHANNEL_CALL_STATE_HELD;
+    default:
+      g_assert_not_reached ();
+    }
+}
+
+static void
+remote_state_changed_cb (GabbleJingleMediaRtp *rtp,
+    GParamSpec *pspec G_GNUC_UNUSED,
+    GabbleMediaChannel *self)
+{
+  GabbleMediaChannelPrivate *priv = self->priv;
+  JingleRtpRemoteState state = gabble_jingle_media_rtp_get_remote_state (rtp);
+  TpChannelCallStateFlags csf = 0;
+
+  DEBUG ("Content %p's state changed to %u (current channel state: %u)", rtp,
+      state, priv->remote_state);
+
+  if (state == priv->remote_state)
+    {
+      DEBUG ("already in that state");
+      return;
+    }
+
+  if (state > priv->remote_state)
+    {
+      /* If this content's state is "more held" than the current aggregated level,
+       * move up to it.
+       */
+      DEBUG ("%u is more held than %u, moving up", state, priv->remote_state);
+      priv->remote_state = state;
+    }
+  else
+    {
+      /* This content is now less held than the current aggregated level; we
+       * need to recalculate the highest hold level and see if it's changed.
+       */
+      guint i = 0;
+
+      DEBUG ("%u less held than %u; recalculating", state, priv->remote_state);
+      state = JINGLE_RTP_REMOTE_STATE_ACTIVE;
+
+      for (i = 0; i < priv->streams->len; i++)
+        {
+          GabbleJingleMediaRtp *c = gabble_media_stream_get_content (
+                g_ptr_array_index (priv->streams, i));
+          JingleRtpRemoteState s = gabble_jingle_media_rtp_get_remote_state (c);
+
+          state = MAX (state, s);
+          DEBUG ("%p in state %u; high water mark %u", c, s, state);
+        }
+
+      if (priv->remote_state == state)
+        {
+          DEBUG ("no change");
+          return;
+        }
+
+      priv->remote_state = state;
+    }
+
+  csf = jingle_remote_state_to_csf (priv->remote_state);
+  DEBUG ("emitting CallStateChanged(%u, %u) (JingleRtpRemoteState %u)",
+      priv->session->peer, csf, priv->remote_state);
+  tp_svc_channel_interface_call_state_emit_call_state_changed (self,
+      priv->session->peer, csf);
+}
+
 #define GTALK_CAPS \
   ( PRESENCE_CAP_GOOGLE_VOICE )
 
@@ -2528,6 +2613,14 @@ construct_stream (GabbleMediaChannel *chan,
       (GCallback) stream_direction_changed_cb, chan_o);
   gabble_signal_connect_weak (stream, "notify::local-hold",
       (GCallback) stream_hold_state_changed, chan_o);
+
+  /* While we're here, watch the active/mute/held state of the corresponding
+   * content so we can keep the call state up to date, and call the callback
+   * once to pick up the current state of this content.
+   */
+  gabble_signal_connect_weak (c, "notify::remote-state",
+      (GCallback) remote_state_changed_cb, chan_o);
+  remote_state_changed_cb (GABBLE_JINGLE_MEDIA_RTP (c), NULL, chan);
 
   /* emit StreamAdded */
   mtype = gabble_media_stream_get_media_type (stream);

@@ -2843,12 +2843,18 @@ static void
 gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
                                       DBusGMethodInvocation *context)
 {
-  GHashTable *states;
+  GabbleMediaChannel *self = (GabbleMediaChannel *) iface;
+  GabbleMediaChannelPrivate *priv = self->priv;
+  JingleRtpRemoteState state = priv->remote_state;
+  GHashTable *states = g_hash_table_new (g_direct_hash, g_direct_equal);
 
-  /* stub implementation: nobody has any call-state flags */
-  states = g_hash_table_new (g_direct_hash, g_direct_equal);
+  if (state != JINGLE_RTP_REMOTE_STATE_ACTIVE)
+    g_hash_table_insert (states, GUINT_TO_POINTER (priv->session->peer),
+        GUINT_TO_POINTER (jingle_remote_state_to_csf (state)));
+
   tp_svc_channel_interface_call_state_return_from_get_call_states (context,
       states);
+
   g_hash_table_destroy (states);
 }
 

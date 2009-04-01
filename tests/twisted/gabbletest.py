@@ -198,6 +198,7 @@ def make_stream_event(type, stanza):
 def make_iq_event(iq):
     event = make_stream_event('stream-iq', iq)
     event.iq_type = iq.getAttribute("type")
+    event.iq_id = iq.getAttribute("id")
     query = iq.firstChildElement()
 
     if query:

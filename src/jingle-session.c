@@ -898,10 +898,50 @@ on_session_info (GabbleJingleSession *sess,
     LmMessageNode *node,
     GError **error)
 {
-  DEBUG ("got session-info, but no payloads are implemented");
+  GList *contents, *l;
+  gboolean understood_a_payload = FALSE;
+  gboolean hit_an_error = FALSE;
+  LmMessageNode *n = node->children;
 
-  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
-      "session-info is not supported");
+  /* if this is a ping, just ack it. */
+  if (n == NULL)
+    return;
+
+  contents = g_hash_table_get_values (sess->priv->contents);
+
+  for (n = node->children; n != NULL; n = n->next)
+    {
+      for (l = contents; l != NULL; l = g_list_next (l))
+        {
+          gboolean handled;
+          GError *e = NULL;
+
+          if (gabble_jingle_content_handle_info (l->data, n, &handled, &e))
+            {
+              understood_a_payload = understood_a_payload || handled;
+            }
+          else
+            {
+              if (hit_an_error)
+                {
+                  DEBUG ("already got another error; ignoring %s", e->message);
+                  g_error_free (e);
+                }
+              else
+                {
+                  DEBUG ("hit an error: %s", e->message);
+                  hit_an_error = TRUE;
+                  g_propagate_error (error, e);
+                }
+            }
+        }
+    }
+
+  /* If we didn't understand any of the payloads, tell the other end.
+   */
+  if (!understood_a_payload)
+    g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
+        "no recognized session-info payloads");
 }
 
 typedef struct {

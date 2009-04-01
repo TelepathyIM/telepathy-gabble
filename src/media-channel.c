@@ -80,10 +80,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 static const gchar *gabble_media_channel_interfaces[] = {
-    /* FIXME: our implementation of CallState is a stub, so it doesn't
-    appear in GetInterfaces' output to avoid confusing clients
     TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
-    */
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_HOLD,
     TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,

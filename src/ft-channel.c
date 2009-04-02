@@ -1453,13 +1453,17 @@ file_transfer_iface_init (gpointer g_iface,
 static const gchar *
 get_local_unix_socket_path (GabbleFileTransferChannel *self)
 {
+  const gchar *tmp_dir;
   gchar *path = NULL;
   gchar *name;
   struct stat buf;
 
+  tmp_dir = gabble_ft_manager_get_tmp_dir (self->priv->connection->ft_manager);
+  if (tmp_dir == NULL)
+    return NULL;
+
   name = g_strdup_printf ("ft-channel-%p", self);
-  path = g_build_filename (gabble_ft_manager_get_tmp_dir (
-        self->priv->connection->ft_manager), name, NULL);
+  path = g_build_filename (tmp_dir, name, NULL);
   g_free (name);
 
   if (g_stat (path, &buf) == 0)
@@ -1618,6 +1622,8 @@ setup_local_socket (GabbleFileTransferChannel *self)
   GError *error = NULL;
 
   path = get_local_unix_socket_path (self);
+  if (path == NULL)
+    return FALSE;
 
   self->priv->listener = gibber_listener_new ();
 

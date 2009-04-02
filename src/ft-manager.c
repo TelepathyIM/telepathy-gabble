@@ -585,7 +585,7 @@ gabble_ft_manager_get_tmp_dir (GabbleFtManager *self)
       g_get_tmp_dir ());
   self->priv->tmp_dir = mkdtemp (self->priv->tmp_dir);
   if (self->priv->tmp_dir == NULL)
-    g_critical ("mkdtemp failed: %s\n", g_strerror (errno));
+    DEBUG ("mkdtemp failed: %s\n", g_strerror (errno));
 
   return self->priv->tmp_dir;
 }

@@ -7,7 +7,7 @@ from twisted.words.xish import xpath
 
 from gabbletest import make_result_iq, sync_stream
 from servicetest import wrap_channel, make_channel_proxy, call_async, \
-    EventPattern
+    EventPattern, tp_path_prefix
 import ns
 import constants as cs
 
@@ -47,8 +47,9 @@ def test(jp, q, bus, conn, stream):
     session_handler.Ready()
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
-
-    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
+    audio_path = e.args[0]
+    audio_path_suffix = audio_path[len(tp_path_prefix):]
+    stream_handler = make_channel_proxy(conn, audio_path, 'Media.StreamHandler')
 
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler.Ready(jt.get_audio_codecs_dbus())
@@ -76,7 +77,8 @@ def test(jp, q, bus, conn, stream):
 
     # Various misc happens; among other things, Gabble tells s-e to start
     # sending.
-    q.expect('dbus-signal', signal='SetStreamSending', args=[True])
+    q.expect('dbus-signal', signal='SetStreamSending', args=[True],
+        path=audio_path_suffix)
 
     # Plus, the other person's client decides it's not ringing any more
     node = jp.SetIq(jt.peer, jt.jid, [
@@ -98,7 +100,8 @@ def test(jp, q, bus, conn, stream):
 
     q.expect_many(
         EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
-        EventPattern('dbus-signal', signal='SetStreamSending', args=[False]),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
+            path=audio_path_suffix),
         EventPattern('dbus-signal', signal='CallStateChanged',
             args=[handle, cs.CALL_STATE_HELD]),
         )
@@ -138,7 +141,8 @@ def test(jp, q, bus, conn, stream):
 
     q.expect_many(
         EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
-        EventPattern('dbus-signal', signal='SetStreamSending', args=[True]),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
+            path=audio_path_suffix),
         EventPattern('dbus-signal', signal='CallStateChanged',
             args=[handle, 0]),
         )
@@ -146,7 +150,91 @@ def test(jp, q, bus, conn, stream):
     call_states = chan.CallState.GetCallStates()
     assert call_states == { handle: 0 } or call_states == {}, call_states
 
-    # Test completed, close the connection
+    # Okay, let's get a second stream involved!
+
+    chan.StreamedMedia.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_VIDEO])
+
+    e = q.expect('dbus-signal', signal='NewStreamHandler')
+    video_path = e.args[0]
+    video_path_suffix = video_path[len(tp_path_prefix):]
+    stream_handler2 = make_channel_proxy(conn, video_path, 'Media.StreamHandler')
+
+    stream_handler2.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
+    stream_handler2.Ready(jt.get_video_codecs_dbus())
+    stream_handler2.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
+
+    e = q.expect('stream-iq', predicate=lambda e:
+            jp.match_jingle_action(e.query, 'content-add'))
+    stream.send(make_result_iq(stream, e.stanza))
+
+    jt.content_accept(e.query, 'video')
+
+    q.expect('dbus-signal', signal='SetStreamSending', args=[True],
+        path=video_path_suffix)
+
+    call_states = chan.CallState.GetCallStates()
+    assert call_states == { handle: 0 } or call_states == {}, call_states
+
+    # The other person puts us on hold.  Gabble should ack the session-info IQ,
+    # tell s-e to stop sending on both streams, and set the call state.
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.jid, 'session-info', [
+            ('hold', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+    stream.send(jp.xml(node))
+
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
+            path=audio_path_suffix),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
+            path=video_path_suffix),
+        EventPattern('dbus-signal', signal='CallStateChanged',
+            args=[handle, cs.CALL_STATE_HELD]),
+        )
+
+    call_states = chan.CallState.GetCallStates()
+    assert call_states == { handle: cs.CALL_STATE_HELD }, call_states
+
+    # The other person sets the video stream back to <active/>. (XEP-0167
+    # says that <active/> and <mute/> can have name='', but <hold/> can't.
+    # Gabble should expose this as "start sending video again, but the call's
+    # still held."
+    # FIXME: hardcoded stream id
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.jid, 'session-info', [
+            ('active', ns.JINGLE_RTP_INFO_1, {'name': 'stream2'}, []) ]) ])
+    stream.send(jp.xml(node))
+
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
+            path=video_path_suffix),
+        )
+
+    call_states = chan.CallState.GetCallStates()
+    assert call_states == { handle: cs.CALL_STATE_HELD }, call_states
+
+    # Now the other person sets the audio stream to mute. Gabble should expose
+    # this as the call being active again (since we can't represent mute yet!)
+    # and tell s-e to start sending audio again.
+    # FIXME: hardcoded stream id
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.jid, 'session-info', [
+            ('mute', ns.JINGLE_RTP_INFO_1, {'name': 'stream1'}, []) ]) ])
+    stream.send(jp.xml(node))
+
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
+            path=audio_path_suffix),
+        EventPattern('dbus-signal', signal='CallStateChanged',
+            args=[ handle, 0 ]),
+        )
+
+    call_states = chan.CallState.GetCallStates()
+    assert call_states == { handle: 0 } or call_states == {}, call_states
+
+    # That'll do, pig.
 
     chan.Group.RemoveMembers([self_handle], 'closed')
     e = q.expect('dbus-signal', signal='Close') #XXX - match against the path

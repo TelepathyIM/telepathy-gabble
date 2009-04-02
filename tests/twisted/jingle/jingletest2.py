@@ -393,6 +393,31 @@ class JingleTest2:
                 audio + video) ])
         self.stream.send(jp.xml(node))
 
+    def content_accept(self, query, media):
+        """
+        Accepts a content-add stanza containing a single <content> of the given
+        media type.
+        """
+        jp = self.jp
+        c = query.firstChildElement()
+
+        if media == 'audio':
+            codecs = self.audio_codecs
+        elif media == 'video':
+            codecs = self.video_codecs
+        else:
+            assert False
+
+        # Remote end finally accepts
+        node = jp.SetIq(self.peer, self.jid, [
+            jp.Jingle(self.sid, self.peer, 'content-accept', [
+                jp.Content(c['name'], c['creator'], c['senders'], [
+                    jp.Description(media, [
+                        jp.PayloadType(name, str(rate), str(id)) for
+                            (name, id, rate) in codecs ]),
+                jp.TransportGoogleP2P() ]) ]) ])
+        self.stream.send(jp.xml(node))
+
     def terminate(self, reason=None):
         jp = self.jp
 

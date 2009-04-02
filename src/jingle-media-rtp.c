@@ -821,6 +821,8 @@ gabble_jingle_media_rtp_handle_info (GabbleJingleContent *content,
   GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
   const gchar *ns = lm_message_node_get_namespace (payload);
   const gchar *elt = lm_message_node_get_name (payload);
+  const gchar *name_attr = lm_message_node_get_attribute (payload, "name");
+  const gchar *content_name = gabble_jingle_content_get_name (content);
   JingleRtpRemoteState new_state;
 
   if (tp_strdiff (ns, NS_JINGLE_RTP_INFO))
@@ -831,14 +833,27 @@ gabble_jingle_media_rtp_handle_info (GabbleJingleContent *content,
 
   *handled = TRUE;
 
+  /* The XEP only says active and mute can have name="". */
   if (!tp_strdiff (elt, "active"))
-    new_state = JINGLE_RTP_REMOTE_STATE_ACTIVE;
+    {
+      if (name_attr != NULL && tp_strdiff (name_attr, content_name))
+        return TRUE;
+      new_state = JINGLE_RTP_REMOTE_STATE_ACTIVE;
+    }
   else if (!tp_strdiff (elt, "ringing"))
-    new_state = JINGLE_RTP_REMOTE_STATE_RINGING;
+    {
+      new_state = JINGLE_RTP_REMOTE_STATE_RINGING;
+    }
   else if (!tp_strdiff (elt, "hold"))
-    new_state = JINGLE_RTP_REMOTE_STATE_HOLD;
+    {
+      new_state = JINGLE_RTP_REMOTE_STATE_HOLD;
+    }
   else if (!tp_strdiff (elt, "mute"))
-    new_state = JINGLE_RTP_REMOTE_STATE_MUTE;
+    {
+      if (name_attr != NULL && tp_strdiff (name_attr, content_name))
+        return TRUE;
+      new_state = JINGLE_RTP_REMOTE_STATE_MUTE;
+    }
   else
     {
       g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,

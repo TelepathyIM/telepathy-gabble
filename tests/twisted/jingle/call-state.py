@@ -59,11 +59,32 @@ def test(jp, q, bus, conn, stream):
     stream.send(make_result_iq(stream, e.stanza))
 
     jt.set_sid_from_initiate(e.query)
+
+    # The other person's client starts ringing, and tells us so!
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.jid, 'session-info', [
+            ('ringing', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+    stream.send(jp.xml(node))
+
+    q.expect('dbus-signal', signal='CallStateChanged',
+            args=[handle, cs.CALL_STATE_RINGING])
+
+    call_states = chan.CallState.GetCallStates()
+    assert call_states == { handle: cs.CALL_STATE_RINGING }, call_states
+
     jt.accept()
 
     # Various misc happens; among other things, Gabble tells s-e to start
     # sending.
     q.expect('dbus-signal', signal='SetStreamSending', args=[True])
+
+    # Plus, the other person's client decides it's not ringing any more
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.jid, 'session-info', [
+            ('active', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+    stream.send(jp.xml(node))
+
+    q.expect('dbus-signal', signal='CallStateChanged', args=[ handle, 0 ])
 
     call_states = chan.CallState.GetCallStates()
     assert call_states == { handle: 0 } or call_states == {}, call_states

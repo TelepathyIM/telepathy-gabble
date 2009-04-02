@@ -127,6 +127,8 @@ gboolean gabble_jingle_content_change_direction (GabbleJingleContent *c,
 void gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self);
 gboolean gabble_jingle_content_is_created_by_us (GabbleJingleContent *c);
 
+const gchar *gabble_jingle_content_get_name (GabbleJingleContent *self);
+
 gboolean gabble_jingle_content_handle_info (GabbleJingleContent *self,
     LmMessageNode *session_info_payload,
     gboolean *handled,

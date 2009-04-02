@@ -1054,3 +1054,9 @@ gabble_jingle_content_handle_info (GabbleJingleContent *self,
       return f (self, session_info_payload, handled, error);
     }
 }
+
+const gchar *
+gabble_jingle_content_get_name (GabbleJingleContent *self)
+{
+  return self->priv->name;
+}

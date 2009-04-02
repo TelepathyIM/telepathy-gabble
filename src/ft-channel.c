@@ -711,7 +711,7 @@ gabble_file_transfer_channel_class_init (
   g_object_class_install_property (object_class, PROP_BYTESTREAM,
       param_spec);
 
-  gabble_file_transfer_channel_class->dbus_props_class.interfaces = \
+  gabble_file_transfer_channel_class->dbus_props_class.interfaces =
       prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleFileTransferChannelClass, dbus_props_class));
@@ -976,7 +976,7 @@ bytestream_closed (GabbleFileTransferChannel *self)
 {
   if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED)
     {
-      TpBaseConnection *base_conn = (TpBaseConnection *) \
+      TpBaseConnection *base_conn = (TpBaseConnection *)
           self->priv->connection;
       gboolean receiver;
 
@@ -1165,7 +1165,7 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
 static void
 emit_progress_update (GabbleFileTransferChannel *self)
 {
-  TpSvcChannelTypeFileTransfer *iface = \
+  TpSvcChannelTypeFileTransfer *iface =
       TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self);
 
   g_get_current_time (&self->priv->last_transferred_bytes_emitted);
@@ -1183,7 +1183,7 @@ emit_progress_update (GabbleFileTransferChannel *self)
 static gboolean
 emit_progress_update_cb (gpointer user_data)
 {
-  GabbleFileTransferChannel *self = \
+  GabbleFileTransferChannel *self =
       GABBLE_FILE_TRANSFER_CHANNEL (user_data);
 
   emit_progress_update (self);
@@ -1586,7 +1586,7 @@ new_connection_cb (GibberListener *listener,
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
   gboolean requested;
-  TpBaseConnection *base_conn = (TpBaseConnection *) \
+  TpBaseConnection *base_conn = (TpBaseConnection *)
       self->priv->connection;
 
   DEBUG ("Client connected to local socket");

@@ -538,6 +538,8 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
     {
       struct tm tm;
 
+      memset (&tm, 0, sizeof (struct tm));
+
       /* FIXME: this assume the timezone is always UTC */
       if (strptime (date_str, "%FT%H:%M:%SZ", &tm) != NULL)
         date = (guint64) mktime (&tm);

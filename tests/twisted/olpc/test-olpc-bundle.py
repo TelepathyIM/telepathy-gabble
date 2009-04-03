@@ -3,7 +3,7 @@ interface"""
 import dbus
 
 from servicetest import call_async, EventPattern
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from gabbletest import exec_test, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
 import ns

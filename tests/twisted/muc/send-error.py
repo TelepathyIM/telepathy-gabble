@@ -4,8 +4,6 @@ Test incoming error messages in MUC channels.
 
 import dbus
 
-from twisted.words.xish import domish
-
 from gabbletest import exec_test
 from servicetest import EventPattern
 import ns
@@ -71,10 +69,10 @@ def test(q, bus, conn, stream):
 
     # The Text.Received signal should be a "you're not tall enough" stub
     id, timestamp, sender, type, flags, text = received.args
-    assert sender == 0, old_received.args
-    assert type == 4, old_received.args # Message_Type_Delivery_Report
-    assert flags == 2, old_received.args # Non_Text_Content
-    assert text == '', old_received.args
+    assert sender == 0, received.args
+    assert type == 4, received.args # Message_Type_Delivery_Report
+    assert flags == 2, received.args # Non_Text_Content
+    assert text == '', received.args
 
     # Check that the Messages.MessageReceived signal was a failed delivery report
     assert len(message_received.args) == 1, message_received.args

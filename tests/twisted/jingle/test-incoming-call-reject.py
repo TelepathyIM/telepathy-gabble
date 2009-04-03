@@ -1,56 +1,44 @@
 """
-Test incoming call handling - reject a call
+Test incoming call handling - reject a call because we're busy, and for no
+reason.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern
-import jingletest
-import gabbletest
-import dbus
-import time
+from twisted.words.xish import xpath
 
-def test(q, bus, conn, stream):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
+from servicetest import make_channel_proxy, tp_path_prefix, EventPattern, \
+    call_async
+from jingletest2 import JingleTest2, test_all_dialects
 
-    # If we need to override remote caps, feats, codecs or caps,
-    # this is a good time to do it
+import constants as cs
 
-    # Connecting
-    conn.Connect()
+def test_busy(jp, q, bus, conn, stream):
+    test(jp, q, bus, conn, stream, True)
 
-    q.expect_many(
-            EventPattern('dbus-signal', signal='StatusChanged', args=[1, 1]),
-            EventPattern('stream-authenticated'),
-            EventPattern('dbus-signal', signal='PresenceUpdate',
-                args=[{1L: (0L, {u'available': {}})}]),
-            EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
-            )
+def test_no_reason(jp, q, bus, conn, stream):
+    test(jp, q, bus, conn, stream, False)
 
-    # We need remote end's presence for capabilities
-    jt.send_remote_presence()
+def test(jp, q, bus, conn, stream, busy):
+    remote_jid = 'foo@bar.com/Foo'
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
 
-    # Gabble doesn't trust it, so makes a disco
-    event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to='foo@bar.com/Foo')
+    jt.prepare()
 
-    jt.send_remote_disco_reply(event.stanza)
-
-    # Force Gabble to process the caps before calling RequestChannel
-    sync_stream(q, stream)
-
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    self_handle = conn.GetSelfHandle()
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
 
     # Remote end calls us
     jt.incoming_call()
 
+    # FIXME: these signals are not observable by real clients, since they
+    #        happen before NewChannels.
     # The caller is in members
     e = q.expect('dbus-signal', signal='MembersChanged',
              args=[u'', [remote_handle], [], [], [], 0, 0])
 
     # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], remote_handle, 0])
+             args=[u'', [], [], [self_handle], [], remote_handle,
+                   cs.GC_REASON_INVITED])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -62,9 +50,8 @@ def test(q, bus, conn, stream):
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
 
     # Exercise channel properties
-    channel_props = media_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+    channel_props = media_chan.GetAll(cs.CHANNEL,
+            dbus_interface=cs.PROPERTIES_IFACE)
     assert channel_props['TargetHandle'] == remote_handle
     assert channel_props['TargetHandleType'] == 1
     assert channel_props['TargetID'] == 'foo@bar.com'
@@ -72,17 +59,49 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorID'] == 'foo@bar.com'
     assert channel_props['InitiatorHandle'] == remote_handle
 
-    media_chan.RemoveMembers([dbus.UInt32(1)], 'rejected')
+    if busy:
+        # First, try using a reason that doesn't make any sense
+        call_async(q, media_chan, 'RemoveMembersWithReason',
+            [self_handle], "what kind of a reason is Separated?!",
+            cs.GC_REASON_SEPARATED)
+        e = q.expect('dbus-error', method='RemoveMembersWithReason')
+        assert e.error.get_dbus_name() == cs.INVALID_ARGUMENT
 
-    iq, signal = q.expect_many(
-            EventPattern('stream-iq'),
-            EventPattern('dbus-signal', signal='Closed'),
-            )
-    assert iq.query.name == 'jingle'
-    assert iq.query['action'] == 'session-terminate'
+        # Now try a more sensible reason.
+        media_chan.RemoveMembersWithReason([self_handle],
+            "which part of 'Do Not Disturb' don't you understand?",
+            cs.GC_REASON_BUSY)
+    else:
+        media_chan.RemoveMembers([self_handle], 'rejected')
+
+    iq, mc, _ = q.expect_many(
+        EventPattern('stream-iq', predicate=lambda e:
+            jp.match_jingle_action(e.query, 'session-terminate')),
+        EventPattern('dbus-signal', signal='MembersChanged'),
+        EventPattern('dbus-signal', signal='Closed'),
+        )
+
+    _, added, removed, lp, rp, actor, reason = mc.args
+    assert added == [], added
+    assert set(removed) == set([self_handle, remote_handle]), \
+        (removed, self_handle, remote_handle)
+    assert lp == [], lp
+    assert rp == [], rp
+    assert actor == self_handle, (actor, self_handle)
+    if busy:
+        assert reason == cs.GC_REASON_BUSY, reason
+    else:
+        assert reason == cs.GC_REASON_NONE, reason
+
+    if jp.supports_termination_reason():
+        jingle = iq.query
+        if busy:
+            r = "/jingle/reason/busy"
+        else:
+            r = "/jingle/reason/cancel"
+        assert xpath.queryForNodes(r, jingle) is not None, (jingle.toXml(), r)
 
     # Tests completed, close the connection
-
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
@@ -90,5 +109,6 @@ def test(q, bus, conn, stream):
 
 
 if __name__ == '__main__':
-    exec_test(test)
+    test_all_dialects(test_busy)
+    test_all_dialects(test_no_reason)
 

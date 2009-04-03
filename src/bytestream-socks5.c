@@ -88,8 +88,13 @@ enum _Socks5State
   SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT,
   SOCKS5_STATE_TARGET_CONNECT_REQUESTED,
   SOCKS5_STATE_CONNECTED,
+  SOCKS5_STATE_INITIATOR_OFFER_SENT,
   SOCKS5_STATE_INITIATOR_AWAITING_AUTH_REQUEST,
   SOCKS5_STATE_INITIATOR_AWAITING_COMMAND,
+  SOCKS5_STATE_INITIATOR_TRYING_CONNECT,
+  SOCKS5_STATE_INITIATOR_AUTH_REQUEST_SENT,
+  SOCKS5_STATE_INITIATOR_CONNECT_REQUESTED,
+  SOCKS5_STATE_INITIATOR_ACTIVATION_SENT,
   SOCKS5_STATE_ERROR
 };
 
@@ -105,8 +110,8 @@ typedef enum _Socks5State Socks5State;
 
 #define SHA1_LENGTH 40
 #define SOCKS5_CONNECT_LENGTH (7 + SHA1_LENGTH)
-/* VER + CMD/REP + RSV + ATYP + DOMAIN_LEN + PORT (2) */
-#define SOCKS5_MIN_LENGTH 7
+/* VER + CMD/REP + RSV + ATYP + PORT (2) */
+#define SOCKS5_MIN_LENGTH 6
 
 #define CONNECT_REPLY_TIMEOUT 30
 #define CONNECT_TIMEOUT 30
@@ -159,6 +164,9 @@ struct _GabbleBytestreamSocks5Private
   GabbleBytestreamState bytestream_state;
   gchar *peer_jid;
   gchar *self_full_jid;
+  gchar *proxy_jid;
+  /* TRUE if the peer of this bytestream is a muc contact */
+  gboolean muc_contact;
 
   /* List of Streamhost */
   GSList *streamhosts;
@@ -263,6 +271,7 @@ gabble_bytestream_socks5_finalize (GObject *object)
   g_free (priv->peer_resource);
   g_free (priv->peer_jid);
   g_free (priv->self_full_jid);
+  g_free (priv->proxy_jid);
 
   g_slist_foreach (priv->streamhosts, (GFunc) streamhost_free, NULL);
   g_slist_free (priv->streamhosts);
@@ -374,7 +383,7 @@ gabble_bytestream_socks5_constructor (GType type,
   GObject *obj;
   GabbleBytestreamSocks5Private *priv;
   TpBaseConnection *base_conn;
-  TpHandleRepoIface *contact_repo;
+  TpHandleRepoIface *contact_repo, *room_repo;
   const gchar *jid;
 
   obj = G_OBJECT_CLASS (gabble_bytestream_socks5_parent_class)->
@@ -390,6 +399,8 @@ gabble_bytestream_socks5_constructor (GType type,
   base_conn = TP_BASE_CONNECTION (priv->conn);
   contact_repo = tp_base_connection_get_handles (base_conn,
       TP_HANDLE_TYPE_CONTACT);
+  room_repo = tp_base_connection_get_handles (base_conn,
+      TP_HANDLE_TYPE_ROOM);
 
   tp_handle_ref (contact_repo, priv->peer_handle);
 
@@ -401,6 +412,9 @@ gabble_bytestream_socks5_constructor (GType type,
     priv->peer_jid = g_strdup (jid);
 
   g_assert (priv->self_full_jid != NULL);
+
+  priv->muc_contact = (gabble_get_room_handle_from_jid (room_repo,
+        priv->peer_jid) != 0);
 
   return obj;
 }
@@ -493,7 +507,8 @@ transport_connected_cb (GibberTransport *transport,
 
   stop_timer (self);
 
-  if (priv->socks5_state == SOCKS5_STATE_TARGET_TRYING_CONNECT)
+  if (priv->socks5_state == SOCKS5_STATE_TARGET_TRYING_CONNECT ||
+      priv->socks5_state == SOCKS5_STATE_INITIATOR_TRYING_CONNECT)
     {
       gchar msg[3];
 
@@ -507,7 +522,10 @@ transport_connected_cb (GibberTransport *transport,
 
       write_to_transport (self, msg, 3, NULL);
 
-      priv->socks5_state = SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT;
+      if (priv->socks5_state == SOCKS5_STATE_TARGET_TRYING_CONNECT)
+        priv->socks5_state = SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT;
+      else
+        priv->socks5_state = SOCKS5_STATE_INITIATOR_AUTH_REQUEST_SENT;
     }
 }
 
@@ -624,11 +642,13 @@ socks5_error (GabbleBytestreamSocks5 *self)
         /* The attempt for connect to the streamhost failed */
         socks5_close_transport (self);
 
-        /* Remove the failed streamhost */
-        g_assert (priv->streamhosts);
-        streamhost_free (priv->streamhosts->data);
-        priv->streamhosts = g_slist_delete_link (priv->streamhosts,
-            priv->streamhosts);
+        if (priv->streamhosts != NULL)
+          {
+            /* Remove the failed streamhost */
+            streamhost_free (priv->streamhosts->data);
+            priv->streamhosts = g_slist_delete_link (priv->streamhosts,
+                priv->streamhosts);
+          }
 
         if (priv->streamhosts != NULL)
           {
@@ -715,6 +735,122 @@ start_timer (GabbleBytestreamSocks5 *self,
   priv->timer_id = g_timeout_add_seconds (seconds, socks5_timer_cb, self);
 }
 
+static void
+target_got_connect_reply (GabbleBytestreamSocks5 *self)
+{
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
+      self);
+  LmMessage *iq_result;
+
+  DEBUG ("Received CONNECT reply. Socks5 stream connected. "
+      "Bytestream is now open");
+  priv->socks5_state = SOCKS5_STATE_CONNECTED;
+  g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
+
+  /* Acknowledge the connection */
+  iq_result = lm_iq_message_make_result (
+      priv->msg_for_acknowledge_connection);
+  if (NULL != iq_result)
+    {
+      LmMessageNode *node;
+      Streamhost *current_streamhost;
+
+      node = lm_message_node_add_child (iq_result->node, "query", "");
+      lm_message_node_set_attribute (node, "xmlns", NS_BYTESTREAMS);
+
+      /* streamhost-used informs the other end of the streamhost we
+       * decided to use. In case of a direct connetion this is useless
+       * but if we are using an external proxy we need to know which
+       * one was selected */
+      node = lm_message_node_add_child (node, "streamhost-used", "");
+      current_streamhost = priv->streamhosts->data;
+      lm_message_node_set_attribute (node, "jid",
+          current_streamhost->jid);
+
+      _gabble_connection_send (priv->conn, iq_result, NULL);
+      lm_message_unref (iq_result);
+    }
+
+  if (priv->read_blocked)
+    {
+      DEBUG ("reading has been blocked. Blocking now as the socks5 "
+          "negotiation is done");
+      gibber_transport_block_receiving (priv->transport, TRUE);
+    }
+}
+
+static LmHandlerResult
+socks5_activation_reply_cb (GabbleConnection *conn,
+                            LmMessage *sent_msg,
+                            LmMessage *reply_msg,
+                            GObject *obj,
+                            gpointer user_data)
+{
+  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (user_data);
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
+      self);
+
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      DEBUG ("Activation failed");
+      goto activation_failed;
+    }
+
+  if (priv->socks5_state != SOCKS5_STATE_INITIATOR_ACTIVATION_SENT)
+    {
+      DEBUG ("We are not waiting for an activation reply (state: %u)",
+          priv->socks5_state);
+      goto activation_failed;
+    }
+
+  DEBUG ("Proxy activated the bytestream. It's now open");
+
+  priv->socks5_state = SOCKS5_STATE_CONNECTED;
+  g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
+  /* We can read data from the sock5 socket now */
+  gibber_transport_block_receiving (priv->transport, FALSE);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+activation_failed:
+  g_signal_emit_by_name (self, "connection-error");
+  g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
+{
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
+      self);
+  LmMessage *iq;
+
+  DEBUG ("Got CONNECT reply. SOCKS5 negotiation with proxy is done. "
+      "Sending activation IQ");
+
+  iq = lm_message_build (priv->proxy_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "set",
+      '(', "query", "",
+        '@', "xmlns", NS_BYTESTREAMS,
+        '@', "sid", priv->stream_id,
+        '(', "activate", priv->peer_jid, ')',
+      ')', NULL);
+
+  priv->socks5_state = SOCKS5_STATE_INITIATOR_ACTIVATION_SENT;
+
+  /* Block reading while waiting for the activation reply */
+  gibber_transport_block_receiving (priv->transport, TRUE);
+
+  if (!_gabble_connection_send_with_reply (priv->conn, iq,
+      socks5_activation_reply_cb, G_OBJECT (self), self, NULL))
+    {
+      DEBUG ("Sending activation IQ failed");
+
+      g_signal_emit_by_name (self, "connection-error");
+      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+      return;
+    }
+}
+
 /* Process the received data and returns the number of bytes that have been
  * used */
 static gsize
@@ -727,13 +863,14 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
   guint auth_len;
   guint i;
   gchar *domain;
-  LmMessage *iq_result;
-  guint8 domain_len;
+  /* the length of the BND.ADDR field */
+  guint8 addr_len;
   gsize len;
 
   switch (priv->socks5_state)
     {
       case SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT:
+      case SOCKS5_STATE_INITIATOR_AUTH_REQUEST_SENT:
         /* We sent an authorization request and we are awaiting for a
          * response, the response is 2 bytes-long */
         if (string->len < 2)
@@ -752,8 +889,17 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         DEBUG ("Received auth reply. Sending CONNECT command");
 
-        domain = compute_domain (priv->stream_id, priv->peer_jid,
-            priv->self_full_jid);
+        if (priv->socks5_state == SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT)
+          {
+            domain = compute_domain (priv->stream_id, priv->peer_jid,
+                priv->self_full_jid);
+          }
+        else
+          {
+            /* SOCKS5_STATE_INITIATOR_AUTH_REQUEST_SENT */
+            domain = compute_domain (priv->stream_id, priv->self_full_jid,
+                priv->peer_jid);
+          }
 
         msg[0] = SOCKS5_VERSION;
         msg[1] = SOCKS5_CMD_CONNECT;
@@ -771,7 +917,11 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         write_to_transport (self, msg, SOCKS5_CONNECT_LENGTH, NULL);
 
-        priv->socks5_state = SOCKS5_STATE_TARGET_CONNECT_REQUESTED;
+        if (priv->socks5_state == SOCKS5_STATE_TARGET_AUTH_REQUEST_SENT)
+          priv->socks5_state = SOCKS5_STATE_TARGET_CONNECT_REQUESTED;
+        else
+          /* SOCKS5_STATE_INITIATOR_AUTH_REQUEST_SENT */
+          priv->socks5_state = SOCKS5_STATE_INITIATOR_CONNECT_REQUESTED;
 
         /* Older version of Gabble (pre 0.7.22) are bugged and just send 2
          * bytes as CONNECT reply. We set a timer to not wait the full reply
@@ -783,25 +933,14 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         return 2;
 
       case SOCKS5_STATE_TARGET_CONNECT_REQUESTED:
+      case SOCKS5_STATE_INITIATOR_CONNECT_REQUESTED:
         /* We sent a CONNECT request and are awaiting for the response */
         if (string->len < SOCKS5_MIN_LENGTH)
           return 0;
 
-        domain_len = (guint8) string->str[4];
-        if ((guint8) string->len < SOCKS5_MIN_LENGTH + domain_len)
-          /* We didn't receive the full packet yet */
-          return 0;
-
-        stop_timer (self);
-
         if (string->str[0] != SOCKS5_VERSION ||
             string->str[1] != SOCKS5_STATUS_OK ||
-            string->str[2] != SOCKS5_RESERVED ||
-            string->str[3] != SOCKS5_ATYP_DOMAIN ||
-            /* first half of the port number */
-            string->str[5 + domain_len] != 0 ||
-            /* second half of the port number */
-            string->str[6 + domain_len] != 0)
+            string->str[2] != SOCKS5_RESERVED)
           {
             DEBUG ("Connection refused");
 
@@ -809,54 +948,75 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             return string->len;
           }
 
-        domain = compute_domain (priv->stream_id, priv->peer_jid,
-            priv->self_full_jid);
-
-        if (!check_domain (&string->str[5], domain_len, domain))
+        if (string->str[3] == SOCKS5_ATYP_DOMAIN)
           {
-            /* Thanks Pidgin... */
-            DEBUG ("Ignoring to interop with buggy implementations");
+            /* correct domain. The first byte of the domain contains its
+             * length */
+            addr_len = (guint8) string->str[4];
+            addr_len += 1;
+          }
+        else if (string->str[3] == 0x00)
+          {
+            DEBUG ("Got 0x00 as domain. Pretend it's ok to be able to interop "
+                "with ejabber < 2.0.2");
+            addr_len = 0;
+          }
+        else
+          {
+            DEBUG ("Wrong domain");
+
+            socks5_error (self);
+            return string->len;
+          }
+
+        if ((guint8) string->len < SOCKS5_MIN_LENGTH + addr_len)
+          /* We didn't receive the full packet yet */
+          return 0;
+
+        stop_timer (self);
+
+        if (
+            /* first half of the port number */
+            string->str[4 + addr_len] != 0 ||
+            /* second half of the port number */
+            string->str[5 + addr_len] != 0)
+          {
+            DEBUG ("Connection refused");
+
+            socks5_error (self);
+            return string->len;
+          }
+
+        if (priv->socks5_state == SOCKS5_STATE_TARGET_CONNECT_REQUESTED)
+          {
+            domain = compute_domain (priv->stream_id, priv->peer_jid,
+                priv->self_full_jid);
+          }
+        else
+          {
+            /* SOCKS5_STATE_INITIATOR_CONNECT_REQUESTED */
+            domain = compute_domain (priv->stream_id, priv->self_full_jid,
+                priv->peer_jid);
+          }
+
+        if (addr_len > 0)
+          {
+            if (!check_domain (&string->str[5], addr_len - 1, domain))
+              {
+                /* Thanks Pidgin... */
+                DEBUG ("Ignoring to interop with buggy implementations");
+              }
           }
 
         g_free (domain);
 
-        DEBUG ("Received CONNECT reply. Socks5 stream connected. "
-            "Bytestream is now open");
-        priv->socks5_state = SOCKS5_STATE_CONNECTED;
-        g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
+        if (priv->socks5_state == SOCKS5_STATE_TARGET_CONNECT_REQUESTED)
+          target_got_connect_reply (self);
+        else
+          /* SOCKS5_STATE_INITIATOR_CONNECT_REQUESTED */
+          initiator_got_connect_reply (self);
 
-        /* Acknowledge the connection */
-        iq_result = lm_iq_message_make_result (
-            priv->msg_for_acknowledge_connection);
-        if (NULL != iq_result)
-          {
-            LmMessageNode *node;
-            Streamhost *current_streamhost;
-
-            node = lm_message_node_add_child (iq_result->node, "query", "");
-            lm_message_node_set_attribute (node, "xmlns", NS_BYTESTREAMS);
-
-            /* streamhost-used informs the other end of the streamhost we
-             * decided to use. In case of a direct connetion this is useless
-             * but if we are using an external proxy we need to know which
-             * one was selected */
-            node = lm_message_node_add_child (node, "streamhost-used", "");
-            current_streamhost = priv->streamhosts->data;
-            lm_message_node_set_attribute (node, "jid",
-                current_streamhost->jid);
-
-            _gabble_connection_send (priv->conn, iq_result, NULL);
-            lm_message_unref (iq_result);
-          }
-
-        if (priv->read_blocked)
-          {
-            DEBUG ("reading has been blocked. Blocking now as the socks5 "
-                "negotiation is done");
-            gibber_transport_block_receiving (priv->transport, TRUE);
-          }
-
-        return SOCKS5_MIN_LENGTH + domain_len;
+        return SOCKS5_MIN_LENGTH + addr_len;
 
       case SOCKS5_STATE_INITIATOR_AWAITING_AUTH_REQUEST:
         /* A client connected to us and we are awaiting for the authorization
@@ -912,8 +1072,11 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         if (string->len < SOCKS5_MIN_LENGTH)
           return 0;
 
-        domain_len = (guint8) string->str[4];
-        if ((guint8) string->len < SOCKS5_MIN_LENGTH + domain_len)
+        addr_len = (guint8) string->str[4];
+        /* the first byte is the length */
+        addr_len += 1;
+
+        if ((guint8) string->len < SOCKS5_MIN_LENGTH + addr_len)
           /* We didn't receive the full packet yet */
           return 0;
 
@@ -922,9 +1085,9 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             string->str[2] != SOCKS5_RESERVED ||
             string->str[3] != SOCKS5_ATYP_DOMAIN ||
             /* first half of the port number */
-            string->str[5 + domain_len] != 0 ||
+            string->str[4 + addr_len] != 0 ||
             /* second half of the port number */
-            string->str[5 + domain_len] != 0)
+            string->str[5 + addr_len] != 0)
           {
             DEBUG ("Invalid SOCKS5 connect message");
 
@@ -935,7 +1098,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         domain = compute_domain (priv->stream_id, priv->self_full_jid,
             priv->peer_jid);
 
-        if (!check_domain (&string->str[5], domain_len, domain))
+        if (!check_domain (&string->str[5], addr_len - 1, domain))
           {
             DEBUG ("Reject connection to prevent spoofing");
             socks5_close_transport (self);
@@ -971,7 +1134,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         g_object_unref (priv->listener);
         priv->listener = NULL;
 
-        return SOCKS5_MIN_LENGTH + domain_len;
+        return SOCKS5_MIN_LENGTH + addr_len;
 
       case SOCKS5_STATE_CONNECTED:
         /* We are connected, everything we receive now is data */
@@ -992,8 +1155,17 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         return string->len;
 
       case SOCKS5_STATE_TARGET_TRYING_CONNECT:
+      case SOCKS5_STATE_INITIATOR_TRYING_CONNECT:
         DEBUG ("Impossible to receive data when not yet connected to the "
             "socket");
+        break;
+
+      case SOCKS5_STATE_INITIATOR_OFFER_SENT:
+        DEBUG ("Shouldn't receive data when we just sent the offer");
+        break;
+
+      case SOCKS5_STATE_INITIATOR_ACTIVATION_SENT:
+        DEBUG ("Shouldn't receive data before we received activation reply");
         break;
 
       case SOCKS5_STATE_INVALID:
@@ -1129,6 +1301,13 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
   if (port == NULL)
     {
       DEBUG ("streamhost doesn't contain a port");
+      return;
+    }
+
+  if (tp_strdiff (jid, priv->peer_jid) && priv->muc_contact)
+    {
+      DEBUG ("skip streamhost %s (%s:%s); we don't support relay with muc "
+          "contact", jid, host, port);
       return;
     }
 
@@ -1335,6 +1514,47 @@ gabble_bytestream_socks5_close (GabbleBytestreamIface *iface,
     }
 }
 
+static void
+initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
+{
+  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
+      self);
+  GSList *proxies, *l;
+  GabbleSocks5Proxy *proxy = NULL;
+  GibberTCPTransport *transport;
+
+  proxies = gabble_bytestream_factory_get_socks5_proxies (
+      priv->conn->bytestream_factory);
+  for (l = proxies; l != NULL; l = g_slist_next (l))
+     {
+       proxy = (GabbleSocks5Proxy *) l->data;
+
+       if (!tp_strdiff (proxy->jid, priv->proxy_jid))
+         break;
+
+       proxy = NULL;
+     }
+  g_slist_free (proxies);
+
+  if (proxy == NULL)
+    {
+      DEBUG ("Unknown proxy: %s. Closing the bytestream", priv->proxy_jid);
+      g_signal_emit_by_name (self, "connection-error");
+      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+      return;
+    }
+
+  DEBUG ("connect to proxy: %s (%s:%s)", proxy->jid, proxy->host, proxy->port);
+  priv->socks5_state = SOCKS5_STATE_INITIATOR_TRYING_CONNECT;
+
+  transport = gibber_tcp_transport_new ();
+  set_transport (self, GIBBER_TRANSPORT (transport));
+  g_object_unref (transport);
+
+  gibber_tcp_transport_connect (transport, proxy->host,
+      proxy->port);
+}
+
 static LmHandlerResult
 socks5_init_reply_cb (GabbleConnection *conn,
                       LmMessage *sent_msg,
@@ -1349,14 +1569,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT)
     {
       LmMessageNode *query, *streamhost = NULL;
-
-      if (priv->socks5_state != SOCKS5_STATE_CONNECTED)
-        {
-          DEBUG ("Target claims that the bytestream is open but SOCKS5 is not "
-              "connected (state: %u). Closing the bytestream",
-              priv->socks5_state);
-          goto socks5_init_error;
-        }
+      const gchar *jid;
 
       query = lm_message_node_get_child_with_namespace (reply_msg->node,
           "query", NS_BYTESTREAMS);
@@ -1370,9 +1583,42 @@ socks5_init_reply_cb (GabbleConnection *conn,
           goto socks5_init_error;
         }
 
+      jid = lm_message_node_get_attribute (streamhost, "jid");
+      if (jid == NULL)
+        {
+          DEBUG ("no jid attribute in streamhost. Closing the bytestream");
+          goto socks5_init_error;
+        }
+
+      if (tp_strdiff (jid, priv->self_full_jid))
+        {
+          DEBUG ("Target is connected to proxy: %s", jid);
+
+          if (priv->socks5_state != SOCKS5_STATE_INITIATOR_OFFER_SENT)
+            {
+              DEBUG ("We are already in the negotation process (state: %u). "
+                  "Closing the bytestream", priv->socks5_state);
+              goto socks5_init_error;
+            }
+
+          priv->proxy_jid = g_strdup (jid);
+          initiator_connected_to_proxy (self);
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+
+      /* No proxy used */
+      DEBUG ("Target is connected to us");
+
+      if (priv->socks5_state != SOCKS5_STATE_CONNECTED)
+        {
+          DEBUG ("Target claims that the bytestream is open but SOCKS5 is not "
+              "connected (state: %u). Closing the bytestream",
+              priv->socks5_state);
+          goto socks5_init_error;
+        }
+
       /* yeah, stream initiated */
-      DEBUG ("Socks5 stream initiated using stream: %s",
-          lm_message_node_get_attribute (streamhost, "jid"));
+      DEBUG ("Socks5 stream initiated using stream: %s", jid);
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
       /* We can read data from the sock5 socket now */
       gibber_transport_block_receiving (priv->transport, FALSE);
@@ -1610,7 +1856,9 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 
   for (ip = ips; ip != NULL; ip = g_slist_next (ip))
     {
-      LmMessageNode *node = lm_message_node_add_child (msg->node->children,
+      LmMessageNode *node;
+
+      node = lm_message_node_add_child (msg->node->children,
           "streamhost", "");
 
       lm_message_node_set_attributes (node,
@@ -1625,9 +1873,36 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   g_slist_free (ips);
   g_free (port);
 
-  /* FIXME: for now we support only direct connections, we should also
-   * add support for external proxies to have more chances to make the
-   * bytestream work */
+  if (!priv->muc_contact)
+    {
+      GSList *proxies, *l;
+
+      proxies = gabble_bytestream_factory_get_socks5_proxies (
+          priv->conn->bytestream_factory);
+
+      for (l = proxies; l != NULL; l = g_slist_next (l))
+        {
+          LmMessageNode *node;
+          GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
+
+          node = lm_message_node_add_child (msg->node->children,
+              "streamhost", "");
+
+          lm_message_node_set_attributes (node,
+              "jid", proxy->jid,
+              "host", proxy->host,
+              "port", proxy->port,
+              NULL);
+        }
+      g_slist_free (proxies);
+    }
+  else
+    {
+      DEBUG ("don't propose to use SOCKS5 relays as we are offering bytestream "
+          "to a muc contact");
+    }
+
+  priv->socks5_state = SOCKS5_STATE_INITIATOR_OFFER_SENT;
 
   if (!_gabble_connection_send_with_reply (priv->conn, msg,
       socks5_init_reply_cb, G_OBJECT (self), NULL, NULL))

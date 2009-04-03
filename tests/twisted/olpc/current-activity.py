@@ -5,10 +5,7 @@ test OLPC Buddy properties current activity
 import dbus
 
 from servicetest import call_async, EventPattern
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
-from twisted.words.protocols.jabber.client import IQ
-
-from twisted.words.xish import domish, xpath
+from gabbletest import exec_test, acknowledge_iq
 
 from util import (announce_gadget, send_buddy_changed_current_act_msg,
     answer_to_current_act_pubsub_request, answer_error_to_pubsub_request,

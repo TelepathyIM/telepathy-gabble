@@ -8,7 +8,7 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import EventPattern
+from servicetest import EventPattern, wrap_channel
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -23,7 +23,8 @@ def test(q, bus, conn, stream):
     stream.send(m)
 
     event = q.expect('dbus-signal', signal='NewChannel')
-    text_chan = bus.get_object(conn.bus_name, event.args[0])
+    text_chan = wrap_channel(
+        bus.get_object(conn.bus_name, event.args[0]), 'Text', ['Messages'])
     assert event.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
     # check that handle type == contact handle
     assert event.args[2] == 1
@@ -33,9 +34,8 @@ def test(q, bus, conn, stream):
     assert event.args[4] == False   # suppress handler
 
     # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+    channel_props = text_chan.Properties.GetAll(
+            'org.freedesktop.Telepathy.Channel')
     assert channel_props.get('TargetHandle') == event.args[3],\
             (channel_props.get('TargetHandle'), event.args[3])
     assert channel_props.get('TargetHandleType') == 1,\
@@ -91,9 +91,7 @@ def test(q, bus, conn, stream):
     # PendingMessagesRemoved fires.
     message_id = header['pending-message-id']
 
-    dbus.Interface(text_chan,
-        u'org.freedesktop.Telepathy.Channel.Type.Text'
-        ).AcknowledgePendingMessages([message_id])
+    text_chan.Text.AcknowledgePendingMessages([message_id])
 
     removed = q.expect('dbus-signal', signal='PendingMessagesRemoved')
 
@@ -110,9 +108,7 @@ def test(q, bus, conn, stream):
         }
     ]
 
-    sent_token = dbus.Interface(text_chan,
-        u'org.freedesktop.Telepathy.Channel.Interface.Messages'
-        ).SendMessage(greeting, dbus.UInt32(0))
+    sent_token = text_chan.Messages.SendMessage(greeting, dbus.UInt32(0))
 
     stream_message, sent, message_sent = q.expect_many(
         EventPattern('stream-message'),
@@ -143,8 +139,7 @@ def test(q, bus, conn, stream):
 
 
     # Send a message using Channel.Type.Text API
-    dbus.Interface(text_chan,
-        u'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'goodbye')
+    text_chan.Text.Send(0, 'goodbye')
 
     stream_message, sent, message_sent = q.expect_many(
         EventPattern('stream-message'),

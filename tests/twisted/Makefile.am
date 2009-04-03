@@ -58,6 +58,7 @@ TWISTED_TESTS = \
 	tubes/offer-private-stream-tube.py \
 	tubes/request-invalid-dbus-tube.py \
 	tubes/test-get-available-tubes.py \
+	tubes/test-socks5-muc.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \
@@ -75,6 +76,7 @@ TWISTED_TESTS = \
 	jingle/hold-av.py \
 	jingle/stun-server.py \
 	jingle/outgoing-many-streams.py \
+	jingle/outgoing-not-answered.py \
 	jingle/payload-types.py \
 	jingle/stream-handler-error.py \
 	jingle/test-content-adding-removal.py \
@@ -114,6 +116,7 @@ TWISTED_TESTS = \
 	connect/test-nonblocking-tls.py \
 	test-disco.py \
 	test-disco-no-reply.py \
+	test-fallback-socks5-proxy.py \
 	test-register.py \
 	test-set-status-idempotence.py \
         test-location.py

@@ -66,6 +66,12 @@ GType gabble_bytestream_factory_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_BYTESTREAM_FACTORY,\
                               GabbleBytestreamFactoryClass))
 
+typedef struct {
+    gchar *jid;
+    gchar *host;
+    gchar *port;
+} GabbleSocks5Proxy;
+
 typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (
     GabbleBytestreamIface *bytestream, const gchar *stream_id, LmMessage *msg,
     GObject *object, gpointer user_data);
@@ -99,6 +105,9 @@ gboolean gabble_bytestream_factory_negotiate_stream (
     gpointer user_data, GObject *object, GError **error);
 
 gchar *gabble_bytestream_factory_generate_stream_id (void);
+
+GSList *gabble_bytestream_factory_get_socks5_proxies (
+    GabbleBytestreamFactory *self);
 
 G_END_DECLS
 

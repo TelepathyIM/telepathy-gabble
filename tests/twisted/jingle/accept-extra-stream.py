@@ -88,7 +88,9 @@ def test(q, bus, conn, stream):
     # local send is now sending.
     memb, acc, _, _, _,  = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
-            args=[u'', [self_handle], [], [], [], 0, 0]),
+            args=[u'', [self_handle], [], [], [],
+                        self_handle,
+                        cs.GC_REASON_NONE]),
         EventPattern('stream-iq',
             predicate=lambda e: (e.query.name == 'jingle' and
                 e.query['action'] == 'session-accept')),

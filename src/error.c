@@ -266,25 +266,25 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the 'sid' attribute specifies a session that is unknown to the "
       "recipient",
       "cancel",
-      XMPP_ERROR_BAD_REQUEST,
+      XMPP_ERROR_ITEM_NOT_FOUND,
       NS_JINGLE_ERRORS,
       { 0, },
     },
 
     {
-      "unsupported-transports",
-      "the recipient does not support any of the desired content transport "
-      "methods",
+      "tie-break",
+      "The request is rejected because it was sent while the initiator was "
+      "awaiting a reply on a similar request.",
       "cancel",
-      XMPP_ERROR_FEATURE_NOT_IMPLEMENTED,
+      XMPP_ERROR_CONFLICT,
       NS_JINGLE_ERRORS,
       { 0, },
     },
 
     {
-      "unsupported-content",
-      "the recipient does not support any of the desired content description"
-      "formats",
+      "unsupported-info",
+      "The recipient does not support the informational payload of a "
+      "session-info action.",
       "cancel",
       XMPP_ERROR_FEATURE_NOT_IMPLEMENTED,
       NS_JINGLE_ERRORS,

@@ -1,69 +1,73 @@
 """
-Test outgoing call handling. This tests the case when the
-remote party rejects our call because they're busy.
+Tests outgoing calls timing out if they're not answered.
 """
 
-from gabbletest import make_result_iq
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix
-import constants as cs
+from twisted.words.xish import xpath
 
+from servicetest import make_channel_proxy, EventPattern, sync_dbus
 from jingletest2 import JingleTest2, test_all_dialects
 
+import constants as cs
+
 def test(jp, q, bus, conn, stream):
-    remote_jid = 'foo@bar.com/Foo'
+    remote_jid = 'daf@example.com/misc'
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
 
     jt.prepare()
 
     self_handle = conn.GetSelfHandle()
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
-
-    path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
-        cs.HT_CONTACT, remote_handle, True)
-
-    signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
+    path, _ = conn.Requests.CreateChannel({
+        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+        cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+        cs.TARGET_HANDLE: remote_handle})
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
-
     media_iface.RequestStreams(remote_handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
-    # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
-
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-
     e = q.expect('dbus-signal', signal='NewStreamHandler')
-
     stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
-
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler.Ready(jt.get_audio_codecs_dbus())
     stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    e = q.expect('stream-iq', predicate=lambda e:
+    q.expect('stream-iq', predicate=lambda e:
         jp.match_jingle_action(e.query, 'session-initiate'))
-    stream.send(make_result_iq(stream, e.stanza))
 
-    jt.set_sid_from_initiate(e.query)
-    jt.terminate(reason="busy")
+    # Ensure we've got all the MembersChanged signals at the start of the call
+    # out of the way.
+    sync_dbus(bus, q, conn)
 
-    mc = q.expect('dbus-signal', signal='MembersChanged')
+    # daf doesn't answer; we expect the call to end.
+    mc, t = q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChanged'),
+        EventPattern('stream-iq', predicate=lambda e:
+            jp.match_jingle_action(e.query, 'session-terminate')),
+        )
+
     _, added, removed, lp, rp, actor, reason = mc.args
     assert added == [], added
     assert set(removed) == set([self_handle, remote_handle]), \
         (removed, self_handle, remote_handle)
     assert lp == [], lp
     assert rp == [], rp
-    assert actor == remote_handle, (actor, remote_handle)
-    if jp.supports_termination_reason():
-        assert reason == cs.GC_REASON_BUSY, reason
+    # It's not clear whether the actor should be self_handle (we gave up),
+    # remote_handle (the other guy didn't pick up), or neither. So I'll make no
+    # assertions.
+    assert reason == cs.GC_REASON_NO_ANSWER, reason
 
-    q.expect('dbus-signal', signal='Close') #XXX - match against the path
+    if jp.dialect == 'jingle-v0.31':
+        # Check we sent <reason><timeout/></reason> to daf
+        jingle = t.query
+        assert xpath.queryForNodes("/jingle/reason/timeout", jingle) is not None, \
+            jingle.toXml()
 
     conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+
 
 if __name__ == '__main__':
     test_all_dialects(test)

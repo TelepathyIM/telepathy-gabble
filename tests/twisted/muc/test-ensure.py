@@ -3,12 +3,8 @@ Test that EnsureChannel works for MUCs, particularly in the case when there
 are several pending requests for the same MUC.
 """
 
-import dbus
-
-from twisted.words.xish import domish
-
-from gabbletest import go, make_result_iq, exec_test, make_muc_presence
-from servicetest import call_async, lazy, match, EventPattern
+from gabbletest import make_result_iq, exec_test, make_muc_presence
+from servicetest import call_async, EventPattern
 
 def test(q, bus, conn, stream):
     conn.Connect()

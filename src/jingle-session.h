@@ -91,7 +91,8 @@ LmMessage *gabble_jingle_session_new_message (GabbleJingleSession *sess,
     JingleAction action, LmMessageNode **sess_node);
 
 void gabble_jingle_session_accept (GabbleJingleSession *sess);
-void gabble_jingle_session_terminate (GabbleJingleSession *sess);
+gboolean gabble_jingle_session_terminate (GabbleJingleSession *sess,
+    TpChannelGroupChangeReason reason, GError **error);
 void gabble_jingle_session_remove_content (GabbleJingleSession *sess,
     GabbleJingleContent *c);
 
@@ -107,6 +108,8 @@ typedef void (*JingleReplyHandler) (GabbleJingleSession *, gboolean success,
 void gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
     JingleReplyHandler cb, gpointer user_data);
 
+/* Only to be used for the test suite */
+void gabble_set_jingle_session_timeout (guint seconds);
 
 #endif /* __JINGLE_SESSION_H__ */
 

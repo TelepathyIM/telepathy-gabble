@@ -37,23 +37,18 @@ def worker(jp, q, bus, conn, stream):
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
 
     # Remote end calls us
-    # jt.incoming_call()
-    node = jp.SetIq(jt2.peer, jt2.jid, [
-        jp.Jingle(jt2.sid, jt2.peer, 'session-initiate', [
-            jp.Content('stream1', 'initiator', 'both', [
-                jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
-    stream.send(jp.xml(node))
+    jt2.incoming_call()
 
+    # FIXME: these signals are not observable by real clients, since they
+    #        happen before NewChannels.
     # The caller is in members
     e = q.expect('dbus-signal', signal='MembersChanged',
              args=[u'', [remote_handle], [], [], [], 0, 0])
 
     # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [self_handle], [], remote_handle, 0])
+             args=[u'', [], [], [self_handle], [], remote_handle,
+                   cs.GC_REASON_INVITED])
 
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
     signalling_iface = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.MediaSignalling')
@@ -76,7 +71,8 @@ def worker(jp, q, bus, conn, stream):
 
     # We are now in members too
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [self_handle], [], [], [], 0, 0])
+             args=[u'', [self_handle], [], [], [], self_handle,
+                   cs.GC_REASON_NONE])
 
     # we are now both in members
     members = media_chan.GetMembers()

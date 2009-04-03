@@ -11,6 +11,7 @@ import constants as cs
 import ns
 import tubetestutil as t
 from muctubeutil import get_muc_tubes_channel
+from bytestream import BytestreamS5BRelay, BytestreamS5BRelayBugged
 
 from twisted.words.xish import xpath
 from twisted.internet import reactor
@@ -34,6 +35,11 @@ def set_up_listener_socket(q, path):
     return full_path
 
 def test(q, bus, conn, stream, bytestream_cls):
+    if bytestream_cls in [BytestreamS5BRelay, BytestreamS5BRelayBugged]:
+        # disable SOCKS5 relay tests because proxy can't be used with muc
+        # contacts atm
+        return
+
     srv_path = set_up_listener_socket(q, '/stream')
     conn.Connect()
 

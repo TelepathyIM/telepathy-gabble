@@ -30,6 +30,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "gabble-signals-marshal.h"
 #include "jingle-content.h"
 #include "jingle-factory.h"
 #include "namespaces.h"
@@ -85,7 +86,7 @@ struct _GabbleJingleSessionPrivate
   gboolean dispose_has_run;
 };
 
-#define DEFAULT_SESSION_TIMEOUT 60000
+static guint session_timeout_time = 60000;
 
 typedef struct {
   JingleState state;
@@ -372,8 +373,8 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 
   signals[TERMINATED] = g_signal_new ("terminated",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
-        0, NULL, NULL, g_cclosure_marshal_VOID__BOOLEAN,
-        G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
+        0, NULL, NULL, gabble_marshal_VOID__BOOLEAN_UINT,
+        G_TYPE_NONE, 2, G_TYPE_BOOLEAN, G_TYPE_UINT);
 }
 
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
@@ -480,7 +481,8 @@ action_is_allowed (JingleAction action, JingleState state)
   return FALSE;
 }
 
-static void set_state (GabbleJingleSession *sess, JingleState state);
+static void set_state (GabbleJingleSession *sess, JingleState state,
+    TpChannelGroupChangeReason termination_reason);
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 
 #define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
@@ -786,7 +788,8 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
     {
       /* We ignore initiate from us, and terminate the session immediately
        * afterwards */
-      gabble_jingle_session_terminate (sess);
+      gabble_jingle_session_terminate (sess,
+          TP_CHANNEL_GROUP_CHANGE_REASON_BUSY, NULL);
       return;
     }
 
@@ -807,7 +810,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
        * disposition; resolve this as soon as the proper procedure is defined
        * in XEP-0166. */
 
-      set_state (sess, JS_STATE_PENDING_INITIATED);
+      set_state (sess, JS_STATE_PENDING_INITIATED, 0);
     }
 }
 
@@ -835,7 +838,8 @@ on_content_remove (GabbleJingleSession *sess, LmMessageNode *node,
 
   if (g_hash_table_size (priv->contents) == 0)
     {
-      gabble_jingle_session_terminate (sess);
+      gabble_jingle_session_terminate (sess,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
     }
 }
 
@@ -886,15 +890,75 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
   if (*error != NULL)
       return;
 
-  set_state (sess, JS_STATE_ACTIVE);
+  set_state (sess, JS_STATE_ACTIVE, 0);
 }
+
+static void
+on_session_info (GabbleJingleSession *sess,
+    LmMessageNode *node,
+    GError **error)
+{
+  DEBUG ("got session-info, but no payloads are implemented");
+
+  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
+      "session-info is not supported");
+}
+
+typedef struct {
+    const gchar *element;
+    TpChannelGroupChangeReason reason;
+} ReasonMapping;
+
+/* Taken from the schema in XEP 0166 */
+ReasonMapping reasons[] = {
+    { "alternative-session", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
+    { "busy", TP_CHANNEL_GROUP_CHANGE_REASON_BUSY },
+    { "cancel", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
+    { "connectivity-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "decline", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
+    { "expired", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
+    { "failed-application", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "failed-transport", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "general-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "gone", TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE },
+    { "incompatible-parameters", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "media-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "security-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "success", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
+    { "timeout", TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER },
+    { "unsupported-applications", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { "unsupported-transports", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
+    { NULL, }
+};
 
 static void
 on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  DEBUG ("remote end terminates the session");
-  set_state (sess, JS_STATE_ENDED);
+  TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+  LmMessageNode *n = lm_message_node_get_child (node, "reason");
+  ReasonMapping *m = NULL;
+
+  /* If the session-terminate stanza has a <reason> child, then iterate across
+   * its children, looking for a child whose name we recognise as a
+   * machine-readable reason for the call ending (looked up from the table
+   * above). (The XEP also defines <text> for a human-readable message. TODO:
+   * expose and send that as the group change message.) Once we find a reason
+   * we recognise, break out of both loops.
+   */
+  if (n != NULL)
+    for (n = n->children; n != NULL; n = n->next)
+      for (m = reasons; m->element != NULL; m++)
+        if (!tp_strdiff (m->element, lm_message_node_get_name (n)))
+          {
+            reason = m->reason;
+            goto pub;
+          }
+
+pub:
+  DEBUG ("remote end terminated the session with reason %s (%u)",
+      (m != NULL && m->element != NULL ? m->element : "(none)"), reason);
+  set_state (sess, JS_STATE_ENDED, reason);
 }
 
 static void
@@ -982,7 +1046,7 @@ static HandlerFunc handlers[] = {
   on_content_replace,
   on_content_reject,
   on_session_accept, /* jingle_on_session_accept */
-  NULL, /* jingle_on_session_info */
+  on_session_info,
   on_session_initiate,
   on_session_terminate, /* jingle_on_session_terminate */
   on_transport_info, /* jingle_on_transport_info */
@@ -991,14 +1055,16 @@ static HandlerFunc handlers[] = {
 };
 
 static void
-jingle_state_machine_dance (GabbleJingleSession *sess, JingleAction action,
-    LmMessageNode *node, GError **error)
-  {
-    GabbleJingleSessionPrivate *priv = sess->priv;
+jingle_state_machine_dance (GabbleJingleSession *sess,
+    JingleAction action,
+    LmMessageNode *node,
+    GError **error)
+{
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
-    /* parser should've checked this already */
-    g_assert (action_is_allowed (action, priv->state));
-    g_assert (handlers[action] != NULL);
+  /* parser should've checked this already */
+  g_assert (action_is_allowed (action, priv->state));
+  g_assert (handlers[action] != NULL);
 
   handlers[action] (sess, node, error);
 }
@@ -1401,9 +1467,9 @@ _on_initiate_reply (GabbleJingleSession *sess, gboolean success,
     LmMessage *reply, gpointer user_data)
 {
   if (success)
-      set_state (sess, JS_STATE_PENDING_INITIATED);
+      set_state (sess, JS_STATE_PENDING_INITIATED, 0);
   else
-      set_state (sess, JS_STATE_ENDED);
+      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 }
 
 static void
@@ -1411,9 +1477,9 @@ _on_accept_reply (GabbleJingleSession *sess, gboolean success,
     LmMessage *reply, gpointer user_data)
 {
   if (success)
-      set_state (sess, JS_STATE_ACTIVE);
+      set_state (sess, JS_STATE_ACTIVE, 0);
   else
-      set_state (sess, JS_STATE_ENDED);
+      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 }
 
 static gboolean
@@ -1424,10 +1490,8 @@ timeout_session (gpointer data)
   DEBUG ("session timed out");
   session->priv->timer_id = 0;
 
-  /* FIXME: distinguish between different cases; we somehow need to
-   * signal this to media channel - parameter to TERMINATED perhaps?*/
-
-  gabble_jingle_session_terminate (session);
+  gabble_jingle_session_terminate (session,
+      TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER, NULL);
   return FALSE;
 }
 
@@ -1484,14 +1548,23 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
   msg = gabble_jingle_session_new_message (sess, action, &sess_node);
   _map_initial_contents (sess, _fill_content, sess_node);
   gabble_jingle_session_send (sess, msg, handler, NULL);
-  set_state (sess, new_state);
+  set_state (sess, new_state, 0);
 
   /* now all initial contents can transmit their candidates */
   _map_initial_contents (sess, _transmit_candidates, NULL);
 }
 
+/**
+ * set_state:
+ * @sess: a jingle session
+ * @state: the new state for the session
+ * @termination_reason: if @state is JS_STATE_ENDED, the reason the session
+ *                      ended. Otherwise, must be 0.
+ */
 static void
-set_state (GabbleJingleSession *sess, JingleState state)
+set_state (GabbleJingleSession *sess,
+           JingleState state,
+           TpChannelGroupChangeReason termination_reason)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
 
@@ -1500,6 +1573,9 @@ set_state (GabbleJingleSession *sess, JingleState state)
       DEBUG ("ignoring request to set state from %u back to %u", priv->state, state);
       return;
     }
+
+  if (state != JS_STATE_ENDED)
+    g_assert (termination_reason == 0);
 
   DEBUG ("Setting state of JingleSession: %p (priv = %p) from %u to %u", sess, priv, priv->state, state);
 
@@ -1511,7 +1587,7 @@ set_state (GabbleJingleSession *sess, JingleState state)
       (!priv->local_initiator && (state == JS_STATE_PENDING_INITIATED)))
     {
       g_assert (priv->timer_id == 0);
-      priv->timer_id = g_timeout_add (DEFAULT_SESSION_TIMEOUT,
+      priv->timer_id = g_timeout_add (session_timeout_time,
         timeout_session, sess);
     }
   /* if we're active or ended, we can clear the timer */
@@ -1522,7 +1598,8 @@ set_state (GabbleJingleSession *sess, JingleState state)
     }
 
   if (state == JS_STATE_ENDED)
-      g_signal_emit (sess, signals[TERMINATED], 0, priv->locally_terminated);
+    g_signal_emit (sess, signals[TERMINATED], 0, priv->locally_terminated,
+        termination_reason);
 }
 
 void
@@ -1535,22 +1612,65 @@ gabble_jingle_session_accept (GabbleJingleSession *sess)
   try_session_initiate_or_accept (sess);
 }
 
-void
-gabble_jingle_session_terminate (GabbleJingleSession *sess)
+static const gchar *
+_get_jingle_reason (GabbleJingleSession *sess,
+                    TpChannelGroupChangeReason reason)
+{
+  switch (reason)
+    {
+    case TP_CHANNEL_GROUP_CHANGE_REASON_NONE:
+      if (sess->priv->state == JS_STATE_ACTIVE)
+        return "success";
+      else
+        return "cancel";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE:
+      return "gone";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_BUSY:
+      return "busy";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_ERROR:
+      return "general-error";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER:
+      return "timeout";
+    default:
+      return NULL;
+    }
+}
+
+gboolean
+gabble_jingle_session_terminate (GabbleJingleSession *sess,
+                                 TpChannelGroupChangeReason reason,
+                                 GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
+  const gchar *reason_elt;
 
   if (priv->state == JS_STATE_ENDED)
     {
       DEBUG ("session already terminated, ignoring terminate request");
-      return;
+      return TRUE;
+    }
+
+  reason_elt = _get_jingle_reason (sess, reason);
+
+  if (reason_elt == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "%u doesn't make sense as a reason to end a call", reason);
+      return FALSE;
     }
 
   if (priv->state != JS_STATE_PENDING_CREATED)
     {
-      gabble_jingle_session_send (sess,
-          gabble_jingle_session_new_message (sess,
-              JINGLE_ACTION_SESSION_TERMINATE, NULL), NULL, NULL);
+      LmMessageNode *session_node;
+      LmMessage *msg = gabble_jingle_session_new_message (sess,
+          JINGLE_ACTION_SESSION_TERMINATE, &session_node);
+
+      if (priv->dialect == JINGLE_DIALECT_V032 && reason_elt != NULL)
+        lm_message_node_add_child (
+            lm_message_node_add_child (session_node, "reason", NULL),
+            reason_elt, NULL);
+
+      gabble_jingle_session_send (sess, msg, NULL, NULL);
     }
 
   /* NOTE: on "terminated", jingle factory and media channel will unref
@@ -1559,7 +1679,9 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess)
 
   DEBUG ("we are terminating this session");
   priv->locally_terminated = TRUE;
-  set_state (sess, JS_STATE_ENDED);
+  set_state (sess, JS_STATE_ENDED, reason);
+
+  return TRUE;
 }
 
 static void
@@ -1601,7 +1723,7 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
       return;
 
   if (count_active_contents (sess) == 0)
-    gabble_jingle_session_terminate (sess);
+    gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
 }
 
 
@@ -1705,4 +1827,9 @@ content_ready_cb (GabbleJingleContent *c, gpointer user_data)
   try_session_initiate_or_accept (sess);
 }
 
-
+/* Only to be used for the test suite */
+void
+gabble_set_jingle_session_timeout (guint ms)
+{
+  session_timeout_time = ms;
+}

@@ -6,8 +6,7 @@ Test connecting to a server.
 import dbus
 from twisted.words.xish import xpath
 
-from servicetest import EventPattern
-from gabbletest import go, exec_test
+from gabbletest import exec_test
 import ns
 
 def test(q, bus, conn, stream):

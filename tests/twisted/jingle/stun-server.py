@@ -61,13 +61,15 @@ def test(q, bus, conn, stream,
     # Remote end calls us
     jt.incoming_call()
 
+    # FIXME: these signals are not observable by real clients, since they
+    #        happen before NewChannels.
     # The caller is in members
     e = q.expect('dbus-signal', signal='MembersChanged',
              args=[u'', [remote_handle], [], [], [], 0, 0])
 
     # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], remote_handle, 0])
+             args=[u'', [], [], [1L], [], remote_handle, c.GC_REASON_INVITED])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')

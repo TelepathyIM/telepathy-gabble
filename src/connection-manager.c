@@ -80,6 +80,7 @@ struct _GabbleParams {
   guint fallback_stun_port;
   gboolean ignore_ssl_errors;
   gchar *alias;
+  GStrv fallback_socks5_proxies;
 };
 
 enum {
@@ -102,10 +103,11 @@ enum {
     JABBER_PARAM_FALLBACK_STUN_PORT,
     JABBER_PARAM_IGNORE_SSL_ERRORS,
     JABBER_PARAM_ALIAS,
+    JABBER_PARAM_FALLBACK_SOCKS5_PROXIES,
     LAST_JABBER_PARAM
 };
 
-static const TpCMParamSpec jabber_params[] = {
+static TpCMParamSpec jabber_params[] = {
   { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
     TP_CONN_MGR_PARAM_FLAG_REQUIRED | TP_CONN_MGR_PARAM_FLAG_REGISTER, NULL,
     G_STRUCT_OFFSET(GabbleParams, account),
@@ -197,6 +199,11 @@ static const TpCMParamSpec jabber_params[] = {
     /* setting a 0-length alias makes no sense */
     tp_cm_param_filter_string_nonempty, NULL },
 
+  { "fallback-socks5-proxies", "as", 0,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, NULL,
+    G_STRUCT_OFFSET (GabbleParams, fallback_socks5_proxies),
+    NULL, NULL },
+
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -219,6 +226,7 @@ free_params (void *p)
   g_free (params->fallback_conference_server);
   g_free (params->stun_server);
   g_free (params->alias);
+  g_strfreev (params->fallback_socks5_proxies);
 
   g_slice_free (GabbleParams, params);
 }
@@ -228,11 +236,18 @@ const TpCMProtocolSpec gabble_protocols[] = {
   { NULL, NULL }
 };
 
+const gchar *default_socks5_proxies[] = GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES;
+
 const TpCMProtocolSpec *
 gabble_connection_manager_get_protocols (void)
 {
+  jabber_params[JABBER_PARAM_FALLBACK_SOCKS5_PROXIES].gtype = G_TYPE_STRV;
+  jabber_params[JABBER_PARAM_FALLBACK_SOCKS5_PROXIES].def =
+    default_socks5_proxies;
+
   return gabble_protocols;
 }
+
 
 #define SET_PROPERTY_IF_PARAM_SET(prop, param, member) \
   if (tp_intset_is_member (params_present, param)) \
@@ -292,6 +307,8 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
                               JABBER_PARAM_IGNORE_SSL_ERRORS,
                               params->ignore_ssl_errors);
   SET_PROPERTY_IF_PARAM_SET ("alias", JABBER_PARAM_ALIAS, params->alias);
+  SET_PROPERTY_IF_PARAM_SET ("fallback-socks5-proxies",
+      JABBER_PARAM_FALLBACK_SOCKS5_PROXIES, params->fallback_socks5_proxies);
 
   /* split up account into username, stream-server and resource */
   if (!_gabble_connection_set_properties_from_account (conn, params->account,

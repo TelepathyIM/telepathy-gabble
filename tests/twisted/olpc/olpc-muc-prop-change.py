@@ -6,7 +6,7 @@ import dbus
 
 from twisted.words.xish import domish, xpath
 
-from gabbletest import go, make_result_iq, exec_test, acknowledge_iq, make_muc_presence
+from gabbletest import exec_test, acknowledge_iq, make_muc_presence
 from servicetest import call_async, EventPattern
 import ns
 

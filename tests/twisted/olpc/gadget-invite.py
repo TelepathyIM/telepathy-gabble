@@ -4,12 +4,11 @@ test gadget invitation when an activity becomes public
 
 import dbus
 
-from servicetest import call_async, EventPattern, sync_dbus
+from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream,\
     make_muc_presence
 
-from twisted.words.xish import domish, xpath
-from twisted.words.protocols.jabber.client import IQ
+from twisted.words.xish import xpath
 
 from util import announce_gadget, gadget_publish
 import ns

@@ -1,7 +1,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern
-from gabbletest import make_result_iq, acknowledge_iq, elem, elem_iq
+from gabbletest import make_result_iq, elem, elem_iq
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 import ns
@@ -26,10 +26,10 @@ def parse_properties(elems):
             continue
 
         if type not in valid_types:
-            raise PropertyTypeError(type, elems.uri)
+            raise ValueError
 
         if type == 'bool' and value not in ['1', '0', 'true', 'false']:
-            raise PropertyTypeError(type, elems.uri)
+            raise ValueError
 
         properties[name] = (type, value)
 

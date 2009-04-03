@@ -17,7 +17,7 @@ from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
 import ns
 import constants as cs
-from bytestream import create_from_si_offer
+from bytestream import create_from_si_offer, announce_socks5_proxy
 import tubetestutil as t
 
 bob_jid = 'bob@localhost/Bob'
@@ -113,13 +113,16 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls):
 def test(q, bus, conn, stream, bytestream_cls):
     conn.Connect()
 
-    _, vcard_event, roster_event = q.expect_many(
+    _, vcard_event, roster_event, disco_event = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
-        EventPattern('stream-iq', query_ns='jabber:iq:roster'))
+        EventPattern('stream-iq', query_ns='jabber:iq:roster'),
+        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
 
     acknowledge_iq(stream, vcard_event.stanza)
+
+    announce_socks5_proxy(q, stream, disco_event.stanza)
 
     roster = roster_event.stanza
     roster['type'] = 'result'

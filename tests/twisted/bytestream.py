@@ -11,7 +11,8 @@ from twisted.words.xish import xpath, domish
 from twisted.internet.error import CannotListenError
 
 from servicetest import Event, EventPattern
-from gabbletest import acknowledge_iq, sync_stream, make_result_iq, elem, elem_iq
+from gabbletest import acknowledge_iq, sync_stream, make_result_iq, elem_iq,\
+    elem
 import ns
 
 def wait_events(q, expected, my_event):
@@ -139,6 +140,43 @@ class Bytestream(object):
         assert str(proto) == self.get_ns()
 
 ##### XEP-0065: SOCKS5 Bytestreams #####
+def listen_socks5(q):
+    for port in range(5000, 5100):
+        try:
+            reactor.listenTCP(port, S5BFactory(q.append))
+        except CannotListenError:
+            continue
+        else:
+            return port
+
+    assert False, "Can't find a free port"
+
+def announce_socks5_proxy(q, stream, disco_stanza):
+    reply = make_result_iq(stream, disco_stanza)
+    query = xpath.queryForNodes('/iq/query', reply)[0]
+    item = query.addElement((None, 'item'))
+    item['jid'] = 'proxy.localhost'
+    stream.send(reply)
+
+    # wait for proxy disco#info query
+    event = q.expect('stream-iq', to='proxy.localhost', query_ns=ns.DISCO_INFO,
+        iq_type='get')
+
+    reply = elem_iq(stream, 'result', id=event.stanza['id'])(
+        elem(ns.DISCO_INFO, 'query')(
+            elem('identity', category='proxy', type='bytestreams', name='SOCKS5 Bytestreams')(),
+            elem('feature', var=ns.BYTESTREAMS)()))
+    stream.send(reply)
+
+    # Gabble asks for SOCKS5 info
+    event = q.expect('stream-iq', to='proxy.localhost', query_ns=ns.BYTESTREAMS,
+        iq_type='get')
+
+    port = listen_socks5(q)
+    reply = elem_iq(stream, 'result', id=event.stanza['id'])(
+        elem(ns.BYTESTREAMS, 'query')(
+            elem('streamhost', jid='proxy.localhost', host='127.0.0.1', port=str(port))()))
+    stream.send(reply)
 
 class BytestreamS5B(Bytestream):
     def __init__(self, stream, q, sid, initiator, target, initiated):
@@ -221,19 +259,9 @@ class BytestreamS5B(Bytestream):
 
         return events_before, events_after
 
-    def _listen_socks5(self):
-        for port in range(5000,5100):
-            try:
-                reactor.listenTCP(port, S5BFactory(self.q.append))
-            except CannotListenError:
-                continue
-            else:
-                return port
-
-        assert False, "Can't find a free port"
-
     def open_bytestream(self, expected_before=[], expected_after=[]):
-        port = self._listen_socks5()
+        port = listen_socks5(self.q)
+
         self._send_socks5_init(port)
         return self._socks5_expect_connection(expected_before, expected_after)
 
@@ -304,25 +332,24 @@ class BytestreamS5B(Bytestream):
     def wait_bytestream_open(self):
         id, mode, sid, hosts = self._expect_socks5_init()
 
-        for jid, host, port in hosts:
-            assert jid == self.initiator, jid
-
         assert mode == 'tcp'
         assert sid == self.stream_id
-        jid, host, port = hosts[0]
+
+        stream_host_found = False
 
         for jid, host, port in hosts:
             if not is_ipv4(host):
                 continue
 
-            if self._socks5_connect(host, port):
-                self._send_socks5_reply(id, jid)
-                return
-            else:
+            if jid == self.initiator:
+                stream_host_found = True
+                if self._socks5_connect(host, port):
+                    self._send_socks5_reply(id, jid)
+                else:
+                    # Connection failed
+                    self.send_not_found(id)
                 break
-
-        # Connection failed
-        self.send_not_found(id)
+        assert stream_host_found
 
     def get_data(self, size=0):
         binary = ''
@@ -436,6 +463,86 @@ class BytestreamS5BWrongHash(BytestreamS5B):
         self.check_error_stanza(iq_event.stanza)
 
         return events_before, []
+
+class BytestreamS5BRelay(BytestreamS5B):
+    """Direct connection doesn't work so we use a relay"""
+    def __init__(self, stream, q, sid, initiator, target, initiated):
+        BytestreamS5B.__init__(self, stream, q, sid, initiator, target, initiated)
+
+        self.hosts = [(self.initiator, 'invalid.invalid'),
+                ('proxy.localhost', '127.0.0.1')]
+
+    # This is the only thing we need to check to test the Target side as the
+    # protocol is similar from this side.
+    def _check_s5b_reply(self, iq):
+        streamhost = xpath.queryForNodes('/iq/query/streamhost-used', iq)[0]
+        assert streamhost['jid'] == 'proxy.localhost'
+
+    def wait_bytestream_open(self):
+        # The only difference of using a relay on the Target side is to
+        # connect to another streamhost.
+        id, mode, sid, hosts = self._expect_socks5_init()
+
+        assert mode == 'tcp'
+        assert sid == self.stream_id
+
+        proxy_found = False
+
+        for jid, host, port in hosts:
+            if jid != self.initiator:
+                proxy_found = True
+                # connect to the (fake) relay
+                if self._socks5_connect(host, port):
+                    self._send_socks5_reply(id, jid)
+                else:
+                    assert False
+                break
+        assert proxy_found
+
+        # The initiator (Gabble) is now supposed to connect to the proxy too
+        self._wait_connect_to_proxy()
+
+    def _wait_connect_to_proxy(self):
+        e = self.q.expect('s5b-connected')
+        self.transport = e.transport
+
+        self._wait_auth_request()
+        self._send_auth_reply()
+        self._wait_connect_cmd()
+        self._send_connect_reply()
+
+        self._wait_activation_iq()
+
+    def _wait_activation_iq(self):
+        e = self.q.expect('stream-iq', iq_type='set', to='proxy.localhost',
+            query_ns=ns.BYTESTREAMS)
+
+        query = xpath.queryForNodes('/iq/query', e.stanza)[0]
+        assert query['sid'] == self.stream_id
+        activate = xpath.queryForNodes('/iq/query/activate', e.stanza)[0]
+        assert str(activate) == self.target
+
+        self._reply_activation_iq(e.stanza)
+
+    def _reply_activation_iq(self, iq):
+        reply = make_result_iq(self.stream, iq)
+        reply.send()
+
+    def _socks5_connect(self, host, port):
+        # No point to emulate the proxy. Just pretend the Target properly
+        # connects, auth and requests connection
+        return True
+
+    def wait_bytestream_closed(self):
+        pass
+
+
+class BytestreamS5BRelayBugged(BytestreamS5BRelay):
+    """Simulate bugged ejabberd (< 2.0.2) proxy sending wrong CONNECT reply"""
+    def _send_connect_reply(self):
+        # send a 6 bytes wrong reply
+        connect_reply = '\x05\x00\x00\x00\x00\x00'
+        self.transport.write(connect_reply)
 
 class S5BProtocol(Protocol):
     def connectionMade(self):

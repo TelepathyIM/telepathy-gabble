@@ -20,7 +20,7 @@ Enhancements:
   to use as fallback. Set lot of public proxies as default.
 * Use IPv6 addresses when trying to establish a SOCKS5 bytestream.
 * Implement Channel.Type.FileTransfer. This means you can now send and receive
-  files using Gabble. If you are an Empathy user be sure to have a least
+  files using Gabble. If you are an Empathy user be sure to have at least
   version 2.26.0.1. Older versions will crash if you try to send a file;
   see http://bugzilla.gnome.org/show_bug.cgi?id=575681 for the details.
 

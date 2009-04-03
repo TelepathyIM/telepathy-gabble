@@ -8,7 +8,8 @@ from servicetest import EventPattern
 from gabbletest import exec_test, sync_stream
 import ns
 from bytestream import create_from_si_offer, BytestreamIBBMsg, BytestreamS5B, BytestreamS5BPidgin, \
-    BytestreamSIFallbackS5CannotConnect, BytestreamSIFallbackS5WrongHash
+    BytestreamSIFallbackS5CannotConnect, BytestreamSIFallbackS5WrongHash, BytestreamS5BRelay,\
+    BytestreamS5BRelayBugged, announce_socks5_proxy
 
 from twisted.words.xish import domish, xpath
 
@@ -55,11 +56,12 @@ class FileTransferTest(object):
     def connect(self):
         self.conn.Connect()
 
-        _, vcard_event, roster_event = self.q.expect_many(
+        _, vcard_event, roster_event, disco_event = self.q.expect_many(
             EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
             EventPattern('stream-iq', to=None, query_ns='vcard-temp',
                 query_name='vCard'),
-            EventPattern('stream-iq', query_ns='jabber:iq:roster'))
+            EventPattern('stream-iq', query_ns='jabber:iq:roster'),
+            EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
 
         roster = roster_event.stanza
         roster['type'] = 'result'
@@ -67,6 +69,8 @@ class FileTransferTest(object):
         item['jid'] = self.CONTACT_NAME
         item['subscription'] = 'both'
         self.stream.send(roster)
+
+        announce_socks5_proxy(self.q, self.stream, disco_event.stanza)
 
         self.self_handle = self.conn.GetSelfHandle()
         self.self_handle_name =  self.conn.InspectHandles(cs.HT_CONTACT, [self.self_handle])[0]
@@ -414,8 +418,9 @@ class SendFileTest(FileTransferTest):
         assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 
 def exec_file_transfer_test(test_cls):
-    for bytestream_cls  in [BytestreamIBBMsg, BytestreamS5B, BytestreamS5BPidgin, BytestreamSIFallbackS5CannotConnect,
-            BytestreamSIFallbackS5WrongHash]:
+    for bytestream_cls  in [BytestreamIBBMsg, BytestreamS5B, BytestreamS5BPidgin,\
+        BytestreamSIFallbackS5CannotConnect, BytestreamSIFallbackS5WrongHash,\
+        BytestreamS5BRelay, BytestreamS5BRelayBugged]:
         for addr_type, access_control, access_control_param in [
                 (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
                 (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),

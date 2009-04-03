@@ -9,6 +9,8 @@ Dependencies:
 Enhancements:
 
 * Use IPv6 addresses when trying to establish a SOCKS5 bytestream.
+* Implement Channel.Type.FileTransfer. This means you can now send and receive
+  files using Gabble.
 
 Fixes:
 

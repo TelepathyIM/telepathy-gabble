@@ -406,11 +406,10 @@ class SendFileTest(FileTransferTest):
         assert self.count == self.file.size
 
         # FileTransferStateChanged could have already been fired
-        e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')
+        events = self.bytestream.wait_bytestream_closed(
+            [EventPattern('dbus-signal', signal='FileTransferStateChanged')])
 
-        self.bytestream.wait_bytestream_closed()
-
-        state, reason = e.args
+        state, reason = events[0].args
         assert state == cs.FT_STATE_COMPLETED
         assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 

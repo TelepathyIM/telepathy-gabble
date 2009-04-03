@@ -533,8 +533,11 @@ class BytestreamS5BRelay(BytestreamS5B):
         # connects, auth and requests connection
         return True
 
-    def wait_bytestream_closed(self):
-        pass
+    def wait_bytestream_closed(self, expected=[]):
+        if expected == []:
+            return []
+
+        return self.q.expect_many(*expected)
 
 
 class BytestreamS5BRelayBugged(BytestreamS5BRelay):

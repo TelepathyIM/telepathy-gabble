@@ -75,7 +75,7 @@ class Bytestream(object):
     def get_data(self, size=0):
         raise NotImplemented
 
-    def wait_bytestream_closed(self):
+    def wait_bytestream_closed(self, expected=[]):
         raise NotImplemented
 
     def check_si_offer(self, iq, bytestreams):
@@ -336,8 +336,10 @@ class BytestreamS5B(Bytestream):
 
         return binary
 
-    def wait_bytestream_closed(self):
-        self.q.expect('s5b-connection-lost')
+    def wait_bytestream_closed(self, expected=[]):
+        events, _ = wait_events(self.q, expected,
+            EventPattern('s5b-connection-lost'))
+        return events
 
     def check_error_stanza(self, iq):
         error = xpath.queryForNodes('/iq/error', iq)[0]
@@ -549,11 +551,13 @@ class BytestreamIBB(Bytestream):
 
         return binary
 
-    def wait_bytestream_closed(self):
-        close_event = self.q.expect('stream-iq', iq_type='set', query_name='close', query_ns=ns.IBB)
+    def wait_bytestream_closed(self, expected=[]):
+        events, close_event = wait_events(self.q, expected,
+            EventPattern('stream-iq', iq_type='set', query_name='close', query_ns=ns.IBB))
 
         # sender finish to send the file and so close the bytestream
         acknowledge_iq(self.stream, close_event.stanza)
+        return events
 
 class BytestreamIBBMsg(BytestreamIBB):
     def _send(self, from_, to, data):
@@ -665,8 +669,8 @@ class BytestreamSIFallback(Bytestream):
     def get_data(self, size=0):
         return self.used.get_data(size)
 
-    def wait_bytestream_closed(self):
-        self.used.wait_bytestream_closed()
+    def wait_bytestream_closed(self, expected=[]):
+        return self.used.wait_bytestream_closed(expected)
 
     def check_si_offer(self, iq, bytestreams):
         assert self.socks5.get_ns() in bytestreams

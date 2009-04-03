@@ -3,8 +3,9 @@ telepathy-gabble 0.7.25 (UNRELEASED)
 
 Dependencies:
 
-* telepathy-glib >= 0.7.28 is now required  so Gabble emits the correct
-  D-Bus errors.
+* telepathy-glib >= 0.7.29 is now required so Gabble emits the correct
+  D-Bus errors. This is also needed to be able to implement connection
+  param of type 'as'.
 
 Enhancements:
 

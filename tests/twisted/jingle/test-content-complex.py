@@ -10,9 +10,9 @@ import dbus
 import time
 from twisted.words.xish import xpath
 
-from jingletest2 import *
-
 import constants as cs
+from jingletest2 import (
+    JingleTest2, JingleProtocol015, JingleProtocol031, test_dialects)
 
 def worker(jp, q, bus, conn, stream):
 
@@ -218,13 +218,6 @@ def worker(jp, q, bus, conn, stream):
     return True
 
 
-def test015(q, bus, conn, stream):
-    return worker(JingleProtocol015(), q, bus, conn, stream)
-
-def test031(q, bus, conn, stream):
-    return worker(JingleProtocol031(),q, bus, conn, stream)
-
 if __name__ == '__main__':
-    exec_test(test015)
-    exec_test(test031)
+    test_dialects(worker, [JingleProtocol015, JingleProtocol031])
 

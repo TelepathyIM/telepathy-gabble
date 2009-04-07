@@ -36,7 +36,7 @@ INTERFACES = CHANNEL + '.Interfaces'
 
 CONN = "org.freedesktop.Telepathy.Connection"
 CONN_IFACE_CONTACTS = CONN + '.Interface.Contacts'
-CONN_IFACE_CONTACT_CAPA = CONN + '.Interface.ContactCapabilities.DRAFT'
+CONN_IFACE_CONTACT_CAPS = CONN + '.Interface.ContactCapabilities.DRAFT'
 CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
 
 ERROR = 'org.freedesktop.Telepathy.Error'

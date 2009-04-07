@@ -1849,7 +1849,7 @@ contact_is_media_capable (GabbleMediaChannel *chan,
     }
   else if (gabble_presence_cache_is_unsure (priv->conn->presence_cache))
     {
-      DEBUG ("presence cache is still unsure");
+      DEBUG ("presence cache is still unsure (interested in handle %u)", peer);
       wait_ = TRUE;
     }
 

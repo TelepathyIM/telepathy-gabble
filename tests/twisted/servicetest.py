@@ -73,6 +73,7 @@ class BaseEventQueue:
     def __init__(self, timeout=None):
         self.verbose = False
         self.past_events = []
+        self.forbidden_events = set()
 
         if timeout is None:
             self.timeout = 5
@@ -99,6 +100,30 @@ class BaseEventQueue:
 
         return self.expect(type, **kw)
 
+    def forbid_events(self, patterns):
+        """
+        Add patterns (an iterable of EventPattern) to the set of forbidden
+        events. If a forbidden event occurs during an expect or expect_many,
+        the test will fail.
+        """
+        self.forbidden_events.update(set(patterns))
+
+    def unforbid_events(self, patterns):
+        """
+        Remove 'patterns' (an iterable of EventPattern) from the set of
+        forbidden events. These must be the same EventPattern pointers that
+        were passed to forbid_events.
+        """
+        self.forbidden_events.difference_update(set(patterns))
+
+    def _check_forbidden(self, event):
+        for e in self.forbidden_events:
+            if e.match(event):
+                print "forbidden event occurred:"
+                for x in format_event(event):
+                    print x
+                assert False
+
     def expect(self, type, **kw):
         pattern = EventPattern(type, **kw)
 
@@ -106,6 +131,8 @@ class BaseEventQueue:
             event = self.wait()
             self.log('got event:')
             map(self.log, format_event(event))
+
+            self._check_forbidden(event)
 
             if pattern.match(event):
                 self.log('handled')
@@ -123,6 +150,8 @@ class BaseEventQueue:
             event = self.wait()
             self.log('got event:')
             map(self.log, format_event(event))
+
+            self._check_forbidden(event)
 
             for i, pattern in enumerate(patterns):
                 if pattern.match(event):

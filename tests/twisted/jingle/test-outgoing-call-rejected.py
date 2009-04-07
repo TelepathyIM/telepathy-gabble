@@ -57,7 +57,7 @@ def test(jp, q, bus, conn, stream):
     assert lp == [], lp
     assert rp == [], rp
     assert actor == remote_handle, (actor, remote_handle)
-    if jp.supports_termination_reason():
+    if jp.is_modern_jingle():
         assert reason == cs.GC_REASON_BUSY, reason
 
     q.expect('dbus-signal', signal='Close') #XXX - match against the path

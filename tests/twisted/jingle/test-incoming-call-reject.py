@@ -93,7 +93,7 @@ def test(jp, q, bus, conn, stream, busy):
     else:
         assert reason == cs.GC_REASON_NONE, reason
 
-    if jp.supports_termination_reason():
+    if jp.is_modern_jingle():
         jingle = iq.query
         if busy:
             r = "/jingle/reason/busy"

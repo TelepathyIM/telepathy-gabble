@@ -207,7 +207,7 @@ static void session_new_content_cb (GabbleJingleSession *session,
 static void create_stream_from_content (GabbleMediaChannel *chan,
     GabbleJingleContent *c);
 static gboolean contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer,
-    gboolean *wait);
+    gboolean *wait, GError **error);
 static void stream_creation_data_cancel (gpointer p, gpointer unused);
 
 static void
@@ -1506,14 +1506,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
   g_object_get (priv->session, "peer", &peer,
       "peer-resource", &peer_resource, NULL);
 
-  if (!contact_is_media_capable (chan, peer, NULL))
-    {
-      DEBUG ("peer has no a/v capabilities");
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "member has no audio/video capabilities");
-
-      return FALSE;
-    }
+  if (!contact_is_media_capable (chan, peer, NULL, error))
+    return FALSE;
 
   want_audio = want_video = FALSE;
 
@@ -1589,11 +1583,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
 
       if (peer_resource == NULL)
         {
-          DEBUG ("contact doesn't have a resource with suitable capabilities");
-
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
               "member does not have the desired audio/video capabilities");
-
           return FALSE;
         }
 
@@ -1782,27 +1773,20 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
     goto error;
 
   /* If we know the caps haven't arrived yet, delay stream creation
-   * and check again later */
-  if (!contact_is_media_capable (self, contact_handle, &wait))
+   * and check again later. Else, give up. */
+  if (!contact_is_media_capable (self, contact_handle, &wait, &error))
     {
       if (wait)
         {
           DEBUG ("Delaying RequestStreams until we get all caps from contact");
           delay_stream_request (self, iface, contact_handle, types, context,
               TRUE);
+          g_error_free (error);
           return;
         }
 
-      /* if we're unsure about the offlineness of the contact, wait a bit */
-      if (gabble_presence_cache_is_unsure (priv->conn->presence_cache))
-        {
-          DEBUG ("Delaying RequestStreams because we're unsure about them");
-          delay_stream_request (self, iface, contact_handle, types, context,
-              FALSE);
-          return;
-        }
+      goto error;
     }
-
 
   if (priv->session == NULL)
     {
@@ -1836,13 +1820,17 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
   return;
 
 error:
+  DEBUG ("returning error %u: %s", error->code, error->message);
   dbus_g_method_return_error (context, error);
   g_error_free (error);
 }
 
 
 static gboolean
-contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer, gboolean *wait)
+contact_is_media_capable (GabbleMediaChannel *chan,
+    TpHandle peer,
+    gboolean *wait,
+    GError **error)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
@@ -1852,16 +1840,21 @@ contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer, gboolean *wai
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_CONTACT);
 #endif
-
-  if (wait != NULL)
-    *wait = FALSE;
+  gboolean wait_ = FALSE;
 
   if (gabble_presence_cache_caps_pending (priv->conn->presence_cache, peer))
     {
       DEBUG ("caps are pending for peer %u", peer);
-      if (wait != NULL)
-        *wait = TRUE;
+      wait_ = TRUE;
     }
+  else if (gabble_presence_cache_is_unsure (priv->conn->presence_cache))
+    {
+      DEBUG ("presence cache is still unsure (interested in handle %u)", peer);
+      wait_ = TRUE;
+    }
+
+  if (wait != NULL)
+    *wait = wait_;
 
   caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_RTP |
     PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO | PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
@@ -1870,14 +1863,16 @@ contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer, gboolean *wai
 
   if (presence == NULL)
     {
-      DEBUG ("contact %d (%s) has no presence available", peer,
+      g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
+          "contact %d (%s) has no presence available", peer,
           tp_handle_inspect (contact_handles, peer));
       return FALSE;
     }
 
   if ((presence->caps & caps) == 0)
     {
-      DEBUG ("contact %d (%s) doesn't have sufficient media caps", peer,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+          "contact %d (%s) doesn't have sufficient media caps", peer,
           tp_handle_inspect (contact_handles, peer));
       return FALSE;
     }
@@ -1898,6 +1893,7 @@ _gabble_media_channel_add_member (GObject *obj,
   /* did we create this channel? */
   if (priv->creator == mixin->self_handle)
     {
+      GError *error_ = NULL;
       TpIntSet *set;
       gboolean wait;
 
@@ -1921,18 +1917,17 @@ _gabble_media_channel_add_member (GObject *obj,
       /* We can't delay the request at this time, but if there's a chance
        * the caps might be available later, we'll add the contact and
        * hope for the best. */
-      if (!contact_is_media_capable (chan, handle, &wait))
+      if (!contact_is_media_capable (chan, handle, &wait, &error_))
         {
-          if (wait ||
-              gabble_presence_cache_is_unsure (priv->conn->presence_cache))
+          if (wait)
             {
               DEBUG ("contact %u caps still pending, adding anyways", handle);
+              g_error_free (error_);
             }
           else
             {
-              g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                  "handle %u cannot be added: has no media capabilities",
-                  handle);
+              DEBUG ("%u: %s", error_->code, error_->message);
+              g_propagate_error (error, error_);
               return FALSE;
             }
         }

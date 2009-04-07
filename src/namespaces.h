@@ -47,6 +47,7 @@
 #define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
 /* XEP-0167 (Jingle RTP) */
 #define NS_JINGLE_RTP           "urn:xmpp:jingle:apps:rtp:0"
+#define NS_JINGLE_RTP_INFO      "urn:xmpp:jingle:apps:rtp:info:1"
 /* RTP audio capability in Jingle v0.15 (obsoleted by NS_JINGLE_RTP) */
 #define NS_JINGLE_DESCRIPTION_AUDIO \
   "http://jabber.org/protocol/jingle/description/audio"

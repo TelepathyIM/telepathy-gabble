@@ -71,6 +71,7 @@ TWISTED_TESTS = \
 	vcard/test-vcard-cache.py \
 	vcard/test-vcard-race.py \
 	jingle/accept-extra-stream.py \
+	jingle/call-state.py \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \

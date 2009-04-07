@@ -28,6 +28,13 @@
 
 G_BEGIN_DECLS
 
+typedef enum {
+    JINGLE_RTP_REMOTE_STATE_ACTIVE = 0,
+    JINGLE_RTP_REMOTE_STATE_RINGING,
+    JINGLE_RTP_REMOTE_STATE_MUTE,
+    JINGLE_RTP_REMOTE_STATE_HOLD,
+} JingleRtpRemoteState;
+
 typedef struct _GabbleJingleMediaRtpClass GabbleJingleMediaRtpClass;
 
 GType gabble_jingle_media_rtp_get_type (void);
@@ -77,6 +84,9 @@ GList *gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self);
 
 JingleCodec * jingle_media_rtp_codec_new (guint id, const gchar *name,
     guint clockrate, guint channels, GHashTable *params);
+
+JingleRtpRemoteState gabble_jingle_media_rtp_get_remote_state (
+    GabbleJingleMediaRtp *self);
 
 #endif /* __JINGLE_MEDIA_RTP_H__ */
 

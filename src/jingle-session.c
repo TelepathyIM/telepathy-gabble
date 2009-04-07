@@ -96,23 +96,26 @@ typedef struct {
 /* gcc should be able to figure this out from the table below, but.. */
 #define MAX_ACTIONS_PER_STATE 11
 
+/* NB: JINGLE_ACTION_UNKNOWN is used as a terminator here. */
 static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = {
   /* JS_STATE_PENDING_CREATED */
   { JINGLE_ACTION_SESSION_INITIATE, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_INITIATE_SENT */
   { JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_SESSION_ACCEPT,
     JINGLE_ACTION_TRANSPORT_ACCEPT, /* required for GTalk4 */
-    JINGLE_ACTION_DESCRIPTION_INFO,
+    JINGLE_ACTION_DESCRIPTION_INFO, JINGLE_ACTION_SESSION_INFO,
     JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_INITIATED */
   { JINGLE_ACTION_SESSION_ACCEPT, JINGLE_ACTION_SESSION_TERMINATE,
     JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_CONTENT_REJECT,
     JINGLE_ACTION_CONTENT_MODIFY, JINGLE_ACTION_CONTENT_ACCEPT,
     JINGLE_ACTION_CONTENT_REMOVE,  JINGLE_ACTION_DESCRIPTION_INFO,
-    JINGLE_ACTION_TRANSPORT_ACCEPT, JINGLE_ACTION_UNKNOWN },
+    JINGLE_ACTION_TRANSPORT_ACCEPT, JINGLE_ACTION_SESSION_INFO,
+    JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_ACCEPT_SENT */
   { JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_DESCRIPTION_INFO,
-    JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_UNKNOWN },
+    JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_SESSION_INFO,
+    JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_ACTIVE */
   { JINGLE_ACTION_CONTENT_MODIFY, JINGLE_ACTION_CONTENT_ADD,
     JINGLE_ACTION_CONTENT_REMOVE, JINGLE_ACTION_CONTENT_REPLACE,
@@ -898,10 +901,50 @@ on_session_info (GabbleJingleSession *sess,
     LmMessageNode *node,
     GError **error)
 {
-  DEBUG ("got session-info, but no payloads are implemented");
+  GList *contents, *l;
+  gboolean understood_a_payload = FALSE;
+  gboolean hit_an_error = FALSE;
+  LmMessageNode *n = node->children;
 
-  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
-      "session-info is not supported");
+  /* if this is a ping, just ack it. */
+  if (n == NULL)
+    return;
+
+  contents = g_hash_table_get_values (sess->priv->contents);
+
+  for (n = node->children; n != NULL; n = n->next)
+    {
+      for (l = contents; l != NULL; l = g_list_next (l))
+        {
+          gboolean handled;
+          GError *e = NULL;
+
+          if (gabble_jingle_content_handle_info (l->data, n, &handled, &e))
+            {
+              understood_a_payload = understood_a_payload || handled;
+            }
+          else
+            {
+              if (hit_an_error)
+                {
+                  DEBUG ("already got another error; ignoring %s", e->message);
+                  g_error_free (e);
+                }
+              else
+                {
+                  DEBUG ("hit an error: %s", e->message);
+                  hit_an_error = TRUE;
+                  g_propagate_error (error, e);
+                }
+            }
+        }
+    }
+
+  /* If we didn't understand any of the payloads, tell the other end.
+   */
+  if (!understood_a_payload)
+    g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
+        "no recognized session-info payloads");
 }
 
 typedef struct {
@@ -1832,4 +1875,29 @@ void
 gabble_set_jingle_session_timeout (guint ms)
 {
   session_timeout_time = ms;
+}
+
+void
+gabble_jingle_session_send_held (GabbleJingleSession *sess,
+                                 gboolean held)
+{
+  LmMessage *message;
+  LmMessageNode *jingle, *notification;
+
+  if (sess->priv->dialect != JINGLE_DIALECT_V032)
+    {
+      DEBUG ("FIXME: fake hold for Ye Olde Jingle and GTalk.");
+      return;
+    }
+
+  message = gabble_jingle_session_new_message (sess,
+      JINGLE_ACTION_SESSION_INFO, &jingle);
+
+  notification = lm_message_node_add_child (jingle,
+      (held ? "hold" : "active"), NULL);
+  lm_message_node_set_attributes (notification, "xmlns", NS_JINGLE_RTP_INFO,
+      NULL);
+
+  /* This is just informational, so ignoring the reply. */
+  gabble_jingle_session_send (sess, message, NULL, NULL);
 }

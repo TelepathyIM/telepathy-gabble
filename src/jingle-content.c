@@ -1022,3 +1022,41 @@ gabble_jingle_content_is_created_by_us (GabbleJingleContent *c)
   return c->priv->created_by_us;
 }
 
+/**
+ * gabble_jingle_content_handle_info:
+ * @self: a jingle content
+ * @session_info_payload: a child node of a <jingle action='session-info'>
+ *                        stanza
+ * @handled: a location at which to store whether this content handled the
+ *           payload
+ * @error: a location at which to store an error if the content handled the
+ *         payload, but it was malformed.
+ *
+ * Returns: %FALSE if handling @session_info_payload caused an error; %TRUE if
+ *          it was handled successfully or not handled.
+ */
+gboolean
+gabble_jingle_content_handle_info (GabbleJingleContent *self,
+    LmMessageNode *session_info_payload,
+    gboolean *handled,
+    GError **error)
+{
+  GabbleJingleContentHandleInfoFunc f =
+      GABBLE_JINGLE_CONTENT_GET_CLASS (self)->handle_info;
+
+  if (f == NULL)
+    {
+      *handled = FALSE;
+      return TRUE;
+    }
+  else
+    {
+      return f (self, session_info_payload, handled, error);
+    }
+}
+
+const gchar *
+gabble_jingle_content_get_name (GabbleJingleContent *self)
+{
+  return self->priv->name;
+}

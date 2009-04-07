@@ -99,6 +99,8 @@ GabbleMediaStream *gabble_media_stream_new (const gchar *object_path,
     const gchar *nat_traversal, const GPtrArray *relays);
 TpMediaStreamType gabble_media_stream_get_media_type (GabbleMediaStream *self);
 
+GabbleJingleMediaRtp *gabble_media_stream_get_content (GabbleMediaStream *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_MEDIA_STREAM_H__*/

@@ -128,6 +128,8 @@ struct _GabbleMediaStreamPrivate
   /* GPtrArray(GHashTable(string => GValue)) */
   GPtrArray *relay_info;
 
+  gboolean on_hold;
+
   /* These are really booleans, but gboolean is signed. Thanks, GLib */
   unsigned closed:1;
   unsigned dispose_has_run:1;
@@ -150,6 +152,8 @@ static void content_state_changed_cb (GabbleJingleContent *c,
      GParamSpec *pspec, GabbleMediaStream *stream);
 static void content_senders_changed_cb (GabbleJingleContent *c,
      GParamSpec *pspec, GabbleMediaStream *stream);
+static void remote_state_changed_cb (GabbleJingleMediaRtp *rtp,
+    GParamSpec *pspec, GabbleMediaStream *stream);
 static void content_removed_cb (GabbleJingleContent *content,
       GabbleMediaStream *stream);
 static void update_direction (GabbleMediaStream *stream, GabbleJingleContent *c);
@@ -456,6 +460,9 @@ gabble_media_stream_set_property (GObject      *object,
 
       gabble_signal_connect_weak (priv->content, "notify::senders",
           (GCallback) content_senders_changed_cb, object);
+
+      gabble_signal_connect_weak (priv->content, "notify::remote-state",
+          (GCallback) remote_state_changed_cb, object);
 
       gabble_signal_connect_weak (priv->content, "removed",
           (GCallback) content_removed_cb, object);
@@ -1561,6 +1568,7 @@ static void
 push_sending (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
+  gboolean emit;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1569,11 +1577,13 @@ push_sending (GabbleMediaStream *stream)
   if (!priv->ready)
     return;
 
-  DEBUG ("stream %s emitting SetStreamSending(%s)",
-      stream->name, priv->sending ? "true" : "false");
+  emit = (priv->sending && !(priv->on_hold));
+  DEBUG ("stream %s emitting SetStreamSending(%s); sending=%s, on_hold=%s",
+      stream->name, emit ? "true" : "false", priv->sending ? "true" : "false",
+      priv->on_hold ? "true" : "false");
 
   tp_svc_media_stream_handler_emit_set_stream_sending (
-      stream, priv->sending);
+      stream, emit);
 }
 
 static void
@@ -1636,6 +1646,21 @@ content_senders_changed_cb (GabbleJingleContent *c,
                             GabbleMediaStream *stream)
 {
   update_direction (stream, c);
+}
+
+static void
+remote_state_changed_cb (GabbleJingleMediaRtp *rtp,
+    GParamSpec *pspec,
+    GabbleMediaStream *stream)
+{
+  GabbleMediaStreamPrivate *priv = stream->priv;
+  JingleRtpRemoteState state = gabble_jingle_media_rtp_get_remote_state (rtp);
+  gboolean old_hold = priv->on_hold;
+
+  priv->on_hold = (state == JINGLE_RTP_REMOTE_STATE_HOLD);
+
+  if (old_hold != priv->on_hold)
+    push_sending (stream);
 }
 
 static void
@@ -1902,4 +1927,13 @@ dbus_properties_iface_init (gpointer g_iface,
   IMPLEMENT (get_all);
   /* set not implemented in this class */
 #undef IMPLEMENT
+}
+
+GabbleJingleMediaRtp *
+gabble_media_stream_get_content (GabbleMediaStream *self)
+{
+  /* FIXME: we should fix this whole class up. It relies throughout on
+   *        self->priv->content actually secretly being a GabbleJingleMediaRtp.
+   */
+  return GABBLE_JINGLE_MEDIA_RTP (self->priv->content);
 }

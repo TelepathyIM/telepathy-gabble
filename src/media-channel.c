@@ -1785,16 +1785,6 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
           return;
         }
 
-      /* if we're unsure about the offlineness of the contact, wait a bit */
-      if (gabble_presence_cache_is_unsure (priv->conn->presence_cache))
-        {
-          DEBUG ("Delaying RequestStreams because we're unsure about them");
-          delay_stream_request (self, iface, contact_handle, types, context,
-              FALSE);
-          g_error_free (error);
-          return;
-        }
-
       goto error;
     }
 
@@ -1850,16 +1840,21 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_CONTACT);
 #endif
-
-  if (wait != NULL)
-    *wait = FALSE;
+  gboolean wait_ = FALSE;
 
   if (gabble_presence_cache_caps_pending (priv->conn->presence_cache, peer))
     {
       DEBUG ("caps are pending for peer %u", peer);
-      if (wait != NULL)
-        *wait = TRUE;
+      wait_ = TRUE;
     }
+  else if (gabble_presence_cache_is_unsure (priv->conn->presence_cache))
+    {
+      DEBUG ("presence cache is still unsure");
+      wait_ = TRUE;
+    }
+
+  if (wait != NULL)
+    *wait = wait_;
 
   caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_RTP |
     PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO | PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
@@ -1924,8 +1919,7 @@ _gabble_media_channel_add_member (GObject *obj,
        * hope for the best. */
       if (!contact_is_media_capable (chan, handle, &wait, &error_))
         {
-          if (wait ||
-              gabble_presence_cache_is_unsure (priv->conn->presence_cache))
+          if (wait)
             {
               DEBUG ("contact %u caps still pending, adding anyways", handle);
               g_error_free (error_);

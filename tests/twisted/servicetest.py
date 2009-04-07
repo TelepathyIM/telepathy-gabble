@@ -101,9 +101,19 @@ class BaseEventQueue:
         return self.expect(type, **kw)
 
     def forbid_events(self, patterns):
+        """
+        Add patterns (an iterable of EventPattern) to the set of forbidden
+        events. If a forbidden event occurs during an expect or expect_many,
+        the test will fail.
+        """
         self.forbidden_events.update(set(patterns))
 
     def unforbid_events(self, patterns):
+        """
+        Remove 'patterns' (an iterable of EventPattern) from the set of
+        forbidden events. These must be the same EventPattern pointers that
+        were passed to forbid_events.
+        """
         self.forbidden_events.difference_update(set(patterns))
 
     def _check_forbidden(self, event):

@@ -111,18 +111,6 @@ def worker(jp, q, bus, conn, stream):
     return True
 
 
-def test015(q, bus, conn, stream):
-    return worker(JingleProtocol015(), q, bus, conn, stream)
-
-def test031(q, bus, conn, stream):
-    return worker(JingleProtocol031(),q, bus, conn, stream)
-
-def testg3(q, bus, conn, stream):
-    return worker(GtalkProtocol03(), q, bus, conn, stream)
-
-def testg4(q, bus, conn, stream):
-    return worker(GtalkProtocol04(), q, bus, conn, stream)
-
 if __name__ == '__main__':
-    exec_tests([testg3, testg4, test015, test031])
+    test_all_dialects(worker)
 

@@ -6,6 +6,8 @@ from dbus import PROPERTIES_IFACE
 
 HT_CONTACT = 1
 HT_ROOM = 2
+HT_CONTACT_LIST = 3
+HT_GROUP = 4
 
 CHANNEL = "org.freedesktop.Telepathy.Channel"
 CHANNEL_IFACE_GROUP = CHANNEL + ".Interface.Group"

@@ -9,7 +9,7 @@ from servicetest import call_async, EventPattern
 from gabbletest import exec_test, sync_stream
 
 import ns
-import constants
+import constants as cs
 
 from twisted.words.xish import domish
 
@@ -50,11 +50,12 @@ def test(q, bus, conn, stream):
 
     sync_stream(q, stream)
 
-    h = conn.RequestHandles(1, [jid])[0]
-    tubes_path = conn.RequestChannel(constants.CHANNEL_TYPE_TUBES, 1, h, True)
+    h = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    tubes_path = conn.RequestChannel(
+        cs.CHANNEL_TYPE_TUBES, cs.HT_CONTACT, h, True)
 
     tubes_chan = bus.get_object(conn.bus_name, tubes_path)
-    tubes_iface = dbus.Interface(tubes_chan, constants.CHANNEL_TYPE_TUBES)
+    tubes_iface = dbus.Interface(tubes_chan, cs.CHANNEL_TYPE_TUBES)
 
     tubes_iface.OfferDBusTube('bong.hits', dbus.Dictionary({}, signature='sv'))
 

@@ -6,6 +6,7 @@ import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix
 from gabbletest import exec_test, acknowledge_iq
+import constants as cs
 import ns
 
 from twisted.words.xish import domish
@@ -26,16 +27,12 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CONN_IFACE_REQUESTS, dbus_interface=cs.PROPERTIES_IFACE)
     assert properties.get('Channels') == [], properties['Channels']
-    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Tubes',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
+    assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TUBES,
+             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle',
-              'org.freedesktop.Telepathy.Channel.TargetID',
-             ]
+             [cs.TARGET_HANDLE, cs.TARGET_ID]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -77,7 +74,7 @@ def test(q, bus, conn, stream):
     bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
 
     call_async(q, conn, 'RequestChannel',
-            tp_name_prefix + '.Channel.Type.Tubes', 1, bob_handle, True);
+        cs.CHANNEL_TYPE_TUBES, cs.HT_CONTACT, bob_handle, True);
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
@@ -92,10 +89,9 @@ def test(q, bus, conn, stream):
 
     # Ensure a tube to the same person; check it's the same one.
     call_async(q, conn.Requests, 'EnsureChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Tubes',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': bob_handle
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TUBES,
+              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+              cs.TARGET_HANDLE: bob_handle
               })
 
     ret = q.expect('dbus-return', method='EnsureChannel')
@@ -110,10 +106,9 @@ def test(q, bus, conn, stream):
 
     # Now let's try ensuring a new tube.
     call_async(q, conn.Requests, 'EnsureChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Tubes',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': bob_handle
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TUBES,
+              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+              cs.TARGET_HANDLE: bob_handle
               })
 
     ret, old_sig, new_sig = q.expect_many(

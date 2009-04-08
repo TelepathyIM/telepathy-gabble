@@ -2,7 +2,7 @@
 
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix, unwrap
+from servicetest import call_async, EventPattern, unwrap
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
 import constants as cs
 import ns
@@ -25,8 +25,7 @@ def test(q, bus, conn, stream):
 
     acknowledge_iq(stream, iq_event.stanza)
 
-    call_async(q, conn, 'RequestHandles', 2,
-        ['chat@conf.localhost'])
+    call_async(q, conn, 'RequestHandles', cs.HT_ROOM, ['chat@conf.localhost'])
 
     event = q.expect('stream-iq', to='conf.localhost',
             query_ns='http://jabber.org/protocol/disco#info')
@@ -41,7 +40,7 @@ def test(q, bus, conn, stream):
 
     # join the muc
     call_async(q, conn, 'RequestChannel',
-        tp_name_prefix + '.Channel.Type.Text', 2, room_handle, True)
+        cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM, room_handle, True)
 
     _, stream_event = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
@@ -57,8 +56,8 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='MembersChanged',
             args=[u'', [2, 3], [], [], [], 0, 0])
 
-    assert conn.InspectHandles(1, [2]) == ['chat@conf.localhost/test']
-    assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
+    assert conn.InspectHandles(cs.HT_CONTACT, [2, 3]) == \
+        ['chat@conf.localhost/test', 'chat@conf.localhost/bob']
     bob_handle = 3
 
     event = q.expect('dbus-return', method='RequestChannel')
@@ -99,28 +98,26 @@ def test(q, bus, conn, stream):
     # tubes channel is automatically created
     event = q.expect('dbus-signal', signal='NewChannel')
 
-    if event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Text':
+    if event.args[1] == cs.CHANNEL_TYPE_TEXT:
         # skip this one, try the next one
         event = q.expect('dbus-signal', signal='NewChannel')
 
-    assert event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Tubes',\
-        event.args
-    assert event.args[2] == 2 # Handle_Type_Room
+    assert event.args[1] == cs.CHANNEL_TYPE_TUBES, event.args
+    assert event.args[2] == cs.HT_ROOM
     assert event.args[3] == room_handle
 
     tubes_chan = bus.get_object(conn.bus_name, event.args[0])
     tubes_iface = dbus.Interface(tubes_chan, event.args[1])
 
     channel_props = tubes_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == False
     assert channel_props['InitiatorID'] == ''
     assert channel_props['InitiatorHandle'] == 0
 
     tubes_self_handle = tubes_chan.GetSelfHandle(
-        dbus_interface=tp_name_prefix + '.Channel.Interface.Group')
+        dbus_interface=cs.CHANNEL_IFACE_GROUP)
 
     q.expect('dbus-signal', signal='NewTube',
         args=[tube_id, bob_handle, 0, 'org.telepathy.freedesktop.test', sample_parameters, 0])

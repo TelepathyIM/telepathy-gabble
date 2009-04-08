@@ -9,6 +9,7 @@ from twisted.words.xish import domish
 
 from gabbletest import exec_test
 from servicetest import call_async, EventPattern, tp_path_prefix
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -23,7 +24,7 @@ def test(q, bus, conn, stream):
     foo_handle = event.value[0][0]
 
     call_async(q, conn, 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.Text', 1, foo_handle, True)
+        cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, foo_handle, True)
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
@@ -32,17 +33,13 @@ def test(q, bus, conn, stream):
         )
 
     text_chan = bus.get_object(conn.bus_name, ret.value[0])
-    chan_iface = dbus.Interface(text_chan,
-            'org.freedesktop.Telepathy.Channel')
-    text_iface = dbus.Interface(text_chan,
-            'org.freedesktop.Telepathy.Channel.Type.Text')
-    destroyable_iface = dbus.Interface(text_chan,
-            'org.freedesktop.Telepathy.Channel.Interface.Destroyable')
+    chan_iface = dbus.Interface(text_chan, cs.CHANNEL)
+    text_iface = dbus.Interface(text_chan, cs.CHANNEL_TYPE_TEXT)
+    destroyable_iface = dbus.Interface(text_chan, cs.CHANNEL_IFACE_DESTROYABLE)
 
     assert old_sig.args[0] == ret.value[0]
-    assert old_sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
-    # check that handle type == contact handle
-    assert old_sig.args[2] == 1
+    assert old_sig.args[1] == cs.CHANNEL_TYPE_TEXT
+    assert old_sig.args[2] == cs.HT_CONTACT
     assert old_sig.args[3] == foo_handle
     assert old_sig.args[4] == True      # suppress handler
 
@@ -51,25 +48,17 @@ def test(q, bus, conn, stream):
     assert len(new_sig.args[0][0]) == 2     # two struct members
     assert new_sig.args[0][0][0] == ret.value[0]
     emitted_props = new_sig.args[0][0][1]
-    assert emitted_props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.Text'
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'TargetHandleType'] == 1
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            foo_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == jid
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'Requested'] == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'InitiatorHandle'] == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'InitiatorID'] == 'test@localhost'
+    assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
+    assert emitted_props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
+    assert emitted_props[cs.TARGET_HANDLE] == foo_handle
+    assert emitted_props[cs.TARGET_ID] == jid
+    assert emitted_props[cs.REQUESTED] == True
+    assert emitted_props[cs.INITIATOR_HANDLE] == self_handle
+    assert emitted_props[cs.INITIATOR_ID] == 'test@localhost'
 
     channel_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props['TargetID'] == jid,\
-            (channel_props['TargetID'], jid)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
+    assert channel_props['TargetID'] == jid, (channel_props['TargetID'], jid)
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorHandle'] == self_handle,\
             (channel_props['InitiatorHandle'], self_handle)
@@ -107,7 +96,7 @@ def test(q, bus, conn, stream):
     assert event.args[5] == 'hello'
 
     messages = text_chan.ListPendingMessages(False,
-            dbus_interface='org.freedesktop.Telepathy.Channel.Type.Text')
+            dbus_interface=cs.CHANNEL_TYPE_TEXT)
     assert messages == \
             [(hello_message_id, hello_message_time, foo_handle,
                 0, 0, 'hello')], messages

@@ -35,7 +35,7 @@ def test(q, bus, conn, stream):
 
     # Gadget was not announced yet
     call_async(q, requests_iface, 'CreateChannel',
-        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+        { cs.CHANNEL_TYPE:
             'org.laptop.Telepathy.Channel.Type.BuddyView',
             'org.laptop.Telepathy.Channel.Interface.View.MaxSize': 5,
           })
@@ -89,8 +89,7 @@ def test(q, bus, conn, stream):
 
     # check if we can request Buddy views
     properties = conn.GetAll(
-        'org.freedesktop.Telepathy.Connection.Interface.Requests',
-        dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CONN_IFACE_REQUESTS, dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert ({tp_name_prefix + '.Channel.ChannelType':
             olpc_name_prefix + '.Channel.Type.BuddyView'},
@@ -155,9 +154,7 @@ def test(q, bus, conn, stream):
     assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == ''
 
     # check org.freedesktop.Telepathy.Channel D-Bus properties
-    props = view1.GetAll(
-        'org.freedesktop.Telepathy.Channel',
-        dbus_interface=dbus.PROPERTIES_IFACE)
+    props = view1.GetAll(cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert props['ChannelType'] == 'org.laptop.Telepathy.Channel.Type.BuddyView'
     assert 'org.laptop.Telepathy.Channel.Interface.View' in props['Interfaces']
@@ -180,7 +177,7 @@ def test(q, bus, conn, stream):
     assert props['Properties'] == {}
     assert props['Alias'] == ''
 
-    assert view1.GetChannelType(dbus_interface='org.freedesktop.Telepathy.Channel') ==\
+    assert view1.GetChannelType(dbus_interface=cs.CHANNEL) ==\
             'org.laptop.Telepathy.Channel.Type.BuddyView'
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
@@ -300,8 +297,7 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(1, added)[0] == 'oscar@localhost'
 
     members = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
-        'Buddies',
-        dbus_interface=dbus.PROPERTIES_IFACE)
+        'Buddies', dbus_interface=dbus.PROPERTIES_IFACE)
 
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['bob@localhost', 'charles@localhost',
@@ -325,8 +321,7 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
 
     members = view1.Get(olpc_name_prefix + '.Channel.Interface.View',
-        'Buddies',
-        dbus_interface=dbus.PROPERTIES_IFACE)
+        'Buddies', dbus_interface=dbus.PROPERTIES_IFACE)
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['charles@localhost', 'oscar@localhost']
 
@@ -393,7 +388,7 @@ def test(q, bus, conn, stream):
 
     # View request without MaxSize property
     call_async(q, requests_iface, 'CreateChannel',
-        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+        { cs.CHANNEL_TYPE:
             'org.laptop.Telepathy.Channel.Type.BuddyView',
           })
 

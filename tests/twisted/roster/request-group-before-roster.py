@@ -5,8 +5,7 @@ group channel if the roster hasn't been received at the time of the call.
 
 from gabbletest import exec_test, sync_stream
 from servicetest import sync_dbus, call_async
-
-HT_GROUP = 4
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -15,14 +14,13 @@ def test(q, bus, conn, stream):
     roster_event = q.expect('stream-iq', query_ns='jabber:iq:roster')
     roster_event.stanza['type'] = 'result'
 
-    call_async(q, conn, "RequestHandles", HT_GROUP, ['test'])
+    call_async(q, conn, "RequestHandles", cs.HT_GROUP, ['test'])
 
     event = q.expect('dbus-return', method='RequestHandles')
     test_handle = event.value[0][0]
 
-    call_async(q, conn, 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.ContactList', HT_GROUP,
-        test_handle, True)
+    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_CONTACT_LIST,
+        cs.HT_GROUP, test_handle, True)
 
     # A previous incarnation of this test --- written with the intention that
     # RequestChannel would be called before the roster was received, to expose
@@ -45,7 +43,7 @@ def test(q, bus, conn, stream):
         event = q.expect('dbus-signal', signal='NewChannel')
         assert event.args[0] == path, (event.args, path)
         _, type, handle_type, handle, suppress_handler = event.args
-        if handle_type == HT_GROUP and handle == test_handle:
+        if handle_type == cs.HT_GROUP and handle == test_handle:
             break
 
 if __name__ == '__main__':

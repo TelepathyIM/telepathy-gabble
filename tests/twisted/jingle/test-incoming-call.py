@@ -77,8 +77,7 @@ def test(q, bus, conn, stream):
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetHandle'] == remote_handle
     assert channel_props['TargetHandleType'] == cs.HT_CONTACT
     assert media_chan.GetHandle(dbus_interface=cs.CHANNEL) == (cs.HT_CONTACT,
@@ -88,8 +87,8 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorHandle'] == remote_handle
     assert channel_props['Requested'] == False
 
-    group_props = media_chan.GetAll(cs.CHANNEL_IFACE_GROUP,
-        dbus_interface=dbus.PROPERTIES_IFACE)
+    group_props = media_chan.GetAll(
+        cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert group_props['SelfHandle'] == self_handle, \
         (group_props['SelfHandle'], self_handle)

@@ -6,6 +6,7 @@ import dbus
 
 from gabbletest import exec_test
 from servicetest import EventPattern
+import constants as cs
 import ns
 
 from mucutil import join_muc_and_check
@@ -28,9 +29,8 @@ def test(q, bus, conn, stream):
         }
     ]
 
-    sent_token = dbus.Interface(text_chan,
-        u'org.freedesktop.Telepathy.Channel.Interface.Messages'
-        ).SendMessage(greeting, dbus.UInt32(0))
+    sent_token = dbus.Interface(text_chan, cs.CHANNEL_IFACE_MESSAGES) \
+        .SendMessage(greeting, dbus.UInt32(0))
 
     stream_message, _, _ = q.expect_many(
         EventPattern('stream-message'),

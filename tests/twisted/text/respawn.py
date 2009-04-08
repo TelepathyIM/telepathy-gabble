@@ -8,6 +8,7 @@ from twisted.words.xish import domish
 
 from gabbletest import exec_test
 from servicetest import call_async, EventPattern, tp_path_prefix
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -16,13 +17,10 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
 
     jid = 'foo@bar.com'
-    call_async(q, conn, 'RequestHandles', 1, [jid])
-
-    event = q.expect('dbus-return', method='RequestHandles')
-    foo_handle = event.value[0][0]
+    foo_handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
 
     call_async(q, conn, 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.Text', 1, foo_handle, True)
+        cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, foo_handle, True)
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
@@ -31,15 +29,12 @@ def test(q, bus, conn, stream):
         )
 
     text_chan = bus.get_object(conn.bus_name, ret.value[0])
-    chan_iface = dbus.Interface(text_chan,
-            'org.freedesktop.Telepathy.Channel')
-    text_iface = dbus.Interface(text_chan,
-            'org.freedesktop.Telepathy.Channel.Type.Text')
+    chan_iface = dbus.Interface(text_chan, cs.CHANNEL)
+    text_iface = dbus.Interface(text_chan, cs.CHANNEL_TYPE_TEXT)
 
     assert old_sig.args[0] == ret.value[0]
-    assert old_sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
-    # check that handle type == contact handle
-    assert old_sig.args[2] == 1
+    assert old_sig.args[1] == cs.CHANNEL_TYPE_TEXT
+    assert old_sig.args[2] == cs.HT_CONTACT
     assert old_sig.args[3] == foo_handle
     assert old_sig.args[4] == True      # suppress handler
 
@@ -48,23 +43,16 @@ def test(q, bus, conn, stream):
     assert len(new_sig.args[0][0]) == 2     # two struct members
     assert new_sig.args[0][0][0] == ret.value[0]
     emitted_props = new_sig.args[0][0][1]
-    assert emitted_props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.Text'
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'TargetHandleType'] == 1
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            foo_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == jid
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'Requested'] == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'InitiatorHandle'] == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'InitiatorID'] == 'test@localhost'
+    assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
+    assert emitted_props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
+    assert emitted_props[cs.TARGET_HANDLE] == foo_handle
+    assert emitted_props[cs.TARGET_ID] == jid
+    assert emitted_props[cs.REQUESTED] == True
+    assert emitted_props[cs.INITIATOR_HANDLE] == self_handle
+    assert emitted_props[cs.INITIATOR_ID] == 'test@localhost'
 
     channel_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetID'] == jid,\
             (channel_props['TargetID'], jid)
     assert channel_props['Requested'] == True
@@ -104,7 +92,7 @@ def test(q, bus, conn, stream):
     assert event.args[5] == 'hello'
 
     messages = text_chan.ListPendingMessages(False,
-            dbus_interface='org.freedesktop.Telepathy.Channel.Type.Text')
+        dbus_interface=cs.CHANNEL_TYPE_TEXT)
     assert messages == \
             [(hello_message_id, hello_message_time, foo_handle,
                 0, 0, 'hello')], messages
@@ -124,8 +112,8 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='NewChannel')
     assert event.args[0] == text_chan.object_path
-    assert event.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
-    assert event.args[2] == 1   # CONTACT
+    assert event.args[1] == cs.CHANNEL_TYPE_TEXT
+    assert event.args[2] == cs.HT_CONTACT
     assert event.args[3] == foo_handle
     assert event.args[4] == False   # suppress handler
 
@@ -134,8 +122,7 @@ def test(q, bus, conn, stream):
     # it now behaves as if the message had initiated it
 
     channel_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetID'] == jid,\
             (channel_props['TargetID'], jid)
     assert channel_props['Requested'] == False
@@ -147,7 +134,7 @@ def test(q, bus, conn, stream):
     # the message is still there
 
     messages = text_chan.ListPendingMessages(False,
-            dbus_interface='org.freedesktop.Telepathy.Channel.Type.Text')
+        dbus_interface=cs.CHANNEL_TYPE_TEXT)
     assert messages == \
             [(hello_message_id, hello_message_time, foo_handle,
                 0, 8, 'hello')], messages
@@ -155,10 +142,10 @@ def test(q, bus, conn, stream):
     # acknowledge it
 
     text_chan.AcknowledgePendingMessages([hello_message_id],
-            dbus_interface='org.freedesktop.Telepathy.Channel.Type.Text')
+        dbus_interface=cs.CHANNEL_TYPE_TEXT)
 
     messages = text_chan.ListPendingMessages(False,
-            dbus_interface='org.freedesktop.Telepathy.Channel.Type.Text')
+        dbus_interface=cs.CHANNEL_TYPE_TEXT)
     assert messages == []
 
     # close the channel again

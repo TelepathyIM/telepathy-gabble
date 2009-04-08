@@ -6,6 +6,7 @@ Test workarounds for gtalk
 import dbus
 
 from gabbletest import acknowledge_iq, exec_test
+import constants as cs
 
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import domish
@@ -33,7 +34,7 @@ def test(q, bus, conn, stream):
         event = q.expect('dbus-signal', signal='NewChannel')
         path, type, handle_type, handle, suppress_handler = event.args
 
-        if type != u'org.freedesktop.Telepathy.Channel.Type.ContactList':
+        if type != cs.CHANNEL_TYPE_CONTACT_LIST:
             continue
 
         chan_name = conn.InspectHandles(handle_type, [handle])[0]
@@ -43,8 +44,7 @@ def test(q, bus, conn, stream):
 
     # request subscription
     chan = bus.get_object(conn.bus_name, path)
-    group_iface = dbus.Interface(chan,
-        u'org.freedesktop.Telepathy.Channel.Interface.Group')
+    group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
     assert group_iface.GetMembers() == []
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
     group_iface.AddMembers([handle], '')

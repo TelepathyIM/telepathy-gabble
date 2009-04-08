@@ -8,6 +8,7 @@ from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, make_muc_presence
 from servicetest import call_async, EventPattern
+import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
@@ -37,8 +38,7 @@ def test(q, bus, conn, stream):
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'bob@localhost'
     message['to'] = 'test@localhost'
-    properties = message.addElement(
-        (ns.OLPC_ACTIVITY_PROPS, 'properties'))
+    properties = message.addElement((ns.OLPC_ACTIVITY_PROPS, 'properties'))
     properties['room'] = 'chat@conf.localhost'
     properties['activity'] = 'foo_id'
     property = properties.addElement((None, 'property'))
@@ -78,14 +78,13 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     event = q.expect('dbus-signal', signal='NewChannel')
-    assert event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Text'
+    assert event.args[1] == cs.CHANNEL_TYPE_TEXT
 
     assert event.args[2] == 2   # handle type
     assert event.args[3] == handles['chat']   # handle
 
     text_chan = bus.get_object(conn.bus_name, event.args[0])
-    group_iface = dbus.Interface(text_chan,
-            'org.freedesktop.Telepathy.Channel.Interface.Group')
+    group_iface = dbus.Interface(text_chan, cs.CHANNEL_IFACE_GROUP)
 
     members = group_iface.GetAllMembers()[0]
     local_pending = group_iface.GetAllMembers()[1]

@@ -5,7 +5,8 @@ Test basic roster functionality.
 import dbus
 
 from gabbletest import exec_test
-from servicetest import EventPattern, tp_name_prefix
+from servicetest import EventPattern
+import constants as cs
 
 def _expect_contact_list_channel(q, bus, conn, name, contacts):
     old_signal, new_signal = q.expect_many(
@@ -15,11 +16,10 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
 
     path, type, handle_type, handle, suppress_handler = old_signal.args
 
-    assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList'
+    assert type == cs.CHANNEL_TYPE_CONTACT_LIST
     assert conn.InspectHandles(handle_type, [handle])[0] == name
     chan = bus.get_object(conn.bus_name, path)
-    group_iface = dbus.Interface(chan,
-        u'org.freedesktop.Telepathy.Channel.Interface.Group')
+    group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
     members = group_iface.GetMembers()
     assert conn.InspectHandles(1, members) == contacts
 
@@ -29,23 +29,21 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
     assert new_signal.args[0][0][0] == path
 
     emitted_props = new_signal.args[0][0][1]
-    assert emitted_props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            tp_name_prefix + '.Channel.Type.ContactList'
-    assert emitted_props[tp_name_prefix + '.Channel.TargetHandleType'] == 3
-    assert emitted_props[tp_name_prefix + '.Channel.TargetHandle'] == handle
+    assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CONTACT_LIST
+    assert emitted_props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT_LIST
+    assert emitted_props[cs.TARGET_HANDLE] == handle
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == handle,\
             (channel_props.get('TargetHandle'), handle)
     assert channel_props.get('TargetHandleType') == 3,\
             channel_props.get('TargetHandleType')
     assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.ContactList',\
+            cs.CHANNEL_TYPE_CONTACT_LIST,\
             channel_props.get('ChannelType')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' in \
+    assert cs.CHANNEL_IFACE_GROUP in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
     assert channel_props['TargetID'] == name, channel_props
@@ -55,8 +53,7 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.Interface.Group',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
     assert 'HandleOwners' in group_props, group_props
     assert 'Members' in group_props, group_props
     assert group_props['Members'] == members, group_props['Members']

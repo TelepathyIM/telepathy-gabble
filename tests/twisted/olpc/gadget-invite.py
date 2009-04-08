@@ -7,6 +7,7 @@ import dbus
 from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream,\
     make_muc_presence
+import constants as cs
 
 from twisted.words.xish import xpath
 
@@ -14,7 +15,7 @@ from util import announce_gadget, gadget_publish
 import ns
 
 def join_channel(name, q, conn, stream):
-    call_async(q, conn, 'RequestHandles', 2, [name])
+    call_async(q, conn, 'RequestHandles', cs.HT_ROOM, [name])
 
     # announce conference service
     event = q.expect('stream-iq', to='conference.localhost', query_ns=ns.DISCO_INFO)
@@ -26,8 +27,8 @@ def join_channel(name, q, conn, stream):
     event = q.expect('dbus-return', method='RequestHandles')
     handles = event.value[0]
 
-    call_async(q, conn, 'RequestChannel',
-            'org.freedesktop.Telepathy.Channel.Type.Text', 2, handles[0], True)
+    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,
+        handles[0], True)
 
     event = q.expect('stream-presence', to='myroom@conference.localhost/test')
     # Send presence for own membership of room.

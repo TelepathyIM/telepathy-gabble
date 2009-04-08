@@ -10,13 +10,20 @@ HT_CONTACT_LIST = 3
 HT_GROUP = 4
 
 CHANNEL = "org.freedesktop.Telepathy.Channel"
+
+CHANNEL_IFACE_CALL_STATE = CHANNEL + ".Interface.CallState"
+CHANNEL_IFACE_CHAT_STATE = CHANNEL + '.Interface.ChatState'
+CHANNEL_IFACE_DESTROYABLE = CHANNEL + ".Interface.Destroyable"
 CHANNEL_IFACE_GROUP = CHANNEL + ".Interface.Group"
 CHANNEL_IFACE_HOLD = CHANNEL + ".Interface.Hold"
 CHANNEL_IFACE_MEDIA_SIGNALLING = CHANNEL + ".Interface.MediaSignalling"
-CHANNEL_IFACE_CALL_STATE = CHANNEL + ".Interface.CallState"
+CHANNEL_IFACE_MESSAGES = CHANNEL + ".Interface.Messages"
+CHANNEL_IFACE_PASSWORD = CHANNEL + ".Interface.Password"
+CHANNEL_IFACE_TUBE = CHANNEL + ".Interface.Tube.DRAFT"
+
+CHANNEL_TYPE_CONTACT_LIST = CHANNEL + ".Type.ContactList"
 CHANNEL_TYPE_TEXT = CHANNEL + ".Type.Text"
 CHANNEL_TYPE_TUBES = CHANNEL + ".Type.Tubes"
-CHANNEL_IFACE_TUBE = CHANNEL + ".Interface.Tube.DRAFT"
 CHANNEL_TYPE_STREAM_TUBE = CHANNEL + ".Type.StreamTube.DRAFT"
 CHANNEL_TYPE_DBUS_TUBE = CHANNEL + ".Type.DBusTube.DRAFT"
 CHANNEL_TYPE_STREAMED_MEDIA = CHANNEL + ".Type.StreamedMedia"
@@ -37,9 +44,12 @@ INITIATOR_ID = CHANNEL + '.InitiatorID'
 INTERFACES = CHANNEL + '.Interfaces'
 
 CONN = "org.freedesktop.Telepathy.Connection"
+CONN_IFACE_CAPS = CONN + '.Interface.Capabilities'
 CONN_IFACE_CONTACTS = CONN + '.Interface.Contacts'
 CONN_IFACE_CONTACT_CAPS = CONN + '.Interface.ContactCapabilities.DRAFT'
 CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
+
+STREAM_HANDLER = 'org.freedesktop.Telepathy.Media.StreamHandler'
 
 ERROR = 'org.freedesktop.Telepathy.Error'
 INVALID_ARGUMENT = ERROR + '.InvalidArgument'

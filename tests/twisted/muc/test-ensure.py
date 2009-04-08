@@ -5,6 +5,7 @@ are several pending requests for the same MUC.
 
 from gabbletest import make_result_iq, exec_test, make_muc_presence
 from servicetest import call_async, EventPattern
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -40,16 +41,14 @@ def test(q, bus, conn, stream):
 def test_create_ensure(q, conn, bus, stream, room_jid, room_handle):
     # Call both Create and Ensure for the same channel.
     call_async(q, conn.Requests, 'CreateChannel',
-           { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Text',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 2,
-             'org.freedesktop.Telepathy.Channel.TargetHandle': room_handle,
+           { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+             cs.TARGET_HANDLE: room_handle,
            })
     call_async(q, conn.Requests, 'EnsureChannel',
-           { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Text',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 2,
-             'org.freedesktop.Telepathy.Channel.TargetHandle': room_handle,
+           { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+             cs.TARGET_HANDLE: room_handle,
            })
 
     mc, _ = q.expect_many(
@@ -99,16 +98,14 @@ def test_create_ensure(q, conn, bus, stream, room_jid, room_handle):
 def test_ensure_ensure(q, conn, bus, stream, room_jid, room_handle):
     # Call Ensure twice for the same channel.
     call_async(q, conn.Requests, 'EnsureChannel',
-           { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Text',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 2,
-             'org.freedesktop.Telepathy.Channel.TargetHandle': room_handle,
+           { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+             cs.TARGET_HANDLE: room_handle,
            })
     call_async(q, conn.Requests, 'EnsureChannel',
-           { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Text',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 2,
-             'org.freedesktop.Telepathy.Channel.TargetHandle': room_handle,
+           { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+             cs.TARGET_HANDLE: room_handle,
            })
 
     mc, _ = q.expect_many(

@@ -6,6 +6,7 @@ import dbus
 
 from gabbletest import exec_test
 from servicetest import call_async, EventPattern
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -20,16 +21,12 @@ def test(q, bus, conn, stream):
     handles = event.value[0]
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CONN_IFACE_REQUESTS, dbus_interface=cs.PROPERTIES_IFACE)
     assert properties.get('Channels') == [], properties['Channels']
-    assert ({'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Text',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
+    assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              },
-             ['org.freedesktop.Telepathy.Channel.TargetHandle',
-              'org.freedesktop.Telepathy.Channel.TargetID'
-             ],
+             [cs.TARGET_HANDLE, cs.TARGET_ID],
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -68,9 +65,8 @@ def test_ensure_ensure(q, conn, self_handle, jid, handle):
     old_path, old_ct, old_ht, old_h, old_sh = old_sig.args
 
     assert old_path == path
-    assert old_ct == u'org.freedesktop.Telepathy.Channel.Type.Text'
-    # check that handle type == contact handle
-    assert old_ht == 1
+    assert old_ct == cs.CHANNEL_TYPE_TEXT
+    assert old_ht == cs.HT_CONTACT
     assert old_h == handle
     assert old_sh == True      # suppress handler
 
@@ -81,15 +77,14 @@ def test_ensure_ensure(q, conn, self_handle, jid, handle):
     assert new_sig.args[0][0][1] == emitted_props
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CONN_IFACE_REQUESTS, dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert new_sig.args[0][0] in properties['Channels'], \
             (new_sig.args[0][0], properties['Channels'])
 
 
     # Now try Ensuring a channel which already exists
-    call_async(q, conn.Requests, 'EnsureChannel', request_props (handle))
+    call_async(q, conn.Requests, 'EnsureChannel', request_props(handle))
     ret_ = q.expect('dbus-return', method='EnsureChannel')
 
     assert len(ret_.value) == 3
@@ -108,7 +103,7 @@ def test_request_ensure(q, conn, self_handle, jid, handle):
     The call to Ensure should succeed with Yours=False.
     """
 
-    call_async(q, conn.Requests, 'CreateChannel', request_props (handle))
+    call_async(q, conn.Requests, 'CreateChannel', request_props(handle))
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
@@ -125,9 +120,8 @@ def test_request_ensure(q, conn, self_handle, jid, handle):
     old_path, old_ct, old_ht, old_h, old_sh = old_sig.args
 
     assert old_path == path
-    assert old_ct == u'org.freedesktop.Telepathy.Channel.Type.Text'
-    # check that handle type == contact handle
-    assert old_ht == 1
+    assert old_ct == cs.CHANNEL_TYPE_TEXT
+    assert old_ht == cs.HT_CONTACT
     assert old_h == handle
     assert old_sh == True      # suppress handler
 
@@ -138,15 +132,14 @@ def test_request_ensure(q, conn, self_handle, jid, handle):
     assert new_sig.args[0][0][1] == emitted_props
 
     properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CONN_IFACE_REQUESTS, dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert new_sig.args[0][0] in properties['Channels'], \
             (new_sig.args[0][0], properties['Channels'])
 
 
     # Now try Ensuring that same channel.
-    call_async(q, conn.Requests, 'EnsureChannel', request_props (handle))
+    call_async(q, conn.Requests, 'EnsureChannel', request_props(handle))
     ret_ = q.expect('dbus-return', method='EnsureChannel')
 
     assert len(ret_.value) == 3
@@ -160,26 +153,19 @@ def test_request_ensure(q, conn, self_handle, jid, handle):
 
 
 def check_props(props, self_handle, handle, jid):
-    assert props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.Text'
-    assert props['org.freedesktop.Telepathy.Channel.'
-            'TargetHandleType'] == 1
-    assert props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            handle
-    assert props['org.freedesktop.Telepathy.Channel.TargetID'] == jid
-    assert props['org.freedesktop.Telepathy.Channel.'
-            'Requested'] == True
-    assert props['org.freedesktop.Telepathy.Channel.'
-            'InitiatorHandle'] == self_handle
-    assert props['org.freedesktop.Telepathy.Channel.'
-            'InitiatorID'] == 'test@localhost'
+    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
+    assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
+    assert props[cs.TARGET_HANDLE] == handle
+    assert props[cs.TARGET_ID] == jid
+    assert props[cs.REQUESTED] == True
+    assert props[cs.INITIATOR_HANDLE] == self_handle
+    assert props[cs.INITIATOR_ID] == 'test@localhost'
 
 
 def request_props(handle):
-    return { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Text',
-             'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-             'org.freedesktop.Telepathy.Channel.TargetHandle': handle,
+    return { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+             cs.TARGET_HANDLE: handle,
            }
 
 

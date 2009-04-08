@@ -8,6 +8,7 @@ from twisted.words.xish import domish
 
 from gabbletest import exec_test
 from servicetest import call_async, EventPattern
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -16,13 +17,13 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
 
     jid = 'foo@bar.com'
-    call_async(q, conn, 'RequestHandles', 1, [jid])
+    call_async(q, conn, 'RequestHandles', cs.HT_CONTACT, [jid])
 
     event = q.expect('dbus-return', method='RequestHandles')
     foo_handle = event.value[0][0]
 
     call_async(q, conn, 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.Text', 1, foo_handle, True)
+        cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, foo_handle, True)
 
     ret, sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
@@ -33,8 +34,7 @@ def test(q, bus, conn, stream):
 
     assert sig.args[0] == ret.value[0], \
             (sig.args[0], ret.value[0])
-    assert sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text',\
-            sig.args[1]
+    assert sig.args[1] == cs.CHANNEL_TYPE_TEXT, sig.args[1]
     # check that handle type == contact handle
     assert sig.args[2] == 1, sig.args[1]
     assert sig.args[3] == foo_handle, (sig.args[3], foo_handle)
@@ -42,16 +42,15 @@ def test(q, bus, conn, stream):
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == foo_handle,\
             (channel_props.get('TargetHandle'), foo_handle)
     assert channel_props.get('TargetHandleType') == 1,\
             channel_props.get('TargetHandleType')
     assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.Text',\
+            cs.CHANNEL_TYPE_TEXT,\
             channel_props.get('ChannelType')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
+    assert cs.CHANNEL_IFACE_CHAT_STATE in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
     assert channel_props['TargetID'] == jid,\
@@ -62,8 +61,7 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorID'] == 'test@localhost',\
             channel_props['InitiatorID']
 
-    dbus.Interface(text_chan,
-        u'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'hey')
+    dbus.Interface(text_chan, cs.CHANNEL_TYPE_TEXT).Send(0, 'hey')
 
     event = q.expect('stream-message')
 

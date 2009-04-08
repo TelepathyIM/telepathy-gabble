@@ -140,7 +140,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
     # Force Gabble to process the capabilities
     sync_stream(q, stream)
 
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
 
     if incoming:
         # Remote end calls us
@@ -161,11 +161,9 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
             'Channel.Interface.Group')
     else:
         call_async(q, conn.Requests, 'CreateChannel',
-                { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                    'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-                  'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-                  'org.freedesktop.Telepathy.Channel.TargetHandle':
-                    remote_handle,
+                { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+                  cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+                  cs.TARGET_HANDLE: remote_handle,
                   })
         ret, old_sig, new_sig = q.expect_many(
             EventPattern('dbus-return', method='CreateChannel'),
@@ -204,17 +202,15 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetHandle'] == remote_handle
-    assert channel_props['TargetHandleType'] == 1
+    assert channel_props['TargetHandleType'] == cs.HT_CONTACT
     assert channel_props['TargetID'] == 'foo@bar.com'
     assert channel_props['Requested'] == (not incoming)
 
     # The new API for STUN servers etc.
     sh_props = stream_handler.GetAll(
-            'org.freedesktop.Telepathy.Media.StreamHandler',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.STREAM_HANDLER, dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert sh_props['NATTraversal'] == 'gtalk-p2p'
     assert sh_props['CreatedLocally'] == (not incoming)

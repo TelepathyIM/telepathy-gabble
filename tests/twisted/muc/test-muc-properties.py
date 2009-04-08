@@ -10,7 +10,7 @@ from gabbletest import (
     request_muc_handle)
 from servicetest import call_async, wrap_channel, EventPattern
 
-import constants
+import constants as cs
 import ns
 
 def add_field(elem, type, var, value):
@@ -43,7 +43,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
     muc_handle = request_muc_handle(q, conn, stream, 'chat@conf.localhost')
 
-    call_async(q, conn, 'RequestChannel', constants.CHANNEL_TYPE_TEXT, 2,
+    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,
         muc_handle, True)
 
     q.expect('stream-presence', to='chat@conf.localhost/test')

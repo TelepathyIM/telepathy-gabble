@@ -8,7 +8,7 @@ from twisted.words.xish import domish
 
 from servicetest import call_async, make_channel_proxy
 from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
-
+import constants as cs
 import ns
 
 CHAT_STATE_ACTIVE = 2
@@ -21,17 +21,13 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
 
     jid = 'foo@bar.com'
-    foo_handle = conn.RequestHandles(1, [jid])[0]
+    foo_handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
 
-    call_async(q, conn.Requests, 'CreateChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Text',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': foo_handle,
-              })
-
-    ret = q.expect('dbus-return', method='CreateChannel')
-    path = ret.value[0]
+    path = conn.Requests.CreateChannel(
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+              cs.TARGET_HANDLE: foo_handle,
+              })[0]
     text_chan = bus.get_object(conn.bus_name, path)
     text_iface = make_channel_proxy(conn, path, 'Channel.Type.Text')
     chat_state_iface = make_channel_proxy(conn, path,

@@ -6,6 +6,7 @@ import dbus
 
 from servicetest import EventPattern
 from gabbletest import exec_test, acknowledge_iq, sync_stream
+import constants as cs
 
 from util import announce_gadget, request_random_activity_view, elem
 import ns
@@ -45,7 +46,7 @@ def test(q, bus, conn, stream):
     presence = elem('presence', from_='gadget.localhost', to='test@localhost')
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='Closed', interface='org.freedesktop.Telepathy.Channel')
+    q.expect('dbus-signal', signal='Closed', interface=cs.CHANNEL)
 
 if __name__ == '__main__':
     exec_test(test)

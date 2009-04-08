@@ -7,7 +7,7 @@ new text channel.
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-
+import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
@@ -31,8 +31,8 @@ def test(q, bus, conn, stream):
 
     # first message should be from Bob, not Alice
     event = q.expect('dbus-signal', signal='NewChannel')
-    assert event.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
-    jid = conn.InspectHandles(1, [event.args[3]])[0]
+    assert event.args[1] == cs.CHANNEL_TYPE_TEXT
+    jid = conn.InspectHandles(cs.HT_CONTACT, [event.args[3]])[0]
     assert jid == 'bob@foo.com'
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

@@ -39,19 +39,16 @@ def test(q, bus, conn, stream):
     # Force Gabble to process the caps before calling RequestChannel
     sync_stream(q, stream)
 
-    handle = conn.RequestHandles(1, [jt.remote_jid])[0]
-
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
     path = conn.RequestChannel(
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-        1, handle, True)
+        cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_CONTACT, handle, True)
 
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
 
     channel_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetHandleType'] == cs.HT_CONTACT, channel_props
     assert channel_props['TargetHandle'] == handle, channel_props
     assert media_iface.GetHandle(dbus_interface=cs.CHANNEL) == (cs.HT_CONTACT,

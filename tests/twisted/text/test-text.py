@@ -9,6 +9,7 @@ from twisted.words.xish import domish
 
 from gabbletest import exec_test
 from servicetest import EventPattern, wrap_channel
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -25,28 +26,26 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='NewChannel')
     text_chan = wrap_channel(
         bus.get_object(conn.bus_name, event.args[0]), 'Text', ['Messages'])
-    assert event.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
-    # check that handle type == contact handle
-    assert event.args[2] == 1
+    assert event.args[1] == cs.CHANNEL_TYPE_TEXT
+    assert event.args[2] == cs.HT_CONTACT
     foo_at_bar_dot_com_handle = event.args[3]
     jid = conn.InspectHandles(1, [foo_at_bar_dot_com_handle])[0]
     assert jid == 'foo@bar.com'
     assert event.args[4] == False   # suppress handler
 
     # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = text_chan.Properties.GetAll(
-            'org.freedesktop.Telepathy.Channel')
+    channel_props = text_chan.Properties.GetAll(cs.CHANNEL)
     assert channel_props.get('TargetHandle') == event.args[3],\
             (channel_props.get('TargetHandle'), event.args[3])
-    assert channel_props.get('TargetHandleType') == 1,\
+    assert channel_props.get('TargetHandleType') == cs.HT_CONTACT,\
             channel_props.get('TargetHandleType')
     assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.Text',\
+            cs.CHANNEL_TYPE_TEXT,\
             channel_props.get('ChannelType')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
+    assert cs.CHANNEL_IFACE_CHAT_STATE in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Messages' in \
+    assert cs.CHANNEL_IFACE_MESSAGES in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
     assert channel_props['TargetID'] == jid,\

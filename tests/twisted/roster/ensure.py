@@ -22,16 +22,14 @@ def test(q, bus, conn, stream):
     stream.send(roster_event.stanza)
 
     call_async(q, conn.Requests, 'EnsureChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.ContactList',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': cs.HT_GROUP,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': test_handle,
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CONTACT_LIST,
+              cs.TARGET_HANDLE_TYPE: cs.HT_GROUP,
+              cs.TARGET_HANDLE: test_handle,
               })
     call_async(q, conn.Requests, 'EnsureChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.ContactList',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': cs.HT_GROUP,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': test_handle,
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CONTACT_LIST,
+              cs.TARGET_HANDLE_TYPE: cs.HT_GROUP,
+              cs.TARGET_HANDLE: test_handle,
               })
 
     ret = q.expect('dbus-return', method='EnsureChannel')
@@ -44,14 +42,10 @@ def test(q, bus, conn, stream):
     yours, path, props = ret.value
     yours2, path2, props2 = ret2.value
 
-    assert props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.ContactList', props
-    assert props['org.freedesktop.Telepathy.Channel.TargetHandleType'] ==\
-            cs.HT_GROUP, props
-    assert props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            test_handle, props
-    assert props['org.freedesktop.Telepathy.Channel.TargetID'] ==\
-            'test', props
+    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CONTACT_LIST, props
+    assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_GROUP, props
+    assert props[cs.TARGET_HANDLE] == test_handle, props
+    assert props[cs.TARGET_ID] == 'test', props
 
     assert yours != yours2, (yours, yours2)
     assert path == path2, (path, path2)

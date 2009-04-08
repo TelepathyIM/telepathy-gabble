@@ -157,7 +157,7 @@ def worker(jp, q, bus, conn, stream):
 
     # Gabble removes the stream
     q.expect('dbus-signal', signal='StreamRemoved',
-        interface='org.freedesktop.Telepathy.Channel.Type.StreamedMedia')
+        interface=cs.CHANNEL_TYPE_STREAMED_MEDIA)
 
 
     # We try to make the request again, and succeed

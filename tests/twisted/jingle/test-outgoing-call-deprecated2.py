@@ -40,18 +40,14 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     handle = conn.RequestHandles(1, [jt.remote_jid])[0]
-
-    path = conn.RequestChannel(
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-        0, 0, True)
+    path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 0, True)
 
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
 
     channel_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert media_iface.GetHandle(dbus_interface=cs.CHANNEL) == (0, 0)
     assert channel_props['TargetHandleType'] == 0, channel_props
     assert channel_props['TargetHandle'] == 0, channel_props

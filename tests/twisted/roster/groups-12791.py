@@ -5,36 +5,30 @@ Test broken groups on the roster (regression test for fd.o #12791)
 import dbus
 
 from gabbletest import exec_test
-
-
-HT_CONTACT_LIST = 3
-HT_GROUP = 4
-
+import constants as cs
 
 def _expect_contact_list_channel(q, bus, conn, name, contacts):
     event = q.expect('dbus-signal', signal='NewChannel')
     path, type, handle_type, handle, suppress_handler = event.args
-    assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList', type
-    assert handle_type == HT_CONTACT_LIST, handle_type
+    assert type == cs.CHANNEL_TYPE_CONTACT_LIST, type
+    assert handle_type == cs.HT_CONTACT_LIST, handle_type
     inspected = conn.InspectHandles(handle_type, [handle])[0]
     assert inspected == name, (inspected, name)
     chan = bus.get_object(conn.bus_name, path)
-    group_iface = dbus.Interface(chan,
-        u'org.freedesktop.Telepathy.Channel.Interface.Group')
-    inspected = conn.InspectHandles(1, group_iface.GetMembers())
+    group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
+    inspected = conn.InspectHandles(cs.HT_CONTACT, group_iface.GetMembers())
     assert inspected == contacts, (inspected, contacts)
 
 def _expect_group_channel(q, bus, conn, name, contacts):
     event = q.expect('dbus-signal', signal='NewChannel')
     path, type, handle_type, handle, suppress_handler = event.args
-    assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList', type
-    assert handle_type == HT_GROUP, handle_type
+    assert type == cs.CHANNEL_TYPE_CONTACT_LIST, type
+    assert handle_type == cs.HT_GROUP, handle_type
     inspected = conn.InspectHandles(handle_type, [handle])[0]
     assert inspected == name, (inspected, name)
     chan = bus.get_object(conn.bus_name, path)
-    group_iface = dbus.Interface(chan,
-        u'org.freedesktop.Telepathy.Channel.Interface.Group')
-    inspected = conn.InspectHandles(1, group_iface.GetMembers())
+    group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
+    inspected = conn.InspectHandles(cs.HT_CONTACT, group_iface.GetMembers())
     assert inspected == contacts, (inspected, contacts)
 
 def test(q, bus, conn, stream):

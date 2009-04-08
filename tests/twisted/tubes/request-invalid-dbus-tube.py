@@ -21,7 +21,7 @@ def test(q, bus, conn, stream):
                      cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
                      cs.TARGET_ID: 'alice@localhost',
                      cs.DBUS_TUBE_SERVICE_NAME: invalid_service_name
-                });
+                })
         except dbus.DBusException, e:
             assert e.get_dbus_name() == cs.INVALID_ARGUMENT, \
                 (e.get_dbus_name(), invalid_service_name)

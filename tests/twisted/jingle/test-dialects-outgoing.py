@@ -15,10 +15,8 @@ def worker(jp, q, bus, conn, stream):
     jt2.prepare()
 
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
-
-    call_async(q, conn, 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia', 0, 0, True)
-
+    call_async(
+        q, conn, 'RequestChannel', cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 0, True)
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),

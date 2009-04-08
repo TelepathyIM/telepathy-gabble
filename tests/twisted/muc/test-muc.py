@@ -9,6 +9,7 @@ from twisted.words.xish import domish
 
 from gabbletest import exec_test
 from servicetest import EventPattern
+import constants as cs
 
 from mucutil import join_muc_and_check
 
@@ -22,28 +23,27 @@ def test(q, bus, conn, stream):
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=cs.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == room_handle,\
             (channel_props.get('TargetHandle'), room_handle)
-    assert channel_props.get('TargetHandleType') == 2,\
+    assert channel_props.get('TargetHandleType') == cs.HT_ROOM,\
             channel_props.get('TargetHandleType')
     assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.Text',\
+            cs.CHANNEL_TYPE_TEXT,\
             channel_props.get('ChannelType')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' in \
+    assert cs.CHANNEL_IFACE_GROUP in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Password' in \
+    assert cs.CHANNEL_IFACE_PASSWORD in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Properties' in \
+    assert cs.TP_AWKWARD_PROPERTIES in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
+    assert cs.CHANNEL_IFACE_CHAT_STATE in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Messages' in \
+    assert cs.CHANNEL_IFACE_MESSAGES in \
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
@@ -53,8 +53,7 @@ def test(q, bus, conn, stream):
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = text_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel.Interface.Group',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL_IFACE_GROUP, dbus_interface=cs.PROPERTIES_IFACE)
     assert 'HandleOwners' in group_props, group_props
     assert 'Members' in group_props, group_props
     assert 'LocalPendingMembers' in group_props, group_props
@@ -104,8 +103,7 @@ def test(q, bus, conn, stream):
     # PendingMessagesRemoved fires.
     message_id = header['pending-message-id']
 
-    dbus.Interface(text_chan,
-        u'org.freedesktop.Telepathy.Channel.Type.Text'
+    dbus.Interface(text_chan, cs.CHANNEL_TYPE_TEXT
         ).AcknowledgePendingMessages([message_id])
 
     removed = q.expect('dbus-signal', signal='PendingMessagesRemoved')
@@ -125,8 +123,7 @@ def test(q, bus, conn, stream):
     ]
 
     sent_token = dbus.Interface(text_chan,
-        u'org.freedesktop.Telepathy.Channel.Interface.Messages'
-        ).SendMessage(greeting, dbus.UInt32(0))
+        cs.CHANNEL_IFACE_MESSAGES).SendMessage(greeting, dbus.UInt32(0))
 
     assert sent_token
 
@@ -206,9 +203,7 @@ def test(q, bus, conn, stream):
 
 
     # Send a normal message using the Channel.Type.Text API
-    dbus.Interface(text_chan,
-            'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'goodbye')
-
+    dbus.Interface(text_chan, cs.CHANNEL_TYPE_TEXT).Send(0, 'goodbye')
 
     event, sent, message_sent = q.expect_many(
         EventPattern('stream-message'),

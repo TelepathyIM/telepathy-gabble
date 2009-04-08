@@ -26,11 +26,9 @@ def test(q, bus, conn, stream):
     sync_dbus(bus, q, conn)
 
     call_async(q, conn.Requests, 'CreateChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.ContactList',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType':
-                 cs.HT_GROUP,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': test_handle,
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CONTACT_LIST,
+              cs.TARGET_HANDLE_TYPE: cs.HT_GROUP,
+              cs.TARGET_HANDLE: test_handle,
               })
 
     event = q.expect('dbus-return', method='CreateChannel')
@@ -38,14 +36,10 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='NewChannels')
     path, props = event.args[0][0]
-    assert props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.ContactList', props
-    assert props['org.freedesktop.Telepathy.Channel.TargetHandleType'] ==\
-            cs.HT_GROUP, props
-    assert props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            test_handle, props
-    assert props['org.freedesktop.Telepathy.Channel.TargetID'] ==\
-            'test', props
+    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CONTACT_LIST, props
+    assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_GROUP, props
+    assert props[cs.TARGET_HANDLE] == test_handle, props
+    assert props[cs.TARGET_ID] == 'test', props
 
     assert ret_path == path, (ret_path, path)
     assert ret_props == props, (ret_props, props)

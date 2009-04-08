@@ -30,9 +30,8 @@ def test(q, bus, conn, stream):
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              cs.TARGET_ID: "foo@example.com",
-             'this.property.does.not.exist':
-                'this.value.should.not.exist'
-            });
+             'this.property.does.not.exist': 'this.value.should.not.exist'
+            })
     ret = q.expect('dbus-error', method='CreateChannel')
 
     check_no_tubes(conn_props)
@@ -43,7 +42,7 @@ def test(q, bus, conn, stream):
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              cs.TARGET_ID: "foo@example.com",
-            });
+            })
     ret = q.expect('dbus-error', method='CreateChannel')
 
     check_no_tubes(conn_props)

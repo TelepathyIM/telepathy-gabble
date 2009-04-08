@@ -16,7 +16,6 @@ def test(jp, q, bus, conn, stream):
 
     self_handle = conn.GetSelfHandle()
     handle = conn.RequestHandles(cs.HT_CONTACT, [jt.peer])[0]
-
     path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
         cs.HT_CONTACT, handle, True)
 

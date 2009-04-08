@@ -3,31 +3,145 @@
 Test registration.
 """
 
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from gabbletest import (
+    exec_test, make_result_iq, acknowledge_iq, send_error_reply,
+    )
 
-from twisted.words.xish import xpath
+from twisted.words.xish import domish, xpath
 
-def test(q, bus, conn, stream):
+import ns
+from constants import (
+    CSR_NAME_IN_USE, CSR_REQUESTED, CSR_AUTHENTICATION_FAILED,
+    CONN_STATUS_DISCONNECTED, CONN_STATUS_CONNECTING, CONN_STATUS_CONNECTED,
+    )
+
+def connect_and_send_form(q, conn, stream, require_email=False):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[CONN_STATUS_CONNECTING, CSR_REQUESTED])
 
-    event = q.expect('stream-iq', query_ns='jabber:iq:register')
+    event = q.expect('stream-iq', query_ns=ns.REGISTER)
     result = make_result_iq(stream, event.stanza)
     query = result.firstChildElement()
     query.addElement('username')
     query.addElement('password')
+
+    if require_email:
+        query.addElement('email')
+
     stream.send(result)
 
     event = q.expect('stream-iq')
     iq = event.stanza
     assert xpath.queryForString('/iq/query/username', iq) == 'test'
     assert xpath.queryForString('/iq/query/password', iq) == 'pass'
+
+    return iq
+
+def test_success(q, bus, conn, stream):
+    iq = connect_and_send_form(q, conn, stream)
     acknowledge_iq(stream, iq)
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[CONN_STATUS_CONNECTED, CSR_REQUESTED])
     conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[CONN_STATUS_DISCONNECTED, CSR_REQUESTED])
+
+def test_conflict(q, bus, conn, stream):
+    iq = connect_and_send_form(q, conn, stream)
+
+    error = domish.Element((None, 'error'))
+    error['code'] = '409'
+    error['type'] = 'cancel'
+    error.addElement((ns.STANZA, 'conflict'))
+    send_error_reply(stream, iq, error)
+
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[CONN_STATUS_DISCONNECTED, CSR_NAME_IN_USE])
+
+def test_with_email(q, bus, conn, stream):
+    # So, the form requires <email/> but Gabble doesn't notice and sends a
+    # request with just <username/> and <password/>. Arguably it should notice
+    # that other fields are needed and fail earlier.
+    iq = connect_and_send_form(q, conn, stream, require_email=True)
+
+    error = domish.Element((None, 'error'))
+    error['code'] = '406'
+    error['type'] = 'modify'
+    error.addElement((ns.STANZA, 'not-acceptable'))
+    send_error_reply(stream, iq, error)
+
+    # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
+    # but couldn't register you an account."
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[CONN_STATUS_DISCONNECTED, CSR_AUTHENTICATION_FAILED])
+
+def test_data_forms(q, bus, conn, stream):
+    conn.Connect()
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[CONN_STATUS_CONNECTING, CSR_REQUESTED])
+
+    event = q.expect('stream-iq', query_ns=ns.REGISTER)
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    query.addElement((None, 'instructions')).addChild("Hope you like x:data")
+    # Use the same element names as in jabber:iq:register as per XEP 0077's
+    # Extensibility section.
+    x = query.addElement((ns.X_DATA, 'x'))
+    x['type'] = 'form'
+    x.addElement((None, 'title')).addChild("Account Registration")
+    x.addElement((None, 'instructions')).addChild(
+        "This is gratuitously a data form!")
+
+    form_type = x.addElement((None, 'field'))
+    form_type['type'] = 'hidden'
+    form_type['var'] = 'FORM_TYPE'
+    form_type.addElement((None, 'value')).addChild(ns.REGISTER)
+
+    first = x.addElement((None, 'field'))
+    first['type'] = 'text-single'
+    first['label'] = 'Username'
+    first['var'] = 'username'
+    first.addElement((None, 'required'))
+
+    first = x.addElement((None, 'field'))
+    first['type'] = 'text-single'
+    first['label'] = 'Password'
+    first['var'] = 'password'
+    first.addElement((None, 'required'))
+
+    stream.send(result)
+
+    # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
+    # but couldn't register you an account."
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[CONN_STATUS_DISCONNECTED, CSR_AUTHENTICATION_FAILED])
+
+def test_redirection(q, bus, conn, stream):
+    conn.Connect()
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[CONN_STATUS_CONNECTING, CSR_REQUESTED])
+
+    event = q.expect('stream-iq', query_ns=ns.REGISTER)
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    query.addElement((None, 'instructions')).addChild("Sigh.")
+    # Tell the user to go to some website
+    url = query.addElement((ns.X_OOB, 'x')).addElement((None, 'url'))
+    url.addChild("http://foogle.talk.example/newaccount")
+
+    stream.send(result)
+
+    # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
+    # but couldn't register you an account."
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[CONN_STATUS_DISCONNECTED, CSR_AUTHENTICATION_FAILED])
 
 if __name__ == '__main__':
-    exec_test(test, {'register': True})
+    exec_test(test_success, {'register': True})
+    exec_test(test_conflict, {'register': True})
+    exec_test(test_with_email, {'register': True})
+    exec_test(test_data_forms, {'register': True})
+    exec_test(test_redirection, {'register': True})
 

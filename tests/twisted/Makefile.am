@@ -1,4 +1,5 @@
 TWISTED_TESTS = \
+	avatar-requirements.py \
 	muc/name-conflict.py \
 	muc/renamed.py \
 	muc/roomlist.py \

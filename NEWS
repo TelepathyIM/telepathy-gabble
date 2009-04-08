@@ -1,5 +1,18 @@
-telepathy-gabble 0.7.26 (UNRELEASED)
+telepathy-gabble 0.7.26 (2009-04-08)
 ====================================
+
+The “What have you done with my hat?” release.
+
+Enhancements:
+
+* When placing a streamed media call on hold, transmit the status change
+  to the peer.
+* Relatedly, expose incoming Ringing and Hold notifications through the
+  CallState interface.
+* Raise Offline or NotCapable (rather than NotAvailable) when methods in
+  Jingle calls fail for one of those reasons.
+* Implement the Avatar interface's D-Bus properties, as introduced in
+  spec version 0.17.22
 
 telepathy-gabble 0.7.25 (2009-03-04)
 ====================================

@@ -36,13 +36,16 @@ def make_result_iq(stream, iq):
 def acknowledge_iq(stream, iq):
     stream.send(make_result_iq(stream, iq))
 
-def send_error_reply(stream, iq):
+def send_error_reply(stream, iq, error_stanza=None):
     result = IQ(stream, "error")
     result["id"] = iq["id"]
     query = iq.firstChildElement()
 
     if query:
         result.addElement((query.uri, query.name))
+
+    if error_stanza:
+        result.addChild(error_stanza)
 
     stream.send(result)
 

@@ -1835,11 +1835,9 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
   GabblePresenceCapabilities caps;
-#ifdef ENABLE_DEBUG
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_CONTACT);
-#endif
   gboolean wait_ = FALSE;
 
   if (gabble_presence_cache_caps_pending (priv->conn->presence_cache, peer))

@@ -10,15 +10,12 @@ from gabbletest import (
 from twisted.words.xish import domish, xpath
 
 import ns
-from constants import (
-    CSR_NAME_IN_USE, CSR_REQUESTED, CSR_AUTHENTICATION_FAILED,
-    CONN_STATUS_DISCONNECTED, CONN_STATUS_CONNECTING, CONN_STATUS_CONNECTED,
-    )
+import constants as cs
 
 def connect_and_send_form(q, conn, stream, require_email=False):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged',
-        args=[CONN_STATUS_CONNECTING, CSR_REQUESTED])
+        args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
 
     event = q.expect('stream-iq', query_ns=ns.REGISTER)
     result = make_result_iq(stream, event.stanza)
@@ -43,10 +40,10 @@ def test_success(q, bus, conn, stream):
     acknowledge_iq(stream, iq)
 
     q.expect('dbus-signal', signal='StatusChanged',
-        args=[CONN_STATUS_CONNECTED, CSR_REQUESTED])
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged',
-        args=[CONN_STATUS_DISCONNECTED, CSR_REQUESTED])
+        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
 
 def test_conflict(q, bus, conn, stream):
     iq = connect_and_send_form(q, conn, stream)
@@ -58,7 +55,7 @@ def test_conflict(q, bus, conn, stream):
     send_error_reply(stream, iq, error)
 
     q.expect('dbus-signal', signal='StatusChanged',
-        args=[CONN_STATUS_DISCONNECTED, CSR_NAME_IN_USE])
+        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_NAME_IN_USE])
 
 def test_with_email(q, bus, conn, stream):
     # So, the form requires <email/> but Gabble doesn't notice and sends a
@@ -75,12 +72,12 @@ def test_with_email(q, bus, conn, stream):
     # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
     # but couldn't register you an account."
     q.expect('dbus-signal', signal='StatusChanged',
-        args=[CONN_STATUS_DISCONNECTED, CSR_AUTHENTICATION_FAILED])
+        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 
 def test_data_forms(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged',
-        args=[CONN_STATUS_CONNECTING, CSR_REQUESTED])
+        args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
 
     event = q.expect('stream-iq', query_ns=ns.REGISTER)
     result = make_result_iq(stream, event.stanza)
@@ -116,12 +113,12 @@ def test_data_forms(q, bus, conn, stream):
     # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
     # but couldn't register you an account."
     q.expect('dbus-signal', signal='StatusChanged',
-        args=[CONN_STATUS_DISCONNECTED, CSR_AUTHENTICATION_FAILED])
+        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 
 def test_redirection(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged',
-        args=[CONN_STATUS_CONNECTING, CSR_REQUESTED])
+        args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
 
     event = q.expect('stream-iq', query_ns=ns.REGISTER)
     result = make_result_iq(stream, event.stanza)
@@ -136,7 +133,7 @@ def test_redirection(q, bus, conn, stream):
     # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
     # but couldn't register you an account."
     q.expect('dbus-signal', signal='StatusChanged',
-        args=[CONN_STATUS_DISCONNECTED, CSR_AUTHENTICATION_FAILED])
+        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 
 if __name__ == '__main__':
     exec_test(test_success, {'register': True})

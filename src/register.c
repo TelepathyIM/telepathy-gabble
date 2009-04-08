@@ -217,7 +217,7 @@ set_reply_cb (GabbleConnection *conn,
           error = gabble_xmpp_error_from_node (node, NULL);
           if (error == XMPP_ERROR_CONFLICT)
             {
-              code = TP_ERROR_INVALID_ARGUMENT;
+              code = TP_ERROR_NOT_YOURS;
             }
 
           g_string_append_printf (msg, ": %s",

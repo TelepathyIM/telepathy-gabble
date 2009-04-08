@@ -1832,7 +1832,7 @@ registration_finished_cb (GabbleRegister *reg,
 
       tp_base_connection_change_status ((TpBaseConnection *) conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
-          (err_code == TP_ERROR_INVALID_ARGUMENT) ?
+          (err_code == TP_ERROR_NOT_YOURS) ?
             TP_CONNECTION_STATUS_REASON_NAME_IN_USE :
             TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
     }

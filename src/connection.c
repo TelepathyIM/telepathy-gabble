@@ -590,8 +590,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           conn_location_properties_setter,
           location_props,
         },
+        { TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+          conn_avatars_properties_getter,
+          NULL,
+          NULL,
+        },
         { NULL }
   };
+
+  prop_interfaces[2].props = conn_avatars_properties;
 
   DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
 

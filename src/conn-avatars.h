@@ -28,6 +28,10 @@ G_BEGIN_DECLS
 void conn_avatars_init (GabbleConnection *conn);
 void conn_avatars_iface_init (gpointer g_iface, gpointer iface_data);
 
+extern TpDBusPropertiesMixinPropImpl *conn_avatars_properties;
+void conn_avatars_properties_getter (GObject *object, GQuark interface,
+    GQuark name, GValue *value, gpointer getter_data);
+
 G_END_DECLS
 
 #endif /* __CONN_AVATARS_H__ */

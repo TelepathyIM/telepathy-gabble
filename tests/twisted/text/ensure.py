@@ -4,8 +4,6 @@ Test text channel initiated by me, using Requests.EnsureChannel
 
 import dbus
 
-from twisted.words.xish import domish
-
 from gabbletest import exec_test
 from servicetest import call_async, EventPattern
 

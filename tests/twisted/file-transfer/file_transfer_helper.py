@@ -7,9 +7,8 @@ import datetime
 from servicetest import EventPattern
 from gabbletest import exec_test, sync_stream
 import ns
-from bytestream import create_from_si_offer, BytestreamIBBMsg, BytestreamS5B, BytestreamS5BPidgin, \
-    BytestreamSIFallbackS5CannotConnect, BytestreamSIFallbackS5WrongHash, BytestreamS5BRelay,\
-    BytestreamS5BRelayBugged, announce_socks5_proxy
+from bytestream import create_from_si_offer, announce_socks5_proxy
+import bytestream
 
 from twisted.words.xish import domish, xpath
 
@@ -418,9 +417,14 @@ class SendFileTest(FileTransferTest):
         assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 
 def exec_file_transfer_test(test_cls):
-    for bytestream_cls  in [BytestreamIBBMsg, BytestreamS5B, BytestreamS5BPidgin,\
-        BytestreamSIFallbackS5CannotConnect, BytestreamSIFallbackS5WrongHash,\
-        BytestreamS5BRelay, BytestreamS5BRelayBugged]:
+    for bytestream_cls  in [
+            bytestream.BytestreamIBBMsg,
+            bytestream.BytestreamS5B,
+            bytestream.BytestreamS5BPidgin,
+            bytestream.BytestreamSIFallbackS5CannotConnect,
+            bytestream.BytestreamSIFallbackS5WrongHash,
+            bytestream.BytestreamS5BRelay,
+            bytestream.BytestreamS5BRelayBugged]:
         for addr_type, access_control, access_control_param in [
                 (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
                 (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),

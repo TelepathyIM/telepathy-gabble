@@ -4,12 +4,11 @@ Test outgoing call handling. This tests the happy scenario
 when the remote party accepts the call.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix
+from gabbletest import exec_test, sync_stream
+from servicetest import make_channel_proxy
 import jingletest
 import gabbletest
 import dbus
-import time
 
 import constants as cs
 

@@ -13,11 +13,9 @@ import base64
 
 from twisted.words.xish import xpath
 
-from servicetest import call_async, sync_dbus
-from gabbletest import exec_test, \
-    expect_and_handle_get_vcard, expect_and_handle_set_vcard
-
-import ns
+from servicetest import call_async
+from gabbletest import (
+    exec_test, expect_and_handle_get_vcard, expect_and_handle_set_vcard)
 
 def test(q, bus, conn, stream):
     conn.Connect()

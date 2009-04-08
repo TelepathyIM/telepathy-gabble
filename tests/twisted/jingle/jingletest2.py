@@ -25,8 +25,8 @@ class JingleProtocol:
 
     def _simple_xml(self, node):
         "Construct domish.Element tree from tree of tuples"
-        name, ns, attribs, children = node
-        el = domish.Element((ns, name))
+        name, namespace, attribs, children = node
+        el = domish.Element((namespace, name))
         for key, val in attribs.items():
             el[key] = val
         for c in children:
@@ -238,12 +238,12 @@ class JingleProtocol015(JingleProtocol):
 
     def Description(self, type, children):
         if type == 'audio':
-            ns = 'http://jabber.org/protocol/jingle/description/audio'
+            namespace = 'http://jabber.org/protocol/jingle/description/audio'
         elif type == 'video':
-            ns = 'http://jabber.org/protocol/jingle/description/video'
+            namespace = 'http://jabber.org/protocol/jingle/description/video'
         else:
-            ns = 'unexistent-namespace'
-        return ('description', ns, { 'type': type }, children)
+            namespace = 'unexistent-namespace'
+        return ('description', namespace, { 'type': type }, children)
 
 class JingleProtocol031(JingleProtocol):
     features = [ 'urn:xmpp:jingle:0', 'urn:xmpp:jingle:apps:rtp:0',

@@ -5,7 +5,6 @@ RequestAvatar calls for the same contact.
 """
 
 import base64
-import sha
 
 from servicetest import EventPattern
 from gabbletest import exec_test, acknowledge_iq

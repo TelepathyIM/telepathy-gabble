@@ -4,14 +4,11 @@ Test workarounds for gtalk
 """
 
 import dbus
-import sys
 
-from twisted.words.xish import domish
-
-from servicetest import EventPattern
 from gabbletest import acknowledge_iq, exec_test
 
 from twisted.words.protocols.jabber.client import IQ
+from twisted.words.xish import domish
 
 def make_set_roster_iq(stream, user, contact, state, ask):
     iq = IQ(stream, 'set')

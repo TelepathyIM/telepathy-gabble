@@ -4,14 +4,9 @@ Test making outgoing calls using EnsureChannel, and retrieving existing calls
 using EnsureChannel.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        call_async, EventPattern
-from twisted.words.xish import domish
+from gabbletest import exec_test, sync_stream
+from servicetest import make_channel_proxy, call_async, EventPattern
 import jingletest
-import gabbletest
-import dbus
-import time
 
 
 def test(q, bus, conn, stream):
@@ -136,8 +131,8 @@ def test(q, bus, conn, stream):
     assert old_sig.args[0] == path, (old_sig.args[0], path)
     assert old_sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',\
             old_sig.args[1]
-    assert old_sig.args[2] == 0, sig.args[2]
-    assert old_sig.args[3] == 0, sig.args[3]
+    assert old_sig.args[2] == 0, old_sig.args[2]
+    assert old_sig.args[3] == 0, old_sig.args[3]
     assert old_sig.args[4] == True      # suppress handler
 
     assert len(new_sig.args) == 1

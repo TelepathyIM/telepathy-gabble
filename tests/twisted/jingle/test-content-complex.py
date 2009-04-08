@@ -2,17 +2,12 @@
 Test everything related to contents
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream, exec_tests
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern
-import gabbletest
-import dbus
-import time
-from twisted.words.xish import xpath
-
+from servicetest import make_channel_proxy, tp_path_prefix
 import constants as cs
 from jingletest2 import (
     JingleTest2, JingleProtocol015, JingleProtocol031, test_dialects)
+
+from twisted.words.xish import xpath
 
 def worker(jp, q, bus, conn, stream):
 

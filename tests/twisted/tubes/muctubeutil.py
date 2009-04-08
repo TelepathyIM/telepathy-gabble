@@ -1,10 +1,8 @@
 import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix
-from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
+from gabbletest import make_result_iq, make_muc_presence
 import constants as cs
-
-from twisted.words.xish import domish, xpath
 
 def get_muc_tubes_channel(q, bus, conn, stream, muc_jid, anonymous=True):
     """

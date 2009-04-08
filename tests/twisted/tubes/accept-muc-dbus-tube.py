@@ -4,7 +4,7 @@ from servicetest import call_async, EventPattern
 from gabbletest import exec_test, acknowledge_iq, make_muc_presence
 import constants as c
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 import ns
 
 from mucutil import join_muc_and_check

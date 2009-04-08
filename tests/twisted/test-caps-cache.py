@@ -4,10 +4,7 @@ Test that requesting a caps set 1 time is enough with hash and that we need 5
 confirmation without hash.
 """
 
-import dbus
-import sys
-
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 
 from servicetest import EventPattern
 from gabbletest import exec_test, make_result_iq, make_presence

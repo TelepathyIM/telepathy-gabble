@@ -1,17 +1,12 @@
 """Test IBB stream tube support in the context of a MUC."""
 
-import base64
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolClientFactory
+from servicetest import call_async, EventPattern, tp_name_prefix, unwrap
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
-from constants import *
+import constants as cs
 import ns
 import tubetestutil as t
-
-from twisted.words.xish import domish, xpath
-from twisted.internet import reactor
-from twisted.words.protocols.jabber.client import IQ
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -130,9 +125,9 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='NewTube',
         args=[tube_id, bob_handle, 0, 'org.telepathy.freedesktop.test', sample_parameters, 0])
 
-    expected_tube = (tube_id, bob_handle, TUBE_TYPE_DBUS,
+    expected_tube = (tube_id, bob_handle, cs.TUBE_TYPE_DBUS,
         'org.telepathy.freedesktop.test', sample_parameters,
-        TUBE_STATE_LOCAL_PENDING)
+        cs.TUBE_STATE_LOCAL_PENDING)
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert len(tubes) == 1, unwrap(tubes)
     t.check_tube_in_tubes(expected_tube, tubes)

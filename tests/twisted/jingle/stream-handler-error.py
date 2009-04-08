@@ -5,7 +5,7 @@ masking refcounting assumptions.
 """
 
 from gabbletest import exec_test
-from servicetest import make_channel_proxy, tp_path_prefix, EventPattern
+from servicetest import make_channel_proxy
 import jingletest
 
 import constants as cs

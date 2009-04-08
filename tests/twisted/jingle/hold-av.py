@@ -2,12 +2,8 @@
 Test the Hold API.
 """
 
-from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        call_async, EventPattern
-import gabbletest
-import dbus
-import time
+from gabbletest import make_result_iq, sync_stream
+from servicetest import make_channel_proxy, call_async, EventPattern
 
 import constants as cs
 

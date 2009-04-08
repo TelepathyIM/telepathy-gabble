@@ -6,7 +6,7 @@ import dbus
 
 from twisted.words.protocols.jabber.client import IQ
 from gabbletest import exec_test, acknowledge_iq
-from servicetest import EventPattern, tp_name_prefix
+from servicetest import EventPattern
 
 def _expect_contact_list_channel(q, bus, conn, name, contacts):
     old_signal, new_signal = q.expect_many(

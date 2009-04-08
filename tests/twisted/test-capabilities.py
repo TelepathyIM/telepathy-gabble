@@ -5,8 +5,6 @@ Test capabilities.
 
 import dbus
 
-from twisted.words.xish import domish
-
 from servicetest import EventPattern
 from gabbletest import exec_test, make_result_iq, make_presence
 

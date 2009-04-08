@@ -2,14 +2,12 @@
 Test incoming call handling.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern, sync_dbus
-import jingletest
-import gabbletest
 import dbus
-import time
 
+from gabbletest import exec_test, make_result_iq, sync_stream
+from servicetest import (
+    make_channel_proxy, unwrap, tp_path_prefix, EventPattern, sync_dbus)
+import jingletest
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -140,7 +138,7 @@ def test(q, bus, conn, stream):
     assert e.query['action'] == 'transport-info'
     assert e.query['initiator'] == 'foo@bar.com/Foo'
 
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
+    stream.send(make_result_iq(stream, e.stanza))
 
     # Make sure everything's processed
     sync_stream(q, stream)

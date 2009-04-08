@@ -4,14 +4,11 @@ Test outgoing call handling. This tests the happy scenario
 when the remote party accepts the call.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        call_async, EventPattern
-from twisted.words.xish import domish
+from gabbletest import exec_test, sync_stream
+from servicetest import make_channel_proxy, call_async, EventPattern
 import jingletest
 import gabbletest
 import dbus
-import time
 
 import constants as cs
 
@@ -61,8 +58,8 @@ def test(q, bus, conn, stream):
     assert old_sig.args[0] == path, (old_sig.args[0], path)
     assert old_sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',\
             old_sig.args[1]
-    assert old_sig.args[2] == 0, sig.args[2]
-    assert old_sig.args[3] == 0, sig.args[3]
+    assert old_sig.args[2] == 0, old_sig.args[2]
+    assert old_sig.args[3] == 0, old_sig.args[3]
     assert old_sig.args[4] == True      # suppress handler
 
     assert len(new_sig.args) == 1
@@ -129,7 +126,7 @@ def test(q, bus, conn, stream):
     assert 'GroupFlags' in group_props, group_props
 
     list_streams_result = media_iface.ListStreams()
-    assert len(list_streams_result) == 0, streams
+    assert len(list_streams_result) == 0, list_streams_result
 
     streams = media_iface.RequestStreams(handle,
             [cs.MEDIA_STREAM_TYPE_AUDIO])

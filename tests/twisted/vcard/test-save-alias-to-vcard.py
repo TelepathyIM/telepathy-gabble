@@ -7,10 +7,8 @@ Regression test.
    parameter
 """
 
-from gabbletest import exec_test, acknowledge_iq, \
-    expect_and_handle_get_vcard, expect_and_handle_set_vcard
-
-import ns
+from gabbletest import (
+    exec_test, expect_and_handle_get_vcard, expect_and_handle_set_vcard)
 
 def test(q, bus, conn, stream):
     conn.Connect()

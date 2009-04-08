@@ -5,17 +5,12 @@ the first one and lastly remove the second stream, which
 closes the session.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream, \
-        send_error_reply
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        call_async, EventPattern
-from twisted.words.xish import domish, xpath
+from gabbletest import exec_test, make_result_iq, sync_stream
+from servicetest import make_channel_proxy, tp_path_prefix
 import jingletest
-import gabbletest
-import dbus
-import time
-from constants import *
+import constants as cs
 
+from twisted.words.xish import domish, xpath
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -56,7 +51,7 @@ def test(q, bus, conn, stream):
 
     # This is the interesting part of this test
 
-    media_iface.RequestStreams(handle, [MEDIA_STREAM_TYPE_AUDIO])
+    media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -74,7 +69,7 @@ def test(q, bus, conn, stream):
 
     # Before sending the initiate, request another stream
 
-    media_iface.RequestStreams(handle, [MEDIA_STREAM_TYPE_VIDEO])
+    media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_VIDEO])
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
     stream_id2 = e.args[1]
@@ -83,9 +78,9 @@ def test(q, bus, conn, stream):
 
     # We set both streams as ready, which will trigger the session invite
     stream_handler.Ready(jt.get_audio_codecs_dbus())
-    stream_handler.StreamState(MEDIA_STREAM_STATE_CONNECTED)
+    stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
     stream_handler2.Ready(jt.get_audio_codecs_dbus())
-    stream_handler2.StreamState(MEDIA_STREAM_STATE_CONNECTED)
+    stream_handler2.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     # We changed our mind locally, don't want video
     media_iface.RemoveStreams([stream_id2])
@@ -93,7 +88,7 @@ def test(q, bus, conn, stream):
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-initiate'
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
+    stream.send(make_result_iq(stream, e.stanza))
 
     e2 = q.expect('stream-iq', predicate=lambda x:
         xpath.queryForNodes("/iq/jingle[@action='content-remove']",
@@ -107,11 +102,11 @@ def test(q, bus, conn, stream):
     # now. If it's good, stream will be really removed, and
     # we can proceed.
 
-    stream.send(gabbletest.make_result_iq(stream, e2.stanza))
+    stream.send(make_result_iq(stream, e2.stanza))
 
     q.expect('dbus-signal', signal='StreamRemoved')
 
-    media_iface.RequestStreams(handle, [MEDIA_STREAM_TYPE_VIDEO])
+    media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_VIDEO])
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
     stream2_id = e.args[1]
@@ -120,14 +115,14 @@ def test(q, bus, conn, stream):
 
     stream_handler2.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler2.Ready(jt.get_audio_codecs_dbus())
-    stream_handler2.StreamState(MEDIA_STREAM_STATE_CONNECTED)
+    stream_handler2.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'content-add'
     c = e.query.firstChildElement ()
     assert c['creator'] == 'initiator', c['creator'] + " should be initiator"
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
+    stream.send(make_result_iq(stream, e.stanza))
 
     iq, jingle = jt._jingle_stanza('content-accept')
 
@@ -160,7 +155,7 @@ def test(q, bus, conn, stream):
     e = q.expect('stream-iq', iq_type='set')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'content-remove'
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
+    stream.send(make_result_iq(stream, e.stanza))
 
     # Then we remove the second stream, which terminates the session
     media_iface.RemoveStreams([stream2_id])
@@ -168,7 +163,7 @@ def test(q, bus, conn, stream):
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-terminate'
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
+    stream.send(make_result_iq(stream, e.stanza))
 
     # Now the session should be terminated
 

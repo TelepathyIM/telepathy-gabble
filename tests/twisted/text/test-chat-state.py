@@ -4,8 +4,6 @@ Test that chat state notifications are correctly sent and received on text
 channels.
 """
 
-import dbus
-
 from twisted.words.xish import domish
 
 from servicetest import call_async, make_channel_proxy

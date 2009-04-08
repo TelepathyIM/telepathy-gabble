@@ -4,12 +4,11 @@ Test outgoing call handling. This tests the happy scenario
 when the remote party accepts the call.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix
-import jingletest
-import gabbletest
 import dbus
-import time
+
+from gabbletest import exec_test, make_result_iq, sync_stream
+from servicetest import make_channel_proxy
+import jingletest
 
 import constants as cs
 
@@ -85,7 +84,7 @@ def test(q, bus, conn, stream):
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-initiate'
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
+    stream.send(make_result_iq(stream, e.stanza))
 
     jt.outgoing_call_reply(e.query['sid'], True)
 

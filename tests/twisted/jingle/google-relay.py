@@ -10,7 +10,6 @@ import jingletest
 import gabbletest
 import constants as cs
 import dbus
-import time
 import BaseHTTPServer
 
 http_req = 0

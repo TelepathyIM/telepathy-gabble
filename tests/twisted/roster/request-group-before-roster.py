@@ -3,8 +3,6 @@ Regression test for a bug where RequestChannel times out when requesting a
 group channel if the roster hasn't been received at the time of the call.
 """
 
-import dbus
-
 from gabbletest import exec_test, sync_stream
 from servicetest import sync_dbus, call_async
 

@@ -11,8 +11,7 @@ from twisted.words.xish import xpath, domish
 from twisted.internet.error import CannotListenError
 
 from servicetest import Event, EventPattern
-from gabbletest import acknowledge_iq, sync_stream, make_result_iq, elem_iq,\
-    elem
+from gabbletest import acknowledge_iq, make_result_iq, elem_iq, elem
 import ns
 
 def wait_events(q, expected, my_event):

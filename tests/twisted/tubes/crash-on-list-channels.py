@@ -5,13 +5,13 @@ DBus tube asserted.
 
 import dbus
 
-from servicetest import call_async, EventPattern, watch_tube_signals
-from gabbletest import exec_test, acknowledge_iq, sync_stream
+from servicetest import call_async, EventPattern
+from gabbletest import exec_test, sync_stream
 
 import ns
 import constants
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import domish
 
 jid = 'explosions@in.the.sky'
 

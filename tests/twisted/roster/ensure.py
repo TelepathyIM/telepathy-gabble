@@ -2,13 +2,9 @@
 Test ensuring roster channels
 """
 
-import dbus
-
-from gabbletest import exec_test, sync_stream
-from servicetest import sync_dbus, call_async
-
-HT_CONTACT_LIST = 3
-HT_GROUP = 4
+from gabbletest import exec_test
+from servicetest import call_async
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -17,7 +13,7 @@ def test(q, bus, conn, stream):
     roster_event = q.expect('stream-iq', query_ns='jabber:iq:roster')
     roster_event.stanza['type'] = 'result'
 
-    call_async(q, conn, "RequestHandles", HT_GROUP, ['test'])
+    call_async(q, conn, "RequestHandles", cs.HT_GROUP, ['test'])
 
     event = q.expect('dbus-return', method='RequestHandles')
     test_handle = event.value[0][0]
@@ -28,13 +24,13 @@ def test(q, bus, conn, stream):
     call_async(q, conn.Requests, 'EnsureChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.ContactList',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': HT_GROUP,
+              'org.freedesktop.Telepathy.Channel.TargetHandleType': cs.HT_GROUP,
               'org.freedesktop.Telepathy.Channel.TargetHandle': test_handle,
               })
     call_async(q, conn.Requests, 'EnsureChannel',
             { 'org.freedesktop.Telepathy.Channel.ChannelType':
                 'org.freedesktop.Telepathy.Channel.Type.ContactList',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': HT_GROUP,
+              'org.freedesktop.Telepathy.Channel.TargetHandleType': cs.HT_GROUP,
               'org.freedesktop.Telepathy.Channel.TargetHandle': test_handle,
               })
 
@@ -51,7 +47,7 @@ def test(q, bus, conn, stream):
     assert props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
             'org.freedesktop.Telepathy.Channel.Type.ContactList', props
     assert props['org.freedesktop.Telepathy.Channel.TargetHandleType'] ==\
-            HT_GROUP, props
+            cs.HT_GROUP, props
     assert props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
             test_handle, props
     assert props['org.freedesktop.Telepathy.Channel.TargetID'] ==\

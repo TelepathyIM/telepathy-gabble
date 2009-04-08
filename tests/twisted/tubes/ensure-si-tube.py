@@ -2,22 +2,13 @@
 Test support for creating and retrieving 1-1 tubes with EnsureChannel
 """
 
-import base64
-import errno
-import os
-
 import dbus
-from dbus.connection import Connection
-from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, tp_name_prefix, watch_tube_signals
+from servicetest import call_async, EventPattern, tp_name_prefix
 from gabbletest import exec_test, acknowledge_iq
 import ns
 
-from twisted.words.xish import domish, xpath
-from twisted.internet.protocol import Factory, Protocol
-from twisted.internet import reactor
-from twisted.words.protocols.jabber.client import IQ
+from twisted.words.xish import domish
 
 import tubetestutil as t
 

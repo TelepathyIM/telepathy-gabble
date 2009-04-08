@@ -21,9 +21,8 @@ Then, this test announce 2 contacts with the same hash.
 """
 
 import dbus
-import sys
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 
 from gabbletest import exec_test, make_result_iq, make_presence
 from servicetest import sync_dbus, EventPattern

@@ -3,8 +3,6 @@ Test that an incoming <message><error/></> for a contact gives both a SendError
 and a delivery report on a 1-1 text channel to that contact.
 """
 
-import dbus
-
 from twisted.words.xish import domish
 
 from gabbletest import exec_test

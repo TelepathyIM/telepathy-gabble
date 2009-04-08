@@ -1,7 +1,7 @@
 from gabbletest import exec_test, make_result_iq
 from servicetest import call_async, EventPattern
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 import constants as cs
 
 location_iface = \

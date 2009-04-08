@@ -45,9 +45,9 @@ def test(q, bus, conn, stream):
     header = message[0]
     message_sent_timestamp = header['message-sent']
     assert str(datetime.datetime.utcfromtimestamp(message_sent_timestamp)
-        == '2007-05-17 16:15:01'), headers
+        == '2007-05-17 16:15:01'), header
     message_received_timestamp = header['message-received']
-    assert message_received_timestamp > message_sent_timestamp, headers
+    assert message_received_timestamp > message_sent_timestamp, header
 
     assert message[1]['content'] == 'hello', message
 

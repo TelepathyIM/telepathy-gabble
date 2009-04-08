@@ -4,7 +4,6 @@ Test the Hold API.
 
 from gabbletest import make_result_iq, sync_stream
 from servicetest import make_channel_proxy, call_async, EventPattern
-import ns
 import constants as cs
 
 from jingletest2 import JingleTest2, test_all_dialects

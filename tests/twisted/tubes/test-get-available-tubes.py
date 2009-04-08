@@ -3,10 +3,8 @@
 import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix
-from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
-import ns
-
-from twisted.words.xish import domish
+from gabbletest import (
+    exec_test, make_result_iq, acknowledge_iq, make_muc_presence)
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',

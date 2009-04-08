@@ -36,6 +36,8 @@ Enhancements:
   files using Gabble. If you are an Empathy user be sure to have at least
   version 2.26.0.1. Older versions will crash if you try to send a file;
   see http://bugzilla.gnome.org/show_bug.cgi?id=575681 for the details.
+* Gabble now gives useful reasons in MembersChanged for Jingle calls,
+  rather than always emitting None as the reason.
 
 telepathy-gabble 0.7.24 (2009-03-23)
 ====================================

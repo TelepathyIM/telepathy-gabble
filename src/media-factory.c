@@ -34,6 +34,8 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
+#include "extensions/extensions.h"
+
 #include "caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
@@ -401,6 +403,8 @@ static const gchar * const media_channel_fixed_properties[] = {
 static const gchar * const named_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
+    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo",
     NULL
 };
 

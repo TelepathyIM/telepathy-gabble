@@ -76,6 +76,7 @@ TWISTED_TESTS = \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
+	jingle/initial-audio-video.py \
 	jingle/stun-server.py \
 	jingle/outgoing-many-streams.py \
 	jingle/outgoing-not-answered.py \

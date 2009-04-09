@@ -190,7 +190,7 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 }
 
 static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac,
-    GabbleJingleSession *sess, TpHandle maybe_peer);
+    GabbleJingleSession *sess, TpHandle maybe_peer, gboolean peer_in_rp);
 static void media_channel_closed_cb (GabbleMediaChannel *chan,
     gpointer user_data);
 
@@ -244,7 +244,8 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
 static GabbleMediaChannel *
 new_media_channel (GabbleMediaFactory *fac,
                    GabbleJingleSession *sess,
-                   TpHandle maybe_peer)
+                   TpHandle maybe_peer,
+                   gboolean peer_in_rp)
 {
   GabbleMediaFactoryPrivate *priv;
   TpBaseConnection *conn;
@@ -266,6 +267,7 @@ new_media_channel (GabbleMediaFactory *fac,
                        "object-path", object_path,
                        "session", sess,
                        "initial-peer", maybe_peer,
+                       "peer-in-rp", peer_in_rp,
                        NULL);
 
   DEBUG ("object path %s", object_path);
@@ -328,7 +330,7 @@ new_jingle_session_cb (GabbleJingleFactory *jf, GabbleJingleSession *sess, gpoin
   if (gabble_jingle_session_get_content_type (sess) ==
       GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
-      GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer);
+      GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer, FALSE);
       tp_channel_manager_emit_new_channel (self,
           TP_EXPORTABLE_CHANNEL (chan), NULL);
     }
@@ -460,6 +462,8 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
   /* Supported modes of operation:
    * - RequestChannel(None, 0):
    *     channel is anonymous;
+   *     caller may optionally use AddMembers to add the peer to RemotePending
+   *     without sending them any XML;
    *     caller uses RequestStreams to set the peer and start the call.
    * - RequestChannel(Contact, n) where n != 0:
    *     channel has TargetHandle=n;
@@ -519,7 +523,7 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
               &error))
         goto error;
 
-      channel = new_media_channel (self, NULL, 0);
+      channel = new_media_channel (self, NULL, 0, FALSE);
       break;
 
     case TP_HANDLE_TYPE_CONTACT:
@@ -550,18 +554,7 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
             }
         }
 
-      channel = new_media_channel (self, NULL, handle);
-
-      if (add_peer_to_remote_pending)
-        {
-          if (!_gabble_media_channel_add_member ((GObject *) channel, handle,
-                "", &error))
-            {
-              gabble_media_channel_close (channel);
-              goto error;
-            }
-        }
-
+      channel = new_media_channel (self, NULL, handle, add_peer_to_remote_pending);
       break;
 
     default:

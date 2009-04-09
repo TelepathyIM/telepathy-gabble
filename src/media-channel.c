@@ -98,6 +98,7 @@ enum
   PROP_HANDLE,
   PROP_TARGET_ID,
   PROP_INITIAL_PEER,
+  PROP_PEER_IN_RP,
   PROP_PEER,
   PROP_REQUESTED,
   PROP_CONNECTION,
@@ -140,6 +141,7 @@ struct _GabbleMediaChannelPrivate
   gchar *object_path;
   TpHandle creator;
   TpHandle initial_peer;
+  gboolean peer_in_rp;
 
   GabbleMediaFactory *factory;
   GabbleJingleSession *session;
@@ -360,20 +362,37 @@ gabble_media_channel_constructor (GType type, guint n_props,
     }
   else
     {
-      /* This is an outgoing call. We'll set CanAdd here, in case the UI is
-       * using the "RequestChannel(StreamedMedia, HandleTypeNone, 0);
-       * AddMembers([h], ""); RequestStreams(h, [...])" legacy API. If the
-       * channel request came via one of the APIs where the peer is added
-       * immediately, that'll happen in media-factory.c before the channel is
-       * returned, and CanAdd will be cleared.
-       *
-       * If this channel was made with Create or Ensure, the CanAdd flag will
-       * stick around, but it shouldn't.
-       *
-       * FIXME: refactor this so we know which calling convention is in use
-       *        here, rather than poking it from media-factory.c.
-       */
-      tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+      /* This is an outgoing call. */
+
+      if (priv->initial_peer != 0)
+        {
+          if (priv->peer_in_rp)
+            {
+              /* This channel was created with RequestChannel(SM, Contact, h)
+               * so the peer should start out in remote pending.
+               */
+              set = tp_intset_new_containing (priv->initial_peer);
+              tp_group_mixin_change_members (obj, "", NULL, NULL, NULL, set,
+                  conn->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+              tp_intset_destroy (set);
+            }
+
+          /* else this channel was created with CreateChannel or EnsureChannel,
+           * so don't.
+           */
+        }
+      else
+        {
+          /* This channel was created with RequestChannel(SM, None, 0). */
+
+          /* The peer can't be in remote pending */
+          g_assert (!priv->peer_in_rp);
+
+          /* The UI may call AddMembers([h], "") before calling
+           * RequestStreams(h, [...]).
+           */
+          tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+        }
     }
 
   return obj;
@@ -552,6 +571,9 @@ gabble_media_channel_set_property (GObject     *object,
         }
 
       break;
+    case PROP_PEER_IN_RP:
+      priv->peer_in_rp = g_value_get_boolean (value);
+      break;
     case PROP_SESSION:
       g_assert (priv->session == NULL);
       priv->session = g_value_dup_object (value);
@@ -647,6 +669,15 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       0, G_MAXUINT32, 0,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIAL_PEER, param_spec);
+
+  param_spec = g_param_spec_boolean ("peer-in-rp",
+      "Peer initially in Remote Pending?",
+      "True if the channel was created with the most-deprecated "
+      "RequestChannels form, and so the peer should be in Remote Pending "
+      "before any XML has been sent.",
+      FALSE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_PEER_IN_RP, param_spec);
 
   param_spec = g_param_spec_uint ("peer", "Other participant",
       "The TpHandle representing the other participant in the channel if "

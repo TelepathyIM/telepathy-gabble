@@ -769,6 +769,8 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       gabble_media_channel_add_member, NULL);
   tp_group_mixin_class_set_remove_with_reason_func (object_class,
       gabble_media_channel_remove_member);
+  tp_group_mixin_class_allow_self_removal (object_class);
+
   tp_group_mixin_init_dbus_properties (object_class);
 }
 

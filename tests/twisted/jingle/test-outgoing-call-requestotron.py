@@ -7,7 +7,10 @@ when the remote party accepts the call.
 import dbus
 
 from gabbletest import exec_test, sync_stream
-from servicetest import make_channel_proxy, call_async, EventPattern
+from servicetest import (
+    make_channel_proxy, call_async, EventPattern,
+    assertEquals, assertContains, assertDoesNotContain, assertLength,
+    )
 import jingletest
 import gabbletest
 
@@ -43,7 +46,7 @@ def test(q, bus, conn, stream):
     # Force Gabble to process the caps before calling RequestChannel
     sync_stream(q, stream)
 
-    handle = conn.RequestHandles(1, [jt.remote_jid])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
 
     call_async(q, conn.Requests, 'CreateChannel',
             { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
@@ -61,25 +64,26 @@ def test(q, bus, conn, stream):
 
     sig_path, sig_ct, sig_ht, sig_h, sig_sh = old_sig.args
 
-    assert sig_path == path, (sig_path, path)
-    assert sig_ct == cs.CHANNEL_TYPE_STREAMED_MEDIA, sig_ct
-    assert sig_ht == 1, sig_ht      # HandleType = Contact
-    assert sig_h == handle, sig_h
-    assert sig_sh == True           # suppress handler
+    assertEquals(path, sig_path)
+    assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA, sig_ct)
+    assertEquals(cs.HT_CONTACT, sig_ht)
+    assertEquals(handle, sig_h)
+    assertEquals(True, sig_sh) # suppress handler
 
-    assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1        # one channel
-    assert len(new_sig.args[0][0]) == 2     # two struct members
-    assert new_sig.args[0][0][0] == path
+    assertLength(1, new_sig.args)
+    assertLength(1, new_sig.args[0])        # one channel
+    assertLength(2, new_sig.args[0][0])     # two struct members
+    assertEquals(path, new_sig.args[0][0][0])
+
     emitted_props = new_sig.args[0][0][1]
 
-    assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA
-    assert emitted_props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
-    assert emitted_props[cs.TARGET_HANDLE] == handle
-    assert emitted_props[cs.TARGET_ID] == 'foo@bar.com', emitted_props
-    assert emitted_props[cs.REQUESTED] == True
-    assert emitted_props[cs.INITIATOR_HANDLE] == self_handle
-    assert emitted_props[cs.INITIATOR_ID] == 'test@localhost'
+    assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA, emitted_props[cs.CHANNEL_TYPE])
+    assertEquals(cs.HT_CONTACT, emitted_props[cs.TARGET_HANDLE_TYPE])
+    assertEquals(handle, emitted_props[cs.TARGET_HANDLE])
+    assertEquals('foo@bar.com', emitted_props[cs.TARGET_ID])
+    assertEquals(True, emitted_props[cs.REQUESTED])
+    assertEquals(self_handle, emitted_props[cs.INITIATOR_HANDLE])
+    assertEquals('test@localhost', emitted_props[cs.INITIATOR_ID])
 
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
@@ -88,69 +92,59 @@ def test(q, bus, conn, stream):
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = group_iface.GetAll(
         cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props.get('TargetHandle') == handle, \
-            channel_props.get('TargetHandle')
-    assert channel_props.get('TargetHandleType') == 1,\
-            channel_props.get('TargetHandleType')
-    assert media_iface.GetHandle(dbus_interface=cs.CHANNEL) == (cs.HT_CONTACT,
-            handle)
-    assert channel_props.get('ChannelType') == \
-            cs.CHANNEL_TYPE_STREAMED_MEDIA,\
-            channel_props.get('ChannelType')
-    assert cs.CHANNEL_IFACE_GROUP in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert cs.CHANNEL_IFACE_MEDIA_SIGNALLING in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert cs.TP_AWKWARD_PROPERTIES in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert cs.CHANNEL_IFACE_HOLD in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert channel_props['TargetID'] == 'foo@bar.com', channel_props
-    assert channel_props['Requested'] == True
-    assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assertEquals(handle, channel_props.get('TargetHandle'))
+    assertEquals(cs.HT_CONTACT, channel_props.get('TargetHandleType'))
+    assertEquals((cs.HT_CONTACT, handle),
+        media_iface.GetHandle(dbus_interface=cs.CHANNEL))
+    assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA,
+        channel_props.get('ChannelType'))
+    assertContains(cs.CHANNEL_IFACE_GROUP, channel_props.get('Interfaces'))
+    assertContains(cs.CHANNEL_IFACE_MEDIA_SIGNALLING,
+        channel_props.get('Interfaces'))
+    assertContains(cs.TP_AWKWARD_PROPERTIES, channel_props.get('Interfaces'))
+    assertContains(cs.CHANNEL_IFACE_HOLD, channel_props.get('Interfaces'))
+    assertEquals('foo@bar.com', channel_props['TargetID'])
+    assertEquals(True, channel_props['Requested'])
+    assertEquals('test@localhost', channel_props['InitiatorID'])
+    assertEquals(conn.GetSelfHandle(), channel_props['InitiatorHandle'])
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = group_iface.GetAll(
         cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
-    assert 'HandleOwners' in group_props, group_props
-    assert 'Members' in group_props, group_props
-    assert 'LocalPendingMembers' in group_props, group_props
-    assert 'RemotePendingMembers' in group_props, group_props
-    assert 'GroupFlags' in group_props, group_props
+    assertContains('HandleOwners', group_props)
+    assertContains('Members', group_props)
+    assertContains('LocalPendingMembers', group_props)
+    assertContains('RemotePendingMembers', group_props)
+    assertContains('GroupFlags', group_props)
 
     # The remote contact shouldn't be in remote pending yet (nor should it be
     # in members!)
-    assert handle not in group_props['RemotePendingMembers'], group_props
-    assert handle not in group_props['Members'], group_props
+    assertDoesNotContain(handle, group_props['RemotePendingMembers'])
+    assertDoesNotContain(handle, group_props['Members'])
 
     list_streams_result = media_iface.ListStreams()
-    assert len(list_streams_result) == 0, list_streams_result
+    assertLength(0, list_streams_result)
 
     streams = media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     list_streams_result = media_iface.ListStreams()
-    assert streams == list_streams_result, (streams, list_streams_result)
+    assertEquals(list_streams_result, streams)
 
-    assert len(streams) == 1, streams
-    assert len(streams[0]) == 6, streams[0]
+    assertLength(1, streams)
+    assertLength(6, streams[0])
     # streams[0][0] is the stream identifier, which in principle we can't
     # make any assertion about (although in practice it's probably 1)
-    assert streams[0][1] == handle, (streams[0], handle)
-    assert streams[0][2] == cs.MEDIA_STREAM_TYPE_AUDIO, streams[0]
+    assertEquals(handle, streams[0][1])
+    assertEquals(cs.MEDIA_STREAM_TYPE_AUDIO, streams[0][2])
     # We haven't connected yet
-    assert streams[0][3] == cs.MEDIA_STREAM_STATE_DISCONNECTED, streams[0]
+    assertEquals(cs.MEDIA_STREAM_STATE_DISCONNECTED, streams[0][3])
     # In Gabble, requested streams start off bidirectional
-    assert streams[0][4] == cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL, streams[0]
-    assert streams[0][5] == 0, streams[0]
+    assertEquals(cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL, streams[0][4])
+    assertEquals(0, streams[0][5])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
-    assert e.args[1] == 'rtp'
+    assertEquals('rtp', e.args[1])
 
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
@@ -164,8 +158,8 @@ def test(q, bus, conn, stream):
     stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'session-initiate'
+    assertEquals('jingle', e.query.name)
+    assertEquals('session-initiate', e.query['action'])
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 
     jt.outgoing_call_reply(e.query['sid'], True)
@@ -174,7 +168,7 @@ def test(q, bus, conn, stream):
 
     # Time passes ... afterwards we close the chan
 
-    group_iface.RemoveMembers([dbus.UInt32(1)], 'closed')
+    group_iface.RemoveMembers([self_handle], 'closed')
 
     # Test completed, close the connection
 

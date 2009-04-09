@@ -859,28 +859,20 @@ gabble_media_channel_close_async (TpSvcChannel *iface,
 static void
 gabble_media_channel_close (GabbleMediaChannel *self)
 {
-  GabbleMediaChannelPrivate *priv;
+  GabbleMediaChannelPrivate *priv = self->priv;
 
   DEBUG ("called on %p", self);
 
-  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
-
-  priv = self->priv;
-
-  if (priv->closed)
+  if (!priv->closed)
     {
-      return;
+      priv->closed = TRUE;
+
+      if (priv->session != NULL)
+        gabble_jingle_session_terminate (priv->session,
+            TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
+
+      tp_svc_channel_emit_closed (self);
     }
-
-  priv->closed = TRUE;
-
-  if (priv->session)
-    {
-      gabble_jingle_session_terminate (priv->session,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
-    }
-
-  tp_svc_channel_emit_closed (self);
 }
 
 

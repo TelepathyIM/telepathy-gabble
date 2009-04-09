@@ -36,6 +36,8 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
+#include "extensions/extensions.h"
+
 #include "connection.h"
 #include "debug.h"
 #include "jingle-content.h"
@@ -69,6 +71,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
       media_signalling_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_STREAMED_MEDIA,
       streamed_media_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE,
+      NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
       tp_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
@@ -106,6 +110,8 @@ enum
   PROP_INTERFACES,
   PROP_CHANNEL_DESTROYED,
   PROP_CHANNEL_PROPERTIES,
+  PROP_INITIAL_AUDIO,
+  PROP_INITIAL_VIDEO,
   /* TP properties (see also below) */
   PROP_NAT_TRAVERSAL,
   PROP_STUN_SERVER,
@@ -454,10 +460,18 @@ gabble_media_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "InitiatorID",
               TP_IFACE_CHANNEL, "Requested",
               TP_IFACE_CHANNEL, "Interfaces",
+              GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE, "InitialAudio",
+              GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE, "InitialVideo",
               NULL));
       break;
     case PROP_SESSION:
       g_value_set_object (value, priv->session);
+      break;
+    case PROP_INITIAL_AUDIO:
+      g_value_set_boolean (value, priv->initial_audio);
+      break;
+    case PROP_INITIAL_VIDEO:
+      g_value_set_boolean (value, priv->initial_video);
       break;
     default:
       param_name = g_param_spec_get_name (pspec);
@@ -531,6 +545,12 @@ gabble_media_channel_set_property (GObject     *object,
 
         }
       break;
+    case PROP_INITIAL_AUDIO:
+      priv->initial_audio = g_value_get_boolean (value);
+      break;
+    case PROP_INITIAL_VIDEO:
+      priv->initial_video = g_value_get_boolean (value);
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -575,11 +595,21 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       { "InitiatorID", "creator-id", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl streamed_media_props[] = {
+      { "InitialAudio", "initial-audio", NULL },
+      { "InitialVideo", "initial-video", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
+      },
+      { GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        streamed_media_props,
       },
       { NULL }
   };
@@ -704,6 +734,20 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_SESSION, param_spec);
+
+  param_spec = g_param_spec_boolean ("initial-audio", "InitialAudio",
+      "Whether the channel initially contained an audio stream",
+      FALSE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIAL_AUDIO,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("initial-video", "InitialVideo",
+      "Whether the channel initially contained an video stream",
+      FALSE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIAL_VIDEO,
+      param_spec);
 
   tp_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),

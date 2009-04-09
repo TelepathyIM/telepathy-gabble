@@ -309,12 +309,9 @@ gabble_media_channel_constructor (GType type, guint n_props,
   g_assert (priv->creator != 0);
   tp_handle_ref (contact_handles, priv->creator);
 
-  set = tp_intset_new ();
-  tp_intset_add (set, priv->creator);
-
+  set = tp_intset_new_containing (priv->creator);
   tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0,
       TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
   tp_intset_destroy (set);
 
   /* We implement the 0.17.6 properties correctly */
@@ -348,12 +345,9 @@ gabble_media_channel_constructor (GType type, guint n_props,
        * group flags (all we can do is add or remove ourselves, which is always
        * valid per the spec)
        */
-      set = tp_intset_new ();
-      tp_intset_add (set, ((TpBaseConnection *) priv->conn)->self_handle);
-
+      set = tp_intset_new_containing (conn->self_handle);
       tp_group_mixin_change_members (obj, "", NULL, NULL, set, NULL,
           priv->session->peer, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
-
       tp_intset_destroy (set);
 
       /* Set up signal callbacks, emit session handler, initialize streams */
@@ -1922,12 +1916,12 @@ gabble_media_channel_add_member (GObject *obj,
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = chan->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
+  TpIntSet *set;
 
   /* did we create this channel? */
   if (priv->creator == mixin->self_handle)
     {
       GError *error_ = NULL;
-      TpIntSet *set;
       gboolean wait;
 
       /* yes: check we don't have a peer already, and if not add this one to
@@ -1967,12 +1961,9 @@ gabble_media_channel_add_member (GObject *obj,
         }
 
       /* make the peer remote pending */
-      set = tp_intset_new ();
-      tp_intset_add (set, handle);
-
+      set = tp_intset_new_containing (handle);
       tp_group_mixin_change_members (obj, "", NULL, NULL, NULL, set,
           mixin->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
-
       tp_intset_destroy (set);
 
       /* and update flags accordingly */
@@ -1993,15 +1984,10 @@ gabble_media_channel_add_member (GObject *obj,
         {
           /* yes: accept the request */
 
-          TpIntSet *set;
-
           /* make us a member */
-          set = tp_intset_new ();
-          tp_intset_add (set, handle);
-
+          set = tp_intset_new_containing (handle);
           tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL,
               handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
           tp_intset_destroy (set);
 
           /* update flags */
@@ -2162,9 +2148,7 @@ session_state_changed_cb (GabbleJingleSession *session,
                 "peer", &peer,
                 NULL);
 
-  set = tp_intset_new ();
-
-  tp_intset_add (set, peer);
+  set = tp_intset_new_containing (peer);
 
   if (state >= JS_STATE_PENDING_INITIATE_SENT &&
       state < JS_STATE_ACTIVE &&

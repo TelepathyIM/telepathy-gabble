@@ -59,7 +59,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleMediaFactoryPrivate GabbleMediaFactoryPrivate;
 struct _GabbleMediaFactoryPrivate
 {
   GabbleConnection *conn;
@@ -73,14 +72,13 @@ struct _GabbleMediaFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MEDIA_FACTORY_GET_PRIVATE(o) \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_FACTORY, \
-                                GabbleMediaFactoryPrivate))
-
 static void
 gabble_media_factory_init (GabbleMediaFactory *fac)
 {
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (fac,
+      GABBLE_TYPE_MEDIA_FACTORY, GabbleMediaFactoryPrivate);
+
+  fac->priv = priv;
 
   priv->channels = g_ptr_array_sized_new (1);
   priv->channel_index = 0;
@@ -100,7 +98,7 @@ static void
 gabble_media_factory_dispose (GObject *object)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (object);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -133,7 +131,7 @@ gabble_media_factory_get_property (GObject    *object,
                                    GParamSpec *pspec)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (object);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -152,7 +150,7 @@ gabble_media_factory_set_property (GObject      *object,
                                    GParamSpec   *pspec)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (object);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -217,7 +215,7 @@ static void
 media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
 
   tp_channel_manager_emit_channel_closed_for_object (fac,
       TP_EXPORTABLE_CHANNEL (chan));
@@ -255,7 +253,7 @@ new_media_channel (GabbleMediaFactory *fac,
 
   g_assert (GABBLE_IS_MEDIA_FACTORY (fac));
 
-  priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  priv = fac->priv;
   conn = (TpBaseConnection *) priv->conn;
 
   object_path = g_strdup_printf ("%s/MediaChannel%u",
@@ -284,7 +282,7 @@ new_media_channel (GabbleMediaFactory *fac,
 static void
 gabble_media_factory_close_all (GabbleMediaFactory *fac)
 {
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
 
   DEBUG ("closing channels");
 
@@ -342,7 +340,7 @@ connection_status_changed_cb (GabbleConnection *conn,
                               guint reason,
                               GabbleMediaFactory *self)
 {
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
+  GabbleMediaFactoryPrivate *priv = self->priv;
 
   switch (status)
     {
@@ -364,7 +362,7 @@ gabble_media_factory_constructed (GObject *object)
   void (*chain_up) (GObject *) =
       G_OBJECT_CLASS (gabble_media_factory_parent_class)->constructed;
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (object);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
+  GabbleMediaFactoryPrivate *priv = self->priv;
 
   if (chain_up != NULL)
     chain_up (object);
@@ -380,7 +378,7 @@ gabble_media_factory_foreach_channel (TpChannelManager *manager,
                                       gpointer user_data)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (manager);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
   guint i;
 
   for (i = 0; i < priv->channels->len; i++)
@@ -450,7 +448,7 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
                                    RequestMethod method)
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
+  GabbleMediaFactoryPrivate *priv = self->priv;
   TpHandleType handle_type;
   TpHandle handle;
   GabbleMediaChannel *channel = NULL;

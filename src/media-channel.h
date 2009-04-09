@@ -71,23 +71,6 @@ GType gabble_media_channel_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_CHANNEL, \
                               GabbleMediaChannelClass))
 
-gboolean
-_gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
-                                               TpHandle peer,
-                                               const gchar *peer_resource,
-                                               const gchar *sid,
-                                               LmMessage *message,
-                                               LmMessageNode *session_node,
-                                               const gchar *action,
-                                               GError **error);
-
-void
-_gabble_media_channel_stream_state (GabbleMediaChannel *chan,
-                                    guint state);
-
-guint
-_gabble_media_channel_get_stream_id (GabbleMediaChannel *chan);
-
 GabblePresenceCapabilities
 _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags);
 

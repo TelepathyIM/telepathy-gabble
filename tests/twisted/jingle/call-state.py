@@ -5,9 +5,9 @@ interface.
 
 from twisted.words.xish import xpath
 
-from gabbletest import make_result_iq, sync_stream
-from servicetest import wrap_channel, make_channel_proxy, call_async, \
-    EventPattern, tp_path_prefix
+from gabbletest import make_result_iq
+from servicetest import (
+    wrap_channel, make_channel_proxy, EventPattern, tp_path_prefix)
 import ns
 import constants as cs
 

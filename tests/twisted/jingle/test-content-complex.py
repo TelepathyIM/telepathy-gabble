@@ -2,17 +2,12 @@
 Test everything related to contents
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream, exec_tests
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern
-import gabbletest
-import dbus
-import time
-from twisted.words.xish import xpath
-
-from jingletest2 import *
-
+from servicetest import make_channel_proxy, tp_path_prefix
 import constants as cs
+from jingletest2 import (
+    JingleTest2, JingleProtocol015, JingleProtocol031, test_dialects)
+
+from twisted.words.xish import xpath
 
 def worker(jp, q, bus, conn, stream):
 
@@ -162,7 +157,7 @@ def worker(jp, q, bus, conn, stream):
 
     # Gabble removes the stream
     q.expect('dbus-signal', signal='StreamRemoved',
-        interface='org.freedesktop.Telepathy.Channel.Type.StreamedMedia')
+        interface=cs.CHANNEL_TYPE_STREAMED_MEDIA)
 
 
     # We try to make the request again, and succeed
@@ -218,13 +213,6 @@ def worker(jp, q, bus, conn, stream):
     return True
 
 
-def test015(q, bus, conn, stream):
-    return worker(JingleProtocol015(), q, bus, conn, stream)
-
-def test031(q, bus, conn, stream):
-    return worker(JingleProtocol031(),q, bus, conn, stream)
-
 if __name__ == '__main__':
-    exec_test(test015)
-    exec_test(test031)
+    test_dialects(worker, [JingleProtocol015, JingleProtocol031])
 

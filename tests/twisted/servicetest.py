@@ -400,6 +400,16 @@ def watch_tube_signals(q, tube):
         path_keyword='path', member_keyword='member',
         byte_arrays=True)
 
+def assertEquals(expected, value):
+    assert expected == value, "expected: %r; got: %r" % (expected, value)
+
+def assertContains(element, value):
+    assert element in value, "expected: %r in %r" % (element, value)
+
+def assertLength(length, value):
+    assert len(value) == length, \
+        "expected: length %d, got length %d (%r)" % (length, len(value), value)
+
 if __name__ == '__main__':
     unittest.main()
 

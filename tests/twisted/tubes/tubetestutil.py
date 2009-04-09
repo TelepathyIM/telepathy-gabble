@@ -6,13 +6,11 @@ import errno
 import os
 
 import dbus
-from dbus import PROPERTIES_IFACE
 
 from servicetest import unwrap
 from gabbletest import exec_test
-from constants import *
-from bytestream import BytestreamIBBMsg, BytestreamS5B, BytestreamSIFallbackS5CannotConnect,\
-    BytestreamSIFallbackS5WrongHash, BytestreamIBBIQ, BytestreamS5BRelay, BytestreamS5BRelayBugged
+import constants as cs
+import bytestream
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
@@ -56,8 +54,8 @@ def check_conn_properties(q, conn, channel_list=None):
     """
 
     properties = conn.GetAll(
-            CONN_IFACE_REQUESTS,
-            dbus_interface=PROPERTIES_IFACE)
+            cs.CONN_IFACE_REQUESTS,
+            dbus_interface=cs.PROPERTIES_IFACE)
 
     if channel_list == None:
         assert properties.get('Channels') == [], properties['Channels']
@@ -67,50 +65,50 @@ def check_conn_properties(q, conn, channel_list=None):
                 (i, properties['Channels'])
 
     # 1-1 tubes channel (old API)
-    assert ({CHANNEL_TYPE: CHANNEL_TYPE_TUBES,
-             TARGET_HANDLE_TYPE: HT_CONTACT,
+    assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TUBES,
+             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              },
-             [TARGET_HANDLE, TARGET_ID
+             [cs.TARGET_HANDLE, cs.TARGET_ID
              ]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
     # muc tubes channel (old API)
-    assert ({CHANNEL_TYPE: CHANNEL_TYPE_TUBES,
-             TARGET_HANDLE_TYPE: HT_ROOM,
+    assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TUBES,
+             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
              },
-             [TARGET_HANDLE, TARGET_ID
+             [cs.TARGET_HANDLE, cs.TARGET_ID
              ]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
     # 1-1 StreamTube channel
-    assert ({CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
-             TARGET_HANDLE_TYPE: HT_CONTACT
+    assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT
              },
-             [TARGET_HANDLE, TARGET_ID, STREAM_TUBE_SERVICE]
+             [cs.TARGET_HANDLE, cs.TARGET_ID, cs.STREAM_TUBE_SERVICE]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
     # muc StreamTube channel
-    assert ({CHANNEL_TYPE: CHANNEL_TYPE_STREAM_TUBE,
-             TARGET_HANDLE_TYPE: HT_ROOM
+    assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM
              },
-             [TARGET_HANDLE, TARGET_ID, STREAM_TUBE_SERVICE]
+             [cs.TARGET_HANDLE, cs.TARGET_ID, cs.STREAM_TUBE_SERVICE]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
     # 1-1 D-Bus tube channel
-    assert ({CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
-            TARGET_HANDLE_TYPE: HT_CONTACT},
-             [TARGET_HANDLE, TARGET_ID, DBUS_TUBE_SERVICE_NAME]
+    assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
+            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT},
+             [cs.TARGET_HANDLE, cs.TARGET_ID, cs.DBUS_TUBE_SERVICE_NAME]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
     # muc D-Bus tube channel
-    assert ({CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
-            TARGET_HANDLE_TYPE: HT_ROOM},
-             [TARGET_HANDLE, TARGET_ID, DBUS_TUBE_SERVICE_NAME]
+    assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
+            cs.TARGET_HANDLE_TYPE: cs.HT_ROOM},
+             [cs.TARGET_HANDLE, cs.TARGET_ID, cs.DBUS_TUBE_SERVICE_NAME]
             ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -124,7 +122,7 @@ def check_NewChannel_signal(args, channel_type, chan_path, contact_handle,
     if chan_path is not None:
         assert args[0] == chan_path, (args, chan_path)
     assert args[1] == channel_type, (args, channel_type)
-    assert args[2] == HT_CONTACT, (args, HT_CONTACT)
+    assert args[2] == cs.HT_CONTACT, (args, cs.HT_CONTACT)
     assert args[3] == contact_handle, (args, contact_handle)
     assert args[4] == suppress_handler, (args, suppress_handler)
 
@@ -140,14 +138,14 @@ def check_NewChannels_signal(args, channel_type, chan_path, contact_handle,
 
     assert path == chan_path, (emitted_path, chan_path)
 
-    assert props[CHANNEL_TYPE] == channel_type, (props, channel_type)
-    assert props[TARGET_HANDLE_TYPE] == HT_CONTACT, props
-    assert props[TARGET_HANDLE] == contact_handle, (props, contact_handle)
-    assert props[TARGET_ID] == contact_id, (props, contact_id)
-    assert props[REQUESTED] == True, props
-    assert props[INITIATOR_HANDLE] == initiator_handle, \
+    assert props[cs.CHANNEL_TYPE] == channel_type, (props, channel_type)
+    assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT, props
+    assert props[cs.TARGET_HANDLE] == contact_handle, (props, contact_handle)
+    assert props[cs.TARGET_ID] == contact_id, (props, contact_id)
+    assert props[cs.REQUESTED] == True, props
+    assert props[cs.INITIATOR_HANDLE] == initiator_handle, \
         (props, initiator_handle)
-    assert props[INITIATOR_ID] == 'test@localhost', props
+    assert props[cs.INITIATOR_ID] == 'test@localhost', props
 
 def check_channel_properties(q, bus, conn, channel, channel_type,
                              contact_handle, contact_id, state=None):
@@ -157,15 +155,15 @@ def check_channel_properties(q, bus, conn, channel, channel_type,
     """
 
     # Check o.fd.T.Channel properties.
-    channel_props = channel.GetAll(CHANNEL, dbus_interface=PROPERTIES_IFACE)
+    channel_props = channel.GetAll(cs.CHANNEL, dbus_interface=cs.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == contact_handle, \
             (channel_props.get('TargetHandle'), contact_handle)
-    assert channel_props.get('TargetHandleType') == HT_CONTACT, \
+    assert channel_props.get('TargetHandleType') == cs.HT_CONTACT, \
             channel_props.get('TargetHandleType')
     assert channel_props.get('ChannelType') == channel_type, \
             channel_props.get('ChannelType')
     assert 'Interfaces' in channel_props, channel_props
-    assert CHANNEL_IFACE_GROUP not in \
+    assert cs.CHANNEL_IFACE_GROUP not in \
             channel_props['Interfaces'], \
             channel_props['Interfaces']
     assert channel_props['TargetID'] == contact_id
@@ -173,24 +171,24 @@ def check_channel_properties(q, bus, conn, channel, channel_type,
     assert channel_props['InitiatorID'] == 'test@localhost'
     assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
-    if channel_type == CHANNEL_TYPE_TUBES:
+    if channel_type == cs.CHANNEL_TYPE_TUBES:
         assert state is None
         assert len(channel_props['Interfaces']) == 0, channel_props['Interfaces']
         supported_socket_types = channel.GetAvailableStreamTubeTypes()
     else:
         assert state is not None
-        tube_props = channel.GetAll(CHANNEL_IFACE_TUBE,
-                dbus_interface=PROPERTIES_IFACE)
+        tube_props = channel.GetAll(cs.CHANNEL_IFACE_TUBE,
+                dbus_interface=cs.PROPERTIES_IFACE)
         assert tube_props['State'] == state
         # no strict check but at least check the properties exist
         assert tube_props['Parameters'] is not None
         assert channel_props['Interfaces'] == \
-            dbus.Array([CHANNEL_IFACE_TUBE], signature='s'), \
+            dbus.Array([cs.CHANNEL_IFACE_TUBE], signature='s'), \
             channel_props['Interfaces']
 
-        if channel_type == CHANNEL_TYPE_STREAM_TUBE:
-            supported_socket_types = channel.Get(CHANNEL_TYPE_STREAM_TUBE,
-                'SupportedSocketTypes', dbus_interface=PROPERTIES_IFACE)
+        if channel_type == cs.CHANNEL_TYPE_STREAM_TUBE:
+            supported_socket_types = channel.Get(cs.CHANNEL_TYPE_STREAM_TUBE,
+                'SupportedSocketTypes', dbus_interface=cs.PROPERTIES_IFACE)
         else:
             supported_socket_types = None
 
@@ -221,6 +219,14 @@ def set_up_echo(name):
     return full_path
 
 def exec_tube_test(test):
-    for bytestream_cls in [BytestreamIBBMsg, BytestreamIBBIQ, BytestreamS5B, BytestreamSIFallbackS5CannotConnect,
-            BytestreamSIFallbackS5WrongHash, BytestreamS5BRelay, BytestreamS5BRelayBugged]:
-        exec_test(lambda q, bus, conn, stream: test(q, bus, conn, stream, bytestream_cls))
+    for bytestream_cls in [
+            bytestream.BytestreamIBBMsg,
+            bytestream.BytestreamIBBIQ,
+            bytestream.BytestreamS5B,
+            bytestream.BytestreamSIFallbackS5CannotConnect,
+            bytestream.BytestreamSIFallbackS5WrongHash,
+            bytestream.BytestreamS5BRelay,
+            bytestream.BytestreamS5BRelayBugged]:
+        exec_test(lambda q, bus, conn, stream:
+            test(q, bus, conn, stream, bytestream_cls))
+

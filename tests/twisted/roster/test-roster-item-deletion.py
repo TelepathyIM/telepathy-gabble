@@ -5,8 +5,10 @@ Regression test for http://bugs.freedesktop.org/show_bug.cgi?id=19524
 import dbus
 
 from twisted.words.protocols.jabber.client import IQ
+
 from gabbletest import exec_test, acknowledge_iq
-from servicetest import EventPattern, tp_name_prefix
+from servicetest import EventPattern
+import constants as cs
 
 def _expect_contact_list_channel(q, bus, conn, name, contacts):
     old_signal, new_signal = q.expect_many(
@@ -16,11 +18,10 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
 
     path, type, handle_type, handle, suppress_handler = old_signal.args
 
-    assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList'
+    assert type == cs.CHANNEL_TYPE_CONTACT_LIST
     assert conn.InspectHandles(handle_type, [handle])[0] == name
     chan = bus.get_object(conn.bus_name, path)
-    group_iface = dbus.Interface(chan,
-        u'org.freedesktop.Telepathy.Channel.Interface.Group')
+    group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
     members = group_iface.GetMembers()
     assert conn.InspectHandles(1, members) == contacts
 

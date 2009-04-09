@@ -6,6 +6,7 @@ import dbus
 
 from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
+import constants as cs
 
 from twisted.words.xish import xpath
 
@@ -207,7 +208,7 @@ def test(q, bus, conn, stream):
     assert presence[handles['fred']] == (2, 'available', '')
 
     # close view 1
-    view1.Close(dbus_interface='org.freedesktop.Telepathy.Channel')
+    view1.Close(dbus_interface=cs.CHANNEL)
 
     # Eric's presence is changed as he's not in the view anymore
     event, _ = q.expect_many(
@@ -223,7 +224,7 @@ def test(q, bus, conn, stream):
     assert presence[handles['fred']] == (2, 'available', '')
 
     # close view 2
-    view2.Close(dbus_interface='org.freedesktop.Telepathy.Channel')
+    view2.Close(dbus_interface=cs.CHANNEL)
 
    # and now Fred is offline
     event, _ = q.expect_many(

@@ -9,7 +9,7 @@ import ns
 import tubetestutil as t
 from bytestream import create_from_si_offer, announce_socks5_proxy, BytestreamS5BRelay, BytestreamS5BRelayBugged
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 from twisted.internet import reactor
 
 sample_parameters = dbus.Dictionary({

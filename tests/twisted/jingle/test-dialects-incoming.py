@@ -2,17 +2,11 @@
 Test incoming call handling.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream, exec_tests
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern
-import gabbletest
-import dbus
-import time
-from twisted.words.xish import xpath
-
+from servicetest import make_channel_proxy, tp_path_prefix
 import constants as cs
+from jingletest2 import JingleTest2, test_all_dialects
 
-from jingletest2 import *
+from twisted.words.xish import xpath
 
 def worker(jp, q, bus, conn, stream):
 
@@ -111,18 +105,6 @@ def worker(jp, q, bus, conn, stream):
     return True
 
 
-def test015(q, bus, conn, stream):
-    return worker(JingleProtocol015(), q, bus, conn, stream)
-
-def test031(q, bus, conn, stream):
-    return worker(JingleProtocol031(),q, bus, conn, stream)
-
-def testg3(q, bus, conn, stream):
-    return worker(GtalkProtocol03(), q, bus, conn, stream)
-
-def testg4(q, bus, conn, stream):
-    return worker(GtalkProtocol04(), q, bus, conn, stream)
-
 if __name__ == '__main__':
-    exec_tests([testg3, testg4, test015, test031])
+    test_all_dialects(worker)
 

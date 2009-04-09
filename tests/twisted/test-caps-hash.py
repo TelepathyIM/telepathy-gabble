@@ -21,18 +21,12 @@ Then, this test announce 2 contacts with the same hash.
 """
 
 import dbus
-import sys
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 
 from gabbletest import exec_test, make_result_iq, make_presence
 from servicetest import sync_dbus, EventPattern
-
-gabble_service = 'org.freedesktop.Telepathy.ConnectionManager.gabble'
-text = 'org.freedesktop.Telepathy.Channel.Type.Text'
-sm = 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
-conn_iface = 'org.freedesktop.Telepathy.Connection'
-caps_iface = 'org.freedesktop.Telepathy.Connection.Interface.Capabilities'
+import constants as cs
 
 caps_changed_flag = False
 
@@ -65,7 +59,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
                 (2, u'available', 'hello')}]))
 
     # no special capabilities
-    basic_caps = [(contact_handle, text, 3, 0)]
+    basic_caps = [(contact_handle, cs.CHANNEL_TYPE_TEXT, 3, 0)]
     assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
 
     # send updated presence with Jingle caps info
@@ -231,9 +225,9 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
                 (2, u'available', 'hello')}]))
 
     # no special capabilities
-    basic_caps = [(contact_handle1, text, 3, 0)]
+    basic_caps = [(contact_handle1, cs.CHANNEL_TYPE_TEXT, 3, 0)]
     assert conn.Capabilities.GetCapabilities([contact_handle1]) == basic_caps
-    basic_caps = [(contact_handle2, text, 3, 0)]
+    basic_caps = [(contact_handle2, cs.CHANNEL_TYPE_TEXT, 3, 0)]
     assert conn.Capabilities.GetCapabilities([contact_handle2]) == basic_caps
 
     # send updated presence with Jingle caps info
@@ -299,12 +293,14 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
 
     # we can now do audio calls with both contacts
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(contact_handle2, sm, 0, 3, 0, 1)]])#  what are the good values?!
+        #  what are the good values?!
+        args=[[(contact_handle2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3, 0, 1)]])
     if not broken_hash:
         # if the first contact failed to provide a good hash, it does not
         # deserve its capabilities to be understood by Gabble!
         event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-            args=[[(contact_handle1, sm, 0, 3, 0, 1)]])#  what are the good values?!
+            #  what are the good values?!
+            args=[[(contact_handle1, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3, 0, 1)]])
 
     caps_changed_flag = False
 
@@ -317,7 +313,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     # be notified when the signal CapabilitiesChanged is fired
-    conn_caps_iface = dbus.Interface(conn, caps_iface)
+    conn_caps_iface = dbus.Interface(conn, cs.CONN_IFACE_CAPS)
     conn_caps_iface.connect_to_signal('CapabilitiesChanged', caps_changed_cb)
 
     test_hash(q, bus, conn, stream, 'bob@foo.com/Foo', 2L, 'http://telepathy.freedesktop.org/fake-client')

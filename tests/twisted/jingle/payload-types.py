@@ -2,17 +2,14 @@
 Regression test for https://bugs.freedesktop.org/show_bug.cgi?id=18918
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream, \
-        send_error_reply
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        call_async, EventPattern
-from twisted.words.xish import domish
-import jingletest
-import gabbletest
 import dbus
-import time
 
+from gabbletest import exec_test, sync_stream
+from servicetest import make_channel_proxy
+import jingletest
 import constants as cs
+
+from twisted.words.xish import domish
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -41,11 +38,9 @@ def test(q, bus, conn, stream):
     # Force Gabble to process the caps before calling RequestChannel
     sync_stream(q, stream)
 
-    handle = conn.RequestHandles(1, [jt.remote_jid])[0]
-
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
     path = conn.RequestChannel(
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-        1, handle, True)
+        cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_CONTACT, handle, True)
 
     channel = bus.get_object(conn.bus_name, path)
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')

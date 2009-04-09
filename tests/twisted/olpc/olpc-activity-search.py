@@ -46,11 +46,11 @@ def test(q, bus, conn, stream):
             'org.laptop.Telepathy.ActivityProperties')
     buddy_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
-    requests_iface = dbus.Interface(conn, tp_name_prefix + '.Connection.Interface.Requests')
+    requests_iface = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
     # Gadget was not announced yet
     call_async(q, requests_iface, 'CreateChannel',
-        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+        { cs.CHANNEL_TYPE:
             'org.laptop.Telepathy.Channel.Type.ActivityView',
             'org.laptop.Telepathy.Channel.Interface.View.MaxSize': 5,
           })
@@ -61,10 +61,9 @@ def test(q, bus, conn, stream):
 
     # check if we can request Activity views
     properties = conn.GetAll(
-        'org.freedesktop.Telepathy.Connection.Interface.Requests',
-        dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CONN_IFACE_REQUESTS, dbus_interface=dbus.PROPERTIES_IFACE)
 
-    assert ({tp_name_prefix + '.Channel.ChannelType':
+    assert ({cs.CHANNEL_TYPE:
             olpc_name_prefix + '.Channel.Type.ActivityView'},
 
             [olpc_name_prefix + '.Channel.Interface.View.MaxSize',
@@ -83,9 +82,7 @@ def test(q, bus, conn, stream):
     view1 = bus.get_object(conn.bus_name, view_path)
 
     # check org.freedesktop.Telepathy.Channel D-Bus properties
-    props = view1.GetAll(
-        'org.freedesktop.Telepathy.Channel',
-        dbus_interface=dbus.PROPERTIES_IFACE)
+    props = view1.GetAll(cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
 
     assert props['ChannelType'] == 'org.laptop.Telepathy.Channel.Type.ActivityView'
     assert 'org.laptop.Telepathy.Channel.Interface.View' in props['Interfaces']
@@ -108,7 +105,7 @@ def test(q, bus, conn, stream):
     assert props['Properties'] == {}
     assert props['Participants'] == []
 
-    assert view1.GetChannelType(dbus_interface='org.freedesktop.Telepathy.Channel') ==\
+    assert view1.GetChannelType(dbus_interface=cs.CHANNEL) ==\
             'org.laptop.Telepathy.Channel.Type.ActivityView'
 
     ## Current views ##
@@ -167,7 +164,7 @@ def test(q, bus, conn, stream):
     props = dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
 
     call_async(q, requests_iface, 'CreateChannel',
-        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+        { cs.CHANNEL_TYPE:
             'org.laptop.Telepathy.Channel.Type.ActivityView',
             'org.laptop.Telepathy.Channel.Interface.View.MaxSize': 5,
             'org.laptop.Telepathy.Channel.Type.ActivityView.Properties': props,
@@ -214,20 +211,18 @@ def test(q, bus, conn, stream):
             args=[[('activity2', handles['room2'])], []])
 
     act = view2.Get(olpc_name_prefix + '.Channel.Interface.View',
-        'Activities',
-        dbus_interface=dbus.PROPERTIES_IFACE)
+        'Activities', dbus_interface=dbus.PROPERTIES_IFACE)
     assert sorted(act) == [('activity2', handles['room2'])]
 
     buddies = view2.Get(olpc_name_prefix + '.Channel.Interface.View',
-        'Buddies',
-        dbus_interface=dbus.PROPERTIES_IFACE)
+        'Buddies', dbus_interface=dbus.PROPERTIES_IFACE)
     assert buddies == []
 
     # activity search by participants (view 3)
     participants = conn.RequestHandles(1, ["alice@localhost", "bob@localhost"])
 
     call_async(q, requests_iface, 'CreateChannel',
-        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+        { cs.CHANNEL_TYPE:
             'org.laptop.Telepathy.Channel.Type.ActivityView',
             'org.laptop.Telepathy.Channel.Interface.View.MaxSize': 5,
             'org.laptop.Telepathy.Channel.Type.ActivityView.Participants': participants,
@@ -502,7 +497,7 @@ def test(q, bus, conn, stream):
 
     # View request without MaxSize property
     call_async(q, requests_iface, 'CreateChannel',
-        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+        { cs.CHANNEL_TYPE:
             'org.laptop.Telepathy.Channel.Type.ActivityView',
           })
 
@@ -514,7 +509,7 @@ def test(q, bus, conn, stream):
     participants = conn.RequestHandles(1, ["alice@localhost", "bob@localhost"])
 
     call_async(q, requests_iface, 'CreateChannel',
-        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+        { cs.CHANNEL_TYPE:
             'org.laptop.Telepathy.Channel.Type.ActivityView',
             'org.laptop.Telepathy.Channel.Interface.View.MaxSize': 5,
             'org.laptop.Telepathy.Channel.Type.ActivityView.Properties': props,

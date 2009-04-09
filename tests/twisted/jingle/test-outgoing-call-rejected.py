@@ -4,9 +4,8 @@ remote party rejects our call because they're busy.
 """
 
 from gabbletest import make_result_iq
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix
+from servicetest import make_channel_proxy
 import constants as cs
-
 from jingletest2 import JingleTest2, test_all_dialects
 
 def test(jp, q, bus, conn, stream):

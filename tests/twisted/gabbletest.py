@@ -7,7 +7,6 @@ import base64
 import os
 import sha
 import sys
-import time
 import random
 
 import ns

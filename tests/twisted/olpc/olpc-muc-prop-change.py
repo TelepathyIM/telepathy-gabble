@@ -8,6 +8,7 @@ from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, acknowledge_iq, make_muc_presence
 from servicetest import call_async, EventPattern
+import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
@@ -56,15 +57,15 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='NewChannel')
 
-    assert event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Text'
+    assert event.args[1] == cs.CHANNEL_TYPE_TEXT
 
     assert event.args[2] == 2   # handle type
     assert event.args[3] == 1   # handle
     room_handle = 1
 
     text_chan = bus.get_object(conn.bus_name, event.args[0])
-    chan_iface = dbus.Interface(text_chan, 'org.freedesktop.Telepathy.Channel')
-    group_iface = dbus.Interface(text_chan, 'org.freedesktop.Telepathy.Channel.Interface.Group')
+    chan_iface = dbus.Interface(text_chan, cs.CHANNEL)
+    group_iface = dbus.Interface(text_chan, cs.CHANNEL_IFACE_GROUP)
 
     members = group_iface.GetAllMembers()[0]
     local_pending = group_iface.GetAllMembers()[1]

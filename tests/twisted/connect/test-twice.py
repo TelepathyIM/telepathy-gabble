@@ -9,13 +9,9 @@ import sys
 import dbus
 import servicetest
 
-import twisted
-from twisted.words.xish import domish, xpath
-from twisted.words.protocols.jabber import xmlstream
-
-from gabbletest import make_connection, make_stream, JabberAuthenticator, \
-                       XmppAuthenticator, \
-                       XmppXmlStream, JabberXmlStream
+from gabbletest import (
+    make_connection, make_stream, JabberAuthenticator, XmppAuthenticator,
+    XmppXmlStream, JabberXmlStream)
 
 def test(q, bus, conn1, conn2, stream1, stream2):
     # Connection 1

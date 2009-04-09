@@ -1,7 +1,7 @@
 import dbus
 
 from gabbletest import exec_test
-from constants import *
+import constants as cs
 
 invalid_service_names = [ 'invalidServiceName'
                         , 'one ten hundred thousand million'
@@ -17,13 +17,13 @@ def test(q, bus, conn, stream):
     for invalid_service_name in invalid_service_names:
         try:
             conn.Requests.CreateChannel(
-                    {CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
-                     TARGET_HANDLE_TYPE: HT_CONTACT,
-                     TARGET_ID: 'alice@localhost',
-                     DBUS_TUBE_SERVICE_NAME: invalid_service_name
-                });
+                    {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
+                     cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+                     cs.TARGET_ID: 'alice@localhost',
+                     cs.DBUS_TUBE_SERVICE_NAME: invalid_service_name
+                })
         except dbus.DBusException, e:
-            assert e.get_dbus_name() == INVALID_ARGUMENT, \
+            assert e.get_dbus_name() == cs.INVALID_ARGUMENT, \
                 (e.get_dbus_name(), invalid_service_name)
         else:
             assert False

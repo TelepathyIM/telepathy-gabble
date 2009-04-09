@@ -4,8 +4,6 @@ Test that Gabble disconnects connection if it doesn't receive a response
 to its service discovery request
 """
 
-from twisted.words.xish import domish
-
 from gabbletest import exec_test, JabberXmlStream
 
 def test(q, bus, conn, stream):

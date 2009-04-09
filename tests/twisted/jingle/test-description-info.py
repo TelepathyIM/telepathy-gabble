@@ -2,17 +2,14 @@
 Test emition and handling of codec update using description-info
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream, exec_tests
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern, call_async
-import gabbletest
-import dbus
-import time
+from gabbletest import exec_test
+from servicetest import (
+    make_channel_proxy, unwrap, tp_path_prefix, EventPattern, call_async)
+from jingletest2 import JingleTest2, JingleProtocol031
+import constants as cs
+
 from twisted.words.xish import xpath
 
-from jingletest2 import *
-
-import constants as cs
 
 def extract_params(payload_type):
     ret = {}

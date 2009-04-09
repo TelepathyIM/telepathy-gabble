@@ -6,7 +6,7 @@ import os
 import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolFactory, unwrap
-from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
+from gabbletest import acknowledge_iq, make_muc_presence
 import constants as cs
 import ns
 import tubetestutil as t

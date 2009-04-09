@@ -4,6 +4,7 @@ from servicetest import call_async, EventPattern
 from gabbletest import make_result_iq, elem, elem_iq
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
+import constants as cs
 import ns
 
 # Copied from Gadget
@@ -171,10 +172,10 @@ def send_reply_to_activity_view_request(stream, stanza, activities):
     stream.send(reply)
 
 def request_random_activity_view(q, stream, conn, max, id, activities):
-    requests_iface = dbus.Interface(conn, 'org.freedesktop.Telepathy.Connection.Interface.Requests')
+    requests_iface = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
     call_async(q, requests_iface, 'CreateChannel',
-        { 'org.freedesktop.Telepathy.Channel.ChannelType':
+        { cs.CHANNEL_TYPE:
             'org.laptop.Telepathy.Channel.Type.ActivityView',
             'org.laptop.Telepathy.Channel.Interface.View.MaxSize': max
           })
@@ -199,7 +200,7 @@ def request_random_activity_view(q, stream, conn, max, id, activities):
     return return_event.value[0]
 
 def close_view(q, view, id):
-    chan_iface = dbus.Interface(view, 'org.freedesktop.Telepathy.Channel')
+    chan_iface = dbus.Interface(view, cs.CHANNEL)
     call_async(q, chan_iface, 'Close')
     event, _, _ = q.expect_many(
         EventPattern('stream-message', to='gadget.localhost'),

@@ -7,12 +7,12 @@ from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern
-from gabbletest import exec_test, make_result_iq, acknowledge_iq, elem
-from constants import *
+from gabbletest import exec_test, acknowledge_iq, elem
 import ns
+import constants as cs
 import tubetestutil as t
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 
 from mucutil import join_muc
 from muctubeutil import get_muc_tubes_channel
@@ -107,16 +107,16 @@ def test(q, bus, conn, stream):
         stream, 'chat@conf.localhost')
 
     # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = tubes_chan.GetAll(CHANNEL,
+    channel_props = tubes_chan.GetAll(cs.CHANNEL,
             dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == handle,\
             (channel_props.get('TargetHandle'), handle)
     assert channel_props.get('TargetHandleType') == 2,\
             channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == CHANNEL_TYPE_TUBES,\
+    assert channel_props.get('ChannelType') == cs.CHANNEL_TYPE_TUBES,\
             channel_props.get('ChannelType')
     assert 'Interfaces' in channel_props, channel_props
-    assert CHANNEL_IFACE_GROUP in channel_props['Interfaces'], \
+    assert cs.CHANNEL_IFACE_GROUP in channel_props['Interfaces'], \
             channel_props['Interfaces']
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == True
@@ -124,7 +124,7 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
-    group_props = tubes_chan.GetAll(CHANNEL_IFACE_GROUP,
+    group_props = tubes_chan.GetAll(cs.CHANNEL_IFACE_GROUP,
             dbus_interface=dbus.PROPERTIES_IFACE)
     assert 'SelfHandle' in group_props, group_props
     assert 'HandleOwners' in group_props, group_props
@@ -134,7 +134,7 @@ def test(q, bus, conn, stream):
     assert 'GroupFlags' in group_props, group_props
 
     tubes_self_handle = tubes_chan.GetSelfHandle(
-        dbus_interface=CHANNEL_IFACE_GROUP)
+        dbus_interface=cs.CHANNEL_IFACE_GROUP)
     assert group_props['SelfHandle'] == tubes_self_handle
 
     # Offer a D-Bus tube (old API)
@@ -146,15 +146,15 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='NewTube'),
         EventPattern('stream-presence', to='chat@conf.localhost/test'),
         EventPattern('dbus-return', method='OfferDBusTube'),
-        EventPattern('dbus-signal', signal='DBusNamesChanged', interface=CHANNEL_TYPE_TUBES))
+        EventPattern('dbus-signal', signal='DBusNamesChanged', interface=cs.CHANNEL_TYPE_TUBES))
 
     # handle new_tube_event
     dbus_tube_id = new_tube_event.args[0]
     assert new_tube_event.args[1] == tubes_self_handle
-    assert new_tube_event.args[2] == TUBE_TYPE_DBUS
+    assert new_tube_event.args[2] == cs.TUBE_TYPE_DBUS
     assert new_tube_event.args[3] == 'com.example.TestCase'
     assert new_tube_event.args[4] == sample_parameters
-    assert new_tube_event.args[5] == TUBE_STATE_OPEN
+    assert new_tube_event.args[5] == cs.TUBE_STATE_OPEN
 
     # handle offer_return_event
     assert offer_return_event.value[0] == dbus_tube_id
@@ -174,8 +174,8 @@ def test(q, bus, conn, stream):
 
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assert len(tubes) == 1
-    expected_tube = (dbus_tube_id, tubes_self_handle, TUBE_TYPE_DBUS,
-        'com.example.TestCase', sample_parameters, TUBE_STATE_OPEN)
+    expected_tube = (dbus_tube_id, tubes_self_handle, cs.TUBE_TYPE_DBUS,
+        'com.example.TestCase', sample_parameters, cs.TUBE_STATE_OPEN)
     t.check_tube_in_tubes(expected_tube, tubes)
 
     dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
@@ -185,10 +185,10 @@ def test(q, bus, conn, stream):
     # offer a D-Bus tube to another room using new API
     muc = 'chat2@conf.localhost'
     request = {
-        CHANNEL_TYPE: CHANNEL_TYPE_DBUS_TUBE,
-        TARGET_HANDLE_TYPE: HT_ROOM,
-        TARGET_ID: 'chat2@conf.localhost',
-        DBUS_TUBE_SERVICE_NAME: 'com.example.TestCase',
+        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
+        cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+        cs.TARGET_ID: 'chat2@conf.localhost',
+        cs.DBUS_TUBE_SERVICE_NAME: 'com.example.TestCase',
     }
     join_muc(q, bus, conn, stream, muc, request=request)
 
@@ -198,23 +198,23 @@ def test(q, bus, conn, stream):
     assert len(channels) == 2
     path1, prop1 = channels[0]
     path2, prop2 = channels[1]
-    assert sorted([prop1[CHANNEL_TYPE], prop2[CHANNEL_TYPE]]) == \
-        [CHANNEL_TYPE_TEXT, CHANNEL_TYPE_TUBES]
+    assert sorted([prop1[cs.CHANNEL_TYPE], prop2[cs.CHANNEL_TYPE]]) == \
+        [cs.CHANNEL_TYPE_TEXT, cs.CHANNEL_TYPE_TUBES]
 
     got_text, got_tubes = False, False
     for path, props in channels:
-        if props[CHANNEL_TYPE] == CHANNEL_TYPE_TEXT:
+        if props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT:
             got_text = True
-        elif props[CHANNEL_TYPE] == CHANNEL_TYPE_TUBES:
+        elif props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TUBES:
             got_tubes = True
         else:
             assert False
 
-        assert props[INITIATOR_HANDLE] == self_handle
-        assert props[INITIATOR_ID] == self_name
-        assert CHANNEL_IFACE_GROUP in props[INTERFACES]
-        assert props[TARGET_ID] == 'chat2@conf.localhost'
-        assert props[REQUESTED] == False
+        assert props[cs.INITIATOR_HANDLE] == self_handle
+        assert props[cs.INITIATOR_ID] == self_name
+        assert cs.CHANNEL_IFACE_GROUP in props[cs.INTERFACES]
+        assert props[cs.TARGET_ID] == 'chat2@conf.localhost'
+        assert props[cs.REQUESTED] == False
 
     assert (got_text, got_tubes) == (True, True)
 
@@ -224,20 +224,20 @@ def test(q, bus, conn, stream):
     channels = event.args[0]
     assert len(channels) == 1
     path, prop = channels[0]
-    assert prop[CHANNEL_TYPE] == CHANNEL_TYPE_DBUS_TUBE
-    assert prop[INITIATOR_ID] == 'chat2@conf.localhost/test'
-    assert prop[REQUESTED] == True
-    assert prop[TARGET_HANDLE_TYPE] == HT_ROOM
-    assert prop[TARGET_ID] == 'chat2@conf.localhost'
-    assert prop[DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase'
+    assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
+    assert prop[cs.INITIATOR_ID] == 'chat2@conf.localhost/test'
+    assert prop[cs.REQUESTED] == True
+    assert prop[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
+    assert prop[cs.TARGET_ID] == 'chat2@conf.localhost'
+    assert prop[cs.DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase'
 
     tube_chan = bus.get_object(conn.bus_name, path)
-    dbus_tube_iface = dbus.Interface(tube_chan, CHANNEL_TYPE_DBUS_TUBE)
-    chan_iface = dbus.Interface(tube_chan, CHANNEL)
-    tube_props = tube_chan.GetAll(CHANNEL_IFACE_TUBE, dbus_interface=PROPERTIES_IFACE,
+    dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
+    chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
+    tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE,
         byte_arrays=True)
 
-    assert tube_props['State'] == TUBE_CHANNEL_STATE_NOT_OFFERED
+    assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
     call_async(q, dbus_tube_iface, 'OfferDBusTube', sample_parameters)
@@ -246,18 +246,18 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='NewTube'),
         EventPattern('stream-presence', to='chat2@conf.localhost/test'),
         EventPattern('dbus-return', method='OfferDBusTube'),
-        EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[TUBE_CHANNEL_STATE_OPEN]),
-        EventPattern('dbus-signal', signal='DBusNamesChanged', interface=CHANNEL_TYPE_DBUS_TUBE))
+        EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[cs.TUBE_CHANNEL_STATE_OPEN]),
+        EventPattern('dbus-signal', signal='DBusNamesChanged', interface=cs.CHANNEL_TYPE_DBUS_TUBE))
 
-    tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=CHANNEL_IFACE_GROUP)
+    tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
     assert tube_self_handle != 0
 
     # handle new_tube_event
     dbus_tube_id = new_tube_event.args[0]
-    assert new_tube_event.args[2] == TUBE_TYPE_DBUS
+    assert new_tube_event.args[2] == cs.TUBE_TYPE_DBUS
     assert new_tube_event.args[3] == 'com.example.TestCase'
     assert new_tube_event.args[4] == sample_parameters
-    assert new_tube_event.args[5] == TUBE_STATE_OPEN
+    assert new_tube_event.args[5] == cs.TUBE_STATE_OPEN
 
     # handle presence_event
     # We announce our newly created tube in our muc presence
@@ -272,7 +272,7 @@ def test(q, bus, conn, stream):
     dbus_tube_adr = return_event.value[0]
 
     bob_bus_name = ':2.Ym9i'
-    bob_handle = conn.RequestHandles(HT_CONTACT, ['chat2@conf.localhost/bob'])[0]
+    bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['chat2@conf.localhost/bob'])[0]
 
     # Bob joins the tube
     presence = elem('presence', from_='chat2@conf.localhost/bob', to='chat2@conf.localhost')(
@@ -295,7 +295,7 @@ def test(q, bus, conn, stream):
     stream.send(presence)
 
     dbus_changed_event = q.expect('dbus-signal', signal='DBusNamesChanged',
-        interface=CHANNEL_TYPE_DBUS_TUBE)
+        interface=cs.CHANNEL_TYPE_DBUS_TUBE)
 
     added, removed = dbus_changed_event.args
     assert added == {bob_handle: bob_bus_name}
@@ -304,7 +304,7 @@ def test(q, bus, conn, stream):
     tube = Connection(dbus_tube_adr)
     fire_signal_on_tube(q, tube, 'chat2@conf.localhost', dbus_stream_id, my_bus_name)
 
-    names = tube_chan.Get(CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=PROPERTIES_IFACE)
+    names = tube_chan.Get(cs.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=cs.PROPERTIES_IFACE)
     assert names == {tube_self_handle: my_bus_name, bob_handle: bob_bus_name}
 
     # Bob leave the tube
@@ -314,13 +314,13 @@ def test(q, bus, conn, stream):
     stream.send(presence)
 
     dbus_changed_event = q.expect('dbus-signal', signal='DBusNamesChanged',
-        interface=CHANNEL_TYPE_DBUS_TUBE)
+        interface=cs.CHANNEL_TYPE_DBUS_TUBE)
 
     added, removed = dbus_changed_event.args
     assert added == {}
     assert removed == [bob_handle]
 
-    names = tube_chan.Get(CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=PROPERTIES_IFACE)
+    names = tube_chan.Get(cs.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=cs.PROPERTIES_IFACE)
     assert names == {tube_self_handle: my_bus_name}
 
     chan_iface.Close()

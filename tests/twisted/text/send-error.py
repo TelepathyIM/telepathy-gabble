@@ -3,13 +3,11 @@ Test that an incoming <message><error/></> for a contact gives both a SendError
 and a delivery report on a 1-1 text channel to that contact.
 """
 
-import dbus
-
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
 from servicetest import call_async, EventPattern
-
+import constants as cs
 import ns
 
 def test_temporary_error(q, bus, conn, stream):
@@ -21,19 +19,12 @@ def test_temporary_error(q, bus, conn, stream):
     event = q.expect('dbus-return', method='RequestHandles')
     foo_handle = event.value[0][0]
 
-    properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
-
-    call_async(q, conn.Requests, 'CreateChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Text',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': foo_handle,
-              })
-
-    ret = q.expect('dbus-return', method='CreateChannel')
-    text_chan = bus.get_object(conn.bus_name, ret.value[0])
+    path = conn.Requests.CreateChannel(
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+              cs.TARGET_HANDLE: foo_handle,
+              })[0]
+    text_chan = bus.get_object(conn.bus_name, path)
 
     # <message from='foo@bar.com' type='error'>
     #   <body>what is up, my good sir?</body>
@@ -109,19 +100,12 @@ def test_permanent_error(q, bus, conn, stream):
     event = q.expect('dbus-return', method='RequestHandles')
     ninja_handle = event.value[0][0]
 
-    properties = conn.GetAll(
-            'org.freedesktop.Telepathy.Connection.Interface.Requests',
-            dbus_interface='org.freedesktop.DBus.Properties')
-
-    call_async(q, conn.Requests, 'CreateChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.Text',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': ninja_handle,
-              })
-
-    ret = q.expect('dbus-return', method='CreateChannel')
-    text_chan = bus.get_object(conn.bus_name, ret.value[0])
+    path = conn.Requests.CreateChannel(
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+              cs.TARGET_HANDLE: ninja_handle,
+              })[0]
+    text_chan = bus.get_object(conn.bus_name, path)
 
     # <message from='wee@ninja.jp' type='error'>
     #   <body>hello? is there anyone there?</body>

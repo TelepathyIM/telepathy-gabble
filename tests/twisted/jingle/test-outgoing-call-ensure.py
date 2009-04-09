@@ -4,14 +4,10 @@ Test making outgoing calls using EnsureChannel, and retrieving existing calls
 using EnsureChannel.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        call_async, EventPattern
-from twisted.words.xish import domish
+from gabbletest import exec_test, sync_stream
+from servicetest import make_channel_proxy, call_async, EventPattern
+import constants as cs
 import jingletest
-import gabbletest
-import dbus
-import time
 
 
 def test(q, bus, conn, stream):
@@ -48,10 +44,9 @@ def test(q, bus, conn, stream):
 
     # Ensure a channel that doesn't exist yet.
     call_async(q, conn.Requests, 'EnsureChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': handle,
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+              cs.TARGET_HANDLE: handle,
               })
 
     ret, old_sig, new_sig = q.expect_many(
@@ -69,9 +64,8 @@ def test(q, bus, conn, stream):
     sig_path, sig_ct, sig_ht, sig_h, sig_sh = old_sig.args
 
     assert sig_path == path, (sig_path, path)
-    assert sig_ct == u'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',\
-            sig_ct
-    assert sig_ht == 1, sig_ht      # HandleType = Contact
+    assert sig_ct == cs.CHANNEL_TYPE_STREAMED_MEDIA, sig_ct
+    assert sig_ht == cs.HT_CONTACT, sig_ht
     assert sig_h == handle, sig_h
     assert sig_sh == True           # suppress handler
 
@@ -81,29 +75,20 @@ def test(q, bus, conn, stream):
     assert new_sig.args[0][0][0] == path
     emitted_props = new_sig.args[0][0][1]
 
-    assert emitted_props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'TargetHandleType'] == 1        # Contact
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] ==\
-            'foo@bar.com', emitted_props
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'Requested'] == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'InitiatorHandle'] == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'InitiatorID'] == 'test@localhost'
-
+    assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA
+    assert emitted_props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
+    assert emitted_props[cs.TARGET_HANDLE] == handle
+    assert emitted_props[cs.TARGET_ID] == 'foo@bar.com', emitted_props
+    assert emitted_props[cs.REQUESTED] == True
+    assert emitted_props[cs.INITIATOR_HANDLE] == self_handle
+    assert emitted_props[cs.INITIATOR_ID] == 'test@localhost'
 
     # Now ensure a media channel with the same contact, and check it's the
     # same.
     call_async(q, conn.Requests, 'EnsureChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': handle,
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+              cs.TARGET_HANDLE: handle,
               })
 
     event = q.expect('dbus-return', method='EnsureChannel')
@@ -123,8 +108,8 @@ def test(q, bus, conn, stream):
     # Now, create an anonymous channel with RequestChannel, add the other
     # person to it with RequestStreams, then Ensure a media channel with that
     # person.  We should get the anonymous channel back.
-    call_async(q, conn, 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia', 0, 0, True)
+    call_async(
+        q, conn, 'RequestChannel', cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 0, True)
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
@@ -134,10 +119,9 @@ def test(q, bus, conn, stream):
 
     path = ret.value[0]
     assert old_sig.args[0] == path, (old_sig.args[0], path)
-    assert old_sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',\
-            old_sig.args[1]
-    assert old_sig.args[2] == 0, sig.args[2]
-    assert old_sig.args[3] == 0, sig.args[3]
+    assert old_sig.args[1] == cs.CHANNEL_TYPE_STREAMED_MEDIA, old_sig.args[1]
+    assert old_sig.args[2] == 0, old_sig.args[2]
+    assert old_sig.args[3] == 0, old_sig.args[3]
     assert old_sig.args[4] == True      # suppress handler
 
     assert len(new_sig.args) == 1
@@ -146,34 +130,27 @@ def test(q, bus, conn, stream):
     assert new_sig.args[0][0][0] == path
     emitted_props = new_sig.args[0][0][1]
 
-    assert emitted_props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'TargetHandleType'] == 0
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            0
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == ''
-    assert emitted_props['org.freedesktop.Telepathy.Channel.Requested']\
-            == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorHandle']\
-            == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorID'] \
-            == 'test@localhost'
+    assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA
+    assert emitted_props[cs.TARGET_HANDLE_TYPE] == 0
+    assert emitted_props[cs.TARGET_HANDLE] == 0
+    assert emitted_props[cs.TARGET_ID] == ''
+    assert emitted_props[cs.REQUESTED] == True
+    assert emitted_props[cs.INITIATOR_HANDLE] == self_handle
+    assert emitted_props[cs.INITIATOR_ID] == 'test@localhost'
 
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
 
     # Request streams with the other person.  This should make them the
     # channel's "peer" property.
-    media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
+    media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     # Now, Ensuring a media channel with handle should yield the channel just
     # created.
 
     call_async(q, conn.Requests, 'EnsureChannel',
-            { 'org.freedesktop.Telepathy.Channel.ChannelType':
-                'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-              'org.freedesktop.Telepathy.Channel.TargetHandleType': 1,
-              'org.freedesktop.Telepathy.Channel.TargetHandle': handle,
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+              cs.TARGET_HANDLE: handle,
               })
 
     event = q.expect('dbus-return', method='EnsureChannel')

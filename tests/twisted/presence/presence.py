@@ -4,9 +4,7 @@ A simple smoke-test for C.I.SimplePresence
 FIXME: test C.I.Presence too
 """
 
-import dbus
-
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import domish
 
 from gabbletest import exec_test
 

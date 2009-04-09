@@ -2,15 +2,12 @@
 Test getting STUN server from Google jingleinfo
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream, \
-        GoogleXmlStream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        EventPattern
-import jingletest
-import gabbletest
-import constants as c
 import dbus
-import time
+
+from gabbletest import exec_test, make_result_iq, sync_stream, GoogleXmlStream
+from servicetest import make_channel_proxy, tp_path_prefix, EventPattern
+import jingletest
+import constants as cs
 
 def test(q, bus, conn, stream,
          expected_stun_server=None, expected_stun_port=None, google=False,
@@ -69,7 +66,7 @@ def test(q, bus, conn, stream,
 
     # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], remote_handle, c.GC_REASON_INVITED])
+             args=[u'', [], [], [1L], [], remote_handle, cs.GC_REASON_INVITED])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -85,8 +82,7 @@ def test(q, bus, conn, stream,
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props['TargetHandle'] == remote_handle
     assert channel_props['TargetHandleType'] == 1
     assert channel_props['TargetID'] == 'foo@bar.com'
@@ -118,7 +114,7 @@ def test(q, bus, conn, stream,
                 dbus_interface=dbus.PROPERTIES_IFACE), k
 
     # The old API for STUN servers etc. still needs supporting, for farsight 1
-    tp_prop_list = media_chan.ListProperties(dbus_interface=c.TP_AWKWARD_PROPERTIES)
+    tp_prop_list = media_chan.ListProperties(dbus_interface=cs.TP_AWKWARD_PROPERTIES)
     tp_props = {}
     tp_prop_ids = {}
 
@@ -128,7 +124,7 @@ def test(q, bus, conn, stream,
 
     assert 'nat-traversal' in tp_props
     assert tp_props['nat-traversal']['sig'] == 's'
-    assert tp_props['nat-traversal']['flags'] == c.PROPERTY_FLAG_READ
+    assert tp_props['nat-traversal']['flags'] == cs.PROPERTY_FLAG_READ
     assert 'stun-server' in tp_props
     assert tp_props['stun-server']['sig'] == 's'
     assert 'stun-port' in tp_props
@@ -139,21 +135,21 @@ def test(q, bus, conn, stream,
     if expected_stun_server is None:
         assert tp_props['stun-server']['flags'] == 0
     else:
-        assert tp_props['stun-server']['flags'] == c.PROPERTY_FLAG_READ
+        assert tp_props['stun-server']['flags'] == cs.PROPERTY_FLAG_READ
 
     if expected_stun_port is None:
         assert tp_props['stun-port']['flags'] == 0
     else:
-        assert tp_props['stun-port']['flags'] == c.PROPERTY_FLAG_READ
+        assert tp_props['stun-port']['flags'] == cs.PROPERTY_FLAG_READ
 
     if google:
-        assert tp_props['gtalk-p2p-relay-token']['flags'] == c.PROPERTY_FLAG_READ
+        assert tp_props['gtalk-p2p-relay-token']['flags'] == cs.PROPERTY_FLAG_READ
     else:
         assert tp_props['gtalk-p2p-relay-token']['flags'] == 0
 
     tp_prop_values = media_chan.GetProperties(
             [tp_props[k]['id'] for k in tp_props if tp_props[k]['flags']],
-            dbus_interface=c.TP_AWKWARD_PROPERTIES)
+            dbus_interface=cs.TP_AWKWARD_PROPERTIES)
 
     for value in tp_prop_values:
         assert value[0] in tp_prop_ids

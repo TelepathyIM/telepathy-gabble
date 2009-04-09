@@ -4,12 +4,11 @@ Test outgoing call handling. This tests the happy scenario
 when the remote party accepts the call.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix
-import jingletest
-import gabbletest
 import dbus
-import time
+
+from gabbletest import exec_test, make_result_iq, sync_stream
+from servicetest import make_channel_proxy
+import jingletest
 
 import constants as cs
 
@@ -41,18 +40,14 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     handle = conn.RequestHandles(1, [jt.remote_jid])[0]
-
-    path = conn.RequestChannel(
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-        0, 0, True)
+    path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 0, True)
 
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
 
     channel_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert media_iface.GetHandle(dbus_interface=cs.CHANNEL) == (0, 0)
     assert channel_props['TargetHandleType'] == 0, channel_props
     assert channel_props['TargetHandle'] == 0, channel_props
@@ -85,7 +80,7 @@ def test(q, bus, conn, stream):
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-initiate'
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
+    stream.send(make_result_iq(stream, e.stanza))
 
     jt.outgoing_call_reply(e.query['sid'], True)
 

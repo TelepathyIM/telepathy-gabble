@@ -9,6 +9,7 @@ from twisted.words.xish import domish
 
 from gabbletest import exec_test
 from servicetest import EventPattern
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -26,10 +27,9 @@ def test(q, bus, conn, stream):
     stream.send(m)
 
     event = q.expect('dbus-signal', signal='NewChannel')
-    assert event.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
-    # check that handle type == contact handle
-    assert event.args[2] == 1
-    jid = conn.InspectHandles(1, [event.args[3]])[0]
+    assert event.args[1] == cs.CHANNEL_TYPE_TEXT
+    assert event.args[2] == cs.HT_CONTACT
+    jid = conn.InspectHandles(cs.HT_CONTACT, [event.args[3]])[0]
     assert jid == 'foo@bar.com'
 
     received, message_received = q.expect_many(
@@ -45,9 +45,9 @@ def test(q, bus, conn, stream):
     header = message[0]
     message_sent_timestamp = header['message-sent']
     assert str(datetime.datetime.utcfromtimestamp(message_sent_timestamp)
-        == '2007-05-17 16:15:01'), headers
+        == '2007-05-17 16:15:01'), header
     message_received_timestamp = header['message-received']
-    assert message_received_timestamp > message_sent_timestamp, headers
+    assert message_received_timestamp > message_sent_timestamp, header
 
     assert message[1]['content'] == 'hello', message
 

@@ -9,13 +9,11 @@ import sys
 import dbus
 import servicetest
 
-import twisted
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import domish
 from twisted.words.protocols.jabber import xmlstream
 
-from gabbletest import make_connection, make_stream, JabberAuthenticator, \
-                       XmppAuthenticator, \
-                       XmppXmlStream, JabberXmlStream
+from gabbletest import (
+    make_connection, make_stream, XmppAuthenticator, XmppXmlStream)
 
 NS_XMPP_TLS = 'urn:ietf:params:xml:ns:xmpp-tls'
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'

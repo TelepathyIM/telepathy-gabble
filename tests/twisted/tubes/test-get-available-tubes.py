@@ -3,10 +3,9 @@
 import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix
-from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
-import ns
-
-from twisted.words.xish import domish
+from gabbletest import (
+    exec_test, make_result_iq, acknowledge_iq, make_muc_presence)
+import constants as cs
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -25,8 +24,7 @@ def test(q, bus, conn, stream):
 
     acknowledge_iq(stream, iq_event.stanza)
 
-    call_async(q, conn, 'RequestHandles', 2,
-        ['chat@conf.localhost'])
+    call_async(q, conn, 'RequestHandles', cs.HT_ROOM, ['chat@conf.localhost'])
 
     event = q.expect('stream-iq', to='conf.localhost',
             query_ns='http://jabber.org/protocol/disco#info')
@@ -40,7 +38,7 @@ def test(q, bus, conn, stream):
 
     # request tubes channel
     call_async(q, conn, 'RequestChannel',
-        tp_name_prefix + '.Channel.Type.Tubes', 2, handles[0], True)
+        tp_name_prefix + '.Channel.Type.Tubes', cs.HT_ROOM, handles[0], True)
 
     _, stream_event = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',

@@ -5,16 +5,12 @@ Test capabilities.
 
 import dbus
 
-from twisted.words.xish import domish
-
 from servicetest import EventPattern
 from gabbletest import exec_test, make_result_iq, make_presence
+import constants as cs
 
-text = 'org.freedesktop.Telepathy.Channel.Type.Text'
-sm = 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
-icaps = 'org.freedesktop.Telepathy.Connection.Interface.Capabilities'
-icaps_attr  = icaps + "/caps"
-basic_caps = [(2, text, 3, 0)]
+icaps_attr  = cs.CONN_IFACE_CAPS + "/caps"
+basic_caps = [(2, cs.CHANNEL_TYPE_TEXT, 3, 0)]
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -31,10 +27,10 @@ def test(q, bus, conn, stream):
 
     # no special capabilities
     assert conn.Capabilities.GetCapabilities([2]) == basic_caps
-    assert conn.Contacts.GetContactAttributes([2], [icaps], False) == { 2L:
-        { icaps + "/caps": basic_caps,
-            'org.freedesktop.Telepathy.Connection/contact-id':
-            'bob@foo.com'}}
+    assert conn.Contacts.GetContactAttributes(
+        [2], [cs.CONN_IFACE_CAPS], False) == \
+        { 2L: { icaps_attr: basic_caps,
+                cs.CONN + '/contact-id': 'bob@foo.com'}}
 
     # send updated presence with Jingle audio/video caps info. we turn on both
     # audio and video at the same time to test that all of the capabilities are
@@ -77,14 +73,14 @@ def test(q, bus, conn, stream):
 
     # we can now do audio and video calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, sm, 0, 3, 0, 3)]])
+        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3, 0, 3)]])
 
-    caps = conn.Contacts.GetContactAttributes([2], [icaps], False)
+    caps = conn.Contacts.GetContactAttributes([2], [cs.CONN_IFACE_CAPS], False)
     assert caps.keys() == [2L]
     assert icaps_attr in caps[2L]
     assert len(caps[2L][icaps_attr]) == 2
     assert basic_caps[0] in caps[2L][icaps_attr]
-    assert (2, sm, 3, 3) in caps[2L][icaps_attr]
+    assert (2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 3) in caps[2L][icaps_attr]
 
     # send updated presence without video support
     presence = make_presence('bob@foo.com/Foo', status='hello')
@@ -95,14 +91,14 @@ def test(q, bus, conn, stream):
 
     # we can now do only audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, sm, 3, 3, 3, 1)]])
+        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 3, 3, 1)]])
 
-    caps = conn.Contacts.GetContactAttributes([2], [icaps], False)
+    caps = conn.Contacts.GetContactAttributes([2], [cs.CONN_IFACE_CAPS], False)
     assert caps.keys() == [2L]
     assert icaps_attr in caps[2L]
     assert len(caps[2L][icaps_attr]) == 2
     assert basic_caps[0] in caps[2L][icaps_attr]
-    assert (2, sm, 3, 1) in caps[2L][icaps_attr]
+    assert (2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 1) in caps[2L][icaps_attr]
 
     # go offline
     presence = make_presence('bob@foo.com/Foo', type='unavailable')
@@ -110,10 +106,11 @@ def test(q, bus, conn, stream):
 
     # can't do audio calls any more
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, sm, 3, 0, 1, 0)]])
+        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 0, 1, 0)]])
 
     # Contact went offline and the handle is now invalid
-    assert conn.Contacts.GetContactAttributes([2], [icaps], False) == {}
+    assert conn.Contacts.GetContactAttributes(
+        [2], [cs.CONN_IFACE_CAPS], False) == {}
 
     # regression test for fd.o #15198: getting caps of invalid handle crashed
     try:

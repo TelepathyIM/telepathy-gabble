@@ -25,8 +25,8 @@ class JingleProtocol:
 
     def _simple_xml(self, node):
         "Construct domish.Element tree from tree of tuples"
-        name, ns, attribs, children = node
-        el = domish.Element((ns, name))
+        name, namespace, attribs, children = node
+        el = domish.Element((namespace, name))
         for key, val in attribs.items():
             el[key] = val
         for c in children:
@@ -238,12 +238,12 @@ class JingleProtocol015(JingleProtocol):
 
     def Description(self, type, children):
         if type == 'audio':
-            ns = 'http://jabber.org/protocol/jingle/description/audio'
+            namespace = 'http://jabber.org/protocol/jingle/description/audio'
         elif type == 'video':
-            ns = 'http://jabber.org/protocol/jingle/description/video'
+            namespace = 'http://jabber.org/protocol/jingle/description/video'
         else:
-            ns = 'unexistent-namespace'
-        return ('description', ns, { 'type': type }, children)
+            namespace = 'unexistent-namespace'
+        return ('description', namespace, { 'type': type }, children)
 
 class JingleProtocol031(JingleProtocol):
     features = [ 'urn:xmpp:jingle:0', 'urn:xmpp:jingle:apps:rtp:0',
@@ -455,20 +455,13 @@ class JingleTest2:
                 in enumerate(self.remote_transports) ],
             signature='(usuussduss)')
 
+def test_dialects(f, dialects):
+    for dialect in dialects:
+        exec_test(
+            lambda q, bus, conn, stream: f(dialect(), q, bus, conn, stream))
+
 def test_all_dialects(f):
-    def test015(q, bus, conn, stream):
-        f(JingleProtocol015(), q, bus, conn, stream)
+    test_dialects(f, [
+        JingleProtocol015, JingleProtocol031, GtalkProtocol03,
+        GtalkProtocol04])
 
-    def test031(q, bus, conn, stream):
-        f(JingleProtocol031(),q, bus, conn, stream)
-
-    def testg3(q, bus, conn, stream):
-        f(GtalkProtocol03(), q, bus, conn, stream)
-
-    def testg4(q, bus, conn, stream):
-        f(GtalkProtocol04(), q, bus, conn, stream)
-
-    exec_test(testg3)
-    exec_test(testg4)
-    exec_test(test015)
-    exec_test(test031)

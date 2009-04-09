@@ -4,17 +4,11 @@ Test that requesting a caps set 1 time is enough with hash and that we need 5
 confirmation without hash.
 """
 
-import dbus
-import sys
-
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 
 from servicetest import EventPattern
 from gabbletest import exec_test, make_result_iq, make_presence
-
-text = 'org.freedesktop.Telepathy.Channel.Type.Text'
-sm = 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
-caps_iface = 'org.freedesktop.Telepathy.Connection.Interface.Capabilities'
+import constants as cs
 
 def presence_add_caps(presence, ver, client, hash=None):
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
@@ -39,7 +33,7 @@ def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, di
 
 
     # no special capabilities
-    basic_caps = [(contact_handle, text, 3, 0)]
+    basic_caps = [(contact_handle, cs.CHANNEL_TYPE_TEXT, 3, 0)]
     assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
 
     # send updated presence with Jingle caps info
@@ -83,7 +77,7 @@ def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco
                (2, u'available', 'hello')}]))
 
     # no special capabilities
-    basic_caps = [(contact_handle, text, 3, 0)]
+    basic_caps = [(contact_handle, cs.CHANNEL_TYPE_TEXT, 3, 0)]
     assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
 
     # send updated presence with Jingle caps info

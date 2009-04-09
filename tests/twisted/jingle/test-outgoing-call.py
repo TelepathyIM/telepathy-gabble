@@ -4,14 +4,13 @@ Test outgoing call handling. This tests the happy scenario
 when the remote party accepts the call.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
-        call_async, EventPattern
-from twisted.words.xish import domish
+from gabbletest import exec_test, sync_stream
+from servicetest import (
+    assertContains, assertEquals, assertLength, make_channel_proxy,
+    call_async, EventPattern)
 import jingletest
 import gabbletest
 import dbus
-import time
 
 import constants as cs
 
@@ -48,8 +47,8 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
     handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
 
-    call_async(q, conn, 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.StreamedMedia', 0, 0, True)
+    call_async(
+        q, conn, 'RequestChannel', cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 0, True)
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
@@ -58,32 +57,22 @@ def test(q, bus, conn, stream):
         )
 
     path = ret.value[0]
-    assert old_sig.args[0] == path, (old_sig.args[0], path)
-    assert old_sig.args[1] == u'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',\
-            old_sig.args[1]
-    assert old_sig.args[2] == 0, sig.args[2]
-    assert old_sig.args[3] == 0, sig.args[3]
-    assert old_sig.args[4] == True      # suppress handler
+    assertEquals(
+        [path, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 0, True], old_sig.args)
 
-    assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1        # one channel
-    assert len(new_sig.args[0][0]) == 2     # two struct members
-    assert new_sig.args[0][0][0] == path
+    assertLength(1, new_sig.args)
+    assertLength(1, new_sig.args[0])       # one channel
+    assertLength(2, new_sig.args[0][0])    # two struct members
     emitted_props = new_sig.args[0][0][1]
 
-    assert emitted_props['org.freedesktop.Telepathy.Channel.ChannelType'] ==\
-            'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
-    assert emitted_props['org.freedesktop.Telepathy.Channel.'
-            'TargetHandleType'] == 0
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetHandle'] ==\
-            0
-    assert emitted_props['org.freedesktop.Telepathy.Channel.TargetID'] == ''
-    assert emitted_props['org.freedesktop.Telepathy.Channel.Requested'] \
-            == True
-    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorHandle'] \
-            == self_handle
-    assert emitted_props['org.freedesktop.Telepathy.Channel.InitiatorID'] \
-            == 'test@localhost'
+    assertEquals(
+        cs.CHANNEL_TYPE_STREAMED_MEDIA, emitted_props[cs.CHANNEL_TYPE])
+    assertEquals(0, emitted_props[cs.TARGET_HANDLE_TYPE])
+    assertEquals(0, emitted_props[cs.TARGET_HANDLE])
+    assertEquals('', emitted_props[cs.TARGET_ID])
+    assertEquals(True, emitted_props[cs.REQUESTED])
+    assertEquals(self_handle, emitted_props[cs.INITIATOR_HANDLE])
+    assertEquals('test@localhost', emitted_props[cs.INITIATOR_ID])
 
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
@@ -91,67 +80,54 @@ def test(q, bus, conn, stream):
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props.get('TargetHandle') == 0, \
-            channel_props.get('TargetHandle')
-    assert channel_props.get('TargetHandleType') == 0,\
-            channel_props.get('TargetHandleType')
-    assert media_iface.GetHandle(dbus_interface=cs.CHANNEL) == (0, 0)
-    assert channel_props.get('ChannelType') == \
-            'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',\
-            channel_props.get('ChannelType')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.MediaSignalling' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Properties' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert 'org.freedesktop.Telepathy.Channel.Interface.Hold' in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert channel_props['TargetID'] == '', channel_props
-    assert channel_props['Requested'] == True
-    assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
+
+    assertEquals(0, channel_props['TargetHandle'])
+    assertEquals(0, channel_props['TargetHandleType'])
+    assertEquals((0, 0), media_iface.GetHandle(dbus_interface=cs.CHANNEL))
+    assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA,
+        channel_props.get('ChannelType'))
+
+    for interface in [
+            cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_MEDIA_SIGNALLING,
+            cs.TP_AWKWARD_PROPERTIES, cs.CHANNEL_IFACE_HOLD]:
+        assertContains(interface, channel_props['Interfaces'])
+
+    assertEquals('', channel_props['TargetID'])
+    assertEquals(True, channel_props['Requested'])
+    assertEquals('test@localhost', channel_props['InitiatorID'])
+    assertEquals(conn.GetSelfHandle(), channel_props['InitiatorHandle'])
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = group_iface.GetAll(
-            'org.freedesktop.Telepathy.Channel.Interface.Group',
-            dbus_interface=dbus.PROPERTIES_IFACE)
-    assert 'HandleOwners' in group_props, group_props
-    assert 'Members' in group_props, group_props
-    assert 'LocalPendingMembers' in group_props, group_props
-    assert 'RemotePendingMembers' in group_props, group_props
-    assert 'GroupFlags' in group_props, group_props
+        cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
 
-    list_streams_result = media_iface.ListStreams()
-    assert len(list_streams_result) == 0, streams
+    for name in [
+            'HandleOwners', 'Members', 'LocalPendingMembers',
+            'RemotePendingMembers', 'GroupFlags']:
+        assertContains(name, group_props)
 
-    streams = media_iface.RequestStreams(handle,
-            [cs.MEDIA_STREAM_TYPE_AUDIO])
+    assertEquals([], media_iface.ListStreams())
+    streams = media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
+    assertEquals(streams, media_iface.ListStreams())
+    assertLength(1, streams)
 
-    list_streams_result = media_iface.ListStreams()
-    assert streams == list_streams_result, (streams, list_streams_result)
-
-    assert len(streams) == 1, streams
-    assert len(streams[0]) == 6, streams[0]
     # streams[0][0] is the stream identifier, which in principle we can't
     # make any assertion about (although in practice it's probably 1)
-    assert streams[0][1] == handle, (streams[0], handle)
-    assert streams[0][2] == cs.MEDIA_STREAM_TYPE_AUDIO, streams[0]
-    # We haven't connected yet
-    assert streams[0][3] == cs.MEDIA_STREAM_STATE_DISCONNECTED, streams[0]
-    # In Gabble, requested streams start off bidirectional
-    assert streams[0][4] == cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL, streams[0]
-    assert streams[0][5] == 0, streams[0]
+
+    assertEquals((
+        handle,
+        cs.MEDIA_STREAM_TYPE_AUDIO,
+        # We haven't connected yet
+        cs.MEDIA_STREAM_STATE_DISCONNECTED,
+        # In Gabble, requested streams start off bidirectional
+        cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
+        0),
+        streams[0][1:])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
-    assert e.args[1] == 'rtp'
+    assertEquals('rtp', e.args[1])
 
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
@@ -165,14 +141,13 @@ def test(q, bus, conn, stream):
     stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     sh_props = stream_handler.GetAll(
-            'org.freedesktop.Telepathy.Media.StreamHandler',
-            dbus_interface=dbus.PROPERTIES_IFACE)
-    assert sh_props['NATTraversal'] == 'gtalk-p2p'
-    assert sh_props['CreatedLocally'] == True
+        cs.STREAM_HANDLER, dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals('gtalk-p2p', sh_props['NATTraversal'])
+    assertEquals(True, sh_props['CreatedLocally'])
 
     e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'session-initiate'
+    assertEquals('jingle', e.query.name)
+    assertEquals('session-initiate', e.query['action'])
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 
     jt.outgoing_call_reply(e.query['sid'], True)
@@ -189,7 +164,7 @@ def test(q, bus, conn, stream):
 
     # Check that we're the actor
     e = q.expect('dbus-signal', signal='MembersChanged')
-    assert e.args[5] == self_handle
+    assertEquals(self_handle, e.args[5])
 
     # Test completed, close the connection
 

@@ -1961,10 +1961,9 @@ gabble_media_channel_add_member (GObject *obj,
           mixin->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
       tp_intset_destroy (set);
 
-      /* and update flags accordingly */
-      tp_group_mixin_change_flags (obj,
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
-          TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+      /* and remove CanAdd, since it was only here to allow this deprecated
+       * API. */
+      tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
       return TRUE;
     }
@@ -1984,10 +1983,6 @@ gabble_media_channel_add_member (GObject *obj,
           tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL,
               handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
           tp_intset_destroy (set);
-
-          /* update flags */
-          tp_group_mixin_change_flags (obj,
-              0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
           /* accept any local pending sends */
           g_ptr_array_foreach (priv->streams,
@@ -2037,10 +2032,9 @@ gabble_media_channel_remove_member (GObject *obj,
   if (!gabble_jingle_session_terminate (priv->session, reason, error))
     return FALSE;
 
-  /* We're terminating the session, any further changes to the members are
-   * meaningless, since the channel will go away RSN. */
-  tp_group_mixin_change_flags (obj, 0,
-      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+  /* Remove CanAdd if it was there for the deprecated anonymous channel
+   * semantics, since the channel will go away RSN. */
+  tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
   return TRUE;
 }
@@ -2079,14 +2073,6 @@ session_terminated_cb (GabbleJingleSession *session,
 
   tp_group_mixin_change_members ((GObject *) channel,
       "", NULL, set, NULL, NULL, terminator, reason);
-
-  /* update flags accordingly -- no operations are meaningful any more, because
-   * the channel is about to close.
-   */
-  tp_group_mixin_change_flags ((GObject *) channel, 0,
-      TP_CHANNEL_GROUP_FLAG_CAN_ADD |
-      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
-      TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 
   /* Ignore any Google relay session responses we're waiting for. */
   g_list_foreach (priv->stream_creation_datas, stream_creation_data_cancel,
@@ -2130,6 +2116,7 @@ session_state_changed_cb (GabbleJingleSession *session,
                           GParamSpec *arg1,
                           GabbleMediaChannel *channel)
 {
+  GObject *as_object = (GObject *) channel;
   GabbleMediaChannelPrivate *priv = channel->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   JingleSessionState state;
@@ -2152,12 +2139,13 @@ session_state_changed_cb (GabbleJingleSession *session,
       /* The first time we send anything to the other user, they materialise
        * in remote-pending if necessary */
 
-      tp_group_mixin_change_members ((GObject *) channel, "", NULL, NULL, NULL,
-          set, mixin->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+      tp_group_mixin_change_members (as_object, "", NULL, NULL, NULL, set,
+          mixin->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
-      tp_group_mixin_change_flags ((GObject *) channel,
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
-          TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+      /* Remove CanAdd if it happened to be there to support deprecated
+       * RequestChannel(..., 0) followed by AddMembers([h], ...) semantics.
+       */
+      tp_group_mixin_change_flags (as_object, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
     }
 
   if (state == JS_STATE_ACTIVE &&
@@ -2167,16 +2155,8 @@ session_state_changed_cb (GabbleJingleSession *session,
       DEBUG ("adding peer to the member list and updating flags");
 
       /* add the peer to the member list */
-      tp_group_mixin_change_members ((GObject *) channel,
-          "", set, NULL, NULL, NULL, peer,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
-      /* update flags accordingly -- allow removal, deny adding and
-       * rescinding */
-      tp_group_mixin_change_flags ((GObject *) channel,
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
-          TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
-
+      tp_group_mixin_change_members (as_object, "", set, NULL, NULL, NULL,
+          peer, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
     }
 
   tp_intset_destroy (set);

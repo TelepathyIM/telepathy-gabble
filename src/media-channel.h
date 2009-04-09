@@ -72,12 +72,6 @@ GType gabble_media_channel_get_type (void);
                               GabbleMediaChannelClass))
 
 gboolean
-_gabble_media_channel_add_member (GObject *obj,
-                                  TpHandle handle,
-                                  const gchar *message,
-                                  GError **error);
-
-gboolean
 _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
                                                TpHandle peer,
                                                const gchar *peer_resource,

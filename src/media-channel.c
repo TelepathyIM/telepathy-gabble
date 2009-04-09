@@ -604,6 +604,10 @@ gabble_media_channel_set_property (GObject     *object,
 
 static void gabble_media_channel_dispose (GObject *object);
 static void gabble_media_channel_finalize (GObject *object);
+static gboolean gabble_media_channel_add_member (GObject *obj,
+    TpHandle handle,
+    const gchar *message,
+    GError **error);
 static gboolean gabble_media_channel_remove_member (GObject *obj,
     TpHandle handle, const gchar *message, guint reason, GError **error);
 
@@ -767,7 +771,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 
   tp_group_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
-      _gabble_media_channel_add_member, NULL);
+      gabble_media_channel_add_member, NULL);
   tp_group_mixin_class_set_remove_with_reason_func (object_class,
       gabble_media_channel_remove_member);
   tp_group_mixin_init_dbus_properties (object_class);
@@ -1909,11 +1913,11 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   return TRUE;
 }
 
-gboolean
-_gabble_media_channel_add_member (GObject *obj,
-                                  TpHandle handle,
-                                  const gchar *message,
-                                  GError **error)
+static gboolean
+gabble_media_channel_add_member (GObject *obj,
+    TpHandle handle,
+    const gchar *message,
+    GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = chan->priv;

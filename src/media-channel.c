@@ -1930,8 +1930,9 @@ gabble_media_channel_add_member (GObject *obj,
       TpIntSet *set;
       gboolean wait;
 
-      /* yes: check we don't have a peer already, invite this onis one */
-
+      /* yes: check we don't have a peer already, and if not add this one to
+       * remote pending (but don't send an invitation yet).
+       */
       if (priv->session != NULL)
         {
           TpHandle peer;

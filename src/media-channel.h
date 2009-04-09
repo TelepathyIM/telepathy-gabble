@@ -77,8 +77,6 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags);
 TpChannelMediaCapabilities
 _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps);
 
-void gabble_media_channel_close (GabbleMediaChannel *);
-
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_MEDIA_CHANNEL_H__*/

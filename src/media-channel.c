@@ -840,7 +840,7 @@ gabble_media_channel_finalize (GObject *object)
 
 
 /**
- * gabble_media_channel_close
+ * gabble_media_channel_close_async:
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel

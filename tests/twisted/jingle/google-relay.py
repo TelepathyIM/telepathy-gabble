@@ -76,20 +76,21 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
     # Connecting
     conn.Connect()
 
-    q.expect_many(
+    ji_event = q.expect_many(
             EventPattern('dbus-signal', signal='StatusChanged', args=[1, 1]),
             EventPattern('stream-authenticated'),
             EventPattern('dbus-signal', signal='PresenceUpdate',
                 args=[{1L: (0L, {u'available': {}})}]),
             EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
-            )
+
+            # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
+            EventPattern('stream-iq', query_ns='google:jingleinfo',
+                to='test@localhost'),
+            )[-1]
 
     httpd = BaseHTTPServer.HTTPServer(('127.0.0.1', 0), HTTPHandler)
 
-    # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
-    event = q.expect('stream-iq', query_ns='google:jingleinfo',
-            to='test@localhost')
-    jingleinfo = make_result_iq(stream, event.stanza)
+    jingleinfo = make_result_iq(stream, ji_event.stanza)
     stun = jingleinfo.firstChildElement().addElement('stun')
     server = stun.addElement('server')
     server['host'] = 'resolves-to-1.2.3.4'

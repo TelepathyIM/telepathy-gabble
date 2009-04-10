@@ -162,12 +162,13 @@ def test(q, bus, conn, stream):
     # When we actually send XML to the peer, they should pop up in remote
     # pending.
     e, _ = q.expect_many(
-        EventPattern('stream-iq'),
+        EventPattern('stream-iq', predicate=lambda e:
+            e.query is not None and e.query.name == 'jingle' and \
+            e.query['action'] == 'session-initiate'
+        ),
         EventPattern('dbus-signal', signal='MembersChanged',
             args=["", [], [], [], [handle], self_handle, cs.GC_REASON_INVITED]),
         )
-    assertEquals('jingle', e.query.name)
-    assertEquals('session-initiate', e.query['action'])
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
 
     # Check the Group interface's properties again!

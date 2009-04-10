@@ -192,7 +192,8 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 }
 
 static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac,
-    GabbleJingleSession *sess, TpHandle maybe_peer, gboolean peer_in_rp);
+    GabbleJingleSession *sess, TpHandle maybe_peer, gboolean peer_in_rp,
+    gboolean initial_audio, gboolean initial_video);
 static void media_channel_closed_cb (GabbleMediaChannel *chan,
     gpointer user_data);
 
@@ -247,7 +248,9 @@ static GabbleMediaChannel *
 new_media_channel (GabbleMediaFactory *fac,
                    GabbleJingleSession *sess,
                    TpHandle maybe_peer,
-                   gboolean peer_in_rp)
+                   gboolean peer_in_rp,
+                   gboolean initial_audio,
+                   gboolean initial_video)
 {
   GabbleMediaFactoryPrivate *priv;
   TpBaseConnection *conn;
@@ -269,6 +272,8 @@ new_media_channel (GabbleMediaFactory *fac,
                        "session", sess,
                        "initial-peer", maybe_peer,
                        "peer-in-rp", peer_in_rp,
+                       "initial-audio", initial_audio,
+                       "initial-video", initial_video,
                        NULL);
 
   DEBUG ("object path %s", object_path);
@@ -331,7 +336,9 @@ new_jingle_session_cb (GabbleJingleFactory *jf, GabbleJingleSession *sess, gpoin
   if (gabble_jingle_session_get_content_type (sess) ==
       GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
-      GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer, FALSE);
+      /* FIXME: set initial_audio and initial_video */
+      GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer,
+          FALSE, FALSE, FALSE);
       tp_channel_manager_emit_new_channel (self,
           TP_EXPORTABLE_CHANNEL (chan), NULL);
     }
@@ -459,8 +466,8 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
   GabbleMediaChannel *channel = NULL;
   GError *error = NULL;
   GSList *request_tokens;
-  gboolean require_target_handle;
-  gboolean add_peer_to_remote_pending;
+  gboolean require_target_handle, add_peer_to_remote_pending;
+  gboolean initial_audio, initial_video;
 
   /* Supported modes of operation:
    * - RequestChannel(None, 0):
@@ -507,6 +514,11 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
   handle = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
 
+  initial_audio = tp_asv_get_boolean (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio", NULL);
+  initial_video = tp_asv_get_boolean (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo", NULL);
+
   switch (handle_type)
     {
     case TP_HANDLE_TYPE_NONE:
@@ -526,7 +538,7 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
               &error))
         goto error;
 
-      channel = new_media_channel (self, NULL, 0, FALSE);
+      channel = new_media_channel (self, NULL, 0, FALSE, FALSE, FALSE);
       break;
 
     case TP_HANDLE_TYPE_CONTACT:
@@ -550,6 +562,9 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
 
               if (peer == handle)
                 {
+                  /* Per the spec, we ignore InitialAudio and InitialVideo when
+                   * looking for an existing channel.
+                   */
                   tp_channel_manager_emit_request_already_satisfied (self,
                       request_token, TP_EXPORTABLE_CHANNEL (channel));
                   return TRUE;
@@ -557,9 +572,9 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
             }
         }
 
-      channel = new_media_channel (self, NULL, handle, add_peer_to_remote_pending);
+      channel = new_media_channel (self, NULL, handle,
+          add_peer_to_remote_pending, initial_audio, initial_video);
       break;
-
     default:
       return FALSE;
     }

@@ -1,0 +1,52 @@
+
+"""
+Test the debug message interface.
+"""
+
+import dbus
+
+from gabbletest import exec_test
+import constants as cs
+
+path = '/org/freedesktop/Telepathy/debug'
+iface = 'org.freedesktop.Telepathy.Debug'
+
+def test(q, bus, conn, stream):
+    messages = []
+
+    def new_message(timestamp, string):
+        messages.append((timestamp, string))
+
+    debug = bus.get_object(conn.bus_name, path)
+    debug_iface = dbus.Interface(debug, iface)
+    debug_iface.connect_to_signal('NewDebugMessage', new_message)
+    props_iface = dbus.Interface(debug, cs.PROPERTIES_IFACE)
+
+    assert len(debug.GetMessages()) > 0
+
+    # Turn signalling on and generate some messages.
+
+    assert len(messages) == 0
+    conn.Connect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    assert props_iface.Get(iface, 'Enabled') == False
+    props_iface.Set(iface, 'Enabled', True)
+
+    conn.RequestChannel(
+        cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, conn.GetSelfHandle(), True)
+    q.expect('dbus-signal', signal='NewChannel')
+    assert len(messages) > 0
+
+    # Turn signalling off and check we have no new messages.
+
+    props_iface.Set(iface, 'Enabled', False)
+    snapshot = list(messages)
+
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+
+    assert snapshot == messages
+
+if __name__ == '__main__':
+    exec_test(test)
+

@@ -113,6 +113,7 @@ TWISTED_TESTS = \
 	test-caps-cache.py \
 	test-caps-hash.py \
 	test-caps-tubes.py \
+	test-debug.py \
 	caps_helper.py \
 	connect/test-fail.py \
 	connect/test-success.py \

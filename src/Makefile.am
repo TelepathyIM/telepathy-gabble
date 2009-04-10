@@ -47,6 +47,8 @@ libgabble_convenience_la_SOURCES = \
     connection-manager.c \
     debug.h \
     debug.c \
+    debugger.h \
+    debugger.c \
     disco.h \
     disco.c \
     error.c \

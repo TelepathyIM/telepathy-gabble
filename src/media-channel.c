@@ -2011,30 +2011,36 @@ gabble_media_channel_remove_member (GObject *obj,
   GabbleMediaChannelPrivate *priv = chan->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
+  /* We don't set CanRemove, and did allow self removal. So tp-glib should
+   * ensure this.
+   */
+  g_assert (handle == mixin->self_handle);
+
+  /* Closing up might make GabbleMediaFactory release its ref. */
+  g_object_ref (chan);
+
   if (priv->session == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "handle %u cannot be removed in the current state", handle);
-
-      return FALSE;
+      /* The call didn't even start yet; close up. */
+      gabble_media_channel_close (chan);
     }
-
-  if (priv->creator != mixin->self_handle &&
-      handle != mixin->self_handle)
+  else
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-          "handle %u cannot be removed because you are not the creator of the"
-          " channel", handle);
-
-      return FALSE;
+      /* Terminate can fail if the UI provides a reason that makes no sense,
+       * like Invited.
+       */
+      if (!gabble_jingle_session_terminate (priv->session, reason, error))
+        {
+          g_object_unref (chan);
+          return FALSE;
+        }
     }
-
-  if (!gabble_jingle_session_terminate (priv->session, reason, error))
-    return FALSE;
 
   /* Remove CanAdd if it was there for the deprecated anonymous channel
    * semantics, since the channel will go away RSN. */
   tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+
+  g_object_unref (chan);
 
   return TRUE;
 }

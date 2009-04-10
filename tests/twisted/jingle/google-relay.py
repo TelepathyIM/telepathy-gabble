@@ -67,7 +67,10 @@ magic_cookie=MMMMMMMM
 """ % (http_req, http_req))
         http_req += 1
 
-def test(q, bus, conn, stream, incoming=True, too_slow=False):
+TOO_SLOW_CLOSE = 1
+TOO_SLOW_REMOVE_SELF = 2
+
+def test(q, bus, conn, stream, incoming=True, too_slow=None):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
     # If we need to override remote caps, feats, codecs or caps,
@@ -182,8 +185,8 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
 
-    if too_slow:
-        test_too_slow(q, bus, conn, stream, httpd, media_chan)
+    if too_slow is not None:
+        test_too_slow(q, bus, conn, stream, httpd, media_chan, too_slow)
         return
 
     # In response to the streams call, we now have two HTTP requests
@@ -308,14 +311,19 @@ def test(q, bus, conn, stream, incoming=True, too_slow=False):
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
-def test_too_slow(q, bus, conn, stream, httpd, media_chan):
+def test_too_slow(q, bus, conn, stream, httpd, media_chan, too_slow):
     """
     Regression test for a bug where if the channel was closed before the HTTP
     responses arrived, the responses finally arriving crashed Gabble.
     """
 
-    # User gets bored, and closes the channel.
-    call_async(q, media_chan, 'Close', dbus_interface=cs.CHANNEL)
+    # User gets bored, and ends the call.
+    if too_slow == TOO_SLOW_CLOSE:
+        call_async(q, media_chan, 'Close', dbus_interface=cs.CHANNEL)
+    elif too_slow == TOO_SLOW_REMOVE_SELF:
+        media_chan.RemoveMembers([conn.GetSelfHandle()], "",
+            dbus_interface=cs.CHANNEL_IFACE_GROUP)
+
     q.expect('dbus-signal', signal='Closed')
 
     # Now Google answers!
@@ -335,8 +343,14 @@ if __name__ == '__main__':
     exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False),
             protocol=GoogleXmlStream)
     exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True,
-                                      too_slow=True),
+                                      too_slow=TOO_SLOW_CLOSE),
             protocol=GoogleXmlStream)
     exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False,
-                                      too_slow=True),
+                                      too_slow=TOO_SLOW_CLOSE),
+            protocol=GoogleXmlStream)
+    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True,
+                                      too_slow=TOO_SLOW_REMOVE_SELF),
+            protocol=GoogleXmlStream)
+    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False,
+                                      too_slow=TOO_SLOW_REMOVE_SELF),
             protocol=GoogleXmlStream)

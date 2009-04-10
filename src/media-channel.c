@@ -924,6 +924,7 @@ gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling 
 
   tp_svc_channel_interface_media_signalling_return_from_get_session_handlers (
       context, ret);
+  g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
   g_ptr_array_free (ret, TRUE);
 }
 

@@ -108,14 +108,16 @@ def test(q, bus, conn, stream):
     assertEquals('test@localhost', channel_props['InitiatorID'])
     assertEquals(conn.GetSelfHandle(), channel_props['InitiatorHandle'])
 
-    # Exercise Group Properties from spec 0.17.6 (in a basic way)
+    # Exercise Group Properties
     group_props = group_iface.GetAll(
         cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
     assertContains('HandleOwners', group_props)
-    assertContains('Members', group_props)
-    assertContains('LocalPendingMembers', group_props)
-    assertContains('RemotePendingMembers', group_props)
-    assertContains('GroupFlags', group_props)
+    assertEquals([self_handle], group_props['Members'])
+    assertEquals([], group_props['LocalPendingMembers'])
+    assertEquals([], group_props['RemotePendingMembers'])
+
+    expected_flags = cs.GF_PROPERTIES
+    assertEquals(expected_flags, group_props['GroupFlags'])
 
     # The remote contact shouldn't be in remote pending yet (nor should it be
     # in members!)
@@ -157,10 +159,27 @@ def test(q, bus, conn, stream):
     stream_handler.Ready(jt.get_audio_codecs_dbus())
     stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    e = q.expect('stream-iq')
+    # When we actually send XML to the peer, they should pop up in remote
+    # pending.
+    e, _ = q.expect_many(
+        EventPattern('stream-iq'),
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=["", [], [], [], [handle], self_handle, cs.GC_REASON_INVITED]),
+        )
     assertEquals('jingle', e.query.name)
     assertEquals('session-initiate', e.query['action'])
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
+
+    # Check the Group interface's properties again!
+    group_props = group_iface.GetAll(
+        cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
+    assertContains('HandleOwners', group_props)
+    assertEquals([self_handle], group_props['Members'])
+    assertEquals([], group_props['LocalPendingMembers'])
+    assertEquals([handle], group_props['RemotePendingMembers'])
+
+    expected_flags = cs.GF_PROPERTIES
+    assertEquals(expected_flags, group_props['GroupFlags'])
 
     jt.outgoing_call_reply(e.query['sid'], True)
 

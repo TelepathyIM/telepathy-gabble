@@ -292,6 +292,7 @@ def make_connection(bus, event_func, params=None):
         'resource': 'Resource',
         'server': 'localhost',
         'port': dbus.UInt32(4242),
+        'fallback-socks5-proxies': dbus.Array([], signature='s'),
         }
 
     if params:

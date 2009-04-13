@@ -1410,12 +1410,21 @@ typedef struct {
     GabbleMediaStream **streams;
     /* number of non-NULL elements in streams (0 <= satisfied <= contents) */
     guint satisfied;
-    DBusGMethodInvocation *context;
+    /* succeeded_cb(context, GPtrArray<TP_STRUCT_TYPE_MEDIA_STREAM_INFO>)
+     * will be called if the stream request succeeds.
+     */
+    GFunc succeeded_cb;
+    /* failed_cb(context, GError *) will be called if the stream request fails.
+     */
+    GFunc failed_cb;
+    gpointer context;
 } PendingStreamRequest;
 
 static PendingStreamRequest *
 pending_stream_request_new (GPtrArray *contents,
-                            DBusGMethodInvocation *context)
+    GFunc succeeded_cb,
+    GFunc failed_cb,
+    gpointer context)
 {
   PendingStreamRequest *p = g_slice_new0 (PendingStreamRequest);
 
@@ -1423,6 +1432,8 @@ pending_stream_request_new (GPtrArray *contents,
   p->contents = g_memdup (contents->pdata, contents->len * sizeof (gpointer));
   p->streams = g_new0 (GabbleMediaStream *, contents->len);
   p->satisfied = 0;
+  p->succeeded_cb = succeeded_cb;
+  p->failed_cb = failed_cb;
   p->context = context;
 
   return p;
@@ -1447,8 +1458,7 @@ pending_stream_request_maybe_satisfy (PendingStreamRequest *p,
             {
               GPtrArray *ret = make_stream_list (channel, p->len, p->streams);
 
-              tp_svc_channel_type_streamed_media_return_from_request_streams (
-                  p->context, ret);
+              p->succeeded_cb (p->context, ret);
               g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
               g_ptr_array_free (ret, TRUE);
               p->context = NULL;
@@ -1475,7 +1485,7 @@ pending_stream_request_maybe_fail (PendingStreamRequest *p,
               "A stream was removed before it could be fully set up" };
 
           /* return early */
-          dbus_g_method_return_error (p->context, &e);
+          p->failed_cb (p->context, &e);
           p->context = NULL;
           return TRUE;
         }
@@ -1495,7 +1505,7 @@ pending_stream_request_free (gpointer data)
           "The session terminated before the requested streams could be added"
       };
 
-      dbus_g_method_return_error (p->context, &e);
+      p->failed_cb (p->context, &e);
     }
 
   g_free (p->contents);
@@ -1776,6 +1786,7 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
   GError *error = NULL;
   TpHandleRepoIface *contact_handles;
   gboolean wait;
+  PendingStreamRequest *psr;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
@@ -1830,9 +1841,11 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
         &error))
     goto error;
 
-  priv->pending_stream_requests = g_list_prepend (
-      priv->pending_stream_requests,
-      pending_stream_request_new (contents, context));
+  psr = pending_stream_request_new (contents,
+      (GFunc) tp_svc_channel_type_streamed_media_return_from_request_streams,
+      (GFunc) dbus_g_method_return_error, context);
+  priv->pending_stream_requests = g_list_prepend (priv->pending_stream_requests,
+      psr);
   g_ptr_array_free (contents, TRUE);
   return;
 

@@ -28,19 +28,6 @@
 #include "debug.h"
 #include "util.h"
 
-static void
-inform_peer_of_unhold (GabbleMediaChannel *self)
-{
-  gabble_jingle_session_send_held (self->priv->session, FALSE);
-}
-
-
-static void
-inform_peer_of_hold (GabbleMediaChannel *self)
-{
-  gabble_jingle_session_send_held (self->priv->session, TRUE);
-}
-
 
 static void
 stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
@@ -153,7 +140,7 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
         }
 
       /* Tell the peer what's happened */
-      inform_peer_of_unhold (self);
+      gabble_jingle_session_send_held (self->priv->session, FALSE);
     }
 
   tp_svc_channel_interface_hold_emit_hold_state_changed (self,
@@ -249,7 +236,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
 
       if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD)
         {
-          inform_peer_of_hold (self);
+          gabble_jingle_session_send_held (self->priv->session, TRUE);
         }
 
       priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_HOLD;

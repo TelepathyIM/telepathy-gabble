@@ -145,7 +145,9 @@ struct _delayed_request_streams_ctx {
   guint timeout_id;
   guint contact_handle;
   GArray *types;
-  DBusGMethodInvocation *context;
+  GFunc succeeded_cb;
+  GFunc failed_cb;
+  gpointer context;
 };
 
 static void destroy_request (struct _delayed_request_streams_ctx *ctx,
@@ -1428,6 +1430,9 @@ pending_stream_request_new (GPtrArray *contents,
 {
   PendingStreamRequest *p = g_slice_new0 (PendingStreamRequest);
 
+  g_assert (succeeded_cb);
+  g_assert (failed_cb);
+
   p->len = contents->len;
   p->contents = g_memdup (contents->pdata, contents->len * sizeof (gpointer));
   p->streams = g_new0 (GabbleMediaStream *, contents->len);
@@ -1686,7 +1691,7 @@ destroy_request (struct _delayed_request_streams_ctx *ctx,
       GError *error = NULL;
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "cannot add streams: peer has insufficient caps");
-      dbus_g_method_return_error (ctx->context, error);
+      ctx->failed_cb (ctx->context, error);
       g_error_free (error);
     }
 
@@ -1701,15 +1706,18 @@ destroy_request (struct _delayed_request_streams_ctx *ctx,
     }
 }
 
-static void gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
-    guint contact_handle, const GArray *types, DBusGMethodInvocation *context);
+static void media_channel_request_streams (GabbleMediaChannel *self,
+    TpHandle contact_handle,
+    const GArray *types,
+    GFunc succeeded_cb,
+    GFunc failed_cb,
+    gpointer context);
 
 static gboolean
 repeat_request (struct _delayed_request_streams_ctx *ctx)
 {
-  gabble_media_channel_request_streams (
-      TP_SVC_CHANNEL_TYPE_STREAMED_MEDIA (ctx->chan),
-      ctx->contact_handle, ctx->types, ctx->context);
+  media_channel_request_streams (ctx->chan, ctx->contact_handle, ctx->types,
+      ctx->succeeded_cb, ctx->failed_cb, ctx->context);
 
   ctx->timeout_id = 0;
   ctx->context = NULL;
@@ -1731,10 +1739,11 @@ capabilities_discovered_cb (GabblePresenceCache *cache,
 
 static void
 delay_stream_request (GabbleMediaChannel *chan,
-                      TpSvcChannelTypeStreamedMedia *iface,
                       guint contact_handle,
                       const GArray *types,
-                      DBusGMethodInvocation *context,
+                      GFunc succeeded_cb,
+                      GFunc failed_cb,
+                      gpointer context,
                       gboolean disco_in_progress)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
@@ -1743,6 +1752,8 @@ delay_stream_request (GabbleMediaChannel *chan,
 
   ctx->chan = chan;
   ctx->contact_handle = contact_handle;
+  ctx->succeeded_cb = succeeded_cb;
+  ctx->failed_cb = failed_cb;
   ctx->context = context;
   ctx->types = g_array_sized_new (FALSE, FALSE, sizeof (guint), types->len);
   g_array_append_vals (ctx->types, types->data, types->len);
@@ -1767,38 +1778,19 @@ delay_stream_request (GabbleMediaChannel *chan,
   g_ptr_array_add (priv->delayed_request_streams, ctx);
 }
 
-/**
- * gabble_media_channel_request_streams
- *
- * Implements D-Bus method RequestStreams
- * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
- */
 static void
-gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
-                                      guint contact_handle,
-                                      const GArray *types,
-                                      DBusGMethodInvocation *context)
+media_channel_request_streams (GabbleMediaChannel *self,
+    TpHandle contact_handle,
+    const GArray *types,
+    GFunc succeeded_cb,
+    GFunc failed_cb,
+    gpointer context)
 {
-  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
-  GabbleMediaChannelPrivate *priv;
-  TpBaseConnection *conn;
+  GabbleMediaChannelPrivate *priv = self->priv;
   GPtrArray *contents;
-  GError *error = NULL;
-  TpHandleRepoIface *contact_handles;
   gboolean wait;
   PendingStreamRequest *psr;
-
-  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
-
-  /* FIXME: disallow this if we've put the other guy on hold? */
-
-  priv = self->priv;
-  conn = (TpBaseConnection *) priv->conn;
-  contact_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
-
-  if (!tp_handle_is_valid (contact_handles, contact_handle, &error))
-    goto error;
+  GError *error = NULL;
 
   /* If we know the caps haven't arrived yet, delay stream creation
    * and check again later. Else, give up. */
@@ -1807,8 +1799,8 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
       if (wait)
         {
           DEBUG ("Delaying RequestStreams until we get all caps from contact");
-          delay_stream_request (self, iface, contact_handle, types, context,
-              TRUE);
+          delay_stream_request (self, contact_handle, types,
+              succeeded_cb, failed_cb, context, TRUE);
           g_error_free (error);
           return;
         }
@@ -1841,9 +1833,8 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
         &error))
     goto error;
 
-  psr = pending_stream_request_new (contents,
-      (GFunc) tp_svc_channel_type_streamed_media_return_from_request_streams,
-      (GFunc) dbus_g_method_return_error, context);
+  psr = pending_stream_request_new (contents, succeeded_cb, failed_cb,
+      context);
   priv->pending_stream_requests = g_list_prepend (priv->pending_stream_requests,
       psr);
   g_ptr_array_free (contents, TRUE);
@@ -1851,10 +1842,44 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
 
 error:
   DEBUG ("returning error %u: %s", error->code, error->message);
-  dbus_g_method_return_error (context, error);
+  failed_cb (context, error);
   g_error_free (error);
 }
 
+/**
+ * gabble_media_channel_request_streams
+ *
+ * Implements D-Bus method RequestStreams
+ * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
+ */
+static void
+gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
+                                      guint contact_handle,
+                                      const GArray *types,
+                                      DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->conn;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
+      base_conn, TP_HANDLE_TYPE_CONTACT);
+  GError *error = NULL;
+
+  if (!tp_handle_is_valid (contact_handles, contact_handle, &error))
+    {
+      DEBUG ("that's not a handle, sonny! (%u)", contact_handle);
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+  else
+    {
+      /* FIXME: disallow this if we've put the peer on hold? */
+
+      media_channel_request_streams (self, contact_handle, types,
+          (GFunc) tp_svc_channel_type_streamed_media_return_from_request_streams,
+          (GFunc) dbus_g_method_return_error,
+          context);
+    }
+}
 
 static gboolean
 contact_is_media_capable (GabbleMediaChannel *chan,

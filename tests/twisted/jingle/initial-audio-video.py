@@ -36,12 +36,8 @@ def check_neither(jp, q, conn, bus, stream, remote_handle):
     """
     Make a channel without specifying InitialAudio or InitialVideo; check
     that it's announced with both False, and that they're both present and
-    false in GetAll(). Also, make sure that nothing's sent to the peer.
+    false in GetAll().
     """
-
-    si = EventPattern('stream-iq', predicate=lambda e:
-        jp.match_jingle_action(e.query, 'session-initiate'))
-    q.forbid_events([si])
 
     path, props = conn.Requests.CreateChannel({
         cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,

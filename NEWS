@@ -5,6 +5,8 @@ Dependencies:
 
 Enhancements:
 
+* Use ContactCapabilities draft to communicate file transfer support.
+
 Fixes:
 
 telepathy-gabble 0.7.26 (2009-04-08)

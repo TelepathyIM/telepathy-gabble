@@ -103,7 +103,6 @@ enum
   PROP_CONNECTION,
   PROP_CREATOR,
   PROP_CREATOR_ID,
-  PROP_FACTORY,
   PROP_INTERFACES,
   PROP_CHANNEL_DESTROYED,
   PROP_CHANNEL_PROPERTIES,
@@ -438,9 +437,6 @@ gabble_media_channel_get_property (GObject    *object,
     case PROP_REQUESTED:
       g_value_set_boolean (value, (priv->creator == base_conn->self_handle));
       break;
-    case PROP_FACTORY:
-      g_value_set_object (value, priv->factory);
-      break;
     case PROP_INTERFACES:
       g_value_set_boxed (value, gabble_media_channel_interfaces);
       break;
@@ -511,9 +507,6 @@ gabble_media_channel_set_property (GObject     *object,
       break;
     case PROP_CREATOR:
       priv->creator = g_value_get_uint (value);
-      break;
-    case PROP_FACTORY:
-      priv->factory = g_value_get_object (value);
       break;
     case PROP_INITIAL_PEER:
       priv->initial_peer = g_value_get_uint (value);
@@ -671,12 +664,6 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       FALSE,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
-
-  param_spec = g_param_spec_object ("factory", "GabbleMediaFactory object",
-      "The factory that created this object.",
-      GABBLE_TYPE_MEDIA_FACTORY,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_FACTORY, param_spec);
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
       "Additional Channel.Interface.* interfaces",

@@ -26,7 +26,6 @@
 
 #include <glib.h>
 
-#include "media-factory.h"
 #include "media-stream.h"
 #include "jingle-session.h"
 #include "jingle-media-rtp.h"
@@ -41,7 +40,6 @@ struct _GabbleMediaChannelPrivate
   TpHandle initial_peer;
   gboolean peer_in_rp;
 
-  GabbleMediaFactory *factory;
   GabbleJingleSession *session;
 
   /* array of referenced GabbleMediaStream* */

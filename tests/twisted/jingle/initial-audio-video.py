@@ -2,8 +2,9 @@
 Tests outgoing calls created with InitialAudio and/or InitialVideo.
 """
 
-from servicetest import assertContains, wrap_channel, EventPattern
-from gabbletest import sync_stream
+from servicetest import (
+    assertContains, assertEquals, wrap_channel, EventPattern, call_async,
+    )
 
 from jingletest2 import JingleTest2, test_all_dialects
 
@@ -60,24 +61,30 @@ def check_iav(jp, q, conn, bus, stream, remote_handle, initial_audio,
     come out correctly.
     """
 
-    path, props = conn.Requests.CreateChannel({
+    call_async(q, conn.Requests, 'CreateChannel', {
         cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
         cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
         cs.TARGET_HANDLE: remote_handle,
         cs.INITIAL_AUDIO: initial_audio,
         cs.INITIAL_VIDEO: initial_video,
         })
+    if initial_video and jp.is_gtalk():
+        # You can't do video on ye olde GTalk.
+        event = q.expect('dbus-error', method='CreateChannel')
+        assertEquals(cs.NOT_CAPABLE, event.error.get_dbus_name())
+    else:
+        path, props = q.expect('dbus-return', method='CreateChannel').value
 
-    assertContains((cs.INITIAL_AUDIO, initial_audio), props.items())
-    assertContains((cs.INITIAL_VIDEO, initial_video), props.items())
+        assertContains((cs.INITIAL_AUDIO, initial_audio), props.items())
+        assertContains((cs.INITIAL_VIDEO, initial_video), props.items())
 
-    chan = wrap_channel(bus.get_object(conn.bus_name, path),
-        cs.CHANNEL_TYPE_STREAMED_MEDIA)
-    props = chan.Properties.GetAll(cs.CHANNEL_TYPE_STREAMED_MEDIA + '.FUTURE')
-    assertContains(('InitialAudio', initial_audio), props.items())
-    assertContains(('InitialVideo', initial_video), props.items())
+        chan = wrap_channel(bus.get_object(conn.bus_name, path),
+            cs.CHANNEL_TYPE_STREAMED_MEDIA)
+        props = chan.Properties.GetAll(cs.CHANNEL_TYPE_STREAMED_MEDIA + '.FUTURE')
+        assertContains(('InitialAudio', initial_audio), props.items())
+        assertContains(('InitialVideo', initial_video), props.items())
 
-    chan.Close()
+        chan.Close()
 
 if __name__ == '__main__':
     test_all_dialects(test)

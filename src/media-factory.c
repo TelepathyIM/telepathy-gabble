@@ -453,6 +453,58 @@ typedef enum
 } RequestMethod;
 
 
+typedef struct
+{
+    GabbleMediaFactory *self;
+    GabbleMediaChannel *channel;
+    gpointer request_token;
+} MediaChannelRequest;
+
+
+static MediaChannelRequest *
+media_channel_request_new (GabbleMediaFactory *self,
+    GabbleMediaChannel *channel,
+    gpointer request_token)
+{
+  MediaChannelRequest *mcr = g_slice_new0 (MediaChannelRequest);
+
+  mcr->self = self;
+  mcr->channel = channel;
+  mcr->request_token = request_token;
+
+  return mcr;
+}
+
+static void
+media_channel_request_free (MediaChannelRequest *mcr)
+{
+  g_slice_free (MediaChannelRequest, mcr);
+}
+
+static void
+media_channel_request_succeeded_cb (MediaChannelRequest *mcr,
+    GPtrArray *streams)
+{
+  GSList *request_tokens;
+
+  request_tokens = g_slist_prepend (NULL, mcr->request_token);
+  tp_channel_manager_emit_new_channel (mcr->self,
+      TP_EXPORTABLE_CHANNEL (mcr->channel), request_tokens);
+  g_slist_free (request_tokens);
+
+  media_channel_request_free (mcr);
+}
+
+static void
+media_channel_request_failed_cb (MediaChannelRequest *mcr,
+    GError *error)
+{
+  tp_channel_manager_emit_request_failed (mcr->self, mcr->request_token,
+      error->domain, error->code, error->message);
+
+  media_channel_request_free (mcr);
+}
+
 static gboolean
 gabble_media_factory_requestotron (TpChannelManager *manager,
                                    gpointer request_token,
@@ -465,7 +517,6 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
   TpHandle handle;
   GabbleMediaChannel *channel = NULL;
   GError *error = NULL;
-  GSList *request_tokens;
   gboolean require_target_handle, add_peer_to_remote_pending;
   gboolean initial_audio, initial_video;
 
@@ -581,10 +632,10 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
 
   g_assert (channel != NULL);
 
-  request_tokens = g_slist_prepend (NULL, request_token);
-  tp_channel_manager_emit_new_channel (self,
-      TP_EXPORTABLE_CHANNEL (channel), request_tokens);
-  g_slist_free (request_tokens);
+  gabble_media_channel_request_initial_streams (channel,
+      (GFunc) media_channel_request_succeeded_cb,
+      (GFunc) media_channel_request_failed_cb,
+      media_channel_request_new (self, channel, request_token));
 
   return TRUE;
 

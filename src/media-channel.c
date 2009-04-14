@@ -1881,6 +1881,72 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
     }
 }
 
+/**
+ * gabble_media_channel_request_initial_streams:
+ * @chan: an outgoing call, which must have just been constructed.
+ * @succeeded_cb: called with arguments @user_data and a GPtrArray of
+ *                TP_STRUCT_TYPE_MEDIA_STREAM_INFO if the request succeeds.
+ * @failed_cb: called with arguments @user_data and a GError * if the request
+ *             fails.
+ * @user_data: context for the callbacks.
+ *
+ * Request streams corresponding to the values of InitialAudio and InitialVideo
+ * in the channel request.
+ */
+void
+gabble_media_channel_request_initial_streams (GabbleMediaChannel *chan,
+    GFunc succeeded_cb,
+    GFunc failed_cb,
+    gpointer user_data)
+{
+  GabbleMediaChannelPrivate *priv = chan->priv;
+
+  /* This has to be an outgoing call... */
+  g_assert (priv->creator == priv->conn->parent.self_handle);
+  /* ...which has just been constructed. */
+  g_assert (priv->session == NULL);
+
+  if (priv->initial_peer == 0)
+    {
+      /* This is a ye olde anonymous channel, so InitialAudio/Video should be
+       * impossible.
+       */
+      g_assert (!priv->initial_audio);
+      g_assert (!priv->initial_video);
+    }
+
+  if (!priv->initial_audio && !priv->initial_video)
+    {
+      GPtrArray *empty = g_ptr_array_sized_new (0);
+
+      succeeded_cb (user_data, empty);
+
+      g_ptr_array_free (empty, TRUE);
+    }
+  else
+    {
+      GArray *types = g_array_sized_new (FALSE, FALSE, sizeof (guint), 2);
+      guint media_type;
+
+      if (priv->initial_audio)
+        {
+          media_type = TP_MEDIA_STREAM_TYPE_AUDIO;
+          g_array_append_val (types, media_type);
+        }
+
+      if (priv->initial_video)
+        {
+          media_type = TP_MEDIA_STREAM_TYPE_VIDEO;
+          g_array_append_val (types, media_type);
+        }
+
+      media_channel_request_streams (chan, priv->initial_peer, types,
+          succeeded_cb, failed_cb, user_data);
+
+      g_array_free (types, TRUE);
+    }
+}
+
 static gboolean
 contact_is_media_capable (GabbleMediaChannel *chan,
     TpHandle peer,

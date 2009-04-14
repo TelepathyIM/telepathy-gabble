@@ -28,6 +28,10 @@
 #include "debug.h"
 #include "util.h"
 
+/*
+ * Implementation of Channel.Interface.Hold, which deals with placing the peer
+ * on and off hold.
+ */
 
 static void
 stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
@@ -193,25 +197,6 @@ gabble_media_channel_hold_stream_closed (GabbleMediaChannel *chan,
 }
 
 
-/* Called by construct_stream to allow the Hold code to hook itself up to a new
- * stream.
- */
-void
-gabble_media_channel_hold_new_stream (GabbleMediaChannel *chan,
-    GabbleMediaStream *stream)
-{
-  GObject *chan_o = (GObject *) chan;
-
-  gabble_signal_connect_weak (stream, "unhold-failed",
-      (GCallback) stream_unhold_failed, chan_o);
-  gabble_signal_connect_weak (stream, "notify::local-hold",
-      (GCallback) stream_hold_state_changed, chan_o);
-
-  /* A stream being added might cause the "total" hold state to change */
-  stream_hold_state_changed (stream, NULL, chan);
-}
-
-
 /* Implements RequestHold on Telepathy.Channel.Interface.Hold */
 static void
 gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
@@ -296,4 +281,154 @@ gabble_media_channel_hold_iface_init (gpointer g_iface,
   IMPLEMENT(get_hold_state);
   IMPLEMENT(request_hold);
 #undef IMPLEMENT
+}
+
+
+/*
+ * Implementation of Channel.Interface.CallState, which indicates call states
+ * from the peer (such as being put on or off hold, or that the peer's client
+ * is ringing.
+ */
+
+static TpChannelCallStateFlags
+jingle_remote_state_to_csf (JingleRtpRemoteState state)
+{
+  switch (state)
+    {
+    case JINGLE_RTP_REMOTE_STATE_ACTIVE:
+    /* FIXME: we should be able to expose <mute/> through CallState */
+    case JINGLE_RTP_REMOTE_STATE_MUTE:
+      return 0;
+    case JINGLE_RTP_REMOTE_STATE_RINGING:
+      return TP_CHANNEL_CALL_STATE_RINGING;
+    case JINGLE_RTP_REMOTE_STATE_HOLD:
+      return TP_CHANNEL_CALL_STATE_HELD;
+    default:
+      g_assert_not_reached ();
+    }
+}
+
+
+static void
+remote_state_changed_cb (GabbleJingleMediaRtp *rtp,
+    GParamSpec *pspec G_GNUC_UNUSED,
+    GabbleMediaChannel *self)
+{
+  GabbleMediaChannelPrivate *priv = self->priv;
+  JingleRtpRemoteState state = gabble_jingle_media_rtp_get_remote_state (rtp);
+  TpChannelCallStateFlags csf = 0;
+
+  DEBUG ("Content %p's state changed to %u (current channel state: %u)", rtp,
+      state, priv->remote_state);
+
+  if (state == priv->remote_state)
+    {
+      DEBUG ("already in that state");
+      return;
+    }
+
+  if (state > priv->remote_state)
+    {
+      /* If this content's state is "more held" than the current aggregated level,
+       * move up to it.
+       */
+      DEBUG ("%u is more held than %u, moving up", state, priv->remote_state);
+      priv->remote_state = state;
+    }
+  else
+    {
+      /* This content is now less held than the current aggregated level; we
+       * need to recalculate the highest hold level and see if it's changed.
+       */
+      guint i = 0;
+
+      DEBUG ("%u less held than %u; recalculating", state, priv->remote_state);
+      state = JINGLE_RTP_REMOTE_STATE_ACTIVE;
+
+      for (i = 0; i < priv->streams->len; i++)
+        {
+          GabbleJingleMediaRtp *c = gabble_media_stream_get_content (
+                g_ptr_array_index (priv->streams, i));
+          JingleRtpRemoteState s = gabble_jingle_media_rtp_get_remote_state (c);
+
+          state = MAX (state, s);
+          DEBUG ("%p in state %u; high water mark %u", c, s, state);
+        }
+
+      if (priv->remote_state == state)
+        {
+          DEBUG ("no change");
+          return;
+        }
+
+      priv->remote_state = state;
+    }
+
+  csf = jingle_remote_state_to_csf (priv->remote_state);
+  DEBUG ("emitting CallStateChanged(%u, %u) (JingleRtpRemoteState %u)",
+      priv->session->peer, csf, priv->remote_state);
+  tp_svc_channel_interface_call_state_emit_call_state_changed (self,
+      priv->session->peer, csf);
+}
+
+
+/* Implements GetCallStates on Channel.Interface.CallState */
+static void
+gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
+    DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = (GabbleMediaChannel *) iface;
+  GabbleMediaChannelPrivate *priv = self->priv;
+  JingleRtpRemoteState state = priv->remote_state;
+  GHashTable *states = g_hash_table_new (g_direct_hash, g_direct_equal);
+
+  if (state != JINGLE_RTP_REMOTE_STATE_ACTIVE)
+    g_hash_table_insert (states, GUINT_TO_POINTER (priv->session->peer),
+        GUINT_TO_POINTER (jingle_remote_state_to_csf (state)));
+
+  tp_svc_channel_interface_call_state_return_from_get_call_states (context,
+      states);
+
+  g_hash_table_destroy (states);
+}
+
+
+void
+gabble_media_channel_call_state_iface_init (gpointer g_iface,
+    gpointer iface_data G_GNUC_UNUSED)
+{
+  TpSvcChannelInterfaceCallStateClass *klass = g_iface;
+
+#define IMPLEMENT(x) tp_svc_channel_interface_call_state_implement_##x (\
+    klass, gabble_media_channel_##x)
+  IMPLEMENT(get_call_states);
+#undef IMPLEMENT
+}
+
+
+/* Called by construct_stream to allow the Hold and CallState code to hook
+ * itself up to a new stream.
+ */
+void
+gabble_media_channel_hold_new_stream (GabbleMediaChannel *chan,
+    GabbleMediaStream *stream,
+    GabbleJingleMediaRtp *content)
+{
+  GObject *chan_o = (GObject *) chan;
+
+  gabble_signal_connect_weak (stream, "unhold-failed",
+      (GCallback) stream_unhold_failed, chan_o);
+  gabble_signal_connect_weak (stream, "notify::local-hold",
+      (GCallback) stream_hold_state_changed, chan_o);
+
+  /* A stream being added might cause the "total" hold state to change */
+  stream_hold_state_changed (stream, NULL, chan);
+
+  /* Watch the active/mute/held state of the corresponding content so we can
+   * keep the call state up to date, and call the callback once to pick up the
+   * current state of this content.
+   */
+  gabble_signal_connect_weak (content, "notify::remote-state",
+      (GCallback) remote_state_changed_cb, chan_o);
+  remote_state_changed_cb (content, NULL, chan);
 }

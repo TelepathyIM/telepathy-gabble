@@ -71,12 +71,15 @@ struct _GabbleMediaChannelPrivate
 };
 
 void gabble_media_channel_hold_new_stream (GabbleMediaChannel *chan,
-    GabbleMediaStream *stream);
+    GabbleMediaStream *stream,
+    GabbleJingleMediaRtp *content);
 void gabble_media_channel_hold_stream_closed (GabbleMediaChannel *chan,
     GabbleMediaStream *stream);
 
-void
-gabble_media_channel_hold_iface_init (gpointer g_iface,
+void gabble_media_channel_hold_iface_init (gpointer g_iface,
+    gpointer iface_data G_GNUC_UNUSED);
+
+void gabble_media_channel_call_state_iface_init (gpointer g_iface,
     gpointer iface_data G_GNUC_UNUSED);
 
 G_END_DECLS

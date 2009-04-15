@@ -231,6 +231,11 @@ def test(q, bus, conn, stream):
     assert prop[cs.TARGET_ID] == 'chat2@conf.localhost'
     assert prop[cs.DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase'
 
+    # check that the tube channel is in the channels list
+    all_channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
+        dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
+    assert (path, prop) in all_channels
+
     tube_chan = bus.get_object(conn.bus_name, path)
     dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
     chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)

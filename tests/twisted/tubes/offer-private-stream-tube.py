@@ -115,7 +115,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     t.check_NewChannel_signal(old_sig.args, cs.CHANNEL_TYPE_TUBES, chan_path,
             bob_handle, True)
-    t.check_NewChannels_signal(new_sig.args, cs.CHANNEL_TYPE_TUBES, chan_path,
+    t.check_NewChannels_signal(conn, new_sig.args, cs.CHANNEL_TYPE_TUBES, chan_path,
             bob_handle, 'bob@localhost', self_handle)
     old_tubes_channel_properties = new_sig.args[0][0]
 
@@ -162,7 +162,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     t.check_NewChannel_signal(old_sig.args, cs.CHANNEL_TYPE_STREAM_TUBE,
             new_chan_path, bob_handle, True)
-    t.check_NewChannels_signal(new_sig.args, cs.CHANNEL_TYPE_STREAM_TUBE,
+    t.check_NewChannels_signal(conn, new_sig.args, cs.CHANNEL_TYPE_STREAM_TUBE,
             new_chan_path, bob_handle, 'bob@localhost', self_handle)
     stream_tube_channel_properties = new_sig.args[0][0]
     assert cs.TUBE_STATE not in stream_tube_channel_properties
@@ -215,7 +215,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     # the tube channel (new API) is announced
     t.check_NewChannel_signal(new_chan.args, cs.CHANNEL_TYPE_STREAM_TUBE,
         None, bob_handle, False)
-    t.check_NewChannels_signal(new_chans.args, cs.CHANNEL_TYPE_STREAM_TUBE,
+    t.check_NewChannels_signal(conn, new_chans.args, cs.CHANNEL_TYPE_STREAM_TUBE,
         new_chan.args[0], bob_handle, "bob@localhost", self_handle)
 
     props = new_chans.args[0][0][1]

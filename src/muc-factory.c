@@ -1269,7 +1269,7 @@ gabble_muc_factory_foreach_channel (TpChannelManager *manager,
     foreach (chan, user_data);
 
     /* Add channels of type Channel.Type.{Stream|DBus}Tube which live in the
-     * SalutTubesChannel object */
+     * GabbleTubesChannel object */
     gabble_tubes_channel_foreach (GABBLE_TUBES_CHANNEL (chan), foreach,
         user_data);
   }

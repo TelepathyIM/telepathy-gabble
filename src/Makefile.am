@@ -72,7 +72,9 @@ libgabble_convenience_la_SOURCES = \
     jingle-transport-iface.h \
     jingle-transport-iface.c \
     media-channel.h \
+    media-channel-internal.h \
     media-channel.c \
+    media-channel-hold.c \
     media-stream.h \
     media-stream.c \
     media-factory.h \

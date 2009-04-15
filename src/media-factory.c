@@ -263,7 +263,6 @@ new_media_channel (GabbleMediaFactory *fac,
 
   chan = g_object_new (GABBLE_TYPE_MEDIA_CHANNEL,
                        "connection", priv->conn,
-                       "factory", fac,
                        "object-path", object_path,
                        "session", sess,
                        "initial-peer", maybe_peer,

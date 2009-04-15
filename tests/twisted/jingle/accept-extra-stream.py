@@ -137,10 +137,14 @@ def test(q, bus, conn, stream):
     video_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
     video_handler.SupportedCodecs(jt2.get_video_codecs_dbus())
 
-    e, _, _ = q.expect_many(
+    e, _, _, _ = q.expect_many(
         # Peer gets the transport
         EventPattern('stream-iq', iq_type='set',
             predicate=lambda e: e.query['action'] =='transport-info'),
+        # Gabble tells the peer we accepted
+        EventPattern('stream-iq', predicate=lambda e:
+            (e.query.name == 'jingle' and
+                e.query['action'] == 'content-accept')),
         EventPattern('dbus-signal', signal='SetStreamPlaying', args=[True]),
         # It's not entirely clear that this *needs* to fire here...
         EventPattern('dbus-signal', signal='SetStreamSending', args=[False]),
@@ -150,9 +154,6 @@ def test(q, bus, conn, stream):
     assert e.query['initiator'] == remote_jid
 
     stream.send(make_result_iq(stream, e.stanza))
-
-    q.expect('stream-iq', predicate=lambda e: (e.query.name == 'jingle' and
-                e.query['action'] == 'content-accept'))
 
     # Okay, so now the stream's playing but not sending, and we should be still
     # pending local send:

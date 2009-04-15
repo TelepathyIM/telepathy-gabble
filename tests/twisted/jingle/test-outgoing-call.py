@@ -152,11 +152,12 @@ def test(q, bus, conn, stream):
 
     jt.outgoing_call_reply(e.query['sid'], True)
 
-    q.expect('stream-iq', iq_type='result')
-
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result'),
     # Call accepted
-    q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [handle], [], [], [], handle, cs.GC_REASON_NONE])
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=['', [handle], [], [], [], handle, cs.GC_REASON_NONE]),
+        )
 
     # Time passes ... afterwards we close the chan
 

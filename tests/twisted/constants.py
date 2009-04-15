@@ -43,6 +43,9 @@ INITIATOR_HANDLE = CHANNEL + '.InitiatorHandle'
 INITIATOR_ID = CHANNEL + '.InitiatorID'
 INTERFACES = CHANNEL + '.Interfaces'
 
+INITIAL_AUDIO = CHANNEL_TYPE_STREAMED_MEDIA + '.FUTURE.InitialAudio'
+INITIAL_VIDEO = CHANNEL_TYPE_STREAMED_MEDIA + '.FUTURE.InitialVideo'
+
 CONN = "org.freedesktop.Telepathy.Connection"
 CONN_IFACE_AVATARS = CONN + '.Interface.Avatars'
 CONN_IFACE_CAPS = CONN + '.Interface.Capabilities'
@@ -59,6 +62,7 @@ NOT_IMPLEMENTED = ERROR + '.NotImplemented'
 NOT_AVAILABLE = ERROR + '.NotAvailable'
 PERMISSION_DENIED = ERROR + '.PermissionDenied'
 OFFLINE = ERROR + '.Offline'
+NOT_CAPABLE = ERROR + '.NotCapable'
 
 TUBE_PARAMETERS = CHANNEL_IFACE_TUBE + '.Parameters'
 TUBE_STATE = CHANNEL_IFACE_TUBE + '.State'

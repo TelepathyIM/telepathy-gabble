@@ -34,6 +34,8 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
+#include "extensions/extensions.h"
+
 #include "caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
@@ -189,11 +191,6 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 
 }
 
-static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac,
-    GabbleJingleSession *sess, TpHandle maybe_peer, gboolean peer_in_rp);
-static void media_channel_closed_cb (GabbleMediaChannel *chan,
-    gpointer user_data);
-
 static gboolean
 _remove_sid_mapping (gpointer key, gpointer value, gpointer user_data)
 {
@@ -245,7 +242,9 @@ static GabbleMediaChannel *
 new_media_channel (GabbleMediaFactory *fac,
                    GabbleJingleSession *sess,
                    TpHandle maybe_peer,
-                   gboolean peer_in_rp)
+                   gboolean peer_in_rp,
+                   gboolean initial_audio,
+                   gboolean initial_video)
 {
   GabbleMediaFactoryPrivate *priv;
   TpBaseConnection *conn;
@@ -267,6 +266,8 @@ new_media_channel (GabbleMediaFactory *fac,
                        "session", sess,
                        "initial-peer", maybe_peer,
                        "peer-in-rp", peer_in_rp,
+                       "initial-audio", initial_audio,
+                       "initial-video", initial_video,
                        NULL);
 
   DEBUG ("object path %s", object_path);
@@ -329,7 +330,8 @@ new_jingle_session_cb (GabbleJingleFactory *jf, GabbleJingleSession *sess, gpoin
   if (gabble_jingle_session_get_content_type (sess) ==
       GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
-      GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer, FALSE);
+      GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer,
+          FALSE, FALSE, FALSE);
       tp_channel_manager_emit_new_channel (self,
           TP_EXPORTABLE_CHANNEL (chan), NULL);
     }
@@ -401,6 +403,8 @@ static const gchar * const media_channel_fixed_properties[] = {
 static const gchar * const named_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
+    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo",
     NULL
 };
 
@@ -442,6 +446,58 @@ typedef enum
 } RequestMethod;
 
 
+typedef struct
+{
+    GabbleMediaFactory *self;
+    GabbleMediaChannel *channel;
+    gpointer request_token;
+} MediaChannelRequest;
+
+
+static MediaChannelRequest *
+media_channel_request_new (GabbleMediaFactory *self,
+    GabbleMediaChannel *channel,
+    gpointer request_token)
+{
+  MediaChannelRequest *mcr = g_slice_new0 (MediaChannelRequest);
+
+  mcr->self = self;
+  mcr->channel = channel;
+  mcr->request_token = request_token;
+
+  return mcr;
+}
+
+static void
+media_channel_request_free (MediaChannelRequest *mcr)
+{
+  g_slice_free (MediaChannelRequest, mcr);
+}
+
+static void
+media_channel_request_succeeded_cb (MediaChannelRequest *mcr,
+    GPtrArray *streams)
+{
+  GSList *request_tokens;
+
+  request_tokens = g_slist_prepend (NULL, mcr->request_token);
+  tp_channel_manager_emit_new_channel (mcr->self,
+      TP_EXPORTABLE_CHANNEL (mcr->channel), request_tokens);
+  g_slist_free (request_tokens);
+
+  media_channel_request_free (mcr);
+}
+
+static void
+media_channel_request_failed_cb (MediaChannelRequest *mcr,
+    GError *error)
+{
+  tp_channel_manager_emit_request_failed (mcr->self, mcr->request_token,
+      error->domain, error->code, error->message);
+
+  media_channel_request_free (mcr);
+}
+
 static gboolean
 gabble_media_factory_requestotron (TpChannelManager *manager,
                                    gpointer request_token,
@@ -454,9 +510,8 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
   TpHandle handle;
   GabbleMediaChannel *channel = NULL;
   GError *error = NULL;
-  GSList *request_tokens;
-  gboolean require_target_handle;
-  gboolean add_peer_to_remote_pending;
+  gboolean require_target_handle, add_peer_to_remote_pending;
+  gboolean initial_audio, initial_video;
 
   /* Supported modes of operation:
    * - RequestChannel(None, 0):
@@ -503,6 +558,11 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
   handle = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
 
+  initial_audio = tp_asv_get_boolean (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio", NULL);
+  initial_video = tp_asv_get_boolean (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo", NULL);
+
   switch (handle_type)
     {
     case TP_HANDLE_TYPE_NONE:
@@ -522,7 +582,7 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
               &error))
         goto error;
 
-      channel = new_media_channel (self, NULL, 0, FALSE);
+      channel = new_media_channel (self, NULL, 0, FALSE, FALSE, FALSE);
       break;
 
     case TP_HANDLE_TYPE_CONTACT:
@@ -546,6 +606,9 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
 
               if (peer == handle)
                 {
+                  /* Per the spec, we ignore InitialAudio and InitialVideo when
+                   * looking for an existing channel.
+                   */
                   tp_channel_manager_emit_request_already_satisfied (self,
                       request_token, TP_EXPORTABLE_CHANNEL (channel));
                   return TRUE;
@@ -553,19 +616,19 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
             }
         }
 
-      channel = new_media_channel (self, NULL, handle, add_peer_to_remote_pending);
+      channel = new_media_channel (self, NULL, handle,
+          add_peer_to_remote_pending, initial_audio, initial_video);
       break;
-
     default:
       return FALSE;
     }
 
   g_assert (channel != NULL);
 
-  request_tokens = g_slist_prepend (NULL, request_token);
-  tp_channel_manager_emit_new_channel (self,
-      TP_EXPORTABLE_CHANNEL (channel), request_tokens);
-  g_slist_free (request_tokens);
+  gabble_media_channel_request_initial_streams (channel,
+      (GFunc) media_channel_request_succeeded_cb,
+      (GFunc) media_channel_request_failed_cb,
+      media_channel_request_new (self, channel, request_token));
 
   return TRUE;
 

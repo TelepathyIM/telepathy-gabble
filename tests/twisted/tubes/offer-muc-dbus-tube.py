@@ -6,7 +6,7 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern
+from servicetest import call_async, EventPattern, assertContains
 from gabbletest import exec_test, acknowledge_iq, elem
 import ns
 import constants as cs
@@ -234,7 +234,7 @@ def test(q, bus, conn, stream):
     # check that the tube channel is in the channels list
     all_channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
         dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
-    assert (path, prop) in all_channels
+    assertContains((path, prop), all_channels)
 
     tube_chan = bus.get_object(conn.bus_name, path)
     dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)

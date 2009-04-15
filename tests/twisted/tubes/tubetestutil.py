@@ -7,7 +7,7 @@ import os
 
 import dbus
 
-from servicetest import unwrap
+from servicetest import unwrap, assertContains
 from gabbletest import exec_test
 import constants as cs
 import bytestream
@@ -150,7 +150,7 @@ def check_NewChannels_signal(conn, args, channel_type, chan_path, contact_handle
     # check that the newly announced channel is in the channels list
     all_channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
         dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
-    assert (path, props) in all_channels
+    assertContains((path, props), all_channels)
 
 def check_channel_properties(q, bus, conn, channel, channel_type,
                              contact_handle, contact_id, state=None):

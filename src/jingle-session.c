@@ -1813,6 +1813,8 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
   c = create_content (sess, content_type, mtype,
       content_ns, transport_ns, name, NULL, NULL);
 
+  g_free (name);
+
   return c;
 }
 

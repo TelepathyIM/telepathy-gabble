@@ -191,12 +191,6 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 
 }
 
-static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac,
-    GabbleJingleSession *sess, TpHandle maybe_peer, gboolean peer_in_rp,
-    gboolean initial_audio, gboolean initial_video);
-static void media_channel_closed_cb (GabbleMediaChannel *chan,
-    gpointer user_data);
-
 static gboolean
 _remove_sid_mapping (gpointer key, gpointer value, gpointer user_data)
 {

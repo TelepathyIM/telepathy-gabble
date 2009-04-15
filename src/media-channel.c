@@ -1730,8 +1730,15 @@ destroy_request (struct _delayed_request_streams_ctx *ctx,
 
   g_array_free (ctx->types, TRUE);
   g_slice_free (struct _delayed_request_streams_ctx, ctx);
-  g_ptr_array_remove_fast (priv->delayed_request_streams, ctx);
+}
 
+static void
+destroy_and_remove_request (struct _delayed_request_streams_ctx *ctx)
+{
+  GabbleMediaChannelPrivate *priv = ctx->chan->priv;
+
+  destroy_request (ctx, NULL);
+  g_ptr_array_remove_fast (priv->delayed_request_streams, ctx);
 }
 
 static void media_channel_request_streams (GabbleMediaChannel *self,
@@ -1749,7 +1756,7 @@ repeat_request (struct _delayed_request_streams_ctx *ctx)
 
   ctx->timeout_id = 0;
   ctx->context = NULL;
-  destroy_request (ctx, NULL);
+  destroy_and_remove_request (ctx);
   return FALSE;
 }
 

@@ -2208,6 +2208,8 @@ session_terminated_cb (GabbleJingleSession *session,
   tp_group_mixin_change_members ((GObject *) channel,
       "", NULL, set, NULL, NULL, terminator, reason);
 
+  tp_intset_destroy (set);
+
   /* Ignore any Google relay session responses we're waiting for. */
   g_list_foreach (priv->stream_creation_datas, stream_creation_data_cancel,
       NULL);

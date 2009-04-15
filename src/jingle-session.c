@@ -1397,7 +1397,7 @@ _map_initial_contents (GabbleJingleSession *sess, ContentMapperFunc mapper,
 
   for (li = contents; li; li = li->next)
     {
-      const gchar *disposition;
+      gchar *disposition;
       GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (li->data);
 
       g_object_get (c, "disposition", &disposition, NULL);
@@ -1406,6 +1406,8 @@ _map_initial_contents (GabbleJingleSession *sess, ContentMapperFunc mapper,
         {
           mapper (sess, c, user_data);
         }
+
+      g_free (disposition);
     }
 
   g_list_free (contents);

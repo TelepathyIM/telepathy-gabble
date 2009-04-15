@@ -59,7 +59,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleMediaFactoryPrivate GabbleMediaFactoryPrivate;
 struct _GabbleMediaFactoryPrivate
 {
   GabbleConnection *conn;
@@ -73,14 +72,13 @@ struct _GabbleMediaFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MEDIA_FACTORY_GET_PRIVATE(o) \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_FACTORY, \
-                                GabbleMediaFactoryPrivate))
-
 static void
 gabble_media_factory_init (GabbleMediaFactory *fac)
 {
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (fac,
+      GABBLE_TYPE_MEDIA_FACTORY, GabbleMediaFactoryPrivate);
+
+  fac->priv = priv;
 
   priv->channels = g_ptr_array_sized_new (1);
   priv->channel_index = 0;
@@ -100,7 +98,7 @@ static void
 gabble_media_factory_dispose (GObject *object)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (object);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -133,7 +131,7 @@ gabble_media_factory_get_property (GObject    *object,
                                    GParamSpec *pspec)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (object);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -152,7 +150,7 @@ gabble_media_factory_set_property (GObject      *object,
                                    GParamSpec   *pspec)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (object);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -192,7 +190,7 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 }
 
 static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac,
-    GabbleJingleSession *sess, TpHandle maybe_peer);
+    GabbleJingleSession *sess, TpHandle maybe_peer, gboolean peer_in_rp);
 static void media_channel_closed_cb (GabbleMediaChannel *chan,
     gpointer user_data);
 
@@ -217,7 +215,7 @@ static void
 media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
 
   tp_channel_manager_emit_channel_closed_for_object (fac,
       TP_EXPORTABLE_CHANNEL (chan));
@@ -246,7 +244,8 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
 static GabbleMediaChannel *
 new_media_channel (GabbleMediaFactory *fac,
                    GabbleJingleSession *sess,
-                   TpHandle maybe_peer)
+                   TpHandle maybe_peer,
+                   gboolean peer_in_rp)
 {
   GabbleMediaFactoryPrivate *priv;
   TpBaseConnection *conn;
@@ -255,7 +254,7 @@ new_media_channel (GabbleMediaFactory *fac,
 
   g_assert (GABBLE_IS_MEDIA_FACTORY (fac));
 
-  priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  priv = fac->priv;
   conn = (TpBaseConnection *) priv->conn;
 
   object_path = g_strdup_printf ("%s/MediaChannel%u",
@@ -268,6 +267,7 @@ new_media_channel (GabbleMediaFactory *fac,
                        "object-path", object_path,
                        "session", sess,
                        "initial-peer", maybe_peer,
+                       "peer-in-rp", peer_in_rp,
                        NULL);
 
   DEBUG ("object path %s", object_path);
@@ -284,7 +284,7 @@ new_media_channel (GabbleMediaFactory *fac,
 static void
 gabble_media_factory_close_all (GabbleMediaFactory *fac)
 {
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
 
   DEBUG ("closing channels");
 
@@ -330,7 +330,7 @@ new_jingle_session_cb (GabbleJingleFactory *jf, GabbleJingleSession *sess, gpoin
   if (gabble_jingle_session_get_content_type (sess) ==
       GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
-      GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer);
+      GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer, FALSE);
       tp_channel_manager_emit_new_channel (self,
           TP_EXPORTABLE_CHANNEL (chan), NULL);
     }
@@ -342,7 +342,7 @@ connection_status_changed_cb (GabbleConnection *conn,
                               guint reason,
                               GabbleMediaFactory *self)
 {
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
+  GabbleMediaFactoryPrivate *priv = self->priv;
 
   switch (status)
     {
@@ -364,7 +364,7 @@ gabble_media_factory_constructed (GObject *object)
   void (*chain_up) (GObject *) =
       G_OBJECT_CLASS (gabble_media_factory_parent_class)->constructed;
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (object);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
+  GabbleMediaFactoryPrivate *priv = self->priv;
 
   if (chain_up != NULL)
     chain_up (object);
@@ -380,7 +380,7 @@ gabble_media_factory_foreach_channel (TpChannelManager *manager,
                                       gpointer user_data)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (manager);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
   guint i;
 
   for (i = 0; i < priv->channels->len; i++)
@@ -450,7 +450,7 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
                                    RequestMethod method)
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (self);
+  GabbleMediaFactoryPrivate *priv = self->priv;
   TpHandleType handle_type;
   TpHandle handle;
   GabbleMediaChannel *channel = NULL;
@@ -462,6 +462,8 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
   /* Supported modes of operation:
    * - RequestChannel(None, 0):
    *     channel is anonymous;
+   *     caller may optionally use AddMembers to add the peer to RemotePending
+   *     without sending them any XML;
    *     caller uses RequestStreams to set the peer and start the call.
    * - RequestChannel(Contact, n) where n != 0:
    *     channel has TargetHandle=n;
@@ -521,7 +523,7 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
               &error))
         goto error;
 
-      channel = new_media_channel (self, NULL, 0);
+      channel = new_media_channel (self, NULL, 0, FALSE);
       break;
 
     case TP_HANDLE_TYPE_CONTACT:
@@ -552,18 +554,7 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
             }
         }
 
-      channel = new_media_channel (self, NULL, handle);
-
-      if (add_peer_to_remote_pending)
-        {
-          if (!_gabble_media_channel_add_member ((GObject *) channel, handle,
-                "", &error))
-            {
-              gabble_media_channel_close (channel);
-              goto error;
-            }
-        }
-
+      channel = new_media_channel (self, NULL, handle, add_peer_to_remote_pending);
       break;
 
     default:

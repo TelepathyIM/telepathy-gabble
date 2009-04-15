@@ -98,6 +98,7 @@ enum
   PROP_HANDLE,
   PROP_TARGET_ID,
   PROP_INITIAL_PEER,
+  PROP_PEER_IN_RP,
   PROP_PEER,
   PROP_REQUESTED,
   PROP_CONNECTION,
@@ -140,6 +141,7 @@ struct _GabbleMediaChannelPrivate
   gchar *object_path;
   TpHandle creator;
   TpHandle initial_peer;
+  gboolean peer_in_rp;
 
   GabbleMediaFactory *factory;
   GabbleJingleSession *session;
@@ -307,12 +309,9 @@ gabble_media_channel_constructor (GType type, guint n_props,
   g_assert (priv->creator != 0);
   tp_handle_ref (contact_handles, priv->creator);
 
-  set = tp_intset_new ();
-  tp_intset_add (set, priv->creator);
-
+  set = tp_intset_new_containing (priv->creator);
   tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0,
       TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
   tp_intset_destroy (set);
 
   /* We implement the 0.17.6 properties correctly */
@@ -346,12 +345,9 @@ gabble_media_channel_constructor (GType type, guint n_props,
        * group flags (all we can do is add or remove ourselves, which is always
        * valid per the spec)
        */
-      set = tp_intset_new ();
-      tp_intset_add (set, ((TpBaseConnection *) priv->conn)->self_handle);
-
+      set = tp_intset_new_containing (conn->self_handle);
       tp_group_mixin_change_members (obj, "", NULL, NULL, set, NULL,
           priv->session->peer, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
-
       tp_intset_destroy (set);
 
       /* Set up signal callbacks, emit session handler, initialize streams */
@@ -360,20 +356,37 @@ gabble_media_channel_constructor (GType type, guint n_props,
     }
   else
     {
-      /* This is an outgoing call. We'll set CanAdd here, in case the UI is
-       * using the "RequestChannel(StreamedMedia, HandleTypeNone, 0);
-       * AddMembers([h], ""); RequestStreams(h, [...])" legacy API. If the
-       * channel request came via one of the APIs where the peer is added
-       * immediately, that'll happen in media-factory.c before the channel is
-       * returned, and CanAdd will be cleared.
-       *
-       * If this channel was made with Create or Ensure, the CanAdd flag will
-       * stick around, but it shouldn't.
-       *
-       * FIXME: refactor this so we know which calling convention is in use
-       *        here, rather than poking it from media-factory.c.
-       */
-      tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+      /* This is an outgoing call. */
+
+      if (priv->initial_peer != 0)
+        {
+          if (priv->peer_in_rp)
+            {
+              /* This channel was created with RequestChannel(SM, Contact, h)
+               * so the peer should start out in remote pending.
+               */
+              set = tp_intset_new_containing (priv->initial_peer);
+              tp_group_mixin_change_members (obj, "", NULL, NULL, NULL, set,
+                  conn->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+              tp_intset_destroy (set);
+            }
+
+          /* else this channel was created with CreateChannel or EnsureChannel,
+           * so don't.
+           */
+        }
+      else
+        {
+          /* This channel was created with RequestChannel(SM, None, 0). */
+
+          /* The peer can't be in remote pending */
+          g_assert (!priv->peer_in_rp);
+
+          /* The UI may call AddMembers([h], "") before calling
+           * RequestStreams(h, [...]).
+           */
+          tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+        }
     }
 
   return obj;
@@ -552,6 +565,9 @@ gabble_media_channel_set_property (GObject     *object,
         }
 
       break;
+    case PROP_PEER_IN_RP:
+      priv->peer_in_rp = g_value_get_boolean (value);
+      break;
     case PROP_SESSION:
       g_assert (priv->session == NULL);
       priv->session = g_value_dup_object (value);
@@ -582,8 +598,13 @@ gabble_media_channel_set_property (GObject     *object,
 
 static void gabble_media_channel_dispose (GObject *object);
 static void gabble_media_channel_finalize (GObject *object);
+static gboolean gabble_media_channel_add_member (GObject *obj,
+    TpHandle handle,
+    const gchar *message,
+    GError **error);
 static gboolean gabble_media_channel_remove_member (GObject *obj,
     TpHandle handle, const gchar *message, guint reason, GError **error);
+static void gabble_media_channel_close (GabbleMediaChannel *self);
 
 static void
 gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_class)
@@ -647,6 +668,15 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       0, G_MAXUINT32, 0,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIAL_PEER, param_spec);
+
+  param_spec = g_param_spec_boolean ("peer-in-rp",
+      "Peer initially in Remote Pending?",
+      "True if the channel was created with the most-deprecated "
+      "RequestChannels form, and so the peer should be in Remote Pending "
+      "before any XML has been sent.",
+      FALSE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_PEER_IN_RP, param_spec);
 
   param_spec = g_param_spec_uint ("peer", "Other participant",
       "The TpHandle representing the other participant in the channel if "
@@ -736,9 +766,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 
   tp_group_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
-      _gabble_media_channel_add_member, NULL);
+      gabble_media_channel_add_member, NULL);
   tp_group_mixin_class_set_remove_with_reason_func (object_class,
       gabble_media_channel_remove_member);
+  tp_group_mixin_class_allow_self_removal (object_class);
+
   tp_group_mixin_init_dbus_properties (object_class);
 }
 
@@ -810,7 +842,7 @@ gabble_media_channel_finalize (GObject *object)
 
 
 /**
- * gabble_media_channel_close
+ * gabble_media_channel_close_async:
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
@@ -826,31 +858,23 @@ gabble_media_channel_close_async (TpSvcChannel *iface,
   tp_svc_channel_return_from_close (context);
 }
 
-void
+static void
 gabble_media_channel_close (GabbleMediaChannel *self)
 {
-  GabbleMediaChannelPrivate *priv;
+  GabbleMediaChannelPrivate *priv = self->priv;
 
   DEBUG ("called on %p", self);
 
-  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
-
-  priv = self->priv;
-
-  if (priv->closed)
+  if (!priv->closed)
     {
-      return;
+      priv->closed = TRUE;
+
+      if (priv->session != NULL)
+        gabble_jingle_session_terminate (priv->session,
+            TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
+
+      tp_svc_channel_emit_closed (self);
     }
-
-  priv->closed = TRUE;
-
-  if (priv->session)
-    {
-      gabble_jingle_session_terminate (priv->session,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
-    }
-
-  tp_svc_channel_emit_closed (self);
 }
 
 
@@ -1878,25 +1902,26 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   return TRUE;
 }
 
-gboolean
-_gabble_media_channel_add_member (GObject *obj,
-                                  TpHandle handle,
-                                  const gchar *message,
-                                  GError **error)
+static gboolean
+gabble_media_channel_add_member (GObject *obj,
+    TpHandle handle,
+    const gchar *message,
+    GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = chan->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
+  TpIntSet *set;
 
   /* did we create this channel? */
   if (priv->creator == mixin->self_handle)
     {
       GError *error_ = NULL;
-      TpIntSet *set;
       gboolean wait;
 
-      /* yes: check we don't have a peer already, invite this onis one */
-
+      /* yes: check we don't have a peer already, and if not add this one to
+       * remote pending (but don't send an invitation yet).
+       */
       if (priv->session != NULL)
         {
           TpHandle peer;
@@ -1931,18 +1956,14 @@ _gabble_media_channel_add_member (GObject *obj,
         }
 
       /* make the peer remote pending */
-      set = tp_intset_new ();
-      tp_intset_add (set, handle);
-
+      set = tp_intset_new_containing (handle);
       tp_group_mixin_change_members (obj, "", NULL, NULL, NULL, set,
           mixin->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
-
       tp_intset_destroy (set);
 
-      /* and update flags accordingly */
-      tp_group_mixin_change_flags (obj,
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
-          TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+      /* and remove CanAdd, since it was only here to allow this deprecated
+       * API. */
+      tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
       return TRUE;
     }
@@ -1957,20 +1978,11 @@ _gabble_media_channel_add_member (GObject *obj,
         {
           /* yes: accept the request */
 
-          TpIntSet *set;
-
           /* make us a member */
-          set = tp_intset_new ();
-          tp_intset_add (set, handle);
-
+          set = tp_intset_new_containing (handle);
           tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL,
               handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
           tp_intset_destroy (set);
-
-          /* update flags */
-          tp_group_mixin_change_flags (obj,
-              0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
           /* accept any local pending sends */
           g_ptr_array_foreach (priv->streams,
@@ -1999,31 +2011,36 @@ gabble_media_channel_remove_member (GObject *obj,
   GabbleMediaChannelPrivate *priv = chan->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
+  /* We don't set CanRemove, and did allow self removal. So tp-glib should
+   * ensure this.
+   */
+  g_assert (handle == mixin->self_handle);
+
+  /* Closing up might make GabbleMediaFactory release its ref. */
+  g_object_ref (chan);
+
   if (priv->session == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "handle %u cannot be removed in the current state", handle);
-
-      return FALSE;
+      /* The call didn't even start yet; close up. */
+      gabble_media_channel_close (chan);
     }
-
-  if (priv->creator != mixin->self_handle &&
-      handle != mixin->self_handle)
+  else
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-          "handle %u cannot be removed because you are not the creator of the"
-          " channel", handle);
-
-      return FALSE;
+      /* Terminate can fail if the UI provides a reason that makes no sense,
+       * like Invited.
+       */
+      if (!gabble_jingle_session_terminate (priv->session, reason, error))
+        {
+          g_object_unref (chan);
+          return FALSE;
+        }
     }
 
-  if (!gabble_jingle_session_terminate (priv->session, reason, error))
-    return FALSE;
+  /* Remove CanAdd if it was there for the deprecated anonymous channel
+   * semantics, since the channel will go away RSN. */
+  tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
-  /* We're terminating the session, any further changes to the members are
-   * meaningless, since the channel will go away RSN. */
-  tp_group_mixin_change_flags (obj, 0,
-      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+  g_object_unref (chan);
 
   return TRUE;
 }
@@ -2062,14 +2079,6 @@ session_terminated_cb (GabbleJingleSession *session,
 
   tp_group_mixin_change_members ((GObject *) channel,
       "", NULL, set, NULL, NULL, terminator, reason);
-
-  /* update flags accordingly -- no operations are meaningful any more, because
-   * the channel is about to close.
-   */
-  tp_group_mixin_change_flags ((GObject *) channel, 0,
-      TP_CHANNEL_GROUP_FLAG_CAN_ADD |
-      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
-      TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 
   /* Ignore any Google relay session responses we're waiting for. */
   g_list_foreach (priv->stream_creation_datas, stream_creation_data_cancel,
@@ -2113,6 +2122,7 @@ session_state_changed_cb (GabbleJingleSession *session,
                           GParamSpec *arg1,
                           GabbleMediaChannel *channel)
 {
+  GObject *as_object = (GObject *) channel;
   GabbleMediaChannelPrivate *priv = channel->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   JingleSessionState state;
@@ -2126,9 +2136,7 @@ session_state_changed_cb (GabbleJingleSession *session,
                 "peer", &peer,
                 NULL);
 
-  set = tp_intset_new ();
-
-  tp_intset_add (set, peer);
+  set = tp_intset_new_containing (peer);
 
   if (state >= JS_STATE_PENDING_INITIATE_SENT &&
       state < JS_STATE_ACTIVE &&
@@ -2137,12 +2145,13 @@ session_state_changed_cb (GabbleJingleSession *session,
       /* The first time we send anything to the other user, they materialise
        * in remote-pending if necessary */
 
-      tp_group_mixin_change_members ((GObject *) channel, "", NULL, NULL, NULL,
-          set, mixin->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+      tp_group_mixin_change_members (as_object, "", NULL, NULL, NULL, set,
+          mixin->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
-      tp_group_mixin_change_flags ((GObject *) channel,
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
-          TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+      /* Remove CanAdd if it happened to be there to support deprecated
+       * RequestChannel(..., 0) followed by AddMembers([h], ...) semantics.
+       */
+      tp_group_mixin_change_flags (as_object, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
     }
 
   if (state == JS_STATE_ACTIVE &&
@@ -2152,16 +2161,8 @@ session_state_changed_cb (GabbleJingleSession *session,
       DEBUG ("adding peer to the member list and updating flags");
 
       /* add the peer to the member list */
-      tp_group_mixin_change_members ((GObject *) channel,
-          "", set, NULL, NULL, NULL, peer,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
-      /* update flags accordingly -- allow removal, deny adding and
-       * rescinding */
-      tp_group_mixin_change_flags ((GObject *) channel,
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
-          TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
-
+      tp_group_mixin_change_members (as_object, "", set, NULL, NULL, NULL,
+          peer, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
     }
 
   tp_intset_destroy (set);

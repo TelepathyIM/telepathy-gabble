@@ -182,16 +182,44 @@ static gboolean contact_is_media_capable (GabbleMediaChannel *chan, TpHandle pee
 static void stream_creation_data_cancel (gpointer p, gpointer unused);
 
 static void
-_create_streams (GabbleMediaChannel *chan)
+create_initial_streams (GabbleMediaChannel *chan)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   GList *contents, *li;
 
   contents = gabble_jingle_session_get_contents (priv->session);
+
   for (li = contents; li; li = li->next)
     {
-      create_stream_from_content (chan, GABBLE_JINGLE_CONTENT (li->data));
+      GabbleJingleContent *c = li->data;
+
+      /* I'm so sorry. */
+      if (G_OBJECT_TYPE (c) == GABBLE_TYPE_JINGLE_MEDIA_RTP)
+        {
+          guint media_type;
+
+          g_object_get (c, "media-type", &media_type, NULL);
+
+          switch (media_type)
+            {
+            case JINGLE_MEDIA_TYPE_AUDIO:
+              priv->initial_audio = TRUE;
+              break;
+            case JINGLE_MEDIA_TYPE_VIDEO:
+              priv->initial_video = TRUE;
+              break;
+            default:
+              /* smell? */
+              DEBUG ("unknown rtp media type %u", media_type);
+            }
+        }
+
+      create_stream_from_content (chan, c);
     }
+
+  DEBUG ("initial_audio: %s, initial_video: %s",
+      priv->initial_audio ? "true" : "false",
+      priv->initial_video ? "true" : "false");
 
   g_list_free (contents);
 }
@@ -319,9 +347,11 @@ gabble_media_channel_constructor (GType type, guint n_props,
           priv->session->peer, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
       tp_intset_destroy (set);
 
-      /* Set up signal callbacks, emit session handler, initialize streams */
+      /* Set up signal callbacks, emit session handler, initialize streams,
+       * figure out InitialAudio and InitialVideo
+       */
       _latch_to_session (GABBLE_MEDIA_CHANNEL (obj));
-      _create_streams (GABBLE_MEDIA_CHANNEL (obj));
+      create_initial_streams (GABBLE_MEDIA_CHANNEL (obj));
     }
   else
     {

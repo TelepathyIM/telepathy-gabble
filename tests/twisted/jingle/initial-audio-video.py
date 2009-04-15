@@ -1,5 +1,7 @@
 """
-Tests outgoing calls created with InitialAudio and/or InitialVideo.
+Tests outgoing calls created with InitialAudio and/or InitialVideo, and
+exposing the initial contents of incoming calls as values of InitialAudio and
+InitialVideo
 """
 
 from servicetest import (
@@ -11,7 +13,7 @@ from jingletest2 import JingleTest2, test_all_dialects
 
 import constants as cs
 
-def test(jp, q, bus, conn, stream):
+def outgoing(jp, q, bus, conn, stream):
     remote_jid = 'flames@cold.mountain/beyond'
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
     jt.prepare()
@@ -128,5 +130,34 @@ def check_iav(jt, q, conn, bus, stream, remote_handle, initial_audio,
 
         chan.Close()
 
+def incoming(jp, q, bus, conn, stream):
+    remote_jid = 'skinny.fists@heaven/antennas'
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
+    jt.prepare()
+
+    self_handle = conn.GetSelfHandle()
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
+
+    for a, v in [(True, False), (False, True), (True, True)]:
+        if v and jp.is_gtalk():
+            continue
+
+        jt.incoming_call(audio=a, video=v)
+        e = q.expect('dbus-signal', signal='NewChannels')
+        chans = e.args[0]
+        assertLength(1, chans)
+
+        path, props = chans[0]
+
+        assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA, props[cs.CHANNEL_TYPE])
+        assertEquals(a, props[cs.INITIAL_AUDIO])
+        assertEquals(v, props[cs.INITIAL_VIDEO])
+
+        chan = wrap_channel(bus.get_object(conn.bus_name, path),
+            cs.CHANNEL_TYPE_STREAMED_MEDIA)
+        chan.Close()
+
+
 if __name__ == '__main__':
-    test_all_dialects(test)
+    test_all_dialects(outgoing)
+    test_all_dialects(incoming)

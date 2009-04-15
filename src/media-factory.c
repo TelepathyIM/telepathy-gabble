@@ -330,7 +330,6 @@ new_jingle_session_cb (GabbleJingleFactory *jf, GabbleJingleSession *sess, gpoin
   if (gabble_jingle_session_get_content_type (sess) ==
       GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
-      /* FIXME: set initial_audio and initial_video */
       GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer,
           FALSE, FALSE, FALSE);
       tp_channel_manager_emit_new_channel (self,

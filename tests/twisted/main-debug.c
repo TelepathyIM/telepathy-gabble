@@ -33,7 +33,7 @@ main (int argc,
   /* needed for test-disco-no-reply.py */
   gabble_connection_set_disco_reply_timeout (3000);
 
-  gabble_set_jingle_session_timeout (500);
+  gabble_set_jingle_session_timeout (1500);
 
   g_type_init ();
   gibber_resolver_set_resolver (GABBLE_TYPE_RESOLVER_FAKE);

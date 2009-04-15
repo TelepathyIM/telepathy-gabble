@@ -192,6 +192,13 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestr
     assert cs.TUBE_PARAMETERS not in tube_props
     assert cs.TUBE_STATE not in tube_props
 
+    # get the list of all channels to check that newly announced ones are in it
+    all_channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
+        dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
+
+    for path, props in new_channel_details:
+        assert (path, props) in all_channels, (path, props)
+
     # Under the current implementation, creating a new-style Tube channel
     # ensures that an old-style Tubes channel exists, even though Tube channels
     # aren't visible on the Tubes channel until they're offered.  Another

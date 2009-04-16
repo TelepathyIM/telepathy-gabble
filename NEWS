@@ -3,6 +3,9 @@ telepathy-gabble 0.7.27 (UNRELEASED)
 
 Dependencies:
 
+* We now explicitely depends on gthread-2.0 >= 2.16 as we need to initialize
+  threads for libsoup's benefit (fd.o #20937)
+
 Enhancements:
 
 Fixes:

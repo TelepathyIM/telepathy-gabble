@@ -1383,6 +1383,13 @@ connection_disconnected_cb (LmConnection *lmconn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
+
+  /* Under certain circumstances, Loudmouth would end up calling this twice,
+   * because sometimes it calls it in response to a stream error, and sometimes
+   * it doesn't. (It depends on the error!) We don't want this to be called
+   * twice, so:
+   */
+  lm_connection_set_disconnect_function (lmconn, NULL, NULL, NULL);
 }
 
 

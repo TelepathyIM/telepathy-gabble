@@ -341,7 +341,8 @@ def install_colourer():
     return sys.stdout
 
 
-def exec_test_deferred (funs, params, protocol=None, timeout=None):
+def exec_test_deferred (funs, params, protocol=None, timeout=None,
+                        authenticator=None):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
     colourer = None
@@ -356,7 +357,8 @@ def exec_test_deferred (funs, params, protocol=None, timeout=None):
 
     bus = dbus.SessionBus()
     # conn = make_connection(bus, queue.append, params)
-    (stream, port) = make_stream(queue.append, protocol=protocol)
+    (stream, port) = make_stream(queue.append, protocol=protocol,
+        authenticator=authenticator)
 
     error = None
 
@@ -384,12 +386,15 @@ def exec_test_deferred (funs, params, protocol=None, timeout=None):
     except dbus.DBusException, e:
         pass
 
-def exec_tests(funs, params=None, protocol=None, timeout=None):
-  reactor.callWhenRunning (exec_test_deferred, funs, params, protocol, timeout)
+def exec_tests(funs, params=None, protocol=None, timeout=None,
+               authenticator=None):
+  reactor.callWhenRunning (exec_test_deferred, funs, params, protocol, timeout,
+    authenticator)
   reactor.run()
 
-def exec_test(fun, params=None, protocol=None, timeout=None):
-  exec_tests([fun], params, protocol, timeout)
+def exec_test(fun, params=None, protocol=None, timeout=None,
+              authenticator=None):
+  exec_tests([fun], params, protocol, timeout, authenticator)
 
 # Useful routines for server-side vCard handling
 current_vcard = domish.Element(('vcard-temp', 'vCard'))

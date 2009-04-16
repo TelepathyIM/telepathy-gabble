@@ -1704,23 +1704,39 @@ connection_stream_error_cb (LmMessageHandler *handler,
                             gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  LmMessageNode *conflict_node;
+  TpConnectionStatusReason r = TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
 
   g_assert (connection == conn->lmconn);
 
   NODE_DEBUG (message->node, "got stream error");
 
-  conflict_node = lm_message_node_get_child (message->node, "conflict");
-  if (conflict_node)
+  if (lm_message_node_get_child (message->node, "conflict") != NULL)
     {
-      DEBUG ("found conflict node, emiting status change");
+      /* Another client with the same resource just appeared, we're going down.
+       */
+      DEBUG ("found <conflict> node");
+      r = TP_CONNECTION_STATUS_REASON_NAME_IN_USE;
+    }
+  else if (lm_message_node_get_child (message->node, "host-unknown") != NULL)
+    {
+      /* If we get this while we're logging in, it's because we're trying to
+       * connect to foo@bar.com but the server doesn't know about bar.com,
+       * probably because the user entered a non-GTalk JID into a GTalk profile
+       * that forces the server.
+       */
+      if (conn->parent.status == TP_CONNECTION_STATUS_CONNECTING)
+        {
+          DEBUG ("found <host-unknown> and we're connecting");
+          r = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+        }
+    }
 
-      /* Another client with the same resource just
-       * appeared, we're going down. */
-        tp_base_connection_change_status ((TpBaseConnection *) conn,
-            TP_CONNECTION_STATUS_DISCONNECTED,
-            TP_CONNECTION_STATUS_REASON_NAME_IN_USE);
-        return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  if (r != TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED)
+    {
+      DEBUG ("changing status to Disconnected for reason %u", r);
+
+      tp_base_connection_change_status ((TpBaseConnection *) conn,
+          TP_CONNECTION_STATUS_DISCONNECTED, r);
     }
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

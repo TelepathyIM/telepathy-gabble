@@ -8,6 +8,8 @@ Dependencies:
 
 Enhancements:
 
+* Support file transfer resume.
+
 Fixes:
 
 * Include private D-Bus tube and muc tube channels in Requests's Channels property.

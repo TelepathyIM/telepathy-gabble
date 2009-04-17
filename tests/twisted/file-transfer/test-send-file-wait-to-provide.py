@@ -2,8 +2,8 @@ import constants as cs
 from file_transfer_helper import SendFileTest, exec_file_transfer_test
 
 class SendFileTransferWaitToProvideTest(SendFileTest):
-    def __init__(self, bytestream_cls, address_type, access_control, acces_control_param):
-        SendFileTest.__init__(self, bytestream_cls, address_type, access_control, acces_control_param)
+    def __init__(self, bytestream_cls, file, address_type, access_control, acces_control_param):
+        SendFileTest.__init__(self, bytestream_cls, file, address_type, access_control, acces_control_param)
 
         self._actions =  [self.connect, self.check_ft_available, self.announce_contact,
             self.check_ft_available, self.request_ft_channel, self.create_ft_channel, self.got_send_iq,
@@ -27,8 +27,7 @@ class SendFileTransferWaitToProvideTest(SendFileTest):
 
         e = self.q.expect('dbus-signal', signal='InitialOffsetDefined')
         offset = e.args[0]
-        # We don't support resume
-        assert offset == 0
+        assert offset == self.file.offset
 
         # Channel is open. We can start to send the file
         e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')

@@ -660,7 +660,8 @@ gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
  if (presence == NULL)
    return;
 
- if (g_hash_table_lookup (presence->per_channel_manager_caps, manager) == NULL)
+ if (!GPOINTER_TO_INT (g_hash_table_lookup (presence->per_channel_manager_caps,
+         manager)))
    return;
 
   /* FT is supported */
@@ -686,10 +687,10 @@ gabble_ft_manager_parse_caps (GabbleCapsChannelManager *manager,
         continue;
 
       if (!tp_strdiff (var, NS_FILE_TRANSFER))
-        return GUINT_TO_POINTER (TRUE);
+        return GINT_TO_POINTER (TRUE);
     }
 
-  return NULL;
+  return GINT_TO_POINTER (FALSE);
 }
 
 static void

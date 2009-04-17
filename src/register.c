@@ -248,8 +248,9 @@ get_reply_cb (GabbleConnection *conn,
   gint err_code = -1;
   const gchar *err_msg = NULL;
   LmMessage *msg = NULL;
-  LmMessageNode *query_node;
+  LmMessageNode *query_node, *child;
   gchar *username, *password;
+  gboolean username_required = FALSE, password_required = FALSE;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -259,25 +260,38 @@ get_reply_cb (GabbleConnection *conn,
       goto OUT;
     }
 
-  /* sanity check the reply to some degree ... */
   query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
       "query", NS_REGISTER);
 
   if (query_node == NULL)
-    goto ERROR_MALFORMED_REPLY;
+    {
+      err_code = TP_ERROR_NOT_AVAILABLE;
+      err_msg = "malformed reply from server";
+      goto OUT;
+    }
 
-  if (!lm_message_node_get_child (query_node, "username"))
-    goto ERROR_MALFORMED_REPLY;
+  for (child = query_node->children; child != NULL; child = child->next)
+    {
+      const gchar *n = lm_message_node_get_name (child);
 
-  if (!lm_message_node_get_child (query_node, "password"))
-    goto ERROR_MALFORMED_REPLY;
+      if (!tp_strdiff (n, "username"))
+        {
+          username_required = TRUE;
+        }
+      else if (!tp_strdiff (n, "password"))
+        {
+          password_required = TRUE;
+        }
+      else if (tp_strdiff (n, "instructions"))
+        {
+          DEBUG ("field %s is not username, password or instructions", n);
+          DEBUG ("we can't support registering with this server :'(");
 
-  /* FIXME: "The requesting entity MUST provide information for all of the
-   *        elements (other than <instructions/>) contained in the IQ result."
-   *        What should we do if the IQ contains <email/> or something else
-   *        that we can't provide? Currently we just submit the form anyway and
-   *        hope for the best.
-   */
+          err_code = TP_ERROR_NOT_AVAILABLE;
+          err_msg = "server requires information that Gabble can't supply";
+          goto OUT;
+        }
+    }
 
   /* craft a reply */
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
@@ -303,12 +317,6 @@ get_reply_cb (GabbleConnection *conn,
       err_code = error->code;
       err_msg = error->message;
     }
-
-  goto OUT;
-
-ERROR_MALFORMED_REPLY:
-  err_code = TP_ERROR_NOT_AVAILABLE;
-  err_msg = "Malformed reply";
 
 OUT:
   if (err_code != -1)

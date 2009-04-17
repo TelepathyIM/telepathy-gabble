@@ -288,6 +288,14 @@ get_reply_cb (GabbleConnection *conn,
         }
     }
 
+  if (!username_required || !password_required)
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "server inexplicably doesn't require username and password");
+
+      goto OUT;
+    }
+
   /* craft a reply */
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_SET);

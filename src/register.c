@@ -245,8 +245,6 @@ get_reply_cb (GabbleConnection *conn,
   GabbleRegister *reg = GABBLE_REGISTER (object);
   GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
   GError *error = NULL;
-  gint err_code = -1;
-  const gchar *err_msg = NULL;
   LmMessage *msg = NULL;
   LmMessageNode *query_node, *child;
   gchar *username, *password;
@@ -254,9 +252,8 @@ get_reply_cb (GabbleConnection *conn,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      err_code = TP_ERROR_NOT_AVAILABLE;
-      err_msg = "Server doesn't support " NS_REGISTER;
-
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Server doesn't support " NS_REGISTER);
       goto OUT;
     }
 
@@ -265,8 +262,8 @@ get_reply_cb (GabbleConnection *conn,
 
   if (query_node == NULL)
     {
-      err_code = TP_ERROR_NOT_AVAILABLE;
-      err_msg = "malformed reply from server";
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "malformed reply from server");
       goto OUT;
     }
 
@@ -284,11 +281,9 @@ get_reply_cb (GabbleConnection *conn,
         }
       else if (tp_strdiff (n, "instructions"))
         {
-          DEBUG ("field %s is not username, password or instructions", n);
-          DEBUG ("we can't support registering with this server :'(");
-
-          err_code = TP_ERROR_NOT_AVAILABLE;
-          err_msg = "server requires information that Gabble can't supply";
+          error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "server requires information (%s) that Gabble can't supply",
+              n);
           goto OUT;
         }
     }
@@ -311,24 +306,20 @@ get_reply_cb (GabbleConnection *conn,
   g_free (username);
   g_free (password);
 
-  if (!_gabble_connection_send_with_reply (priv->conn, msg, set_reply_cb,
-                                           G_OBJECT (reg), NULL, &error))
-    {
-      err_code = error->code;
-      err_msg = error->message;
-    }
+  _gabble_connection_send_with_reply (priv->conn, msg, set_reply_cb,
+      G_OBJECT (reg), NULL, &error);
 
 OUT:
-  if (err_code != -1)
+  if (error != NULL)
     {
-      g_signal_emit (reg, signals[FINISHED], 0, FALSE, err_code, err_msg);
+      DEBUG ("failed: %s", error->message);
+      g_signal_emit (reg, signals[FINISHED], 0, FALSE, error->code,
+          error->message);
+      g_error_free (error);
     }
 
   if (msg)
     lm_message_unref (msg);
-
-  if (error)
-    g_error_free (error);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

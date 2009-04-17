@@ -406,6 +406,9 @@ def assertEquals(expected, value):
 def assertContains(element, value):
     assert element in value, "expected: %r in %r" % (element, value)
 
+def assertDoesNotContain(element, value):
+    assert element not in value, "expected: %r not in %r" % (element, value)
+
 def assertLength(length, value):
     assert len(value) == length, \
         "expected: length %d, got length %d (%r)" % (length, len(value), value)

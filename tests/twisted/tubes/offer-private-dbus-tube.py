@@ -4,7 +4,8 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, unwrap, watch_tube_signals
+from servicetest import call_async, EventPattern, unwrap, watch_tube_signals,\
+    assertContains
 from gabbletest import sync_stream, make_presence
 import constants as cs
 import tubetestutil as t
@@ -191,6 +192,13 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestr
     assert cs.DBUS_TUBE_DBUS_NAMES not in tube_props
     assert cs.TUBE_PARAMETERS not in tube_props
     assert cs.TUBE_STATE not in tube_props
+
+    # get the list of all channels to check that newly announced ones are in it
+    all_channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
+        dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
+
+    for path, props in new_channel_details:
+        assertContains((path, props), all_channels)
 
     # Under the current implementation, creating a new-style Tube channel
     # ensures that an old-style Tubes channel exists, even though Tube channels

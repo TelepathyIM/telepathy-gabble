@@ -43,11 +43,15 @@ INITIATOR_HANDLE = CHANNEL + '.InitiatorHandle'
 INITIATOR_ID = CHANNEL + '.InitiatorID'
 INTERFACES = CHANNEL + '.Interfaces'
 
+INITIAL_AUDIO = CHANNEL_TYPE_STREAMED_MEDIA + '.FUTURE.InitialAudio'
+INITIAL_VIDEO = CHANNEL_TYPE_STREAMED_MEDIA + '.FUTURE.InitialVideo'
+
 CONN = "org.freedesktop.Telepathy.Connection"
 CONN_IFACE_AVATARS = CONN + '.Interface.Avatars'
 CONN_IFACE_CAPS = CONN + '.Interface.Capabilities'
 CONN_IFACE_CONTACTS = CONN + '.Interface.Contacts'
 CONN_IFACE_CONTACT_CAPS = CONN + '.Interface.ContactCapabilities.DRAFT'
+CONN_IFACE_SIMPLE_PRESENCE = CONN + '.Interface.SimplePresence'
 CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
 
 STREAM_HANDLER = 'org.freedesktop.Telepathy.Media.StreamHandler'
@@ -58,6 +62,7 @@ NOT_IMPLEMENTED = ERROR + '.NotImplemented'
 NOT_AVAILABLE = ERROR + '.NotAvailable'
 PERMISSION_DENIED = ERROR + '.PermissionDenied'
 OFFLINE = ERROR + '.Offline'
+NOT_CAPABLE = ERROR + '.NotCapable'
 
 TUBE_PARAMETERS = CHANNEL_IFACE_TUBE + '.Parameters'
 TUBE_STATE = CHANNEL_IFACE_TUBE + '.State'
@@ -201,3 +206,6 @@ CSR_CERT_HOSTNAME_MISMATCH = 10
 CSR_CERT_FINGERPRINT_MISMATCH = 11
 CSR_CERT_SELF_SIGNED = 12
 CSR_CERT_OTHER_ERROR = 13
+
+BUDDY_INFO = 'org.laptop.Telepathy.BuddyInfo'
+ACTIVITY_PROPERTIES = 'org.laptop.Telepathy.ActivityProperties'

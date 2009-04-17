@@ -353,15 +353,31 @@ class JingleTest2:
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
 
-    def incoming_call(self):
+    def incoming_call(self, audio=True, video=False):
+        assert audio or video
+
         jp = self.jp
-        node = jp.SetIq(self.peer, self.jid, [
-            jp.Jingle(self.sid, self.peer, 'session-initiate', [
+        contents = []
+        if audio:
+            contents.append(
                 jp.Content('stream1', 'initiator', 'both', [
                     jp.Description('audio', [
                         jp.PayloadType(name, str(rate), str(id)) for
                             (name, id, rate) in self.audio_codecs ]),
-                jp.TransportGoogleP2P() ]) ]) ])
+                    jp.TransportGoogleP2P() ])
+                )
+        if video:
+            assert not jp.is_gtalk()
+            contents.append(
+                jp.Content('stream2', 'initiator', 'both', [
+                    jp.Description('video', [
+                        jp.PayloadType(name, str(rate), str(id)) for
+                            (name, id, rate) in self.video_codecs ]),
+                    jp.TransportGoogleP2P() ])
+                )
+        node = jp.SetIq(self.peer, self.jid, [
+            jp.Jingle(self.sid, self.peer, 'session-initiate', contents),
+            ])
         self.stream.send(jp.xml(node))
 
     def set_sid_from_initiate(self, query):

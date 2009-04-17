@@ -103,6 +103,7 @@ enum
   PROP_AVAILABLE_SOCKET_TYPES,
   PROP_TRANSFERRED_BYTES,
   PROP_INITIAL_OFFSET,
+  PROP_RESUME_SUPPORTED,
 
   PROP_CONNECTION,
   PROP_BYTESTREAM,
@@ -122,6 +123,7 @@ struct _GabbleFileTransferChannelPrivate {
   GValue *socket_address;
   TpHandle initiator;
   gboolean remote_accepted;
+  gboolean resume_supported;
 
   GabbleBytestreamIface *bytestream;
   GibberListener *listener;
@@ -259,8 +261,11 @@ gabble_file_transfer_channel_get_property (GObject *object,
       case PROP_DATE:
         g_value_set_uint64 (value, self->priv->date);
         break;
-     case PROP_CHANNEL_DESTROYED:
+      case PROP_CHANNEL_DESTROYED:
         g_value_set_boolean (value, self->priv->closed);
+        break;
+      case PROP_RESUME_SUPPORTED:
+        g_value_set_boolean (value, self->priv->resume_supported);
         break;
       case PROP_CHANNEL_PROPERTIES:
         g_value_take_boxed (value,
@@ -364,6 +369,9 @@ gabble_file_transfer_channel_set_property (GObject *object,
       case PROP_BYTESTREAM:
         set_bytestream (self,
             GABBLE_BYTESTREAM_IFACE (g_value_get_object (value)));
+        break;
+      case PROP_RESUME_SUPPORTED:
+        self->priv->resume_supported = g_value_get_boolean (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -729,6 +737,15 @@ gabble_file_transfer_channel_class_init (
   g_object_class_install_property (object_class, PROP_BYTESTREAM,
       param_spec);
 
+  param_spec = g_param_spec_boolean (
+      "resume-supported",
+      "resume is supported",
+      "TRUE if resume is supported on this file transfer channel",
+      FALSE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_RESUME_SUPPORTED,
+      param_spec);
+
   gabble_file_transfer_channel_class->dbus_props_class.interfaces =
       prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
@@ -1063,6 +1080,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                          gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+  LmMessageNode *file;
 
   if (bytestream == NULL)
     {
@@ -1074,7 +1092,27 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       return;
     }
 
-  DEBUG ("receiver accepted file offer");
+  file = lm_message_node_find_child (msg->node, "file");
+  if (file != NULL)
+    {
+      LmMessageNode *range;
+
+      range = lm_message_node_get_child_any_ns (file, "range");
+      if (range != NULL)
+        {
+          const gchar *offset_str;
+
+          offset_str = lm_message_node_get_attribute (range, "offset");
+          if (offset_str != NULL)
+            {
+              self->priv->initial_offset = g_ascii_strtoull (offset_str, NULL,
+                  0);
+            }
+        }
+    }
+
+  DEBUG ("receiver accepted file offer (offset: %" G_GUINT64_FORMAT ")",
+      self->priv->initial_offset);
 
   set_bytestream (self, bytestream);
 
@@ -1178,10 +1216,11 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       lm_message_node_set_attribute (file_node, "date", date_str);
     }
 
-  /* TODO: support initial offset */
-
   desc_node = lm_message_node_add_child (file_node, "desc",
       self->priv->description);
+
+  /* we support resume */
+  lm_message_node_add_child (file_node, "range", NULL);
 
   result = gabble_bytestream_factory_negotiate_stream (
       self->priv->connection->bytestream_factory, msg, stream_id,
@@ -1233,7 +1272,8 @@ transferred_chunk (GabbleFileTransferChannel *self,
 
   self->priv->transferred_bytes += count;
 
-  if (self->priv->transferred_bytes >= self->priv->size)
+  if (self->priv->transferred_bytes + self->priv->initial_offset >=
+      self->priv->size)
     {
       /* If the transfer has finished send an update right away */
       emit_progress_update (self);
@@ -1308,7 +1348,8 @@ data_received_cb (GabbleBytestreamIface *stream,
 
   transferred_chunk (self, (guint64) data->len);
 
-  if (self->priv->transferred_bytes >= self->priv->size)
+  if (self->priv->transferred_bytes + self->priv->initial_offset >=
+      self->priv->size)
     {
       DEBUG ("Received all the file. Transfer is complete");
       gabble_file_transfer_channel_set_state (
@@ -1323,6 +1364,33 @@ data_received_cb (GabbleBytestreamIface *stream,
       /* We don't want to send more data while the buffer isn't empty */
       DEBUG ("file transfer buffer isn't empty. Block the bytestream");
       gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
+    }
+}
+
+static void
+augment_si_reply (LmMessageNode *si,
+                  gpointer user_data)
+{
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+  LmMessageNode *file;
+
+  file = lm_message_node_add_child (si, "file", NULL);
+  lm_message_node_set_attribute (file, "xmlns", NS_FILE_TRANSFER);
+
+  if (self->priv->initial_offset != 0)
+    {
+      LmMessageNode *range;
+      gchar *offset_str;
+
+      range = lm_message_node_add_child (file, "range", NULL);
+      offset_str = g_strdup_printf ("%" G_GUINT64_FORMAT,
+          self->priv->initial_offset);
+      lm_message_node_set_attribute (range, "offset", offset_str);
+
+      /* Don't set "length" attribute as the default is the length of the file
+       * from offset to the end which is what we want when resuming a FT. */
+
+      g_free (offset_str);
     }
 }
 
@@ -1375,19 +1443,27 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
   tp_svc_channel_type_file_transfer_return_from_accept_file (context,
       self->priv->socket_address);
 
-  self->priv->initial_offset = 0;
+  if (self->priv->resume_supported)
+    {
+      self->priv->initial_offset = offset;
+    }
+  else
+    {
+      DEBUG ("Resume is not supported on this file transfer");
+      self->priv->initial_offset = 0;
+    }
 
   g_assert (self->priv->bytestream != NULL);
   gabble_signal_connect_weak (self->priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), G_OBJECT (self));
 
-  /* channel state will change to open once the bytestream is open */
-  /* TODO: set a function once we support resume */
 
   /* Block the bytestream while the user is not connected to the socket */
   gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
 
-  gabble_bytestream_iface_accept (self->priv->bytestream, NULL, NULL);
+  /* channel state will change to open once the bytestream is open */
+  gabble_bytestream_iface_accept (self->priv->bytestream, augment_si_reply,
+      self);
 }
 
 /**
@@ -1520,7 +1596,8 @@ transport_handler (GibberTransport *transport,
 
   transferred_chunk (self, (guint64) data->length);
 
-  if (self->priv->transferred_bytes >= self->priv->size)
+  if (self->priv->transferred_bytes + self->priv->initial_offset >=
+      self->priv->size)
     {
       DEBUG ("All the file has been sent. Closing the bytestream");
 
@@ -1753,7 +1830,8 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
                                   const gchar *description,
                                   guint64 date,
                                   guint64 initial_offset,
-                                  GabbleBytestreamIface *bytestream)
+                                  GabbleBytestreamIface *bytestream,
+                                  gboolean resume_supported)
 
 {
   return g_object_new (GABBLE_TYPE_FILE_TRANSFER_CHANNEL,
@@ -1770,5 +1848,6 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
       "date", date,
       "initial-offset", initial_offset,
       "bytestream", bytestream,
+      "resume-supported", resume_supported,
       NULL);
 }

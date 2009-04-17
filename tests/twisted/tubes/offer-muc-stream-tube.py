@@ -5,7 +5,8 @@ import os
 
 import dbus
 
-from servicetest import call_async, EventPattern, EventProtocolFactory, unwrap
+from servicetest import call_async, EventPattern, EventProtocolFactory, unwrap,\
+    assertContains
 from gabbletest import acknowledge_iq, make_muc_presence
 import constants as cs
 import ns
@@ -250,6 +251,11 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert prop[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
     assert prop[cs.TARGET_ID] == 'chat2@conf.localhost'
     assert prop[cs.STREAM_TUBE_SERVICE] == 'newecho'
+
+    # check that the tube channel is in the channels list
+    all_channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
+        dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
+    assertContains((path, prop), all_channels)
 
     tube_chan = bus.get_object(conn.bus_name, path)
     stream_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_STREAM_TUBE)

@@ -68,7 +68,7 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
     const gchar *content_type, const gchar *filename, guint64 size,
     TpFileHashType content_hash_type, const gchar *content_hash,
     const gchar *description, guint64 date, guint64 initial_offset,
-    GabbleBytestreamIface *bytestream);
+    GabbleBytestreamIface *bytestream, gboolean resume_supported);
 
 gboolean gabble_file_transfer_channel_offer_file (
     GabbleFileTransferChannel *self, GError **error);

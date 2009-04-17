@@ -28,6 +28,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleMediaFactory GabbleMediaFactory;
 typedef struct _GabbleMediaFactoryClass GabbleMediaFactoryClass;
+typedef struct _GabbleMediaFactoryPrivate GabbleMediaFactoryPrivate;
 
 struct _GabbleMediaFactoryClass {
   GObjectClass parent_class;
@@ -35,6 +36,8 @@ struct _GabbleMediaFactoryClass {
 
 struct _GabbleMediaFactory {
   GObject parent;
+
+  GabbleMediaFactoryPrivate *priv;
 };
 
 GType gabble_media_factory_get_type (void);

@@ -71,36 +71,16 @@ GType gabble_media_channel_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_CHANNEL, \
                               GabbleMediaChannelClass))
 
-gboolean
-_gabble_media_channel_add_member (GObject *obj,
-                                  TpHandle handle,
-                                  const gchar *message,
-                                  GError **error);
-
-gboolean
-_gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
-                                               TpHandle peer,
-                                               const gchar *peer_resource,
-                                               const gchar *sid,
-                                               LmMessage *message,
-                                               LmMessageNode *session_node,
-                                               const gchar *action,
-                                               GError **error);
-
-void
-_gabble_media_channel_stream_state (GabbleMediaChannel *chan,
-                                    guint state);
-
-guint
-_gabble_media_channel_get_stream_id (GabbleMediaChannel *chan);
-
 GabblePresenceCapabilities
 _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags);
 
 TpChannelMediaCapabilities
 _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps);
 
-void gabble_media_channel_close (GabbleMediaChannel *);
+void gabble_media_channel_request_initial_streams (GabbleMediaChannel *chan,
+    GFunc succeeded_cb,
+    GFunc failed_cb,
+    gpointer user_data);
 
 G_END_DECLS
 

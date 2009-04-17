@@ -829,7 +829,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   GSList *stream_methods = NULL;
   gboolean multiple;
   gchar *peer_resource = NULL;
-  gchar *self_jid;
+  gchar *self_jid = NULL;
 
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

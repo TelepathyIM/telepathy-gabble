@@ -15,7 +15,13 @@ from jingletest2 import (
     )
 import constants as cs
 
-def test(jp, q, bus, conn, stream):
+def gabble_terminates(jp, q, bus, conn, stream):
+    test(jp, q, bus, conn, stream, False)
+
+def peer_terminates(jp, q, bus, conn, stream):
+    test(jp, q, bus, conn, stream, True)
+
+def test(jp, q, bus, conn, stream, peer_removes_final_content):
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
     jt.prepare()
 
@@ -115,8 +121,23 @@ def test(jp, q, bus, conn, stream):
         jp.match_jingle_action(x.query, 'content-remove'))
     stream.send(make_result_iq(stream, e.stanza))
 
-    # Then we remove the second stream, which terminates the session
-    chan.StreamedMedia.RemoveStreams([stream2_id])
+    if peer_removes_final_content:
+        # The peer removes the final countdo^W content. From a footnote (!) in
+        # XEP 0166:
+        #     If the content-remove results in zero content definitions for the
+        #     session, the entity that receives the content-remove SHOULD send
+        #     a session-terminate action to the other party (since a session
+        #     with no content definitions is void).
+        # So, Gabble should respond to the content-remove with a
+        # session-terminate.
+        node = jp.SetIq(jt.peer, jt.jid, [
+            jp.Jingle(jt.sid, jt.peer, 'content-remove', [
+                jp.Content(c['name'], c['creator'], c['senders'], []) ]) ])
+        stream.send(jp.xml(node))
+    else:
+        # The Telepathy client removes the second stream; Gabble should
+        # terminate the session rather than sending a content-remove.
+        chan.StreamedMedia.RemoveStreams([stream2_id])
 
     st, closed = q.expect_many(
         EventPattern('stream-iq', iq_type='set', predicate=lambda x:
@@ -135,5 +156,6 @@ def test(jp, q, bus, conn, stream):
 
 
 if __name__ == '__main__':
-    test_dialects(test, [JingleProtocol015, JingleProtocol031])
+    test_dialects(gabble_terminates, [JingleProtocol015, JingleProtocol031])
+    test_dialects(peer_terminates, [JingleProtocol015, JingleProtocol031])
 

@@ -1,4 +1,4 @@
-QUIET_GEN = $(Q:@=@echo '  GEN   '$@;)
+include $(top_srcdir)/tools/shave.mk
 
 noinst_LTLIBRARIES = libgibber.la
 

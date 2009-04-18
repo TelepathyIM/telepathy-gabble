@@ -1,4 +1,4 @@
-QUIET_GEN = $(Q:@=@echo '  GEN   '$@;)
+include $(top_srcdir)/tools/shave.mk
 
 EXTRA_DIST = \
     c-constants-gen.py \
@@ -15,6 +15,7 @@ EXTRA_DIST = \
     lcov.am \
     libglibcodegen.py \
     libtpcodegen.py \
+    shave.mk \
     telepathy.am \
     xep.xsl
 

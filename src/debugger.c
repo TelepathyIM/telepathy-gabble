@@ -42,6 +42,35 @@ enum
   NUM_PROPERTIES
 };
 
+static GabbleDebugLevel
+log_level_flags_to_debug_level (GLogLevelFlags level)
+{
+  switch (level)
+    {
+    case G_LOG_LEVEL_ERROR:
+      return GABBLE_DEBUG_LEVEL_ERROR;
+      break;
+    case G_LOG_LEVEL_CRITICAL:
+      return GABBLE_DEBUG_LEVEL_CRITICAL;
+      break;
+    case G_LOG_LEVEL_WARNING:
+      return GABBLE_DEBUG_LEVEL_WARNING;
+      break;
+    case G_LOG_LEVEL_MESSAGE:
+      return GABBLE_DEBUG_LEVEL_MESSAGE;
+      break;
+    case G_LOG_LEVEL_INFO:
+      return GABBLE_DEBUG_LEVEL_INFO;
+      break;
+    case G_LOG_LEVEL_DEBUG:
+      return GABBLE_DEBUG_LEVEL_DEBUG;
+      break;
+    default:
+      g_assert_not_reached ();
+      break;
+    }
+}
+
 static GabbleDebugMessage *
 debug_message_new (gdouble timestamp,
 		   const gchar *domain,
@@ -49,37 +78,11 @@ debug_message_new (gdouble timestamp,
 		   const gchar *string)
 {
   GabbleDebugMessage *msg;
-  GabbleDebugLevel log_level;
-
-  switch (level)
-    {
-    case G_LOG_LEVEL_ERROR:
-      log_level = GABBLE_DEBUG_LEVEL_ERROR;
-      break;
-    case G_LOG_LEVEL_CRITICAL:
-      log_level = GABBLE_DEBUG_LEVEL_CRITICAL;
-      break;
-    case G_LOG_LEVEL_WARNING:
-      log_level = GABBLE_DEBUG_LEVEL_WARNING;
-      break;
-    case G_LOG_LEVEL_MESSAGE:
-      log_level = GABBLE_DEBUG_LEVEL_MESSAGE;
-      break;
-    case G_LOG_LEVEL_INFO:
-      log_level = GABBLE_DEBUG_LEVEL_INFO;
-      break;
-    case G_LOG_LEVEL_DEBUG:
-      log_level = GABBLE_DEBUG_LEVEL_DEBUG;
-      break;
-    default:
-      g_assert_not_reached ();
-      break;
-    }
 
   msg = g_slice_new0 (GabbleDebugMessage);
   msg->timestamp = timestamp;
   msg->domain = g_strdup (domain);
-  msg->level = log_level;
+  msg->level = log_level_flags_to_debug_level (level);
   msg->string = g_strdup (string);
   return msg;
 }

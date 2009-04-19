@@ -91,9 +91,9 @@ gabble_main (int argc,
   gabble_debug_set_flags_from_env ();
 
   if (g_getenv ("GABBLE_TIMING") != NULL)
-    g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, stamp_log, NULL);
+    g_log_set_default_handler (stamp_log, NULL);
   else
-    g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, simple_log, NULL);
+    g_log_set_default_handler (simple_log, NULL);
 
   if (g_getenv ("GABBLE_PERSIST") != NULL)
     tp_debug_set_persistent (TRUE);

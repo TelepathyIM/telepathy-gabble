@@ -12,6 +12,8 @@
 #include <glib/gstdio.h>
 #include <telepathy-glib/debug.h>
 
+#include "debugger.h"
+
 #ifdef ENABLE_DEBUG
 
 static GabbleDebugFlags flags = 0;
@@ -66,17 +68,45 @@ gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag)
   return flag & flags;
 }
 
+static const gchar *
+debug_flag_to_key (GabbleDebugFlags flag)
+{
+  guint i;
+
+  for (i = 0; keys[i].value; i++)
+    {
+      GDebugKey key = (GDebugKey) keys[i];
+      if (key.value == flag)
+	return key.key;
+    }
+
+  return NULL;
+}
+
 void gabble_debug (GabbleDebugFlags flag,
                    const gchar *format,
                    ...)
 {
+  GabbleDebugger *dbg = gabble_debugger_get_singleton ();
+  gdouble seconds;
+  gchar *domain, *message = NULL;
+  va_list args;
+  GTimeVal now;
+
+  va_start (args, format);
+
+  g_get_current_time (&now);
+  seconds = now.tv_sec + now.tv_usec / 1e6;
+  domain = g_strdup_printf ("%s/%s", G_LOG_DOMAIN, debug_flag_to_key (flag));
+  message = g_strdup_vprintf (format, args);
+  gabble_debugger_add_message (dbg, seconds, domain, G_LOG_LEVEL_DEBUG, message);
+
   if (flag & flags)
-    {
-      va_list args;
-      va_start (args, format);
-      g_logv (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, format, args);
-      va_end (args);
-    }
+    g_logv (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, format, args);
+
+  g_free (domain);
+  g_free (message);
+  va_end (args);
 }
 
 #endif /* ENABLE_DEBUG */

@@ -56,11 +56,14 @@ simple_log (const gchar *log_domain,
             const gchar *message,
             gpointer user_data)
 {
-  GTimeVal now;
-
   g_log_default_handler (log_domain, log_level, message, NULL);
-  g_get_current_time (&now);
-  log_to_debugger (&now, log_domain, log_level, message);
+
+  if (tp_strdiff (log_domain, G_LOG_DOMAIN))
+    {
+      GTimeVal now;
+      g_get_current_time (&now);
+      log_to_debugger (&now, log_domain, log_level, message);
+    }
 }
 
 static void
@@ -80,7 +83,9 @@ stamp_log (const gchar *log_domain,
   tmp = g_strdup_printf ("%s.%06ld: %s", now_str, now.tv_usec, message);
   g_log_default_handler (log_domain, log_level, tmp, NULL);
   g_free (tmp);
-  log_to_debugger (&now, log_domain, log_level, message);
+
+  if (tp_strdiff (log_domain, G_LOG_DOMAIN))
+    log_to_debugger (&now, log_domain, log_level, message);
 }
 #endif
 

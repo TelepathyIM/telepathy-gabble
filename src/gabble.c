@@ -45,9 +45,8 @@ log_to_debugger (GTimeVal *timestamp,
 		 const gchar *string)
 {
   GabbleDebugger *dbg = gabble_debugger_get_singleton ();
-  gdouble seconds = timestamp->tv_sec + timestamp->tv_usec / 1e6;
 
-  gabble_debugger_add_message (dbg, seconds, log_domain, log_level, string);
+  gabble_debugger_add_message (dbg, timestamp, log_domain, log_level, string);
 }
 
 static void

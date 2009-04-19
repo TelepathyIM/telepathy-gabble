@@ -72,7 +72,7 @@ log_level_flags_to_debug_level (GLogLevelFlags level)
 }
 
 static GabbleDebugMessage *
-debug_message_new (gdouble timestamp,
+debug_message_new (GTimeVal *timestamp,
     const gchar *domain,
     GLogLevelFlags level,
     const gchar *string)
@@ -80,7 +80,7 @@ debug_message_new (gdouble timestamp,
   GabbleDebugMessage *msg;
 
   msg = g_slice_new0 (GabbleDebugMessage);
-  msg->timestamp = timestamp;
+  msg->timestamp = timestamp->tv_sec + timestamp->tv_usec / 1e6;
   msg->domain = g_strdup (domain);
   msg->level = log_level_flags_to_debug_level (level);
   msg->string = g_strdup (string);
@@ -247,7 +247,7 @@ gabble_debugger_get_singleton (void)
 
 void
 gabble_debugger_add_message (GabbleDebugger *self,
-    gdouble timestamp,
+    GTimeVal *timestamp,
     const gchar *domain,
     GLogLevelFlags level,
     const gchar *string)
@@ -268,7 +268,7 @@ gabble_debugger_add_message (GabbleDebugger *self,
   if (self->enabled)
     {
       g_signal_emit_by_name (
-          G_OBJECT (self), "new-debug-message", timestamp, string);
+          G_OBJECT (self), "new-debug-message", new_msg->timestamp, string);
     }
 }
 

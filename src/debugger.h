@@ -78,7 +78,7 @@ gabble_debugger_get_singleton (void);
 
 void
 gabble_debugger_add_message (GabbleDebugger *self,
-    gdouble timestamp,
+    GTimeVal *timestamp,
     const gchar *domain,
     GLogLevelFlags level,
     const gchar *string);

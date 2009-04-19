@@ -89,24 +89,18 @@ log_to_debugger (GabbleDebugFlags flag,
 		 va_list args)
 {
   GabbleDebugger *dbg = gabble_debugger_get_singleton ();
-  gdouble seconds;
   gchar *domain, *message = NULL;
-  va_list args;
   GTimeVal now;
 
   g_get_current_time (&now);
-  seconds = now.tv_sec + now.tv_usec / 1e6;
 
   domain = g_strdup_printf ("%s/%s", G_LOG_DOMAIN, debug_flag_to_key (flag));
-
-  va_start (args, format);
   message = g_strdup_vprintf (format, args);
 
-  gabble_debugger_add_message (dbg, seconds, domain, G_LOG_LEVEL_DEBUG, message);
+  gabble_debugger_add_message (dbg, &now, domain, G_LOG_LEVEL_DEBUG, message);
 
   g_free (message);
   g_free (domain);
-  va_end (args);
 }
 
 void gabble_debug (GabbleDebugFlags flag,

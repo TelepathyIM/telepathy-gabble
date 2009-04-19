@@ -73,9 +73,9 @@ log_level_flags_to_debug_level (GLogLevelFlags level)
 
 static GabbleDebugMessage *
 debug_message_new (gdouble timestamp,
-		   const gchar *domain,
-		   GLogLevelFlags level,
-		   const gchar *string)
+    const gchar *domain,
+    GLogLevelFlags level,
+    const gchar *string)
 {
   GabbleDebugMessage *msg;
 

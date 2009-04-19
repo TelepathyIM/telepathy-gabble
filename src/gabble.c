@@ -39,12 +39,15 @@ construct_cm (void)
 
 #ifdef ENABLE_DEBUG
 static void
-log_to_debugger (GTimeVal *timestamp, const gchar *string)
+log_to_debugger (GTimeVal *timestamp,
+		 const gchar *log_domain,
+		 GLogLevelFlags log_level,
+		 const gchar *string)
 {
   GabbleDebugger *dbg = gabble_debugger_get_singleton ();
   gdouble seconds = timestamp->tv_sec + timestamp->tv_usec / 1e6;
 
-  gabble_debugger_add_message (dbg, seconds, string);
+  gabble_debugger_add_message (dbg, seconds, log_domain, log_level, string);
 }
 
 static void
@@ -57,7 +60,7 @@ simple_log (const gchar *log_domain,
 
   g_log_default_handler (log_domain, log_level, message, NULL);
   g_get_current_time (&now);
-  log_to_debugger (&now, message);
+  log_to_debugger (&now, log_domain, log_level, message);
 }
 
 static void
@@ -77,7 +80,7 @@ stamp_log (const gchar *log_domain,
   tmp = g_strdup_printf ("%s.%06ld: %s", now_str, now.tv_usec, message);
   g_log_default_handler (log_domain, log_level, tmp, NULL);
   g_free (tmp);
-  log_to_debugger (&now, message);
+  log_to_debugger (&now, log_domain, log_level, message);
 }
 #endif
 

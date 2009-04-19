@@ -25,6 +25,8 @@
 #include <telepathy-glib/properties-mixin.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 
+#include "extensions/extensions.h"
+
 G_BEGIN_DECLS
 
 #define GABBLE_TYPE_DEBUGGER gabble_debugger_get_type()
@@ -52,6 +54,8 @@ G_BEGIN_DECLS
 
 typedef struct {
   gdouble timestamp;
+  gchar *domain;
+  GabbleDebugLevel level;
   gchar *string;
 } GabbleDebugMessage;
 
@@ -75,6 +79,8 @@ gabble_debugger_get_singleton (void);
 void
 gabble_debugger_add_message (GabbleDebugger *self,
     gdouble timestamp,
+    const gchar *domain,
+    GLogLevelFlags level,
     const gchar *string);
 
 G_END_DECLS

@@ -43,12 +43,43 @@ enum
 };
 
 static GabbleDebugMessage *
-debug_message_new (gdouble timestamp, const gchar *string)
+debug_message_new (gdouble timestamp,
+		   const gchar *domain,
+		   GLogLevelFlags level,
+		   const gchar *string)
 {
   GabbleDebugMessage *msg;
+  GabbleDebugLevel log_level;
+
+  switch (level)
+    {
+    case G_LOG_LEVEL_ERROR:
+      log_level = GABBLE_DEBUG_LEVEL_ERROR;
+      break;
+    case G_LOG_LEVEL_CRITICAL:
+      log_level = GABBLE_DEBUG_LEVEL_CRITICAL;
+      break;
+    case G_LOG_LEVEL_WARNING:
+      log_level = GABBLE_DEBUG_LEVEL_WARNING;
+      break;
+    case G_LOG_LEVEL_MESSAGE:
+      log_level = GABBLE_DEBUG_LEVEL_MESSAGE;
+      break;
+    case G_LOG_LEVEL_INFO:
+      log_level = GABBLE_DEBUG_LEVEL_INFO;
+      break;
+    case G_LOG_LEVEL_DEBUG:
+      log_level = GABBLE_DEBUG_LEVEL_DEBUG;
+      break;
+    default:
+      g_assert_not_reached ();
+      break;
+    }
 
   msg = g_slice_new0 (GabbleDebugMessage);
   msg->timestamp = timestamp;
+  msg->domain = g_strdup (domain);
+  msg->level = log_level;
   msg->string = g_strdup (string);
   return msg;
 }
@@ -56,6 +87,7 @@ debug_message_new (gdouble timestamp, const gchar *string)
 static void
 debug_message_free (GabbleDebugMessage *msg)
 {
+  g_free (msg->domain);
   g_free (msg->string);
   g_slice_free (GabbleDebugMessage, msg);
 }
@@ -150,7 +182,7 @@ get_messages (GabbleSvcDebug *self, DBusGMethodInvocation *context)
   if (G_UNLIKELY (struct_type == 0))
     {
       struct_type = dbus_g_type_get_struct (
-          "GValueArray", G_TYPE_DOUBLE, G_TYPE_STRING, G_TYPE_INVALID);
+          "GValueArray", G_TYPE_DOUBLE, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID);
     }
 
   messages = g_ptr_array_sized_new (g_queue_get_length (dbg->messages));
@@ -165,7 +197,9 @@ get_messages (GabbleSvcDebug *self, DBusGMethodInvocation *context)
           dbus_g_type_specialized_construct (struct_type));
       dbus_g_type_struct_set (&gvalue,
           0, message->timestamp,
-          1, message->string,
+          1, message->domain,
+          2, message->level,
+          3, message->string,
           G_MAXUINT);
       g_ptr_array_add (messages, g_value_get_boxed (&gvalue));
     }
@@ -211,6 +245,8 @@ gabble_debugger_get_singleton (void)
 void
 gabble_debugger_add_message (GabbleDebugger *self,
     gdouble timestamp,
+    const gchar *domain,
+    GLogLevelFlags level,
     const gchar *string)
 {
   GabbleDebugMessage *new_msg;
@@ -223,7 +259,7 @@ gabble_debugger_add_message (GabbleDebugger *self,
       debug_message_free (old_head);
     }
 
-  new_msg = debug_message_new (timestamp, string);
+  new_msg = debug_message_new (timestamp, domain, level, string);
   g_queue_push_tail (self->messages, new_msg);
 
   if (self->enabled)

@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         <p>Retrieve buffered debug messages.</p>
       </tp:docstring>
 
-      <arg direction="out" name="messages" type="a(ds)">
+      <arg direction="out" name="messages" type="a(dsus)">
          <tp:docstring>
           A list of timestamped debug messages.
         </tp:docstring>
@@ -57,12 +57,55 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           Message timestamp
         </tp:docstring>
       </arg>
+      <arg name="domain" type="s">
+	<tp:docstring>
+	  Message domain
+	</tp:docstring>
+      </arg>
+      <arg name="level" type="u" tp:type="Debug_Level">
+	<tp:docstring>
+	  Message level
+	</tp:docstring>
+      </arg>
       <arg name="message" type="s">
         <tp:docstring>
           Message
         </tp:docstring>
       </arg>
     </signal>
+
+    <tp:enum name="Debug_Level" type="u">
+      <tp:enumvalue suffix="Error" value="0">
+	<tp:docstring>
+	  error
+	</tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Critical" value="1">
+	<tp:docstring>
+	  criticla
+	</tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Warning" value="2">
+	<tp:docstring>
+	  warning
+	</tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Message" value="3">
+	<tp:docstring>
+	  message
+	</tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Info" value="4">
+	<tp:docstring>
+	  info
+	</tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Debug" value="5">
+	<tp:docstring>
+	  debug
+	</tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
 
   </interface>
 </node>

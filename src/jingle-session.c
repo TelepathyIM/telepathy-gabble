@@ -1397,7 +1397,7 @@ _map_initial_contents (GabbleJingleSession *sess, ContentMapperFunc mapper,
 
   for (li = contents; li; li = li->next)
     {
-      const gchar *disposition;
+      gchar *disposition;
       GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (li->data);
 
       g_object_get (c, "disposition", &disposition, NULL);
@@ -1406,6 +1406,8 @@ _map_initial_contents (GabbleJingleSession *sess, ContentMapperFunc mapper,
         {
           mapper (sess, c, user_data);
         }
+
+      g_free (disposition);
     }
 
   g_list_free (contents);
@@ -1810,6 +1812,8 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
 
   c = create_content (sess, content_type, mtype,
       content_ns, transport_ns, name, NULL, NULL);
+
+  g_free (name);
 
   return c;
 }

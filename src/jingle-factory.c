@@ -665,17 +665,16 @@ get_unique_sid (GabbleJingleFactory *factory)
   return sid;
 }
 
+/* Takes ownership of @sid. */
 static void
 register_session (GabbleJingleFactory *factory,
-                  const gchar *sid,
+                  gchar *sid,
                   GabbleJingleSession *sess)
 {
   GabbleJingleFactoryPrivate *priv = factory->priv;
-  gchar *sid_copy;
 
-  sid_copy = g_strdup (sid);
-  g_assert (g_hash_table_lookup (priv->sessions, sid_copy) == NULL);
-  g_hash_table_insert (priv->sessions, sid_copy, sess);
+  g_assert (g_hash_table_lookup (priv->sessions, sid) == NULL);
+  g_hash_table_insert (priv->sessions, sid, sess);
 }
 
 void
@@ -763,25 +762,28 @@ create_session (GabbleJingleFactory *fac,
   GabbleJingleFactoryPrivate *priv = fac->priv;
   GabbleJingleSession *sess;
   gboolean local_initiator;
+  gchar *sid_;
 
   if (sid != NULL)
     {
       g_assert (NULL == g_hash_table_lookup (priv->sessions, sid));
       local_initiator = FALSE;
+      sid_ = g_strdup (sid);
     }
   else
     {
-      sid = get_unique_sid (fac);
+      sid_ = get_unique_sid (fac);
       local_initiator = TRUE;
     }
 
-  sess = gabble_jingle_session_new (priv->conn, sid, local_initiator, peer,
+  sess = gabble_jingle_session_new (priv->conn, sid_, local_initiator, peer,
       peer_resource);
 
   g_signal_connect (sess, "terminated", (GCallback) session_terminated_cb, fac);
 
-  DEBUG ("new session %s @ %p created", sid, sess);
-  register_session (fac, sid, sess);
+  DEBUG ("new session %s @ %p created", sid_, sess);
+  /* register_session takes ownership of sid_. */
+  register_session (fac, sid_, sess);
   return sess;
 }
 

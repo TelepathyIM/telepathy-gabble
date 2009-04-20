@@ -162,6 +162,7 @@ gabble_media_channel_init (GabbleMediaChannel *self)
   self->priv = priv;
 
   priv->next_stream_id = 1;
+  priv->delayed_request_streams = g_ptr_array_sized_new (1);
 
   /* initialize properties mixin */
   tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
@@ -824,7 +825,8 @@ gabble_media_channel_dispose (GObject *object)
     {
       g_ptr_array_foreach (priv->delayed_request_streams,
           (GFunc) destroy_request, NULL);
-      g_assert (priv->delayed_request_streams == NULL);
+      g_ptr_array_free (priv->delayed_request_streams, TRUE);
+      priv->delayed_request_streams = NULL;
     }
 
   tp_handle_unref (contact_handles, priv->creator);
@@ -1728,13 +1730,15 @@ destroy_request (struct _delayed_request_streams_ctx *ctx,
 
   g_array_free (ctx->types, TRUE);
   g_slice_free (struct _delayed_request_streams_ctx, ctx);
-  g_ptr_array_remove_fast (priv->delayed_request_streams, ctx);
+}
 
-  if (priv->delayed_request_streams->len == 0)
-    {
-      g_ptr_array_free (priv->delayed_request_streams, TRUE);
-      priv->delayed_request_streams = NULL;
-    }
+static void
+destroy_and_remove_request (struct _delayed_request_streams_ctx *ctx)
+{
+  GabbleMediaChannelPrivate *priv = ctx->chan->priv;
+
+  destroy_request (ctx, NULL);
+  g_ptr_array_remove_fast (priv->delayed_request_streams, ctx);
 }
 
 static void media_channel_request_streams (GabbleMediaChannel *self,
@@ -1752,7 +1756,7 @@ repeat_request (struct _delayed_request_streams_ctx *ctx)
 
   ctx->timeout_id = 0;
   ctx->context = NULL;
-  destroy_request (ctx, NULL);
+  destroy_and_remove_request (ctx);
   return FALSE;
 }
 
@@ -1802,9 +1806,6 @@ delay_stream_request (GabbleMediaChannel *chan,
       ctx->timeout_id = g_timeout_add_seconds (5,
           (GSourceFunc) repeat_request, ctx);
     }
-
-  if (priv->delayed_request_streams == NULL)
-      priv->delayed_request_streams = g_ptr_array_sized_new (1);
 
   g_ptr_array_add (priv->delayed_request_streams, ctx);
 }
@@ -2207,6 +2208,8 @@ session_terminated_cb (GabbleJingleSession *session,
 
   tp_group_mixin_change_members ((GObject *) channel,
       "", NULL, set, NULL, NULL, terminator, reason);
+
+  tp_intset_destroy (set);
 
   /* Ignore any Google relay session responses we're waiting for. */
   g_list_foreach (priv->stream_creation_datas, stream_creation_data_cancel,

@@ -268,7 +268,8 @@ gabble_debugger_add_message (GabbleDebugger *self,
   if (self->enabled)
     {
       g_signal_emit_by_name (
-          G_OBJECT (self), "new-debug-message", new_msg->timestamp, string);
+          G_OBJECT (self), "new-debug-message", new_msg->timestamp,
+          domain, new_msg->level, string);
     }
 }
 

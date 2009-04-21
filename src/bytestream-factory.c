@@ -47,6 +47,7 @@ G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
     G_TYPE_OBJECT);
 
 #define NB_SOCKS5_PROXIES_USED 5
+#define SOCKS5_PROXY_TIMEOUT 10
 
 /* properties */
 enum
@@ -165,6 +166,7 @@ struct _GabbleBytestreamFactoryPrivate
   GSList *socks5_fallback_proxies;
   /* List of SOCKS5's jids that have not been queried yet */
   GSList *socks5_potential_proxies;
+  guint socks5_proxies_timer;
 
   gboolean dispose_has_run;
 };
@@ -295,6 +297,23 @@ disco_item_found_cb (GabbleDisco *disco,
   send_proxy_query (self, item->jid, FALSE);
 }
 
+static void query_socks5_proxies (GabbleBytestreamFactory *self);
+
+static gboolean
+socks5_proxies_timeout_cb (gpointer data)
+{
+  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (data);
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+
+  priv->socks5_proxies_timer = 0;
+
+  /* query more proxies if needed */
+  query_socks5_proxies (self);
+
+  return FALSE;
+}
+
 static void
 query_socks5_proxies (GabbleBytestreamFactory *self)
 {
@@ -328,6 +347,14 @@ query_socks5_proxies (GabbleBytestreamFactory *self)
       g_free (jid);
       priv->socks5_potential_proxies = g_slist_delete_link (
           priv->socks5_potential_proxies, priv->socks5_potential_proxies);
+    }
+
+  if (priv->socks5_potential_proxies != NULL && priv->socks5_proxies_timer == 0)
+    {
+      /* More proxies are available. Set a timer so we'll query then later if
+       * needed */
+      priv->socks5_proxies_timer = g_timeout_add_seconds (SOCKS5_PROXY_TIMEOUT,
+          socks5_proxies_timeout_cb, self);
     }
 }
 
@@ -498,6 +525,9 @@ gabble_bytestream_factory_dispose (GObject *object)
   g_slist_foreach (priv->socks5_potential_proxies, (GFunc) g_free, NULL);
   g_slist_free (priv->socks5_potential_proxies);
   priv->socks5_potential_proxies = NULL;
+
+  if (priv->socks5_proxies_timer != 0)
+    g_source_remove (priv->socks5_proxies_timer);
 
   if (G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose (object);

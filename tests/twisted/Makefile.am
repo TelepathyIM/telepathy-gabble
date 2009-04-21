@@ -78,6 +78,7 @@ TWISTED_TESTS = \
 	jingle/hold-av.py \
 	jingle/initial-audio-video.py \
 	jingle/stun-server.py \
+	jingle/outgoing-basics.py \
 	jingle/outgoing-many-streams.py \
 	jingle/outgoing-not-answered.py \
 	jingle/payload-types.py \
@@ -89,7 +90,6 @@ TWISTED_TESTS = \
 	jingle/test-outgoing-call-rejected.py \
 	jingle/test-outgoing-call-ensure.py \
 	jingle/test-dialects-incoming.py \
-	jingle/test-dialects-outgoing.py \
 	jingle/test-content-complex.py \
 	jingle/test-wait-for-caps.py \
 	jingle/test-wait-for-caps-incomplete.py \

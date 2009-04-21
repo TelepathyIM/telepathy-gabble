@@ -84,21 +84,20 @@ def worker(jp, q, bus, conn, stream):
 
     group_iface.RemoveMembers([dbus.UInt32(1)], 'closed')
 
-    # Test completed, close the connection
-
-    q.flush_past_events()
-
-    e = q.expect('dbus-signal', signal='Close') #XXX - match against the path
-
-    # Make sure gabble sent proper terminate action
+    # Make sure gabble sends proper terminate action
     if jp.dialect.startswith('gtalk'):
-        e = q.expect_racy('stream-iq', predicate=lambda x:
+        terminate = EventPattern('stream-iq', predicate=lambda x:
             xpath.queryForNodes("/iq/session[@type='terminate']",
                 x.stanza))
     else:
-        e = q.expect_racy('stream-iq', predicate=lambda x:
+        terminate = EventPattern('stream-iq', predicate=lambda x:
             xpath.queryForNodes("/iq/jingle[@action='session-terminate']",
                 x.stanza))
+
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Close'),
+        terminate,
+        )
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

@@ -2,7 +2,7 @@
 Test incoming call handling.
 """
 
-from servicetest import make_channel_proxy, tp_path_prefix
+from servicetest import make_channel_proxy, tp_path_prefix, EventPattern
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
@@ -42,13 +42,14 @@ def worker(jp, q, bus, conn, stream):
     media_chan.AddMembers([self_handle], 'accepted')
 
     # S-E gets notified about a newly-created stream
-    e = q.expect('dbus-signal', signal='NewStreamHandler')
+    new_stream_handler, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='NewStreamHandler'),
+        EventPattern('dbus-signal', signal='MembersChanged',
+             args=[u'', [self_handle], [], [], [], self_handle, 0]),
+        )
 
-    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
-
-    # We are now in members too
-    e = q.expect_racy('dbus-signal', signal='MembersChanged',
-             args=[u'', [self_handle], [], [], [], self_handle, 0])
+    stream_handler = make_channel_proxy(conn, new_stream_handler.args[0],
+        'Media.StreamHandler')
 
     # we are now both in members
     members = media_chan.GetMembers()
@@ -61,7 +62,7 @@ def worker(jp, q, bus, conn, stream):
     # In gtalk4, first one will be transport-accept, telling us that GTalk
     # is ok with our choice of transports.
     if jp.dialect == 'gtalk-v0.4':
-        e = q.expect_racy('stream-iq', predicate=lambda x:
+        e = q.expect('stream-iq', predicate=lambda x:
             xpath.queryForNodes("/iq/session[@type='transport-accept']",
                 x.stanza))
 

@@ -7,7 +7,8 @@ import dbus
 from twisted.words.xish import xpath
 
 from servicetest import (
-    make_channel_proxy, EventPattern, call_async,
+    make_channel_proxy, wrap_channel,
+    EventPattern, call_async,
     assertEquals, assertContains, assertLength,
     )
 import constants as cs
@@ -86,13 +87,11 @@ def worker(jp, q, bus, conn, stream, variant):
     assertEquals(self_handle, emitted_props[cs.INITIATOR_HANDLE])
     assertEquals('test@localhost', emitted_props[cs.INITIATOR_ID])
 
-    signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
-    media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
-    group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'StreamedMedia',
+        ['MediaSignalling'])
 
     # Exercise basic Channel Properties
-    channel_props = group_iface.GetAll(
-        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
+    channel_props = chan.Properties.GetAll(cs.CHANNEL)
 
     assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA,
         channel_props.get('ChannelType'))
@@ -101,14 +100,12 @@ def worker(jp, q, bus, conn, stream, variant):
         assertEquals(remote_handle, channel_props['TargetHandle'])
         assertEquals(cs.HT_CONTACT, channel_props['TargetHandleType'])
         assertEquals('foo@bar.com', channel_props['TargetID'])
-        assertEquals((cs.HT_CONTACT, remote_handle),
-            media_iface.GetHandle(dbus_interface=cs.CHANNEL))
+        assertEquals((cs.HT_CONTACT, remote_handle), chan.GetHandle())
     else:
         assertEquals(0, channel_props['TargetHandle'])
         assertEquals(cs.HT_NONE, channel_props['TargetHandleType'])
         assertEquals('', channel_props['TargetID'])
-        assertEquals((cs.HT_NONE, 0),
-            media_iface.GetHandle(dbus_interface=cs.CHANNEL))
+        assertEquals((cs.HT_NONE, 0), chan.GetHandle())
 
     for interface in [
             cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_MEDIA_SIGNALLING,
@@ -120,8 +117,7 @@ def worker(jp, q, bus, conn, stream, variant):
     assertEquals(conn.GetSelfHandle(), channel_props['InitiatorHandle'])
 
     # Exercise Group Properties
-    group_props = group_iface.GetAll(
-        cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
+    group_props = chan.Properties.GetAll(cs.CHANNEL_IFACE_GROUP)
 
     assertEquals([self_handle], group_props['Members'])
     assertEquals([], group_props['LocalPendingMembers'])
@@ -138,7 +134,7 @@ def worker(jp, q, bus, conn, stream, variant):
 
         if variant == REQUEST_ANONYMOUS_AND_ADD:
             # but we should be allowed to add the peer.
-            group_iface.AddMembers([remote_handle], 'I love backwards compat')
+            chan.Group.AddMembers([remote_handle], 'I love backwards compat')
 
     if variant == REQUEST_ANONYMOUS_AND_ADD or variant == REQUEST_ANONYMOUS:
         expected_flags = cs.GF_PROPERTIES | cs.GF_CAN_ADD
@@ -147,10 +143,10 @@ def worker(jp, q, bus, conn, stream, variant):
     assertEquals(expected_flags, group_props['GroupFlags'])
     assertEquals({}, group_props['HandleOwners'])
 
-    assertEquals([], media_iface.ListStreams())
-    streams = media_iface.RequestStreams(remote_handle,
+    assertEquals([], chan.StreamedMedia.ListStreams())
+    streams = chan.StreamedMedia.RequestStreams(remote_handle,
         [cs.MEDIA_STREAM_TYPE_AUDIO])
-    assertEquals(streams, media_iface.ListStreams())
+    assertEquals(streams, chan.StreamedMedia.ListStreams())
     assertLength(1, streams)
 
     # streams[0][0] is the stream identifier, which in principle we can't
@@ -207,8 +203,7 @@ def worker(jp, q, bus, conn, stream, variant):
 
     # Check the Group interface's properties again. Regardless of the call
     # requesting API in use, the state should be the same here:
-    group_props = group_iface.GetAll(
-        cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
+    group_props = chan.Properties.GetAll(cs.CHANNEL_IFACE_GROUP)
     assertContains('HandleOwners', group_props)
     assertEquals([self_handle], group_props['Members'])
     assertEquals([], group_props['LocalPendingMembers'])
@@ -235,7 +230,7 @@ def worker(jp, q, bus, conn, stream, variant):
 
     # Time passes ... afterwards we close the chan
 
-    group_iface.RemoveMembers([self_handle], 'closed')
+    chan.Group.RemoveMembers([self_handle], 'closed')
 
     # Make sure gabble sends proper terminate action
     if jp.dialect.startswith('gtalk'):

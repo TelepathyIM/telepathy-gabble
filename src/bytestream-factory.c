@@ -46,6 +46,8 @@
 G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
     G_TYPE_OBJECT);
 
+#define NB_SOCKS5_PROXIES_USED 5
+
 /* properties */
 enum
 {
@@ -161,6 +163,8 @@ struct _GabbleBytestreamFactoryPrivate
   GSList *socks5_proxies;
   /* List of GabbleSocks5Proxy found using the fallback-socks5-proxies param */
   GSList *socks5_fallback_proxies;
+  /* List of SOCKS5's jids that have not been queried yet */
+  GSList *socks5_potential_proxies;
 
   gboolean dispose_has_run;
 };
@@ -292,6 +296,70 @@ disco_item_found_cb (GabbleDisco *disco,
 }
 
 static void
+query_socks5_proxies (GabbleBytestreamFactory *self)
+{
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+  guint nb_proxies_found;
+  guint nb_proxies_needed;
+  guint i;
+
+  nb_proxies_found = g_slist_length (priv->socks5_proxies) +
+    g_slist_length (priv->socks5_fallback_proxies);
+
+  if (nb_proxies_found >= NB_SOCKS5_PROXIES_USED)
+    {
+      DEBUG ("we already have discovered enough proxies (%u)",
+          nb_proxies_found);
+      return;
+    }
+
+  nb_proxies_needed = NB_SOCKS5_PROXIES_USED - nb_proxies_found;
+  DEBUG ("Need %u more proxies", nb_proxies_needed);
+
+  for (i = 0; i < nb_proxies_needed &&
+      priv->socks5_potential_proxies != NULL; i++)
+    {
+      gchar *jid;
+
+      jid = priv->socks5_potential_proxies->data;
+      send_proxy_query (self, jid, TRUE);
+
+      g_free (jid);
+      priv->socks5_potential_proxies = g_slist_delete_link (
+          priv->socks5_potential_proxies, priv->socks5_potential_proxies);
+    }
+}
+
+static GSList *
+randomize_g_slist (GSList *list)
+{
+  guint len;
+  guint i;
+  GSList *new_head, *new_tail;
+
+  len = g_slist_length (list);
+  if (len <= 1)
+    return list;
+
+  i = g_random_int_range (0, len);
+  if (i == 0)
+    return list;
+
+  /* Cut the list at the i th position and make it the new head of the
+   * list */
+  new_tail = g_slist_nth (list, i - 1);
+  g_assert (new_tail != NULL);
+
+  new_head = new_tail->next;
+  g_assert (new_head != NULL);
+
+  new_tail->next = NULL;
+
+  return g_slist_concat (new_head, list);
+}
+
+static void
 conn_status_changed_cb (GabbleConnection *conn,
                         TpConnectionStatus status,
                         TpConnectionStatusReason reason,
@@ -303,18 +371,24 @@ conn_status_changed_cb (GabbleConnection *conn,
 
   if (status == TP_CONNECTION_STATUS_CONNECTED)
     {
-      /* Send SOCKS5 query to fallback SOCKS5 proxy if any */
       GStrv jids;
       guint i;
 
+      /* we can't intialize socks5_potential_proxies in the constructor
+       * because Connection's properties are not set yet at this point */
       g_object_get (priv->conn, "fallback-socks5-proxies", &jids, NULL);
-      if (jids == NULL)
-        return;
 
-      for (i = 0; jids[i] != NULL; i++)
+      for (i = 0; jids != NULL && jids[i] != NULL; i++)
         {
-          send_proxy_query (self, jids[i], TRUE);
+          priv->socks5_potential_proxies = g_slist_prepend (
+              priv->socks5_potential_proxies, g_strdup (jids[i]));
         }
+
+      /* randomize the list to not always use the same proxies */
+      priv->socks5_potential_proxies = randomize_g_slist (
+              priv->socks5_potential_proxies);
+
+      query_socks5_proxies (self);
 
       g_strfreev (jids);
     }
@@ -420,6 +494,10 @@ gabble_bytestream_factory_dispose (GObject *object)
 
   priv->socks5_proxies = NULL;
   priv->socks5_fallback_proxies = NULL;
+
+  g_slist_foreach (priv->socks5_potential_proxies, (GFunc) g_free, NULL);
+  g_slist_free (priv->socks5_potential_proxies);
+  priv->socks5_potential_proxies = NULL;
 
   if (G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose (object);
@@ -1951,34 +2029,6 @@ gabble_bytestream_factory_make_multi_accept_iq (const gchar *full_jid,
     }
 
   return msg;
-}
-
-static GSList *
-randomize_g_slist (GSList *list)
-{
-  guint len;
-  guint i;
-  GSList *new_head, *new_tail;
-
-  len = g_slist_length (list);
-  if (len <= 1)
-    return list;
-
-  i = g_random_int_range (0, len);
-  if (i == 0)
-    return list;
-
-  /* Cut the list at the i th position and make it the new head of the
-   * list */
-  new_tail = g_slist_nth (list, i - 1);
-  g_assert (new_tail != NULL);
-
-  new_head = new_tail->next;
-  g_assert (new_head != NULL);
-
-  new_tail->next = NULL;
-
-  return g_slist_concat (new_head, list);
 }
 
 GSList *

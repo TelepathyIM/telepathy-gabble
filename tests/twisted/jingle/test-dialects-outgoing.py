@@ -1,5 +1,5 @@
 """
-Test outgoing call handling.
+Test outgoing call handling, using all three variations of RequestChannel.
 """
 
 import dbus
@@ -12,14 +12,35 @@ from servicetest import (
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
-def worker(jp, q, bus, conn, stream):
+# There are various deprecated APIs for requesting calls, documented at
+# <http://telepathy.freedesktop.org/wiki/Requesting StreamedMedia channels>.
+# These are ordered from most recent to most deprecated.
+REQUEST_ANONYMOUS = 1
+REQUEST_ANONYMOUS_AND_ADD = 2
+REQUEST_NONYMOUS = 3
+
+def request_anonymous(jp, q, bus, conn, stream):
+    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS)
+
+def request_anonymous_and_add(jp, q, bus, conn, stream):
+    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS_AND_ADD)
+
+def request_nonymous(jp, q, bus, conn, stream):
+    worker(jp, q, bus, conn, stream, REQUEST_NONYMOUS)
+
+def worker(jp, q, bus, conn, stream, variant):
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
     jt2.prepare()
 
     self_handle = conn.GetSelfHandle()
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
-    call_async(
-        q, conn, 'RequestChannel', cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 0, True)
+
+    if variant == REQUEST_NONYMOUS:
+        call_async( q, conn, 'RequestChannel', cs.CHANNEL_TYPE_STREAMED_MEDIA,
+            cs.HT_CONTACT, remote_handle, True)
+    else:
+        call_async( q, conn, 'RequestChannel', cs.CHANNEL_TYPE_STREAMED_MEDIA,
+            cs.HT_NONE, 0, True)
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
@@ -28,8 +49,12 @@ def worker(jp, q, bus, conn, stream):
         )
     path = ret.value[0]
 
-    assertEquals(
-        [path, cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_NONE, 0, True], old_sig.args)
+    if variant == REQUEST_NONYMOUS:
+        assertEquals( [path, cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_CONTACT,
+            remote_handle, True], old_sig.args)
+    else:
+        assertEquals( [path, cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_NONE, 0,
+            True], old_sig.args)
 
     assertLength(1, new_sig.args)
     assertLength(1, new_sig.args[0])       # one channel
@@ -38,9 +63,16 @@ def worker(jp, q, bus, conn, stream):
 
     assertEquals(
         cs.CHANNEL_TYPE_STREAMED_MEDIA, emitted_props[cs.CHANNEL_TYPE])
-    assertEquals(cs.HT_NONE, emitted_props[cs.TARGET_HANDLE_TYPE])
-    assertEquals(0, emitted_props[cs.TARGET_HANDLE])
-    assertEquals('', emitted_props[cs.TARGET_ID])
+
+    if variant == REQUEST_NONYMOUS:
+        assertEquals(remote_handle, emitted_props[cs.TARGET_HANDLE])
+        assertEquals(cs.HT_CONTACT, emitted_props[cs.TARGET_HANDLE_TYPE])
+        assertEquals('foo@bar.com', emitted_props[cs.TARGET_ID])
+    else:
+        assertEquals(0, emitted_props[cs.TARGET_HANDLE])
+        assertEquals(cs.HT_NONE, emitted_props[cs.TARGET_HANDLE_TYPE])
+        assertEquals('', emitted_props[cs.TARGET_ID])
+
     assertEquals(True, emitted_props[cs.REQUESTED])
     assertEquals(self_handle, emitted_props[cs.INITIATOR_HANDLE])
     assertEquals('test@localhost', emitted_props[cs.INITIATOR_ID])
@@ -53,19 +85,27 @@ def worker(jp, q, bus, conn, stream):
     channel_props = group_iface.GetAll(
         cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
 
-    assertEquals(0, channel_props['TargetHandle'])
-    assertEquals(cs.HT_NONE, channel_props['TargetHandleType'])
-    assertEquals((cs.HT_NONE, 0),
-        media_iface.GetHandle(dbus_interface=cs.CHANNEL))
     assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA,
         channel_props.get('ChannelType'))
+
+    if variant == REQUEST_NONYMOUS:
+        assertEquals(remote_handle, channel_props['TargetHandle'])
+        assertEquals(cs.HT_CONTACT, channel_props['TargetHandleType'])
+        assertEquals('foo@bar.com', channel_props['TargetID'])
+        assertEquals((cs.HT_CONTACT, remote_handle),
+            media_iface.GetHandle(dbus_interface=cs.CHANNEL))
+    else:
+        assertEquals(0, channel_props['TargetHandle'])
+        assertEquals(cs.HT_NONE, channel_props['TargetHandleType'])
+        assertEquals('', channel_props['TargetID'])
+        assertEquals((cs.HT_NONE, 0),
+            media_iface.GetHandle(dbus_interface=cs.CHANNEL))
 
     for interface in [
             cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_MEDIA_SIGNALLING,
             cs.TP_AWKWARD_PROPERTIES, cs.CHANNEL_IFACE_HOLD]:
         assertContains(interface, channel_props['Interfaces'])
 
-    assertEquals('', channel_props['TargetID'])
     assertEquals(True, channel_props['Requested'])
     assertEquals('test@localhost', channel_props['InitiatorID'])
     assertEquals(conn.GetSelfHandle(), channel_props['InitiatorHandle'])
@@ -74,10 +114,23 @@ def worker(jp, q, bus, conn, stream):
     group_props = group_iface.GetAll(
         cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
 
-    for name in [
-            'HandleOwners', 'Members', 'LocalPendingMembers',
-            'RemotePendingMembers', 'GroupFlags']:
-        assertContains(name, group_props)
+    assertEquals([self_handle], group_props['Members'])
+    assertEquals([], group_props['LocalPendingMembers'])
+
+    if variant == REQUEST_NONYMOUS:
+        # In this variant, they're meant to be in RP even though we've sent
+        # nothing
+        assertEquals([remote_handle], group_props['RemotePendingMembers'])
+    else:
+        # The channel's anonymous...
+        assertEquals([], group_props['RemotePendingMembers'])
+
+        if variant == REQUEST_ANONYMOUS_AND_ADD:
+            # but we should be allowed to add the peer.
+            group_iface.AddMembers([remote_handle], 'I love backwards compat')
+
+    assertContains('HandleOwners', group_props)
+    assertContains('GroupFlags', group_props)
 
     assertEquals([], media_iface.ListStreams())
     streams = media_iface.RequestStreams(remote_handle,
@@ -170,5 +223,6 @@ def worker(jp, q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    test_all_dialects(worker)
-
+    test_all_dialects(request_anonymous)
+    test_all_dialects(request_anonymous_and_add)
+    test_all_dialects(request_nonymous)

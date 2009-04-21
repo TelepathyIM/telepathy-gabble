@@ -1,5 +1,6 @@
 """
-Test outgoing call handling, using all three variations of RequestChannel.
+Test basic outgoing call handling, using CreateChannel and all three variations
+of RequestChannel.
 """
 
 import dbus
@@ -15,9 +16,13 @@ from jingletest2 import JingleTest2, test_all_dialects
 # There are various deprecated APIs for requesting calls, documented at
 # <http://telepathy.freedesktop.org/wiki/Requesting StreamedMedia channels>.
 # These are ordered from most recent to most deprecated.
+CREATE = 0
 REQUEST_ANONYMOUS = 1
 REQUEST_ANONYMOUS_AND_ADD = 2
 REQUEST_NONYMOUS = 3
+
+def create(jp, q, bus, conn, stream):
+    worker(jp, q, bus, conn, stream, CREATE)
 
 def request_anonymous(jp, q, bus, conn, stream):
     worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS)
@@ -36,20 +41,24 @@ def worker(jp, q, bus, conn, stream, variant):
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
 
     if variant == REQUEST_NONYMOUS:
-        call_async( q, conn, 'RequestChannel', cs.CHANNEL_TYPE_STREAMED_MEDIA,
+        path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
             cs.HT_CONTACT, remote_handle, True)
+    elif variant == CREATE:
+        path = conn.Requests.CreateChannel({
+            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+            cs.TARGET_HANDLE: handle,
+            })[0]
     else:
-        call_async( q, conn, 'RequestChannel', cs.CHANNEL_TYPE_STREAMED_MEDIA,
+        path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
             cs.HT_NONE, 0, True)
 
-    ret, old_sig, new_sig = q.expect_many(
-        EventPattern('dbus-return', method='RequestChannel'),
+    old_sig, new_sig = q.expect_many(
         EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         )
-    path = ret.value[0]
 
-    if variant == REQUEST_NONYMOUS:
+    if variant == REQUEST_NONYMOUS or variant == CREATE:
         assertEquals( [path, cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_CONTACT,
             remote_handle, True], old_sig.args)
     else:
@@ -64,7 +73,7 @@ def worker(jp, q, bus, conn, stream, variant):
     assertEquals(
         cs.CHANNEL_TYPE_STREAMED_MEDIA, emitted_props[cs.CHANNEL_TYPE])
 
-    if variant == REQUEST_NONYMOUS:
+    if variant == REQUEST_NONYMOUS or variant == CREATE:
         assertEquals(remote_handle, emitted_props[cs.TARGET_HANDLE])
         assertEquals(cs.HT_CONTACT, emitted_props[cs.TARGET_HANDLE_TYPE])
         assertEquals('foo@bar.com', emitted_props[cs.TARGET_ID])
@@ -81,14 +90,14 @@ def worker(jp, q, bus, conn, stream, variant):
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
 
-    # Exercise basic Channel Properties from spec 0.17.7
+    # Exercise basic Channel Properties
     channel_props = group_iface.GetAll(
         cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
 
     assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA,
         channel_props.get('ChannelType'))
 
-    if variant == REQUEST_NONYMOUS:
+    if variant == REQUEST_NONYMOUS or variant == CREATE:
         assertEquals(remote_handle, channel_props['TargetHandle'])
         assertEquals(cs.HT_CONTACT, channel_props['TargetHandleType'])
         assertEquals('foo@bar.com', channel_props['TargetID'])
@@ -110,7 +119,7 @@ def worker(jp, q, bus, conn, stream, variant):
     assertEquals('test@localhost', channel_props['InitiatorID'])
     assertEquals(conn.GetSelfHandle(), channel_props['InitiatorHandle'])
 
-    # Exercise Group Properties from spec 0.17.6 (in a basic way)
+    # Exercise Group Properties
     group_props = group_iface.GetAll(
         cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
 
@@ -122,15 +131,21 @@ def worker(jp, q, bus, conn, stream, variant):
         # nothing
         assertEquals([remote_handle], group_props['RemotePendingMembers'])
     else:
-        # The channel's anonymous...
+        # For an anonymous channel, the peer isn't yet known; for a Create-d
+        # channel, the peer only appears in RP when we actually send them the
+        # session-initiate
         assertEquals([], group_props['RemotePendingMembers'])
 
         if variant == REQUEST_ANONYMOUS_AND_ADD:
             # but we should be allowed to add the peer.
             group_iface.AddMembers([remote_handle], 'I love backwards compat')
 
-    assertContains('HandleOwners', group_props)
-    assertContains('GroupFlags', group_props)
+    if variant == REQUEST_ANONYMOUS_AND_ADD or variant == REQUEST_ANONYMOUS:
+        expected_flags = cs.GF_PROPERTIES | cs.GF_CAN_ADD
+    else:
+        expected_flags = cs.GF_PROPERTIES
+    assertEquals(expected_flags, group_props['GroupFlags'])
+    assertEquals({}, group_props['HandleOwners'])
 
     assertEquals([], media_iface.ListStreams())
     streams = media_iface.RequestStreams(remote_handle,
@@ -171,12 +186,33 @@ def worker(jp, q, bus, conn, stream, variant):
     assertEquals('gtalk-p2p', sh_props['NATTraversal'])
     assertEquals(True, sh_props['CreatedLocally'])
 
-    session_initiate = q.expect('stream-iq', predicate=lambda e:
-        jp.match_jingle_action(e.query, 'session-initiate'))
-    jt2.set_sid_from_initiate(session_initiate.query)
+    if variant == CREATE:
+        # When we actually send XML to the peer, they should pop up in remote
+        # pending.
+        session_initiate, _ = q.expect_many(
+            EventPattern('stream-iq', iq_type='set', predicate=lambda e:
+                jp.match_jingle_action(e.query, 'session-initiate')),
+            EventPattern('dbus-signal', signal='MembersChanged',
+                args=["", [], [], [], [remote_handle], self_handle,
+                      cs.GC_REASON_INVITED]),
+            )
+    else:
+        session_initiate = q.expect('stream-iq', iq_type='set',
+            predicate=lambda e:
+                jp.match_jingle_action(e.query, 'session-initiate'))
 
+    jt2.set_sid_from_initiate(session_initiate.query)
     stream.send(jp.xml(jp.ResultIq('test@localhost', session_initiate.stanza,
         [])))
+
+    # Check the Group interface's properties again. Regardless of the call
+    # requesting API in use, the state should be the same here:
+    group_props = group_iface.GetAll(
+        cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
+    assertContains('HandleOwners', group_props)
+    assertEquals([self_handle], group_props['Members'])
+    assertEquals([], group_props['LocalPendingMembers'])
+    assertEquals([remote_handle], group_props['RemotePendingMembers'])
 
     if jp.dialect == 'gtalk-v0.4':
         node = jp.SetIq(jt2.peer, jt2.jid, [

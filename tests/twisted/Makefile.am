@@ -86,7 +86,6 @@ TWISTED_TESTS = \
 	jingle/test-description-info.py \
 	jingle/test-incoming-call.py \
 	jingle/test-incoming-call-reject.py \
-	jingle/test-outgoing-call-requestotron.py \
 	jingle/test-outgoing-call-rejected.py \
 	jingle/test-outgoing-call-ensure.py \
 	jingle/test-dialects-incoming.py \

@@ -19,10 +19,6 @@ def worker(jp, q, bus, conn, stream):
     # Remote end calls us
     jt2.incoming_call()
 
-    # we don't even need this here, because we've provided a very strict
-    # predicate to expect_racy() so it won't get the wrong event
-    # q.flush_past_events()
-
     # FIXME: these signals are not observable by real clients, since they
     #        happen before NewChannels.
     # The caller is in members

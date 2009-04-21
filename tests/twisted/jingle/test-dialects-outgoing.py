@@ -5,15 +5,18 @@ Test outgoing call handling.
 import dbus
 from twisted.words.xish import xpath
 
-from servicetest import make_channel_proxy, EventPattern, call_async
+from servicetest import (
+    make_channel_proxy, EventPattern, call_async,
+    assertEquals, assertContains, assertLength,
+    )
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
 def worker(jp, q, bus, conn, stream):
-
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
     jt2.prepare()
 
+    self_handle = conn.GetSelfHandle()
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
     call_async(
         q, conn, 'RequestChannel', cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 0, True)
@@ -25,11 +28,75 @@ def worker(jp, q, bus, conn, stream):
         )
     path = ret.value[0]
 
+    assertEquals(
+        [path, cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_NONE, 0, True], old_sig.args)
+
+    assertLength(1, new_sig.args)
+    assertLength(1, new_sig.args[0])       # one channel
+    assertLength(2, new_sig.args[0][0])    # two struct members
+    emitted_props = new_sig.args[0][0][1]
+
+    assertEquals(
+        cs.CHANNEL_TYPE_STREAMED_MEDIA, emitted_props[cs.CHANNEL_TYPE])
+    assertEquals(cs.HT_NONE, emitted_props[cs.TARGET_HANDLE_TYPE])
+    assertEquals(0, emitted_props[cs.TARGET_HANDLE])
+    assertEquals('', emitted_props[cs.TARGET_ID])
+    assertEquals(True, emitted_props[cs.REQUESTED])
+    assertEquals(self_handle, emitted_props[cs.INITIATOR_HANDLE])
+    assertEquals('test@localhost', emitted_props[cs.INITIATOR_ID])
+
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
 
-    media_iface.RequestStreams(remote_handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
+    # Exercise basic Channel Properties from spec 0.17.7
+    channel_props = group_iface.GetAll(
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
+
+    assertEquals(0, channel_props['TargetHandle'])
+    assertEquals(cs.HT_NONE, channel_props['TargetHandleType'])
+    assertEquals((cs.HT_NONE, 0),
+        media_iface.GetHandle(dbus_interface=cs.CHANNEL))
+    assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA,
+        channel_props.get('ChannelType'))
+
+    for interface in [
+            cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_MEDIA_SIGNALLING,
+            cs.TP_AWKWARD_PROPERTIES, cs.CHANNEL_IFACE_HOLD]:
+        assertContains(interface, channel_props['Interfaces'])
+
+    assertEquals('', channel_props['TargetID'])
+    assertEquals(True, channel_props['Requested'])
+    assertEquals('test@localhost', channel_props['InitiatorID'])
+    assertEquals(conn.GetSelfHandle(), channel_props['InitiatorHandle'])
+
+    # Exercise Group Properties from spec 0.17.6 (in a basic way)
+    group_props = group_iface.GetAll(
+        cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
+
+    for name in [
+            'HandleOwners', 'Members', 'LocalPendingMembers',
+            'RemotePendingMembers', 'GroupFlags']:
+        assertContains(name, group_props)
+
+    assertEquals([], media_iface.ListStreams())
+    streams = media_iface.RequestStreams(remote_handle,
+        [cs.MEDIA_STREAM_TYPE_AUDIO])
+    assertEquals(streams, media_iface.ListStreams())
+    assertLength(1, streams)
+
+    # streams[0][0] is the stream identifier, which in principle we can't
+    # make any assertion about (although in practice it's probably 1)
+
+    assertEquals((
+        remote_handle,
+        cs.MEDIA_STREAM_TYPE_AUDIO,
+        # We haven't connected yet
+        cs.MEDIA_STREAM_STATE_DISCONNECTED,
+        # In Gabble, requested streams start off bidirectional
+        cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
+        0),
+        streams[0][1:])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -46,18 +113,17 @@ def worker(jp, q, bus, conn, stream):
     stream_handler.Ready(jt2.get_audio_codecs_dbus())
     stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    e = q.expect('stream-iq')
-    if jp.dialect.startswith('gtalk'):
-        assert e.query.name == 'session'
-        assert e.query['type'] == 'initiate'
-        jt2.sid = e.query['id']
-    else:
-        assert e.query.name == 'jingle'
-        assert e.query['action'] == 'session-initiate'
-        jt2.sid = e.query['sid']
+    sh_props = stream_handler.GetAll(
+        cs.STREAM_HANDLER, dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals('gtalk-p2p', sh_props['NATTraversal'])
+    assertEquals(True, sh_props['CreatedLocally'])
 
-    # stream.send(gabbletest.make_result_iq(stream, e.stanza))
-    stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
+    session_initiate = q.expect('stream-iq', predicate=lambda e:
+        jp.match_jingle_action(e.query, 'session-initiate'))
+    jt2.set_sid_from_initiate(session_initiate.query)
+
+    stream.send(jp.xml(jp.ResultIq('test@localhost', session_initiate.stanza,
+        [])))
 
     if jp.dialect == 'gtalk-v0.4':
         node = jp.SetIq(jt2.peer, jt2.jid, [
@@ -68,21 +134,19 @@ def worker(jp, q, bus, conn, stream):
     # FIXME: expect transport-info, then if we're gtalk3, send
     # candidates, and check that gabble resends transport-info as
     # candidates
-    # jt.outgoing_call_reply(e.query['sid'], True)
-    node = jp.SetIq(jt2.peer, jt2.jid, [
-        jp.Jingle(jt2.sid, jt2.peer, 'session-accept', [
-            jp.Content('stream1', 'initiator', 'both', [
-                jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
-    stream.send(jp.xml(node))
+    jt2.accept()
 
-    q.expect('stream-iq', iq_type='result')
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result'),
+        # Call accepted
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=['', [remote_handle], [], [], [], remote_handle,
+                  cs.GC_REASON_NONE]),
+        )
 
     # Time passes ... afterwards we close the chan
 
-    group_iface.RemoveMembers([dbus.UInt32(1)], 'closed')
+    group_iface.RemoveMembers([self_handle], 'closed')
 
     # Make sure gabble sends proper terminate action
     if jp.dialect.startswith('gtalk'):
@@ -94,16 +158,16 @@ def worker(jp, q, bus, conn, stream):
             xpath.queryForNodes("/iq/jingle[@action='session-terminate']",
                 x.stanza))
 
-    q.expect_many(
+    mc_event, _, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChanged'),
         EventPattern('dbus-signal', signal='Close'),
         terminate,
         )
+    # Check that we're the actor
+    assertEquals(self_handle, mc_event.args[5])
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
-
 
 if __name__ == '__main__':
     test_all_dialects(worker)

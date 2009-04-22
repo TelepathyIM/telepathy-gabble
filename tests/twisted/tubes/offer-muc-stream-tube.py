@@ -172,7 +172,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     iq_event, _ = q.expect_many(
         EventPattern('stream-iq', iq_type='result'),
         EventPattern('dbus-signal', signal='StreamTubeNewConnection',
-            args=[stream_tube_id, bob_handle]))
+            args=[stream_tube_id, bob_handle], interface=cs.CHANNEL_TYPE_TUBES))
 
     # handle iq_event
     bytestream.check_si_reply(iq_event.stanza)

@@ -18,10 +18,13 @@ from jingletest2 import JingleTest2, test_all_dialects
 # There are various deprecated APIs for requesting calls, documented at
 # <http://telepathy.freedesktop.org/wiki/Requesting StreamedMedia channels>.
 # These are ordered from most recent to most deprecated.
-CREATE = 0
-REQUEST_ANONYMOUS = 1
-REQUEST_ANONYMOUS_AND_ADD = 2
-REQUEST_NONYMOUS = 3
+CREATE = 0 # CreateChannel({TargetHandleType: Contact, TargetHandle: h});
+           # RequestStreams()
+REQUEST_ANONYMOUS = 1 # RequestChannel(HandleTypeNone, 0); RequestStreams()
+REQUEST_ANONYMOUS_AND_ADD = 2 # RequestChannel(HandleTypeNone, 0);
+                              # AddMembers([h], ...); RequestStreams(h,...)
+REQUEST_NONYMOUS = 3 # RequestChannel(HandleTypeContact, h);
+                     # RequestStreams(h, ...)
 
 def create(jp, q, bus, conn, stream):
     worker(jp, q, bus, conn, stream, CREATE)

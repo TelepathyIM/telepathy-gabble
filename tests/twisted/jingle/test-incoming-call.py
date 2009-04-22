@@ -4,43 +4,19 @@ Test incoming call handling.
 
 import dbus
 
-from gabbletest import exec_test, make_result_iq, sync_stream
+from gabbletest import make_result_iq
 from servicetest import (
-    make_channel_proxy, unwrap, tp_path_prefix, EventPattern, sync_dbus)
-import jingletest
+    make_channel_proxy, unwrap, tp_path_prefix, EventPattern)
+from jingletest2 import JingleTest2, test_all_dialects
 import constants as cs
 
-def test(q, bus, conn, stream):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
+from twisted.words.xish import xpath
 
-    # If we need to override remote caps, feats, codecs or caps,
-    # this is a good time to do it
-
-    # Connecting
-    conn.Connect()
-
-    q.expect_many(
-            EventPattern('dbus-signal', signal='StatusChanged', args=[1, 1]),
-            EventPattern('stream-authenticated'),
-            EventPattern('dbus-signal', signal='PresenceUpdate',
-                args=[{1L: (0L, {u'available': {}})}]),
-            EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
-            )
+def test(jp, q, bus, conn, stream):
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
+    jt.prepare()
 
     self_handle = conn.GetSelfHandle()
-
-    # We need remote end's presence for capabilities
-    jt.send_remote_presence()
-
-    # Gabble doesn't trust it, so makes a disco
-    event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to='foo@bar.com/Foo')
-
-    jt.send_remote_disco_reply(event.stanza)
-
-    # Force Gabble to process the caps before calling RequestChannel
-    sync_stream(q, stream)
-
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
 
     # Remote end calls us
@@ -64,9 +40,23 @@ def test(q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    e2, e3 = q.expect_many(
-        EventPattern('dbus-signal', signal='NewStreamHandler'),
-        EventPattern('dbus-signal', signal='StreamDirectionChanged'))
+    es = [ EventPattern('dbus-signal', signal='NewStreamHandler'),
+           EventPattern('dbus-signal', signal='StreamDirectionChanged'),
+         ]
+    if jp.dialect == 'gtalk-v0.4':
+        # With gtalk4, apparently we have to send transport-accept immediately,
+        # not even just before we send our transport-info.
+        # FIXME: wjt thinks this is suspicious. It matches the Gabble
+        #        implementation, so he moved it here to avoid the test being
+        #        racy, but we should do some more interop testing.
+        _, e2, e3 = q.expect_many(
+            EventPattern('stream-iq', predicate=lambda x:
+                xpath.queryForNodes("/iq/session[@type='transport-accept']",
+                    x.stanza)),
+            *es
+            )
+    else:
+        e2, e3 = q.expect_many(*es)
 
     # S-E gets notified about a newly-created stream
     stream_handler = make_channel_proxy(conn, e2.args[0], 'Media.StreamHandler')
@@ -133,15 +123,10 @@ def test(q, bus, conn, stream):
 
     # peer gets the transport
     e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'transport-info'
+    assert jp.match_jingle_action(e.query, 'transport-info')
     assert e.query['initiator'] == 'foo@bar.com/Foo'
 
     stream.send(make_result_iq(stream, e.stanza))
-
-    # Make sure everything's processed
-    sync_stream(q, stream)
-    sync_dbus(bus, q, conn)
 
     # At last, accept the call
     media_chan.AddMembers([self_handle], 'accepted')
@@ -152,9 +137,8 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='MembersChanged',
             args=[u'', [self_handle], [], [], [], self_handle,
                   cs.GC_REASON_NONE]),
-        EventPattern('stream-iq',
-            predicate=lambda e: (e.query.name == 'jingle' and
-                e.query['action'] == 'session-accept')),
+        EventPattern('stream-iq', iq_type='set', predicate=lambda e:
+            jp.match_jingle_action(e.query, 'session-accept')),
         EventPattern('dbus-signal', signal='SetStreamSending', args=[True]),
         EventPattern('dbus-signal', signal='SetStreamPlaying', args=[True]),
         EventPattern('dbus-signal', signal='StreamDirectionChanged',
@@ -168,15 +152,12 @@ def test(q, bus, conn, stream):
     # Connected! Blah, blah, ...
 
     # 'Nuff said
-    jt.remote_terminate()
+    jt.terminate()
     q.expect('dbus-signal', signal='Closed', path=path[len(tp_path_prefix):])
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
-    return True
-
-
 if __name__ == '__main__':
-    exec_test(test)
+    test_all_dialects(test)
 

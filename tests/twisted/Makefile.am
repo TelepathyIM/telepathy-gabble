@@ -76,6 +76,7 @@ TWISTED_TESTS = \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
+	jingle/incoming-basics.py \
 	jingle/initial-audio-video.py \
 	jingle/stun-server.py \
 	jingle/outgoing-basics.py \
@@ -86,7 +87,6 @@ TWISTED_TESTS = \
 	jingle/stream-handler-error.py \
 	jingle/test-content-adding-removal.py \
 	jingle/test-description-info.py \
-	jingle/test-incoming-call.py \
 	jingle/test-incoming-call-reject.py \
 	jingle/test-outgoing-call-rejected.py \
 	jingle/test-content-complex.py \

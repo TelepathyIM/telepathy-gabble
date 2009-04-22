@@ -6,6 +6,7 @@ of RequestChannel.
 import dbus
 from twisted.words.xish import xpath
 
+from gabbletest import exec_test
 from servicetest import (
     make_channel_proxy, wrap_channel,
     EventPattern, call_async,
@@ -253,7 +254,33 @@ def worker(jp, q, bus, conn, stream, variant):
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
+def rccs(q, bus, conn, stream):
+    """
+    Tests that the connection's RequestableChannelClasses for StreamedMedia are
+    sane.
+    """
+    conn.Connect()
+
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
+    rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS,
+        'RequestableChannelClasses')
+
+    media_classes = [ rcc for rcc in rccs
+        if rcc[0][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA ]
+
+    assertLength(1, media_classes)
+
+    fixed, allowed = media_classes[0]
+
+    assertEquals(cs.HT_CONTACT, fixed[cs.TARGET_HANDLE_TYPE])
+
+    assertContains(cs.TARGET_HANDLE, allowed)
+    assertContains(cs.TARGET_ID, allowed)
+
 if __name__ == '__main__':
+    exec_test(rccs)
     test_all_dialects(request_anonymous)
     test_all_dialects(request_anonymous_and_add)
     test_all_dialects(request_nonymous)

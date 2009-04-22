@@ -35,6 +35,38 @@ def set_up_listener_socket(q, path):
     reactor.listenUNIX(full_path, factory)
     return full_path
 
+def connect_to_tube(stream, q, bytestream_cls, muc, stream_tube_id):
+    # The CM is the server, so fake a client wanting to talk to it
+    bytestream = bytestream_cls(stream, q, 'alpha', '%s/bob' % muc,
+        '%s/test' % muc, True)
+
+    # set the real jid of the target as 'to' because the XMPP server changes
+    # it when delivering the IQ
+    iq, si = bytestream.create_si_offer(ns.TUBES, 'test@localhost/Resource')
+
+    stream_node = si.addElement((ns.TUBES, 'muc-stream'))
+    stream_node['tube'] = str(stream_tube_id)
+    stream.send(iq)
+
+    return bytestream
+
+def use_tube(q, bytestream, protocol):
+    # have the fake client open the stream
+    bytestream.open_bytestream()
+
+    # have the fake client send us some data
+    bytestream.send_data('hello initiator')
+
+    # the server reply
+    event = q.expect('socket-data', data='hello initiator', protocol=protocol)
+    data = 'hello joiner'
+    protocol.sendData(data)
+
+    # we receive server's data
+    binary = bytestream.get_data(len(data))
+    assert binary == data, binary
+
+
 def test(q, bus, conn, stream, bytestream_cls):
     if bytestream_cls in [BytestreamS5BRelay, BytestreamS5BRelayBugged]:
         # disable SOCKS5 relay tests because proxy can't be used with muc
@@ -153,46 +185,22 @@ def test(q, bus, conn, stream, bytestream_cls):
     # FIXME: if we use an unknown JID here, everything fails
     # (the code uses lookup where it should use ensure)
 
-    # The CM is the server, so fake a client wanting to talk to it
-    bytestream = bytestream_cls(stream, q, 'alpha', 'chat@conf.localhost/bob',
-        'chat@conf.localhost/test', True)
+    bytestream = connect_to_tube(stream, q, bytestream_cls, 'chat@conf.localhost', stream_tube_id)
 
-    # set the real jid of the target as 'to' because the XMPP server changes
-    # it when delivering the IQ
-    iq, si = bytestream.create_si_offer(ns.TUBES, 'test@localhost/Resource')
-
-    stream_node = si.addElement((ns.TUBES, 'muc-stream'))
-    stream_node['tube'] = str(stream_tube_id)
-
-    stream.send(iq)
-
-    event = q.expect('socket-connected')
-    protocol = event.protocol
-
-    iq_event, _ = q.expect_many(
+    iq_event, socket_event, _ = q.expect_many(
         EventPattern('stream-iq', iq_type='result'),
+        EventPattern('socket-connected'),
         EventPattern('dbus-signal', signal='StreamTubeNewConnection',
             args=[stream_tube_id, bob_handle], interface=cs.CHANNEL_TYPE_TUBES))
+
+    protocol = socket_event.protocol
 
     # handle iq_event
     bytestream.check_si_reply(iq_event.stanza)
     tube = xpath.queryForNodes('/iq//si/tube[@xmlns="%s"]' % ns.TUBES, iq_event.stanza)
     assert len(tube) == 1
 
-    # have the fake client open the stream
-    bytestream.open_bytestream()
-
-    # have the fake client send us some data
-    bytestream.send_data('hello initiator')
-
-    # the server reply
-    event = q.expect('socket-data', data='hello initiator', protocol=protocol)
-    data = 'hello joiner'
-    protocol.sendData(data)
-
-    # we receive server's data
-    binary = bytestream.get_data(len(data))
-    assert binary == data, binary
+    use_tube(q, bytestream, protocol)
 
     # offer a stream tube to another room (new API)
     srv_path = set_up_listener_socket(q, '/stream2')

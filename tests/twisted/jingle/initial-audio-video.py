@@ -22,14 +22,13 @@ def outgoing(jp, q, bus, conn, stream):
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
 
     rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS, 'RequestableChannelClasses')
-    cclass = ({ cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-                cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-              },
-              [ cs.TARGET_HANDLE, cs.TARGET_ID,
-                cs.INITIAL_AUDIO, cs.INITIAL_VIDEO,
-              ]
-             )
-    assertContains(cclass, rccs)
+    media_classes = [ rcc for rcc in rccs
+        if rcc[0][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA ]
+
+    assertLength(1, media_classes)
+    fixed, allowed = media_classes[0]
+    assertContains(cs.INITIAL_AUDIO, allowed)
+    assertContains(cs.INITIAL_VIDEO, allowed)
 
     check_neither(q, conn, bus, stream, remote_handle)
     check_iav(jt, q, conn, bus, stream, remote_handle, True, False)

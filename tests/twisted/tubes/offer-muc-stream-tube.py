@@ -322,6 +322,27 @@ def test(q, bus, conn, stream, bytestream_cls):
         params[node['name']] = (node['type'], str(node))
     assert params == {'foo': ('str', 'bar')}
 
+    bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['chat2@conf.localhost/bob'])[0]
+
+    bytestream = connect_to_tube(stream, q, bytestream_cls, 'chat2@conf.localhost', stream_tube_id)
+
+    iq_event, socket_event, conn_event = q.expect_many(
+        EventPattern('stream-iq', iq_type='result'),
+        EventPattern('socket-connected'),
+        EventPattern('dbus-signal', signal='StreamTubeNewConnection',
+            interface=cs.CHANNEL_TYPE_STREAM_TUBE))
+
+    assert conn_event.args == [bob_handle]
+
+    protocol = socket_event.protocol
+
+    # handle iq_event
+    bytestream.check_si_reply(iq_event.stanza)
+    tube = xpath.queryForNodes('/iq//si/tube[@xmlns="%s"]' % ns.TUBES, iq_event.stanza)
+    assert len(tube) == 1
+
+    use_tube(q, bytestream, protocol)
+
     chan_iface.Close()
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),

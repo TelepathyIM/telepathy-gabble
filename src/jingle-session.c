@@ -1501,7 +1501,8 @@ gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
     }
   else
     {
-      _gabble_connection_send (priv->conn, msg, NULL);
+      _gabble_connection_send_with_reply (priv->conn, msg,
+          NULL, NULL, NULL, NULL);
     }
 
   lm_message_unref (msg);

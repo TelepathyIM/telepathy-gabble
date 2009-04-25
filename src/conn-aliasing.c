@@ -784,8 +784,8 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
       TP_HANDLE_TYPE_CONTACT);
   GabbleConnectionAliasSource ret = GABBLE_CONNECTION_ALIAS_NONE;
   GabblePresence *pres;
-  const gchar *tmp;
-  gchar *user = NULL, *resource = NULL;
+  const gchar *tmp, *jid;
+  gchar *resource = NULL;
 
   g_return_val_if_fail (NULL != conn, GABBLE_CONNECTION_ALIAS_NONE);
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), GABBLE_CONNECTION_ALIAS_NONE);
@@ -849,10 +849,10 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
         }
     }
 
-  tmp = tp_handle_inspect (contact_handles, handle);
-  g_assert (NULL != tmp);
+  jid = tp_handle_inspect (contact_handles, handle);
+  g_assert (NULL != jid);
 
-  gabble_decode_jid (tmp, &user, NULL, &resource);
+  gabble_decode_jid (jid, NULL, NULL, &resource);
 
   /* MUC handles have the nickname in the resource */
   if (NULL != resource)
@@ -880,22 +880,15 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
       goto OUT;
     }
 
-  /* otherwise just take their local part */
-  if (NULL != user)
-    {
-      ret = GABBLE_CONNECTION_ALIAS_FROM_JID;
+  /* otherwise just take their jid */
+  ret = GABBLE_CONNECTION_ALIAS_FROM_JID;
 
-      if (NULL != alias)
-        {
-          *alias = user;
-          user = NULL;
-        }
+  if (NULL != alias)
+    *alias = g_strdup (jid);
 
-      goto OUT;
-    }
+  goto OUT;
 
 OUT:
-  g_free (user);
   g_free (resource);
   return ret;
 }

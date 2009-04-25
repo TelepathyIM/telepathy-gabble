@@ -37,10 +37,10 @@ def test(q, bus, conn, stream):
     acknowledge_iq(stream, event.stanza)
 
     q.expect('dbus-return', method='RequestAliases',
-        value=([u'bob'],))
+        value=([u'bob@foo.com'],))
 
     # A second request should be satisfied from the cache.
-    assert conn.Aliasing.RequestAliases([handle]) == ['bob']
+    assert conn.Aliasing.RequestAliases([handle]) == ['bob@foo.com']
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

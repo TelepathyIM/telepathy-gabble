@@ -959,17 +959,16 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 }
 
 static void
-_on_remove_reply (GabbleJingleSession *sess, gboolean success,
-    LmMessage *reply, gpointer user_data)
+_on_remove_reply (GObject *c_as_obj,
+    gboolean success,
+    LmMessage *reply)
 {
-  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (user_data);
+  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (c_as_obj);
   GabbleJingleContentPrivate *priv = c->priv;
 
   g_assert (priv->state == JINGLE_CONTENT_STATE_REMOVING);
 
   g_signal_emit (c, signals[REMOVED], 0);
-
-  g_object_unref (c);
 }
 
 void
@@ -1004,8 +1003,8 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
       msg = gabble_jingle_session_new_message (c->session,
           JINGLE_ACTION_CONTENT_REMOVE, &sess_node);
       gabble_jingle_content_produce_node (c, sess_node, FALSE);
-      g_object_ref (c);
-      gabble_jingle_session_send (c->session, msg, _on_remove_reply, c);
+      gabble_jingle_session_send (c->session, msg, _on_remove_reply,
+          (GObject *) c);
     }
   else
     {

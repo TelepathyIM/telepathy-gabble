@@ -103,10 +103,12 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
 GType gabble_jingle_session_get_content_type (GabbleJingleSession *);
 GList *gabble_jingle_session_get_contents (GabbleJingleSession *sess);
 
-typedef void (*JingleReplyHandler) (GabbleJingleSession *, gboolean success,
-    LmMessage *reply, gpointer user_data);
-void gabble_jingle_session_send (GabbleJingleSession *sess, LmMessage *msg,
-    JingleReplyHandler cb, gpointer user_data);
+typedef void (*JingleReplyHandler) (GObject *, gboolean success,
+    LmMessage *reply);
+void gabble_jingle_session_send (GabbleJingleSession *sess,
+    LmMessage *msg,
+    JingleReplyHandler cb,
+    GObject *weak_object);
 
 void gabble_jingle_session_send_held (GabbleJingleSession *sess, gboolean held);
 

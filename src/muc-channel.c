@@ -687,6 +687,9 @@ create_room_identity (GabbleMucChannel *chan)
 
   if (source == GABBLE_CONNECTION_ALIAS_FROM_JID)
     {
+      /* If our 'alias' is, in fact, our JID, we'll just use the local part as
+       * our MUC resource.
+       */
       gchar *local_part;
 
       gabble_decode_jid (alias, &local_part, NULL, NULL);

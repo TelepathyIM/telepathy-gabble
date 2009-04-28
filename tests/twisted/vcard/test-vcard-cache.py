@@ -35,8 +35,8 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-return', method='RequestAliases'),
         EventPattern('dbus-error', method='RequestAvatar'))
 
-    # Default alias is our username
-    assert r1.value[0] == ['test']
+    # Default alias is our jid
+    assert r1.value[0] == ['test@localhost']
 
     # We don't have a vCard yet
     assert r2.error.get_dbus_name() == cs.NOT_AVAILABLE, \

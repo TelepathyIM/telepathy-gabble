@@ -673,6 +673,7 @@ create_room_identity (GabbleMucChannel *chan)
   TpBaseConnection *conn;
   TpHandleRepoIface *contact_repo;
   gchar *alias = NULL;
+  GabbleConnectionAliasSource source;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
   conn = (TpBaseConnection *) priv->conn;
@@ -680,8 +681,23 @@ create_room_identity (GabbleMucChannel *chan)
 
   g_assert (priv->self_jid == NULL);
 
-  _gabble_connection_get_cached_alias (priv->conn, conn->self_handle, &alias);
+  source = _gabble_connection_get_cached_alias (priv->conn, conn->self_handle,
+      &alias);
   g_assert (alias != NULL);
+
+  if (source == GABBLE_CONNECTION_ALIAS_FROM_JID)
+    {
+      /* If our 'alias' is, in fact, our JID, we'll just use the local part as
+       * our MUC resource.
+       */
+      gchar *local_part;
+
+      gabble_decode_jid (alias, &local_part, NULL, NULL);
+      g_assert (local_part != NULL);
+      g_free (alias);
+
+      alias = local_part;
+    }
 
   priv->self_jid = g_string_new (priv->jid);
   g_string_append_c (priv->self_jid, '/');

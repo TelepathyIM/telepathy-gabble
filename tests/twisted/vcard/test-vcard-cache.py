@@ -5,6 +5,8 @@ Tests basic vCard caching functionality.
 from servicetest import call_async, EventPattern
 from gabbletest import exec_test, acknowledge_iq, sync_stream
 
+import constants as cs
+
 def test(q, bus, conn, stream):
     conn.Connect()
     _, event = q.expect_many(
@@ -37,6 +39,8 @@ def test(q, bus, conn, stream):
     assert r1.value[0] == ['test']
 
     # We don't have a vCard yet
+    assert r2.error.get_dbus_name() == cs.NOT_AVAILABLE, \
+        r2.error.get_dbus_name()
     assert r2.error.args[0] == 'contact vCard has no photo'
 
     conn.Disconnect()

@@ -32,6 +32,7 @@ REGISTER = "jabber:iq:register"
 SI = 'http://jabber.org/protocol/si'
 SI_MULTIPLE = 'http://telepathy.freedesktop.org/xmpp/si-multiple'
 STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"
+STREAMS = "urn:ietf:params:xml:ns:xmpp-streams"
 TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
 VCARD_TEMP = 'vcard-temp'
 X_DATA = 'jabber:x:data'

@@ -12,7 +12,7 @@ from twisted.words.xish import domish, xpath
 import ns
 import constants as cs
 
-def connect_and_send_form(q, conn, stream, require_email=False):
+def connect_and_send_form(q, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
@@ -22,9 +22,6 @@ def connect_and_send_form(q, conn, stream, require_email=False):
     query = result.firstChildElement()
     query.addElement('username')
     query.addElement('password')
-
-    if require_email:
-        query.addElement('email')
 
     stream.send(result)
 
@@ -58,16 +55,19 @@ def test_conflict(q, bus, conn, stream):
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_NAME_IN_USE])
 
 def test_with_email(q, bus, conn, stream):
-    # So, the form requires <email/> but Gabble doesn't notice and sends a
-    # request with just <username/> and <password/>. Arguably it should notice
-    # that other fields are needed and fail earlier.
-    iq = connect_and_send_form(q, conn, stream, require_email=True)
+    # The form requires <email/>; so, Gabble should give up.
+    conn.Connect()
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
 
-    error = domish.Element((None, 'error'))
-    error['code'] = '406'
-    error['type'] = 'modify'
-    error.addElement((ns.STANZA, 'not-acceptable'))
-    send_error_reply(stream, iq, error)
+    event = q.expect('stream-iq', query_ns=ns.REGISTER)
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    query.addElement('username')
+    query.addElement('password')
+    query.addElement('email')
+
+    stream.send(result)
 
     # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
     # but couldn't register you an account."

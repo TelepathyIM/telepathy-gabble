@@ -2,7 +2,8 @@
 
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix
+from servicetest import call_async, EventPattern, tp_name_prefix,\
+    assertContains, assertEquals, assertLength
 from gabbletest import (
     exec_test, make_result_iq, acknowledge_iq, make_muc_presence)
 import constants as cs
@@ -59,10 +60,10 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-return', method='RequestChannel'))
 
     channels = new_chans.args[0]
-    assert len(channels) == 2
+    assertLength(2, channels)
 
-    assert conn.InspectHandles(cs.HT_CONTACT, [2]) == ['chat@conf.localhost/test']
-    assert conn.InspectHandles(cs.HT_CONTACT, [3]) == ['chat@conf.localhost/bob']
+    assertEquals(conn.InspectHandles(cs.HT_CONTACT, [2]), ['chat@conf.localhost/test'])
+    assertEquals(conn.InspectHandles(cs.HT_CONTACT, [3]), ['chat@conf.localhost/bob'])
     bob_handle = 3
 
     tubes_chan = bus.get_object(conn.bus_name, event.value[0])
@@ -74,16 +75,16 @@ def test(q, bus, conn, stream):
     # test GetAvailableTubeTypes (old API)
     tube_types = tubes_iface_muc.GetAvailableTubeTypes()
 
-    assert len(tube_types) == 2
-    assert cs.TUBE_TYPE_DBUS in tube_types # D-Bus tube
-    assert cs.TUBE_TYPE_STREAM in tube_types # Stream tube
+    assertLength(2, tube_types)
+    assertContains(cs.TUBE_TYPE_DBUS, tube_types)
+    assertContains(cs.TUBE_TYPE_STREAM, tube_types)
 
     # test GetAvailableStreamTubeTypes (old API)
     stream_tubes_types = tubes_iface_muc.GetAvailableStreamTubeTypes()
-    assert len(stream_tubes_types) == 3
-    assert stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX] == [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
-    assert stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV4] == [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
-    assert stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV6] == [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
+    assertLength(3, stream_tubes_types)
+    assertEquals([cs.SOCKET_ACCESS_CONTROL_LOCALHOST], stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX])
+    assertEquals([cs.SOCKET_ACCESS_CONTROL_LOCALHOST], stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV4])
+    assertEquals([cs.SOCKET_ACCESS_CONTROL_LOCALHOST], stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV6])
 
     # muc stream tube (new API)
     path, props = conn.Requests.CreateChannel({
@@ -95,7 +96,7 @@ def test(q, bus, conn, stream):
     tube = bus.get_object(conn.bus_name, path)
     sockets = tube.Get(cs.CHANNEL_TYPE_STREAM_TUBE, 'SupportedSocketTypes',
         dbus_interface=cs.PROPERTIES_IFACE)
-    assert sockets == stream_tubes_types
+    assertEquals(sockets, stream_tubes_types)
 
     # OK, we're done
     conn.Disconnect()

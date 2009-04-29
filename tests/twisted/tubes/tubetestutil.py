@@ -209,20 +209,13 @@ class Echo(Protocol):
     def dataReceived(self, data):
         self.transport.write(data.lower())
 
-def set_up_echo(name):
+def set_up_echo(q, address_type):
     """
-    Sets up an instance of Echo listening on "%s/stream%s" % (cwd, name)
+    Sets up an instance of Echo listenning on a socket of type @address_type
     """
     factory = Factory()
     factory.protocol = Echo
-    full_path = os.getcwd() + '/stream' + name
-    try:
-        os.remove(full_path)
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
-    reactor.listenUNIX(full_path, factory)
-    return full_path
+    return create_server(q, address_type, factory)
 
 def connect_socket(q, address_type, address):
     factory = EventProtocolClientFactory(q)

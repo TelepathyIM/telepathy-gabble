@@ -125,7 +125,8 @@ class JingleProtocol:
         return [e] if e is not None else []
 
 class GtalkProtocol03(JingleProtocol):
-    features = [ 'http://www.google.com/xmpp/protocol/voice/v1' ]
+    features = [ 'http://www.google.com/xmpp/protocol/voice/v1',
+                 'http://www.google.com/xmpp/protocol/video/v1']
 
     def __init__(self):
         JingleProtocol.__init__(self, 'gtalk-v0.3')
@@ -156,7 +157,14 @@ class GtalkProtocol03(JingleProtocol):
         return children[0]
 
     def Description(self, type, children):
-        return ('description', 'http://www.google.com/session/phone', {}, children)
+        if type == 'audio':
+            namespace = 'http://www.google.com/session/phone'
+        elif type == 'video':
+            namespace = 'http://www.google.com/session/video'
+        else:
+            namespace = 'unexistent-namespace'
+        return ('description', namespace, {}, children)
+
     def match_jingle_action(self, q, action):
         action = self._action_map(action)
         return q is not None and q.name == 'session' and q['type'] == action
@@ -167,9 +175,6 @@ class GtalkProtocol03(JingleProtocol):
 
     def extract_session_id(self, query):
         return query['id']
-
-    def can_do_video(self):
-        return False
 
 class GtalkProtocol04(JingleProtocol):
     features = [ 'http://www.google.com/xmpp/protocol/voice/v1',

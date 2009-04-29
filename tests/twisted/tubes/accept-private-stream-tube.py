@@ -10,7 +10,7 @@ Receives several tube offers:
 
 import dbus
 
-from servicetest import call_async, EventPattern, EventProtocolClientFactory, sync_dbus
+from servicetest import call_async, EventPattern, sync_dbus
 from gabbletest import acknowledge_iq
 
 from twisted.words.xish import domish, xpath
@@ -188,9 +188,7 @@ def test(q, bus, conn, stream, bytestream_cls,
             args=[stream_tube_id, 2]))
 
     socket_address = accept_return_event.value[0]
-
-    factory = EventProtocolClientFactory(q)
-    reactor.connectUNIX(socket_address, factory)
+    t.connect_socket(q, address_type, socket_address)
 
     bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
@@ -210,9 +208,7 @@ def test(q, bus, conn, stream, bytestream_cls,
             args=[stream_tube_id, 2]))
 
     socket_address = accept_return_event.value[0]
-
-    factory = EventProtocolClientFactory(q)
-    reactor.connectUNIX(socket_address, factory)
+    t.connect_socket(q, address_type, socket_address)
 
     bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
@@ -232,9 +228,7 @@ def test(q, bus, conn, stream, bytestream_cls,
             args=[stream_tube_id, 2]))
 
     socket_address = accept_return_event.value[0]
-
-    factory = EventProtocolClientFactory(q)
-    reactor.connectUNIX(socket_address, factory)
+    t.connect_socket(q, address_type, socket_address)
 
     bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
@@ -255,8 +249,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     socket_address = accept_return_event.value[0]
 
-    factory = EventProtocolClientFactory(q)
-    reactor.connectUNIX(socket_address, factory)
+    t.connect_socket(q, address_type, socket_address)
 
     bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()

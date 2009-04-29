@@ -102,6 +102,8 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
          GabbleJingleContentPrivate);
   obj->priv = priv;
 
+  DEBUG ("%p", obj);
+
   priv->state = JINGLE_CONTENT_STATE_EMPTY;
   priv->created_by_us = TRUE;
   priv->media_ready = FALSE;
@@ -123,7 +125,7 @@ gabble_jingle_content_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  DEBUG ("dispose called");
+  DEBUG ("%p", object);
   priv->dispose_has_run = TRUE;
 
   /* If we're in the middle of content-add/-accept when the session is
@@ -968,6 +970,8 @@ _on_remove_reply (GObject *c_as_obj,
 
   g_assert (priv->state == JINGLE_CONTENT_STATE_REMOVING);
 
+  DEBUG ("%p", c);
+
   g_signal_emit (c, signals[REMOVED], 0);
 }
 
@@ -978,7 +982,7 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
   LmMessage *msg;
   LmMessageNode *sess_node;
 
-  DEBUG ("called for content %s", priv->name);
+  DEBUG ("called for %p (%s)", c, priv->name);
 
   if (priv->timer_id != 0)
     {

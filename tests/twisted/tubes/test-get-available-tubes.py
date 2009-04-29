@@ -18,7 +18,8 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     _, iq_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'))
 
@@ -60,8 +61,8 @@ def test(q, bus, conn, stream):
     channels = new_chans.args[0]
     assert len(channels) == 2
 
-    assert conn.InspectHandles(1, [2]) == ['chat@conf.localhost/test']
-    assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
+    assert conn.InspectHandles(cs.HT_CONTACT, [2]) == ['chat@conf.localhost/test']
+    assert conn.InspectHandles(cs.HT_CONTACT, [3]) == ['chat@conf.localhost/bob']
     bob_handle = 3
 
     tubes_chan = bus.get_object(conn.bus_name, event.value[0])
@@ -74,23 +75,21 @@ def test(q, bus, conn, stream):
     tube_types = tubes_iface_muc.GetAvailableTubeTypes()
 
     assert len(tube_types) == 2
-    assert 0 in tube_types # D-Bus tube
-    assert 1 in tube_types # Stream tube
+    assert cs.TUBE_TYPE_DBUS in tube_types # D-Bus tube
+    assert cs.TUBE_TYPE_STREAM in tube_types # Stream tube
 
     # test GetAvailableStreamTubeTypes
     stream_tubes_types = tubes_iface_muc.GetAvailableStreamTubeTypes()
     assert len(stream_tubes_types) == 3
-    # Unix sockets supports Socket_Access_Control_Localhost
-    assert stream_tubes_types[0] == [0]
-    # Ipv4 sockets supports Socket_Access_Control_Localhost
-    assert stream_tubes_types[2] == [0]
-    # Ipv6 sockets supports Socket_Access_Control_Localhost
-    assert stream_tubes_types[3] == [0]
+    assert stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX] == [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
+    assert stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV4] == [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
+    assert stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV6] == [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
 
     # OK, we're done
     conn.Disconnect()
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
 
 if __name__ == '__main__':
     exec_test(test)

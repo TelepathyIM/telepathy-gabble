@@ -41,8 +41,8 @@ def contact_offer_dbus_tube(bytestream, tube_id):
 
 def test(q, bus, conn, stream, bytestream_cls,
         address_type, access_control, access_control_param):
-    echo_path = t.set_up_echo("")
-    echo2_path = t.set_up_echo("2")
+    address1 = t.set_up_echo(q, address_type)
+    address2 = t.set_up_echo(q, address_type)
 
     t.check_conn_properties(q, conn)
 
@@ -180,7 +180,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     # Create another tube using old API
     call_async(q, tubes_iface, 'OfferStreamTube',
-        'echo', sample_parameters, address_type, dbus.ByteArray(echo_path),
+        'echo', sample_parameters, address_type, address1,
         access_control, access_control_param)
 
     event, return_event, new_chan, new_chans = q.expect_many(
@@ -261,7 +261,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     # Offer the first tube created (new API)
     call_async(q, new_tube_iface, 'Offer',
-        address_type, dbus.ByteArray(echo2_path), access_control,
+        address_type, address2, access_control,
         access_control_param, new_sample_parameters)
 
     msg_event, new_tube_sig, state_event = q.expect_many(

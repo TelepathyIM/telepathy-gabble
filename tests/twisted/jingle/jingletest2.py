@@ -110,8 +110,8 @@ class JingleProtocol:
     def extract_session_id(self, query):
         return query['sid']
 
-    def is_gtalk(self):
-        return False
+    def can_do_video(self):
+        return True
 
     def is_modern_jingle(self):
         return False
@@ -156,7 +156,6 @@ class GtalkProtocol03(JingleProtocol):
 
     def Description(self, type, children):
         return ('description', 'http://www.google.com/session/phone', {}, children)
-
     def match_jingle_action(self, q, action):
         action = self._action_map(action)
         return q is not None and q.name == 'session' and q['type'] == action
@@ -168,8 +167,8 @@ class GtalkProtocol03(JingleProtocol):
     def extract_session_id(self, query):
         return query['id']
 
-    def is_gtalk(self):
-        return True
+    def can_do_video(self):
+        return False
 
 class GtalkProtocol04(JingleProtocol):
     features = [ 'http://www.google.com/xmpp/protocol/voice/v1',
@@ -213,8 +212,8 @@ class GtalkProtocol04(JingleProtocol):
     def extract_session_id(self, query):
         return query['id']
 
-    def is_gtalk(self):
-        return True
+    def can_do_video(self):
+        return False
 
 class JingleProtocol015(JingleProtocol):
     features = [ 'http://www.google.com/transport/p2p',
@@ -367,7 +366,7 @@ class JingleTest2:
                     jp.TransportGoogleP2P() ])
                 )
         if video:
-            assert not jp.is_gtalk()
+            assert jp.can_do_video()
             contents.append(
                 jp.Content('stream2', 'initiator', 'both', [
                     jp.Description('video', [

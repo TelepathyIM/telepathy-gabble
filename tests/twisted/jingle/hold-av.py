@@ -27,7 +27,7 @@ def test(jp, q, bus, conn, stream):
     call_async(q, media_iface, 'RequestStreams', handle,
         [cs.MEDIA_STREAM_TYPE_AUDIO, cs.MEDIA_STREAM_TYPE_VIDEO])
 
-    if jp.is_gtalk():
+    if not jp.can_do_video():
         # Video on GTalk? Not so much.
         e = q.expect('dbus-error', method='RequestStreams')
         # The spec and implemention say this should be NotAvailable, but wjt

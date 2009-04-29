@@ -76,8 +76,8 @@ def check_iav(jt, q, conn, bus, stream, remote_handle, initial_audio,
         cs.INITIAL_AUDIO: initial_audio,
         cs.INITIAL_VIDEO: initial_video,
         })
-    if initial_video and jt.jp.is_gtalk():
-        # You can't do video on ye olde GTalk.
+    if initial_video and not jt.jp.can_do_video():
+        # Some protocols can't do video
         event = q.expect('dbus-error', method='CreateChannel')
         assertEquals(cs.NOT_CAPABLE, event.error.get_dbus_name())
     else:
@@ -138,7 +138,7 @@ def incoming(jp, q, bus, conn, stream):
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
 
     for a, v in [(True, False), (False, True), (True, True)]:
-        if v and jp.is_gtalk():
+        if v and not jp.can_do_video():
             continue
 
         jt.incoming_call(audio=a, video=v)

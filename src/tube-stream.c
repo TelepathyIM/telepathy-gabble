@@ -1569,6 +1569,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
   if (new_connection_to_socket (self, bytestream))
     {
       TpHandle contact;
+      GValue access_control_param = {0,};
 
       if (priv->state == GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING)
         {
@@ -1588,6 +1589,16 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
       g_object_get (bytestream, "peer-handle", &contact, NULL);
 
       g_signal_emit (G_OBJECT (self), signals[NEW_CONNECTION], 0, contact);
+
+      /* fire NewConnection D-Bus signal */
+      /* FIXME: this param doesn't have a meaningful value with
+       * the Localhost access control which is the only one currently
+       * implemented. We should set a not-dummy value when we'll implement
+       * other access control mechanismes. */
+      g_value_init (&access_control_param, G_TYPE_STRING);
+      g_value_set_string (&access_control_param, "");
+      gabble_svc_channel_type_stream_tube_emit_new_connection (self,
+          contact, &access_control_param);
     }
   else
     {
@@ -1944,23 +1955,6 @@ gabble_tube_stream_get_supported_socket_types (void)
   return ret;
 }
 
-/* Callback plugged only if the tube has been offered with the new
- * Channel.Type.StreamTube API. */
-static void
-stream_unix_tube_new_connection_cb (GabbleTubeStream *self,
-                                    guint contact,
-                                    gpointer user_data)
-{
-  GValue v = {0,};
-
-  /* FIXME */
-  g_value_init (&v, G_TYPE_STRING);
-  g_value_set_string (&v, "");
-  gabble_svc_channel_type_stream_tube_emit_new_connection (self,
-      contact, &v);
-}
-
-
 /**
  * gabble_tube_stream_offer_async
  *
@@ -2027,9 +2021,6 @@ gabble_tube_stream_offer_async (GabbleSvcChannelTypeStreamTube *iface,
       gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (
           self, GABBLE_TUBE_CHANNEL_STATE_OPEN);
     }
-
-  g_signal_connect (self, "tube-new-connection",
-      G_CALLBACK (stream_unix_tube_new_connection_cb), self);
 
   gabble_svc_channel_type_stream_tube_return_from_offer (context);
 }

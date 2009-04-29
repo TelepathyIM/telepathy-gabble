@@ -37,7 +37,7 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-return', method='RequestHandles')
     handles = event.value[0]
 
-    # request tubes channel
+    # request tubes channel (old API)
     call_async(q, conn, 'RequestChannel',
         tp_name_prefix + '.Channel.Type.Tubes', cs.HT_ROOM, handles[0], True)
 
@@ -71,19 +71,31 @@ def test(q, bus, conn, stream):
 
     # FIXME: these using a "1-1" tubes channel too
 
-    # test GetAvailableTubeTypes
+    # test GetAvailableTubeTypes (old API)
     tube_types = tubes_iface_muc.GetAvailableTubeTypes()
 
     assert len(tube_types) == 2
     assert cs.TUBE_TYPE_DBUS in tube_types # D-Bus tube
     assert cs.TUBE_TYPE_STREAM in tube_types # Stream tube
 
-    # test GetAvailableStreamTubeTypes
+    # test GetAvailableStreamTubeTypes (old API)
     stream_tubes_types = tubes_iface_muc.GetAvailableStreamTubeTypes()
     assert len(stream_tubes_types) == 3
     assert stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX] == [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
     assert stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV4] == [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
     assert stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV6] == [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
+
+    # muc stream tube (new API)
+    path, props = conn.Requests.CreateChannel({
+        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+        cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+        cs.TARGET_ID: 'chat@conf.localhost',
+        cs.STREAM_TUBE_SERVICE: 'test'})
+
+    tube = bus.get_object(conn.bus_name, path)
+    sockets = tube.Get(cs.CHANNEL_TYPE_STREAM_TUBE, 'SupportedSocketTypes',
+        dbus_interface=cs.PROPERTIES_IFACE)
+    assert sockets == stream_tubes_types
 
     # OK, we're done
     conn.Disconnect()

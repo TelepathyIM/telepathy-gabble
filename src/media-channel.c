@@ -1329,6 +1329,13 @@ _pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
     {
       return NS_GOOGLE_SESSION_PHONE;
     }
+  if ((type == JINGLE_MEDIA_TYPE_VIDEO) &&
+      gabble_presence_resource_has_caps (presence, resource,
+        PRESENCE_CAP_GOOGLE_VIDEO))
+    {
+      return NS_GOOGLE_SESSION_VIDEO;
+    }
+
 
   return NULL;
 }
@@ -1378,6 +1385,16 @@ _pick_best_resource (GabbleMediaChannel *chan,
       goto CHOOSE_TRANSPORT;
     }
 
+  /* There is still hope, try GTalk */
+  caps = PRESENCE_CAP_GOOGLE_VIDEO | PRESENCE_CAP_GOOGLE_VOICE;
+  resource = gabble_presence_pick_resource_by_caps (presence, caps);
+
+  if (resource != NULL)
+    {
+      *dialect = JINGLE_DIALECT_GTALK3;
+      goto CHOOSE_TRANSPORT;
+    }
+
   /* In this unlikely case, we can get by with just video */
   if (!want_audio)
     {
@@ -1393,7 +1410,10 @@ _pick_best_resource (GabbleMediaChannel *chan,
 
   /* Uh, huh, we can't provide what's requested. */
   if (want_video)
+    {
+      DEBUG ("No resource with video support available");
       return NULL;
+    }
 
   /* Ok, try just older Jingle draft, audio */
   caps = PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
@@ -1436,7 +1456,8 @@ CHOOSE_TRANSPORT:
     {
       *transport_ns = NS_JINGLE_TRANSPORT_RAWUDP;
     }
-  else if (*dialect == JINGLE_DIALECT_GTALK4)
+  else if (*dialect == JINGLE_DIALECT_GTALK4
+      || *dialect == JINGLE_DIALECT_GTALK3)
     {
       /* (Some) GTalk clients don't advertise gtalk-p2p, though
        * they support it. If we know it's GTalk and there's no
@@ -2027,8 +2048,10 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   if (wait != NULL)
     *wait = wait_;
 
-  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_RTP |
-    PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO | PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
+  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE |
+    PRESENCE_CAP_JINGLE_RTP |
+    PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
+    PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
 
@@ -2427,6 +2450,9 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
 #define GTALK_CAPS \
   ( PRESENCE_CAP_GOOGLE_VOICE )
 
+#define GTALK_VIDEO_CAPS \
+   ( PRESENCE_CAP_GOOGLE_VIDEO )
+
 #define JINGLE_CAPS \
   ( PRESENCE_CAP_JINGLE015 | PRESENCE_CAP_JINGLE032 \
   | PRESENCE_CAP_GOOGLE_TRANSPORT_P2P )
@@ -2454,7 +2480,7 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
         caps |= GTALK_CAPS | JINGLE_AUDIO_CAPS;
 
       if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
-        caps |= JINGLE_VIDEO_CAPS;
+        caps |= GTALK_VIDEO_CAPS | JINGLE_VIDEO_CAPS;
     }
 
   return caps;

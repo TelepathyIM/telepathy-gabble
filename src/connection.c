@@ -1480,8 +1480,25 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
 
   /* XEP-0115 deprecates 'ext' feature bundles. But we still need
    * BUNDLE_VOICE_V1 it for backward-compatibility with Gabble 0.2 */
-  if (presence->caps & PRESENCE_CAP_GOOGLE_VOICE)
-    lm_message_node_set_attribute (node, "ext", BUNDLE_VOICE_V1);
+
+  if (presence->caps & (PRESENCE_CAP_GOOGLE_VOICE|PRESENCE_CAP_GOOGLE_VIDEO))
+    {
+      GString *ext = g_string_new ("");
+
+      if (presence->caps & PRESENCE_CAP_GOOGLE_VOICE)
+        g_string_append (ext, BUNDLE_VOICE_V1);
+
+      if (presence->caps & PRESENCE_CAP_GOOGLE_VIDEO)
+        {
+          if (ext->len > 0)
+            g_string_append_c (ext, ' ');
+          g_string_append (ext, BUNDLE_VIDEO_V1);
+        }
+
+      lm_message_node_set_attribute (node, "ext", ext->str);
+
+      g_string_free (ext, TRUE);
+    }
 
   ret = _gabble_connection_send (self, message, error);
 

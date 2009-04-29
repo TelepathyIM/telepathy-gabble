@@ -34,6 +34,7 @@
 #define NS_GOOGLE_CAPS          "http://www.google.com/xmpp/client/caps"
 #define NS_GOOGLE_FEAT_SESSION  "http://www.google.com/xmpp/protocol/session"
 #define NS_GOOGLE_FEAT_VOICE    "http://www.google.com/xmpp/protocol/voice/v1"
+#define NS_GOOGLE_FEAT_VIDEO    "http://www.google.com/xmpp/protocol/video/v1"
 #define NS_GOOGLE_JINGLE_INFO   "google:jingleinfo"
 #define NS_GOOGLE_ROSTER        "google:roster"
 #define NS_IBB                  "http://jabber.org/protocol/ibb"
@@ -45,6 +46,8 @@
 #define NS_GOOGLE_SESSION       "http://www.google.com/session"
 /* Audio capability in Google Jingle dialect */
 #define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
+/* Video capability in Google's Jingle dialect */
+#define NS_GOOGLE_SESSION_VIDEO "http://www.google.com/session/video"
 /* XEP-0167 (Jingle RTP) */
 #define NS_JINGLE_RTP           "urn:xmpp:jingle:apps:rtp:0"
 #define NS_JINGLE_RTP_INFO      "urn:xmpp:jingle:apps:rtp:info:1"

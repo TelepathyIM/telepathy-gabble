@@ -801,6 +801,11 @@ jingle_media_rtp_register (GabbleJingleFactory *factory)
   gabble_jingle_factory_register_content_type (factory,
       NS_GOOGLE_SESSION_PHONE,
       GABBLE_TYPE_JINGLE_MEDIA_RTP);
+
+  /* GTalk video call namespace */
+  gabble_jingle_factory_register_content_type (factory,
+      NS_GOOGLE_SESSION_VIDEO,
+      GABBLE_TYPE_JINGLE_MEDIA_RTP);
 }
 
 /* We can't get remote codecs when they're signalled, because

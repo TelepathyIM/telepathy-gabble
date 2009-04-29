@@ -10,6 +10,8 @@ Enhancements:
 
 * Support file transfer resume.
 * Use ContactCapabilities draft to communicate file transfer support.
+* Implement latest tube new API DRAFT. {Offer,Accept}{DBus,Stream}Tube
+  methods and the StreamTubeNewConnection signal have been renamed.
 
 Fixes:
 

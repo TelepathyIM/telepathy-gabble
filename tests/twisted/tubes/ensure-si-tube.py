@@ -22,8 +22,6 @@ sample_parameters = dbus.Dictionary({
 
 
 def test(q, bus, conn, stream):
-    t.set_up_echo('')
-
     conn.Connect()
 
     properties = conn.GetAll(

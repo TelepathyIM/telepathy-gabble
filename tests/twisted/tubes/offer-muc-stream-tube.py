@@ -67,7 +67,8 @@ def use_tube(q, bytestream, protocol):
     assert binary == data, binary
 
 
-def test(q, bus, conn, stream, bytestream_cls):
+def test(q, bus, conn, stream, bytestream_cls,
+       address_type, access_control, access_control_param):
     if bytestream_cls in [BytestreamS5BRelay, BytestreamS5BRelayBugged]:
         # disable SOCKS5 relay tests because proxy can't be used with muc
         # contacts atm
@@ -97,7 +98,8 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # offer stream tube (old API) using an Unix socket
     call_async(q, tubes_iface, 'OfferStreamTube',
-        'echo', sample_parameters, 0, dbus.ByteArray(srv_path), 0, "")
+        'echo', sample_parameters, address_type, dbus.ByteArray(srv_path),
+        access_control, access_control_param)
 
     new_tube_event, stream_event, _, new_channels_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
@@ -274,7 +276,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # offer the tube
     call_async(q, stream_tube_iface, 'Offer',
-        cs.SOCKET_ADDRESS_TYPE_UNIX, dbus.ByteArray(srv_path), cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "",
+        address_type, dbus.ByteArray(srv_path), access_control, access_control_param,
         {'foo': 'bar'})
 
     new_tube_event, stream_event, _, status_event = q.expect_many(
@@ -354,4 +356,4 @@ def test(q, bus, conn, stream, bytestream_cls):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    t.exec_tube_test(test)
+    t.exec_stream_tube_test(test)

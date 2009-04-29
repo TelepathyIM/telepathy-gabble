@@ -223,7 +223,7 @@ def set_up_echo(name):
     reactor.listenUNIX(full_path, factory)
     return full_path
 
-def exec_tube_test(test):
+def exec_tube_test(test, *args):
     for bytestream_cls in [
             bytestream.BytestreamIBBMsg,
             bytestream.BytestreamIBBIQ,
@@ -233,5 +233,7 @@ def exec_tube_test(test):
             bytestream.BytestreamS5BRelay,
             bytestream.BytestreamS5BRelayBugged]:
         exec_test(lambda q, bus, conn, stream:
-            test(q, bus, conn, stream, bytestream_cls))
+            test(q, bus, conn, stream, bytestream_cls, *args))
 
+def exec_stream_tube_test(test):
+    exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")

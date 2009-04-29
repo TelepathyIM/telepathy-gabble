@@ -110,7 +110,8 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls):
 
     return bytestream
 
-def test(q, bus, conn, stream, bytestream_cls):
+def test(q, bus, conn, stream, bytestream_cls,
+        address_type, access_control, access_control_param):
     conn.Connect()
 
     _, vcard_event, roster_event, disco_event = q.expect_many(
@@ -177,21 +178,19 @@ def test(q, bus, conn, stream, bytestream_cls):
             byte_arrays=True)
     q.expect('dbus-error', method='Accept')
 
-    # Accept the tube with old iface, and use IPv4
-    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 2, 0, '',
-            byte_arrays=True)
+    # Accept the tube with old iface
+    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, address_type,
+        access_control, access_control_param, byte_arrays=True)
 
     accept_return_event, _ = q.expect_many(
         EventPattern('dbus-return', method='AcceptStreamTube'),
         EventPattern('dbus-signal', signal='TubeStateChanged',
             args=[stream_tube_id, 2]))
 
-    ip = accept_return_event.value[0][0]
-    port = accept_return_event.value[0][1]
-    assert port > 0
+    socket_address = accept_return_event.value[0]
 
     factory = EventProtocolClientFactory(q)
-    reactor.connectTCP(ip, port, factory)
+    reactor.connectUNIX(socket_address, factory)
 
     bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
@@ -202,8 +201,8 @@ def test(q, bus, conn, stream, bytestream_cls):
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with old iface, and use UNIX sockets
-    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 0, 0, '',
-            byte_arrays=True)
+    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id,
+        address_type, access_control, access_control_param, byte_arrays=True)
 
     accept_return_event, _ = q.expect_many(
         EventPattern('dbus-return', method='AcceptStreamTube'),
@@ -224,20 +223,18 @@ def test(q, bus, conn, stream, bytestream_cls):
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with new iface, and use IPv4
-    call_async(q, new_tube_iface, 'Accept', 2, 0, '',
-            byte_arrays=True)
+    call_async(q, new_tube_iface, 'Accept', address_type,
+        access_control, access_control_param, byte_arrays=True)
 
     accept_return_event, _ = q.expect_many(
         EventPattern('dbus-return', method='Accept'),
         EventPattern('dbus-signal', signal='TubeStateChanged',
             args=[stream_tube_id, 2]))
 
-    ip = accept_return_event.value[0][0]
-    port = accept_return_event.value[0][1]
-    assert port > 0
+    socket_address = accept_return_event.value[0]
 
     factory = EventProtocolClientFactory(q)
-    reactor.connectTCP(ip, port, factory)
+    reactor.connectUNIX(socket_address, factory)
 
     bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
     tubes_chan.Close()
@@ -248,8 +245,8 @@ def test(q, bus, conn, stream, bytestream_cls):
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with new iface, and use UNIX sockets
-    call_async(q, new_tube_iface, 'Accept', 0, 0, '',
-            byte_arrays=True)
+    call_async(q, new_tube_iface, 'Accept', address_type, access_control,
+        access_control_param, byte_arrays=True)
 
     accept_return_event, _ = q.expect_many(
         EventPattern('dbus-return', method='Accept'),
@@ -287,4 +284,4 @@ def test(q, bus, conn, stream, bytestream_cls):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    t.exec_tube_test(test)
+    t.exec_stream_tube_test(test)

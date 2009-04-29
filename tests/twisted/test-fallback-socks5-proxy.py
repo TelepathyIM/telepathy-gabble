@@ -55,7 +55,7 @@ def test(q, bus, conn, stream):
     tube_chan = bus.get_object(conn.bus_name, path)
     dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
 
-    dbus_tube_iface.OfferDBusTube({})
+    dbus_tube_iface.Offer({})
 
     e = q.expect('stream-iq', to='alice@localhost/Test')
 

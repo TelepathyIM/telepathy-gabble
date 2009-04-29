@@ -1842,15 +1842,15 @@ gabble_tube_dbus_get_interfaces (TpSvcChannel *iface,
 }
 
 /**
- * gabble_tube_dbus_offer_d_bus_tube
+ * gabble_tube_dbus_offer_async
  *
- * Implemnets D-Bus method OfferDBusTube on interface
+ * Implemnets D-Bus method Offer on interface
  * org.freedesktop.Telepathy.Channel.Type.DBusTube
  */
 static void
-gabble_tube_dbus_offer_d_bus_tube (GabbleSvcChannelTypeDBusTube *self,
-                                   GHashTable *parameters,
-                                   DBusGMethodInvocation *context)
+gabble_tube_dbus_offer_async (GabbleSvcChannelTypeDBusTube *self,
+    GHashTable *parameters,
+    DBusGMethodInvocation *context)
 {
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
   GError *error = NULL;
@@ -1859,7 +1859,7 @@ gabble_tube_dbus_offer_d_bus_tube (GabbleSvcChannelTypeDBusTube *self,
 
   if (gabble_tube_dbus_offer (tube, &error))
     {
-      gabble_svc_channel_type_dbus_tube_return_from_offer_d_bus_tube (context,
+      gabble_svc_channel_type_dbus_tube_return_from_offer (context,
           tube->priv->dbus_srv_addr);
     }
   else
@@ -1871,21 +1871,21 @@ gabble_tube_dbus_offer_d_bus_tube (GabbleSvcChannelTypeDBusTube *self,
 }
 
 /**
- * gabble_tube_dbus_accept_d_bus_tube
+ * gabble_tube_dbus_accept_async
  *
- * Implements D-Bus method AcceptDBusTube on interface
+ * Implements D-Bus method Accept on interface
  * org.freedesktop.Telepathy.Channel.Type.DBusTube
  */
 static void
-gabble_tube_dbus_accept_d_bus_tube (GabbleSvcChannelTypeDBusTube *self,
-                                    DBusGMethodInvocation *context)
+gabble_tube_dbus_accept_async (GabbleSvcChannelTypeDBusTube *self,
+    DBusGMethodInvocation *context)
 {
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
   GError *error = NULL;
 
   if (gabble_tube_dbus_accept (GABBLE_TUBE_IFACE (tube), &error))
     {
-      gabble_svc_channel_type_dbus_tube_return_from_accept_d_bus_tube (context,
+      gabble_svc_channel_type_dbus_tube_return_from_accept (context,
           tube->priv->dbus_srv_addr);
       ;
     }
@@ -1936,9 +1936,9 @@ dbustube_iface_init (gpointer g_iface,
   GabbleSvcChannelTypeDBusTubeClass *klass =
       (GabbleSvcChannelTypeDBusTubeClass *) g_iface;
 
-#define IMPLEMENT(x) gabble_svc_channel_type_dbus_tube_implement_##x (\
-    klass, gabble_tube_dbus_##x)
-  IMPLEMENT(offer_d_bus_tube);
-  IMPLEMENT(accept_d_bus_tube);
+#define IMPLEMENT(x, suffix) gabble_svc_channel_type_dbus_tube_implement_##x (\
+    klass, gabble_tube_dbus_##x##suffix)
+  IMPLEMENT(offer,_async);
+  IMPLEMENT(accept,_async);
 #undef IMPLEMENT
 }

@@ -245,12 +245,12 @@ def test(q, bus, conn, stream):
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
-    call_async(q, dbus_tube_iface, 'OfferDBusTube', sample_parameters)
+    call_async(q, dbus_tube_iface, 'Offer', sample_parameters)
 
     new_tube_event, presence_event, return_event, status_event, dbus_changed_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
         EventPattern('stream-presence', to='chat2@conf.localhost/test'),
-        EventPattern('dbus-return', method='OfferDBusTube'),
+        EventPattern('dbus-return', method='Offer'),
         EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[cs.TUBE_CHANNEL_STATE_OPEN]),
         EventPattern('dbus-signal', signal='DBusNamesChanged', interface=cs.CHANNEL_TYPE_DBUS_TUBE))
 

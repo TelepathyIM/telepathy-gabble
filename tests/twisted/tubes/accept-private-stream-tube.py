@@ -170,12 +170,12 @@ def test(q, bus, conn, stream, bytestream_cls):
     q.expect('dbus-error', method='AcceptStreamTube')
 
     # Try bad parameters on the new iface
-    call_async(q, new_tube_iface, 'AcceptStreamTube', 20, 0, '',
+    call_async(q, new_tube_iface, 'Accept', 20, 0, '',
             byte_arrays=True)
-    q.expect('dbus-error', method='AcceptStreamTube')
-    call_async(q, new_tube_iface, 'AcceptStreamTube', 0, 1, '',
+    q.expect('dbus-error', method='Accept')
+    call_async(q, new_tube_iface, 'Accept', 0, 1, '',
             byte_arrays=True)
-    q.expect('dbus-error', method='AcceptStreamTube')
+    q.expect('dbus-error', method='Accept')
 
     # Accept the tube with old iface, and use IPv4
     call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 2, 0, '',
@@ -224,11 +224,11 @@ def test(q, bus, conn, stream, bytestream_cls):
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with new iface, and use IPv4
-    call_async(q, new_tube_iface, 'AcceptStreamTube', 2, 0, '',
+    call_async(q, new_tube_iface, 'Accept', 2, 0, '',
             byte_arrays=True)
 
     accept_return_event, _ = q.expect_many(
-        EventPattern('dbus-return', method='AcceptStreamTube'),
+        EventPattern('dbus-return', method='Accept'),
         EventPattern('dbus-signal', signal='TubeStateChanged',
             args=[stream_tube_id, 2]))
 
@@ -248,11 +248,11 @@ def test(q, bus, conn, stream, bytestream_cls):
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with new iface, and use UNIX sockets
-    call_async(q, new_tube_iface, 'AcceptStreamTube', 0, 0, '',
+    call_async(q, new_tube_iface, 'Accept', 0, 0, '',
             byte_arrays=True)
 
     accept_return_event, _ = q.expect_many(
-        EventPattern('dbus-return', method='AcceptStreamTube'),
+        EventPattern('dbus-return', method='Accept'),
         EventPattern('dbus-signal', signal='TubeStateChanged',
             args=[stream_tube_id, 2]))
 

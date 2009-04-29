@@ -160,12 +160,12 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert status == cs.TUBE_STATE_LOCAL_PENDING
 
     # accept the tube (new API)
-    call_async(q, dbus_tube_iface, 'AcceptDBusTube')
+    call_async(q, dbus_tube_iface, 'Accept')
 
     # Init the bytestream
     events, state_event = bytestream.open_bytestream(
             [EventPattern('stream-iq', iq_type='result', query_ns=ns.SI),
-                EventPattern('dbus-return', method='AcceptDBusTube')],
+                EventPattern('dbus-return', method='Accept')],
             [EventPattern('dbus-signal', signal='TubeChannelStateChanged')])
 
     iq_event = events[0]

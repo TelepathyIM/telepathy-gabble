@@ -273,14 +273,14 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
-    call_async(q, stream_tube_iface, 'OfferStreamTube',
+    call_async(q, stream_tube_iface, 'Offer',
         cs.SOCKET_ADDRESS_TYPE_UNIX, dbus.ByteArray(srv_path), cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "",
         {'foo': 'bar'})
 
     new_tube_event, stream_event, _, status_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
         EventPattern('stream-presence', to='chat2@conf.localhost/test'),
-        EventPattern('dbus-return', method='OfferStreamTube'),
+        EventPattern('dbus-return', method='Offer'),
         EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[cs.TUBE_CHANNEL_STATE_OPEN]))
 
     tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
@@ -329,7 +329,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     iq_event, socket_event, conn_event = q.expect_many(
         EventPattern('stream-iq', iq_type='result'),
         EventPattern('socket-connected'),
-        EventPattern('dbus-signal', signal='StreamTubeNewConnection',
+        EventPattern('dbus-signal', signal='NewConnection',
             interface=cs.CHANNEL_TYPE_STREAM_TUBE))
 
     assert conn_event.args == [bob_handle]

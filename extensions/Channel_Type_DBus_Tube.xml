@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <node name="/Channel_Type_DBus_Tube" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
-  <tp:copyright>Copyright (C) 2008 Collabora Limited</tp:copyright>
-  <tp:copyright>Copyright (C) 2008 Nokia Corporation</tp:copyright>
+  <tp:copyright>Copyright © 2008-2009 Collabora Limited</tp:copyright>
+  <tp:copyright>Copyright © 2008-2009 Nokia Corporation</tp:copyright>
   <tp:license>
     This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -54,7 +54,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
     </tp:docstring>
 
-    <method name="OfferDBusTube" tp:name-for-bindings="Offer_DBus_Tube">
+    <method name="Offer" tp:name-for-bindings="Offer">
       <tp:docstring>
         Offers a D-Bus tube providing the service specified.
       </tp:docstring>
@@ -83,7 +83,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <method name="AcceptDBusTube" tp:name-for-bindings="Accept_DBus_Tube">
+    <method name="Accept" tp:name-for-bindings="Accept">
       <tp:docstring>
         Accept a D-Bus tube that's in the "local pending" state. The
         connection manager will attempt to open the tube. The tube remains in

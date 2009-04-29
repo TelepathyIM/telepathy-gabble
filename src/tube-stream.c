@@ -1951,25 +1951,25 @@ stream_unix_tube_new_connection_cb (GabbleTubeStream *self,
                                     guint contact,
                                     gpointer user_data)
 {
-  gabble_svc_channel_type_stream_tube_emit_stream_tube_new_connection (self,
+  gabble_svc_channel_type_stream_tube_emit_new_connection (self,
       contact);
 }
 
 
 /**
- * gabble_tube_stream_offer_stream_tube
+ * gabble_tube_stream_offer_async
  *
- * Implements D-Bus method OfferStreamTube
+ * Implements D-Bus method Offer
  * on org.freedesktop.Telepathy.Channel.Type.StreamTube
  */
 static void
-gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
-                                      guint address_type,
-                                      const GValue *address,
-                                      guint access_control,
-                                      const GValue *access_control_param,
-                                      GHashTable *parameters,
-                                      DBusGMethodInvocation *context)
+gabble_tube_stream_offer_async (GabbleSvcChannelTypeStreamTube *iface,
+    guint address_type,
+    const GValue *address,
+    guint access_control,
+    const GValue *access_control_param,
+    GHashTable *parameters,
+    DBusGMethodInvocation *context)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
@@ -2029,21 +2029,21 @@ gabble_tube_stream_offer_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
   g_signal_connect (self, "tube-new-connection",
       G_CALLBACK (stream_unix_tube_new_connection_cb), self);
 
-  gabble_svc_channel_type_stream_tube_return_from_offer_stream_tube (context);
+  gabble_svc_channel_type_stream_tube_return_from_offer (context);
 }
 
 /**
- * gabble_tube_stream_accept_stream_tube
+ * gabble_tube_stream_accept_async
  *
- * Implements D-Bus method AcceptStreamTube
+ * Implements D-Bus method Accept
  * on org.freedesktop.Telepathy.Channel.Type.StreamTube
  */
 static void
-gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
-                                       guint address_type,
-                                       guint access_control,
-                                       const GValue *access_control_param,
-                                       DBusGMethodInvocation *context)
+gabble_tube_stream_accept_async (GabbleSvcChannelTypeStreamTube *iface,
+    guint address_type,
+    guint access_control,
+    const GValue *access_control_param,
+    DBusGMethodInvocation *context)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
@@ -2069,7 +2069,7 @@ gabble_tube_stream_accept_stream_tube (GabbleSvcChannelTypeStreamTube *iface,
     gabble_muc_channel_send_presence (self->muc, NULL);
 #endif
 
-  gabble_svc_channel_type_stream_tube_return_from_accept_stream_tube (context,
+  gabble_svc_channel_type_stream_tube_return_from_accept (context,
       priv->address);
 }
 
@@ -2183,9 +2183,9 @@ streamtube_iface_init (gpointer g_iface,
   GabbleSvcChannelTypeStreamTubeClass *klass =
       (GabbleSvcChannelTypeStreamTubeClass *) g_iface;
 
-#define IMPLEMENT(x) gabble_svc_channel_type_stream_tube_implement_##x (\
-    klass, gabble_tube_stream_##x)
-  IMPLEMENT(offer_stream_tube);
-  IMPLEMENT(accept_stream_tube);
+#define IMPLEMENT(x, suffix) gabble_svc_channel_type_stream_tube_implement_##x (\
+    klass, gabble_tube_stream_##x##suffix)
+  IMPLEMENT(offer,_async);
+  IMPLEMENT(accept,_async);
 #undef IMPLEMENT
 }

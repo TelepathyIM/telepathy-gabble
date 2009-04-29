@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <node name="/Channel_Type_Stream_Tube" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
-  <tp:copyright>Copyright (C) 2008 Collabora Limited</tp:copyright>
-  <tp:copyright>Copyright (C) 2008 Nokia Corporation</tp:copyright>
+  <tp:copyright>Copyright © 2008-2009 Collabora Limited</tp:copyright>
+  <tp:copyright>Copyright © 2008-2009 Nokia Corporation</tp:copyright>
   <tp:license>
     This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -27,9 +27,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
       <p>When offering a stream tube, the initiating client creates a local
         listening socket and offers it to the recipient client using the
-        <tp:member-ref>OfferStreamTube</tp:member-ref> method.  When a
+        <tp:member-ref>Offer</tp:member-ref> method.  When a
         recipient accepts a stream tube using the
-        <tp:member-ref>AcceptStreamTube</tp:member-ref> method, the
+        <tp:member-ref>Accept</tp:member-ref> method, the
         recipient's connection manager creates a new local listening socket.
         Each time the recipient's client connects to this socket, the
         initiator's connection manager proxies this connection to the
@@ -37,7 +37,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
     </tp:docstring>
 
-    <method name="OfferStreamTube" tp:name-for-bindings="Offer_Stream_Tube">
+    <method name="Offer" tp:name-for-bindings="Offer">
       <tp:docstring>
         Offer a stream tube exporting the local socket specified.
       </tp:docstring>
@@ -91,7 +91,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <method name="AcceptStreamTube" tp:name-for-bindings="Accept_Stream_Tube">
+    <method name="Accept" tp:name-for-bindings="Accept">
       <tp:docstring>
         Accept a stream tube that's in the "local pending" state. The
         connection manager will attempt to open the tube. The tube remains in
@@ -137,8 +137,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <signal name="StreamTubeNewConnection"
-            tp:name-for-bindings="Stream_Tube_New_Connection">
+    <signal name="NewConnection"
+            tp:name-for-bindings="New_Connection">
       <tp:docstring>
         Emitted on a stream tube when a participant opens a new connection
         to its socket.

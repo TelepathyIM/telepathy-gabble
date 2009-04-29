@@ -190,11 +190,8 @@ def test(q, bus, conn, stream, bytestream_cls,
         EventPattern('dbus-signal', signal='TubeStateChanged',
             args=[stream_tube_id, 2]))
 
-    unix_socket_adr = accept_return_event.value[0]
-
-    factory = EventProtocolClientFactory(q)
-    reactor.connectUNIX(unix_socket_adr, factory)
-
+    address = accept_return_event.value[0]
+    t.connect_socket(q, address_type, address)
     event = q.expect('socket-connected')
     protocol = event.protocol
     protocol.sendData("hello initiator")

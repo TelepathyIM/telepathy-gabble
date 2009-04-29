@@ -7,7 +7,7 @@ import os
 
 import dbus
 
-from servicetest import unwrap, assertContains
+from servicetest import unwrap, assertContains, EventProtocolClientFactory
 from gabbletest import exec_test
 import constants as cs
 import bytestream
@@ -222,6 +222,17 @@ def set_up_echo(name):
             raise
     reactor.listenUNIX(full_path, factory)
     return full_path
+
+def connect_socket(q, address_type, address):
+    factory = EventProtocolClientFactory(q)
+    if address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
+        reactor.connectUNIX(address, factory)
+    elif address_type == cs.SOCKET_ADDRESS_TYPE_IPV4:
+        ip, port = address
+        assert port > 0
+        reactor.connectTCP(ip, port, factory)
+    else:
+        assert False
 
 def exec_tube_test(test, *args):
     for bytestream_cls in [

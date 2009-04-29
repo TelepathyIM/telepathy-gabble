@@ -990,20 +990,20 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
       priv->timer_id = 0;
     }
 
-  if (priv->state == JINGLE_CONTENT_STATE_REMOVING)
-    {
-      DEBUG ("ignoring request to remove content which is already being removed");
-      return;
-    }
-
-  priv->state = JINGLE_CONTENT_STATE_REMOVING;
-  g_object_notify ((GObject *) c, "state");
-
   /* If we were already signalled and removal is not a side-effect of
    * something else (sesssion termination, or removal by peer),
    * we have to signal removal to the peer. */
   if (signal_peer && (priv->state != JINGLE_CONTENT_STATE_EMPTY))
     {
+      if (priv->state == JINGLE_CONTENT_STATE_REMOVING)
+        {
+          DEBUG ("ignoring request to remove content which is already being removed");
+          return;
+        }
+
+      priv->state = JINGLE_CONTENT_STATE_REMOVING;
+      g_object_notify ((GObject *) c, "state");
+
       msg = gabble_jingle_session_new_message (c->session,
           JINGLE_ACTION_CONTENT_REMOVE, &sess_node);
       gabble_jingle_content_produce_node (c, sess_node, FALSE);
@@ -1012,11 +1012,9 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
     }
   else
     {
+      DEBUG ("signalling removed with %u refs", G_OBJECT (c)->ref_count);
       g_signal_emit (c, signals[REMOVED], 0);
     }
-
-  /* At this point content could be unreffed by REMOVED handler
-   * and disposed of; don't do anything else with it. */
 }
 
 gboolean

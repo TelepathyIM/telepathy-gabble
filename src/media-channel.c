@@ -2801,6 +2801,8 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
       GabbleMediaStream *stream = g_ptr_array_index (tmp, i);
 
       gabble_media_stream_error (stream, errno, message, NULL);
+
+      g_object_unref (stream);
     }
 
   g_ptr_array_free (tmp, TRUE);

@@ -2140,6 +2140,8 @@ gabble_tube_stream_get_supported_socket_types (void)
       1);
   access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
   g_array_append_val (ipv4_tab, access_control);
+  access_control = TP_SOCKET_ACCESS_CONTROL_PORT;
+  g_array_append_val (ipv4_tab, access_control);
   g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV4),
       ipv4_tab);
 
@@ -2147,6 +2149,8 @@ gabble_tube_stream_get_supported_socket_types (void)
   ipv6_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
       1);
   access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (ipv6_tab, access_control);
+  access_control = TP_SOCKET_ACCESS_CONTROL_PORT;
   g_array_append_val (ipv6_tab, access_control);
   g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV6),
       ipv6_tab);

@@ -95,7 +95,7 @@ def test(q, bus, conn, stream):
     st_chan = bus.get_object(conn.bus_name, st_path)
     st = dbus.Interface(st_chan, cs.CHANNEL_TYPE_STREAM_TUBE)
     call_async(q, st, 'Offer', cs.SOCKET_ADDRESS_TYPE_UNIX,
-        address, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "", {})
+        address, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, {})
     e = q.expect('dbus-error', method='Offer').error
     assert e.get_dbus_name() == cs.NOT_AVAILABLE, e.get_dbus_name()
 

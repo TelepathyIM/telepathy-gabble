@@ -1951,8 +1951,13 @@ stream_unix_tube_new_connection_cb (GabbleTubeStream *self,
                                     guint contact,
                                     gpointer user_data)
 {
+  GValue v = {0,};
+
+  /* FIXME */
+  g_value_init (&v, G_TYPE_STRING);
+  g_value_set_string (&v, "");
   gabble_svc_channel_type_stream_tube_emit_new_connection (self,
-      contact);
+      contact, &v);
 }
 
 
@@ -1967,7 +1972,6 @@ gabble_tube_stream_offer_async (GabbleSvcChannelTypeStreamTube *iface,
     guint address_type,
     const GValue *address,
     guint access_control,
-    const GValue *access_control_param,
     GHashTable *parameters,
     DBusGMethodInvocation *context)
 {
@@ -1985,7 +1989,7 @@ gabble_tube_stream_offer_async (GabbleSvcChannelTypeStreamTube *iface,
     }
 
   if (!gabble_tube_stream_check_params (address_type, address,
-        access_control, access_control_param, &error))
+        access_control, NULL, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -2000,8 +2004,6 @@ gabble_tube_stream_offer_async (GabbleSvcChannelTypeStreamTube *iface,
   priv->address = tp_g_value_slice_dup (address);
   g_assert (priv->access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST);
   priv->access_control = access_control;
-  g_assert (priv->access_control_param == NULL);
-  priv->access_control_param = tp_g_value_slice_dup (access_control_param);
 
   g_object_set (self, "parameters", parameters, NULL);
 

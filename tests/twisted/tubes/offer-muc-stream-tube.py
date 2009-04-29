@@ -265,9 +265,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
-    call_async(q, stream_tube_iface, 'Offer',
-        address_type, address, access_control, access_control_param,
-        {'foo': 'bar'})
+    call_async(q, stream_tube_iface, 'Offer', address_type, address, access_control, {'foo': 'bar'})
 
     new_tube_event, stream_event, _, status_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
@@ -324,7 +322,8 @@ def test(q, bus, conn, stream, bytestream_cls,
         EventPattern('dbus-signal', signal='NewConnection',
             interface=cs.CHANNEL_TYPE_STREAM_TUBE))
 
-    assert conn_event.args == [bob_handle]
+    handle, access = conn_event.args
+    assert handle == bob_handle
 
     protocol = socket_event.protocol
 

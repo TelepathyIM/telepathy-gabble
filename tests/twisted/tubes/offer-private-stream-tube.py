@@ -260,9 +260,7 @@ def test(q, bus, conn, stream, bytestream_cls,
             cs.TUBE_CHANNEL_STATE_REMOTE_PENDING)
 
     # Offer the first tube created (new API)
-    call_async(q, new_tube_iface, 'Offer',
-        address_type, address2, access_control,
-        access_control_param, new_sample_parameters)
+    call_async(q, new_tube_iface, 'Offer', address_type, address2, access_control, new_sample_parameters)
 
     msg_event, new_tube_sig, state_event = q.expect_many(
         EventPattern('stream-message'),
@@ -366,8 +364,9 @@ def test(q, bus, conn, stream, bytestream_cls,
         si_reply_event.stanza)
     assert len(tube) == 1
 
-    q.expect('dbus-signal', signal='NewConnection',
-        args=[bob_handle])
+    e = q.expect('dbus-signal', signal='NewConnection')
+    handle, access = e.args
+    assert handle == bob_handle
 
     expected_tube = (new_stream_tube_id, self_handle, cs.TUBE_TYPE_STREAM,
         'newecho', new_sample_parameters, cs.TUBE_STATE_OPEN)

@@ -60,12 +60,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
           when it connects.
         </tp:docstring>
       </arg>
-      <arg direction="in" name="access_control_param" type="v">
-        <tp:docstring>
-          A parameter for the access control type, to be interpreted as
-          specified in the documentation for the Socket_Access_Control enum.
-        </tp:docstring>
-      </arg>
       <arg direction="in" name="parameters" type="a{sv}"
         tp:type="String_Variant_Map">
         <tp:docstring>
@@ -146,6 +140,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       <arg name="handle" type="u" tp:type="Contact_Handle">
         <tp:docstring>
           The handle of the participant who opened the new connection
+        </tp:docstring>
+      </arg>
+      <arg name="access_control_param" type="v">
+        <tp:docstring>
+          <p>A parameter for the access control type, to be interpreted as
+          specified in the documentation for the Socket_Access_Control
+          enum.</p>
+
+          <p>This parameter can be used by the listening process to identify
+          the connection. Note that this parameter has a meaningful value
+          only in the Socket_Access_Control_Port and
+          Socket_Access_Control_Credentials cases. If a different
+          Socket_Access_Control has been choosed when offering the tube, this
+          parameter should be ignored.</p>
         </tp:docstring>
       </arg>
     </signal>

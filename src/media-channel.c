@@ -2523,7 +2523,11 @@ stream_creation_data_cancel (gpointer p,
 {
   StreamCreationData *d = p;
 
-  d->content = NULL;
+  if (d->content != NULL)
+    {
+      g_object_unref (d->content);
+      d->content = NULL;
+    }
 }
 
 static void

@@ -68,3 +68,15 @@ To debug an individual test you can set one of the following env variable:
   * GABBLE_WRAPPER="nemiver" : to run Gabble inside the graphical debugger
     nemiver. You'll be able to set up breakpoints; then hit the "continue"
     button to launch Gabble.
+
+
+== Jingle tests ==
+
+Various jingle tests run the same tests with different dialects. To only test
+certain dialects use the JINGLE_DIALECTS environment variable. Currently
+supported are jingle015, jingle031, gtalk03 and gtalk04. For example to only
+run generic tests with the two jingle dialects you can do:
+
+  make -C tests/twisted check-twisted  TWISTED_TESTS=jingle/\*.py \
+    JINGLE_DIALECTS=jingle015,jingle031
+

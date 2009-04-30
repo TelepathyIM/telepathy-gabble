@@ -326,18 +326,24 @@ def test(q, bus, conn, stream, bytestream_cls,
     stream_node['tube'] = str(stream_tube_id)
     stream.send(iq)
 
-    si_reply_event, _ = q.expect_many(
+    si_reply_event, _, _, new_conn_event, socket_event = q.expect_many(
             EventPattern('stream-iq', iq_type='result'),
             EventPattern('dbus-signal', signal='TubeStateChanged',
-                args=[stream_tube_id, cs.TUBE_STATE_OPEN]))
+                args=[stream_tube_id, cs.TUBE_STATE_OPEN]),
+            EventPattern('dbus-signal', signal='StreamTubeNewConnection',
+                args=[stream_tube_id, bob_handle]),
+            EventPattern('dbus-signal', signal='NewConnection'),
+            EventPattern('socket-connected'))
 
     bytestream1.check_si_reply(si_reply_event.stanza)
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
         si_reply_event.stanza)
     assert len(tube) == 1
 
-    q.expect('dbus-signal', signal='StreamTubeNewConnection',
-        args=[stream_tube_id, bob_handle])
+    handle, access = new_conn_event.args
+    assert handle == bob_handle
+    protocol = socket_event.protocol
+    t.check_new_connection_access(access_control, access, protocol)
 
     expected_tube = (stream_tube_id, self_handle, cs.TUBE_TYPE_STREAM, 'echo',
         sample_parameters, cs.TUBE_STATE_OPEN)
@@ -354,19 +360,22 @@ def test(q, bus, conn, stream, bytestream_cls,
     stream_node['tube'] = str(new_stream_tube_id)
     stream.send(iq)
 
-    si_reply_event, _ = q.expect_many(
+    si_reply_event, _, new_conn_event, socket_event = q.expect_many(
             EventPattern('stream-iq', iq_type='result'),
             EventPattern('dbus-signal', signal='TubeChannelStateChanged',
-                args=[cs.TUBE_STATE_OPEN]))
+                args=[cs.TUBE_STATE_OPEN]),
+            EventPattern('dbus-signal', signal='NewConnection'),
+            EventPattern('socket-connected'))
 
     bytestream2.check_si_reply(si_reply_event.stanza)
     tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
         si_reply_event.stanza)
     assert len(tube) == 1
 
-    e = q.expect('dbus-signal', signal='NewConnection')
-    handle, access = e.args
+    handle, access = new_conn_event.args
     assert handle == bob_handle
+    protocol = socket_event.protocol
+    t.check_new_connection_access(access_control, access, protocol)
 
     expected_tube = (new_stream_tube_id, self_handle, cs.TUBE_TYPE_STREAM,
         'newecho', new_sample_parameters, cs.TUBE_STATE_OPEN)

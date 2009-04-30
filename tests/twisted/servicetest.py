@@ -361,8 +361,11 @@ class EventProtocolFactory(Factory):
     def __init__(self, queue):
         self.queue = queue
 
+    def _create_protocol(self):
+        return EventProtocol(self.queue)
+
     def buildProtocol(self, addr):
-        proto =  EventProtocol(self.queue)
+        proto = self._create_protocol()
         self.queue.handle_event(Event('socket-connected', protocol=proto))
         return proto
 

@@ -1425,13 +1425,23 @@ _pick_best_resource (GabbleMediaChannel *chan,
       goto CHOOSE_TRANSPORT;
     }
 
-  /* There is still hope, try GTalk */
-  caps = PRESENCE_CAP_GOOGLE_VOICE;
+  /* There is still hope, try GTalk 0.4 */
+  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
   resource = gabble_presence_pick_resource_by_caps (presence, caps);
 
   if (resource != NULL)
     {
       *dialect = JINGLE_DIALECT_GTALK4;
+      goto CHOOSE_TRANSPORT;
+    }
+
+  /* GTalk 0.3 maybe ? */
+  caps = PRESENCE_CAP_GOOGLE_VOICE;
+  resource = gabble_presence_pick_resource_by_caps (presence, caps);
+
+  if (resource != NULL)
+    {
+      *dialect = JINGLE_DIALECT_GTALK3;
       goto CHOOSE_TRANSPORT;
     }
 

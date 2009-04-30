@@ -76,7 +76,8 @@ def check_iav(jt, q, conn, bus, stream, remote_handle, initial_audio,
         cs.INITIAL_AUDIO: initial_audio,
         cs.INITIAL_VIDEO: initial_video,
         })
-    if initial_video and not jt.jp.can_do_video():
+    if initial_video and (not jt.jp.can_do_video()
+            or (not initial_audio and not jt.jp.can_do_video_only ())):
         # Some protocols can't do video
         event = q.expect('dbus-error', method='CreateChannel')
         assertEquals(cs.NOT_CAPABLE, event.error.get_dbus_name())

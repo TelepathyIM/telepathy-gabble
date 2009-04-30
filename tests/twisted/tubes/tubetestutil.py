@@ -7,7 +7,8 @@ import os
 
 import dbus
 
-from servicetest import unwrap, assertContains, EventProtocolClientFactory, EventProtocolFactory
+from servicetest import unwrap, assertContains, EventProtocolClientFactory,\
+    EventProtocolFactory, assertEquals
 from gabbletest import exec_test
 import constants as cs
 import bytestream
@@ -251,6 +252,18 @@ def create_server(q, address_type, factory=None):
             else:
                 return ('127.0.0.1', dbus.UInt16(port))
 
+    else:
+        assert False
+
+def check_new_connection_access(access_control, access_control_param, protocol):
+    if access_control == cs.SOCKET_ACCESS_CONTROL_LOCALHOST:
+        # nothing to check
+        return
+    elif access_control == cs.SOCKET_ACCESS_CONTROL_PORT:
+        ip, port = access_control_param
+        address = protocol.transport.getPeer()
+        assertEquals(ip, address.host)
+        assertEquals(port, address.port)
     else:
         assert False
 

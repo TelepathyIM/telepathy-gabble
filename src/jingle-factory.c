@@ -713,7 +713,7 @@ jingle_cb (LmMessageHandler *handler,
       if (action != JINGLE_ACTION_SESSION_INITIATE)
         {
           g_set_error (&error, GABBLE_XMPP_ERROR,
-              XMPP_ERROR_JINGLE_OUT_OF_ORDER, "session not initiated yet");
+              XMPP_ERROR_JINGLE_UNKNOWN_SESSION, "session %s is unknown", sid);
           goto REQUEST_ERROR;
         }
       new_session = TRUE;

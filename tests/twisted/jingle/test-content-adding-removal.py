@@ -5,51 +5,33 @@ the first one and lastly remove the second stream, which
 closes the session.
 """
 
-from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, tp_path_prefix
-import jingletest
+from gabbletest import make_result_iq
+from servicetest import (
+    wrap_channel, make_channel_proxy, tp_path_prefix, assertEquals,
+    EventPattern,
+    )
+from jingletest2 import (
+    JingleTest2, test_dialects, JingleProtocol031, JingleProtocol015,
+    )
 import constants as cs
 
-from twisted.words.xish import domish, xpath
+def gabble_terminates(jp, q, bus, conn, stream):
+    test(jp, q, bus, conn, stream, False)
 
-def test(q, bus, conn, stream):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
+def peer_terminates(jp, q, bus, conn, stream):
+    test(jp, q, bus, conn, stream, True)
 
-    # Connecting
-    conn.Connect()
+def test(jp, q, bus, conn, stream, peer_removes_final_content):
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
+    jt.prepare()
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
-
-    q.expect('stream-authenticated')
-    q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{1L: (0L, {u'available': {}})}])
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
-
-    self_handle = conn.GetSelfHandle()
-
-    # We need remote end's presence for capabilities
-    jt.send_remote_presence()
-
-    # Gabble doesn't trust it, so makes a disco
-    event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to='foo@bar.com/Foo')
-
-    jt.send_remote_disco_reply(event.stanza)
-
-    # Force Gabble to process the caps before calling RequestChannel
-    sync_stream(q, stream)
-
-    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.peer])[0]
     path = conn.RequestChannel(
         cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_CONTACT, handle, True)
 
-    signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
-    media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
-    group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'StreamedMedia')
 
-    # This is the interesting part of this test
-
-    media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
+    chan.StreamedMedia.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -67,44 +49,45 @@ def test(q, bus, conn, stream):
 
     # Before sending the initiate, request another stream
 
-    media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_VIDEO])
+    chan.StreamedMedia.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_VIDEO])
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
     stream_id2 = e.args[1]
 
     stream_handler2 = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
 
-    # We set both streams as ready, which will trigger the session invite
+    # We set both streams as ready, which will trigger the session initiate
     stream_handler.Ready(jt.get_audio_codecs_dbus())
     stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
     stream_handler2.Ready(jt.get_audio_codecs_dbus())
     stream_handler2.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     # We changed our mind locally, don't want video
-    media_iface.RemoveStreams([stream_id2])
+    chan.StreamedMedia.RemoveStreams([stream_id2])
 
-    e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'session-initiate'
+    e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
+        jp.match_jingle_action(x.query, 'session-initiate'))
     stream.send(make_result_iq(stream, e.stanza))
 
-    e2 = q.expect('stream-iq', predicate=lambda x:
-        xpath.queryForNodes("/iq/jingle[@action='content-remove']",
-            x.stanza))
+    jt.set_sid_from_initiate(e.query)
 
-    jt.outgoing_call_reply(e.query['sid'], True, with_video=True)
-    q.expect('stream-iq', iq_type='result')
+    # Gabble sends content-remove for the video stream...
+    e2 = q.expect('stream-iq', iq_type='set', predicate=lambda x:
+        jp.match_jingle_action(x.query, 'content-remove'))
+
+    # ...but before the peer notices, they accept the call.
+    jt.accept(with_video=True)
 
     # Only now the remote end removes the video stream; if gabble mistakenly
     # marked it as accepted on session acceptance, it'll crash right about
     # now. If it's good, stream will be really removed, and
     # we can proceed.
-
     stream.send(make_result_iq(stream, e2.stanza))
 
     q.expect('dbus-signal', signal='StreamRemoved')
 
-    media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_VIDEO])
+    # Actually, we *do* want video!
+    chan.StreamedMedia.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_VIDEO])
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
     stream2_id = e.args[1]
@@ -115,66 +98,64 @@ def test(q, bus, conn, stream):
     stream_handler2.Ready(jt.get_audio_codecs_dbus())
     stream_handler2.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'content-add'
-    c = e.query.firstChildElement ()
-    assert c['creator'] == 'initiator', c['creator'] + " should be initiator"
+    e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
+        jp.match_jingle_action(x.query, 'content-add'))
+    c = e.query.firstChildElement()
+    assertEquals('initiator', c['creator'])
     stream.send(make_result_iq(stream, e.stanza))
 
-    iq, jingle = jt._jingle_stanza('content-accept')
+    # Peer accepts
+    jt.content_accept(e.query, 'video')
 
-    content = domish.Element((None, 'content'))
-    content['creator'] = 'initiator'
-    content['name'] = 'stream2'
-    content['senders'] = 'both'
-    jingle.addChild(content)
+    # Let's start sending and receiving video!
+    q.expect_many(
+        EventPattern('dbus-signal', signal='SetStreamPlaying', args=[True]),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[True]),
+        )
 
-    desc = domish.Element(("http://jabber.org/protocol/jingle/description/audio", 'description'))
-    for codec, id, rate in jt.audio_codecs:
-        p = domish.Element((None, 'payload-type'))
-        p['name'] = codec
-        p['id'] = str(id)
-        p['rate'] = str(rate)
-        desc.addChild(p)
-
-    content.addChild(desc)
-
-    xport = domish.Element(("http://www.google.com/transport/p2p", 'transport'))
-    content.addChild(xport)
-
-    stream.send(iq.toXml())
-
-    e = q.expect('dbus-signal', signal='SetStreamPlaying', args=[1])
-
+    # Now, the call draws to a close.
     # We first remove the original stream
-    media_iface.RemoveStreams([stream_id])
+    chan.StreamedMedia.RemoveStreams([stream_id])
 
-    e = q.expect('stream-iq', iq_type='set')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'content-remove'
+    e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
+        jp.match_jingle_action(x.query, 'content-remove'))
     stream.send(make_result_iq(stream, e.stanza))
 
-    # Then we remove the second stream, which terminates the session
-    media_iface.RemoveStreams([stream2_id])
+    if peer_removes_final_content:
+        # The peer removes the final countdo^W content. From a footnote (!) in
+        # XEP 0166:
+        #     If the content-remove results in zero content definitions for the
+        #     session, the entity that receives the content-remove SHOULD send
+        #     a session-terminate action to the other party (since a session
+        #     with no content definitions is void).
+        # So, Gabble should respond to the content-remove with a
+        # session-terminate.
+        node = jp.SetIq(jt.peer, jt.jid, [
+            jp.Jingle(jt.sid, jt.peer, 'content-remove', [
+                jp.Content(c['name'], c['creator'], c['senders'], []) ]) ])
+        stream.send(jp.xml(node))
+    else:
+        # The Telepathy client removes the second stream; Gabble should
+        # terminate the session rather than sending a content-remove.
+        chan.StreamedMedia.RemoveStreams([stream2_id])
 
-    e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'session-terminate'
-    stream.send(make_result_iq(stream, e.stanza))
+    st, closed = q.expect_many(
+        EventPattern('stream-iq', iq_type='set', predicate=lambda x:
+            jp.match_jingle_action(x.query, 'session-terminate')),
+        # Gabble shouldn't wait for the peer to ack the terminate before
+        # considering the call finished.
+        EventPattern('dbus-signal', signal='Closed',
+            path=path[len(tp_path_prefix):]),
+        )
 
-    # Now the session should be terminated
-
-    e = q.expect('dbus-signal', signal='Closed')
-    assert (tp_path_prefix + e.path) == path
+    stream.send(make_result_iq(stream, st.stanza))
 
     # Test completed, close the connection
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
-    return True
-
 
 if __name__ == '__main__':
-    exec_test(test)
+    test_dialects(gabble_terminates, [JingleProtocol015, JingleProtocol031])
+    test_dialects(peer_terminates, [JingleProtocol015, JingleProtocol031])
 

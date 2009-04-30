@@ -690,7 +690,6 @@ static void
 _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  GabbleJingleSessionPrivate *priv = sess->priv;
   const gchar *name = lm_message_node_get_attribute (content_node, "name");
 
   if (c == NULL)
@@ -698,14 +697,6 @@ _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
       SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
       return;
     }
-
-  /* FIXME: do we treat this as a session terminate instead of error? */
-  if (g_hash_table_size (priv->contents) == 1)
-    {
-      SET_BAD_REQ ("unable to remove the last content in a session");
-      return;
-    }
-
   gabble_jingle_content_remove (c, FALSE);
 }
 
@@ -835,15 +826,7 @@ static void
 on_content_remove (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  GabbleJingleSessionPrivate *priv = sess->priv;
-
   _foreach_content (sess, node, _each_content_remove, error);
-
-  if (g_hash_table_size (priv->contents) == 0)
-    {
-      gabble_jingle_session_terminate (sess,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
-    }
 }
 
 static void

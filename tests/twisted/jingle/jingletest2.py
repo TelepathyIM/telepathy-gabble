@@ -74,9 +74,9 @@ class JingleProtocol:
         kw['name'] = name
         kw['rate'] = rate
         kw['id'] = id
-        chrilden = [self.Parameter(name, value)
+        children = [self.Parameter(name, value)
                     for name, value in parameters.iteritems()]
-        return ('payload-type', None, kw, chrilden)
+        return ('payload-type', None, kw, children)
 
     def Parameter(self, name, value):
         "Creates a <parameter> element"

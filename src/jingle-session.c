@@ -1720,6 +1720,39 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
       return;
 
   msg = gabble_jingle_session_new_message (sess, action, &sess_node);
+
+  if (priv->dialect == JINGLE_DIALECT_GTALK3)
+    {
+      gboolean has_video = FALSE;
+      GHashTableIter iter;
+      gpointer value;
+
+      g_hash_table_iter_init (&iter, priv->contents);
+      while (g_hash_table_iter_next (&iter, NULL, &value))
+        {
+          JingleMediaType type;
+
+          g_object_get (value, "media-type", &type, NULL);
+
+          if (type == JINGLE_MEDIA_TYPE_VIDEO)
+            {
+              has_video = TRUE;
+              break;
+            }
+        }
+
+      sess_node = lm_message_node_add_child (sess_node, "description",
+        NULL);
+
+      if (has_video)
+        lm_message_node_set_attribute (sess_node, "xmlns",
+          NS_GOOGLE_SESSION_VIDEO);
+      else
+        lm_message_node_set_attribute (sess_node, "xmlns",
+          NS_GOOGLE_SESSION_PHONE);
+    }
+
+
   _map_initial_contents (sess, _fill_content, sess_node);
   gabble_jingle_session_send (sess, msg, handler, (GObject *) sess);
   set_state (sess, new_state, 0);

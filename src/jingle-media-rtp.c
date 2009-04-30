@@ -299,6 +299,10 @@ extract_media_type (LmMessageNode *desc_node,
         NS_GOOGLE_SESSION_PHONE, NULL))
     return JINGLE_MEDIA_TYPE_AUDIO;
 
+  if (lm_message_node_has_namespace (desc_node,
+        NS_GOOGLE_SESSION_VIDEO, NULL))
+    return JINGLE_MEDIA_TYPE_VIDEO;
+
   /* If we get here, namespace in use is not one of namespaces we signed up
    * with, so obviously a bug somewhere.
    */
@@ -552,6 +556,7 @@ _produce_extra_param (gpointer key, gpointer value, gpointer user_data)
 
 static void
 produce_payload_type (LmMessageNode *desc_node,
+                      JingleMediaType type,
                       JingleCodec *p,
                       JingleDialect dialect)
 {
@@ -563,6 +568,18 @@ produce_payload_type (LmMessageNode *desc_node,
   /* id: required */
   sprintf (buf, "%d", p->id);
   lm_message_node_set_attribute (pt_node, "id", buf);
+
+  if (dialect == JINGLE_DIALECT_GTALK3 && type == JINGLE_MEDIA_TYPE_AUDIO)
+    {
+      /* Gtalk 03 has either an audio or a video session, in case of a video
+       * session the audio codecs need to set their namespace to
+       * NS_GOOGLE_SESSION_PHONE. In the case of an audio session it doesn't
+       * matter, so just always set the namespace on audio payloads.
+       */
+      lm_message_node_set_attribute (pt_node, "xmlns",
+        NS_GOOGLE_SESSION_PHONE);
+    }
+
 
   /* name: optional */
   if (*p->name != '\0')
@@ -590,43 +607,40 @@ produce_payload_type (LmMessageNode *desc_node,
     g_hash_table_foreach (p->params, _produce_extra_param, pt_node);
 }
 
-static void
-produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
+static LmMessageNode *
+produce_description_node (JingleDialect dialect, JingleMediaType media_type,
+   LmMessageNode *content_node)
 {
-  GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (obj);
-  GabbleJingleMediaRtpPrivate *priv = desc->priv;
   LmMessageNode *desc_node;
-  GList *li;
-  JingleDialect dialect;
   const gchar *xmlns = NULL;
 
-  g_object_get (obj->session, "dialect", &dialect, NULL);
+  if (dialect == JINGLE_DIALECT_GTALK3)
+    return NULL;
 
   desc_node = lm_message_node_add_child (content_node, "description", NULL);
 
   switch (dialect)
     {
-      case JINGLE_DIALECT_GTALK3:
       case JINGLE_DIALECT_GTALK4:
-        g_assert (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO);
+        g_assert (media_type == JINGLE_MEDIA_TYPE_AUDIO);
         xmlns = NS_GOOGLE_SESSION_PHONE;
         break;
       case JINGLE_DIALECT_V015:
-        if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+        if (media_type == JINGLE_MEDIA_TYPE_AUDIO)
             xmlns = NS_JINGLE_DESCRIPTION_AUDIO;
-        else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+        else if (media_type == JINGLE_MEDIA_TYPE_VIDEO)
             xmlns = NS_JINGLE_DESCRIPTION_VIDEO;
         else
           {
-            DEBUG ("unknown media type %u", priv->media_type);
+            DEBUG ("unknown media type %u", media_type);
             xmlns = "";
           }
         break;
       default:
         xmlns = NS_JINGLE_RTP;
-        if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+        if (media_type == JINGLE_MEDIA_TYPE_AUDIO)
             lm_message_node_set_attribute (desc_node, "media", "audio");
-        else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+        else if (media_type == JINGLE_MEDIA_TYPE_VIDEO)
             lm_message_node_set_attribute (desc_node, "media", "video");
         else
             g_assert_not_reached ();
@@ -634,6 +648,27 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
     }
 
   lm_message_node_set_attribute (desc_node, "xmlns", xmlns);
+
+  return desc_node;
+}
+
+static void
+produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
+{
+  GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (obj);
+  GabbleJingleMediaRtpPrivate *priv = desc->priv;
+  GList *li;
+  JingleDialect dialect;
+  LmMessageNode *desc_node;
+
+  g_object_get (obj->session, "dialect", &dialect, NULL);
+
+  desc_node = produce_description_node (dialect, priv->media_type,
+      content_node);
+
+  /* For GTalk3 the description is added by the session */
+  if (desc_node == NULL)
+    desc_node = content_node;
 
   /* If we're only updating our codec parameters, only generate payload-types
    * for those.
@@ -644,7 +679,7 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
     li = priv->local_codecs;
 
   for (; li != NULL; li = li->next)
-    produce_payload_type (desc_node, li->data, dialect);
+    produce_payload_type (desc_node, priv->media_type, li->data, dialect);
 }
 
 /**

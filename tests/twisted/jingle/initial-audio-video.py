@@ -140,6 +140,8 @@ def incoming(jp, q, bus, conn, stream):
     for a, v in [(True, False), (False, True), (True, True)]:
         if v and not jp.can_do_video():
             continue
+        if not a and v and not jp.can_do_video_only():
+            continue
 
         jt.incoming_call(audio=a, video=v)
         e = q.expect('dbus-signal', signal='NewChannels')

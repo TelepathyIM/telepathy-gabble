@@ -114,6 +114,12 @@ class JingleProtocol:
     def can_do_video(self):
         return True
 
+    def can_do_video_only(self):
+        return True
+
+    def seperate_contents(self):
+        return True
+
     def is_modern_jingle(self):
         return False
 
@@ -175,6 +181,12 @@ class GtalkProtocol03(JingleProtocol):
 
     def extract_session_id(self, query):
         return query['id']
+
+    def can_do_video_only(self):
+        return False
+
+    def seperate_contents(self):
+        return False
 
 class GtalkProtocol04(JingleProtocol):
     features = [ 'http://www.google.com/xmpp/protocol/voice/v1',
@@ -419,6 +431,7 @@ class JingleTest2:
         Accepts a content-add stanza containing a single <content> of the given
         media type.
         """
+        assert self.seperate_contents()
         jp = self.jp
         c = query.firstChildElement()
 

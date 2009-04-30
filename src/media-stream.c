@@ -1394,8 +1394,6 @@ push_remote_codecs (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
   GPtrArray *codecs;
-  GType codec_list_type =
-      TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CODEC_LIST;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1412,9 +1410,6 @@ push_remote_codecs (GabbleMediaStream *stream)
                    codecs->len);
 
   tp_svc_media_stream_handler_emit_set_remote_codecs (stream, codecs);
-
-  g_value_take_boxed (&priv->remote_codecs,
-      dbus_g_type_specialized_construct (codec_list_type));
 }
 
 static void

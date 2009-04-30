@@ -155,6 +155,17 @@ class GtalkProtocol03(JingleProtocol):
         return ('session', 'http://www.google.com/session',
             { 'type': action, 'initiator': initiator, 'id': sid }, children)
 
+    def PayloadType(self, name, rate, id, parameters={}, **kw):
+        p = JingleProtocol.PayloadType(self, name, rate, id, parameters,
+            **kw)
+        if "type" in kw:
+            namespaces = { "audio":  'http://www.google.com/session/phone',
+                           "video":  'http://www.google.com/session/video'
+            }
+            p = p[:1] + (namespaces[kw["type"]],) + p[2:]
+
+        return p
+
     # Gtalk has only one content, and <content> node is implicit
     def Content(self, name, creator, senders, children):
         # Normally <content> has <description> and <transport>, but we only
@@ -370,28 +381,53 @@ class JingleTest2:
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
 
-    def incoming_call(self, audio=True, video=False):
+    def generate_contents (self, audio = True, video = False):
         assert audio or video
 
         jp = self.jp
+
+        assert not video or jp.can_do_video()
+
         contents = []
-        if audio:
-            contents.append(
-                jp.Content('stream1', 'initiator', 'both', [
-                    jp.Description('audio', [
-                        jp.PayloadType(name, str(rate), str(id)) for
+
+        if jp.seperate_contents() or not audio or not video:
+            assert audio or video
+            if audio:
+                contents.append(
+                    jp.Content('stream1', 'initiator', 'both', [
+                        jp.Description('audio', [
+                            jp.PayloadType(name, str(rate), str(id)) for
                             (name, id, rate) in self.audio_codecs ]),
                     jp.TransportGoogleP2P() ])
                 )
-        if video:
-            assert jp.can_do_video()
-            contents.append(
-                jp.Content('stream2', 'initiator', 'both', [
-                    jp.Description('video', [
-                        jp.PayloadType(name, str(rate), str(id)) for
+            if video:
+                contents.append(
+                    jp.Content('stream2', 'initiator', 'both', [
+                        jp.Description('video', [
+                            jp.PayloadType(name, str(rate), str(id)) for
                             (name, id, rate) in self.video_codecs ]),
                     jp.TransportGoogleP2P() ])
                 )
+        else:
+            assert jp.can_do_video()
+            contents.append(
+                jp.Content('stream0', 'initiator', 'both', [
+                    jp.Description('video', [
+                        jp.PayloadType(name, str(rate), str(id)) for
+                            (name, id, rate) in self.video_codecs ] +
+                        [ jp.PayloadType(name, str(rate), str(id),
+                            {}, type = "audio" ) for (name, id, rate, )
+                                in self.audio_codecs ],
+                        ),
+                    jp.TransportGoogleP2P() ])
+             )
+
+        return contents
+
+    def incoming_call(self, audio=True, video=False):
+        jp = self.jp
+        contents = self.generate_contents(audio, video)
+
         node = jp.SetIq(self.peer, self.jid, [
             jp.Jingle(self.sid, self.peer, 'session-initiate', contents),
             ])
@@ -402,28 +438,11 @@ class JingleTest2:
 
     def accept(self, with_video=False):
         jp = self.jp
-        audio = [
-            jp.Content('stream1', 'initiator', 'both', [
-                jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in self.audio_codecs ]),
-                jp.TransportGoogleP2P() ])
-            ]
 
-        if with_video:
-            video = [
-                jp.Content('stream2', 'initiator', 'both', [
-                    jp.Description('video', [
-                        jp.PayloadType(name, str(rate), str(id)) for
-                            (name, id, rate) in self.video_codecs ]),
-                    jp.TransportGoogleP2P() ])
-                ]
-        else:
-            video = []
-
+        contents = self.generate_contents(True, with_video)
         node = jp.SetIq(self.peer, self.jid, [
             jp.Jingle(self.sid, self.peer, 'session-accept',
-                audio + video) ])
+                contents) ])
         self.stream.send(jp.xml(node))
 
     def content_accept(self, query, media):
@@ -431,8 +450,8 @@ class JingleTest2:
         Accepts a content-add stanza containing a single <content> of the given
         media type.
         """
-        assert self.seperate_contents()
         jp = self.jp
+        assert jp.seperate_contents()
         c = query.firstChildElement()
 
         if media == 'audio':

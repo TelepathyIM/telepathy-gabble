@@ -111,6 +111,9 @@ class JingleProtocol:
     def extract_session_id(self, query):
         return query['sid']
 
+    def validate_session_initiate(self, query):
+        return True
+
     def can_do_video(self):
         return True
 
@@ -433,7 +436,9 @@ class JingleTest2:
             ])
         self.stream.send(jp.xml(node))
 
-    def set_sid_from_initiate(self, query):
+    def parse_session_initiate (self, query):
+        # Validate the session initiate and get some useful ifo from it
+        self.jp.validate_session_initiate (query)
         self.sid = self.jp.extract_session_id(query)
 
     def accept(self, with_video=False):

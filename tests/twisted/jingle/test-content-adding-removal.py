@@ -69,7 +69,7 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
         jp.match_jingle_action(x.query, 'session-initiate'))
     stream.send(make_result_iq(stream, e.stanza))
 
-    jt.set_sid_from_initiate(e.query)
+    jt.parse_session_initiate(e.query)
 
     # Gabble sends content-remove for the video stream...
     e2 = q.expect('stream-iq', iq_type='set', predicate=lambda x:

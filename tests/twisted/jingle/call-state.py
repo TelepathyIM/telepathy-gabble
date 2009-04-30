@@ -59,7 +59,7 @@ def test(jp, q, bus, conn, stream):
         jp.match_jingle_action(e.query, 'session-initiate'))
     stream.send(make_result_iq(stream, e.stanza))
 
-    jt.set_sid_from_initiate(e.query)
+    jt.parse_session_initiate(e.query)
 
     # The other person's client starts ringing, and tells us so!
     node = jp.SetIq(jt.peer, jt.jid, [

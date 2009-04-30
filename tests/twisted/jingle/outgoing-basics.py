@@ -201,7 +201,7 @@ def worker(jp, q, bus, conn, stream, variant):
             predicate=lambda e:
                 jp.match_jingle_action(e.query, 'session-initiate'))
 
-    jt2.set_sid_from_initiate(session_initiate.query)
+    jt2.parse_session_initiate(session_initiate.query)
     stream.send(jp.xml(jp.ResultIq('test@localhost', session_initiate.stanza,
         [])))
 

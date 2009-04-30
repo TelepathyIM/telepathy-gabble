@@ -8,7 +8,7 @@ import os
 import dbus
 
 from servicetest import unwrap, assertContains, EventProtocolClientFactory,\
-    EventProtocolFactory, assertEquals
+    EventProtocolFactory, assertEquals, EventProtocol
 from gabbletest import exec_test
 import constants as cs
 import bytestream
@@ -203,19 +203,24 @@ def check_channel_properties(q, bus, conn, channel, channel_type,
         # FIXME: this should check for particular types, not just a magic length
         assert len(supported_socket_types) == 3
 
-class Echo(Protocol):
+class Echo(EventProtocol):
     """
     A trivial protocol that just echoes back whatever you send it, in lowercase.
     """
     def dataReceived(self, data):
+        EventProtocol.dataReceived(self, data)
+
         self.transport.write(data.lower())
+
+class EchoFactory(EventProtocolFactory):
+    def _create_protocol(self):
+        return Echo(self.queue)
 
 def set_up_echo(q, address_type):
     """
     Sets up an instance of Echo listening on a socket of type @address_type
     """
-    factory = Factory()
-    factory.protocol = Echo
+    factory = EchoFactory(q)
     return create_server(q, address_type, factory)
 
 def connect_socket(q, address_type, address):

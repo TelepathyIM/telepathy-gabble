@@ -192,27 +192,28 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     address = accept_return_event.value[0]
     t.connect_socket(q, address_type, address)
-    event = q.expect('socket-connected')
-    protocol = event.protocol
+    socket_event, si_event = q.expect_many(
+        EventPattern('socket-connected'),
+        # expect SI request
+        EventPattern('stream-iq', to='chat@conf.localhost/bob', query_ns=ns.SI,
+            query_name='si'))
+    protocol = socket_event.protocol
+
     protocol.sendData("hello initiator")
 
-    # expect SI request
-    event = q.expect('stream-iq', to='chat@conf.localhost/bob', query_ns=ns.SI,
-        query_name='si')
-
-    bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, event.stanza,
+    bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, si_event.stanza,
             'chat@conf.localhost/test')
 
     assert profile == ns.TUBES
 
     muc_stream_node = xpath.queryForNodes('/iq/si/muc-stream[@xmlns="%s"]' %
-        ns.TUBES, event.stanza)[0]
+        ns.TUBES, si_event.stanza)[0]
     assert muc_stream_node is not None
     assert muc_stream_node['tube'] == str(stream_tube_id)
 
     # set the real jid of the target as 'to' because the XMPP server changes
     # it when delivering the IQ
-    result, si = bytestream.create_si_reply(event.stanza, 'test@localhost/Resource')
+    result, si = bytestream.create_si_reply(si_event.stanza, 'test@localhost/Resource')
     si.addElement((ns.TUBES, 'tube'))
     stream.send(result)
 

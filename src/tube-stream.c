@@ -677,6 +677,56 @@ set_credentials_access_control_param (GValue *access_control_param,
   return TRUE;
 }
 
+static gboolean
+set_port_access_control_param (GValue *access_control_param,
+    GibberTransport *transport)
+{
+  struct sockaddr_storage addr;
+  socklen_t addrlen = sizeof (struct sockaddr_storage);
+  char host[NI_MAXHOST];
+  char port_str[NI_MAXSERV];
+  int ret;
+  guint16 port;
+  unsigned long tmp;
+  gchar *endptr;
+
+  if (!gibber_transport_get_sockaddr (transport, &addr, &addrlen))
+    {
+      DEBUG ("Failed to get connection address");
+      return FALSE;
+    }
+
+  ret = getnameinfo ((struct sockaddr *) &addr, addrlen,
+      host, NI_MAXHOST, port_str, NI_MAXSERV,
+      NI_NUMERICHOST | NI_NUMERICSERV);
+  if (ret != 0)
+    {
+      DEBUG ("getnameinfo failed: %s", g_strerror (ret));
+      return FALSE;
+    }
+
+  tmp = strtoul (port_str, &endptr, 10);
+  if (!endptr || *endptr || tmp > G_MAXUINT32)
+    {
+      DEBUG ("invalid port: %s", port_str);
+      return FALSE;
+    }
+  port = (guint16) tmp;
+
+  g_value_init (access_control_param,
+      TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV4);
+  g_value_take_boxed (access_control_param,
+      dbus_g_type_specialized_construct (
+                TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV4));
+
+  dbus_g_type_struct_set (access_control_param,
+      0, host,
+      1, port,
+      G_MAXUINT);
+
+  return TRUE;
+}
+
 static transport_connected_data *
 transport_connected_data_new (GabbleTubeStream *self,
     TpHandle contact)
@@ -705,6 +755,14 @@ fire_new_connection (GabbleTubeStream *self,
     {
       if (!set_credentials_access_control_param (&access_control_param,
             transport))
+        {
+          gibber_transport_disconnect (transport);
+          return;
+        }
+    }
+  else if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_PORT)
+    {
+      if (!set_port_access_control_param (&access_control_param, transport))
         {
           gibber_transport_disconnect (transport);
           return;

@@ -1951,15 +1951,28 @@ check_ip_params (TpSocketAddressType address_type,
       freeaddrinfo (result);
     }
 
-  if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+  if (access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "%s sockets only support localhost control access",
-          (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4 ? "IPv4" : "IPv6"));
-      return FALSE;
+      return TRUE;
+    }
+  else if (access_control == TP_SOCKET_ACCESS_CONTROL_PORT)
+    {
+      if (access_control_param != NULL)
+        {
+          if (G_VALUE_TYPE (access_control_param) !=
+              TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV4)
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "Port access param is supposed to be sq");
+              return FALSE;
+            }
+        }
+      return TRUE;
     }
 
-  return TRUE;
+  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      "%u socket access control is not supported", access_control);
+  return FALSE;
 }
 
 /* used to check access control parameters both for OfferStreamTube and

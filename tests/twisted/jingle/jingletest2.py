@@ -205,8 +205,19 @@ class GtalkProtocol03(JingleProtocol):
         assert xpath.queryForNodes('/session/transport', query) == None
 
         # Exactly one description in Gtalk03
-        ds = xpath.queryForNodes('/session/description', query)
-        assert len(ds) == 1
+        descs = xpath.queryForNodes('/session/description', query)
+        assert len(descs) == 1
+
+        desc = descs[0]
+
+        # the ds is either audio or video
+        assert desc.uri in [ ns.GOOGLE_SESSION_PHONE, ns.GOOGLE_SESSION_VIDEO ]
+
+        if desc.uri == ns.GOOGLE_SESSION_VIDEO:
+            # If it's a video call there should be some audio codecs as well
+            assert xpath.queryForNodes(
+                '/session/description/payload-type[@xmlns="%s"]' %
+                    ns.GOOGLE_SESSION_PHONE, query)
 
         return True
 

@@ -1385,14 +1385,18 @@ _pick_best_resource (GabbleMediaChannel *chan,
       goto CHOOSE_TRANSPORT;
     }
 
-  /* There is still hope, try GTalk */
-  caps = PRESENCE_CAP_GOOGLE_VIDEO | PRESENCE_CAP_GOOGLE_VOICE;
-  resource = gabble_presence_pick_resource_by_caps (presence, caps);
-
-  if (resource != NULL)
+  /* There is still hope, try GTalk, but only when asked for both audio and
+   * video */
+  if (want_audio && want_video)
     {
-      *dialect = JINGLE_DIALECT_GTALK3;
-      goto CHOOSE_TRANSPORT;
+      caps = PRESENCE_CAP_GOOGLE_VIDEO | PRESENCE_CAP_GOOGLE_VOICE;
+      resource = gabble_presence_pick_resource_by_caps (presence, caps);
+
+      if (resource != NULL)
+        {
+          *dialect = JINGLE_DIALECT_GTALK3;
+          goto CHOOSE_TRANSPORT;
+        }
     }
 
   /* In this unlikely case, we can get by with just video */

@@ -13,6 +13,7 @@ from gabbletest import sync_stream, exec_test
 from servicetest import EventPattern
 import dbus
 import ns
+import os
 
 class JingleProtocol:
     """
@@ -476,7 +477,17 @@ def test_dialects(f, dialects):
             lambda q, bus, conn, stream: f(dialect(), q, bus, conn, stream))
 
 def test_all_dialects(f):
-    test_dialects(f, [
-        JingleProtocol015, JingleProtocol031, GtalkProtocol03,
-        GtalkProtocol04])
+    dialectmap = { "jingle015": JingleProtocol015,
+        "jingle031": JingleProtocol031,
+        "gtalk03": GtalkProtocol03,
+        "gtalk04":  GtalkProtocol04
+    }
+    dialects = []
 
+    jd = os.getenv("JINGLE_DIALECTS")
+    if jd == None:
+        dialects = dialectmap.values()
+    else:
+        for d in jd.split (','):
+            dialects.append(dialectmap[d])
+    test_dialects(f,  dialects)

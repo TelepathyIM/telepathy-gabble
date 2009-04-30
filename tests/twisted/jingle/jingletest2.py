@@ -7,7 +7,7 @@
 # This can be used in parallel with the old API, but should
 # obsolete it in time.
 
-from twisted.words.xish import domish
+from twisted.words.xish import domish, xpath
 import random
 from gabbletest import sync_stream, exec_test
 from servicetest import EventPattern
@@ -198,6 +198,17 @@ class GtalkProtocol03(JingleProtocol):
 
     def can_do_video_only(self):
         return False
+
+    def validate_session_initiate(self, query):
+        assert query['id'] != None
+        # No transport in GTalk03
+        assert xpath.queryForNodes('/session/transport', query) == None
+
+        # Exactly one description in Gtalk03
+        ds = xpath.queryForNodes('/session/description', query)
+        assert len(ds) == 1
+
+        return True
 
     def seperate_contents(self):
         return False

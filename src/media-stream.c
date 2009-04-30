@@ -1350,7 +1350,12 @@ new_remote_codecs_cb (GabbleJingleContent *content,
   if (codecs->len != 0)
     {
       priv->updating_remote_codecs = TRUE;
+
+      /* Free the old codec list, and make a new, empty one to fill in. */
       g_value_reset (&priv->remote_codecs);
+      codecs = dbus_g_type_specialized_construct (
+          TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CODEC_LIST);
+      g_value_take_boxed (&priv->remote_codecs, codecs);
     }
 
   for (li = clist; li; li = li->next)

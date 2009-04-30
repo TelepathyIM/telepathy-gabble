@@ -725,8 +725,12 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
   produce_desc (c, content_node);
 
   /* We can do it here, don't need to call into transport object for this */
-  trans_node = lm_message_node_add_child (content_node, "transport", NULL);
-  lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
+  if (dialect != JINGLE_DIALECT_GTALK3)
+    {
+      /* Galk 03 doesn't use a transport, but assumes Gtalk p2p */
+      trans_node = lm_message_node_add_child (content_node, "transport", NULL);
+      lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
+    }
 }
 
 void

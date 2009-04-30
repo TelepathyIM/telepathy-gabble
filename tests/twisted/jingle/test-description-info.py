@@ -4,6 +4,7 @@ Test emition and handling of codec update using description-info
 
 from gabbletest import exec_test
 from servicetest import (
+    wrap_channel,
     make_channel_proxy, unwrap, tp_path_prefix, EventPattern, call_async)
 from jingletest2 import JingleTest2, JingleProtocol031
 import constants as cs
@@ -19,23 +20,7 @@ def extract_params(payload_type):
     return ret
 
 def test(q, bus, conn, stream):
-
     jp = JingleProtocol031()
-
-    def make_stream_request(stream_type):
-        media_iface.RequestStreams(remote_handle, [stream_type])
-
-        e = q.expect('dbus-signal', signal='NewStreamHandler')
-        stream_id = e.args[1]
-
-        stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
-
-        stream_handler.NewNativeCandidate("fake", jt2.get_remote_transports_dbus())
-        stream_handler.Ready(jt2.get_audio_codecs_dbus())
-        stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
-        return (stream_handler, stream_id)
-
-
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
     jt2.prepare()
 
@@ -43,14 +28,7 @@ def test(q, bus, conn, stream):
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
 
     # Remote end calls us
-    node = jp.SetIq(jt2.peer, jt2.jid, [
-        jp.Jingle(jt2.sid, jt2.peer, 'session-initiate', [
-            jp.Content('stream1', 'initiator', 'both', [
-                jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
-    stream.send(jp.xml(node))
+    jt2.incoming_call()
 
     # FIXME: these signals are not observable by real clients, since they
     #        happen before NewChannels.
@@ -63,9 +41,8 @@ def test(q, bus, conn, stream):
              args=[u'', [], [], [self_handle], [], remote_handle,
                    cs.GC_REASON_INVITED])
 
-    media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
-    signalling_iface = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.MediaSignalling')
-    media_iface = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Type.StreamedMedia')
+    chan = wrap_channel(bus.get_object(conn.bus_name, tp_path_prefix + e.path),
+        'StreamedMedia')
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -74,7 +51,7 @@ def test(q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    media_chan.AddMembers([self_handle], 'accepted')
+    chan.Group.AddMembers([self_handle], 'accepted')
 
     # S-E gets notified about a newly-created stream
     e = q.expect('dbus-signal', signal='NewStreamHandler')
@@ -88,7 +65,7 @@ def test(q, bus, conn, stream):
                    cs.GC_REASON_NONE])
 
     # we are now both in members
-    members = media_chan.GetMembers()
+    members = chan.Group.GetMembers()
     assert set(members) == set([self_handle, remote_handle]), members
 
     local_codecs = [('GSM', 3, 8000, {}),
@@ -189,7 +166,7 @@ def test(q, bus, conn, stream):
     assert new_codecs_dbus == announced, (new_codecs_dbus, announced)
 
     # We close the session by removing the stream
-    media_iface.RemoveStreams([id1])
+    chan.StreamedMedia.RemoveStreams([id1])
 
     e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
         xpath.queryForNodes("/iq/jingle[@action='session-terminate']",
@@ -197,8 +174,6 @@ def test(q, bus, conn, stream):
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
 
 if __name__ == '__main__':
     exec_test(test)

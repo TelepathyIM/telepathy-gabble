@@ -190,6 +190,7 @@ gabble_jingle_media_rtp_get_property (GObject *object,
       break;
     case PROP_REMOTE_STATE:
       g_value_set_uint (value, priv->remote_state);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;

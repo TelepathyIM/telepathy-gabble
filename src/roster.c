@@ -2610,8 +2610,7 @@ gabble_roster_request (GabbleRoster *self,
       handle == GABBLE_LIST_HANDLE_DENY &&
       !(self->priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
     {
-      /* FIXME: should this be NotImplemented? */
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "This server does not have Google roster extensions, so there's "
           "no deny list");
       goto error;

@@ -498,8 +498,12 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
       if (creator == NULL)
           creator = "initiator";
 
-      if (name == NULL)
-          name = "gtalk";
+      /* the google protocols don't give the contents names, so put in a dummy
+       * value if none was set by the session*/
+      if (priv->name == NULL)
+        name = priv->name = g_strdup ("gtalk");
+      else
+        name = priv->name;
 
       if (trans_node == NULL)
         {
@@ -520,6 +524,10 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
           SET_BAD_REQ ("missing required content attributes or elements");
           return;
         }
+
+      /* In proper protocols the name comes from the stanza */
+      g_assert (priv->name == NULL);
+      priv->name = g_strdup (name);
     }
 
   /* if we didn't set it to google-p2p implicitly already, detect it */
@@ -578,9 +586,6 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
   g_assert (priv->transport == NULL);
   priv->transport = trans;
-
-  g_assert (priv->name == NULL);
-  priv->name = g_strdup (name);
 
   g_assert (priv->creator == NULL);
   priv->creator = g_strdup (creator);

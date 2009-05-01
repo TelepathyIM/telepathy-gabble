@@ -7,7 +7,7 @@ from dbus import PROPERTIES_IFACE
 HT_NONE = 0
 HT_CONTACT = 1
 HT_ROOM = 2
-HT_CONTACT_LIST = 3
+HT_LIST = 3
 HT_GROUP = 4
 
 CHANNEL = "org.freedesktop.Telepathy.Channel"

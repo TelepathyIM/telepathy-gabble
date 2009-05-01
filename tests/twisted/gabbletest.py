@@ -515,7 +515,7 @@ def make_presence(_from, to='test@localhost', type=None, status=None, caps=None)
     return presence
 
 def expect_list_channel(q, bus, conn, name, contacts):
-    return expect_contact_list_channel(q, bus, conn, cs.HT_CONTACT_LIST, name,
+    return expect_contact_list_channel(q, bus, conn, cs.HT_LIST, name,
         contacts)
 
 def expect_group_channel(q, bus, conn, name, contacts):

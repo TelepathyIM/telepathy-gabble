@@ -500,14 +500,17 @@ parse_description (GabbleJingleContent *content,
 {
   GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
   GabbleJingleMediaRtpPrivate *priv = self->priv;
-  JingleMediaType mtype = JINGLE_MEDIA_TYPE_NONE;
+  JingleMediaType mtype;
   GList *codecs = NULL;
   JingleCodec *p;
   LmMessageNode *node;
 
   DEBUG ("node: %s", desc_node->name);
 
-  mtype = extract_media_type (desc_node, error);
+  if (priv->media_type == JINGLE_MEDIA_TYPE_NONE)
+    mtype = extract_media_type (desc_node, error);
+  else
+    mtype = priv->media_type;
 
   if (mtype == JINGLE_MEDIA_TYPE_NONE)
     return;

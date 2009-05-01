@@ -2,7 +2,7 @@
 Test emition and handling of codec update using description-info
 """
 
-from gabbletest import exec_test
+from gabbletest import exec_test, sync_stream
 from servicetest import (
     wrap_channel,
     make_channel_proxy, unwrap, tp_path_prefix, EventPattern, call_async)
@@ -19,7 +19,10 @@ def extract_params(payload_type):
         ret[node['name']] = node['value']
     return ret
 
-def test(q, bus, conn, stream):
+def early_description_info(q, bus, conn, stream):
+    test(q, bus, conn, stream, send_early_description_info=True)
+
+def test(q, bus, conn, stream, send_early_description_info=False):
     jp = JingleProtocol031()
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
     jt2.prepare()
@@ -47,6 +50,21 @@ def test(q, bus, conn, stream):
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
+
+    if send_early_description_info:
+        """
+        Regression test for a bug where Gabble would crash if you sent it
+        description-info before calling Ready() on the relevant StreamHandler,
+        and then for a bug where Gabble would never accept the call if a
+        description-info was received before all StreamHandlers were Ready().
+        """
+        node = jp.SetIq(jt2.peer, jt2.jid, [
+            jp.Jingle(jt2.sid, jt2.peer, 'description-info', [
+                jp.Content('stream1', 'initiator', 'both', [
+                    jp.Description('audio', [ ]) ]) ]) ])
+        stream.send(jp.xml(node))
+
+        sync_stream(q, stream)
 
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
@@ -80,7 +98,7 @@ def test(q, bus, conn, stream):
     # First IQ is transport-info; also, we expect to be told what codecs the
     # other end wants.
     e, src = q.expect_many(
-        EventPattern('stream-iq'),
+        EventPattern('stream-iq', iq_type='set'),
         EventPattern('dbus-signal', signal='SetRemoteCodecs')
         )
     assert jp.match_jingle_action(e.query, 'transport-info')
@@ -177,4 +195,5 @@ def test(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(test)
+    exec_test(early_description_info)
 

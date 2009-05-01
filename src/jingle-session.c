@@ -818,8 +818,36 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
       return;
     }
 
-  if ((priv->dialect == JINGLE_DIALECT_GTALK3) ||
-      (priv->dialect == JINGLE_DIALECT_GTALK4))
+  if ((priv->dialect == JINGLE_DIALECT_GTALK3))
+    {
+       const gchar *content_ns = NULL;
+       LmMessageNode *desc_node =
+          lm_message_node_get_child_any_ns (node, "description");
+      content_ns = lm_message_node_get_namespace (desc_node);
+
+      if (!tp_strdiff (content_ns, NS_GOOGLE_SESSION_VIDEO))
+        {
+          GType content_type = 0;
+
+          DEBUG ("GTalk v3 session with audio and video");
+
+          /* audio and video content */
+          content_type = gabble_jingle_factory_lookup_content_type (
+            priv->conn->jingle_factory, content_ns);
+          create_content (sess, content_type, JINGLE_MEDIA_TYPE_VIDEO,
+            NS_GOOGLE_SESSION_VIDEO, NULL, "video", node, error);
+
+          content_type = gabble_jingle_factory_lookup_content_type (
+            priv->conn->jingle_factory, NS_GOOGLE_SESSION_PHONE);
+          create_content (sess, content_type, JINGLE_MEDIA_TYPE_AUDIO,
+            NS_GOOGLE_SESSION_PHONE, NULL, "audio", node, error);
+        }
+      else
+        {
+          _each_content_add (sess, NULL, node, error);
+        }
+    }
+   else if (priv->dialect == JINGLE_DIALECT_GTALK4)
     {
       /* in this case we implicitly have just one content */
       _each_content_add (sess, NULL, node, error);
@@ -1243,6 +1271,22 @@ jingle_state_machine_dance (GabbleJingleSession *sess,
   handlers[action] (sess, node, error);
 }
 
+static JingleDialect
+detect_google_dialect (LmMessageNode *session_node)
+{
+  /* The GTALK3 dialect is the only one that supports video at this time */
+  if (lm_message_node_get_child_with_namespace (session_node,
+      "description", NS_GOOGLE_SESSION_VIDEO) != NULL)
+    return JINGLE_DIALECT_GTALK3;
+
+  /* GTalk4 has a transport item, GTalk3 doesn't */
+  if (lm_message_node_get_child_with_namespace (session_node,
+      "transport", NS_GOOGLE_TRANSPORT_P2P) == NULL)
+    return JINGLE_DIALECT_GTALK3;
+
+  return JINGLE_DIALECT_GTALK4;
+}
+
 const gchar *
 gabble_jingle_session_detect (LmMessage *message, JingleAction *action, JingleDialect *dialect)
 {
@@ -1284,11 +1328,9 @@ gabble_jingle_session_detect (LmMessage *message, JingleAction *action, JingleDi
           session_node = lm_message_node_get_child_with_namespace (iq_node,
               "session", NS_GOOGLE_SESSION);
 
-          /* we can't distinguish between libjingle 0.3 and libjingle0.4 at this
-           * point, assume the better case */
           if (session_node != NULL)
             {
-              *dialect = JINGLE_DIALECT_GTALK4;
+              *dialect = detect_google_dialect (session_node);
               google_mode = TRUE;
             }
           else

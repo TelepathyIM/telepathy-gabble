@@ -150,8 +150,9 @@ aliases_request_try_return (AliasesRequest *request)
   if (request->pending_vcard_requests == 0 &&
       request->pending_pep_requests == 0)
     {
-      /* FIXME: I'm not entirely sure why gcc warns without this cast from
-       * (gchar **) to (const gchar **) */
+      /* Cast to (const gchar **) necessary because no-one understands 'const'
+       * in C.
+       */
       tp_svc_connection_interface_aliasing_return_from_request_aliases (
           request->request_call, (const gchar **)request->aliases);
       return TRUE;

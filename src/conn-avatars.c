@@ -165,8 +165,9 @@ _got_self_avatar_for_get_avatar_tokens (GObject *obj,
   g_free (context->ret[context->my_index]);
   context->ret[context->my_index] = g_strdup (sha1);
 
-  /* FIXME: I'm not entirely sure why gcc warns without this cast from
-   * (gchar **) to (const gchar **) */
+  /* Cast to (const gchar **) necessary because no-one understands 'const'
+   * in C.
+   */
   tp_svc_connection_interface_avatars_return_from_get_avatar_tokens (
       context->invocation, (const gchar **)context->ret);
   g_strfreev (context->ret);
@@ -263,8 +264,9 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
       return;
     }
 
-  /* FIXME: I'm not entirely sure why gcc warns without this cast from
-   * (gchar **) to (const gchar **) */
+  /* Cast to (const gchar **) necessary because no-one understands 'const'
+   * in C.
+   */
   tp_svc_connection_interface_avatars_return_from_get_avatar_tokens (
       invocation, (const gchar **)ret);
   g_strfreev (ret);

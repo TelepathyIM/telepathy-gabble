@@ -1257,7 +1257,10 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
     {
       /* If we created the stream, we don't need to send the intersection. If
        * we didn't create it, but have already sent the intersection once, we
-       * don't need to send it again.
+       * don't need to send it again. In either case, extra calls to
+       * SupportedCodecs are in response to an incoming description-info, which
+       * can only change parameters and which XEP-0167 §10 says is purely
+       * advisory.
        */
       DEBUG ("we already sent, or don't need to send, our codecs");
     }

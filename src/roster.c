@@ -1316,11 +1316,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                 }
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              if (!tp_handle_set_is_member (sub_chan->group.remote_pending,
-                    handle))
-                {
-                  tp_intset_add (sub_rem, handle);
-                }
+              tp_intset_add (sub_rem, handle);
               break;
             default:
               g_assert_not_reached ();
@@ -1339,11 +1335,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                   tp_intset_add (stored_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              if (!tp_handle_set_is_member (sub_chan->group.remote_pending,
-                    handle))
-                {
-                  tp_intset_add (stored_rem, handle);
-                }
+              tp_intset_add (stored_rem, handle);
               break;
             default:
               g_assert_not_reached ();

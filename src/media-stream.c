@@ -63,10 +63,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleMediaStream,
 /* signal enum */
 enum
 {
-    DESTROY,
-    NEW_ACTIVE_CANDIDATE_PAIR,
-    NEW_NATIVE_CANDIDATE,
-    SUPPORTED_CODECS,
     ERROR,
     UNHOLD_FAILED,
 
@@ -491,10 +487,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_stream_class);
   GParamSpec *param_spec;
-  GType transport_list_type =
-      TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_TRANSPORT_LIST;
-  GType codec_list_type =
-      TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CODEC_LIST;
 
   g_type_class_add_private (gabble_media_stream_class,
       sizeof (GabbleMediaStreamPrivate));
@@ -630,42 +622,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
 
   /* signals not exported by D-Bus interface */
 
-  signals[DESTROY] =
-    g_signal_new ("destroy",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
-
-  signals[NEW_ACTIVE_CANDIDATE_PAIR] =
-    g_signal_new ("new-active-candidate-pair",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_marshal_VOID__STRING_STRING,
-                  G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_STRING);
-
-  signals[NEW_NATIVE_CANDIDATE] =
-    g_signal_new ("new-native-candidate",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_marshal_VOID__STRING_BOXED,
-                  G_TYPE_NONE, 2, G_TYPE_STRING, transport_list_type);
-
-  signals[SUPPORTED_CODECS] =
-    g_signal_new ("supported-codecs",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, codec_list_type);
-
   signals[ERROR] =
     g_signal_new ("error",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -699,8 +655,6 @@ gabble_media_stream_dispose (GObject *object)
     }
 
   _gabble_media_stream_close (self);
-
-  g_signal_emit (self, signals[DESTROY], 0);
 
   priv->dispose_has_run = TRUE;
 
@@ -903,15 +857,8 @@ gabble_media_stream_new_active_candidate_pair (TpSvcMediaStreamHandler *iface,
                                                const gchar *remote_candidate_id,
                                                DBusGMethodInvocation *context)
 {
-  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-  GabbleMediaStreamPrivate *priv;
-
-  g_assert (GABBLE_IS_MEDIA_STREAM (self));
-
-  priv = self->priv;
-
-  g_signal_emit (self, signals[NEW_ACTIVE_CANDIDATE_PAIR], 0,
-                 native_candidate_id, remote_candidate_id);
+  DEBUG ("called (%s, %s); this is a no-op on Jingle", native_candidate_id,
+      remote_candidate_id);
 
   tp_svc_media_stream_handler_return_from_new_active_candidate_pair (context);
 }
@@ -1054,9 +1001,6 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 
   li = g_list_prepend (NULL, c);
   gabble_jingle_content_add_candidates (priv->content, li);
-
-  g_signal_emit (self, signals[NEW_NATIVE_CANDIDATE], 0,
-                 candidate_id, transports);
 
   tp_svc_media_stream_handler_return_from_new_native_candidate (context);
 }
@@ -1250,8 +1194,6 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
         }
 
       priv->awaiting_intersection = FALSE;
-
-      g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
     }
   else
     {

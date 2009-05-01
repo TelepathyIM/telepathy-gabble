@@ -215,6 +215,10 @@ create_initial_streams (GabbleMediaChannel *chan)
               DEBUG ("unknown rtp media type %u", media_type);
             }
         }
+      else
+        {
+          g_assert_not_reached ();
+        }
 
       create_stream_from_content (chan, c);
     }

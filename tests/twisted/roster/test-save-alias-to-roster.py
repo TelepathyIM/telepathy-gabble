@@ -8,6 +8,7 @@ import dbus
 from servicetest import EventPattern, call_async
 from gabbletest import acknowledge_iq, exec_test, make_result_iq
 import constants as cs
+import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -15,7 +16,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
-        EventPattern('stream-iq', query_ns='jabber:iq:roster'))
+        EventPattern('stream-iq', query_ns=ns.ROSTER))
 
     acknowledge_iq(stream, event.stanza)
     acknowledge_iq(stream, event2.stanza)
@@ -39,7 +40,7 @@ def test(q, bus, conn, stream):
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
     group_iface.AddMembers([handle], '')
 
-    event = q.expect('stream-iq', iq_type='set', query_ns='jabber:iq:roster')
+    event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
     item = event.query.firstChildElement()
 
     acknowledge_iq(stream, event.stanza)
@@ -59,7 +60,7 @@ def test(q, bus, conn, stream):
         content='Bobby')
     stream.send(result)
 
-    event = q.expect('stream-iq', iq_type='set', query_ns='jabber:iq:roster')
+    event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
     item = event.query.firstChildElement()
     assert item['jid'] == 'bob@foo.com'
     assert item['name'] == 'Bobby'

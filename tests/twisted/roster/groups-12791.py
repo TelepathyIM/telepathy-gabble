@@ -6,6 +6,7 @@ import dbus
 
 from gabbletest import exec_test, expect_list_channel
 import constants as cs
+import ns
 
 def _expect_group_channel(q, bus, conn, name, contacts):
     event = q.expect('dbus-signal', signal='NewChannel')
@@ -23,7 +24,7 @@ def test(q, bus, conn, stream):
     conn.Connect()
     # q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    event = q.expect('stream-iq', query_ns='jabber:iq:roster')
+    event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'
 
     item = event.query.addElement('item')

@@ -7,6 +7,7 @@ import dbus
 from twisted.words.protocols.jabber.client import IQ
 
 from gabbletest import exec_test, acknowledge_iq, expect_list_channel
+import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -15,13 +16,13 @@ def test(q, bus, conn, stream):
         iq = IQ(stream, "set")
         iq['id'] = 'push'
         query = iq.addElement('query')
-        query['xmlns'] = 'jabber:iq:roster'
+        query['xmlns'] = ns.ROSTER
         item = query.addElement('item')
         item['jid'] = jid
         item['subscription'] = subscription
         stream.send(iq)
 
-    event = q.expect('stream-iq', query_ns='jabber:iq:roster')
+    event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'
 
     item = event.query.addElement('item')

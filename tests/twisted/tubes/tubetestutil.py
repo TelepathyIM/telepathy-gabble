@@ -211,7 +211,7 @@ class Echo(Protocol):
 
 def set_up_echo(q, address_type):
     """
-    Sets up an instance of Echo listenning on a socket of type @address_type
+    Sets up an instance of Echo listening on a socket of type @address_type
     """
     factory = Factory()
     factory.protocol = Echo

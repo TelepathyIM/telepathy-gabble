@@ -1039,8 +1039,7 @@ _gabble_roster_emit_one (gpointer key,
   g_assert (handle_repo != NULL);
   name = tp_handle_inspect (handle_repo, handle);
 
-  DEBUG ("roster now received, emitting signal signal for %s list channel",
-      name);
+  DEBUG ("roster now received, emitting signal for %s list channel", name);
 #endif
 
   gabble_roster_emit_new_channel (roster, chan);

@@ -7,13 +7,14 @@ import os
 
 import dbus
 
-from servicetest import unwrap, assertContains
+from servicetest import unwrap, assertContains, EventProtocolClientFactory, EventProtocolFactory
 from gabbletest import exec_test
 import constants as cs
 import bytestream
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
+from twisted.internet.error import CannotListenError
 
 def check_tube_in_tubes(tube, tubes):
     """
@@ -208,22 +209,52 @@ class Echo(Protocol):
     def dataReceived(self, data):
         self.transport.write(data.lower())
 
-def set_up_echo(name):
+def set_up_echo(q, address_type):
     """
-    Sets up an instance of Echo listening on "%s/stream%s" % (cwd, name)
+    Sets up an instance of Echo listening on a socket of type @address_type
     """
     factory = Factory()
     factory.protocol = Echo
-    full_path = os.getcwd() + '/stream' + name
-    try:
-        os.remove(full_path)
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
-    reactor.listenUNIX(full_path, factory)
-    return full_path
+    return create_server(q, address_type, factory)
 
-def exec_tube_test(test):
+def connect_socket(q, address_type, address):
+    factory = EventProtocolClientFactory(q)
+    if address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
+        reactor.connectUNIX(address, factory)
+    elif address_type == cs.SOCKET_ADDRESS_TYPE_IPV4:
+        ip, port = address
+        assert port > 0
+        reactor.connectTCP(ip, port, factory)
+    else:
+        assert False
+
+def create_server(q, address_type, factory=None):
+    if factory is None:
+        factory = EventProtocolFactory(q)
+    if address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
+        path = os.getcwd() + '/stream'
+        try:
+            os.remove(path)
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+        reactor.listenUNIX(path, factory)
+
+        return dbus.ByteArray(path)
+
+    elif address_type == cs.SOCKET_ADDRESS_TYPE_IPV4:
+        for port in range(5000,6000):
+            try:
+                reactor.listenTCP(port, factory)
+            except CannotListenError:
+                continue
+            else:
+                return ('127.0.0.1', dbus.UInt16(port))
+
+    else:
+        assert False
+
+def exec_tube_test(test, *args):
     for bytestream_cls in [
             bytestream.BytestreamIBBMsg,
             bytestream.BytestreamIBBIQ,
@@ -233,5 +264,10 @@ def exec_tube_test(test):
             bytestream.BytestreamS5BRelay,
             bytestream.BytestreamS5BRelayBugged]:
         exec_test(lambda q, bus, conn, stream:
-            test(q, bus, conn, stream, bytestream_cls))
+            test(q, bus, conn, stream, bytestream_cls, *args))
 
+def exec_stream_tube_test(test):
+    for address_type, access_control, access_control_param in [
+            (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
+            (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")]:
+        exec_tube_test(test, address_type, access_control, access_control_param)

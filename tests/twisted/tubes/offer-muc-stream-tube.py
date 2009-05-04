@@ -5,7 +5,7 @@ import os
 
 import dbus
 
-from servicetest import call_async, EventPattern, EventProtocolFactory, unwrap,\
+from servicetest import call_async, EventPattern, unwrap,\
     assertContains
 from gabbletest import acknowledge_iq, make_muc_presence
 import constants as cs
@@ -23,17 +23,6 @@ sample_parameters = dbus.Dictionary({
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
-
-def set_up_listener_socket(q, path):
-    factory = EventProtocolFactory(q)
-    full_path = os.getcwd() + path
-    try:
-        os.remove(full_path)
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
-    reactor.listenUNIX(full_path, factory)
-    return full_path
 
 def connect_to_tube(stream, q, bytestream_cls, muc, stream_tube_id):
     # The CM is the server, so fake a client wanting to talk to it
@@ -67,13 +56,13 @@ def use_tube(q, bytestream, protocol):
     assert binary == data, binary
 
 
-def test(q, bus, conn, stream, bytestream_cls):
+def test(q, bus, conn, stream, bytestream_cls,
+       address_type, access_control, access_control_param):
     if bytestream_cls in [BytestreamS5BRelay, BytestreamS5BRelayBugged]:
         # disable SOCKS5 relay tests because proxy can't be used with muc
         # contacts atm
         return
 
-    srv_path = set_up_listener_socket(q, '/stream')
     conn.Connect()
 
     _, iq_event = q.expect_many(
@@ -95,9 +84,12 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['chat@conf.localhost/bob'])[0]
 
+    address = t.create_server(q, address_type)
+
     # offer stream tube (old API) using an Unix socket
     call_async(q, tubes_iface, 'OfferStreamTube',
-        'echo', sample_parameters, 0, dbus.ByteArray(srv_path), 0, "")
+        'echo', sample_parameters, address_type, address,
+        access_control, access_control_param)
 
     new_tube_event, stream_event, _, new_channels_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
@@ -203,7 +195,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     use_tube(q, bytestream, protocol)
 
     # offer a stream tube to another room (new API)
-    srv_path = set_up_listener_socket(q, '/stream2')
+    address = t.create_server(q, address_type)
 
     call_async(q, conn.Requests, 'CreateChannel',
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
@@ -274,7 +266,7 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     # offer the tube
     call_async(q, stream_tube_iface, 'Offer',
-        cs.SOCKET_ADDRESS_TYPE_UNIX, dbus.ByteArray(srv_path), cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "",
+        address_type, address, access_control, access_control_param,
         {'foo': 'bar'})
 
     new_tube_event, stream_event, _, status_event = q.expect_many(
@@ -354,4 +346,4 @@ def test(q, bus, conn, stream, bytestream_cls):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    t.exec_tube_test(test)
+    t.exec_stream_tube_test(test)

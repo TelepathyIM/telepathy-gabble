@@ -267,7 +267,5 @@ def exec_tube_test(test, *args):
             test(q, bus, conn, stream, bytestream_cls, *args))
 
 def exec_stream_tube_test(test):
-    for address_type, access_control, access_control_param in [
-            (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
-            (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")]:
-        exec_tube_test(test, address_type, access_control, access_control_param)
+    exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")
+    exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")

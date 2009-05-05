@@ -21,10 +21,15 @@
 #include "config.h"
 #include "capabilities.h"
 
+#include <string.h>
+
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-manager.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
+
 #include "caps-channel-manager.h"
+#include "debug.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "media-channel.h"
@@ -92,6 +97,40 @@ capabilities_get_features (GabblePresenceCapabilities caps,
     }
 
   return features;
+}
+
+GabblePresenceCapabilities
+capabilities_parse (LmMessageNode *query_result)
+{
+  GabblePresenceCapabilities ret = PRESENCE_CAP_NONE;
+  LmMessageNode *child;
+  const gchar *var;
+  const Feature *i;
+
+  for (child = query_result->children; NULL != child; child = child->next)
+    {
+      if (0 != strcmp (child->name, "feature"))
+        continue;
+
+      var = lm_message_node_get_attribute (child, "var");
+
+      if (NULL == var)
+        continue;
+
+      for (i = self_advertised_features; i->ns != NULL; i++)
+        {
+          if (0 == strcmp (var, i->ns))
+            {
+              ret |= i->caps;
+              break;
+            }
+        }
+
+      if (i->ns == NULL)
+        DEBUG ("ignoring unknown capability %s", var);
+    }
+
+  return ret;
 }
 
 void

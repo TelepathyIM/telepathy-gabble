@@ -38,6 +38,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
+#include "capabilities.h"
 #include "caps-channel-manager.h"
 #include "caps-hash.h"
 #include "debug.h"
@@ -832,7 +833,6 @@ _caps_disco_cb (GabbleDisco *disco,
 {
   GSList *waiters, *i;
   DiscoWaiter *waiter_self;
-  LmMessageNode *child;
   GabblePresenceCache *cache;
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
@@ -922,55 +922,7 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
   /* parsing for Connection.Interface.Capabilities*/
-  for (child = query_result->children; NULL != child; child = child->next)
-    {
-      const gchar *var;
-
-      if (0 != strcmp (child->name, "feature"))
-        continue;
-
-      var = lm_message_node_get_attribute (child, "var");
-
-      if (NULL == var)
-        continue;
-
-      /* TODO: use a table that equates disco features to caps */
-      if (0 == strcmp (var, NS_GOOGLE_TRANSPORT_P2P))
-        caps |= PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
-      else if (0 == strcmp (var, NS_GOOGLE_FEAT_VOICE))
-        caps |= PRESENCE_CAP_GOOGLE_VOICE;
-      else if (0 == strcmp (var, NS_JINGLE015))
-        caps |= PRESENCE_CAP_JINGLE015;
-      else if (0 == strcmp (var, NS_JINGLE_DESCRIPTION_AUDIO))
-        caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
-      else if (0 == strcmp (var, NS_JINGLE_DESCRIPTION_VIDEO))
-        caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
-      else if (0 == strcmp (var, NS_CHAT_STATES))
-        caps |= PRESENCE_CAP_CHAT_STATES;
-      else if (0 == strcmp (var, NS_SI))
-        caps |= PRESENCE_CAP_SI;
-      else if (0 == strcmp (var, NS_BYTESTREAMS))
-        caps |= PRESENCE_CAP_BYTESTREAMS;
-      else if (0 == strcmp (var, NS_IBB))
-        caps |= PRESENCE_CAP_IBB;
-      else if (0 == strcmp (var, NS_TUBES))
-        caps |= PRESENCE_CAP_SI_TUBES;
-      else if (!tp_strdiff (var, NS_OLPC_BUDDY_PROPS "+notify") ||
-          !tp_strdiff (var, NS_OLPC_ACTIVITIES "+notify") ||
-          !tp_strdiff (var, NS_OLPC_CURRENT_ACTIVITY "+notify") ||
-          !tp_strdiff (var, NS_OLPC_ACTIVITY_PROPS "+notify"))
-        caps |= PRESENCE_CAP_OLPC_1;
-      else if (!tp_strdiff (var, NS_JINGLE_RTP))
-        caps |= PRESENCE_CAP_JINGLE_RTP;
-      else if (!tp_strdiff (var, NS_JINGLE032))
-        caps |= PRESENCE_CAP_JINGLE032;
-      else if (!tp_strdiff (var, NS_JINGLE_TRANSPORT_ICE))
-        caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICE;
-      else if (!tp_strdiff (var, NS_JINGLE_TRANSPORT_RAWUDP))
-        caps |= PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP;
-      else if (0 == strcmp (var, NS_FILE_TRANSFER))
-        caps |= PRESENCE_CAP_SI_FILE_TRANSFER;
-    }
+  caps = capabilities_parse (query_result);
 
   handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
   if (handle == 0)

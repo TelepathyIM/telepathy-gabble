@@ -200,8 +200,16 @@ struct _GabbleTubeStreamPrivate
 
 #define GABBLE_TUBE_STREAM_GET_PRIVATE(obj) ((obj)->priv)
 
+typedef struct
+{
+  GabbleTubeStream *self;
+  TpHandle contact;
+} transport_connected_data;
+
 static void data_received_cb (GabbleBytestreamIface *ibb, TpHandle sender,
     GString *data, gpointer user_data);
+static void transport_connected_cb (GibberTransport *transport,
+    transport_connected_data *data);
 
 static void
 generate_ascii_string (guint len,
@@ -266,6 +274,11 @@ remove_transport (GabbleTubeStream *self,
   DEBUG ("disconnect and remove transport");
   g_signal_handlers_disconnect_matched (transport, G_SIGNAL_MATCH_DATA,
       0, 0, NULL, NULL, self);
+  /* The callback on the "connected" signal doesn't match the above
+   * disconnection as it receives a transport_connected_data as user_data
+   * and not the self pointer. */
+  g_signal_handlers_disconnect_matched (transport, G_SIGNAL_MATCH_FUNC,
+      0, 0, NULL, G_CALLBACK (transport_connected_cb), NULL);
 
   gibber_transport_disconnect (transport);
 
@@ -549,12 +562,6 @@ local_new_connection_cb (GibberListener *listener,
     }
 }
 
-typedef struct
-{
-  GabbleTubeStream *self;
-  TpHandle contact;
-} transport_connected_data;
-
 static transport_connected_data *
 transport_connected_data_new (GabbleTubeStream *self,
     TpHandle contact)
@@ -811,6 +818,11 @@ close_each_extra_bytestream (gpointer key,
       0, 0, NULL, NULL, self);
   g_signal_handlers_disconnect_matched (transport, G_SIGNAL_MATCH_DATA,
       0, 0, NULL, NULL, self);
+  /* The callback on the "connected" signal doesn't match the above
+   * disconnection as it receives a transport_connected_data as user_data
+   * and not the self pointer. */
+  g_signal_handlers_disconnect_matched (transport, G_SIGNAL_MATCH_FUNC,
+      0, 0, NULL, G_CALLBACK (transport_connected_cb), NULL);
 
   gabble_bytestream_iface_close (bytestream, NULL);
   gibber_transport_disconnect (transport);

@@ -809,7 +809,7 @@ close_each_extra_bytestream (gpointer key,
    * called */
   g_signal_handlers_disconnect_matched (bytestream, G_SIGNAL_MATCH_DATA,
       0, 0, NULL, NULL, self);
- g_signal_handlers_disconnect_matched (transport, G_SIGNAL_MATCH_DATA,
+  g_signal_handlers_disconnect_matched (transport, G_SIGNAL_MATCH_DATA,
       0, 0, NULL, NULL, self);
 
   gabble_bytestream_iface_close (bytestream, NULL);

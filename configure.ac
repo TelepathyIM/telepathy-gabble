@@ -171,7 +171,7 @@ fi
 
 # Check for a Python >= 2.5 with Twisted, to run the tests
 AC_MSG_CHECKING([for Python >= 2.5 with Twisted and XMPP protocol support])
-for TEST_PYTHON in python2.5 python2.6 python; do
+for TEST_PYTHON in python2.6 python2.5 python; do
   if $TEST_PYTHON -c "from sys import version_info; import dbus, dbus.mainloop.glib; raise SystemExit(version_info < (2, 5, 0, 'final', 0))" >/dev/null 2>&1; then
     if $TEST_PYTHON -c "import twisted.words.xish.domish, twisted.words.protocols.jabber, twisted.internet.reactor" >/dev/null 2>&1; then
       AC_MSG_RESULT([$TEST_PYTHON])

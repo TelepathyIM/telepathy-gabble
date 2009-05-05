@@ -1,5 +1,5 @@
 import base64
-import sha
+import hashlib
 import sys
 import random
 import socket
@@ -219,7 +219,7 @@ class BytestreamS5B(Bytestream):
     def _compute_hash_domain(self):
         # sha-1(sid + initiator + target)
         unhashed_domain = self.stream_id + self.initiator + self.target
-        return sha.new(unhashed_domain).hexdigest()
+        return hashlib.sha1(unhashed_domain).hexdigest()
 
     def _wait_connect_cmd(self):
         event = self.q.expect('s5b-data-received', transport=self.transport)

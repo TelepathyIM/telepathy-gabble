@@ -4,7 +4,7 @@ Test support for retrieving avatars asynchronously using RequestAvatars.
 """
 
 import base64
-import sha
+import hashlib
 
 from servicetest import EventPattern
 from gabbletest import exec_test, acknowledge_iq
@@ -33,7 +33,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='AvatarRetrieved')
     assert event.args[0] == handle
-    assert event.args[1] == sha.sha('hello').hexdigest()
+    assert event.args[1] == hashlib.sha1('hello').hexdigest()
     assert event.args[2] == 'hello'
     assert event.args[3] == 'image/png'
 
@@ -42,7 +42,7 @@ def test(q, bus, conn, stream):
 
     event = q.demand('dbus-signal', signal='AvatarRetrieved')
     assert event.args[0] == handle
-    assert event.args[1] == sha.sha('hello').hexdigest()
+    assert event.args[1] == hashlib.sha1('hello').hexdigest()
     assert event.args[2] == 'hello'
     assert event.args[3] == 'image/png'
 

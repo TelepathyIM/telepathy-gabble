@@ -1,6 +1,6 @@
 import dbus
 import socket
-import md5
+import hashlib
 import time
 import datetime
 
@@ -38,11 +38,8 @@ class File(object):
 
     def compute_hash(self, hash_type):
         assert hash_type == cs.FILE_HASH_TYPE_MD5
-
         self.hash_type = hash_type
-        m = md5.new()
-        m.update(self.data)
-        self.hash = m.hexdigest()
+        self.hash = hashlib.md5(self.data).hexdigest()
 
 class FileTransferTest(object):
     CONTACT_NAME = 'test-ft@localhost'

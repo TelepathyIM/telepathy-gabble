@@ -82,7 +82,8 @@ def test(q, bus, conn, stream):
     # test GetAvailableStreamTubeTypes (old API)
     stream_tubes_types = tubes_iface_muc.GetAvailableStreamTubeTypes()
     assertLength(3, stream_tubes_types)
-    assertEquals([cs.SOCKET_ACCESS_CONTROL_LOCALHOST], stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX])
+    assertEquals([cs.SOCKET_ACCESS_CONTROL_LOCALHOST, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS],
+        stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX])
     assertEquals([cs.SOCKET_ACCESS_CONTROL_LOCALHOST], stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV4])
     assertEquals([cs.SOCKET_ACCESS_CONTROL_LOCALHOST], stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV6])
 

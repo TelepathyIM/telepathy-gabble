@@ -2032,6 +2032,8 @@ gabble_tube_stream_get_supported_socket_types (void)
       1);
   access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
   g_array_append_val (unix_tab, access_control);
+  access_control = TP_SOCKET_ACCESS_CONTROL_CREDENTIALS;
+  g_array_append_val (unix_tab, access_control);
   g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX),
       unix_tab);
 

@@ -694,7 +694,7 @@ class BytestreamIBBIQ(BytestreamIBB):
     def _send(self, from_, to, data):
         id = random.randint(0, sys.maxint)
 
-        iq = elem_iq(self.stream, 'set', to=to, from_=from_, to=to, id=str(id))(
+        iq = elem_iq(self.stream, 'set', from_=from_, to=to, id=str(id))(
             elem('data', xmlns=ns.IBB, sid=self.stream_id, seq=str(self.seq))(
                 (unicode(base64.b64encode(data)))))
 

@@ -1776,15 +1776,28 @@ check_unix_params (TpSocketAddressType address_type,
       g_string_free (socket_address, TRUE);
     }
 
-  if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+  if (access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
   {
-    g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-        "Only the Localhost access control method is supported for Unix"
-        " sockets");
-    return FALSE;
+    return TRUE;
   }
+  else if (access_control == TP_SOCKET_ACCESS_CONTROL_CREDENTIALS)
+    {
+      if (access_control_param != NULL)
+        {
+          if (G_VALUE_TYPE (access_control_param) !=
+              G_TYPE_UCHAR)
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "Credentials access param is supposed to be y");
+              return FALSE;
+            }
+        }
+      return TRUE;
+    }
 
-  return TRUE;
+  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      "%u socket access control is not supported", access_control);
+  return FALSE;
 }
 
 static gboolean

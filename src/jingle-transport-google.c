@@ -391,7 +391,8 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
   else if (dialect == JINGLE_DIALECT_GTALK4)
     {
       trans_node = lm_message_node_add_child (sess_node, "transport", NULL);
-      lm_message_node_set_attribute (trans_node, "xmlns", NS_GOOGLE_TRANSPORT_P2P);
+      lm_message_node_set_attribute (trans_node, "xmlns",
+          NS_GOOGLE_TRANSPORT_P2P);
     }
   else
     {

@@ -31,7 +31,7 @@
  * they are merely opaque identifiers"
  *
  * However, some old Jabber clients (e.g. Gabble 0.2) and various Google
- * clients require the bundle name "voice-v1" and "video-v1". We keep these 
+ * clients require the bundle name "voice-v1" and "video-v1". We keep these
  * names for compatibility.
  */
 #define BUNDLE_VOICE_V1         "voice-v1"

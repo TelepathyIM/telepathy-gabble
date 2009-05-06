@@ -822,6 +822,61 @@ gabble_presence_cache_update_cache_entry (
       out);
 }
 
+static void _caps_disco_cb (GabbleDisco *disco,
+    GabbleDiscoRequest *request,
+    const gchar *jid,
+    const gchar *node,
+    LmMessageNode *query_result,
+    GError *error,
+    gpointer user_data);
+
+static void
+disco_failed (GabblePresenceCache *cache,
+    GabbleDisco *disco,
+    const gchar *node,
+    GSList *waiters,
+    TpHandleRepoIface *contact_repo)
+{
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GSList *i;
+  DiscoWaiter *waiter = NULL;
+  gchar *full_jid = NULL;
+
+  for (i = waiters; NULL != i; i = i->next)
+    {
+      waiter = (DiscoWaiter *) i->data;
+
+      if (!waiter->disco_requested)
+        {
+          const gchar *waiter_jid;
+
+          waiter_jid = tp_handle_inspect (contact_repo, waiter->handle);
+          full_jid = g_strdup_printf ("%s/%s", waiter_jid, waiter->resource);
+
+          gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
+              node, _caps_disco_cb, cache, G_OBJECT(cache), NULL);
+          waiter->disco_requested = TRUE;
+          break;
+        }
+    }
+
+  if (NULL != i)
+    {
+      DEBUG ("sent a retry disco request to %s for URI %s", full_jid, node);
+    }
+  else
+    {
+      /* The contact sends us an error and we don't have any other
+       * contacts to send the discovery request on the same node. We
+       * cannot get the caps for this node. */
+      DEBUG ("failed to find a suitable candidate to retry disco "
+          "request for URI %s", node);
+      g_hash_table_remove (priv->disco_pending, node);
+    }
+
+  g_free (full_jid);
+}
+
 static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
@@ -862,45 +917,11 @@ _caps_disco_cb (GabbleDisco *disco,
 
   if (NULL != error)
     {
-      DiscoWaiter *waiter = NULL;
-
       DEBUG ("disco query failed: %s", error->message);
 
-      for (i = waiters; NULL != i; i = i->next)
-        {
-          waiter = (DiscoWaiter *) i->data;
+      disco_failed (cache, disco, node, waiters, contact_repo);
 
-          if (!waiter->disco_requested)
-            {
-              const gchar *waiter_jid;
-
-              waiter_jid = tp_handle_inspect (contact_repo, waiter->handle);
-              full_jid = g_strdup_printf ("%s/%s", waiter_jid,
-                  waiter->resource);
-
-              gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
-                  node, _caps_disco_cb, cache, G_OBJECT(cache), NULL);
-              waiter->disco_requested = TRUE;
-              break;
-            }
-        }
-
-      if (NULL != i)
-        {
-          DEBUG ("sent a retry disco request to %s for URI %s", full_jid,
-              node);
-        }
-      else
-        {
-          /* The contact sends us an error and we don't have any other
-           * contacts to send the discovery request on the same node. We
-           * cannot get the caps for this node. */
-          DEBUG ("failed to find a suitable candidate to retry disco "
-              "request for URI %s", node);
-          g_hash_table_remove (priv->disco_pending, node);
-        }
-
-      goto OUT;
+      return;
     }
 
   per_channel_manager_caps = g_hash_table_new (NULL, NULL);

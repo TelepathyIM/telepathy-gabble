@@ -602,17 +602,33 @@ produce_payload_type (LmMessageNode *desc_node,
   sprintf (buf, "%d", p->id);
   lm_message_node_set_attribute (pt_node, "id", buf);
 
-  if (dialect == JINGLE_DIALECT_GTALK3 && type == JINGLE_MEDIA_TYPE_AUDIO)
+  if (dialect == JINGLE_DIALECT_GTALK3)
     {
-      /* Gtalk 03 has either an audio or a video session, in case of a video
-       * session the audio codecs need to set their namespace to
-       * NS_GOOGLE_SESSION_PHONE. In the case of an audio session it doesn't
-       * matter, so just always set the namespace on audio payloads.
-       */
-      lm_message_node_set_attribute (pt_node, "xmlns",
-        NS_GOOGLE_SESSION_PHONE);
-    }
+      if (type == JINGLE_MEDIA_TYPE_AUDIO)
+        {
+          /* Gtalk 03 has either an audio or a video session, in case of a
+           * video session the audio codecs need to set their namespace to
+           * NS_GOOGLE_SESSION_PHONE. In the case of an audio session it
+           * doesn't matter, so just always set the namespace on audio
+           * payloads.
+           */
+          lm_message_node_set_attribute (pt_node, "xmlns",
+            NS_GOOGLE_SESSION_PHONE);
+        }
+      else
+        {
+          /* If width, height and framerate aren't set the google server ignore
+           * our initiate.. These are a recv parameters, to it doesn't matter
+           * for what we're sending, just for what we're getting.. 320x240
+           * seems a sane enough default */
+          lm_message_node_set_attributes (pt_node,
+            "width", "320",
+            "height", "240",
+            "framerate", "30",
+            NULL);
+        }
 
+    }
 
   /* name: optional */
   if (*p->name != '\0')

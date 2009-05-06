@@ -894,6 +894,34 @@ find_matching_waiter (GSList *waiters,
   return NULL;
 }
 
+static GHashTable *
+parse_contact_caps (TpBaseConnection *base_conn,
+    LmMessageNode *query_result)
+{
+  GHashTable *per_channel_manager_caps = g_hash_table_new (NULL, NULL);
+  TpChannelManagerIter iter;
+  TpChannelManager *manager;
+
+  tp_base_connection_channel_manager_iter_init (&iter, base_conn);
+
+  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
+    {
+      gpointer factory_caps;
+
+      /* all channel managers must implement the capability interface */
+      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
+
+      factory_caps = gabble_caps_channel_manager_parse_capabilities (
+          GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result->children);
+
+      if (factory_caps != NULL)
+        g_hash_table_insert (per_channel_manager_caps,
+            GABBLE_CAPS_CHANNEL_MANAGER (manager), factory_caps);
+    }
+
+  return per_channel_manager_caps;
+}
+
 static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
@@ -915,8 +943,6 @@ _caps_disco_cb (GabbleDisco *disco,
   TpHandle handle = 0;
   gboolean bad_hash = FALSE;
   TpBaseConnection *base_conn;
-  TpChannelManagerIter iter;
-  TpChannelManager *manager;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -957,26 +983,8 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  per_channel_manager_caps = g_hash_table_new (NULL, NULL);
-
-  /* parsing for Connection.Interface.ContactCapabilities.DRAFT */
-  tp_base_connection_channel_manager_iter_init (&iter, base_conn);
-  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
-    {
-      gpointer *factory_caps;
-
-      /* all channel managers must implement the capability interface */
-      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
-
-      factory_caps = gabble_caps_channel_manager_parse_capabilities
-          (GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result->children);
-      if (factory_caps != NULL)
-        g_hash_table_insert (per_channel_manager_caps,
-            GABBLE_CAPS_CHANNEL_MANAGER (manager), factory_caps);
-    }
-
-  /* parsing for Connection.Interface.Capabilities*/
   caps = capabilities_parse (query_result);
+  per_channel_manager_caps = parse_contact_caps (base_conn, query_result);
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
    * uses another hash algorithm, don't check the hash and fallback to the old

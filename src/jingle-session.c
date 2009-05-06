@@ -1172,15 +1172,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
   if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
     {
-      /* We are certain that GTalk has only one content. It's not possible
-       * for session to have more than one content if in gtalk mode (if
-       * it happens, it's a bug in our code). */
-      GList *cs = g_hash_table_get_values (priv->contents);
-      g_assert (g_list_length (cs) == 1);
-
-      c = cs->data;
-
-      g_list_free (cs);
+      GHashTableIter iter;
 
       if (priv->dialect == JINGLE_DIALECT_GTALK4)
         {
@@ -1202,6 +1194,14 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
                 }
             }
         }
+
+        g_hash_table_iter_init (&iter, priv->contents);
+        while (g_hash_table_iter_next (&iter, NULL, (gpointer) &c))
+          {
+            gabble_jingle_content_parse_transport_info (c, node, error);
+            if (error != NULL && *error != NULL)
+              break;
+          }
     }
   else
     {
@@ -1219,9 +1219,9 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
       /* we need transport child of content node */
       node = lm_message_node_get_child_any_ns (node, "transport");
+      gabble_jingle_content_parse_transport_info (c, node, error);
     }
 
-  gabble_jingle_content_parse_transport_info (c, node, error);
 }
 
 static void

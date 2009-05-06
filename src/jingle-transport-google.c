@@ -376,11 +376,13 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
   GList *li;
   LmMessage *msg;
   LmMessageNode *trans_node, *sess_node;
+  JingleMediaType media_type;
 
   msg = gabble_jingle_session_new_message (priv->content->session,
     JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
 
   g_object_get (priv->content->session, "dialect", &dialect, NULL);
+  g_object_get (priv->content, "media-type", &media_type, NULL);
 
   if (dialect == JINGLE_DIALECT_GTALK3)
     {
@@ -414,10 +416,9 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
       gchar port_str[16], pref_str[16], comp_str[16], *type_str, *proto_str;
       LmMessageNode *cnode;
 
-      // FIXME
-      if (c->component == 2)
+      if (c->component < 1 || c->component > 2)
         {
-          DEBUG ("ignoring RTCP component");
+          DEBUG ("ignoring unknown compontent %d", c->component);
           continue;
         }
 
@@ -463,10 +464,18 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
           "protocol", proto_str,
           "type", type_str,
           "component", comp_str,
-          "name", "rtp",
           "network", "0",
           "generation", "0",
           NULL);
+
+      if (media_type == JINGLE_MEDIA_TYPE_VIDEO &&
+          JINGLE_IS_GOOGLE_DIALECT (dialect))
+        lm_message_node_set_attribute (cnode,
+          "name", c->component == 1 ? "video_rtp" : "video_rtcp");
+      else
+        lm_message_node_set_attribute (cnode,
+          "name", c->component == 1 ? "rtp" : "rtcp");
+
     }
 
   _gabble_connection_send (priv->content->conn, msg, NULL);

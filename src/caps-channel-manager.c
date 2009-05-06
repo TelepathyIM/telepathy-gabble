@@ -27,6 +27,9 @@
 #include <telepathy-glib/channel-manager.h>
 
 
+#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
+#include "debug.h"
+
 GType
 gabble_caps_channel_manager_get_type (void)
 {
@@ -148,8 +151,10 @@ void gabble_caps_channel_manager_update_capabilities (
   GabbleCapsChannelManagerUpdateCapsFunc method = iface->update_caps;
 
   /* cannot be called if not implemented */
-  g_assert (method != NULL);
-  method (caps_manager, specific_caps_out, specific_caps_in);
+  if (method != NULL)
+    method (caps_manager, specific_caps_out, specific_caps_in);
+  else
+    DEBUG (":'( No caps update function");
 }
 
 gboolean gabble_caps_channel_manager_capabilities_diff (

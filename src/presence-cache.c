@@ -877,6 +877,23 @@ disco_failed (GabblePresenceCache *cache,
   g_free (full_jid);
 }
 
+static DiscoWaiter *
+find_matching_waiter (GSList *waiters,
+    TpHandle handle)
+{
+  GSList *i;
+
+  for (i = waiters; NULL != i; i = i->next)
+    {
+      DiscoWaiter *waiter = i->data;
+
+      if (waiter->handle == handle)
+        return waiter;
+    }
+
+  return NULL;
+}
+
 static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
@@ -954,18 +971,8 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  waiter_self = NULL;
-  for (i = waiters; NULL != i;  i = i->next)
-    {
-      DiscoWaiter *waiter;
+  waiter_self = find_matching_waiter (waiters, handle);
 
-      waiter = (DiscoWaiter *) i->data;
-      if (waiter->handle == handle)
-        {
-          waiter_self = waiter;
-          break;
-        }
-    }
   if (NULL == waiter_self)
     {
       DEBUG ("Ignoring non requested disco reply");

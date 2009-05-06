@@ -504,6 +504,8 @@ parse_description (GabbleJingleContent *content,
   GList *codecs = NULL;
   JingleCodec *p;
   LmMessageNode *node;
+  JingleDialect dialect;
+  gboolean video_session = FALSE;
 
   DEBUG ("node: %s", desc_node->name);
 
@@ -515,12 +517,40 @@ parse_description (GabbleJingleContent *content,
   if (mtype == JINGLE_MEDIA_TYPE_NONE)
     return;
 
+  g_object_get (content->session, "dialect", &dialect, NULL);
+
   DEBUG ("detected media type %u", mtype);
+
+  if (dialect == JINGLE_DIALECT_GTALK3)
+    {
+      const gchar *desc_ns =
+        lm_message_node_get_namespace (desc_node);
+      video_session = !tp_strdiff (desc_ns, NS_GOOGLE_SESSION_VIDEO);
+    }
 
   for (node = desc_node->children; node; node = node->next)
     {
       if (tp_strdiff (lm_message_node_get_name (node), "payload-type"))
         continue;
+
+      if (dialect == JINGLE_DIALECT_GTALK3)
+        {
+          const gchar *pt_ns =
+            lm_message_node_get_namespace (node);
+
+          if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+            {
+              if (video_session &&
+                  tp_strdiff (pt_ns, NS_GOOGLE_SESSION_PHONE))
+                continue;
+            }
+          else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+            {
+              if (!(video_session && pt_ns == NULL)
+                    && tp_strdiff (pt_ns, NS_GOOGLE_SESSION_VIDEO))
+                continue;
+            }
+        }
 
       p = parse_payload_type (node);
 

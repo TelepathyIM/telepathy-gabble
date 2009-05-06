@@ -379,6 +379,10 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     NULL, NULL,
     g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
+  /* This signal serves as notification that the GabbleJingleContent is now
+   * meaningless; everything holding a reference should drop it after receiving
+   * 'removed'.
+   */
   signals[REMOVED] = g_signal_new ("removed",
     G_OBJECT_CLASS_TYPE (cls),
     G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
@@ -972,6 +976,9 @@ _on_remove_reply (GObject *c_as_obj,
 
   DEBUG ("%p", c);
 
+  /* Everything holding a reference to a content should drop it after receiving
+   * 'removed'.
+   */
   g_signal_emit (c, signals[REMOVED], 0);
 }
 
@@ -1013,6 +1020,9 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
   else
     {
       DEBUG ("signalling removed with %u refs", G_OBJECT (c)->ref_count);
+      /* Everything holding a reference to a content should drop it after receiving
+       * 'removed'.
+       */
       g_signal_emit (c, signals[REMOVED], 0);
     }
 }

@@ -58,6 +58,8 @@ struct _Feature
 typedef GPtrArray GabbleCapabilitySet;
 
 GabbleCapabilitySet *gabble_capability_set_new (void);
+GabbleCapabilitySet *gabble_capability_set_new_from_stanza (
+    LmMessageNode *query_result);
 GabbleCapabilitySet *gabble_capability_set_copy (
     const GabbleCapabilitySet *caps);
 void gabble_capability_set_update (GabbleCapabilitySet *target,

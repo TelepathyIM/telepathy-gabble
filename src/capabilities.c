@@ -228,6 +228,34 @@ gabble_capability_set_new (void)
 }
 
 GabbleCapabilitySet *
+gabble_capability_set_new_from_stanza (LmMessageNode *query_result)
+{
+  GabbleCapabilitySet *ret;
+  LmMessageNode *child;
+  const gchar *var;
+
+  g_return_val_if_fail (query_result != NULL, NULL);
+
+  ret = gabble_capability_set_new ();
+
+  for (child = query_result->children; NULL != child; child = child->next)
+    {
+      if (0 != strcmp (child->name, "feature"))
+        continue;
+
+      var = lm_message_node_get_attribute (child, "var");
+
+      if (NULL == var)
+        continue;
+
+      /* TODO: only store namespaces we understand. */
+      gabble_capability_set_add (ret, var);
+    }
+
+  return ret;
+}
+
+GabbleCapabilitySet *
 gabble_capability_set_copy (const GabbleCapabilitySet *caps)
 {
   GabbleCapabilitySet *ret;

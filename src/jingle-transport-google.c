@@ -236,11 +236,16 @@ parse_candidates (GabbleJingleTransportIface *obj,
   GabbleJingleTransportGooglePrivate *priv = t->priv;
   GList *candidates = NULL;
   LmMessageNode *node;
+  JingleMediaType media_type;
+  JingleDialect dialect;
+
+  g_object_get (priv->content, "media-type", &media_type, NULL);
+  g_object_get (priv->content->session, "dialect", &dialect, NULL);
 
   for (node = transport_node->children; node; node = node->next)
     {
       const gchar *name, *address, *user, *pass, *str;
-      guint port, net, gen, component = 1;
+      guint port, net, gen, component;
       gdouble pref;
       JingleTransportProtocol proto;
       JingleCandidateType ctype;
@@ -250,8 +255,34 @@ parse_candidates (GabbleJingleTransportIface *obj,
           continue;
 
       name = lm_message_node_get_attribute (node, "name");
-      if (name == NULL || tp_strdiff (name, "rtp"))
+      if (name == NULL)
           break;
+
+      if (g_str_has_prefix (name, "video_"))
+        {
+          if (media_type != JINGLE_MEDIA_TYPE_VIDEO)
+            continue;
+
+          if (!tp_strdiff (name, "video_rtp"))
+            component = 1;
+          else if (!tp_strdiff (name, "video_rtcp"))
+            component = 2;
+          else
+            break;
+        }
+      else
+        {
+          if (media_type != JINGLE_MEDIA_TYPE_AUDIO
+              && JINGLE_IS_GOOGLE_DIALECT (dialect))
+            continue;
+
+          if (!tp_strdiff (name, "rtp"))
+            component = 1;
+          else if (!tp_strdiff (name, "rtcp"))
+            component = 2;
+          else
+            break;
+        }
 
       address = lm_message_node_get_attribute (node, "address");
       if (address == NULL)

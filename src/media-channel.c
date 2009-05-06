@@ -1174,15 +1174,18 @@ gabble_media_channel_remove_streams (TpSvcChannelTypeStreamedMedia *iface,
   /* groovy, it's all good dude, let's remove them */
   if (stream_objs->len > 0)
     {
-      GabbleJingleContent *c;
+      GabbleMediaStream *stream;
+      GabbleJingleMediaRtp *c;
 
       for (i = 0; i < stream_objs->len; i++)
         {
-          g_object_get (g_ptr_array_index (stream_objs, i), "content", &c, NULL);
+          stream = g_ptr_array_index (stream_objs, i);
+          c = gabble_media_stream_get_content (stream);
 
           /* FIXME: make sure session emits content-removed, on which we can
            * delete it from the list */
-          gabble_jingle_session_remove_content (priv->session, c);
+          gabble_jingle_session_remove_content (priv->session,
+              (GabbleJingleContent *) c);
         }
     }
 
@@ -1248,12 +1251,13 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
 
   if (stream_direction == TP_MEDIA_STREAM_DIRECTION_NONE)
     {
-      GabbleJingleContent *c;
+      GabbleJingleMediaRtp *c;
 
       DEBUG ("request for NONE direction; removing stream");
 
-      g_object_get (stream, "content", &c, NULL);
-      gabble_jingle_session_remove_content (priv->session, c);
+      c = gabble_media_stream_get_content (stream);
+      gabble_jingle_session_remove_content (priv->session,
+          (GabbleJingleContent *) c);
 
       tp_svc_channel_type_streamed_media_return_from_request_stream_direction (
           context);
@@ -2331,17 +2335,20 @@ stream_error_cb (GabbleMediaStream *stream,
                  GabbleMediaChannel *chan)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
-  GabbleJingleContent *c;
+  GabbleJingleMediaRtp *c;
   guint id;
 
   /* emit signal */
-  g_object_get (stream, "id", &id, "content", &c, NULL);
+  g_object_get (stream, "id", &id, NULL);
   tp_svc_channel_type_streamed_media_emit_stream_error (chan, id, errno,
       message);
 
   /* remove stream from session (removal will be signalled
-   * so we can dispose of the stream) */
-  gabble_jingle_session_remove_content (priv->session, c);
+   * so we can dispose of the stream)
+   */
+  c = gabble_media_stream_get_content (stream);
+  gabble_jingle_session_remove_content (priv->session,
+      (GabbleJingleContent *) c);
 }
 
 static void
@@ -2523,7 +2530,11 @@ stream_creation_data_cancel (gpointer p,
 {
   StreamCreationData *d = p;
 
-  d->content = NULL;
+  if (d->content != NULL)
+    {
+      g_object_unref (d->content);
+      d->content = NULL;
+    }
 }
 
 static void
@@ -2782,6 +2793,12 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
 
   g_assert (priv->streams != NULL);
 
+  /* Calling gabble_media_stream_error () on all the streams will ultimately
+   * cause them all to emit 'closed'. In response to 'closed', stream_close_cb
+   * normally unrefs them, and removes them from priv->streams. We're iterating
+   * across priv->streams here, so we don't want it to be modified from
+   * underneath us. So, we move it aside, and unref each stream here.
+   */
   tmp = priv->streams;
   priv->streams = NULL;
 
@@ -2790,6 +2807,8 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
       GabbleMediaStream *stream = g_ptr_array_index (tmp, i);
 
       gabble_media_stream_error (stream, errno, message, NULL);
+
+      g_object_unref (stream);
     }
 
   g_ptr_array_free (tmp, TRUE);

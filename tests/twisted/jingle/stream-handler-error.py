@@ -4,13 +4,15 @@ test for a bug introduced by 54021cee0ad38 which removed an idle callback
 masking refcounting assumptions.
 """
 
+from functools import partial
+
 from gabbletest import exec_test
 from servicetest import make_channel_proxy
 import jingletest
 
 import constants as cs
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream, call_error_on):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
     conn.Connect()
@@ -34,18 +36,21 @@ def test(q, bus, conn, stream):
 
     media_chan_suffix = e.path
 
-    # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
-    session_handler.Ready()
 
-    e = q.expect('dbus-signal', signal='NewStreamHandler')
+    if call_error_on == 'session':
+        session_handler.Error(0, "this has been deprecated for years")
+    else:
+        session_handler.Ready()
 
-    # S-E gets notified about a newly-created stream
-    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
+        e = q.expect('dbus-signal', signal='NewStreamHandler')
 
-    # Something goes wrong immediately!
-    stream_handler.Error(0, "i'll have the eggs tostada please")
+        # S-E gets notified about a newly-created stream
+        stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
+
+        # Something goes wrong immediately!
+        stream_handler.Error(0, "i'll have the eggs tostada please")
 
     # Gabble doesn't fall over, and the channel closes nicely.
     e = q.expect('dbus-signal', signal='Closed', path=media_chan_suffix)
@@ -54,5 +59,5 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    exec_test(test)
-
+    exec_test(partial(test, call_error_on='stream'))
+    exec_test(partial(test, call_error_on='session'))

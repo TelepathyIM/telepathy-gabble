@@ -102,6 +102,8 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
          GabbleJingleContentPrivate);
   obj->priv = priv;
 
+  DEBUG ("%p", obj);
+
   priv->state = JINGLE_CONTENT_STATE_EMPTY;
   priv->created_by_us = TRUE;
   priv->media_ready = FALSE;
@@ -123,7 +125,7 @@ gabble_jingle_content_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  DEBUG ("dispose called");
+  DEBUG ("%p", object);
   priv->dispose_has_run = TRUE;
 
   /* If we're in the middle of content-add/-accept when the session is
@@ -377,6 +379,10 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     NULL, NULL,
     g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
+  /* This signal serves as notification that the GabbleJingleContent is now
+   * meaningless; everything holding a reference should drop it after receiving
+   * 'removed'.
+   */
   signals[REMOVED] = g_signal_new ("removed",
     G_OBJECT_CLASS_TYPE (cls),
     G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
@@ -959,17 +965,21 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 }
 
 static void
-_on_remove_reply (GabbleJingleSession *sess, gboolean success,
-    LmMessage *reply, gpointer user_data)
+_on_remove_reply (GObject *c_as_obj,
+    gboolean success,
+    LmMessage *reply)
 {
-  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (user_data);
+  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (c_as_obj);
   GabbleJingleContentPrivate *priv = c->priv;
 
   g_assert (priv->state == JINGLE_CONTENT_STATE_REMOVING);
 
-  g_signal_emit (c, signals[REMOVED], 0);
+  DEBUG ("%p", c);
 
-  g_object_unref (c);
+  /* Everything holding a reference to a content should drop it after receiving
+   * 'removed'.
+   */
+  g_signal_emit (c, signals[REMOVED], 0);
 }
 
 void
@@ -979,7 +989,7 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
   LmMessage *msg;
   LmMessageNode *sess_node;
 
-  DEBUG ("called for content %s", priv->name);
+  DEBUG ("called for %p (%s)", c, priv->name);
 
   if (priv->timer_id != 0)
     {
@@ -987,33 +997,34 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
       priv->timer_id = 0;
     }
 
-  if (priv->state == JINGLE_CONTENT_STATE_REMOVING)
-    {
-      DEBUG ("ignoring request to remove content which is already being removed");
-      return;
-    }
-
-  priv->state = JINGLE_CONTENT_STATE_REMOVING;
-  g_object_notify ((GObject *) c, "state");
-
   /* If we were already signalled and removal is not a side-effect of
    * something else (sesssion termination, or removal by peer),
    * we have to signal removal to the peer. */
   if (signal_peer && (priv->state != JINGLE_CONTENT_STATE_EMPTY))
     {
+      if (priv->state == JINGLE_CONTENT_STATE_REMOVING)
+        {
+          DEBUG ("ignoring request to remove content which is already being removed");
+          return;
+        }
+
+      priv->state = JINGLE_CONTENT_STATE_REMOVING;
+      g_object_notify ((GObject *) c, "state");
+
       msg = gabble_jingle_session_new_message (c->session,
           JINGLE_ACTION_CONTENT_REMOVE, &sess_node);
       gabble_jingle_content_produce_node (c, sess_node, FALSE);
-      g_object_ref (c);
-      gabble_jingle_session_send (c->session, msg, _on_remove_reply, c);
+      gabble_jingle_session_send (c->session, msg, _on_remove_reply,
+          (GObject *) c);
     }
   else
     {
+      DEBUG ("signalling removed with %u refs", G_OBJECT (c)->ref_count);
+      /* Everything holding a reference to a content should drop it after receiving
+       * 'removed'.
+       */
       g_signal_emit (c, signals[REMOVED], 0);
     }
-
-  /* At this point content could be unreffed by REMOVED handler
-   * and disposed of; don't do anything else with it. */
 }
 
 gboolean

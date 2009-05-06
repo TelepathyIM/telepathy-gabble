@@ -5,7 +5,7 @@ the first one and lastly remove the second stream, which
 closes the session.
 """
 
-from gabbletest import make_result_iq
+from gabbletest import make_result_iq, sync_stream
 from servicetest import (
     wrap_channel, make_channel_proxy, tp_path_prefix, assertEquals,
     EventPattern,
@@ -119,7 +119,7 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
 
     e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
         jp.match_jingle_action(x.query, 'content-remove'))
-    stream.send(make_result_iq(stream, e.stanza))
+    content_remove_ack = make_result_iq(stream, e.stanza)
 
     if peer_removes_final_content:
         # The peer removes the final countdo^W content. From a footnote (!) in
@@ -148,6 +148,13 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
             path=path[len(tp_path_prefix):]),
         )
 
+    # Only now does the peer ack the content-remove. This serves as a
+    # regression test for contents outliving the session; if the content didn't
+    # die properly, this crashed Gabble.
+    stream.send(content_remove_ack)
+    sync_stream(q, stream)
+
+    # The peer can ack the terminate too, just for completeness.
     stream.send(make_result_iq(stream, st.stanza))
 
     # Test completed, close the connection

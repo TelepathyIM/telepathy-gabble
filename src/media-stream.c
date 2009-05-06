@@ -888,10 +888,9 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   GValue candidate = { 0, };
   GValueArray *transport;
   guint component_id;
-  const gchar *addr;
   GType candidate_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE;
   JingleCandidate *c;
-  GList *li;
+  GList *li = NULL;
   guint i;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
@@ -920,23 +919,6 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
       1, transports,
       G_MAXUINT);
 
-  if (transports->len < 1)
-    {
-      GError only_one = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "google p2p "
-          "connections only support the concept of one transport per "
-          "candidate" };
-      DEBUG ("%s: number of transports was not 1; "
-          "rejecting", G_STRFUNC);
-      dbus_g_method_return_error (context, &only_one);
-      return;
-    }
-
-  if (transports->len > 1)
-    {
-      DEBUG ("google p2p connections only support the concept of one "
-          "transport per candidate, ignoring other components");
-    }
-
   for (i = 0; i < transports->len; i++)
     {
       guint component;
@@ -946,7 +928,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 
       /* Accept component 0 because old farsight1 stream-engine didn't set the
        * component */
-      if (component == 0 || component == 1)
+      if (component <= 2)
         {
           break;
         }
@@ -960,51 +942,62 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   if (transport == NULL)
     {
       GError only_one = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "You need"
-          " at least a component 1." };
-      DEBUG ("%s: number of transports was not 1; rejecting", G_STRFUNC);
+          " at least a valid component." };
+      DEBUG ("no transport with a known component found; rejecting");
       dbus_g_method_return_error (context, &only_one);
       return;
     }
 
-
-  addr = g_value_get_string (g_value_array_get_nth (transport, 1));
-  if (!strcmp (addr, "127.0.0.1"))
-    {
-      DEBUG ("ignoring native localhost candidate");
-      tp_svc_media_stream_handler_return_from_new_native_candidate (context);
-      return;
-    }
-
-  component_id = g_value_get_uint (g_value_array_get_nth (transport, 0));
-  /* Old farsight1 s-e didn't set the component, make sure it's sane */
-  if (component_id == 0)
-      component_id = 1;
-
   g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 
-  DEBUG ("put 1 native candidate from stream-engine into cache");
+  DEBUG ("put native candidates from stream-engine into cache");
+  for (i = 0; i < transports->len; i++)
+    {
+      const gchar *addr;
 
-  c = jingle_candidate_new (component_id,
-      /* address */
-      g_value_get_string (g_value_array_get_nth (transport, 1)),
-      /* port */
-      g_value_get_uint (g_value_array_get_nth (transport, 2)),
-      /* protocol */
-      g_value_get_uint (g_value_array_get_nth (transport, 3)),
-      /* preference */
-      g_value_get_double (g_value_array_get_nth (transport, 6)),
-      /* candidate type, we're relying on 1:1 candidate type mapping */
-      g_value_get_uint (g_value_array_get_nth (transport, 7)),
-      /* username */
-      g_value_get_string (g_value_array_get_nth (transport, 8)),
-      /* password */
-      g_value_dup_string (g_value_array_get_nth (transport, 9)),
-      /* FIXME: network is hardcoded for now */
-      0,
-      /* FIXME: generation is also hardcoded for now */
-      0);
+      transport = g_ptr_array_index (transports, i);
 
-  li = g_list_prepend (NULL, c);
+      component_id = g_value_get_uint (g_value_array_get_nth (transport, 0));
+      /* Old farsight1 s-e didn't set the component, make sure it's sane */
+      if (component_id == 0)
+         component_id = 1;
+
+      if (component_id > 2)
+        {
+          DEBUG ("ignoring unknown compontent id %d", component_id);
+          continue;
+        }
+
+      addr = g_value_get_string (g_value_array_get_nth (transport, 1));
+      if (!strcmp (addr, "127.0.0.1"))
+        {
+          DEBUG ("ignoring native localhost candidate");
+          continue;
+        }
+
+      c = jingle_candidate_new (component_id,
+          /* address */
+         g_value_get_string (g_value_array_get_nth (transport, 1)),
+          /* port */
+          g_value_get_uint (g_value_array_get_nth (transport, 2)),
+          /* protocol */
+          g_value_get_uint (g_value_array_get_nth (transport, 3)),
+          /* preference */
+          g_value_get_double (g_value_array_get_nth (transport, 6)),
+          /* candidate type, we're relying on 1:1 candidate type mapping */
+          g_value_get_uint (g_value_array_get_nth (transport, 7)),
+          /* username */
+          g_value_get_string (g_value_array_get_nth (transport, 8)),
+          /* password */
+          g_value_dup_string (g_value_array_get_nth (transport, 9)),
+          /* FIXME: network is hardcoded for now */
+          0,
+          /* FIXME: generation is also hardcoded for now */
+          0);
+
+          li = g_list_prepend (li, c);
+    }
+
   gabble_jingle_content_add_candidates (priv->content, li);
 
   tp_svc_media_stream_handler_return_from_new_native_candidate (context);

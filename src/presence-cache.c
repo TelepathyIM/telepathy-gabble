@@ -831,6 +831,24 @@ static void _caps_disco_cb (GabbleDisco *disco,
     gpointer user_data);
 
 static void
+redisco (GabblePresenceCache *cache,
+    GabbleDisco *disco,
+    DiscoWaiter *waiter,
+    const gchar *node,
+    TpHandleRepoIface *contact_repo)
+{
+  const gchar *waiter_jid;
+  gchar *full_jid;
+
+  waiter_jid = tp_handle_inspect (contact_repo, waiter->handle);
+  full_jid = g_strdup_printf ("%s/%s", waiter_jid, waiter->resource);
+
+  gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
+      node, _caps_disco_cb, cache, G_OBJECT (cache), NULL);
+  waiter->disco_requested = TRUE;
+}
+
+static void
 disco_failed (GabblePresenceCache *cache,
     GabbleDisco *disco,
     const gchar *node,
@@ -848,14 +866,7 @@ disco_failed (GabblePresenceCache *cache,
 
       if (!waiter->disco_requested)
         {
-          const gchar *waiter_jid;
-
-          waiter_jid = tp_handle_inspect (contact_repo, waiter->handle);
-          full_jid = g_strdup_printf ("%s/%s", waiter_jid, waiter->resource);
-
-          gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
-              node, _caps_disco_cb, cache, G_OBJECT(cache), NULL);
-          waiter->disco_requested = TRUE;
+          redisco (cache, disco, waiter, node, contact_repo);
           break;
         }
     }
@@ -1091,20 +1102,7 @@ _caps_disco_cb (GabbleDisco *disco,
            * anybody we still haven't to be able to get more trusted replies */
 
           if (!waiter->disco_requested)
-            {
-              const gchar *waiter_jid;
-
-              waiter_jid = tp_handle_inspect (contact_repo, waiter->handle);
-              full_jid = g_strdup_printf ("%s/%s", waiter_jid,
-                  waiter->resource);
-
-              gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
-                  node, _caps_disco_cb, cache, G_OBJECT(cache), NULL);
-              waiter->disco_requested = TRUE;
-
-              g_free (full_jid);
-              full_jid = NULL;
-            }
+            redisco (cache, disco, waiter, node, contact_repo);
 
           i = i->next;
         }

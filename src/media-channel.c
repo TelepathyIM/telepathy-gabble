@@ -2793,6 +2793,12 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
 
   g_assert (priv->streams != NULL);
 
+  /* Calling gabble_media_stream_error () on all the streams will ultimately
+   * cause them all to emit 'closed'. In response to 'closed', stream_close_cb
+   * normally unrefs them, and removes them from priv->streams. We're iterating
+   * across priv->streams here, so we don't want it to be modified from
+   * underneath us. So, we move it aside, and unref each stream here.
+   */
   tmp = priv->streams;
   priv->streams = NULL;
 

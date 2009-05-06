@@ -221,3 +221,103 @@ const CapabilityConversionData capabilities_conversions[] =
   { NULL, NULL, NULL}
 };
 
+GabbleCapabilitySet *
+gabble_capability_set_new (void)
+{
+  return g_ptr_array_new ();
+}
+
+GabbleCapabilitySet *
+gabble_capability_set_copy (const GabbleCapabilitySet *caps)
+{
+  GabbleCapabilitySet *ret;
+
+  g_return_val_if_fail (caps != NULL, NULL);
+
+  ret = gabble_capability_set_new ();
+
+  gabble_capability_set_update (ret, caps);
+
+  return ret;
+}
+
+void
+gabble_capability_set_update (GabbleCapabilitySet *target,
+    const GabbleCapabilitySet *source)
+{
+  guint i;
+
+  g_return_if_fail (target != NULL);
+  g_return_if_fail (source != NULL);
+
+  for (i = 0; i < source->len; i++)
+    gabble_capability_set_add (target, g_ptr_array_index (source, i));
+}
+
+void
+gabble_capability_set_add (GabbleCapabilitySet *caps,
+    const gchar *cap)
+{
+  g_return_if_fail (caps != NULL);
+  g_return_if_fail (cap != NULL);
+
+  if (!gabble_capability_set_has (caps, cap))
+    g_ptr_array_add (caps, g_strdup (cap));
+}
+
+void
+gabble_capability_set_clear (GabbleCapabilitySet *caps)
+{
+  guint i;
+
+  g_return_if_fail (caps != NULL);
+
+  for (i = 0; i < caps->len; i++)
+    g_free (g_ptr_array_index (caps, i));
+
+  g_ptr_array_set_size (caps, 0);
+}
+
+void
+gabble_capability_set_free (GabbleCapabilitySet *caps)
+{
+  g_return_if_fail (caps != NULL);
+
+  gabble_capability_set_clear (caps);
+  g_ptr_array_free (caps, TRUE);
+}
+
+gboolean
+gabble_capability_set_has (const GabbleCapabilitySet *caps,
+    const gchar *cap)
+{
+  guint i;
+
+  g_return_val_if_fail (caps != NULL, FALSE);
+  g_return_val_if_fail (cap != NULL, FALSE);
+
+  for (i = 0; i < caps->len; i++)
+    if (!strcmp (g_ptr_array_index (caps, i), cap))
+      return TRUE;
+
+  return FALSE;
+}
+
+gboolean
+gabble_capability_set_equals (const GabbleCapabilitySet *a,
+    const GabbleCapabilitySet *b)
+{
+  guint i;
+
+  g_return_val_if_fail (a != NULL, FALSE);
+  g_return_val_if_fail (b != NULL, FALSE);
+
+  if (a->len != b->len)
+    return FALSE;
+
+  for (i = 0; i < a->len; i++)
+    if (!gabble_capability_set_has (b, g_ptr_array_index (a, i)))
+      return FALSE;
+
+  return TRUE;
+}

@@ -50,6 +50,27 @@ struct _Feature
   GabblePresenceCapabilities caps;
 };
 
+/**
+ * GabbleCapabilitySet:
+ *
+ * A GPtrArray of gchar *, treated as a set.
+ */
+typedef GPtrArray GabbleCapabilitySet;
+
+GabbleCapabilitySet *gabble_capability_set_new (void);
+GabbleCapabilitySet *gabble_capability_set_copy (
+    const GabbleCapabilitySet *caps);
+void gabble_capability_set_update (GabbleCapabilitySet *target,
+    const GabbleCapabilitySet *source);
+void gabble_capability_set_add (GabbleCapabilitySet *caps,
+    const gchar *cap);
+gboolean gabble_capability_set_has (const GabbleCapabilitySet *caps,
+    const gchar *cap);
+gboolean gabble_capability_set_equals (const GabbleCapabilitySet *a,
+    const GabbleCapabilitySet *b);
+void gabble_capability_set_clear (GabbleCapabilitySet *caps);
+void gabble_capability_set_free (GabbleCapabilitySet *caps);
+
 /*
  * capabilities_get_features
  *

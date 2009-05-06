@@ -1127,7 +1127,7 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   gboolean result;
   LmMessage *msg;
   TpHandleRepoIface *contact_repo, *room_repo;
-  LmMessageNode *si_node, *file_node, *desc_node;
+  LmMessageNode *si_node, *file_node;
   const gchar *jid;
   gchar *full_jid, *stream_id, *size_str;
 
@@ -1216,8 +1216,7 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       lm_message_node_set_attribute (file_node, "date", date_str);
     }
 
-  desc_node = lm_message_node_add_child (file_node, "desc",
-      self->priv->description);
+  lm_message_node_add_child (file_node, "desc", self->priv->description);
 
   /* we support resume */
   lm_message_node_add_child (file_node, "range", NULL);

@@ -662,6 +662,9 @@ gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
  if (presence == NULL)
    return;
 
+ if (presence->per_channel_manager_caps == NULL)
+   return;
+
  if (!GPOINTER_TO_INT (g_hash_table_lookup (presence->per_channel_manager_caps,
          manager)))
    return;

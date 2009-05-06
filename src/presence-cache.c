@@ -941,6 +941,22 @@ _caps_disco_cb (GabbleDisco *disco,
       return;
     }
 
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+
+  if (handle == 0)
+    {
+      DEBUG ("Ignoring presence from invalid JID %s", jid);
+      return;
+    }
+
+  waiter_self = find_matching_waiter (waiters, handle);
+
+  if (NULL == waiter_self)
+    {
+      DEBUG ("Ignoring non requested disco reply");
+      goto OUT;
+    }
+
   per_channel_manager_caps = g_hash_table_new (NULL, NULL);
 
   /* parsing for Connection.Interface.ContactCapabilities.DRAFT */
@@ -961,25 +977,6 @@ _caps_disco_cb (GabbleDisco *disco,
 
   /* parsing for Connection.Interface.Capabilities*/
   caps = capabilities_parse (query_result);
-
-  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
-  if (handle == 0)
-    {
-      DEBUG ("Ignoring presence from invalid JID %s", jid);
-      gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
-      per_channel_manager_caps = NULL;
-      goto OUT;
-    }
-
-  waiter_self = find_matching_waiter (waiters, handle);
-
-  if (NULL == waiter_self)
-    {
-      DEBUG ("Ignoring non requested disco reply");
-      gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
-      per_channel_manager_caps = NULL;
-      goto OUT;
-    }
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
    * uses another hash algorithm, don't check the hash and fallback to the old

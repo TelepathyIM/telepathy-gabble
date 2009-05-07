@@ -214,13 +214,13 @@ class Echo(EventProtocol):
 
 class EchoFactory(EventProtocolFactory):
     def _create_protocol(self):
-        return Echo(self.queue)
+        return Echo(self.queue, self.block_reading)
 
-def set_up_echo(q, address_type):
+def set_up_echo(q, address_type, block_reading=False):
     """
     Sets up an instance of Echo listening on a socket of type @address_type
     """
-    factory = EchoFactory(q)
+    factory = EchoFactory(q, block_reading)
     return create_server(q, address_type, factory)
 
 def connect_socket(q, address_type, address):

@@ -345,9 +345,12 @@ def make_channel_proxy(conn, path, iface):
     chan = dbus.Interface(chan, tp_name_prefix + '.' + iface)
     return chan
 
+# block_reading can be used if the test want to choose when we start to read
+# data from the socket.
 class EventProtocol(Protocol):
-    def __init__(self, queue=None):
+    def __init__(self, queue=None, block_reading=False):
         self.queue = queue
+        self.block_reading = block_reading
 
     def dataReceived(self, data):
         if self.queue is not None:
@@ -357,12 +360,17 @@ class EventProtocol(Protocol):
     def sendData(self, data):
         self.transport.write(data)
 
+    def connectionMade(self):
+        if self.block_reading:
+            self.transport.stopReading()
+
 class EventProtocolFactory(Factory):
-    def __init__(self, queue):
+    def __init__(self, queue, block_reading=False):
         self.queue = queue
+        self.block_reading = block_reading
 
     def _create_protocol(self):
-        return EventProtocol(self.queue)
+        return EventProtocol(self.queue, self.block_reading)
 
     def buildProtocol(self, addr):
         proto = self._create_protocol()

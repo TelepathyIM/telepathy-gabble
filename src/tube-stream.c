@@ -589,6 +589,30 @@ local_new_connection_cb (GibberListener *listener,
     }
 }
 
+static gboolean
+set_credentials_access_control_param (GValue *access_control_param,
+    GibberTransport *transport)
+{
+  guint8 credentials;
+
+  credentials = g_random_int_range (0, G_MAXUINT8);
+
+  /* The Credentials access control would have be rejected earlier if the
+   * socket type wasn't UNIX. */
+  if (!gibber_unix_transport_send_credentials (
+        GIBBER_UNIX_TRANSPORT (transport), &credentials, sizeof (guint8)))
+    {
+      DEBUG ("send_credentials failed");
+      return FALSE;
+    }
+
+  g_value_init (access_control_param,
+      G_TYPE_UCHAR);
+  g_value_set_uchar (access_control_param, credentials);
+
+  return TRUE;
+}
+
 static transport_connected_data *
 transport_connected_data_new (GabbleTubeStream *self,
     TpHandle contact)
@@ -610,15 +634,24 @@ fire_new_connection (GabbleTubeStream *self,
     GibberTransport *transport,
     TpHandle contact)
 {
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GValue access_control_param = {0,};
 
-  /* set a dummy value */
-  /* FIXME: this param doesn't have a meaningful value with
-   * the Localhost access control which is the only one currently
-   * implemented. We should set a not-dummy value when we'll implement
-   * other access control mechanismes. */
-  g_value_init (&access_control_param, G_TYPE_INT);
-  g_value_set_int (&access_control_param, 0);
+  if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_CREDENTIALS)
+    {
+      if (!set_credentials_access_control_param (&access_control_param,
+            transport))
+        {
+          gibber_transport_disconnect (transport);
+          return;
+        }
+    }
+  else
+    {
+      /* set a dummy value */
+      g_value_init (&access_control_param, G_TYPE_INT);
+      g_value_set_int (&access_control_param, 0);
+    }
 
   /* fire NewConnection D-Bus signal */
   gabble_svc_channel_type_stream_tube_emit_new_connection (self,

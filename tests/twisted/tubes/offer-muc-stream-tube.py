@@ -195,7 +195,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     use_tube(q, bytestream, protocol)
 
     # offer a stream tube to another room (new API)
-    address = t.create_server(q, address_type)
+    address = t.create_server(q, address_type, block_reading=True)
 
     call_async(q, conn.Requests, 'CreateChannel',
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
@@ -326,6 +326,8 @@ def test(q, bus, conn, stream, bytestream_cls,
     assert handle == bob_handle
 
     protocol = socket_event.protocol
+    # start to read from the transport so we can read the control byte
+    protocol.transport.startReading()
     t.check_new_connection_access(q, access_control, access, protocol)
 
     # handle iq_event

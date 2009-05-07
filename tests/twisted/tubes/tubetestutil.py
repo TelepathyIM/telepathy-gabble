@@ -275,6 +275,17 @@ def check_new_connection_access(q, access_control, access_control_param, protoco
         address = protocol.transport.getPeer()
         assertEquals(ip, address.host)
         assertEquals(port, address.port)
+    elif access_control == cs.SOCKET_ACCESS_CONTROL_CREDENTIALS:
+        byte = access_control_param
+
+        e = q.expect('socket-data', protocol=protocol)
+        assert ord(e.data) == byte
+
+        # FIXME: check if credentials are actually passed. This is actually
+        # really hard to test because Python doesn't implement recvmsg().
+        # Twisted's transport abstraction doesn't help either.
+        # Credentials passing in tested in Gibber's tests so not testing it
+        # here is actually not that bad.
     else:
         assert False
 

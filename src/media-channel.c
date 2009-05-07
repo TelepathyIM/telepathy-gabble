@@ -2780,6 +2780,7 @@ _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
         typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
 
   if ((caps & PRESENCE_CAP_JINGLE_RTP) ||
+      (caps & PRESENCE_CAP_GOOGLE_VIDEO) ||
       ((caps & PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO) &&
        (caps & PRESENCE_CAP_GOOGLE_TRANSPORT_P2P)))
         typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;

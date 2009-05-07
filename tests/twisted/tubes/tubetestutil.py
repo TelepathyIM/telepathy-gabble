@@ -240,9 +240,9 @@ def connect_socket(q, address_type, address):
     else:
         assert False
 
-def create_server(q, address_type, factory=None):
+def create_server(q, address_type, factory=None, block_reading=False):
     if factory is None:
-        factory = EventProtocolFactory(q)
+        factory = EventProtocolFactory(q, block_reading)
     if address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
         path = os.getcwd() + '/stream'
         try:

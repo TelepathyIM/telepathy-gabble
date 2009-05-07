@@ -326,7 +326,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     assert handle == bob_handle
 
     protocol = socket_event.protocol
-    t.check_new_connection_access(access_control, access, protocol)
+    t.check_new_connection_access(q, access_control, access, protocol)
 
     # handle iq_event
     bytestream.check_si_reply(iq_event.stanza)

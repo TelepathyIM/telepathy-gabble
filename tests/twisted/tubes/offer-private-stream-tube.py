@@ -343,7 +343,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     handle, access = new_conn_event.args
     assert handle == bob_handle
     protocol = socket_event.protocol
-    t.check_new_connection_access(access_control, access, protocol)
+    t.check_new_connection_access(q, access_control, access, protocol)
 
     expected_tube = (stream_tube_id, self_handle, cs.TUBE_TYPE_STREAM, 'echo',
         sample_parameters, cs.TUBE_STATE_OPEN)
@@ -375,7 +375,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     handle, access = new_conn_event.args
     assert handle == bob_handle
     protocol = socket_event.protocol
-    t.check_new_connection_access(access_control, access, protocol)
+    t.check_new_connection_access(q, access_control, access, protocol)
 
     expected_tube = (new_stream_tube_id, self_handle, cs.TUBE_TYPE_STREAM,
         'newecho', new_sample_parameters, cs.TUBE_STATE_OPEN)

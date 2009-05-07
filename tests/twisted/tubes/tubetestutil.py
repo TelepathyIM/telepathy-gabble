@@ -266,7 +266,7 @@ def create_server(q, address_type, factory=None, block_reading=False):
     else:
         assert False
 
-def check_new_connection_access(access_control, access_control_param, protocol):
+def check_new_connection_access(q, access_control, access_control_param, protocol):
     if access_control == cs.SOCKET_ACCESS_CONTROL_LOCALHOST:
         # nothing to check
         return

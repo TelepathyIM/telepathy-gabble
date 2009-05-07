@@ -207,10 +207,16 @@ class Echo(EventProtocol):
     """
     A trivial protocol that just echoes back whatever you send it, in lowercase.
     """
+    def __init__(self, queue=None, block_reading=False):
+        EventProtocol.__init__(self, queue, block_reading)
+
+        self.echoed = True
+
     def dataReceived(self, data):
         EventProtocol.dataReceived(self, data)
 
-        self.transport.write(data.lower())
+        if self.echoed:
+            self.transport.write(data.lower())
 
 class EchoFactory(EventProtocolFactory):
     def _create_protocol(self):

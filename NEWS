@@ -12,10 +12,26 @@ Enhancements:
 * Use ContactCapabilities draft to communicate file transfer support.
 * Implement latest tube new API DRAFT. {Offer,Accept}{DBus,Stream}Tube
   methods and the StreamTubeNewConnection signal have been renamed.
+* The build system now uses Shave to produce kernel-style easy-to-read
+  output from make. (You need to explicitly enable this with
+  ./configure --enable-shave.)
+* It is now possible to request StreamedMedia channels with audio and/or
+  video from the start, using the InitialAudio and InitialVideo
+  properties, and to see from a channel's immutable properties (as also
+  seen in NewChannels) whether it (initially) contained audio and/or
+  video. (References fd.o#20830.)
 
 Fixes:
 
 * Include private D-Bus tube and muc tube channels in Requests's Channels property.
+* StreamedMedia channels' group flags are now more spec-compliant.
+  (Fixes fd.o#20578.)
+* When a contact doesn't have an alias, their full JID is used as the
+  fallback, rather than the local part. (Fixes fd.o#21295.)
+* When setting an avatar fails, an appropriate error is now emitted.
+  (Fixes fd.o#20442 (not #20422 as the git history claims).)
+* The lifecycles of several Jingle-related objects have been cleared up,
+  fixing a number of Jingle crashes.
 
 telepathy-gabble 0.7.26 (2009-04-08)
 ====================================

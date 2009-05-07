@@ -343,10 +343,13 @@ def test(q, bus, conn, stream, bytestream_cls,
     handle, access = new_conn_event.args
     assert handle == bob_handle
     protocol = socket_event.protocol
+    # we don't want to echo the access control byte
+    protocol.echoed = False
 
     # start to read from the transport so we can read the control byte
     protocol.transport.startReading()
     t.check_new_connection_access(q, access_control, access, protocol)
+    protocol.echoed = True
 
     expected_tube = (stream_tube_id, self_handle, cs.TUBE_TYPE_STREAM, 'echo',
         sample_parameters, cs.TUBE_STATE_OPEN)
@@ -378,10 +381,13 @@ def test(q, bus, conn, stream, bytestream_cls,
     handle, access = new_conn_event.args
     assert handle == bob_handle
     protocol = socket_event.protocol
+    # we don't want to echo the access control byte
+    protocol.echoed = False
 
     # start to read from the transport so we can read the control byte
     protocol.transport.startReading()
     t.check_new_connection_access(q, access_control, access, protocol)
+    protocol.echoed = True
 
     expected_tube = (new_stream_tube_id, self_handle, cs.TUBE_TYPE_STREAM,
         'newecho', new_sample_parameters, cs.TUBE_STATE_OPEN)

@@ -41,8 +41,8 @@ def contact_offer_dbus_tube(bytestream, tube_id):
 
 def test(q, bus, conn, stream, bytestream_cls,
         address_type, access_control, access_control_param):
-    address1 = t.set_up_echo(q, address_type)
-    address2 = t.set_up_echo(q, address_type)
+    address1 = t.set_up_echo(q, address_type, True)
+    address2 = t.set_up_echo(q, address_type, True)
 
     t.check_conn_properties(q, conn)
 
@@ -343,6 +343,9 @@ def test(q, bus, conn, stream, bytestream_cls,
     handle, access = new_conn_event.args
     assert handle == bob_handle
     protocol = socket_event.protocol
+
+    # start to read from the transport so we can read the control byte
+    protocol.transport.startReading()
     t.check_new_connection_access(q, access_control, access, protocol)
 
     expected_tube = (stream_tube_id, self_handle, cs.TUBE_TYPE_STREAM, 'echo',
@@ -375,6 +378,9 @@ def test(q, bus, conn, stream, bytestream_cls,
     handle, access = new_conn_event.args
     assert handle == bob_handle
     protocol = socket_event.protocol
+
+    # start to read from the transport so we can read the control byte
+    protocol.transport.startReading()
     t.check_new_connection_access(q, access_control, access, protocol)
 
     expected_tube = (new_stream_tube_id, self_handle, cs.TUBE_TYPE_STREAM,

@@ -947,7 +947,6 @@ _caps_disco_cb (GabbleDisco *disco,
   GabblePresenceCache *cache;
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
-  gchar *full_jid = NULL;
   GabblePresenceCapabilities caps = 0;
   GHashTable *per_channel_manager_caps;
   guint trust, trust_inc;
@@ -1120,7 +1119,6 @@ OUT:
 
   if (handle)
     tp_handle_unref (contact_repo, handle);
-  g_free (full_jid);
 }
 
 static void

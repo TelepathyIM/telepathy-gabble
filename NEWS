@@ -1,17 +1,20 @@
-telepathy-gabble 0.7.27 (UNRELEASED)
+telepathy-gabble 0.7.27 (2009-05-07)
 ====================================
+
+The “I'm in a skip!” release.
 
 Dependencies:
 
-* We now explicitely depends on gthread-2.0 >= 2.16 as we need to initialize
-  threads for libsoup's benefit (fd.o #20937)
+* We now explicitly depend on gthread-2.0 >= 2.16 as we need to
+  initialize threads for libsoup's benefit (fd.o #20937)
 
 Enhancements:
 
 * Support file transfer resume.
 * Use ContactCapabilities draft to communicate file transfer support.
-* Implement latest tube new API DRAFT. {Offer,Accept}{DBus,Stream}Tube
-  methods and the StreamTubeNewConnection signal have been renamed.
+* Implement latest draft of new API for tubes. The
+  {Offer,Accept}{DBus,Stream}Tube methods and the
+  StreamTubeNewConnection signal have been renamed.
 * The build system now uses Shave to produce kernel-style easy-to-read
   output from make. (You need to explicitly enable this with
   ./configure --enable-shave.)
@@ -23,7 +26,8 @@ Enhancements:
 
 Fixes:
 
-* Include private D-Bus tube and muc tube channels in Requests's Channels property.
+* Include private D-Bus tube and all MUC tube channels in Requests's
+  Channels property.
 * StreamedMedia channels' group flags are now more spec-compliant.
   (Fixes fd.o#20578.)
 * When a contact doesn't have an alias, their full JID is used as the

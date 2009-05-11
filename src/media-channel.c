@@ -1078,7 +1078,8 @@ gabble_media_channel_list_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   priv = self->priv;
 
-  /* no session yet? return an empty array */
+  /* If the session has not yet started, or has ended, return an empty array.
+   */
   if (priv->session == NULL)
     {
       ret = g_ptr_array_new ();

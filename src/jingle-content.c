@@ -668,8 +668,8 @@ gabble_jingle_content_parse_description_info (GabbleJingleContent *c,
 
   if (priv->created_by_us && priv->state < JINGLE_CONTENT_STATE_ACKNOWLEDGED)
     {
-      /* The stream was created us and the other side didn't acknowledge it
-       * yet, thus we don't have their code information, thus the
+      /* The stream was created by us and the other side didn't acknowledge it
+       * yet, thus we don't have their codec information, thus the
        * description-info isn't meaningful and can be ignored */
       DEBUG ("Ignoring description-info as we didn't receive the codecs yet");
       return;

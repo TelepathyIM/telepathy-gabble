@@ -2770,9 +2770,27 @@ gabble_media_channel_ready (TpSvcMediaSessionHandler *iface,
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv = self->priv;
 
+  if (priv->session == NULL)
+    {
+      /* This could also be because someone called Ready() before the
+       * SessionHandler was announced. But the fact that the SessionHandler is
+       * actually also the Channel, and thus this method is available before
+       * NewSessionHandler is emitted, is an implementation detail. So the
+       * error message describes the only legitimate situation in which this
+       * could arise.
+       */
+      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "call has already ended" };
+
+      DEBUG ("no session, returning an error.");
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
   if (!priv->ready)
     {
       guint i;
+
+      DEBUG ("emitting NewStreamHandler for each stream");
 
       priv->ready = TRUE;
 

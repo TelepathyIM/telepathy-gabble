@@ -930,7 +930,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   LmMessageNode *si;
-  TpHandle peer_handle, room_handle;
+  TpHandle peer_handle = 0, room_handle;
   GabbleBytestreamIface *bytestream = NULL;
   GSList *l;
   const gchar *profile, *from, *stream_id, *stream_init_id, *mime_type;
@@ -959,20 +959,14 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
   DEBUG ("received a SI request");
 
-  peer_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
-  if (peer_handle == 0)
-    {
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_JID_MALFORMED, NULL);
-      goto out;
-    }
-
   room_handle = gabble_get_room_handle_from_jid (room_repo, from);
 
   if (room_handle == 0)
     {
      /* jid is not a muc jid so we need contact's resource */
      gabble_decode_jid (from, NULL, NULL, &peer_resource);
+
+     peer_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
 
      /* we are not in a muc so our own jid is the one in the 'to' attribute */
      self_jid = g_strdup (lm_message_node_get_attribute (msg->node,
@@ -982,6 +976,9 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     {
       /* we are in a muc so need to get our muc jid */
       GabbleMucChannel *muc;
+
+      peer_handle = tp_handle_ensure (contact_repo, from,
+          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
       muc = gabble_muc_factory_find_text_channel (priv->conn->muc_factory,
           room_handle);
@@ -993,6 +990,13 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
         }
 
       g_object_get (muc, "self-jid", &self_jid, NULL);
+    }
+
+  if (peer_handle == 0)
+    {
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_JID_MALFORMED, NULL);
+      goto out;
     }
 
   if (multiple)
@@ -1088,6 +1092,8 @@ out:
   g_slist_free (stream_methods);
   g_free (peer_resource);
   g_free (self_jid);
+  if (peer_handle != 0)
+    tp_handle_unref (contact_repo, peer_handle);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

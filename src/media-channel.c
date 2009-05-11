@@ -163,6 +163,7 @@ gabble_media_channel_init (GabbleMediaChannel *self)
 
   priv->next_stream_id = 1;
   priv->delayed_request_streams = g_ptr_array_sized_new (1);
+  priv->streams = g_ptr_array_sized_new (1);
 
   /* initialize properties mixin */
   tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
@@ -243,9 +244,7 @@ _latch_to_session (GabbleMediaChannel *chan)
   g_signal_connect (priv->session, "terminated",
                     (GCallback) session_terminated_cb, chan);
 
-  g_assert (priv->streams == NULL);
-
-  priv->streams = g_ptr_array_sized_new (1);
+  g_assert (priv->streams->len == 0);
 
   tp_svc_channel_interface_media_signalling_emit_new_session_handler (
       G_OBJECT (chan), priv->object_path, "rtp");
@@ -843,7 +842,13 @@ gabble_media_channel_dispose (GObject *object)
 
   g_assert (priv->closed);
   g_assert (priv->session == NULL);
-  g_assert (priv->streams == NULL);
+
+  /* All of the streams should have closed in response to the contents being
+   * removed when the call ended.
+   */
+  g_assert (priv->streams->len == 0);
+  g_ptr_array_free (priv->streams, TRUE);
+  priv->streams = NULL;
 
   if (G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose (object);
@@ -2187,6 +2192,26 @@ gabble_media_channel_remove_member (GObject *obj,
   return TRUE;
 }
 
+/**
+ * copy_stream_list:
+ *
+ * Returns a copy of priv->streams. This is used when applying a function to
+ * all streams that could result in them being closed, to avoid stream_close_cb
+ * modifying the list being iterated.
+ */
+static GPtrArray *
+copy_stream_list (GabbleMediaChannel *channel)
+{
+  GabbleMediaChannelPrivate *priv = channel->priv;
+  guint i;
+  GPtrArray *ret = g_ptr_array_sized_new (priv->streams->len);
+
+  for (i = 0; i < priv->streams->len; i++)
+    g_ptr_array_add (ret, g_ptr_array_index (priv->streams, i));
+
+  return ret;
+}
+
 static void
 session_terminated_cb (GabbleJingleSession *session,
                        gboolean local_terminator,
@@ -2234,19 +2259,16 @@ session_terminated_cb (GabbleJingleSession *session,
   g_list_free (priv->pending_stream_requests);
   priv->pending_stream_requests = NULL;
 
-  /* unref streams */
-  if (priv->streams != NULL)
-    {
-      GPtrArray *tmp = priv->streams;
+  {
+    GPtrArray *tmp = copy_stream_list (channel);
 
-      DEBUG ("unreffing streams");
+    g_ptr_array_foreach (tmp, (GFunc) gabble_media_stream_close, NULL);
 
-      /* move priv->streams aside so that the stream_close_cb
-       * doesn't double unref */
-      priv->streams = NULL;
-      g_ptr_array_foreach (tmp, (GFunc) g_object_unref, NULL);
-      g_ptr_array_free (tmp, TRUE);
-    }
+    /* All the streams should have closed. */
+    g_assert (priv->streams->len == 0);
+
+    g_ptr_array_free (tmp, TRUE);
+  }
 
   /* remove the session */
   g_object_unref (priv->session);
@@ -2327,14 +2349,13 @@ stream_close_cb (GabbleMediaStream *stream,
 
   tp_svc_channel_type_streamed_media_emit_stream_removed (chan, id);
 
-  if (priv->streams != NULL)
-    {
-      g_ptr_array_remove (priv->streams, stream);
+  if (g_ptr_array_remove (priv->streams, stream))
+    g_object_unref (stream);
+  else
+    g_warning ("stream %p (%s) removed, but it wasn't in priv->streams!",
+        stream, stream->name);
 
-      gabble_media_channel_hold_stream_closed (chan, stream);
-
-      g_object_unref (stream);
-    }
+  gabble_media_channel_hold_stream_closed (chan, stream);
 }
 
 static void
@@ -2800,24 +2821,18 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
       return;
     }
 
-  g_assert (priv->streams != NULL);
-
   /* Calling gabble_media_stream_error () on all the streams will ultimately
    * cause them all to emit 'closed'. In response to 'closed', stream_close_cb
-   * normally unrefs them, and removes them from priv->streams. We're iterating
-   * across priv->streams here, so we don't want it to be modified from
-   * underneath us. So, we move it aside, and unref each stream here.
+   * unrefs them, and removes them from priv->streams. So, we copy the stream
+   * list to avoid it being modified from underneath us.
    */
-  tmp = priv->streams;
-  priv->streams = NULL;
+  tmp = copy_stream_list (self);
 
   for (i = 0; i < tmp->len; i++)
     {
       GabbleMediaStream *stream = g_ptr_array_index (tmp, i);
 
       gabble_media_stream_error (stream, errno, message, NULL);
-
-      g_object_unref (stream);
     }
 
   g_ptr_array_free (tmp, TRUE);

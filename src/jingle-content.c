@@ -871,12 +871,17 @@ _maybe_ready (GabbleJingleContent *self)
     }
 }
 
-
-static void
-send_description_info (GabbleJingleContent *self)
+void
+gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
 {
+  GabbleJingleContentPrivate *priv = self->priv;
   LmMessage *msg;
   LmMessageNode *sess_node;
+
+  /* If we didn't send the content yet there is no reason to send a
+   * description-info to update it */
+  if (priv->state < JINGLE_CONTENT_STATE_SENT)
+    return;
 
   msg = gabble_jingle_session_new_message (self->session,
       JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
@@ -900,13 +905,6 @@ _gabble_jingle_content_set_media_ready (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
 
-  /* If media was already ready, media info was changed and we need to
-   * push description-info action to the peer. */
-  if (priv->media_ready == TRUE)
-    {
-      send_description_info (self);
-      return;
-    }
 
   priv->media_ready = TRUE;
 

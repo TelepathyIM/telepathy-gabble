@@ -1049,6 +1049,7 @@ gabble_media_stream_ready (TpSvcMediaStreamHandler *iface,
 static gboolean
 pass_local_codecs (GabbleMediaStream *stream,
                    const GPtrArray *codecs,
+                   gboolean ready,
                    GError **error)
 {
   GabbleMediaStreamPrivate *priv = stream->priv;
@@ -1089,7 +1090,7 @@ pass_local_codecs (GabbleMediaStream *stream,
     }
 
   return jingle_media_rtp_set_local_codecs (
-      GABBLE_JINGLE_MEDIA_RTP (priv->content), li, error);
+      GABBLE_JINGLE_MEDIA_RTP (priv->content), li, ready, error);
 }
 
 /**
@@ -1110,7 +1111,8 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
 
   if (gabble_jingle_content_is_created_by_us (self->priv->content))
     {
-      if (!pass_local_codecs (self, codecs, &error))
+      if (!pass_local_codecs (self, codecs, self->priv->created_locally,
+          &error))
         {
           DEBUG ("failed: %s", error->message);
 
@@ -1184,7 +1186,7 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
 
   if (priv->awaiting_intersection)
     {
-      if (!pass_local_codecs (self, codecs, &error))
+      if (!pass_local_codecs (self, codecs, TRUE, &error))
         {
           DEBUG ("failed: %s", error->message);
 
@@ -1236,7 +1238,14 @@ gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
       return;
     }
 
-  if (pass_local_codecs (self, codecs, &error))
+  if (self->priv->awaiting_intersection)
+    {
+      /* If we're awaiting the intersection ignore codecs updated */
+      tp_svc_media_stream_handler_return_from_codecs_updated (context);
+      return;
+    }
+
+  if (pass_local_codecs (self, codecs, self->priv->created_locally, &error))
     {
       tp_svc_media_stream_handler_return_from_codecs_updated (context);
     }

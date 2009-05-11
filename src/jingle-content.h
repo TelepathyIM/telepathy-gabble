@@ -129,6 +129,8 @@ gboolean gabble_jingle_content_is_created_by_us (GabbleJingleContent *c);
 
 const gchar *gabble_jingle_content_get_name (GabbleJingleContent *self);
 
+void gabble_jingle_content_maybe_send_description (GabbleJingleContent *self);
+
 gboolean gabble_jingle_content_handle_info (GabbleJingleContent *self,
     LmMessageNode *session_info_payload,
     gboolean *handled,

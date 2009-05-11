@@ -650,10 +650,6 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 
   for (; li != NULL; li = li->next)
     produce_payload_type (desc_node, li->data, dialect);
-
-  /* If we were updating, then we're done with the diff. */
-  g_list_free (priv->local_codec_updates);
-  priv->local_codec_updates = NULL;
 }
 
 /**
@@ -735,10 +731,12 @@ out:
   return ret;
 }
 
-/* Takes in a list of slice-allocated JingleCodec structs */
+/* Takes in a list of slice-allocated JingleCodec structs. Ready indicated
+ * whether the codecs can regarded as ready to sent from now on */
 gboolean
 jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
                                    GList *codecs,
+                                   gboolean ready,
                                    GError **error)
 {
   GabbleJingleMediaRtpPrivate *priv = self->priv;
@@ -750,9 +748,6 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
       GList *changed = NULL;
       GError *err = NULL;
 
-      /* Calling _gabble_jingle_content_set_media_ready () should use and unset
-       * these right after we set them.
-       */
       g_assert (priv->local_codec_updates == NULL);
 
       if (!compare_codecs (priv->local_codecs, codecs, &changed, &err))
@@ -766,7 +761,7 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
         {
           DEBUG ("codec update changed nothing!");
           jingle_media_rtp_free_codecs (codecs);
-          return TRUE;
+          goto out;
         }
 
       DEBUG ("%u codecs changed", g_list_length (changed));
@@ -777,7 +772,17 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
 
   priv->local_codecs = codecs;
 
-  _gabble_jingle_content_set_media_ready (GABBLE_JINGLE_CONTENT (self));
+  /* Codecs have changed, sending a fresh description might be necessary */
+  gabble_jingle_content_maybe_send_description (GABBLE_JINGLE_CONTENT (self));
+
+  /* Update done if any, free the changed codecs if any */
+  g_list_free (priv->local_codec_updates);
+  priv->local_codec_updates = NULL;
+
+out:
+  if (ready)
+    _gabble_jingle_content_set_media_ready (GABBLE_JINGLE_CONTENT (self));
+
   return TRUE;
 }
 

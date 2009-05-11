@@ -2817,11 +2817,24 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
 
   priv = self->priv;
 
+  if (priv->session == NULL)
+    {
+      /* This could also be because someone called Error() before the
+       * SessionHandler was announced. But the fact that the SessionHandler is
+       * actually also the Channel, and thus this method is available before
+       * NewSessionHandler is emitted, is an implementation detail. So the
+       * error message describes the only legitimate situation in which this
+       * could arise.
+       */
+      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "call has already ended" };
+
+      DEBUG ("no session, returning an error.");
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
   DEBUG ("Media.SessionHandler::Error called, error %u (%s) -- "
       "emitting error on each stream", errno, message);
-
-  /* priv->session should be valid throghout SessionHandle D-Bus object life */
-  g_assert (priv->session != NULL);
 
   g_object_get (priv->session, "state", &state, NULL);
 

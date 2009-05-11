@@ -657,11 +657,21 @@ void
 gabble_jingle_content_parse_description_info (GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
+  GabbleJingleContentPrivate *priv = c->priv;
   LmMessageNode *desc_node;
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   if (desc_node == NULL)
     {
       SET_BAD_REQ ("invalid description-info action");
+      return;
+    }
+
+  if (priv->created_by_us && priv->state < JINGLE_CONTENT_STATE_ACKNOWLEDGED)
+    {
+      /* The stream was created us and the other side didn't acknowledge it
+       * yet, thus we don't have their code information, thus the
+       * description-info isn't meaningful and can be ignored */
+      DEBUG ("Ignoring description-info as we didn't receive the codecs yet");
       return;
     }
 

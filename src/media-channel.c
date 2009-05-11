@@ -1092,7 +1092,9 @@ gabble_media_channel_list_streams (TpSvcChannelTypeStreamedMedia *iface,
 
 
 static GabbleMediaStream *
-_find_stream_by_id (GabbleMediaChannel *chan, guint stream_id)
+_find_stream_by_id (GabbleMediaChannel *chan,
+    guint stream_id,
+    GError **error)
 {
   GabbleMediaChannelPrivate *priv;
   guint i;
@@ -1111,6 +1113,8 @@ _find_stream_by_id (GabbleMediaChannel *chan, guint stream_id)
         return stream;
     }
 
+  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      "given stream id %u does not exist", stream_id);
   return NULL;
 }
 
@@ -1146,13 +1150,10 @@ gabble_media_channel_remove_streams (TpSvcChannelTypeStreamedMedia *iface,
       GabbleMediaStream *stream;
       guint j;
 
-      stream = _find_stream_by_id (obj, id);
+      stream = _find_stream_by_id (obj, id, &error);
+
       if (stream == NULL)
-        {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "given stream id %u does not exist", id);
-          goto OUT;
-        }
+        goto OUT;
 
       /* make sure we don't allow the client to repeatedly remove the same
       stream */
@@ -1234,11 +1235,10 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
       return;
     }
 
-  stream = _find_stream_by_id (self, stream_id);
+  stream = _find_stream_by_id (self, stream_id, &error);
+
   if (stream == NULL)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "given stream id %u does not exist", stream_id);
       dbus_g_method_return_error (context, error);
       g_error_free (error);
       return;

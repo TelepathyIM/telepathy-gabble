@@ -838,10 +838,6 @@ gabble_media_channel_dispose (GObject *object)
       priv->initial_peer = 0;
     }
 
-  /** In this we set the state to ENDED, then the callback unrefs
-   * the session
-   */
-
   if (!priv->closed)
     gabble_media_channel_close (self);
 

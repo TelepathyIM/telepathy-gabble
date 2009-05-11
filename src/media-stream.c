@@ -1240,7 +1240,9 @@ gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
 
   if (self->priv->awaiting_intersection)
     {
-      /* If we're awaiting the intersection ignore codecs updated */
+      /* When awaiting an intersection the initial set of codecs should be set
+       * by calling SupportedCodecs as that is the canonical set of codecs,
+       * updates are only meaningful afterwards */
       tp_svc_media_stream_handler_return_from_codecs_updated (context);
       return;
     }

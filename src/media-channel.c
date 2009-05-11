@@ -1002,7 +1002,13 @@ gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling 
   g_ptr_array_free (ret, TRUE);
 }
 
-
+/**
+ * make_stream_list:
+ *
+ * Creates an array of MediaStreamInfo structs.
+ *
+ * Precondition: priv->session is non-NULL.
+ */
 static GPtrArray *
 make_stream_list (GabbleMediaChannel *self,
                   guint len,
@@ -1012,6 +1018,8 @@ make_stream_list (GabbleMediaChannel *self,
   GPtrArray *ret;
   guint i;
   GType info_type = TP_STRUCT_TYPE_MEDIA_STREAM_INFO;
+
+  g_assert (priv->session != NULL);
 
   ret = g_ptr_array_sized_new (len);
 

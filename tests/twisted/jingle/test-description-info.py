@@ -95,6 +95,15 @@ def test(q, bus, conn, stream, send_early_description_info=False):
     stream_handler.Ready(local_codecs_dbus)
     stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
+    stream_handler.CodecsUpdated(local_codecs_dbus)
+
+    local_codecs = [('GSM', 3, 8000, {}),
+                    ('PCMA', 8, 8000, {'gstreamer':'rock on'}),
+                    ('PCMU', 0, 8000, {}) ]
+    local_codecs_dbus = jt2.dbusify_codecs_with_params(local_codecs)
+    stream_handler.CodecsUpdated(local_codecs_dbus)
+
+
     # First IQ is transport-info; also, we expect to be told what codecs the
     # other end wants.
     e, src = q.expect_many(

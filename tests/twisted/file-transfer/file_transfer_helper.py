@@ -407,6 +407,14 @@ class SendFileTest(FileTransferTest):
 
         self.ft_channel.connect_to_signal('TransferredBytesChanged', bytes_changed_cb)
 
+        # FileTransferStateChanged can be fired while we are receiving data
+        # (in the SOCKS5 case for example)
+        self.completed = False
+        def ft_state_changed_cb(state, reason):
+            if state == cs.FT_STATE_COMPLETED:
+                self.completed = True
+        self.ft_channel.connect_to_signal('FileTransferStateChanged', ft_state_changed_cb)
+
         # get data from bytestream
         data = ''
         while len(data) < to_receive:
@@ -421,13 +429,18 @@ class SendFileTest(FileTransferTest):
 
         assert self.count == to_receive
 
-        # FileTransferStateChanged could have already been fired
-        events = self.bytestream.wait_bytestream_closed(
-            [EventPattern('dbus-signal', signal='FileTransferStateChanged')])
+        if self.completed:
+            # FileTransferStateChanged has already been received
+            waiting = []
+        else:
+            waiting = [EventPattern('dbus-signal', signal='FileTransferStateChanged')]
 
-        state, reason = events[0].args
-        assert state == cs.FT_STATE_COMPLETED
-        assert reason == cs.FT_STATE_CHANGE_REASON_NONE
+        events = self.bytestream.wait_bytestream_closed(waiting)
+
+        if len(waiting) > 1:
+            state, reason = events[0].args
+            assert state == cs.FT_STATE_COMPLETED
+            assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 
 def exec_file_transfer_test(test_cls):
     for bytestream_cls  in [

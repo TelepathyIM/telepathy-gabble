@@ -415,7 +415,7 @@ codec_update_coherent (const JingleCodec *old_c,
     {
       g_set_error (e, domain, code,
           "tried to change codec %u (%s)'s clockrate from %u to %u",
-          new_c->id, new_c->name, new_c->clockrate, old_c->clockrate);
+          new_c->id, new_c->name, old_c->clockrate, new_c->clockrate);
       return FALSE;
     }
 

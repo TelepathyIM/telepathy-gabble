@@ -1084,6 +1084,9 @@ _caps_disco_cb (GabbleDisco *disco,
           gpointer key;
           gpointer value;
 
+          /* FIXME: I think we should respect the caps, even if the hash is
+           * wrong, for the jid that answered the query.
+           */
           if (!bad_hash)
             set_caps_for (waiter, cache, caps, per_channel_manager_caps,
                 handle, jid);

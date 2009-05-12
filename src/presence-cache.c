@@ -834,13 +834,12 @@ static void
 redisco (GabblePresenceCache *cache,
     GabbleDisco *disco,
     DiscoWaiter *waiter,
-    const gchar *node,
-    TpHandleRepoIface *contact_repo)
+    const gchar *node)
 {
   const gchar *waiter_jid;
   gchar *full_jid;
 
-  waiter_jid = tp_handle_inspect (contact_repo, waiter->handle);
+  waiter_jid = tp_handle_inspect (waiter->repo, waiter->handle);
   full_jid = g_strdup_printf ("%s/%s", waiter_jid, waiter->resource);
 
   gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
@@ -852,8 +851,7 @@ static void
 disco_failed (GabblePresenceCache *cache,
     GabbleDisco *disco,
     const gchar *node,
-    GSList *waiters,
-    TpHandleRepoIface *contact_repo)
+    GSList *waiters)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   GSList *i;
@@ -866,7 +864,7 @@ disco_failed (GabblePresenceCache *cache,
 
       if (!waiter->disco_requested)
         {
-          redisco (cache, disco, waiter, node, contact_repo);
+          redisco (cache, disco, waiter, node);
           break;
         }
     }
@@ -996,8 +994,8 @@ _caps_disco_cb (GabbleDisco *disco,
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   base_conn = TP_BASE_CONNECTION (priv->conn);
-  contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  contact_repo = tp_base_connection_get_handles (base_conn,
+      TP_HANDLE_TYPE_CONTACT);
 
   if (NULL == node)
     {
@@ -1011,7 +1009,7 @@ _caps_disco_cb (GabbleDisco *disco,
     {
       DEBUG ("disco query failed: %s", error->message);
 
-      disco_failed (cache, disco, node, waiters, contact_repo);
+      disco_failed (cache, disco, node, waiters);
 
       return;
     }
@@ -1123,7 +1121,7 @@ _caps_disco_cb (GabbleDisco *disco,
             break;
 
           if (!waiter->disco_requested)
-            redisco (cache, disco, waiter, node, contact_repo);
+            redisco (cache, disco, waiter, node);
         }
     }
 

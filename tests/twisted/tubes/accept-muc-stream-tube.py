@@ -191,14 +191,11 @@ def test(q, bus, conn, stream, bytestream_cls,
             args=[stream_tube_id, 2]))
 
     address = accept_return_event.value[0]
-    t.connect_socket(q, address_type, address)
-    socket_event, si_event = q.expect_many(
-        EventPattern('socket-connected'),
-        # expect SI request
-        EventPattern('stream-iq', to='chat@conf.localhost/bob', query_ns=ns.SI,
-            query_name='si'))
-    protocol = socket_event.protocol
 
+    socket_event, si_event = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
+        address_type, address, access_control, access_control_param)
+
+    protocol = socket_event.protocol
     protocol.sendData("hello initiator")
 
     bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, si_event.stanza,

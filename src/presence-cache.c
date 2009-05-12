@@ -1095,8 +1095,8 @@ _caps_disco_cb (GabbleDisco *disco,
           g_hash_table_steal (priv->disco_pending, node);
           g_hash_table_insert (priv->disco_pending, key, waiters);
 
+          g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, waiter->handle);
           disco_waiter_free (waiter);
-          g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, handle);
         }
       else if (trust + disco_waiter_list_get_request_count (waiters) - trust_inc
           < CAPABILITY_BUNDLE_ENOUGH_TRUST)

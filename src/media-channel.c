@@ -1769,7 +1769,11 @@ capabilities_discovered_cb (GabblePresenceCache *cache,
                             TpHandle handle,
                             struct _delayed_request_streams_ctx *ctx)
 {
-  /* If there are more cache caps pending, wait for them. */
+  /* If this isn't the contact we're waiting for, ignore the signal. */
+  if (ctx->contact_handle != handle)
+    return;
+
+  /* If there are more cache caps pending for this contact, wait for them. */
   if (gabble_presence_cache_caps_pending (cache, handle))
     return;
 

@@ -1029,14 +1029,8 @@ _caps_disco_cb (GabbleDisco *disco,
   else
     {
       trust_inc = 1;
-      trust = capability_info_recvd (cache, node, handle, caps, NULL,
-          trust_inc);
-
-      /* Do not allow tubes caps if the contact does not observe XEP-0115
-       * version 1.5: we don't need to bother being compatible with both version
-       * 1.3 and tubes caps */
-      gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
-      per_channel_manager_caps = NULL;
+      trust = capability_info_recvd (cache, node, handle, caps,
+          per_channel_manager_caps, trust_inc);
     }
 
   for (i = waiters; NULL != i;)

@@ -8,10 +8,11 @@ import os
 import dbus
 
 from servicetest import unwrap, assertContains, EventProtocolClientFactory,\
-    EventProtocolFactory, assertEquals, EventProtocol
+    EventProtocolFactory, assertEquals, EventProtocol, EventPattern
 from gabbletest import exec_test
 import constants as cs
 import bytestream
+import ns
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
@@ -288,6 +289,29 @@ def check_new_connection_access(q, access_control, access_control_param, protoco
         # here is actually not that bad.
     else:
         assert False
+
+
+def connect_to_cm_socket(q, to, address_type, address, access_control,
+    access_control_param):
+
+    connect_socket(q, address_type, address)
+
+    if access_control == cs.SOCKET_ACCESS_CONTROL_CREDENTIALS:
+        socket_event = q.expect('socket-connected')
+
+        # socket is connected. Let's send our credentials
+        socket_event.protocol.sendData(str(access_control_param))
+
+        # once credentials have been sent, Gabble sends SI request
+        si_event = q.expect('stream-iq', to=to, query_ns=ns.SI, query_name='si')
+
+    else:
+        socket_event, si_event = q.expect_many(
+            EventPattern('socket-connected'),
+            # expect SI request
+            EventPattern('stream-iq', to=to, query_ns=ns.SI, query_name='si'))
+
+    return socket_event, si_event
 
 def exec_tube_test(test, *args):
     for bytestream_cls in [

@@ -933,6 +933,45 @@ parse_contact_caps (TpBaseConnection *base_conn,
   return per_channel_manager_caps;
 }
 
+/**
+ * set_caps_for:
+ *
+ * Sets caps for @waiter to (@caps, @per_channel_manager_caps), having received
+ * a trusted reply from @responder_{handle,jid}.
+ */
+static void
+set_caps_for (DiscoWaiter *waiter,
+    GabblePresenceCache *cache,
+    GabblePresenceCapabilities caps,
+    GHashTable *per_channel_manager_caps,
+    TpHandle responder_handle,
+    const gchar *responder_jid)
+{
+  GabblePresence *presence = gabble_presence_cache_get (cache, waiter->handle);
+
+  if (presence != NULL)
+    {
+      GabblePresenceCapabilities save_caps = presence->caps;
+      GHashTable *save_enhanced_caps;
+
+      gabble_presence_cache_copy_cache_entry (&save_enhanced_caps,
+          presence->per_channel_manager_caps);
+
+      DEBUG ("setting caps for %d (thanks to %d %s) to %d (save_caps %d)",
+          waiter->handle, responder_handle, responder_jid, caps, save_caps);
+
+      gabble_presence_set_capabilities (presence, waiter->resource,
+          caps, per_channel_manager_caps, waiter->serial);
+
+      DEBUG ("caps for %d now %d", waiter->handle, presence->caps);
+
+      g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
+        waiter->handle, save_caps, presence->caps,
+        save_enhanced_caps, presence->per_channel_manager_caps);
+      gabble_presence_cache_free_cache_entry (save_enhanced_caps);
+    }
+}
+
 static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
@@ -1036,7 +1075,6 @@ _caps_disco_cb (GabbleDisco *disco,
   for (i = waiters; NULL != i;)
     {
       DiscoWaiter *waiter;
-      GabblePresence *presence;
 
       waiter = (DiscoWaiter *) i->data;
 
@@ -1047,30 +1085,8 @@ _caps_disco_cb (GabbleDisco *disco,
           gpointer value;
 
           if (!bad_hash)
-            {
-              /* trusted reply */
-              presence = gabble_presence_cache_get (cache, waiter->handle);
-
-              if (presence)
-              {
-                GabblePresenceCapabilities save_caps = presence->caps;
-                GHashTable *save_enhanced_caps;
-                gabble_presence_cache_copy_cache_entry (&save_enhanced_caps,
-                    presence->per_channel_manager_caps);
-
-                DEBUG ("setting caps for %d (thanks to %d %s) to "
-                    "%d (save_caps %d)",
-                    waiter->handle, handle, jid, caps, save_caps);
-                gabble_presence_set_capabilities (presence, waiter->resource,
-                    caps, per_channel_manager_caps, waiter->serial);
-                DEBUG ("caps for %d (thanks to %d %s) now %d", waiter->handle,
-                    handle, jid, presence->caps);
-                g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-                  waiter->handle, save_caps, presence->caps,
-                  save_enhanced_caps, presence->per_channel_manager_caps);
-                gabble_presence_cache_free_cache_entry (save_enhanced_caps);
-              }
-            }
+            set_caps_for (waiter, cache, caps, per_channel_manager_caps,
+                handle, jid);
 
           tmp = i;
           i = i->next;

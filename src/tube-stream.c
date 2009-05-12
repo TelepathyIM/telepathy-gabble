@@ -539,6 +539,25 @@ start_stream_initiation (GabbleTubeStream *self,
   return result;
 }
 
+static gboolean
+check_incoming_connection (GabbleTubeStream *self,
+                           GibberTransport *transport)
+{
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+
+  if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+    {
+      return TRUE;
+    }
+  else
+    {
+      /* access_control has already been checked when accepting the tube */
+      g_assert_not_reached ();
+    }
+
+  return FALSE;
+}
+
 /* callback for listening connections from the local application */
 static void
 local_new_connection_cb (GibberListener *listener,
@@ -552,6 +571,14 @@ local_new_connection_cb (GibberListener *listener,
   /* Block the transport while there is no open bytestream to transfer
    * its data. */
   gibber_transport_block_receiving (transport, TRUE);
+
+  if (!check_incoming_connection (self, transport))
+    {
+      DEBUG ("Identification of the connection failed. Closing it");
+      /* We didn't ref the connection so it will be destroyed by the
+       * GibberListener */
+      return;
+    }
 
   /* Streams in stream tubes are established with stream initiation (XEP-0095).
    * We use SalutSiBytestreamManager.

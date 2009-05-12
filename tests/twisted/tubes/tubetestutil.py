@@ -328,3 +328,4 @@ def exec_tube_test(test, *args):
 def exec_stream_tube_test(test):
     exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")
     exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")
+    exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS, dbus.Byte(77))

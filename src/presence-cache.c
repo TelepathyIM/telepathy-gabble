@@ -988,7 +988,7 @@ _caps_disco_cb (GabbleDisco *disco,
   TpHandleRepoIface *contact_repo;
   GabblePresenceCapabilities caps = 0;
   GHashTable *per_channel_manager_caps;
-  guint trust, trust_inc;
+  guint trust;
   TpHandle handle = 0;
   gboolean bad_hash = FALSE;
   TpBaseConnection *base_conn;
@@ -1043,14 +1043,13 @@ _caps_disco_cb (GabbleDisco *disco,
   if (!tp_strdiff (waiter_self->hash, "sha-1"))
     {
       gchar *computed_hash;
-      trust_inc = CAPABILITY_BUNDLE_ENOUGH_TRUST;
 
       computed_hash = caps_hash_compute_from_lm_node (query_result);
 
       if (g_str_equal (waiter_self->ver, computed_hash))
         {
           trust = capability_info_recvd (cache, node, handle, caps,
-              per_channel_manager_caps, trust_inc);
+              per_channel_manager_caps, CAPABILITY_BUNDLE_ENOUGH_TRUST);
         }
       else
         {
@@ -1067,9 +1066,8 @@ _caps_disco_cb (GabbleDisco *disco,
     }
   else
     {
-      trust_inc = 1;
       trust = capability_info_recvd (cache, node, handle, caps,
-          per_channel_manager_caps, trust_inc);
+          per_channel_manager_caps, 1);
     }
 
   if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)

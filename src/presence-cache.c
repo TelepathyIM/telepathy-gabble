@@ -1072,64 +1072,64 @@ _caps_disco_cb (GabbleDisco *disco,
           per_channel_manager_caps, trust_inc);
     }
 
-  for (i = waiters; NULL != i;)
+  if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
     {
-      DiscoWaiter *waiter;
-
-      waiter = (DiscoWaiter *) i->data;
-
-      if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST || waiter->handle == handle)
+      /* We trust this caps node. Serve all its waiters. */
+      for (i = waiters; NULL != i; i = i->next)
         {
-          GSList *tmp;
-          gpointer key;
-          gpointer value;
+          DiscoWaiter *waiter = (DiscoWaiter *) i->data;
 
-          /* FIXME: I think we should respect the caps, even if the hash is
-           * wrong, for the jid that answered the query.
-           */
-          if (!bad_hash)
-            set_caps_for (waiter, cache, caps, per_channel_manager_caps,
-                handle, jid);
-
-          tmp = i;
-          i = i->next;
-
-          waiters = g_slist_delete_link (waiters, tmp);
-
-          if (!g_hash_table_lookup_extended (priv->disco_pending, node, &key,
-                &value))
-            g_assert_not_reached ();
-
-          g_hash_table_steal (priv->disco_pending, node);
-          g_hash_table_insert (priv->disco_pending, key, waiters);
-
+          set_caps_for (waiter, cache, caps, per_channel_manager_caps, handle,
+              jid);
           g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, waiter->handle);
-          disco_waiter_free (waiter);
         }
-      else if (trust + disco_waiter_list_get_request_count (waiters) - trust_inc
-          < CAPABILITY_BUNDLE_ENOUGH_TRUST)
+
+      g_hash_table_remove (priv->disco_pending, node);
+    }
+  else
+    {
+      gpointer key;
+      /* We don't trust this yet (either the hash was bad, or we haven't had
+       * enough responses, as appropriate).
+       */
+
+      /* Set caps for the contact that replied (if the hash was correct) and
+       * remove them from the list of waiters.
+       * FIXME I think we should respect the caps, even if the hash is wrong,
+       *       for the jid that answered the query.
+       */
+      if (!bad_hash)
+        set_caps_for (waiter_self, cache, caps, per_channel_manager_caps,
+            handle, jid);
+
+      waiters = g_slist_remove (waiters, waiter_self);
+
+      if (!g_hash_table_lookup_extended (priv->disco_pending, node, &key, NULL))
+        g_assert_not_reached ();
+
+      g_hash_table_steal (priv->disco_pending, key);
+      g_hash_table_insert (priv->disco_pending, key, waiters);
+
+      g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, waiter_self->handle);
+      disco_waiter_free (waiter_self);
+
+      /* Ensure that we have enough pending requests to get enough trust for
+       * this node.
+       */
+      for (i = waiters; i != NULL; i = i->next)
         {
-          /* if the possible trust, not counting this guy, is too low,
-           * we have been poisoned and reset our trust meters - disco
-           * anybody we still haven't to be able to get more trusted replies */
+          DiscoWaiter *waiter = (DiscoWaiter *) i->data;
+
+          if (trust + disco_waiter_list_get_request_count (waiters)
+              >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
+            break;
 
           if (!waiter->disco_requested)
             redisco (cache, disco, waiter, node, contact_repo);
-
-          i = i->next;
-        }
-      else
-        {
-          /* trust level still uncertain, don't do nothing */
-          i = i->next;
         }
     }
 
-  if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
-    g_hash_table_remove (priv->disco_pending, node);
-
 OUT:
-
   if (handle)
     tp_handle_unref (contact_repo, handle);
 }

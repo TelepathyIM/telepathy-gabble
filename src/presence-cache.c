@@ -1015,9 +1015,9 @@ _caps_disco_cb (GabbleDisco *disco,
         }
       else
         {
-          /* The received reply does not match the */
-          DEBUG ("The announced verification string '%s' does not match "
-              "our hash '%s'.", waiter_self->ver, computed_hash);
+          DEBUG ("The verification string '%s' announced by '%s' does not "
+              "match our hash of their disco reply '%s'.", waiter_self->ver,
+              jid, computed_hash);
           trust = 0;
           bad_hash = TRUE;
           gabble_presence_cache_free_cache_entry (per_channel_manager_caps);

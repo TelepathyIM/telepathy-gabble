@@ -73,11 +73,11 @@ def receive_tube_offer(q, bus, conn, stream):
 
     return (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface)
 
-def expect_tube_activity(q, bus, conn, stream, bytestream_cls):
-    event_socket, event_iq = q.expect_many(
-            EventPattern('socket-connected'),
-            EventPattern('stream-iq', to=bob_jid, query_ns=ns.SI,
-                query_name='si'))
+def expect_tube_activity(q, bus, conn, stream, bytestream_cls, address_type,
+    address, access_control, access_control_param):
+
+    event_socket, event_iq = t.connect_to_cm_socket(q, bob_jid,
+        address_type, address, access_control, access_control_param)
 
     protocol = event_socket.protocol
     data = "hello initiator"
@@ -188,9 +188,10 @@ def test(q, bus, conn, stream, bytestream_cls,
             args=[stream_tube_id, 2]))
 
     socket_address = accept_return_event.value[0]
-    t.connect_socket(q, address_type, socket_address)
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+        address_type, socket_address, access_control, access_control_param)
+
     tubes_chan.Close()
     bytestream.wait_bytestream_closed()
 
@@ -208,9 +209,9 @@ def test(q, bus, conn, stream, bytestream_cls,
             args=[stream_tube_id, 2]))
 
     socket_address = accept_return_event.value[0]
-    t.connect_socket(q, address_type, socket_address)
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+        address_type, socket_address, access_control, access_control_param)
     tubes_chan.Close()
     bytestream.wait_bytestream_closed()
 
@@ -228,9 +229,9 @@ def test(q, bus, conn, stream, bytestream_cls,
             args=[stream_tube_id, 2]))
 
     socket_address = accept_return_event.value[0]
-    t.connect_socket(q, address_type, socket_address)
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+        address_type, socket_address, access_control, access_control_param)
     tubes_chan.Close()
     bytestream.wait_bytestream_closed()
 
@@ -249,9 +250,8 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     socket_address = accept_return_event.value[0]
 
-    t.connect_socket(q, address_type, socket_address)
-
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls)
+    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+        address_type, socket_address, access_control, access_control_param)
     tubes_chan.Close()
     bytestream.wait_bytestream_closed()
 

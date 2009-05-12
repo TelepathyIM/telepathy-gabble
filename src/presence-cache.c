@@ -845,6 +845,8 @@ redisco (GabblePresenceCache *cache,
   gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
       node, _caps_disco_cb, cache, G_OBJECT (cache), NULL);
   waiter->disco_requested = TRUE;
+
+  g_free (full_jid);
 }
 
 static void

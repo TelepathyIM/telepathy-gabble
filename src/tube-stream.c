@@ -539,6 +539,61 @@ start_stream_initiation (GabbleTubeStream *self,
   return result;
 }
 
+static void
+credentials_received_cb (GibberUnixTransport *transport,
+                         GibberBuffer *buffer,
+                         GibberCredentials *credentials,
+                         GError *error,
+                         gpointer user_data)
+{
+  GabbleTubeStream *self = GABBLE_TUBE_STREAM (user_data);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  guint8 byte;
+
+  /* Credentials received; reblock the transport */
+  gibber_transport_block_receiving (GIBBER_TRANSPORT (transport), TRUE);
+
+  if (error != NULL)
+    {
+      DEBUG ("Didn't receive credentials (%s). Closing transport",
+          error->message);
+      goto credentials_received_cb_out;
+    }
+
+  g_assert (credentials != NULL);
+
+  if (buffer->length != 1)
+    {
+      DEBUG ("Got more than one byte (%" G_GSIZE_FORMAT "). Rejecting",
+          buffer->length);
+      goto credentials_received_cb_out;
+    }
+
+  byte = g_value_get_uchar (priv->access_control_param);
+  if (byte != buffer->data[0])
+    {
+      DEBUG ("Wrong identification byte received. Rejecting");
+      goto credentials_received_cb_out;
+    }
+
+  if (credentials->uid != getuid ())
+    {
+      DEBUG ("Wrong uid (%u). Rejecting", credentials->uid);
+      goto credentials_received_cb_out;
+    }
+
+  DEBUG ("Connection properly authentificated");
+
+  if (!start_stream_initiation (self, GIBBER_TRANSPORT (transport), NULL))
+    {
+      DEBUG ("SI failed. Closing connection");
+    }
+
+credentials_received_cb_out:
+  /* start_stream_initiation reffed the transport if everything went fine */
+  g_object_unref (transport);
+}
+
 static gboolean
 check_incoming_connection (GabbleTubeStream *self,
                            GibberTransport *transport)
@@ -548,6 +603,25 @@ check_incoming_connection (GabbleTubeStream *self,
   if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
       return TRUE;
+    }
+  else if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_CREDENTIALS)
+    {
+      if (!gibber_unix_transport_recv_credentials (
+            GIBBER_UNIX_TRANSPORT (transport), credentials_received_cb, self))
+        {
+          DEBUG ("Can't receive credentials. Closing transport");
+          return FALSE;
+        }
+
+      /* Temporarly unblock the transport to be able to receive credentials */
+      gibber_transport_block_receiving (transport, FALSE);
+
+      /* We ref the transport so it won't be destroyed by GibberListener */
+      g_object_ref (transport);
+
+      /* Returns FALSE as we are waiting for credentials so SI can't be
+       * started yet. */
+      return FALSE;
     }
   else
     {
@@ -574,9 +648,8 @@ local_new_connection_cb (GibberListener *listener,
 
   if (!check_incoming_connection (self, transport))
     {
-      DEBUG ("Identification of the connection failed. Closing it");
       /* We didn't ref the connection so it will be destroyed by the
-       * GibberListener */
+       * GibberListener if needed. */
       return;
     }
 

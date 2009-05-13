@@ -973,6 +973,13 @@ set_caps_for (DiscoWaiter *waiter,
 }
 
 static void
+emit_capabilities_discovered (GabblePresenceCache *cache,
+    TpHandle handle)
+{
+  g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, handle);
+}
+
+static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
                 const gchar *jid,
@@ -1079,7 +1086,7 @@ _caps_disco_cb (GabbleDisco *disco,
 
           set_caps_for (waiter, cache, caps, per_channel_manager_caps, handle,
               jid);
-          g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, waiter->handle);
+          emit_capabilities_discovered (cache, waiter->handle);
         }
 
       g_hash_table_remove (priv->disco_pending, node);
@@ -1108,7 +1115,7 @@ _caps_disco_cb (GabbleDisco *disco,
       g_hash_table_steal (priv->disco_pending, key);
       g_hash_table_insert (priv->disco_pending, key, waiters);
 
-      g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, waiter_self->handle);
+      emit_capabilities_discovered (cache, waiter_self->handle);
       disco_waiter_free (waiter_self);
 
       /* Ensure that we have enough pending requests to get enough trust for

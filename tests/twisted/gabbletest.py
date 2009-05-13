@@ -11,6 +11,7 @@ import random
 
 import ns
 import servicetest
+from servicetest import assertEquals, assertLength
 import twisted
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
@@ -84,9 +85,10 @@ def sync_stream(q, stream):
 class JabberAuthenticator(xmlstream.Authenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."
 
-    def __init__(self, username, password):
+    def __init__(self, username, password, resource=None):
         self.username = username
         self.password = password
+        self.resource = resource
         xmlstream.Authenticator.__init__(self)
 
     # Patch in fix from http://twistedmatrix.com/trac/changeset/23418.
@@ -134,7 +136,9 @@ class JabberAuthenticator(xmlstream.Authenticator):
         assert map(str, digest) == [expect]
 
         resource = xpath.queryForNodes('/iq/query/resource', iq)
-        assert map(str, resource) == ['Resource']
+        assertLength(1, resource)
+        if self.resource is not None:
+            assertEquals(self.resource, str(resource[0]))
 
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
@@ -143,10 +147,11 @@ class JabberAuthenticator(xmlstream.Authenticator):
 
 
 class XmppAuthenticator(xmlstream.Authenticator):
-    def __init__(self, username, password):
+    def __init__(self, username, password, resource=None):
         xmlstream.Authenticator.__init__(self)
         self.username = username
         self.password = password
+        self.resource = resource
         self.authenticated = False
 
     def streamStarted(self, root=None):
@@ -182,12 +187,16 @@ class XmppAuthenticator(xmlstream.Authenticator):
         self.authenticated = True
 
     def bindIq(self, iq):
-        assert xpath.queryForString('/iq/bind/resource', iq) == 'Resource'
+        resource = xpath.queryForString('/iq/bind/resource', iq)
+        if self.resource is not None:
+            assertEquals(self.resource, resource)
+        else:
+            assert resource is not None
 
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
         bind = result.addElement((NS_XMPP_BIND, 'bind'))
-        jid = bind.addElement('jid', content='test@localhost/Resource')
+        jid = bind.addElement('jid', content=('test@localhost/%s' % resource))
         self.xmlstream.send(result)
 
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
@@ -301,11 +310,11 @@ def make_connection(bus, event_func, params=None):
     return servicetest.make_connection(bus, event_func, 'gabble', 'jabber',
         default_params)
 
-def make_stream(event_func, authenticator=None, protocol=None, port=4242):
+def make_stream(event_func, authenticator=None, protocol=None, port=4242, resource=None):
     # set up Jabber server
 
     if authenticator is None:
-        authenticator = JabberAuthenticator('test', 'pass')
+        authenticator = JabberAuthenticator('test', 'pass', resource=resource)
 
     if protocol is None:
         protocol = JabberXmlStream
@@ -357,8 +366,9 @@ def exec_test_deferred (funs, params, protocol=None, timeout=None,
 
     bus = dbus.SessionBus()
     # conn = make_connection(bus, queue.append, params)
+    resource = params.get('resource') if params is not None else None
     (stream, port) = make_stream(queue.append, protocol=protocol,
-        authenticator=authenticator)
+        authenticator=authenticator, resource=resource)
 
     error = None
 

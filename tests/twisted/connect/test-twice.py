@@ -56,7 +56,8 @@ if __name__ == '__main__':
         'port': dbus.UInt32(4242),
         }
     conn1 = make_connection(bus, queue.append, params)
-    authenticator = JabberAuthenticator('test1', 'pass')
+    authenticator = JabberAuthenticator('test1', 'pass',
+        resource=params['resource'])
     stream1 = make_stream(queue.append, authenticator, protocol=JabberXmlStream,
                           port=4242)
 
@@ -68,7 +69,8 @@ if __name__ == '__main__':
         'port': dbus.UInt32(4343),
         }
     conn2 = make_connection(bus, queue.append, params)
-    authenticator = XmppAuthenticator('test2', 'pass')
+    authenticator = XmppAuthenticator('test2', 'pass',
+        resource=params['resource'])
     stream2 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
                           port=4343)
 

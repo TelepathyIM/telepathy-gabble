@@ -933,6 +933,18 @@ parse_contact_caps (TpBaseConnection *base_conn,
   return per_channel_manager_caps;
 }
 
+static void
+emit_capabilities_update (GabblePresenceCache *cache,
+    TpHandle handle,
+    GabblePresenceCapabilities old_caps,
+    GabblePresenceCapabilities new_caps,
+    GHashTable *old_enhanced_caps,
+    GHashTable *new_enhanced_caps)
+{
+  g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
+      handle, old_caps, new_caps, old_enhanced_caps, new_enhanced_caps);
+}
+
 /**
  * set_caps_for:
  *
@@ -966,9 +978,8 @@ set_caps_for (DiscoWaiter *waiter,
 
   DEBUG ("caps for %d now %d", waiter->handle, presence->caps);
 
-  g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-    waiter->handle, save_caps, presence->caps,
-    save_enhanced_caps, presence->per_channel_manager_caps);
+  emit_capabilities_update (cache, waiter->handle, save_caps, presence->caps,
+      save_enhanced_caps, presence->per_channel_manager_caps);
   gabble_presence_cache_free_cache_entry (save_enhanced_caps);
 }
 
@@ -1275,9 +1286,8 @@ _process_caps (GabblePresenceCache *cache,
       DEBUG ("Emitting caps update: handle %u, old %u, new %u",
           handle, old_caps, presence->caps);
 
-      g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-          handle, old_caps, presence->caps, old_enhanced_caps,
-          presence->per_channel_manager_caps);
+      emit_capabilities_update (cache, handle, old_caps, presence->caps,
+          old_enhanced_caps, presence->per_channel_manager_caps);
       gabble_presence_cache_free_cache_entry (old_enhanced_caps);
     }
   else
@@ -1570,9 +1580,8 @@ gabble_presence_cache_do_update (
   ret = gabble_presence_update (presence, resource, presence_id,
       status_message, priority);
 
-  g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0, handle,
-      caps_before, presence->caps, enhanced_caps_before,
-      presence->per_channel_manager_caps);
+  emit_capabilities_update (cache, handle, caps_before, presence->caps,
+      enhanced_caps_before, presence->per_channel_manager_caps);
   gabble_presence_cache_free_cache_entry (enhanced_caps_before);
 
   return ret;

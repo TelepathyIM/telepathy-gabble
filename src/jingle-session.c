@@ -1335,6 +1335,10 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
 
   switch (priv->dialect)
     {
+      case JINGLE_DIALECT_V032:
+        el = "jingle";
+        ns = NS_JINGLE032;
+        break;
       case JINGLE_DIALECT_V015:
         el = "jingle";
         ns = NS_JINGLE015;
@@ -1347,10 +1351,6 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
         break;
       case JINGLE_DIALECT_ERROR:
         g_assert_not_reached ();
-      default:
-        el = "jingle";
-        ns = NS_JINGLE032;
-        break;
     }
 
   session_node = lm_message_node_add_child (iq_node, el, NULL);

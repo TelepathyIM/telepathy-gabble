@@ -80,9 +80,6 @@ if __name__ == '__main__':
         try:
             conn1.Disconnect()
             conn2.Disconnect()
-            # second call destroys object
-            conn1.Disconnect()
-            conn2.Disconnect()
         except dbus.DBusException, e:
             pass
 

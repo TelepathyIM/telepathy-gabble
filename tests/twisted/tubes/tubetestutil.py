@@ -299,8 +299,9 @@ def connect_to_cm_socket(q, to, address_type, address, access_control,
     if access_control == cs.SOCKET_ACCESS_CONTROL_CREDENTIALS:
         socket_event = q.expect('socket-connected')
 
-        # socket is connected. Let's send our credentials
-        socket_event.protocol.sendData(str(access_control_param))
+        # socket is connected. Let's send our credentials (the byte is
+        # meaningless)
+        socket_event.protocol.sendData('a')
 
         # once credentials have been sent, Gabble sends SI request
         si_event = q.expect('stream-iq', to=to, query_ns=ns.SI, query_name='si')

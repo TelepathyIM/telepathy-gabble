@@ -547,8 +547,6 @@ credentials_received_cb (GibberUnixTransport *transport,
                          gpointer user_data)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (user_data);
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-  guint8 byte;
 
   /* Credentials received; reblock the transport */
   gibber_transport_block_receiving (GIBBER_TRANSPORT (transport), TRUE);
@@ -566,13 +564,6 @@ credentials_received_cb (GibberUnixTransport *transport,
     {
       DEBUG ("Got more than one byte (%" G_GSIZE_FORMAT "). Rejecting",
           buffer->length);
-      goto credentials_received_cb_out;
-    }
-
-  byte = g_value_get_uchar (priv->access_control_param);
-  if (byte != buffer->data[0])
-    {
-      DEBUG ("Wrong identification byte received. Rejecting");
       goto credentials_received_cb_out;
     }
 

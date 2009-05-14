@@ -110,6 +110,7 @@ TWISTED_TESTS = \
 	test-caps-hash.py \
 	test-caps-tubes.py \
 	caps_helper.py \
+	connect/multiple-times-to-same-account.py \
 	connect/test-fail.py \
 	connect/test-success.py \
 	connect/test-twice.py \

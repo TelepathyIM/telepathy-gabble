@@ -5,6 +5,8 @@ Dependencies:
 
 Enhancements:
 
+* Implement the Credentials access control with UNIX sockets in stream tubes.
+
 Fixes:
 
 telepathy-gabble 0.7.27 (2009-05-07)

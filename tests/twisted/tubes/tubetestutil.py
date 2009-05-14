@@ -230,14 +230,22 @@ def set_up_echo(q, address_type, block_reading=False):
     factory = EchoFactory(q, block_reading)
     return create_server(q, address_type, factory)
 
-def connect_socket(q, address_type, address):
+def connect_socket(q, address_type, address, access_control, access_control_param):
     factory = EventProtocolClientFactory(q)
     if address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
         reactor.connectUNIX(address, factory)
     elif address_type == cs.SOCKET_ADDRESS_TYPE_IPV4:
         ip, port = address
         assert port > 0
-        reactor.connectTCP(ip, port, factory)
+
+        if access_control == cs.SOCKET_ACCESS_CONTROL_PORT:
+            # connect from the ip/port specified
+            # This means the test will fail if the port is already binded. It
+            # would be better to bind the port before connecting but that's
+            # not easily doable with twisted...
+            reactor.connectTCP(ip, port, factory, bindAddress=access_control_param)
+        else:
+            reactor.connectTCP(ip, port, factory)
     else:
         assert False
 
@@ -294,7 +302,7 @@ def check_new_connection_access(q, access_control, access_control_param, protoco
 def connect_to_cm_socket(q, to, address_type, address, access_control,
     access_control_param):
 
-    connect_socket(q, address_type, address)
+    connect_socket(q, address_type, address, access_control, access_control_param)
 
     if access_control == cs.SOCKET_ACCESS_CONTROL_CREDENTIALS:
         socket_event = q.expect('socket-connected')

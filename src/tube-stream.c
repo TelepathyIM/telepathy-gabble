@@ -49,6 +49,7 @@
 #include <gibber/gibber-tcp-transport.h>
 #include <gibber/gibber-transport.h>
 #include <gibber/gibber-unix-transport.h>
+#include <gibber/gibber-util.h>
 
 #include "bytestream-factory.h"
 #include "bytestream-iface.h"
@@ -613,6 +614,61 @@ check_incoming_connection (GabbleTubeStream *self,
       /* Returns FALSE as we are waiting for credentials so SI can't be
        * started yet. */
       return FALSE;
+    }
+  else if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_PORT)
+    {
+      struct sockaddr_storage addr;
+      socklen_t len = sizeof (addr);
+      int ret;
+      char peer_host[NI_MAXHOST];
+      char peer_port[NI_MAXSERV];
+      guint port;
+      gchar *host;
+      gchar *tmp;
+
+      if (!gibber_transport_get_peeraddr (transport, &addr, &len))
+        {
+          DEBUG ("gibber_transport_get_peeraddr failed");
+          return FALSE;
+        }
+
+      gibber_normalize_address (&addr);
+
+      g_assert (addr.ss_family == AF_INET || addr.ss_family == AF_INET6);
+
+      ret = getnameinfo ((struct sockaddr *) &addr, len,
+          peer_host, NI_MAXHOST, peer_port, NI_MAXSERV,
+          NI_NUMERICHOST | NI_NUMERICSERV);
+
+      if (ret != 0)
+        {
+          DEBUG ("getnameinfo failed: %s", gai_strerror(ret));
+          return FALSE;
+        }
+
+      dbus_g_type_struct_get (priv->access_control_param,
+          0, &host,
+          1, &port,
+          G_MAXUINT);
+
+      if (tp_strdiff (host, peer_host))
+        {
+          DEBUG ("Wrong ip: %s (%s was expected)", peer_host, host);
+          g_free (host);
+          return FALSE;
+        }
+      g_free (host);
+
+      tmp = g_strdup_printf ("%u", port);
+      if (tp_strdiff (tmp, peer_port))
+        {
+          DEBUG ("Wrong port: %s (%u was expected)", peer_port, port);
+          g_free (tmp);
+          return FALSE;
+        }
+      g_free (tmp);
+
+      return TRUE;
     }
   else
     {

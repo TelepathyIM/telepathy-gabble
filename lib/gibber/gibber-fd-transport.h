@@ -87,6 +87,11 @@ GType gibber_fd_transport_get_type (void);
 
 void
 gibber_fd_transport_set_fd (GibberFdTransport *fd_transport, int fd);
+
+GibberFdIOResult gibber_fd_transport_read (GibberFdTransport *transport,
+    GIOChannel *channel,
+    GError **error);
+
 G_END_DECLS
 
 #endif /* #ifndef __GIBBER_FD_TRANSPORT_H__*/

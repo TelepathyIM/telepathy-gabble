@@ -33,6 +33,7 @@
 
 #include "gibber-listener.h"
 #include "gibber-fd-transport.h"
+#include "gibber-unix-transport.h"
 #include "gibber-util.h"
 
 #define DEBUG_FLAG DEBUG_NET
@@ -186,11 +187,10 @@ listener_io_in_cb (GIOChannel *source,
   nfd = accept (fd, (struct sockaddr *) &addr, &addrlen);
   gibber_normalize_address (&addr);
 
-  transport = g_object_new (GIBBER_TYPE_FD_TRANSPORT, NULL);
-  gibber_fd_transport_set_fd (transport, nfd);
-
   if (addr.ss_family == AF_UNIX)
     {
+      transport = GIBBER_FD_TRANSPORT (gibber_unix_transport_new_from_fd (nfd));
+
       /* UNIX sockets doesn't have port */
       ret = getnameinfo ((struct sockaddr *) &addr, addrlen,
           host, NI_MAXHOST, NULL, 0,
@@ -200,6 +200,9 @@ listener_io_in_cb (GIOChannel *source,
     }
   else
     {
+      transport = g_object_new (GIBBER_TYPE_FD_TRANSPORT, NULL);
+      gibber_fd_transport_set_fd (transport, nfd);
+
       ret = getnameinfo ((struct sockaddr *) &addr, addrlen,
           host, NI_MAXHOST, port, NI_MAXSERV,
           NI_NUMERICHOST | NI_NUMERICSERV);

@@ -24,6 +24,16 @@
 
 #include <glib-object.h>
 
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <sys/un.h>
+
 #include "gibber-fd-transport.h"
 
 G_BEGIN_DECLS
@@ -35,6 +45,7 @@ typedef enum
 {
   GIBBER_UNIX_TRANSPORT_ERROR_CONNECT_FAILED,
   GIBBER_UNIX_TRANSPORT_ERROR_FAILED,
+  GIBBER_UNIX_TRANSPORT_ERROR_NO_CREDENTIALS,
 } GibberUnixTransportError;
 
 typedef struct _GibberUnixTransport GibberUnixTransport;
@@ -70,8 +81,30 @@ GType gibber_unix_transport_get_type (void);
 
 GibberUnixTransport * gibber_unix_transport_new (void);
 
+GibberUnixTransport * gibber_unix_transport_new_from_fd (int fd);
+
 gboolean gibber_unix_transport_connect (GibberUnixTransport *transport,
     const gchar *path, GError **error);
+
+gboolean gibber_unix_transport_send_credentials (GibberUnixTransport *transport,
+    const guint8 *data, gsize size);
+
+typedef struct {
+    pid_t pid;
+    uid_t uid;
+    gid_t gid;
+} GibberCredentials;
+
+typedef void (*GibberUnixTransportRecvCredentialsCb) (
+    GibberUnixTransport *transport,
+    GibberBuffer *buffer,
+    GibberCredentials *credentials,
+    GError *error,
+    gpointer user_data);
+
+gboolean gibber_unix_transport_recv_credentials (GibberUnixTransport *transport,
+    GibberUnixTransportRecvCredentialsCb callback,
+    gpointer user_data);
 
 G_END_DECLS
 

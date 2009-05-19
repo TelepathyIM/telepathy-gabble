@@ -285,7 +285,7 @@ def check_new_connection_access(q, access_control, access_control_param, protoco
         # FIXME: check if credentials are actually passed. This is actually
         # really hard to test because Python doesn't implement recvmsg().
         # Twisted's transport abstraction doesn't help either.
-        # Credentials passing in tested in Gibber's tests so not testing it
+        # Credentials passing is tested in Gibber's tests so not testing it
         # here is actually not that bad.
     else:
         assert False

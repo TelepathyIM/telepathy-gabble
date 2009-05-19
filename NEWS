@@ -7,6 +7,11 @@ Enhancements:
 
 * Implement the Credentials access control with UNIX sockets in stream tubes.
 
+* When no resource is explicitly specified, Gabble will now use a randomized
+  resource ("Telepathy.[random numbers]") rather than just "Telepathy". This
+  helps users who don't know anything about XMPP to be able to connect from
+  multiple Telepathy-powered clients at once. (fd.o #21297)
+
 Fixes:
 
 telepathy-gabble 0.7.27 (2009-05-07)

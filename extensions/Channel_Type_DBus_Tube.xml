@@ -104,12 +104,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         participant opens or closes the tube.  This provides change
         notification for the <tp:member-ref>DBusNames</tp:member-ref> property.
       </tp:docstring>
-      <arg name="added" type="a{us}" tp:type="DBus_Tube_Participants">
+      <arg name="Added" type="a{us}" tp:type="DBus_Tube_Participants">
         <tp:docstring>
           Array of handles and D-Bus names of new participants.
         </tp:docstring>
       </arg>
-      <arg name="removed" type="au" tp:type="Contact_Handle[]">
+      <arg name="Removed" type="au" tp:type="Contact_Handle[]">
         <tp:docstring>
           Array of handles of former participants.
         </tp:docstring>

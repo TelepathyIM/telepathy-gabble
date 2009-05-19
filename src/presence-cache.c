@@ -38,6 +38,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
+#include "capabilities.h"
 #include "caps-channel-manager.h"
 #include "caps-hash.h"
 #include "debug.h"
@@ -821,6 +822,174 @@ gabble_presence_cache_update_cache_entry (
       out);
 }
 
+static void _caps_disco_cb (GabbleDisco *disco,
+    GabbleDiscoRequest *request,
+    const gchar *jid,
+    const gchar *node,
+    LmMessageNode *query_result,
+    GError *error,
+    gpointer user_data);
+
+static void
+redisco (GabblePresenceCache *cache,
+    GabbleDisco *disco,
+    DiscoWaiter *waiter,
+    const gchar *node)
+{
+  const gchar *waiter_jid;
+  gchar *full_jid;
+
+  waiter_jid = tp_handle_inspect (waiter->repo, waiter->handle);
+  full_jid = g_strdup_printf ("%s/%s", waiter_jid, waiter->resource);
+
+  gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
+      node, _caps_disco_cb, cache, G_OBJECT (cache), NULL);
+  waiter->disco_requested = TRUE;
+
+  g_free (full_jid);
+}
+
+static void
+disco_failed (GabblePresenceCache *cache,
+    GabbleDisco *disco,
+    const gchar *node,
+    GSList *waiters)
+{
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GSList *i;
+  DiscoWaiter *waiter = NULL;
+  gchar *full_jid = NULL;
+
+  for (i = waiters; NULL != i; i = i->next)
+    {
+      waiter = (DiscoWaiter *) i->data;
+
+      if (!waiter->disco_requested)
+        {
+          redisco (cache, disco, waiter, node);
+          break;
+        }
+    }
+
+  if (NULL != i)
+    {
+      DEBUG ("sent a retry disco request to %s for URI %s", full_jid, node);
+    }
+  else
+    {
+      /* The contact sends us an error and we don't have any other
+       * contacts to send the discovery request on the same node. We
+       * cannot get the caps for this node. */
+      DEBUG ("failed to find a suitable candidate to retry disco "
+          "request for URI %s", node);
+      g_hash_table_remove (priv->disco_pending, node);
+    }
+
+  g_free (full_jid);
+}
+
+static DiscoWaiter *
+find_matching_waiter (GSList *waiters,
+    TpHandle handle)
+{
+  GSList *i;
+
+  for (i = waiters; NULL != i; i = i->next)
+    {
+      DiscoWaiter *waiter = i->data;
+
+      if (waiter->handle == handle)
+        return waiter;
+    }
+
+  return NULL;
+}
+
+static GHashTable *
+parse_contact_caps (TpBaseConnection *base_conn,
+    LmMessageNode *query_result)
+{
+  GHashTable *per_channel_manager_caps = g_hash_table_new (NULL, NULL);
+  TpChannelManagerIter iter;
+  TpChannelManager *manager;
+
+  tp_base_connection_channel_manager_iter_init (&iter, base_conn);
+
+  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
+    {
+      gpointer factory_caps;
+
+      /* all channel managers must implement the capability interface */
+      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
+
+      factory_caps = gabble_caps_channel_manager_parse_capabilities (
+          GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result->children);
+
+      if (factory_caps != NULL)
+        g_hash_table_insert (per_channel_manager_caps,
+            GABBLE_CAPS_CHANNEL_MANAGER (manager), factory_caps);
+    }
+
+  return per_channel_manager_caps;
+}
+
+static void
+emit_capabilities_update (GabblePresenceCache *cache,
+    TpHandle handle,
+    GabblePresenceCapabilities old_caps,
+    GabblePresenceCapabilities new_caps,
+    GHashTable *old_enhanced_caps,
+    GHashTable *new_enhanced_caps)
+{
+  g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
+      handle, old_caps, new_caps, old_enhanced_caps, new_enhanced_caps);
+}
+
+/**
+ * set_caps_for:
+ *
+ * Sets caps for @waiter to (@caps, @per_channel_manager_caps), having received
+ * a trusted reply from @responder_{handle,jid}.
+ */
+static void
+set_caps_for (DiscoWaiter *waiter,
+    GabblePresenceCache *cache,
+    GabblePresenceCapabilities caps,
+    GHashTable *per_channel_manager_caps,
+    TpHandle responder_handle,
+    const gchar *responder_jid)
+{
+  GabblePresence *presence = gabble_presence_cache_get (cache, waiter->handle);
+  GabblePresenceCapabilities save_caps;
+  GHashTable *save_enhanced_caps;
+
+  if (presence == NULL)
+    return;
+
+  save_caps = presence->caps;
+  gabble_presence_cache_copy_cache_entry (&save_enhanced_caps,
+      presence->per_channel_manager_caps);
+
+  DEBUG ("setting caps for %d (thanks to %d %s) to %d (save_caps %d)",
+      waiter->handle, responder_handle, responder_jid, caps, save_caps);
+
+  gabble_presence_set_capabilities (presence, waiter->resource,
+      caps, per_channel_manager_caps, waiter->serial);
+
+  DEBUG ("caps for %d now %d", waiter->handle, presence->caps);
+
+  emit_capabilities_update (cache, waiter->handle, save_caps, presence->caps,
+      save_enhanced_caps, presence->per_channel_manager_caps);
+  gabble_presence_cache_free_cache_entry (save_enhanced_caps);
+}
+
+static void
+emit_capabilities_discovered (GabblePresenceCache *cache,
+    TpHandle handle)
+{
+  g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, handle);
+}
+
 static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
@@ -832,25 +1001,21 @@ _caps_disco_cb (GabbleDisco *disco,
 {
   GSList *waiters, *i;
   DiscoWaiter *waiter_self;
-  LmMessageNode *child;
   GabblePresenceCache *cache;
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
-  gchar *full_jid = NULL;
   GabblePresenceCapabilities caps = 0;
   GHashTable *per_channel_manager_caps;
-  guint trust, trust_inc;
+  guint trust;
   TpHandle handle = 0;
   gboolean bad_hash = FALSE;
   TpBaseConnection *base_conn;
-  TpChannelManagerIter iter;
-  TpChannelManager *manager;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   base_conn = TP_BASE_CONNECTION (priv->conn);
-  contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  contact_repo = tp_base_connection_get_handles (base_conn,
+      TP_HANDLE_TYPE_CONTACT);
 
   if (NULL == node)
     {
@@ -862,144 +1027,31 @@ _caps_disco_cb (GabbleDisco *disco,
 
   if (NULL != error)
     {
-      DiscoWaiter *waiter = NULL;
-
       DEBUG ("disco query failed: %s", error->message);
 
-      for (i = waiters; NULL != i; i = i->next)
-        {
-          waiter = (DiscoWaiter *) i->data;
+      disco_failed (cache, disco, node, waiters);
 
-          if (!waiter->disco_requested)
-            {
-              const gchar *waiter_jid;
-
-              waiter_jid = tp_handle_inspect (contact_repo, waiter->handle);
-              full_jid = g_strdup_printf ("%s/%s", waiter_jid,
-                  waiter->resource);
-
-              gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
-                  node, _caps_disco_cb, cache, G_OBJECT(cache), NULL);
-              waiter->disco_requested = TRUE;
-              break;
-            }
-        }
-
-      if (NULL != i)
-        {
-          DEBUG ("sent a retry disco request to %s for URI %s", full_jid,
-              node);
-        }
-      else
-        {
-          /* The contact sends us an error and we don't have any other
-           * contacts to send the discovery request on the same node. We
-           * cannot get the caps for this node. */
-          DEBUG ("failed to find a suitable candidate to retry disco "
-              "request for URI %s", node);
-          g_hash_table_remove (priv->disco_pending, node);
-        }
-
-      goto OUT;
-    }
-
-  per_channel_manager_caps = g_hash_table_new (NULL, NULL);
-
-  /* parsing for Connection.Interface.ContactCapabilities.DRAFT */
-  tp_base_connection_channel_manager_iter_init (&iter, base_conn);
-  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
-    {
-      gpointer *factory_caps;
-
-      /* all channel managers must implement the capability interface */
-      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
-
-      factory_caps = gabble_caps_channel_manager_parse_capabilities
-          (GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result->children);
-      if (factory_caps != NULL)
-        g_hash_table_insert (per_channel_manager_caps,
-            GABBLE_CAPS_CHANNEL_MANAGER (manager), factory_caps);
-    }
-
-  /* parsing for Connection.Interface.Capabilities*/
-  for (child = query_result->children; NULL != child; child = child->next)
-    {
-      const gchar *var;
-
-      if (0 != strcmp (child->name, "feature"))
-        continue;
-
-      var = lm_message_node_get_attribute (child, "var");
-
-      if (NULL == var)
-        continue;
-
-      /* TODO: use a table that equates disco features to caps */
-      if (0 == strcmp (var, NS_GOOGLE_TRANSPORT_P2P))
-        caps |= PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
-      else if (0 == strcmp (var, NS_GOOGLE_FEAT_VOICE))
-        caps |= PRESENCE_CAP_GOOGLE_VOICE;
-      else if (0 == strcmp (var, NS_JINGLE015))
-        caps |= PRESENCE_CAP_JINGLE015;
-      else if (0 == strcmp (var, NS_JINGLE_DESCRIPTION_AUDIO))
-        caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
-      else if (0 == strcmp (var, NS_JINGLE_DESCRIPTION_VIDEO))
-        caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
-      else if (0 == strcmp (var, NS_CHAT_STATES))
-        caps |= PRESENCE_CAP_CHAT_STATES;
-      else if (0 == strcmp (var, NS_SI))
-        caps |= PRESENCE_CAP_SI;
-      else if (0 == strcmp (var, NS_BYTESTREAMS))
-        caps |= PRESENCE_CAP_BYTESTREAMS;
-      else if (0 == strcmp (var, NS_IBB))
-        caps |= PRESENCE_CAP_IBB;
-      else if (0 == strcmp (var, NS_TUBES))
-        caps |= PRESENCE_CAP_SI_TUBES;
-      else if (!tp_strdiff (var, NS_OLPC_BUDDY_PROPS "+notify") ||
-          !tp_strdiff (var, NS_OLPC_ACTIVITIES "+notify") ||
-          !tp_strdiff (var, NS_OLPC_CURRENT_ACTIVITY "+notify") ||
-          !tp_strdiff (var, NS_OLPC_ACTIVITY_PROPS "+notify"))
-        caps |= PRESENCE_CAP_OLPC_1;
-      else if (!tp_strdiff (var, NS_JINGLE_RTP))
-        caps |= PRESENCE_CAP_JINGLE_RTP;
-      else if (!tp_strdiff (var, NS_JINGLE032))
-        caps |= PRESENCE_CAP_JINGLE032;
-      else if (!tp_strdiff (var, NS_JINGLE_TRANSPORT_ICE))
-        caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICE;
-      else if (!tp_strdiff (var, NS_JINGLE_TRANSPORT_RAWUDP))
-        caps |= PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP;
-      else if (0 == strcmp (var, NS_FILE_TRANSFER))
-        caps |= PRESENCE_CAP_SI_FILE_TRANSFER;
+      return;
     }
 
   handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+
   if (handle == 0)
     {
       DEBUG ("Ignoring presence from invalid JID %s", jid);
-      gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
-      per_channel_manager_caps = NULL;
-      goto OUT;
+      return;
     }
 
-  waiter_self = NULL;
-  for (i = waiters; NULL != i;  i = i->next)
-    {
-      DiscoWaiter *waiter;
+  waiter_self = find_matching_waiter (waiters, handle);
 
-      waiter = (DiscoWaiter *) i->data;
-      if (waiter->handle == handle)
-        {
-          waiter_self = waiter;
-          break;
-        }
-    }
   if (NULL == waiter_self)
     {
       DEBUG ("Ignoring non requested disco reply");
-      gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
-      per_channel_manager_caps = NULL;
       goto OUT;
     }
+
+  caps = capabilities_parse (query_result);
+  per_channel_manager_caps = parse_contact_caps (base_conn, query_result);
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
    * uses another hash algorithm, don't check the hash and fallback to the old
@@ -1009,20 +1061,19 @@ _caps_disco_cb (GabbleDisco *disco,
   if (!tp_strdiff (waiter_self->hash, "sha-1"))
     {
       gchar *computed_hash;
-      trust_inc = CAPABILITY_BUNDLE_ENOUGH_TRUST;
 
       computed_hash = caps_hash_compute_from_lm_node (query_result);
 
       if (g_str_equal (waiter_self->ver, computed_hash))
         {
           trust = capability_info_recvd (cache, node, handle, caps,
-              per_channel_manager_caps, trust_inc);
+              per_channel_manager_caps, CAPABILITY_BUNDLE_ENOUGH_TRUST);
         }
       else
         {
-          /* The received reply does not match the */
-          DEBUG ("The announced verification string '%s' does not match "
-              "our hash '%s'.", waiter_self->ver, computed_hash);
+          DEBUG ("The verification string '%s' announced by '%s' does not "
+              "match our hash of their disco reply '%s'.", waiter_self->ver,
+              jid, computed_hash);
           trust = 0;
           bad_hash = TRUE;
           gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
@@ -1033,111 +1084,70 @@ _caps_disco_cb (GabbleDisco *disco,
     }
   else
     {
-      trust_inc = 1;
-      trust = capability_info_recvd (cache, node, handle, caps, NULL,
-          trust_inc);
-
-      /* Do not allow tubes caps if the contact does not observe XEP-0115
-       * version 1.5: we don't need to bother being compatible with both version
-       * 1.3 and tubes caps */
-      gabble_presence_cache_free_cache_entry (per_channel_manager_caps);
-      per_channel_manager_caps = NULL;
-    }
-
-  for (i = waiters; NULL != i;)
-    {
-      DiscoWaiter *waiter;
-      GabblePresence *presence;
-
-      waiter = (DiscoWaiter *) i->data;
-
-      if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST || waiter->handle == handle)
-        {
-          GSList *tmp;
-          gpointer key;
-          gpointer value;
-
-          if (!bad_hash)
-            {
-              /* trusted reply */
-              presence = gabble_presence_cache_get (cache, waiter->handle);
-
-              if (presence)
-              {
-                GabblePresenceCapabilities save_caps = presence->caps;
-                GHashTable *save_enhanced_caps;
-                gabble_presence_cache_copy_cache_entry (&save_enhanced_caps,
-                    presence->per_channel_manager_caps);
-
-                DEBUG ("setting caps for %d (thanks to %d %s) to "
-                    "%d (save_caps %d)",
-                    waiter->handle, handle, jid, caps, save_caps);
-                gabble_presence_set_capabilities (presence, waiter->resource,
-                    caps, per_channel_manager_caps, waiter->serial);
-                DEBUG ("caps for %d (thanks to %d %s) now %d", waiter->handle,
-                    handle, jid, presence->caps);
-                g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-                  waiter->handle, save_caps, presence->caps,
-                  save_enhanced_caps, presence->per_channel_manager_caps);
-                gabble_presence_cache_free_cache_entry (save_enhanced_caps);
-              }
-            }
-
-          tmp = i;
-          i = i->next;
-
-          waiters = g_slist_delete_link (waiters, tmp);
-
-          if (!g_hash_table_lookup_extended (priv->disco_pending, node, &key,
-                &value))
-            g_assert_not_reached ();
-
-          g_hash_table_steal (priv->disco_pending, node);
-          g_hash_table_insert (priv->disco_pending, key, waiters);
-
-          g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, waiter->handle);
-          disco_waiter_free (waiter);
-        }
-      else if (trust + disco_waiter_list_get_request_count (waiters) - trust_inc
-          < CAPABILITY_BUNDLE_ENOUGH_TRUST)
-        {
-          /* if the possible trust, not counting this guy, is too low,
-           * we have been poisoned and reset our trust meters - disco
-           * anybody we still haven't to be able to get more trusted replies */
-
-          if (!waiter->disco_requested)
-            {
-              const gchar *waiter_jid;
-
-              waiter_jid = tp_handle_inspect (contact_repo, waiter->handle);
-              full_jid = g_strdup_printf ("%s/%s", waiter_jid,
-                  waiter->resource);
-
-              gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
-                  node, _caps_disco_cb, cache, G_OBJECT(cache), NULL);
-              waiter->disco_requested = TRUE;
-
-              g_free (full_jid);
-              full_jid = NULL;
-            }
-
-          i = i->next;
-        }
-      else
-        {
-          /* trust level still uncertain, don't do nothing */
-          i = i->next;
-        }
+      trust = capability_info_recvd (cache, node, handle, caps,
+          per_channel_manager_caps, 1);
     }
 
   if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
-    g_hash_table_remove (priv->disco_pending, node);
+    {
+      /* We trust this caps node. Serve all its waiters. */
+      for (i = waiters; NULL != i; i = i->next)
+        {
+          DiscoWaiter *waiter = (DiscoWaiter *) i->data;
+
+          set_caps_for (waiter, cache, caps, per_channel_manager_caps, handle,
+              jid);
+          emit_capabilities_discovered (cache, waiter->handle);
+        }
+
+      g_hash_table_remove (priv->disco_pending, node);
+    }
+  else
+    {
+      gpointer key;
+      /* We don't trust this yet (either the hash was bad, or we haven't had
+       * enough responses, as appropriate).
+       */
+
+      /* Set caps for the contact that replied (if the hash was correct) and
+       * remove them from the list of waiters.
+       * FIXME I think we should respect the caps, even if the hash is wrong,
+       *       for the jid that answered the query.
+       */
+      if (!bad_hash)
+        set_caps_for (waiter_self, cache, caps, per_channel_manager_caps,
+            handle, jid);
+
+      waiters = g_slist_remove (waiters, waiter_self);
+
+      if (!g_hash_table_lookup_extended (priv->disco_pending, node, &key, NULL))
+        g_assert_not_reached ();
+
+      g_hash_table_steal (priv->disco_pending, key);
+      g_hash_table_insert (priv->disco_pending, key, waiters);
+
+      emit_capabilities_discovered (cache, waiter_self->handle);
+      disco_waiter_free (waiter_self);
+
+      /* Ensure that we have enough pending requests to get enough trust for
+       * this node.
+       */
+      for (i = waiters; i != NULL; i = i->next)
+        {
+          DiscoWaiter *waiter = (DiscoWaiter *) i->data;
+
+          if (trust + disco_waiter_list_get_request_count (waiters)
+              >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
+            break;
+
+          if (!waiter->disco_requested)
+            redisco (cache, disco, waiter, node);
+        }
+    }
 
 OUT:
-
   if (handle)
     tp_handle_unref (contact_repo, handle);
-  g_free (full_jid);
 }
 
 static void
@@ -1276,9 +1286,8 @@ _process_caps (GabblePresenceCache *cache,
       DEBUG ("Emitting caps update: handle %u, old %u, new %u",
           handle, old_caps, presence->caps);
 
-      g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-          handle, old_caps, presence->caps, old_enhanced_caps,
-          presence->per_channel_manager_caps);
+      emit_capabilities_update (cache, handle, old_caps, presence->caps,
+          old_enhanced_caps, presence->per_channel_manager_caps);
       gabble_presence_cache_free_cache_entry (old_enhanced_caps);
     }
   else
@@ -1571,9 +1580,8 @@ gabble_presence_cache_do_update (
   ret = gabble_presence_update (presence, resource, presence_id,
       status_message, priority);
 
-  g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0, handle,
-      caps_before, presence->caps, enhanced_caps_before,
-      presence->per_channel_manager_caps);
+  emit_capabilities_update (cache, handle, caps_before, presence->caps,
+      enhanced_caps_before, presence->per_channel_manager_caps);
   gabble_presence_cache_free_cache_entry (enhanced_caps_before);
 
   return ret;

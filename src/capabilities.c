@@ -21,10 +21,15 @@
 #include "config.h"
 #include "capabilities.h"
 
+#include <string.h>
+
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-manager.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
+
 #include "caps-channel-manager.h"
+#include "debug.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "media-channel.h"
@@ -50,6 +55,10 @@ static const Feature self_advertised_features[] =
   { FEATURE_OPTIONAL, NS_JINGLE_DESCRIPTION_VIDEO,
     PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO},
   { FEATURE_OPTIONAL, NS_JINGLE_RTP, PRESENCE_CAP_JINGLE_RTP},
+  { FEATURE_OPTIONAL, NS_JINGLE_TRANSPORT_ICE,
+      PRESENCE_CAP_JINGLE_TRANSPORT_ICE },
+  { FEATURE_OPTIONAL, NS_JINGLE_TRANSPORT_RAWUDP,
+      PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP },
 
   { FEATURE_OPTIONAL, NS_OLPC_BUDDY_PROPS "+notify", PRESENCE_CAP_OLPC_1},
   { FEATURE_OPTIONAL, NS_OLPC_ACTIVITIES "+notify", PRESENCE_CAP_OLPC_1},
@@ -88,6 +97,40 @@ capabilities_get_features (GabblePresenceCapabilities caps,
     }
 
   return features;
+}
+
+GabblePresenceCapabilities
+capabilities_parse (LmMessageNode *query_result)
+{
+  GabblePresenceCapabilities ret = PRESENCE_CAP_NONE;
+  LmMessageNode *child;
+  const gchar *var;
+  const Feature *i;
+
+  for (child = query_result->children; NULL != child; child = child->next)
+    {
+      if (0 != strcmp (child->name, "feature"))
+        continue;
+
+      var = lm_message_node_get_attribute (child, "var");
+
+      if (NULL == var)
+        continue;
+
+      for (i = self_advertised_features; i->ns != NULL; i++)
+        {
+          if (0 == strcmp (var, i->ns))
+            {
+              ret |= i->caps;
+              break;
+            }
+        }
+
+      if (i->ns == NULL)
+        DEBUG ("ignoring unknown capability %s", var);
+    }
+
+  return ret;
 }
 
 void

@@ -98,9 +98,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         </tp:docstring>
       </arg>
       <arg direction="in" name="access_control" type="u" tp:type="Socket_Access_Control">
-        <tp:docstring>
-          The type of access control the connection manager should apply to
-          the socket.
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>The type of access control the connection manager should apply to
+          the socket.</p>
+
+          <p>Note that if you plan to establish more than one connection
+          through the tube, the Socket_Access_Control_Port access control
+          can't be used as you can't connect more than once from the same
+          port.</p>
         </tp:docstring>
       </arg>
       <arg direction="in" name="access_control_param" type="v">
@@ -142,18 +147,23 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
           The handle of the participant who opened the new connection
         </tp:docstring>
       </arg>
-      <arg name="access_control_param" type="v">
-        <tp:docstring>
-          <p>A parameter for the access control type, to be interpreted as
-          specified in the documentation for the Socket_Access_Control
-          enum.</p>
-
-          <p>This parameter can be used by the listening process to identify
+      <arg name="connection_param" type="v">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>A parameter which can be used by the listening process to identify
           the connection. Note that this parameter has a meaningful value
           only in the Socket_Access_Control_Port and
           Socket_Access_Control_Credentials cases. If a different
           Socket_Access_Control has been choosed when offering the tube, this
           parameter should be ignored.</p>
+
+          <p>In the Socket_Access_Control_Port case, the variant
+          contains a struct Socket_Address_IPv4 (or Socket_Address_IPv6)
+          containing the address from which the CM is connected to the client
+          application.</p>
+
+          <p>In the Socket_Access_Control_Credentials case, the variant
+          contains the byte (D-Bus signature 'y') that has been sent with
+          the credentials.</p>
         </tp:docstring>
       </arg>
     </signal>

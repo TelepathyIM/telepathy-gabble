@@ -654,7 +654,7 @@ gabble_media_stream_dispose (GObject *object)
       priv->initial_getter_id = 0;
     }
 
-  _gabble_media_stream_close (self);
+  gabble_media_stream_close (self);
 
   priv->dispose_has_run = TRUE;
 
@@ -1261,7 +1261,7 @@ gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
 }
 
 void
-_gabble_media_stream_close (GabbleMediaStream *stream)
+gabble_media_stream_close (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
 
@@ -1612,7 +1612,7 @@ remote_state_changed_cb (GabbleJingleMediaRtp *rtp,
 static void
 content_removed_cb (GabbleJingleContent *content, GabbleMediaStream *stream)
 {
-  _gabble_media_stream_close (stream);
+  gabble_media_stream_close (stream);
 }
 
 

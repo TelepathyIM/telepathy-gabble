@@ -42,7 +42,7 @@ struct _GabbleMediaChannelPrivate
 
   GabbleJingleSession *session;
 
-  /* array of referenced GabbleMediaStream* */
+  /* array of referenced GabbleMediaStream*.  Always non-NULL. */
   GPtrArray *streams;
   /* list of PendingStreamRequest* in no particular order */
   GList *pending_stream_requests;

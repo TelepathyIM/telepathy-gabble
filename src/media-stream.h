@@ -88,7 +88,7 @@ GType gabble_media_stream_get_type (void);
 gboolean gabble_media_stream_error (GabbleMediaStream *self, guint errno,
     const gchar *message, GError **error);
 
-void _gabble_media_stream_close (GabbleMediaStream *close);
+void gabble_media_stream_close (GabbleMediaStream *close);
 void gabble_media_stream_hold (GabbleMediaStream *stream, gboolean hold);
 gboolean gabble_media_stream_change_direction (GabbleMediaStream *stream,
     guint requested_dir, GError **error);

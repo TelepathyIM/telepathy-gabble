@@ -800,7 +800,7 @@ transport_connected_data_free (transport_connected_data *data)
 }
 
 static void
-fire_new_connection (GabbleTubeStream *self,
+fire_new_remote_connection (GabbleTubeStream *self,
     GibberTransport *transport,
     TpHandle contact)
 {
@@ -832,8 +832,9 @@ fire_new_connection (GabbleTubeStream *self,
     }
 
   /* fire NewConnection D-Bus signal */
-  gabble_svc_channel_type_stream_tube_emit_new_connection (self,
-      contact, &access_control_param);
+  /* FIXME: set the right ID of the connection */
+  gabble_svc_channel_type_stream_tube_emit_new_remote_connection (self,
+      contact, &access_control_param, 0);
   g_value_unset (&access_control_param);
 }
 
@@ -841,7 +842,7 @@ static void
 transport_connected_cb (GibberTransport *transport,
     transport_connected_data *data)
 {
-  fire_new_connection (data->self, transport, data->contact);
+  fire_new_remote_connection (data->self, transport, data->contact);
 }
 
 static GibberTransport *
@@ -1894,7 +1895,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
 
       if (gibber_transport_get_state (transport) == GIBBER_TRANSPORT_CONNECTED)
         {
-          fire_new_connection (self, transport, contact);
+          fire_new_remote_connection (self, transport, contact);
         }
       else
         {

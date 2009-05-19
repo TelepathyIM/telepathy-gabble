@@ -319,10 +319,10 @@ def test(q, bus, conn, stream, bytestream_cls,
     iq_event, socket_event, conn_event = q.expect_many(
         EventPattern('stream-iq', iq_type='result'),
         EventPattern('socket-connected'),
-        EventPattern('dbus-signal', signal='NewConnection',
+        EventPattern('dbus-signal', signal='NewRemoteConnection',
             interface=cs.CHANNEL_TYPE_STREAM_TUBE))
 
-    handle, access = conn_event.args
+    handle, access, id = conn_event.args
     assert handle == bob_handle
 
     protocol = socket_event.protocol

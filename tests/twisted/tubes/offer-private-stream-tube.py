@@ -332,7 +332,7 @@ def test(q, bus, conn, stream, bytestream_cls,
                 args=[stream_tube_id, cs.TUBE_STATE_OPEN]),
             EventPattern('dbus-signal', signal='StreamTubeNewConnection',
                 args=[stream_tube_id, bob_handle]),
-            EventPattern('dbus-signal', signal='NewConnection'),
+            EventPattern('dbus-signal', signal='NewRemoteConnection'),
             EventPattern('socket-connected'))
 
     bytestream1.check_si_reply(si_reply_event.stanza)
@@ -340,7 +340,7 @@ def test(q, bus, conn, stream, bytestream_cls,
         si_reply_event.stanza)
     assert len(tube) == 1
 
-    handle, access = new_conn_event.args
+    handle, access, id = new_conn_event.args
     assert handle == bob_handle
     protocol = socket_event.protocol
     # we don't want to echo the access control byte
@@ -370,7 +370,7 @@ def test(q, bus, conn, stream, bytestream_cls,
             EventPattern('stream-iq', iq_type='result'),
             EventPattern('dbus-signal', signal='TubeChannelStateChanged',
                 args=[cs.TUBE_STATE_OPEN]),
-            EventPattern('dbus-signal', signal='NewConnection'),
+            EventPattern('dbus-signal', signal='NewRemoteConnection'),
             EventPattern('socket-connected'))
 
     bytestream2.check_si_reply(si_reply_event.stanza)
@@ -378,7 +378,7 @@ def test(q, bus, conn, stream, bytestream_cls,
         si_reply_event.stanza)
     assert len(tube) == 1
 
-    handle, access = new_conn_event.args
+    handle, access, id = new_conn_event.args
     assert handle == bob_handle
     protocol = socket_event.protocol
     # we don't want to echo the access control byte

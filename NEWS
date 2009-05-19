@@ -14,6 +14,8 @@ Enhancements:
 
 Fixes:
 
+* fd.o #21684: Don't crash in SessionHandler.Ready() if streams is NULL
+
 telepathy-gabble 0.7.27 (2009-05-07)
 ====================================
 

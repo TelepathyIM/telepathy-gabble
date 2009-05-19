@@ -3,8 +3,8 @@
 Test PEP alias support.
 """
 
-from servicetest import call_async, EventPattern, assertEquals
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from servicetest import call_async, EventPattern, assertEquals, assertLength
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, elem
 
 import constants as cs
 import ns
@@ -42,6 +42,31 @@ def test(q, bus, conn, stream):
 
     # A second request should be satisfied from the cache.
     assertEquals(['Bobby'], conn.Aliasing.RequestAliases([handle]))
+
+    # Bobby grows up, decides he hates his nickname.
+    # This is a regression test for
+    # <https://bugs.freedesktop.org/show_bug.cgi?id=21817>, where this would
+    # crash Gabble.
+    message = elem('message')(
+        elem((ns.PUBSUB + "#event"), 'event')(
+            elem('items', node=ns.NICK)(
+                elem('item')(
+                    elem(ns.NICK, 'nick')
+                )
+            )
+        )
+    )
+    message['from'] = 'bob@foo.com' # thanks, Python
+    stream.send(message.toXml())
+
+    event = q.expect('dbus-signal', signal='AliasesChanged')
+    aliases = event.args[0]
+    assertLength(1, aliases)
+    h, a = aliases[0]
+    assertEquals(handle, h)
+    # The contact explicitly cleared their PEP nick; Gabble should fall back to
+    # their JID.
+    assertEquals(a, 'bob@foo.com')
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged',

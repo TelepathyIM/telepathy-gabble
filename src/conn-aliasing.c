@@ -607,14 +607,23 @@ _grab_nickname (GabbleConnection *self,
       _cache_negatively (self, handle);
       return FALSE;
     }
-  nickname = lm_message_node_get_value (node);
 
+  nickname = lm_message_node_get_value (node);
   old = tp_handle_get_qdata (contact_handles, handle, quark);
 
   if (tp_strdiff (old, nickname))
     {
-      tp_handle_set_qdata (contact_handles, handle, quark, g_strdup (nickname),
-          g_free);
+      if (nickname == NULL)
+        {
+          DEBUG ("got empty <nick/> node, caching as NO_ALIAS");
+          _cache_negatively (self, handle);
+        }
+      else
+        {
+          tp_handle_set_qdata (contact_handles, handle, quark, g_strdup (nickname),
+              g_free);
+        }
+
       gabble_conn_aliasing_nickname_updated ((GObject *) self, handle, self);
     }
   return TRUE;

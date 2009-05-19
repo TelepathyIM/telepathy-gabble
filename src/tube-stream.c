@@ -180,6 +180,10 @@ struct _GabbleTubeStreamPrivate
    */
   GHashTable *transport_to_bytestream;
 
+  /* (GibberTransport *) -> guint */
+  GHashTable *transport_to_id;
+  guint last_connection_id;
+
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
@@ -288,6 +292,7 @@ remove_transport (GabbleTubeStream *self,
   g_hash_table_remove (priv->transport_to_bytestream, transport);
 
   g_hash_table_remove (priv->bytestream_to_transport, bytestream);
+  g_hash_table_remove (priv->transport_to_id, transport);
 }
 
 static void
@@ -538,6 +543,20 @@ start_stream_initiation (GabbleTubeStream *self,
   g_free (id_str);
 
   return result;
+}
+
+static guint
+generate_connection_id (GabbleTubeStream *self,
+                        GibberTransport *transport)
+{
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+
+  priv->last_connection_id++;
+
+  g_hash_table_insert (priv->transport_to_id, transport,
+      GUINT_TO_POINTER (priv->last_connection_id));
+
+  return priv->last_connection_id;
 }
 
 static void
@@ -806,6 +825,7 @@ fire_new_remote_connection (GabbleTubeStream *self,
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GValue access_control_param = {0,};
+  guint connection_id;
 
   if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_CREDENTIALS)
     {
@@ -832,9 +852,13 @@ fire_new_remote_connection (GabbleTubeStream *self,
     }
 
   /* fire NewConnection D-Bus signal */
-  /* FIXME: set the right ID of the connection */
+
+  connection_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->transport_to_id,
+        transport));
+  g_assert (connection_id != 0);
+
   gabble_svc_channel_type_stream_tube_emit_new_remote_connection (self,
-      contact, &access_control_param, 0);
+      contact, &access_control_param, connection_id);
   g_value_unset (&access_control_param);
 }
 
@@ -895,6 +919,8 @@ new_connection_to_socket (GabbleTubeStream *self,
   /* Block the transport while there is no open bytestream to transfer
    * its data. */
   gibber_transport_block_receiving (transport, TRUE);
+
+  generate_connection_id (self, transport);
 
   g_hash_table_insert (priv->bytestream_to_transport, g_object_ref (bytestream),
       g_object_ref (transport));
@@ -1031,6 +1057,10 @@ gabble_tube_stream_init (GabbleTubeStream *self)
       g_direct_equal, (GDestroyNotify) g_object_unref,
       (GDestroyNotify) g_object_unref);
 
+  priv->transport_to_id = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, NULL);
+  priv->last_connection_id = 0;
+
   priv->address_type = TP_SOCKET_ADDRESS_TYPE_UNIX;
   priv->address = NULL;
   priv->access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
@@ -1113,6 +1143,12 @@ gabble_tube_stream_dispose (GObject *object)
     {
       g_hash_table_destroy (priv->bytestream_to_transport);
       priv->bytestream_to_transport = NULL;
+    }
+
+  if (priv->transport_to_id != NULL)
+    {
+      g_hash_table_destroy (priv->transport_to_id);
+      priv->transport_to_id = NULL;
     }
 
   tp_handle_unref (contact_repo, priv->initiator);

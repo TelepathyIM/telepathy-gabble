@@ -122,8 +122,7 @@ static TpCMParamSpec jabber_params[] = {
     /* FIXME: validate the server properly */
     tp_cm_param_filter_string_nonempty, NULL },
 
-  { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GABBLE_PARAMS_DEFAULT_RESOURCE,
+  { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
     G_STRUCT_OFFSET(GabbleParams, resource),
     /* FIXME: validate the resource according to the RFC */
     tp_cm_param_filter_string_nonempty, NULL },

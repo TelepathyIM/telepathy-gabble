@@ -81,6 +81,9 @@ class Bytestream(object):
     def check_si_offer(self, iq, bytestreams):
         assert self.get_ns() in bytestreams
 
+    def close(self):
+        raise NotImplemented
+
 ##### XEP-0095: Stream Initiation #####
 
     def _create_si_offer(self, profile, to=None):
@@ -382,6 +385,9 @@ class BytestreamS5B(Bytestream):
         error['code'] = '404'
         self.stream.send(iq)
 
+    def close(self):
+        self.transport.loseConnection()
+
 class BytestreamS5BPidgin(BytestreamS5B):
     """Simulate buggy S5B implementation (as Pidgin's one)"""
     def _send_connect_reply(self):
@@ -668,6 +674,19 @@ class BytestreamIBB(Bytestream):
         acknowledge_iq(self.stream, close_event.stanza)
         return events
 
+    def close(self):
+        if self.initiated:
+            from_ = self.initiator
+            to = self.target
+        else:
+            from_ = self.target
+            to = self.initiator
+
+        iq = elem_iq(self.stream, 'set', from_=from_, to=to, id=str(id))(
+            elem('close', xmlns=ns.IBB, sid=self.stream_id)())
+
+        self.stream.send(iq)
+
 class BytestreamIBBMsg(BytestreamIBB):
     def _send(self, from_, to, data):
         message = domish.Element(('jabber:client', 'message'))
@@ -790,6 +809,9 @@ class BytestreamSIFallback(Bytestream):
             '/iq/si[@xmlns="%s"]/si-multiple[@xmlns="%s"]'
             % (ns.SI, ns.SI_MULTIPLE), iq)
         assert si_multiple is not None
+
+    def close(self):
+        return self.used.close()
 
 class BytestreamSIFallbackS5CannotConnect(BytestreamSIFallback):
     """Try to use SOCKS5 and fallback to IBB because the target can't connect

@@ -17,6 +17,7 @@ MUC = 'http://jabber.org/protocol/muc'
 MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
 MUC_OWNER = '%s#owner' % MUC
 MUC_USER = '%s#user' % MUC
+NICK = "http://jabber.org/protocol/nick"
 OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
 OLPC_ACTIVITIES_NOTIFY = "%s+notify" % OLPC_ACTIVITIES
 OLPC_ACTIVITY = "http://laptop.org/xmpp/activity"

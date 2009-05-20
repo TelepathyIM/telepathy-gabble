@@ -11,7 +11,7 @@ Receives several tube offers:
 import dbus
 
 from servicetest import call_async, EventPattern, sync_dbus
-from gabbletest import acknowledge_iq
+from gabbletest import acknowledge_iq, send_error_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -256,6 +256,14 @@ def test(q, bus, conn, stream, bytestream_cls,
     # peer closes the bytestream
     bytestream.close()
     q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
+
+    # establish another tube connection
+    event_socket, si_event, conn_id = t.connect_to_cm_socket(q, bob_jid,
+    address_type, socket_address, access_control, access_control_param)
+
+    # bytestream is refused
+    send_error_reply(stream, si_event.stanza)
+    e = q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_REFUSED])
 
     tubes_chan.Close()
 

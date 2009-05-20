@@ -3,7 +3,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolClientFactory, unwrap
-from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
+from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence, send_error_reply
 import constants as cs
 import ns
 import tubetestutil as t
@@ -227,6 +227,14 @@ def test(q, bus, conn, stream, bytestream_cls,
     # peer closes the bytestream
     bytestream.close()
     q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
+
+    # establish another tube connection
+    socket_event, si_event, conn_id = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
+        address_type, address, access_control, access_control_param)
+
+    # bytestream is refused
+    send_error_reply(stream, si_event.stanza)
+    e = q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_REFUSED])
 
     # OK, we're done
     conn.Disconnect()

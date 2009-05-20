@@ -16,6 +16,8 @@ Fixes:
 
 * fd.o #21684: Don't crash in SessionHandler.Ready() if streams is NULL
 
+* fd.o #21817: Sometimes crashes upon receiving an empty <nick/> update.
+
 telepathy-gabble 0.7.27 (2009-05-07)
 ====================================
 

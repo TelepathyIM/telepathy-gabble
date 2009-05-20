@@ -67,6 +67,7 @@ NOT_CAPABLE = ERROR + '.NotCapable'
 CONNECTION_REFUSED = ERROR + '.ConnectionRefused'
 CONNECTION_FAILED = ERROR + '.ConnectionFailed'
 CONNECTION_LOST = ERROR + '.ConnectionLost'
+CANCELLED = ERROR + '.Cancelled'
 
 TUBE_PARAMETERS = CHANNEL_IFACE_TUBE + '.Parameters'
 TUBE_STATE = CHANNEL_IFACE_TUBE + '.State'

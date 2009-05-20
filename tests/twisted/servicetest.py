@@ -364,6 +364,10 @@ class EventProtocol(Protocol):
         if self.block_reading:
             self.transport.stopReading()
 
+    def connectionLost(self, reason=None):
+        if self.queue is not None:
+            self.queue.handle_event(Event('socket-disconnected', protocol=self))
+
 class EventProtocolFactory(Factory):
     def __init__(self, queue, block_reading=False):
         self.queue = queue

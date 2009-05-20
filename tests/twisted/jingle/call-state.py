@@ -73,6 +73,50 @@ def test(jp, q, bus, conn, stream):
     call_states = chan.CallState.GetCallStates()
     assert call_states == { handle: cs.CALL_STATE_RINGING }, call_states
 
+    # We're waiting in a queue, so the other person's client tells us we're on
+    # hold. Gabble should ack the IQ, and set the call state to Ringing | Held.
+    # Also, Gabble certainly shouldn't tell s-e to start sending. (Although it
+    # might tell it not to; we don't mind.)
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.jid, 'session-info', [
+            ('hold', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+    stream.send(jp.xml(node))
+
+    forbidden = [
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
+            path=audio_path_suffix),
+            ]
+    q.forbid_events(forbidden)
+
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+        EventPattern('dbus-signal', signal='CallStateChanged',
+            args=[handle, cs.CALL_STATE_RINGING | cs.CALL_STATE_HELD]),
+        )
+
+    call_states = chan.CallState.GetCallStates()
+    assert call_states == { handle: cs.CALL_STATE_RINGING | cs.CALL_STATE_HELD }, call_states
+
+    # We're at the head of a queue, so the other person's client tells us we're
+    # no longer on hold. The call centre phone's still ringing, though. s-e
+    # still shouldn't start sending.
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.jid, 'session-info', [
+            ('unhold', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+    stream.send(jp.xml(node))
+
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+        EventPattern('dbus-signal', signal='CallStateChanged',
+            args=[handle, cs.CALL_STATE_RINGING]),
+        )
+
+    call_states = chan.CallState.GetCallStates()
+    assert call_states == { handle: cs.CALL_STATE_RINGING }, call_states
+
+    sync_dbus(bus, q, conn)
+    q.unforbid_events(forbidden)
+
     jt.accept()
 
     # Various misc happens; among other things, Gabble tells s-e to start

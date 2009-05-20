@@ -108,7 +108,7 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls, address_type,
     e = q.expect('socket-data')
     assert e.data == 'hello joiner'
 
-    return bytestream
+    return bytestream, conn_id
 
 def test(q, bus, conn, stream, bytestream_cls,
         address_type, access_control, access_control_param):
@@ -189,7 +189,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     socket_address = accept_return_event.value[0]
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
         address_type, socket_address, access_control, access_control_param)
 
     tubes_chan.Close()
@@ -210,7 +210,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     socket_address = accept_return_event.value[0]
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
         address_type, socket_address, access_control, access_control_param)
     tubes_chan.Close()
     bytestream.wait_bytestream_closed()
@@ -230,7 +230,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     socket_address = accept_return_event.value[0]
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
         address_type, socket_address, access_control, access_control_param)
     tubes_chan.Close()
     bytestream.wait_bytestream_closed()
@@ -250,10 +250,14 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     socket_address = accept_return_event.value[0]
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
         address_type, socket_address, access_control, access_control_param)
+
+    # peer closes the bytestream
+    bytestream.close()
+    q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
+
     tubes_chan.Close()
-    bytestream.wait_bytestream_closed()
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \

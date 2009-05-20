@@ -224,6 +224,10 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     q.expect('socket-data', protocol=protocol, data="hi joiner!")
 
+    # peer closes the bytestream
+    bytestream.close()
+    q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
+
     # OK, we're done
     conn.Disconnect()
 

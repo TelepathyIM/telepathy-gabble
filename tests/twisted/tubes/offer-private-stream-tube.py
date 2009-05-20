@@ -378,7 +378,7 @@ def test(q, bus, conn, stream, bytestream_cls,
         si_reply_event.stanza)
     assert len(tube) == 1
 
-    handle, access, id = new_conn_event.args
+    handle, access, conn_id = new_conn_event.args
     assert handle == bob_handle
     protocol = socket_event.protocol
     # we don't want to echo the access control byte
@@ -412,6 +412,10 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     binary = bytestream2.get_data(len(data))
     assert binary == data, binary
+
+    # peer closes the bytestream
+    bytestream2.close()
+    q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
 
     # OK, we're done
     conn.Disconnect()

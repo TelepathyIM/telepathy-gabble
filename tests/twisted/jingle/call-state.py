@@ -195,25 +195,6 @@ def test(jp, q, bus, conn, stream):
     call_states = chan.CallState.GetCallStates()
     assert call_states == { handle: cs.CALL_STATE_HELD }, call_states
 
-    # The other person sets the video stream back to <active/>. (XEP-0167
-    # says that <active/> and <mute/> can have name='', but <hold/> can't.
-    # Gabble should expose this as "start sending video again, but the call's
-    # still held."
-    # FIXME: hardcoded stream id
-    node = jp.SetIq(jt.peer, jt.jid, [
-        jp.Jingle(jt.sid, jt.jid, 'session-info', [
-            ('active', ns.JINGLE_RTP_INFO_1, {'name': 'stream2'}, []) ]) ])
-    stream.send(jp.xml(node))
-
-    q.expect_many(
-        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
-        EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
-            path=video_path_suffix),
-        )
-
-    call_states = chan.CallState.GetCallStates()
-    assert call_states == { handle: cs.CALL_STATE_HELD }, call_states
-
     # Now the other person sets the audio stream to mute. Gabble should expose
     # this as the call being active again (since we can't represent mute yet!)
     # and tell s-e to start sending audio again.

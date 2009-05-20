@@ -47,7 +47,7 @@ def test(q, bus, conn, stream):
     # This is a regression test for
     # <https://bugs.freedesktop.org/show_bug.cgi?id=21817>, where this would
     # crash Gabble.
-    message = elem('message')(
+    message = elem('message', from_='bob@foo.com')(
         elem((ns.PUBSUB + "#event"), 'event')(
             elem('items', node=ns.NICK)(
                 elem('item')(
@@ -56,7 +56,6 @@ def test(q, bus, conn, stream):
             )
         )
     )
-    message['from'] = 'bob@foo.com' # thanks, Python
     stream.send(message.toXml())
 
     event = q.expect('dbus-signal', signal='AliasesChanged')

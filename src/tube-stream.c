@@ -64,9 +64,10 @@
 #include "tube-iface.h"
 #include "util.h"
 
-/* TODO: we should generate that in tp-glib */
 #define GABBLE_ERROR_STR_CONNECTION_LOST \
   "org.freedesktop.Telepathy.Error.ConnectionLost"
+#define GABBLE_ERROR_STR_CONNECTION_REFUSED \
+  "org.freedesktop.Telepathy.Error.ConnectionRefused"
 
 static void channel_iface_init (gpointer, gpointer);
 static void tube_iface_init (gpointer g_iface, gpointer iface_data);
@@ -449,6 +450,9 @@ extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   if (bytestream == NULL)
     {
       DEBUG ("initiator refused new bytestream");
+
+      fire_connection_closed (self, transport,
+          GABBLE_ERROR_STR_CONNECTION_REFUSED);
 
       g_object_unref (transport);
       return;

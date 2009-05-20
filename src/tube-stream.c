@@ -64,6 +64,10 @@
 #include "tube-iface.h"
 #include "util.h"
 
+/* TODO: we should generate that in tp-glib */
+#define GABBLE_ERROR_STR_CONNECTION_LOST \
+  "org.freedesktop.Telepathy.Error.ConnectionLost"
+
 static void channel_iface_init (gpointer, gpointer);
 static void tube_iface_init (gpointer g_iface, gpointer iface_data);
 static void streamtube_iface_init (gpointer g_iface, gpointer iface_data);
@@ -270,6 +274,22 @@ transport_disconnected_cb (GibberTransport *transport,
 }
 
 static void
+fire_connection_closed (GabbleTubeStream *self,
+    GibberTransport *transport,
+    const gchar *error)
+{
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  guint connection_id;
+
+  connection_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->transport_to_id,
+        transport));
+  g_assert (connection_id != 0);
+
+  gabble_svc_channel_type_stream_tube_emit_connection_closed (self,
+      connection_id, error);
+}
+
+static void
 remove_transport (GabbleTubeStream *self,
                   GabbleBytestreamIface *bytestream,
                   GibberTransport *transport)
@@ -286,6 +306,8 @@ remove_transport (GabbleTubeStream *self,
       0, 0, NULL, G_CALLBACK (transport_connected_cb), NULL);
 
   gibber_transport_disconnect (transport);
+
+  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CONNECTION_LOST);
 
   /* the transport may not be in transport_to_bytestream if the bytestream was
    * not fully open */

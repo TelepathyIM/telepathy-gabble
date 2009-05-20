@@ -293,19 +293,18 @@ gabble_media_channel_hold_iface_init (gpointer g_iface,
 static TpChannelCallStateFlags
 jingle_remote_state_to_csf (JingleRtpRemoteState state)
 {
-  switch (state)
-    {
-    case JINGLE_RTP_REMOTE_STATE_ACTIVE:
-    /* FIXME: we should be able to expose <mute/> through CallState */
-    case JINGLE_RTP_REMOTE_STATE_MUTE:
-      return 0;
-    case JINGLE_RTP_REMOTE_STATE_RINGING:
-      return TP_CHANNEL_CALL_STATE_RINGING;
-    case JINGLE_RTP_REMOTE_STATE_HOLD:
-      return TP_CHANNEL_CALL_STATE_HELD;
-    default:
-      g_assert_not_reached ();
-    }
+  TpChannelCallStateFlags ret = 0;
+
+  if (state & JINGLE_RTP_REMOTE_STATE_MUTE)
+    DEBUG ("FIXME: we should be able to expose <mute/> through CallState");
+
+  if (state & JINGLE_RTP_REMOTE_STATE_RINGING)
+    ret |= TP_CHANNEL_CALL_STATE_RINGING;
+
+  if (state & JINGLE_RTP_REMOTE_STATE_HOLD)
+    ret |= TP_CHANNEL_CALL_STATE_HELD;
+
+  return ret;
 }
 
 
@@ -327,18 +326,18 @@ remote_state_changed_cb (GabbleJingleMediaRtp *rtp,
       return;
     }
 
-  if (state > priv->remote_state)
+  if ((state & priv->remote_state) == priv->remote_state)
     {
-      /* If this content's state is "more held" than the current aggregated level,
-       * move up to it.
+      /* state has a superset of the flags in the current aggregated level, add
+       * the new flags.
        */
-      DEBUG ("%u is more held than %u, moving up", state, priv->remote_state);
+      DEBUG ("%u is a superset of %u", state, priv->remote_state);
       priv->remote_state = state;
     }
   else
     {
       /* This content is now less held than the current aggregated level; we
-       * need to recalculate the highest hold level and see if it's changed.
+       * need to recalculate the combined hold level and see if it's changed.
        */
       guint i = 0;
 
@@ -351,8 +350,8 @@ remote_state_changed_cb (GabbleJingleMediaRtp *rtp,
                 g_ptr_array_index (priv->streams, i));
           JingleRtpRemoteState s = gabble_jingle_media_rtp_get_remote_state (c);
 
-          state = MAX (state, s);
-          DEBUG ("%p in state %u; high water mark %u", c, s, state);
+          state |= s;
+          DEBUG ("%p in state %u; combined flags so far are %u", c, s, state);
         }
 
       if (priv->remote_state == state)

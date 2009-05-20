@@ -1603,7 +1603,7 @@ remote_state_changed_cb (GabbleJingleMediaRtp *rtp,
   JingleRtpRemoteState state = gabble_jingle_media_rtp_get_remote_state (rtp);
   gboolean old_hold = priv->on_hold;
 
-  priv->on_hold = (state == JINGLE_RTP_REMOTE_STATE_HOLD);
+  priv->on_hold = (state & JINGLE_RTP_REMOTE_STATE_HOLD);
 
   if (old_hold != priv->on_hold)
     push_sending (stream);

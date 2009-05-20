@@ -829,7 +829,7 @@ gabble_jingle_media_rtp_handle_info (GabbleJingleContent *content,
   const gchar *elt = lm_message_node_get_name (payload);
   const gchar *name_attr = lm_message_node_get_attribute (payload, "name");
   const gchar *content_name = gabble_jingle_content_get_name (content);
-  JingleRtpRemoteState new_state;
+  JingleRtpRemoteState state = self->priv->remote_state;
 
   if (tp_strdiff (ns, NS_JINGLE_RTP_INFO))
     {
@@ -839,26 +839,37 @@ gabble_jingle_media_rtp_handle_info (GabbleJingleContent *content,
 
   *handled = TRUE;
 
-  /* The XEP only says active and mute can have name="". */
   if (!tp_strdiff (elt, "active"))
     {
-      if (name_attr != NULL && tp_strdiff (name_attr, content_name))
-        return TRUE;
-      new_state = JINGLE_RTP_REMOTE_STATE_ACTIVE;
+      /* Clear all states, we're active */
+      state = JINGLE_RTP_REMOTE_STATE_ACTIVE;
     }
   else if (!tp_strdiff (elt, "ringing"))
     {
-      new_state = JINGLE_RTP_REMOTE_STATE_RINGING;
+      state |= JINGLE_RTP_REMOTE_STATE_RINGING;
     }
   else if (!tp_strdiff (elt, "hold"))
     {
-      new_state = JINGLE_RTP_REMOTE_STATE_HOLD;
+      state |= JINGLE_RTP_REMOTE_STATE_HOLD;
     }
+  else if (!tp_strdiff (elt, "unhold"))
+    {
+      state &= ~JINGLE_RTP_REMOTE_STATE_HOLD;
+    }
+  /* XEP-0178 says that only <mute/> and <unmute/> can have a name='' attribute. */
   else if (!tp_strdiff (elt, "mute"))
     {
       if (name_attr != NULL && tp_strdiff (name_attr, content_name))
         return TRUE;
-      new_state = JINGLE_RTP_REMOTE_STATE_MUTE;
+
+      state |= JINGLE_RTP_REMOTE_STATE_MUTE;
+    }
+  else if (!tp_strdiff (elt, "unmute"))
+    {
+      if (name_attr != NULL && tp_strdiff (name_attr, content_name))
+        return TRUE;
+
+      state &= ~JINGLE_RTP_REMOTE_STATE_MUTE;
     }
   else
     {
@@ -867,16 +878,16 @@ gabble_jingle_media_rtp_handle_info (GabbleJingleContent *content,
       return FALSE;
     }
 
-  if (new_state != self->priv->remote_state)
+  if (state != self->priv->remote_state)
     {
-      DEBUG ("moving from remote state %u to %u (%s)", self->priv->remote_state,
-          new_state, elt);
-      self->priv->remote_state = new_state;
+      DEBUG ("moving from remote state %u to %u (due to <%s/>)",
+          self->priv->remote_state, state, elt);
+      self->priv->remote_state = state;
       g_object_notify ((GObject *) self, "remote-state");
     }
   else
     {
-      DEBUG ("already in state %u (%s)", new_state, elt);
+      DEBUG ("already in state %u (<%s/> had no effect)", state, elt);
     }
 
   return TRUE;

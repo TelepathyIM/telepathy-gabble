@@ -7,7 +7,7 @@ from twisted.words.xish import xpath
 
 from gabbletest import make_result_iq
 from servicetest import (
-    wrap_channel, make_channel_proxy, EventPattern, tp_path_prefix)
+    wrap_channel, make_channel_proxy, EventPattern, tp_path_prefix, sync_dbus)
 import ns
 import constants as cs
 
@@ -195,25 +195,30 @@ def test(jp, q, bus, conn, stream):
     call_states = chan.CallState.GetCallStates()
     assert call_states == { handle: cs.CALL_STATE_HELD }, call_states
 
-    # Now the other person sets the audio stream to mute. Gabble should expose
-    # this as the call being active again (since we can't represent mute yet!)
-    # and tell s-e to start sending audio again.
+    # Now the other person sets the audio stream to mute. We can't represent
+    # mute yet, but Gabble shouldn't take this to mean the call is active, as
+    # one stream being muted doesn't change the fact that the call's on hold.
     # FIXME: hardcoded stream id
     node = jp.SetIq(jt.peer, jt.jid, [
         jp.Jingle(jt.sid, jt.jid, 'session-info', [
             ('mute', ns.JINGLE_RTP_INFO_1, {'name': 'stream1'}, []) ]) ])
     stream.send(jp.xml(node))
 
-    q.expect_many(
-        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+    forbidden = [
         EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
             path=audio_path_suffix),
         EventPattern('dbus-signal', signal='CallStateChanged',
             args=[ handle, 0 ]),
-        )
+            ]
+    q.forbid_events(forbidden)
+
+    q.expect('stream-iq', iq_type='result', iq_id=node[2]['id'])
 
     call_states = chan.CallState.GetCallStates()
-    assert call_states == { handle: 0 } or call_states == {}, call_states
+    assert call_states == { handle: cs.CALL_STATE_HELD }, call_states
+
+    sync_dbus(bus, q, conn)
+    q.unforbid_events(forbidden)
 
     # That'll do, pig.
 

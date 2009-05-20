@@ -329,15 +329,20 @@ def connect_to_cm_socket(q, to, address_type, address, access_control,
         socket_event.protocol.sendData('a')
 
         # once credentials have been sent, Gabble sends SI request
-        si_event = q.expect('stream-iq', to=to, query_ns=ns.SI, query_name='si')
+        si_event, sig = q.expect_many(
+            EventPattern('stream-iq', to=to, query_ns=ns.SI, query_name='si'),
+            EventPattern('dbus-signal', signal='NewLocalConnection'))
 
     else:
-        socket_event, si_event = q.expect_many(
+        socket_event, si_event, sig = q.expect_many(
             EventPattern('socket-connected'),
             # expect SI request
-            EventPattern('stream-iq', to=to, query_ns=ns.SI, query_name='si'))
+            EventPattern('stream-iq', to=to, query_ns=ns.SI, query_name='si'),
+            EventPattern('dbus-signal', signal='NewLocalConnection'))
 
-    return socket_event, si_event
+    connection_id = sig.args[0]
+    assert connection_id != 0
+    return socket_event, si_event, connection_id
 
 def exec_tube_test(test, *args):
     for bytestream_cls in [

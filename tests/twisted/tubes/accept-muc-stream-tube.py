@@ -192,7 +192,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     address = accept_return_event.value[0]
 
-    socket_event, si_event = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
+    socket_event, si_event, conn_id = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
         address_type, address, access_control, access_control_param)
 
     protocol = socket_event.protocol

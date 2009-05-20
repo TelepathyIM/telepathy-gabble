@@ -76,7 +76,7 @@ def receive_tube_offer(q, bus, conn, stream):
 def expect_tube_activity(q, bus, conn, stream, bytestream_cls, address_type,
     address, access_control, access_control_param):
 
-    event_socket, event_iq = t.connect_to_cm_socket(q, bob_jid,
+    event_socket, event_iq, conn_id = t.connect_to_cm_socket(q, bob_jid,
         address_type, address, access_control, access_control_param)
 
     protocol = event_socket.protocol

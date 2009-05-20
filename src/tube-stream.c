@@ -560,6 +560,18 @@ generate_connection_id (GabbleTubeStream *self,
 }
 
 static void
+fire_new_local_connection (GabbleTubeStream *self,
+    GibberTransport *transport)
+{
+  guint connection_id;
+
+  connection_id = generate_connection_id (self, transport);
+
+  gabble_svc_channel_type_stream_tube_emit_new_local_connection (self,
+      connection_id);
+}
+
+static void
 credentials_received_cb (GibberUnixTransport *transport,
                          GibberBuffer *buffer,
                          GibberCredentials *credentials,
@@ -598,6 +610,10 @@ credentials_received_cb (GibberUnixTransport *transport,
   if (!start_stream_initiation (self, GIBBER_TRANSPORT (transport), NULL))
     {
       DEBUG ("SI failed. Closing connection");
+    }
+  else
+    {
+      fire_new_local_connection (self, GIBBER_TRANSPORT (transport));
     }
 
 credentials_received_cb_out:
@@ -725,6 +741,10 @@ local_new_connection_cb (GibberListener *listener,
   if (!start_stream_initiation (self, transport, NULL))
     {
       DEBUG ("closing new client connection");
+    }
+  else
+    {
+      fire_new_local_connection (self, transport);
     }
 }
 

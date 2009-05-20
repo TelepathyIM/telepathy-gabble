@@ -253,7 +253,7 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
   param_spec = g_param_spec_uint ("remote-state", "Remote state",
       "Whether the peer is muted, has us on hold, is ringing, or is active on "
       "this content",
-      JINGLE_RTP_REMOTE_STATE_ACTIVE, JINGLE_RTP_REMOTE_STATE_HOLD,
+      JINGLE_RTP_REMOTE_STATE_ACTIVE, JINGLE_RTP_REMOTE_STATE_ALL_FLAGS,
       JINGLE_RTP_REMOTE_STATE_ACTIVE,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_STATE, param_spec);

@@ -58,6 +58,8 @@ enum
   PROP_LOCAL_INITIATOR,
   PROP_STATE,
   PROP_DIALECT,
+  PROP_REMOTE_HOLD,
+  PROP_REMOTE_RINGING,
   LAST_PROPERTY
 };
 
@@ -80,6 +82,9 @@ struct _GabbleJingleSessionPrivate
 
   gboolean locally_accepted;
   gboolean locally_terminated;
+
+  gboolean remote_hold;
+  gboolean remote_ringing;
 
   guint timer_id;
 
@@ -218,6 +223,12 @@ gabble_jingle_session_get_property (GObject *object,
       break;
     case PROP_DIALECT:
       g_value_set_uint (value, priv->dialect);
+      break;
+    case PROP_REMOTE_HOLD:
+      g_value_set_boolean (value, priv->remote_hold);
+      break;
+    case PROP_REMOTE_RINGING:
+      g_value_set_boolean (value, priv->remote_ringing);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -366,6 +377,16 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_DIALECT, param_spec);
 
+  param_spec = g_param_spec_boolean ("remote-hold", "Remote hold",
+      "TRUE if the peer has placed us on hold", FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_REMOTE_HOLD, param_spec);
+
+  param_spec = g_param_spec_boolean ("remote-ringing", "Remote ringing",
+      "TRUE if the peer's client is ringing", FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_REMOTE_RINGING,
+      param_spec);
 
   /* signal definitions */
 

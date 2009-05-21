@@ -58,6 +58,7 @@ enum
 {
   PROP_MEDIA_TYPE = 1,
   PROP_REMOTE_STATE,
+  PROP_REMOTE_MUTE,
   LAST_PROPERTY
 };
 
@@ -78,6 +79,8 @@ struct _GabbleJingleMediaRtpPrivate
   GList *remote_codecs;
   JingleMediaType media_type;
   JingleRtpRemoteState remote_state;
+  gboolean remote_mute;
+
   gboolean dispose_has_run;
 };
 
@@ -191,6 +194,9 @@ gabble_jingle_media_rtp_get_property (GObject *object,
     case PROP_REMOTE_STATE:
       g_value_set_uint (value, priv->remote_state);
       break;
+    case PROP_REMOTE_MUTE:
+      g_value_set_boolean (value, priv->remote_mute);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -209,6 +215,9 @@ gabble_jingle_media_rtp_set_property (GObject *object,
   switch (property_id) {
     case PROP_MEDIA_TYPE:
       priv->media_type = g_value_get_uint (value);
+      break;
+    case PROP_REMOTE_MUTE:
+      priv->remote_mute = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -257,6 +266,11 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
       JINGLE_RTP_REMOTE_STATE_ACTIVE,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_STATE, param_spec);
+
+  param_spec = g_param_spec_boolean ("remote-mute", "Remote mute",
+      "TRUE if the peer has muted this stream", FALSE,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_REMOTE_MUTE, param_spec);
 
   /* signal definitions */
 

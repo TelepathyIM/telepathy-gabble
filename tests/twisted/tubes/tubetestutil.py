@@ -4,6 +4,7 @@ Helper functions for writing tubes tests
 
 import errno
 import os
+import socket
 
 import dbus
 
@@ -17,6 +18,7 @@ import ns
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet.error import CannotListenError
+from twisted.internet import tcp
 
 def check_tube_in_tubes(tube, tubes):
     """
@@ -230,6 +232,20 @@ def set_up_echo(q, address_type, block_reading=False):
     factory = EchoFactory(q, block_reading)
     return create_server(q, address_type, factory)
 
+# Twisted doesn't set the REUSEADDR option on client sockets.
+# As we need this option to be able to bind successively on the same port
+# during the tests, we define our own client and connector to be able to set
+# this option.
+class MyTCPClient(tcp.Client):
+    def createInternetSocket(self):
+        s = tcp.Client.createInternetSocket(self)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return s
+
+class MyTCPConnector(tcp.Connector):
+    def _makeTransport(self):
+        return MyTCPClient(self.host, self.port, self.bindAddress, self, self.reactor)
+
 def connect_socket(q, address_type, address, access_control, access_control_param):
     factory = EventProtocolClientFactory(q)
     if address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
@@ -243,7 +259,8 @@ def connect_socket(q, address_type, address, access_control, access_control_para
             # This means the test will fail if the port is already binded. It
             # would be better to bind the port before connecting but that's
             # not easily doable with twisted...
-            reactor.connectTCP(ip, port, factory, bindAddress=access_control_param)
+            c = MyTCPConnector(ip, port, factory, 30, access_control_param, reactor)
+            c.connect()
         else:
             reactor.connectTCP(ip, port, factory)
     else:

@@ -762,7 +762,7 @@ set_port_access_control_param (GValue *access_control_param,
     }
 
   tmp = strtoul (port_str, &endptr, 10);
-  if (!endptr || *endptr || tmp > G_MAXUINT32)
+  if (!endptr || *endptr || tmp > G_MAXUINT16)
     {
       DEBUG ("invalid port: %s", port_str);
       return FALSE;

@@ -10,11 +10,12 @@ from twisted.words.xish import domish
 from servicetest import EventPattern
 from gabbletest import acknowledge_iq, exec_test
 import constants as cs
+import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()
 
-    event = q.expect('stream-iq', query_ns='jabber:iq:roster')
+    event = q.expect('stream-iq', query_ns=ns.ROSTER)
     # send back empty roster
     event.stanza['type'] = 'result'
     stream.send(event.stanza)
@@ -38,7 +39,7 @@ def test(q, bus, conn, stream):
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
     group_iface.AddMembers([handle], '')
 
-    event = q.expect('stream-iq', iq_type='set', query_ns='jabber:iq:roster')
+    event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
     item = event.query.firstChildElement()
     assert item["jid"] == 'bob@foo.com'
 

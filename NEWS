@@ -6,7 +6,8 @@ Dependencies:
 Enhancements:
 
 * Implement the Credentials access control with UNIX sockets in stream tubes.
-
+* Implement the Port access control with Inet4 and Inet6 sockets in stream
+  tubes.
 * When no resource is explicitly specified, Gabble will now use a randomized
   resource ("Telepathy.[random numbers]") rather than just "Telepathy". This
   helps users who don't know anything about XMPP to be able to connect from

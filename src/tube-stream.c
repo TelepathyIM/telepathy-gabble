@@ -49,6 +49,7 @@
 #include <gibber/gibber-tcp-transport.h>
 #include <gibber/gibber-transport.h>
 #include <gibber/gibber-unix-transport.h>
+#include <gibber/gibber-util.h>
 
 #include "bytestream-factory.h"
 #include "bytestream-iface.h"
@@ -614,6 +615,61 @@ check_incoming_connection (GabbleTubeStream *self,
        * started yet. */
       return FALSE;
     }
+  else if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_PORT)
+    {
+      struct sockaddr_storage addr;
+      socklen_t len = sizeof (addr);
+      int ret;
+      char peer_host[NI_MAXHOST];
+      char peer_port[NI_MAXSERV];
+      guint port;
+      gchar *host;
+      gchar *tmp;
+
+      if (!gibber_transport_get_peeraddr (transport, &addr, &len))
+        {
+          DEBUG ("gibber_transport_get_peeraddr failed");
+          return FALSE;
+        }
+
+      gibber_normalize_address (&addr);
+
+      g_assert (addr.ss_family == AF_INET || addr.ss_family == AF_INET6);
+
+      ret = getnameinfo ((struct sockaddr *) &addr, len,
+          peer_host, NI_MAXHOST, peer_port, NI_MAXSERV,
+          NI_NUMERICHOST | NI_NUMERICSERV);
+
+      if (ret != 0)
+        {
+          DEBUG ("getnameinfo failed: %s", gai_strerror(ret));
+          return FALSE;
+        }
+
+      dbus_g_type_struct_get (priv->access_control_param,
+          0, &host,
+          1, &port,
+          G_MAXUINT);
+
+      if (tp_strdiff (host, peer_host))
+        {
+          DEBUG ("Wrong ip: %s (%s was expected)", peer_host, host);
+          g_free (host);
+          return FALSE;
+        }
+      g_free (host);
+
+      tmp = g_strdup_printf ("%u", port);
+      if (tp_strdiff (tmp, peer_port))
+        {
+          DEBUG ("Wrong port: %s (%u was expected)", peer_port, port);
+          g_free (tmp);
+          return FALSE;
+        }
+      g_free (tmp);
+
+      return TRUE;
+    }
   else
     {
       /* access_control has already been checked when accepting the tube */
@@ -677,6 +733,56 @@ set_credentials_access_control_param (GValue *access_control_param,
   return TRUE;
 }
 
+static gboolean
+set_port_access_control_param (GValue *access_control_param,
+    GibberTransport *transport)
+{
+  struct sockaddr_storage addr;
+  socklen_t addrlen = sizeof (struct sockaddr_storage);
+  char host[NI_MAXHOST];
+  char port_str[NI_MAXSERV];
+  int ret;
+  guint16 port;
+  unsigned long tmp;
+  gchar *endptr;
+
+  if (!gibber_transport_get_sockaddr (transport, &addr, &addrlen))
+    {
+      DEBUG ("Failed to get connection address");
+      return FALSE;
+    }
+
+  ret = getnameinfo ((struct sockaddr *) &addr, addrlen,
+      host, NI_MAXHOST, port_str, NI_MAXSERV,
+      NI_NUMERICHOST | NI_NUMERICSERV);
+  if (ret != 0)
+    {
+      DEBUG ("getnameinfo failed: %s", g_strerror (ret));
+      return FALSE;
+    }
+
+  tmp = strtoul (port_str, &endptr, 10);
+  if (!endptr || *endptr || tmp > G_MAXUINT16)
+    {
+      DEBUG ("invalid port: %s", port_str);
+      return FALSE;
+    }
+  port = (guint16) tmp;
+
+  g_value_init (access_control_param,
+      TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV4);
+  g_value_take_boxed (access_control_param,
+      dbus_g_type_specialized_construct (
+                TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV4));
+
+  dbus_g_type_struct_set (access_control_param,
+      0, host,
+      1, port,
+      G_MAXUINT);
+
+  return TRUE;
+}
+
 static transport_connected_data *
 transport_connected_data_new (GabbleTubeStream *self,
     TpHandle contact)
@@ -705,6 +811,14 @@ fire_new_connection (GabbleTubeStream *self,
     {
       if (!set_credentials_access_control_param (&access_control_param,
             transport))
+        {
+          gibber_transport_disconnect (transport);
+          return;
+        }
+    }
+  else if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_PORT)
+    {
+      if (!set_port_access_control_param (&access_control_param, transport))
         {
           gibber_transport_disconnect (transport);
           return;
@@ -1951,15 +2065,28 @@ check_ip_params (TpSocketAddressType address_type,
       freeaddrinfo (result);
     }
 
-  if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+  if (access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "%s sockets only support localhost control access",
-          (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4 ? "IPv4" : "IPv6"));
-      return FALSE;
+      return TRUE;
+    }
+  else if (access_control == TP_SOCKET_ACCESS_CONTROL_PORT)
+    {
+      if (access_control_param != NULL)
+        {
+          if (G_VALUE_TYPE (access_control_param) !=
+              TP_STRUCT_TYPE_SOCKET_ADDRESS_IPV4)
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "Port access param is supposed to be sq");
+              return FALSE;
+            }
+        }
+      return TRUE;
     }
 
-  return TRUE;
+  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      "%u socket access control is not supported", access_control);
+  return FALSE;
 }
 
 /* used to check access control parameters both for OfferStreamTube and
@@ -2140,6 +2267,8 @@ gabble_tube_stream_get_supported_socket_types (void)
       1);
   access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
   g_array_append_val (ipv4_tab, access_control);
+  access_control = TP_SOCKET_ACCESS_CONTROL_PORT;
+  g_array_append_val (ipv4_tab, access_control);
   g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV4),
       ipv4_tab);
 
@@ -2147,6 +2276,8 @@ gabble_tube_stream_get_supported_socket_types (void)
   ipv6_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
       1);
   access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (ipv6_tab, access_control);
+  access_control = TP_SOCKET_ACCESS_CONTROL_PORT;
   g_array_append_val (ipv6_tab, access_control);
   g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV6),
       ipv6_tab);

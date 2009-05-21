@@ -1165,6 +1165,7 @@ close_each_extra_bytestream (gpointer key,
 
   gabble_bytestream_iface_close (bytestream, NULL);
   gibber_transport_disconnect (transport);
+  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CANCELLED);
 
   g_hash_table_remove (priv->transport_to_bytestream, transport);
 

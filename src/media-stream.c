@@ -148,8 +148,8 @@ static void content_state_changed_cb (GabbleJingleContent *c,
      GParamSpec *pspec, GabbleMediaStream *stream);
 static void content_senders_changed_cb (GabbleJingleContent *c,
      GParamSpec *pspec, GabbleMediaStream *stream);
-static void remote_state_changed_cb (GabbleJingleMediaRtp *rtp,
-    GParamSpec *pspec, GabbleMediaStream *stream);
+static void remote_state_changed_cb (GabbleJingleSession *session,
+    GabbleMediaStream *stream);
 static void content_removed_cb (GabbleJingleContent *content,
       GabbleMediaStream *stream);
 static void update_direction (GabbleMediaStream *stream, GabbleJingleContent *c);
@@ -459,8 +459,8 @@ gabble_media_stream_set_property (GObject      *object,
       gabble_signal_connect_weak (priv->content, "notify::senders",
           (GCallback) content_senders_changed_cb, object);
 
-      gabble_signal_connect_weak (priv->content, "notify::remote-state",
-          (GCallback) remote_state_changed_cb, object);
+      gabble_signal_connect_weak (priv->content->session,
+          "remote-state-changed", (GCallback) remote_state_changed_cb, object);
 
       gabble_signal_connect_weak (priv->content, "removed",
           (GCallback) content_removed_cb, object);
@@ -1595,15 +1595,13 @@ content_senders_changed_cb (GabbleJingleContent *c,
 }
 
 static void
-remote_state_changed_cb (GabbleJingleMediaRtp *rtp,
-    GParamSpec *pspec,
+remote_state_changed_cb (GabbleJingleSession *session,
     GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv = stream->priv;
-  JingleRtpRemoteState state = gabble_jingle_media_rtp_get_remote_state (rtp);
   gboolean old_hold = priv->on_hold;
 
-  priv->on_hold = (state & JINGLE_RTP_REMOTE_STATE_HOLD);
+  priv->on_hold = gabble_jingle_session_get_remote_hold (session);
 
   if (old_hold != priv->on_hold)
     push_sending (stream);

@@ -112,6 +112,10 @@ void gabble_jingle_session_send (GabbleJingleSession *sess,
 
 void gabble_jingle_session_send_held (GabbleJingleSession *sess, gboolean held);
 
+gboolean gabble_jingle_session_get_remote_hold (GabbleJingleSession *sess);
+
+gboolean gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess);
+
 /* Only to be used for the test suite */
 void gabble_set_jingle_session_timeout (guint seconds);
 

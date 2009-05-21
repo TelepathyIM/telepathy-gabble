@@ -244,6 +244,8 @@ _latch_to_session (GabbleMediaChannel *chan)
   g_signal_connect (priv->session, "terminated",
                     (GCallback) session_terminated_cb, chan);
 
+  gabble_media_channel_hold_latch_to_session (chan);
+
   g_assert (priv->streams->len == 0);
 
   tp_svc_channel_interface_media_signalling_emit_new_session_handler (

@@ -7,13 +7,14 @@ import dbus
 
 from gabbletest import acknowledge_iq, exec_test
 import constants as cs
+import ns
 
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import domish
 
 def make_set_roster_iq(stream, user, contact, state, ask):
     iq = IQ(stream, 'set')
-    query = iq.addElement(('jabber:iq:roster', 'query'))
+    query = iq.addElement((ns.ROSTER, 'query'))
     item = query.addElement('item')
     item['jid'] = contact
     item['subscription'] = state
@@ -25,7 +26,7 @@ def make_set_roster_iq(stream, user, contact, state, ask):
 def test(q, bus, conn, stream):
     conn.Connect()
 
-    event = q.expect('stream-iq', query_ns='jabber:iq:roster')
+    event = q.expect('stream-iq', query_ns=ns.ROSTER)
     # send back empty roster
     event.stanza['type'] = 'result'
     stream.send(event.stanza)
@@ -49,7 +50,7 @@ def test(q, bus, conn, stream):
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
     group_iface.AddMembers([handle], '')
 
-    event = q.expect('stream-iq', iq_type='set', query_ns='jabber:iq:roster')
+    event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
     item = event.query.firstChildElement()
     assert item["jid"] == 'bob@foo.com'
 

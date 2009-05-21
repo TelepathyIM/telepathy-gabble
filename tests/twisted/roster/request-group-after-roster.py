@@ -6,12 +6,13 @@ channel after the roster has been received.
 from gabbletest import exec_test, sync_stream
 from servicetest import sync_dbus, call_async
 import constants as cs
+import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()
     # q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    roster_event = q.expect('stream-iq', query_ns='jabber:iq:roster')
+    roster_event = q.expect('stream-iq', query_ns=ns.ROSTER)
     roster_event.stanza['type'] = 'result'
 
     call_async(q, conn, "RequestHandles", cs.HT_GROUP, ['test'])

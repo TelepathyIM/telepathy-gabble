@@ -58,7 +58,7 @@ class FileTransferTest(object):
             EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
             EventPattern('stream-iq', to=None, query_ns='vcard-temp',
                 query_name='vCard'),
-            EventPattern('stream-iq', query_ns='jabber:iq:roster'),
+            EventPattern('stream-iq', query_ns=ns.ROSTER),
             EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
 
         roster = roster_event.stanza

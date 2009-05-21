@@ -19,7 +19,7 @@ def test(q, bus, conn, stream):
     conn.Connect()
     _, roster_event = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
-        EventPattern('stream-iq', query_ns='jabber:iq:roster'))
+        EventPattern('stream-iq', query_ns=ns.ROSTER))
 
     roster = roster_event.stanza
     roster['type'] = 'result'

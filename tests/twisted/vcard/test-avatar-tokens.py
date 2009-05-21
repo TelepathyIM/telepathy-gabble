@@ -7,6 +7,7 @@ from twisted.words.xish import domish
 
 from servicetest import unwrap, EventPattern
 from gabbletest import exec_test, make_result_iq
+import ns
 
 def make_presence(jid, sha1sum):
     p = domish.Element((None, 'presence'))
@@ -20,7 +21,7 @@ def test(q, bus, conn, stream):
     conn.Connect()
     _, event = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
-        EventPattern('stream-iq', to=None, query_ns='jabber:iq:roster',
+        EventPattern('stream-iq', to=None, query_ns=ns.ROSTER,
             query_name='query'))
 
     result = make_result_iq(stream, event.stanza)

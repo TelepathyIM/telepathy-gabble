@@ -7,6 +7,7 @@ FIXME: test C.I.Presence too
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
+import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -14,7 +15,7 @@ def test(q, bus, conn, stream):
 
     amy_handle = conn.RequestHandles(1, ['amy@foo.com'])[0]
 
-    event = q.expect('stream-iq', query_ns='jabber:iq:roster')
+    event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'
 
     item = event.query.addElement('item')

@@ -135,7 +135,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       <tp:docstring>
         Emitted when the state of the tube channel changes.
       </tp:docstring>
-      <arg name="state" type="u" tp:type="Tube_Channel_State">
+      <arg name="State" type="u" tp:type="Tube_Channel_State">
         <tp:docstring>
           The new state of the tube; see the Tube_Channel_State enumeration.
         </tp:docstring>

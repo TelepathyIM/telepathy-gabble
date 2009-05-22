@@ -11,7 +11,7 @@ Receives several tube offers:
 import dbus
 
 from servicetest import call_async, EventPattern, sync_dbus
-from gabbletest import acknowledge_iq
+from gabbletest import acknowledge_iq, send_error_reply
 
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
@@ -76,7 +76,7 @@ def receive_tube_offer(q, bus, conn, stream):
 def expect_tube_activity(q, bus, conn, stream, bytestream_cls, address_type,
     address, access_control, access_control_param):
 
-    event_socket, event_iq = t.connect_to_cm_socket(q, bob_jid,
+    event_socket, event_iq, conn_id = t.connect_to_cm_socket(q, bob_jid,
         address_type, address, access_control, access_control_param)
 
     protocol = event_socket.protocol
@@ -108,7 +108,7 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls, address_type,
     e = q.expect('socket-data')
     assert e.data == 'hello joiner'
 
-    return bytestream
+    return bytestream, conn_id
 
 def test(q, bus, conn, stream, bytestream_cls,
         address_type, access_control, access_control_param):
@@ -189,7 +189,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     socket_address = accept_return_event.value[0]
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
         address_type, socket_address, access_control, access_control_param)
 
     tubes_chan.Close()
@@ -210,7 +210,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     socket_address = accept_return_event.value[0]
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
         address_type, socket_address, access_control, access_control_param)
     tubes_chan.Close()
     bytestream.wait_bytestream_closed()
@@ -230,10 +230,12 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     socket_address = accept_return_event.value[0]
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
         address_type, socket_address, access_control, access_control_param)
     tubes_chan.Close()
-    bytestream.wait_bytestream_closed()
+    bytestream.wait_bytestream_closed([
+        EventPattern('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CANCELLED]),
+        EventPattern('socket-disconnected')])
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -250,10 +252,22 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     socket_address = accept_return_event.value[0]
 
-    bytestream = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
+    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
         address_type, socket_address, access_control, access_control_param)
+
+    # peer closes the bytestream
+    bytestream.close()
+    q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
+
+    # establish another tube connection
+    event_socket, si_event, conn_id = t.connect_to_cm_socket(q, bob_jid,
+    address_type, socket_address, access_control, access_control_param)
+
+    # bytestream is refused
+    send_error_reply(stream, si_event.stanza)
+    e = q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_REFUSED])
+
     tubes_chan.Close()
-    bytestream.wait_bytestream_closed()
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \

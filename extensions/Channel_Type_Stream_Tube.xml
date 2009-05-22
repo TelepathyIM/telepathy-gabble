@@ -136,18 +136,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:possible-errors>
     </method>
 
-    <signal name="NewConnection"
-            tp:name-for-bindings="New_Connection">
+    <signal name="NewRemoteConnection"
+            tp:name-for-bindings="New_Remote_Connection">
       <tp:docstring>
-        Emitted on a stream tube when a participant opens a new connection
-        to its socket.
+        Emitted each time a participant opens a new connection to its socket.
       </tp:docstring>
-      <arg name="handle" type="u" tp:type="Contact_Handle">
+      <arg name="Handle" type="u" tp:type="Contact_Handle">
         <tp:docstring>
           The handle of the participant who opened the new connection
         </tp:docstring>
       </arg>
-      <arg name="connection_param" type="v">
+      <arg name="Connection_Param" type="v">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           <p>A parameter which can be used by the listening process to identify
           the connection. Note that this parameter has a meaningful value
@@ -164,6 +163,45 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
           <p>In the Socket_Access_Control_Credentials case, the variant
           contains the byte (D-Bus signature 'y') that has been sent with
           the credentials.</p>
+        </tp:docstring>
+      </arg>
+      <arg name="Connection_ID" type="u">
+        <tp:docstring>
+          The unique ID associated with this connection. This ID will be used
+          to identifiy the connection when reporting errors with
+          <tp:member-ref>ConnectionClosed</tp:member-ref>.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <signal name="NewLocalConnection"
+            tp:name-for-bindings="New_Local_Connection">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Emitted when the tube application connects to CM's socket.</p>
+      </tp:docstring>
+      <arg name="Connection_ID" type="u">
+        <tp:docstring>
+          The unique ID associated with this connection. This ID will be used
+          to identifiy the connection when reporting errors with
+          <tp:member-ref>ConnectionClosed</tp:member-ref>.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <signal name="ConnectionClosed"
+            tp:name-for-bindings="Connection_Closed"
+            tp:type="Stream_Tube_Connection_Closed">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Emitted when a connection has been closed.</p>
+      </tp:docstring>
+      <arg name="Connection_ID" type="u">
+        <tp:docstring>
+          The ID of the connection.
+        </tp:docstring>
+      </arg>
+      <arg name="Error" type="s" tp:type="DBus_Error_Name">
+        <tp:docstring>
+          The name of a D-Bus error describing the error that occurred.
         </tp:docstring>
       </arg>
     </signal>

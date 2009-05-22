@@ -3,7 +3,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolClientFactory, unwrap
-from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence
+from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence, send_error_reply
 import constants as cs
 import ns
 import tubetestutil as t
@@ -192,29 +192,33 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     address = accept_return_event.value[0]
 
-    socket_event, si_event = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
+    socket_event, si_event, conn_id = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
         address_type, address, access_control, access_control_param)
 
     protocol = socket_event.protocol
     protocol.sendData("hello initiator")
 
-    bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, si_event.stanza,
-            'chat@conf.localhost/test')
+    def accept_tube_si_connection():
+        bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, si_event.stanza,
+                'chat@conf.localhost/test')
 
-    assert profile == ns.TUBES
+        assert profile == ns.TUBES
 
-    muc_stream_node = xpath.queryForNodes('/iq/si/muc-stream[@xmlns="%s"]' %
-        ns.TUBES, si_event.stanza)[0]
-    assert muc_stream_node is not None
-    assert muc_stream_node['tube'] == str(stream_tube_id)
+        muc_stream_node = xpath.queryForNodes('/iq/si/muc-stream[@xmlns="%s"]' %
+            ns.TUBES, si_event.stanza)[0]
+        assert muc_stream_node is not None
+        assert muc_stream_node['tube'] == str(stream_tube_id)
 
-    # set the real jid of the target as 'to' because the XMPP server changes
-    # it when delivering the IQ
-    result, si = bytestream.create_si_reply(si_event.stanza, 'test@localhost/Resource')
-    si.addElement((ns.TUBES, 'tube'))
-    stream.send(result)
+        # set the real jid of the target as 'to' because the XMPP server changes
+        # it when delivering the IQ
+        result, si = bytestream.create_si_reply(si_event.stanza, 'test@localhost/Resource')
+        si.addElement((ns.TUBES, 'tube'))
+        stream.send(result)
 
-    bytestream.wait_bytestream_open()
+        bytestream.wait_bytestream_open()
+        return bytestream
+
+    bytestream = accept_tube_si_connection()
 
     binary = bytestream.get_data()
     assert binary == 'hello initiator'
@@ -223,6 +227,33 @@ def test(q, bus, conn, stream, bytestream_cls,
     bytestream.send_data('hi joiner!')
 
     q.expect('socket-data', protocol=protocol, data="hi joiner!")
+
+    # peer closes the bytestream
+    bytestream.close()
+    q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
+
+    # establish another tube connection
+    socket_event, si_event, conn_id = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
+        address_type, address, access_control, access_control_param)
+
+    # bytestream is refused
+    send_error_reply(stream, si_event.stanza)
+    q.expect_many(
+        EventPattern('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_REFUSED]),
+        EventPattern('socket-disconnected'))
+
+    # establish another tube connection
+    socket_event, si_event, conn_id = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
+        address_type, address, access_control, access_control_param)
+
+    protocol = socket_event.protocol
+    bytestream = accept_tube_si_connection()
+
+    # disconnect local socket
+    protocol.transport.loseConnection()
+    q.expect_many(
+        EventPattern('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CANCELLED]),
+        EventPattern('socket-disconnected'))
 
     # OK, we're done
     conn.Disconnect()

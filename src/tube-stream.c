@@ -64,6 +64,13 @@
 #include "tube-iface.h"
 #include "util.h"
 
+#define GABBLE_ERROR_STR_CONNECTION_LOST \
+  "org.freedesktop.Telepathy.Error.ConnectionLost"
+#define GABBLE_ERROR_STR_CONNECTION_REFUSED \
+  "org.freedesktop.Telepathy.Error.ConnectionRefused"
+#define GABBLE_ERROR_STR_CANCELLED \
+  "org.freedesktop.Telepathy.Error.Cancelled"
+
 static void channel_iface_init (gpointer, gpointer);
 static void tube_iface_init (gpointer g_iface, gpointer iface_data);
 static void streamtube_iface_init (gpointer g_iface, gpointer iface_data);
@@ -180,6 +187,10 @@ struct _GabbleTubeStreamPrivate
    */
   GHashTable *transport_to_bytestream;
 
+  /* (GibberTransport *) -> guint */
+  GHashTable *transport_to_id;
+  guint last_connection_id;
+
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
@@ -250,11 +261,37 @@ transport_handler (GibberTransport *transport,
 }
 
 static void
+fire_connection_closed (GabbleTubeStream *self,
+    GibberTransport *transport,
+    const gchar *error)
+{
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  guint connection_id;
+
+  connection_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->transport_to_id,
+        transport));
+  if (connection_id == 0)
+    {
+      DEBUG ("ConnectionClosed has already been fired for this connection");
+      return;
+    }
+
+  /* remove the ID so we are sure we won't fire ConnectionClosed twice for the
+   * same connection. */
+  g_hash_table_remove (priv->transport_to_id, transport);
+
+  gabble_svc_channel_type_stream_tube_emit_connection_closed (self,
+      connection_id, error);
+}
+
+static void
 transport_disconnected_cb (GibberTransport *transport,
                            GabbleTubeStream *self)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GabbleBytestreamIface *bytestream;
+
+  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CANCELLED);
 
   bytestream = g_hash_table_lookup (priv->transport_to_bytestream, transport);
   if (bytestream == NULL)
@@ -283,11 +320,14 @@ remove_transport (GabbleTubeStream *self,
 
   gibber_transport_disconnect (transport);
 
+  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CONNECTION_LOST);
+
   /* the transport may not be in transport_to_bytestream if the bytestream was
    * not fully open */
   g_hash_table_remove (priv->transport_to_bytestream, transport);
 
   g_hash_table_remove (priv->bytestream_to_transport, bytestream);
+  g_hash_table_remove (priv->transport_to_id, transport);
 }
 
 static void
@@ -423,6 +463,9 @@ extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
     {
       DEBUG ("initiator refused new bytestream");
 
+      fire_connection_closed (self, transport,
+          GABBLE_ERROR_STR_CONNECTION_REFUSED);
+
       g_object_unref (transport);
       return;
     }
@@ -540,6 +583,32 @@ start_stream_initiation (GabbleTubeStream *self,
   return result;
 }
 
+static guint
+generate_connection_id (GabbleTubeStream *self,
+                        GibberTransport *transport)
+{
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+
+  priv->last_connection_id++;
+
+  g_hash_table_insert (priv->transport_to_id, transport,
+      GUINT_TO_POINTER (priv->last_connection_id));
+
+  return priv->last_connection_id;
+}
+
+static void
+fire_new_local_connection (GabbleTubeStream *self,
+    GibberTransport *transport)
+{
+  guint connection_id;
+
+  connection_id = generate_connection_id (self, transport);
+
+  gabble_svc_channel_type_stream_tube_emit_new_local_connection (self,
+      connection_id);
+}
+
 static void
 credentials_received_cb (GibberUnixTransport *transport,
                          GibberBuffer *buffer,
@@ -579,6 +648,10 @@ credentials_received_cb (GibberUnixTransport *transport,
   if (!start_stream_initiation (self, GIBBER_TRANSPORT (transport), NULL))
     {
       DEBUG ("SI failed. Closing connection");
+    }
+  else
+    {
+      fire_new_local_connection (self, GIBBER_TRANSPORT (transport));
     }
 
 credentials_received_cb_out:
@@ -707,6 +780,10 @@ local_new_connection_cb (GibberListener *listener,
     {
       DEBUG ("closing new client connection");
     }
+  else
+    {
+      fire_new_local_connection (self, transport);
+    }
 }
 
 static gboolean
@@ -800,12 +877,13 @@ transport_connected_data_free (transport_connected_data *data)
 }
 
 static void
-fire_new_connection (GabbleTubeStream *self,
+fire_new_remote_connection (GabbleTubeStream *self,
     GibberTransport *transport,
     TpHandle contact)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GValue access_control_param = {0,};
+  guint connection_id;
 
   if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_CREDENTIALS)
     {
@@ -832,8 +910,13 @@ fire_new_connection (GabbleTubeStream *self,
     }
 
   /* fire NewConnection D-Bus signal */
-  gabble_svc_channel_type_stream_tube_emit_new_connection (self,
-      contact, &access_control_param);
+
+  connection_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->transport_to_id,
+        transport));
+  g_assert (connection_id != 0);
+
+  gabble_svc_channel_type_stream_tube_emit_new_remote_connection (self,
+      contact, &access_control_param, connection_id);
   g_value_unset (&access_control_param);
 }
 
@@ -841,7 +924,7 @@ static void
 transport_connected_cb (GibberTransport *transport,
     transport_connected_data *data)
 {
-  fire_new_connection (data->self, transport, data->contact);
+  fire_new_remote_connection (data->self, transport, data->contact);
 }
 
 static GibberTransport *
@@ -894,6 +977,8 @@ new_connection_to_socket (GabbleTubeStream *self,
   /* Block the transport while there is no open bytestream to transfer
    * its data. */
   gibber_transport_block_receiving (transport, TRUE);
+
+  generate_connection_id (self, transport);
 
   g_hash_table_insert (priv->bytestream_to_transport, g_object_ref (bytestream),
       g_object_ref (transport));
@@ -1030,6 +1115,10 @@ gabble_tube_stream_init (GabbleTubeStream *self)
       g_direct_equal, (GDestroyNotify) g_object_unref,
       (GDestroyNotify) g_object_unref);
 
+  priv->transport_to_id = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, NULL);
+  priv->last_connection_id = 0;
+
   priv->address_type = TP_SOCKET_ADDRESS_TYPE_UNIX;
   priv->address = NULL;
   priv->access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
@@ -1064,6 +1153,7 @@ close_each_extra_bytestream (gpointer key,
 
   gabble_bytestream_iface_close (bytestream, NULL);
   gibber_transport_disconnect (transport);
+  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CANCELLED);
 
   g_hash_table_remove (priv->transport_to_bytestream, transport);
 
@@ -1112,6 +1202,12 @@ gabble_tube_stream_dispose (GObject *object)
     {
       g_hash_table_destroy (priv->bytestream_to_transport);
       priv->bytestream_to_transport = NULL;
+    }
+
+  if (priv->transport_to_id != NULL)
+    {
+      g_hash_table_destroy (priv->transport_to_id);
+      priv->transport_to_id = NULL;
     }
 
   tp_handle_unref (contact_repo, priv->initiator);
@@ -1894,7 +1990,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
 
       if (gibber_transport_get_state (transport) == GIBBER_TRANSPORT_CONNECTED)
         {
-          fire_new_connection (self, transport, contact);
+          fire_new_remote_connection (self, transport, contact);
         }
       else
         {

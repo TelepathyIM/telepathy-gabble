@@ -13,6 +13,11 @@ Enhancements:
   helps users who don't know anything about XMPP to be able to connect from
   multiple Telepathy-powered clients at once. (fd.o #21297)
 
+* Gabble now implements the 'stored' contact list, added in telepathy-spec
+  0.17.12. It no longer implements the 'known' list, which was never standard;
+  we don't think this will break clients, since other CMs (such as
+  telepathy-haze) never implemented 'known'. (fd.o #19901)
+
 Fixes:
 
 * fd.o #21684: Don't crash in SessionHandler.Ready() if streams is NULL

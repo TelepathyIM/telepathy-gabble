@@ -260,15 +260,6 @@ transport_handler (GibberTransport *transport,
       (const gchar *) data->data);
 }
 
-static gboolean
-connection_closed_has_been_fired (GabbleTubeStream *self,
-    GibberTransport *transport)
-{
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-
-  return g_hash_table_lookup (priv->transport_to_id, transport) == NULL;
-}
-
 static void
 fire_connection_closed (GabbleTubeStream *self,
     GibberTransport *transport,
@@ -279,7 +270,11 @@ fire_connection_closed (GabbleTubeStream *self,
 
   connection_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->transport_to_id,
         transport));
-  g_assert (connection_id != 0);
+  if (connection_id == 0)
+    {
+      DEBUG ("ConnectionClosed has already been fired for this connection");
+      return;
+    }
 
   /* remove the ID so we are sure we won't fire ConnectionClosed twice for the
    * same connection. */
@@ -325,14 +320,7 @@ remove_transport (GabbleTubeStream *self,
 
   gibber_transport_disconnect (transport);
 
-  /* if ConnectionClosed has not been fired yet at this point that means we
-   * are removing the transport because of an external event so we use the
-   * ConnectionLost error. */
-  if (!connection_closed_has_been_fired (self, transport))
-    {
-      fire_connection_closed (self, transport,
-          GABBLE_ERROR_STR_CONNECTION_LOST);
-    }
+  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CONNECTION_LOST);
 
   /* the transport may not be in transport_to_bytestream if the bytestream was
    * not fully open */

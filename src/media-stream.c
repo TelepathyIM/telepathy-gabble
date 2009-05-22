@@ -157,11 +157,12 @@ static void update_sending (GabbleMediaStream *stream, gboolean start_sending);
 
 GabbleMediaStream *
 gabble_media_stream_new (const gchar *object_path,
-                         GabbleJingleContent *content,
-                         const gchar *name,
-                         guint id,
-                         const gchar *nat_traversal,
-                         const GPtrArray *relay_info)
+    GabbleJingleContent *content,
+    const gchar *name,
+    guint id,
+    const gchar *nat_traversal,
+    const GPtrArray *relay_info,
+    gboolean local_hold)
 {
   GPtrArray *empty = NULL;
   GabbleMediaStream *result;
@@ -181,6 +182,7 @@ gabble_media_stream_new (const gchar *object_path,
       "id", id,
       "nat-traversal", nat_traversal,
       "relay-info", relay_info,
+      "local-hold", local_hold,
       NULL);
 
   if (empty != NULL)
@@ -473,6 +475,9 @@ gabble_media_stream_set_property (GObject      *object,
       g_assert (priv->relay_info == NULL);
       priv->relay_info = g_value_dup_boxed (value);
       break;
+    case PROP_LOCAL_HOLD:
+      priv->local_hold = g_value_get_boolean (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -582,7 +587,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
 
   param_spec = g_param_spec_boolean ("local-hold", "Local hold?",
       "True if resources used for this stream have been freed.", FALSE,
-      G_PARAM_READABLE |
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
       G_PARAM_STATIC_NAME | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NICK);
   g_object_class_install_property (object_class, PROP_LOCAL_HOLD, param_spec);
 
@@ -1036,6 +1041,13 @@ gabble_media_stream_ready (TpSvcMediaStreamHandler *iface,
       push_remote_candidates (self);
       push_playing (self);
       push_sending (self);
+
+      /* If a new stream is added while the call's on hold, it will have
+       * local_hold set at construct time. So once tp-fs has called Ready(), we
+       * should let it know this stream's on hold.
+       */
+      if (priv->local_hold)
+        gabble_media_stream_hold (self, priv->local_hold);
     }
   else
     {

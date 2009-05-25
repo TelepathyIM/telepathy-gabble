@@ -263,7 +263,8 @@ transport_handler (GibberTransport *transport,
 static void
 fire_connection_closed (GabbleTubeStream *self,
     GibberTransport *transport,
-    const gchar *error)
+    const gchar *error,
+    const gchar *debug_msg)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   guint connection_id;
@@ -281,7 +282,7 @@ fire_connection_closed (GabbleTubeStream *self,
   g_hash_table_remove (priv->transport_to_id, transport);
 
   gabble_svc_channel_type_stream_tube_emit_connection_closed (self,
-      connection_id, error);
+      connection_id, error, debug_msg);
 }
 
 static void
@@ -291,7 +292,8 @@ transport_disconnected_cb (GibberTransport *transport,
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GabbleBytestreamIface *bytestream;
 
-  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CANCELLED);
+  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CANCELLED,
+      "local socket has been disconnected");
 
   bytestream = g_hash_table_lookup (priv->transport_to_bytestream, transport);
   if (bytestream == NULL)
@@ -320,7 +322,8 @@ remove_transport (GabbleTubeStream *self,
 
   gibber_transport_disconnect (transport);
 
-  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CONNECTION_LOST);
+  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CONNECTION_LOST,
+      "bytestream has been broken");
 
   /* the transport may not be in transport_to_bytestream if the bytestream was
    * not fully open */
@@ -464,7 +467,7 @@ extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       DEBUG ("initiator refused new bytestream");
 
       fire_connection_closed (self, transport,
-          GABBLE_ERROR_STR_CONNECTION_REFUSED);
+          GABBLE_ERROR_STR_CONNECTION_REFUSED, "connection has been refused");
 
       g_object_unref (transport);
       return;
@@ -1153,7 +1156,8 @@ close_each_extra_bytestream (gpointer key,
 
   gabble_bytestream_iface_close (bytestream, NULL);
   gibber_transport_disconnect (transport);
-  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CANCELLED);
+  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CANCELLED,
+      "tube is closing");
 
   g_hash_table_remove (priv->transport_to_bytestream, transport);
 

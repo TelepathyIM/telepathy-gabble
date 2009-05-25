@@ -135,6 +135,7 @@ enum
   PROP_TARGET_ID,
   PROP_INITIATOR_ID,
   PROP_MUC,
+  PROP_SUPPORTED_ACCESS_CONTROLS,
   LAST_PROPERTY
 };
 
@@ -152,6 +153,8 @@ struct _GabbleTubeDBusPrivate
   gchar *service;
   GHashTable *parameters;
   GabbleMucChannel *muc;
+  /* GArray of guint */
+  GArray *supported_access_controls;
 
   /* For outgoing tubes, TRUE if the offer has been sent over the network. For
    * incoming tubes, always TRUE.
@@ -608,6 +611,7 @@ gabble_tube_dbus_finalize (GObject *object)
   g_free (priv->stream_id);
   g_free (priv->service);
   g_hash_table_destroy (priv->parameters);
+  g_array_free (priv->supported_access_controls, TRUE);
 
   if (priv->muc != NULL)
     {
@@ -710,6 +714,7 @@ gabble_tube_dbus_get_property (GObject *object,
               TP_IFACE_CHANNEL, "Requested",
               TP_IFACE_CHANNEL, "Interfaces",
               GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE, "ServiceName",
+              GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE, "SupportedAccessControls",
               NULL);
 
           if (priv->initiator != priv->self_handle)
@@ -760,6 +765,9 @@ gabble_tube_dbus_get_property (GObject *object,
         break;
       case PROP_MUC:
         g_value_set_object (value, priv->muc);
+        break;
+      case PROP_SUPPORTED_ACCESS_CONTROLS:
+        g_value_set_boxed (value, priv->supported_access_controls);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -855,6 +863,7 @@ gabble_tube_dbus_constructor (GType type,
   DBusGConnection *bus;
   TpHandleRepoIface *contact_repo;
   TpBaseConnection *base;
+  guint access_control;
 
   obj = G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->
     constructor (type, n_props, props);
@@ -937,6 +946,12 @@ gabble_tube_dbus_constructor (GType type,
       priv->offered = TRUE;
     }
 
+  /* Set SupportedAccessesControl */
+  priv->supported_access_controls = g_array_sized_new (FALSE, FALSE,
+      sizeof (guint), 1);
+  access_control = TP_SOCKET_ACCESS_CONTROL_CREDENTIALS;
+  g_array_append_val (priv->supported_access_controls, access_control);
+
   return obj;
 }
 
@@ -957,6 +972,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   static TpDBusPropertiesMixinPropImpl dbus_tube_props[] = {
       { "ServiceName", "service", NULL },
       { "DBusNames", "dbus-names", NULL },
+      { "SupportedAccessControls", "supported-access-controls", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl tube_iface_props[] = {
@@ -1108,6 +1124,15 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_property (object_class, PROP_MUC, param_spec);
+
+  param_spec = g_param_spec_boxed (
+      "supported-access-controls",
+      "Supported access-controls",
+      "GArray containing supported access controls.",
+      DBUS_TYPE_G_UINT_ARRAY,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class,
+      PROP_SUPPORTED_ACCESS_CONTROLS, param_spec);
 
   signals[OPENED] =
     g_signal_new ("tube-opened",

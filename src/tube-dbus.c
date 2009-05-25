@@ -1841,6 +1841,25 @@ gabble_tube_dbus_get_interfaces (TpSvcChannel *iface,
     }
 }
 
+static gboolean
+gabble_tube_dbus_check_access_control (GabbleTubeDBus *self,
+    guint access_control,
+    GError **error)
+{
+  switch (access_control)
+    {
+      case TP_SOCKET_ACCESS_CONTROL_CREDENTIALS:
+        break;
+
+      default:
+        g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+            "%u socket access control is not supported", access_control);
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /**
  * gabble_tube_dbus_offer_async
  *
@@ -1855,6 +1874,13 @@ gabble_tube_dbus_offer_async (GabbleSvcChannelTypeDBusTube *self,
 {
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
   GError *error = NULL;
+
+  if (!gabble_tube_dbus_check_access_control (tube, access_control, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
 
   g_object_set (self, "parameters", parameters, NULL);
 
@@ -1884,6 +1910,13 @@ gabble_tube_dbus_accept_async (GabbleSvcChannelTypeDBusTube *self,
 {
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
   GError *error = NULL;
+
+  if (!gabble_tube_dbus_check_access_control (tube, access_control, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
 
   if (gabble_tube_dbus_accept (GABBLE_TUBE_IFACE (tube), &error))
     {

@@ -3,7 +3,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern, sync_dbus
-from gabbletest import acknowledge_iq, sync_stream
+from gabbletest import acknowledge_iq, sync_stream, assertEquals
 import constants as cs
 import ns
 import tubetestutil as t
@@ -415,7 +415,9 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     # peer closes the bytestream
     bytestream2.close()
-    q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
+    e = q.expect('dbus-signal', signal='ConnectionClosed')
+    assertEquals(e.args[0], conn_id)
+    assertEquals(e.args[1], cs.CONNECTION_LOST)
 
     # OK, we're done
     conn.Disconnect()

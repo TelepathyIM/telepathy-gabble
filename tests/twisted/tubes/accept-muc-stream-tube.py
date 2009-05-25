@@ -3,7 +3,8 @@
 import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolClientFactory, unwrap
-from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence, send_error_reply
+from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence, send_error_reply,\
+    assertEquals
 import constants as cs
 import ns
 import tubetestutil as t
@@ -230,7 +231,9 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     # peer closes the bytestream
     bytestream.close()
-    q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
+    e = q.expect('dbus-signal', signal='ConnectionClosed')
+    assertEquals(e.args[0], conn_id)
+    assertEquals(e.args[1], cs.CONNECTION_LOST)
 
     # establish another tube connection
     socket_event, si_event, conn_id = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
@@ -238,9 +241,11 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     # bytestream is refused
     send_error_reply(stream, si_event.stanza)
-    q.expect_many(
-        EventPattern('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_REFUSED]),
+    e, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='ConnectionClosed'),
         EventPattern('socket-disconnected'))
+    assertEquals(e.args[0], conn_id)
+    assertEquals(e.args[1], cs.CONNECTION_REFUSED)
 
     # establish another tube connection
     socket_event, si_event, conn_id = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
@@ -251,9 +256,11 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     # disconnect local socket
     protocol.transport.loseConnection()
-    q.expect_many(
-        EventPattern('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CANCELLED]),
+    e, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='ConnectionClosed'),
         EventPattern('socket-disconnected'))
+    assertEquals(e.args[0], conn_id)
+    assertEquals(e.args[1], cs.CANCELLED)
 
     # OK, we're done
     conn.Disconnect()

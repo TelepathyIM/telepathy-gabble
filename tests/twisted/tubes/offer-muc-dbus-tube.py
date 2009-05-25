@@ -6,7 +6,7 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, assertContains
+from servicetest import call_async, EventPattern, assertContains, assertEquals
 from gabbletest import exec_test, acknowledge_iq, elem
 import ns
 import constants as cs
@@ -243,6 +243,14 @@ def test(q, bus, conn, stream):
         byte_arrays=True)
 
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
+
+    # try to offer using a wrong access control
+    try:
+        dbus_tube_iface.Offer(sample_parameters, cs.SOCKET_ACCESS_CONTROL_PORT)
+    except dbus.DBusException, e:
+        assertEquals(e.get_dbus_name(), cs.INVALID_ARGUMENT)
+    else:
+        assert False
 
     # offer the tube
     call_async(q, dbus_tube_iface, 'Offer', sample_parameters, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)

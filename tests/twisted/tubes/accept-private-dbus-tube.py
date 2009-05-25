@@ -2,7 +2,7 @@
 
 import dbus
 
-from servicetest import call_async, EventPattern, sync_dbus
+from servicetest import call_async, EventPattern, sync_dbus, assertEquals
 from gabbletest import acknowledge_iq, sync_stream
 import constants as cs
 import ns
@@ -158,6 +158,14 @@ def test(q, bus, conn, stream, bytestream_cls):
 
     status = tube_chan.Get(cs.CHANNEL_IFACE_TUBE, 'State', dbus_interface=cs.PROPERTIES_IFACE)
     assert status == cs.TUBE_STATE_LOCAL_PENDING
+
+    # try to accept using a wrong access control
+    try:
+        dbus_tube_iface.Accept(cs.SOCKET_ACCESS_CONTROL_PORT)
+    except dbus.DBusException, e:
+        assertEquals(e.get_dbus_name(), cs.INVALID_ARGUMENT)
+    else:
+        assert False
 
     # accept the tube (new API)
     call_async(q, dbus_tube_iface, 'Accept', cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)

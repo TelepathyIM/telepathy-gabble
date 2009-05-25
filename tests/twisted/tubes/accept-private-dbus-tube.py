@@ -160,7 +160,7 @@ def test(q, bus, conn, stream, bytestream_cls):
     assert status == cs.TUBE_STATE_LOCAL_PENDING
 
     # accept the tube (new API)
-    call_async(q, dbus_tube_iface, 'Accept')
+    call_async(q, dbus_tube_iface, 'Accept', cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)
 
     # Init the bytestream
     events, state_event = bytestream.open_bytestream(

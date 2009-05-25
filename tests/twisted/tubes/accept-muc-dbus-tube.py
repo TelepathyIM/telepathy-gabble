@@ -69,7 +69,7 @@ def test(q, bus, conn, stream):
     dbus_names = tube_chan.Get(c.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=c.PROPERTIES_IFACE)
     assert dbus_names == {bob_handle: bob_bus_name}
 
-    call_async(q, dbus_tube_iface, 'Accept')
+    call_async(q, dbus_tube_iface, 'Accept', c.SOCKET_ACCESS_CONTROL_CREDENTIALS)
 
     return_event, names_changed, presence_event = q.expect_many(
         EventPattern('dbus-return', method='Accept'),

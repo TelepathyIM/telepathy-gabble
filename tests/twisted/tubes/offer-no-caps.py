@@ -104,7 +104,7 @@ def test(q, bus, conn, stream):
         { cs.DBUS_TUBE_SERVICE_NAME: "com.newecho" }))
     dt_chan = bus.get_object(conn.bus_name, dt_path)
     dt = dbus.Interface(dt_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
-    call_async(q, dt, 'Offer', {})
+    call_async(q, dt, 'Offer', {}, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)
     e = q.expect('dbus-error', method='Offer').error
     assert e.get_dbus_name() == cs.NOT_AVAILABLE, e.get_dbus_name()
 

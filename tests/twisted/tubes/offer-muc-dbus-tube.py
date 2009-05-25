@@ -245,7 +245,7 @@ def test(q, bus, conn, stream):
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
-    call_async(q, dbus_tube_iface, 'Offer', sample_parameters)
+    call_async(q, dbus_tube_iface, 'Offer', sample_parameters, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)
 
     new_tube_event, presence_event, return_event, status_event, dbus_changed_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),

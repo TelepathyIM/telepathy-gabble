@@ -244,7 +244,7 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestr
     # IQ be sent to Alice. We sync the stream to ensure the IQ would have
     # arrived if it had been sent.
     sync_stream(q, stream)
-    call_async(q, dbus_tube_iface, 'Offer', sample_parameters)
+    call_async(q, dbus_tube_iface, 'Offer', sample_parameters, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)
     offer_return_event, iq_event, new_tube_event, state_event = q.expect_many(
         EventPattern('dbus-return', method='Offer'),
         EventPattern('stream-iq', to='alice@localhost/Test'),

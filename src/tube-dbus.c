@@ -1850,6 +1850,7 @@ gabble_tube_dbus_get_interfaces (TpSvcChannel *iface,
 static void
 gabble_tube_dbus_offer_async (GabbleSvcChannelTypeDBusTube *self,
     GHashTable *parameters,
+    guint access_control,
     DBusGMethodInvocation *context)
 {
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
@@ -1878,6 +1879,7 @@ gabble_tube_dbus_offer_async (GabbleSvcChannelTypeDBusTube *self,
  */
 static void
 gabble_tube_dbus_accept_async (GabbleSvcChannelTypeDBusTube *self,
+    guint access_control,
     DBusGMethodInvocation *context)
 {
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);

@@ -1397,13 +1397,13 @@ gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
 
   /* Muc Channel.Type.StreamTube */
   g_value_set_static_string (channel_type_value,
-      GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
+      TP_IFACE_CHANNEL_TYPE_STREAM_TUBE);
   func (manager, table, gabble_tube_stream_channel_get_allowed_properties (),
       user_data);
 
   /* Muc Channel.Type.DBusTube */
   g_value_set_static_string (channel_type_value,
-      GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+      TP_IFACE_CHANNEL_TYPE_DBUS_TUBE);
   func (manager, table, gabble_tube_dbus_channel_get_allowed_properties (),
       user_data);
 
@@ -1616,12 +1616,12 @@ handle_stream_tube_channel_request (GabbleMucFactory *self,
 
   /* "Service" is a mandatory, not-fixed property */
   service = tp_asv_get_string (request_properties,
-            GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+            TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
   if (service == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Request does not contain the mandatory property '%s'",
-          GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+          TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
       return FALSE;
     }
 
@@ -1647,12 +1647,12 @@ handle_dbus_tube_channel_request (GabbleMucFactory *self,
 
   /* "ServiceName" is a mandatory, not-fixed property */
   service = tp_asv_get_string (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+      TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
   if (service == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Request does not contain the mandatory property '%s'",
-          GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+          TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
       return FALSE;
     }
 
@@ -1679,8 +1679,8 @@ gabble_muc_factory_request (GabbleMucFactory *self,
 
    if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
        tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
-       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
-       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
+       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
      return FALSE;
 
   /* validity already checked by TpBaseConnection */
@@ -1700,13 +1700,13 @@ gabble_muc_factory_request (GabbleMucFactory *self,
           request_properties, require_new, handle, &error))
         return TRUE;
     }
-  else if (!tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
     {
       if (handle_stream_tube_channel_request (self, request_token,
           request_properties, require_new, handle, &error))
         return TRUE;
     }
-  else if (!tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     {
       if (handle_dbus_tube_channel_request (self, request_token,
           request_properties, require_new, handle, &error))

@@ -5,7 +5,6 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_LOCATION
 
@@ -112,15 +111,16 @@ create_msg_foreach (gpointer key,
 
   if (G_VALUE_TYPE (value) == G_TYPE_INT64)
     {
-      time_t stamp = g_value_get_int64 (value);
-      struct tm *ptm = gmtime (&stamp);
-      gchar str[30];
+      GTimeVal timeval;
+      gchar *str;
 
-      if (strftime (str, sizeof (str), "%Y%m%dT%TZ", ptm) == 0)
-        return;
+      timeval.tv_sec = CLAMP (g_value_get_int64 (value), 0, G_MAXLONG);
+      timeval.tv_usec = 0;
+      str = g_time_val_to_iso8601 (&timeval);
 
       lm_message_node_add_child (geoloc, key, str);
       DEBUG ("\t - %s: %s", (gchar *) key, str);
+      g_free (str);
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)
     {

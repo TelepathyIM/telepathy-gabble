@@ -57,7 +57,7 @@ static guint signals[LAST_SIGNAL] = {0};
 enum
 {
   PROP_MEDIA_TYPE = 1,
-  PROP_REMOTE_STATE,
+  PROP_REMOTE_MUTE,
   LAST_PROPERTY
 };
 
@@ -77,7 +77,8 @@ struct _GabbleJingleMediaRtpPrivate
 
   GList *remote_codecs;
   JingleMediaType media_type;
-  JingleRtpRemoteState remote_state;
+  gboolean remote_mute;
+
   gboolean dispose_has_run;
 };
 
@@ -188,8 +189,8 @@ gabble_jingle_media_rtp_get_property (GObject *object,
     case PROP_MEDIA_TYPE:
       g_value_set_uint (value, priv->media_type);
       break;
-    case PROP_REMOTE_STATE:
-      g_value_set_uint (value, priv->remote_state);
+    case PROP_REMOTE_MUTE:
+      g_value_set_boolean (value, priv->remote_mute);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -210,6 +211,9 @@ gabble_jingle_media_rtp_set_property (GObject *object,
     case PROP_MEDIA_TYPE:
       priv->media_type = g_value_get_uint (value);
       break;
+    case PROP_REMOTE_MUTE:
+      priv->remote_mute = g_value_get_boolean (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -220,11 +224,6 @@ static void parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error);
 static void produce_description (GabbleJingleContent *obj,
     LmMessageNode *content_node);
-static gboolean gabble_jingle_media_rtp_handle_info (
-    GabbleJingleContent *content,
-    LmMessageNode *payload,
-    gboolean *handled,
-    GError **error);
 
 static void
 gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
@@ -241,7 +240,6 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 
   content_class->parse_description = parse_description;
   content_class->produce_description = produce_description;
-  content_class->handle_info = gabble_jingle_media_rtp_handle_info;
 
   param_spec = g_param_spec_uint ("media-type", "RTP media type",
       "Media type.",
@@ -250,13 +248,10 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
       G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
-  param_spec = g_param_spec_uint ("remote-state", "Remote state",
-      "Whether the peer is muted, has us on hold, is ringing, or is active on "
-      "this content",
-      JINGLE_RTP_REMOTE_STATE_ACTIVE, JINGLE_RTP_REMOTE_STATE_HOLD,
-      JINGLE_RTP_REMOTE_STATE_ACTIVE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_REMOTE_STATE, param_spec);
+  param_spec = g_param_spec_boolean ("remote-mute", "Remote mute",
+      "TRUE if the peer has muted this stream", FALSE,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_REMOTE_MUTE, param_spec);
 
   /* signal definitions */
 
@@ -816,74 +811,4 @@ GList *
 gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self)
 {
   return self->priv->remote_codecs;
-}
-
-static gboolean
-gabble_jingle_media_rtp_handle_info (GabbleJingleContent *content,
-    LmMessageNode *payload,
-    gboolean *handled,
-    GError **error)
-{
-  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
-  const gchar *ns = lm_message_node_get_namespace (payload);
-  const gchar *elt = lm_message_node_get_name (payload);
-  const gchar *name_attr = lm_message_node_get_attribute (payload, "name");
-  const gchar *content_name = gabble_jingle_content_get_name (content);
-  JingleRtpRemoteState new_state;
-
-  if (tp_strdiff (ns, NS_JINGLE_RTP_INFO))
-    {
-      *handled = FALSE;
-      return TRUE;
-    }
-
-  *handled = TRUE;
-
-  /* The XEP only says active and mute can have name="". */
-  if (!tp_strdiff (elt, "active"))
-    {
-      if (name_attr != NULL && tp_strdiff (name_attr, content_name))
-        return TRUE;
-      new_state = JINGLE_RTP_REMOTE_STATE_ACTIVE;
-    }
-  else if (!tp_strdiff (elt, "ringing"))
-    {
-      new_state = JINGLE_RTP_REMOTE_STATE_RINGING;
-    }
-  else if (!tp_strdiff (elt, "hold"))
-    {
-      new_state = JINGLE_RTP_REMOTE_STATE_HOLD;
-    }
-  else if (!tp_strdiff (elt, "mute"))
-    {
-      if (name_attr != NULL && tp_strdiff (name_attr, content_name))
-        return TRUE;
-      new_state = JINGLE_RTP_REMOTE_STATE_MUTE;
-    }
-  else
-    {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
-          "<%s> is not known in namespace %s", elt, ns);
-      return FALSE;
-    }
-
-  if (new_state != self->priv->remote_state)
-    {
-      DEBUG ("moving from remote state %u to %u (%s)", self->priv->remote_state,
-          new_state, elt);
-      self->priv->remote_state = new_state;
-      g_object_notify ((GObject *) self, "remote-state");
-    }
-  else
-    {
-      DEBUG ("already in state %u (%s)", new_state, elt);
-    }
-
-  return TRUE;
-}
-
-JingleRtpRemoteState
-gabble_jingle_media_rtp_get_remote_state (GabbleJingleMediaRtp *self)
-{
-  return self->priv->remote_state;
 }

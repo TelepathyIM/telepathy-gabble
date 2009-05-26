@@ -7,7 +7,7 @@ from twisted.words.xish import xpath
 
 from gabbletest import make_result_iq
 from servicetest import (
-    wrap_channel, make_channel_proxy, EventPattern, tp_path_prefix)
+    wrap_channel, make_channel_proxy, EventPattern, tp_path_prefix, sync_dbus)
 import ns
 import constants as cs
 
@@ -72,6 +72,50 @@ def test(jp, q, bus, conn, stream):
 
     call_states = chan.CallState.GetCallStates()
     assert call_states == { handle: cs.CALL_STATE_RINGING }, call_states
+
+    # We're waiting in a queue, so the other person's client tells us we're on
+    # hold. Gabble should ack the IQ, and set the call state to Ringing | Held.
+    # Also, Gabble certainly shouldn't tell s-e to start sending. (Although it
+    # might tell it not to; we don't mind.)
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.jid, 'session-info', [
+            ('hold', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+    stream.send(jp.xml(node))
+
+    forbidden = [
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
+            path=audio_path_suffix),
+            ]
+    q.forbid_events(forbidden)
+
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+        EventPattern('dbus-signal', signal='CallStateChanged',
+            args=[handle, cs.CALL_STATE_RINGING | cs.CALL_STATE_HELD]),
+        )
+
+    call_states = chan.CallState.GetCallStates()
+    assert call_states == { handle: cs.CALL_STATE_RINGING | cs.CALL_STATE_HELD }, call_states
+
+    # We're at the head of a queue, so the other person's client tells us we're
+    # no longer on hold. The call centre phone's still ringing, though. s-e
+    # still shouldn't start sending.
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.jid, 'session-info', [
+            ('unhold', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+    stream.send(jp.xml(node))
+
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+        EventPattern('dbus-signal', signal='CallStateChanged',
+            args=[handle, cs.CALL_STATE_RINGING]),
+        )
+
+    call_states = chan.CallState.GetCallStates()
+    assert call_states == { handle: cs.CALL_STATE_RINGING }, call_states
+
+    sync_dbus(bus, q, conn)
+    q.unforbid_events(forbidden)
 
     jt.accept()
 
@@ -195,44 +239,30 @@ def test(jp, q, bus, conn, stream):
     call_states = chan.CallState.GetCallStates()
     assert call_states == { handle: cs.CALL_STATE_HELD }, call_states
 
-    # The other person sets the video stream back to <active/>. (XEP-0167
-    # says that <active/> and <mute/> can have name='', but <hold/> can't.
-    # Gabble should expose this as "start sending video again, but the call's
-    # still held."
-    # FIXME: hardcoded stream id
-    node = jp.SetIq(jt.peer, jt.jid, [
-        jp.Jingle(jt.sid, jt.jid, 'session-info', [
-            ('active', ns.JINGLE_RTP_INFO_1, {'name': 'stream2'}, []) ]) ])
-    stream.send(jp.xml(node))
-
-    q.expect_many(
-        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
-        EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
-            path=video_path_suffix),
-        )
-
-    call_states = chan.CallState.GetCallStates()
-    assert call_states == { handle: cs.CALL_STATE_HELD }, call_states
-
-    # Now the other person sets the audio stream to mute. Gabble should expose
-    # this as the call being active again (since we can't represent mute yet!)
-    # and tell s-e to start sending audio again.
+    # Now the other person sets the audio stream to mute. We can't represent
+    # mute yet, but Gabble shouldn't take this to mean the call is active, as
+    # one stream being muted doesn't change the fact that the call's on hold.
     # FIXME: hardcoded stream id
     node = jp.SetIq(jt.peer, jt.jid, [
         jp.Jingle(jt.sid, jt.jid, 'session-info', [
             ('mute', ns.JINGLE_RTP_INFO_1, {'name': 'stream1'}, []) ]) ])
     stream.send(jp.xml(node))
 
-    q.expect_many(
-        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+    forbidden = [
         EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
             path=audio_path_suffix),
         EventPattern('dbus-signal', signal='CallStateChanged',
             args=[ handle, 0 ]),
-        )
+            ]
+    q.forbid_events(forbidden)
+
+    q.expect('stream-iq', iq_type='result', iq_id=node[2]['id'])
 
     call_states = chan.CallState.GetCallStates()
-    assert call_states == { handle: 0 } or call_states == {}, call_states
+    assert call_states == { handle: cs.CALL_STATE_HELD }, call_states
+
+    sync_dbus(bus, q, conn)
+    q.unforbid_events(forbidden)
 
     # That'll do, pig.
 

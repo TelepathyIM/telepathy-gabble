@@ -33,6 +33,10 @@
 #include "gabble-signals-marshal.h"
 #include "jingle-content.h"
 #include "jingle-factory.h"
+/* FIXME: the RTP-specific bits of this file should be separated from the
+ *        generic Jingle code.
+ */
+#include "jingle-media-rtp.h"
 #include "namespaces.h"
 #include "util.h"
 
@@ -42,6 +46,7 @@ G_DEFINE_TYPE(GabbleJingleSession, gabble_jingle_session, G_TYPE_OBJECT);
 enum
 {
   NEW_CONTENT,
+  REMOTE_STATE_CHANGED,
   TERMINATED,
   LAST_SIGNAL
 };
@@ -58,6 +63,8 @@ enum
   PROP_LOCAL_INITIATOR,
   PROP_STATE,
   PROP_DIALECT,
+  PROP_REMOTE_HOLD,
+  PROP_REMOTE_RINGING,
   LAST_PROPERTY
 };
 
@@ -80,6 +87,9 @@ struct _GabbleJingleSessionPrivate
 
   gboolean locally_accepted;
   gboolean locally_terminated;
+
+  gboolean remote_hold;
+  gboolean remote_ringing;
 
   guint timer_id;
 
@@ -218,6 +228,12 @@ gabble_jingle_session_get_property (GObject *object,
       break;
     case PROP_DIALECT:
       g_value_set_uint (value, priv->dialect);
+      break;
+    case PROP_REMOTE_HOLD:
+      g_value_set_boolean (value, priv->remote_hold);
+      break;
+    case PROP_REMOTE_RINGING:
+      g_value_set_boolean (value, priv->remote_ringing);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -366,6 +382,16 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_DIALECT, param_spec);
 
+  param_spec = g_param_spec_boolean ("remote-hold", "Remote hold",
+      "TRUE if the peer has placed us on hold", FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_REMOTE_HOLD, param_spec);
+
+  param_spec = g_param_spec_boolean ("remote-ringing", "Remote ringing",
+      "TRUE if the peer's client is ringing", FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_REMOTE_RINGING,
+      param_spec);
 
   /* signal definitions */
 
@@ -378,6 +404,11 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, gabble_marshal_VOID__BOOLEAN_UINT,
         G_TYPE_NONE, 2, G_TYPE_BOOLEAN, G_TYPE_UINT);
+
+  signals[REMOTE_STATE_CHANGED] = g_signal_new ("remote-state-changed",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, NULL, NULL, gabble_marshal_VOID__VOID,
+        G_TYPE_NONE, 0);
 }
 
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
@@ -880,11 +911,133 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
 }
 
 static void
+mute_all (GabbleJingleSession *sess,
+    gboolean mute)
+{
+  GHashTableIter iter;
+  gpointer value;
+
+  g_hash_table_iter_init (&iter, sess->priv->contents);
+
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    {
+      if (G_OBJECT_TYPE (value) == GABBLE_TYPE_JINGLE_MEDIA_RTP)
+        g_object_set (value, "remote-mute", mute, NULL);
+    }
+}
+
+static gboolean
+set_mute (GabbleJingleSession *sess,
+    const gchar *name,
+    gboolean mute,
+    GError **error)
+{
+  GabbleJingleContent *c;
+
+  if (name == NULL)
+    {
+      mute_all (sess, mute);
+      return TRUE;
+    }
+
+  c = g_hash_table_lookup (sess->priv->contents, name);
+
+  if (c == NULL)
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
+          "content '%s' does not exist", name);
+      return FALSE;
+    }
+
+  if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "content '%s' isn't an RTP session", name);
+      return FALSE;
+    }
+
+  g_object_set (c, "remote-mute", mute, NULL);
+  return TRUE;
+}
+
+static void
+set_hold (GabbleJingleSession *sess,
+    gboolean hold)
+{
+  sess->priv->remote_hold = hold;
+}
+
+static void
+set_ringing (GabbleJingleSession *sess,
+    gboolean ringing)
+{
+  sess->priv->remote_ringing = ringing;
+}
+
+static gboolean
+handle_payload (GabbleJingleSession *sess,
+    LmMessageNode *payload,
+    gboolean *handled,
+    GError **error)
+{
+  const gchar *ns = lm_message_node_get_namespace (payload);
+  const gchar *elt = lm_message_node_get_name (payload);
+  const gchar *name_attr = lm_message_node_get_attribute (payload, "name");
+
+  if (tp_strdiff (ns, NS_JINGLE_RTP_INFO))
+    {
+      *handled = FALSE;
+      return TRUE;
+    }
+
+  *handled = TRUE;
+
+  if (!tp_strdiff (elt, "active"))
+    {
+      /* Clear all states, we're active */
+      mute_all (sess, FALSE);
+      set_ringing (sess, FALSE);
+      set_hold (sess, FALSE);
+    }
+  else if (!tp_strdiff (elt, "ringing"))
+    {
+      set_ringing (sess, TRUE);
+    }
+  else if (!tp_strdiff (elt, "hold"))
+    {
+      set_hold (sess, TRUE);
+    }
+  else if (!tp_strdiff (elt, "unhold"))
+    {
+      set_hold (sess, FALSE);
+    }
+  /* XEP-0178 says that only <mute/> and <unmute/> can have a name=''
+   * attribute.
+   */
+  else if (!tp_strdiff (elt, "mute"))
+    {
+      return set_mute (sess, name_attr, TRUE, error);
+    }
+  else if (!tp_strdiff (elt, "unmute"))
+    {
+      return set_mute (sess, name_attr, FALSE, error);
+    }
+  else
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR,
+          XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
+          "<%s> is not known in namespace %s", elt, ns);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
 on_session_info (GabbleJingleSession *sess,
     LmMessageNode *node,
     GError **error)
 {
-  GList *contents, *l;
   gboolean understood_a_payload = FALSE;
   gboolean hit_an_error = FALSE;
   LmMessageNode *n = node->children;
@@ -893,39 +1046,34 @@ on_session_info (GabbleJingleSession *sess,
   if (n == NULL)
     return;
 
-  contents = g_hash_table_get_values (sess->priv->contents);
-
   for (n = node->children; n != NULL; n = n->next)
     {
-      for (l = contents; l != NULL; l = g_list_next (l))
-        {
-          gboolean handled;
-          GError *e = NULL;
+      gboolean handled;
+      GError *e = NULL;
 
-          if (gabble_jingle_content_handle_info (l->data, n, &handled, &e))
-            {
-              understood_a_payload = understood_a_payload || handled;
-            }
-          else
-            {
-              if (hit_an_error)
-                {
-                  DEBUG ("already got another error; ignoring %s", e->message);
-                  g_error_free (e);
-                }
-              else
-                {
-                  DEBUG ("hit an error: %s", e->message);
-                  hit_an_error = TRUE;
-                  g_propagate_error (error, e);
-                }
-            }
+      if (handle_payload (sess, n, &handled, &e))
+        {
+          understood_a_payload = understood_a_payload || handled;
+        }
+      else if (hit_an_error)
+        {
+          DEBUG ("already got another error; ignoring %s", e->message);
+          g_error_free (e);
+        }
+      else
+        {
+          DEBUG ("hit an error: %s", e->message);
+          hit_an_error = TRUE;
+          g_propagate_error (error, e);
         }
     }
 
-  /* If we didn't understand any of the payloads, tell the other end.
+  /* If we understood something, the remote state (may have) changed. Else,
+   * return an error to the peer.
    */
-  if (!understood_a_payload)
+  if (understood_a_payload)
+    g_signal_emit (sess, signals[REMOTE_STATE_CHANGED], 0);
+  else
     g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
         "no recognized session-info payloads");
 }
@@ -1885,4 +2033,20 @@ gabble_jingle_session_send_held (GabbleJingleSession *sess,
 
   /* This is just informational, so ignoring the reply. */
   gabble_jingle_session_send (sess, message, NULL, NULL);
+}
+
+gboolean
+gabble_jingle_session_get_remote_hold (GabbleJingleSession *sess)
+{
+  g_assert (GABBLE_IS_JINGLE_SESSION (sess));
+
+  return sess->priv->remote_hold;
+}
+
+gboolean
+gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess)
+{
+  g_assert (GABBLE_IS_JINGLE_SESSION (sess));
+
+  return sess->priv->remote_ringing;
 }

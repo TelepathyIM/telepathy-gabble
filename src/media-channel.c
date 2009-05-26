@@ -2473,6 +2473,8 @@ construct_stream (GabbleMediaChannel *chan,
   TpMediaStreamType mtype;
   guint id;
   gchar *object_path;
+  gboolean local_hold = (priv->hold_state == TP_LOCAL_HOLD_STATE_HELD ||
+      priv->hold_state == TP_LOCAL_HOLD_STATE_PENDING_HOLD);
 
   id = priv->next_stream_id++;
 
@@ -2480,7 +2482,7 @@ construct_stream (GabbleMediaChannel *chan,
       priv->object_path, id);
 
   stream = gabble_media_stream_new (object_path, c, name, id,
-      nat_traversal, relays);
+      nat_traversal, relays, local_hold);
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 

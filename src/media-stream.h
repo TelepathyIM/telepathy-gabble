@@ -95,8 +95,12 @@ gboolean gabble_media_stream_change_direction (GabbleMediaStream *stream,
 void gabble_media_stream_accept_pending_local_send (GabbleMediaStream *stream);
 
 GabbleMediaStream *gabble_media_stream_new (const gchar *object_path,
-    GabbleJingleContent *content, const gchar *name, guint id,
-    const gchar *nat_traversal, const GPtrArray *relays);
+    GabbleJingleContent *content,
+    const gchar *name,
+    guint id,
+    const gchar *nat_traversal,
+    const GPtrArray *relay_info,
+    gboolean local_hold);
 TpMediaStreamType gabble_media_stream_get_media_type (GabbleMediaStream *self);
 
 GabbleJingleMediaRtp *gabble_media_stream_get_content (GabbleMediaStream *self);

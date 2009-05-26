@@ -153,6 +153,15 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) conn,
     context);
 
+  if (!(conn->features & GABBLE_CONNECTION_FEATURES_PEP))
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Server does not support PEP, cannot publish geolocation" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
   gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_GEOLOCATION);
   msg = pubsub_make_publish_msg (NULL, NS_GEOLOC, NS_GEOLOC, "geoloc",
       &geoloc);

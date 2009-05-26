@@ -587,6 +587,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
       GABBLE_IFACE_OLPC_GADGET,
       GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
+      GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION,
       NULL };
   static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
         { "GadgetAvailable", NULL, NULL },
@@ -2151,7 +2152,7 @@ connection_disco_cb (GabbleDisco *disco,
     {
       const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
           GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
-          GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION, NULL };
+          NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }

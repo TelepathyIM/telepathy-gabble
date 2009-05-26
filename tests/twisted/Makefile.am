@@ -26,6 +26,7 @@ TWISTED_TESTS = \
 	roster/ensure.py \
 	roster/groups.py \
 	roster/groups-12791.py \
+	roster/removed-from-rp-subscribe.py \
 	roster/request-group-before-roster.py \
 	roster/request-group-after-roster.py \
 	roster/test-google-roster.py \

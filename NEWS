@@ -22,11 +22,24 @@ Enhancements:
   we don't think this will break clients, since other CMs (such as
   telepathy-haze) never implemented 'known'. (fd.o #19901)
 
+* Incoming call state notifications (ringing, on hold, etc.) are now handled in
+  line with the latest draft of XEP-0167. (fd.o #21836)
+
 Fixes:
 
 * fd.o #21684: Don't crash in SessionHandler.Ready() if streams is NULL
 
 * fd.o #21817: Sometimes crashes upon receiving an empty <nick/> update.
+
+* fd.o #21547: Contacts removed from roster stay on subscribe:remote-pending.
+  It's conceivable that this fix could cause regressions, since the bug was
+  introduced while working around some GTalk roster bugs. As discussed on the
+  fd.o bug, the bug being worked around appeared to be to do with roster
+  updates when a contact accepts your subscription. That workaround has not
+  been removed, so with any luck this should be okay.
+
+* fd.o #21878: Adding a new stream while a call's on hold makes it fall back to
+  Pending Hold.
 
 telepathy-gabble 0.7.27 (2009-05-07)
 ====================================

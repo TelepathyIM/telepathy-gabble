@@ -364,3 +364,4 @@ def exec_stream_tube_test(test):
 
 def exec_dbus_tube_test(test):
     exec_tube_test(test, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)
+    exec_tube_test(test, cs.SOCKET_ACCESS_CONTROL_LOCALHOST)

@@ -352,3 +352,5 @@ if __name__ == '__main__':
     # We can't use t.exec_dbus_tube_test() as we can use only the muc bytestream
     exec_test(lambda q, bus, conn, stream:
         test(q, bus, conn, stream, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS))
+    exec_test(lambda q, bus, conn, stream:
+        test(q, bus, conn, stream, cs.SOCKET_ACCESS_CONTROL_LOCALHOST))

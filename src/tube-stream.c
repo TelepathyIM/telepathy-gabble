@@ -1044,6 +1044,13 @@ tube_stream_open (GabbleTubeStream *self,
           g_free (path);
           return FALSE;
         }
+
+      if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+        {
+          /* Everyone can use the socket */
+          chmod (path, 0777);
+        }
+
       g_free (path);
     }
   else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)

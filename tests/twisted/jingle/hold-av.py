@@ -12,6 +12,89 @@ import constants as cs
 
 from jingletest2 import JingleTest2, test_all_dialects
 
+def mutable_stream_tests(jp, jt, q, bus, conn, stream, media_iface,
+    hold_iface, handle):
+    # ---- Test 13: while the call's on hold, we add a new stream ---
+    # We shouldn't go off hold locally as a result, and the new StreamHandler
+    # should tell s-e to hold the stream.
+
+    pending_hold = [
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            predicate=lambda e: e.args[0] == cs.HS_PENDING_HOLD),
+        ]
+    q.forbid_events(pending_hold)
+
+    call_async(q, media_iface, 'RequestStreams', handle,
+        [cs.MEDIA_STREAM_TYPE_AUDIO])
+
+    e = q.expect('dbus-signal', signal='NewStreamHandler')
+    audio_stream_path = e.args[0]
+    audio_stream_handler = make_channel_proxy(conn, e.args[0],
+            'Media.StreamHandler')
+
+    # Syncing here to make sure SetStreamHeld happens after Ready...
+    sync_dbus(bus, q, conn)
+
+    audio_stream_handler.Ready(jt.get_audio_codecs_dbus())
+    audio_stream_handler.NewNativeCandidate("fake",
+            jt.get_remote_transports_dbus())
+    audio_stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
+
+    path_suffix = audio_stream_path[len(tp_path_prefix):]
+
+    q.expect_many(
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[True],
+            path=path_suffix),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
+            path=path_suffix),
+        )
+
+    assertEquals(cs.HS_HELD, hold_iface.GetHoldState()[0])
+
+    sync_dbus(bus, q, conn)
+
+    # ---- Test 14: while the call's on hold, the peer adds a new stream ----
+    # Again, we shouldn't go off hold locally as a result, and the new
+    # StreamHandler should tell s-e to hold the stream.
+
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.peer, 'content-add', [
+            jp.Content('videostream', 'initiator', 'both', [
+                jp.Description('video', [
+                    jp.PayloadType(name, str(rate), str(id)) for
+                        (name, id, rate) in jt.video_codecs ]),
+            jp.TransportGoogleP2P() ]) ]) ])
+    stream.send(jp.xml(node))
+
+    e = q.expect('dbus-signal', signal='NewStreamHandler')
+    video_stream_path = e.args[0]
+    video_stream_handler = make_channel_proxy(conn, e.args[0],
+            'Media.StreamHandler')
+
+    # Syncing here to make sure SetStreamHeld happens after Ready...
+    sync_dbus(bus, q, conn)
+
+    video_stream_handler.Ready(jt.get_video_codecs_dbus())
+    video_stream_handler.NewNativeCandidate("fake",
+            jt.get_remote_transports_dbus())
+    video_stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
+
+    path_suffix = video_stream_path[len(tp_path_prefix):]
+
+    q.expect_many(
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[True],
+            path=path_suffix),
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
+            path=path_suffix),
+        )
+
+    assertEquals(cs.HS_HELD, hold_iface.GetHoldState()[0])
+
+    sync_dbus(bus, q, conn)
+    q.unforbid_events(pending_hold)
+
+
+
 def test(jp, q, bus, conn, stream):
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
 
@@ -379,84 +462,8 @@ def test(jp, q, bus, conn, stream):
     sync_stream(q, stream)
     q.unforbid_events(hold_event + active_event)
 
-    # ---- Test 13: while the call's on hold, we add a new stream ---
-    # We shouldn't go off hold locally as a result, and the new StreamHandler
-    # should tell s-e to hold the stream.
-
-    pending_hold = [
-        EventPattern('dbus-signal', signal='HoldStateChanged',
-            predicate=lambda e: e.args[0] == cs.HS_PENDING_HOLD),
-        ]
-    q.forbid_events(pending_hold)
-
-    call_async(q, media_iface, 'RequestStreams', handle,
-        [cs.MEDIA_STREAM_TYPE_AUDIO])
-
-    e = q.expect('dbus-signal', signal='NewStreamHandler')
-    audio_stream_path = e.args[0]
-    audio_stream_handler = make_channel_proxy(conn, e.args[0],
-            'Media.StreamHandler')
-
-    # Syncing here to make sure SetStreamHeld happens after Ready...
-    sync_dbus(bus, q, conn)
-
-    audio_stream_handler.Ready(jt.get_audio_codecs_dbus())
-    audio_stream_handler.NewNativeCandidate("fake",
-            jt.get_remote_transports_dbus())
-    audio_stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
-
-    path_suffix = audio_stream_path[len(tp_path_prefix):]
-
-    q.expect_many(
-        EventPattern('dbus-signal', signal='SetStreamHeld', args=[True],
-            path=path_suffix),
-        EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
-            path=path_suffix),
-        )
-
-    assertEquals(cs.HS_HELD, hold_iface.GetHoldState()[0])
-
-    sync_dbus(bus, q, conn)
-
-    # ---- Test 14: while the call's on hold, the peer adds a new stream ----
-    # Again, we shouldn't go off hold locally as a result, and the new
-    # StreamHandler should tell s-e to hold the stream.
-
-    node = jp.SetIq(jt.peer, jt.jid, [
-        jp.Jingle(jt.sid, jt.peer, 'content-add', [
-            jp.Content('videostream', 'initiator', 'both', [
-                jp.Description('video', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt.video_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
-    stream.send(jp.xml(node))
-
-    e = q.expect('dbus-signal', signal='NewStreamHandler')
-    video_stream_path = e.args[0]
-    video_stream_handler = make_channel_proxy(conn, e.args[0],
-            'Media.StreamHandler')
-
-    # Syncing here to make sure SetStreamHeld happens after Ready...
-    sync_dbus(bus, q, conn)
-
-    video_stream_handler.Ready(jt.get_video_codecs_dbus())
-    video_stream_handler.NewNativeCandidate("fake",
-            jt.get_remote_transports_dbus())
-    video_stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
-
-    path_suffix = video_stream_path[len(tp_path_prefix):]
-
-    q.expect_many(
-        EventPattern('dbus-signal', signal='SetStreamHeld', args=[True],
-            path=path_suffix),
-        EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
-            path=path_suffix),
-        )
-
-    assertEquals(cs.HS_HELD, hold_iface.GetHoldState()[0])
-
-    sync_dbus(bus, q, conn)
-    q.unforbid_events(pending_hold)
+    mutable_stream_tests(jp, jt, q, bus, conn, stream,
+            media_iface, hold_iface, handle)
 
     # ---- The end ----
 

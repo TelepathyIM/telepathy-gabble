@@ -150,7 +150,8 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
     assert props[cs.TARGET_ID] == 'bob@localhost'
     assert props[cs.DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase2'
     assert props[cs.TUBE_PARAMETERS] == {'login': 'TEST'}
-    assert props[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [cs.SOCKET_ACCESS_CONTROL_CREDENTIALS]
+    assert props[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [cs.SOCKET_ACCESS_CONTROL_CREDENTIALS,
+        cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
     assert cs.TUBE_STATE not in props
 
     tube_chan = bus.get_object(conn.bus_name, path)

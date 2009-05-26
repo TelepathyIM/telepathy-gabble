@@ -956,6 +956,8 @@ gabble_tube_dbus_constructor (GType type,
       sizeof (guint), 1);
   access_control = TP_SOCKET_ACCESS_CONTROL_CREDENTIALS;
   g_array_append_val (priv->supported_access_controls, access_control);
+  access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (priv->supported_access_controls, access_control);
 
   return obj;
 }

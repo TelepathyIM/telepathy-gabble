@@ -190,7 +190,8 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle,
     assert tube_props[cs.INITIATOR_HANDLE] == self_handle
     assert tube_props[cs.INITIATOR_ID] == "test@localhost"
     assert tube_props[cs.DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase'
-    assert tube_props[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [cs.SOCKET_ACCESS_CONTROL_CREDENTIALS]
+    assert tube_props[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [cs.SOCKET_ACCESS_CONTROL_CREDENTIALS,
+        cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
     assert cs.DBUS_TUBE_DBUS_NAMES not in tube_props
     assert cs.TUBE_PARAMETERS not in tube_props
     assert cs.TUBE_STATE not in tube_props

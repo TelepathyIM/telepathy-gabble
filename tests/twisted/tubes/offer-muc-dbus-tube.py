@@ -230,7 +230,8 @@ def test(q, bus, conn, stream, access_control):
     assert prop[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
     assert prop[cs.TARGET_ID] == 'chat2@conf.localhost'
     assert prop[cs.DBUS_TUBE_SERVICE_NAME] == 'com.example.TestCase'
-    assert prop[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [cs.SOCKET_ACCESS_CONTROL_CREDENTIALS]
+    assert prop[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [cs.SOCKET_ACCESS_CONTROL_CREDENTIALS,
+        cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
 
     # check that the tube channel is in the channels list
     all_channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',

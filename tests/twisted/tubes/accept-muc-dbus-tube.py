@@ -59,7 +59,8 @@ def test(q, bus, conn, stream, access_control):
     assert props[c.TARGET_ID] == 'chat@conf.localhost'
     assert props[c.DBUS_TUBE_SERVICE_NAME] == 'com.example.Test'
     assert props[c.TUBE_PARAMETERS] == {'foo': 'bar'}
-    assert props[c.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [c.SOCKET_ACCESS_CONTROL_CREDENTIALS]
+    assert props[c.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [c.SOCKET_ACCESS_CONTROL_CREDENTIALS,
+        c.SOCKET_ACCESS_CONTROL_LOCALHOST]
 
     tube_chan = bus.get_object(conn.bus_name, path)
     tube_iface = dbus.Interface(tube_chan, c.CHANNEL_IFACE_TUBE)

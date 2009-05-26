@@ -288,6 +288,14 @@ out:
   return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static dbus_bool_t
+allow_all_connections (DBusConnection *conn,
+                       unsigned long uid,
+                       void *data)
+{
+  return TRUE;
+}
+
 static void
 new_connection_cb (DBusServer *server,
                    DBusConnection *conn,
@@ -309,6 +317,14 @@ new_connection_cb (DBusServer *server,
   dbus_connection_setup_with_g_main (conn, NULL);
   dbus_connection_add_filter (conn, filter_cb, tube, NULL);
   priv->dbus_conn = conn;
+
+  if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+    {
+      /* By default libdbus use Credentials access control. If user wants
+       * to use the Localhost access control, we need to bypass this check. */
+      dbus_connection_set_unix_user_function (conn, allow_all_connections,
+          NULL, NULL);
+    }
 
   /* We may have received messages to deliver before the local connection is
    * established. Theses messages are kept in the dbus_msg_queue list and are
@@ -1881,6 +1897,7 @@ gabble_tube_dbus_check_access_control (GabbleTubeDBus *self,
   switch (access_control)
     {
       case TP_SOCKET_ACCESS_CONTROL_CREDENTIALS:
+      case TP_SOCKET_ACCESS_CONTROL_LOCALHOST:
         break;
 
       default:

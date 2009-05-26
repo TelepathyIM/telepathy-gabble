@@ -89,8 +89,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       <tp:docstring>
         Accept a stream tube that's in the "local pending" state. The
         connection manager will attempt to open the tube. The tube remains in
-        the "local pending" state until the TubeStateChanged signal is
-        emitted.
+        the "local pending" state until the <tp:dbus-ref
+          namespace="org.freedesktop.Telepathy.Channel.Interface.Tube.DRAFT">TubeChannelStateChanged</tp:dbus-ref>
+        signal is emitted.
       </tp:docstring>
       <arg direction="in" name="address_type" type="u" tp:type="Socket_Address_Type">
         <tp:docstring>
@@ -152,7 +153,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
           the connection. Note that this parameter has a meaningful value
           only in the Socket_Access_Control_Port and
           Socket_Access_Control_Credentials cases. If a different
-          Socket_Access_Control has been choosed when offering the tube, this
+          Socket_Access_Control has been chosen when offering the tube, this
           parameter should be ignored.</p>
 
           <p>In the Socket_Access_Control_Port case, the variant
@@ -165,7 +166,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
           the credentials.</p>
         </tp:docstring>
       </arg>
-      <arg name="Connection_ID" type="u">
+      <arg name="Connection_ID" type="u" tp:type="Stream_Tube_Connection_ID">
         <tp:docstring>
           The unique ID associated with this connection. This ID will be used
           to identifiy the connection when reporting errors with
@@ -179,7 +180,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Emitted when the tube application connects to CM's socket.</p>
       </tp:docstring>
-      <arg name="Connection_ID" type="u">
+      <arg name="Connection_ID" type="u" tp:type="Stream_Tube_Connection_ID">
         <tp:docstring>
           The unique ID associated with this connection. This ID will be used
           to identifiy the connection when reporting errors with
@@ -194,14 +195,29 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Emitted when a connection has been closed.</p>
       </tp:docstring>
-      <arg name="Connection_ID" type="u">
+      <arg name="Connection_ID" type="u" tp:type="Stream_Tube_Connection_ID">
         <tp:docstring>
           The ID of the connection.
         </tp:docstring>
       </arg>
       <arg name="Error" type="s" tp:type="DBus_Error_Name">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>The name of a D-Bus error describing the error that occurred.</p>
+
+          <p>The following errors can be used:</p>
+          <ul>
+            <li><code>org.freedesktop.Telepathy.Error.Cancelled</code>:
+               user closed the socket or the tube.</li>
+            <li><code>org.freedesktop.Telepathy.Error.ConnectionLost</code>:
+               the bytestream relaying connection's data has been broken.</li>
+            <li><code>org.freedesktop.Telepathy.Error.ConnectionRefused</code>:
+               the tube offer refused the connection.</li>
+          </ul>
+        </tp:docstring>
+      </arg>
+      <arg name="Message" type="s">
         <tp:docstring>
-          The name of a D-Bus error describing the error that occurred.
+          A debug message.
         </tp:docstring>
       </arg>
     </signal>
@@ -255,6 +271,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
       </tp:docstring>
     </property>
+
+    <tp:simple-type name="Stream_Tube_Connection_ID" type="u">
+      <tp:docstring>An identifier for a stream tube connection.
+        These are defined with the
+        <tp:member-ref>NewLocalConnection</tp:member-ref> or
+        <tp:member-ref>NewRemoteConnection</tp:member-ref> signals
+        and are used by <tp:member-ref>ConnectionClosed</tp:member-ref>
+        to identify the closed connection.
+        </tp:docstring>
+    </tp:simple-type>
 
   </interface>
 

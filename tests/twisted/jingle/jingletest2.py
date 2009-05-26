@@ -123,6 +123,9 @@ class JingleProtocol:
     def seperate_contents(self):
         return True
 
+    def has_mutable_streams(self):
+        return True
+
     def is_modern_jingle(self):
         return False
 
@@ -222,6 +225,9 @@ class GtalkProtocol03(JingleProtocol):
         return True
 
     def seperate_contents(self):
+        return False
+
+    def has_mutable_streams(self):
         return False
 
 class GtalkProtocol04(JingleProtocol):

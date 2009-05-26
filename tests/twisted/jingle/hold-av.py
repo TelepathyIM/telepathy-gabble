@@ -462,7 +462,8 @@ def test(jp, q, bus, conn, stream):
     sync_stream(q, stream)
     q.unforbid_events(hold_event + active_event)
 
-    mutable_stream_tests(jp, jt, q, bus, conn, stream,
+    if jp.has_mutable_streams():
+        mutable_stream_tests(jp, jt, q, bus, conn, stream,
             media_iface, hold_iface, handle)
 
     # ---- The end ----

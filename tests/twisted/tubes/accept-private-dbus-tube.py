@@ -25,7 +25,7 @@ def contact_offer_dbus_tube(bytestream, tube_id):
 
     bytestream.stream.send(iq)
 
-def test(q, bus, conn, stream, bytestream_cls):
+def test(q, bus, conn, stream, bytestream_cls, access_control):
     t.check_conn_properties(q, conn)
 
     conn.Connect()
@@ -169,7 +169,7 @@ def test(q, bus, conn, stream, bytestream_cls):
         assert False
 
     # accept the tube (new API)
-    call_async(q, dbus_tube_iface, 'Accept', cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)
+    call_async(q, dbus_tube_iface, 'Accept', access_control)
 
     # Init the bytestream
     events, state_event = bytestream.open_bytestream(
@@ -202,4 +202,4 @@ def test(q, bus, conn, stream, bytestream_cls):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    t.exec_tube_test(test)
+    t.exec_dbus_tube_test(test)

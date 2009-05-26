@@ -87,7 +87,7 @@ def fire_signal_on_tube(q, tube, chatroom, dbus_stream_id, my_bus_name):
     # being in the message somewhere
     assert my_bus_name in binary
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream, access_control):
     conn.Connect()
 
     _, iq_event = q.expect_many(
@@ -254,7 +254,7 @@ def test(q, bus, conn, stream):
         assert False
 
     # offer the tube
-    call_async(q, dbus_tube_iface, 'Offer', sample_parameters, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)
+    call_async(q, dbus_tube_iface, 'Offer', sample_parameters, access_control)
 
     new_tube_event, presence_event, return_event, status_event, dbus_changed_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
@@ -348,4 +348,6 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    exec_test(test)
+    # We can't use t.exec_dbus_tube_test() as we can use only the muc bytestream
+    exec_test(lambda q, bus, conn, stream:
+        test(q, bus, conn, stream, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS))

@@ -361,3 +361,6 @@ def exec_stream_tube_test(test):
     exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")
     exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS, dbus.Byte(77))
     exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_PORT, ('127.0.0.1', dbus.UInt16(8631)))
+
+def exec_dbus_tube_test(test):
+    exec_tube_test(test, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)

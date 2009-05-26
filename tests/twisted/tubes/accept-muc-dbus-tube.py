@@ -9,7 +9,7 @@ import ns
 
 from mucutil import join_muc_and_check
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream, access_control):
     conn.Connect()
 
     _, iq_event = q.expect_many(
@@ -70,7 +70,7 @@ def test(q, bus, conn, stream):
     dbus_names = tube_chan.Get(c.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=c.PROPERTIES_IFACE)
     assert dbus_names == {bob_handle: bob_bus_name}
 
-    call_async(q, dbus_tube_iface, 'Accept', c.SOCKET_ACCESS_CONTROL_CREDENTIALS)
+    call_async(q, dbus_tube_iface, 'Accept', access_control)
 
     return_event, names_changed, presence_event = q.expect_many(
         EventPattern('dbus-return', method='Accept'),
@@ -110,4 +110,6 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    exec_test(test)
+    # We can't use t.exec_dbus_tube_test() as we can use only the muc bytestream
+    exec_test(lambda q, bus, conn, stream:
+        test(q, bus, conn, stream, c.SOCKET_ACCESS_CONTROL_CREDENTIALS))

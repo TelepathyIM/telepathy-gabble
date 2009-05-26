@@ -329,15 +329,13 @@ update_location_from_msg (GabbleConnection *conn,
         }
       else if (strcmp (key, "timestamp") == 0)
         {
-          struct tm ptm;
-          gchar * p = strptime (str, "%Y%m%dT%T", &ptm);
-          if (p != NULL)
+          GTimeVal timeval;
+          if (g_time_val_from_iso8601 (str, &timeval))
             {
-              gint64 stamp = mktime (&ptm);
               value = g_slice_new0 (GValue);
               g_value_init (value, G_TYPE_INT64);
-              g_value_set_int64 (value, stamp);
-              DEBUG ("\t - %s: %" G_GINT64_FORMAT, key, stamp);
+              g_value_set_int64 (value, timeval.tv_sec);
+              DEBUG ("\t - %s: %s", key, str);
             }
           else
             {

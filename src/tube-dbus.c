@@ -153,6 +153,7 @@ struct _GabbleTubeDBusPrivate
   gchar *service;
   GHashTable *parameters;
   GabbleMucChannel *muc;
+  TpSocketAccessControl access_control;
   /* GArray of guint */
   GArray *supported_access_controls;
 
@@ -945,6 +946,10 @@ gabble_tube_dbus_constructor (GType type,
       /* Incoming tubes have already been offered, as it were. */
       priv->offered = TRUE;
     }
+
+  /* default access control is Credentials as that's the one used by the old
+   * tube API */
+  priv->access_control = TP_SOCKET_ACCESS_CONTROL_CREDENTIALS;
 
   /* Set SupportedAccessesControl */
   priv->supported_access_controls = g_array_sized_new (FALSE, FALSE,
@@ -1898,6 +1903,7 @@ gabble_tube_dbus_offer_async (GabbleSvcChannelTypeDBusTube *self,
     DBusGMethodInvocation *context)
 {
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (tube);
   GError *error = NULL;
 
   if (!gabble_tube_dbus_check_access_control (tube, access_control, &error))
@@ -1906,6 +1912,8 @@ gabble_tube_dbus_offer_async (GabbleSvcChannelTypeDBusTube *self,
       g_error_free (error);
       return;
     }
+
+  priv->access_control = access_control;
 
   g_object_set (self, "parameters", parameters, NULL);
 

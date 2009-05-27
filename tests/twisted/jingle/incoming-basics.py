@@ -6,7 +6,9 @@ import dbus
 
 from gabbletest import make_result_iq
 from servicetest import (
-    make_channel_proxy, unwrap, tp_path_prefix, EventPattern)
+    make_channel_proxy, unwrap, tp_path_prefix, EventPattern,
+    assertEquals,
+    )
 from jingletest2 import JingleTest2, test_all_dialects
 import constants as cs
 
@@ -122,9 +124,8 @@ def test(jp, q, bus, conn, stream):
     stream_handler.SupportedCodecs(jt.get_audio_codecs_dbus())
 
     # peer gets the transport
-    e = q.expect('stream-iq')
-    assert jp.match_jingle_action(e.query, 'transport-info')
-    assert e.query['initiator'] == 'foo@bar.com/Foo'
+    e = q.expect('stream-iq', predicate=jp.action_predicate('transport-info'))
+    assertEquals('foo@bar.com/Foo', e.query['initiator'])
 
     stream.send(make_result_iq(stream, e.stanza))
 

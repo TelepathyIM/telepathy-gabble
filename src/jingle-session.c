@@ -838,6 +838,8 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
        * in XEP-0166. */
 
       set_state (sess, JS_STATE_PENDING_INITIATED, 0);
+
+      gabble_jingle_session_send_rtp_info (sess, "ringing");
     }
 }
 
@@ -1653,9 +1655,14 @@ _on_accept_reply (GObject *sess_as_obj,
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (sess_as_obj);
 
   if (success)
-    set_state (sess, JS_STATE_ACTIVE, 0);
+    {
+      set_state (sess, JS_STATE_ACTIVE, 0);
+      gabble_jingle_session_send_rtp_info (sess, "active");
+    }
   else
-    set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    {
+      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    }
 }
 
 static gboolean

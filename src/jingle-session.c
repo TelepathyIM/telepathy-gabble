@@ -912,6 +912,15 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
       return;
 
   set_state (sess, JS_STATE_ACTIVE, 0);
+
+  if (priv->dialect != JINGLE_DIALECT_V032)
+    {
+      /* If this is a dialect that doesn't support <active/>, we treat
+       * session-accept as the cue to remove the ringing flag.
+       */
+      priv->remote_ringing = FALSE;
+      g_signal_emit (sess, signals[REMOTE_STATE_CHANGED], 0);
+    }
 }
 
 static void
@@ -1640,11 +1649,25 @@ _on_initiate_reply (GObject *sess_as_obj,
     LmMessage *reply)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (sess_as_obj);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   if (success)
-    set_state (sess, JS_STATE_PENDING_INITIATED, 0);
+    {
+      set_state (sess, JS_STATE_PENDING_INITIATED, 0);
+
+      if (priv->dialect != JINGLE_DIALECT_V032)
+        {
+          /* If this is a dialect that doesn't support <ringing/>, we treat the
+           * session-initiate being acked as the cue to say we're ringing.
+           */
+          priv->remote_ringing = TRUE;
+          g_signal_emit (sess, signals[REMOTE_STATE_CHANGED], 0);
+        }
+    }
   else
-    set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    {
+      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    }
 }
 
 static void

@@ -1,6 +1,6 @@
 """
-Test exposing incoming <hold/> and <active/> notifications via the CallState
-interface.
+Test exposing incoming <hold/>, <ringing/> and <active/> notifications via the
+CallState interface.
 """
 
 from twisted.words.xish import xpath
@@ -14,12 +14,6 @@ import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
 def test(jp, q, bus, conn, stream):
-    # We can only get call state notifications on modern jingle.
-    # TODO: but if we fake Hold by changing senders="", we could check for that
-    # here.
-    if not jp.is_modern_jingle():
-        return
-
     remote_jid = 'foo@bar.com/Foo'
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
 
@@ -61,79 +55,94 @@ def test(jp, q, bus, conn, stream):
 
     jt.set_sid_from_initiate(e.query)
 
-    # The other person's client starts ringing, and tells us so!
-    node = jp.SetIq(jt.peer, jt.jid, [
-        jp.Jingle(jt.sid, jt.jid, 'session-info', [
-            ('ringing', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
-    stream.send(jp.xml(node))
+    if jp.is_modern_jingle():
+        # The other person's client starts ringing, and tells us so!
+        node = jp.SetIq(jt.peer, jt.jid, [
+            jp.Jingle(jt.sid, jt.jid, 'session-info', [
+                ('ringing', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+        stream.send(jp.xml(node))
 
+    # If this is an old Jingle dialect, Gabble should treat the
+    # session-initiate ack as ringing notification; if it's modern Jingle, we
+    # just sent a ringing notification.
     q.expect('dbus-signal', signal='CallStateChanged',
             args=[handle, cs.CALL_STATE_RINGING])
 
     call_states = chan.CallState.GetCallStates()
     assert call_states == { handle: cs.CALL_STATE_RINGING }, call_states
 
-    # We're waiting in a queue, so the other person's client tells us we're on
-    # hold. Gabble should ack the IQ, and set the call state to Ringing | Held.
-    # Also, Gabble certainly shouldn't tell s-e to start sending. (Although it
-    # might tell it not to; we don't mind.)
-    node = jp.SetIq(jt.peer, jt.jid, [
-        jp.Jingle(jt.sid, jt.jid, 'session-info', [
-            ('hold', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
-    stream.send(jp.xml(node))
+    if jp.is_modern_jingle():
+        # We're waiting in a queue, so the other person's client tells us we're on
+        # hold. Gabble should ack the IQ, and set the call state to Ringing | Held.
+        # Also, Gabble certainly shouldn't tell s-e to start sending. (Although it
+        # might tell it not to; we don't mind.)
+        node = jp.SetIq(jt.peer, jt.jid, [
+            jp.Jingle(jt.sid, jt.jid, 'session-info', [
+                ('hold', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+        stream.send(jp.xml(node))
 
-    forbidden = [
-        EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
-            path=audio_path_suffix),
-            ]
-    q.forbid_events(forbidden)
+        forbidden = [
+            EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
+                path=audio_path_suffix),
+                ]
+        q.forbid_events(forbidden)
 
-    q.expect_many(
-        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
-        EventPattern('dbus-signal', signal='CallStateChanged',
-            args=[handle, cs.CALL_STATE_RINGING | cs.CALL_STATE_HELD]),
-        )
+        q.expect_many(
+            EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+            EventPattern('dbus-signal', signal='CallStateChanged',
+                args=[handle, cs.CALL_STATE_RINGING | cs.CALL_STATE_HELD]),
+            )
 
-    call_states = chan.CallState.GetCallStates()
-    assert call_states == { handle: cs.CALL_STATE_RINGING | cs.CALL_STATE_HELD }, call_states
+        call_states = chan.CallState.GetCallStates()
+        assert call_states == { handle: cs.CALL_STATE_RINGING | cs.CALL_STATE_HELD }, call_states
 
-    # We're at the head of a queue, so the other person's client tells us we're
-    # no longer on hold. The call centre phone's still ringing, though. s-e
-    # still shouldn't start sending.
-    node = jp.SetIq(jt.peer, jt.jid, [
-        jp.Jingle(jt.sid, jt.jid, 'session-info', [
-            ('unhold', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
-    stream.send(jp.xml(node))
+        # We're at the head of a queue, so the other person's client tells us we're
+        # no longer on hold. The call centre phone's still ringing, though. s-e
+        # still shouldn't start sending.
+        node = jp.SetIq(jt.peer, jt.jid, [
+            jp.Jingle(jt.sid, jt.jid, 'session-info', [
+                ('unhold', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+        stream.send(jp.xml(node))
 
-    q.expect_many(
-        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
-        EventPattern('dbus-signal', signal='CallStateChanged',
-            args=[handle, cs.CALL_STATE_RINGING]),
-        )
+        q.expect_many(
+            EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+            EventPattern('dbus-signal', signal='CallStateChanged',
+                args=[handle, cs.CALL_STATE_RINGING]),
+            )
 
-    call_states = chan.CallState.GetCallStates()
-    assert call_states == { handle: cs.CALL_STATE_RINGING }, call_states
+        call_states = chan.CallState.GetCallStates()
+        assert call_states == { handle: cs.CALL_STATE_RINGING }, call_states
 
-    sync_dbus(bus, q, conn)
-    q.unforbid_events(forbidden)
+        sync_dbus(bus, q, conn)
+        q.unforbid_events(forbidden)
 
     jt.accept()
 
-    # Various misc happens; among other things, Gabble tells s-e to start
-    # sending.
-    q.expect('dbus-signal', signal='SetStreamSending', args=[True],
-        path=audio_path_suffix)
+    if jp.is_modern_jingle():
+        # The other person's client decides it's not ringing any more
+        node = jp.SetIq(jt.peer, jt.jid, [
+            jp.Jingle(jt.sid, jt.jid, 'session-info', [
+                ('active', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+        stream.send(jp.xml(node))
 
-    # Plus, the other person's client decides it's not ringing any more
-    node = jp.SetIq(jt.peer, jt.jid, [
-        jp.Jingle(jt.sid, jt.jid, 'session-info', [
-            ('active', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
-    stream.send(jp.xml(node))
-
-    q.expect('dbus-signal', signal='CallStateChanged', args=[ handle, 0 ])
+    # Gabble tells s-e to start sending, and removes the Ringing flag, either
+    # because we got <active/> or because of the session-accept in ye olde
+    # Jingle.
+    q.expect_many(
+        EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
+            path=audio_path_suffix),
+        EventPattern('dbus-signal', signal='CallStateChanged',
+            args=[ handle, 0 ]),
+        )
 
     call_states = chan.CallState.GetCallStates()
     assert call_states == { handle: 0 } or call_states == {}, call_states
+
+    # The rest of the test concerns things we only support in the glorious
+    # modern Jingle future.
+    if not jp.is_modern_jingle():
+        conn.Disconnect()
+        return
 
     # The other person puts us on hold.  Gabble should ack the session-info IQ,
     # tell s-e to stop sending on the held stream, and set the call state.

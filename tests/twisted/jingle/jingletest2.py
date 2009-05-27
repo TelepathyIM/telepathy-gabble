@@ -105,6 +105,12 @@ class JingleProtocol:
         "Creates <feature> element"
         return ('feature', None, { 'var': var }, [])
 
+    def action_predicate(self, action):
+        def f(e):
+            return self.match_jingle_action(e.query, action)
+
+        return f
+
     def match_jingle_action(self, q, action):
         return q is not None and q.name == 'jingle' and q['action'] == action
 

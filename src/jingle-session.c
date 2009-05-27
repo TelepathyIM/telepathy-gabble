@@ -2040,7 +2040,7 @@ void
 gabble_jingle_session_send_held (GabbleJingleSession *sess,
     gboolean held)
 {
-  gabble_jingle_session_send_rtp_info (sess, (held ? "hold" : "active"));
+  gabble_jingle_session_send_rtp_info (sess, (held ? "hold" : "unhold"));
 }
 
 gboolean

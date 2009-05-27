@@ -52,8 +52,8 @@ def test(jp, q, bus, conn, stream):
 
     # These are 0- (for old dialects) or 1- (for new dialects) element lists
     # that can be splatted into expect_many with *
-    hold_event = jp.hold_notification_event_list(True)
-    active_event = jp.hold_notification_event_list(False)
+    hold_event = jp.rtp_info_event_list("hold")
+    active_event = jp.rtp_info_event_list("active")
     # ---- Test 1: GetHoldState returns unheld and unhold is a no-op ----
 
     hold_state = hold_iface.GetHoldState()

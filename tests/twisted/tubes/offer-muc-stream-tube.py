@@ -5,9 +5,8 @@ import os
 
 import dbus
 
-from servicetest import call_async, EventPattern, unwrap,\
-    assertContains
-from gabbletest import acknowledge_iq, make_muc_presence, assertEquals
+from servicetest import call_async, EventPattern, unwrap, assertContains, assertEquals
+from gabbletest import acknowledge_iq, make_muc_presence
 import constants as cs
 import ns
 import tubetestutil as t
@@ -58,8 +57,8 @@ def use_tube(q, bytestream, protocol, conn_id):
     # peer closes the bytestream
     bytestream.close()
     e = q.expect('dbus-signal', signal='ConnectionClosed')
-    assertEquals(e.args[0], conn_id)
-    assertEquals(e.args[1], cs.CONNECTION_LOST)
+    assertEquals(conn_id, e.args[0])
+    assertEquals(cs.CONNECTION_LOST, e.args[1])
 
 def test(q, bus, conn, stream, bytestream_cls,
        address_type, access_control, access_control_param):

@@ -2070,6 +2070,8 @@ connection_auth_cb (LmConnection *lmconn,
   GabbleConnectionPrivate *priv = conn->priv;
   GError *error = NULL;
   const gchar *jid;
+  GabblePresenceCapabilities caps;
+  GabbleCapabilitySet *cap_set;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
@@ -2131,8 +2133,11 @@ connection_auth_cb (LmConnection *lmconn,
       GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
 
   /* set initial capabilities */
+  caps = capabilities_get_initial_caps ();
+  cap_set = gabble_capability_set_new_from_flags (caps);
   gabble_presence_set_capabilities (conn->self_presence, priv->resource,
-      capabilities_get_initial_caps (), NULL, priv->caps_serial++);
+      cap_set, caps, NULL, priv->caps_serial++);
+  gabble_capability_set_free (cap_set);
 
   if (!gabble_disco_request_with_timeout (conn->disco, GABBLE_DISCO_TYPE_INFO,
                                           priv->stream_server, NULL,
@@ -2473,6 +2478,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   GabbleConnectionPrivate *priv = self->priv;
   const CapabilityConversionData *ccd;
   GPtrArray *ret;
+  GabbleCapabilitySet *cap_set;
   GError *error = NULL;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
@@ -2519,8 +2525,10 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   if (caps ^ save_caps)
     {
       DEBUG ("before != after, changing");
-      gabble_presence_set_capabilities (pres, priv->resource, caps, NULL,
+      cap_set = gabble_capability_set_new_from_flags (caps);
+      gabble_presence_set_capabilities (pres, priv->resource, cap_set, caps, NULL,
           priv->caps_serial++);
+      gabble_capability_set_free (cap_set);
       DEBUG ("set caps: %x", pres->caps);
     }
 
@@ -3286,6 +3294,7 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
 {
   GabbleConnectionPrivate *priv = self->priv;
   GabblePresenceCapabilities old_caps, new_caps;
+  GabbleCapabilitySet *cap_set;
 
   old_caps = self->self_presence->caps;
   new_caps = old_caps;
@@ -3296,8 +3305,10 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
       /* We changed capabilities */
       GError *error = NULL;
 
+      cap_set = gabble_capability_set_new_from_flags (caps);
       gabble_presence_set_capabilities (self->self_presence,
-          priv->resource, new_caps, NULL, priv->caps_serial++);
+          priv->resource, cap_set, new_caps, NULL, priv->caps_serial++);
+      gabble_capability_set_free (cap_set);
 
       if (!_gabble_connection_signal_own_presence (self, &error))
         {

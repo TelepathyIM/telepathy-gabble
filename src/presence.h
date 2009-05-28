@@ -24,6 +24,7 @@
 
 #include <glib-object.h>
 
+#include "capabilities.h"
 #include "connection.h"
 #include "types.h"
 
@@ -80,8 +81,11 @@ gboolean gabble_presence_update (GabblePresence *presence,
     const gchar *status_message, gint8 priority);
 
 void gabble_presence_set_capabilities (GabblePresence *presence,
-    const gchar *resource, GabblePresenceCapabilities caps,
-    GHashTable *per_channel_manager_caps, guint serial);
+    const gchar *resource,
+    GabbleCapabilitySet *cap_set,
+    GabblePresenceCapabilities caps,
+    GHashTable *per_channel_manager_caps,
+    guint serial);
 
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
     GabblePresenceCapabilities caps);

@@ -212,6 +212,8 @@ struct _CapabilityInfo
    * caps. In this case, caps_set is FALSE and set to TRUE when the caps are
    * received */
   gboolean caps_set;
+
+  GabbleCapabilitySet *cap_set;
   GabblePresenceCapabilities caps;
 
   /* key: GabbleCapsChannelFactory -> value: gpointer
@@ -246,6 +248,7 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node)
     {
       info = g_slice_new0 (CapabilityInfo);
       info->caps_set = FALSE;
+      info->cap_set = gabble_capability_set_new ();
       info->guys = tp_intset_new ();
       g_hash_table_insert (priv->capabilities, g_strdup (node), info);
     }
@@ -258,14 +261,23 @@ capability_info_free (CapabilityInfo *info)
 {
   gabble_presence_cache_free_cache_entry (info->per_channel_manager_caps);
   info->per_channel_manager_caps = NULL;
+
+  gabble_capability_set_free (info->cap_set);
+  info->cap_set = NULL;
+
   tp_intset_destroy (info->guys);
+
   g_slice_free (CapabilityInfo, info);
 }
 
 static guint
-capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
-        TpHandle handle, GabblePresenceCapabilities caps,
-        GHashTable *per_channel_manager_caps, guint trust_inc)
+capability_info_recvd (GabblePresenceCache *cache,
+    const gchar *node,
+    TpHandle handle,
+    GabbleCapabilitySet *cap_set,
+    GabblePresenceCapabilities caps,
+    GHashTable *per_channel_manager_caps,
+    guint trust_inc)
 {
   CapabilityInfo *info = capability_info_get (cache, node);
 
@@ -278,6 +290,8 @@ capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
        */
       tp_intset_clear (info->guys);
       info->caps = caps;
+      gabble_capability_set_clear (info->cap_set);
+      gabble_capability_set_update (info->cap_set, cap_set);
       info->per_channel_manager_caps = per_channel_manager_caps;
       info->trust = 0;
       info->caps_set = TRUE;
@@ -959,6 +973,7 @@ emit_capabilities_update (GabblePresenceCache *cache,
 static void
 set_caps_for (DiscoWaiter *waiter,
     GabblePresenceCache *cache,
+    GabbleCapabilitySet *cap_set,
     GabblePresenceCapabilities caps,
     GHashTable *per_channel_manager_caps,
     TpHandle responder_handle,
@@ -978,7 +993,7 @@ set_caps_for (DiscoWaiter *waiter,
   DEBUG ("setting caps for %d (thanks to %d %s) to %d (save_caps %d)",
       waiter->handle, responder_handle, responder_jid, caps, save_caps);
 
-  gabble_presence_set_capabilities (presence, waiter->resource,
+  gabble_presence_set_capabilities (presence, waiter->resource, cap_set,
       caps, per_channel_manager_caps, waiter->serial);
 
   DEBUG ("caps for %d now %d", waiter->handle, presence->caps);
@@ -1059,7 +1074,6 @@ _caps_disco_cb (GabbleDisco *disco,
   cap_set = gabble_capability_set_new_from_stanza (query_result);
   caps = capabilities_parse (cap_set, query_result);
   per_channel_manager_caps = parse_contact_caps (base_conn, cap_set);
-  gabble_capability_set_free (cap_set);
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
    * uses another hash algorithm, don't check the hash and fallback to the old
@@ -1074,7 +1088,7 @@ _caps_disco_cb (GabbleDisco *disco,
 
       if (g_str_equal (waiter_self->ver, computed_hash))
         {
-          trust = capability_info_recvd (cache, node, handle, caps,
+          trust = capability_info_recvd (cache, node, handle, cap_set, caps,
               per_channel_manager_caps, CAPABILITY_BUNDLE_ENOUGH_TRUST);
         }
       else
@@ -1092,7 +1106,7 @@ _caps_disco_cb (GabbleDisco *disco,
     }
   else
     {
-      trust = capability_info_recvd (cache, node, handle, caps,
+      trust = capability_info_recvd (cache, node, handle, cap_set, caps,
           per_channel_manager_caps, 1);
     }
 
@@ -1103,8 +1117,8 @@ _caps_disco_cb (GabbleDisco *disco,
         {
           DiscoWaiter *waiter = (DiscoWaiter *) i->data;
 
-          set_caps_for (waiter, cache, caps, per_channel_manager_caps, handle,
-              jid);
+          set_caps_for (waiter, cache, cap_set, caps, per_channel_manager_caps,
+              handle, jid);
           emit_capabilities_discovered (cache, waiter->handle);
         }
 
@@ -1123,8 +1137,8 @@ _caps_disco_cb (GabbleDisco *disco,
        *       for the jid that answered the query.
        */
       if (!bad_hash)
-        set_caps_for (waiter_self, cache, caps, per_channel_manager_caps,
-            handle, jid);
+        set_caps_for (waiter_self, cache, cap_set, caps,
+            per_channel_manager_caps, handle, jid);
 
       waiters = g_slist_remove (waiters, waiter_self);
 
@@ -1152,6 +1166,8 @@ _caps_disco_cb (GabbleDisco *disco,
             redisco (cache, disco, waiter, node);
         }
     }
+
+  gabble_capability_set_free (cap_set);
 
 OUT:
   if (handle)
@@ -1189,7 +1205,7 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       if (presence)
         {
-          gabble_presence_set_capabilities (presence, resource,
+          gabble_presence_set_capabilities (presence, resource, info->cap_set,
               info->caps, info->per_channel_manager_caps, serial);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
         }

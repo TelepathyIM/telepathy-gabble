@@ -256,6 +256,22 @@ gabble_capability_set_new_from_stanza (LmMessageNode *query_result)
   return ret;
 }
 
+/* This function should disappear when GabbleCapabilitySet replaces
+ * GabblePresenceCapabilities.
+ */
+GabbleCapabilitySet *
+gabble_capability_set_new_from_flags (GabblePresenceCapabilities caps)
+{
+  GabbleCapabilitySet *ret = gabble_capability_set_new ();
+  const Feature *i;
+
+  for (i = self_advertised_features; NULL != i->ns; i++)
+    if ((i->caps & caps) == i->caps)
+      gabble_capability_set_add (ret, i->ns);
+
+  return ret;
+}
+
 GabbleCapabilitySet *
 gabble_capability_set_copy (const GabbleCapabilitySet *caps)
 {

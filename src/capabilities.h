@@ -23,7 +23,9 @@
 
 #include <glib-object.h>
 
-#include "presence.h"
+#include <loudmouth/loudmouth.h>
+
+#include "types.h"
 
 /* XEP-0115 version 1.3:
  *

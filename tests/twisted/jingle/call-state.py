@@ -31,6 +31,10 @@ def test(jp, q, bus, conn, stream):
     assert cs.CHANNEL_IFACE_CALL_STATE in chan_props['Interfaces'], \
         chan_props['Interfaces']
 
+    call_states = chan.CallState.GetCallStates()
+    assert call_states == { handle: 0 } or \
+        call_states == {}, call_states
+
     chan.StreamedMedia.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     # S-E gets notified about new session handler, and calls Ready on it

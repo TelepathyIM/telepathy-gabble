@@ -324,8 +324,9 @@ gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
   GabbleMediaChannel *self = (GabbleMediaChannel *) iface;
   GHashTable *states = g_hash_table_new (g_direct_hash, g_direct_equal);
 
-  g_hash_table_insert (states, GUINT_TO_POINTER (self->priv->session->peer),
-      GUINT_TO_POINTER (self->priv->call_state));
+  if (self->priv->session != NULL)
+    g_hash_table_insert (states, GUINT_TO_POINTER (self->priv->session->peer),
+        GUINT_TO_POINTER (self->priv->call_state));
 
   tp_svc_channel_interface_call_state_return_from_get_call_states (context,
       states);

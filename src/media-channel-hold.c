@@ -143,8 +143,9 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
           priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_NONE;
         }
 
-      /* Tell the peer what's happened */
-      gabble_jingle_session_send_held (self->priv->session, FALSE);
+      /* Tell the peer what's happened. */
+      if (priv->session != NULL)
+        gabble_jingle_session_send_held (priv->session, FALSE);
     }
 
   tp_svc_channel_interface_hold_emit_hold_state_changed (self,
@@ -205,6 +206,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv = self->priv;
+  GabbleJingleSession *session = priv->session;
   guint i;
   TpLocalHoldState old_state = priv->hold_state;
 
@@ -219,10 +221,8 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
           return;
         }
 
-      if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD)
-        {
-          gabble_jingle_session_send_held (self->priv->session, TRUE);
-        }
+      if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD && session != NULL)
+        gabble_jingle_session_send_held (session, TRUE);
 
       priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_HOLD;
     }

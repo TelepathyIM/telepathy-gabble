@@ -86,7 +86,7 @@ def test(jp, q, bus, conn, stream):
 
     # ---- Test 4: successful unhold ----
 
-    q.forbid_events(hold_event)
+    q.forbid_events(unhold_event)
 
     call_async(q, chan.Hold, 'RequestHold', False)
     q.expect_many(
@@ -99,7 +99,7 @@ def test(jp, q, bus, conn, stream):
     # Ensure that if Gabble sent the <active/> stanza too early it's already
     # arrived.
     sync_stream(q, stream)
-    q.unforbid_events(hold_event)
+    q.unforbid_events(unhold_event)
 
     call_async(q, stream_handler, 'HoldState', False)
     q.expect_many(

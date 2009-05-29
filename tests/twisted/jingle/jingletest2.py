@@ -123,12 +123,13 @@ class JingleProtocol:
     def is_modern_jingle(self):
         return False
 
-    def hold_notification_event(self, hold=True):
+    def rtp_info_event(self, name):
         return None
 
-    def hold_notification_event_list(self, hold=True):
-        e = self.hold_notification_event(hold)
+    def rtp_info_event_list(self, name):
+        e = self.rtp_info_event(name)
         return [e] if e is not None else []
+
 
 class GtalkProtocol03(JingleProtocol):
     features = [ 'http://www.google.com/xmpp/protocol/voice/v1' ]
@@ -275,13 +276,12 @@ class JingleProtocol031(JingleProtocol):
     def is_modern_jingle(self):
         return True
 
-    def hold_notification_event(self, hold=True):
+    def rtp_info_event(self, name):
         def p(e):
             query = e.query
             if not self.match_jingle_action(query, 'session-info'):
                 return False
             n = query.firstChildElement()
-            name = "hold" if hold else "active"
             return n is not None and n.uri == ns.JINGLE_RTP_INFO_1 and \
                 n.name == name
 

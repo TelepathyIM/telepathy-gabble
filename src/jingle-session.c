@@ -515,6 +515,8 @@ action_is_allowed (JingleAction action, JingleState state)
   return FALSE;
 }
 
+static void gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
+    const gchar *name);
 static void set_state (GabbleJingleSession *sess, JingleState state,
     TpChannelGroupChangeReason termination_reason);
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
@@ -836,6 +838,8 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
        * in XEP-0166. */
 
       set_state (sess, JS_STATE_PENDING_INITIATED, 0);
+
+      gabble_jingle_session_send_rtp_info (sess, "ringing");
     }
 }
 
@@ -1651,9 +1655,14 @@ _on_accept_reply (GObject *sess_as_obj,
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (sess_as_obj);
 
   if (success)
-    set_state (sess, JS_STATE_ACTIVE, 0);
+    {
+      set_state (sess, JS_STATE_ACTIVE, 0);
+      gabble_jingle_session_send_rtp_info (sess, "active");
+    }
   else
-    set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    {
+      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    }
 }
 
 static gboolean
@@ -2003,29 +2012,35 @@ content_ready_cb (GabbleJingleContent *c, gpointer user_data)
   try_session_initiate_or_accept (sess);
 }
 
-void
-gabble_jingle_session_send_held (GabbleJingleSession *sess,
-                                 gboolean held)
+static void
+gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
+    const gchar *name)
 {
   LmMessage *message;
   LmMessageNode *jingle, *notification;
 
   if (sess->priv->dialect != JINGLE_DIALECT_V032)
     {
-      DEBUG ("FIXME: fake hold for Ye Olde Jingle and GTalk.");
+      DEBUG ("Not sending <%s/>; not using modern Jingle", name);
       return;
     }
 
   message = gabble_jingle_session_new_message (sess,
       JINGLE_ACTION_SESSION_INFO, &jingle);
 
-  notification = lm_message_node_add_child (jingle,
-      (held ? "hold" : "active"), NULL);
+  notification = lm_message_node_add_child (jingle, name, NULL);
   lm_message_node_set_attributes (notification, "xmlns", NS_JINGLE_RTP_INFO,
       NULL);
 
   /* This is just informational, so ignoring the reply. */
   gabble_jingle_session_send (sess, message, NULL, NULL);
+}
+
+void
+gabble_jingle_session_send_held (GabbleJingleSession *sess,
+    gboolean held)
+{
+  gabble_jingle_session_send_rtp_info (sess, (held ? "hold" : "unhold"));
 }
 
 gboolean

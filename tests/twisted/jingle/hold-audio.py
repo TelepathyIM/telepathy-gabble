@@ -96,7 +96,7 @@ def test(jp, q, bus, conn, stream):
         EventPattern('dbus-return', method='RequestHold', value=()),
         )
 
-    # Ensure that if Gabble sent the <active/> stanza too early it's already
+    # Ensure that if Gabble sent the <unhold/> stanza too early it's already
     # arrived.
     sync_stream(q, stream)
     q.unforbid_events(unhold_event)
@@ -152,7 +152,7 @@ def test(jp, q, bus, conn, stream):
         EventPattern('dbus-return', method='RequestHold', value=()),
         )
 
-    # Ensure that if Gabble sent the <active/> stanza too early it's already
+    # Ensure that if Gabble sent the <unhold/> stanza too early it's already
     # arrived.
     sync_stream(q, stream)
     q.unforbid_events(unhold_event)
@@ -185,7 +185,7 @@ def test(jp, q, bus, conn, stream):
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_UNHOLD, cs.HSR_REQUESTED]),
         EventPattern('dbus-signal', signal='SetStreamHeld', args=[False]),
-        # Gabble shouldn't send <active/> here because s-e might have already
+        # Gabble shouldn't send <unhold/> here because s-e might have already
         # relinquished the audio hardware.
         )
 
@@ -229,7 +229,7 @@ def test(jp, q, bus, conn, stream):
     hold_state = chan.Hold.GetHoldState()
     assert hold_state[0] == cs.HS_HELD, hold_state
 
-    # Check that Gabble doesn't send another <hold/>, or send <active/> before
+    # Check that Gabble doesn't send another <hold/>, or send <unhold/> before
     # we change our minds.
     q.forbid_events(unhold_event + hold_event)
 
@@ -264,7 +264,7 @@ def test(jp, q, bus, conn, stream):
 
     # ---- Test 10: attempting to unhold fails ----
 
-    # Check that Gabble doesn't send another <hold/>, or send <active/> even
+    # Check that Gabble doesn't send another <hold/>, or send <unhold/> even
     # though unholding fails.
     q.forbid_events(unhold_event + hold_event)
 
@@ -287,7 +287,7 @@ def test(jp, q, bus, conn, stream):
     sync_stream(q, stream)
     q.unforbid_events(unhold_event + hold_event)
 
-    # ---- Test 11: when we successfully unhold, the peer gets <active/> ---
+    # ---- Test 11: when we successfully unhold, the peer gets <unhold/> ---
 
     q.forbid_events(unhold_event)
 
@@ -299,7 +299,7 @@ def test(jp, q, bus, conn, stream):
         EventPattern('dbus-return', method='RequestHold', value=()),
         )
 
-    # Ensure that if Gabble sent the <active/> stanza too early it's already
+    # Ensure that if Gabble sent the <unhold/> stanza too early it's already
     # arrived.
     sync_stream(q, stream)
     q.unforbid_events(unhold_event)

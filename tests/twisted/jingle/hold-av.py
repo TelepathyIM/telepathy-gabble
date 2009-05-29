@@ -211,7 +211,7 @@ def test(jp, q, bus, conn, stream):
         *hold_event
         )
 
-    # Gabble can't send Active until s-e confirms it has the resources
+    # Gabble can't send <unhold/> until s-e confirms it has the resources
     q.forbid_events(unhold_event)
 
     call_async(q, chan.Hold, 'RequestHold', False)

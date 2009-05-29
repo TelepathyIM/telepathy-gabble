@@ -3,7 +3,7 @@ Test everything related to contents
 """
 
 from gabbletest import sync_stream
-from servicetest import make_channel_proxy, tp_path_prefix
+from servicetest import make_channel_proxy, tp_path_prefix, assertEquals
 import constants as cs
 from jingletest2 import (
     JingleTest2, JingleProtocol015, JingleProtocol031, test_dialects)
@@ -79,9 +79,8 @@ def worker(jp, q, bus, conn, stream):
     stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
     # First one is transport-info
-    e = q.expect('stream-iq')
-    assert jp.match_jingle_action(e.query, 'transport-info')
-    assert e.query['initiator'] == 'foo@bar.com/Foo'
+    e = q.expect('stream-iq', predicate=jp.action_predicate('transport-info'))
+    assertEquals('foo@bar.com/Foo', e.query['initiator'])
 
     # stream.send(gabbletest.make_result_iq(stream, e.stanza))
     stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
@@ -90,8 +89,7 @@ def worker(jp, q, bus, conn, stream):
     stream_handler.SupportedCodecs(jt2.get_audio_codecs_dbus())
 
     # Second one is session-accept
-    e = q.expect('stream-iq')
-    assert jp.match_jingle_action(e.query, 'session-accept')
+    e = q.expect('stream-iq', predicate=jp.action_predicate('session-accept'))
 
     # stream.send(gabbletest.make_result_iq(stream, e.stanza))
     stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))

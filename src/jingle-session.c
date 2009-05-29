@@ -2003,13 +2003,6 @@ content_ready_cb (GabbleJingleContent *c, gpointer user_data)
   try_session_initiate_or_accept (sess);
 }
 
-/* Only to be used for the test suite */
-void
-gabble_set_jingle_session_timeout (guint ms)
-{
-  session_timeout_time = ms;
-}
-
 void
 gabble_jingle_session_send_held (GabbleJingleSession *sess,
                                  gboolean held)
@@ -2049,4 +2042,11 @@ gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess)
   g_assert (GABBLE_IS_JINGLE_SESSION (sess));
 
   return sess->priv->remote_ringing;
+}
+
+/* Only to be used for the test suite */
+void
+gabble_set_jingle_session_timeout (guint ms)
+{
+  session_timeout_time = ms;
 }

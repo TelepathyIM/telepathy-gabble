@@ -2,7 +2,10 @@
 Test that we can accept streams added after the call has been accepted.
 """
 
-from servicetest import make_channel_proxy, EventPattern, sync_dbus, call_async
+from servicetest import (
+    make_channel_proxy, EventPattern, sync_dbus, call_async,
+    assertEquals,
+    )
 from gabbletest import exec_test, make_result_iq, sync_stream
 import constants as cs
 
@@ -70,10 +73,8 @@ def test(q, bus, conn, stream):
     stream_handler.SupportedCodecs(jt2.get_audio_codecs_dbus())
 
     # peer gets the transport
-    e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'transport-info'
-    assert e.query['initiator'] == remote_jid
+    e = q.expect('stream-iq', predicate=jp.action_predicate('transport-info'))
+    assertEquals(remote_jid, e.query['initiator'])
 
     stream.send(make_result_iq(stream, e.stanza))
 
@@ -137,21 +138,18 @@ def test(q, bus, conn, stream):
     video_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
     video_handler.SupportedCodecs(jt2.get_video_codecs_dbus())
 
-    e, _, _, _ = q.expect_many(
+    ti, _, _, _ = q.expect_many(
         # Peer gets the transport
-        EventPattern('stream-iq', iq_type='set',
-            predicate=lambda e: e.query['action'] =='transport-info'),
+        EventPattern('stream-iq',
+            predicate=jp.action_predicate('transport-info')),
         # Gabble tells the peer we accepted
-        EventPattern('stream-iq', predicate=lambda e:
-            (e.query.name == 'jingle' and
-                e.query['action'] == 'content-accept')),
+        EventPattern('stream-iq',
+            predicate=jp.action_predicate('content-accept')),
         EventPattern('dbus-signal', signal='SetStreamPlaying', args=[True]),
         # It's not entirely clear that this *needs* to fire here...
         EventPattern('dbus-signal', signal='SetStreamSending', args=[False]),
         )
-
-    assert e.query.name == 'jingle'
-    assert e.query['initiator'] == remote_jid
+    assertEquals(remote_jid, ti.query['initiator'])
 
     stream.send(make_result_iq(stream, e.stanza))
 

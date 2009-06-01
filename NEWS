@@ -1,5 +1,7 @@
-telepathy-gabble 0.7.28 (UNRELEASED)
+telepathy-gabble 0.7.28 (2009-06-01)
 ====================================
+
+The "npc1 becomes vampire/communist" release.
 
 Dependencies:
 
@@ -9,14 +11,16 @@ Dependencies:
 Enhancements:
 
 * Implement the Credentials access control with UNIX sockets in stream tubes.
+
 * Implement the Port access control with Inet4 and Inet6 sockets in stream
   tubes.
-* Implement the final, stable new API for tubes. The NewConnection signal has been renamed
-  to NewRemoteConnection and now has a Connection_ID argument.
-  The StreamTube channel type now implements the NewLocalConnection and
-  ConnectionClosed signals.
-  DBusTube.{Offer,Accept} now have an access_control argument; Gabble
-  implements Credentials and Localhost.
+
+* Implement the final, stable new API for tubes. The NewConnection signal has
+  been renamed to NewRemoteConnection and now has a Connection_ID argument.  The
+  StreamTube channel type now implements the NewLocalConnection and
+  ConnectionClosed signals.  DBusTube.{Offer,Accept} now have an access_control
+  argument; Gabble implements Credentials and Localhost.
+
 * In StreamTube, UNIX sockets created with the Localhost access control are
   usable by any user of the system.
 

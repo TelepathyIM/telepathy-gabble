@@ -59,7 +59,35 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
 
   DEBUG ("all_held=%u, any_held=%u", (guint) all_held, (guint) any_held);
 
-  if (all_held)
+  if (all_held && !any_held)
+    {
+      /* There are no streams, move to the desired state immediately */
+      switch (priv->hold_state)
+        {
+        case TP_LOCAL_HOLD_STATE_PENDING_HOLD:
+          DEBUG ("no streams, moving from pending hold to held");
+          priv->hold_state = TP_LOCAL_HOLD_STATE_HELD;
+
+          /* No need to touch the session: send_held (TRUE) is called as soon
+           * as Hold is requested.
+           */
+          break;
+
+        case TP_LOCAL_HOLD_STATE_PENDING_UNHOLD:
+          DEBUG ("no streams, moving from pending unhold to unheld");
+          priv->hold_state = TP_LOCAL_HOLD_STATE_UNHELD;
+
+          if (priv->session != NULL)
+            gabble_jingle_session_send_held (priv->session, FALSE);
+
+          break;
+
+        default:
+          /* nothing to change */
+          return;
+        }
+    }
+  else if (all_held)
     {
       /* Move to state HELD */
       switch (priv->hold_state)
@@ -244,11 +272,19 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
       priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_REQUESTED;
     }
 
-  /* Tell streaming client to release or reacquire resources */
-
-  for (i = 0; i < priv->streams->len; i++)
+  if (priv->streams->len == 0)
     {
-      gabble_media_stream_hold (g_ptr_array_index (priv->streams, i), hold);
+      /* No streams yet! We can go straight to the desired state. */
+      stream_hold_state_changed (NULL, NULL, self);
+    }
+  else
+    {
+      /* Tell streaming client to release or reacquire resources */
+
+      for (i = 0; i < priv->streams->len; i++)
+        {
+          gabble_media_stream_hold (g_ptr_array_index (priv->streams, i), hold);
+        }
     }
 
   tp_svc_channel_interface_hold_return_from_request_hold (context);

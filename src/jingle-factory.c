@@ -87,7 +87,10 @@ struct _GabbleJingleFactoryPrivate
 static LmHandlerResult jingle_cb (LmMessageHandler *handler,
     LmConnection *lmconn, LmMessage *message, gpointer user_data);
 static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
-    const gchar *sid, TpHandle peer, const gchar *peer_resource);
+    const gchar *sid,
+    TpHandle peer,
+    const gchar *peer_resource,
+    gboolean local_hold);
 
 static void session_terminated_cb (GabbleJingleSession *sess,
     gboolean local_terminator, TpChannelGroupChangeReason reason,
@@ -717,7 +720,7 @@ jingle_cb (LmMessageHandler *handler,
           goto REQUEST_ERROR;
         }
       new_session = TRUE;
-      sess = create_session (self, sid, 0, NULL);
+      sess = create_session (self, sid, 0, NULL, FALSE);
       g_object_set (sess, "dialect", dialect, NULL);
     }
 
@@ -757,7 +760,10 @@ REQUEST_ERROR:
  */
 static GabbleJingleSession *
 create_session (GabbleJingleFactory *fac,
-    const gchar *sid, TpHandle peer, const gchar *peer_resource)
+    const gchar *sid,
+    TpHandle peer,
+    const gchar *peer_resource,
+    gboolean local_hold)
 {
   GabbleJingleFactoryPrivate *priv = fac->priv;
   GabbleJingleSession *sess;
@@ -777,7 +783,7 @@ create_session (GabbleJingleFactory *fac,
     }
 
   sess = gabble_jingle_session_new (priv->conn, sid_, local_initiator, peer,
-      peer_resource);
+      peer_resource, local_hold);
 
   g_signal_connect (sess, "terminated", (GCallback) session_terminated_cb, fac);
 
@@ -789,9 +795,11 @@ create_session (GabbleJingleFactory *fac,
 
 GabbleJingleSession *
 gabble_jingle_factory_create_session (GabbleJingleFactory *fac,
-    TpHandle peer, const gchar *peer_resource)
+    TpHandle peer,
+    const gchar *peer_resource,
+    gboolean local_hold)
 {
-  return create_session (fac, NULL, peer, peer_resource);
+  return create_session (fac, NULL, peer, peer_resource, local_hold);
 }
 
 void

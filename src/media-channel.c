@@ -256,6 +256,7 @@ static void
 create_session (GabbleMediaChannel *chan, TpHandle peer)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
+  gboolean local_hold = (priv->hold_state != TP_LOCAL_HOLD_STATE_UNHELD);
 
   g_assert (priv->session == NULL);
 
@@ -263,7 +264,7 @@ create_session (GabbleMediaChannel *chan, TpHandle peer)
 
   priv->session = g_object_ref (
       gabble_jingle_factory_create_session (priv->conn->jingle_factory,
-          peer, NULL));
+          peer, NULL, local_hold));
 
   _latch_to_session (chan);
 }

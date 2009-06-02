@@ -63,6 +63,7 @@ enum
   PROP_LOCAL_INITIATOR,
   PROP_STATE,
   PROP_DIALECT,
+  PROP_LOCAL_HOLD,
   PROP_REMOTE_HOLD,
   PROP_REMOTE_RINGING,
   LAST_PROPERTY
@@ -87,6 +88,8 @@ struct _GabbleJingleSessionPrivate
 
   gboolean locally_accepted;
   gboolean locally_terminated;
+
+  gboolean local_hold;
 
   gboolean remote_hold;
   gboolean remote_ringing;
@@ -136,6 +139,8 @@ static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = 
   /* JS_STATE_ENDED */
   { JINGLE_ACTION_UNKNOWN }
 };
+
+static void gabble_jingle_session_send_held (GabbleJingleSession *sess);
 
 static void
 gabble_jingle_session_init (GabbleJingleSession *obj)
@@ -229,6 +234,9 @@ gabble_jingle_session_get_property (GObject *object,
     case PROP_DIALECT:
       g_value_set_uint (value, priv->dialect);
       break;
+    case PROP_LOCAL_HOLD:
+      g_value_set_boolean (value, priv->local_hold);
+      break;
     case PROP_REMOTE_HOLD:
       g_value_set_boolean (value, priv->remote_hold);
       break;
@@ -279,6 +287,24 @@ gabble_jingle_session_set_property (GObject *object,
       g_free (priv->peer_resource);
       priv->peer_resource = g_value_dup_string (value);
       break;
+    case PROP_LOCAL_HOLD:
+      {
+        gboolean local_hold = g_value_get_boolean (value);
+
+        if (priv->local_hold != local_hold)
+          {
+            priv->local_hold = local_hold;
+
+            if (priv->state >= JS_STATE_PENDING_INITIATED &&
+                priv->state < JS_STATE_ENDED)
+              gabble_jingle_session_send_held (sess);
+
+            /* else, we'll send this in set_state when we move to PENDING_INITIATED or
+             * better.
+             */
+          }
+        break;
+      }
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       g_assert_not_reached ();
@@ -291,7 +317,8 @@ gabble_jingle_session_new (GabbleConnection *connection,
                            const gchar *session_id,
                            gboolean local_initiator,
                            TpHandle peer,
-                           const gchar *peer_resource)
+                           const gchar *peer_resource,
+                           gboolean local_hold)
 {
   return g_object_new (GABBLE_TYPE_JINGLE_SESSION,
       "session-id", session_id,
@@ -299,6 +326,7 @@ gabble_jingle_session_new (GabbleConnection *connection,
       "local-initiator", local_initiator,
       "peer", peer,
       "peer-resource", peer_resource,
+      "local-hold", local_hold,
       NULL);
 }
 
@@ -381,6 +409,11 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_DIALECT, param_spec);
+
+  param_spec = g_param_spec_boolean ("local-hold", "Local hold",
+      "TRUE if we've placed the peer on hold", FALSE,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_LOCAL_HOLD, param_spec);
 
   param_spec = g_param_spec_boolean ("remote-hold", "Remote hold",
       "TRUE if the peer has placed us on hold", FALSE,
@@ -1788,6 +1821,12 @@ set_state (GabbleJingleSession *sess,
   priv->state = state;
   g_object_notify (G_OBJECT (sess), "state");
 
+  /* If we have an outstanding "you're on hold notification", send it */
+  if (priv->local_hold &&
+      state >= JS_STATE_PENDING_INITIATED &&
+      state < JS_STATE_ENDED)
+    gabble_jingle_session_send_held (sess);
+
   /* if we or peer just initiated the session, set the session timer */
   if ((priv->local_initiator && (state == JS_STATE_PENDING_INITIATE_SENT)) ||
       (!priv->local_initiator && (state == JS_STATE_PENDING_INITIATED)))
@@ -2059,11 +2098,19 @@ gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
   gabble_jingle_session_send (sess, message, NULL, NULL);
 }
 
+static void
+gabble_jingle_session_send_held (GabbleJingleSession *sess)
+{
+  const gchar *s = (sess->priv->local_hold ? "hold" : "unhold");
+
+  gabble_jingle_session_send_rtp_info (sess, s);
+}
+
 void
-gabble_jingle_session_send_held (GabbleJingleSession *sess,
+gabble_jingle_session_set_local_hold (GabbleJingleSession *sess,
     gboolean held)
 {
-  gabble_jingle_session_send_rtp_info (sess, (held ? "hold" : "unhold"));
+  g_object_set (sess, "local-hold", held, NULL);
 }
 
 gboolean

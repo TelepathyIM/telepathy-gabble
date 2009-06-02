@@ -13,6 +13,16 @@ import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
 def test(jp, q, bus, conn, stream):
+    # These are 0- (for old dialects) or 1- (for new dialects) element lists
+    # that can be splatted into expect_many with *
+    hold_event = jp.rtp_info_event_list("hold")
+    unhold_event = jp.rtp_info_event_list("unhold")
+
+    # Let's forbid them until we're ready to start holding, to check that
+    # Gabble doesn't send spurious notifications.
+    q.forbid_events(hold_event)
+    q.forbid_events(unhold_event)
+
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
 
     jt.prepare()
@@ -77,16 +87,15 @@ def test(jp, q, bus, conn, stream):
 
     q.expect('stream-iq', iq_type='result')
 
-    # These are 0- (for old dialects) or 1- (for new dialects) element lists
-    # that can be splatted into expect_many with *
-    hold_event = jp.rtp_info_event_list("hold")
-    unhold_event = jp.rtp_info_event_list("unhold")
-
     # ---- Test 1: GetHoldState returns unheld and unhold is a no-op ----
 
     hold_state = chan.Hold.GetHoldState()
     assert hold_state[0] == cs.HS_UNHELD, hold_state
     chan.Hold.RequestHold(False)
+
+    # We're about to start holding, so remove the ban on <hold/>.
+    sync_stream(q, stream)
+    q.unforbid_events(hold_event)
 
     # ---- Test 2: successful hold ----
 
@@ -119,8 +128,6 @@ def test(jp, q, bus, conn, stream):
     q.unforbid_events(hold_event)
 
     # ---- Test 4: successful unhold ----
-
-    q.forbid_events(unhold_event)
 
     call_async(q, chan.Hold, 'RequestHold', False)
     q.expect_many(

@@ -7,7 +7,7 @@ import dbus
 from gabbletest import make_result_iq
 from servicetest import (
     make_channel_proxy, unwrap, tp_path_prefix, EventPattern,
-    assertEquals,
+    assertEquals, assertLength
     )
 from jingletest2 import JingleTest2, test_all_dialects
 import constants as cs
@@ -30,10 +30,24 @@ def test(jp, q, bus, conn, stream):
     # https://bugs.freedesktop.org/show_bug.cgi?id=21964
     ringing_event = jp.rtp_info_event_list("ringing")
 
+    if jp.dialect == 'gtalk-v0.4':
+        # With gtalk4, apparently we have to send transport-accept immediately,
+        # not even just before we send our transport-info.
+        # FIXME: wjt thinks this is suspicious. It matches the Gabble
+        #        implementation, so he moved it here to avoid the test being
+        #        racy, but we should do some more interop testing.
+        ta_event = [
+            EventPattern('stream-iq', predicate=lambda x:
+                xpath.queryForNodes("/iq/session[@type='transport-accept']",
+                    x.stanza)),
+            ]
+    else:
+        ta_event = []
+
     nc, e = q.expect_many(
         EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewSessionHandler'),
-        *ringing_event
+        *(ringing_event + ta_event)
         )[0:2]
     path, ct, ht, h, _ = nc.args
 
@@ -49,30 +63,21 @@ def test(jp, q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    es = [ EventPattern('dbus-signal', signal='NewStreamHandler'),
-           EventPattern('dbus-signal', signal='StreamDirectionChanged'),
-         ]
-    if jp.dialect == 'gtalk-v0.4':
-        # With gtalk4, apparently we have to send transport-accept immediately,
-        # not even just before we send our transport-info.
-        # FIXME: wjt thinks this is suspicious. It matches the Gabble
-        #        implementation, so he moved it here to avoid the test being
-        #        racy, but we should do some more interop testing.
-        _, e2, e3 = q.expect_many(
-            EventPattern('stream-iq', predicate=lambda x:
-                xpath.queryForNodes("/iq/session[@type='transport-accept']",
-                    x.stanza)),
-            *es
-            )
-    else:
-        e2, e3 = q.expect_many(*es)
+    nsh_event = q.expect('dbus-signal', signal='NewStreamHandler')
 
     # S-E gets notified about a newly-created stream
-    stream_handler = make_channel_proxy(conn, e2.args[0], 'Media.StreamHandler')
+    stream_handler = make_channel_proxy(conn, nsh_event.args[0],
+        'Media.StreamHandler')
 
-    stream_id = e3.args[0]
-    assert e3.args[1] == cs.MEDIA_STREAM_DIRECTION_RECEIVE
-    assert e3.args[2] == cs.MEDIA_STREAM_PENDING_LOCAL_SEND
+    streams = media_iface.ListStreams()
+    assertLength(1, streams)
+
+    stream_id, stream_handle, stream_type, _, stream_direction, pending_flags =\
+        streams[0]
+    assertEquals(remote_handle, stream_handle)
+    assertEquals(cs.MEDIA_STREAM_TYPE_AUDIO, stream_type)
+    assertEquals(cs.MEDIA_STREAM_DIRECTION_RECEIVE, stream_direction)
+    assertEquals(cs.MEDIA_STREAM_PENDING_LOCAL_SEND, pending_flags)
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(

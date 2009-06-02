@@ -65,6 +65,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
 
 static void _gabble_im_channel_send_message (GObject *object,
     TpMessage *message, TpMessageSendingFlags flags);
+static void emit_closed_and_send_gone (GabbleIMChannel *self);
 
 static const gchar *gabble_im_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
@@ -387,13 +388,29 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
 }
 
 static void
+emit_closed_and_send_gone (GabbleIMChannel *self)
+{
+  GabbleIMChannelPrivate *priv = self->priv;
+  GabblePresence *presence;
+
+  presence = gabble_presence_cache_get (priv->conn->presence_cache,
+      priv->handle);
+
+  if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
+    gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
+        0, TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL);
+
+  DEBUG ("Emitting Closed");
+  tp_svc_channel_emit_closed (self);
+}
+
+static void
 gabble_im_channel_dispose (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
   GabbleIMChannelPrivate *priv = self->priv;
   GabblePresence *presence;
   GabbleRosterSubscription subscription;
-  gboolean cap_chat_states = FALSE;
 
   if (priv->dispose_has_run)
     return;
@@ -406,11 +423,6 @@ gabble_im_channel_dispose (GObject *object)
   presence = gabble_presence_cache_get (priv->conn->presence_cache,
       priv->handle);
 
-  if (presence && presence->caps & PRESENCE_CAP_CHAT_STATES)
-    {
-      cap_chat_states = TRUE;
-    }
-
   if ((GABBLE_ROSTER_SUBSCRIPTION_TO & subscription) == 0)
     {
       if (NULL != presence)
@@ -422,17 +434,7 @@ gabble_im_channel_dispose (GObject *object)
     }
 
   if (!priv->closed)
-      {
-        if (cap_chat_states)
-          {
-          /* Set the chat state of the channel on gone
-           * (Channel.Interface.ChatState) */
-          gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
-              0, TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL);
-          }
-
-        tp_svc_channel_emit_closed (self);
-      }
+    emit_closed_and_send_gone (self);
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);
@@ -674,16 +676,7 @@ gabble_im_channel_close (TpSvcChannel *iface,
           priv->closed = TRUE;
         }
 
-      DEBUG ("Emitting Closed");
-      tp_svc_channel_emit_closed (self);
-
-      if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
-        {
-          /* Set the chat state of the channel to gone
-           * (Channel.Interface.ChatState) */
-          gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
-              0, TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL);
-        }
+      emit_closed_and_send_gone (self);
     }
 
   tp_svc_channel_return_from_close (context);

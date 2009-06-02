@@ -6,13 +6,10 @@ channels.
 
 from twisted.words.xish import domish
 
-from servicetest import call_async, make_channel_proxy
+from servicetest import call_async, assertEquals, wrap_channel
 from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 import constants as cs
 import ns
-
-CHAT_STATE_ACTIVE = 2
-CHAT_STATE_COMPOSING = 4
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -28,10 +25,8 @@ def test(q, bus, conn, stream):
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
               cs.TARGET_HANDLE: foo_handle,
               })[0]
-    text_chan = bus.get_object(conn.bus_name, path)
-    text_iface = make_channel_proxy(conn, path, 'Channel.Type.Text')
-    chat_state_iface = make_channel_proxy(conn, path,
-        'Channel.Interface.ChatState')
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
+        ['ChatState'])
 
     presence = make_presence('foo@bar.com/Foo', status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
@@ -62,8 +57,8 @@ def test(q, bus, conn, stream):
 
     changed = q.expect('dbus-signal', signal='ChatStateChanged')
     handle, state = changed.args
-    assert handle == foo_handle, (handle, foo_handle)
-    assert state == CHAT_STATE_COMPOSING, (state, CHAT_STATE_COMPOSING)
+    assertEquals(foo_handle, handle)
+    assertEquals(cs.CHAT_STATE_COMPOSING, state)
 
     # Message!
 
@@ -76,13 +71,13 @@ def test(q, bus, conn, stream):
 
     changed = q.expect('dbus-signal', signal='ChatStateChanged')
     handle, state = changed.args
-    assert handle == foo_handle, (handle, foo_handle)
-    assert state == CHAT_STATE_ACTIVE, (state, CHAT_STATE_ACTIVE)
+    assertEquals(foo_handle, handle)
+    assertEquals(cs.CHAT_STATE_ACTIVE, state)
 
     # Sending chat states:
 
     # Composing...
-    call_async(q, chat_state_iface, 'SetChatState', CHAT_STATE_COMPOSING)
+    call_async(q, chan.ChatState, 'SetChatState', cs.CHAT_STATE_COMPOSING)
 
     stream_message = q.expect('stream-message')
     elem = stream_message.stanza
@@ -96,7 +91,7 @@ def test(q, bus, conn, stream):
 
     # XEP 0085:
     #   every content message SHOULD contain an <active/> notification.
-    call_async(q, text_iface, 'Send', 0, 'hi.')
+    call_async(q, chan.Text, 'Send', 0, 'hi.')
 
     stream_message = q.expect('stream-message')
     elem = stream_message.stanza

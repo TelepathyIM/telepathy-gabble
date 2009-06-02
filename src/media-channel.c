@@ -2531,8 +2531,10 @@ construct_stream (GabbleMediaChannel *chan,
   tp_svc_channel_type_streamed_media_emit_stream_added (
       chan, id, priv->session->peer, mtype);
 
-  /* Initial stream direction was changed before we had time to hook up
-   * signal handler, so we call the handler manually to pick it up. */
+  /* StreamAdded does not include the stream's direction and pending send
+   * information, so we call the notify::combined-direction handler in order to
+   * emit StreamDirectionChanged for the initial state.
+   */
   stream_direction_changed_cb (stream, NULL, chan);
 
   gabble_media_channel_hold_new_stream (chan, stream,

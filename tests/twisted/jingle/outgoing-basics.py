@@ -197,9 +197,8 @@ def worker(jp, q, bus, conn, stream, variant):
                       cs.GC_REASON_INVITED]),
             )
     else:
-        session_initiate = q.expect('stream-iq', iq_type='set',
-            predicate=lambda e:
-                jp.match_jingle_action(e.query, 'session-initiate'))
+        session_initiate = q.expect('stream-iq',
+            predicate=jp.action_predicate('session-initiate'))
 
     jt2.set_sid_from_initiate(session_initiate.query)
     stream.send(jp.xml(jp.ResultIq('test@localhost', session_initiate.stanza,

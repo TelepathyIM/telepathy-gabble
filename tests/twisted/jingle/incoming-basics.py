@@ -150,8 +150,8 @@ def test(jp, q, bus, conn, stream):
         EventPattern('dbus-signal', signal='MembersChanged',
             args=[u'', [self_handle], [], [], [], self_handle,
                   cs.GC_REASON_NONE]),
-        EventPattern('stream-iq', iq_type='set', predicate=lambda e:
-            jp.match_jingle_action(e.query, 'session-accept')),
+        EventPattern('stream-iq',
+            predicate=jp.action_predicate('session-accept')),
         EventPattern('dbus-signal', signal='SetStreamSending', args=[True]),
         EventPattern('dbus-signal', signal='SetStreamPlaying', args=[True]),
         EventPattern('dbus-signal', signal='StreamDirectionChanged',

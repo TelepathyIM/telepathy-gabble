@@ -123,8 +123,8 @@ def check_iav(jt, q, conn, bus, stream, remote_handle, initial_audio,
             sh.Ready(jt.get_audio_codecs_dbus())
             sh.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-        e = q.expect('stream-iq', predicate=lambda e:
-                jt.jp.match_jingle_action(e.query, 'session-initiate'))
+        e = q.expect('stream-iq',
+            predicate=jt.jp.action_predicate('session-initiate'))
         # TODO: check that the s-i contains the right contents.
 
         chan.Close()

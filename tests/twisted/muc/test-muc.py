@@ -8,7 +8,7 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import EventPattern
+from servicetest import EventPattern, assertEquals, assertLength
 import constants as cs
 
 from mucutil import join_muc_and_check
@@ -248,11 +248,14 @@ def test(q, bus, conn, stream):
     assert status.children[0] == u'hurrah'
 
     # test that leaving the channel results in an unavailable message
-    chan.Close()
+    chan.Group.RemoveMembers([chan.Group.GetSelfHandle()], 'booo')
 
     event = q.expect('stream-presence', to='chat@conf.localhost/test')
     elem = event.stanza
     assert elem['type'] == 'unavailable'
+    status = [e for e in elem.elements() if e.name == 'status']
+    assertLength(1, status)
+    assertEquals(status[0].children[0], u'booo')
 
     conn.Disconnect()
 

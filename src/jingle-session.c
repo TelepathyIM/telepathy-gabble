@@ -464,6 +464,8 @@ produce_action (JingleAction action, JingleDialect dialect)
   gboolean gmode = (dialect == JINGLE_DIALECT_GTALK3) ||
       (dialect == JINGLE_DIALECT_GTALK4);
 
+  g_return_val_if_fail (action != JINGLE_ACTION_UNKNOWN, NULL);
+
   switch (action) {
     case JINGLE_ACTION_SESSION_INITIATE:
       return (gmode) ? "initiate" : "session-initiate";
@@ -493,12 +495,10 @@ produce_action (JingleAction action, JingleDialect dialect)
     case JINGLE_ACTION_DESCRIPTION_INFO:
       return "description-info";
     default:
+      /* only reached if g_return_val_if_fail is disabled */
       DEBUG ("unknown action %u", action);
-      g_assert_not_reached ();
-  }
-
-  /* to make gcc not complain */
-  return NULL;
+      return NULL;
+    }
 }
 
 static gboolean
@@ -1471,6 +1471,8 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
   LmMessageNode *iq_node, *session_node;
   gchar *el = NULL, *ns = NULL;
   gboolean gtalk_mode = FALSE;
+
+  g_return_val_if_fail (action != JINGLE_ACTION_UNKNOWN, NULL);
 
   g_assert ((action == JINGLE_ACTION_SESSION_INITIATE) ||
             (priv->state > JS_STATE_PENDING_CREATED));

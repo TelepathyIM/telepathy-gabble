@@ -105,6 +105,13 @@ struct _GabbleIMChannelPrivate
   gchar *peer_jid;
   gboolean send_nick;
 
+  /* FALSE unless at least one chat state notification has been sent; <gone/>
+   * will only be sent when the channel closes if this is TRUE. This prevents
+   * opening a channel and closing it immediately sending a spurious <gone/> to
+   * the peer.
+   */
+  gboolean send_gone;
+
   gboolean closed;
   gboolean dispose_has_run;
 };
@@ -393,12 +400,17 @@ emit_closed_and_send_gone (GabbleIMChannel *self)
   GabbleIMChannelPrivate *priv = self->priv;
   GabblePresence *presence;
 
-  presence = gabble_presence_cache_get (priv->conn->presence_cache,
-      priv->handle);
+  if (priv->send_gone)
+    {
+      presence = gabble_presence_cache_get (priv->conn->presence_cache,
+          priv->handle);
 
-  if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
-    gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
-        0, TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL);
+      if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
+        gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
+            0, TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL);
+
+      priv->send_gone = FALSE;
+    }
 
   DEBUG ("Emitting Closed");
   tp_svc_channel_emit_closed (self);
@@ -486,6 +498,7 @@ _gabble_im_channel_send_message (GObject *object,
   if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
     {
       state = TP_CHANNEL_CHAT_STATE_ACTIVE;
+      priv->send_gone = TRUE;
     }
 
   /* We don't support providing successful delivery reports. */
@@ -798,10 +811,13 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
           g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "you may not explicitly set the Gone state");
         }
+      else if (gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
+          0, state, priv->peer_jid, &error))
+        {
+          priv->send_gone = TRUE;
+        }
 
-      if (error != NULL ||
-          !gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
-              0, state, priv->peer_jid, &error))
+      if (error != NULL)
         {
           dbus_g_method_return_error (context, error);
           g_error_free (error);

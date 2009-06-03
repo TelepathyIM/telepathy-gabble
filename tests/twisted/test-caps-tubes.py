@@ -188,32 +188,63 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact):
          ns.TUBES + '/stream#daap',
         ], daap_xiangqi_caps, expect_disco=False)
 
+
+def advertise_caps(q, conn, stream, filters, expected_features, unexpected_features,
+                   expected_caps):
+    self_handle = conn.GetSelfHandle()
+    ret_caps = conn.ContactCapabilities.SetSelfCapabilities(filters)
+
+    # Expect Gabble to reply with the correct caps
+    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
+
+    assertEquals(expected_caps, signaled_caps)
+
+    assert caps_contain(event, ns.TUBES) == True, caps_str
+
+    for var in expected_features:
+        assert caps_contain(event, var), caps_str
+
+    for var in unexpected_features:
+        assert not caps_contain(event, var), caps_str
+
+    # Check our own caps
+    caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
+    assertEquals(expected_caps, caps)
+
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
+            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [self_handle][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
+    assertEquals(caps[self_handle], caps_via_contacts_iface)
+
 def test_tube_caps_to_contact(q, bus, conn, stream):
-    basic_caps = dbus.Dictionary({1:
+    self_handle = conn.GetSelfHandle()
+
+    basic_caps = dbus.Dictionary({self_handle:
         [(text_fixed_properties, text_allowed_properties),
          (stream_tube_fixed_properties, stream_tube_allowed_properties),
          (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
          (ft_fixed_properties, ft_allowed_properties)]})
-    daap_caps = dbus.Dictionary({1:
+    daap_caps = dbus.Dictionary({self_handle:
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, specialized_tube_allowed_properties),
         (ft_fixed_properties, ft_allowed_properties)]})
-    xiangqi_caps = dbus.Dictionary({1:
+    xiangqi_caps = dbus.Dictionary({self_handle:
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (xiangqi_fixed_properties, specialized_tube_allowed_properties),
         (ft_fixed_properties, ft_allowed_properties)]})
-    daap_xiangqi_caps = dbus.Dictionary({1:
+    daap_xiangqi_caps = dbus.Dictionary({self_handle:
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, specialized_tube_allowed_properties),
         (xiangqi_fixed_properties, specialized_tube_allowed_properties),
         (ft_fixed_properties, ft_allowed_properties)]})
-    all_tubes_caps = dbus.Dictionary({1:
+    all_tubes_caps = dbus.Dictionary({self_handle:
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
@@ -224,150 +255,80 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
         (ft_fixed_properties, ft_allowed_properties)]})
 
     # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([1])
-    assert caps == basic_caps, caps
+    caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
+    assertEquals(basic_caps, caps)
+
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [1], [cs.CONN_IFACE_CONTACT_CAPS], False) \
-            [1][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assert caps_via_contacts_iface == caps[1], caps_via_contacts_iface
+            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [self_handle][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
+    assertEquals(caps[self_handle], caps_via_contacts_iface)
 
     # Advertise nothing
     conn.ContactCapabilities.SetSelfCapabilities([])
 
     # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([1])
-    assert len(caps) == 1
-    assert caps == basic_caps, caps
+    caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
+    assertLength(1, caps)
+    assertEquals(basic_caps, caps)
+
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [1], [cs.CONN_IFACE_CONTACT_CAPS], False) \
-            [1][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assert caps_via_contacts_iface == caps[1], caps_via_contacts_iface
+            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [self_handle][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
+    assertEquals(caps[self_handle], caps_via_contacts_iface)
 
     sync_stream(q, stream)
 
-    # Advertise daap
-    ret_caps = conn.ContactCapabilities.SetSelfCapabilities(
-        [daap_fixed_properties])
+    advertise_caps(q, conn, stream,
+        [daap_fixed_properties],
+        [ns.TUBES + '/stream#daap'],
+        [ns.TUBES + '/stream#http',
+         ns.TUBES + '/dbus#com.example.Go',
+         ns.TUBES + '/dbus#com.example.Xiangqi',
+        ],
+        daap_caps)
 
-    # Expect Gabble to reply with the correct caps
-    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
-    assert caps_contain(event, ns.TUBES) == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/stream#daap') == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/stream#http') == False, caps_str
-    assert caps_contain(event, ns.TUBES + '/dbus#com.example.Go') \
-            == False, caps_str
-    assert caps_contain(event, ns.TUBES + '/dbus#com.example.Xiangqi') \
-            == False, caps_str
-    assert signaled_caps == daap_caps
+    advertise_caps(q, conn, stream,
+        [xiangqi_fixed_properties],
+        [ns.TUBES + '/dbus#com.example.Xiangqi'],
+        [ns.TUBES + '/stream#daap',
+         ns.TUBES + '/stream#http',
+         ns.TUBES + '/dbus#com.example.Go',
+        ],
+        xiangqi_caps)
 
-    # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([1])
-    assert caps == daap_caps, caps
-    # check the Contacts interface give the same caps
-    caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [1], [cs.CONN_IFACE_CONTACT_CAPS], False) \
-            [1][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assert caps_via_contacts_iface == caps[1], caps_via_contacts_iface
+    advertise_caps(q, conn, stream,
+        [daap_fixed_properties, xiangqi_fixed_properties],
+        [ns.TUBES + '/dbus#com.example.Xiangqi',
+         ns.TUBES + '/stream#daap',
+        ],
+        [ns.TUBES + '/stream#http',
+         ns.TUBES + '/dbus#com.example.Go',
+        ],
+        daap_xiangqi_caps)
 
-    # Advertise xiangqi
-    ret_caps = conn.ContactCapabilities.SetSelfCapabilities(
-        [xiangqi_fixed_properties])
-
-    # Expect Gabble to reply with the correct caps
-    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
-    assert caps_contain(event, ns.TUBES) == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/stream#daap') == False, caps_str
-    assert caps_contain(event, ns.TUBES + '/stream#http') == False, caps_str
-    assert caps_contain(event, ns.TUBES + '/dbus#com.example.Go') \
-            == False, caps_str
-    assert caps_contain(event, ns.TUBES + '/dbus#com.example.Xiangqi') \
-            == True, caps_str
-    assert signaled_caps == xiangqi_caps
-
-    # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([1])
-    assert caps == xiangqi_caps, caps
-    # check the Contacts interface give the same caps
-    caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [1], [cs.CONN_IFACE_CONTACT_CAPS], False) \
-            [1][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assert caps_via_contacts_iface == caps[1], caps_via_contacts_iface
-
-    # Advertise daap + xiangqi
-    ret_caps = conn.ContactCapabilities.SetSelfCapabilities(
-        [daap_fixed_properties, xiangqi_fixed_properties])
-
-    # Expect Gabble to reply with the correct caps
-    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
-    assert caps_contain(event, ns.TUBES) == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/stream#daap') == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/stream#http') == False, caps_str
-    assert caps_contain(event, ns.TUBES + '/dbus#com.example.Go') \
-            == False, caps_str
-    assert caps_contain(event, ns.TUBES + '/dbus#com.example.Xiangqi') \
-            == True, caps_str
-    assert signaled_caps == daap_xiangqi_caps
-
-    # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([1])
-    assert caps == daap_xiangqi_caps, caps
-    # check the Contacts interface give the same caps
-    caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [1], [cs.CONN_IFACE_CONTACT_CAPS], False) \
-            [1][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assert caps_via_contacts_iface == caps[1], caps_via_contacts_iface
-
-    # Advertise 4 tubes
-    ret_caps = conn.ContactCapabilities.SetSelfCapabilities(
+    advertise_caps(q, conn, stream,
         [daap_fixed_properties, http_fixed_properties,
-         go_fixed_properties, xiangqi_fixed_properties])
+         go_fixed_properties, xiangqi_fixed_properties],
+        [ns.TUBES + '/dbus#com.example.Xiangqi',
+         ns.TUBES + '/stream#daap',
+         ns.TUBES + '/stream#http',
+         ns.TUBES + '/dbus#com.example.Go',
+        ],
+        [],
+        all_tubes_caps)
 
-    # Expect Gabble to reply with the correct caps
-    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
-    assert caps_contain(event, ns.TUBES) == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/stream#daap') == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/stream#http') == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/dbus#com.example.Go') \
-            == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/dbus#com.example.Xiangqi') \
-            == True, caps_str
-    assert signaled_caps == all_tubes_caps
-
-    # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([1])
-    assert caps == all_tubes_caps, caps
-    # check the Contacts interface give the same caps
-    caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [1], [cs.CONN_IFACE_CONTACT_CAPS], False) \
-            [1][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assert caps_via_contacts_iface == caps[1], caps_via_contacts_iface
-
-    # Advertise daap + xiangqi
-    ret_caps = conn.ContactCapabilities.SetSelfCapabilities(
-        [daap_fixed_properties, xiangqi_fixed_properties])
-
-    # Expect Gabble to reply with the correct caps
-    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
-    assert caps_contain(event, ns.TUBES) == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/stream#daap') == True, caps_str
-    assert caps_contain(event, ns.TUBES + '/stream#http') == False, caps_str
-    assert caps_contain(event, ns.TUBES + '/dbus#com.example.Go') \
-            == False, caps_str
-    assert caps_contain(event, ns.TUBES + '/dbus#com.example.Xiangqi') \
-            == True, caps_str
-    assert signaled_caps == daap_xiangqi_caps
-
-    # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([1])
-    assert caps == daap_xiangqi_caps, caps
-    # check the Contacts interface give the same caps
-    caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [1], [cs.CONN_IFACE_CONTACT_CAPS], False) \
-            [1][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assert caps_via_contacts_iface == caps[1], caps_via_contacts_iface
-
+    # test daap + xiangqi again for some reason
+    advertise_caps(q, conn, stream,
+        [daap_fixed_properties, xiangqi_fixed_properties],
+        [ns.TUBES + '/dbus#com.example.Xiangqi',
+         ns.TUBES + '/stream#daap',
+        ],
+        [ns.TUBES + '/stream#http',
+         ns.TUBES + '/dbus#com.example.Go',
+        ],
+        daap_xiangqi_caps)
 
 def test(q, bus, conn, stream):
     conn.Connect()

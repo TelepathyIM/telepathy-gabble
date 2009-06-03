@@ -85,8 +85,8 @@ debug_flag_to_key (GabbleDebugFlags flag)
 
 static void
 log_to_debugger (GabbleDebugFlags flag,
-		 const gchar *format,
-		 va_list args)
+    const gchar *format,
+    va_list args)
 {
   GabbleDebugger *dbg = gabble_debugger_get_singleton ();
   gchar *domain, *message = NULL;
@@ -104,8 +104,8 @@ log_to_debugger (GabbleDebugFlags flag,
 }
 
 void gabble_debug (GabbleDebugFlags flag,
-                   const gchar *format,
-                   ...)
+    const gchar *format,
+    ...)
 {
   va_list args;
 

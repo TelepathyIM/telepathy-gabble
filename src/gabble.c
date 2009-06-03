@@ -40,9 +40,9 @@ construct_cm (void)
 #ifdef ENABLE_DEBUG
 static void
 log_to_debugger (GTimeVal *timestamp,
-		 const gchar *log_domain,
-		 GLogLevelFlags log_level,
-		 const gchar *string)
+    const gchar *log_domain,
+    GLogLevelFlags log_level,
+    const gchar *string)
 {
   GabbleDebugger *dbg = gabble_debugger_get_singleton ();
 
@@ -51,9 +51,9 @@ log_to_debugger (GTimeVal *timestamp,
 
 static void
 simple_log (const gchar *log_domain,
-            GLogLevelFlags log_level,
-            const gchar *message,
-            gpointer user_data)
+    GLogLevelFlags log_level,
+    const gchar *message,
+    gpointer user_data)
 {
   g_log_default_handler (log_domain, log_level, message, NULL);
 
@@ -67,9 +67,9 @@ simple_log (const gchar *log_domain,
 
 static void
 stamp_log (const gchar *log_domain,
-           GLogLevelFlags log_level,
-           const gchar *message,
-           gpointer user_data)
+    GLogLevelFlags log_level,
+    const gchar *message,
+    gpointer user_data)
 {
   GTimeVal now;
   gchar now_str[32];
@@ -90,7 +90,7 @@ stamp_log (const gchar *log_domain,
 
 int
 gabble_main (int argc,
-             char **argv)
+    char **argv)
 {
   tp_debug_divert_messages (g_getenv ("GABBLE_LOGFILE"));
 

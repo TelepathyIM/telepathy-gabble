@@ -96,8 +96,10 @@ debug_message_free (GabbleDebugMessage *msg)
 }
 
 static void
-gabble_debugger_get_property (GObject *object, guint property_id,
-                              GValue *value, GParamSpec *pspec)
+gabble_debugger_get_property (GObject *object,
+    guint property_id,
+    GValue *value,
+    GParamSpec *pspec)
 {
   GabbleDebugger *self = GABBLE_DEBUGGER (object);
 
@@ -113,8 +115,10 @@ gabble_debugger_get_property (GObject *object, guint property_id,
 }
 
 static void
-gabble_debugger_set_property (GObject *object, guint property_id,
-                              const GValue *value, GParamSpec *pspec)
+gabble_debugger_set_property (GObject *object,
+    guint property_id,
+    const GValue *value,
+    GParamSpec *pspec)
 {
   GabbleDebugger *self = GABBLE_DEBUGGER (object);
 
@@ -174,7 +178,8 @@ gabble_debugger_class_init (GabbleDebuggerClass *klass)
 }
 
 static void
-get_messages (GabbleSvcDebug *self, DBusGMethodInvocation *context)
+get_messages (GabbleSvcDebug *self,
+    DBusGMethodInvocation *context)
 {
   GabbleDebugger *dbg = GABBLE_DEBUGGER (self);
   GPtrArray *messages;
@@ -185,7 +190,8 @@ get_messages (GabbleSvcDebug *self, DBusGMethodInvocation *context)
   if (G_UNLIKELY (struct_type == 0))
     {
       struct_type = dbus_g_type_get_struct (
-          "GValueArray", G_TYPE_DOUBLE, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID);
+          "GValueArray", G_TYPE_DOUBLE, G_TYPE_STRING, G_TYPE_UINT,
+          G_TYPE_STRING, G_TYPE_INVALID);
     }
 
   messages = g_ptr_array_sized_new (g_queue_get_length (dbg->messages));
@@ -216,7 +222,8 @@ get_messages (GabbleSvcDebug *self, DBusGMethodInvocation *context)
 }
 
 static void
-debug_iface_init (gpointer g_iface, gpointer iface_data)
+debug_iface_init (gpointer g_iface,
+    gpointer iface_data)
 {
   GabbleSvcDebugClass *klass = (GabbleSvcDebugClass *) g_iface;
 

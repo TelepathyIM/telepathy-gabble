@@ -29,6 +29,7 @@
 #include <telepathy-glib/errors.h>
 
 #include "connection.h"
+#include "debug.h"
 
 G_DEFINE_TYPE(GabbleConnectionManager,
     gabble_connection_manager,
@@ -46,14 +47,22 @@ static TpBaseConnection *_gabble_connection_manager_new_connection (
     TpIntSet *params_present, void *parsed_params, GError **error);
 
 static void
+gabble_connection_manager_finalize (GObject *object)
+{
+  gabble_debug_free ();
+}
+
+static void
 gabble_connection_manager_class_init (GabbleConnectionManagerClass *klass)
 {
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
   TpBaseConnectionManagerClass *base_class =
     (TpBaseConnectionManagerClass *) klass;
 
   base_class->new_connection = _gabble_connection_manager_new_connection;
   base_class->cm_dbus_name = "gabble";
   base_class->protocol_params = gabble_connection_manager_get_protocols ();
+  object_class->finalize = gabble_connection_manager_finalize;
 }
 
 /* private data */

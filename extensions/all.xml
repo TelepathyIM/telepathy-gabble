@@ -37,6 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <xi:include href="Channel_Future.xml"/>
 <xi:include href="Channel_Type_Streamed_Media_Future.xml"/>
 <xi:include href="Connection_Interface_Location.xml"/>
+<xi:include href="Debug.xml"/>
 <xi:include href="OLPC_Buddy_Info.xml"/>
 <xi:include href="OLPC_Activity_Properties.xml"/>
 <xi:include href="OLPC_Gadget.xml"/>

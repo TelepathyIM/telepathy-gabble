@@ -35,6 +35,7 @@ typedef enum
 void gabble_debug_set_flags_from_env (void);
 void gabble_debug_set_flags (GabbleDebugFlags flags);
 gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag);
+void gabble_debug_free (void);
 void gabble_debug (GabbleDebugFlags flag, const gchar *format, ...)
     G_GNUC_PRINTF (2, 3);
 

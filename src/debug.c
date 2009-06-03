@@ -12,6 +12,8 @@
 #include <glib/gstdio.h>
 #include <telepathy-glib/debug.h>
 
+#include "debugger.h"
+
 #ifdef ENABLE_DEBUG
 
 static GabbleDebugFlags flags = 0;
@@ -66,17 +68,73 @@ gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag)
   return flag & flags;
 }
 
-void gabble_debug (GabbleDebugFlags flag,
-                   const gchar *format,
-                   ...)
+GHashTable *flag_to_keys = NULL;
+
+static const gchar *
+debug_flag_to_key (GabbleDebugFlags flag)
 {
-  if (flag & flags)
+  if (flag_to_keys == NULL)
     {
-      va_list args;
-      va_start (args, format);
-      g_logv (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, format, args);
-      va_end (args);
+      guint i;
+
+      flag_to_keys = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+          NULL, g_free);
+
+      for (i = 0; keys[i].value; i++)
+        {
+          GDebugKey key = (GDebugKey) keys[i];
+          g_hash_table_insert (flag_to_keys, GUINT_TO_POINTER (key.value),
+              g_strdup (key.key));
+        }
     }
+
+  return g_hash_table_lookup (flag_to_keys, GUINT_TO_POINTER (flag));
+}
+
+void
+gabble_debug_free (void)
+{
+  if (flag_to_keys == NULL)
+    return;
+
+  g_hash_table_destroy (flag_to_keys);
+  flag_to_keys = NULL;
+}
+
+static void
+log_to_debugger (GabbleDebugFlags flag,
+    const gchar *format,
+    va_list args)
+{
+  GabbleDebugger *dbg = gabble_debugger_get_singleton ();
+  gchar *domain, *message = NULL;
+  GTimeVal now;
+
+  g_get_current_time (&now);
+
+  domain = g_strdup_printf ("%s/%s", G_LOG_DOMAIN, debug_flag_to_key (flag));
+  message = g_strdup_vprintf (format, args);
+
+  gabble_debugger_add_message (dbg, &now, domain, G_LOG_LEVEL_DEBUG, message);
+
+  g_free (message);
+  g_free (domain);
+}
+
+void gabble_debug (GabbleDebugFlags flag,
+    const gchar *format,
+    ...)
+{
+  va_list args;
+
+  va_start (args, format);
+
+  log_to_debugger (flag, format, args);
+
+  if (flag & flags)
+    g_logv (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, format, args);
+
+  va_end (args);
 }
 
 #endif /* ENABLE_DEBUG */

@@ -77,7 +77,7 @@ debug_flag_to_key (GabbleDebugFlags flag)
     {
       GDebugKey key = (GDebugKey) keys[i];
       if (key.value == flag)
-	return key.key;
+        return key.key;
     }
 
   return NULL;

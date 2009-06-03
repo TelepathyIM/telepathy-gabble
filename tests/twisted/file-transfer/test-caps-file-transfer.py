@@ -2,6 +2,7 @@ import dbus
 
 from twisted.words.xish import xpath
 
+from servicetest import assertEquals
 from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 import constants as cs
 
@@ -110,12 +111,13 @@ def test_ft_caps_to_contact(q, bus, conn, stream):
 
     # Check our own caps
     caps = conn_caps_iface.GetContactCapabilities([1])
-    assert caps == basic_caps, caps
+    assertEquals(basic_caps, caps)
+
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
             [1], [cs.CONN_IFACE_CONTACT_CAPS], False) \
             [1][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assert caps_via_contacts_iface == caps[1], caps_via_contacts_iface
+    assertEquals(caps[1], caps_via_contacts_iface)
 
 def test(q, bus, conn, stream):
     conn.Connect()

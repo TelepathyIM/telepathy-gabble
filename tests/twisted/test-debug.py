@@ -9,13 +9,13 @@ from gabbletest import exec_test
 import constants as cs
 
 path = '/org/freedesktop/Telepathy/debug'
-iface = 'org.freedesktop.Telepathy.Debug'
+iface = 'org.freedesktop.Telepathy.Debug.DRAFT'
 
 def test(q, bus, conn, stream):
     messages = []
 
-    def new_message(timestamp, string):
-        messages.append((timestamp, string))
+    def new_message(timestamp, domain, level, string):
+        messages.append((timestamp, domain, level, string))
 
     debug = bus.get_object(conn.bus_name, path)
     debug_iface = dbus.Interface(debug, iface)

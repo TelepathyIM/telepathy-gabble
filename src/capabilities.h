@@ -27,18 +27,6 @@
 
 #include "types.h"
 
-/* XEP-0115 version 1.3:
- *
- * "The names of the feature bundles MUST NOT be used for semantic purposes:
- * they are merely opaque identifiers"
- *
- * However, some old Jabber clients (e.g. Gabble 0.2) and various Google
- * clients require the bundle name "voice-v1" and "video-v1". We keep these
- * names for compatibility.
- */
-#define BUNDLE_VOICE_V1         "voice-v1"
-#define BUNDLE_VIDEO_V1         "video-v1"
-
 typedef struct _Feature Feature;
 
 struct _Feature
@@ -46,7 +34,7 @@ struct _Feature
   enum {
     FEATURE_FIXED,
     FEATURE_OPTIONAL,
-    FEATURE_BUNDLE_COMPAT   /* just for voice-v1 */
+    FEATURE_BUNDLE_COMPAT   /* just for voice-v1/video-v1 */
   } feature_type;
   gchar *ns;
   GabblePresenceCapabilities caps;
@@ -76,6 +64,21 @@ gboolean gabble_capability_set_equals (const GabbleCapabilitySet *a,
     const GabbleCapabilitySet *b);
 void gabble_capability_set_clear (GabbleCapabilitySet *caps);
 void gabble_capability_set_free (GabbleCapabilitySet *caps);
+
+/* XEP-0115 version 1.3:
+ *
+ * "The names of the feature bundles MUST NOT be used for semantic purposes:
+ * they are merely opaque identifiers"
+ *
+ * However, some old Jabber clients (e.g. Gabble 0.2) and various Google
+ * clients require the bundle names "voice-v1" and "video-v1". We keep these
+ * names for compatibility.
+ */
+#define BUNDLE_VOICE_V1         "voice-v1"
+#define BUNDLE_VIDEO_V1         "video-v1"
+
+const GabbleCapabilitySet *gabble_capabilities_get_bundle_voice_v1 (void);
+const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
 
 /*
  * capabilities_get_features

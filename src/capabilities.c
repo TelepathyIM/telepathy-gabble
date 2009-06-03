@@ -73,6 +73,34 @@ static const Feature self_advertised_features[] =
   { 0, NULL, 0}
 };
 
+const GabbleCapabilitySet *
+gabble_capabilities_get_bundle_voice_v1 ()
+{
+  static GabbleCapabilitySet *voice_v1_caps = NULL;
+
+  if (voice_v1_caps == NULL)
+    {
+      voice_v1_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (voice_v1_caps, NS_GOOGLE_FEAT_VOICE);
+    }
+
+  return voice_v1_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_bundle_video_v1 ()
+{
+  static GabbleCapabilitySet *video_v1_caps = NULL;
+
+  if (video_v1_caps == NULL)
+    {
+      video_v1_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (video_v1_caps, NS_GOOGLE_FEAT_VIDEO);
+    }
+
+  return video_v1_caps;
+}
+
 GSList *
 capabilities_get_features (GabblePresenceCapabilities caps,
                            GHashTable *per_channel_manager_caps)

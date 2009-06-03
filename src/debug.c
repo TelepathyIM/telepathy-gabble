@@ -103,21 +103,18 @@ gabble_debug_free (void)
 
 static void
 log_to_debugger (GabbleDebugFlags flag,
-    const gchar *format,
-    va_list args)
+    const gchar *message)
 {
   GabbleDebugger *dbg = gabble_debugger_get_singleton ();
-  gchar *domain, *message = NULL;
+  gchar *domain;
   GTimeVal now;
 
   g_get_current_time (&now);
 
   domain = g_strdup_printf ("%s/%s", G_LOG_DOMAIN, debug_flag_to_key (flag));
-  message = g_strdup_vprintf (format, args);
 
   gabble_debugger_add_message (dbg, &now, domain, G_LOG_LEVEL_DEBUG, message);
 
-  g_free (message);
   g_free (domain);
 }
 
@@ -125,16 +122,19 @@ void gabble_debug (GabbleDebugFlags flag,
     const gchar *format,
     ...)
 {
+  gchar *message;
   va_list args;
 
   va_start (args, format);
+  message = g_strdup_vprintf (format, args);
+  va_end (args);
 
-  log_to_debugger (flag, format, args);
+  log_to_debugger (flag, message);
 
   if (flag & flags)
-    g_logv (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, format, args);
+    g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s", message);
 
-  va_end (args);
+  g_free (message);
 }
 
 #endif /* ENABLE_DEBUG */

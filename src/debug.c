@@ -70,19 +70,6 @@ gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag)
 
 GHashTable *flag_to_keys = NULL;
 
-static guint
-debug_flag_hash (gconstpointer key)
-{
-  return GPOINTER_TO_UINT (key);
-}
-
-static gboolean
-debug_flag_equal (gconstpointer a,
-    gconstpointer b)
-{
-  return GPOINTER_TO_UINT (a) == GPOINTER_TO_UINT (b);
-}
-
 static const gchar *
 debug_flag_to_key (GabbleDebugFlags flag)
 {
@@ -90,7 +77,7 @@ debug_flag_to_key (GabbleDebugFlags flag)
     {
       guint i;
 
-      flag_to_keys = g_hash_table_new_full (debug_flag_hash, debug_flag_equal,
+      flag_to_keys = g_hash_table_new_full (g_direct_hash, g_direct_equal,
           NULL, g_free);
 
       for (i = 0; keys[i].value; i++)

@@ -57,6 +57,8 @@ simple_log (const gchar *log_domain,
 {
   g_log_default_handler (log_domain, log_level, message, NULL);
 
+  /* G_LOG_DOMAIN = "gabble". No need to send gabble messages to the debugger
+   * as they already have in gabble_debug. */
   if (tp_strdiff (log_domain, G_LOG_DOMAIN))
     {
       GTimeVal now;
@@ -83,6 +85,7 @@ stamp_log (const gchar *log_domain,
   g_log_default_handler (log_domain, log_level, tmp, NULL);
   g_free (tmp);
 
+  /* Gabble messages are already sent to the debugger in gabble_debug. */
   if (tp_strdiff (log_domain, G_LOG_DOMAIN))
     log_to_debugger (&now, log_domain, log_level, message);
 }

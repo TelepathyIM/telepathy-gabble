@@ -14,6 +14,8 @@ import dbus.glib
 
 from twisted.internet import reactor
 
+import constants as cs
+
 tp_name_prefix = 'org.freedesktop.Telepathy'
 tp_path_prefix = '/org/freedesktop/Telepathy'
 
@@ -296,7 +298,9 @@ def wrap_connection(conn):
             (name, tp_name_prefix + '.Connection.Interface.' + name)
             for name in ['Aliasing', 'Avatars', 'Capabilities', 'Contacts',
               'Presence', 'SimplePresence', 'Requests']] +
-        [('Peer', 'org.freedesktop.DBus.Peer')]))
+        [('Peer', 'org.freedesktop.DBus.Peer'),
+         ('ContactCapabilities', cs.CONN_IFACE_CONTACT_CAPS),
+        ]))
 
 def wrap_channel(chan, type_, extra=None):
     interfaces = {

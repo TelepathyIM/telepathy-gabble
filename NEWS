@@ -5,6 +5,8 @@ Dependencies:
 
 Enhancements:
 
+* Implement o.fd.Tp.Debug interface.
+
 Fixes:
 
 telepathy-gabble 0.7.28 (2009-06-01)

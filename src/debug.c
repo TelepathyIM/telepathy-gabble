@@ -68,19 +68,50 @@ gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag)
   return flag & flags;
 }
 
+GHashTable *flag_to_keys = NULL;
+
+static guint
+debug_flag_hash (gconstpointer key)
+{
+  return GPOINTER_TO_UINT (key);
+}
+
+static gboolean
+debug_flag_equal (gconstpointer a,
+    gconstpointer b)
+{
+  return GPOINTER_TO_UINT (a) == GPOINTER_TO_UINT (b);
+}
+
 static const gchar *
 debug_flag_to_key (GabbleDebugFlags flag)
 {
-  guint i;
-
-  for (i = 0; keys[i].value; i++)
+  if (flag_to_keys == NULL)
     {
-      GDebugKey key = (GDebugKey) keys[i];
-      if (key.value == flag)
-        return key.key;
+      guint i;
+
+      flag_to_keys = g_hash_table_new_full (debug_flag_hash, debug_flag_equal,
+          NULL, g_free);
+
+      for (i = 0; keys[i].value; i++)
+        {
+          GDebugKey key = (GDebugKey) keys[i];
+          g_hash_table_insert (flag_to_keys, GUINT_TO_POINTER (key.value),
+              g_strdup (key.key));
+        }
     }
 
-  return NULL;
+  return g_hash_table_lookup (flag_to_keys, GUINT_TO_POINTER (flag));
+}
+
+void
+gabble_debug_free (void)
+{
+  if (flag_to_keys == NULL)
+    return;
+
+  g_hash_table_destroy (flag_to_keys);
+  flag_to_keys = NULL;
 }
 
 static void

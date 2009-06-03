@@ -396,18 +396,25 @@ def watch_tube_signals(q, tube):
         path_keyword='path', member_keyword='member',
         byte_arrays=True)
 
+def pretty(x):
+    return pprint.pformat(unwrap(x))
+
 def assertEquals(expected, value):
-    assert expected == value, "expected: %r; got: %r" % (expected, value)
+    assert expected == value, "expected:\n%s;\ngot:\n%s" % (
+        pretty(expected), pretty(value))
 
 def assertContains(element, value):
-    assert element in value, "expected: %r in %r" % (element, value)
+    assert element in value, "expected:\n%s\nin:\n%s" % (
+        pretty(element), pretty(value))
 
 def assertDoesNotContain(element, value):
-    assert element not in value, "expected: %r not in %r" % (element, value)
+    assert element not in value, "expected:\n%s\nnot in:\n%s" % (
+        pretty(element), pretty(value))
 
 def assertLength(length, value):
     assert len(value) == length, \
-        "expected: length %d, got length %d (%r)" % (length, len(value), value)
+        "expected: length %d, got length %d:\n%s" % (
+        length, len(value), pretty(value))
 
 if __name__ == '__main__':
     unittest.main()

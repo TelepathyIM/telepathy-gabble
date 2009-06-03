@@ -73,6 +73,9 @@ go_fixed_properties = dbus.Dictionary({
 
 client = 'http://telepathy.freedesktop.org/fake-client'
 
+def assertSameElements(a, b):
+    assertEquals(sorted(a), sorted(b))
+
 def receive_caps(q, conn, stream, contact, contact_handle, features,
                  expected_caps, expect_disco=True):
     presence = make_presence(contact, status='hello')
@@ -104,20 +107,20 @@ def receive_caps(q, conn, stream, contact, contact_handle, features,
 
     event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
     announced_ccs, = event.args
-    assertEquals(expected_caps, announced_ccs)
+    assertSameElements(expected_caps, announced_ccs)
 
     caps = conn.ContactCapabilities.GetContactCapabilities([contact_handle])
-    assertEquals(expected_caps, caps)
+    assertSameElements(expected_caps, caps)
 
     # test again, to check GetContactCapabilities does not have side effect
     caps = conn.ContactCapabilities.GetContactCapabilities([contact_handle])
-    assertEquals(expected_caps, caps)
+    assertSameElements(expected_caps, caps)
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
             [contact_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
             [contact_handle][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assertEquals(caps[contact_handle], caps_via_contacts_iface)
+    assertSameElements(caps[contact_handle], caps_via_contacts_iface)
 
 def test_tube_caps_from_contact(q, bus, conn, stream, contact):
     contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
@@ -197,25 +200,25 @@ def advertise_caps(q, conn, stream, filters, expected_features, unexpected_featu
     # Expect Gabble to reply with the correct caps
     event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
 
-    assertEquals(expected_caps, signaled_caps)
+    assertSameElements(expected_caps, signaled_caps)
 
     assert caps_contain(event, ns.TUBES) == True, caps_str
 
     for var in expected_features:
-        assert caps_contain(event, var), caps_str
+        assert caps_contain(event, var), (var, caps_str)
 
     for var in unexpected_features:
-        assert not caps_contain(event, var), caps_str
+        assert not caps_contain(event, var), (var, caps_str)
 
     # Check our own caps
     caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
-    assertEquals(expected_caps, caps)
+    assertSameElements(expected_caps, caps)
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
             [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
             [self_handle][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assertEquals(caps[self_handle], caps_via_contacts_iface)
+    assertSameElements(caps[self_handle], caps_via_contacts_iface)
 
 def test_tube_caps_to_contact(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()

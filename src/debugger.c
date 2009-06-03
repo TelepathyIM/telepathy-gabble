@@ -276,7 +276,5 @@ gabble_debugger_add_message (GabbleDebugger *self,
     {
       gabble_svc_debug_emit_new_debug_message (self, new_msg->timestamp,
           domain, new_msg->level, string);
-
     }
 }
-

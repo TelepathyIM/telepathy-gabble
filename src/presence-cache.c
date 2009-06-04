@@ -957,11 +957,11 @@ emit_capabilities_update (GabblePresenceCache *cache,
     TpHandle handle,
     GabblePresenceCapabilities old_caps,
     GabblePresenceCapabilities new_caps,
-    GHashTable *old_enhanced_caps,
-    GHashTable *new_enhanced_caps)
+    const GabbleCapabilitySet *old_cap_set,
+    const GabbleCapabilitySet *new_cap_set)
 {
   g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-      handle, old_caps, new_caps, old_enhanced_caps, new_enhanced_caps);
+      handle, old_caps, new_caps, old_cap_set, new_cap_set);
 }
 
 /**
@@ -981,14 +981,14 @@ set_caps_for (DiscoWaiter *waiter,
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, waiter->handle);
   GabblePresenceCapabilities save_caps;
-  GHashTable *save_enhanced_caps;
+  GabbleCapabilitySet *old_cap_set;
+  GabbleCapabilitySet *new_cap_set;
 
   if (presence == NULL)
     return;
 
   save_caps = presence->caps;
-  gabble_presence_cache_copy_cache_entry (&save_enhanced_caps,
-      presence->per_channel_manager_caps);
+  old_cap_set = gabble_presence_get_caps (presence);
 
   DEBUG ("setting caps for %d (thanks to %d %s) to %d (save_caps %d)",
       waiter->handle, responder_handle, responder_jid, caps, save_caps);
@@ -998,9 +998,13 @@ set_caps_for (DiscoWaiter *waiter,
 
   DEBUG ("caps for %d now %d", waiter->handle, presence->caps);
 
+  new_cap_set = gabble_presence_get_caps (presence);
+
   emit_capabilities_update (cache, waiter->handle, save_caps, presence->caps,
-      save_enhanced_caps, presence->per_channel_manager_caps);
-  gabble_presence_cache_free_cache_entry (save_enhanced_caps);
+      old_cap_set, new_cap_set);
+
+  gabble_capability_set_free (old_cap_set);
+  gabble_capability_set_free (new_cap_set);
 }
 
 static void
@@ -1277,7 +1281,7 @@ _process_caps (GabblePresenceCache *cache,
   GSList *uris, *i;
   GabblePresenceCachePrivate *priv;
   GabblePresenceCapabilities old_caps = 0;
-  GHashTable *old_enhanced_caps;
+  GabbleCapabilitySet *old_cap_set;
   guint serial;
   const gchar *hash, *ver;
 
@@ -1293,8 +1297,7 @@ _process_caps (GabblePresenceCache *cache,
   if (presence)
     {
       old_caps = presence->caps;
-      gabble_presence_cache_copy_cache_entry (&old_enhanced_caps,
-          presence->per_channel_manager_caps);
+      old_cap_set = gabble_presence_get_caps (presence);
     }
 
   for (i = uris; NULL != i; i = i->next)
@@ -1307,12 +1310,15 @@ _process_caps (GabblePresenceCache *cache,
 
   if (presence)
     {
+      GabbleCapabilitySet *new_cap_set = gabble_presence_get_caps (presence);
+
       DEBUG ("Emitting caps update: handle %u, old %u, new %u",
           handle, old_caps, presence->caps);
 
       emit_capabilities_update (cache, handle, old_caps, presence->caps,
-          old_enhanced_caps, presence->per_channel_manager_caps);
-      gabble_presence_cache_free_cache_entry (old_enhanced_caps);
+          old_cap_set, new_cap_set);
+
+      gabble_capability_set_free (new_cap_set);
     }
   else
     {
@@ -1320,6 +1326,7 @@ _process_caps (GabblePresenceCache *cache,
           presence->caps, handle);
     }
 
+  gabble_capability_set_free (old_cap_set);
   g_slist_free (uris);
 }
 
@@ -1584,7 +1591,7 @@ gabble_presence_cache_do_update (
   const gchar *jid;
   GabblePresence *presence;
   GabblePresenceCapabilities caps_before;
-  GHashTable *enhanced_caps_before;
+  GabbleCapabilitySet *old_cap_set, *new_cap_set;
   gboolean ret = FALSE;
 
   jid = tp_handle_inspect (contact_repo, handle);
@@ -1600,16 +1607,18 @@ gabble_presence_cache_do_update (
     presence = _cache_insert (cache, handle);
 
   caps_before = presence->caps;
-  enhanced_caps_before = presence->per_channel_manager_caps;
-  gabble_presence_cache_copy_cache_entry (&enhanced_caps_before,
-      presence->per_channel_manager_caps);
+  old_cap_set = gabble_presence_get_caps (presence);
 
   ret = gabble_presence_update (presence, resource, presence_id,
       status_message, priority);
 
+  new_cap_set = gabble_presence_get_caps (presence);
+
   emit_capabilities_update (cache, handle, caps_before, presence->caps,
-      enhanced_caps_before, presence->per_channel_manager_caps);
-  gabble_presence_cache_free_cache_entry (enhanced_caps_before);
+      old_cap_set, new_cap_set);
+
+  gabble_capability_set_free (old_cap_set);
+  gabble_capability_set_free (new_cap_set);
 
   return ret;
 }

@@ -177,12 +177,20 @@ gboolean gabble_caps_channel_manager_capabilities_diff (
   return FALSE;
 }
 
+/**
+ * gabble_caps_channel_manager_add_capability:
+ * @cap: the Telepathy-level capability to add
+ * @cap_set: a set of XMPP namespaces, to which the namespaces corresponding to
+ *           @cap should be added
+ *
+ * Used to advertise that we support the XMPP capabilities corresponding to the
+ * Telepathy capability supplied.
+ */
 void
 gabble_caps_channel_manager_add_capability (
     GabbleCapsChannelManager *caps_manager,
-    GabbleConnection *conn,
-    TpHandle handle,
-    GHashTable *cap)
+    GHashTable *cap,
+    GabbleCapabilitySet *cap_set)
 {
   GabbleCapsChannelManagerIface *iface =
     GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
@@ -190,7 +198,7 @@ gabble_caps_channel_manager_add_capability (
 
   if (method != NULL)
     {
-      method (caps_manager, conn, handle, cap);
+      method (caps_manager, cap, cap_set);
     }
   /* ... else, nothing to do */
 }

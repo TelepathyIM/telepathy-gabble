@@ -792,14 +792,11 @@ gabble_private_tubes_factory_caps_diff (
 
 static void
 gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
-                                      GabbleConnection *conn,
-                                      TpHandle handle,
-                                      GHashTable *cap)
+    GHashTable *cap,
+    GabbleCapabilitySet *cap_set)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  GabblePresence *presence;
-  TubesCapabilities *caps;
-  const gchar *channel_type;
+  const gchar *channel_type, *service;
+  gchar *ns = NULL;
 
   channel_type = tp_asv_get_string (cap,
             TP_IFACE_CHANNEL ".ChannelType");
@@ -814,50 +811,28 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
         TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
     return;
 
-  if (handle == base->self_handle)
-    presence = conn->self_presence;
-  else
-    presence = gabble_presence_cache_get (conn->presence_cache, handle);
-
-  g_assert (presence != NULL);
-
-  if (presence->per_channel_manager_caps == NULL)
-    presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
-
-  caps = g_hash_table_lookup (presence->per_channel_manager_caps, manager);
-  if (caps == NULL)
-    {
-      caps = g_new0 (TubesCapabilities, 1);
-      caps->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-          g_free, gabble_private_tubes_factory_free_feat);
-      caps->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-          g_free, gabble_private_tubes_factory_free_feat);
-      g_hash_table_insert (presence->per_channel_manager_caps, manager, caps);
-
-      if (handle == base->self_handle)
-        /* We always support generic tubes caps */
-        caps->tubes_supported = TRUE;
-    }
-
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
     {
-      Feature *feat = g_new0 (Feature, 1);
-      gchar *service = g_strdup (tp_asv_get_string (cap,
-          TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service"));
-      feat->feature_type = FEATURE_OPTIONAL;
-      feat->ns = g_strdup_printf ("%s/stream#%s", NS_TUBES, service);
-      feat->caps = 0;
-      g_hash_table_insert (caps->stream_tube_caps, service, feat);
+      service = tp_asv_get_string (cap,
+          TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+
+      if (service != NULL)
+        ns = g_strconcat (STREAM_CAP_PREFIX, service, NULL);
     }
   else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     {
-      Feature *feat = g_new0 (Feature, 1);
-      gchar *service = g_strdup (tp_asv_get_string (cap,
-          TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName"));
-      feat->feature_type = FEATURE_OPTIONAL;
-      feat->ns = g_strdup_printf ("%s/dbus#%s", NS_TUBES, service);
-      feat->caps = 0;
-      g_hash_table_insert (caps->dbus_tube_caps, service, feat);
+      service = tp_asv_get_string (cap,
+          TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+
+      if (service != NULL)
+        ns = g_strconcat (DBUS_CAP_PREFIX, service, NULL);
+    }
+
+  if (ns != NULL)
+    {
+      DEBUG ("adding capability %s", ns);
+      gabble_capability_set_add (cap_set, ns);
+      g_free (ns);
     }
 }
 

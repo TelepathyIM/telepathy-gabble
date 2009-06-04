@@ -62,8 +62,9 @@ typedef void (*GabbleCapsChannelManagerGetContactCapsFunc) (
     GPtrArray *arr);
 
 typedef void (*GabbleCapsChannelManagerAddCapFunc) (
-    GabbleCapsChannelManager *manager, GabbleConnection *conn, TpHandle handle,
-    GHashTable *cap);
+    GabbleCapsChannelManager *manager,
+    GHashTable *cap,
+    GabbleCapabilitySet *cap_set);
 
 /* Specific to Gabble */
 typedef void (*GabbleCapsChannelManagerGetFeatureListFunc) (
@@ -118,9 +119,9 @@ gboolean gabble_caps_channel_manager_capabilities_diff (
     gpointer specific_old_caps, gpointer specific_new_caps);
 
 void gabble_caps_channel_manager_add_capability (
-    GabbleCapsChannelManager *manager, GabbleConnection *conn, TpHandle handle,
-    GHashTable *cap);
-
+    GabbleCapsChannelManager *caps_manager,
+    GHashTable *cap,
+    GabbleCapabilitySet *cap_set);
 
 struct _GabbleCapsChannelManagerIface {
     GTypeInterface parent;

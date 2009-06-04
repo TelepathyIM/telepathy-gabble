@@ -69,6 +69,8 @@ G_STMT_START { \
 
 #endif /* DEBUG_FLAG */
 
+#define gabble_debug_free() G_STMT_START { } G_STMT_END
+
 #endif /* ENABLE_DEBUG */
 
 #endif /* __DEBUG_H__ */

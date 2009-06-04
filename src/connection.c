@@ -2122,7 +2122,7 @@ connection_auth_cb (LmConnection *lmconn,
   caps = capabilities_get_initial_caps ();
   cap_set = gabble_capability_set_new_from_flags (caps);
   gabble_presence_set_capabilities (conn->self_presence, priv->resource,
-      cap_set, caps, NULL, priv->caps_serial++);
+      cap_set, caps, priv->caps_serial++);
   gabble_capability_set_free (cap_set);
 
   if (!gabble_disco_request_with_timeout (conn->disco, GABBLE_DISCO_TYPE_INFO,
@@ -2499,7 +2499,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
     {
       DEBUG ("before != after, changing");
       cap_set = gabble_capability_set_new_from_flags (caps);
-      gabble_presence_set_capabilities (pres, priv->resource, cap_set, caps, NULL,
+      gabble_presence_set_capabilities (pres, priv->resource, cap_set, caps,
           priv->caps_serial++);
       gabble_capability_set_free (cap_set);
       DEBUG ("set caps: %x", pres->caps);
@@ -2594,8 +2594,8 @@ gabble_connection_set_self_capabilities (
         }
     }
 
-  gabble_presence_set_capabilities (pres, priv->resource, new_caps,
-      pres->caps, NULL, priv->caps_serial++);
+  gabble_presence_set_capabilities (pres, priv->resource, new_caps, pres->caps,
+      priv->caps_serial++);
 
   if (_gabble_connection_signal_own_presence (self, &error))
     {
@@ -3277,8 +3277,8 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
       GError *error = NULL;
 
       cap_set = gabble_capability_set_new_from_flags (caps);
-      gabble_presence_set_capabilities (self->self_presence,
-          priv->resource, cap_set, new_caps, NULL, priv->caps_serial++);
+      gabble_presence_set_capabilities (self->self_presence, priv->resource,
+          cap_set, new_caps, priv->caps_serial++);
       gabble_capability_set_free (cap_set);
 
       if (!_gabble_connection_signal_own_presence (self, &error))

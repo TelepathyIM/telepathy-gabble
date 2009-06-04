@@ -54,7 +54,6 @@ typedef struct _GabbleCapsChannelManagerIface GabbleCapsChannelManagerIface;
 
 /* virtual methods */
 
-/* May be moved to TpChannelManager later */
 typedef void (*GabbleCapsChannelManagerGetContactCapsFunc) (
     GabbleCapsChannelManager *manager,
     TpHandle handle,
@@ -66,57 +65,11 @@ typedef void (*GabbleCapsChannelManagerAddCapFunc) (
     GHashTable *cap,
     GabbleCapabilitySet *cap_set);
 
-/* Specific to Gabble */
-typedef void (*GabbleCapsChannelManagerGetFeatureListFunc) (
-    GabbleCapsChannelManager *manager, gpointer specific_caps,
-    GSList **features);
-
-typedef gpointer (*GabbleCapsChannelManagerParseCapsFunc) (
-    GabbleCapsChannelManager *manager, GabbleCapabilitySet *cap_set);
-
-typedef void (*GabbleCapsChannelManagerFreeCapsFunc) (
-    GabbleCapsChannelManager *manager, gpointer specific_caps);
-
-typedef void (*GabbleCapsChannelManagerCopyCapsFunc) (
-    GabbleCapsChannelManager *manager, gpointer *specific_caps_out,
-    gpointer specific_caps_in);
-
-typedef void (*GabbleCapsChannelManagerUpdateCapsFunc) (
-    GabbleCapsChannelManager *manager, gpointer specific_caps_out,
-    gpointer specific_caps_in);
-
-typedef gboolean (*GabbleCapsChannelManagerCapsDiffFunc) (
-    GabbleCapsChannelManager *manager, TpHandle handle,
-    gpointer specific_old_caps, gpointer specific_new_caps);
-
-
 void gabble_caps_channel_manager_get_contact_capabilities (
     GabbleCapsChannelManager *caps_manager,
     TpHandle handle,
     const GabbleCapabilitySet *caps,
     GPtrArray *arr);
-
-void gabble_caps_channel_manager_get_feature_list (
-    GabbleCapsChannelManager *manager, gpointer specific_caps,
-    GSList **features);
-
-gpointer gabble_caps_channel_manager_parse_capabilities (
-    GabbleCapsChannelManager *manager,
-    GabbleCapabilitySet *cap_set);
-
-void gabble_caps_channel_manager_free_capabilities (GabbleCapsChannelManager *manager,
-    gpointer specific_caps);
-
-void gabble_caps_channel_manager_copy_capabilities (GabbleCapsChannelManager *manager,
-    gpointer *specific_caps_out, gpointer specific_caps_in);
-
-void gabble_caps_channel_manager_update_capabilities (
-    GabbleCapsChannelManager *manager, gpointer specific_caps_out,
-    gpointer specific_caps_in);
-
-gboolean gabble_caps_channel_manager_capabilities_diff (
-    GabbleCapsChannelManager *manager, TpHandle handle,
-    gpointer specific_old_caps, gpointer specific_new_caps);
 
 void gabble_caps_channel_manager_add_capability (
     GabbleCapsChannelManager *caps_manager,
@@ -128,13 +81,6 @@ struct _GabbleCapsChannelManagerIface {
 
     GabbleCapsChannelManagerGetContactCapsFunc get_contact_caps;
     GabbleCapsChannelManagerAddCapFunc add_cap;
-
-    GabbleCapsChannelManagerGetFeatureListFunc get_feature_list;
-    GabbleCapsChannelManagerParseCapsFunc parse_caps;
-    GabbleCapsChannelManagerFreeCapsFunc free_caps;
-    GabbleCapsChannelManagerCopyCapsFunc copy_caps;
-    GabbleCapsChannelManagerUpdateCapsFunc update_caps;
-    GabbleCapsChannelManagerCapsDiffFunc caps_diff;
 
     GCallback _future[8];
     gpointer priv;

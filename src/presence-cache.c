@@ -747,74 +747,6 @@ _parse_cap_bundles (
   return uris;
 }
 
-static void
-free_caps_helper (gpointer key, gpointer value, gpointer user_data)
-{
-  GabbleCapsChannelManager *manager = GABBLE_CAPS_CHANNEL_MANAGER (key);
-  gabble_caps_channel_manager_free_capabilities (manager, value);
-}
-
-void
-gabble_presence_cache_free_cache_entry (
-    GHashTable *per_channel_manager_caps)
-{
-  if (per_channel_manager_caps == NULL)
-    return;
-
-  g_hash_table_foreach (per_channel_manager_caps, free_caps_helper,
-      NULL);
-  g_hash_table_destroy (per_channel_manager_caps);
-}
-
-static void
-copy_caps_helper (gpointer key, gpointer value, gpointer user_data)
-{
-  GHashTable *table_out = user_data;
-  GabbleCapsChannelManager *manager = GABBLE_CAPS_CHANNEL_MANAGER (key);
-  gpointer out;
-  gabble_caps_channel_manager_copy_capabilities (manager, &out, value);
-  g_hash_table_insert (table_out, key, out);
-}
-
-void
-gabble_presence_cache_copy_cache_entry (
-    GHashTable **out, GHashTable *in)
-{
-  *out = g_hash_table_new (NULL, NULL);
-  if (in != NULL)
-    g_hash_table_foreach (in, copy_caps_helper,
-        *out);
-}
-
-static void
-update_caps_helper (gpointer key, gpointer value, gpointer user_data)
-{
-  GHashTable *table_out = user_data;
-  GabbleCapsChannelManager *manager = GABBLE_CAPS_CHANNEL_MANAGER (key);
-  gpointer out;
-
-  out = g_hash_table_lookup (table_out, key);
-  if (out == NULL)
-    {
-      gabble_caps_channel_manager_copy_capabilities (manager, &out, value);
-      g_hash_table_insert (table_out, key, out);
-    }
-  else
-    {
-      gabble_caps_channel_manager_update_capabilities (manager, out, value);
-    }
-}
-
-void
-gabble_presence_cache_update_cache_entry (
-    GHashTable *out, GHashTable *in)
-{
-  g_return_if_fail (out != NULL);
-
-  if (in != NULL)
-    g_hash_table_foreach (in, update_caps_helper, out);
-}
-
 static void _caps_disco_cb (GabbleDisco *disco,
     GabbleDiscoRequest *request,
     const gchar *jid,
@@ -942,7 +874,7 @@ set_caps_for (DiscoWaiter *waiter,
       waiter->handle, responder_handle, responder_jid, caps, save_caps);
 
   gabble_presence_set_capabilities (presence, waiter->resource, cap_set,
-      caps, NULL, waiter->serial);
+      caps, waiter->serial);
 
   DEBUG ("caps for %d now %d", waiter->handle, presence->caps);
 
@@ -1151,7 +1083,7 @@ _process_caps_uri (GabblePresenceCache *cache,
       if (presence)
         {
           gabble_presence_set_capabilities (presence, resource, info->cap_set,
-              info->caps, NULL, serial);
+              info->caps, serial);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
         }
       else

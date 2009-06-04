@@ -656,30 +656,6 @@ gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
     add_file_transfer_channel_class (arr, handle);
 }
 
-static gpointer
-gabble_ft_manager_parse_caps (GabbleCapsChannelManager *manager,
-    GabbleCapabilitySet *cap_set)
-{
-  return GINT_TO_POINTER (gabble_capability_set_has (cap_set, NS_FILE_TRANSFER));
-}
-
-static void
-gabble_ft_manager_copy_caps (GabbleCapsChannelManager *manager,
-                             gpointer *specific_caps_out,
-                             gpointer specific_caps_in)
-{
-  *specific_caps_out = specific_caps_in;
-}
-
-static gboolean
-gabble_ft_manager_caps_diff (GabbleCapsChannelManager *manager,
-                             TpHandle handle,
-                             gpointer specific_old_caps,
-                             gpointer specific_new_caps)
-{
-  return specific_old_caps != specific_new_caps;
-}
-
 static void
 caps_channel_manager_iface_init (gpointer g_iface,
                                  gpointer iface_data)
@@ -687,7 +663,4 @@ caps_channel_manager_iface_init (gpointer g_iface,
   GabbleCapsChannelManagerIface *iface = g_iface;
 
   iface->get_contact_caps = gabble_ft_manager_get_contact_caps;
-  iface->parse_caps = gabble_ft_manager_parse_caps;
-  iface->copy_caps = gabble_ft_manager_copy_caps;
-  iface->caps_diff = gabble_ft_manager_caps_diff;
 }

@@ -43,7 +43,6 @@ struct _Resource {
     gchar *name;
     GabbleCapabilitySet *cap_set;
     GabblePresenceCapabilities caps;
-    GHashTable *per_channel_manager_caps;
     guint caps_serial;
     GabblePresenceId status;
     gchar *status_message;
@@ -67,7 +66,6 @@ _resource_new (gchar *name)
   new->name = name;
   new->cap_set = gabble_capability_set_new ();
   new->caps = PRESENCE_CAP_NONE;
-  new->per_channel_manager_caps = NULL;
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   new->priority = 0;
@@ -84,13 +82,6 @@ _resource_free (Resource *resource)
   g_free (resource->status_message);
   gabble_capability_set_free (resource->cap_set);
 
-  if (resource->per_channel_manager_caps != NULL)
-    {
-      gabble_presence_cache_free_cache_entry
-        (resource->per_channel_manager_caps);
-      resource->per_channel_manager_caps = NULL;
-    }
-
   g_slice_free (Resource, resource);
 }
 
@@ -103,13 +94,6 @@ gabble_presence_finalize (GObject *object)
 
   for (i = priv->resources; NULL != i; i = i->next)
     _resource_free (i->data);
-
-  if (presence->per_channel_manager_caps != NULL)
-    {
-      gabble_presence_cache_free_cache_entry
-        (presence->per_channel_manager_caps);
-      presence->per_channel_manager_caps = NULL;
-    }
 
   g_slist_free (priv->resources);
   gabble_capability_set_free (priv->cap_set);
@@ -232,7 +216,6 @@ gabble_presence_set_capabilities (GabblePresence *presence,
                                   const gchar *resource,
                                   GabbleCapabilitySet *cap_set,
                                   GabblePresenceCapabilities caps,
-                                  GHashTable *per_channel_manager_caps,
                                   guint serial)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
@@ -253,21 +236,11 @@ gabble_presence_set_capabilities (GabblePresence *presence,
   presence->caps = 0;
   gabble_capability_set_clear (priv->cap_set);
 
-  if (presence->per_channel_manager_caps != NULL)
-    {
-      gabble_presence_cache_free_cache_entry
-        (presence->per_channel_manager_caps);
-      presence->per_channel_manager_caps = NULL;
-    }
-  presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
-
   if (resource == NULL)
     {
       DEBUG ("adding caps %u to bare jid", caps);
       presence->caps = caps;
       gabble_capability_set_update (priv->cap_set, cap_set);
-      gabble_presence_cache_update_cache_entry (
-          presence->per_channel_manager_caps, per_channel_manager_caps);
       return;
     }
 
@@ -298,26 +271,11 @@ gabble_presence_set_capabilities (GabblePresence *presence,
               DEBUG ("resource %s caps now %u", resource, tmp->caps);
 
               gabble_capability_set_update (tmp->cap_set, cap_set);
-
-              if (tmp->per_channel_manager_caps != NULL)
-                {
-                  gabble_presence_cache_free_cache_entry
-                      (tmp->per_channel_manager_caps);
-                  tmp->per_channel_manager_caps = NULL;
-                }
-              if (per_channel_manager_caps != NULL)
-                gabble_presence_cache_copy_cache_entry
-                    (&tmp->per_channel_manager_caps, per_channel_manager_caps);
             }
         }
 
       presence->caps |= tmp->caps;
       gabble_capability_set_update (priv->cap_set, tmp->cap_set);
-
-      if (tmp->per_channel_manager_caps != NULL)
-        gabble_presence_cache_update_cache_entry
-            (presence->per_channel_manager_caps,
-             tmp->per_channel_manager_caps);
     }
 
   DEBUG ("total caps now %u", presence->caps);
@@ -435,13 +393,6 @@ gabble_presence_update (GabblePresence *presence,
           res = NULL;
 
           /* recalculate aggregate capability mask */
-          if (presence->per_channel_manager_caps != NULL)
-            {
-              gabble_presence_cache_free_cache_entry
-                (presence->per_channel_manager_caps);
-              presence->per_channel_manager_caps = NULL;
-            }
-          presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
           presence->caps = 0;
           gabble_capability_set_clear (priv->cap_set);
 
@@ -451,11 +402,6 @@ gabble_presence_update (GabblePresence *presence,
 
               presence->caps |= r->caps;
               gabble_capability_set_update (priv->cap_set, r->cap_set);
-
-              if (r->per_channel_manager_caps != NULL)
-                gabble_presence_cache_update_cache_entry
-                    (presence->per_channel_manager_caps,
-                     r->per_channel_manager_caps);
             }
         }
     }

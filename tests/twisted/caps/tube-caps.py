@@ -77,7 +77,7 @@ def assertSameElements(a, b):
     assertEquals(sorted(a), sorted(b))
 
 def receive_caps(q, conn, stream, contact, contact_handle, features,
-                 expected_caps, expect_disco=True):
+                 expected_caps, expect_disco=True, expect_ccc=True):
     presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
@@ -105,9 +105,13 @@ def receive_caps(q, conn, stream, contact, contact_handle, features,
 
         stream.send(result)
 
-    event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
-    announced_ccs, = event.args
-    assertSameElements(expected_caps, announced_ccs)
+    if expect_ccc:
+        event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
+        announced_ccs, = event.args
+        assertSameElements(expected_caps, announced_ccs)
+    else:
+        # Make sure Gabble's got the caps
+        sync_stream(q, stream)
 
     caps = conn.ContactCapabilities.GetContactCapabilities([contact_handle])
     assertSameElements(expected_caps, caps)
@@ -128,7 +132,10 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact):
     # send presence with no tube cap
     basic_caps = dbus.Dictionary({contact_handle:
             [(text_fixed_properties, text_allowed_properties)]})
-    receive_caps(q, conn, stream, contact, contact_handle, [], basic_caps)
+    # We don't expect ContactCapabilitiesChanged to be emitted here: we always
+    # assume people can do text channels.
+    receive_caps(q, conn, stream, contact, contact_handle, [], basic_caps,
+        expect_ccc=False)
 
     # send presence with generic tubes caps
     generic_tubes_caps = dbus.Dictionary({contact_handle:

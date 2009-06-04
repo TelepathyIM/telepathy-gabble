@@ -168,6 +168,22 @@ resource_better_than (Resource *a, Resource *b)
     return (a->priority > b->priority);
 }
 
+GabbleCapabilitySet *
+gabble_presence_get_caps (GabblePresence *presence)
+{
+  GabbleCapabilitySet *ret, *tmp;
+
+  g_return_val_if_fail (presence != NULL, NULL);
+
+  ret = gabble_capability_set_copy (presence->priv->cap_set);
+
+  tmp = gabble_capability_set_new_from_flags (presence->caps);
+  gabble_capability_set_update (ret, tmp);
+  gabble_capability_set_free (tmp);
+
+  return ret;
+}
+
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,

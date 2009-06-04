@@ -87,6 +87,8 @@ void gabble_presence_set_capabilities (GabblePresence *presence,
     GHashTable *per_channel_manager_caps,
     guint serial);
 
+GabbleCapabilitySet *gabble_presence_get_caps (GabblePresence *presence);
+
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
     GabblePresenceCapabilities caps);
 

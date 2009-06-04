@@ -9,13 +9,13 @@ EXTRA_DIST = \
     Connection_Interface_Contact_Capabilities.xml \
     Channel_Type_Streamed_Media_Future.xml \
     Connection_Interface_Location.xml \
+    Debug.xml \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \
     OLPC_Gadget.xml \
     OLPC_Channel_Interface_View.xml \
     OLPC_Channel_Type_BuddyView.xml \
-    OLPC_Channel_Type_ActivityView.xml \
-    Debug.xml
+    OLPC_Channel_Type_ActivityView.xml
 
 noinst_LTLIBRARIES = libgabble-extensions.la
 

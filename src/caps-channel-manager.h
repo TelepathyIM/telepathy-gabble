@@ -56,7 +56,9 @@ typedef struct _GabbleCapsChannelManagerIface GabbleCapsChannelManagerIface;
 
 /* May be moved to TpChannelManager later */
 typedef void (*GabbleCapsChannelManagerGetContactCapsFunc) (
-    GabbleCapsChannelManager *manager, GabbleConnection *conn, TpHandle handle,
+    GabbleCapsChannelManager *manager,
+    TpHandle handle,
+    const GabbleCapabilitySet *caps,
     GPtrArray *arr);
 
 typedef void (*GabbleCapsChannelManagerAddCapFunc) (
@@ -88,7 +90,9 @@ typedef gboolean (*GabbleCapsChannelManagerCapsDiffFunc) (
 
 
 void gabble_caps_channel_manager_get_contact_capabilities (
-    GabbleCapsChannelManager *manager, GabbleConnection *conn, TpHandle handle,
+    GabbleCapsChannelManager *caps_manager,
+    TpHandle handle,
+    const GabbleCapabilitySet *caps,
     GPtrArray *arr);
 
 void gabble_caps_channel_manager_get_feature_list (

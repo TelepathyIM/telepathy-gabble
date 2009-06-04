@@ -60,10 +60,11 @@ gabble_caps_channel_manager_get_type (void)
 
 /* Virtual-method wrappers */
 
-void gabble_caps_channel_manager_get_contact_capabilities (
+void
+gabble_caps_channel_manager_get_contact_capabilities (
     GabbleCapsChannelManager *caps_manager,
-    GabbleConnection *conn,
     TpHandle handle,
+    const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
   GabbleCapsChannelManagerIface *iface =
@@ -72,7 +73,7 @@ void gabble_caps_channel_manager_get_contact_capabilities (
 
   if (method != NULL)
     {
-      method (caps_manager, conn, handle, arr);
+      method (caps_manager, handle, caps, arr);
     }
   /* ... else assume there is not caps for this kind of channels */
 }

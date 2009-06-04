@@ -2336,18 +2336,30 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
   TpHandle handle, GPtrArray *arr)
 {
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (self);
+  GabblePresence *p;
+  GabbleCapabilitySet *caps;
   TpChannelManagerIter iter;
   TpChannelManager *manager;
 
+  if (handle == base_conn->self_handle)
+    p = self->self_presence;
+  else
+    p = gabble_presence_cache_get (self->presence_cache, handle);
+
+  caps = gabble_presence_get_caps (p);
+
   tp_base_connection_channel_manager_iter_init (&iter, base_conn);
+
   while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
     {
       /* all channel managers must implement the capability interface */
       g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
       gabble_caps_channel_manager_get_contact_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (manager), self, handle, arr);
+          GABBLE_CAPS_CHANNEL_MANAGER (manager), handle, caps, arr);
     }
+
+  gabble_capability_set_free (caps);
 }
 
 static void

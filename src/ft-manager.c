@@ -642,35 +642,18 @@ add_file_transfer_channel_class (GPtrArray *arr,
 
 static void
 gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
-                                    GabbleConnection *conn,
-                                    TpHandle handle,
-                                    GPtrArray *arr)
+    TpHandle handle,
+    const GabbleCapabilitySet *caps,
+    GPtrArray *arr)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  GabblePresence *presence;
+  GabbleFtManager *self = GABBLE_FT_MANAGER (manager);
 
   g_assert (handle != 0);
 
-  if (handle == base->self_handle)
-    {
-      /* We support file transfer */
-      add_file_transfer_channel_class (arr, handle);
-      return;
-    }
-
- presence = gabble_presence_cache_get (conn->presence_cache, handle);
- if (presence == NULL)
-   return;
-
- if (presence->per_channel_manager_caps == NULL)
-   return;
-
- if (!GPOINTER_TO_INT (g_hash_table_lookup (presence->per_channel_manager_caps,
-         manager)))
-   return;
-
-  /* FT is supported */
-  add_file_transfer_channel_class (arr, handle);
+  /* We always support file transfer */
+  if (handle == self->priv->connection->parent.self_handle ||
+      gabble_capability_set_has (caps, NS_FILE_TRANSFER))
+    add_file_transfer_channel_class (arr, handle);
 }
 
 static gpointer

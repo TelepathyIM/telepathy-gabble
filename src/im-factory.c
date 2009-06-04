@@ -451,9 +451,9 @@ connection_status_changed_cb (GabbleConnection *conn,
 
 static void
 gabble_im_factory_get_contact_caps (GabbleCapsChannelManager *manager,
-                                    GabbleConnection *conn,
-                                    TpHandle handle,
-                                    GPtrArray *arr)
+    TpHandle handle,
+    const GabbleCapabilitySet *caps,
+    GPtrArray *arr)
 {
   /* We don't need to check this contact's capabilities, we assume every
    * contact support text channels. */

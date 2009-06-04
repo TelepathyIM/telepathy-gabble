@@ -416,7 +416,7 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
 }
 
 static void
-add_service_to_array (gchar *service,
+add_service_to_array (const gchar *service,
                       GPtrArray *arr,
                       TpTubeType type,
                       TpHandle handle)
@@ -545,77 +545,42 @@ add_generic_tube_caps (GPtrArray *arr)
   g_ptr_array_add (arr, g_value_get_boxed (&monster2));
 }
 
+#define STREAM_CAP_PREFIX (NS_TUBES "/stream#")
+#define DBUS_CAP_PREFIX (NS_TUBES "/dbus#")
+
 static void
 gabble_private_tubes_factory_get_contact_caps (
     GabbleCapsChannelManager *manager,
-    GabbleConnection *conn,
     TpHandle handle,
+    const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  TubesCapabilities *caps;
-  GHashTable *stream_tube_caps;
-  GHashTable *dbus_tube_caps;
-  GabblePresence *presence;
-  GHashTableIter tube_caps_iter;
-  gpointer service;
+  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (manager);
+  gboolean supports_tubes;
+  guint i;
 
-  g_assert (handle != 0);
+  /* Always claim that we support tubes. */
+  supports_tubes = (handle == self->priv->conn->parent.self_handle);
 
-  if (handle == base->self_handle)
-    presence = conn->self_presence;
-  else
-    presence = gabble_presence_cache_get (conn->presence_cache, handle);
-
-  if (presence == NULL)
-    return;
-
-  if (handle == base->self_handle &&
-      (presence->per_channel_manager_caps == NULL ||
-       g_hash_table_lookup (presence->per_channel_manager_caps, manager)
-       == NULL))
+  for (i = 0; i < caps->len; i++)
     {
-      /* No tubes capabilities have been set but we always support at
-       * least generic tubes caps */
-      add_generic_tube_caps (arr);
-      return;
+      const gchar *ns = g_ptr_array_index (caps, i);
+
+      if (!g_str_has_prefix (ns, NS_TUBES))
+        continue;
+
+      supports_tubes = TRUE;
+
+      if (g_str_has_prefix (ns, STREAM_CAP_PREFIX))
+        add_service_to_array (ns + strlen (STREAM_CAP_PREFIX), arr,
+            TP_TUBE_TYPE_STREAM, handle);
+      else if (g_str_has_prefix (ns, DBUS_CAP_PREFIX))
+        add_service_to_array (ns + strlen (DBUS_CAP_PREFIX), arr,
+            TP_TUBE_TYPE_DBUS, handle);
     }
 
-  if (presence->per_channel_manager_caps == NULL)
-    return;
-
-  caps = g_hash_table_lookup (presence->per_channel_manager_caps, manager);
-
-  if (caps == NULL)
-    return;
-
-  if (!caps->tubes_supported)
-    return;
-
-  add_generic_tube_caps (arr);
-
-  stream_tube_caps = caps->stream_tube_caps;
-  dbus_tube_caps = caps->dbus_tube_caps;
-
-  if (stream_tube_caps != NULL)
-    {
-      g_hash_table_iter_init (&tube_caps_iter, stream_tube_caps);
-      while (g_hash_table_iter_next (&tube_caps_iter, &service,
-            NULL))
-        {
-          add_service_to_array (service, arr, TP_TUBE_TYPE_STREAM, handle);
-        }
-    }
-
-  if (dbus_tube_caps != NULL)
-    {
-      g_hash_table_iter_init (&tube_caps_iter, dbus_tube_caps);
-      while (g_hash_table_iter_next (&tube_caps_iter, &service,
-            NULL))
-        {
-          add_service_to_array (service, arr, TP_TUBE_TYPE_DBUS, handle);
-        }
-    }
+  if (supports_tubes)
+    add_generic_tube_caps (arr);
 }
 
 static void

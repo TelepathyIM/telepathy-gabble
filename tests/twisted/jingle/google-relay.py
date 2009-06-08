@@ -145,6 +145,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
     sync_stream(q, stream)
 
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
+    self_handle = conn.GetSelfHandle()
 
     if incoming:
         # Remote end calls us
@@ -158,7 +159,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
 
         # We're pending because of remote_handle
         e = q.expect('dbus-signal', signal='MembersChanged',
-                 args=[u'', [], [], [1L], [], remote_handle,
+                 args=[u'', [], [], [self_handle], [], remote_handle,
                        cs.GC_REASON_INVITED])
 
         media_chan = make_channel_proxy(conn, tp_path_prefix + e.path,
@@ -274,37 +275,19 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
                 'org.freedesktop.Telepathy.Media.StreamHandler', k,
                 dbus_interface=dbus.PROPERTIES_IFACE), k
 
-    if not incoming:
-        # we can't terminate outgoing calls until the session-initiate
-        # has been sent, so do that first
+    media_chan.RemoveMembers([self_handle], '')
 
-        stream_handler.NewNativeCandidate("fake",
-                jt.get_remote_transports_dbus())
-        stream_handler.Ready(jt.get_audio_codecs_dbus())
-        stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
-
-        e = q.expect('stream-iq')
-        assert e.query.name == 'jingle'
-        assert e.query['action'] == 'session-initiate'
-        stream.send(gabbletest.make_result_iq(stream, e.stanza))
-
-        jt.outgoing_call_reply(e.query['sid'], True)
-
-        q.expect_many(
-            EventPattern('stream-iq', iq_type='result'),
-            EventPattern('dbus-signal', signal='MembersChanged',
-                args=["", [remote_handle], [], [], [], remote_handle,
-                      cs.GC_REASON_NONE])
-            )
-
-    media_chan.RemoveMembers([dbus.UInt32(1)], '')
-
-    iq, signal = q.expect_many(
+    if incoming:
+        iq, signal = q.expect_many(
             EventPattern('stream-iq'),
             EventPattern('dbus-signal', signal='Closed'),
             )
-    assert iq.query.name == 'jingle'
-    assert iq.query['action'] == 'session-terminate'
+        assert iq.query.name == 'jingle'
+        assert iq.query['action'] == 'session-terminate'
+    else:
+        # We haven't sent a session-initiate, so we shouldn't expect to send a
+        # session-terminate.
+        q.expect('dbus-signal', signal='Closed')
 
     # Tests completed, close the connection
 

@@ -344,70 +344,46 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 
   /* property definitions */
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object used for exchanging "
-                                    "messages.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Gabble connection object used for exchanging messages.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_string ("session-id", "Session ID",
-                                    "A unique session identifier used "
-                                    "throughout all communication.",
-                                    NULL,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "A unique session identifier used throughout all communication.",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SESSION_ID, param_spec);
 
   param_spec = g_param_spec_boolean ("local-initiator", "Session initiator",
-                                     "Specifies if local end initiated the session.",
-                                     TRUE,
-                                     G_PARAM_CONSTRUCT_ONLY |
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
+      "Specifies if local end initiated the session.",
+      TRUE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_LOCAL_INITIATOR, param_spec);
 
   param_spec = g_param_spec_uint ("peer", "Session peer",
-                                  "The TpHandle representing the contact "
-                                  "with whom this session communicates.",
-                                  0, G_MAXUINT32, 0,
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "The TpHandle representing the other party in the session.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
-  param_spec = g_param_spec_string ("peer-resource",
-                                    "Session peer's resource",
-                                    "The resource of the contact "
-                                    "with whom this session communicates, "
-                                    "if applicable",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+  param_spec = g_param_spec_string ("peer-resource", "Session peer's resource",
+      "The resource of the contact with whom this session communicates.",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
-                                   param_spec);
+      param_spec);
 
   param_spec = g_param_spec_uint ("state", "Session state",
-                                  "The current state that the session is in.",
-                                  0, G_MAXUINT32, JS_STATE_PENDING_CREATED,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "The current state that the session is in.",
+      0, G_MAXUINT32, JS_STATE_PENDING_CREATED,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
   param_spec = g_param_spec_uint ("dialect", "Jingle dialect",
-                                  "Jingle dialect used for this session.",
-                                  0, G_MAXUINT32, JINGLE_DIALECT_ERROR,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "Jingle dialect used for this session.",
+      0, G_MAXUINT32, JINGLE_DIALECT_ERROR,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DIALECT, param_spec);
 
   param_spec = g_param_spec_boolean ("local-hold", "Local hold",

@@ -325,6 +325,15 @@ gabble_jingle_session_constructed (GObject *object)
   g_assert (priv->sid != NULL);
 
   tp_handle_ref (contact_repo, self->peer);
+
+  /* It's a tad silly that, for incoming calls, the caller of
+   * gabble_jingle_session_new() has just deconstructed the jid into a handle
+   * and a resource, only for us to stitch it back together here. Perhaps there
+   * should be two variants: one taking handle + resource, and another taking a
+   * full JID; the other fields could be filled in here.
+   */
+  priv->peer_jid = g_strdup_printf ("%s/%s",
+      tp_handle_inspect (contact_repo, self->peer), priv->peer_resource);
 }
 
 GabbleJingleSession *
@@ -1421,7 +1430,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   /* if we just created the session, fill in the data */
   if (priv->state == JS_STATE_PENDING_CREATED)
     {
-      priv->peer_jid = g_strdup (from);
       priv->initiator = g_strdup (initiator);
     }
 
@@ -1491,10 +1499,6 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
   if (priv->initiator == NULL) {
       TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
       priv->initiator = get_jid_for_contact (sess, conn->self_handle);
-  }
-  /* likewise ^^ */
-  if (priv->peer_jid == NULL) {
-      priv->peer_jid = get_jid_for_contact (sess, sess->peer);
   }
 
   msg = lm_message_new_with_sub_type (

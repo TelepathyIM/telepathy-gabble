@@ -275,13 +275,7 @@ gabble_jingle_session_set_property (GObject *object,
       break;
     case PROP_PEER:
       sess->peer = g_value_get_uint (value);
-      if (sess->peer != 0)
-        {
-          TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-          tp_handle_ref (contact_repo, sess->peer);
-        }
+      /* priv->conn might not yet be set, so we'll ref this in constructed */
       break;
     case PROP_PEER_RESOURCE:
       g_free (priv->peer_resource);
@@ -312,6 +306,28 @@ gabble_jingle_session_set_property (GObject *object,
   }
 }
 
+static void
+gabble_jingle_session_constructed (GObject *object)
+{
+  void (*chain_up) (GObject *) =
+      G_OBJECT_CLASS (gabble_jingle_session_parent_class)->constructed;
+  GabbleJingleSession *self = GABBLE_JINGLE_SESSION (object);
+  GabbleJingleSessionPrivate *priv = self->priv;
+
+  if (chain_up != NULL)
+    chain_up (object);
+
+  g_assert (priv->conn != NULL);
+
+  if (self->peer != 0)
+    {
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+      tp_handle_ref (contact_repo, self->peer);
+    }
+}
+
 GabbleJingleSession *
 gabble_jingle_session_new (GabbleConnection *connection,
                            const gchar *session_id,
@@ -338,6 +354,7 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 
   g_type_class_add_private (cls, sizeof (GabbleJingleSessionPrivate));
 
+  object_class->constructed = gabble_jingle_session_constructed;
   object_class->get_property = gabble_jingle_session_get_property;
   object_class->set_property = gabble_jingle_session_set_property;
   object_class->dispose = gabble_jingle_session_dispose;

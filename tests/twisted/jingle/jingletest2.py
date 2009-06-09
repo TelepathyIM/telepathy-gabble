@@ -343,6 +343,9 @@ class JingleTest2:
                     query_name='vCard'),
                 )
 
+        self.send_presence_and_caps()
+
+    def send_presence_and_caps(self):
         # We need remote end's presence for capabilities
         self.stream.send(self.jp.xml(
             self.jp.Presence(self.peer, self.jid, self.remote_caps)))

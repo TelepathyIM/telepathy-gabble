@@ -1432,43 +1432,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   return TRUE;
 }
 
-static gchar *
-get_jid_for_contact (GabbleJingleSession *session,
-                     TpHandle handle)
-{
-  GabbleJingleSessionPrivate *priv;
-  TpBaseConnection *conn;
-  const gchar *base_jid;
-  TpHandle self;
-  TpHandleRepoIface *contact_handles;
-
-  g_assert (GABBLE_IS_JINGLE_SESSION (session));
-
-  priv = session->priv;
-  conn = (TpBaseConnection *) priv->conn;
-  contact_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
-  self = conn->self_handle;
-
-  base_jid = tp_handle_inspect (contact_handles, handle);
-  g_assert (base_jid != NULL);
-
-  if (handle == self)
-    {
-      gchar *resource, *ret;
-      g_object_get (priv->conn, "resource", &resource, NULL);
-      g_assert (resource != NULL);
-      ret = g_strdup_printf ("%s/%s", base_jid, resource);
-      g_free (resource);
-      return ret;
-    }
-  else
-    {
-      g_assert (priv->peer_resource != NULL);
-      return g_strdup_printf ("%s/%s", base_jid, priv->peer_resource);
-    }
-}
-
 LmMessage *
 gabble_jingle_session_new_message (GabbleJingleSession *sess,
     JingleAction action, LmMessageNode **sess_node)

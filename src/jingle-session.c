@@ -1358,7 +1358,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   TpHandleRepoIface *contact_repo;
   GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessageNode *iq_node, *session_node;
-  const gchar *from, *resource;
+  const gchar *from;
   const gchar *initiator;
 
   iq_node = lm_message_get_node (message);
@@ -1408,14 +1408,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
       return FALSE;
     }
 
-  resource = strchr (from, '/');
-  if (resource == NULL || *resource == '\0')
-    {
-      SET_BAD_REQ ("sender with no resource");
-      return FALSE;
-    }
-  resource++;
-
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
@@ -1429,15 +1421,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   /* if we just created the session, fill in the data */
   if (priv->state == JS_STATE_PENDING_CREATED)
     {
-      sess->peer = tp_handle_ensure (contact_repo, from, NULL, NULL);
-
-      if (sess->peer == 0)
-        {
-          SET_BAD_REQ ("unable to get sender handle");
-          return FALSE;
-        }
-
-      priv->peer_resource = g_strdup (resource);
       priv->peer_jid = g_strdup (from);
       priv->initiator = g_strdup (initiator);
     }

@@ -688,6 +688,49 @@ _jingle_factory_unregister_session (GabbleJingleFactory *factory,
   g_hash_table_remove (priv->sessions, sid);
 }
 
+static GabbleJingleSession *
+create_session_for_si (GabbleJingleFactory *self,
+    const gchar *sid,
+    const gchar *from,
+    JingleDialect dialect,
+    GError **error)
+{
+  GabbleJingleFactoryPrivate *priv = self->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *resource;
+  GabbleJingleSession *sess;
+  TpHandle peer;
+  GError *error_ = NULL;
+
+  resource = strchr (from, '/');
+
+  if (resource == NULL || *resource == '\0')
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR,
+          XMPP_ERROR_BAD_REQUEST, "IQ sender '%s' has no resource", from);
+      return NULL;
+    }
+
+  resource++;
+
+  peer = tp_handle_ensure (contact_repo, from, NULL, &error_);
+
+  if (peer == 0)
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "Couldn't parse sender '%s': %s", from, error_->message);
+      g_error_free (error_);
+      return NULL;
+    }
+
+  sess = create_session (self, sid, peer, resource, FALSE);
+  g_object_set (sess, "dialect", dialect, NULL);
+
+  tp_handle_unref (contact_repo, peer);
+  return sess;
+}
+
 static LmHandlerResult
 jingle_cb (LmMessageHandler *handler,
            LmConnection *lmconn,
@@ -697,7 +740,7 @@ jingle_cb (LmMessageHandler *handler,
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
   GabbleJingleFactoryPrivate *priv = self->priv;
   GError *error = NULL;
-  const gchar *sid;
+  const gchar *sid, *from;
   GabbleJingleSession *sess;
   gboolean new_session = FALSE;
   JingleAction action;
@@ -710,7 +753,9 @@ jingle_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
+  from = lm_message_node_get_attribute (lm_message_get_node (msg), "from");
   sess = g_hash_table_lookup (priv->sessions, sid);
+
   if (sess == NULL)
     {
       if (action != JINGLE_ACTION_SESSION_INITIATE)
@@ -719,9 +764,13 @@ jingle_cb (LmMessageHandler *handler,
               XMPP_ERROR_JINGLE_UNKNOWN_SESSION, "session %s is unknown", sid);
           goto REQUEST_ERROR;
         }
+
+      sess = create_session_for_si (self, sid, from, dialect, &error);
+
+      if (sess == NULL)
+        goto REQUEST_ERROR;
+
       new_session = TRUE;
-      sess = create_session (self, sid, 0, NULL, FALSE);
-      g_object_set (sess, "dialect", dialect, NULL);
     }
 
   /* now act on the message */

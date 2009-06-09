@@ -819,6 +819,9 @@ create_session (GabbleJingleFactory *fac,
   gboolean local_initiator;
   gchar *sid_;
 
+  g_assert (peer != 0);
+  g_assert (peer_resource != NULL);
+
   if (sid != NULL)
     {
       g_assert (NULL == g_hash_table_lookup (priv->sessions, sid));

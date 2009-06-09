@@ -313,19 +313,18 @@ gabble_jingle_session_constructed (GObject *object)
       G_OBJECT_CLASS (gabble_jingle_session_parent_class)->constructed;
   GabbleJingleSession *self = GABBLE_JINGLE_SESSION (object);
   GabbleJingleSessionPrivate *priv = self->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (chain_up != NULL)
     chain_up (object);
 
   g_assert (priv->conn != NULL);
+  g_assert (self->peer != 0);
+  g_assert (priv->peer_resource != NULL);
+  g_assert (priv->sid != NULL);
 
-  if (self->peer != 0)
-    {
-      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-      tp_handle_ref (contact_repo, self->peer);
-    }
+  tp_handle_ref (contact_repo, self->peer);
 }
 
 GabbleJingleSession *
@@ -387,7 +386,7 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
   param_spec = g_param_spec_string ("peer-resource", "Session peer's resource",
       "The resource of the contact with whom this session communicates.",
       NULL,
-      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
       param_spec);
 

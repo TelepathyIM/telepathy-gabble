@@ -1373,7 +1373,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessageNode *iq_node, *session_node;
   const gchar *from;
-  const gchar *initiator;
 
   iq_node = lm_message_get_node (message);
 
@@ -1412,13 +1411,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   if (session_node == NULL)
     {
       SET_BAD_REQ ("malformed jingle stanza");
-      return FALSE;
-    }
-
-  initiator = lm_message_node_get_attribute (session_node, "initiator");
-  if (initiator == NULL)
-    {
-      SET_BAD_REQ ("session initiator not found");
       return FALSE;
     }
 

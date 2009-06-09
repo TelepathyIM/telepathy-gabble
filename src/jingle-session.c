@@ -334,6 +334,11 @@ gabble_jingle_session_constructed (GObject *object)
    */
   priv->peer_jid = g_strdup_printf ("%s/%s",
       tp_handle_inspect (contact_repo, self->peer), priv->peer_resource);
+
+  if (priv->local_initiator)
+    priv->initiator = gabble_connection_get_full_jid (priv->conn);
+  else
+    priv->initiator = g_strdup (priv->peer_jid);
 }
 
 GabbleJingleSession *
@@ -1427,12 +1432,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
       return FALSE;
     }
 
-  /* if we just created the session, fill in the data */
-  if (priv->state == JS_STATE_PENDING_CREATED)
-    {
-      priv->initiator = g_strdup (initiator);
-    }
-
   jingle_state_machine_dance (sess, action, session_node, error);
 
   if (*error != NULL)
@@ -1493,13 +1492,6 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
   g_assert ((action == JINGLE_ACTION_SESSION_INITIATE) ||
             (priv->state > JS_STATE_PENDING_CREATED));
   g_assert (GABBLE_IS_JINGLE_SESSION (sess));
-
-  /* possibly this is the first message in an outgoing session,
-   * meaning that we have to set up initiator */
-  if (priv->initiator == NULL) {
-      TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-      priv->initiator = get_jid_for_contact (sess, conn->self_handle);
-  }
 
   msg = lm_message_new_with_sub_type (
       priv->peer_jid,

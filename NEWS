@@ -24,6 +24,9 @@ Fixes:
   telepathy-spec 0.17.21's requirement that you can always remove yourself from
   a group if you're in it, fixing fd.o #20728.
 
+* fd.o #18951: Gabble no longer sends <gone/> to contacts it hasn't previously
+  sent typing notifications or messages to.
+
 telepathy-gabble 0.7.28 (2009-06-01)
 ====================================
 

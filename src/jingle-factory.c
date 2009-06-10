@@ -57,6 +57,10 @@ enum
   LAST_PROPERTY
 };
 
+/* The 'session' map is keyed by:
+ * "<peer's handle>\n<peer's resource>\n<session id>"
+ */
+#define SESSION_MAP_KEY_FORMAT "%u\n%s\n%s"
 
 struct _GabbleJingleFactoryPrivate
 {
@@ -65,6 +69,8 @@ struct _GabbleJingleFactoryPrivate
   LmMessageHandler *jingle_info_cb;
   GHashTable *content_types;
   GHashTable *transports;
+
+  /* instances of SESSION_MAP_KEY_FORMAT => GabbleJingleSession. */
   GHashTable *sessions;
   GibberResolver *resolver;
   SoupSession *soup;
@@ -638,70 +644,54 @@ connection_status_changed_cb (GabbleConnection *conn,
     }
 }
 
-
-static gboolean
-sid_in_use (GabbleJingleFactory *factory, const gchar *sid)
+static gchar *
+make_session_map_key (TpHandle peer,
+    const gchar *resource,
+    const gchar *sid)
 {
-  GabbleJingleFactoryPrivate *priv = factory->priv;
-  gpointer key, value;
-
-  return g_hash_table_lookup_extended (priv->sessions, sid, &key, &value);
+  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, peer, resource, sid);
 }
 
 static gchar *
-get_unique_sid (GabbleJingleFactory *factory)
+get_unique_sid_for (GabbleJingleFactory *factory,
+    TpHandle peer,
+    const gchar *resource,
+    gchar **key)
 {
   guint32 val;
   gchar *sid = NULL;
-  gboolean unique = FALSE;
+  gchar *key_;
 
-  while (!unique)
+  do
     {
       val = g_random_int_range (1000000, G_MAXINT);
 
       g_free (sid);
       sid = g_strdup_printf ("%u", val);
-
-      unique = !sid_in_use (factory, sid);
+      key_ = make_session_map_key (peer, resource, sid);
     }
+  while (g_hash_table_lookup (factory->priv->sessions, key_) != NULL);
 
+  *key = key_;
   return sid;
 }
 
-/* Takes ownership of @sid. */
-static void
-register_session (GabbleJingleFactory *factory,
-                  gchar *sid,
-                  GabbleJingleSession *sess)
-{
-  GabbleJingleFactoryPrivate *priv = factory->priv;
-
-  g_assert (g_hash_table_lookup (priv->sessions, sid) == NULL);
-  g_hash_table_insert (priv->sessions, sid, sess);
-}
-
-void
-_jingle_factory_unregister_session (GabbleJingleFactory *factory,
-                                    const gchar *sid)
-{
-  GabbleJingleFactoryPrivate *priv = factory->priv;
-  g_hash_table_remove (priv->sessions, sid);
-}
-
 static GabbleJingleSession *
-create_session_for_si (GabbleJingleFactory *self,
+ensure_session (GabbleJingleFactory *self,
     const gchar *sid,
     const gchar *from,
+    JingleAction action,
     JingleDialect dialect,
+    gboolean *new_session,
     GError **error)
 {
   GabbleJingleFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *resource;
+  gchar *key;
   GabbleJingleSession *sess;
   TpHandle peer;
-  GError *error_ = NULL;
 
   resource = strchr (from, '/');
 
@@ -714,18 +704,37 @@ create_session_for_si (GabbleJingleFactory *self,
 
   resource++;
 
-  peer = tp_handle_ensure (contact_repo, from, NULL, &error_);
+  peer = tp_handle_ensure (contact_repo, from, NULL, error);
 
   if (peer == 0)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "Couldn't parse sender '%s': %s", from, error_->message);
-      g_error_free (error_);
+      g_prefix_error (error, "Couldn't parse sender '%s': ", from);
       return NULL;
     }
 
-  sess = create_session (self, sid, peer, resource, FALSE);
-  g_object_set (sess, "dialect", dialect, NULL);
+  key = make_session_map_key (peer, resource, sid);
+  sess = g_hash_table_lookup (priv->sessions, key);
+  g_free (key);
+
+  if (sess == NULL)
+    {
+      if (action == JINGLE_ACTION_SESSION_INITIATE)
+        {
+          sess = create_session (self, sid, peer, resource, FALSE);
+          g_object_set (sess, "dialect", dialect, NULL);
+          *new_session = TRUE;
+        }
+      else
+        {
+          g_set_error (error, GABBLE_XMPP_ERROR,
+              XMPP_ERROR_JINGLE_UNKNOWN_SESSION, "session %s is unknown", sid);
+          return NULL;
+        }
+    }
+  else
+    {
+      *new_session = FALSE;
+    }
 
   tp_handle_unref (contact_repo, peer);
   return sess;
@@ -753,50 +762,36 @@ jingle_cb (LmMessageHandler *handler,
   if (sid == NULL || from == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  sess = g_hash_table_lookup (priv->sessions, sid);
+  sess = ensure_session (self, sid, from, action, dialect, &new_session,
+      &error);
 
   if (sess == NULL)
-    {
-      if (action != JINGLE_ACTION_SESSION_INITIATE)
-        {
-          g_set_error (&error, GABBLE_XMPP_ERROR,
-              XMPP_ERROR_JINGLE_UNKNOWN_SESSION, "session %s is unknown", sid);
-          goto REQUEST_ERROR;
-        }
-
-      sess = create_session_for_si (self, sid, from, dialect, &error);
-
-      if (sess == NULL)
-        goto REQUEST_ERROR;
-
-      new_session = TRUE;
-    }
+    goto REQUEST_ERROR;
 
   /* now act on the message */
-  if (gabble_jingle_session_parse (sess, action, msg, &error))
-    {
-      if (new_session)
-        {
-          g_signal_emit (self, signals[NEW_SESSION], 0, sess);
-        }
-
-      /* all went well, we can acknowledge the IQ */
-      _gabble_connection_acknowledge_set_iq (priv->conn, msg);
-
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  /* on parse error */
-  g_assert (error != NULL);
+  if (!gabble_jingle_session_parse (sess, action, msg, &error))
+    goto REQUEST_ERROR;
 
   if (new_session)
-      _jingle_factory_unregister_session (self, sid);
+    g_signal_emit (self, signals[NEW_SESSION], 0, sess);
+
+  /* all went well, we can acknowledge the IQ */
+  _gabble_connection_acknowledge_set_iq (priv->conn, msg);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
 REQUEST_ERROR:
-  _gabble_connection_send_iq_error (
-    priv->conn, msg, error->code, error->message);
+  g_assert (error != NULL);
+
+  DEBUG ("NAKing with error: %s", error->message);
+  _gabble_connection_send_iq_error (priv->conn, msg, error->code,
+      error->message);
 
   g_error_free (error);
+
+  if (sess != NULL && new_session)
+    gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+        NULL);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -816,31 +811,40 @@ create_session (GabbleJingleFactory *fac,
   GabbleJingleFactoryPrivate *priv = fac->priv;
   GabbleJingleSession *sess;
   gboolean local_initiator;
-  gchar *sid_;
+  gchar *sid_, *key;
 
   g_assert (peer != 0);
   g_assert (peer_resource != NULL);
 
   if (sid != NULL)
     {
-      g_assert (NULL == g_hash_table_lookup (priv->sessions, sid));
-      local_initiator = FALSE;
+      key = make_session_map_key (peer, peer_resource, sid);
       sid_ = g_strdup (sid);
+
+      local_initiator = FALSE;
     }
   else
     {
-      sid_ = get_unique_sid (fac);
+      sid_ = get_unique_sid_for (fac, peer, peer_resource, &key);
+
       local_initiator = TRUE;
     }
 
+  /* Either we should have found the existing session when the IQ arrived, or
+   * get_unique_sid_for should have ensured the key is fresh. */
+  g_assert (NULL == g_hash_table_lookup (priv->sessions, key));
+
   sess = gabble_jingle_session_new (priv->conn, sid_, local_initiator, peer,
       peer_resource, local_hold);
-
   g_signal_connect (sess, "terminated", (GCallback) session_terminated_cb, fac);
 
-  DEBUG ("new session %s @ %p created", sid_, sess);
-  /* register_session takes ownership of sid_. */
-  register_session (fac, sid_, sess);
+  /* Takes ownership of key */
+  g_hash_table_insert (priv->sessions, key, sess);
+
+  DEBUG ("new session (%u, %s, %s) @ %p", peer, peer_resource, sid_, sess);
+
+  g_free (sid_);
+
   return sess;
 }
 
@@ -898,12 +902,15 @@ session_terminated_cb (GabbleJingleSession *session,
                        TpChannelGroupChangeReason reason,
                        GabbleJingleFactory *factory)
 {
-  const gchar *sid;
-  DEBUG ("removing terminated session");
+  gchar *key = make_session_map_key (session->peer,
+      gabble_jingle_session_get_peer_resource (session),
+      gabble_jingle_session_get_sid (session));
 
-  g_object_get (session, "session-id", &sid, NULL);
+  DEBUG ("removing terminated session with key %s", key);
 
-  _jingle_factory_unregister_session (factory, sid);
+  g_warn_if_fail (g_hash_table_remove (factory->priv->sessions, key));
+
+  g_free (key);
 }
 
 const gchar *

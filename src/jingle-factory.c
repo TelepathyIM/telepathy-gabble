@@ -748,12 +748,11 @@ jingle_cb (LmMessageHandler *handler,
 
   /* see if it's a jingle message and detect dialect */
   sid = gabble_jingle_session_detect (msg, &action, &dialect);
-  if (sid == NULL)
-    {
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
   from = lm_message_node_get_attribute (lm_message_get_node (msg), "from");
+
+  if (sid == NULL || from == NULL)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
   sess = g_hash_table_lookup (priv->sessions, sid);
 
   if (sess == NULL)

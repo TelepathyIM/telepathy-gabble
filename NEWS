@@ -9,6 +9,16 @@ Enhancements:
 
 Fixes:
 
+* fd.o #21966: Gabble no longer crashes if you use the Hold interface before a
+  call starts. You can put a call on hold even before it's initiated. You can
+  also put an incoming, unanswered call on hold, but you have to unhold it
+  before accepting the call.
+
+* The above also fixes (in passing) a reported issue where calls are signalled
+  as having been put on hold just before they terminate.
+
+* fd.o #20807: Gabble no longer crashes on unknown Jingle actions.
+
 telepathy-gabble 0.7.28 (2009-06-01)
 ====================================
 

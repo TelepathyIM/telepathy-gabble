@@ -807,7 +807,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
   GabbleJingleContentPrivate *priv = self->priv;
   LmMessage *msg;
   LmMessageNode *sess_node;
-  JingleAction action = JINGLE_ACTION_UNKNOWN;
+  JingleAction action;
   JingleContentState new_state = JINGLE_CONTENT_STATE_EMPTY;
 
   g_assert (gabble_jingle_content_is_ready (self));

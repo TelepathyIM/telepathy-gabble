@@ -105,6 +105,9 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
 
 GType gabble_jingle_session_get_content_type (GabbleJingleSession *);
 GList *gabble_jingle_session_get_contents (GabbleJingleSession *sess);
+const gchar *gabble_jingle_session_get_peer_resource (
+    GabbleJingleSession *sess);
+const gchar *gabble_jingle_session_get_sid (GabbleJingleSession *sess);
 
 typedef void (*JingleReplyHandler) (GObject *, gboolean success,
     LmMessage *reply);

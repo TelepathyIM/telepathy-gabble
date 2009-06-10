@@ -1988,6 +1988,18 @@ gabble_jingle_session_get_contents (GabbleJingleSession *sess)
   return g_hash_table_get_values (priv->contents);
 }
 
+const gchar *
+gabble_jingle_session_get_peer_resource (GabbleJingleSession *sess)
+{
+  return sess->priv->peer_resource;
+}
+
+const gchar *
+gabble_jingle_session_get_sid (GabbleJingleSession *sess)
+{
+  return sess->priv->sid;
+}
+
 static void
 content_ready_cb (GabbleJingleContent *c, gpointer user_data)
 {

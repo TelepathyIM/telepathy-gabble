@@ -114,7 +114,7 @@ typedef enum _Socks5State Socks5State;
 #define SOCKS5_MIN_LENGTH 6
 
 #define CONNECT_REPLY_TIMEOUT 30
-#define CONNECT_TIMEOUT 30
+#define CONNECT_TIMEOUT 10
 
 struct _Streamhost
 {

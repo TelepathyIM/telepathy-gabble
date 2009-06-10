@@ -4,7 +4,7 @@ Utility functions for tests that need to interact with MUCs.
 
 import dbus
 
-from servicetest import call_async
+from servicetest import call_async, wrap_channel
 from gabbletest import make_muc_presence, request_muc_handle
 
 import constants as cs
@@ -38,7 +38,8 @@ def join_muc(q, bus, conn, stream, muc, request=None):
 
     event = q.expect('dbus-return', method='CreateChannel')
     path, props = event.value
-    chan = bus.get_object(conn.bus_name, path)
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
+        ['Messages'])
 
     return (muc_handle, chan, path, props)
 

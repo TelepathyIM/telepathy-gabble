@@ -8,7 +8,7 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import EventPattern
+from servicetest import EventPattern, assertEquals, assertLength
 import constants as cs
 
 from mucutil import join_muc_and_check
@@ -18,12 +18,11 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     room = 'chat@conf.localhost'
-    room_handle, text_chan, test_handle, bob_handle = \
+    room_handle, chan, test_handle, bob_handle = \
         join_muc_and_check(q, bus, conn, stream, room)
 
     # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = text_chan.GetAll(
-        cs.CHANNEL, dbus_interface=cs.PROPERTIES_IFACE)
+    channel_props = chan.Properties.GetAll(cs.CHANNEL)
     assert channel_props.get('TargetHandle') == room_handle,\
             (channel_props.get('TargetHandle'), room_handle)
     assert channel_props.get('TargetHandleType') == cs.HT_ROOM,\
@@ -52,8 +51,7 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
-    group_props = text_chan.GetAll(
-        cs.CHANNEL_IFACE_GROUP, dbus_interface=cs.PROPERTIES_IFACE)
+    group_props = chan.Properties.GetAll(cs.CHANNEL_IFACE_GROUP)
     assert 'HandleOwners' in group_props, group_props
     assert 'Members' in group_props, group_props
     assert 'LocalPendingMembers' in group_props, group_props
@@ -103,8 +101,7 @@ def test(q, bus, conn, stream):
     # PendingMessagesRemoved fires.
     message_id = header['pending-message-id']
 
-    dbus.Interface(text_chan, cs.CHANNEL_TYPE_TEXT
-        ).AcknowledgePendingMessages([message_id])
+    chan.Text.AcknowledgePendingMessages([message_id])
 
     removed = q.expect('dbus-signal', signal='PendingMessagesRemoved')
 
@@ -122,8 +119,7 @@ def test(q, bus, conn, stream):
         }
     ]
 
-    sent_token = dbus.Interface(text_chan,
-        cs.CHANNEL_IFACE_MESSAGES).SendMessage(greeting, dbus.UInt32(0))
+    sent_token = chan.Messages.SendMessage(greeting, dbus.UInt32(0))
 
     assert sent_token
 
@@ -203,7 +199,7 @@ def test(q, bus, conn, stream):
 
 
     # Send a normal message using the Channel.Type.Text API
-    dbus.Interface(text_chan, cs.CHANNEL_TYPE_TEXT).Send(0, 'goodbye')
+    chan.Text.Send(0, 'goodbye')
 
     event, sent, message_sent = q.expect_many(
         EventPattern('stream-message'),
@@ -251,12 +247,15 @@ def test(q, bus, conn, stream):
     assert status
     assert status.children[0] == u'hurrah'
 
-    # test that closing the channel results in an unavailable message
-    text_chan.Close()
+    # test that leaving the channel results in an unavailable message
+    chan.Group.RemoveMembers([chan.Group.GetSelfHandle()], 'booo')
 
     event = q.expect('stream-presence', to='chat@conf.localhost/test')
     elem = event.stanza
     assert elem['type'] == 'unavailable'
+    status = [e for e in elem.elements() if e.name == 'status']
+    assertLength(1, status)
+    assertEquals(status[0].children[0], u'booo')
 
     conn.Disconnect()
 

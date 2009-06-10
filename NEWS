@@ -19,6 +19,11 @@ Fixes:
 
 * fd.o #20807: Gabble no longer crashes on unknown Jingle actions.
 
+* fd.o #16886: You can now leave MUCs with a part message by calling
+  RemoveMembers([self_handle], "this room is boring"). Gabble now complies with
+  telepathy-spec 0.17.21's requirement that you can always remove yourself from
+  a group if you're in it, fixing fd.o #20728.
+
 telepathy-gabble 0.7.28 (2009-06-01)
 ====================================
 

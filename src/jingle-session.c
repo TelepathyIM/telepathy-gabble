@@ -181,11 +181,8 @@ gabble_jingle_session_dispose (GObject *object)
   g_hash_table_destroy (priv->contents);
   priv->contents = NULL;
 
-  if (sess->peer)
-    {
-      tp_handle_unref (contact_repo, sess->peer);
-      sess->peer = 0;
-    }
+  tp_handle_unref (contact_repo, sess->peer);
+  sess->peer = 0;
 
   g_free (priv->sid);
   priv->sid = NULL;

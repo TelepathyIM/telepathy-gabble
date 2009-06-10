@@ -53,8 +53,7 @@ def test(jp, q, bus, conn, stream):
     stream_handler.Ready(jt.get_audio_codecs_dbus())
     stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    e = q.expect('stream-iq', predicate=lambda e:
-        jp.match_jingle_action(e.query, 'session-initiate'))
+    e = q.expect('stream-iq', predicate=jp.action_predicate('session-initiate'))
     stream.send(make_result_iq(stream, e.stanza))
 
     jt.set_sid_from_initiate(e.query)
@@ -220,8 +219,7 @@ def test(jp, q, bus, conn, stream):
     stream_handler2.Ready(jt.get_video_codecs_dbus())
     stream_handler2.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    e = q.expect('stream-iq', predicate=lambda e:
-            jp.match_jingle_action(e.query, 'content-add'))
+    e = q.expect('stream-iq', predicate=jp.action_predicate('content-add'))
     stream.send(make_result_iq(stream, e.stanza))
 
     jt.content_accept(e.query, 'video')

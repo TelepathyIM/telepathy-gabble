@@ -4,7 +4,7 @@ Test the Hold API.
 
 from gabbletest import make_result_iq, sync_stream
 from servicetest import (
-    assertEquals,
+    assertEquals, wrap_channel,
     make_channel_proxy, call_async, EventPattern, sync_dbus, tp_path_prefix,
     )
 
@@ -13,6 +13,16 @@ import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
 def test(jp, q, bus, conn, stream):
+    # These are 0- (for old dialects) or 1- (for new dialects) element lists
+    # that can be splatted into expect_many with *
+    hold_event = jp.rtp_info_event_list("hold")
+    unhold_event = jp.rtp_info_event_list("unhold")
+
+    # Let's forbid them until we're ready to start holding, to check that
+    # Gabble doesn't send spurious notifications.
+    q.forbid_events(hold_event)
+    q.forbid_events(unhold_event)
+
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
 
     jt.prepare()
@@ -22,12 +32,10 @@ def test(jp, q, bus, conn, stream):
     path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
         cs.HT_CONTACT, handle, True)
 
-    signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
-    media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
-    group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
-    hold_iface = make_channel_proxy(conn, path, 'Channel.Interface.Hold')
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'StreamedMedia',
+        ['Hold'])
 
-    call_async(q, media_iface, 'RequestStreams', handle,
+    call_async(q, chan.StreamedMedia, 'RequestStreams', handle,
         [cs.MEDIA_STREAM_TYPE_AUDIO, cs.MEDIA_STREAM_TYPE_VIDEO])
 
     if not jp.can_do_video():
@@ -71,8 +79,7 @@ def test(jp, q, bus, conn, stream):
     video_stream_handler.Ready(jt.get_video_codecs_dbus())
     video_stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    e = q.expect('stream-iq', predicate=lambda e:
-        jp.match_jingle_action(e.query, 'session-initiate'))
+    e = q.expect('stream-iq', predicate=jp.action_predicate('session-initiate'))
     stream.send(make_result_iq(stream, e.stanza))
 
     jt.set_sid_from_initiate(e.query)
@@ -80,20 +87,19 @@ def test(jp, q, bus, conn, stream):
 
     q.expect('stream-iq', iq_type='result')
 
-    # These are 0- (for old dialects) or 1- (for new dialects) element lists
-    # that can be splatted into expect_many with *
-    hold_event = jp.rtp_info_event_list("hold")
-    unhold_event = jp.rtp_info_event_list("unhold")
-
     # ---- Test 1: GetHoldState returns unheld and unhold is a no-op ----
 
-    hold_state = hold_iface.GetHoldState()
+    hold_state = chan.Hold.GetHoldState()
     assert hold_state[0] == cs.HS_UNHELD, hold_state
-    hold_iface.RequestHold(False)
+    chan.Hold.RequestHold(False)
+
+    # We're about to start holding, so remove the ban on <hold/>.
+    sync_stream(q, stream)
+    q.unforbid_events(hold_event)
 
     # ---- Test 2: successful hold ----
 
-    call_async(q, hold_iface, 'RequestHold', True)
+    call_async(q, chan.Hold, 'RequestHold', True)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_HOLD, cs.HSR_REQUESTED]),
@@ -114,18 +120,16 @@ def test(jp, q, bus, conn, stream):
 
     q.forbid_events(hold_event)
 
-    hold_state = hold_iface.GetHoldState()
+    hold_state = chan.Hold.GetHoldState()
     assert hold_state[0] == cs.HS_HELD, hold_state
-    hold_iface.RequestHold(True)
+    chan.Hold.RequestHold(True)
 
     sync_stream(q, stream)
     q.unforbid_events(hold_event)
 
     # ---- Test 4: successful unhold ----
 
-    q.forbid_events(unhold_event)
-
-    call_async(q, hold_iface, 'RequestHold', False)
+    call_async(q, chan.Hold, 'RequestHold', False)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_UNHOLD, cs.HSR_REQUESTED]),
@@ -147,18 +151,18 @@ def test(jp, q, bus, conn, stream):
 
     # ---- Test 5: GetHoldState returns False and unhold is a no-op ----
 
-    hold_state = hold_iface.GetHoldState()
+    hold_state = chan.Hold.GetHoldState()
     assert hold_state[0] == cs.HS_UNHELD, hold_state
-    hold_iface.RequestHold(False)
+    chan.Hold.RequestHold(False)
 
     # ---- Test 6: 3 parallel calls to hold ----
 
-    hold_state = hold_iface.GetHoldState()
+    hold_state = chan.Hold.GetHoldState()
     assert hold_state[0] == cs.HS_UNHELD, hold_state
 
-    call_async(q, hold_iface, 'RequestHold', True)
-    call_async(q, hold_iface, 'RequestHold', True)
-    call_async(q, hold_iface, 'RequestHold', True)
+    call_async(q, chan.Hold, 'RequestHold', True)
+    call_async(q, chan.Hold, 'RequestHold', True)
+    call_async(q, chan.Hold, 'RequestHold', True)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_HOLD, cs.HSR_REQUESTED]),
@@ -179,9 +183,9 @@ def test(jp, q, bus, conn, stream):
 
     q.forbid_events(unhold_event)
 
-    call_async(q, hold_iface, 'RequestHold', False)
-    call_async(q, hold_iface, 'RequestHold', False)
-    call_async(q, hold_iface, 'RequestHold', False)
+    call_async(q, chan.Hold, 'RequestHold', False)
+    call_async(q, chan.Hold, 'RequestHold', False)
+    call_async(q, chan.Hold, 'RequestHold', False)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_UNHOLD, cs.HSR_REQUESTED]),
@@ -203,10 +207,10 @@ def test(jp, q, bus, conn, stream):
 
     # ---- Test 8: hold, then change our minds before s-e has responded ----
 
-    hold_state = hold_iface.GetHoldState()
+    hold_state = chan.Hold.GetHoldState()
     assert hold_state[0] == cs.HS_UNHELD, hold_state
 
-    call_async(q, hold_iface, 'RequestHold', True)
+    call_async(q, chan.Hold, 'RequestHold', True)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_HOLD, cs.HSR_REQUESTED]),
@@ -214,10 +218,10 @@ def test(jp, q, bus, conn, stream):
         *hold_event
         )
 
-    # Gabble can't send Active until s-e confirms it has the resources
+    # Gabble can't send <unhold/> until s-e confirms it has the resources
     q.forbid_events(unhold_event)
 
-    call_async(q, hold_iface, 'RequestHold', False)
+    call_async(q, chan.Hold, 'RequestHold', False)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_UNHOLD, cs.HSR_REQUESTED]),
@@ -239,13 +243,13 @@ def test(jp, q, bus, conn, stream):
         *unhold_event
         )
 
-    hold_state = hold_iface.GetHoldState()
+    hold_state = chan.Hold.GetHoldState()
     assert hold_state[0] == cs.HS_UNHELD, hold_state
 
     # ---- Test 9: unhold, then change our minds before s-e has responded ----
 
     # Go to state "held" first
-    call_async(q, hold_iface, 'RequestHold', True)
+    call_async(q, chan.Hold, 'RequestHold', True)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_HOLD, cs.HSR_REQUESTED]),
@@ -265,11 +269,11 @@ def test(jp, q, bus, conn, stream):
 
     q.forbid_events(hold_event + unhold_event)
 
-    hold_state = hold_iface.GetHoldState()
+    hold_state = chan.Hold.GetHoldState()
     assert hold_state[0] == cs.HS_HELD, hold_state
 
-    call_async(q, hold_iface, 'RequestHold', False)
-    call_async(q, hold_iface, 'RequestHold', True)
+    call_async(q, chan.Hold, 'RequestHold', False)
+    call_async(q, chan.Hold, 'RequestHold', True)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_UNHOLD, cs.HSR_REQUESTED]),
@@ -294,14 +298,14 @@ def test(jp, q, bus, conn, stream):
     sync_stream(q, stream)
     q.unforbid_events(hold_event + unhold_event)
 
-    hold_state = hold_iface.GetHoldState()
+    hold_state = chan.Hold.GetHoldState()
     assert hold_state[0] == cs.HS_HELD, hold_state
 
     # ---- Test 10: attempting to unhold fails (both streams) ----
 
     q.forbid_events(hold_event + unhold_event)
 
-    call_async(q, hold_iface, 'RequestHold', False)
+    call_async(q, chan.Hold, 'RequestHold', False)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_UNHOLD, cs.HSR_REQUESTED]),
@@ -325,7 +329,7 @@ def test(jp, q, bus, conn, stream):
 
     q.forbid_events(hold_event + unhold_event)
 
-    call_async(q, hold_iface, 'RequestHold', False)
+    call_async(q, chan.Hold, 'RequestHold', False)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_UNHOLD, cs.HSR_REQUESTED]),
@@ -348,7 +352,7 @@ def test(jp, q, bus, conn, stream):
 
     q.forbid_events(hold_event + unhold_event)
 
-    call_async(q, hold_iface, 'RequestHold', False)
+    call_async(q, chan.Hold, 'RequestHold', False)
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
             args=[cs.HS_PENDING_UNHOLD, cs.HSR_REQUESTED]),
@@ -389,7 +393,7 @@ def test(jp, q, bus, conn, stream):
         ]
     q.forbid_events(pending_hold)
 
-    call_async(q, media_iface, 'RequestStreams', handle,
+    call_async(q, chan.StreamedMedia, 'RequestStreams', handle,
         [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
@@ -414,7 +418,7 @@ def test(jp, q, bus, conn, stream):
             path=path_suffix),
         )
 
-    assertEquals(cs.HS_HELD, hold_iface.GetHoldState()[0])
+    assertEquals(cs.HS_HELD, chan.Hold.GetHoldState()[0])
 
     sync_dbus(bus, q, conn)
 
@@ -453,14 +457,14 @@ def test(jp, q, bus, conn, stream):
             path=path_suffix),
         )
 
-    assertEquals(cs.HS_HELD, hold_iface.GetHoldState()[0])
+    assertEquals(cs.HS_HELD, chan.Hold.GetHoldState()[0])
 
     sync_dbus(bus, q, conn)
     q.unforbid_events(pending_hold)
 
     # ---- The end ----
 
-    group_iface.RemoveMembers([self_handle], 'closed')
+    chan.Group.RemoveMembers([self_handle], 'closed')
 
     # Test completed, close the connection
 

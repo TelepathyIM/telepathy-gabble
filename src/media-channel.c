@@ -256,6 +256,7 @@ static void
 create_session (GabbleMediaChannel *chan, TpHandle peer)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
+  gboolean local_hold = (priv->hold_state != TP_LOCAL_HOLD_STATE_UNHELD);
 
   g_assert (priv->session == NULL);
 
@@ -263,7 +264,7 @@ create_session (GabbleMediaChannel *chan, TpHandle peer)
 
   priv->session = g_object_ref (
       gabble_jingle_factory_create_session (priv->conn->jingle_factory,
-          peer, NULL));
+          peer, NULL, local_hold));
 
   _latch_to_session (chan);
 }
@@ -2120,12 +2121,17 @@ gabble_media_channel_add_member (GObject *obj,
     {
       /* no: has a session been created, is the handle being added ours,
        *     and are we in local pending? (call answer) */
-
       if (priv->session &&
           handle == mixin->self_handle &&
           tp_handle_set_is_member (mixin->local_pending, handle))
         {
-          /* yes: accept the request */
+          /* is the call on hold? */
+          if (priv->hold_state != TP_LOCAL_HOLD_STATE_UNHELD)
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+                  "Can't answer a call while it's on hold");
+              return FALSE;
+            }
 
           /* make us a member */
           set = tp_intset_new_containing (handle);

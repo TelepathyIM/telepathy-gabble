@@ -140,8 +140,11 @@ GType gabble_jingle_factory_lookup_transport (GabbleJingleFactory *self,
 void _jingle_factory_unregister_session (GabbleJingleFactory *factory,
     const gchar *sid);
 
-GabbleJingleSession *gabble_jingle_factory_create_session (GabbleJingleFactory
-    *fac, TpHandle peer, const gchar *peer_resource);
+GabbleJingleSession *gabble_jingle_factory_create_session (
+    GabbleJingleFactory *fac,
+    TpHandle peer,
+    const gchar *peer_resource,
+    gboolean local_hold);
 
 typedef void (*GabbleJingleFactoryRelaySessionCb) (GPtrArray *relays,
     gpointer user_data);

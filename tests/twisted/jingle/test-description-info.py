@@ -4,7 +4,7 @@ Test emition and handling of codec update using description-info
 
 from gabbletest import exec_test, sync_stream
 from servicetest import (
-    wrap_channel,
+    wrap_channel, assertEquals,
     make_channel_proxy, unwrap, tp_path_prefix, EventPattern, call_async)
 from jingletest2 import JingleTest2, JingleProtocol031
 import constants as cs
@@ -107,11 +107,11 @@ def test(q, bus, conn, stream, send_early_description_info=False):
     # First IQ is transport-info; also, we expect to be told what codecs the
     # other end wants.
     e, src = q.expect_many(
-        EventPattern('stream-iq', iq_type='set'),
+        EventPattern('stream-iq',
+            predicate=jp.action_predicate('transport-info')),
         EventPattern('dbus-signal', signal='SetRemoteCodecs')
         )
-    assert jp.match_jingle_action(e.query, 'transport-info')
-    assert e.query['initiator'] == 'foo@bar.com/Foo'
+    assertEquals('foo@bar.com/Foo', e.query['initiator'])
 
     assert jt2.audio_codecs == [ (name, id, rate)
         for id, name, type, rate, channels, parameters in unwrap(src.args[0]) ], \
@@ -123,8 +123,7 @@ def test(q, bus, conn, stream, send_early_description_info=False):
     stream_handler.SupportedCodecs(local_codecs_dbus)
 
     # Second one is session-accept
-    e = q.expect('stream-iq')
-    assert jp.match_jingle_action(e.query, 'session-accept')
+    e = q.expect('stream-iq', predicate=jp.action_predicate('session-accept'))
 
     # farstream is buggy, and tells tp-fs to tell Gabble to change the third
     # codec's clockrate. This isn't legal, so Gabble says no.

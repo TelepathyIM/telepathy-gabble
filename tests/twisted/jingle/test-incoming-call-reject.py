@@ -75,8 +75,8 @@ def test(jp, q, bus, conn, stream, busy):
         media_chan.RemoveMembers([self_handle], 'rejected')
 
     iq, mc, _ = q.expect_many(
-        EventPattern('stream-iq', predicate=lambda e:
-            jp.match_jingle_action(e.query, 'session-terminate')),
+        EventPattern('stream-iq',
+            predicate=jp.action_predicate('session-terminate')),
         EventPattern('dbus-signal', signal='MembersChanged'),
         EventPattern('dbus-signal', signal='Closed'),
         )

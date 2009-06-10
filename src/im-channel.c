@@ -65,7 +65,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
 
 static void _gabble_im_channel_send_message (GObject *object,
     TpMessage *message, TpMessageSendingFlags flags);
-static void emit_closed_and_send_gone (GabbleIMChannel *self);
 
 static const gchar *gabble_im_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,

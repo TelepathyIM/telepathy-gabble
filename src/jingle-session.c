@@ -680,7 +680,7 @@ create_content (GabbleJingleSession *sess, GType content_type,
 
       /* gtalk streams don't have name, so use whatever Content came up with */
       if (name == NULL)
-          g_object_get (c, "name", &name, NULL);
+        name = gabble_jingle_content_get_name (c);
     }
 
   /* This will override existing content if it exists. */

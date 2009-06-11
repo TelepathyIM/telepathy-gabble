@@ -676,18 +676,13 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
     }
   else
     {
-      gboolean session_created_by_us;
-
       content_node = lm_message_node_add_child (parent, "content", NULL);
       lm_message_node_set_attributes (content_node,
           "name", priv->name,
           "senders", produce_senders (priv->senders),
           NULL);
 
-      g_object_get (c->session, "local-initiator", &session_created_by_us,
-        NULL);
-
-      if (priv->created_by_us == session_created_by_us)
+      if (gabble_jingle_content_creator_is_initiator (c))
         lm_message_node_set_attribute (content_node, "creator", "initiator");
       else
         lm_message_node_set_attribute (content_node, "creator", "responder");
@@ -1013,6 +1008,16 @@ gboolean
 gabble_jingle_content_is_created_by_us (GabbleJingleContent *c)
 {
   return c->priv->created_by_us;
+}
+
+gboolean
+gabble_jingle_content_creator_is_initiator (GabbleJingleContent *c)
+{
+  gboolean session_created_by_us;
+
+  g_object_get (c->session, "local-initiator", &session_created_by_us, NULL);
+
+  return (c->priv->created_by_us == session_created_by_us);
 }
 
 const gchar *

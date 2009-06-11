@@ -119,6 +119,7 @@ gboolean gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders);
 void gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self);
 gboolean gabble_jingle_content_is_created_by_us (GabbleJingleContent *c);
+gboolean gabble_jingle_content_creator_is_initiator (GabbleJingleContent *c);
 
 const gchar *gabble_jingle_content_get_name (GabbleJingleContent *self);
 

@@ -80,7 +80,8 @@ struct _GabbleJingleSessionPrivate
 
   /* GabbleJingleContent objects keyed by content name.
    * Table owns references to these objects. */
-  GHashTable *contents;
+  GHashTable *initiator_contents;
+  GHashTable *responder_contents;
 
   JingleDialect dialect;
   JingleState state;
@@ -150,7 +151,9 @@ gabble_jingle_session_init (GabbleJingleSession *obj)
          GabbleJingleSessionPrivate);
   obj->priv = priv;
 
-  priv->contents = g_hash_table_new_full (g_str_hash, g_str_equal,
+  priv->initiator_contents = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, g_object_unref);
+  priv->responder_contents = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_object_unref);
 
   priv->state = JS_STATE_PENDING_CREATED;
@@ -178,8 +181,11 @@ gabble_jingle_session_dispose (GObject *object)
       (priv->state == JS_STATE_ENDED));
   g_assert (priv->timer_id == 0);
 
-  g_hash_table_destroy (priv->contents);
-  priv->contents = NULL;
+  g_hash_table_destroy (priv->initiator_contents);
+  priv->initiator_contents = NULL;
+
+  g_hash_table_destroy (priv->responder_contents);
+  priv->responder_contents = NULL;
 
   tp_handle_unref (contact_repo, sess->peer);
   sess->peer = 0;
@@ -561,14 +567,63 @@ static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 #define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
 #define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
 
+static gboolean
+lookup_content (GabbleJingleSession *sess,
+    const gchar *name,
+    const gchar *creator,
+    gboolean fail_if_missing,
+    GabbleJingleContent **c,
+    GError **error)
+{
+  GabbleJingleSessionPrivate *priv = sess->priv;
+
+  if (name == NULL)
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "'name' attribute unset");
+      return FALSE;
+    }
+
+  if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
+    {
+      /* Only the initiator can create contents on GTalk. */
+      *c = g_hash_table_lookup (priv->initiator_contents, name);
+    }
+  else
+    {
+      if (!tp_strdiff (creator, "initiator"))
+        {
+          *c = g_hash_table_lookup (priv->initiator_contents, name);
+        }
+      else if (!tp_strdiff (creator, "responder"))
+        {
+          *c = g_hash_table_lookup (priv->responder_contents, name);
+        }
+      else
+        {
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+              "'creator' attribute %s",
+              (creator == NULL ? "missing" : "invalid"));
+          return FALSE;
+        }
+    }
+
+  if (fail_if_missing && *c == NULL)
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "Content '%s' (created by %s) does not exist", name, creator);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 static void
 _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
   ContentHandlerFunc func, GError **error)
 {
-  GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c;
   LmMessageNode *content_node;
-  const gchar *name;
 
   for (content_node = node->children;
        NULL != content_node;
@@ -577,8 +632,11 @@ _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
       if (tp_strdiff (lm_message_node_get_name (content_node), "content"))
         continue;
 
-      name = lm_message_node_get_attribute (content_node, "name");
-      c = g_hash_table_lookup (priv->contents, name);
+      if (!lookup_content (sess,
+              lm_message_node_get_attribute (content_node, "name"),
+              lm_message_node_get_attribute (content_node, "creator"),
+              FALSE /* fail_if_missing */, &c, error))
+        return;
 
       func (sess, c, content_node, error);
       if (*error != NULL)
@@ -645,6 +703,7 @@ create_content (GabbleJingleSession *sess, GType content_type,
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c;
+  GHashTable *contents;
 
   DEBUG ("session creating new content type, conn == %p, jf == %p", priv->conn, priv->conn->jingle_factory);
 
@@ -683,8 +742,23 @@ create_content (GabbleJingleSession *sess, GType content_type,
         name = gabble_jingle_content_get_name (c);
     }
 
-  /* This will override existing content if it exists. */
-  g_hash_table_replace (priv->contents, g_strdup (name), c);
+  if (priv->local_initiator == gabble_jingle_content_is_created_by_us (c))
+    {
+      DEBUG ("inserting content %s into initiator_contents", name);
+      contents = priv->initiator_contents;
+    }
+  else
+    {
+      DEBUG ("inserting content %s into responder_contents", name);
+      contents = priv->responder_contents;
+    }
+
+  /* If the content already existed, either we shouldn't have picked the name
+   * we did (if we're creating it) or _each_content_add should have already
+   * said no.
+   */
+  g_assert (g_hash_table_lookup (contents, name) == NULL);
+  g_hash_table_insert (contents, g_strdup (name), c);
   g_signal_emit (sess, signals[NEW_CONTENT], 0, c);
   return c;
 }
@@ -729,26 +803,9 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 
   if (c != NULL)
     {
-      JingleContentState state;
-
-      /* contents added by the session initiator may replace similarly-named
-       * contents which we are trying to add (but haven't had acknowledged) */
-
-      g_object_get (c, "state", &state, NULL);
-      if (state < JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        {
-          if (priv->local_initiator)
-            {
-              SET_CONFLICT ("session initiator is creating a content "
-                  "named \"%s\" already", name);
-              return;
-            }
-        }
-      else
-        {
-          SET_CONFLICT ("content called \"%s\" already exists, rejecting", name);
-          return;
-        }
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "content called \"%s\" already exists, rejecting", name);
+      return;
     }
 
   create_content (sess, content_type, JINGLE_MEDIA_TYPE_NONE,
@@ -856,8 +913,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
       return;
     }
 
-  if ((priv->dialect == JINGLE_DIALECT_GTALK3) ||
-      (priv->dialect == JINGLE_DIALECT_GTALK4))
+  if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
     {
       /* in this case we implicitly have just one content */
       _each_content_add (sess, NULL, node, error);
@@ -960,24 +1016,28 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
 }
 
 static void
+mute_all_foreach (gpointer key,
+    gpointer value,
+    gpointer mute)
+{
+  if (G_OBJECT_TYPE (value) == GABBLE_TYPE_JINGLE_MEDIA_RTP)
+    g_object_set (value, "remote-mute", GPOINTER_TO_INT (mute), NULL);
+}
+
+static void
 mute_all (GabbleJingleSession *sess,
     gboolean mute)
 {
-  GHashTableIter iter;
-  gpointer value;
-
-  g_hash_table_iter_init (&iter, sess->priv->contents);
-
-  while (g_hash_table_iter_next (&iter, NULL, &value))
-    {
-      if (G_OBJECT_TYPE (value) == GABBLE_TYPE_JINGLE_MEDIA_RTP)
-        g_object_set (value, "remote-mute", mute, NULL);
-    }
+  g_hash_table_foreach (sess->priv->initiator_contents, mute_all_foreach,
+      GINT_TO_POINTER (mute));
+  g_hash_table_foreach (sess->priv->responder_contents, mute_all_foreach,
+      GINT_TO_POINTER (mute));
 }
 
 static gboolean
 set_mute (GabbleJingleSession *sess,
     const gchar *name,
+    const gchar *creator,
     gboolean mute,
     GError **error)
 {
@@ -989,14 +1049,9 @@ set_mute (GabbleJingleSession *sess,
       return TRUE;
     }
 
-  c = g_hash_table_lookup (sess->priv->contents, name);
-
-  if (c == NULL)
-    {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
-          "content '%s' does not exist", name);
-      return FALSE;
-    }
+  if (!lookup_content (sess, name, creator, TRUE /* fail if missing */, &c,
+      error))
+    return FALSE;
 
   if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
@@ -1031,7 +1086,8 @@ handle_payload (GabbleJingleSession *sess,
 {
   const gchar *ns = lm_message_node_get_namespace (payload);
   const gchar *elt = lm_message_node_get_name (payload);
-  const gchar *name_attr = lm_message_node_get_attribute (payload, "name");
+  const gchar *name = lm_message_node_get_attribute (payload, "name");
+  const gchar *creator = lm_message_node_get_attribute (payload, "creator");
 
   if (tp_strdiff (ns, NS_JINGLE_RTP_INFO))
     {
@@ -1065,11 +1121,11 @@ handle_payload (GabbleJingleSession *sess,
    */
   else if (!tp_strdiff (elt, "mute"))
     {
-      return set_mute (sess, name_attr, TRUE, error);
+      return set_mute (sess, name, creator, TRUE, error);
     }
   else if (!tp_strdiff (elt, "unmute"))
     {
-      return set_mute (sess, name_attr, FALSE, error);
+      return set_mute (sess, name, creator, FALSE, error);
     }
   else
     {
@@ -1122,7 +1178,7 @@ on_session_info (GabbleJingleSession *sess,
    */
   if (understood_a_payload)
     g_signal_emit (sess, signals[REMOTE_STATE_CHANGED], 0);
-  else
+  else if (!hit_an_error)
     g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
         "no recognized session-info payloads");
 }
@@ -1196,11 +1252,10 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
       /* We are certain that GTalk has only one content. It's not possible
        * for session to have more than one content if in gtalk mode (if
        * it happens, it's a bug in our code). */
-      GList *cs = g_hash_table_get_values (priv->contents);
+      GList *cs = gabble_jingle_session_get_contents (sess);
+
       g_assert (g_list_length (cs) == 1);
-
       c = cs->data;
-
       g_list_free (cs);
 
       if (priv->dialect == JINGLE_DIALECT_GTALK4)
@@ -1226,17 +1281,13 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
     }
   else
     {
-      const gchar *name;
-
       node = lm_message_node_get_child_any_ns (node, "content");
-      name = lm_message_node_get_attribute (node, "name");
-      c = g_hash_table_lookup (priv->contents, name);
 
-      if (c == NULL)
-        {
-          SET_BAD_REQ ("content doesn't exist");
-          return;
-        }
+      if (!lookup_content (sess,
+              lm_message_node_get_attribute (node, "name"),
+              lm_message_node_get_attribute (node, "creator"),
+              TRUE /* fail_if_missing */, &c, error))
+        return;
 
       /* we need transport child of content node */
       node = lm_message_node_get_child_any_ns (node, "transport");
@@ -1671,7 +1722,8 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
   JingleReplyHandler handler;
 
   /* If there are no contents yet, we shouldn't have been called at all. */
-  g_assert (g_hash_table_size (priv->contents) > 0);
+  g_assert (g_hash_table_size (priv->initiator_contents) +
+      g_hash_table_size (priv->responder_contents) > 0);
 
   if (priv->local_initiator)
     {
@@ -1875,7 +1927,11 @@ count_active_contents (GabbleJingleSession *sess)
   GabbleJingleSessionPrivate *priv = sess->priv;
   guint n_contents = 0;
 
-  g_hash_table_foreach (priv->contents, _foreach_count_active_contents, &n_contents);
+  g_hash_table_foreach (priv->initiator_contents, _foreach_count_active_contents,
+      &n_contents);
+  g_hash_table_foreach (priv->responder_contents, _foreach_count_active_contents,
+      &n_contents);
+
   return n_contents;
 }
 
@@ -1884,13 +1940,15 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
   GabbleJingleSessionPrivate *priv = sess->priv;
-  const gchar *name;
+  const gchar *name = gabble_jingle_content_get_name (c);
 
-  g_object_get (c, "name", &name, NULL);
-  g_hash_table_remove (priv->contents, name);
+  if (gabble_jingle_content_creator_is_initiator (c))
+    g_hash_table_remove (priv->initiator_contents, name);
+  else
+    g_hash_table_remove (priv->responder_contents, name);
 
   if (priv->state == JS_STATE_ENDED)
-      return;
+    return;
 
   if (count_active_contents (sess) == 0)
     gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
@@ -1921,14 +1979,16 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
   GabbleJingleContent *c;
   GType content_type;
   gchar *name = NULL;
-  gint id = g_hash_table_size (priv->contents) + 1;
+  GHashTable *contents = priv->local_initiator ? priv->initiator_contents
+      : priv->responder_contents;
+  guint id = g_hash_table_size (contents) + 1;
 
   do
     {
       g_free (name);
       name = g_strdup_printf ("stream%d", id++);
     }
-  while (g_hash_table_lookup (priv->contents, name) != NULL);
+  while (g_hash_table_lookup (contents, name) != NULL);
 
   content_type = gabble_jingle_factory_lookup_content_type (
       priv->conn->jingle_factory, content_ns);
@@ -1937,6 +1997,9 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
 
   c = create_content (sess, content_type, mtype,
       content_ns, transport_ns, name, NULL, NULL);
+
+  /* The new content better have ended up in the set we thought it would... */
+  g_assert (g_hash_table_lookup (contents, name) != NULL);
 
   g_free (name);
 
@@ -1982,7 +2045,9 @@ GList *
 gabble_jingle_session_get_contents (GabbleJingleSession *sess)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
-  return g_hash_table_get_values (priv->contents);
+
+  return g_list_concat (g_hash_table_get_values (priv->initiator_contents),
+      g_hash_table_get_values (priv->responder_contents));
 }
 
 const gchar *

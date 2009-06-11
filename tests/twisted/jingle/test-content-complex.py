@@ -203,7 +203,14 @@ def worker(jp, q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StreamRemoved'),
         )
 
-    # Remote end finally accepts
+    # Remote end finally accepts. When Gabble did not namespace contents by
+    # their creator, it would NAK this IQ:
+    #  - Gabble (responder) created a stream called 'foo';
+    #  - test suite (initiator) created a stream called 'foo', which Gabble
+    #    decided would replace its own stream called 'foo';
+    #  - test suite removed its 'foo';
+    #  - test suite accepted Gabble's 'foo', but Gabble didn't believe a stream
+    #    called 'foo' existed any more.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-accept', [
             jp.Content(d['name'], d['creator'], d['senders'], [

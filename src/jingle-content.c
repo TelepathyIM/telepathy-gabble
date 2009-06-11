@@ -1027,6 +1027,12 @@ gabble_jingle_content_get_name (GabbleJingleContent *self)
 }
 
 const gchar *
+gabble_jingle_content_get_ns (GabbleJingleContent *self)
+{
+  return self->priv->content_ns;
+}
+
+const gchar *
 gabble_jingle_content_get_disposition (GabbleJingleContent *self)
 {
   return self->priv->disposition;

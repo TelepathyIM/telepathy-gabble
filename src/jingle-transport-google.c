@@ -393,15 +393,13 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
     }
   else
     {
-      const gchar *cname, *cns;
-
-      g_object_get (GABBLE_JINGLE_CONTENT (priv->content),
-          "name", &cname, "content-ns", &cns, NULL);
+      const gchar *name = gabble_jingle_content_get_name (priv->content);
+      const gchar *ns = gabble_jingle_content_get_ns (priv->content);
 
       /* we need the <content> ... */
       trans_node = lm_message_node_add_child (sess_node, "content", NULL);
-      lm_message_node_set_attribute (trans_node, "xmlns", cns);
-      lm_message_node_set_attribute (trans_node, "name", cname);
+      lm_message_node_set_attribute (trans_node, "xmlns", ns);
+      lm_message_node_set_attribute (trans_node, "name", name);
 
       /* .. and the <transport> node */
       trans_node = lm_message_node_add_child (trans_node, "transport", NULL);

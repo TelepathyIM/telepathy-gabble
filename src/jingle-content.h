@@ -122,6 +122,7 @@ gboolean gabble_jingle_content_is_created_by_us (GabbleJingleContent *c);
 gboolean gabble_jingle_content_creator_is_initiator (GabbleJingleContent *c);
 
 const gchar *gabble_jingle_content_get_name (GabbleJingleContent *self);
+const gchar *gabble_jingle_content_get_ns (GabbleJingleContent *self);
 const gchar *gabble_jingle_content_get_disposition (GabbleJingleContent *self);
 
 void gabble_jingle_content_maybe_send_description (GabbleJingleContent *self);

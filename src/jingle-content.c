@@ -1025,3 +1025,9 @@ gabble_jingle_content_get_name (GabbleJingleContent *self)
 {
   return self->priv->name;
 }
+
+const gchar *
+gabble_jingle_content_get_disposition (GabbleJingleContent *self)
+{
+  return self->priv->disposition;
+}

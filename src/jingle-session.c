@@ -1550,17 +1550,11 @@ _map_initial_contents (GabbleJingleSession *sess, ContentMapperFunc mapper,
 
   for (li = contents; li; li = li->next)
     {
-      gchar *disposition;
       GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (li->data);
-
-      g_object_get (c, "disposition", &disposition, NULL);
+      const gchar *disposition = gabble_jingle_content_get_disposition (c);
 
       if (!tp_strdiff (disposition, "session"))
-        {
-          mapper (sess, c, user_data);
-        }
-
-      g_free (disposition);
+        mapper (sess, c, user_data);
     }
 
   g_list_free (contents);
@@ -2070,7 +2064,10 @@ content_ready_cb (GabbleJingleContent *c, gpointer user_data)
 
   DEBUG ("called");
 
-  g_object_get (c, "disposition", &disposition, NULL);
+  disposition = gabble_jingle_content_get_disposition (c);
+  /* This assertion is actually safe, because 'ready' is only emitted by
+   * contents with disposition "session". But this is crazy.
+   */
   g_assert (!tp_strdiff (disposition, "session"));
 
   try_session_initiate_or_accept (sess);

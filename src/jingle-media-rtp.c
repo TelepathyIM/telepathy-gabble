@@ -244,8 +244,7 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
   param_spec = g_param_spec_uint ("media-type", "RTP media type",
       "Media type.",
       JINGLE_MEDIA_TYPE_NONE, G_MAXUINT32, JINGLE_MEDIA_TYPE_NONE,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
   param_spec = g_param_spec_boolean ("remote-mute", "Remote mute",

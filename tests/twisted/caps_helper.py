@@ -45,6 +45,15 @@ ft_allowed_properties = dbus.Array([
     cs.CHANNEL_TYPE_FILE_TRANSFER + '.Description',
     cs.CHANNEL_TYPE_FILE_TRANSFER + '.Date'])
 
+fake_client_dataforms = {
+    'urn:xmpp:dataforms:softwareinfo':
+    {'software': ['A Fake Client with Twisted'],
+        'software_version': ['5.11.2-svn-20080512'],
+        'os': ['Debian GNU/Linux unstable (sid) unstable sid'],
+        'os_version': ['2.6.24-1-amd64'],
+    },
+}
+
 def compute_caps_hash(identities, features, dataforms):
     """
     Accepts a list of slash-separated identities, a list of feature namespaces,
@@ -75,7 +84,7 @@ def compute_caps_hash(identities, features, dataforms):
     m.update('<'.join(components))
     return base64.b64encode(m.digest())
 
-def make_caps_disco_reply(stream, req, features):
+def make_caps_disco_reply(stream, req, features, dataforms={}):
     iq = make_result_iq(stream, req)
     query = iq.firstChildElement()
 
@@ -83,6 +92,22 @@ def make_caps_disco_reply(stream, req, features):
         el = domish.Element((None, 'feature'))
         el['var'] = f
         query.addChild(el)
+
+    for type, fields in dataforms.iteritems():
+        x = query.addElement((ns.X_DATA, 'x'))
+        x['type'] = 'result'
+
+        field = x.addElement('field')
+        field['var'] = 'FORM_TYPE'
+        field['type'] = 'hidden'
+        field.addElement('value', content=type)
+
+        for var, values in fields.iteritems():
+            field = x.addElement('field')
+            field['var'] = var
+
+            for value in values:
+                field.addElement('value', content=value)
 
     return iq
 

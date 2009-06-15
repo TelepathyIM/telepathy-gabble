@@ -89,12 +89,12 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
     caps_changed_flag = False
 
+
     # send bogus presence
     presence = make_presence(contact, status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = 'KyuUmfhC34jP1sDjs489RjkJfsg=' # good hash
-    c['ver'] = 'X' + c['ver'] # now the hash is broken
+    c['ver'] = 'ceci=nest=pas=une=hash'
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -114,7 +114,9 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # don't receive any D-Bus signal
     sync_dbus(bus, q, conn)
+    sync_stream(q, stream)
     assert caps_changed_flag == False
+
 
     # send presence with empty caps
     presence = make_presence(contact, status='hello')

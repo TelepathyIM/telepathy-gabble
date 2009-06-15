@@ -46,18 +46,33 @@ ft_allowed_properties = dbus.Array([
     cs.CHANNEL_TYPE_FILE_TRANSFER + '.Date'])
 
 def compute_caps_hash(identities, features, dataforms):
-    S = ''
+    """
+    Accepts a list of slash-separated identities, a list of feature namespaces,
+    and a map from FORM_TYPE to (map from field name to values), returns the
+    verification string as defined by
+    <http://xmpp.org/extensions/xep-0115.html#ver>.
+    """
+    components = []
 
     for identity in sorted(identities):
-        S += '%s<' % identity
+        components.append(identity)
 
     for feature in sorted(features):
-        S += '%s<' % feature
+        components.append(feature)
 
-    # FIXME: support dataforms
+    for form_type in sorted(dataforms.keys()):
+        components.append(form_type)
+
+        for var in sorted(dataforms[form_type].keys()):
+            components.append(var)
+
+            for value in sorted(dataforms[form_type][var]):
+                components.append(value)
+
+    components.append('')
 
     m = hashlib.sha1()
-    m.update(S)
+    m.update('<'.join(components))
     return base64.b64encode(m.digest())
 
 def make_caps_disco_reply(stream, req, features):
@@ -109,7 +124,7 @@ def receive_presence_and_ask_caps(q, stream):
         features.append(feature['var'])
 
     # Check if the hash matches the announced capabilities
-    assert ver == compute_caps_hash(['client/pc//%s' % PACKAGE_STRING], features, [])
+    assert ver == compute_caps_hash(['client/pc//%s' % PACKAGE_STRING], features, {})
 
     return (event, caps_str, signaled_caps)
 
@@ -132,4 +147,4 @@ if __name__ == '__main__':
         ["http://jabber.org/protocol/disco#info",
         "http://jabber.org/protocol/disco#items",
         "http://jabber.org/protocol/muc", "http://jabber.org/protocol/caps"],
-        []) == 'QgayPKawpkPSDYmwT/WM94uAlu0='
+        {}) == 'QgayPKawpkPSDYmwT/WM94uAlu0='

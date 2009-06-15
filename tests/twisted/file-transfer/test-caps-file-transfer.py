@@ -22,7 +22,7 @@ def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, cli
     presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
-    c['ver'] = compute_caps_hash([], [], [])
+    c['ver'] = compute_caps_hash([], [], {})
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -60,7 +60,7 @@ def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, cli
     presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
-    c['ver'] = compute_caps_hash([], [ns.FILE_TRANSFER], [])
+    c['ver'] = compute_caps_hash([], [ns.FILE_TRANSFER], {})
     c['hash'] = 'sha-1'
     stream.send(presence)
 

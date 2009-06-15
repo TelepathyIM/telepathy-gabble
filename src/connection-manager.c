@@ -90,6 +90,7 @@ struct _GabbleParams {
   gboolean ignore_ssl_errors;
   gchar *alias;
   GStrv fallback_socks5_proxies;
+  guint keepalive_interval;
 };
 
 enum {
@@ -113,6 +114,8 @@ enum {
     JABBER_PARAM_IGNORE_SSL_ERRORS,
     JABBER_PARAM_ALIAS,
     JABBER_PARAM_FALLBACK_SOCKS5_PROXIES,
+    JABBER_PARAM_KEEPALIVE_INTERVAL,
+
     LAST_JABBER_PARAM
 };
 
@@ -211,6 +214,10 @@ static TpCMParamSpec jabber_params[] = {
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, NULL,
     G_STRUCT_OFFSET (GabbleParams, fallback_socks5_proxies),
     NULL, NULL },
+
+  { "keepalive-interval", "u", G_TYPE_UINT,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GUINT_TO_POINTER (30),
+    G_STRUCT_OFFSET (GabbleParams, keepalive_interval), NULL, NULL },
 
   { NULL, NULL, 0, 0, NULL, 0 }
 };
@@ -317,6 +324,8 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
   SET_PROPERTY_IF_PARAM_SET ("alias", JABBER_PARAM_ALIAS, params->alias);
   SET_PROPERTY_IF_PARAM_SET ("fallback-socks5-proxies",
       JABBER_PARAM_FALLBACK_SOCKS5_PROXIES, params->fallback_socks5_proxies);
+  SET_PROPERTY_IF_PARAM_SET ("keepalive-interval",
+      JABBER_PARAM_KEEPALIVE_INTERVAL, params->keepalive_interval);
 
   /* split up account into username, stream-server and resource */
   if (!_gabble_connection_set_properties_from_account (conn, params->account,

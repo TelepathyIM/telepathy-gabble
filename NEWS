@@ -7,6 +7,10 @@ Enhancements:
 
 * Implement o.fd.Tp.Debug interface.
 
+* Added a "keepalive-interval" connection parameter (signature 'u'), allowing
+  the time between keepalive pings to the server to be configured (or disabled,
+  by specifying 0).
+
 Fixes:
 
 * fd.o #21966: Gabble no longer crashes if you use the Hold interface before a

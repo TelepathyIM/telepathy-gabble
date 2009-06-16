@@ -21,8 +21,8 @@ def presence_add_caps(presence, ver, client, hash=None):
         c['hash'] = hash
     return presence
 
-def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, disco):
-
+def _test_without_hash(q, bus, conn, stream, contact, client, disco):
+    contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
     presence = make_presence(contact, status='hello')
     stream.send(presence)
 
@@ -63,8 +63,8 @@ def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, di
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
 
-def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco):
-
+def _test_with_hash(q, bus, conn, stream, contact, client, disco):
+    contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
     presence = make_presence(contact, status='hello')
     stream.send(presence)
 
@@ -117,28 +117,28 @@ def test(q, bus, conn, stream):
 
     client = 'http://telepathy.freedesktop.org/fake-client'
 
-    _test_without_hash(q, bus, conn, stream, 'bob1@foo.com/Foo', 2L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob1@foo.com/Foo', client,
         True)
-    _test_without_hash(q, bus, conn, stream, 'bob2@foo.com/Foo', 3L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob2@foo.com/Foo', client,
         True)
-    _test_without_hash(q, bus, conn, stream, 'bob3@foo.com/Foo', 4L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob3@foo.com/Foo', client,
         True)
-    _test_without_hash(q, bus, conn, stream, 'bob4@foo.com/Foo', 5L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob4@foo.com/Foo', client,
         True)
-    _test_without_hash(q, bus, conn, stream, 'bob5@foo.com/Foo', 6L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob5@foo.com/Foo', client,
         True)
     # we have 5 different contacts that confirm
-    _test_without_hash(q, bus, conn, stream, 'bob6@foo.com/Foo', 7L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob6@foo.com/Foo', client,
         False)
-    _test_without_hash(q, bus, conn, stream, 'bob7@foo.com/Foo', 8L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob7@foo.com/Foo', client,
         False)
 
-    _test_with_hash(q, bus, conn, stream, 'bilbo1@foo.com/Foo', 9L, client,
+    _test_with_hash(q, bus, conn, stream, 'bilbo1@foo.com/Foo', client,
         True)
     # 1 contact is enough with hash
-    _test_with_hash(q, bus, conn, stream, 'bilbo2@foo.com/Foo', 10L, client,
+    _test_with_hash(q, bus, conn, stream, 'bilbo2@foo.com/Foo', client,
         False)
-    _test_with_hash(q, bus, conn, stream, 'bilbo3@foo.com/Foo', 11L, client,
+    _test_with_hash(q, bus, conn, stream, 'bilbo3@foo.com/Foo', client,
         False)
 
     conn.Disconnect()

@@ -840,7 +840,10 @@ redisco (GabblePresenceCache *cache,
   gchar *full_jid;
 
   waiter_jid = tp_handle_inspect (waiter->repo, waiter->handle);
-  full_jid = g_strdup_printf ("%s/%s", waiter_jid, waiter->resource);
+  if (waiter->resource != NULL)
+    full_jid = g_strdup_printf ("%s/%s", waiter_jid, waiter->resource);
+  else
+    full_jid = g_strdup (waiter_jid);
 
   gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
       node, _caps_disco_cb, cache, G_OBJECT (cache), NULL);

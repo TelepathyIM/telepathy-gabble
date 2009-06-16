@@ -206,6 +206,18 @@ gabble_presence_set_capabilities (GabblePresence *presence,
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
 
+  if (resource == NULL && priv->resources != NULL)
+    {
+      /* This is consistent with the handling of presence: if we get presence
+       * from a bare JID, we throw away all the resources, and if we get
+       * presence from a resource, any presence we stored from a bare JID is
+       * overridden by the aggregated presence.
+       */
+      DEBUG ("Ignoring caps for NULL resource since we have presence for "
+        "some resources");
+      return;
+    }
+
   presence->caps = 0;
   if (presence->per_channel_manager_caps != NULL)
     {
@@ -214,6 +226,15 @@ gabble_presence_set_capabilities (GabblePresence *presence,
       presence->per_channel_manager_caps = NULL;
     }
   presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
+
+  if (resource == NULL)
+    {
+      DEBUG ("adding caps %u to bare jid", caps);
+      presence->caps = caps;
+      gabble_presence_cache_update_cache_entry (
+          presence->per_channel_manager_caps, per_channel_manager_caps);
+      return;
+    }
 
   DEBUG ("about to add caps %u to resource %s with serial %u", caps, resource,
     serial);

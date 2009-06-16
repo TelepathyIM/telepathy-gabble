@@ -1565,7 +1565,10 @@ gabble_presence_cache_do_update (
 
   jid = tp_handle_inspect (contact_repo, handle);
   DEBUG ("%s (%d) resource %s prio %d presence %d message \"%s\"",
-      jid, handle, resource, priority, presence_id, status_message);
+      jid, handle,
+      resource == NULL ? "<null>" : resource,
+      priority, presence_id,
+      status_message == NULL ? "<null>" : status_message);
 
   presence = gabble_presence_cache_get (cache, handle);
 

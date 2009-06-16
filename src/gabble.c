@@ -59,7 +59,8 @@ simple_log (const gchar *log_domain,
 
   /* G_LOG_DOMAIN = "gabble". No need to send gabble messages to the debugger
    * as they already have in gabble_debug. */
-  if (tp_strdiff (log_domain, G_LOG_DOMAIN))
+  if (log_level != G_LOG_LEVEL_DEBUG
+      || tp_strdiff (log_domain, G_LOG_DOMAIN))
     {
       GTimeVal now;
       g_get_current_time (&now);
@@ -86,7 +87,8 @@ stamp_log (const gchar *log_domain,
   g_free (tmp);
 
   /* Gabble messages are already sent to the debugger in gabble_debug. */
-  if (tp_strdiff (log_domain, G_LOG_DOMAIN))
+  if (log_level != G_LOG_LEVEL_DEBUG
+      || tp_strdiff (log_domain, G_LOG_DOMAIN))
     log_to_debugger (&now, log_domain, log_level, message);
 }
 #endif

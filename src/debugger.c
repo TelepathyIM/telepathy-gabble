@@ -58,7 +58,8 @@ log_level_flags_to_debug_level (GLogLevelFlags level)
   else if (level & G_LOG_LEVEL_DEBUG)
     return GABBLE_DEBUG_LEVEL_DEBUG;
   else
-    g_assert_not_reached ();
+    /* Fall back to DEBUG if all else fails */
+    return GABBLE_DEBUG_LEVEL_DEBUG;
 }
 
 static GabbleDebugMessage *

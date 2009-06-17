@@ -989,6 +989,23 @@ OUT:
   return result;
 }
 
+/**
+ * gabble_connection_get_full_jid:
+ *
+ * Returns: the full jid (including resource) of this connection, which must be
+ *          freed by the caller.
+ */
+gchar *
+gabble_connection_get_full_jid (GabbleConnection *conn)
+{
+  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandle self = tp_base_connection_get_self_handle (base);
+  const gchar *bare_jid = tp_handle_inspect (contact_handles, self);
+
+  return g_strconcat (bare_jid, "/", conn->priv->resource, NULL);
+}
 
 /**
  * _gabble_connection_send

@@ -225,6 +225,8 @@ GType gabble_connection_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, \
                               GabbleConnectionClass))
 
+gchar *gabble_connection_get_full_jid (GabbleConnection *conn);
+
 gboolean _gabble_connection_set_properties_from_account (
     GabbleConnection *conn, const gchar *account, GError **error);
 gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg,

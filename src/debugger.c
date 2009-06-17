@@ -45,30 +45,21 @@ enum
 static GabbleDebugLevel
 log_level_flags_to_debug_level (GLogLevelFlags level)
 {
-  switch (level)
-    {
-    case G_LOG_LEVEL_ERROR:
-      return GABBLE_DEBUG_LEVEL_ERROR;
-      break;
-    case G_LOG_LEVEL_CRITICAL:
-      return GABBLE_DEBUG_LEVEL_CRITICAL;
-      break;
-    case G_LOG_LEVEL_WARNING:
-      return GABBLE_DEBUG_LEVEL_WARNING;
-      break;
-    case G_LOG_LEVEL_MESSAGE:
-      return GABBLE_DEBUG_LEVEL_MESSAGE;
-      break;
-    case G_LOG_LEVEL_INFO:
-      return GABBLE_DEBUG_LEVEL_INFO;
-      break;
-    case G_LOG_LEVEL_DEBUG:
-      return GABBLE_DEBUG_LEVEL_DEBUG;
-      break;
-    default:
-      g_assert_not_reached ();
-      break;
-    }
+  if (level & G_LOG_LEVEL_ERROR)
+    return GABBLE_DEBUG_LEVEL_ERROR;
+  else if (level & G_LOG_LEVEL_CRITICAL)
+    return GABBLE_DEBUG_LEVEL_CRITICAL;
+  else if (level & G_LOG_LEVEL_WARNING)
+    return GABBLE_DEBUG_LEVEL_WARNING;
+  else if (level & G_LOG_LEVEL_MESSAGE)
+    return GABBLE_DEBUG_LEVEL_MESSAGE;
+  else if (level & G_LOG_LEVEL_INFO)
+    return GABBLE_DEBUG_LEVEL_INFO;
+  else if (level & G_LOG_LEVEL_DEBUG)
+    return GABBLE_DEBUG_LEVEL_DEBUG;
+  else
+    /* Fall back to DEBUG if all else fails */
+    return GABBLE_DEBUG_LEVEL_DEBUG;
 }
 
 static GabbleDebugMessage *

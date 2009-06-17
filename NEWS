@@ -31,6 +31,13 @@ Fixes:
 * fd.o #18951: Gabble no longer sends <gone/> to contacts it hasn't previously
   sent typing notifications or messages to.
 
+* fd.o #22209: Gabble no longer confuses Jingle sessions which have the same
+  session ID but are to different contacts.
+
+* fd.o #20763: Gabble now correctly namespaces Jingle contents by their
+  creator, rather than (buggily) attempting to make the initiator's content
+  win.
+
 telepathy-gabble 0.7.28 (2009-06-01)
 ====================================
 

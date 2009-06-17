@@ -3,7 +3,9 @@ Test everything related to contents
 """
 
 from gabbletest import sync_stream
-from servicetest import make_channel_proxy, tp_path_prefix, assertEquals
+from servicetest import (
+    make_channel_proxy, tp_path_prefix, assertEquals, EventPattern,
+    )
 import constants as cs
 from jingletest2 import (
     JingleTest2, JingleProtocol015, JingleProtocol031, test_dialects)
@@ -122,7 +124,7 @@ def worker(jp, q, bus, conn, stream):
         q.expect('stream-iq', iq_type='error')
 
 
-    # Remote end then tries to create content which we already have
+    # Remote end then tries to create a content with a name it's already used
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
             jp.Content('stream1', 'initiator', 'both', [
@@ -135,6 +137,7 @@ def worker(jp, q, bus, conn, stream):
     # Gabble should return error (content already exists)
     q.expect('stream-iq', iq_type='error')
 
+    # We try to add a stream
     (stream_handler2, id2) = make_stream_request(cs.MEDIA_STREAM_TYPE_VIDEO)
 
     # Gabble should now send content-add
@@ -147,8 +150,20 @@ def worker(jp, q, bus, conn, stream):
 
     stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
 
+    # We try to add yet another stream
+    (stream_handler3, id3) = make_stream_request(cs.MEDIA_STREAM_TYPE_VIDEO)
 
-    # Remote end rejects it
+    # Gabble should send another content-add
+    e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
+        xpath.queryForNodes("/iq/jingle[@action='content-add']",
+            x.stanza))
+
+    d = e.query.firstChildElement()
+    assertEquals('responder', d['creator'])
+
+    stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
+
+    # Remote end rejects the first stream we tried to add.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-reject', [
             jp.Content(c['name'], c['creator'], c['senders'], []) ]) ])
@@ -158,21 +173,47 @@ def worker(jp, q, bus, conn, stream):
     q.expect('dbus-signal', signal='StreamRemoved',
         interface=cs.CHANNEL_TYPE_STREAMED_MEDIA)
 
+    # Remote end tries to add a content with the same name as the second one we
+    # just added
+    node = jp.SetIq(jt2.peer, jt2.jid, [
+        jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
+            jp.Content(d['name'], 'initiator', 'both', [
+                jp.Description('audio', [
+                    jp.PayloadType(name, str(rate), str(id)) for
+                        (name, id, rate) in jt2.audio_codecs ]),
+            jp.TransportGoogleP2P() ]) ]) ])
+    stream.send(jp.xml(node))
 
-    # We try to make the request again, and succeed
-    (stream_handler3, id3) = make_stream_request(cs.MEDIA_STREAM_TYPE_VIDEO)
+    # Because stream names are namespaced by creator, Gabble should be okay
+    # with that.
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+        EventPattern('dbus-signal', signal='StreamAdded'),
+        )
 
-    # Gabble should again send content-add
-    e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
-        xpath.queryForNodes("/iq/jingle[@action='content-add']",
-            x.stanza))
-    stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
-    c = e.query.firstChildElement()
+    # Remote end thinks better of that, and removes the similarly-named stream
+    # it tried to add.
+    node = jp.SetIq(jt2.peer, jt2.jid, [
+        jp.Jingle(jt2.sid, jt2.peer, 'content-remove', [
+            jp.Content(d['name'], 'initiator', d['senders'], []) ]) ])
+    stream.send(jp.xml(node))
 
-    # Remote end finally accepts
+    q.expect_many(
+        EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
+        EventPattern('dbus-signal', signal='StreamRemoved'),
+        )
+
+    # Remote end finally accepts. When Gabble did not namespace contents by
+    # their creator, it would NAK this IQ:
+    #  - Gabble (responder) created a stream called 'foo';
+    #  - test suite (initiator) created a stream called 'foo', which Gabble
+    #    decided would replace its own stream called 'foo';
+    #  - test suite removed its 'foo';
+    #  - test suite accepted Gabble's 'foo', but Gabble didn't believe a stream
+    #    called 'foo' existed any more.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-accept', [
-            jp.Content(c['name'], c['creator'], c['senders'], [
+            jp.Content(d['name'], d['creator'], d['senders'], [
                 jp.Description('video', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),

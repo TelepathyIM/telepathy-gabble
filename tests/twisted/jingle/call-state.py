@@ -256,7 +256,8 @@ def test(jp, q, bus, conn, stream):
     # FIXME: hardcoded stream id
     node = jp.SetIq(jt.peer, jt.jid, [
         jp.Jingle(jt.sid, jt.jid, 'session-info', [
-            ('mute', ns.JINGLE_RTP_INFO_1, {'name': 'stream1'}, []) ]) ])
+            ('mute', ns.JINGLE_RTP_INFO_1,
+             {'name': 'stream1', 'creator': 'initiator'}, []) ]) ])
     stream.send(jp.xml(node))
 
     forbidden = [

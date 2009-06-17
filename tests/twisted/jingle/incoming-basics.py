@@ -139,6 +139,10 @@ def test(jp, q, bus, conn, stream):
     e = q.expect('stream-iq', predicate=jp.action_predicate('transport-info'))
     assertEquals('foo@bar.com/Foo', e.query['initiator'])
 
+    if jp.dialect in ['jingle-v0.15', 'jingle-v0.31']:
+        content = xpath.queryForNodes('/iq/jingle/content', e.stanza)[0]
+        assertEquals('initiator', content['creator'])
+
     stream.send(make_result_iq(stream, e.stanza))
 
     # At last, accept the call

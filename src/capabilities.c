@@ -21,6 +21,7 @@
 #include "config.h"
 #include "capabilities.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #include <telepathy-glib/interfaces.h>
@@ -99,6 +100,46 @@ capabilities_get_features (GabblePresenceCapabilities caps,
   return features;
 }
 
+static gboolean
+omits_content_creators (LmMessageNode *identity)
+{
+  const gchar *name, *suffix;
+  gchar *end;
+  int ver;
+
+  if (tp_strdiff (identity->name, "identity"))
+    return FALSE;
+
+  name = lm_message_node_get_attribute (identity, "name");
+
+  if (name == NULL)
+    return FALSE;
+
+#define PREFIX "Telepathy Gabble 0.7."
+
+  if (!g_str_has_prefix (name, PREFIX))
+    return FALSE;
+
+  suffix = name + strlen (PREFIX);
+  ver = strtol (suffix, &end, 10);
+
+  if (*end != '\0')
+    return FALSE;
+
+  /* Gabble versions since 0.7.16 did not send the creator='' attribute for
+   * contents. The bug is fixed in 0.7.29.
+   */
+  if (ver >= 16 && ver < 29)
+    {
+      DEBUG ("contact is using '%s' which omits 'creator'", name);
+      return TRUE;
+    }
+  else
+    {
+      return FALSE;
+    }
+}
+
 GabblePresenceCapabilities
 capabilities_parse (LmMessageNode *query_result)
 {
@@ -110,7 +151,12 @@ capabilities_parse (LmMessageNode *query_result)
   for (child = query_result->children; NULL != child; child = child->next)
     {
       if (0 != strcmp (child->name, "feature"))
-        continue;
+        {
+          if (omits_content_creators (child))
+            ret |= PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR;
+
+          continue;
+        }
 
       var = lm_message_node_get_attribute (child, "var");
 

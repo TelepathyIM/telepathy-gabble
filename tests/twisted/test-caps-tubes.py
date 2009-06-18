@@ -80,7 +80,7 @@ def receive_caps(q, conn, stream, contact, contact_handle, features,
     c['node'] = client
     c['ver'] = compute_caps_hash([],
         features if features is not None else [],
-        [])
+        {})
     c['hash'] = 'sha-1'
     stream.send(presence)
 

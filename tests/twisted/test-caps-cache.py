@@ -9,6 +9,9 @@ from twisted.words.xish import xpath
 from servicetest import EventPattern
 from gabbletest import exec_test, make_result_iq, make_presence
 import constants as cs
+from caps_helper import (
+    compute_caps_hash, make_caps_disco_reply, fake_client_dataforms,
+    )
 
 def presence_add_caps(presence, ver, client, hash=None):
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
@@ -18,8 +21,8 @@ def presence_add_caps(presence, ver, client, hash=None):
         c['hash'] = hash
     return presence
 
-def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, disco):
-
+def _test_without_hash(q, bus, conn, stream, contact, client, disco):
+    contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
     presence = make_presence(contact, status='hello')
     stream.send(presence)
 
@@ -50,21 +53,18 @@ def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, di
             client + '#' + '0.1'
 
         # send good reply
-        result = make_result_iq(stream, event.stanza)
-        query = result.firstChildElement()
-        feature = query.addElement('feature')
-        feature['var'] = 'http://jabber.org/protocol/jingle'
-        feature = query.addElement('feature')
-        feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
-        feature = query.addElement('feature')
-        feature['var'] = 'http://www.google.com/transport/p2p'
+        result = make_caps_disco_reply(stream, event.stanza,
+            ['http://jabber.org/protocol/jingle',
+             'http://jabber.org/protocol/jingle/description/audio',
+             'http://www.google.com/transport/p2p',
+            ])
         stream.send(result)
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
 
-def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco):
-
+def _test_with_hash(q, bus, conn, stream, contact, client, disco):
+    contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
     presence = make_presence(contact, status='hello')
     stream.send(presence)
 
@@ -80,11 +80,17 @@ def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco
     basic_caps = [(contact_handle, cs.CHANNEL_TYPE_TEXT, 3, 0)]
     assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
 
+    features = [
+        'http://jabber.org/protocol/jingle',
+        'http://jabber.org/protocol/jingle/description/audio',
+        'http://www.google.com/transport/p2p',
+        ]
+
     # send updated presence with Jingle caps info
     presence = make_presence(contact, status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = 'CzO+nkbflbxu1pgzOQSIi8gOyDc=' # good hash
+    c['ver'] = compute_caps_hash([], features, fake_client_dataforms)
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -97,34 +103,8 @@ def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco
             client + '#' + c['ver']
 
         # send good reply
-        result = make_result_iq(stream, event.stanza)
-        query = result.firstChildElement()
-        query['node'] = client + '#' + c['ver']
-        feature = query.addElement('feature')
-        feature['var'] = 'http://jabber.org/protocol/jingle'
-        feature = query.addElement('feature')
-        feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
-        feature = query.addElement('feature')
-        feature['var'] = 'http://www.google.com/transport/p2p'
-        query.addRawXml("""
-<x type='result' xmlns='jabber:x:data'>
-<field var='FORM_TYPE' type='hidden'>
-<value>urn:xmpp:dataforms:softwareinfo</value>
-</field>
-<field var='software'>
-<value>A Fake Client with Twisted</value>
-</field>
-<field var='software_version'>
-<value>5.11.2-svn-20080512</value>
-</field>
-<field var='os'>
-<value>Debian GNU/Linux unstable (sid) unstable sid</value>
-</field>
-<field var='os_version'>
-<value>2.6.24-1-amd64</value>
-</field>
-</x>
-        """)
+        result = make_caps_disco_reply(stream, event.stanza, features,
+            fake_client_dataforms)
         stream.send(result)
 
     # we can now do audio calls
@@ -137,28 +117,28 @@ def test(q, bus, conn, stream):
 
     client = 'http://telepathy.freedesktop.org/fake-client'
 
-    _test_without_hash(q, bus, conn, stream, 'bob1@foo.com/Foo', 2L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob1@foo.com/Foo', client,
         True)
-    _test_without_hash(q, bus, conn, stream, 'bob2@foo.com/Foo', 3L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob2@foo.com/Foo', client,
         True)
-    _test_without_hash(q, bus, conn, stream, 'bob3@foo.com/Foo', 4L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob3@foo.com/Foo', client,
         True)
-    _test_without_hash(q, bus, conn, stream, 'bob4@foo.com/Foo', 5L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob4@foo.com/Foo', client,
         True)
-    _test_without_hash(q, bus, conn, stream, 'bob5@foo.com/Foo', 6L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob5@foo.com/Foo', client,
         True)
     # we have 5 different contacts that confirm
-    _test_without_hash(q, bus, conn, stream, 'bob6@foo.com/Foo', 7L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob6@foo.com/Foo', client,
         False)
-    _test_without_hash(q, bus, conn, stream, 'bob7@foo.com/Foo', 8L, client,
+    _test_without_hash(q, bus, conn, stream, 'bob7@foo.com/Foo', client,
         False)
 
-    _test_with_hash(q, bus, conn, stream, 'bilbo1@foo.com/Foo', 9L, client,
+    _test_with_hash(q, bus, conn, stream, 'bilbo1@foo.com/Foo', client,
         True)
     # 1 contact is enough with hash
-    _test_with_hash(q, bus, conn, stream, 'bilbo2@foo.com/Foo', 10L, client,
+    _test_with_hash(q, bus, conn, stream, 'bilbo2@foo.com/Foo', client,
         False)
-    _test_with_hash(q, bus, conn, stream, 'bilbo3@foo.com/Foo', 11L, client,
+    _test_with_hash(q, bus, conn, stream, 'bilbo3@foo.com/Foo', client,
         False)
 
     conn.Disconnect()

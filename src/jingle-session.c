@@ -2003,7 +2003,8 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
       g_free (name);
       name = g_strdup_printf ("stream%d", id++);
     }
-  while (g_hash_table_lookup (contents, name) != NULL);
+  while (g_hash_table_lookup (priv->initiator_contents, name) != NULL
+      && g_hash_table_lookup (priv->responder_contents, name) != NULL);
 
   content_type = gabble_jingle_factory_lookup_content_type (
       priv->conn->jingle_factory, content_ns);

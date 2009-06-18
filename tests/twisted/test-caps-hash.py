@@ -93,7 +93,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     presence = make_presence(contact, status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = 'ceci=nest=pas=une=hash'
+    c['ver'] = 'ceci=nest=pas=un=hash'
     c['hash'] = 'sha-1'
     stream.send(presence)
 

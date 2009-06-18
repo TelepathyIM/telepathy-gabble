@@ -1,10 +1,11 @@
+# vim: set fileencoding=utf-8 :
 import hashlib
 import base64
 import dbus
 
 from twisted.words.xish import domish, xpath
 from gabbletest import make_result_iq
-from servicetest import EventPattern
+from servicetest import EventPattern, assertEquals
 
 from config import PACKAGE_STRING
 import ns
@@ -81,7 +82,8 @@ def compute_caps_hash(identities, features, dataforms):
     components.append('')
 
     m = hashlib.sha1()
-    m.update('<'.join(components))
+    S = u'<'.join(components)
+    m.update(S.encode('utf-8'))
     return base64.b64encode(m.digest())
 
 def make_caps_disco_reply(stream, req, features, dataforms={}):
@@ -173,3 +175,23 @@ if __name__ == '__main__':
         "http://jabber.org/protocol/disco#items",
         "http://jabber.org/protocol/muc", "http://jabber.org/protocol/caps"],
         {}) == 'QgayPKawpkPSDYmwT/WM94uAlu0='
+
+    # another example from XEP-0115
+    identities = [u'client/pc/en/Psi 0.11', u'client/pc/el/Ψ 0.11']
+    features = [
+        u'http://jabber.org/protocol/caps',
+        u'http://jabber.org/protocol/disco#info',
+        u'http://jabber.org/protocol/disco#items',
+        u'http://jabber.org/protocol/muc',
+        ]
+    dataforms = {
+        u'urn:xmpp:dataforms:softwareinfo':
+            { u'ip_version': [u'ipv4', u'ipv6'],
+              u'os': [u'Mac'],
+              u'os_version': [u'10.5.1'],
+              u'software': [u'Psi'],
+              u'software_version': [u'0.11'],
+            },
+        }
+    assertEquals('q07IKJEyjvHSyhy//CH0CxmKi8w=',
+        compute_caps_hash(identities, features, dataforms))

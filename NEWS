@@ -38,6 +38,10 @@ Fixes:
   creator, rather than (buggily) attempting to make the initiator's content
   win.
 
+* fd.o #22326: Gabble now correctly handles presence stanzas for bare JIDs that
+  contain capabilities, rather than ignoring them or (in really unlikely cases)
+  crashing.
+
 telepathy-gabble 0.7.28 (2009-06-01)
 ====================================
 

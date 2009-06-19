@@ -158,6 +158,11 @@ check-twisted:
 
 config.py: Makefile
 	echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\"" > config.py
+	if test -n ''$(ENABLE_DEBUG); then \
+		echo "DEBUGGING = True" >> config.py; \
+	else \
+		echo "DEBUGGING = False" >> config.py; \
+	fi
 
 BUILT_SOURCES = config.py
 

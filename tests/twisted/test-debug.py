@@ -7,6 +7,11 @@ import dbus
 
 from gabbletest import exec_test
 import constants as cs
+from config import DEBUGGING
+
+if not DEBUGGING:
+    print " --   Not testing debugger, built with --disable-debug"
+    raise SystemExit(77)
 
 path = '/org/freedesktop/Telepathy/debug'
 iface = 'org.freedesktop.Telepathy.Debug.DRAFT'

@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <glib-object.h>
+
 #include "src/base64.h"
 
 struct test {
@@ -45,6 +47,8 @@ main (void)
   gchar *s;
   GString *tmp1, *tmp2;
   struct test *t;
+
+  g_type_init ();
 
   for (t = tests; t->str != NULL; t++)
     {

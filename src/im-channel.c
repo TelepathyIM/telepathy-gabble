@@ -535,7 +535,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   base_conn = (TpBaseConnection *) priv->conn;
 
   /* update peer's full JID if it's changed */
-  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR &&
+  if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR &&
       0 != strcmp (from, priv->peer_jid))
     {
       g_free (priv->peer_jid);

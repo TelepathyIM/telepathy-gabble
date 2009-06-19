@@ -27,7 +27,7 @@ def test(q, bus, conn, stream):
     debug_iface.connect_to_signal('NewDebugMessage', new_message)
     props_iface = dbus.Interface(debug, cs.PROPERTIES_IFACE)
 
-    assert len(debug.GetMessages()) > 0
+    assert len(debug_iface.GetMessages()) > 0
 
     # Turn signalling on and generate some messages.
 

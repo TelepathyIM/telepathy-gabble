@@ -7,6 +7,7 @@ from twisted.words.xish import domish
 from servicetest import wrap_channel
 from gabbletest import exec_test
 import constants as cs
+import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -54,7 +55,24 @@ def test(q, bus, conn, stream):
 
     # Gabble should have updated the resource it's sending to.
     chan.Text.Send(0, "don't get sand in the keyboard")
-    q.expect('stream-message', to=contact_b)
+    e = q.expect('stream-message', to=contact_b)
+
+    # But actually that resource has gone offline:
+    m = e.stanza
+    m['from'] = contact_b
+    m['type'] = 'error'
+    del m['to']
+
+    err = m.addElement((None, 'error'))
+    err['type'] = 'cancel'
+    err.addElement((ns.STANZA, 'item-not-found'))
+
+    stream.send(m)
+    q.expect('dbus-signal', signal='SendError')
+
+    # So as a result, Gabble should send the next message to the bare JID.
+    chan.Text.Send(0, "... i guess my warning was too late")
+    q.expect('stream-message', to=contact)
 
 if __name__ == '__main__':
     exec_test(test)

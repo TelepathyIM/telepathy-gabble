@@ -597,6 +597,13 @@ lookup_content (GabbleJingleSession *sess,
        * We try to detect contacts using such a version of Gabble from their
        * caps; if 'creator' is missing and the peer has that caps flag, we look
        * up the content in both hashes.
+       *
+       * While this doesn't deal with the case where the content is found in
+       * both hashes, this isn't a problem in practice: the versions of Gabble
+       * we're working around didn't allow this to happen (they'd either reject
+       * the second stream, or let it replace the first, depending on the phase
+       * of the moon, and get kind of confused in the process), and we try to
+       * pick globally-unique content names.
        */
       GabblePresence *presence = gabble_presence_cache_get (
           priv->conn->presence_cache, sess->peer);
@@ -605,7 +612,7 @@ lookup_content (GabbleJingleSession *sess,
           gabble_presence_resource_has_caps (presence, priv->peer_resource,
               PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR))
         {
-          DEBUG ("working around missing 'creator'");
+          DEBUG ("working around missing 'creator' attribute");
 
           *c = g_hash_table_lookup (priv->initiator_contents, name);
 

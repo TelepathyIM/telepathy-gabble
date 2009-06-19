@@ -348,6 +348,7 @@ gabble_connection_init (GabbleConnection *self)
   self->lmconn = lm_connection_new (NULL);
 
   priv->caps_serial = 1;
+  priv->port = 5222;
 }
 
 static void
@@ -664,7 +665,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       g_param_spec_uint (
           "port", "Jabber server port",
           "The port used when establishing a connection.",
-          0, G_MAXUINT16, 0,
+          0, G_MAXUINT16, 5222,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (object_class, PROP_OLD_SSL,
@@ -1339,8 +1340,16 @@ _gabble_connection_connect (TpBaseConnection *base,
   lm_connection_set_jid (conn->lmconn, jid);
   g_free (jid);
 
-  /* override server and port if either was provided */
-  if (priv->connect_server != NULL || priv->port != 0)
+  /* If the UI explicitly specified a port or a server, pass them to Loudmouth
+   * rather than letting it do an SRV lookup.
+   *
+   * If the port is 5222 (the default) then unless the UI also specified a
+   * server or old-style SSL, we ignore it and do an SRV lookup anyway. This
+   * means that UIs that blindly pass the default back to Gabble work
+   * correctly. If the user really did mean 5222, then when the SRV lookup
+   * fails we fall back to that anyway.
+   */
+  if (priv->port != 5222 || priv->connect_server != NULL || priv->old_ssl)
     {
       gchar *server;
 
@@ -1349,13 +1358,11 @@ _gabble_connection_connect (TpBaseConnection *base,
       else
         server = priv->stream_server;
 
-      DEBUG ("disabling SRV because \"server\" or \"port\" parameter "
-          "specified, will connect to %s", server);
+      DEBUG ("disabling SRV because \"server\" or \"old-ssl\" was specified "
+          "or port was not 5222, will connect to %s", server);
 
       lm_connection_set_server (conn->lmconn, server);
-
-      if (priv->port != 0)
-        lm_connection_set_port (conn->lmconn, priv->port);
+      lm_connection_set_port (conn->lmconn, priv->port);
     }
   else
     {

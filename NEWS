@@ -10,6 +10,10 @@ Enhancements:
   We're aware of an issue where sometimes the Google client never sends us
   video; we're investigating it, and hopefully it'll be resolved soon.
 
+* The default port is now 5222, rather than unset. If you specify port=5222 and
+  don't specify a server or old-ssl, Gabble will make an SRV lookup anyway:
+  this is kinder to UIs that want to show the default XMPP port as 5222.
+
 Fixes:
 
 * fd.o #22369: Gabble now replies to the XMPP resource that's sending you

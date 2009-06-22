@@ -1,5 +1,6 @@
 TWISTED_TESTS = \
 	avatar-requirements.py \
+	caps/from-bare-jid.py \
 	muc/name-conflict.py \
 	muc/renamed.py \
 	muc/roomlist.py \
@@ -111,6 +112,7 @@ TWISTED_TESTS = \
 	test-caps-cache.py \
 	test-caps-hash.py \
 	test-caps-tubes.py \
+	test-debug.py \
 	caps_helper.py \
 	connect/multiple-times-to-same-account.py \
 	connect/test-fail.py \
@@ -156,6 +158,11 @@ check-twisted:
 
 config.py: Makefile
 	echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\"" > config.py
+	if test -n ''$(ENABLE_DEBUG); then \
+		echo "DEBUGGING = True" >> config.py; \
+	else \
+		echo "DEBUGGING = False" >> config.py; \
+	fi
 
 BUILT_SOURCES = config.py
 

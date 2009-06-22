@@ -1,17 +1,82 @@
-telepathy-gabble 0.7.28 (UNRELEASED)
+telepathy-gabble 0.7.30 (UNRELEASED)
 ====================================
 
 Dependencies:
 
 Enhancements:
 
+Fixes:
+
+telepathy-gabble 0.7.29 (2009-06-19)
+====================================
+
+The “dancing in the shadows of bad modern art” release.
+
+Enhancements:
+
+* Implement o.fd.Tp.Debug interface.
+
+* Added a "keepalive-interval" connection parameter (signature 'u'), allowing
+  the time between keepalive pings to the server to be configured (or disabled,
+  by specifying 0).
+
+Fixes:
+
+* fd.o #21966: Gabble no longer crashes if you use the Hold interface before a
+  call starts. You can put a call on hold even before it's initiated. You can
+  also put an incoming, unanswered call on hold, but you have to unhold it
+  before accepting the call.
+
+* The above also fixes (in passing) a reported issue where calls are signalled
+  as having been put on hold just before they terminate.
+
+* fd.o #20807: Gabble no longer crashes on unknown Jingle actions.
+
+* fd.o #16886: You can now leave MUCs with a part message by calling
+  RemoveMembers([self_handle], "this room is boring"). Gabble now complies with
+  telepathy-spec 0.17.21's requirement that you can always remove yourself from
+  a group if you're in it, fixing fd.o #20728.
+
+* fd.o #18951: Gabble no longer sends <gone/> to contacts it hasn't previously
+  sent typing notifications or messages to.
+
+* fd.o #22209: Gabble no longer confuses Jingle sessions which have the same
+  session ID but are to different contacts.
+
+* fd.o #20763: Gabble now correctly namespaces Jingle contents by their
+  creator, rather than (buggily) attempting to make the initiator's content
+  win.
+
+* fd.o #22326: Gabble now correctly handles presence stanzas for bare JIDs that
+  contain capabilities, rather than ignoring them or (in really unlikely cases)
+  crashing.
+
+telepathy-gabble 0.7.28 (2009-06-01)
+====================================
+
+The "npc1 becomes vampire/communist" release.
+
+Dependencies:
+
+* telepathy-glib >= 0.7.31 is now required as Gabble implements the
+  new tube API.
+
+Enhancements:
+
 * Implement the Credentials access control with UNIX sockets in stream tubes.
+
 * Implement the Port access control with Inet4 and Inet6 sockets in stream
   tubes.
-* Implement latest tube spec DRAFT. The NewConnection signal has been renamed
-  to NewRemoteConnection and now have a Connection_ID argument.
-  The StreamTube channel type now implements the NewLocalConnection and
-  ConnectionClosed signals.
+
+* Implement the final, stable new API for tubes. The NewConnection signal has
+  been renamed to NewRemoteConnection and now has a Connection_ID argument.  The
+  StreamTube channel type now implements the NewLocalConnection and
+  ConnectionClosed signals.  DBusTube.{Offer,Accept} now have an access_control
+  argument; Gabble implements Credentials and Localhost.
+
+* In StreamTube, UNIX sockets created with the Localhost access control are
+  usable by any user of the system.
+
 * When no resource is explicitly specified, Gabble will now use a randomized
   resource ("Telepathy.[random numbers]") rather than just "Telepathy". This
   helps users who don't know anything about XMPP to be able to connect from

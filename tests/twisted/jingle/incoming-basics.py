@@ -6,7 +6,9 @@ import dbus
 
 from gabbletest import make_result_iq
 from servicetest import (
-    make_channel_proxy, unwrap, tp_path_prefix, EventPattern)
+    make_channel_proxy, unwrap, tp_path_prefix, EventPattern,
+    assertEquals, assertLength
+    )
 from jingletest2 import JingleTest2, test_all_dialects
 import constants as cs
 
@@ -22,10 +24,31 @@ def test(jp, q, bus, conn, stream):
     # Remote end calls us
     jt.incoming_call()
 
+    # If this is a Jingle dialect that supports it, Gabble should send a
+    # <ringing/> notification when it gets the session-initiate until Telepathy
+    # has a way for the UI to do this.
+    # https://bugs.freedesktop.org/show_bug.cgi?id=21964
+    ringing_event = jp.rtp_info_event_list("ringing")
+
+    if jp.dialect == 'gtalk-v0.4':
+        # With gtalk4, apparently we have to send transport-accept immediately,
+        # not even just before we send our transport-info.
+        # FIXME: wjt thinks this is suspicious. It matches the Gabble
+        #        implementation, so he moved it here to avoid the test being
+        #        racy, but we should do some more interop testing.
+        ta_event = [
+            EventPattern('stream-iq', predicate=lambda x:
+                xpath.queryForNodes("/iq/session[@type='transport-accept']",
+                    x.stanza)),
+            ]
+    else:
+        ta_event = []
+
     nc, e = q.expect_many(
         EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewSessionHandler'),
-        )
+        *(ringing_event + ta_event)
+        )[0:2]
     path, ct, ht, h, _ = nc.args
 
     assert ct == cs.CHANNEL_TYPE_STREAMED_MEDIA, ct
@@ -40,30 +63,21 @@ def test(jp, q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    es = [ EventPattern('dbus-signal', signal='NewStreamHandler'),
-           EventPattern('dbus-signal', signal='StreamDirectionChanged'),
-         ]
-    if jp.dialect == 'gtalk-v0.4':
-        # With gtalk4, apparently we have to send transport-accept immediately,
-        # not even just before we send our transport-info.
-        # FIXME: wjt thinks this is suspicious. It matches the Gabble
-        #        implementation, so he moved it here to avoid the test being
-        #        racy, but we should do some more interop testing.
-        _, e2, e3 = q.expect_many(
-            EventPattern('stream-iq', predicate=lambda x:
-                xpath.queryForNodes("/iq/session[@type='transport-accept']",
-                    x.stanza)),
-            *es
-            )
-    else:
-        e2, e3 = q.expect_many(*es)
+    nsh_event = q.expect('dbus-signal', signal='NewStreamHandler')
 
     # S-E gets notified about a newly-created stream
-    stream_handler = make_channel_proxy(conn, e2.args[0], 'Media.StreamHandler')
+    stream_handler = make_channel_proxy(conn, nsh_event.args[0],
+        'Media.StreamHandler')
 
-    stream_id = e3.args[0]
-    assert e3.args[1] == cs.MEDIA_STREAM_DIRECTION_RECEIVE
-    assert e3.args[2] == cs.MEDIA_STREAM_PENDING_LOCAL_SEND
+    streams = media_iface.ListStreams()
+    assertLength(1, streams)
+
+    stream_id, stream_handle, stream_type, _, stream_direction, pending_flags =\
+        streams[0]
+    assertEquals(remote_handle, stream_handle)
+    assertEquals(cs.MEDIA_STREAM_TYPE_AUDIO, stream_type)
+    assertEquals(cs.MEDIA_STREAM_DIRECTION_RECEIVE, stream_direction)
+    assertEquals(cs.MEDIA_STREAM_PENDING_LOCAL_SEND, pending_flags)
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(
@@ -122,9 +136,12 @@ def test(jp, q, bus, conn, stream):
     stream_handler.SupportedCodecs(jt.get_audio_codecs_dbus())
 
     # peer gets the transport
-    e = q.expect('stream-iq')
-    assert jp.match_jingle_action(e.query, 'transport-info')
-    assert e.query['initiator'] == 'foo@bar.com/Foo'
+    e = q.expect('stream-iq', predicate=jp.action_predicate('transport-info'))
+    assertEquals('foo@bar.com/Foo', e.query['initiator'])
+
+    if jp.dialect in ['jingle-v0.15', 'jingle-v0.31']:
+        content = xpath.queryForNodes('/iq/jingle/content', e.stanza)[0]
+        assertEquals('initiator', content['creator'])
 
     stream.send(make_result_iq(stream, e.stanza))
 
@@ -137,13 +154,22 @@ def test(jp, q, bus, conn, stream):
         EventPattern('dbus-signal', signal='MembersChanged',
             args=[u'', [self_handle], [], [], [], self_handle,
                   cs.GC_REASON_NONE]),
-        EventPattern('stream-iq', iq_type='set', predicate=lambda e:
-            jp.match_jingle_action(e.query, 'session-accept')),
+        EventPattern('stream-iq',
+            predicate=jp.action_predicate('session-accept')),
         EventPattern('dbus-signal', signal='SetStreamSending', args=[True]),
         EventPattern('dbus-signal', signal='SetStreamPlaying', args=[True]),
         EventPattern('dbus-signal', signal='StreamDirectionChanged',
             args=[stream_id, cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL, 0]),
         )
+
+    stream.send(make_result_iq(stream, acc.stanza))
+
+    # Also, if this is a Jingle dialect that supports it, Gabble should send an
+    # <active/> notification when the session-accept is acked (until the
+    # Telepathy spec lets the UI say it's not ringing any more).
+    active_event = jp.rtp_info_event("active")
+    if active_event is not None:
+        q.expect_many(active_event)
 
     # we are now both in members
     members = media_chan.GetMembers()

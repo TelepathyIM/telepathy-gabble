@@ -38,6 +38,7 @@
  */
 #include "jingle-media-rtp.h"
 #include "namespaces.h"
+#include "presence-cache.h"
 #include "util.h"
 
 G_DEFINE_TYPE(GabbleJingleSession, gabble_jingle_session, G_TYPE_OBJECT);
@@ -63,6 +64,7 @@ enum
   PROP_LOCAL_INITIATOR,
   PROP_STATE,
   PROP_DIALECT,
+  PROP_LOCAL_HOLD,
   PROP_REMOTE_HOLD,
   PROP_REMOTE_RINGING,
   LAST_PROPERTY
@@ -79,7 +81,8 @@ struct _GabbleJingleSessionPrivate
 
   /* GabbleJingleContent objects keyed by content name.
    * Table owns references to these objects. */
-  GHashTable *contents;
+  GHashTable *initiator_contents;
+  GHashTable *responder_contents;
 
   JingleDialect dialect;
   JingleState state;
@@ -87,6 +90,8 @@ struct _GabbleJingleSessionPrivate
 
   gboolean locally_accepted;
   gboolean locally_terminated;
+
+  gboolean local_hold;
 
   gboolean remote_hold;
   gboolean remote_ringing;
@@ -137,6 +142,8 @@ static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = 
   { JINGLE_ACTION_UNKNOWN }
 };
 
+static void gabble_jingle_session_send_held (GabbleJingleSession *sess);
+
 static void
 gabble_jingle_session_init (GabbleJingleSession *obj)
 {
@@ -145,7 +152,9 @@ gabble_jingle_session_init (GabbleJingleSession *obj)
          GabbleJingleSessionPrivate);
   obj->priv = priv;
 
-  priv->contents = g_hash_table_new_full (g_str_hash, g_str_equal,
+  priv->initiator_contents = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, g_object_unref);
+  priv->responder_contents = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_object_unref);
 
   priv->state = JS_STATE_PENDING_CREATED;
@@ -173,14 +182,14 @@ gabble_jingle_session_dispose (GObject *object)
       (priv->state == JS_STATE_ENDED));
   g_assert (priv->timer_id == 0);
 
-  g_hash_table_destroy (priv->contents);
-  priv->contents = NULL;
+  g_hash_table_destroy (priv->initiator_contents);
+  priv->initiator_contents = NULL;
 
-  if (sess->peer)
-    {
-      tp_handle_unref (contact_repo, sess->peer);
-      sess->peer = 0;
-    }
+  g_hash_table_destroy (priv->responder_contents);
+  priv->responder_contents = NULL;
+
+  tp_handle_unref (contact_repo, sess->peer);
+  sess->peer = 0;
 
   g_free (priv->sid);
   priv->sid = NULL;
@@ -229,6 +238,9 @@ gabble_jingle_session_get_property (GObject *object,
     case PROP_DIALECT:
       g_value_set_uint (value, priv->dialect);
       break;
+    case PROP_LOCAL_HOLD:
+      g_value_set_boolean (value, priv->local_hold);
+      break;
     case PROP_REMOTE_HOLD:
       g_value_set_boolean (value, priv->remote_hold);
       break;
@@ -267,18 +279,30 @@ gabble_jingle_session_set_property (GObject *object,
       break;
     case PROP_PEER:
       sess->peer = g_value_get_uint (value);
-      if (sess->peer != 0)
-        {
-          TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-          tp_handle_ref (contact_repo, sess->peer);
-        }
+      /* priv->conn might not yet be set, so we'll ref this in constructed */
       break;
     case PROP_PEER_RESOURCE:
       g_free (priv->peer_resource);
       priv->peer_resource = g_value_dup_string (value);
       break;
+    case PROP_LOCAL_HOLD:
+      {
+        gboolean local_hold = g_value_get_boolean (value);
+
+        if (priv->local_hold != local_hold)
+          {
+            priv->local_hold = local_hold;
+
+            if (priv->state >= JS_STATE_PENDING_INITIATED &&
+                priv->state < JS_STATE_ENDED)
+              gabble_jingle_session_send_held (sess);
+
+            /* else, we'll send this in set_state when we move to PENDING_INITIATED or
+             * better.
+             */
+          }
+        break;
+      }
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       g_assert_not_reached ();
@@ -286,12 +310,48 @@ gabble_jingle_session_set_property (GObject *object,
   }
 }
 
+static void
+gabble_jingle_session_constructed (GObject *object)
+{
+  void (*chain_up) (GObject *) =
+      G_OBJECT_CLASS (gabble_jingle_session_parent_class)->constructed;
+  GabbleJingleSession *self = GABBLE_JINGLE_SESSION (object);
+  GabbleJingleSessionPrivate *priv = self->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  if (chain_up != NULL)
+    chain_up (object);
+
+  g_assert (priv->conn != NULL);
+  g_assert (self->peer != 0);
+  g_assert (priv->peer_resource != NULL);
+  g_assert (priv->sid != NULL);
+
+  tp_handle_ref (contact_repo, self->peer);
+
+  /* It's a tad silly that, for incoming calls, the caller of
+   * gabble_jingle_session_new() has just deconstructed the jid into a handle
+   * and a resource, only for us to stitch it back together here. Perhaps there
+   * should be two variants: one taking handle + resource, and another taking a
+   * full JID; the other fields could be filled in here.
+   */
+  priv->peer_jid = g_strdup_printf ("%s/%s",
+      tp_handle_inspect (contact_repo, self->peer), priv->peer_resource);
+
+  if (priv->local_initiator)
+    priv->initiator = gabble_connection_get_full_jid (priv->conn);
+  else
+    priv->initiator = g_strdup (priv->peer_jid);
+}
+
 GabbleJingleSession *
 gabble_jingle_session_new (GabbleConnection *connection,
                            const gchar *session_id,
                            gboolean local_initiator,
                            TpHandle peer,
-                           const gchar *peer_resource)
+                           const gchar *peer_resource,
+                           gboolean local_hold)
 {
   return g_object_new (GABBLE_TYPE_JINGLE_SESSION,
       "session-id", session_id,
@@ -299,6 +359,7 @@ gabble_jingle_session_new (GabbleConnection *connection,
       "local-initiator", local_initiator,
       "peer", peer,
       "peer-resource", peer_resource,
+      "local-hold", local_hold,
       NULL);
 }
 
@@ -310,77 +371,59 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 
   g_type_class_add_private (cls, sizeof (GabbleJingleSessionPrivate));
 
+  object_class->constructed = gabble_jingle_session_constructed;
   object_class->get_property = gabble_jingle_session_get_property;
   object_class->set_property = gabble_jingle_session_set_property;
   object_class->dispose = gabble_jingle_session_dispose;
 
   /* property definitions */
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object used for exchanging "
-                                    "messages.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Gabble connection object used for exchanging messages.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_string ("session-id", "Session ID",
-                                    "A unique session identifier used "
-                                    "throughout all communication.",
-                                    NULL,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "A unique session identifier used throughout all communication.",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SESSION_ID, param_spec);
 
   param_spec = g_param_spec_boolean ("local-initiator", "Session initiator",
-                                     "Specifies if local end initiated the session.",
-                                     TRUE,
-                                     G_PARAM_CONSTRUCT_ONLY |
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
+      "Specifies if local end initiated the session.",
+      TRUE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_LOCAL_INITIATOR, param_spec);
 
   param_spec = g_param_spec_uint ("peer", "Session peer",
-                                  "The TpHandle representing the contact "
-                                  "with whom this session communicates.",
-                                  0, G_MAXUINT32, 0,
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "The TpHandle representing the other party in the session.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
-  param_spec = g_param_spec_string ("peer-resource",
-                                    "Session peer's resource",
-                                    "The resource of the contact "
-                                    "with whom this session communicates, "
-                                    "if applicable",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+  param_spec = g_param_spec_string ("peer-resource", "Session peer's resource",
+      "The resource of the contact with whom this session communicates.",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
-                                   param_spec);
+      param_spec);
 
   param_spec = g_param_spec_uint ("state", "Session state",
-                                  "The current state that the session is in.",
-                                  0, G_MAXUINT32, JS_STATE_PENDING_CREATED,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "The current state that the session is in.",
+      0, G_MAXUINT32, JS_STATE_PENDING_CREATED,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
   param_spec = g_param_spec_uint ("dialect", "Jingle dialect",
-                                  "Jingle dialect used for this session.",
-                                  0, G_MAXUINT32, JINGLE_DIALECT_ERROR,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "Jingle dialect used for this session.",
+      0, G_MAXUINT32, JINGLE_DIALECT_ERROR,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DIALECT, param_spec);
+
+  param_spec = g_param_spec_boolean ("local-hold", "Local hold",
+      "TRUE if we've placed the peer on hold", FALSE,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_LOCAL_HOLD, param_spec);
 
   param_spec = g_param_spec_boolean ("remote-hold", "Remote hold",
       "TRUE if the peer has placed us on hold", FALSE,
@@ -464,6 +507,8 @@ produce_action (JingleAction action, JingleDialect dialect)
   gboolean gmode = (dialect == JINGLE_DIALECT_GTALK3) ||
       (dialect == JINGLE_DIALECT_GTALK4);
 
+  g_return_val_if_fail (action != JINGLE_ACTION_UNKNOWN, NULL);
+
   switch (action) {
     case JINGLE_ACTION_SESSION_INITIATE:
       return (gmode) ? "initiate" : "session-initiate";
@@ -493,12 +538,10 @@ produce_action (JingleAction action, JingleDialect dialect)
     case JINGLE_ACTION_DESCRIPTION_INFO:
       return "description-info";
     default:
+      /* only reached if g_return_val_if_fail is disabled */
       DEBUG ("unknown action %u", action);
-      g_assert_not_reached ();
-  }
-
-  /* to make gcc not complain */
-  return NULL;
+      return NULL;
+    }
 }
 
 static gboolean
@@ -515,6 +558,8 @@ action_is_allowed (JingleAction action, JingleState state)
   return FALSE;
 }
 
+static void gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
+    const gchar *name);
 static void set_state (GabbleJingleSession *sess, JingleState state,
     TpChannelGroupChangeReason termination_reason);
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
@@ -523,14 +568,90 @@ static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 #define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
 #define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
 
+static gboolean
+lookup_content (GabbleJingleSession *sess,
+    const gchar *name,
+    const gchar *creator,
+    gboolean fail_if_missing,
+    GabbleJingleContent **c,
+    GError **error)
+{
+  GabbleJingleSessionPrivate *priv = sess->priv;
+
+  if (name == NULL)
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "'name' attribute unset");
+      return FALSE;
+    }
+
+  if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
+    {
+      /* Only the initiator can create contents on GTalk. */
+      *c = g_hash_table_lookup (priv->initiator_contents, name);
+    }
+  else
+    {
+      /* Versions of Gabble between 0.7.16 and 0.7.28 (inclusive) omitted the
+       * 'creator' attribute from transport-info (and possibly other) stanzas.
+       * We try to detect contacts using such a version of Gabble from their
+       * caps; if 'creator' is missing and the peer has that caps flag, we look
+       * up the content in both hashes.
+       *
+       * While this doesn't deal with the case where the content is found in
+       * both hashes, this isn't a problem in practice: the versions of Gabble
+       * we're working around didn't allow this to happen (they'd either reject
+       * the second stream, or let it replace the first, depending on the phase
+       * of the moon, and get kind of confused in the process), and we try to
+       * pick globally-unique content names.
+       */
+      GabblePresence *presence = gabble_presence_cache_get (
+          priv->conn->presence_cache, sess->peer);
+
+      if (creator == NULL && presence != NULL &&
+          gabble_presence_resource_has_caps (presence, priv->peer_resource,
+              PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR))
+        {
+          DEBUG ("working around missing 'creator' attribute");
+
+          *c = g_hash_table_lookup (priv->initiator_contents, name);
+
+          if (*c == NULL)
+            *c = g_hash_table_lookup (priv->responder_contents, name);
+        }
+      else if (!tp_strdiff (creator, "initiator"))
+        {
+          *c = g_hash_table_lookup (priv->initiator_contents, name);
+        }
+      else if (!tp_strdiff (creator, "responder"))
+        {
+          *c = g_hash_table_lookup (priv->responder_contents, name);
+        }
+      else
+        {
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+              "'creator' attribute %s",
+              (creator == NULL ? "missing" : "invalid"));
+          return FALSE;
+        }
+    }
+
+  if (fail_if_missing && *c == NULL)
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "Content '%s' (created by %s) does not exist", name, creator);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 static void
 _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
   ContentHandlerFunc func, GError **error)
 {
-  GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c;
   LmMessageNode *content_node;
-  const gchar *name;
 
   for (content_node = node->children;
        NULL != content_node;
@@ -539,8 +660,11 @@ _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
       if (tp_strdiff (lm_message_node_get_name (content_node), "content"))
         continue;
 
-      name = lm_message_node_get_attribute (content_node, "name");
-      c = g_hash_table_lookup (priv->contents, name);
+      if (!lookup_content (sess,
+              lm_message_node_get_attribute (content_node, "name"),
+              lm_message_node_get_attribute (content_node, "creator"),
+              FALSE /* fail_if_missing */, &c, error))
+        return;
 
       func (sess, c, content_node, error);
       if (*error != NULL)
@@ -607,6 +731,7 @@ create_content (GabbleJingleSession *sess, GType content_type,
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c;
+  GHashTable *contents;
 
   DEBUG ("session creating new content type, conn == %p, jf == %p", priv->conn, priv->conn->jingle_factory);
 
@@ -642,11 +767,26 @@ create_content (GabbleJingleSession *sess, GType content_type,
 
       /* gtalk streams don't have name, so use whatever Content came up with */
       if (name == NULL)
-          g_object_get (c, "name", &name, NULL);
+        name = gabble_jingle_content_get_name (c);
     }
 
-  /* This will override existing content if it exists. */
-  g_hash_table_replace (priv->contents, g_strdup (name), c);
+  if (priv->local_initiator == gabble_jingle_content_is_created_by_us (c))
+    {
+      DEBUG ("inserting content %s into initiator_contents", name);
+      contents = priv->initiator_contents;
+    }
+  else
+    {
+      DEBUG ("inserting content %s into responder_contents", name);
+      contents = priv->responder_contents;
+    }
+
+  /* If the content already existed, either we shouldn't have picked the name
+   * we did (if we're creating it) or _each_content_add should have already
+   * said no.
+   */
+  g_assert (g_hash_table_lookup (contents, name) == NULL);
+  g_hash_table_insert (contents, g_strdup (name), c);
   g_signal_emit (sess, signals[NEW_CONTENT], 0, c);
   return c;
 }
@@ -691,26 +831,9 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 
   if (c != NULL)
     {
-      JingleContentState state;
-
-      /* contents added by the session initiator may replace similarly-named
-       * contents which we are trying to add (but haven't had acknowledged) */
-
-      g_object_get (c, "state", &state, NULL);
-      if (state < JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        {
-          if (priv->local_initiator)
-            {
-              SET_CONFLICT ("session initiator is creating a content "
-                  "named \"%s\" already", name);
-              return;
-            }
-        }
-      else
-        {
-          SET_CONFLICT ("content called \"%s\" already exists, rejecting", name);
-          return;
-        }
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "content called \"%s\" already exists, rejecting", name);
+      return;
     }
 
   create_content (sess, content_type, JINGLE_MEDIA_TYPE_NONE,
@@ -820,9 +943,9 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
 
   if ((priv->dialect == JINGLE_DIALECT_GTALK3))
     {
-       const gchar *content_ns = NULL;
-       LmMessageNode *desc_node =
-          lm_message_node_get_child_any_ns (node, "description");
+      const gchar *content_ns = NULL;
+      LmMessageNode *desc_node =
+        lm_message_node_get_child_any_ns (node, "description");
       content_ns = lm_message_node_get_namespace (desc_node);
 
       if (!tp_strdiff (content_ns, NS_GOOGLE_SESSION_VIDEO))
@@ -847,7 +970,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
           _each_content_add (sess, NULL, node, error);
         }
     }
-   else if (priv->dialect == JINGLE_DIALECT_GTALK4)
+  else if (priv->dialect == JINGLE_DIALECT_GTALK4)
     {
       /* in this case we implicitly have just one content */
       _each_content_add (sess, NULL, node, error);
@@ -864,6 +987,8 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
        * in XEP-0166. */
 
       set_state (sess, JS_STATE_PENDING_INITIATED, 0);
+
+      gabble_jingle_session_send_rtp_info (sess, "ringing");
     }
 }
 
@@ -936,27 +1061,40 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
       return;
 
   set_state (sess, JS_STATE_ACTIVE, 0);
+
+  if (priv->dialect != JINGLE_DIALECT_V032)
+    {
+      /* If this is a dialect that doesn't support <active/>, we treat
+       * session-accept as the cue to remove the ringing flag.
+       */
+      priv->remote_ringing = FALSE;
+      g_signal_emit (sess, signals[REMOTE_STATE_CHANGED], 0);
+    }
+}
+
+static void
+mute_all_foreach (gpointer key,
+    gpointer value,
+    gpointer mute)
+{
+  if (G_OBJECT_TYPE (value) == GABBLE_TYPE_JINGLE_MEDIA_RTP)
+    g_object_set (value, "remote-mute", GPOINTER_TO_INT (mute), NULL);
 }
 
 static void
 mute_all (GabbleJingleSession *sess,
     gboolean mute)
 {
-  GHashTableIter iter;
-  gpointer value;
-
-  g_hash_table_iter_init (&iter, sess->priv->contents);
-
-  while (g_hash_table_iter_next (&iter, NULL, &value))
-    {
-      if (G_OBJECT_TYPE (value) == GABBLE_TYPE_JINGLE_MEDIA_RTP)
-        g_object_set (value, "remote-mute", mute, NULL);
-    }
+  g_hash_table_foreach (sess->priv->initiator_contents, mute_all_foreach,
+      GINT_TO_POINTER (mute));
+  g_hash_table_foreach (sess->priv->responder_contents, mute_all_foreach,
+      GINT_TO_POINTER (mute));
 }
 
 static gboolean
 set_mute (GabbleJingleSession *sess,
     const gchar *name,
+    const gchar *creator,
     gboolean mute,
     GError **error)
 {
@@ -968,14 +1106,9 @@ set_mute (GabbleJingleSession *sess,
       return TRUE;
     }
 
-  c = g_hash_table_lookup (sess->priv->contents, name);
-
-  if (c == NULL)
-    {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
-          "content '%s' does not exist", name);
-      return FALSE;
-    }
+  if (!lookup_content (sess, name, creator, TRUE /* fail if missing */, &c,
+      error))
+    return FALSE;
 
   if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
@@ -1010,7 +1143,8 @@ handle_payload (GabbleJingleSession *sess,
 {
   const gchar *ns = lm_message_node_get_namespace (payload);
   const gchar *elt = lm_message_node_get_name (payload);
-  const gchar *name_attr = lm_message_node_get_attribute (payload, "name");
+  const gchar *name = lm_message_node_get_attribute (payload, "name");
+  const gchar *creator = lm_message_node_get_attribute (payload, "creator");
 
   if (tp_strdiff (ns, NS_JINGLE_RTP_INFO))
     {
@@ -1044,11 +1178,11 @@ handle_payload (GabbleJingleSession *sess,
    */
   else if (!tp_strdiff (elt, "mute"))
     {
-      return set_mute (sess, name_attr, TRUE, error);
+      return set_mute (sess, name, creator, TRUE, error);
     }
   else if (!tp_strdiff (elt, "unmute"))
     {
-      return set_mute (sess, name_attr, FALSE, error);
+      return set_mute (sess, name, creator, FALSE, error);
     }
   else
     {
@@ -1101,7 +1235,7 @@ on_session_info (GabbleJingleSession *sess,
    */
   if (understood_a_payload)
     g_signal_emit (sess, signals[REMOTE_STATE_CHANGED], 0);
-  else
+  else if (!hit_an_error)
     g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
         "no recognized session-info payloads");
 }
@@ -1195,7 +1329,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
             }
         }
 
-        g_hash_table_iter_init (&iter, priv->contents);
+        g_hash_table_iter_init (&iter, priv->initiator_contents);
         while (g_hash_table_iter_next (&iter, NULL, (gpointer) &c))
           {
             gabble_jingle_content_parse_transport_info (c, node, error);
@@ -1205,17 +1339,13 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
     }
   else
     {
-      const gchar *name;
-
       node = lm_message_node_get_child_any_ns (node, "content");
-      name = lm_message_node_get_attribute (node, "name");
-      c = g_hash_table_lookup (priv->contents, name);
 
-      if (c == NULL)
-        {
-          SET_BAD_REQ ("content doesn't exist");
-          return;
-        }
+      if (!lookup_content (sess,
+              lm_message_node_get_attribute (node, "name"),
+              lm_message_node_get_attribute (node, "creator"),
+              TRUE /* fail_if_missing */, &c, error))
+        return;
 
       /* we need transport child of content node */
       node = lm_message_node_get_child_any_ns (node, "transport");
@@ -1362,13 +1492,18 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   TpHandleRepoIface *contact_repo;
   GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessageNode *iq_node, *session_node;
-  const gchar *from, *resource;
-  const gchar *initiator;
+  const gchar *from;
 
   iq_node = lm_message_get_node (message);
 
   /* IQ from/to can come in handy */
   from = lm_message_node_get_attribute (iq_node, "from");
+
+  if (action == JINGLE_ACTION_UNKNOWN)
+    {
+      SET_BAD_REQ ("unknown session action");
+      return FALSE;
+    }
 
   DEBUG ("jingle action '%s' from '%s' in session '%s' dialect %u state %u",
       produce_action (action, priv->dialect), from, priv->sid,
@@ -1399,27 +1534,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
       return FALSE;
     }
 
-  if (action == JINGLE_ACTION_UNKNOWN)
-    {
-      SET_BAD_REQ ("unknown session action");
-      return FALSE;
-    }
-
-  initiator = lm_message_node_get_attribute (session_node, "initiator");
-  if (initiator == NULL)
-    {
-      SET_BAD_REQ ("session initiator not found");
-      return FALSE;
-    }
-
-  resource = strchr (from, '/');
-  if (resource == NULL || *resource == '\0')
-    {
-      SET_BAD_REQ ("sender with no resource");
-      return FALSE;
-    }
-  resource++;
-
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
@@ -1430,65 +1544,12 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
       return FALSE;
     }
 
-  /* if we just created the session, fill in the data */
-  if (priv->state == JS_STATE_PENDING_CREATED)
-    {
-      sess->peer = tp_handle_ensure (contact_repo, from, NULL, NULL);
-
-      if (sess->peer == 0)
-        {
-          SET_BAD_REQ ("unable to get sender handle");
-          return FALSE;
-        }
-
-      priv->peer_resource = g_strdup (resource);
-      priv->peer_jid = g_strdup (from);
-      priv->initiator = g_strdup (initiator);
-    }
-
   jingle_state_machine_dance (sess, action, session_node, error);
 
   if (*error != NULL)
     return FALSE;
 
   return TRUE;
-}
-
-static gchar *
-get_jid_for_contact (GabbleJingleSession *session,
-                     TpHandle handle)
-{
-  GabbleJingleSessionPrivate *priv;
-  TpBaseConnection *conn;
-  const gchar *base_jid;
-  TpHandle self;
-  TpHandleRepoIface *contact_handles;
-
-  g_assert (GABBLE_IS_JINGLE_SESSION (session));
-
-  priv = session->priv;
-  conn = (TpBaseConnection *) priv->conn;
-  contact_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
-  self = conn->self_handle;
-
-  base_jid = tp_handle_inspect (contact_handles, handle);
-  g_assert (base_jid != NULL);
-
-  if (handle == self)
-    {
-      gchar *resource, *ret;
-      g_object_get (priv->conn, "resource", &resource, NULL);
-      g_assert (resource != NULL);
-      ret = g_strdup_printf ("%s/%s", base_jid, resource);
-      g_free (resource);
-      return ret;
-    }
-  else
-    {
-      g_assert (priv->peer_resource != NULL);
-      return g_strdup_printf ("%s/%s", base_jid, priv->peer_resource);
-    }
 }
 
 LmMessage *
@@ -1501,20 +1562,11 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
   gchar *el = NULL, *ns = NULL;
   gboolean gtalk_mode = FALSE;
 
+  g_return_val_if_fail (action != JINGLE_ACTION_UNKNOWN, NULL);
+
   g_assert ((action == JINGLE_ACTION_SESSION_INITIATE) ||
             (priv->state > JS_STATE_PENDING_CREATED));
   g_assert (GABBLE_IS_JINGLE_SESSION (sess));
-
-  /* possibly this is the first message in an outgoing session,
-   * meaning that we have to set up initiator */
-  if (priv->initiator == NULL) {
-      TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-      priv->initiator = get_jid_for_contact (sess, conn->self_handle);
-  }
-  /* likewise ^^ */
-  if (priv->peer_jid == NULL) {
-      priv->peer_jid = get_jid_for_contact (sess, sess->peer);
-  }
 
   msg = lm_message_new_with_sub_type (
       priv->peer_jid,
@@ -1570,17 +1622,11 @@ _map_initial_contents (GabbleJingleSession *sess, ContentMapperFunc mapper,
 
   for (li = contents; li; li = li->next)
     {
-      gchar *disposition;
       GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (li->data);
-
-      g_object_get (c, "disposition", &disposition, NULL);
+      const gchar *disposition = gabble_jingle_content_get_disposition (c);
 
       if (!tp_strdiff (disposition, "session"))
-        {
-          mapper (sess, c, user_data);
-        }
-
-      g_free (disposition);
+        mapper (sess, c, user_data);
     }
 
   g_list_free (contents);
@@ -1678,11 +1724,25 @@ _on_initiate_reply (GObject *sess_as_obj,
     LmMessage *reply)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (sess_as_obj);
+  GabbleJingleSessionPrivate *priv = sess->priv;
 
   if (success)
-    set_state (sess, JS_STATE_PENDING_INITIATED, 0);
+    {
+      set_state (sess, JS_STATE_PENDING_INITIATED, 0);
+
+      if (priv->dialect != JINGLE_DIALECT_V032)
+        {
+          /* If this is a dialect that doesn't support <ringing/>, we treat the
+           * session-initiate being acked as the cue to say we're ringing.
+           */
+          priv->remote_ringing = TRUE;
+          g_signal_emit (sess, signals[REMOTE_STATE_CHANGED], 0);
+        }
+    }
   else
-    set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    {
+      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    }
 }
 
 static void
@@ -1693,9 +1753,14 @@ _on_accept_reply (GObject *sess_as_obj,
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (sess_as_obj);
 
   if (success)
-    set_state (sess, JS_STATE_ACTIVE, 0);
+    {
+      set_state (sess, JS_STATE_ACTIVE, 0);
+      gabble_jingle_session_send_rtp_info (sess, "active");
+    }
   else
-    set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    {
+      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+    }
 }
 
 static gboolean
@@ -1723,7 +1788,8 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
   JingleReplyHandler handler;
 
   /* If there are no contents yet, we shouldn't have been called at all. */
-  g_assert (g_hash_table_size (priv->contents) > 0);
+  g_assert (g_hash_table_size (priv->initiator_contents) +
+      g_hash_table_size (priv->responder_contents) > 0);
 
   if (priv->local_initiator)
     {
@@ -1769,7 +1835,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
       GHashTableIter iter;
       gpointer value;
 
-      g_hash_table_iter_init (&iter, priv->contents);
+      g_hash_table_iter_init (&iter, priv->initiator_contents);
       while (g_hash_table_iter_next (&iter, NULL, &value))
         {
           JingleMediaType type;
@@ -1830,6 +1896,12 @@ set_state (GabbleJingleSession *sess,
 
   priv->state = state;
   g_object_notify (G_OBJECT (sess), "state");
+
+  /* If we have an outstanding "you're on hold notification", send it */
+  if (priv->local_hold &&
+      state >= JS_STATE_PENDING_INITIATED &&
+      state < JS_STATE_ENDED)
+    gabble_jingle_session_send_held (sess);
 
   /* if we or peer just initiated the session, set the session timer */
   if ((priv->local_initiator && (state == JS_STATE_PENDING_INITIATE_SENT)) ||
@@ -1954,7 +2026,11 @@ count_active_contents (GabbleJingleSession *sess)
   GabbleJingleSessionPrivate *priv = sess->priv;
   guint n_contents = 0;
 
-  g_hash_table_foreach (priv->contents, _foreach_count_active_contents, &n_contents);
+  g_hash_table_foreach (priv->initiator_contents, _foreach_count_active_contents,
+      &n_contents);
+  g_hash_table_foreach (priv->responder_contents, _foreach_count_active_contents,
+      &n_contents);
+
   return n_contents;
 }
 
@@ -1963,13 +2039,15 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
   GabbleJingleSessionPrivate *priv = sess->priv;
-  const gchar *name;
+  const gchar *name = gabble_jingle_content_get_name (c);
 
-  g_object_get (c, "name", &name, NULL);
-  g_hash_table_remove (priv->contents, name);
+  if (gabble_jingle_content_creator_is_initiator (c))
+    g_hash_table_remove (priv->initiator_contents, name);
+  else
+    g_hash_table_remove (priv->responder_contents, name);
 
   if (priv->state == JS_STATE_ENDED)
-      return;
+    return;
 
   if (count_active_contents (sess) == 0)
     gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
@@ -2000,14 +2078,17 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
   GabbleJingleContent *c;
   GType content_type;
   gchar *name = NULL;
-  gint id = g_hash_table_size (priv->contents) + 1;
+  GHashTable *contents = priv->local_initiator ? priv->initiator_contents
+      : priv->responder_contents;
+  guint id = g_hash_table_size (contents) + 1;
 
   do
     {
       g_free (name);
       name = g_strdup_printf ("stream%d", id++);
     }
-  while (g_hash_table_lookup (priv->contents, name) != NULL);
+  while (g_hash_table_lookup (priv->initiator_contents, name) != NULL
+      && g_hash_table_lookup (priv->responder_contents, name) != NULL);
 
   content_type = gabble_jingle_factory_lookup_content_type (
       priv->conn->jingle_factory, content_ns);
@@ -2016,6 +2097,9 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
 
   c = create_content (sess, content_type, mtype,
       content_ns, transport_ns, name, NULL, NULL);
+
+  /* The new content better have ended up in the set we thought it would... */
+  g_assert (g_hash_table_lookup (contents, name) != NULL);
 
   g_free (name);
 
@@ -2061,7 +2145,21 @@ GList *
 gabble_jingle_session_get_contents (GabbleJingleSession *sess)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
-  return g_hash_table_get_values (priv->contents);
+
+  return g_list_concat (g_hash_table_get_values (priv->initiator_contents),
+      g_hash_table_get_values (priv->responder_contents));
+}
+
+const gchar *
+gabble_jingle_session_get_peer_resource (GabbleJingleSession *sess)
+{
+  return sess->priv->peer_resource;
+}
+
+const gchar *
+gabble_jingle_session_get_sid (GabbleJingleSession *sess)
+{
+  return sess->priv->sid;
 }
 
 static void
@@ -2072,42 +2170,52 @@ content_ready_cb (GabbleJingleContent *c, gpointer user_data)
 
   DEBUG ("called");
 
-  g_object_get (c, "disposition", &disposition, NULL);
+  disposition = gabble_jingle_content_get_disposition (c);
+  /* This assertion is actually safe, because 'ready' is only emitted by
+   * contents with disposition "session". But this is crazy.
+   */
   g_assert (!tp_strdiff (disposition, "session"));
 
   try_session_initiate_or_accept (sess);
 }
 
-/* Only to be used for the test suite */
-void
-gabble_set_jingle_session_timeout (guint ms)
-{
-  session_timeout_time = ms;
-}
-
-void
-gabble_jingle_session_send_held (GabbleJingleSession *sess,
-                                 gboolean held)
+static void
+gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
+    const gchar *name)
 {
   LmMessage *message;
   LmMessageNode *jingle, *notification;
 
   if (sess->priv->dialect != JINGLE_DIALECT_V032)
     {
-      DEBUG ("FIXME: fake hold for Ye Olde Jingle and GTalk.");
+      DEBUG ("Not sending <%s/>; not using modern Jingle", name);
       return;
     }
 
   message = gabble_jingle_session_new_message (sess,
       JINGLE_ACTION_SESSION_INFO, &jingle);
 
-  notification = lm_message_node_add_child (jingle,
-      (held ? "hold" : "active"), NULL);
+  notification = lm_message_node_add_child (jingle, name, NULL);
   lm_message_node_set_attributes (notification, "xmlns", NS_JINGLE_RTP_INFO,
       NULL);
 
   /* This is just informational, so ignoring the reply. */
   gabble_jingle_session_send (sess, message, NULL, NULL);
+}
+
+static void
+gabble_jingle_session_send_held (GabbleJingleSession *sess)
+{
+  const gchar *s = (sess->priv->local_hold ? "hold" : "unhold");
+
+  gabble_jingle_session_send_rtp_info (sess, s);
+}
+
+void
+gabble_jingle_session_set_local_hold (GabbleJingleSession *sess,
+    gboolean held)
+{
+  g_object_set (sess, "local-hold", held, NULL);
 }
 
 gboolean
@@ -2124,4 +2232,11 @@ gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess)
   g_assert (GABBLE_IS_JINGLE_SESSION (sess));
 
   return sess->priv->remote_ringing;
+}
+
+/* Only to be used for the test suite */
+void
+gabble_set_jingle_session_timeout (guint ms)
+{
+  session_timeout_time = ms;
 }

@@ -59,55 +59,82 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
 
   DEBUG ("all_held=%u, any_held=%u", (guint) all_held, (guint) any_held);
 
-  if (all_held)
+  if (all_held && !any_held)
     {
-      /* Move to state HELD */
-
-      if (priv->hold_state == TP_LOCAL_HOLD_STATE_HELD)
+      /* There are no streams, move to the desired state immediately */
+      switch (priv->hold_state)
         {
-          /* nothing changed */
+        case TP_LOCAL_HOLD_STATE_PENDING_HOLD:
+          DEBUG ("no streams, moving from pending hold to held");
+          priv->hold_state = TP_LOCAL_HOLD_STATE_HELD;
+
+          /* No need to touch the session: send_held (TRUE) is called as soon
+           * as Hold is requested.
+           */
+          break;
+
+        case TP_LOCAL_HOLD_STATE_PENDING_UNHOLD:
+          DEBUG ("no streams, moving from pending unhold to unheld");
+          priv->hold_state = TP_LOCAL_HOLD_STATE_UNHELD;
+
+          if (priv->session != NULL)
+            gabble_jingle_session_set_local_hold (priv->session, FALSE);
+
+          break;
+
+        default:
+          /* nothing to change */
           return;
         }
-      else if (priv->hold_state == TP_LOCAL_HOLD_STATE_PENDING_UNHOLD)
+    }
+  else if (all_held)
+    {
+      /* Move to state HELD */
+      switch (priv->hold_state)
         {
+        case TP_LOCAL_HOLD_STATE_HELD:
+          /* nothing changed */
+          return;
+
+        case TP_LOCAL_HOLD_STATE_PENDING_UNHOLD:
           /* This can happen if the user asks us to hold, then changes their
            * mind. We make no particular guarantees about stream states when
            * in PENDING_UNHOLD state, so keep claiming to be in that state */
           return;
-        }
-      else if (priv->hold_state == TP_LOCAL_HOLD_STATE_PENDING_HOLD)
-        {
+
+        case TP_LOCAL_HOLD_STATE_PENDING_HOLD:
           /* We wanted to hold, and indeed we have. Yay! Keep whatever
            * reason code we used for going to PENDING_HOLD */
           priv->hold_state = TP_LOCAL_HOLD_STATE_HELD;
-        }
-      else
-        {
+          break;
+
+        case TP_LOCAL_HOLD_STATE_UNHELD:
           /* We were previously UNHELD. So why have we gone on hold now? */
           DEBUG ("Unexpectedly entered HELD state!");
           priv->hold_state = TP_LOCAL_HOLD_STATE_HELD;
           priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_NONE;
+          break;
         }
     }
   else if (any_held)
     {
-      if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD)
+      switch (priv->hold_state)
         {
+        case TP_LOCAL_HOLD_STATE_UNHELD:
           /* The streaming client has spontaneously changed its stream
            * state. Why? We just don't know */
           DEBUG ("Unexpectedly entered PENDING_UNHOLD state!");
           priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_UNHOLD;
           priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_NONE;
-        }
-      else if (priv->hold_state == TP_LOCAL_HOLD_STATE_HELD)
-        {
+          break;
+
+        case TP_LOCAL_HOLD_STATE_HELD:
           /* Likewise */
           DEBUG ("Unexpectedly entered PENDING_HOLD state!");
           priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_HOLD;
           priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_NONE;
-        }
-      else
-        {
+
+        default:
           /* nothing particularly interesting - we're trying to change hold
            * state already, so nothing to signal */
           return;
@@ -116,35 +143,35 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
   else
     {
       /* Move to state UNHELD */
-
-      if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD)
+      switch (priv->hold_state)
         {
+        case TP_LOCAL_HOLD_STATE_UNHELD:
           /* nothing changed */
           return;
-        }
-      else if (priv->hold_state == TP_LOCAL_HOLD_STATE_PENDING_HOLD)
-        {
+
+        case TP_LOCAL_HOLD_STATE_PENDING_HOLD:
           /* This can happen if the user asks us to unhold, then changes their
            * mind. We make no particular guarantees about stream states when
            * in PENDING_HOLD state, so keep claiming to be in that state */
           return;
-        }
-      else if (priv->hold_state == TP_LOCAL_HOLD_STATE_PENDING_UNHOLD)
-        {
+
+        case TP_LOCAL_HOLD_STATE_PENDING_UNHOLD:
           /* We wanted to hold, and indeed we have. Yay! Keep whatever
            * reason code we used for going to PENDING_UNHOLD */
           priv->hold_state = TP_LOCAL_HOLD_STATE_UNHELD;
-        }
-      else
-        {
+          break;
+
+        case TP_LOCAL_HOLD_STATE_HELD:
           /* We were previously HELD. So why have we gone off hold now? */
           DEBUG ("Unexpectedly entered UNHELD state!");
           priv->hold_state = TP_LOCAL_HOLD_STATE_UNHELD;
           priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_NONE;
+          break;
         }
 
-      /* Tell the peer what's happened */
-      gabble_jingle_session_send_held (self->priv->session, FALSE);
+      /* Tell the peer what's happened. */
+      if (priv->session != NULL)
+        gabble_jingle_session_set_local_hold (priv->session, FALSE);
     }
 
   tp_svc_channel_interface_hold_emit_hold_state_changed (self,
@@ -205,6 +232,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv = self->priv;
+  GabbleJingleSession *session = priv->session;
   guint i;
   TpLocalHoldState old_state = priv->hold_state;
 
@@ -219,10 +247,8 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
           return;
         }
 
-      if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD)
-        {
-          gabble_jingle_session_send_held (self->priv->session, TRUE);
-        }
+      if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD && session != NULL)
+        gabble_jingle_session_set_local_hold (session, TRUE);
 
       priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_HOLD;
     }
@@ -246,11 +272,19 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
       priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_REQUESTED;
     }
 
-  /* Tell streaming client to release or reacquire resources */
-
-  for (i = 0; i < priv->streams->len; i++)
+  if (priv->streams->len == 0)
     {
-      gabble_media_stream_hold (g_ptr_array_index (priv->streams, i), hold);
+      /* No streams yet! We can go straight to the desired state. */
+      stream_hold_state_changed (NULL, NULL, self);
+    }
+  else
+    {
+      /* Tell streaming client to release or reacquire resources */
+
+      for (i = 0; i < priv->streams->len; i++)
+        {
+          gabble_media_stream_hold (g_ptr_array_index (priv->streams, i), hold);
+        }
     }
 
   tp_svc_channel_interface_hold_return_from_request_hold (context);
@@ -324,8 +358,9 @@ gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
   GabbleMediaChannel *self = (GabbleMediaChannel *) iface;
   GHashTable *states = g_hash_table_new (g_direct_hash, g_direct_equal);
 
-  g_hash_table_insert (states, GUINT_TO_POINTER (self->priv->session->peer),
-      GUINT_TO_POINTER (self->priv->call_state));
+  if (self->priv->session != NULL)
+    g_hash_table_insert (states, GUINT_TO_POINTER (self->priv->session->peer),
+        GUINT_TO_POINTER (self->priv->call_state));
 
   tp_svc_channel_interface_call_state_return_from_get_call_states (context,
       states);

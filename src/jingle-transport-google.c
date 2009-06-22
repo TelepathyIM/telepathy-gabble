@@ -427,18 +427,24 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
     }
   else
     {
-      const gchar *cname, *cns;
+      const gchar *name = gabble_jingle_content_get_name (priv->content);
+      const gchar *ns = gabble_jingle_content_get_ns (priv->content);
+      LmMessageNode *content_node;
 
-      g_object_get (GABBLE_JINGLE_CONTENT (priv->content),
-          "name", &cname, "content-ns", &cns, NULL);
+      /* FIXME: this should use gabble_jingle_content_produce_node(); #22236 */
 
       /* we need the <content> ... */
-      trans_node = lm_message_node_add_child (sess_node, "content", NULL);
-      lm_message_node_set_attribute (trans_node, "xmlns", cns);
-      lm_message_node_set_attribute (trans_node, "name", cname);
+      content_node = lm_message_node_add_child (sess_node, "content", NULL);
+      lm_message_node_set_attribute (content_node, "xmlns", ns);
+      lm_message_node_set_attribute (content_node, "name", name);
+
+      if (gabble_jingle_content_creator_is_initiator (priv->content))
+        lm_message_node_set_attribute (content_node, "creator", "initiator");
+      else
+        lm_message_node_set_attribute (content_node, "creator", "responder");
 
       /* .. and the <transport> node */
-      trans_node = lm_message_node_add_child (trans_node, "transport", NULL);
+      trans_node = lm_message_node_add_child (content_node, "transport", NULL);
       lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
     }
 

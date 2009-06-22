@@ -35,8 +35,7 @@ def test(jp, q, bus, conn, stream):
     stream_handler.Ready(jt.get_audio_codecs_dbus())
     stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    q.expect('stream-iq', predicate=lambda e:
-        jp.match_jingle_action(e.query, 'session-initiate'))
+    q.expect('stream-iq', predicate=jp.action_predicate('session-initiate'))
 
     # Ensure we've got all the MembersChanged signals at the start of the call
     # out of the way.
@@ -45,8 +44,8 @@ def test(jp, q, bus, conn, stream):
     # daf doesn't answer; we expect the call to end.
     mc, t = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged'),
-        EventPattern('stream-iq', predicate=lambda e:
-            jp.match_jingle_action(e.query, 'session-terminate')),
+        EventPattern('stream-iq',
+            predicate=jp.action_predicate('session-terminate')),
         )
 
     _, added, removed, lp, rp, actor, reason = mc.args

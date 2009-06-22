@@ -10,7 +10,7 @@ Receives several tube offers:
 
 import dbus
 
-from servicetest import call_async, EventPattern, sync_dbus
+from servicetest import call_async, EventPattern, sync_dbus, assertEquals
 from gabbletest import acknowledge_iq, send_error_reply
 
 from twisted.words.xish import domish, xpath
@@ -233,9 +233,11 @@ def test(q, bus, conn, stream, bytestream_cls,
     bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
         address_type, socket_address, access_control, access_control_param)
     tubes_chan.Close()
-    bytestream.wait_bytestream_closed([
-        EventPattern('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CANCELLED]),
+    e, _ = bytestream.wait_bytestream_closed([
+        EventPattern('dbus-signal', signal='ConnectionClosed'),
         EventPattern('socket-disconnected')])
+    assertEquals(conn_id, e.args[0])
+    assertEquals(cs.CANCELLED, e.args[1])
 
     # Receive a tube offer from Bob
     (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
@@ -257,7 +259,9 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     # peer closes the bytestream
     bytestream.close()
-    q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
+    e = q.expect('dbus-signal', signal='ConnectionClosed')
+    assertEquals(conn_id, e.args[0])
+    assertEquals(cs.CONNECTION_LOST, e.args[1])
 
     # establish another tube connection
     event_socket, si_event, conn_id = t.connect_to_cm_socket(q, bob_jid,
@@ -265,7 +269,9 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     # bytestream is refused
     send_error_reply(stream, si_event.stanza)
-    e = q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_REFUSED])
+    e = q.expect('dbus-signal', signal='ConnectionClosed')
+    assertEquals(conn_id, e.args[0])
+    assertEquals(cs.CONNECTION_REFUSED, e.args[1])
 
     tubes_chan.Close()
 

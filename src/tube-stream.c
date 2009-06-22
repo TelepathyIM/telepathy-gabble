@@ -64,13 +64,6 @@
 #include "tube-iface.h"
 #include "util.h"
 
-#define GABBLE_ERROR_STR_CONNECTION_LOST \
-  "org.freedesktop.Telepathy.Error.ConnectionLost"
-#define GABBLE_ERROR_STR_CONNECTION_REFUSED \
-  "org.freedesktop.Telepathy.Error.ConnectionRefused"
-#define GABBLE_ERROR_STR_CANCELLED \
-  "org.freedesktop.Telepathy.Error.Cancelled"
-
 static void channel_iface_init (gpointer, gpointer);
 static void tube_iface_init (gpointer g_iface, gpointer iface_data);
 static void streamtube_iface_init (gpointer g_iface, gpointer iface_data);
@@ -80,9 +73,9 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_TUBE_IFACE, tube_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_STREAM_TUBE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_STREAM_TUBE,
       streamtube_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_TUBE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_TUBE,
       NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_external_group_mixin_iface_init);
@@ -92,7 +85,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
 static const gchar * const gabble_tube_stream_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
-    GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
+    TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
     NULL
 };
 
@@ -101,7 +94,7 @@ static const gchar *gabble_tube_stream_interfaces[] = {
     /* If more interfaces are added, either keep Group as the first, or change
      * the implementations of gabble_tube_stream_get_interfaces () and
      * gabble_tube_stream_get_property () too */
-    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
+    TP_IFACE_CHANNEL_INTERFACE_TUBE,
     NULL
 };
 
@@ -194,7 +187,7 @@ struct _GabbleTubeStreamPrivate
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
-  GabbleTubeChannelState state;
+  TpTubeChannelState state;
 
   TpSocketAddressType address_type;
   GValue *address;
@@ -263,7 +256,8 @@ transport_handler (GibberTransport *transport,
 static void
 fire_connection_closed (GabbleTubeStream *self,
     GibberTransport *transport,
-    const gchar *error)
+    const gchar *error,
+    const gchar *debug_msg)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   guint connection_id;
@@ -280,8 +274,8 @@ fire_connection_closed (GabbleTubeStream *self,
    * same connection. */
   g_hash_table_remove (priv->transport_to_id, transport);
 
-  gabble_svc_channel_type_stream_tube_emit_connection_closed (self,
-      connection_id, error);
+  tp_svc_channel_type_stream_tube_emit_connection_closed (self,
+      connection_id, error, debug_msg);
 }
 
 static void
@@ -291,7 +285,8 @@ transport_disconnected_cb (GibberTransport *transport,
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GabbleBytestreamIface *bytestream;
 
-  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CANCELLED);
+  fire_connection_closed (self, transport, TP_ERROR_STR_CANCELLED,
+      "local socket has been disconnected");
 
   bytestream = g_hash_table_lookup (priv->transport_to_bytestream, transport);
   if (bytestream == NULL)
@@ -320,7 +315,8 @@ remove_transport (GabbleTubeStream *self,
 
   gibber_transport_disconnect (transport);
 
-  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CONNECTION_LOST);
+  fire_connection_closed (self, transport, TP_ERROR_STR_CONNECTION_LOST,
+      "bytestream has been broken");
 
   /* the transport may not be in transport_to_bytestream if the bytestream was
    * not fully open */
@@ -464,7 +460,7 @@ extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       DEBUG ("initiator refused new bytestream");
 
       fire_connection_closed (self, transport,
-          GABBLE_ERROR_STR_CONNECTION_REFUSED);
+          TP_ERROR_STR_CONNECTION_REFUSED, "connection has been refused");
 
       g_object_unref (transport);
       return;
@@ -605,7 +601,7 @@ fire_new_local_connection (GabbleTubeStream *self,
 
   connection_id = generate_connection_id (self, transport);
 
-  gabble_svc_channel_type_stream_tube_emit_new_local_connection (self,
+  tp_svc_channel_type_stream_tube_emit_new_local_connection (self,
       connection_id);
 }
 
@@ -915,7 +911,7 @@ fire_new_remote_connection (GabbleTubeStream *self,
         transport));
   g_assert (connection_id != 0);
 
-  gabble_svc_channel_type_stream_tube_emit_new_remote_connection (self,
+  tp_svc_channel_type_stream_tube_emit_new_remote_connection (self,
       contact, &access_control_param, connection_id);
   g_value_unset (&access_control_param);
 }
@@ -1041,6 +1037,13 @@ tube_stream_open (GabbleTubeStream *self,
           g_free (path);
           return FALSE;
         }
+
+      if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+        {
+          /* Everyone can use the socket */
+          chmod (path, 0777);
+        }
+
       g_free (path);
     }
   else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
@@ -1153,7 +1156,8 @@ close_each_extra_bytestream (gpointer key,
 
   gabble_bytestream_iface_close (bytestream, NULL);
   gibber_transport_disconnect (transport);
-  fire_connection_closed (self, transport, GABBLE_ERROR_STR_CANCELLED);
+  fire_connection_closed (self, transport, TP_ERROR_STR_CANCELLED,
+      "tube is closing");
 
   g_hash_table_remove (priv->transport_to_bytestream, transport);
 
@@ -1271,7 +1275,7 @@ gabble_tube_stream_get_property (GObject *object,
         break;
       case PROP_CHANNEL_TYPE:
         g_value_set_static_string (value,
-            GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
+            TP_IFACE_CHANNEL_TYPE_STREAM_TUBE);
         break;
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
@@ -1343,8 +1347,8 @@ gabble_tube_stream_get_property (GObject *object,
               TP_IFACE_CHANNEL, "InitiatorID",
               TP_IFACE_CHANNEL, "Requested",
               TP_IFACE_CHANNEL, "Interfaces",
-              GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE, "Service",
-              GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE, "SupportedSocketTypes",
+              TP_IFACE_CHANNEL_TYPE_STREAM_TUBE, "Service",
+              TP_IFACE_CHANNEL_TYPE_STREAM_TUBE, "SupportedSocketTypes",
               NULL);
 
           if (priv->initiator != priv->self_handle)
@@ -1355,12 +1359,12 @@ gabble_tube_stream_get_property (GObject *object,
               /* FIXME: use tp_dbus_properties_mixin_add_properties once it's
                * added in tp-glib */
               tp_dbus_properties_mixin_get (object,
-                  GABBLE_IFACE_CHANNEL_INTERFACE_TUBE, "Parameters",
+                  TP_IFACE_CHANNEL_INTERFACE_TUBE, "Parameters",
                   prop_value, NULL);
               g_assert (G_IS_VALUE (prop_value));
 
               g_hash_table_insert (properties,
-                  g_strdup_printf ("%s.%s", GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
+                  g_strdup_printf ("%s.%s", TP_IFACE_CHANNEL_INTERFACE_TUBE,
                     "Parameters"), prop_value);
             }
 
@@ -1509,11 +1513,11 @@ gabble_tube_stream_constructor (GType type,
   if (priv->initiator == priv->self_handle)
     {
       /* We initiated this tube */
-      priv->state = GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED;
+      priv->state = TP_TUBE_CHANNEL_STATE_NOT_OFFERED;
     }
   else
     {
-      priv->state = GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING;
+      priv->state = TP_TUBE_CHANNEL_STATE_LOCAL_PENDING;
     }
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
@@ -1564,12 +1568,12 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
         NULL,
         channel_props,
       },
-      { GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE,
+      { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         stream_tube_props,
       },
-      { GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
+      { TP_IFACE_CHANNEL_INTERFACE_TUBE,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         tube_iface_props,
@@ -1842,7 +1846,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
       goto fail;
     }
 
-  if (priv->state != GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING)
+  if (priv->state != TP_TUBE_CHANNEL_STATE_LOCAL_PENDING)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not in the local pending state");
@@ -1855,10 +1859,10 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
       goto fail;
     }
 
-  priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
+  priv->state = TP_TUBE_CHANNEL_STATE_OPEN;
 
-  gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (self,
-      GABBLE_TUBE_CHANNEL_STATE_OPEN);
+  tp_svc_channel_interface_tube_emit_tube_channel_state_changed (self,
+      TP_TUBE_CHANNEL_STATE_OPEN);
 
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
 
@@ -1971,13 +1975,13 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
   transport = new_connection_to_socket (self, bytestream, contact);
   if (transport != NULL)
     {
-      if (priv->state == GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING)
+      if (priv->state == TP_TUBE_CHANNEL_STATE_REMOTE_PENDING)
         {
           DEBUG ("Received first connection. Tube is now open");
-          priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
+          priv->state = TP_TUBE_CHANNEL_STATE_OPEN;
 
-          gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (
-              self, GABBLE_TUBE_CHANNEL_STATE_OPEN);
+          tp_svc_channel_interface_tube_emit_tube_channel_state_changed (
+              self, TP_TUBE_CHANNEL_STATE_OPEN);
 
           g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
         }
@@ -2290,7 +2294,7 @@ send_tube_offer (GabbleTubeStream *self,
   result = _gabble_connection_send (priv->conn, msg, error);
   if (result)
     {
-      priv->state = GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING;
+      priv->state = TP_TUBE_CHANNEL_STATE_REMOTE_PENDING;
     }
 
   lm_message_unref (msg);
@@ -2304,7 +2308,7 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
-  g_assert (priv->state == GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED);
+  g_assert (priv->state == TP_TUBE_CHANNEL_STATE_NOT_OFFERED);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
@@ -2315,7 +2319,7 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
   else
     {
       /* muc tube is open as soon it's offered */
-      priv->state = GABBLE_TUBE_CHANNEL_STATE_OPEN;
+      priv->state = TP_TUBE_CHANNEL_STATE_OPEN;
       g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
     }
 
@@ -2388,7 +2392,7 @@ gabble_tube_stream_get_supported_socket_types (void)
  * on org.freedesktop.Telepathy.Channel.Type.StreamTube
  */
 static void
-gabble_tube_stream_offer_async (GabbleSvcChannelTypeStreamTube *iface,
+gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube *iface,
     guint address_type,
     const GValue *address,
     guint access_control,
@@ -2399,7 +2403,7 @@ gabble_tube_stream_offer_async (GabbleSvcChannelTypeStreamTube *iface,
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GError *error = NULL;
 
-  if (priv->state != GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED)
+  if (priv->state != TP_TUBE_CHANNEL_STATE_NOT_OFFERED)
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not in the not offered state");
@@ -2439,16 +2443,16 @@ gabble_tube_stream_offer_async (GabbleSvcChannelTypeStreamTube *iface,
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (
-          self, GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING);
+      tp_svc_channel_interface_tube_emit_tube_channel_state_changed (
+          self, TP_TUBE_CHANNEL_STATE_REMOTE_PENDING);
     }
   else
     {
-      gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (
-          self, GABBLE_TUBE_CHANNEL_STATE_OPEN);
+      tp_svc_channel_interface_tube_emit_tube_channel_state_changed (
+          self, TP_TUBE_CHANNEL_STATE_OPEN);
     }
 
-  gabble_svc_channel_type_stream_tube_return_from_offer (context);
+  tp_svc_channel_type_stream_tube_return_from_offer (context);
 }
 
 /**
@@ -2458,7 +2462,7 @@ gabble_tube_stream_offer_async (GabbleSvcChannelTypeStreamTube *iface,
  * on org.freedesktop.Telepathy.Channel.Type.StreamTube
  */
 static void
-gabble_tube_stream_accept_async (GabbleSvcChannelTypeStreamTube *iface,
+gabble_tube_stream_accept_async (TpSvcChannelTypeStreamTube *iface,
     guint address_type,
     guint access_control,
     const GValue *access_control_param,
@@ -2488,7 +2492,7 @@ gabble_tube_stream_accept_async (GabbleSvcChannelTypeStreamTube *iface,
     gabble_muc_channel_send_presence (self->muc, NULL);
 #endif
 
-  gabble_svc_channel_type_stream_tube_return_from_accept (context,
+  tp_svc_channel_type_stream_tube_return_from_accept (context,
       priv->address);
 }
 
@@ -2517,7 +2521,7 @@ gabble_tube_stream_get_channel_type (TpSvcChannel *iface,
                                        DBusGMethodInvocation *context)
 {
   tp_svc_channel_return_from_get_channel_type (context,
-      GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE);
+      TP_IFACE_CHANNEL_TYPE_STREAM_TUBE);
 }
 
 /**
@@ -2599,10 +2603,10 @@ static void
 streamtube_iface_init (gpointer g_iface,
                        gpointer iface_data)
 {
-  GabbleSvcChannelTypeStreamTubeClass *klass =
-      (GabbleSvcChannelTypeStreamTubeClass *) g_iface;
+  TpSvcChannelTypeStreamTubeClass *klass =
+      (TpSvcChannelTypeStreamTubeClass *) g_iface;
 
-#define IMPLEMENT(x, suffix) gabble_svc_channel_type_stream_tube_implement_##x (\
+#define IMPLEMENT(x, suffix) tp_svc_channel_type_stream_tube_implement_##x (\
     klass, gabble_tube_stream_##x##suffix)
   IMPLEMENT(offer,_async);
   IMPLEMENT(accept,_async);

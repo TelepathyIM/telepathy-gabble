@@ -5,12 +5,12 @@ import os
 
 import dbus
 
-from servicetest import call_async, EventPattern, unwrap,\
-    assertContains
+from servicetest import call_async, EventPattern, unwrap, assertContains, assertEquals
 from gabbletest import acknowledge_iq, make_muc_presence
 import constants as cs
 import ns
 import tubetestutil as t
+from mucutil import join_muc
 from muctubeutil import get_muc_tubes_channel
 from bytestream import BytestreamS5BRelay, BytestreamS5BRelayBugged
 
@@ -57,7 +57,9 @@ def use_tube(q, bytestream, protocol, conn_id):
 
     # peer closes the bytestream
     bytestream.close()
-    q.expect('dbus-signal', signal='ConnectionClosed', args=[conn_id, cs.CONNECTION_LOST])
+    e = q.expect('dbus-signal', signal='ConnectionClosed')
+    assertEquals(conn_id, e.args[0])
+    assertEquals(cs.CONNECTION_LOST, e.args[1])
 
 def test(q, bus, conn, stream, bytestream_cls,
        address_type, access_control, access_control_param):
@@ -205,21 +207,14 @@ def test(q, bus, conn, stream, bytestream_cls,
     # offer a stream tube to another room (new API)
     address = t.create_server(q, address_type, block_reading=True)
 
-    call_async(q, conn.Requests, 'CreateChannel',
-            {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
-         cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
-         cs.TARGET_ID: 'chat2@conf.localhost',
-         cs.STREAM_TUBE_SERVICE: 'newecho',
-        })
-
-    # Send presence for other member of room.
-    stream.send(make_muc_presence('owner', 'moderator', 'chat2@conf.localhost', 'bob'))
-
-    # Send presence for own membership of room.
-    stream.send(make_muc_presence('none', 'participant', 'chat2@conf.localhost', 'test'))
-
-    event = q.expect('dbus-return', method='CreateChannel')
-    new_tube_path, new_tube_props = event.value
+    request = {
+        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+        cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+        cs.TARGET_ID: 'chat2@conf.localhost',
+        cs.STREAM_TUBE_SERVICE: 'newecho',
+    }
+    _, _, new_tube_path, new_tube_props = \
+        join_muc(q, bus, conn, stream, 'chat2@conf.localhost', request)
 
     # first text and tubes channels are announced
     event = q.expect('dbus-signal', signal='NewChannels')

@@ -257,9 +257,12 @@ _latch_to_session (GabbleMediaChannel *chan)
 }
 
 static void
-create_session (GabbleMediaChannel *chan, TpHandle peer)
+create_session (GabbleMediaChannel *chan,
+    TpHandle peer,
+    const gchar *resource)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
+  gboolean local_hold = (priv->hold_state != TP_LOCAL_HOLD_STATE_UNHELD);
 
   g_assert (priv->session == NULL);
 
@@ -267,7 +270,7 @@ create_session (GabbleMediaChannel *chan, TpHandle peer)
 
   priv->session = g_object_ref (
       gabble_jingle_factory_create_session (priv->conn->jingle_factory,
-          peer, NULL));
+          peer, resource, local_hold));
 
   _latch_to_session (chan);
 }
@@ -1609,6 +1612,7 @@ pending_stream_request_free (gpointer data)
 
 static gboolean
 _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
+                                        TpHandle peer,
                                         const GArray *media_types,
                                         GPtrArray **ret,
                                         GError **error)
@@ -1617,17 +1621,10 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
   gboolean want_audio, want_video;
   JingleDialect dialect;
   guint idx;
-  TpHandle peer;
   const gchar *peer_resource;
   const gchar *transport_ns = NULL;
 
   DEBUG ("called");
-
-  g_object_get (priv->session, "peer", &peer,
-      "peer-resource", &peer_resource, NULL);
-
-  if (!contact_is_media_capable (chan, peer, NULL, error))
-    return FALSE;
 
   want_audio = want_video = FALSE;
 
@@ -1651,11 +1648,14 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
         }
     }
 
-  g_object_get (priv->session, "dialect", &dialect, NULL);
-
   /* existing call; the recipient and the mode has already been decided */
-  if (dialect != JINGLE_DIALECT_ERROR)
+  if (priv->session != NULL)
     {
+      g_object_get (priv->session,
+          "dialect", &dialect,
+          "peer-resource", &peer_resource,
+          NULL);
+
       /* is a google call... we have no other option */
       if (JINGLE_IS_GOOGLE_DIALECT (dialect))
         {
@@ -1711,8 +1711,9 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
       DEBUG ("Picking resource '%s' (transport: %s, dialect: %u)",
           peer_resource, transport_ns, dialect);
 
-      g_object_set (priv->session, "dialect", dialect,
-          "peer-resource", peer_resource, NULL);
+      create_session (chan, peer, peer_resource);
+
+      g_object_set (priv->session, "dialect", dialect, NULL);
     }
 
   /* check it's not a ridiculous number of streams */
@@ -1899,11 +1900,7 @@ media_channel_request_streams (GabbleMediaChannel *self,
       goto error;
     }
 
-  if (priv->session == NULL)
-    {
-      create_session (self, contact_handle);
-    }
-  else
+  if (priv->session != NULL)
     {
       TpHandle peer;
 
@@ -1920,8 +1917,8 @@ media_channel_request_streams (GabbleMediaChannel *self,
         }
     }
 
-  if (!_gabble_media_channel_request_contents (self, types, &contents,
-        &error))
+  if (!_gabble_media_channel_request_contents (self, contact_handle, types,
+        &contents, &error))
     goto error;
 
   psr = pending_stream_request_new (contents, succeeded_cb, failed_cb,
@@ -2161,12 +2158,17 @@ gabble_media_channel_add_member (GObject *obj,
     {
       /* no: has a session been created, is the handle being added ours,
        *     and are we in local pending? (call answer) */
-
       if (priv->session &&
           handle == mixin->self_handle &&
           tp_handle_set_is_member (mixin->local_pending, handle))
         {
-          /* yes: accept the request */
+          /* is the call on hold? */
+          if (priv->hold_state != TP_LOCAL_HOLD_STATE_UNHELD)
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+                  "Can't answer a call while it's on hold");
+              return FALSE;
+            }
 
           /* make us a member */
           set = tp_intset_new_containing (handle);
@@ -2575,8 +2577,10 @@ construct_stream (GabbleMediaChannel *chan,
   tp_svc_channel_type_streamed_media_emit_stream_added (
       chan, id, priv->session->peer, mtype);
 
-  /* Initial stream direction was changed before we had time to hook up
-   * signal handler, so we call the handler manually to pick it up. */
+  /* StreamAdded does not include the stream's direction and pending send
+   * information, so we call the notify::combined-direction handler in order to
+   * emit StreamDirectionChanged for the initial state.
+   */
   stream_direction_changed_cb (stream, NULL, chan);
 
   gabble_media_channel_hold_new_stream (chan, stream,

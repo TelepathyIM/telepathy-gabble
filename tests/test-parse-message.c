@@ -3,6 +3,8 @@
 
 #include <string.h>
 
+#include <glib-object.h>
+
 #include "src/util.h"
 #include "src/message-util.h"
 
@@ -294,6 +296,8 @@ test_google_offline (void)
 int
 main (void)
 {
+  g_type_init ();
+
   g_assert (test1 ());
   g_assert (test2 ());
   g_assert (test3 ());

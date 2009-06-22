@@ -65,15 +65,13 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
     # We changed our mind locally, don't want video
     chan.StreamedMedia.RemoveStreams([stream_id2])
 
-    e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
-        jp.match_jingle_action(x.query, 'session-initiate'))
+    e = q.expect('stream-iq', predicate=jp.action_predicate('session-initiate'))
     stream.send(make_result_iq(stream, e.stanza))
 
     jt.parse_session_initiate(e.query)
 
     # Gabble sends content-remove for the video stream...
-    e2 = q.expect('stream-iq', iq_type='set', predicate=lambda x:
-        jp.match_jingle_action(x.query, 'content-remove'))
+    e2 = q.expect('stream-iq', predicate=jp.action_predicate('content-remove'))
 
     # ...but before the peer notices, they accept the call.
     jt.accept(with_video=True)
@@ -98,8 +96,7 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
     stream_handler2.Ready(jt.get_audio_codecs_dbus())
     stream_handler2.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
-        jp.match_jingle_action(x.query, 'content-add'))
+    e = q.expect('stream-iq', predicate=jp.action_predicate('content-add'))
     c = e.query.firstChildElement()
     assertEquals('initiator', c['creator'])
     stream.send(make_result_iq(stream, e.stanza))
@@ -117,8 +114,7 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
     # We first remove the original stream
     chan.StreamedMedia.RemoveStreams([stream_id])
 
-    e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
-        jp.match_jingle_action(x.query, 'content-remove'))
+    e = q.expect('stream-iq', predicate=jp.action_predicate('content-remove'))
     content_remove_ack = make_result_iq(stream, e.stanza)
 
     if peer_removes_final_content:
@@ -140,8 +136,8 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
         chan.StreamedMedia.RemoveStreams([stream2_id])
 
     st, closed = q.expect_many(
-        EventPattern('stream-iq', iq_type='set', predicate=lambda x:
-            jp.match_jingle_action(x.query, 'session-terminate')),
+        EventPattern('stream-iq',
+            predicate=jp.action_predicate('session-terminate')),
         # Gabble shouldn't wait for the peer to ack the terminate before
         # considering the call finished.
         EventPattern('dbus-signal', signal='Closed',

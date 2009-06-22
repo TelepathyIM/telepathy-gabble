@@ -5,7 +5,6 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_LOCATION
 
@@ -112,15 +111,16 @@ create_msg_foreach (gpointer key,
 
   if (G_VALUE_TYPE (value) == G_TYPE_INT64)
     {
-      time_t stamp = g_value_get_int64 (value);
-      struct tm *ptm = gmtime (&stamp);
-      gchar str[30];
+      GTimeVal timeval;
+      gchar *str;
 
-      if (strftime (str, sizeof (str), "%Y%m%dT%TZ", ptm) == 0)
-        return;
+      timeval.tv_sec = CLAMP (g_value_get_int64 (value), 0, G_MAXLONG);
+      timeval.tv_usec = 0;
+      str = g_time_val_to_iso8601 (&timeval);
 
       lm_message_node_add_child (geoloc, key, str);
       DEBUG ("\t - %s: %s", (gchar *) key, str);
+      g_free (str);
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)
     {
@@ -152,6 +152,15 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) conn,
     context);
+
+  if (!(conn->features & GABBLE_CONNECTION_FEATURES_PEP))
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Server does not support PEP, cannot publish geolocation" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
 
   gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_GEOLOCATION);
   msg = pubsub_make_publish_msg (NULL, NS_GEOLOC, NS_GEOLOC, "geoloc",
@@ -329,15 +338,13 @@ update_location_from_msg (GabbleConnection *conn,
         }
       else if (strcmp (key, "timestamp") == 0)
         {
-          struct tm ptm;
-          gchar * p = strptime (str, "%Y%m%dT%T", &ptm);
-          if (p != NULL)
+          GTimeVal timeval;
+          if (g_time_val_from_iso8601 (str, &timeval))
             {
-              gint64 stamp = mktime (&ptm);
               value = g_slice_new0 (GValue);
               g_value_init (value, G_TYPE_INT64);
-              g_value_set_int64 (value, stamp);
-              DEBUG ("\t - %s: %" G_GINT64_FORMAT, key, stamp);
+              g_value_set_int64 (value, timeval.tv_sec);
+              DEBUG ("\t - %s: %s", key, str);
             }
           else
             {

@@ -72,9 +72,9 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeDBus, gabble_tube_dbus, G_TYPE_OBJECT,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_TUBE_IFACE, tube_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_DBUS_TUBE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_DBUS_TUBE,
       dbustube_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_TUBE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_TUBE,
       NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_external_group_mixin_iface_init);
@@ -86,14 +86,14 @@ static const gchar *gabble_tube_dbus_interfaces[] = {
     /* If more interfaces are added, either keep Group as the first, or change
      * the implementations of gabble_tube_dbus_get_interfaces () and
      * gabble_tube_dbus_get_property () too */
-    GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
+    TP_IFACE_CHANNEL_INTERFACE_TUBE,
     NULL
 };
 
 static const gchar * const gabble_tube_dbus_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
-    GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName",
+    TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName",
     NULL
 };
 
@@ -476,32 +476,32 @@ unref_handle_foreach (gpointer key,
   tp_handle_unref (contact_repo, handle);
 }
 
-static GabbleTubeChannelState
+static TpTubeChannelState
 get_tube_state (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   GabbleBytestreamState bytestream_state;
 
   if (!priv->offered)
-    return GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED;
+    return TP_TUBE_CHANNEL_STATE_NOT_OFFERED;
 
   if (priv->bytestream == NULL)
     /* bytestream not yet created as we're waiting for the SI reply */
-    return GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING;
+    return TP_TUBE_CHANNEL_STATE_REMOTE_PENDING;
 
   g_object_get (priv->bytestream, "state", &bytestream_state, NULL);
 
   switch (bytestream_state)
     {
       case GABBLE_BYTESTREAM_STATE_OPEN:
-        return GABBLE_TUBE_CHANNEL_STATE_OPEN;
+        return TP_TUBE_CHANNEL_STATE_OPEN;
         break;
       case GABBLE_BYTESTREAM_STATE_LOCAL_PENDING:
       case GABBLE_BYTESTREAM_STATE_ACCEPTED:
-        return GABBLE_TUBE_CHANNEL_STATE_LOCAL_PENDING;
+        return TP_TUBE_CHANNEL_STATE_LOCAL_PENDING;
         break;
       case GABBLE_BYTESTREAM_STATE_INITIATING:
-        return GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING;
+        return TP_TUBE_CHANNEL_STATE_REMOTE_PENDING;
         break;
       default:
         g_return_val_if_reached (0);
@@ -530,8 +530,8 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
     {
       tube_dbus_open (self);
 
-      gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (self,
-          GABBLE_TUBE_CHANNEL_STATE_OPEN);
+      tp_svc_channel_interface_tube_emit_tube_channel_state_changed (self,
+          TP_TUBE_CHANNEL_STATE_OPEN);
 
       g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
     }
@@ -655,7 +655,7 @@ gabble_tube_dbus_get_property (GObject *object,
         break;
       case PROP_CHANNEL_TYPE:
         g_value_set_static_string (value,
-            GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+            TP_IFACE_CHANNEL_TYPE_DBUS_TUBE);
         break;
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
@@ -730,8 +730,8 @@ gabble_tube_dbus_get_property (GObject *object,
               TP_IFACE_CHANNEL, "InitiatorID",
               TP_IFACE_CHANNEL, "Requested",
               TP_IFACE_CHANNEL, "Interfaces",
-              GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE, "ServiceName",
-              GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE, "SupportedAccessControls",
+              TP_IFACE_CHANNEL_TYPE_DBUS_TUBE, "ServiceName",
+              TP_IFACE_CHANNEL_TYPE_DBUS_TUBE, "SupportedAccessControls",
               NULL);
 
           if (priv->initiator != priv->self_handle)
@@ -742,12 +742,12 @@ gabble_tube_dbus_get_property (GObject *object,
               /* FIXME: use tp_dbus_properties_mixin_add_properties once it's
                * added in tp-glib */
               tp_dbus_properties_mixin_get (object,
-                  GABBLE_IFACE_CHANNEL_INTERFACE_TUBE, "Parameters",
+                  TP_IFACE_CHANNEL_INTERFACE_TUBE, "Parameters",
                   prop_value, NULL);
               g_assert (G_IS_VALUE (prop_value));
 
               g_hash_table_insert (properties,
-                  g_strdup_printf ("%s.%s", GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
+                  g_strdup_printf ("%s.%s", TP_IFACE_CHANNEL_INTERFACE_TUBE,
                     "Parameters"), prop_value);
             }
 
@@ -1009,12 +1009,12 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
         NULL,
         channel_props,
       },
-      { GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE,
+      { TP_IFACE_CHANNEL_TYPE_DBUS_TUBE,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         dbus_tube_props,
       },
-      { GABBLE_IFACE_CHANNEL_INTERFACE_TUBE,
+      { TP_IFACE_CHANNEL_INTERFACE_TUBE,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         tube_iface_props,
@@ -1111,7 +1111,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       "dbus-names",
       "D-Bus names",
       "Mapping of contact handles to D-Bus names (used for muc tubes only).",
-      GABBLE_HASH_TYPE_DBUS_TUBE_PARTICIPANTS,
+      TP_HASH_TYPE_DBUS_TUBE_PARTICIPANTS,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DBUS_NAMES, param_spec);
 
@@ -1290,8 +1290,8 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       if (!result)
         return FALSE;
 
-      gabble_svc_channel_interface_tube_emit_tube_channel_state_changed (tube,
-          GABBLE_TUBE_CHANNEL_STATE_REMOTE_PENDING);
+      tp_svc_channel_interface_tube_emit_tube_channel_state_changed (tube,
+          TP_TUBE_CHANNEL_STATE_REMOTE_PENDING);
 
     }
   else
@@ -1708,7 +1708,7 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
 
   g_hash_table_insert (added, GUINT_TO_POINTER (handle), (gchar *) name);
 
-  gabble_svc_channel_type_dbus_tube_emit_d_bus_names_changed (self, added,
+  tp_svc_channel_type_dbus_tube_emit_dbus_names_changed (self, added,
       removed);
 
   g_hash_table_destroy (added);
@@ -1746,7 +1746,7 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
 
   g_array_append_val (removed, handle);
 
-  gabble_svc_channel_type_dbus_tube_emit_d_bus_names_changed (self, added,
+  tp_svc_channel_type_dbus_tube_emit_dbus_names_changed (self, added,
       removed);
 
   g_hash_table_destroy (added);
@@ -1843,7 +1843,7 @@ gabble_tube_dbus_get_channel_type (TpSvcChannel *iface,
                                        DBusGMethodInvocation *context)
 {
   tp_svc_channel_return_from_get_channel_type (context,
-      GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+      TP_IFACE_CHANNEL_TYPE_DBUS_TUBE);
 }
 
 /**
@@ -1916,7 +1916,7 @@ gabble_tube_dbus_check_access_control (GabbleTubeDBus *self,
  * org.freedesktop.Telepathy.Channel.Type.DBusTube
  */
 static void
-gabble_tube_dbus_offer_async (GabbleSvcChannelTypeDBusTube *self,
+gabble_tube_dbus_offer_async (TpSvcChannelTypeDBusTube *self,
     GHashTable *parameters,
     guint access_control,
     DBusGMethodInvocation *context)
@@ -1938,7 +1938,7 @@ gabble_tube_dbus_offer_async (GabbleSvcChannelTypeDBusTube *self,
 
   if (gabble_tube_dbus_offer (tube, &error))
     {
-      gabble_svc_channel_type_dbus_tube_return_from_offer (context,
+      tp_svc_channel_type_dbus_tube_return_from_offer (context,
           tube->priv->dbus_srv_addr);
     }
   else
@@ -1956,7 +1956,7 @@ gabble_tube_dbus_offer_async (GabbleSvcChannelTypeDBusTube *self,
  * org.freedesktop.Telepathy.Channel.Type.DBusTube
  */
 static void
-gabble_tube_dbus_accept_async (GabbleSvcChannelTypeDBusTube *self,
+gabble_tube_dbus_accept_async (TpSvcChannelTypeDBusTube *self,
     guint access_control,
     DBusGMethodInvocation *context)
 {
@@ -1972,7 +1972,7 @@ gabble_tube_dbus_accept_async (GabbleSvcChannelTypeDBusTube *self,
 
   if (gabble_tube_dbus_accept (GABBLE_TUBE_IFACE (tube), &error))
     {
-      gabble_svc_channel_type_dbus_tube_return_from_accept (context,
+      tp_svc_channel_type_dbus_tube_return_from_accept (context,
           tube->priv->dbus_srv_addr);
       ;
     }
@@ -2020,10 +2020,10 @@ static void
 dbustube_iface_init (gpointer g_iface,
                      gpointer iface_data)
 {
-  GabbleSvcChannelTypeDBusTubeClass *klass =
-      (GabbleSvcChannelTypeDBusTubeClass *) g_iface;
+  TpSvcChannelTypeDBusTubeClass *klass =
+      (TpSvcChannelTypeDBusTubeClass *) g_iface;
 
-#define IMPLEMENT(x, suffix) gabble_svc_channel_type_dbus_tube_implement_##x (\
+#define IMPLEMENT(x, suffix) tp_svc_channel_type_dbus_tube_implement_##x (\
     klass, gabble_tube_dbus_##x##suffix)
   IMPLEMENT(offer,_async);
   IMPLEMENT(accept,_async);

@@ -517,8 +517,12 @@ gibber_fd_transport_block_receiving (GibberTransport *transport,
   else if (!block && priv->watch_in == 0)
     {
       DEBUG ("unblock receiving from the transport");
-      priv->watch_in = g_io_add_watch (priv->channel, G_IO_IN,
-          _channel_io_in, self);
+      if (priv->channel != NULL)
+        {
+          priv->watch_in = g_io_add_watch (priv->channel, G_IO_IN,
+              _channel_io_in, self);
+        }
+      /* else the transport isn't connected yet */
     }
 
   priv->receiving_blocked = block;

@@ -80,8 +80,11 @@ struct _GabbleJingleSession {
 };
 
 GabbleJingleSession *gabble_jingle_session_new (GabbleConnection *connection,
-    const gchar *session_id, gboolean local_initiator, TpHandle peer,
-    const gchar *peer_resource);
+    const gchar *session_id,
+    gboolean local_initiator,
+    TpHandle peer,
+    const gchar *peer_resource,
+    gboolean local_hold);
 
 const gchar * gabble_jingle_session_detect (LmMessage *message,
     JingleAction *action, JingleDialect *dialect);
@@ -102,6 +105,9 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
 
 GType gabble_jingle_session_get_content_type (GabbleJingleSession *);
 GList *gabble_jingle_session_get_contents (GabbleJingleSession *sess);
+const gchar *gabble_jingle_session_get_peer_resource (
+    GabbleJingleSession *sess);
+const gchar *gabble_jingle_session_get_sid (GabbleJingleSession *sess);
 
 typedef void (*JingleReplyHandler) (GObject *, gboolean success,
     LmMessage *reply);
@@ -110,7 +116,8 @@ void gabble_jingle_session_send (GabbleJingleSession *sess,
     JingleReplyHandler cb,
     GObject *weak_object);
 
-void gabble_jingle_session_send_held (GabbleJingleSession *sess, gboolean held);
+void gabble_jingle_session_set_local_hold (GabbleJingleSession *sess,
+    gboolean held);
 
 gboolean gabble_jingle_session_get_remote_hold (GabbleJingleSession *sess);
 

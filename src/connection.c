@@ -141,6 +141,7 @@ enum
     PROP_IGNORE_SSL_ERRORS,
     PROP_ALIAS,
     PROP_FALLBACK_SOCKS5_PROXIES,
+    PROP_KEEPALIVE_INTERVAL,
 
     LAST_PROPERTY
 };
@@ -168,6 +169,8 @@ struct _GabbleConnectionPrivate
   gboolean do_register;
 
   gboolean low_bandwidth;
+
+  guint keepalive_interval;
 
   gchar *https_proxy_server;
   guint16 https_proxy_port;
@@ -420,6 +423,9 @@ gabble_connection_get_property (GObject    *object,
     case PROP_FALLBACK_SOCKS5_PROXIES:
       g_value_set_boxed (value, priv->fallback_socks5_proxies);
       break;
+    case PROP_KEEPALIVE_INTERVAL:
+      g_value_set_uint (value, priv->keepalive_interval);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -509,6 +515,9 @@ gabble_connection_set_property (GObject      *object,
     case PROP_FALLBACK_SOCKS5_PROXIES:
       priv->fallback_socks5_proxies = g_value_dup_boxed (value);
       break;
+    case PROP_KEEPALIVE_INTERVAL:
+      priv->keepalive_interval = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -587,6 +596,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
       GABBLE_IFACE_OLPC_GADGET,
       GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
+      GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION,
       NULL };
   static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
         { "GadgetAvailable", NULL, NULL },
@@ -799,6 +809,13 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           G_TYPE_STRV,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (object_class, PROP_KEEPALIVE_INTERVAL,
+      g_param_spec_uint (
+          "keepalive-interval", "keepalive interval",
+          "Seconds between keepalive packets, or 0 to disable",
+          0, G_MAXUINT, 30,
+          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   gabble_connection_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
@@ -972,6 +989,23 @@ OUT:
   return result;
 }
 
+/**
+ * gabble_connection_get_full_jid:
+ *
+ * Returns: the full jid (including resource) of this connection, which must be
+ *          freed by the caller.
+ */
+gchar *
+gabble_connection_get_full_jid (GabbleConnection *conn)
+{
+  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandle self = tp_base_connection_get_self_handle (base);
+  const gchar *bare_jid = tp_handle_inspect (contact_handles, self);
+
+  return g_strconcat (bare_jid, "/", conn->priv->resource, NULL);
+}
 
 /**
  * _gabble_connection_send
@@ -1361,8 +1395,7 @@ _gabble_connection_connect (TpBaseConnection *base,
       lm_ssl_unref (ssl);
     }
 
-  /* send whitespace to the server every 30 seconds */
-  lm_connection_set_keep_alive_rate (conn->lmconn, 30);
+  lm_connection_set_keep_alive_rate (conn->lmconn, priv->keepalive_interval);
 
   lm_connection_set_disconnect_function (conn->lmconn,
                                          connection_disconnected_cb,
@@ -2168,7 +2201,7 @@ connection_disco_cb (GabbleDisco *disco,
     {
       const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
           GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
-          GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION, NULL };
+          NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }

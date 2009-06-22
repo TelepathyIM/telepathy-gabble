@@ -47,6 +47,8 @@ libgabble_convenience_la_SOURCES = \
     connection-manager.c \
     debug.h \
     debug.c \
+    debugger.h \
+    debugger.c \
     disco.h \
     disco.c \
     error.c \
@@ -163,7 +165,8 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
 	    @HANDLE_LEAK_DEBUG_CFLAGS@ @TP_GLIB_CFLAGS@ \
 	    @SOUP_CFLAGS@ @UUID_CFLAGS@ \
-	    -I $(top_srcdir)/lib -I $(top_builddir)/lib
+	    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
+	    -DG_LOG_DOMAIN=\"gabble\"
 
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@ \
 	    @SOUP_LIBS@ @UUID_LIBS@

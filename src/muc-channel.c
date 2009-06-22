@@ -1143,6 +1143,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       gabble_muc_channel_add_member,
       gabble_muc_channel_remove_member);
   tp_group_mixin_init_dbus_properties (object_class);
+  tp_group_mixin_class_allow_self_removal (object_class);
 }
 
 static void clear_join_timer (GabbleMucChannel *chan);
@@ -2818,14 +2819,24 @@ gabble_muc_channel_remove_member (GObject *obj,
                                   const gchar *message,
                                   GError **error)
 {
-  GabbleMucChannelPrivate *priv;
+  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (obj);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  TpGroupMixin *group = TP_GROUP_MIXIN (chan);
   LmMessage *msg;
   LmMessageNode *query_node, *item_node;
   const gchar *jid, *nick;
   gboolean result;
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (GABBLE_MUC_CHANNEL (obj));
+  if (handle == group->self_handle)
+    {
+      /* User wants to leave the MUC */
 
+      close_channel (chan, message, TRUE, group->self_handle,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+      return TRUE;
+    }
+
+  /* Otherwise, the user wants to kick someone. */
   msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_SET);
 

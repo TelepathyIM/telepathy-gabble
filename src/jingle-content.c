@@ -282,83 +282,57 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
 
   /* property definitions */
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object used for exchanging "
-                                    "messages.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Gabble connection object used for exchanging messages.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
-                                    "Jingle session object that owns this content.",
-                                    GABBLE_TYPE_JINGLE_SESSION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Jingle session object that owns this content.",
+      GABBLE_TYPE_JINGLE_SESSION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SESSION, param_spec);
 
   param_spec = g_param_spec_string ("name", "Content name",
-                                    "A unique content name in the session.",
-                                    NULL,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "A unique content name in the session.",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_NAME, param_spec);
 
   param_spec = g_param_spec_string ("content-ns", "Content namespace",
-                                    "Namespace identifying the content type.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "Namespace identifying the content type.",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONTENT_NS, param_spec);
 
   param_spec = g_param_spec_string ("transport-ns", "Transport namespace",
-                                    "Namespace identifying the transport type.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "Namespace identifying the transport type.",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_TRANSPORT_NS, param_spec);
 
-
-
   param_spec = g_param_spec_uint ("senders", "Stream senders",
-                                  "Valid senders for the stream.",
-                                  0, G_MAXUINT32, JINGLE_CONTENT_SENDERS_NONE,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "Valid senders for the stream.",
+      0, G_MAXUINT32, JINGLE_CONTENT_SENDERS_NONE,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SENDERS, param_spec);
 
   param_spec = g_param_spec_uint ("state", "Content state",
-                                  "The current state that the content is in.",
-                                  0, G_MAXUINT32, JINGLE_CONTENT_STATE_EMPTY,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "The current state that the content is in.",
+      0, G_MAXUINT32, JINGLE_CONTENT_STATE_EMPTY,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
   param_spec = g_param_spec_string ("disposition", "Content disposition",
-                                    "Distinguishes between 'session' and other "
-                                    "contents.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "Distinguishes between 'session' and other contents.",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DISPOSITION, param_spec);
 
   param_spec = g_param_spec_boolean ("locally-created", "Locally created",
-                                     "True if the content was created by the "
-                                     "local client.",
-                                     FALSE,
-                                     G_PARAM_READABLE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
+      "True if the content was created by the local client.",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_LOCALLY_CREATED, param_spec);
 
   /* signal definitions */
@@ -707,18 +681,13 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
     }
   else
     {
-      gboolean session_created_by_us;
-
       content_node = lm_message_node_add_child (parent, "content", NULL);
       lm_message_node_set_attributes (content_node,
           "name", priv->name,
           "senders", produce_senders (priv->senders),
           NULL);
 
-      g_object_get (c->session, "local-initiator", &session_created_by_us,
-        NULL);
-
-      if (priv->created_by_us == session_created_by_us)
+      if (gabble_jingle_content_creator_is_initiator (c))
         lm_message_node_set_attribute (content_node, "creator", "initiator");
       else
         lm_message_node_set_attribute (content_node, "creator", "responder");
@@ -816,7 +785,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
   GabbleJingleContentPrivate *priv = self->priv;
   LmMessage *msg;
   LmMessageNode *sess_node;
-  JingleAction action = JINGLE_ACTION_UNKNOWN;
+  JingleAction action;
   JingleContentState new_state = JINGLE_CONTENT_STATE_EMPTY;
 
   g_assert (gabble_jingle_content_is_ready (self));
@@ -1050,8 +1019,30 @@ gabble_jingle_content_is_created_by_us (GabbleJingleContent *c)
   return c->priv->created_by_us;
 }
 
+gboolean
+gabble_jingle_content_creator_is_initiator (GabbleJingleContent *c)
+{
+  gboolean session_created_by_us;
+
+  g_object_get (c->session, "local-initiator", &session_created_by_us, NULL);
+
+  return (c->priv->created_by_us == session_created_by_us);
+}
+
 const gchar *
 gabble_jingle_content_get_name (GabbleJingleContent *self)
 {
   return self->priv->name;
+}
+
+const gchar *
+gabble_jingle_content_get_ns (GabbleJingleContent *self)
+{
+  return self->priv->content_ns;
+}
+
+const gchar *
+gabble_jingle_content_get_disposition (GabbleJingleContent *self)
+{
+  return self->priv->disposition;
 }

@@ -25,6 +25,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <tp:generic-types>
   <tp:external-type name="Room_Handle" type="u"
     from="Telepathy specification"/>
+  <tp:external-type name="Handle_Type" type="u"
+    from="Telepathy specification"/>
   <tp:external-type name="Contact_Handle" type="u"
     from="Telepathy specification"/>
   <tp:external-type name="DBus_Unique_Name" type="s"
@@ -35,6 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <xi:include href="Channel_Future.xml"/>
 <xi:include href="Channel_Type_Streamed_Media_Future.xml"/>
 <xi:include href="Connection_Interface_Location.xml"/>
+<xi:include href="Debug.xml"/>
 <xi:include href="OLPC_Buddy_Info.xml"/>
 <xi:include href="OLPC_Activity_Properties.xml"/>
 <xi:include href="OLPC_Gadget.xml"/>
@@ -43,10 +46,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <xi:include href="OLPC_Channel_Type_ActivityView.xml"/>
 
 <xi:include href="Connection_Interface_Contact_Capabilities.xml"/>
-
-<xi:include href="Channel_Type_Stream_Tube.xml"/>
-<xi:include href="Channel_Type_DBus_Tube.xml"/>
-<xi:include href="Channel_Interface_Tube.xml"/>
 
 <tp:generic-types>
   <tp:external-type name="Contact_Handle" type="u"

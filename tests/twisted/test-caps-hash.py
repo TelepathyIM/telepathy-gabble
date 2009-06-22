@@ -24,9 +24,13 @@ import dbus
 
 from twisted.words.xish import xpath
 
-from gabbletest import exec_test, make_result_iq, make_presence
+from gabbletest import exec_test, make_result_iq, make_presence, sync_stream
 from servicetest import sync_dbus, EventPattern
 import constants as cs
+import ns
+from caps_helper import (
+    compute_caps_hash, make_caps_disco_reply, fake_client_dataforms,
+    )
 
 caps_changed_flag = False
 
@@ -75,15 +79,11 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         client + '#' + '0.1'
 
     # send good reply
-    result = make_result_iq(stream, event.stanza)
-    query = result.firstChildElement()
-    feature = query.addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/jingle'
-    feature = query.addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
-    feature = query.addElement('feature')
-    feature['var'] = 'http://www.google.com/transport/p2p'
-    stream.send(result)
+    stream.send(make_caps_disco_reply(stream, event.stanza,
+        [ 'http://jabber.org/protocol/jingle',
+          'http://jabber.org/protocol/jingle/description/audio',
+          'http://www.google.com/transport/p2p',
+        ]))
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
@@ -93,8 +93,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     presence = make_presence(contact, status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = 'KyuUmfhC34jP1sDjs489RjkJfsg=' # good hash
-    c['ver'] = 'X' + c['ver'] # now the hash is broken
+    c['ver'] = 'ceci=nest=pas=un=hash'
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -106,15 +105,14 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         client + '#' + c['ver']
 
     # send bogus reply
-    result = make_result_iq(stream, event.stanza)
-    query = result.firstChildElement()
-    feature = query.addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/bogus-feature'
-    stream.send(result)
+    stream.send(make_caps_disco_reply(stream, event.stanza,
+        ['http://jabber.org/protocol/bogus-feature']))
 
     # don't receive any D-Bus signal
     sync_dbus(bus, q, conn)
+    sync_stream(q, stream)
     assert caps_changed_flag == False
+
 
     # send presence with empty caps
     presence = make_presence(contact, status='hello')
@@ -142,11 +140,18 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     assert caps_changed_flag == True
     caps_changed_flag = False
 
+
     # send correct presence
+    features = [
+        'http://jabber.org/protocol/jingle',
+        'http://jabber.org/protocol/jingle/description/audio',
+        'http://www.google.com/transport/p2p',
+        ]
+
     presence = make_presence(contact, status='hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = 'CzO+nkbflbxu1pgzOQSIi8gOyDc=' # good hash
+    c['ver'] = compute_caps_hash([], features, fake_client_dataforms)
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -162,39 +167,13 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     assert caps_changed_flag == False
 
     # send good reply
-    result = make_result_iq(stream, event.stanza)
-    query = result.firstChildElement()
-    query['node'] = client + '#' + c['ver']
-    feature = query.addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/jingle'
-    feature = query.addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
-    feature = query.addElement('feature')
-    feature['var'] = 'http://www.google.com/transport/p2p'
-
-    query.addRawXml("""
-<x type='result' xmlns='jabber:x:data'>
-<field var='FORM_TYPE' type='hidden'>
-<value>urn:xmpp:dataforms:softwareinfo</value>
-</field>
-<field var='software'>
-<value>A Fake Client with Twisted</value>
-</field>
-<field var='software_version'>
-<value>5.11.2-svn-20080512</value>
-</field>
-<field var='os'>
-<value>Debian GNU/Linux unstable (sid) unstable sid</value>
-</field>
-<field var='os_version'>
-<value>2.6.24-1-amd64</value>
-</field>
-</x>
-    """)
+    result = make_caps_disco_reply(stream, event.stanza, features,
+        fake_client_dataforms)
     stream.send(result)
 
     # we can now do audio calls
-    event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    event = q.expect('dbus-signal', signal='CapabilitiesChanged',
+    )
     assert caps_changed_flag == True
     caps_changed_flag = False
 
@@ -232,7 +211,12 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
 
     # send updated presence with Jingle caps info
     presence = make_presence(contact1, status='hello')
-    ver = 'JpaYgiKL0y4fUOCTwN3WLGpaftM='
+    features = [
+        'http://jabber.org/protocol/jingle',
+        'http://jabber.org/protocol/jingle/description/audio',
+        'http://www.google.com/transport/p2p',
+        ]
+    ver = compute_caps_hash([], features, {})
     presence = presence_add_caps(presence, ver, client,
             hash='sha-1')
     stream.send(presence)
@@ -252,19 +236,13 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     sync_dbus(bus, q, conn)
     assert caps_changed_flag == False
 
-    # send good reply
-    result = make_result_iq(stream, event.stanza)
-    query = result.firstChildElement()
-    feature = query.addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/jingle'
-    feature = query.addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
-    feature = query.addElement('feature')
-    feature['var'] = 'http://www.google.com/transport/p2p'
+    result = make_caps_disco_reply(stream, event.stanza, features)
+
     if broken_hash:
         # make the hash break!
-        feature = query.addElement('feature')
-        feature['var'] = 'http://broken-feature'
+        query = result.firstChildElement()
+        query.addElement('feature')['var'] = 'http://example.com/another-feature'
+
     stream.send(result)
 
     if broken_hash:
@@ -281,14 +259,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
         assert caps_changed_flag == False
 
         # send good reply
-        result = make_result_iq(stream, event.stanza)
-        query = result.firstChildElement()
-        feature = query.addElement('feature')
-        feature['var'] = 'http://jabber.org/protocol/jingle'
-        feature = query.addElement('feature')
-        feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
-        feature = query.addElement('feature')
-        feature['var'] = 'http://www.google.com/transport/p2p'
+        result = make_caps_disco_reply(stream, event.stanza, features)
         stream.send(result)
 
     # we can now do audio calls with both contacts

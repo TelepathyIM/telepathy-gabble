@@ -114,7 +114,7 @@ typedef enum _Socks5State Socks5State;
 #define SOCKS5_MIN_LENGTH 6
 
 #define CONNECT_REPLY_TIMEOUT 30
-#define CONNECT_TIMEOUT 30
+#define CONNECT_TIMEOUT 10
 
 struct _Streamhost
 {
@@ -1248,7 +1248,7 @@ socks5_connect (GabbleBytestreamSocks5 *self)
   g_object_unref (transport);
 
   /* We don't wait to wait for the TCP timeout is the host is unreachable */
-  start_timer (self, CONNECT_REPLY_TIMEOUT);
+  start_timer (self, CONNECT_TIMEOUT);
 
   gibber_tcp_transport_connect (transport, streamhost->host,
       streamhost->port);

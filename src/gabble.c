@@ -27,6 +27,7 @@
 #include <telepathy-glib/run.h>
 
 #include "debug.h"
+#include "debugger.h"
 #include "connection-manager.h"
 
 static TpBaseConnectionManager *
@@ -38,10 +39,40 @@ construct_cm (void)
 
 #ifdef ENABLE_DEBUG
 static void
+log_to_debugger (GTimeVal *timestamp,
+    const gchar *log_domain,
+    GLogLevelFlags log_level,
+    const gchar *string)
+{
+  GabbleDebugger *dbg = gabble_debugger_get_singleton ();
+
+  gabble_debugger_add_message (dbg, timestamp, log_domain, log_level, string);
+}
+
+static void
+simple_log (const gchar *log_domain,
+    GLogLevelFlags log_level,
+    const gchar *message,
+    gpointer user_data)
+{
+  g_log_default_handler (log_domain, log_level, message, NULL);
+
+  /* G_LOG_DOMAIN = "gabble". No need to send gabble messages to the debugger
+   * as they already have in gabble_debug. */
+  if (log_level != G_LOG_LEVEL_DEBUG
+      || tp_strdiff (log_domain, G_LOG_DOMAIN))
+    {
+      GTimeVal now;
+      g_get_current_time (&now);
+      log_to_debugger (&now, log_domain, log_level, message);
+    }
+}
+
+static void
 stamp_log (const gchar *log_domain,
-           GLogLevelFlags log_level,
-           const gchar *message,
-           gpointer user_data)
+    GLogLevelFlags log_level,
+    const gchar *message,
+    gpointer user_data)
 {
   GTimeVal now;
   gchar now_str[32];
@@ -54,12 +85,17 @@ stamp_log (const gchar *log_domain,
   tmp = g_strdup_printf ("%s.%06ld: %s", now_str, now.tv_usec, message);
   g_log_default_handler (log_domain, log_level, tmp, NULL);
   g_free (tmp);
+
+  /* Gabble messages are already sent to the debugger in gabble_debug. */
+  if (log_level != G_LOG_LEVEL_DEBUG
+      || tp_strdiff (log_domain, G_LOG_DOMAIN))
+    log_to_debugger (&now, log_domain, log_level, message);
 }
 #endif
 
 int
 gabble_main (int argc,
-             char **argv)
+    char **argv)
 {
   tp_debug_divert_messages (g_getenv ("GABBLE_LOGFILE"));
 
@@ -67,7 +103,9 @@ gabble_main (int argc,
   gabble_debug_set_flags_from_env ();
 
   if (g_getenv ("GABBLE_TIMING") != NULL)
-    g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, stamp_log, NULL);
+    g_log_set_default_handler (stamp_log, NULL);
+  else
+    g_log_set_default_handler (simple_log, NULL);
 
   if (g_getenv ("GABBLE_PERSIST") != NULL)
     tp_debug_set_persistent (TRUE);

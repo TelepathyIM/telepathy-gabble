@@ -568,7 +568,7 @@ create_new_tube (GabbleTubesChannel *self,
 
   /* The old API doesn't know the "not offered" state, so we have to wait that
    * the tube is offered before announcing it. */
-  if (state != GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED)
+  if (state != TP_TUBE_CHANNEL_STATE_NOT_OFFERED)
     {
       tp_svc_channel_type_tubes_emit_new_tube (self,
           tube_id,
@@ -967,7 +967,7 @@ copy_tube_in_ptr_array (gpointer key,
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
-  GabbleTubeChannelState state;
+  TpTubeChannelState state;
   TpTubeType type;
   GPtrArray *array = (GPtrArray *) user_data;
   GValue entry = {0,};
@@ -979,7 +979,7 @@ copy_tube_in_ptr_array (gpointer key,
   /* The old interface has no way to represent unoffered tubes, so they
    * shouldn't appear in the result of ListTubes()
    */
-  if (state == GABBLE_TUBE_CHANNEL_STATE_NOT_OFFERED)
+  if (state == TP_TUBE_CHANNEL_STATE_NOT_OFFERED)
     return;
 
   g_object_get (tube,
@@ -1505,18 +1505,18 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
   channel_type = tp_asv_get_string (request_properties,
             TP_IFACE_CHANNEL ".ChannelType");
 
-  if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+  if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
     {
       type = TP_TUBE_TYPE_STREAM;
       service = tp_asv_get_string (request_properties,
-                GABBLE_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+                TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
 
     }
-  else if (! tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+  else if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     {
       type = TP_TUBE_TYPE_DBUS;
       service = tp_asv_get_string (request_properties,
-                GABBLE_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+                TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
     }
   else
     /* This assertion is safe: this function's caller only calls it in one of

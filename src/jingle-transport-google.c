@@ -486,7 +486,8 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
 
     }
 
-  _gabble_connection_send (priv->content->conn, msg, NULL);
+  _gabble_connection_send_with_reply (priv->content->conn, msg, NULL, NULL,
+      NULL, NULL);
   lm_message_unref (msg);
 }
 

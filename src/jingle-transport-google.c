@@ -426,7 +426,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
 
       if (c->component < 1 || c->component > 2)
         {
-          DEBUG ("ignoring unknown compontent %d", c->component);
+          DEBUG ("ignoring unknown component %d", c->component);
           continue;
         }
 

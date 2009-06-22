@@ -1315,7 +1315,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
             {
               DEBUG ("switching to gtalk3 dialect and retransmiting our candidates");
               priv->dialect = JINGLE_DIALECT_GTALK3;
-              gabble_jingle_content_retransmit_candidates (c);
+              gabble_jingle_content_retransmit_candidates (c, TRUE);
             }
           else
             {
@@ -1646,9 +1646,10 @@ _check_content_ready (GabbleJingleSession *sess,
 
 static void
 _transmit_candidates (GabbleJingleSession *sess,
-    GabbleJingleContent *c, gpointer user_data)
+    GabbleJingleContent *c,
+    gpointer user_data)
 {
-  gabble_jingle_content_retransmit_candidates (c);
+  gabble_jingle_content_retransmit_candidates (c, FALSE);
 }
 
 static void

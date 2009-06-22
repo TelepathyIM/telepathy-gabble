@@ -406,6 +406,9 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
   LmMessage *msg;
   LmMessageNode *trans_node, *sess_node;
 
+  if (candidates == NULL)
+    return;
+
   msg = gabble_jingle_session_new_message (priv->content->session,
     JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
 
@@ -564,9 +567,10 @@ retransmit_candidates (GabbleJingleTransportIface *obj, gboolean all)
     }
   else
     {
-      /* in case content was ready after we wanted to transmit
-       * them originally, we are called to retranmit them */
-      if (priv->pending_candidates != NULL) {
+      /* If the content became ready after we wanted to transmit
+       * these originally, we are called to transmit when it them */
+      if (priv->pending_candidates != NULL)
+        {
           group_and_transmit_candidates (transport, priv->pending_candidates);
           priv->pending_candidates = NULL;
       }

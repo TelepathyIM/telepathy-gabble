@@ -889,9 +889,11 @@ gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
  * candidates), and when we detect gtalk3 after we've transmitted some
  * candidates. */
 void
-gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self)
+gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self,
+    gboolean all)
 {
-  gabble_jingle_transport_iface_retransmit_candidates (self->priv->transport, TRUE);
+  gabble_jingle_transport_iface_retransmit_candidates (self->priv->transport,
+      all);
 }
 
 /* Called by a subclass when the media is ready (e.g. we got local codecs) */

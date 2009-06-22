@@ -120,7 +120,8 @@ void gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
 GList *gabble_jingle_content_get_remote_candidates (GabbleJingleContent *c);
 gboolean gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders);
-void gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self);
+void gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self,
+    gboolean all);
 gboolean gabble_jingle_content_is_created_by_us (GabbleJingleContent *c);
 gboolean gabble_jingle_content_creator_is_initiator (GabbleJingleContent *c);
 

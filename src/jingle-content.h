@@ -100,7 +100,10 @@ void gabble_jingle_content_parse_add (GabbleJingleContent *c,
 void gabble_jingle_content_update_senders (GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error);
 void gabble_jingle_content_produce_node (GabbleJingleContent *c,
-  LmMessageNode *parent, gboolean full);
+    LmMessageNode *parent,
+    gboolean include_description,
+    gboolean include_transport,
+    LmMessageNode **trans_node_out);
 void gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   LmMessageNode *content_node, gboolean google_mode, GError **error);
 

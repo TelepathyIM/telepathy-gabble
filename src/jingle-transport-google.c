@@ -415,38 +415,8 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
   g_object_get (priv->content->session, "dialect", &dialect, NULL);
   g_object_get (priv->content, "media-type", &media_type, NULL);
 
-  if (dialect == JINGLE_DIALECT_GTALK3)
-    {
-      trans_node = sess_node;
-    }
-  else if (dialect == JINGLE_DIALECT_GTALK4)
-    {
-      trans_node = lm_message_node_add_child (sess_node, "transport", NULL);
-      lm_message_node_set_attribute (trans_node, "xmlns",
-          NS_GOOGLE_TRANSPORT_P2P);
-    }
-  else
-    {
-      const gchar *name = gabble_jingle_content_get_name (priv->content);
-      const gchar *ns = gabble_jingle_content_get_ns (priv->content);
-      LmMessageNode *content_node;
-
-      /* FIXME: this should use gabble_jingle_content_produce_node(); #22236 */
-
-      /* we need the <content> ... */
-      content_node = lm_message_node_add_child (sess_node, "content", NULL);
-      lm_message_node_set_attribute (content_node, "xmlns", ns);
-      lm_message_node_set_attribute (content_node, "name", name);
-
-      if (gabble_jingle_content_creator_is_initiator (priv->content))
-        lm_message_node_set_attribute (content_node, "creator", "initiator");
-      else
-        lm_message_node_set_attribute (content_node, "creator", "responder");
-
-      /* .. and the <transport> node */
-      trans_node = lm_message_node_add_child (content_node, "transport", NULL);
-      lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
-    }
+  gabble_jingle_content_produce_node (priv->content, sess_node, FALSE, TRUE,
+      &trans_node);
 
   for (li = candidates; li; li = li->next)
     {

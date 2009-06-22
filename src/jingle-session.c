@@ -1658,7 +1658,7 @@ _fill_content (GabbleJingleSession *sess,
   LmMessageNode *sess_node = user_data;
   JingleContentState state;
 
-  gabble_jingle_content_produce_node (c, sess_node, TRUE);
+  gabble_jingle_content_produce_node (c, sess_node, TRUE, TRUE, NULL);
 
   g_object_get (c, "state", &state, NULL);
 

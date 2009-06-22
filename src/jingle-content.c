@@ -660,7 +660,10 @@ gabble_jingle_content_parse_description_info (GabbleJingleContent *c,
 
 void
 gabble_jingle_content_produce_node (GabbleJingleContent *c,
-  LmMessageNode *parent, gboolean full)
+    LmMessageNode *parent,
+    gboolean include_description,
+    gboolean include_transport,
+    LmMessageNode **trans_node_out)
 {
   GabbleJingleContentPrivate *priv = c->priv;
   LmMessageNode *content_node, *trans_node;
@@ -673,10 +676,6 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
   if ((dialect == JINGLE_DIALECT_GTALK3) ||
       (dialect == JINGLE_DIALECT_GTALK4))
     {
-      /* content-* isn't used in GTalk anyways, so we always have to include
-       * the full content description */
-      g_assert (full == TRUE);
-
       content_node = parent;
     }
   else
@@ -694,17 +693,24 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
         lm_message_node_set_attribute (content_node, "creator", "responder");
     }
 
-  if (!full)
-    return;
+  if (include_description)
+    produce_desc (c, content_node);
 
-  produce_desc (c, content_node);
-
-  /* We can do it here, don't need to call into transport object for this */
-  if (dialect != JINGLE_DIALECT_GTALK3)
+  if (include_transport)
     {
-      /* Galk 03 doesn't use a transport, but assumes Gtalk p2p */
-      trans_node = lm_message_node_add_child (content_node, "transport", NULL);
-      lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
+      if (dialect == JINGLE_DIALECT_GTALK3)
+        {
+          /* GTalk 03 doesn't use a transport, but assumes gtalk-p2p */
+          trans_node = parent;
+        }
+      else
+        {
+          trans_node = lm_message_node_add_child (content_node, "transport", NULL);
+          lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
+        }
+
+      if (trans_node_out != NULL)
+        *trans_node_out = trans_node;
     }
 }
 
@@ -809,7 +815,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
 
   msg = gabble_jingle_session_new_message (self->session,
       action, &sess_node);
-  gabble_jingle_content_produce_node (self, sess_node, TRUE);
+  gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE, NULL);
   gabble_jingle_session_send (self->session, msg, NULL, NULL);
 
   priv->state = new_state;
@@ -874,7 +880,7 @@ gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
 
   msg = gabble_jingle_session_new_message (self->session,
       JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
-  gabble_jingle_content_produce_node (self, sess_node, TRUE);
+  gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE, NULL);
   gabble_jingle_session_send (self->session, msg, NULL, NULL);
 }
 
@@ -944,7 +950,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 
   msg = gabble_jingle_session_new_message (c->session,
       JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
-  gabble_jingle_content_produce_node (c, sess_node, FALSE);
+  gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
   gabble_jingle_session_send (c->session, msg, NULL, NULL);
 
   /* FIXME: actually check whether remote end accepts our content-modify */
@@ -1000,7 +1006,7 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
 
       msg = gabble_jingle_session_new_message (c->session,
           JINGLE_ACTION_CONTENT_REMOVE, &sess_node);
-      gabble_jingle_content_produce_node (c, sess_node, FALSE);
+      gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
       gabble_jingle_session_send (c->session, msg, _on_remove_reply,
           (GObject *) c);
     }

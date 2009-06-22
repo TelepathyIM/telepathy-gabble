@@ -1158,6 +1158,14 @@ gabble_media_channel_remove_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   priv = obj->priv;
 
+  if (!gabble_jingle_session_can_modify_contents (priv->session))
+    {
+      GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Streams can't be removed from Google Talk calls" };
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
   stream_objs = g_ptr_array_sized_new (streams->len);
 
   /* check that all stream ids are valid and at the same time build an array
@@ -1270,16 +1278,26 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
 
   if (stream_direction == TP_MEDIA_STREAM_DIRECTION_NONE)
     {
-      GabbleJingleMediaRtp *c;
+      if (gabble_jingle_session_can_modify_contents (priv->session))
+        {
+          GabbleJingleMediaRtp *c;
 
-      DEBUG ("request for NONE direction; removing stream");
+          DEBUG ("request for NONE direction; removing stream");
 
-      c = gabble_media_stream_get_content (stream);
-      gabble_jingle_session_remove_content (priv->session,
-          (GabbleJingleContent *) c);
+          c = gabble_media_stream_get_content (stream);
+          gabble_jingle_session_remove_content (priv->session,
+              (GabbleJingleContent *) c);
 
-      tp_svc_channel_type_streamed_media_return_from_request_stream_direction (
-          context);
+          tp_svc_channel_type_streamed_media_return_from_request_stream_direction (
+              context);
+        }
+      else
+        {
+          GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+              "Stream direction can't be set to None in Google Talk calls" };
+          DEBUG ("%s", e.message);
+          dbus_g_method_return_error (context, &e);
+        }
 
       return;
     }
@@ -2418,12 +2436,25 @@ stream_error_cb (GabbleMediaStream *stream,
   tp_svc_channel_type_streamed_media_emit_stream_error (chan, id, errno,
       message);
 
-  /* remove stream from session (removal will be signalled
-   * so we can dispose of the stream)
-   */
-  c = gabble_media_stream_get_content (stream);
-  gabble_jingle_session_remove_content (priv->session,
-      (GabbleJingleContent *) c);
+  if (gabble_jingle_session_can_modify_contents (priv->session))
+    {
+      /* remove stream from session (removal will be signalled
+       * so we can dispose of the stream)
+       */
+      c = gabble_media_stream_get_content (stream);
+      gabble_jingle_session_remove_content (priv->session,
+          (GabbleJingleContent *) c);
+    }
+  else
+    {
+      /* We can't remove the content; let's terminate the call. (The
+       * alternative is to carry on the call with only audio/video, which will
+       * look or sound bad to the Google Talk-using peer.)
+       */
+      DEBUG ("Terminating call in response to stream error");
+      gabble_jingle_session_terminate (priv->session,
+          TP_CHANNEL_GROUP_CHANGE_REASON_ERROR, NULL);
+    }
 }
 
 static void

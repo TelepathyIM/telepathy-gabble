@@ -1669,21 +1669,13 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
   /* existing call; the recipient and the mode has already been decided */
   if (priv->session != NULL)
     {
-      g_object_get (priv->session,
-          "dialect", &dialect,
-          "peer-resource", &peer_resource,
-          NULL);
+      peer_resource = gabble_jingle_session_get_peer_resource (priv->session);
 
       /* is a google call... we have no other option */
-      if (JINGLE_IS_GOOGLE_DIALECT (dialect))
+      if (!gabble_jingle_session_can_modify_contents (priv->session))
         {
-          DEBUG ("already in Google mode; can't add new stream");
-
-          g_assert (priv->streams->len == 1);
-
           g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              "Google Talk calls may only contain one stream");
-
+              "Streams can't be added to ongoing Google Talk calls");
           return FALSE;
         }
 

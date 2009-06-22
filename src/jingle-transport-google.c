@@ -80,9 +80,6 @@ struct _GabbleJingleTransportGooglePrivate
   gboolean dispose_has_run;
 };
 
-static void transmit_candidates (GabbleJingleTransportGoogle *transport,
-    GList *candidates);
-
 static void
 gabble_jingle_transport_google_init (GabbleJingleTransportGoogle *obj)
 {
@@ -400,20 +397,17 @@ parse_candidates (GabbleJingleTransportIface *obj,
 }
 
 static void
-transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
+transmit_candidates (GabbleJingleTransportGoogle *transport,
+    const gchar *name,
+    GList *candidates)
 {
   GabbleJingleTransportGooglePrivate *priv = transport->priv;
-  JingleDialect dialect;
   GList *li;
   LmMessage *msg;
   LmMessageNode *trans_node, *sess_node;
-  JingleMediaType media_type;
 
   msg = gabble_jingle_session_new_message (priv->content->session,
     JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
-
-  g_object_get (priv->content->session, "dialect", &dialect, NULL);
-  g_object_get (priv->content, "media-type", &media_type, NULL);
 
   gabble_jingle_content_produce_node (priv->content, sess_node, FALSE, TRUE,
       &trans_node);
@@ -423,12 +417,6 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
       JingleCandidate *c = (JingleCandidate *) li->data;
       gchar port_str[16], pref_str[16], comp_str[16], *type_str, *proto_str;
       LmMessageNode *cnode;
-
-      if (c->component < 1 || c->component > 2)
-        {
-          DEBUG ("ignoring unknown component %d", c->component);
-          continue;
-        }
 
       sprintf (port_str, "%d", c->port);
       sprintf (pref_str, "%lf", c->preference);
@@ -476,19 +464,57 @@ transmit_candidates (GabbleJingleTransportGoogle *transport, GList *candidates)
           "generation", "0",
           NULL);
 
-      if (media_type == JINGLE_MEDIA_TYPE_VIDEO &&
-          JINGLE_IS_GOOGLE_DIALECT (dialect))
-        lm_message_node_set_attribute (cnode,
-          "name", c->component == 1 ? "video_rtp" : "video_rtcp");
-      else
-        lm_message_node_set_attribute (cnode,
-          "name", c->component == 1 ? "rtp" : "rtcp");
-
+      lm_message_node_set_attribute (cnode, "name", name);
     }
 
   _gabble_connection_send_with_reply (priv->content->conn, msg, NULL, NULL,
       NULL, NULL);
   lm_message_unref (msg);
+}
+
+/* Groups @candidates into rtp and rtcp and sends each group in its own
+ * transport-info. This works around old Gabble, which rejected transport-info
+ * stanzas containing non-rtp candidates.
+ */
+static void
+group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
+    GList *candidates)
+{
+  GabbleJingleTransportGooglePrivate *priv = transport->priv;
+  GList *rtp_candidates = NULL;
+  GList *rtcp_candidates = NULL;
+  JingleDialect dialect;
+  JingleMediaType media;
+  GList *li;
+
+  for (li = candidates; li != NULL; li = g_list_next (li))
+    {
+      JingleCandidate *c = li->data;
+
+      if (c->component == 1)
+        rtp_candidates = g_list_prepend (rtp_candidates, c);
+      else if (c->component == 2)
+        rtcp_candidates = g_list_prepend (rtcp_candidates, c);
+      else
+        DEBUG ("Ignoring unknown component %d", c->component);
+    }
+
+  g_object_get (priv->content->session, "dialect", &dialect, NULL);
+  g_object_get (priv->content, "media-type", &media, NULL);
+
+  if (media == JINGLE_MEDIA_TYPE_VIDEO && JINGLE_IS_GOOGLE_DIALECT (dialect))
+    {
+      transmit_candidates (transport, "video_rtp", rtp_candidates);
+      transmit_candidates (transport, "video_rtcp", rtcp_candidates);
+    }
+  else
+    {
+      transmit_candidates (transport, "rtp", rtp_candidates);
+      transmit_candidates (transport, "rtcp", rtcp_candidates);
+    }
+
+  g_list_free (rtp_candidates);
+  g_list_free (rtcp_candidates);
 }
 
 /* Takes in a list of slice-allocated JingleCandidate structs */
@@ -505,7 +531,7 @@ add_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
   if (state > JINGLE_CONTENT_STATE_EMPTY)
     {
       DEBUG ("content already signalled, transmitting candidates");
-      transmit_candidates (transport, new_candidates);
+      group_and_transmit_candidates (transport, new_candidates);
       priv->pending_candidates = NULL;
     }
   else
@@ -533,7 +559,7 @@ retransmit_candidates (GabbleJingleTransportIface *obj, gboolean all)
   if (all)
     {
       /* for gtalk3, we might have to retransmit everything */
-      transmit_candidates (transport, priv->local_candidates);
+      group_and_transmit_candidates (transport, priv->local_candidates);
       priv->pending_candidates = NULL;
     }
   else
@@ -541,7 +567,7 @@ retransmit_candidates (GabbleJingleTransportIface *obj, gboolean all)
       /* in case content was ready after we wanted to transmit
        * them originally, we are called to retranmit them */
       if (priv->pending_candidates != NULL) {
-          transmit_candidates (transport, priv->pending_candidates);
+          group_and_transmit_candidates (transport, priv->pending_candidates);
           priv->pending_candidates = NULL;
       }
     }

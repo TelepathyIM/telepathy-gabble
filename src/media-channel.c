@@ -1894,6 +1894,17 @@ media_channel_request_streams (GabbleMediaChannel *self,
   PendingStreamRequest *psr;
   GError *error = NULL;
 
+  if (types->len == 0)
+    {
+      GPtrArray *empty = g_ptr_array_sized_new (0);
+
+      DEBUG ("no streams to request");
+      succeeded_cb (context, empty);
+      g_ptr_array_free (empty, TRUE);
+
+      return;
+    }
+
   /* If we know the caps haven't arrived yet, delay stream creation
    * and check again later. Else, give up. */
   if (!contact_is_media_capable (self, contact_handle, &wait, &error))
@@ -1967,6 +1978,7 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
       DEBUG ("that's not a handle, sonny! (%u)", contact_handle);
       dbus_g_method_return_error (context, error);
       g_error_free (error);
+      return;
     }
   else
     {
@@ -1998,6 +2010,8 @@ gabble_media_channel_request_initial_streams (GabbleMediaChannel *chan,
     gpointer user_data)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
+  GArray *types = g_array_sized_new (FALSE, FALSE, sizeof (guint), 2);
+  guint media_type;
 
   /* This has to be an outgoing call... */
   g_assert (priv->creator == priv->conn->parent.self_handle);
@@ -2013,36 +2027,22 @@ gabble_media_channel_request_initial_streams (GabbleMediaChannel *chan,
       g_assert (!priv->initial_video);
     }
 
-  if (!priv->initial_audio && !priv->initial_video)
+  if (priv->initial_audio)
     {
-      GPtrArray *empty = g_ptr_array_sized_new (0);
-
-      succeeded_cb (user_data, empty);
-
-      g_ptr_array_free (empty, TRUE);
+      media_type = TP_MEDIA_STREAM_TYPE_AUDIO;
+      g_array_append_val (types, media_type);
     }
-  else
+
+  if (priv->initial_video)
     {
-      GArray *types = g_array_sized_new (FALSE, FALSE, sizeof (guint), 2);
-      guint media_type;
-
-      if (priv->initial_audio)
-        {
-          media_type = TP_MEDIA_STREAM_TYPE_AUDIO;
-          g_array_append_val (types, media_type);
-        }
-
-      if (priv->initial_video)
-        {
-          media_type = TP_MEDIA_STREAM_TYPE_VIDEO;
-          g_array_append_val (types, media_type);
-        }
-
-      media_channel_request_streams (chan, priv->initial_peer, types,
-          succeeded_cb, failed_cb, user_data);
-
-      g_array_free (types, TRUE);
+      media_type = TP_MEDIA_STREAM_TYPE_VIDEO;
+      g_array_append_val (types, media_type);
     }
+
+  media_channel_request_streams (chan, priv->initial_peer, types,
+      succeeded_cb, failed_cb, user_data);
+
+  g_array_free (types, TRUE);
 }
 
 static gboolean

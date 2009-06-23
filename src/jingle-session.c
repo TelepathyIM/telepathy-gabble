@@ -2275,6 +2275,12 @@ gabble_jingle_session_can_modify_contents (GabbleJingleSession *sess)
   return !JINGLE_IS_GOOGLE_DIALECT (sess->priv->dialect);
 }
 
+JingleDialect
+gabble_jingle_session_get_dialect (GabbleJingleSession *sess)
+{
+  return sess->priv->dialect;
+}
+
 /* Only to be used for the test suite */
 void
 gabble_set_jingle_session_timeout (guint ms)

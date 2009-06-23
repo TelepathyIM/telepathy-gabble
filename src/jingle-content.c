@@ -452,9 +452,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   LmMessageNode *trans_node, *desc_node;
   GType transport_type = 0;
   GabbleJingleTransportIface *trans = NULL;
-  JingleDialect dialect;
-
-  g_object_get (c->session, "dialect", &dialect, NULL);
+  JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
 
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
@@ -583,24 +581,18 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   GabbleJingleContentPrivate *priv = c->priv;
   const gchar *senders;
   LmMessageNode *trans_node, *desc_node;
-  JingleDialect dialect;
+  JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
   JingleContentSenders newsenders;
 
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
   senders = lm_message_node_get_attribute (content_node, "senders");
 
-  g_object_get (c->session, "dialect", &dialect, NULL);
-
-  /* FIXME: if we examine dialect manually, we don't need google_mode param flag */
-  if (google_mode)
+  if (JINGLE_IS_GOOGLE_DIALECT (dialect) && trans_node == NULL)
     {
-      if (trans_node == NULL)
-        {
-          DEBUG ("no transport node, assuming GTalk3 dialect");
-          /* gtalk lj0.3 assumes google-p2p transport */
-          g_object_set (c->session, "dialect", JINGLE_DIALECT_GTALK3, NULL);
-        }
+      DEBUG ("no transport node, assuming GTalk3 dialect");
+      /* gtalk lj0.3 assumes google-p2p transport */
+      g_object_set (c->session, "dialect", JINGLE_DIALECT_GTALK3, NULL);
     }
 
   if (senders == NULL)
@@ -667,11 +659,9 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
 {
   GabbleJingleContentPrivate *priv = c->priv;
   LmMessageNode *content_node, *trans_node;
-  JingleDialect dialect;
+  JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
   void (*produce_desc)(GabbleJingleContent *, LmMessageNode *) =
     GABBLE_JINGLE_CONTENT_GET_CLASS (c)->produce_description;
-
-  g_object_get (c->session, "dialect", &dialect, NULL);
 
   if ((dialect == JINGLE_DIALECT_GTALK3) ||
       (dialect == JINGLE_DIALECT_GTALK4))
@@ -938,9 +928,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
   GabbleJingleContentPrivate *priv = c->priv;
   LmMessage *msg;
   LmMessageNode *sess_node;
-  JingleDialect dialect;
-
-  g_object_get (c->session, "dialect", &dialect, NULL);
+  JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
 
   if (JINGLE_IS_GOOGLE_DIALECT (dialect))
     {

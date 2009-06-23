@@ -237,7 +237,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
   JingleDialect dialect;
 
   g_object_get (priv->content, "media-type", &media_type, NULL);
-  g_object_get (priv->content->session, "dialect", &dialect, NULL);
+  dialect = gabble_jingle_session_get_dialect (priv->content->session);
 
   for (node = transport_node->children; node; node = node->next)
     {
@@ -502,7 +502,7 @@ group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
         DEBUG ("Ignoring unknown component %d", c->component);
     }
 
-  g_object_get (priv->content->session, "dialect", &dialect, NULL);
+  dialect = gabble_jingle_session_get_dialect (priv->content->session);
   g_object_get (priv->content, "media-type", &media, NULL);
 
   if (media == JINGLE_MEDIA_TYPE_VIDEO && JINGLE_IS_GOOGLE_DIALECT (dialect))

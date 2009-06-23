@@ -503,7 +503,7 @@ parse_description (GabbleJingleContent *content,
   GList *codecs = NULL;
   JingleCodec *p;
   LmMessageNode *node;
-  JingleDialect dialect;
+  JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   gboolean video_session = FALSE;
 
   DEBUG ("node: %s", desc_node->name);
@@ -515,8 +515,6 @@ parse_description (GabbleJingleContent *content,
 
   if (mtype == JINGLE_MEDIA_TYPE_NONE)
     return;
-
-  g_object_get (content->session, "dialect", &dialect, NULL);
 
   DEBUG ("detected media type %u", mtype);
 
@@ -706,10 +704,8 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
   GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (obj);
   GabbleJingleMediaRtpPrivate *priv = desc->priv;
   GList *li;
-  JingleDialect dialect;
+  JingleDialect dialect = gabble_jingle_session_get_dialect (obj->session);
   LmMessageNode *desc_node;
-
-  g_object_get (obj->session, "dialect", &dialect, NULL);
 
   desc_node = produce_description_node (dialect, priv->media_type,
       content_node);

@@ -32,10 +32,9 @@ def test(jp, q, bus, conn, stream):
 
     if jp.dialect == 'gtalk-v0.4':
         # With gtalk4, apparently we have to send transport-accept immediately,
-        # not even just before we send our transport-info.
-        # FIXME: wjt thinks this is suspicious. It matches the Gabble
-        #        implementation, so he moved it here to avoid the test being
-        #        racy, but we should do some more interop testing.
+        # not even just before we send our transport-info. wjt tested this, and
+        # indeed if we don't send this for incoming calls, the call never
+        # connects.
         ta_event = [
             EventPattern('stream-iq', predicate=lambda x:
                 xpath.queryForNodes("/iq/session[@type='transport-accept']",

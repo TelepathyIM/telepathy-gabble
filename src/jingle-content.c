@@ -566,12 +566,12 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
   priv->state = JINGLE_CONTENT_STATE_NEW;
 
-  /* GTALK4 seems to require "transport-accept" for acknowledging
-   * the transport type? */
+  /* GTalk4 seems to require "transport-accept" for acknowledging
+   * the transport type. wjt confirms that this is apparently necessary for
+   * incoming calls to work.
+   */
   if (dialect == JINGLE_DIALECT_GTALK4)
-    {
-      priv->gtalk4_event_id = g_idle_add (send_gtalk4_transport_accept, c);
-    }
+    priv->gtalk4_event_id = g_idle_add (send_gtalk4_transport_accept, c);
 
   return;
 }

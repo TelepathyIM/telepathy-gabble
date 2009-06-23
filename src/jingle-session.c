@@ -1518,7 +1518,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   TpHandleRepoIface *contact_repo;
   GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessageNode *iq_node, *session_node;
-  const gchar *from;
+  const gchar *from, *action_name;
 
   iq_node = lm_message_get_node (message);
 
@@ -1531,9 +1531,10 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
       return FALSE;
     }
 
+  action_name = produce_action (action, priv->dialect);
+
   DEBUG ("jingle action '%s' from '%s' in session '%s' dialect %u state %u",
-      produce_action (action, priv->dialect), from, priv->sid,
-      priv->dialect, priv->state);
+      action_name, from, priv->sid, priv->dialect, priv->state);
 
   switch (priv->dialect) {
     case JINGLE_DIALECT_V032:
@@ -1563,10 +1564,17 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
+  if (!dialect_defines_action (priv->dialect, action))
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "action '%s' unknown (using dialect %u)", action_name, priv->dialect);
+      return FALSE;
+    }
+
   if (!action_is_allowed (action, priv->state))
     {
-      SET_OUT_ORDER ("action \"%s\" not allowed in current state",
-          produce_action (action, priv->dialect));
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER,
+          "action '%s' not allowed in current state", action_name);
       return FALSE;
     }
 

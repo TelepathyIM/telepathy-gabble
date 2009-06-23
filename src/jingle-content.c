@@ -860,18 +860,25 @@ void
 gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
-  LmMessage *msg;
-  LmMessageNode *sess_node;
 
   /* If we didn't send the content yet there is no reason to send a
    * description-info to update it */
   if (priv->state < JINGLE_CONTENT_STATE_SENT)
     return;
 
-  msg = gabble_jingle_session_new_message (self->session,
-      JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
-  gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE, NULL);
-  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+  if (gabble_jingle_session_get_dialect (self->session) == JINGLE_DIALECT_V032)
+    {
+      LmMessageNode *sess_node;
+      LmMessage *msg = gabble_jingle_session_new_message (self->session,
+          JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
+
+      gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE, NULL);
+      gabble_jingle_session_send (self->session, msg, NULL, NULL);
+    }
+  else
+    {
+      DEBUG ("not sending description-info, speaking an old dialect");
+    }
 }
 
 

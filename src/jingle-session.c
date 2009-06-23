@@ -142,6 +142,32 @@ static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = 
   { JINGLE_ACTION_UNKNOWN }
 };
 
+static gboolean
+dialect_defines_action (JingleDialect d,
+    JingleAction a)
+{
+  if (a == JINGLE_ACTION_UNKNOWN)
+    return FALSE;
+
+  switch (d)
+    {
+      case JINGLE_DIALECT_V032:
+        return TRUE;
+      case JINGLE_DIALECT_V015:
+        return (a != JINGLE_ACTION_DESCRIPTION_INFO);
+      case JINGLE_DIALECT_GTALK4:
+        if (a == JINGLE_ACTION_SESSION_ACCEPT)
+          return TRUE;
+      case JINGLE_DIALECT_GTALK3:
+        return (a == JINGLE_ACTION_SESSION_ACCEPT ||
+            a == JINGLE_ACTION_SESSION_INITIATE ||
+            a == JINGLE_ACTION_SESSION_TERMINATE ||
+            a == JINGLE_ACTION_TRANSPORT_INFO);
+      default:
+        return FALSE;
+    }
+}
+
 static void gabble_jingle_session_send_held (GabbleJingleSession *sess);
 
 static void

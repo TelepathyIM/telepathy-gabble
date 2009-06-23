@@ -673,8 +673,11 @@ lookup_content (GabbleJingleSession *sess,
 }
 
 static void
-_foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
-  ContentHandlerFunc func, GError **error)
+_foreach_content (GabbleJingleSession *sess,
+    LmMessageNode *node,
+    gboolean fail_if_missing,
+    ContentHandlerFunc func,
+    GError **error)
 {
   GabbleJingleContent *c;
   LmMessageNode *content_node;
@@ -689,7 +692,7 @@ _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
       if (!lookup_content (sess,
               lm_message_node_get_attribute (content_node, "name"),
               lm_message_node_get_attribute (content_node, "creator"),
-              FALSE /* fail_if_missing */, &c, error))
+              fail_if_missing, &c, error))
         return;
 
       func (sess, c, content_node, error);
@@ -870,13 +873,8 @@ static void
 _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  const gchar *name = lm_message_node_get_attribute (content_node, "name");
+  g_assert (c != NULL);
 
-  if (c == NULL)
-    {
-      SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
-      return;
-    }
   gabble_jingle_content_remove (c, FALSE);
 }
 
@@ -884,12 +882,7 @@ static void
 _each_content_modify (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  if (c == NULL)
-    {
-      const gchar *name = lm_message_node_get_attribute (content_node, "name");
-      SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
-      return;
-    }
+  g_assert (c != NULL);
 
   gabble_jingle_content_update_senders (c, content_node, error);
 
@@ -916,12 +909,7 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
   GabbleJingleSessionPrivate *priv = sess->priv;
   JingleContentState state;
 
-  if (c == NULL)
-    {
-      const gchar *name = lm_message_node_get_attribute (content_node, "name");
-      SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
-      return;
-    }
+  g_assert (c != NULL);
 
   g_object_get (c, "state", &state, NULL);
   if (state != JINGLE_CONTENT_STATE_SENT)
@@ -941,13 +929,6 @@ static void
 _each_description_info (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  if (c == NULL)
-    {
-      const gchar *name = lm_message_node_get_attribute (content_node, "name");
-      SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
-      return;
-    }
-
   gabble_jingle_content_parse_description_info (c, content_node, error);
 }
 
@@ -1003,7 +984,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
     }
   else
     {
-      _foreach_content (sess, node, _each_content_add, error);
+      _foreach_content (sess, node, FALSE, _each_content_add, error);
     }
 
   if (*error == NULL)
@@ -1022,28 +1003,28 @@ static void
 on_content_add (GabbleJingleSession *sess, LmMessageNode *node,
   GError **error)
 {
-  _foreach_content (sess, node, _each_content_add, error);
+  _foreach_content (sess, node, FALSE, _each_content_add, error);
 }
 
 static void
 on_content_modify (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, _each_content_modify, error);
+  _foreach_content (sess, node, TRUE, _each_content_modify, error);
 }
 
 static void
 on_content_remove (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, _each_content_remove, error);
+  _foreach_content (sess, node, TRUE, _each_content_remove, error);
 }
 
 static void
 on_content_replace (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, _each_content_replace, error);
+  _foreach_content (sess, node, TRUE, _each_content_replace, error);
 }
 
 static void
@@ -1053,14 +1034,14 @@ on_content_reject (GabbleJingleSession *sess, LmMessageNode *node,
   /* FIXME: reject is different from remove - remove is for
    * acknowledged contents, reject is for pending; but the result
    * is the same. */
-  _foreach_content (sess, node, _each_content_remove, error);
+  _foreach_content (sess, node, TRUE, _each_content_remove, error);
 }
 
 static void
 on_content_accept (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, _each_content_accept, error);
+  _foreach_content (sess, node, TRUE, _each_content_accept, error);
 }
 
 static void
@@ -1080,7 +1061,7 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
     }
   else
     {
-      _foreach_content (sess, node, _each_content_accept, error);
+      _foreach_content (sess, node, TRUE, _each_content_accept, error);
     }
 
   if (*error != NULL)
@@ -1391,7 +1372,7 @@ static void
 on_description_info (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, _each_description_info, error);
+  _foreach_content (sess, node, TRUE, _each_description_info, error);
 }
 
 

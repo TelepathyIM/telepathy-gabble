@@ -1697,7 +1697,7 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
           GabbleJingleContent *c = contents->data;
           g_list_free (contents);
 
-          g_object_get (c, "transport-ns", &transport_ns, NULL);
+          transport_ns = gabble_jingle_content_get_transport_ns (c);
         }
     }
   /* no existing call; we should choose a recipient and a mode */

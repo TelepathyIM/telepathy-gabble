@@ -128,6 +128,7 @@ gboolean gabble_jingle_content_creator_is_initiator (GabbleJingleContent *c);
 const gchar *gabble_jingle_content_get_name (GabbleJingleContent *self);
 const gchar *gabble_jingle_content_get_ns (GabbleJingleContent *self);
 const gchar *gabble_jingle_content_get_disposition (GabbleJingleContent *self);
+const gchar *gabble_jingle_content_get_transport_ns (GabbleJingleContent *self);
 
 void gabble_jingle_content_maybe_send_description (GabbleJingleContent *self);
 

@@ -1051,6 +1051,12 @@ gabble_jingle_content_get_ns (GabbleJingleContent *self)
 }
 
 const gchar *
+gabble_jingle_content_get_transport_ns (GabbleJingleContent *self)
+{
+  return self->priv->transport_ns;
+}
+
+const gchar *
 gabble_jingle_content_get_disposition (GabbleJingleContent *self)
 {
   return self->priv->disposition;

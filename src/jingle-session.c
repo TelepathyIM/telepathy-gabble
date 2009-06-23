@@ -590,10 +590,6 @@ static void set_state (GabbleJingleSession *sess, JingleState state,
     TpChannelGroupChangeReason termination_reason);
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 
-#define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
-#define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
-#define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
-
 static gboolean
 lookup_content (GabbleJingleSession *sess,
     const gchar *name,
@@ -842,26 +838,22 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 
   if (content_type == 0)
     {
-      DEBUG ("unsupported content type with ns %s", content_ns);
-
       /* if this is session-initiate, we should return error, otherwise,
        * we should respond with content-reject */
       if (priv->state < JS_STATE_PENDING_INITIATED)
-        {
-          SET_BAD_REQ ("unsupported content type");
-        }
+        g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+            "unsupported content type with ns %s", content_ns);
       else
-        {
-          fire_idle_content_reject (sess, name,
-              lm_message_node_get_attribute (content_node, "creator"));
-        }
+        fire_idle_content_reject (sess, name,
+            lm_message_node_get_attribute (content_node, "creator"));
+
       return;
     }
 
   if (c != NULL)
     {
       g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "content called \"%s\" already exists, rejecting", name);
+          "content '%s' already exists", name);
       return;
     }
 
@@ -1330,7 +1322,8 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
               if (node == NULL)
                 {
-                  SET_BAD_REQ ("illegal transport-info stanza");
+                  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+                      "transport-info stanza without a <transport/>");
                   return;
                 }
             }
@@ -1508,7 +1501,8 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
 
   if (action == JINGLE_ACTION_UNKNOWN)
     {
-      SET_BAD_REQ ("unknown session action");
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "unknown session action");
       return FALSE;
     }
 
@@ -1538,7 +1532,8 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
 
   if (session_node == NULL)
     {
-      SET_BAD_REQ ("malformed jingle stanza");
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "malformed jingle stanza");
       return FALSE;
     }
 

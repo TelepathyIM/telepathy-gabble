@@ -95,7 +95,7 @@ void gabble_caps_channel_manager_get_feature_list (
 
 gpointer gabble_caps_channel_manager_parse_capabilities (
     GabbleCapsChannelManager *caps_manager,
-    LmMessageNode *child)
+    LmMessageNode *query_result)
 {
   GabbleCapsChannelManagerIface *iface =
     GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
@@ -103,7 +103,7 @@ gpointer gabble_caps_channel_manager_parse_capabilities (
 
   if (method != NULL)
     {
-      return method (caps_manager, child);
+      return method (caps_manager, query_result);
     }
   /* ... else assume there is not caps for this kind of channels */
   return NULL;

@@ -926,7 +926,7 @@ parse_contact_caps (TpBaseConnection *base_conn,
       g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
       factory_caps = gabble_caps_channel_manager_parse_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result->children);
+          GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result);
 
       if (factory_caps != NULL)
         g_hash_table_insert (per_channel_manager_caps,

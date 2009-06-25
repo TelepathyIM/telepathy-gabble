@@ -95,7 +95,7 @@ void gabble_caps_channel_manager_get_feature_list (
     GSList **features);
 
 gpointer gabble_caps_channel_manager_parse_capabilities (
-    GabbleCapsChannelManager *manager, LmMessageNode *children);
+    GabbleCapsChannelManager *manager, LmMessageNode *query_result);
 
 void gabble_caps_channel_manager_free_capabilities (GabbleCapsChannelManager *manager,
     gpointer specific_caps);

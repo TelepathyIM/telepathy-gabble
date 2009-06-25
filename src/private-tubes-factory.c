@@ -661,10 +661,10 @@ gabble_private_tubes_factory_free_feat (gpointer data)
 static gpointer
 gabble_private_tubes_factory_parse_caps (
     GabbleCapsChannelManager *manager,
-    LmMessageNode *children)
+    LmMessageNode *query_result)
 {
-  LmMessageNode *child;
   TubesCapabilities *caps;
+  NodeIter i;
 
   caps = g_new0 (TubesCapabilities, 1);
   caps->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -672,8 +672,9 @@ gabble_private_tubes_factory_parse_caps (
   caps->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, gabble_private_tubes_factory_free_feat);
 
-  for (child = children; NULL != child; child = child->next)
+  for (i = node_iter (query_result); i; i = node_iter_next (i))
     {
+      LmMessageNode *child = node_iter_data (i);
       const gchar *var;
 
       if (0 != strcmp (child->name, "feature"))

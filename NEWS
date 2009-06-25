@@ -5,7 +5,15 @@ Dependencies:
 
 Enhancements:
 
+* Gabble now supports making and receiving video calls to contacts using Google
+  Video Chat <http://mail.google.com/videochat>. You'll need an H264 codec.
+  We're aware of an issue where sometimes the Google client never sends us
+  video; we're investigating it, and hopefully it'll be resolved soon.
+
 Fixes:
+
+* fd.o #22369: Gabble now replies to the XMPP resource that's sending you
+  messages, rather than always sending messages to the peer's bare JID.
 
 telepathy-gabble 0.7.29 (2009-06-19)
 ====================================

@@ -52,12 +52,13 @@
 #define NS_JINGLE_DESCRIPTION_VIDEO \
   "http://jabber.org/protocol/jingle/description/video"
 
-/* XEP-0166 draft v0.32 (last call) */
-#define NS_JINGLE032            "urn:xmpp:jingle:0"
+/* XEP-0166 draft */
+#define NS_JINGLE032            "urn:xmpp:jingle:1"
 #define NS_JINGLE_ERRORS        "urn:xmpp:jingle:errors:1"
 
 /* XEP-0167 (Jingle RTP) */
-#define NS_JINGLE_RTP           "urn:xmpp:jingle:apps:rtp:0"
+#define NS_JINGLE_RTP           "urn:xmpp:jingle:apps:rtp:1"
+#define NS_JINGLE_RTP_ERRORS    "urn:xmpp:jingle:apps:rtp:errors:1"
 #define NS_JINGLE_RTP_INFO      "urn:xmpp:jingle:apps:rtp:info:1"
 
 /* Google's Jingle dialect */

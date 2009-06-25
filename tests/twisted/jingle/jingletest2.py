@@ -7,7 +7,7 @@
 # This can be used in parallel with the old API, but should
 # obsolete it in time.
 
-from twisted.words.xish import domish
+from twisted.words.xish import domish, xpath
 import random
 from gabbletest import sync_stream, exec_test
 from servicetest import EventPattern
@@ -74,9 +74,9 @@ class JingleProtocol:
         kw['name'] = name
         kw['rate'] = rate
         kw['id'] = id
-        chrilden = [self.Parameter(name, value)
+        children = [self.Parameter(name, value)
                     for name, value in parameters.iteritems()]
-        return ('payload-type', None, kw, chrilden)
+        return ('payload-type', None, kw, children)
 
     def Parameter(self, name, value):
         "Creates a <parameter> element"
@@ -117,7 +117,19 @@ class JingleProtocol:
     def extract_session_id(self, query):
         return query['sid']
 
+    def validate_session_initiate(self, query):
+        return True
+
     def can_do_video(self):
+        return True
+
+    def can_do_video_only(self):
+        return True
+
+    def seperate_contents(self):
+        return True
+
+    def has_mutable_streams(self):
         return True
 
     def is_modern_jingle(self):
@@ -132,7 +144,8 @@ class JingleProtocol:
 
 
 class GtalkProtocol03(JingleProtocol):
-    features = [ 'http://www.google.com/xmpp/protocol/voice/v1' ]
+    features = [ 'http://www.google.com/xmpp/protocol/voice/v1',
+                 'http://www.google.com/xmpp/protocol/video/v1']
 
     def __init__(self):
         JingleProtocol.__init__(self, 'gtalk-v0.3')
@@ -155,6 +168,17 @@ class GtalkProtocol03(JingleProtocol):
         return ('session', 'http://www.google.com/session',
             { 'type': action, 'initiator': initiator, 'id': sid }, children)
 
+    def PayloadType(self, name, rate, id, parameters={}, **kw):
+        p = JingleProtocol.PayloadType(self, name, rate, id, parameters,
+            **kw)
+        if "type" in kw:
+            namespaces = { "audio":  'http://www.google.com/session/phone',
+                           "video":  'http://www.google.com/session/video'
+            }
+            p = p[:1] + (namespaces[kw["type"]],) + p[2:]
+
+        return p
+
     # Gtalk has only one content, and <content> node is implicit
     def Content(self, name, creator, senders, children):
         # Normally <content> has <description> and <transport>, but we only
@@ -163,7 +187,14 @@ class GtalkProtocol03(JingleProtocol):
         return children[0]
 
     def Description(self, type, children):
-        return ('description', 'http://www.google.com/session/phone', {}, children)
+        if type == 'audio':
+            namespace = 'http://www.google.com/session/phone'
+        elif type == 'video':
+            namespace = 'http://www.google.com/session/video'
+        else:
+            namespace = 'unexistent-namespace'
+        return ('description', namespace, {}, children)
+
     def match_jingle_action(self, q, action):
         action = self._action_map(action)
         return q is not None and q.name == 'session' and q['type'] == action
@@ -175,7 +206,35 @@ class GtalkProtocol03(JingleProtocol):
     def extract_session_id(self, query):
         return query['id']
 
-    def can_do_video(self):
+    def can_do_video_only(self):
+        return False
+
+    def validate_session_initiate(self, query):
+        assert query['id'] != None
+        # No transport in GTalk03
+        assert xpath.queryForNodes('/session/transport', query) == None
+
+        # Exactly one description in Gtalk03
+        descs = xpath.queryForNodes('/session/description', query)
+        assert len(descs) == 1
+
+        desc = descs[0]
+
+        # the ds is either audio or video
+        assert desc.uri in [ ns.GOOGLE_SESSION_PHONE, ns.GOOGLE_SESSION_VIDEO ]
+
+        if desc.uri == ns.GOOGLE_SESSION_VIDEO:
+            # If it's a video call there should be some audio codecs as well
+            assert xpath.queryForNodes(
+                '/session/description/payload-type[@xmlns="%s"]' %
+                    ns.GOOGLE_SESSION_PHONE, query)
+
+        return True
+
+    def seperate_contents(self):
+        return False
+
+    def has_mutable_streams(self):
         return False
 
 class GtalkProtocol04(JingleProtocol):
@@ -362,60 +421,70 @@ class JingleTest2:
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
 
-    def incoming_call(self, audio=True, video=False):
+    def generate_contents (self, audio = True, video = False):
         assert audio or video
 
         jp = self.jp
+
+        assert not video or jp.can_do_video()
+
         contents = []
-        if audio:
-            contents.append(
-                jp.Content('stream1', 'initiator', 'both', [
-                    jp.Description('audio', [
-                        jp.PayloadType(name, str(rate), str(id)) for
+
+        if jp.seperate_contents() or not audio or not video:
+            assert audio or video
+            if audio:
+                contents.append(
+                    jp.Content('stream1', 'initiator', 'both', [
+                        jp.Description('audio', [
+                            jp.PayloadType(name, str(rate), str(id)) for
                             (name, id, rate) in self.audio_codecs ]),
                     jp.TransportGoogleP2P() ])
                 )
-        if video:
-            assert jp.can_do_video()
-            contents.append(
-                jp.Content('stream2', 'initiator', 'both', [
-                    jp.Description('video', [
-                        jp.PayloadType(name, str(rate), str(id)) for
+            if video:
+                contents.append(
+                    jp.Content('stream2', 'initiator', 'both', [
+                        jp.Description('video', [
+                            jp.PayloadType(name, str(rate), str(id)) for
                             (name, id, rate) in self.video_codecs ]),
                     jp.TransportGoogleP2P() ])
                 )
+        else:
+            assert jp.can_do_video()
+            contents.append(
+                jp.Content('stream0', 'initiator', 'both', [
+                    jp.Description('video', [
+                        jp.PayloadType(name, str(rate), str(id)) for
+                            (name, id, rate) in self.video_codecs ] +
+                        [ jp.PayloadType(name, str(rate), str(id),
+                            {}, type = "audio" ) for (name, id, rate, )
+                                in self.audio_codecs ],
+                        ),
+                    jp.TransportGoogleP2P() ])
+             )
+
+        return contents
+
+    def incoming_call(self, audio=True, video=False):
+        jp = self.jp
+        contents = self.generate_contents(audio, video)
+
         node = jp.SetIq(self.peer, self.jid, [
             jp.Jingle(self.sid, self.peer, 'session-initiate', contents),
             ])
         self.stream.send(jp.xml(node))
 
-    def set_sid_from_initiate(self, query):
+    def parse_session_initiate (self, query):
+        # Validate the session initiate and get some useful ifo from it
+        self.jp.validate_session_initiate (query)
         self.sid = self.jp.extract_session_id(query)
 
     def accept(self, with_video=False):
         jp = self.jp
-        audio = [
-            jp.Content('stream1', 'initiator', 'both', [
-                jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in self.audio_codecs ]),
-                jp.TransportGoogleP2P() ])
-            ]
 
-        if with_video:
-            video = [
-                jp.Content('stream2', 'initiator', 'both', [
-                    jp.Description('video', [
-                        jp.PayloadType(name, str(rate), str(id)) for
-                            (name, id, rate) in self.video_codecs ]),
-                    jp.TransportGoogleP2P() ])
-                ]
-        else:
-            video = []
-
+        contents = self.generate_contents(True, with_video)
         node = jp.SetIq(self.peer, self.jid, [
             jp.Jingle(self.sid, self.peer, 'session-accept',
-                audio + video) ])
+                contents) ])
         self.stream.send(jp.xml(node))
 
     def content_accept(self, query, media):
@@ -424,6 +493,7 @@ class JingleTest2:
         media type.
         """
         jp = self.jp
+        assert jp.seperate_contents()
         c = query.firstChildElement()
 
         if media == 'audio':

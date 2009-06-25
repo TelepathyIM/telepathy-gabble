@@ -142,6 +142,34 @@ static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = 
   { JINGLE_ACTION_UNKNOWN }
 };
 
+gboolean
+gabble_jingle_session_defines_action (GabbleJingleSession *sess,
+    JingleAction a)
+{
+  JingleDialect d = sess->priv->dialect;
+
+  if (a == JINGLE_ACTION_UNKNOWN)
+    return FALSE;
+
+  switch (d)
+    {
+      case JINGLE_DIALECT_V032:
+        return TRUE;
+      case JINGLE_DIALECT_V015:
+        return (a != JINGLE_ACTION_DESCRIPTION_INFO);
+      case JINGLE_DIALECT_GTALK4:
+        if (a == JINGLE_ACTION_TRANSPORT_ACCEPT)
+          return TRUE;
+      case JINGLE_DIALECT_GTALK3:
+        return (a == JINGLE_ACTION_SESSION_ACCEPT ||
+            a == JINGLE_ACTION_SESSION_INITIATE ||
+            a == JINGLE_ACTION_SESSION_TERMINATE ||
+            a == JINGLE_ACTION_TRANSPORT_INFO);
+      default:
+        return FALSE;
+    }
+}
+
 static void gabble_jingle_session_send_held (GabbleJingleSession *sess);
 
 static void
@@ -564,10 +592,6 @@ static void set_state (GabbleJingleSession *sess, JingleState state,
     TpChannelGroupChangeReason termination_reason);
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 
-#define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
-#define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
-#define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
-
 static gboolean
 lookup_content (GabbleJingleSession *sess,
     const gchar *name,
@@ -647,8 +671,11 @@ lookup_content (GabbleJingleSession *sess,
 }
 
 static void
-_foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
-  ContentHandlerFunc func, GError **error)
+_foreach_content (GabbleJingleSession *sess,
+    LmMessageNode *node,
+    gboolean fail_if_missing,
+    ContentHandlerFunc func,
+    GError **error)
 {
   GabbleJingleContent *c;
   LmMessageNode *content_node;
@@ -663,7 +690,7 @@ _foreach_content (GabbleJingleSession *sess, LmMessageNode *node,
       if (!lookup_content (sess,
               lm_message_node_get_attribute (content_node, "name"),
               lm_message_node_get_attribute (content_node, "creator"),
-              FALSE /* fail_if_missing */, &c, error))
+              fail_if_missing, &c, error))
         return;
 
       func (sess, c, content_node, error);
@@ -813,26 +840,22 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 
   if (content_type == 0)
     {
-      DEBUG ("unsupported content type with ns %s", content_ns);
-
       /* if this is session-initiate, we should return error, otherwise,
        * we should respond with content-reject */
       if (priv->state < JS_STATE_PENDING_INITIATED)
-        {
-          SET_BAD_REQ ("unsupported content type");
-        }
+        g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+            "unsupported content type with ns %s", content_ns);
       else
-        {
-          fire_idle_content_reject (sess, name,
-              lm_message_node_get_attribute (content_node, "creator"));
-        }
+        fire_idle_content_reject (sess, name,
+            lm_message_node_get_attribute (content_node, "creator"));
+
       return;
     }
 
   if (c != NULL)
     {
       g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "content called \"%s\" already exists, rejecting", name);
+          "content '%s' already exists", name);
       return;
     }
 
@@ -844,13 +867,8 @@ static void
 _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  const gchar *name = lm_message_node_get_attribute (content_node, "name");
+  g_assert (c != NULL);
 
-  if (c == NULL)
-    {
-      SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
-      return;
-    }
   gabble_jingle_content_remove (c, FALSE);
 }
 
@@ -858,12 +876,7 @@ static void
 _each_content_modify (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  if (c == NULL)
-    {
-      const gchar *name = lm_message_node_get_attribute (content_node, "name");
-      SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
-      return;
-    }
+  g_assert (c != NULL);
 
   gabble_jingle_content_update_senders (c, content_node, error);
 
@@ -890,12 +903,7 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
   GabbleJingleSessionPrivate *priv = sess->priv;
   JingleContentState state;
 
-  if (c == NULL)
-    {
-      const gchar *name = lm_message_node_get_attribute (content_node, "name");
-      SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
-      return;
-    }
+  g_assert (c != NULL);
 
   g_object_get (c, "state", &state, NULL);
   if (state != JINGLE_CONTENT_STATE_SENT)
@@ -915,13 +923,6 @@ static void
 _each_description_info (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  if (c == NULL)
-    {
-      const gchar *name = lm_message_node_get_attribute (content_node, "name");
-      SET_BAD_REQ ("content called \"%s\" doesn't exist", name);
-      return;
-    }
-
   gabble_jingle_content_parse_description_info (c, content_node, error);
 }
 
@@ -941,14 +942,43 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
       return;
     }
 
-  if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
+  if ((priv->dialect == JINGLE_DIALECT_GTALK3))
+    {
+      const gchar *content_ns = NULL;
+      LmMessageNode *desc_node =
+        lm_message_node_get_child_any_ns (node, "description");
+      content_ns = lm_message_node_get_namespace (desc_node);
+
+      if (!tp_strdiff (content_ns, NS_GOOGLE_SESSION_VIDEO))
+        {
+          GType content_type = 0;
+
+          DEBUG ("GTalk v3 session with audio and video");
+
+          /* audio and video content */
+          content_type = gabble_jingle_factory_lookup_content_type (
+            priv->conn->jingle_factory, content_ns);
+          create_content (sess, content_type, JINGLE_MEDIA_TYPE_VIDEO,
+            NS_GOOGLE_SESSION_VIDEO, NULL, "video", node, error);
+
+          content_type = gabble_jingle_factory_lookup_content_type (
+            priv->conn->jingle_factory, NS_GOOGLE_SESSION_PHONE);
+          create_content (sess, content_type, JINGLE_MEDIA_TYPE_AUDIO,
+            NS_GOOGLE_SESSION_PHONE, NULL, "audio", node, error);
+        }
+      else
+        {
+          _each_content_add (sess, NULL, node, error);
+        }
+    }
+  else if (priv->dialect == JINGLE_DIALECT_GTALK4)
     {
       /* in this case we implicitly have just one content */
       _each_content_add (sess, NULL, node, error);
     }
   else
     {
-      _foreach_content (sess, node, _each_content_add, error);
+      _foreach_content (sess, node, FALSE, _each_content_add, error);
     }
 
   if (*error == NULL)
@@ -967,28 +997,28 @@ static void
 on_content_add (GabbleJingleSession *sess, LmMessageNode *node,
   GError **error)
 {
-  _foreach_content (sess, node, _each_content_add, error);
+  _foreach_content (sess, node, FALSE, _each_content_add, error);
 }
 
 static void
 on_content_modify (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, _each_content_modify, error);
+  _foreach_content (sess, node, TRUE, _each_content_modify, error);
 }
 
 static void
 on_content_remove (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, _each_content_remove, error);
+  _foreach_content (sess, node, TRUE, _each_content_remove, error);
 }
 
 static void
 on_content_replace (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, _each_content_replace, error);
+  _foreach_content (sess, node, TRUE, _each_content_replace, error);
 }
 
 static void
@@ -998,14 +1028,14 @@ on_content_reject (GabbleJingleSession *sess, LmMessageNode *node,
   /* FIXME: reject is different from remove - remove is for
    * acknowledged contents, reject is for pending; but the result
    * is the same. */
-  _foreach_content (sess, node, _each_content_remove, error);
+  _foreach_content (sess, node, TRUE, _each_content_remove, error);
 }
 
 static void
 on_content_accept (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, _each_content_accept, error);
+  _foreach_content (sess, node, TRUE, _each_content_accept, error);
 }
 
 static void
@@ -1025,7 +1055,7 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
     }
   else
     {
-      _foreach_content (sess, node, _each_content_accept, error);
+      _foreach_content (sess, node, TRUE, _each_content_accept, error);
     }
 
   if (*error != NULL)
@@ -1277,14 +1307,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
   if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
     {
-      /* We are certain that GTalk has only one content. It's not possible
-       * for session to have more than one content if in gtalk mode (if
-       * it happens, it's a bug in our code). */
-      GList *cs = gabble_jingle_session_get_contents (sess);
-
-      g_assert (g_list_length (cs) == 1);
-      c = cs->data;
-      g_list_free (cs);
+      GHashTableIter iter;
 
       if (priv->dialect == JINGLE_DIALECT_GTALK4)
         {
@@ -1293,7 +1316,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
             {
               DEBUG ("switching to gtalk3 dialect and retransmiting our candidates");
               priv->dialect = JINGLE_DIALECT_GTALK3;
-              gabble_jingle_content_retransmit_candidates (c);
+              gabble_jingle_content_retransmit_candidates (c, TRUE);
             }
           else
             {
@@ -1301,11 +1324,20 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
               if (node == NULL)
                 {
-                  SET_BAD_REQ ("illegal transport-info stanza");
+                  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+                      "transport-info stanza without a <transport/>");
                   return;
                 }
             }
         }
+
+        g_hash_table_iter_init (&iter, priv->initiator_contents);
+        while (g_hash_table_iter_next (&iter, NULL, (gpointer) &c))
+          {
+            gabble_jingle_content_parse_transport_info (c, node, error);
+            if (error != NULL && *error != NULL)
+              break;
+          }
     }
   else
     {
@@ -1319,9 +1351,9 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
       /* we need transport child of content node */
       node = lm_message_node_get_child_any_ns (node, "transport");
+      gabble_jingle_content_parse_transport_info (c, node, error);
     }
 
-  gabble_jingle_content_parse_transport_info (c, node, error);
 }
 
 static void
@@ -1335,7 +1367,7 @@ static void
 on_description_info (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, _each_description_info, error);
+  _foreach_content (sess, node, TRUE, _each_description_info, error);
 }
 
 
@@ -1369,6 +1401,22 @@ jingle_state_machine_dance (GabbleJingleSession *sess,
   g_assert (handlers[action] != NULL);
 
   handlers[action] (sess, node, error);
+}
+
+static JingleDialect
+detect_google_dialect (LmMessageNode *session_node)
+{
+  /* The GTALK3 dialect is the only one that supports video at this time */
+  if (lm_message_node_get_child_with_namespace (session_node,
+      "description", NS_GOOGLE_SESSION_VIDEO) != NULL)
+    return JINGLE_DIALECT_GTALK3;
+
+  /* GTalk4 has a transport item, GTalk3 doesn't */
+  if (lm_message_node_get_child_with_namespace (session_node,
+      "transport", NS_GOOGLE_TRANSPORT_P2P) == NULL)
+    return JINGLE_DIALECT_GTALK3;
+
+  return JINGLE_DIALECT_GTALK4;
 }
 
 const gchar *
@@ -1412,11 +1460,9 @@ gabble_jingle_session_detect (LmMessage *message, JingleAction *action, JingleDi
           session_node = lm_message_node_get_child_with_namespace (iq_node,
               "session", NS_GOOGLE_SESSION);
 
-          /* we can't distinguish between libjingle 0.3 and libjingle0.4 at this
-           * point, assume the better case */
           if (session_node != NULL)
             {
-              *dialect = JINGLE_DIALECT_GTALK4;
+              *dialect = detect_google_dialect (session_node);
               google_mode = TRUE;
             }
           else
@@ -1448,7 +1494,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   TpHandleRepoIface *contact_repo;
   GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessageNode *iq_node, *session_node;
-  const gchar *from;
+  const gchar *from, *action_name;
 
   iq_node = lm_message_get_node (message);
 
@@ -1457,13 +1503,15 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
 
   if (action == JINGLE_ACTION_UNKNOWN)
     {
-      SET_BAD_REQ ("unknown session action");
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "unknown session action");
       return FALSE;
     }
 
+  action_name = produce_action (action, priv->dialect);
+
   DEBUG ("jingle action '%s' from '%s' in session '%s' dialect %u state %u",
-      produce_action (action, priv->dialect), from, priv->sid,
-      priv->dialect, priv->state);
+      action_name, from, priv->sid, priv->dialect, priv->state);
 
   switch (priv->dialect) {
     case JINGLE_DIALECT_V032:
@@ -1486,17 +1534,25 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
 
   if (session_node == NULL)
     {
-      SET_BAD_REQ ("malformed jingle stanza");
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "malformed jingle stanza");
       return FALSE;
     }
 
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
+  if (!gabble_jingle_session_defines_action (sess, action))
+    {
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "action '%s' unknown (using dialect %u)", action_name, priv->dialect);
+      return FALSE;
+    }
+
   if (!action_is_allowed (action, priv->state))
     {
-      SET_OUT_ORDER ("action \"%s\" not allowed in current state",
-          produce_action (action, priv->dialect));
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER,
+          "action '%s' not allowed in current state", action_name);
       return FALSE;
     }
 
@@ -1602,9 +1658,10 @@ _check_content_ready (GabbleJingleSession *sess,
 
 static void
 _transmit_candidates (GabbleJingleSession *sess,
-    GabbleJingleContent *c, gpointer user_data)
+    GabbleJingleContent *c,
+    gpointer user_data)
 {
-  gabble_jingle_content_retransmit_candidates (c);
+  gabble_jingle_content_retransmit_candidates (c, FALSE);
 }
 
 static void
@@ -1614,7 +1671,7 @@ _fill_content (GabbleJingleSession *sess,
   LmMessageNode *sess_node = user_data;
   JingleContentState state;
 
-  gabble_jingle_content_produce_node (c, sess_node, TRUE);
+  gabble_jingle_content_produce_node (c, sess_node, TRUE, TRUE, NULL);
 
   g_object_get (c, "state", &state, NULL);
 
@@ -1784,6 +1841,39 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
       return;
 
   msg = gabble_jingle_session_new_message (sess, action, &sess_node);
+
+  if (priv->dialect == JINGLE_DIALECT_GTALK3)
+    {
+      gboolean has_video = FALSE;
+      GHashTableIter iter;
+      gpointer value;
+
+      g_hash_table_iter_init (&iter, priv->initiator_contents);
+      while (g_hash_table_iter_next (&iter, NULL, &value))
+        {
+          JingleMediaType type;
+
+          g_object_get (value, "media-type", &type, NULL);
+
+          if (type == JINGLE_MEDIA_TYPE_VIDEO)
+            {
+              has_video = TRUE;
+              break;
+            }
+        }
+
+      sess_node = lm_message_node_add_child (sess_node, "description",
+        NULL);
+
+      if (has_video)
+        lm_message_node_set_attribute (sess_node, "xmlns",
+          NS_GOOGLE_SESSION_VIDEO);
+      else
+        lm_message_node_set_attribute (sess_node, "xmlns",
+          NS_GOOGLE_SESSION_PHONE);
+    }
+
+
   _map_initial_contents (sess, _fill_content, sess_node);
   gabble_jingle_session_send (sess, msg, handler, (GObject *) sess);
   set_state (sess, new_state, 0);
@@ -2109,7 +2199,7 @@ gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
   LmMessage *message;
   LmMessageNode *jingle, *notification;
 
-  if (sess->priv->dialect != JINGLE_DIALECT_V032)
+  if (!gabble_jingle_session_defines_action (sess, JINGLE_ACTION_SESSION_INFO))
     {
       DEBUG ("Not sending <%s/>; not using modern Jingle", name);
       return;
@@ -2155,6 +2245,18 @@ gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess)
   g_assert (GABBLE_IS_JINGLE_SESSION (sess));
 
   return sess->priv->remote_ringing;
+}
+
+gboolean
+gabble_jingle_session_can_modify_contents (GabbleJingleSession *sess)
+{
+  return !JINGLE_IS_GOOGLE_DIALECT (sess->priv->dialect);
+}
+
+JingleDialect
+gabble_jingle_session_get_dialect (GabbleJingleSession *sess)
+{
+  return sess->priv->dialect;
 }
 
 /* Only to be used for the test suite */

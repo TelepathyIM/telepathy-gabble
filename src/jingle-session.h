@@ -108,6 +108,9 @@ GList *gabble_jingle_session_get_contents (GabbleJingleSession *sess);
 const gchar *gabble_jingle_session_get_peer_resource (
     GabbleJingleSession *sess);
 const gchar *gabble_jingle_session_get_sid (GabbleJingleSession *sess);
+JingleDialect gabble_jingle_session_get_dialect (GabbleJingleSession *sess);
+
+gboolean gabble_jingle_session_can_modify_contents (GabbleJingleSession *sess);
 
 typedef void (*JingleReplyHandler) (GObject *, gboolean success,
     LmMessage *reply);
@@ -122,6 +125,9 @@ void gabble_jingle_session_set_local_hold (GabbleJingleSession *sess,
 gboolean gabble_jingle_session_get_remote_hold (GabbleJingleSession *sess);
 
 gboolean gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess);
+
+gboolean gabble_jingle_session_defines_action (GabbleJingleSession *sess,
+    JingleAction action);
 
 /* Only to be used for the test suite */
 void gabble_set_jingle_session_timeout (guint seconds);

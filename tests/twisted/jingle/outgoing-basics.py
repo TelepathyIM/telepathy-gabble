@@ -200,7 +200,7 @@ def worker(jp, q, bus, conn, stream, variant):
         session_initiate = q.expect('stream-iq',
             predicate=jp.action_predicate('session-initiate'))
 
-    jt2.set_sid_from_initiate(session_initiate.query)
+    jt2.parse_session_initiate(session_initiate.query)
     stream.send(jp.xml(jp.ResultIq('test@localhost', session_initiate.stanza,
         [])))
 

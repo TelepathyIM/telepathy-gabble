@@ -76,7 +76,8 @@ def check_iav(jt, q, conn, bus, stream, remote_handle, initial_audio,
         cs.INITIAL_AUDIO: initial_audio,
         cs.INITIAL_VIDEO: initial_video,
         })
-    if initial_video and not jt.jp.can_do_video():
+    if initial_video and (not jt.jp.can_do_video()
+            or (not initial_audio and not jt.jp.can_do_video_only ())):
         # Some protocols can't do video
         event = q.expect('dbus-error', method='CreateChannel')
         assertEquals(cs.NOT_CAPABLE, event.error.get_dbus_name())
@@ -115,17 +116,20 @@ def check_iav(jt, q, conn, bus, stream, remote_handle, initial_audio,
         if initial_video:
             assertContains(cs.MEDIA_STREAM_TYPE_VIDEO, stream_handler_types)
 
-        for p in stream_handler_paths:
+        for x in xrange (0, len(stream_handler_paths)):
+            p = stream_handler_paths[x]
+            t = stream_handler_types[x]
             sh = make_channel_proxy(conn, p, 'Media.StreamHandler')
             sh.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
-            # The codecs are wrong for video, but it's just an example. Gabble
-            # doesn't care.
-            sh.Ready(jt.get_audio_codecs_dbus())
+            if t == cs.MEDIA_STREAM_TYPE_AUDIO:
+                sh.Ready(jt.get_audio_codecs_dbus())
+            else:
+                sh.Ready(jt.get_video_codecs_dbus())
             sh.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
         e = q.expect('stream-iq',
             predicate=jt.jp.action_predicate('session-initiate'))
-        # TODO: check that the s-i contains the right contents.
+        jt.parse_session_initiate (e.query)
 
         chan.Close()
 
@@ -139,6 +143,8 @@ def incoming(jp, q, bus, conn, stream):
 
     for a, v in [(True, False), (False, True), (True, True)]:
         if v and not jp.can_do_video():
+            continue
+        if not a and v and not jp.can_do_video_only():
             continue
 
         jt.incoming_call(audio=a, video=v)

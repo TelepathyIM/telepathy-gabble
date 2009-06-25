@@ -112,7 +112,7 @@ def test(jp, q, bus, conn, stream):
     assertEquals((cs.HS_HELD, cs.HSR_REQUESTED), chan.Hold.GetHoldState())
 
     # The peer answers the call; they're still on hold.
-    jt.set_sid_from_initiate(e.query)
+    jt.parse_session_initiate(e.query)
     jt.accept()
 
     q.expect('stream-iq', iq_type='result')

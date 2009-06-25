@@ -30,10 +30,12 @@
  * "The names of the feature bundles MUST NOT be used for semantic purposes:
  * they are merely opaque identifiers"
  *
- * However, some old Jabber clients (e.g. Gabble 0.2) requires the bundle name
- * "voice-v1". We keep this name for compatibility.
+ * However, some old Jabber clients (e.g. Gabble 0.2) and various Google
+ * clients require the bundle name "voice-v1" and "video-v1". We keep these
+ * names for compatibility.
  */
 #define BUNDLE_VOICE_V1         "voice-v1"
+#define BUNDLE_VIDEO_V1         "video-v1"
 
 typedef struct _Feature Feature;
 

@@ -452,9 +452,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   LmMessageNode *trans_node, *desc_node;
   GType transport_type = 0;
   GabbleJingleTransportIface *trans = NULL;
-  JingleDialect dialect;
-
-  g_object_get (c->session, "dialect", &dialect, NULL);
+  JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
 
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
@@ -472,8 +470,12 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
       if (creator == NULL)
           creator = "initiator";
 
-      if (name == NULL)
-          name = "gtalk";
+      /* the google protocols don't give the contents names, so put in a dummy
+       * value if none was set by the session*/
+      if (priv->name == NULL)
+        name = priv->name = g_strdup ("gtalk");
+      else
+        name = priv->name;
 
       if (trans_node == NULL)
         {
@@ -494,6 +496,10 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
           SET_BAD_REQ ("missing required content attributes or elements");
           return;
         }
+
+      /* In proper protocols the name comes from the stanza */
+      g_assert (priv->name == NULL);
+      priv->name = g_strdup (name);
     }
 
   /* if we didn't set it to google-p2p implicitly already, detect it */
@@ -553,20 +559,17 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   g_assert (priv->transport == NULL);
   priv->transport = trans;
 
-  g_assert (priv->name == NULL);
-  priv->name = g_strdup (name);
-
   g_assert (priv->creator == NULL);
   priv->creator = g_strdup (creator);
 
   priv->state = JINGLE_CONTENT_STATE_NEW;
 
-  /* GTALK4 seems to require "transport-accept" for acknowledging
-   * the transport type? */
+  /* GTalk4 seems to require "transport-accept" for acknowledging
+   * the transport type. wjt confirms that this is apparently necessary for
+   * incoming calls to work.
+   */
   if (dialect == JINGLE_DIALECT_GTALK4)
-    {
-      priv->gtalk4_event_id = g_idle_add (send_gtalk4_transport_accept, c);
-    }
+    priv->gtalk4_event_id = g_idle_add (send_gtalk4_transport_accept, c);
 
   return;
 }
@@ -578,24 +581,18 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   GabbleJingleContentPrivate *priv = c->priv;
   const gchar *senders;
   LmMessageNode *trans_node, *desc_node;
-  JingleDialect dialect;
+  JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
   JingleContentSenders newsenders;
 
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
   senders = lm_message_node_get_attribute (content_node, "senders");
 
-  g_object_get (c->session, "dialect", &dialect, NULL);
-
-  /* FIXME: if we examine dialect manually, we don't need google_mode param flag */
-  if (google_mode)
+  if (JINGLE_IS_GOOGLE_DIALECT (dialect) && trans_node == NULL)
     {
-      if (trans_node == NULL)
-        {
-          DEBUG ("no transport node, assuming GTalk3 dialect");
-          /* gtalk lj0.3 assumes google-p2p transport */
-          g_object_set (c->session, "dialect", JINGLE_DIALECT_GTALK3, NULL);
-        }
+      DEBUG ("no transport node, assuming GTalk3 dialect");
+      /* gtalk lj0.3 assumes google-p2p transport */
+      g_object_set (c->session, "dialect", JINGLE_DIALECT_GTALK3, NULL);
     }
 
   if (senders == NULL)
@@ -655,23 +652,20 @@ gabble_jingle_content_parse_description_info (GabbleJingleContent *c,
 
 void
 gabble_jingle_content_produce_node (GabbleJingleContent *c,
-  LmMessageNode *parent, gboolean full)
+    LmMessageNode *parent,
+    gboolean include_description,
+    gboolean include_transport,
+    LmMessageNode **trans_node_out)
 {
   GabbleJingleContentPrivate *priv = c->priv;
   LmMessageNode *content_node, *trans_node;
-  JingleDialect dialect;
+  JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
   void (*produce_desc)(GabbleJingleContent *, LmMessageNode *) =
     GABBLE_JINGLE_CONTENT_GET_CLASS (c)->produce_description;
-
-  g_object_get (c->session, "dialect", &dialect, NULL);
 
   if ((dialect == JINGLE_DIALECT_GTALK3) ||
       (dialect == JINGLE_DIALECT_GTALK4))
     {
-      /* content-* isn't used in GTalk anyways, so we always have to include
-       * the full content description */
-      g_assert (full == TRUE);
-
       content_node = parent;
     }
   else
@@ -680,6 +674,7 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
       lm_message_node_set_attributes (content_node,
           "name", priv->name,
           "senders", produce_senders (priv->senders),
+          "xmlns", priv->content_ns,
           NULL);
 
       if (gabble_jingle_content_creator_is_initiator (c))
@@ -688,14 +683,25 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
         lm_message_node_set_attribute (content_node, "creator", "responder");
     }
 
-  if (!full)
-    return;
+  if (include_description)
+    produce_desc (c, content_node);
 
-  produce_desc (c, content_node);
+  if (include_transport)
+    {
+      if (dialect == JINGLE_DIALECT_GTALK3)
+        {
+          /* GTalk 03 doesn't use a transport, but assumes gtalk-p2p */
+          trans_node = parent;
+        }
+      else
+        {
+          trans_node = lm_message_node_add_child (content_node, "transport", NULL);
+          lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
+        }
 
-  /* We can do it here, don't need to call into transport object for this */
-  trans_node = lm_message_node_add_child (content_node, "transport", NULL);
-  lm_message_node_set_attribute (trans_node, "xmlns", priv->transport_ns);
+      if (trans_node_out != NULL)
+        *trans_node_out = trans_node;
+    }
 }
 
 void
@@ -799,7 +805,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
 
   msg = gabble_jingle_session_new_message (self->session,
       action, &sess_node);
-  gabble_jingle_content_produce_node (self, sess_node, TRUE);
+  gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE, NULL);
   gabble_jingle_session_send (self->session, msg, NULL, NULL);
 
   priv->state = new_state;
@@ -854,18 +860,26 @@ void
 gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
-  LmMessage *msg;
-  LmMessageNode *sess_node;
 
   /* If we didn't send the content yet there is no reason to send a
    * description-info to update it */
   if (priv->state < JINGLE_CONTENT_STATE_SENT)
     return;
 
-  msg = gabble_jingle_session_new_message (self->session,
-      JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
-  gabble_jingle_content_produce_node (self, sess_node, TRUE);
-  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+  if (gabble_jingle_session_defines_action (self->session,
+          JINGLE_ACTION_DESCRIPTION_INFO))
+    {
+      LmMessageNode *sess_node;
+      LmMessage *msg = gabble_jingle_session_new_message (self->session,
+          JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
+
+      gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE, NULL);
+      gabble_jingle_session_send (self->session, msg, NULL, NULL);
+    }
+  else
+    {
+      DEBUG ("not sending description-info, speaking an old dialect");
+    }
 }
 
 
@@ -873,9 +887,11 @@ gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
  * candidates), and when we detect gtalk3 after we've transmitted some
  * candidates. */
 void
-gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self)
+gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self,
+    gboolean all)
 {
-  gabble_jingle_transport_iface_retransmit_candidates (self->priv->transport, TRUE);
+  gabble_jingle_transport_iface_retransmit_candidates (self->priv->transport,
+      all);
 }
 
 /* Called by a subclass when the media is ready (e.g. we got local codecs) */
@@ -920,9 +936,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
   GabbleJingleContentPrivate *priv = c->priv;
   LmMessage *msg;
   LmMessageNode *sess_node;
-  JingleDialect dialect;
-
-  g_object_get (c->session, "dialect", &dialect, NULL);
+  JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
 
   if (JINGLE_IS_GOOGLE_DIALECT (dialect))
     {
@@ -934,7 +948,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 
   msg = gabble_jingle_session_new_message (c->session,
       JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
-  gabble_jingle_content_produce_node (c, sess_node, FALSE);
+  gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
   gabble_jingle_session_send (c->session, msg, NULL, NULL);
 
   /* FIXME: actually check whether remote end accepts our content-modify */
@@ -990,7 +1004,7 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
 
       msg = gabble_jingle_session_new_message (c->session,
           JINGLE_ACTION_CONTENT_REMOVE, &sess_node);
-      gabble_jingle_content_produce_node (c, sess_node, FALSE);
+      gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
       gabble_jingle_session_send (c->session, msg, _on_remove_reply,
           (GObject *) c);
     }
@@ -1030,6 +1044,12 @@ const gchar *
 gabble_jingle_content_get_ns (GabbleJingleContent *self)
 {
   return self->priv->content_ns;
+}
+
+const gchar *
+gabble_jingle_content_get_transport_ns (GabbleJingleContent *self)
+{
+  return self->priv->transport_ns;
 }
 
 const gchar *

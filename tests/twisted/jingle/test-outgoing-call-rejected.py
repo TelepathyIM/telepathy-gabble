@@ -44,7 +44,7 @@ def test(jp, q, bus, conn, stream):
     e = q.expect('stream-iq', predicate=jp.action_predicate('session-initiate'))
     stream.send(make_result_iq(stream, e.stanza))
 
-    jt.set_sid_from_initiate(e.query)
+    jt.parse_session_initiate(e.query)
     jt.terminate(reason="busy")
 
     mc = q.expect('dbus-signal', signal='MembersChanged')

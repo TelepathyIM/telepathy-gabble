@@ -534,12 +534,22 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   priv = chan->priv;
   base_conn = (TpBaseConnection *) priv->conn;
 
-  /* update peer's full JID if it's changed */
-  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR &&
-      0 != strcmp (from, priv->peer_jid))
+  if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
-      g_free (priv->peer_jid);
-      priv->peer_jid = g_strdup (from);
+      /* update peer's full JID if it's changed */
+      if (tp_strdiff (from, priv->peer_jid))
+        {
+          g_free (priv->peer_jid);
+          priv->peer_jid = g_strdup (from);
+        }
+    }
+  else
+    {
+      /* strip off the resource (if any), since we just failed to send to it */
+      char *slash = strchr (priv->peer_jid, '/');
+
+      if (slash != NULL)
+        *slash = '\0';
     }
 
   msg = tp_message_new (base_conn, 2, 2);

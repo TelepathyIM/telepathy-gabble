@@ -34,6 +34,7 @@
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "media-channel.h"
+#include "util.h"
 
 static const Feature self_advertised_features[] =
 {
@@ -145,12 +146,14 @@ GabblePresenceCapabilities
 capabilities_parse (LmMessageNode *query_result)
 {
   GabblePresenceCapabilities ret = PRESENCE_CAP_NONE;
-  LmMessageNode *child;
   const gchar *var;
   const Feature *i;
+  NodeIter j;
 
-  for (child = query_result->children; NULL != child; child = child->next)
+  for (j = node_iter (query_result); j; j = node_iter_next (j))
     {
+      LmMessageNode *child = node_iter_data (j);
+
       if (0 != strcmp (child->name, "feature"))
         {
           if (omits_content_creators (child))

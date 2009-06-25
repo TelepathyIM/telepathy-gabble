@@ -679,12 +679,12 @@ _foreach_content (GabbleJingleSession *sess,
     GError **error)
 {
   GabbleJingleContent *c;
-  LmMessageNode *content_node;
+  NodeIter i;
 
-  for (content_node = node->children;
-       NULL != content_node;
-       content_node = content_node->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *content_node = node_iter_data (i);
+
       if (tp_strdiff (lm_message_node_get_name (content_node), "content"))
         continue;
 
@@ -1204,16 +1204,17 @@ on_session_info (GabbleJingleSession *sess,
 {
   gboolean understood_a_payload = FALSE;
   gboolean hit_an_error = FALSE;
-  LmMessageNode *n = node->children;
+  NodeIter i;
 
   /* if this is a ping, just ack it. */
-  if (n == NULL)
+  if (node_iter (node) == NULL)
     return;
 
-  for (n = node->children; n != NULL; n = n->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
       gboolean handled;
       GError *e = NULL;
+      LmMessageNode *n = node_iter_data (i);
 
       if (handle_payload (sess, n, &handled, &e))
         {
@@ -1276,6 +1277,7 @@ on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
   TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
   LmMessageNode *n = lm_message_node_get_child (node, "reason");
   ReasonMapping *m = NULL;
+  NodeIter i;
 
   /* If the session-terminate stanza has a <reason> child, then iterate across
    * its children, looking for a child whose name we recognise as a
@@ -1285,13 +1287,17 @@ on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
    * we recognise, break out of both loops.
    */
   if (n != NULL)
-    for (n = n->children; n != NULL; n = n->next)
-      for (m = reasons; m->element != NULL; m++)
-        if (!tp_strdiff (m->element, lm_message_node_get_name (n)))
-          {
-            reason = m->reason;
-            goto pub;
-          }
+    for (i = node_iter (n); i; i = node_iter_next (i))
+      {
+        n = node_iter_data (i);
+
+        for (m = reasons; m->element != NULL; m++)
+          if (!tp_strdiff (m->element, lm_message_node_get_name (n)))
+            {
+              reason = m->reason;
+              goto pub;
+            }
+      }
 
 pub:
   DEBUG ("remote end terminated the session with reason %s (%u)",

@@ -2860,6 +2860,7 @@ _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
   GabblePresenceCapabilities jingle_video =
       PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO |
       PRESENCE_CAP_JINGLE_RTP_VIDEO;
+  gboolean just_google, one_media_type;
 
   /* this is intentionally asymmetric to the previous function - we don't
    * require the other end to advertise the GTalk-P2P transport capability
@@ -2873,6 +2874,16 @@ _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
   if ((caps & PRESENCE_CAP_GOOGLE_VIDEO) ||
       ((caps & any_transport) && (caps & jingle_video)))
         typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+
+  /* If this contact only supports Google Talk, or supports exactly one media
+   * type, set Immutable_Streams. */
+  just_google = (caps & (PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_VIDEO))
+      && !(caps & (PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE015));
+  one_media_type = (typeflags == TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
+      || (typeflags == TP_CHANNEL_MEDIA_CAPABILITY_VIDEO);
+
+  if (just_google || one_media_type)
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS;
 
   return typeflags;
 }

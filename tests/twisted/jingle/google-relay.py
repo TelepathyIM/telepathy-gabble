@@ -278,12 +278,13 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
     media_chan.RemoveMembers([self_handle], '')
 
     if incoming:
-        iq, signal = q.expect_many(
-            EventPattern('stream-iq'),
+        q.expect_many(
+            EventPattern('stream-iq',
+                predicate=lambda e: e.query is not None and
+                    e.query.name == 'jingle' and
+                    e.query['action'] == 'session-terminate'),
             EventPattern('dbus-signal', signal='Closed'),
             )
-        assert iq.query.name == 'jingle'
-        assert iq.query['action'] == 'session-terminate'
     else:
         # We haven't sent a session-initiate, so we shouldn't expect to send a
         # session-terminate.

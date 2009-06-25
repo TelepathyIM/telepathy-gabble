@@ -51,10 +51,10 @@
 /* RTP video capability in Jingle v0.15 (obsoleted by NS_JINGLE_RTP) */
 #define NS_JINGLE_DESCRIPTION_VIDEO \
   "http://jabber.org/protocol/jingle/description/video"
-#define NS_JINGLE_ERRORS            "http://jabber.org/protocol/jingle#errors"
 
 /* XEP-0166 draft v0.32 (last call) */
 #define NS_JINGLE032            "urn:xmpp:jingle:0"
+#define NS_JINGLE_ERRORS        "urn:xmpp:jingle:errors:1"
 
 /* XEP-0167 (Jingle RTP) */
 #define NS_JINGLE_RTP           "urn:xmpp:jingle:apps:rtp:0"

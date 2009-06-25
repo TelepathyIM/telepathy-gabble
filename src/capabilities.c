@@ -96,6 +96,8 @@ static GabbleCapabilitySet *voice_v1_caps = NULL;
 static GabbleCapabilitySet *video_v1_caps = NULL;
 static GabbleCapabilitySet *any_audio_caps = NULL;
 static GabbleCapabilitySet *any_video_caps = NULL;
+static GabbleCapabilitySet *any_google_av_caps = NULL;
+static GabbleCapabilitySet *any_jingle_av_caps = NULL;
 static GabbleCapabilitySet *any_transport_caps = NULL;
 static GabbleCapabilitySet *fixed_caps = NULL;
 static GabbleCapabilitySet *geoloc_caps = NULL;
@@ -129,6 +131,18 @@ const GabbleCapabilitySet *
 gabble_capabilities_get_any_video (void)
 {
   return any_video_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_any_google_av (void)
+{
+  return any_google_av_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_any_jingle_av (void)
+{
+  return any_jingle_av_caps;
 }
 
 const GabbleCapabilitySet *
@@ -241,6 +255,14 @@ gabble_capabilities_init (GabbleConnection *conn)
       gabble_capability_set_add (any_video_caps, NS_JINGLE_DESCRIPTION_VIDEO);
       gabble_capability_set_add (any_video_caps, NS_GOOGLE_FEAT_VIDEO);
 
+      any_google_av_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (any_google_av_caps, NS_GOOGLE_FEAT_VOICE);
+      gabble_capability_set_add (any_google_av_caps, NS_GOOGLE_FEAT_VIDEO);
+
+      any_jingle_av_caps = gabble_capability_set_copy (any_audio_caps);
+      gabble_capability_set_update (any_jingle_av_caps, any_video_caps);
+      gabble_capability_set_exclude (any_jingle_av_caps, any_google_av_caps);
+
       any_transport_caps = gabble_capability_set_new ();
       gabble_capability_set_add (any_transport_caps, NS_GOOGLE_TRANSPORT_P2P);
       gabble_capability_set_add (any_transport_caps, NS_JINGLE_TRANSPORT_ICEUDP);
@@ -283,6 +305,8 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       gabble_capability_set_free (video_v1_caps);
       gabble_capability_set_free (any_audio_caps);
       gabble_capability_set_free (any_video_caps);
+      gabble_capability_set_free (any_google_av_caps);
+      gabble_capability_set_free (any_jingle_av_caps);
       gabble_capability_set_free (any_transport_caps);
       gabble_capability_set_free (fixed_caps);
       gabble_capability_set_free (geoloc_caps);
@@ -293,6 +317,8 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       video_v1_caps = NULL;
       any_audio_caps = NULL;
       any_video_caps = NULL;
+      any_google_av_caps = NULL;
+      any_jingle_av_caps = NULL;
       any_transport_caps = NULL;
       fixed_caps = NULL;
       geoloc_caps = NULL;

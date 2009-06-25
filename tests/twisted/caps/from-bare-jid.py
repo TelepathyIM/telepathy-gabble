@@ -24,9 +24,10 @@ def test(q, bus, conn, stream):
 
     # Gabble gets a presence stanza from a bare JID, which is a tad surprising.
     features = [
-        'http://jabber.org/protocol/jingle',
-        'http://jabber.org/protocol/jingle/description/audio',
-        'http://www.google.com/transport/p2p',
+        ns.JINGLE_015,
+        ns.JINGLE_015_AUDIO,
+        ns.JINGLE_015_VIDEO,
+        ns.GOOGLE_P2P,
         ]
     caps = {'node': client,
             'hash': 'sha-1',
@@ -48,7 +49,7 @@ def test(q, bus, conn, stream):
     # Gabble lets us know their caps have changed. (Gabble used to ignore the
     # reply.)
     streamed_media_caps = (contact_handle, cs.CHANNEL_TYPE_STREAMED_MEDIA,
-        0, 3, 0, 1)
+        0, 3, 0, cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)
     e = q.expect('dbus-signal', signal='CapabilitiesChanged')
     assertContains(streamed_media_caps, e.args[0])
 

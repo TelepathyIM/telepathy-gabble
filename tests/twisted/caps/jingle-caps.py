@@ -17,7 +17,7 @@ all_transports = [
     ns.GOOGLE_P2P
 ]
 
-def test_caps(q, conn, stream, contact, features, audio, video):
+def test_caps(q, conn, stream, contact, features, audio, video, google=False):
     caps['ver'] = compute_caps_hash ([], features, {})
 
     h = presence_and_disco(q, conn, stream, contact, True,
@@ -29,6 +29,11 @@ def test_caps(q, conn, stream, contact, features, audio, video):
       cflags |= cs.MEDIA_CAP_AUDIO
     if video:
       cflags |= cs.MEDIA_CAP_VIDEO
+
+    # If the contact can only do one of audio or video, or uses a Google
+    # client, they'll have the ImmutableStreams cap.
+    if cflags < (cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO) or google:
+        cflags |= cs.MEDIA_CAP_IMMUTABLE_STREAMS
 
     assertContains((h, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, cflags),
         conn.Capabilities.GetCapabilities([h]))
@@ -69,15 +74,18 @@ def test(q, bus, conn, stream):
 
     # Google media doesn't need a transport at all
     features = [ ns.GOOGLE_FEAT_VOICE, ns.GOOGLE_FEAT_VIDEO ]
-    test_caps(q, conn, stream, "full@google", features, True, True)
+    test_caps(q, conn, stream, "full@google", features, True, True,
+        google=True)
 
     # Google video only
     features = [ ns.GOOGLE_FEAT_VIDEO ]
-    test_caps(q, conn, stream, "video@google", features, False, True)
+    test_caps(q, conn, stream, "video@google", features, False, True,
+        google=True)
 
     # Google audio only
     features = [ ns.GOOGLE_FEAT_VOICE ]
-    test_caps(q, conn, stream, "audio@google", features, True, False)
+    test_caps(q, conn, stream, "audio@google", features, True, False,
+        google=True)
 
 
 if __name__ == '__main__':

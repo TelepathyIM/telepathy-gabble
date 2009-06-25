@@ -17,19 +17,21 @@ from caps_helper import (
 
 client = 'http://telepathy.freedesktop.org/fake-client'
 features = [
-    'http://jabber.org/protocol/jingle',
-    'http://jabber.org/protocol/jingle/description/audio',
-    'http://www.google.com/transport/p2p',
+    ns.JINGLE_015,
+    ns.JINGLE_015_AUDIO,
+    ns.JINGLE_015_VIDEO,
+    ns.GOOGLE_P2P,
     ]
 
 
 def expect_caps(q, conn, h):
-    # we can now do audio calls
+    # we can now do audio and video calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
     check_caps(conn, h)
 
 def check_caps(conn, h):
-    assertContains((h, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, cs.MEDIA_CAP_AUDIO),
+    assertContains((h, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3,
+            cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO),
         conn.Capabilities.GetCapabilities([h]))
 
 def update_contact_caps(q, conn, stream, contact, caps, disco = True,

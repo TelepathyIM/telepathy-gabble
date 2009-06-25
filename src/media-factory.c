@@ -729,7 +729,7 @@ TpChannelMediaCapabilities
 _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
 {
   TpChannelMediaCapabilities typeflags = 0;
-  gboolean has_a_transport;
+  gboolean has_a_transport, just_google, one_media_type;
 
   has_a_transport = gabble_capability_set_has_one (caps,
     gabble_capabilities_get_any_transport ());
@@ -754,6 +754,18 @@ _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
 
   if (gabble_capability_set_has (caps, NS_GOOGLE_FEAT_VIDEO))
     typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+
+  just_google =
+      gabble_capability_set_has_one (caps,
+          gabble_capabilities_get_any_google_av ()) &&
+      !gabble_capability_set_has_one (caps,
+          gabble_capabilities_get_any_jingle_av ());
+
+  one_media_type = (typeflags == TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
+      || (typeflags == TP_CHANNEL_MEDIA_CAPABILITY_VIDEO);
+
+  if (just_google || one_media_type)
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS;
 
   return typeflags;
 }

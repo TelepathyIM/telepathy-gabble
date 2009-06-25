@@ -1391,6 +1391,12 @@ _pick_best_resource (GabbleMediaChannel *chan,
 
   /* Try newest Jingle standard */
   caps = PRESENCE_CAP_JINGLE_RTP;
+
+  if (want_audio)
+    caps |= PRESENCE_CAP_JINGLE_RTP_AUDIO;
+  if (want_video)
+    caps |= PRESENCE_CAP_JINGLE_RTP_VIDEO;
+
   resource = gabble_presence_pick_resource_by_caps (presence, caps);
 
   if (resource != NULL)
@@ -1399,9 +1405,14 @@ _pick_best_resource (GabbleMediaChannel *chan,
       goto CHOOSE_TRANSPORT;
     }
 
-  /* Else try older Jingle draft, audio + video */
-  caps = PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO |
-      PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
+  /* Else try older Jingle draft */
+  caps = 0;
+
+  if (want_audio)
+    caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
+  if (want_video)
+    caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
+
   resource = gabble_presence_pick_resource_by_caps (presence, caps);
 
   if (resource != NULL)
@@ -1410,67 +1421,40 @@ _pick_best_resource (GabbleMediaChannel *chan,
       goto CHOOSE_TRANSPORT;
     }
 
-  /* There is still hope, try GTalk, but only when asked for both audio and
-   * video */
-  if (want_audio && want_video)
-    {
-      caps = PRESENCE_CAP_GOOGLE_VIDEO | PRESENCE_CAP_GOOGLE_VOICE;
-      resource = gabble_presence_pick_resource_by_caps (presence, caps);
-
-      if (resource != NULL)
-        {
-          *dialect = JINGLE_DIALECT_GTALK3;
-          goto CHOOSE_TRANSPORT;
-        }
-    }
-
-  /* In this unlikely case, we can get by with just video */
+  /* The Google dialects can't do video alone. */
   if (!want_audio)
     {
-      caps = PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
-      resource = gabble_presence_pick_resource_by_caps (presence, caps);
-
-      if (resource != NULL)
-        {
-          *dialect = JINGLE_DIALECT_V015;
-          goto CHOOSE_TRANSPORT;
-        }
-    }
-
-  /* Uh, huh, we can't provide what's requested. */
-  if (want_video)
-    {
-      DEBUG ("No resource with video support available");
+      DEBUG ("No resource which supports video alone available");
       return NULL;
     }
 
-  /* Ok, try just older Jingle draft, audio */
-  caps = PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
+  /* Okay, let's try GTalk 0.3, possibly with video. */
+  caps = PRESENCE_CAP_GOOGLE_VOICE;
+
+  if (want_video)
+    caps |= PRESENCE_CAP_GOOGLE_VIDEO;
+
   resource = gabble_presence_pick_resource_by_caps (presence, caps);
 
   if (resource != NULL)
     {
-      *dialect = JINGLE_DIALECT_V015;
+      *dialect = JINGLE_DIALECT_GTALK3;
       goto CHOOSE_TRANSPORT;
     }
 
-  /* There is still hope, try GTalk 0.4 */
+  if (want_video)
+    {
+      DEBUG ("No resource which supports audio+video available");
+      return NULL;
+    }
+
+  /* Maybe GTalk 0.4 will save us all... ? */
   caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
   resource = gabble_presence_pick_resource_by_caps (presence, caps);
 
   if (resource != NULL)
     {
       *dialect = JINGLE_DIALECT_GTALK4;
-      goto CHOOSE_TRANSPORT;
-    }
-
-  /* GTalk 0.3 maybe ? */
-  caps = PRESENCE_CAP_GOOGLE_VOICE;
-  resource = gabble_presence_pick_resource_by_caps (presence, caps);
-
-  if (resource != NULL)
-    {
-      *dialect = JINGLE_DIALECT_GTALK3;
       goto CHOOSE_TRANSPORT;
     }
 

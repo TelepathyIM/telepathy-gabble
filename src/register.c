@@ -246,9 +246,10 @@ get_reply_cb (GabbleConnection *conn,
   GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
   GError *error = NULL;
   LmMessage *msg = NULL;
-  LmMessageNode *query_node, *child;
+  LmMessageNode *query_node;
   gchar *username, *password;
   gboolean username_required = FALSE, password_required = FALSE;
+  NodeIter i;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -267,8 +268,9 @@ get_reply_cb (GabbleConnection *conn,
       goto OUT;
     }
 
-  for (child = query_node->children; child != NULL; child = child->next)
+  for (i = node_iter (query_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *child = node_iter_data (i);
       const gchar *n = lm_message_node_get_name (child);
 
       if (!tp_strdiff (n, "username"))

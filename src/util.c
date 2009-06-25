@@ -138,7 +138,7 @@ void
 lm_message_node_steal_children (LmMessageNode *snatcher,
                                 LmMessageNode *mum)
 {
-  LmMessageNode *baby;
+  NodeIter i;
 
   g_return_if_fail (snatcher->children == NULL);
 
@@ -148,10 +148,11 @@ lm_message_node_steal_children (LmMessageNode *snatcher,
   snatcher->children = mum->children;
   mum->children = NULL;
 
-  for (baby = snatcher->children;
-       baby != NULL;
-       baby = baby->next)
-    baby->parent = snatcher;
+  for (i = node_iter (snatcher); i; i = node_iter_next (i))
+    {
+      LmMessageNode *baby = node_iter_data (i);
+      baby->parent = snatcher;
+    }
 }
 
 /* variant of lm_message_node_get_child() which ignores node namespace
@@ -159,10 +160,12 @@ lm_message_node_steal_children (LmMessageNode *snatcher,
 LmMessageNode *
 lm_message_node_get_child_any_ns (LmMessageNode *node, const gchar *name)
 {
-  LmMessageNode *child;
+  NodeIter i;
 
-  for (child = node->children; child != NULL; child = child->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *child = node_iter_data (i);
+
       if (!tp_strdiff (lm_message_node_get_name (child), name))
           return child;
     }
@@ -222,12 +225,11 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
                                           const gchar *name,
                                           const gchar *ns)
 {
-  LmMessageNode *tmp;
+  NodeIter i;
 
-  for (tmp = node->children;
-       tmp != NULL;
-       tmp = tmp->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *tmp = node_iter_data (i);
       gchar *tag = NULL;
       gboolean found;
 
@@ -695,7 +697,7 @@ lm_message_node_extract_properties (LmMessageNode *node,
                                     const gchar *prop)
 {
   GHashTable *properties;
-  LmMessageNode *child;
+  NodeIter i;
 
   properties = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
@@ -703,8 +705,9 @@ lm_message_node_extract_properties (LmMessageNode *node,
   if (node == NULL)
     return properties;
 
-  for (child = node->children; child; child = child->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *child = node_iter_data (i);
       const gchar *name;
       const gchar *type;
       const gchar *value;

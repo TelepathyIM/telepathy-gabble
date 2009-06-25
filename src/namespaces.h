@@ -38,19 +38,13 @@
 #define NS_GOOGLE_JINGLE_INFO   "google:jingleinfo"
 #define NS_GOOGLE_ROSTER        "google:roster"
 #define NS_IBB                  "http://jabber.org/protocol/ibb"
-/* XEP-0166 draft v0.15 */
+
+/* Namespaces for XEP-0166 draft v0.15, the most capable Jingle dialect
+ * supported by telepathy-gabble < 0.7.16, including the versions shipped with
+ * Maemo Chinook and Diablo.
+ */
 #define NS_JINGLE015            "http://jabber.org/protocol/jingle"
-/* XEP-0166 draft v0.32 (last call) */
-#define NS_JINGLE032            "urn:xmpp:jingle:0"
-/* Google's Jingle dialect */
-#define NS_GOOGLE_SESSION       "http://www.google.com/session"
-/* Audio capability in Google Jingle dialect */
-#define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
-/* Video capability in Google's Jingle dialect */
-#define NS_GOOGLE_SESSION_VIDEO "http://www.google.com/session/video"
-/* XEP-0167 (Jingle RTP) */
-#define NS_JINGLE_RTP           "urn:xmpp:jingle:apps:rtp:0"
-#define NS_JINGLE_RTP_INFO      "urn:xmpp:jingle:apps:rtp:info:1"
+
 /* RTP audio capability in Jingle v0.15 (obsoleted by NS_JINGLE_RTP) */
 #define NS_JINGLE_DESCRIPTION_AUDIO \
   "http://jabber.org/protocol/jingle/description/audio"
@@ -58,6 +52,21 @@
 #define NS_JINGLE_DESCRIPTION_VIDEO \
   "http://jabber.org/protocol/jingle/description/video"
 #define NS_JINGLE_ERRORS            "http://jabber.org/protocol/jingle#errors"
+
+/* XEP-0166 draft v0.32 (last call) */
+#define NS_JINGLE032            "urn:xmpp:jingle:0"
+
+/* XEP-0167 (Jingle RTP) */
+#define NS_JINGLE_RTP           "urn:xmpp:jingle:apps:rtp:0"
+#define NS_JINGLE_RTP_INFO      "urn:xmpp:jingle:apps:rtp:info:1"
+
+/* Google's Jingle dialect */
+#define NS_GOOGLE_SESSION       "http://www.google.com/session"
+/* Audio capability in Google Jingle dialect */
+#define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
+/* Video capability in Google's Jingle dialect */
+#define NS_GOOGLE_SESSION_VIDEO "http://www.google.com/session/video"
+
 /* Jingle ICE-UDP transport */
 #define NS_JINGLE_TRANSPORT_ICE     \
   "http://jabber.org/protocol/jingle/transport/ice"
@@ -66,6 +75,7 @@
 /* Jingle RAW-UDP transport */
 #define NS_JINGLE_TRANSPORT_RAWUDP \
   "http://jabber.org/protocol/jingle/transport/rawudp"
+
 #define NS_MUC                  "http://jabber.org/protocol/muc"
 #define NS_MUC_BYTESTREAM       "http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream"
 #define NS_MUC_USER             "http://jabber.org/protocol/muc#user"

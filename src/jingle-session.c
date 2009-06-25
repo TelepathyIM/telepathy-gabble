@@ -156,7 +156,7 @@ dialect_defines_action (JingleDialect d,
       case JINGLE_DIALECT_V015:
         return (a != JINGLE_ACTION_DESCRIPTION_INFO);
       case JINGLE_DIALECT_GTALK4:
-        if (a == JINGLE_ACTION_SESSION_ACCEPT)
+        if (a == JINGLE_ACTION_TRANSPORT_ACCEPT)
           return TRUE;
       case JINGLE_DIALECT_GTALK3:
         return (a == JINGLE_ACTION_SESSION_ACCEPT ||

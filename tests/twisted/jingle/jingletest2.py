@@ -308,7 +308,8 @@ class JingleProtocol015(JingleProtocol):
         return ('description', namespace, { 'type': type }, children)
 
 class JingleProtocol031(JingleProtocol):
-    features = [ ns.JINGLE, ns.JINGLE_RTP, ns.GOOGLE_P2P ]
+    features = [ ns.JINGLE, ns.JINGLE_RTP, ns.JINGLE_RTP_AUDIO,
+        ns.JINGLE_RTP_VIDEO, ns.GOOGLE_P2P ]
 
     def __init__(self):
         JingleProtocol.__init__(self, 'jingle-v0.31')

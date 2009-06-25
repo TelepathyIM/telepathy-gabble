@@ -142,10 +142,12 @@ static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = 
   { JINGLE_ACTION_UNKNOWN }
 };
 
-static gboolean
-dialect_defines_action (JingleDialect d,
+gboolean
+gabble_jingle_session_defines_action (GabbleJingleSession *sess,
     JingleAction a)
 {
+  JingleDialect d = sess->priv->dialect;
+
   if (a == JINGLE_ACTION_UNKNOWN)
     return FALSE;
 
@@ -1540,7 +1542,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
-  if (!dialect_defines_action (priv->dialect, action))
+  if (!gabble_jingle_session_defines_action (sess, action))
     {
       g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "action '%s' unknown (using dialect %u)", action_name, priv->dialect);
@@ -2197,7 +2199,7 @@ gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
   LmMessage *message;
   LmMessageNode *jingle, *notification;
 
-  if (sess->priv->dialect != JINGLE_DIALECT_V032)
+  if (!gabble_jingle_session_defines_action (sess, JINGLE_ACTION_SESSION_INFO))
     {
       DEBUG ("Not sending <%s/>; not using modern Jingle", name);
       return;

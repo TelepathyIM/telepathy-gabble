@@ -866,7 +866,8 @@ gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
   if (priv->state < JINGLE_CONTENT_STATE_SENT)
     return;
 
-  if (gabble_jingle_session_get_dialect (self->session) == JINGLE_DIALECT_V032)
+  if (gabble_jingle_session_defines_action (self->session,
+          JINGLE_ACTION_DESCRIPTION_INFO))
     {
       LmMessageNode *sess_node;
       LmMessage *msg = gabble_jingle_session_new_message (self->session,

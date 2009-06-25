@@ -60,6 +60,8 @@
 #define NS_JINGLE_RTP           "urn:xmpp:jingle:apps:rtp:1"
 #define NS_JINGLE_RTP_ERRORS    "urn:xmpp:jingle:apps:rtp:errors:1"
 #define NS_JINGLE_RTP_INFO      "urn:xmpp:jingle:apps:rtp:info:1"
+#define NS_JINGLE_RTP_AUDIO     "urn:xmpp:jingle:apps:rtp:audio"
+#define NS_JINGLE_RTP_VIDEO     "urn:xmpp:jingle:apps:rtp:video"
 
 /* Google's Jingle dialect */
 #define NS_GOOGLE_SESSION       "http://www.google.com/session"

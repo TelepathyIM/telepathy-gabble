@@ -214,6 +214,7 @@ AC_OUTPUT( Makefile \
            tests/twisted/tools/Makefile \
            lib/Makefile \
            lib/gibber/Makefile \
+           lib/loudmouth/Makefile \
            shave \
            shave-libtool
 )

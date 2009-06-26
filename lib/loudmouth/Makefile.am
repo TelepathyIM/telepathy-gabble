@@ -8,7 +8,18 @@ BUILT_SOURCES = \
   loudmouth-signals-marshal.c
 
 OUR_SOURCES =                     \
-  loudmouth.h
+  loudmouth.h                     \
+  lm-types.h                      \
+  lm-connection.c                 \
+  lm-connection.h                 \
+  lm-message.c                    \
+  lm-message.h                    \
+  lm-message-node.c               \
+  lm-message-node.h               \
+  lm-message-handler.c            \
+  lm-message-handler.h            \
+  lm-connection.c                 \
+  lm-connection.h
 
 libloudmouth_la_SOURCES = $(OUR_SOURCES) $(BUILT_SOURCES)
 

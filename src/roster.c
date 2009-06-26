@@ -349,14 +349,16 @@ _parse_item_groups (LmMessageNode *item_node, TpBaseConnection *conn)
   for (i = node_iter (item_node); i; i = node_iter_next (i))
     {
       LmMessageNode *group_node = node_iter_data (i);
+      const gchar *value;
 
       if (0 != strcmp (group_node->name, "group"))
         continue;
 
-      if (NULL == group_node->value)
+      value = lm_message_node_get_value (group_node);
+      if (NULL == value)
         continue;
 
-      handle = tp_handle_ensure (group_repo, group_node->value, NULL, NULL);
+      handle = tp_handle_ensure (group_repo, value, NULL, NULL);
       if (!handle)
         continue;
       tp_handle_set_add (groups, handle);

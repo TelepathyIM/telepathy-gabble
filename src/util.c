@@ -127,12 +127,7 @@ void
 lm_message_node_unlink (LmMessageNode *orphan,
     LmMessageNode *parent)
 {
-  if (parent && orphan == parent->children)
-    parent->children = orphan->next;
-  if (orphan->prev)
-    orphan->prev->next = orphan->next;
-  if (orphan->next)
-    orphan->next->prev = orphan->prev;
+  parent->children = g_slist_remove (parent->children, orphan);
 }
 
 void

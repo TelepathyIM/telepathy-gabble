@@ -139,8 +139,6 @@ void
 lm_message_node_steal_children (LmMessageNode *snatcher,
                                 LmMessageNode *mum)
 {
-  NodeIter i;
-
   g_return_if_fail (snatcher->children == NULL);
 
   if (mum->children == NULL)
@@ -148,12 +146,6 @@ lm_message_node_steal_children (LmMessageNode *snatcher,
 
   snatcher->children = mum->children;
   mum->children = NULL;
-
-  for (i = node_iter (snatcher); i; i = node_iter_next (i))
-    {
-      LmMessageNode *baby = node_iter_data (i);
-      baby->parent = snatcher;
-    }
 }
 
 /* variant of lm_message_node_get_child() which ignores node namespace

@@ -1857,8 +1857,9 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   for (ip = ips; ip != NULL; ip = g_slist_next (ip))
     {
       LmMessageNode *node;
+      NodeIter i = node_iter (msg->node);
 
-      node = lm_message_node_add_child (msg->node->children,
+      node = lm_message_node_add_child (node_iter_data (i),
           "streamhost", "");
 
       lm_message_node_set_attributes (node,
@@ -1884,8 +1885,9 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
         {
           LmMessageNode *node;
           GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
+          NodeIter i = node_iter (msg->node);
 
-          node = lm_message_node_add_child (msg->node->children,
+          node = lm_message_node_add_child (node_iter_data (i),
               "streamhost", "");
 
           lm_message_node_set_attributes (node,

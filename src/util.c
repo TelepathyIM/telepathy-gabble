@@ -194,22 +194,7 @@ find_namespace_of_prefix (LmMessageNode *node,
 const gchar *
 lm_message_node_get_namespace (LmMessageNode *node)
 {
-  const gchar *node_ns = NULL;
-  gchar *x = strchr (node->name, ':');
-
-  if (x != NULL)
-    {
-      gchar *prefix = g_strndup (node->name, (x - node->name));
-
-      node_ns = find_namespace_of_prefix (node, prefix);
-      g_free (prefix);
-    }
-  else
-    {
-      node_ns = lm_message_node_get_attribute (node, "xmlns");
-    }
-
-  return node_ns;
+  return wocky_xmpp_node_get_ns (node);
 }
 
 const gchar *

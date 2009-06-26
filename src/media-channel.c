@@ -745,7 +745,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   param_spec = g_param_spec_string ("nat-traversal", "NAT traversal",
       "NAT traversal mechanism.",
       "gtalk-p2p",
-      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_NAT_TRAVERSAL,
       param_spec);
 

@@ -47,6 +47,9 @@ core
 /lib/gibber/gibber-signals-marshal.c
 /lib/gibber/gibber-signals-marshal.h
 /lib/gibber/gibber-signals-marshal.list
+lib/loudmouth/loudmouth-signals-marshal.c
+lib/loudmouth/loudmouth-signals-marshal.h
+lib/loudmouth/loudmouth-signals-marshal.list
 /ltmain.sh
 /m4/gtk-doc.m4
 /m4/libtool.m4

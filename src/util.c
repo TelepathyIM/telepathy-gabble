@@ -261,51 +261,6 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
   return NULL;
 }
 
-static LmMessageNode *
-message_node_last_child (LmMessageNode *node)
-{
-  LmMessageNode *l;
-
-  g_return_val_if_fail (node != NULL, NULL);
-
-  if (!node->children)
-    {
-      return NULL;
-    }
-
-  l = node->children;
-
-  while (l->next)
-    {
-      l = l->next;
-    }
-
-  return l;
-}
-
-void
-lm_message_node_add_child_node (LmMessageNode *node, LmMessageNode *child)
-{
-  LmMessageNode *prev;
-
-  g_return_if_fail (node != NULL);
-
-  prev = message_node_last_child (node);
-  lm_message_node_ref (child);
-
-  if (prev)
-    {
-      prev->next = child;
-      child->prev = prev;
-    }
-  else
-    {
-      node->children = child;
-    }
-
-  child->parent = node;
-}
-
 /* note: these are only used internally for readability, not part of the API
  */
 enum {

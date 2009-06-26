@@ -976,7 +976,7 @@ static LmMessageNode *
 vcard_copy (LmMessageNode *parent, LmMessageNode *src)
 {
     LmMessageNode *new = lm_message_node_add_child (parent, src->name,
-        src->value);
+        lm_message_node_get_value (src));
     const gchar *xmlns;
     NodeIter i;
 

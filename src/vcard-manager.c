@@ -936,7 +936,7 @@ patch_vcard_foreach (gpointer k, gpointer v, gpointer user_data)
       node = lm_message_node_get_child (vcard_node, "PHOTO");
       if (node != NULL)
         {
-          lm_message_node_unlink (node);
+          lm_message_node_unlink (node, vcard_node);
           lm_message_node_unref (node);
         }
 

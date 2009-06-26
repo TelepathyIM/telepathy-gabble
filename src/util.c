@@ -124,10 +124,11 @@ lm_message_node_add_own_nick (LmMessageNode *node,
 }
 
 void
-lm_message_node_unlink (LmMessageNode *orphan)
+lm_message_node_unlink (LmMessageNode *orphan,
+    LmMessageNode *parent)
 {
-  if (orphan->parent && orphan == orphan->parent->children)
-    orphan->parent->children = orphan->next;
+  if (parent && orphan == parent->children)
+    parent->children = orphan->next;
   if (orphan->prev)
     orphan->prev->next = orphan->next;
   if (orphan->next)

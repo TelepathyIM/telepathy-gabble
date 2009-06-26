@@ -47,7 +47,8 @@ gchar *gabble_generate_id (void);
 
 void lm_message_node_add_own_nick (LmMessageNode *node,
     GabbleConnection *conn);
-void lm_message_node_unlink (LmMessageNode *orphan);
+void lm_message_node_unlink (LmMessageNode *orphan,
+    LmMessageNode *parent);
 void lm_message_node_steal_children (LmMessageNode *snatcher,
     LmMessageNode *mum);
 gboolean lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns,

@@ -536,7 +536,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
 
   desc_node = lm_message_node_get_child (file_node, "desc");
   if (desc_node != NULL)
-    description = desc_node->value;
+    description = lm_message_node_get_value (desc_node);
   else
     description = NULL;
 

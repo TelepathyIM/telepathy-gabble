@@ -216,11 +216,12 @@ telepathy_gabble_debug_LDADD = \
     $(top_builddir)/lib/gibber/libgibber.la \
     $(ALL_LIBS)
 
-AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ @WOCKY_CFLAGS@ \
+AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
     @TP_GLIB_CFLAGS@ \
     -I $(top_srcdir)/src -I $(top_builddir)/src \
+     -I $(top_srcdir)/lib -I $(top_builddir)/lib \
     -I $(top_srcdir) -I $(top_builddir)
-ALL_LIBS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @WOCKY_LIBS@ @TP_GLIB_LIBS@
+ALL_LIBS = @DBUS_LIBS@ @GLIB_LIBS@ @WOCKY_LIBS@ @TP_GLIB_LIBS@
 
 CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc config.py
 

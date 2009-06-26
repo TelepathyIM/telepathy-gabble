@@ -21,8 +21,9 @@
 #ifndef __LOUDMOUTH_H__
 #define __LOUDMOUTH_H__
 
-G_BEGIN_DECLS
-
-G_END_DECLS
+#include <loudmouth/lm-connection.h>
+#include <loudmouth/lm-message.h>
+#include <loudmouth/lm-message-handler.h>
+#include <loudmouth/lm-message-node.h>
 
 #endif /* #ifndef __LOUDMOUTH_H__ */

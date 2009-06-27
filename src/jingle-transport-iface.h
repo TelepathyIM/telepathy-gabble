@@ -43,9 +43,12 @@ struct _GabbleJingleTransportIfaceClass {
 
   void (*parse_candidates) (GabbleJingleTransportIface *,
     LmMessageNode *, GError **);
+
   void (*new_local_candidates) (GabbleJingleTransportIface *, GList *);
-  LmMessageNode * (*produce_node) (GabbleJingleTransportIface *,
-    LmMessageNode *, JingleAction);
+  void (*inject_candidates) (GabbleJingleTransportIface *,
+      LmMessageNode *transport_node);
+  void (*send_candidates) (GabbleJingleTransportIface *, gboolean all);
+
   GList * (*get_remote_candidates) (GabbleJingleTransportIface *);
   JingleTransportType (*get_transport_type) (void);
 };
@@ -65,9 +68,17 @@ GType gabble_jingle_transport_iface_get_type (void);
 
 void gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *,
     LmMessageNode *, GError **);
-void gabble_jingle_transport_iface_new_local_candidates (GabbleJingleTransportIface *, GList *);
-LmMessageNode *gabble_jingle_transport_iface_produce_node (GabbleJingleTransportIface *,
-    LmMessageNode *, JingleAction);
+
+void gabble_jingle_transport_iface_new_local_candidates (
+    GabbleJingleTransportIface *self,
+    GList *candidates);
+void gabble_jingle_transport_iface_inject_candidates (
+    GabbleJingleTransportIface *self,
+    LmMessageNode *transport_node);
+void gabble_jingle_transport_iface_send_candidates (
+    GabbleJingleTransportIface *self,
+    gboolean all);
+
 GList *gabble_jingle_transport_iface_get_remote_candidates (GabbleJingleTransportIface *);
 JingleTransportType gabble_jingle_transport_iface_get_transport_type (GabbleJingleTransportIface *);
 

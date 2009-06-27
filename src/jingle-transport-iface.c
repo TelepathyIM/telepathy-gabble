@@ -51,20 +51,6 @@ gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *self
   return virtual_method (self, node, error);
 }
 
-/* Appends <transport /> node under parent, to be used with the
- * specified jingle action. Returns the new node. */
-LmMessageNode *
-gabble_jingle_transport_iface_produce_node (GabbleJingleTransportIface *self,
-    LmMessageNode *parent, JingleAction action)
-{
-  LmMessageNode *(*virtual_method)(GabbleJingleTransportIface *,
-      LmMessageNode *, JingleAction) =
-    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->produce_node;
-
-  g_assert (virtual_method != NULL);
-  return virtual_method (self, parent, action);
-}
-
 /* Takes in a list of slice-allocated JingleCandidate structs */
 void
 gabble_jingle_transport_iface_new_local_candidates (GabbleJingleTransportIface *self,
@@ -76,6 +62,34 @@ gabble_jingle_transport_iface_new_local_candidates (GabbleJingleTransportIface *
 
   g_assert (virtual_method != NULL);
   virtual_method (self, candidates);
+}
+
+/* Inserts candidates into the given <transport/> node, or equivalent, of a
+ * session-initiate, session-accept, content-add or content-accept action.
+ */
+void
+gabble_jingle_transport_iface_inject_candidates (
+    GabbleJingleTransportIface *self,
+    LmMessageNode *transport_node)
+{
+  void (*virtual_method)(GabbleJingleTransportIface *, LmMessageNode *) =
+      GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->inject_candidates;
+
+  if (virtual_method != NULL)
+    virtual_method (self, transport_node);
+}
+
+/* Transmits outstanding or all candidates (if applicable and @all is set). */
+void
+gabble_jingle_transport_iface_send_candidates (
+    GabbleJingleTransportIface *self,
+    gboolean all)
+{
+  void (*virtual_method) (GabbleJingleTransportIface *, gboolean) =
+      GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->send_candidates;
+
+  if (virtual_method != NULL)
+    virtual_method (self, all);
 }
 
 GList *

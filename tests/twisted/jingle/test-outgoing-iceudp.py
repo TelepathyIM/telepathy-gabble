@@ -2,7 +2,7 @@
 Test outgoing call using ICE-UDP transport mechanism.
 """
 
-from gabbletest import exec_test
+from gabbletest import exec_test, sync_stream
 from servicetest import (
     wrap_channel, make_channel_proxy, EventPattern, call_async,
     assertEquals)
@@ -55,21 +55,29 @@ def worker(jp, q, bus, conn, stream):
     stream_handler.StreamState(2)
 
     e = q.expect('stream-iq', predicate=jp.action_predicate('session-initiate'))
-    assert xpath.queryForNodes("/iq/jingle/content/transport[@xmlns='%s']" %
-        ns.JINGLE_TRANSPORT_ICEUDP, e.stanza)
-    jt2.parse_session_initiate(e.query)
-
-    stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
-
-    e = q.expect('stream-iq', predicate=jp.action_predicate('transport-info'))
+    # The session-initiate "MUST include a <transport/> child element qualified
+    # by the [ice-udp] namespace"
     node = xpath.queryForNodes("/iq/jingle/content/transport[@xmlns='%s']" %
         ns.JINGLE_TRANSPORT_ICEUDP, e.stanza)[0]
+    jt2.parse_session_initiate(e.query)
 
+    # ...which SHOULD contain the higher-priority ICE candidates. We supplied
+    # one candidate, so...
     assertEquals('username', node['ufrag'])
     assertEquals('password', node['pwd'])
     node = [ x for x in node.children if type(x) != unicode ][0]
     assertEquals('candidate', node.name)
     assert node['foundation'] is not None
+
+    stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
+
+    ti_event = [
+        EventPattern('stream-iq',
+            predicate=jp.action_predicate('transport-info'))
+        ]
+    q.forbid_events(ti_event)
+    sync_stream(q, stream)
+    q.unforbid_events(ti_event)
 
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'session-accept', [

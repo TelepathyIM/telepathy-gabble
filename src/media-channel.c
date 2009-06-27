@@ -1709,7 +1709,7 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
 
       g_object_set (priv->session, "dialect", dialect, NULL);
 
-      /* Change nat-transport type if we need to */
+      /* Change nat-traversal if we need to */
       if (!tp_strdiff (transport_ns, NS_JINGLE_TRANSPORT_ICEUDP))
         {
           DEBUG ("changing nat-traversal property to ice-udp");

@@ -674,7 +674,6 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
       lm_message_node_set_attributes (content_node,
           "name", priv->name,
           "senders", produce_senders (priv->senders),
-          "xmlns", priv->content_ns,
           NULL);
 
       if (gabble_jingle_content_creator_is_initiator (c))

@@ -364,6 +364,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
 {
   GabbleJingleTransportIceUdp *self = GABBLE_JINGLE_TRANSPORT_ICEUDP (obj);
   GabbleJingleTransportIceUdpPrivate *priv = self->priv;
+  const gchar *username = NULL;
 
   for (; priv->pending_candidates != NULL;
       priv->pending_candidates = priv->pending_candidates->next)
@@ -372,6 +373,17 @@ inject_candidates (GabbleJingleTransportIface *obj,
       gchar port_str[16], pref_str[16], comp_str[16], found_str[16],
           *type_str, *proto_str;
       LmMessageNode *cnode;
+
+      if (username == NULL)
+        {
+          username = c->username;
+        }
+      else if (tp_strdiff (username, c->username))
+        {
+          DEBUG ("found a candidate with a different username (%s not %s); "
+              "will send in a separate batch", c->username, username);
+          break;
+        }
 
       /* FIXME: We're probably horribly wrong about our usage of
        * priority wrt ICE-UDP draft. Seems to work, though, probably
@@ -434,25 +446,25 @@ send_candidates (GabbleJingleTransportIface *iface,
 {
   GabbleJingleTransportIceUdp *self = GABBLE_JINGLE_TRANSPORT_ICEUDP (iface);
   GabbleJingleTransportIceUdpPrivate *priv = self->priv;
-  LmMessageNode *trans_node, *sess_node;
-  LmMessage *msg;
 
-  if (priv->pending_candidates == NULL)
+  while (priv->pending_candidates != NULL)
     {
-      DEBUG ("no outstanding candidates to send");
-      return;
+      LmMessageNode *trans_node, *sess_node;
+      LmMessage *msg;
+
+      msg = gabble_jingle_session_new_message (priv->content->session,
+          JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
+
+      gabble_jingle_content_produce_node (priv->content, sess_node, FALSE,
+          TRUE, &trans_node);
+      inject_candidates (iface, trans_node);
+
+      _gabble_connection_send_with_reply (priv->content->conn, msg, NULL, NULL,
+          NULL, NULL);
+      lm_message_unref (msg);
     }
 
-  msg = gabble_jingle_session_new_message (priv->content->session,
-    JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
-
-  gabble_jingle_content_produce_node (priv->content, sess_node, FALSE, TRUE,
-      &trans_node);
-  inject_candidates (iface, trans_node);
-
-  _gabble_connection_send_with_reply (priv->content->conn, msg, NULL, NULL,
-      NULL, NULL);
-  lm_message_unref (msg);
+  DEBUG ("sent all pending candidates");
 }
 
 /* Takes in a list of slice-allocated JingleCandidate structs */

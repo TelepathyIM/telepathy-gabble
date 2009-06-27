@@ -86,8 +86,6 @@ struct _GabbleJingleTransportIceUdpPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_TRANSPORT_ICEUDP_GET_PRIVATE(o) ((o)->priv)
-
 static void
 gabble_jingle_transport_iceudp_init (GabbleJingleTransportIceUdp *obj)
 {
@@ -104,7 +102,7 @@ static void
 gabble_jingle_transport_iceudp_dispose (GObject *object)
 {
   GabbleJingleTransportIceUdp *trans = GABBLE_JINGLE_TRANSPORT_ICEUDP (object);
-  GabbleJingleTransportIceUdpPrivate *priv = GABBLE_JINGLE_TRANSPORT_ICEUDP_GET_PRIVATE (trans);
+  GabbleJingleTransportIceUdpPrivate *priv = trans->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -132,7 +130,7 @@ gabble_jingle_transport_iceudp_get_property (GObject *object,
                                              GParamSpec *pspec)
 {
   GabbleJingleTransportIceUdp *trans = GABBLE_JINGLE_TRANSPORT_ICEUDP (object);
-  GabbleJingleTransportIceUdpPrivate *priv = GABBLE_JINGLE_TRANSPORT_ICEUDP_GET_PRIVATE (trans);
+  GabbleJingleTransportIceUdpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_CONTENT:
@@ -157,8 +155,7 @@ gabble_jingle_transport_iceudp_set_property (GObject *object,
                                              GParamSpec *pspec)
 {
   GabbleJingleTransportIceUdp *trans = GABBLE_JINGLE_TRANSPORT_ICEUDP (object);
-  GabbleJingleTransportIceUdpPrivate *priv =
-      GABBLE_JINGLE_TRANSPORT_ICEUDP_GET_PRIVATE (trans);
+  GabbleJingleTransportIceUdpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_CONTENT:
@@ -240,8 +237,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
     LmMessageNode *transport_node, GError **error)
 {
   GabbleJingleTransportIceUdp *t = GABBLE_JINGLE_TRANSPORT_ICEUDP (obj);
-  GabbleJingleTransportIceUdpPrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_ICEUDP_GET_PRIVATE (t);
+  GabbleJingleTransportIceUdpPrivate *priv = t->priv;
   GList *candidates = NULL;
   LmMessageNode *node;
 
@@ -468,8 +464,7 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
 {
   GabbleJingleTransportIceUdp *transport =
     GABBLE_JINGLE_TRANSPORT_ICEUDP (obj);
-  GabbleJingleTransportIceUdpPrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_ICEUDP_GET_PRIVATE (transport);
+  GabbleJingleTransportIceUdpPrivate *priv = transport->priv;
   JingleContentState state;
 
   g_object_get (priv->content, "state", &state, NULL);
@@ -489,8 +484,7 @@ get_remote_candidates (GabbleJingleTransportIface *iface)
 {
   GabbleJingleTransportIceUdp *transport =
     GABBLE_JINGLE_TRANSPORT_ICEUDP (iface);
-  GabbleJingleTransportIceUdpPrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_ICEUDP_GET_PRIVATE (transport);
+  GabbleJingleTransportIceUdpPrivate *priv = transport->priv;
 
   return priv->remote_candidates;
 }

@@ -80,8 +80,6 @@ struct _GabbleJingleTransportRawUdpPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE(o) ((o)->priv)
-
 static void
 gabble_jingle_transport_rawudp_init (GabbleJingleTransportRawUdp *obj)
 {
@@ -97,7 +95,7 @@ static void
 gabble_jingle_transport_rawudp_dispose (GObject *object)
 {
   GabbleJingleTransportRawUdp *trans = GABBLE_JINGLE_TRANSPORT_RAWUDP (object);
-  GabbleJingleTransportRawUdpPrivate *priv = GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (trans);
+  GabbleJingleTransportRawUdpPrivate *priv = trans->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -125,7 +123,7 @@ gabble_jingle_transport_rawudp_get_property (GObject *object,
                                              GParamSpec *pspec)
 {
   GabbleJingleTransportRawUdp *trans = GABBLE_JINGLE_TRANSPORT_RAWUDP (object);
-  GabbleJingleTransportRawUdpPrivate *priv = GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (trans);
+  GabbleJingleTransportRawUdpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_CONTENT:
@@ -150,8 +148,7 @@ gabble_jingle_transport_rawudp_set_property (GObject *object,
                                              GParamSpec *pspec)
 {
   GabbleJingleTransportRawUdp *trans = GABBLE_JINGLE_TRANSPORT_RAWUDP (object);
-  GabbleJingleTransportRawUdpPrivate *priv =
-      GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (trans);
+  GabbleJingleTransportRawUdpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_CONTENT:
@@ -233,8 +230,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
     LmMessageNode *transport_node, GError **error)
 {
   GabbleJingleTransportRawUdp *t = GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
-  GabbleJingleTransportRawUdpPrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (t);
+  GabbleJingleTransportRawUdpPrivate *priv = t->priv;
   GList *candidates = NULL;
   LmMessageNode *node;
 
@@ -342,8 +338,7 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
 {
   GabbleJingleTransportRawUdp *transport =
     GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
-  GabbleJingleTransportRawUdpPrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (transport);
+  GabbleJingleTransportRawUdpPrivate *priv = transport->priv;
   JingleContentState state;
 
   if (priv->local_candidates != NULL)
@@ -370,8 +365,7 @@ get_remote_candidates (GabbleJingleTransportIface *iface)
 {
   GabbleJingleTransportRawUdp *transport =
     GABBLE_JINGLE_TRANSPORT_RAWUDP (iface);
-  GabbleJingleTransportRawUdpPrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_PRIVATE (transport);
+  GabbleJingleTransportRawUdpPrivate *priv = transport->priv;
 
   return priv->remote_candidates;
 }

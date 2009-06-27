@@ -221,10 +221,6 @@ gabble_jingle_transport_rawudp_class_init (GabbleJingleTransportRawUdpClass *cls
 
 }
 
-#define SET_BAD_REQ(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
-#define SET_OUT_ORDER(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER, txt)
-#define SET_CONFLICT(txt...) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT, txt)
-
 static void
 parse_candidates (GabbleJingleTransportIface *obj,
     LmMessageNode *transport_node, GError **error)
@@ -292,7 +288,8 @@ parse_candidates (GabbleJingleTransportIface *obj,
       DEBUG ("not all nodes were processed, reporting error");
       /* rollback these */
       jingle_transport_free_candidates (candidates);
-      SET_BAD_REQ ("invalid candidate");
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "invalid candidate");
       return;
     }
 

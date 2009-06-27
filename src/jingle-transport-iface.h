@@ -48,6 +48,7 @@ struct _GabbleJingleTransportIfaceClass {
   void (*inject_candidates) (GabbleJingleTransportIface *,
       LmMessageNode *transport_node);
   void (*send_candidates) (GabbleJingleTransportIface *, gboolean all);
+  gboolean (*can_accept) (GabbleJingleTransportIface *);
 
   GList * (*get_remote_candidates) (GabbleJingleTransportIface *);
   JingleTransportType (*get_transport_type) (void);
@@ -78,6 +79,8 @@ void gabble_jingle_transport_iface_inject_candidates (
 void gabble_jingle_transport_iface_send_candidates (
     GabbleJingleTransportIface *self,
     gboolean all);
+gboolean gabble_jingle_transport_iface_can_accept (
+    GabbleJingleTransportIface *self);
 
 GList *gabble_jingle_transport_iface_get_remote_candidates (GabbleJingleTransportIface *);
 JingleTransportType gabble_jingle_transport_iface_get_transport_type (GabbleJingleTransportIface *);

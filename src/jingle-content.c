@@ -79,8 +79,6 @@ struct _GabbleJingleContentPrivate
   /* Whether we've got the codecs (intersection) ready. */
   gboolean media_ready;
 
-  /* Whether the underlying transport is connected. */
-  gboolean transport_connected;
   /* Whether we have at least one local candidate. */
   gboolean have_local_candidates;
 
@@ -113,7 +111,6 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
   priv->state = JINGLE_CONTENT_STATE_EMPTY;
   priv->created_by_us = TRUE;
   priv->media_ready = FALSE;
-  priv->transport_connected = FALSE;
   priv->have_local_candidates = FALSE;
   priv->timer_id = 0;
   priv->gtalk4_event_id = 0;
@@ -781,7 +778,8 @@ gabble_jingle_content_is_ready (GabbleJingleContent *self)
     {
       /* If it's created by peer, media and transports ready,
        * and not acknowledged yet, it's ready for acceptance. */
-      if (priv->media_ready && priv->transport_connected &&
+      if (priv->media_ready &&
+          gabble_jingle_transport_iface_can_accept (priv->transport) &&
           (priv->state == JINGLE_CONTENT_STATE_NEW))
         return TRUE;
     }
@@ -951,11 +949,7 @@ gabble_jingle_content_set_transport_state (GabbleJingleContent *self,
 
   g_object_set (priv->transport, "state", state, NULL);
 
-  if (state == JINGLE_TRANSPORT_STATE_CONNECTED)
-    {
-      priv->transport_connected = TRUE;
-      _maybe_ready (self);
-    }
+  _maybe_ready (self);
 }
 
 GList *

@@ -92,6 +92,28 @@ gabble_jingle_transport_iface_send_candidates (
     virtual_method (self, all);
 }
 
+/* Returns TRUE if and only if @self has enough candidates to inject into a
+ * {session,content}-accept, and is connected.
+ */
+gboolean
+gabble_jingle_transport_iface_can_accept (GabbleJingleTransportIface *self)
+{
+  JingleTransportState state;
+  gboolean (*m) (GabbleJingleTransportIface *) =
+      GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->can_accept;
+
+  g_object_get (self, "state", &state, NULL);
+
+  if (state != JINGLE_TRANSPORT_STATE_CONNECTED)
+    return FALSE;
+
+  /* Only Raw UDP *needs* contents in order to accept. */
+  if (m != NULL)
+    return m (self);
+  else
+    return TRUE;
+}
+
 GList *
 gabble_jingle_transport_iface_get_remote_candidates (
     GabbleJingleTransportIface *self)

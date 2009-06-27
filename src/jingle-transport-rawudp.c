@@ -310,7 +310,8 @@ inject_candidates (GabbleJingleTransportIface *obj,
   LmMessageNode *cnode;
 
   /* If we don't have the local candidates yet, we should've waited with
-   * the session initiation. */
+   * the session initiation, or can_accept would have returned FALSE.
+   */
   g_assert (priv->local_candidates != NULL);
 
   for (li = priv->local_candidates; li != NULL; li = li->next)
@@ -357,6 +358,14 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
       priv->pending_candidates = new_candidates;
 }
 
+static gboolean
+can_accept (GabbleJingleTransportIface *iface)
+{
+  GabbleJingleTransportRawUdp *self = GABBLE_JINGLE_TRANSPORT_RAWUDP (iface);
+
+  return (self->priv->local_candidates != NULL);
+}
+
 static GList *
 get_remote_candidates (GabbleJingleTransportIface *iface)
 {
@@ -387,6 +396,7 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   /* Not implementing _send: XEP-0177 says that the candidates live in
    * content-{add,accept}, not in transport-info.
    */
+  klass->can_accept = can_accept;
 
   klass->get_remote_candidates = get_remote_candidates;
   klass->get_transport_type = get_transport_type;

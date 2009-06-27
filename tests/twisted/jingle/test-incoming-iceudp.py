@@ -6,9 +6,10 @@ from twisted.words.xish import xpath
 
 from gabbletest import exec_test
 from servicetest import (
-    make_channel_proxy, wrap_channel, assertEquals, EventPattern
+    make_channel_proxy, wrap_channel, assertEquals, EventPattern, assertLength,
     )
 import ns
+import constants as cs
 
 from jingletest2 import *
 
@@ -37,8 +38,11 @@ def worker(jp, q, bus, conn, stream):
 
     chan = wrap_channel(bus.get_object(conn.bus_name, path), 'StreamedMedia')
 
-    # Gabble changes nat-traversal property to "ice-udp"
-    q.expect('dbus-signal', signal="PropertiesChanged", args=[[(0, 'ice-udp')]])
+    hrggh = chan.ListProperties(dbus_interface=cs.TP_AWKWARD_PROPERTIES)
+    id = [x for x, name, _, _ in hrggh if name == 'nat-traversal'][0]
+    nrgrg = chan.GetProperties([id], dbus_interface=cs.TP_AWKWARD_PROPERTIES)
+    _, nat_traversal = nrgrg[0]
+    assertEquals('ice-udp', nat_traversal)
 
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
@@ -56,8 +60,17 @@ def worker(jp, q, bus, conn, stream):
 
     # First one is transport-info
     e = q.expect('stream-iq', predicate=jp.action_predicate('transport-info'))
-    assert xpath.queryForNodes("/iq/jingle/content/transport[@xmlns='%s']" %
-        ns.JINGLE_TRANSPORT_ICEUDP, e.stanza)
+    transport_stanza = xpath.queryForNodes(
+        "/iq/jingle/content/transport[@xmlns='%s']"
+        % ns.JINGLE_TRANSPORT_ICEUDP, e.stanza)[0]
+
+    # username
+    assertEquals(transport_stanza['ufrag'], jt2.remote_transports[0][7])
+    # password
+    assertEquals(transport_stanza['pwd'], jt2.remote_transports[0][8])
+
+    children = list(transport_stanza.elements())
+    assertLength(1, children)
 
     stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
 
@@ -65,13 +78,15 @@ def worker(jp, q, bus, conn, stream):
     stream_handler.SupportedCodecs(jt2.get_audio_codecs_dbus())
 
     # Second one is session-accept
-    e = q.expect('stream-iq', jp.action_predicate('session-accept'))
+    e = q.expect('stream-iq', predicate=jp.action_predicate('session-accept'))
+    assert xpath.queryForNodes("/iq/jingle/content/transport[@xmlns='%s']" %
+        ns.JINGLE_TRANSPORT_ICEUDP, e.stanza)
 
     stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
 
     # Connected! Blah, blah, ...
 
-    jt.terminate()
+    jt2.terminate()
 
     e = q.expect('dbus-signal', signal='Close')
 

@@ -365,23 +365,12 @@ parse_candidates (GabbleJingleTransportIface *obj,
   priv->remote_candidates = g_list_concat (priv->remote_candidates, candidates);
 }
 
-static LmMessageNode *
-produce_node (GabbleJingleTransportIface *obj, LmMessageNode *parent,
-    JingleAction action)
+static void
+inject_candidates (GabbleJingleTransportIface *obj,
+    LmMessageNode *transport_node)
 {
-  GabbleJingleTransportIceUdp *transport =
-    GABBLE_JINGLE_TRANSPORT_ICEUDP (obj);
-  GabbleJingleTransportIceUdpPrivate *priv =
-    GABBLE_JINGLE_TRANSPORT_ICEUDP_GET_PRIVATE (transport);
-  LmMessageNode *node;
-
-  node = lm_message_node_add_child (parent, "transport", NULL);
-  lm_message_node_set_attribute (node, "xmlns", priv->transport_ns);
-
-  /* TODO: when ICE-UDP XEP is updated to allow passing candidates in
-   * {session,content}-{add,accept}, remove this. */
-  if (action != JINGLE_ACTION_TRANSPORT_INFO)
-      return node;
+  GabbleJingleTransportIceUdp *self = GABBLE_JINGLE_TRANSPORT_ICEUDP (obj);
+  GabbleJingleTransportIceUdpPrivate *priv = self->priv;
 
   for (; priv->pending_candidates != NULL;
       priv->pending_candidates = priv->pending_candidates->next)
@@ -421,12 +410,12 @@ produce_node (GabbleJingleTransportIface *obj, LmMessageNode *parent,
           g_assert_not_reached ();
       }
 
-      lm_message_node_set_attributes (node,
+      lm_message_node_set_attributes (transport_node,
           "ufrag", c->username,
           "pwd", c->password,
           NULL);
 
-      cnode = lm_message_node_add_child (node, "candidate", NULL);
+      cnode = lm_message_node_add_child (transport_node, "candidate", NULL);
       lm_message_node_set_attributes (cnode,
           "ip", c->address,
           "port", port_str,
@@ -441,8 +430,36 @@ produce_node (GabbleJingleTransportIface *obj, LmMessageNode *parent,
           "generation", "0",
           NULL);
     }
+}
 
-  return node;
+/* We never have to retransmit candidates we've already sent, so we ignore
+ * @all.
+ */
+static void
+send_candidates (GabbleJingleTransportIface *iface,
+    gboolean all G_GNUC_UNUSED)
+{
+  GabbleJingleTransportIceUdp *self = GABBLE_JINGLE_TRANSPORT_ICEUDP (iface);
+  GabbleJingleTransportIceUdpPrivate *priv = self->priv;
+  LmMessageNode *trans_node, *sess_node;
+  LmMessage *msg;
+
+  if (priv->pending_candidates == NULL)
+    {
+      DEBUG ("no outstanding candidates to send");
+      return;
+    }
+
+  msg = gabble_jingle_session_new_message (priv->content->session,
+    JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
+
+  gabble_jingle_content_produce_node (priv->content, sess_node, FALSE, TRUE,
+      &trans_node);
+  inject_candidates (iface, trans_node);
+
+  _gabble_connection_send_with_reply (priv->content->conn, msg, NULL, NULL,
+      NULL, NULL);
+  lm_message_unref (msg);
 }
 
 /* Takes in a list of slice-allocated JingleCandidate structs */
@@ -490,8 +507,11 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   GabbleJingleTransportIfaceClass *klass = (GabbleJingleTransportIfaceClass *) g_iface;
 
   klass->parse_candidates = parse_candidates;
-  klass->produce_node = produce_node;
+
   klass->new_local_candidates = new_local_candidates;
+  klass->inject_candidates = inject_candidates;
+  klass->send_candidates = send_candidates;
+
   klass->get_remote_candidates = get_remote_candidates;
   klass->get_transport_type = get_transport_type;
 }

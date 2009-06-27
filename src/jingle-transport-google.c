@@ -553,7 +553,7 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
 }
 
 static void
-retransmit_candidates (GabbleJingleTransportIface *obj, gboolean all)
+send_candidates (GabbleJingleTransportIface *obj, gboolean all)
 {
   GabbleJingleTransportGoogle *transport =
     GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
@@ -599,8 +599,13 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   GabbleJingleTransportIfaceClass *klass = (GabbleJingleTransportIfaceClass *) g_iface;
 
   klass->parse_candidates = parse_candidates;
+
   klass->new_local_candidates = new_local_candidates;
-  klass->retransmit_candidates = retransmit_candidates;
+  /* Not implementing inject_candidates: gtalk-p2p candidates are always sent
+   * in transport-info or equivalent.
+   */
+  klass->send_candidates = send_candidates;
+
   klass->get_remote_candidates = get_remote_candidates;
   klass->get_transport_type = get_transport_type;
 }

@@ -2640,8 +2640,8 @@ typedef struct {
     GabbleMediaChannel *self;
     GabbleJingleContent *content;
     gulong removed_id;
-    gchar *nat_traversal;
     gchar *name;
+    const gchar *nat_traversal;
 } StreamCreationData;
 
 static void
@@ -2664,7 +2664,6 @@ stream_creation_data_free (gpointer p)
   GabbleMediaChannelPrivate *priv = d->self->priv;
 
   g_free (d->name);
-  g_free (d->nat_traversal);
 
   if (d->content != NULL)
     {
@@ -2741,7 +2740,7 @@ static void
 create_stream_from_content (GabbleMediaChannel *self,
                             GabbleJingleContent *c)
 {
-  gchar *name, *nat_traversal;
+  gchar *name;
   StreamCreationData *d;
 
   g_object_get (c,
@@ -2755,14 +2754,10 @@ create_stream_from_content (GabbleMediaChannel *self,
       return;
     }
 
-  g_object_get (self,
-      "nat-traversal", &nat_traversal,
-      NULL);
 
   d = g_slice_new0 (StreamCreationData);
 
   d->self = g_object_ref (self);
-  d->nat_traversal = nat_traversal;
   d->name = name;
   d->content = g_object_ref (c);
 
@@ -2772,25 +2767,33 @@ create_stream_from_content (GabbleMediaChannel *self,
   d->removed_id = g_signal_connect (c, "removed",
       G_CALLBACK (content_removed_cb), d);
 
-  if (!tp_strdiff (nat_traversal, "gtalk-p2p"))
-    {
-      /* See if our server is Google, and if it is, ask them for a relay.
-       * We ask for enough relays for 2 components (RTP and RTCP) since we
-       * don't yet know whether there will be RTCP. */
-      DEBUG ("Attempting to create Google relay session");
-      gabble_jingle_factory_create_google_relay_session (
-          self->priv->conn->jingle_factory, 2, google_relay_session_cb, d);
-    }
-  else
-    {
-      /* just create the stream (do it asynchronously so that the behaviour
-       * is the same in each case) */
-      g_idle_add_full (G_PRIORITY_DEFAULT, construct_stream_later_cb,
-          d, stream_creation_data_free);
-    }
-
   self->priv->stream_creation_datas = g_list_prepend (
       self->priv->stream_creation_datas, d);
+
+  switch (gabble_jingle_content_get_transport_type (c))
+    {
+      case JINGLE_TRANSPORT_GOOGLE_P2P:
+        /* See if our server is Google, and if it is, ask them for a relay.
+         * We ask for enough relays for 2 components (RTP and RTCP) since we
+         * don't yet know whether there will be RTCP. */
+        d->nat_traversal = "gtalk-p2p";
+        DEBUG ("Attempting to create Google relay session");
+        gabble_jingle_factory_create_google_relay_session (
+            self->priv->conn->jingle_factory, 2, google_relay_session_cb, d);
+        return;
+
+      case JINGLE_TRANSPORT_ICE_UDP:
+        d->nat_traversal = "ice-udp";
+        break;
+
+      default:
+        d->nat_traversal = "none";
+    }
+
+  /* If we got here, just create the stream (do it asynchronously so that the
+   * behaviour is the same in each case) */
+  g_idle_add_full (G_PRIORITY_DEFAULT, construct_stream_later_cb,
+      d, stream_creation_data_free);
 }
 
 static void

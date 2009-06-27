@@ -909,7 +909,7 @@ gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
       LmMessage *msg = gabble_jingle_session_new_message (self->session,
           JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
 
-      gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE, NULL);
+      gabble_jingle_content_produce_node (self, sess_node, TRUE, FALSE, NULL);
       gabble_jingle_session_send (self->session, msg, NULL, NULL);
     }
   else

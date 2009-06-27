@@ -124,6 +124,8 @@ gboolean gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders);
 void gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self,
     gboolean all);
+void gabble_jingle_content_inject_candidates (GabbleJingleContent *self,
+    LmMessageNode *transport_node);
 gboolean gabble_jingle_content_is_created_by_us (GabbleJingleContent *c);
 gboolean gabble_jingle_content_creator_is_initiator (GabbleJingleContent *c);
 

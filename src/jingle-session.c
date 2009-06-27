@@ -1669,9 +1669,12 @@ _fill_content (GabbleJingleSession *sess,
     GabbleJingleContent *c, gpointer user_data)
 {
   LmMessageNode *sess_node = user_data;
+  LmMessageNode *transport_node;
   JingleContentState state;
 
-  gabble_jingle_content_produce_node (c, sess_node, TRUE, TRUE, NULL);
+  gabble_jingle_content_produce_node (c, sess_node, TRUE, TRUE,
+      &transport_node);
+  gabble_jingle_content_inject_candidates (c, transport_node);
 
   g_object_get (c, "state", &state, NULL);
 

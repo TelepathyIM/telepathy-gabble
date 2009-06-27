@@ -36,10 +36,6 @@
 #include "namespaces.h"
 #include "util.h"
 
-/* FIXME: need this because rawudp_produce_candidate isn't
- * virtual method on transport ifaceyet */
-#include "jingle-transport-rawudp.h"
-
 /* signal enum */
 enum
 {
@@ -712,18 +708,6 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
       if (trans_node_out != NULL)
         *trans_node_out = trans_node;
     }
-
-  /* FIXME: We need to special-case rawudp here to include the
-   * candidate in session initiation, until we make a generic
-   * virtual method for adding transport nodes. This adds a second <transport>
-   * node...
-   */
-  if (!tp_strdiff (priv->transport_ns, NS_JINGLE_TRANSPORT_RAWUDP))
-    {
-      jingle_transport_rawudp_produce_candidate (
-          GABBLE_JINGLE_TRANSPORT_RAWUDP(priv->transport),
-          content_node);
-    }
 }
 
 void
@@ -770,6 +754,12 @@ gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
       /* Maybe we were waiting for at least one candidate? */
       _maybe_ready (self);
     }
+
+  /* If the content exists on the wire, let the transport send this candidate
+   * if it wants to.
+   */
+  if (priv->state > JINGLE_CONTENT_STATE_EMPTY)
+    gabble_jingle_transport_iface_send_candidates (priv->transport, FALSE);
 }
 
 /* Returns whether the content is ready to be signalled (initiated, for local
@@ -817,7 +807,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
   LmMessage *msg;
-  LmMessageNode *sess_node;
+  LmMessageNode *sess_node, *transport_node;
   JingleAction action;
   JingleContentState new_state = JINGLE_CONTENT_STATE_EMPTY;
 
@@ -841,7 +831,10 @@ send_content_add_or_accept (GabbleJingleContent *self)
 
   msg = gabble_jingle_session_new_message (self->session,
       action, &sess_node);
-  gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE, NULL);
+  gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE,
+      &transport_node);
+  gabble_jingle_transport_iface_inject_candidates (priv->transport,
+      transport_node);
   gabble_jingle_session_send (self->session, msg, NULL, NULL);
 
   priv->state = new_state;
@@ -879,7 +872,7 @@ _maybe_ready (GabbleJingleContent *self)
           send_content_add_or_accept (self);
 
           /* if neccessary, transmit the candidates */
-          gabble_jingle_transport_iface_retransmit_candidates (priv->transport,
+          gabble_jingle_transport_iface_send_candidates (priv->transport,
               FALSE);
         }
       else
@@ -926,9 +919,17 @@ void
 gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self,
     gboolean all)
 {
-  gabble_jingle_transport_iface_retransmit_candidates (self->priv->transport,
-      all);
+  gabble_jingle_transport_iface_send_candidates (self->priv->transport, all);
 }
+
+void
+gabble_jingle_content_inject_candidates (GabbleJingleContent *self,
+    LmMessageNode *transport_node)
+{
+  gabble_jingle_transport_iface_inject_candidates (self->priv->transport,
+      transport_node);
+}
+
 
 /* Called by a subclass when the media is ready (e.g. we got local codecs) */
 void

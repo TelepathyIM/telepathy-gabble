@@ -399,15 +399,20 @@ inject_candidates (GabbleJingleTransportIface *obj,
           type_str = "relay";
           break;
         default:
-          g_assert_not_reached ();
+          DEBUG ("skipping candidate with unknown type %u", c->type);
+          continue;
       }
 
       switch (c->protocol) {
         case JINGLE_TRANSPORT_PROTOCOL_UDP:
           proto_str = "udp";
           break;
+        case JINGLE_TRANSPORT_PROTOCOL_TCP:
+          DEBUG ("ignoring TCP candidate");
+          continue;
         default:
-          g_assert_not_reached ();
+          DEBUG ("skipping candidate with unknown protocol %u", c->protocol);
+          continue;
       }
 
       lm_message_node_set_attributes (transport_node,

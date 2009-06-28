@@ -78,10 +78,8 @@ struct _GabbleJingleTransportIceUdpPrivate
   GList *pending_candidates;
   GList *remote_candidates;
 
-  /* Until we have a good way of getting foundation
-   * numbers off farsight, we make sure each candidate
-   * has an unique one. */
-  int foundation_sequence;
+  /* next ID to send with a candidate */
+  int id_sequence;
 
   gboolean dispose_has_run;
 };
@@ -94,7 +92,7 @@ gabble_jingle_transport_iceudp_init (GabbleJingleTransportIceUdp *obj)
          GabbleJingleTransportIceUdpPrivate);
   obj->priv = priv;
 
-  priv->foundation_sequence = 1;
+  priv->id_sequence = 1;
   priv->dispose_has_run = FALSE;
 }
 
@@ -370,7 +368,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
       priv->pending_candidates = priv->pending_candidates->next)
     {
       JingleCandidate *c = (JingleCandidate *) priv->pending_candidates->data;
-      gchar port_str[16], pref_str[16], comp_str[16], found_str[16],
+      gchar port_str[16], pref_str[16], comp_str[16], id_str[16],
           *type_str, *proto_str;
       LmMessageNode *cnode;
 
@@ -388,7 +386,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
       sprintf (pref_str, "%d", (int) (65536.0 * c->preference));
       sprintf (port_str, "%d", c->port);
       sprintf (comp_str, "%d", c->component);
-      sprintf (found_str, "%d", priv->foundation_sequence++);
+      sprintf (id_str, "%d", priv->id_sequence++);
 
       switch (c->type) {
         case JINGLE_CANDIDATE_TYPE_LOCAL:
@@ -425,8 +423,8 @@ inject_candidates (GabbleJingleTransportIface *obj,
           "protocol", proto_str,
           "type", type_str,
           "component", comp_str,
-          "foundation", found_str,
-          "id", found_str,
+          "foundation", c->id,
+          "id", id_str,
           "name", "rtp",
           "network", "0",
           "generation", "0",

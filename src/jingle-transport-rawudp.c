@@ -70,12 +70,6 @@ struct _GabbleJingleTransportRawUdpPrivate
   gchar *transport_ns;
 
   GList *local_candidates;
-
-  /* A pointer into "local_candidates" list to mark the
-   * candidates that are still not transmitted, or NULL
-   * if all of them are transmitted. */
-
-  GList *pending_candidates;
   GList *remote_candidates;
   gboolean dispose_has_run;
 };
@@ -347,14 +341,7 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
 
   g_object_get (priv->content, "state", &state, NULL);
 
-  priv->local_candidates = g_list_concat (priv->local_candidates,
-      new_candidates);
-
-  /* If all previous candidates have been signalled, set the new
-   * ones as pending. If there are existing pending candidates,
-   * the new ones will just be appended to that list. */
-  if (priv->pending_candidates == NULL)
-      priv->pending_candidates = new_candidates;
+  priv->local_candidates = new_candidates;
 }
 
 static gboolean

@@ -385,10 +385,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
           break;
         }
 
-      /* FIXME: We're probably horribly wrong about our usage of
-       * priority wrt ICE-UDP draft. Seems to work, though, probably
-       * everyone ignores it at the moment. */
-      sprintf (pref_str, "%d", (int) (1000.0 * c->preference));
+      sprintf (pref_str, "%d", (int) (65536.0 * c->preference));
       sprintf (port_str, "%d", c->port);
       sprintf (comp_str, "%d", c->component);
       sprintf (found_str, "%d", priv->foundation_sequence++);

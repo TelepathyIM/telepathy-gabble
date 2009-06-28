@@ -234,6 +234,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
 {
   GabbleJingleTransportIceUdp *t = GABBLE_JINGLE_TRANSPORT_ICEUDP (obj);
   GabbleJingleTransportIceUdpPrivate *priv = t->priv;
+  gboolean node_contains_a_candidate = FALSE;
   GList *candidates = NULL;
   LmMessageNode *node;
 
@@ -249,23 +250,25 @@ parse_candidates (GabbleJingleTransportIface *obj,
       JingleCandidate *c;
 
       if (tp_strdiff (lm_message_node_get_name (node), "candidate"))
-          continue;
+        continue;
+
+      node_contains_a_candidate = TRUE;
 
       /* ICEUDP doesn't use rtp/rtcp naming */
       name = "";
 
       address = lm_message_node_get_attribute (node, "ip");
       if (address == NULL)
-          break;
+        continue;
 
       str = lm_message_node_get_attribute (node, "port");
       if (str == NULL)
-          break;
+        continue;
       port = atoi (str);
 
       str = lm_message_node_get_attribute (node, "protocol");
       if (str == NULL)
-          break;
+        continue;
 
       if (!tp_strdiff (str, "udp"))
         {
@@ -275,18 +278,17 @@ parse_candidates (GabbleJingleTransportIface *obj,
         {
           /* unknown protocol */
           DEBUG ("unknown protocol: %s", str);
-          break;
+          continue;
         }
 
       str = lm_message_node_get_attribute (node, "priority");
       if (str == NULL)
-          break;
-
+        continue;
       pref = g_ascii_strtod (str, NULL);
 
       str = lm_message_node_get_attribute (node, "type");
       if (str == NULL)
-          break;
+        continue;
 
       if (!tp_strdiff (str, "host"))
         {
@@ -307,30 +309,31 @@ parse_candidates (GabbleJingleTransportIface *obj,
         {
           /* unknown candidate type */
           DEBUG ("unknown candidate type: %s", str);
-          break;
+          continue;
         }
 
       user = lm_message_node_get_attribute (transport_node, "ufrag");
       if (user == NULL)
-          break;
+        continue;
 
       pass = lm_message_node_get_attribute (transport_node, "pwd");
       if (pass == NULL)
-          break;
+        continue;
 
       str = lm_message_node_get_attribute (node, "network");
       if (str == NULL)
-          break;
+        continue;
       net = atoi (str);
 
       str = lm_message_node_get_attribute (node, "generation");
       if (str == NULL)
-          break;
+        continue;
       gen = atoi (str);
 
       str = lm_message_node_get_attribute (node, "component");
-      if (str != NULL)
-          component = atoi (str);
+      if (str == NULL)
+        continue;
+      component = atoi (str);
 
       c = jingle_candidate_new (proto, ctype, NULL, component,
           address, port, gen, pref, user, pass, net);
@@ -338,15 +341,11 @@ parse_candidates (GabbleJingleTransportIface *obj,
       candidates = g_list_append (candidates, c);
     }
 
-  if (node != NULL)
+  if (node_contains_a_candidate && candidates == NULL)
     {
-      gchar *dump = lm_message_node_to_string (node);
-      DEBUG ("error on node: %s\nreturning error", dump);
-      g_free (dump);
-      /* rollback these */
-      jingle_transport_free_candidates (candidates);
+      NODE_DEBUG (transport_node, "couldn't parse any of the given candidates");
       g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "invalid candidate");
+          "could not parse any of the given candidates");
       return;
     }
 

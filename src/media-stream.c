@@ -1360,8 +1360,11 @@ new_remote_candidates_cb (GabbleJingleContent *content,
       g_value_take_boxed (&candidate,
           dbus_g_type_specialized_construct (candidate_struct_type));
 
-      /* FIXME: is this naming scheme sensible? */
-      candidate_id = g_strdup_printf ("R%d", ++priv->remote_candidate_count);
+      if (c->id == NULL)
+        /* FIXME: is this naming scheme sensible? */
+        candidate_id = g_strdup_printf ("R%d", ++priv->remote_candidate_count);
+      else
+        candidate_id = c->id;
 
       dbus_g_type_struct_set (&candidate,
           0, candidate_id,

@@ -242,7 +242,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
   for (node = transport_node->children; node; node = node->next)
     {
-      const gchar *name, *address, *user, *pass, *str;
+      const gchar *id, *address, *user, *pass, *str;
       guint port, net, gen, component = 1;
       gdouble pref;
       JingleTransportProtocol proto;
@@ -254,8 +254,9 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       node_contains_a_candidate = TRUE;
 
-      /* ICEUDP doesn't use rtp/rtcp naming */
-      name = "";
+      id = lm_message_node_get_attribute (node, "foundation");
+      if (id == NULL)
+        continue;
 
       address = lm_message_node_get_attribute (node, "ip");
       if (address == NULL)
@@ -335,7 +336,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
         continue;
       component = atoi (str);
 
-      c = jingle_candidate_new (proto, ctype, NULL, component,
+      c = jingle_candidate_new (proto, ctype, id, component,
           address, port, gen, pref, user, pass, net);
 
       candidates = g_list_append (candidates, c);

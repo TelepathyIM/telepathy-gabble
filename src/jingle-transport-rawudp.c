@@ -299,7 +299,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
   GabbleJingleTransportRawUdpPrivate *priv = self->priv;
   JingleCandidate *c;
   GList *li;
-  gchar port_str[16];
+  gchar port_str[16], comp_str[16];
   LmMessageNode *cnode;
 
   /* If we don't have the local candidates yet, we should've waited with
@@ -311,6 +311,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
     {
       c = (JingleCandidate *) li->data;
       sprintf (port_str, "%d", c->port);
+      sprintf (comp_str, "%d", c->component);
 
       cnode = lm_message_node_add_child (transport_node, "candidate", NULL);
       lm_message_node_set_attributes (cnode,
@@ -318,7 +319,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
           "port", port_str,
           "generation", "0",
           "id", c->id,
-          "component", c->component,
+          "component", comp_str,
           NULL);
     }
 }

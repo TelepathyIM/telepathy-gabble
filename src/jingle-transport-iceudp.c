@@ -430,7 +430,6 @@ inject_candidates (GabbleJingleTransportIface *obj,
           "component", comp_str,
           "foundation", c->id,
           "id", id_str,
-          "name", "rtp",
           "network", "0",
           "generation", "0",
           NULL);

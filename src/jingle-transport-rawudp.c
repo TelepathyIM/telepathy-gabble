@@ -323,7 +323,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
           "ip", c->address,
           "port", port_str,
           "generation", "0",
-          "id", c->username,
+          "id", c->id,
           "component", c->component,
           NULL);
     }

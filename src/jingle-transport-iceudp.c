@@ -473,9 +473,6 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
   GabbleJingleTransportIceUdp *transport =
     GABBLE_JINGLE_TRANSPORT_ICEUDP (obj);
   GabbleJingleTransportIceUdpPrivate *priv = transport->priv;
-  JingleContentState state;
-
-  g_object_get (priv->content, "state", &state, NULL);
 
   priv->local_candidates = g_list_concat (priv->local_candidates,
       new_candidates);

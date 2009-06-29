@@ -1,7 +1,7 @@
-telepathy-gabble 0.7.30 (UNRELEASED)
+telepathy-gabble 0.7.30 (2009-06-29)
 ====================================
 
-Dependencies:
+The “sample that pinecone for an hour” release.
 
 Enhancements:
 
@@ -14,10 +14,18 @@ Enhancements:
   don't specify a server or old-ssl, Gabble will make an SRV lookup anyway:
   this is kinder to UIs that want to show the default XMPP port as 5222.
 
+* Gabble now advertises support for up-to-date Jingle namespaces, and
+  implements the raw UDP and ICE-UDP transports as well as the non-standard
+  Google Talk P2P transport. (fd.o #22458 and #13158, respectively.)
+
 Fixes:
 
 * fd.o #22369: Gabble now replies to the XMPP resource that's sending you
   messages, rather than always sending messages to the peer's bare JID.
+
+* The keepalive-interval parameter actually works now (previously, setting it
+  caused a critical warning, and did not change the actual value from the
+  default).
 
 telepathy-gabble 0.7.29 (2009-06-19)
 ====================================

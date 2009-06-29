@@ -234,12 +234,13 @@ parse_candidates (GabbleJingleTransportIface *obj,
   GabbleJingleTransportIceUdpPrivate *priv = t->priv;
   gboolean node_contains_a_candidate = FALSE;
   GList *candidates = NULL;
-  LmMessageNode *node;
+  NodeIter i;
 
   DEBUG ("called");
 
-  for (node = transport_node->children; node; node = node->next)
+  for (i = node_iter (transport_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *node = node_iter_data (i);
       const gchar *id, *address, *user, *pass, *str;
       guint port, net, gen, component = 1;
       gdouble pref;

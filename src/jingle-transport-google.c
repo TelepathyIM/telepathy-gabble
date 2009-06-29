@@ -232,15 +232,16 @@ parse_candidates (GabbleJingleTransportIface *obj,
   GabbleJingleTransportGoogle *t = GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
   GabbleJingleTransportGooglePrivate *priv = t->priv;
   GList *candidates = NULL;
-  LmMessageNode *node;
   JingleMediaType media_type;
   JingleDialect dialect;
+  NodeIter i;
 
   g_object_get (priv->content, "media-type", &media_type, NULL);
   dialect = gabble_jingle_session_get_dialect (priv->content->session);
 
-  for (node = transport_node->children; node; node = node->next)
+  for (i = node_iter (transport_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *node = node_iter_data (i);
       const gchar *name, *address, *user, *pass, *str;
       guint port, net, gen, component;
       gdouble pref;
@@ -379,7 +380,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       candidates = g_list_append (candidates, c);
     }
 
-  if (node != NULL)
+  if (i != NULL)
     {
       DEBUG ("not all nodes were processed, reporting error");
       /* rollback these */

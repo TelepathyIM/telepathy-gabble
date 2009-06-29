@@ -222,7 +222,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
   GabbleJingleTransportRawUdp *t = GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
   GabbleJingleTransportRawUdpPrivate *priv = t->priv;
   GList *candidates = NULL;
-  LmMessageNode *node;
+  NodeIter i;
 
   DEBUG ("called");
 
@@ -232,8 +232,9 @@ parse_candidates (GabbleJingleTransportIface *obj,
       return;
     }
 
-  for (node = transport_node->children; node; node = node->next)
+  for (i = node_iter (transport_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *node = node_iter_data (i);
       const gchar *id, *ip, *str;
       guint port, gen, component = 1;
       JingleCandidate *c;
@@ -276,7 +277,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       candidates = g_list_append (candidates, c);
     }
 
-  if (node != NULL)
+  if (i != NULL)
     {
       DEBUG ("not all nodes were processed, reporting error");
       /* rollback these */

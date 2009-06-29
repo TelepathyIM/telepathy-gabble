@@ -665,7 +665,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       g_param_spec_uint (
           "port", "Jabber server port",
           "The port used when establishing a connection.",
-          0, G_MAXUINT16, 5222,
+          1, G_MAXUINT16, 5222,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (object_class, PROP_OLD_SSL,

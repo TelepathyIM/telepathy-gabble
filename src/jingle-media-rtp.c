@@ -324,7 +324,7 @@ parse_payload_type (LmMessageNode *node)
   const gchar *name;
   guint clockrate = 0;
   guint channels = 0;
-  LmMessageNode *param;
+  NodeIter i;
 
   txt = lm_message_node_get_attribute (node, "id");
   if (txt == NULL)
@@ -351,8 +351,9 @@ parse_payload_type (LmMessageNode *node)
 
   p = jingle_media_rtp_codec_new (id, name, clockrate, channels, NULL);
 
-  for (param = node->children; param != NULL; param = param->next)
+  for (i = node_iter (node); i; i = node_iter_next (i))
     {
+      LmMessageNode *param = node_iter_data (i);
       const gchar *param_name, *param_value;
 
       if (tp_strdiff (lm_message_node_get_name (param), "parameter"))
@@ -502,9 +503,10 @@ parse_description (GabbleJingleContent *content,
   JingleMediaType mtype;
   GList *codecs = NULL;
   JingleCodec *p;
-  LmMessageNode *node;
   JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   gboolean video_session = FALSE;
+  NodeIter i;
+  gboolean payload_error = FALSE;
 
   DEBUG ("node: %s", desc_node->name);
 
@@ -525,8 +527,9 @@ parse_description (GabbleJingleContent *content,
       video_session = !tp_strdiff (desc_ns, NS_GOOGLE_SESSION_VIDEO);
     }
 
-  for (node = desc_node->children; node; node = node->next)
+  for (i = node_iter (desc_node); i && !payload_error; i = node_iter_next (i))
     {
+      LmMessageNode *node = node_iter_data (i);
       if (tp_strdiff (lm_message_node_get_name (node), "payload-type"))
         continue;
 
@@ -552,12 +555,12 @@ parse_description (GabbleJingleContent *content,
       p = parse_payload_type (node);
 
       if (p == NULL)
-        break;
+        payload_error = TRUE;
       else
         codecs = g_list_append (codecs, p);
     }
 
-  if (node != NULL)
+  if (payload_error)
     {
       /* rollback these */
       jingle_media_rtp_free_codecs (codecs);

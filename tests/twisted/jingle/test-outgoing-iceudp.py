@@ -41,8 +41,12 @@ def worker(jp, q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
 
-    # Gabble changes nat-traversal property to "ice-udp"
-    q.expect('dbus-signal', signal="PropertiesChanged", args=[[(0, 'ice-udp')]])
+    # The 'nat-traversal' tp property should be "ice-udp"
+    hrggh = chan.ListProperties(dbus_interface=cs.TP_AWKWARD_PROPERTIES)
+    id = [x for x, name, _, _ in hrggh if name == 'nat-traversal'][0]
+    nrgrg = chan.GetProperties([id], dbus_interface=cs.TP_AWKWARD_PROPERTIES)
+    _, nat_traversal = nrgrg[0]
+    assertEquals('ice-udp', nat_traversal)
 
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()

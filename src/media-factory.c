@@ -70,8 +70,6 @@ struct _GabbleMediaFactoryPrivate
   GPtrArray *channels;
   guint channel_index;
 
-  GHashTable *session_chans;
-
   gboolean dispose_has_run;
 };
 
@@ -88,9 +86,6 @@ gabble_media_factory_init (GabbleMediaFactory *fac)
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
-
-  priv->session_chans = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                               g_free, NULL);
 }
 
 
@@ -111,17 +106,6 @@ gabble_media_factory_dispose (GObject *object)
 
   gabble_media_factory_close_all (fac);
   g_assert (priv->channels == NULL);
-
-  /* Use a temporary variable because we don't want
-   * media_channel_closed_cb to remove the channel from the hash table a
-   * second time */
-  if (priv->session_chans)
-    {
-      GHashTable *tmp = priv->session_chans;
-      priv->session_chans = NULL;
-      g_assert (g_hash_table_size (tmp) == 0);
-      g_hash_table_destroy (tmp);
-    }
 
   if (G_OBJECT_CLASS (gabble_media_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_factory_parent_class)->dispose (object);
@@ -192,22 +176,11 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 
 }
 
-static gboolean
-_remove_sid_mapping (gpointer key, gpointer value, gpointer user_data)
-{
-  GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (value);
-  GabbleMediaChannel *target_chan = GABBLE_MEDIA_CHANNEL (user_data);
-
-  if (chan == target_chan) return TRUE;
-  return FALSE;
-}
-
 /**
  * media_channel_closed_cb:
  *
  * Signal callback for when a media channel is closed. Removes the references
- * that #GabbleMediaFactory holds to them. Also removes all the sessions for
- * the closed channel.
+ * that #GabbleMediaFactory holds to them.
  */
 static void
 media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
@@ -225,12 +198,6 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
 
       g_ptr_array_remove (priv->channels, chan);
       g_object_unref (chan);
-    }
-
-  if (priv->session_chans != NULL)
-    {
-      g_hash_table_foreach_remove (priv->session_chans, _remove_sid_mapping,
-          chan);
     }
 }
 
@@ -307,12 +274,6 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
         }
 
       g_ptr_array_free (tmp, TRUE);
-    }
-
-  if (priv->session_chans != NULL)
-    {
-      g_hash_table_destroy (priv->session_chans);
-      priv->session_chans = NULL;
     }
 
   if (priv->status_changed_id != 0)

@@ -331,7 +331,6 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
   GabbleJingleTransportRawUdp *transport =
     GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
   GabbleJingleTransportRawUdpPrivate *priv = transport->priv;
-  JingleContentState state;
 
   if (priv->local_candidates != NULL)
     {
@@ -339,8 +338,6 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
       jingle_transport_free_candidates (new_candidates);
       return;
     }
-
-  g_object_get (priv->content, "state", &state, NULL);
 
   priv->local_candidates = new_candidates;
 }

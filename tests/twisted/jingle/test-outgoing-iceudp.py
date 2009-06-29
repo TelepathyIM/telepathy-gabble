@@ -16,6 +16,7 @@ import constants as cs
 from jingletest2 import *
 
 def worker(jp, q, bus, conn, stream):
+    jp.features.remove(ns.GOOGLE_P2P)
     jp.features.append(ns.JINGLE_TRANSPORT_ICEUDP)
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
     jt2.prepare()

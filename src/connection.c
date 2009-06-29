@@ -815,7 +815,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           "keepalive-interval", "keepalive interval",
           "Seconds between keepalive packets, or 0 to disable",
           0, G_MAXUINT, 30,
-          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   gabble_connection_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,

@@ -9,6 +9,10 @@ Regression test for https://bugs.freedesktop.org/show_bug.cgi?id=11201
  - Change to NICKNAME in v2 is lost
 """
 
+print "FIXME: test-vcard-race.py disabled because it's racy"
+print "       http://bugs.freedesktop.org/show_bug.cgi?id=22023"
+raise SystemExit(77)
+
 import base64
 
 from twisted.words.xish import xpath

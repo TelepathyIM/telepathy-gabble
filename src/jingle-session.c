@@ -156,7 +156,8 @@ gabble_jingle_session_defines_action (GabbleJingleSession *sess,
       case JINGLE_DIALECT_V032:
         return TRUE;
       case JINGLE_DIALECT_V015:
-        return (a != JINGLE_ACTION_DESCRIPTION_INFO);
+        return (a != JINGLE_ACTION_DESCRIPTION_INFO &&
+            a != JINGLE_ACTION_SESSION_INFO);
       case JINGLE_DIALECT_GTALK4:
         if (a == JINGLE_ACTION_TRANSPORT_ACCEPT)
           return TRUE;

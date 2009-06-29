@@ -25,6 +25,7 @@ JINGLE_RTP_AUDIO = "urn:xmpp:jingle:apps:rtp:audio"
 JINGLE_RTP_VIDEO = "urn:xmpp:jingle:apps:rtp:video"
 JINGLE_RTP_ERRORS = "urn:xmpp:jingle:apps:rtp:errors:1"
 JINGLE_RTP_INFO_1 = "urn:xmpp:jingle:apps:rtp:info:1"
+JINGLE_TRANSPORT_ICEUDP = "urn:xmpp:jingle:transports:ice-udp:0"
 MUC = 'http://jabber.org/protocol/muc'
 MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
 MUC_OWNER = '%s#owner' % MUC

@@ -55,6 +55,7 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
     stream_id2 = e.args[1]
 
     stream_handler2 = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
+    stream_handler2.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
 
     # We set both streams as ready, which will trigger the session initiate
     stream_handler.Ready(jt.get_audio_codecs_dbus())

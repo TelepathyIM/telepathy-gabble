@@ -1669,9 +1669,12 @@ _fill_content (GabbleJingleSession *sess,
     GabbleJingleContent *c, gpointer user_data)
 {
   LmMessageNode *sess_node = user_data;
+  LmMessageNode *transport_node;
   JingleContentState state;
 
-  gabble_jingle_content_produce_node (c, sess_node, TRUE, TRUE, NULL);
+  gabble_jingle_content_produce_node (c, sess_node, TRUE, TRUE,
+      &transport_node);
+  gabble_jingle_content_inject_candidates (c, transport_node);
 
   g_object_get (c, "state", &state, NULL);
 
@@ -2063,7 +2066,16 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
     return;
 
   if (count_active_contents (sess) == 0)
-    gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
+    {
+      gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
+    }
+  else
+    {
+      /* It's possible the content now removed was
+       * blocking us from creating or accepting the
+       * session, so we might as well try now. */
+      try_session_initiate_or_accept (sess);
+    }
 }
 
 

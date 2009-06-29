@@ -53,26 +53,65 @@ gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *self
 
 /* Takes in a list of slice-allocated JingleCandidate structs */
 void
-gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *self,
+gabble_jingle_transport_iface_new_local_candidates (GabbleJingleTransportIface *self,
     GList *candidates)
 {
   void (*virtual_method)(GabbleJingleTransportIface *,
       GList *) =
-    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->add_candidates;
+    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->new_local_candidates;
 
   g_assert (virtual_method != NULL);
   virtual_method (self, candidates);
 }
 
+/* Inserts candidates into the given <transport/> node, or equivalent, of a
+ * session-initiate, session-accept, content-add or content-accept action.
+ */
 void
-gabble_jingle_transport_iface_retransmit_candidates (GabbleJingleTransportIface *self,
+gabble_jingle_transport_iface_inject_candidates (
+    GabbleJingleTransportIface *self,
+    LmMessageNode *transport_node)
+{
+  void (*virtual_method)(GabbleJingleTransportIface *, LmMessageNode *) =
+      GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->inject_candidates;
+
+  if (virtual_method != NULL)
+    virtual_method (self, transport_node);
+}
+
+/* Transmits outstanding or all candidates (if applicable and @all is set). */
+void
+gabble_jingle_transport_iface_send_candidates (
+    GabbleJingleTransportIface *self,
     gboolean all)
 {
-  void (*virtual_method)(GabbleJingleTransportIface *, gboolean) =
-    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->retransmit_candidates;
+  void (*virtual_method) (GabbleJingleTransportIface *, gboolean) =
+      GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->send_candidates;
 
-  g_assert (virtual_method != NULL);
-  virtual_method (self, all);
+  if (virtual_method != NULL)
+    virtual_method (self, all);
+}
+
+/* Returns TRUE if and only if @self has enough candidates to inject into a
+ * {session,content}-accept, and is connected.
+ */
+gboolean
+gabble_jingle_transport_iface_can_accept (GabbleJingleTransportIface *self)
+{
+  JingleTransportState state;
+  gboolean (*m) (GabbleJingleTransportIface *) =
+      GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->can_accept;
+
+  g_object_get (self, "state", &state, NULL);
+
+  if (state != JINGLE_TRANSPORT_STATE_CONNECTED)
+    return FALSE;
+
+  /* Only Raw UDP *needs* contents in order to accept. */
+  if (m != NULL)
+    return m (self);
+  else
+    return TRUE;
 }
 
 GList *
@@ -84,6 +123,16 @@ gabble_jingle_transport_iface_get_remote_candidates (
 
   g_assert (virtual_method != NULL);
   return virtual_method (self);
+}
+
+JingleTransportType
+gabble_jingle_transport_iface_get_transport_type (GabbleJingleTransportIface *self)
+{
+  JingleTransportType (*virtual_method)(void) =
+    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->get_transport_type;
+
+  g_assert (virtual_method != NULL);
+  return virtual_method ();
 }
 
 static void
@@ -163,21 +212,24 @@ gabble_jingle_transport_iface_get_type (void)
 }
 
 JingleCandidate *
-jingle_candidate_new (guint component, const gchar *address, guint port,
-    JingleTransportProtocol proto, gdouble pref, JingleCandidateType type,
-    const gchar *user, const gchar *pass, guint net, guint gen)
+jingle_candidate_new (JingleTransportProtocol protocol,
+    JingleCandidateType type, const gchar *id, int component,
+    const gchar *address, int port, int generation, gdouble preference,
+    const gchar *username, const gchar *password, int network)
 {
   JingleCandidate *c = g_slice_new0 (JingleCandidate);
-  c->component = component;
-  c->address = g_strdup (address);
-  c->port = port;
-  c->protocol = proto;
-  c->preference = pref;
+
+  c->protocol = protocol;
   c->type = type;
-  c->username = g_strdup (user);
-  c->password = g_strdup (pass);
-  c->network = net;
-  c->generation = gen;
+  c->id = g_strdup (id);
+  c->address = g_strdup (address);
+  c->component = component;
+  c->port = port;
+  c->generation = generation;
+  c->preference = preference;
+  c->username = g_strdup (username);
+  c->password = g_strdup (password);
+  c->network = network;
 
   return c;
 }
@@ -185,6 +237,7 @@ jingle_candidate_new (guint component, const gchar *address, guint port,
 void
 jingle_candidate_free (JingleCandidate *c)
 {
+    g_free (c->id);
     g_free (c->address);
     g_free (c->username);
     g_free (c->password);

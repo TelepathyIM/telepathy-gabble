@@ -43,10 +43,15 @@ struct _GabbleJingleTransportIfaceClass {
 
   void (*parse_candidates) (GabbleJingleTransportIface *,
     LmMessageNode *, GError **);
-  void (*add_candidates) (GabbleJingleTransportIface *,
-    GList *);
-  void (*retransmit_candidates) (GabbleJingleTransportIface *, gboolean);
+
+  void (*new_local_candidates) (GabbleJingleTransportIface *, GList *);
+  void (*inject_candidates) (GabbleJingleTransportIface *,
+      LmMessageNode *transport_node);
+  void (*send_candidates) (GabbleJingleTransportIface *, gboolean all);
+  gboolean (*can_accept) (GabbleJingleTransportIface *);
+
   GList * (*get_remote_candidates) (GabbleJingleTransportIface *);
+  JingleTransportType (*get_transport_type) (void);
 };
 
 GType gabble_jingle_transport_iface_get_type (void);
@@ -64,17 +69,30 @@ GType gabble_jingle_transport_iface_get_type (void);
 
 void gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *,
     LmMessageNode *, GError **);
-void gabble_jingle_transport_iface_add_candidates (GabbleJingleTransportIface *, GList *);
-void gabble_jingle_transport_iface_retransmit_candidates (GabbleJingleTransportIface *, gboolean);
+
+void gabble_jingle_transport_iface_new_local_candidates (
+    GabbleJingleTransportIface *self,
+    GList *candidates);
+void gabble_jingle_transport_iface_inject_candidates (
+    GabbleJingleTransportIface *self,
+    LmMessageNode *transport_node);
+void gabble_jingle_transport_iface_send_candidates (
+    GabbleJingleTransportIface *self,
+    gboolean all);
+gboolean gabble_jingle_transport_iface_can_accept (
+    GabbleJingleTransportIface *self);
+
 GList *gabble_jingle_transport_iface_get_remote_candidates (GabbleJingleTransportIface *);
+JingleTransportType gabble_jingle_transport_iface_get_transport_type (GabbleJingleTransportIface *);
 
 GabbleJingleTransportIface *gabble_jingle_transport_iface_new (
     GType type, GabbleJingleContent *content, const gchar *transport_ns);
 
-JingleCandidate *jingle_candidate_new (guint component, const gchar *address,
-    guint port, JingleTransportProtocol proto, gdouble pref,
-    JingleCandidateType type, const gchar *user, const gchar *pass, guint net,
-    guint gen);
+JingleCandidate *jingle_candidate_new (JingleTransportProtocol protocol,
+    JingleCandidateType type, const gchar *id, int component,
+    const gchar *address, int port, int generation, gdouble preference,
+    const gchar *username, const gchar *password, int network);
+
 void jingle_candidate_free (JingleCandidate *c);
 void jingle_transport_free_candidates (GList *candidates);
 

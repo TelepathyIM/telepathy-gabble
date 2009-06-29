@@ -1462,17 +1462,18 @@ _pick_best_resource (GabbleMediaChannel *chan,
   return NULL;
 
 CHOOSE_TRANSPORT:
-  /* We prefer ICE, Google-P2P, then raw UDP */
+  /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
+   * available). */
 
   if (gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_JINGLE_TRANSPORT_ICE))
-    {
-      *transport_ns = NS_JINGLE_TRANSPORT_ICE;
-    }
-  else if (gabble_presence_resource_has_caps (presence, resource,
         PRESENCE_CAP_GOOGLE_TRANSPORT_P2P))
     {
       *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
+    }
+  else if (gabble_presence_resource_has_caps (presence, resource,
+        PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP))
+    {
+      *transport_ns = NS_JINGLE_TRANSPORT_ICEUDP;
     }
   else if (gabble_presence_resource_has_caps (presence, resource,
         PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP))
@@ -1708,6 +1709,18 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
       create_session (chan, peer, peer_resource);
 
       g_object_set (priv->session, "dialect", dialect, NULL);
+
+      /* Change nat-traversal if we need to */
+      if (!tp_strdiff (transport_ns, NS_JINGLE_TRANSPORT_ICEUDP))
+        {
+          DEBUG ("changing nat-traversal property to ice-udp");
+          g_object_set (chan, "nat-traversal", "ice-udp", NULL);
+        }
+      else if (!tp_strdiff (transport_ns, NS_JINGLE_TRANSPORT_RAWUDP))
+        {
+          DEBUG ("changing nat-traversal property to raw-udp");
+          g_object_set (chan, "nat-traversal", "none", NULL);
+        }
     }
 
   /* check it's not a ridiculous number of streams */
@@ -2482,7 +2495,7 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
 
 #define JINGLE_CAPS \
   ( PRESENCE_CAP_JINGLE015 | PRESENCE_CAP_JINGLE032 \
-  | PRESENCE_CAP_GOOGLE_TRANSPORT_P2P )
+  | PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP )
 
 #define JINGLE_AUDIO_CAPS \
   ( PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE_RTP_AUDIO \
@@ -2496,20 +2509,37 @@ GabblePresenceCapabilities
 _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
 {
   GabblePresenceCapabilities caps = 0;
+  gboolean gtalk_p2p;
 
-  /* currently we can only signal any (GTalk or Jingle calls) using
-   * the GTalk-P2P transport */
-  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P)
+  DEBUG ("adding Jingle caps (%s, %s)",
+    flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO ? "audio" : "no audio",
+    flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO ? "video" : "no video");
+
+  /* We speak Jingle (old and new), and can always do raw UDP */
+  caps |= JINGLE_CAPS;
+
+  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP)
+    caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP;
+
+  gtalk_p2p = flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P;
+
+  if (gtalk_p2p)
+    caps |= PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
+
+  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
     {
-      DEBUG ("adding jingle caps");
+      caps |= JINGLE_AUDIO_CAPS;
 
-      caps |= JINGLE_CAPS;
+      if (gtalk_p2p)
+        caps |= GTALK_CAPS;
+    }
 
-      if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
-        caps |= GTALK_CAPS | JINGLE_AUDIO_CAPS;
+  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
+    {
+      caps |= JINGLE_VIDEO_CAPS;
 
-      if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
-        caps |= GTALK_VIDEO_CAPS | JINGLE_VIDEO_CAPS;
+      if (gtalk_p2p)
+        caps |= GTALK_VIDEO_CAPS;
     }
 
   return caps;
@@ -2611,8 +2641,8 @@ typedef struct {
     GabbleMediaChannel *self;
     GabbleJingleContent *content;
     gulong removed_id;
-    gchar *nat_traversal;
     gchar *name;
+    const gchar *nat_traversal;
 } StreamCreationData;
 
 static void
@@ -2635,7 +2665,6 @@ stream_creation_data_free (gpointer p)
   GabbleMediaChannelPrivate *priv = d->self->priv;
 
   g_free (d->name);
-  g_free (d->nat_traversal);
 
   if (d->content != NULL)
     {
@@ -2712,7 +2741,7 @@ static void
 create_stream_from_content (GabbleMediaChannel *self,
                             GabbleJingleContent *c)
 {
-  gchar *name, *nat_traversal;
+  gchar *name;
   StreamCreationData *d;
 
   g_object_get (c,
@@ -2726,14 +2755,10 @@ create_stream_from_content (GabbleMediaChannel *self,
       return;
     }
 
-  g_object_get (self,
-      "nat-traversal", &nat_traversal,
-      NULL);
 
   d = g_slice_new0 (StreamCreationData);
 
   d->self = g_object_ref (self);
-  d->nat_traversal = nat_traversal;
   d->name = name;
   d->content = g_object_ref (c);
 
@@ -2743,25 +2768,33 @@ create_stream_from_content (GabbleMediaChannel *self,
   d->removed_id = g_signal_connect (c, "removed",
       G_CALLBACK (content_removed_cb), d);
 
-  if (!tp_strdiff (nat_traversal, "gtalk-p2p"))
-    {
-      /* See if our server is Google, and if it is, ask them for a relay.
-       * We ask for enough relays for 2 components (RTP and RTCP) since we
-       * don't yet know whether there will be RTCP. */
-      DEBUG ("Attempting to create Google relay session");
-      gabble_jingle_factory_create_google_relay_session (
-          self->priv->conn->jingle_factory, 2, google_relay_session_cb, d);
-    }
-  else
-    {
-      /* just create the stream (do it asynchronously so that the behaviour
-       * is the same in each case) */
-      g_idle_add_full (G_PRIORITY_DEFAULT, construct_stream_later_cb,
-          d, stream_creation_data_free);
-    }
-
   self->priv->stream_creation_datas = g_list_prepend (
       self->priv->stream_creation_datas, d);
+
+  switch (gabble_jingle_content_get_transport_type (c))
+    {
+      case JINGLE_TRANSPORT_GOOGLE_P2P:
+        /* See if our server is Google, and if it is, ask them for a relay.
+         * We ask for enough relays for 2 components (RTP and RTCP) since we
+         * don't yet know whether there will be RTCP. */
+        d->nat_traversal = "gtalk-p2p";
+        DEBUG ("Attempting to create Google relay session");
+        gabble_jingle_factory_create_google_relay_session (
+            self->priv->conn->jingle_factory, 2, google_relay_session_cb, d);
+        return;
+
+      case JINGLE_TRANSPORT_ICE_UDP:
+        d->nat_traversal = "ice-udp";
+        break;
+
+      default:
+        d->nat_traversal = "none";
+    }
+
+  /* If we got here, just create the stream (do it asynchronously so that the
+   * behaviour is the same in each case) */
+  g_idle_add_full (G_PRIORITY_DEFAULT, construct_stream_later_cb,
+      d, stream_creation_data_free);
 }
 
 static void

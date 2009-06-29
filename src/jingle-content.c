@@ -76,8 +76,11 @@ struct _GabbleJingleContentPrivate
 
   GabbleJingleTransportIface *transport;
 
+  /* Whether we've got the codecs (intersection) ready. */
   gboolean media_ready;
-  gboolean transport_ready;
+
+  /* Whether we have at least one local candidate. */
+  gboolean have_local_candidates;
 
   guint timer_id;
   guint gtalk4_event_id;
@@ -93,6 +96,7 @@ G_DEFINE_TYPE(GabbleJingleContent, gabble_jingle_content, G_TYPE_OBJECT);
 
 static void new_transport_candidates_cb (GabbleJingleTransportIface *trans,
     GList *candidates, GabbleJingleContent *content);
+static void _maybe_ready (GabbleJingleContent *self);
 
 static void
 gabble_jingle_content_init (GabbleJingleContent *obj)
@@ -107,7 +111,7 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
   priv->state = JINGLE_CONTENT_STATE_EMPTY;
   priv->created_by_us = TRUE;
   priv->media_ready = FALSE;
-  priv->transport_ready = FALSE;
+  priv->have_local_candidates = FALSE;
   priv->timer_id = 0;
   priv->gtalk4_event_id = 0;
   priv->dispose_has_run = FALSE;
@@ -737,7 +741,22 @@ gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
 {
   GabbleJingleContentPrivate *priv = self->priv;
 
-  gabble_jingle_transport_iface_add_candidates (priv->transport, li);
+  DEBUG ("called");
+
+  gabble_jingle_transport_iface_new_local_candidates (priv->transport, li);
+
+  if (!priv->have_local_candidates)
+    {
+      priv->have_local_candidates = TRUE;
+      /* Maybe we were waiting for at least one candidate? */
+      _maybe_ready (self);
+    }
+
+  /* If the content exists on the wire, let the transport send this candidate
+   * if it wants to.
+   */
+  if (priv->state > JINGLE_CONTENT_STATE_EMPTY)
+    gabble_jingle_transport_iface_send_candidates (priv->transport, FALSE);
 }
 
 /* Returns whether the content is ready to be signalled (initiated, for local
@@ -747,17 +766,23 @@ gabble_jingle_content_is_ready (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
 
-  /* If it's created by us, media ready and not signalled,
-   * it's ready to be added. */
-  if (priv->created_by_us && priv->media_ready &&
-      (priv->state == JINGLE_CONTENT_STATE_EMPTY))
-          return TRUE;
-
-  /* If it's created by peer, media and transports ready,
-   * and not acknowledged yet, it's ready for acceptance. */
-  if (!priv->created_by_us && priv->media_ready && priv->transport_ready &&
-      (priv->state == JINGLE_CONTENT_STATE_NEW))
-          return TRUE;
+  if (priv->created_by_us)
+    {
+      /* If it's created by us, media ready, not signalled, and we have
+       * at least one local candidate, it's ready to be added. */
+      if (priv->media_ready && priv->have_local_candidates &&
+          (priv->state == JINGLE_CONTENT_STATE_EMPTY))
+        return TRUE;
+    }
+  else
+    {
+      /* If it's created by peer, media and transports ready,
+       * and not acknowledged yet, it's ready for acceptance. */
+      if (priv->media_ready &&
+          gabble_jingle_transport_iface_can_accept (priv->transport) &&
+          (priv->state == JINGLE_CONTENT_STATE_NEW))
+        return TRUE;
+    }
 
   return FALSE;
 }
@@ -780,7 +805,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
   LmMessage *msg;
-  LmMessageNode *sess_node;
+  LmMessageNode *sess_node, *transport_node;
   JingleAction action;
   JingleContentState new_state = JINGLE_CONTENT_STATE_EMPTY;
 
@@ -804,7 +829,10 @@ send_content_add_or_accept (GabbleJingleContent *self)
 
   msg = gabble_jingle_session_new_message (self->session,
       action, &sess_node);
-  gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE, NULL);
+  gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE,
+      &transport_node);
+  gabble_jingle_transport_iface_inject_candidates (priv->transport,
+      transport_node);
   gabble_jingle_session_send (self->session, msg, NULL, NULL);
 
   priv->state = new_state;
@@ -842,7 +870,7 @@ _maybe_ready (GabbleJingleContent *self)
           send_content_add_or_accept (self);
 
           /* if neccessary, transmit the candidates */
-          gabble_jingle_transport_iface_retransmit_candidates (priv->transport,
+          gabble_jingle_transport_iface_send_candidates (priv->transport,
               FALSE);
         }
       else
@@ -872,7 +900,7 @@ gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
       LmMessage *msg = gabble_jingle_session_new_message (self->session,
           JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
 
-      gabble_jingle_content_produce_node (self, sess_node, TRUE, TRUE, NULL);
+      gabble_jingle_content_produce_node (self, sess_node, TRUE, FALSE, NULL);
       gabble_jingle_session_send (self->session, msg, NULL, NULL);
     }
   else
@@ -889,9 +917,17 @@ void
 gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self,
     gboolean all)
 {
-  gabble_jingle_transport_iface_retransmit_candidates (self->priv->transport,
-      all);
+  gabble_jingle_transport_iface_send_candidates (self->priv->transport, all);
 }
+
+void
+gabble_jingle_content_inject_candidates (GabbleJingleContent *self,
+    LmMessageNode *transport_node)
+{
+  gabble_jingle_transport_iface_inject_candidates (self->priv->transport,
+      transport_node);
+}
+
 
 /* Called by a subclass when the media is ready (e.g. we got local codecs) */
 void
@@ -913,11 +949,7 @@ gabble_jingle_content_set_transport_state (GabbleJingleContent *self,
 
   g_object_set (priv->transport, "state", state, NULL);
 
-  if (state == JINGLE_TRANSPORT_STATE_CONNECTED)
-    {
-      priv->transport_ready = TRUE;
-      _maybe_ready (self);
-    }
+  _maybe_ready (self);
 }
 
 GList *
@@ -1055,4 +1087,10 @@ const gchar *
 gabble_jingle_content_get_disposition (GabbleJingleContent *self)
 {
   return self->priv->disposition;
+}
+
+JingleTransportType
+gabble_jingle_content_get_transport_type (GabbleJingleContent *c)
+{
+  return gabble_jingle_transport_iface_get_transport_type (c->priv->transport);
 }

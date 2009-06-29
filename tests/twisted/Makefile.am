@@ -93,7 +93,9 @@ TWISTED_TESTS = \
 	jingle/test-content-adding-removal.py \
 	jingle/test-description-info.py \
 	jingle/test-incoming-call-reject.py \
+	jingle/test-incoming-iceudp.py \
 	jingle/test-outgoing-call-rejected.py \
+	jingle/test-outgoing-iceudp.py \
 	jingle/test-content-complex.py \
 	jingle/test-wait-for-caps.py \
 	jingle/test-wait-for-caps-incomplete.py \

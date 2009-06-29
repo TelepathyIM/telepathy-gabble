@@ -47,6 +47,8 @@ typedef struct _GabbleJingleFactory GabbleJingleFactory;
 typedef struct _GabbleJingleSession GabbleJingleSession;
 typedef struct _GabbleJingleContent GabbleJingleContent;
 typedef struct _GabbleJingleTransportGoogle GabbleJingleTransportGoogle;
+typedef struct _GabbleJingleTransportRawUdp GabbleJingleTransportRawUdp;
+typedef struct _GabbleJingleTransportIceUdp GabbleJingleTransportIceUdp;
 typedef struct _GabbleJingleMediaRtp GabbleJingleMediaRtp;
 
 typedef struct _JingleCandidate JingleCandidate;
@@ -72,7 +74,7 @@ typedef enum {
     PRESENCE_CAP_OLPC_1 = 1 << 11,
     PRESENCE_CAP_JINGLE_RTP = 1 << 12,
     PRESENCE_CAP_JINGLE032 = 1 << 13,
-    PRESENCE_CAP_JINGLE_TRANSPORT_ICE = 1 << 14,
+    PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP = 1 << 14,
     PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP = 1 << 15,
     PRESENCE_CAP_GEOLOCATION = 1 << 16,
     PRESENCE_CAP_SI_FILE_TRANSFER = 1 << 17,

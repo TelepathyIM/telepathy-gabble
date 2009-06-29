@@ -69,6 +69,7 @@ magic_cookie=MMMMMMMM
 
 TOO_SLOW_CLOSE = 1
 TOO_SLOW_REMOVE_SELF = 2
+TOO_SLOW_DISCONNECT = 3
 
 def test(q, bus, conn, stream, incoming=True, too_slow=None):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -307,18 +308,26 @@ def test_too_slow(q, bus, conn, stream, httpd, media_chan, too_slow):
     elif too_slow == TOO_SLOW_REMOVE_SELF:
         media_chan.RemoveMembers([conn.GetSelfHandle()], "",
             dbus_interface=cs.CHANNEL_IFACE_GROUP)
+    elif too_slow == TOO_SLOW_DISCONNECT:
+        conn.Disconnect()
 
-    q.expect('dbus-signal', signal='Closed')
+    q.expect('dbus-signal', signal='Closed',
+        path=media_chan.object_path[len(tp_path_prefix):])
 
-    # Now Google answers!
-    httpd.handle_request()
-    httpd.handle_request()
+    # If we've disconnected, Gabble's no longer waiting for the reply. The
+    # Closed signal arriving proves that calling Disconnect() while Gabble was
+    # waiting for an http response didn't crash it (see
+    # <http://bugs.freedesktop.org/show_bug.cgi?id=22535>).
+    if too_slow != TOO_SLOW_DISCONNECT:
+        # Now Google answers!
+        httpd.handle_request()
+        httpd.handle_request()
 
-    # Make a misc method call to check that Gabble's still alive.
-    sync_dbus(bus, q, conn)
+        # Make a misc method call to check that Gabble's still alive.
+        sync_dbus(bus, q, conn)
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+        conn.Disconnect()
+        q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 
 if __name__ == '__main__':
@@ -337,4 +346,10 @@ if __name__ == '__main__':
             protocol=GoogleXmlStream)
     exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False,
                                       too_slow=TOO_SLOW_REMOVE_SELF),
+            protocol=GoogleXmlStream)
+    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True,
+                                      too_slow=TOO_SLOW_DISCONNECT),
+            protocol=GoogleXmlStream)
+    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False,
+                                      too_slow=TOO_SLOW_DISCONNECT),
             protocol=GoogleXmlStream)

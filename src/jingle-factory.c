@@ -445,6 +445,12 @@ gabble_jingle_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
+  if (priv->soup != NULL)
+    {
+      g_object_unref (priv->soup);
+      priv->soup = NULL;
+    }
+
   g_hash_table_destroy (priv->sessions);
   priv->sessions = NULL;
 
@@ -458,12 +464,6 @@ gabble_jingle_factory_dispose (GObject *object)
   g_free (fac->priv->fallback_stun_server);
   g_free (fac->priv->relay_token);
   g_free (fac->priv->relay_server);
-
-  if (priv->soup != NULL)
-    {
-      g_object_unref (priv->soup);
-      priv->soup = NULL;
-    }
 
   if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose (object);

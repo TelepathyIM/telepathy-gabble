@@ -340,20 +340,29 @@ parse_candidates (GabbleJingleTransportIface *obj,
       candidates = g_list_append (candidates, c);
     }
 
-  if (node_contains_a_candidate && candidates == NULL)
+  if (candidates == NULL)
     {
-      NODE_DEBUG (transport_node, "couldn't parse any of the given candidates");
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "could not parse any of the given candidates");
-      return;
+      if (node_contains_a_candidate)
+        {
+          NODE_DEBUG (transport_node,
+              "couldn't parse any of the given candidates");
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+              "could not parse any of the given candidates");
+        }
+      else
+        {
+          DEBUG ("no candidates in this stanza");
+        }
     }
+  else
+    {
+      DEBUG ("emitting %d new remote candidates", g_list_length (candidates));
 
-  DEBUG ("emitting %d new remote candidates", g_list_length (candidates));
+      g_signal_emit (obj, signals[NEW_CANDIDATES], 0, candidates);
 
-  g_signal_emit (obj, signals[NEW_CANDIDATES], 0, candidates);
-
-  /* append them to the known remote candidates */
-  priv->remote_candidates = g_list_concat (priv->remote_candidates, candidates);
+      priv->remote_candidates = g_list_concat (priv->remote_candidates,
+          candidates);
+    }
 }
 
 static void

@@ -1462,17 +1462,18 @@ _pick_best_resource (GabbleMediaChannel *chan,
   return NULL;
 
 CHOOSE_TRANSPORT:
-  /* We prefer ICE, Google-P2P, then raw UDP */
+  /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
+   * available). */
 
   if (gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP))
-    {
-      *transport_ns = NS_JINGLE_TRANSPORT_ICEUDP;
-    }
-  else if (gabble_presence_resource_has_caps (presence, resource,
         PRESENCE_CAP_GOOGLE_TRANSPORT_P2P))
     {
       *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
+    }
+  else if (gabble_presence_resource_has_caps (presence, resource,
+        PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP))
+    {
+      *transport_ns = NS_JINGLE_TRANSPORT_ICEUDP;
     }
   else if (gabble_presence_resource_has_caps (presence, resource,
         PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP))

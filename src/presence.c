@@ -189,7 +189,7 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
     {
       Resource *res = (Resource *) i->data;
 
-      if (!tp_strdiff (res->name, resource) && (res->caps & caps))
+      if (!tp_strdiff (res->name, resource) && (res->caps & caps) == caps)
         return TRUE;
     }
 

@@ -574,7 +574,6 @@ connection_status_changed_cb (GabbleConnection *conn,
     {
     case TP_CONNECTION_STATUS_CONNECTING:
       g_assert (priv->conn != NULL);
-      g_assert (priv->conn->lmconn != NULL);
 
       g_assert (priv->jingle_cb == NULL);
       g_assert (priv->jingle_info_cb == NULL);

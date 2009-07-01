@@ -27,6 +27,12 @@ G_BEGIN_DECLS
 
 int gabble_main (int argc, char **argv);
 
+#ifdef ENABLE_DEBUG
+void gabble_lm_debug (void);
+#else
+#define gabble_lm_debug() G_STMT_START { } G_STMT_END
+#endif
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_H__*/

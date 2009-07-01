@@ -318,10 +318,10 @@ def make_stream(event_func, authenticator=None, protocol=None, port=4242, resour
     # set up Jabber server
 
     if authenticator is None:
-        authenticator = JabberAuthenticator('test', 'pass', resource=resource)
+        authenticator = XmppAuthenticator('test', 'pass', resource=resource)
 
     if protocol is None:
-        protocol = JabberXmlStream
+        protocol = XmppXmlStream
 
     stream = protocol(event_func, authenticator)
     factory = twisted.internet.protocol.Factory()

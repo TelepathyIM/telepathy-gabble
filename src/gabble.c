@@ -49,6 +49,7 @@ log_to_debugger (GTimeVal *timestamp,
   gabble_debugger_add_message (dbg, timestamp, log_domain, log_level, string);
 }
 
+/* Whether LM_DEBUG should be set and messages sent to the debugger. */
 static gboolean enable_lm_debug = TRUE;
 
 static void
@@ -57,8 +58,10 @@ simple_log (const gchar *log_domain,
     const gchar *message,
     gpointer user_data)
 {
-  if (!enable_lm_debug ||
-      (enable_lm_debug && tp_strdiff (log_domain, "LM")))
+  /* Only use the GLib default log handler on non-LM messages as they will
+     completely overwhelm and are not entirely useful most of the time. Still
+     send them to the debugger though. */
+  if (tp_strdiff (log_domain, "LM"))
     g_log_default_handler (log_domain, log_level, message, NULL);
 
   /* G_LOG_DOMAIN = "gabble". No need to send gabble messages to the debugger
@@ -83,8 +86,10 @@ stamp_log (const gchar *log_domain,
   gchar *tmp;
   struct tm tm;
 
-  if (!enable_lm_debug ||
-      (enable_lm_debug && tp_strdiff (log_domain, "LM")))
+  /* Only use the GLib default log handler on non-LM messages as they will
+     completely overwhelm and are not entirely useful most of the time. Still
+     send them to the debugger though. */
+  if (tp_strdiff (log_domain, "LM"))
     {
       g_get_current_time (&now);
       localtime_r (&(now.tv_sec), &tm);
@@ -105,6 +110,8 @@ gabble_lm_debug (void)
 {
   GLogFunc log_func;
 
+  /* Only override LM's log handler if the user has *not* set LM_DEBUG
+     manually. */
   if (!enable_lm_debug)
     return;
 

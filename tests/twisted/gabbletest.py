@@ -282,7 +282,7 @@ class XmppXmlStream(BaseXmlStream):
 
 class GoogleXmlStream(BaseXmlStream):
     # ???
-    version = (0, 9)
+    version = (1, 0)
 
     def _cb_disco_iq(self, iq):
         if iq.getAttribute('to') == 'localhost':

@@ -281,7 +281,6 @@ class XmppXmlStream(BaseXmlStream):
     version = (1, 0)
 
 class GoogleXmlStream(BaseXmlStream):
-    # ???
     version = (1, 0)
 
     def _cb_disco_iq(self, iq):

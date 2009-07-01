@@ -574,6 +574,39 @@ parse_description (GabbleJingleContent *content,
   update_remote_codecs (self, codecs, error);
 }
 
+/* The Google Talk desktop client is picky about the case of codec names, even
+ * though SDP defines them to be case-insensitive. The particular case that was
+ * causing problems was ILBC vs iLBC, but it seems safer to special-case the
+ * lot. This list is taken from the initiate sent by the desktop client on
+ * 2009-07-01.
+ */
+static const gchar * const codec_cases[] = {
+    "CN",
+    "EG711A",
+    "EG711U",
+    "G723",
+    "IPCMWB",
+    "ISAC",
+    "PCMA",
+    "PCMU",
+    "iLBC",
+    "speex",
+    "telephone-event",
+    NULL
+};
+
+static const gchar *
+gtalk_case (const gchar *codec)
+{
+  const gchar * const *ret = codec_cases;
+
+  for (; *ret != NULL; ret++)
+    if (g_ascii_strcasecmp (*ret, codec) == 0)
+      return *ret;
+
+  return codec;
+}
+
 static void
 _produce_extra_param (gpointer key, gpointer value, gpointer user_data)
 {
@@ -632,7 +665,12 @@ produce_payload_type (LmMessageNode *desc_node,
 
   /* name: optional */
   if (*p->name != '\0')
-    lm_message_node_set_attribute (pt_node, "name", p->name);
+    {
+      if (JINGLE_IS_GOOGLE_DIALECT (dialect))
+        lm_message_node_set_attribute (pt_node, "name", gtalk_case (p->name));
+      else
+        lm_message_node_set_attribute (pt_node, "name", p->name);
+    }
 
   /* clock rate: optional */
   if (p->clockrate != 0)

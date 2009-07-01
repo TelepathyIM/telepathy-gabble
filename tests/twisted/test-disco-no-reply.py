@@ -4,7 +4,7 @@ Test that Gabble disconnects connection if it doesn't receive a response
 to its service discovery request
 """
 
-from gabbletest import exec_test, JabberXmlStream
+from gabbletest import exec_test, XmppXmlStream
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -15,8 +15,8 @@ def test(q, bus, conn, stream):
     # disco request timed out
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 2])
 
-class JabberXmlStreamNoDiscoReply (JabberXmlStream):
-    """Subclass JabberXmlStream to don't automatically send a disco reply"""
+class JabberXmlStreamNoDiscoReply (XmppXmlStream):
+    """Subclass XmppXmlStream to don't automatically send a disco reply"""
     def _cb_disco_iq (self, iq):
         pass
 

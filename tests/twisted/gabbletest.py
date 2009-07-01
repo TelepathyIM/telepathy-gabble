@@ -271,6 +271,7 @@ class BaseXmlStream(xmlstream.XmlStream):
             identity['type'] = 'pep'
 
             iq['type'] = 'result'
+            iq['from'] = iq['to']
             self.send(iq)
 
 class JabberXmlStream(BaseXmlStream):

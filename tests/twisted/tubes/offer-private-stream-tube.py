@@ -3,7 +3,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern, sync_dbus, assertEquals
-from gabbletest import acknowledge_iq, sync_stream
+from gabbletest import acknowledge_iq, sync_stream, make_result_iq
 import constants as cs
 import ns
 import tubetestutil as t
@@ -81,11 +81,11 @@ def test(q, bus, conn, stream, bytestream_cls,
     event = q.expect('stream-iq', iq_type='get',
         query_ns='http://jabber.org/protocol/disco#info',
         to=bob_full_jid)
-    result = event.stanza
-    result['type'] = 'result'
     assert event.query['node'] == \
         'http://example.com/ICantBelieveItsNotTelepathy#1.2.3'
-    feature = event.query.addElement('feature')
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    feature = query.addElement('feature')
     feature['var'] = ns.TUBES
     stream.send(result)
 

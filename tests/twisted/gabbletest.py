@@ -29,6 +29,9 @@ NS_XMPP_BIND = 'urn:ietf:params:xml:ns:xmpp-bind'
 def make_result_iq(stream, iq):
     result = IQ(stream, "result")
     result["id"] = iq["id"]
+    to = iq.getAttribute('to')
+    if to is not None:
+        result["from"] = to
     query = iq.firstChildElement()
 
     if query:

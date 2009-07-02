@@ -46,6 +46,9 @@ def send_error_reply(stream, iq, error_stanza=None):
     result = IQ(stream, "error")
     result["id"] = iq["id"]
     query = iq.firstChildElement()
+    to = iq.getAttribute('to')
+    if to is not None:
+        result["from"] = to
 
     if query:
         result.addElement((query.uri, query.name))

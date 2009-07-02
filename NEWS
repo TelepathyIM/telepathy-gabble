@@ -1,11 +1,22 @@
 telepathy-gabble 0.7.31 (UNRELEASED)
 ====================================
 
+The “Calypso Wash Motion is the sound of agitated love” release.
+
 Dependencies:
 
 Enhancements:
 
+* The XML sent and received by Gabble is now exposed by the Debug interface
+  (Jonny Lamb)
+
 Fixes:
+
+* Audio codecs' names are forced to match the case expected by the Google Talk
+  desktop client, which is incorrectly case-sensitive
+
+* fd.o#22535: Gabble no longer crashes if you disconnect while it's trying to
+  start a Google relay session for a call.
 
 telepathy-gabble 0.7.30 (2009-06-29)
 ====================================

@@ -208,37 +208,20 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
                                           const gchar *name,
                                           const gchar *ns)
 {
+  LmMessageNode *found;
   NodeIter i;
+
+  found = wocky_xmpp_node_get_child_ns (node, name, ns);
+  if (found != NULL)
+    return found;
 
   for (i = node_iter (node); i; i = node_iter_next (i))
     {
-      LmMessageNode *tmp = node_iter_data (i);
-      gchar *tag = NULL;
-      gboolean found;
+      LmMessageNode *child = node_iter_data (i);
 
-      if (tp_strdiff (tmp->name, name))
-        {
-          const gchar *suffix;
-
-          suffix = strchr (tmp->name, ':');
-
-          if (suffix == NULL)
-            continue;
-          else
-            suffix++;
-
-          if (tp_strdiff (suffix, name))
-            continue;
-
-          tag = g_strndup (tmp->name, suffix - tmp->name - 1);
-        }
-
-      found = lm_message_node_has_namespace (tmp, ns, tag);
-
-      g_free (tag);
-
-      if (found)
-        return tmp;
+      found = lm_message_node_get_child_with_namespace (child, name, ns);
+      if (found != NULL)
+        return found;
     }
 
   return NULL;

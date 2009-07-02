@@ -164,7 +164,7 @@ def announce_socks5_proxy(q, stream, disco_stanza):
     event = q.expect('stream-iq', to='proxy.localhost', query_ns=ns.DISCO_INFO,
         iq_type='get')
 
-    reply = elem_iq(stream, 'result', id=event.stanza['id'])(
+    reply = elem_iq(stream, 'result', from_='proxy.localhost', id=event.stanza['id'])(
         elem(ns.DISCO_INFO, 'query')(
             elem('identity', category='proxy', type='bytestreams', name='SOCKS5 Bytestreams')(),
             elem('feature', var=ns.BYTESTREAMS)()))
@@ -175,7 +175,7 @@ def announce_socks5_proxy(q, stream, disco_stanza):
         iq_type='get')
 
     port = listen_socks5(q)
-    reply = elem_iq(stream, 'result', id=event.stanza['id'])(
+    reply = elem_iq(stream, 'result', id=event.stanza['id'], from_='proxy.localhost')(
         elem(ns.BYTESTREAMS, 'query')(
             elem('streamhost', jid='proxy.localhost', host='127.0.0.1', port=str(port))()))
     stream.send(reply)

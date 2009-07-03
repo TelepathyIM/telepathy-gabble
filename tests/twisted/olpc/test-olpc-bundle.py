@@ -25,6 +25,7 @@ def test(q, bus, conn, stream):
     m = domish.Element((None, 'iq'))
     m['from'] = 'alice@jabber.laptop.org'
     m['id'] = '1'
+    m['type'] = 'get'
     query = m.addElement('query')
     query['xmlns'] = ns.DISCO_INFO
     stream.send(m)
@@ -55,6 +56,7 @@ def test(q, bus, conn, stream):
     m = domish.Element((None, 'iq'))
     m['from'] = 'alice@jabber.laptop.org'
     m['id'] = '2'
+    m['type'] = 'get'
     query = m.addElement('query')
     query['xmlns'] = ns.DISCO_INFO
     stream.send(m)

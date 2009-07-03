@@ -1106,12 +1106,9 @@ _update_group (gpointer key,
  * if queries other than rosters are received.
  */
 static LmHandlerResult
-gabble_roster_iq_cb (LmMessageHandler *handler,
-                     LmConnection *lmconn,
-                     LmMessage *message,
-                     gpointer user_data)
+got_roster_iq (GabbleRoster *roster,
+    LmMessage *message)
 {
-  GabbleRoster *roster = GABBLE_ROSTER (user_data);
   GabbleRosterPrivate *priv = roster->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
@@ -1120,8 +1117,6 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   LmMessageSubType sub_type;
   const gchar *from;
   gboolean google_roster = FALSE;
-
-  g_assert (lmconn == priv->conn->lmconn);
 
   if (priv->list_channels == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -1444,6 +1439,19 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static LmHandlerResult
+gabble_roster_iq_cb (LmMessageHandler *handler,
+                     LmConnection *lmconn,
+                     LmMessage *message,
+                     gpointer user_data)
+{
+  GabbleRoster *roster = GABBLE_ROSTER (user_data);
+  GabbleRosterPrivate *priv = roster->priv;
+
+  g_assert (lmconn == priv->conn->lmconn);
+
+  return got_roster_iq (roster, message);
+}
 
 static void
 _gabble_roster_send_presence_ack (GabbleRoster *roster,
@@ -1721,6 +1729,17 @@ gabble_roster_close_all (GabbleRoster *self)
     }
 }
 
+static LmHandlerResult
+roster_received_cb (GabbleConnection *conn,
+    LmMessage *sent_msg,
+    LmMessage *reply_msg,
+    GObject *roster_obj,
+    gpointer user_data)
+{
+  GabbleRoster *roster = GABBLE_ROSTER (user_data);
+
+  return got_roster_iq (roster, reply_msg);
+}
 
 static void
 connection_status_changed_cb (GabbleConnection *conn,
@@ -1757,7 +1776,8 @@ connection_status_changed_cb (GabbleConnection *conn,
 
           message = _gabble_roster_message_new (self, LM_MESSAGE_SUB_TYPE_GET,
               NULL);
-          _gabble_connection_send (self->priv->conn, message, NULL);
+          _gabble_connection_send_with_reply (self->priv->conn, message,
+              roster_received_cb, G_OBJECT (self), self, NULL);
           lm_message_unref (message);
         }
       break;

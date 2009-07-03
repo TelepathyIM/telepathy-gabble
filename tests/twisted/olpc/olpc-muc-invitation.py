@@ -125,7 +125,7 @@ def test(q, bus, conn, stream):
         )
 
     assert event.args == ['', [], [handles['bob']], [],
-            [handles['chat_self']], 0, handles['chat_self']]
+            [handles['chat_self']], 0, cs.GC_REASON_INVITED]
 
     # Send presence for own membership of room.
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))

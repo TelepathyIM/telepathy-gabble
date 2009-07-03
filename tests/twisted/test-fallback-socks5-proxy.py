@@ -24,7 +24,7 @@ def test(q, bus, conn, stream):
         jid = iq['to']
         port = proxy_port[jid]
 
-        reply = elem_iq(stream, 'result', id=iq['id'])(
+        reply = elem_iq(stream, 'result', id=iq['id'], from_=jid)(
             elem(ns.BYTESTREAMS, 'query')(
                 elem('streamhost', jid=jid, host='127.0.0.1', port=port)()))
         stream.send(reply)

@@ -136,7 +136,7 @@ def test(q, bus, conn, stream):
         EventPattern('stream-presence', to='chat@conf.localhost/test'),
         EventPattern('dbus-signal', signal='MembersChanged',
             args=['', [], [bob_handle], [], [room_self_handle],
-                0, room_self_handle])
+                0, cs.GC_REASON_INVITED])
             )
 
     # Send presence for own membership of room.

@@ -7,7 +7,7 @@ import base64
 import hashlib
 
 from servicetest import EventPattern
-from gabbletest import exec_test, acknowledge_iq
+from gabbletest import exec_test, acknowledge_iq, make_result_iq
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -23,12 +23,11 @@ def test(q, bus, conn, stream):
 
     iq_event = q.expect('stream-iq', to='bob@foo.com', query_ns='vcard-temp',
         query_name='vCard')
-    iq = iq_event.stanza
-    vcard = iq_event.query
+    iq = make_result_iq(stream, iq_event.stanza)
+    vcard = iq.firstChildElement()
     photo = vcard.addElement('PHOTO')
     photo.addElement('TYPE', content='image/png')
     photo.addElement('BINVAL', content=base64.b64encode('hello'))
-    iq['type'] = 'result'
     stream.send(iq)
 
     event = q.expect('dbus-signal', signal='AvatarRetrieved')

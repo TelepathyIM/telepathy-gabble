@@ -5,7 +5,7 @@ import time
 import datetime
 
 from servicetest import EventPattern
-from gabbletest import exec_test, sync_stream
+from gabbletest import exec_test, sync_stream, make_result_iq
 import ns
 from bytestream import create_from_si_offer, announce_socks5_proxy
 import bytestream
@@ -61,9 +61,9 @@ class FileTransferTest(object):
             EventPattern('stream-iq', query_ns=ns.ROSTER),
             EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
 
-        roster = roster_event.stanza
-        roster['type'] = 'result'
-        item = roster_event.query.addElement('item')
+        roster = make_result_iq(self.stream, roster_event.stanza)
+        query = roster.firstChildElement()
+        item = query.addElement('item')
         item['jid'] = self.CONTACT_NAME
         item['subscription'] = 'both'
         self.stream.send(roster)
@@ -92,11 +92,11 @@ class FileTransferTest(object):
                 query_ns='http://jabber.org/protocol/disco#info', to=self.contact_full_jid),
             EventPattern('dbus-signal', signal='PresencesChanged'))
 
-        result = disco_event.stanza
-        result['type'] = 'result'
         assert disco_event.query['node'] == \
             'http://example.com/ISupportFT#1.0'
-        feature = disco_event.query.addElement('feature')
+        result = make_result_iq(self.stream, disco_event.stanza)
+        query = result.firstChildElement()
+        feature = query.addElement('feature')
         feature['var'] = ns.FILE_TRANSFER
         self.stream.send(result)
 

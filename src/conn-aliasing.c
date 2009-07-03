@@ -321,6 +321,7 @@ gabble_do_pep_request (GabbleConnection *self,
 
   msg = lm_message_build (tp_handle_inspect (contact_handles, handle),
       LM_MESSAGE_TYPE_IQ,
+      '@', "type", "get",
       '(', "pubsub", "",
         '@', "xmlns", NS_PUBSUB,
         '(', "items", "",

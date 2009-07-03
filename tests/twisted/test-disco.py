@@ -14,6 +14,7 @@ def test(q, bus, conn, stream):
     m = domish.Element((None, 'iq'))
     m['from'] = 'foo@bar.com'
     m['id'] = '1'
+    m['type'] = 'get'
     m.addElement(('http://jabber.org/protocol/disco#info', 'query'))
     stream.send(m)
 

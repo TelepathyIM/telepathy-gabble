@@ -60,13 +60,14 @@ def test(q, bus, conn, stream):
         content='Bobby')
     stream.send(result)
 
-    event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
+    event, _ = q.expect_many(
+        EventPattern('stream-iq', iq_type='set', query_ns=ns.ROSTER),
+        EventPattern('dbus-return', method='RequestAliases',
+        value=(['Bobby'],)))
+
     item = event.query.firstChildElement()
     assert item['jid'] == 'bob@foo.com'
     assert item['name'] == 'Bobby'
-
-    q.expect('dbus-return', method='RequestAliases',
-        value=(['Bobby'],))
 
     conn.Disconnect()
 

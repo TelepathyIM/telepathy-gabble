@@ -59,7 +59,7 @@ def announce_gadget(q, stream, disco_stanza):
     # wait for Gadget disco#info query
     event = q.expect('stream-iq', to='gadget.localhost', query_ns=ns.DISCO_INFO)
 
-    reply = elem_iq(stream, 'result', id=event.stanza['id'])(
+    reply = elem_iq(stream, 'result', id=event.stanza['id'], from_='gadget.localhost')(
         elem(ns.DISCO_INFO, 'query')(
             elem('identity', category='collaboration', type='gadget', name='OLPC Gadget')(),
             elem('feature', var=ns.OLPC_BUDDY)(),

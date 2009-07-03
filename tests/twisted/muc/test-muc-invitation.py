@@ -83,7 +83,7 @@ def test(q, bus, conn, stream):
     assert status.children[0] == u'success'
 
     assert event2.args == ['', [], [bob_handle], [],
-            [room_self_handle], 0, room_self_handle]
+            [room_self_handle], 0, cs.GC_REASON_INVITED]
 
     # Send presence for own membership of room.
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))

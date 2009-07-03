@@ -9,7 +9,7 @@ class SendFileDeclinedTest(SendFileTest):
         SendFileTest.got_send_iq(self)
 
         # Receiver declines the file offer
-        reply = domish.Element(('', 'iq'))
+        reply = domish.Element(('jabber:client', 'iq'))
         reply['to'] = 'test@localhost/Resource'
         reply['from'] = self.iq['to']
         reply['type'] = 'error'

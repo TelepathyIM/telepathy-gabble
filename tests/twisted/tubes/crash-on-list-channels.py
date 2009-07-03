@@ -6,7 +6,7 @@ DBus tube asserted.
 import dbus
 
 from servicetest import call_async, EventPattern
-from gabbletest import exec_test, sync_stream
+from gabbletest import exec_test, sync_stream, make_result_iq
 
 import ns
 import constants as cs
@@ -40,11 +40,11 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', iq_type='get',
         query_ns=ns.DISCO_INFO,
         to=('%s/Bob' % jid))
-    result = event.stanza
-    result['type'] = 'result'
     assert event.query['node'] == \
         'http://example.com/ICantBelieveItsNotTelepathy#1.2.3'
-    feature = event.query.addElement('feature')
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    feature = query.addElement('feature')
     feature['var'] = ns.TUBES
     stream.send(result)
 

@@ -225,12 +225,12 @@ class EchoFactory(EventProtocolFactory):
     def _create_protocol(self):
         return Echo(self.queue, self.block_reading)
 
-def set_up_echo(q, address_type, block_reading=False):
+def set_up_echo(q, address_type, block_reading=False, streamfile='stream'):
     """
     Sets up an instance of Echo listening on a socket of type @address_type
     """
     factory = EchoFactory(q, block_reading)
-    return create_server(q, address_type, factory)
+    return create_server(q, address_type, factory, streamfile=streamfile)
 
 # Twisted doesn't set the REUSEADDR option on client sockets.
 # As we need this option to be able to bind successively on the same port
@@ -266,11 +266,12 @@ def connect_socket(q, address_type, address, access_control, access_control_para
     else:
         assert False
 
-def create_server(q, address_type, factory=None, block_reading=False):
+def create_server(q, address_type, factory=None, block_reading=False,
+        streamfile='stream'):
     if factory is None:
         factory = EventProtocolFactory(q, block_reading)
     if address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
-        path = os.getcwd() + '/stream'
+        path = os.getcwd() + '/' + streamfile
         try:
             os.remove(path)
         except OSError, e:

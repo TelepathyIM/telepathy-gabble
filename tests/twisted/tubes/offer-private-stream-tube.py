@@ -41,8 +41,8 @@ def contact_offer_dbus_tube(bytestream, tube_id):
 
 def test(q, bus, conn, stream, bytestream_cls,
         address_type, access_control, access_control_param):
-    address1 = t.set_up_echo(q, address_type, True)
-    address2 = t.set_up_echo(q, address_type, True)
+    address1 = t.set_up_echo(q, address_type, True, streamfile='stream')
+    address2 = t.set_up_echo(q, address_type, True, streamfile='stream2')
 
     t.check_conn_properties(q, conn)
 

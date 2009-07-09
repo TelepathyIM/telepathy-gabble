@@ -176,7 +176,7 @@ struct _GabbleTubeStreamPrivate
 
   /* (GibberTransport *) -> (GabbleBytestreamIface *)
    *
-   * The (t->b) is inserted when the bytestream is open.
+   * The (t->b) is also inserted as soon as they are created.
    */
   GHashTable *transport_to_bytestream;
 
@@ -318,10 +318,7 @@ remove_transport (GabbleTubeStream *self,
   fire_connection_closed (self, transport, TP_ERROR_STR_CONNECTION_LOST,
       "bytestream has been broken");
 
-  /* the transport may not be in transport_to_bytestream if the bytestream was
-   * not fully open */
   g_hash_table_remove (priv->transport_to_bytestream, transport);
-
   g_hash_table_remove (priv->bytestream_to_transport, bytestream);
   g_hash_table_remove (priv->transport_to_id, transport);
 }
@@ -358,9 +355,6 @@ add_transport (GabbleTubeStream *self,
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
   gibber_transport_set_handler (transport, transport_handler, self);
-
-  g_hash_table_insert (priv->transport_to_bytestream,
-      g_object_ref (transport), g_object_ref (bytestream));
 
   g_signal_connect (transport, "disconnected",
       G_CALLBACK (transport_disconnected_cb), self);
@@ -469,8 +463,13 @@ extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   DEBUG ("extra bytestream accepted");
 
   /* transport has been refed in start_stream_initiation () */
+  g_assert (gibber_transport_get_state (transport) ==
+      GIBBER_TRANSPORT_CONNECTED);
   g_hash_table_insert (priv->bytestream_to_transport, g_object_ref (bytestream),
       transport);
+  g_hash_table_insert (priv->transport_to_bytestream,
+      g_object_ref (transport), g_object_ref (bytestream));
+
 
   g_signal_connect (bytestream, "state-changed",
                 G_CALLBACK (extra_bytestream_state_changed_cb), self);
@@ -920,7 +919,16 @@ static void
 transport_connected_cb (GibberTransport *transport,
     transport_connected_data *data)
 {
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (data->self);
+  GabbleBytestreamIface *bytestream;
+
   fire_new_remote_connection (data->self, transport, data->contact);
+
+  bytestream = g_hash_table_lookup (priv->transport_to_bytestream, transport);
+  if (bytestream == NULL)
+    return;
+
+  gabble_bytestream_iface_block_reading (bytestream, FALSE);
 }
 
 static GibberTransport *
@@ -976,8 +984,12 @@ new_connection_to_socket (GabbleTubeStream *self,
 
   generate_connection_id (self, transport);
 
+  gabble_bytestream_iface_block_reading (bytestream, TRUE);
   g_hash_table_insert (priv->bytestream_to_transport, g_object_ref (bytestream),
       g_object_ref (transport));
+  g_hash_table_insert (priv->transport_to_bytestream,
+      g_object_ref (transport), g_object_ref (bytestream));
+
 
   g_signal_connect (bytestream, "state-changed",
       G_CALLBACK (extra_bytestream_state_changed_cb), self);
@@ -1994,6 +2006,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
 
       if (gibber_transport_get_state (transport) == GIBBER_TRANSPORT_CONNECTED)
         {
+          gabble_bytestream_iface_block_reading (bytestream, FALSE);
           fire_new_remote_connection (self, transport, contact);
         }
       else

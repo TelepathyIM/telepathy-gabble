@@ -390,27 +390,23 @@ def exec_test_deferred (funs, params, protocol=None, timeout=None,
         traceback.print_exc()
         error = e
 
+    if colourer:
+      sys.stdout = colourer.fh
+    d = port.stopListening()
+    if error is None:
+        d.addBoth((lambda *args: reactor.crash()))
+    else:
+        # please ignore the POSIX behind the curtain
+        d.addBoth((lambda *args: os._exit(1)))
+
     try:
-        if colourer:
-          sys.stdout = colourer.fh
-        d = port.stopListening()
-        if error is None:
-            d.addBoth((lambda *args: reactor.crash()))
-        else:
-            # please ignore the POSIX behind the curtain
-            d.addBoth((lambda *args: os._exit(1)))
-
-        try:
-            conn.Disconnect()
-        except dbus.DBusException, e:
-            # Connection has already been disconnected
-            pass
-        else:
-            queue.expect('dbus-signal', signal='StatusChanged',
-                args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
-
+        conn.Disconnect()
     except dbus.DBusException, e:
+        # Connection has already been disconnected
         pass
+    else:
+        queue.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
 
 def exec_tests(funs, params=None, protocol=None, timeout=None,
                authenticator=None):

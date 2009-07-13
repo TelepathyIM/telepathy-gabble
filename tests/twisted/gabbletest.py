@@ -358,6 +358,14 @@ def install_colourer():
     sys.stdout = Colourer(sys.stdout, patterns)
     return sys.stdout
 
+def disconnect_conn(q, conn, stream, expected=[]):
+    conn.Disconnect()
+
+    tmp = expected + [EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])]
+
+    events = q.expect_many(*tmp)
+    return events[:-1]
 
 def exec_test_deferred (funs, params, protocol=None, timeout=None,
                         authenticator=None):
@@ -400,13 +408,10 @@ def exec_test_deferred (funs, params, protocol=None, timeout=None,
         d.addBoth((lambda *args: os._exit(1)))
 
     try:
-        conn.Disconnect()
+        disconnect_conn(queue, conn, stream)
     except dbus.DBusException, e:
         # Connection has already been disconnected
         pass
-    else:
-        queue.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
 
 def exec_tests(funs, params=None, protocol=None, timeout=None,
                authenticator=None):

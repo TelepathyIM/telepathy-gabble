@@ -35,16 +35,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='AvatarRetrieved')
 
-    conn.Disconnect()
-
-    e = q.expect('dbus-signal')
-
-    # We really need q.forbid(...) somehow
-    assert e.signal != 'AvatarRetrieved'
-
-    assert e.signal == 'StatusChanged'
-    assert e.args == [2, 1]
-
+    q.forbid_events([EventPattern('dbus-signal', signal='AvatarRetrieved')])
 
 if __name__ == '__main__':
     exec_test(test)

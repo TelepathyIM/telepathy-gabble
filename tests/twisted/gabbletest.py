@@ -280,6 +280,10 @@ class BaseXmlStream(xmlstream.XmlStream):
             iq['from'] = iq['to']
             self.send(iq)
 
+    def onDocumentEnd(self):
+        self.event_func(servicetest.Event('stream-closed'))
+        xmlstream.XmlStream.onDocumentEnd(self)
+
 class JabberXmlStream(BaseXmlStream):
     version = (0, 9)
 

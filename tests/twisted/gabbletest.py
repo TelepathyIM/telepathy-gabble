@@ -400,7 +400,14 @@ def exec_test_deferred (funs, params, protocol=None, timeout=None,
             # please ignore the POSIX behind the curtain
             d.addBoth((lambda *args: os._exit(1)))
 
-        conn.Disconnect()
+        try:
+            conn.Disconnect()
+        except dbus.DBusException, e:
+            # Connection has already been disconnected
+            pass
+        else:
+            queue.expect('dbus-signal', signal='StatusChanged',
+                args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
 
     except dbus.DBusException, e:
         pass

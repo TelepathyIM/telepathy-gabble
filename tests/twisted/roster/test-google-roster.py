@@ -6,6 +6,7 @@ Test workarounds for gtalk
 import dbus
 
 from gabbletest import acknowledge_iq, exec_test
+from servicetest import EventPattern
 import constants as cs
 import ns
 
@@ -118,20 +119,9 @@ def test(q, bus, conn, stream):
         args=['', [2], [], [], [], 0, 0])
     assert(event.path.endswith('/subscribe'))
 
-    conn.Disconnect()
-
-    while True:
-        event = q.expect('dbus-signal')
-
-        if event.signal == 'StatusChanged' and event.args == [2, 1]:
-            # that's what we wanted
-            break
-
-        if event.signal == 'MembersChanged':
-            raise AssertionError("""
-If there's an assertion here, that means we've got a few MembersChanged
-signals too many (either from the first, or second point of error).
-""")
+    # If there's an assertion here, that means we've got a few MembersChanged
+    # signals too many (either from the first, or second point of error).
+    q.forbid_events([EventPattern('dbus-signal', signal='MembersChanged')])
 
 if __name__ == '__main__':
     exec_test(test)

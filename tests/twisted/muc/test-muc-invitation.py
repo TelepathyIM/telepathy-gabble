@@ -88,11 +88,16 @@ def test(q, bus, conn, stream):
     assert event2.args == ['', [], [bob_handle], [],
             [room_self_handle], 0, cs.GC_REASON_INVITED]
 
+    # Send presence for Bob's membership of room.
+    stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
+
     # Send presence for own membership of room.
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
 
     event = q.expect('dbus-signal', signal='MembersChanged')
-    assert event.args == ['', [room_self_handle], [], [], [], 0, 0]
+
+    room_bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['chat@conf.localhost/bob'])[0]
+    assert event.args == ['', [room_self_handle, room_bob_handle], [], [], [], 0, 0]
 
     # Test sending an invitation
     alice_handle = conn.RequestHandles(1, ['alice@localhost'])[0]

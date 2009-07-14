@@ -59,16 +59,24 @@ def test(q, bus, conn, stream):
     # Gabble suppresses contacts labelled as "hidden" from all roster channels.
     add_roster_item(query, 'should-be-hidden@example.com', 'both', False,
         {'gr:t': 'H'})
+    add_roster_item(query, 'lp-bug-298293@gmail.com', 'both', False,
+        {'gr:autosub': 'true'})
 
     # Send back the roster
     stream.send(result)
 
     # This depends on the order in which roster.c creates the channels.
-    # Since s-b-h had the "hidden" flag set, we expect none of subscribe,
-    # publish or stored to have any members.
-    publish = expect_list_channel(q, bus, conn, 'publish', [])
-    subscribe = expect_list_channel(q, bus, conn, 'subscribe', [])
-    stored = expect_list_channel(q, bus, conn, 'stored', [])
+    # Since s-b-h had the "hidden" flag set, we don't expect them to be on any
+    # lists. But we do want the "autosub" contact to be visible; see
+    # <https://bugs.launchpad.net/ubuntu/+source/telepathy-gabble/+bug/398293>,
+    # where Gabble was incorrectly hiding valid contacts.
+
+    expected_contacts = ['lp-bug-298293@gmail.com']
+
+    publish = expect_list_channel(q, bus, conn, 'publish', expected_contacts)
+    subscribe = expect_list_channel(q, bus, conn, 'subscribe',
+        expected_contacts)
+    stored = expect_list_channel(q, bus, conn, 'stored', expected_contacts)
 
     contact = 'bob@foo.com'
     handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]

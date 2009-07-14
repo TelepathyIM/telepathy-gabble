@@ -420,12 +420,6 @@ _google_roster_item_should_keep (LmMessageNode *item_node,
 {
   const gchar *attr;
 
-  /* skip automatically subscribed Google roster items */
-  attr = lm_message_node_get_attribute (item_node, "gr:autosub");
-
-  if (!tp_strdiff (attr, "true"))
-    return FALSE;
-
   /* skip email addresses that replied to an invite */
   attr = lm_message_node_get_attribute (item_node, "gr:alias-for");
 

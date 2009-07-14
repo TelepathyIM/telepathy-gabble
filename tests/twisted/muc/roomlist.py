@@ -5,7 +5,7 @@ Test MUC support.
 
 import dbus
 
-from gabbletest import make_result_iq, exec_test, sync_stream
+from gabbletest import make_result_iq, exec_test, sync_stream, disconnect_conn
 from servicetest import call_async, EventPattern, \
         tp_name_prefix, tp_path_prefix
 
@@ -167,18 +167,13 @@ def test(q, bus, conn, stream):
     assert not yours
     assert ensured_path == path2, (ensured_path, path2)
 
-
-    conn.Disconnect()
-
-    q.expect_many(
-            EventPattern('dbus-signal', signal='Closed',
-                path=path1[len(tp_path_prefix):]),
-            EventPattern('dbus-signal', signal='Closed',
-                path=path2[len(tp_path_prefix):]),
-            EventPattern('dbus-signal', signal='ChannelClosed', args=[path1]),
-            EventPattern('dbus-signal', signal='ChannelClosed', args=[path2]),
-            EventPattern('dbus-signal', signal='StatusChanged', args=[2, 1]),
-            )
+    disconnect_conn(q, conn, stream, [
+    EventPattern('dbus-signal', signal='Closed',
+        path=path1[len(tp_path_prefix):]),
+    EventPattern('dbus-signal', signal='Closed',
+        path=path2[len(tp_path_prefix):]),
+    EventPattern('dbus-signal', signal='ChannelClosed', args=[path1]),
+    EventPattern('dbus-signal', signal='ChannelClosed', args=[path2])])
 
 if __name__ == '__main__':
     exec_test(test)

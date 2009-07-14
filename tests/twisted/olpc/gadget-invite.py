@@ -6,7 +6,7 @@ import dbus
 
 from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream,\
-    make_muc_presence
+    make_muc_presence, disconnect_conn
 import constants as cs
 
 from twisted.words.xish import xpath
@@ -121,11 +121,8 @@ def test(q, bus, conn, stream):
     presence = simple_presence_iface.GetPresences([handle])
     assert presence[handle] == (7, 'unknown', '')
 
-    conn.Disconnect()
-
     # PEP activity update
-    event = q.expect('stream-iq')
-    acknowledge_iq(stream, event.stanza)
+    disconnect_conn(q, conn, stream, [EventPattern('stream-iq')])[0]
 
 if __name__ == '__main__':
     exec_test(test)

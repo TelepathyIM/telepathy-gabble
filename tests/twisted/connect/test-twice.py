@@ -11,7 +11,7 @@ import servicetest
 
 from gabbletest import (
     make_connection, make_stream, JabberAuthenticator, XmppAuthenticator,
-    XmppXmlStream, JabberXmlStream)
+    XmppXmlStream, JabberXmlStream, disconnect_conn)
 
 def test(q, bus, conn1, conn2, stream1, stream2):
     # Connection 1
@@ -31,14 +31,10 @@ def test(q, bus, conn1, conn2, stream1, stream2):
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     # Disconnection 1
-    conn1.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+    disconnect_conn(q, conn1, stream1)
 
     # Disconnection 2
-    conn2.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
+    disconnect_conn(q, conn2, stream2)
 
 if __name__ == '__main__':
     queue = servicetest.IteratingEventQueue(None)
@@ -74,12 +70,4 @@ if __name__ == '__main__':
     stream2 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
                           port=4343)
 
-    try:
-        test(queue, bus, conn1, conn2, stream1, stream2)
-    finally:
-        try:
-            conn1.Disconnect()
-            conn2.Disconnect()
-        except dbus.DBusException, e:
-            pass
-
+    test(queue, bus, conn1, conn2, stream1, stream2)

@@ -4,8 +4,8 @@ and returns an error when Disconnect is called and there are
 incomplete requests.
 """
 
-from gabbletest import exec_test
-from servicetest import make_channel_proxy, call_async, sync_dbus
+from gabbletest import exec_test, disconnect_conn
+from servicetest import make_channel_proxy, call_async, sync_dbus, EventPattern
 import jingletest
 
 import constants as cs
@@ -44,16 +44,11 @@ def test(q, bus, conn, stream):
     call_async(q, media_iface, 'RequestStreams', handle,
         [cs.MEDIA_STREAM_TYPE_AUDIO])
 
-    conn.Disconnect()
+    event = disconnect_conn(q, conn, stream,
+        [EventPattern('dbus-error', method='RequestStreams')])[0]
 
     # RequestStreams should now return NotAvailable
-    event = q.expect('dbus-error', method='RequestStreams')
     assert event.error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
-
 
 if __name__ == '__main__':
     exec_test(test, timeout=10)

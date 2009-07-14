@@ -3,7 +3,7 @@ Test getting relay from Google jingleinfo
 """
 
 from gabbletest import exec_test, make_result_iq, sync_stream, \
-        GoogleXmlStream
+        GoogleXmlStream, disconnect_conn
 from servicetest import make_channel_proxy, tp_path_prefix, \
         EventPattern, call_async, sync_dbus
 import jingletest
@@ -306,7 +306,8 @@ def test_too_slow(q, bus, conn, stream, httpd, media_chan, too_slow):
         media_chan.RemoveMembers([conn.GetSelfHandle()], "",
             dbus_interface=cs.CHANNEL_IFACE_GROUP)
     elif too_slow == TOO_SLOW_DISCONNECT:
-        conn.Disconnect()
+        disconnect_conn(q, conn, stream)
+        return
 
     q.expect('dbus-signal', signal='Closed',
         path=media_chan.object_path[len(tp_path_prefix):])
@@ -322,10 +323,6 @@ def test_too_slow(q, bus, conn, stream, httpd, media_chan, too_slow):
 
         # Make a misc method call to check that Gabble's still alive.
         sync_dbus(bus, q, conn)
-
-        conn.Disconnect()
-        q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 
 if __name__ == '__main__':
     exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True),

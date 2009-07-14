@@ -3,7 +3,7 @@
 import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolClientFactory, unwrap, assertEquals
-from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence, send_error_reply
+from gabbletest import make_result_iq, acknowledge_iq, make_muc_presence, send_error_reply, disconnect_conn
 import constants as cs
 import ns
 import tubetestutil as t
@@ -262,11 +262,8 @@ def test(q, bus, conn, stream, bytestream_cls,
     assertEquals(cs.CANCELLED, e.args[1])
 
     # OK, we're done
-    conn.Disconnect()
-
-    q.expect_many(
-        EventPattern('dbus-signal', signal='TubeClosed', args=[stream_tube_id]),
-        EventPattern('dbus-signal', signal='StatusChanged', args=[2, 1]))
+    disconnect_conn(q, conn, stream,
+        [EventPattern('dbus-signal', signal='TubeClosed', args=[stream_tube_id])])
 
 if __name__ == '__main__':
     t.exec_stream_tube_test(test)

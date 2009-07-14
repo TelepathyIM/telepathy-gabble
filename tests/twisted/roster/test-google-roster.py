@@ -1,4 +1,3 @@
-
 """
 Test workarounds for gtalk
 """
@@ -44,47 +43,89 @@ def test(q, bus, conn, stream):
         if chan_name == 'subscribe':
             break
 
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'ContactList')
+    assertLength(0, chan.Group.GetMembers())
+
+    contact = 'bob@foo.com'
+    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
+
     # request subscription
-    chan = bus.get_object(conn.bus_name, path)
-    group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
-    assert group_iface.GetMembers() == []
-    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
-    group_iface.AddMembers([handle], '')
+    chan.Group.AddMembers([handle], '')
 
     event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
     item = event.query.firstChildElement()
-    assert item["jid"] == 'bob@foo.com'
+    assertEquals(contact, item['jid'])
 
     acknowledge_iq(stream, event.stanza)
 
     # send empty roster item
-    iq = make_set_roster_iq(stream, 'test@localhost/Resource',
-            item["jid"], "none", False)
+    iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
+            "none", False)
     stream.send(iq)
 
     event = q.expect('stream-presence', presence_type='subscribe')
 
-    # send pending roster item
-    iq = make_set_roster_iq(stream, 'test@localhost/Resource', event.to,
+    # Google's server appears to be buggy. If you send
+    #   <presence type='subscribe'/>
+    # it sends:
+    #  1. A roster update with ask="subscribe";
+    #  2. Another roster update, without ask="subscribe";
+    #  3. A third roster update, with ask="subscribe".
+    # Gabble should work around this, to avoid spuriously informing the UI that
+    # the subscription request was declined.
+
+    # Send roster update 1: none, ask=subscribe
+    iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
             "none", True)
     stream.send(iq)
 
-    # First error point, resetting from none+ask:subscribe to none, and back
-    # In the real world this triggers bogus 'subscribe authorization rejected'
-    # messages
+    def is_stored(event):
+        return event.path.endswith('/stored')
 
-    # send pending roster item
-    iq = make_set_roster_iq(stream, 'test@localhost/Resource', event.to,
+    def is_subscribe(event):
+        return event.path.endswith('/subscribe')
+
+    # Gabble should report this update to the UI.
+    event = q.expect('dbus-signal', signal='MembersChanged',
+        args=['', [handle], [], [], [], 0, cs.GC_REASON_NONE],
+        predicate=is_stored)
+
+    q.expect('dbus-signal', signal='MembersChanged',
+        args=['', [], [], [], [handle], 0, cs.GC_REASON_NONE],
+        predicate=is_subscribe)
+
+    # Gabble shouldn't report any changes to subscribe's members in response to
+    # the next two roster updates.
+    change_event = [EventPattern('dbus-signal', signal='MembersChanged',
+        predicate=is_subscribe)]
+    q.forbid_events(change_event)
+
+    # Send roster update 2: none
+    iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
             "none", False)
     stream.send(iq)
 
-    # send pending roster item
-    iq = make_set_roster_iq(stream, 'test@localhost/Resource', event.to,
+    # Send roster update 3: none, ask=subscribe
+    iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
             "none", True)
     stream.send(iq)
 
-    # send accepted roster item
-    iq = make_set_roster_iq(stream, 'test@localhost/Resource', event.to,
+    # Neither of those should have been signalled as a change to the subscribe
+    # list
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
+    q.unforbid_events(change_event)
+
+    # Also, when the contact accepts the subscription request, they flicker
+    # similarly:
+    #  1. subscription='to'
+    #  2. subscription='none' ask='subscribe'
+    #  3. subscription='to'
+    # Again, Gabble should work around this rather than informing the UI that a
+    # subscription request was accepted twice.
+
+    # Send roster update 1: subscription=to (accepted)
+    iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
             "to", False)
     stream.send(iq)
 
@@ -93,35 +134,32 @@ def test(q, bus, conn, stream):
     presence['type'] = 'subscribed'
     stream.send(presence)
 
-    # Second error point, demoting from to to none+ask:subscribe, and back
-    # In the real world this triggers multiple bogus 'subscribe authorization
-    # granted' messages instead of just one
+    # Gabble should report this update to the UI.
+    q.expect('dbus-signal', signal='MembersChanged',
+        args=['', [handle], [], [], [], 0, cs.GC_REASON_NONE],
+        predicate=is_subscribe)
 
-    # send pending roster item
-    iq = make_set_roster_iq(stream, 'test@localhost/Resource', event.to,
+    # Gabble shouldn't report any changes to subscribe's members in response to
+    # the next two roster updates.
+    change_event = [EventPattern('dbus-signal', signal='MembersChanged',
+        predicate=is_subscribe)]
+    q.forbid_events(change_event)
+
+    # Send roster update 2: subscription=none, ask=subscribe (pending again)
+    iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
             "none", True)
     stream.send(iq)
 
-    # send accepted roster item
-    iq = make_set_roster_iq(stream, 'test@localhost/Resource', event.to,
+    # Send roster update 3: subscript=to (accepted again)
+    iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
             "to", False)
     stream.send(iq)
 
-    event = q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [2], [], [], [], 0, 0])
-    assert(event.path.endswith('/stored'))
-
-    event = q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [], [], [], [2], 0, 0])
-    assert(event.path.endswith('/subscribe'))
-
-    event = q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [2], [], [], [], 0, 0])
-    assert(event.path.endswith('/subscribe'))
-
-    # If there's an assertion here, that means we've got a few MembersChanged
-    # signals too many (either from the first, or second point of error).
-    q.forbid_events([EventPattern('dbus-signal', signal='MembersChanged')])
+    # Neither of those should have been signalled as a change to the subscribe
+    # list
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
+    q.unforbid_events(change_event)
 
 if __name__ == '__main__':
     exec_test(test)

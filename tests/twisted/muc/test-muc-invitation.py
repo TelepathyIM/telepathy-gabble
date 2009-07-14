@@ -82,6 +82,9 @@ def test(q, bus, conn, stream):
     assert status
     assert status.children[0] == u'success'
 
+    # We are added as remote pending while joining the room. The inviter (Bob)
+    # is removed for now. It will be re-added with his channel specific handle
+    # once we have joined.
     assert event2.args == ['', [], [bob_handle], [],
             [room_self_handle], 0, cs.GC_REASON_INVITED]
 

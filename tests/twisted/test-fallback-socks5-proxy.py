@@ -77,10 +77,6 @@ def test(q, bus, conn, stream):
             assert node['port'] == proxy_port.pop(node['jid'])
     assert proxy_port == {}
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-    return True
-
 if __name__ == '__main__':
     exec_test(test, params={'fallback-socks5-proxies':
         ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']})

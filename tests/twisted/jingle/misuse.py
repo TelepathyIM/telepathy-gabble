@@ -42,8 +42,5 @@ def test(q, bus, conn, stream):
     except DBusException, e:
         assertEquals(cs.NOT_AVAILABLE, e.get_dbus_name())
 
-    conn.Disconnect()
-
-
 if __name__ == '__main__':
     exec_test(test)

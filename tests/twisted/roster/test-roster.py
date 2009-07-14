@@ -38,9 +38,5 @@ def test(q, bus, conn, stream):
     expect_list_channel(q, bus, conn, 'stored',
         ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

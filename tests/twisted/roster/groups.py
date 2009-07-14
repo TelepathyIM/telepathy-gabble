@@ -44,9 +44,5 @@ def test(q, bus, conn, stream):
     expect_group_channel(q, bus, conn, 'women', ['amy@foo.com'])
     expect_group_channel(q, bus, conn, 'men', ['bob@foo.com', 'che@foo.com'])
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

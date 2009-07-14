@@ -18,10 +18,5 @@ def test(q, bus, conn, stream):
 
     conn.Presence.SetStatus({'away':{'message':'Christmas lunch!'}})
 
-    # If Gabble didn't crash, we're done.
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)

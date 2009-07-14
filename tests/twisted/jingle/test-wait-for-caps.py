@@ -31,9 +31,6 @@ def test(q, bus, conn, stream):
     run_test(q, bus, conn, stream, jt, True)
     run_test(q, bus, conn, stream, jt2, False)
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 def run_test(q, bus, conn, stream, jt, request_before_presence):
     """
     Requests streams on a media channel to jt.remote_jid, either before their

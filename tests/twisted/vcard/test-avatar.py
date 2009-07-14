@@ -31,9 +31,5 @@ def test(q, bus, conn, stream):
     q.expect('dbus-return', method='RequestAvatar',
         value=('hello', 'image/png'))
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

@@ -100,13 +100,5 @@ def test(q, bus, conn, stream):
             assert key in echo[i], (i, key, echo)
             assert echo[i][key] == greeting[i][key], (i, key, echo, greeting)
 
-
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
-
 if __name__ == '__main__':
     exec_test(test)
-

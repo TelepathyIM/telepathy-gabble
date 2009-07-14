@@ -257,12 +257,5 @@ def test(q, bus, conn, stream):
     assertLength(1, status)
     assertEquals(status[0].children[0], u'booo')
 
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
-
 if __name__ == '__main__':
     exec_test(test)
-

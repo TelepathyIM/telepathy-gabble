@@ -67,10 +67,5 @@ def test(q, bus, conn, stream):
     # their JID.
     assertEquals(a, 'bob@foo.com')
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED]),
-
 if __name__ == '__main__':
     exec_test(test)
-

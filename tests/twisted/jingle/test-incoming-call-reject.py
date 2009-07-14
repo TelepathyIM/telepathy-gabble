@@ -101,13 +101,6 @@ def test(jp, q, bus, conn, stream, busy):
             r = "/jingle/reason/cancel"
         assert xpath.queryForNodes(r, jingle) is not None, (jingle.toXml(), r)
 
-    # Tests completed, close the connection
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
-
-
 if __name__ == '__main__':
     test_all_dialects(test_busy)
     test_all_dialects(test_no_reason)

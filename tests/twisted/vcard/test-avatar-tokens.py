@@ -53,9 +53,5 @@ def test(q, bus, conn, stream):
     tokens = sorted(tokens.items())
     assert tokens == [(2, 'SHA1SUM-FOR-AMY'), (3, 'SHA1SUM-FOR-BOB'), (4, u'')]
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

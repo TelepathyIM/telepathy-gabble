@@ -39,9 +39,5 @@ def test(q, bus, conn, stream):
     assert maxh == 96, maxh
     assert maxb == 8192, maxb
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

@@ -50,7 +50,6 @@ def test(q, bus, conn, stream):
 
     iq['type'] = 'result'
     stream.send(iq)
-    conn.Disconnect()
 
 if __name__ == '__main__':
     exec_test(test)

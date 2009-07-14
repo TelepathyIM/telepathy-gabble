@@ -55,9 +55,6 @@ def test(q, bus, conn, stream, call_error_on):
     # Gabble doesn't fall over, and the channel closes nicely.
     e = q.expect('dbus-signal', signal='Closed', path=media_chan_suffix)
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(partial(test, call_error_on='stream'))
     exec_test(partial(test, call_error_on='session'))

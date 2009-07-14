@@ -51,10 +51,5 @@ def test(q, bus, conn, stream):
 
     assert message[1]['content'] == 'hello', message
 
-
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

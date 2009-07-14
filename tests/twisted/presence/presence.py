@@ -46,9 +46,5 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='PresencesChanged')
     assert event.args[0] == { amy_handle: (2, 'chat', 'I may have been drinking') }
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

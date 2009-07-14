@@ -345,10 +345,5 @@ def test(q, bus, conn, stream, bytestream_cls,
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'))
 
-    # OK, we're done
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     t.exec_stream_tube_test(test)

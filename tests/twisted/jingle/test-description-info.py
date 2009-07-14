@@ -198,9 +198,6 @@ def test(q, bus, conn, stream, send_early_description_info=False):
         xpath.queryForNodes("/iq/jingle[@action='session-terminate']",
             x.stanza))
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
     exec_test(early_description_info)

@@ -226,13 +226,5 @@ def test(q, bus, conn, stream):
         *(closes + removeds)
     )
 
-    # Test completed, close the connection.
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
-
-
 if __name__ == '__main__':
     exec_test(test)
-

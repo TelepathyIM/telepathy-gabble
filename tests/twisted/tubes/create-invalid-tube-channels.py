@@ -47,9 +47,5 @@ def test(q, bus, conn, stream):
 
     check_no_tubes(conn_props)
 
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)

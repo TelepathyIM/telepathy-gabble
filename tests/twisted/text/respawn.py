@@ -167,9 +167,5 @@ def test(q, bus, conn, stream):
     else:
         raise AssertionError("Why won't it die?")
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

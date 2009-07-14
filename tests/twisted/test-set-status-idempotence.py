@@ -99,9 +99,6 @@ def run_test(q, bus, conn, stream, set_status_func):
         'org.freedesktop.Telepathy.Connection/contact-id':
             'test@localhost'}}
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test_simple_presence)
     exec_test(test_presence)

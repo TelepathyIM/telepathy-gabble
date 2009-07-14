@@ -24,9 +24,5 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='AliasesChanged',
         args=[[(1, u'lala')]])
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

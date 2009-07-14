@@ -13,9 +13,6 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='PresenceUpdate',
         args=[{1L: (0L, {u'available': {}})}])
     q.expect('dbus-signal', signal='StatusChanged', args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
-    return True
 
 if __name__ == '__main__':
     exec_test(test)

@@ -124,9 +124,5 @@ def test(q, bus, conn, stream):
     chan = bus.get_object(conn.bus_name, path)
     chan.Close()
 
-    # OK, we're done
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)

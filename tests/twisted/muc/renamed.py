@@ -81,9 +81,5 @@ def test(q, bus, conn, stream):
         (handle_owners, toofer, handle_owners[toofer], self_handle)
     assert handle_owners[liz] == 0, (handle_owners, liz)
 
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)

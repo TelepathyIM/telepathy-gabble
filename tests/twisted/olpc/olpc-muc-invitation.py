@@ -233,9 +233,5 @@ def test(q, bus, conn, stream):
     assert chat_handle == handles['chat']
     assert props == {'color': '#f00baa,#f00baa', 'private' : True}
 
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)

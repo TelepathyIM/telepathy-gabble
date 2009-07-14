@@ -34,9 +34,6 @@ def test(q, bus, conn, stream):
     assert event.args[1] == cs.CHANNEL_TYPE_TEXT
     jid = conn.InspectHandles(cs.HT_CONTACT, [event.args[3]])[0]
     assert jid == 'bob@foo.com'
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
     exec_test(test)
-

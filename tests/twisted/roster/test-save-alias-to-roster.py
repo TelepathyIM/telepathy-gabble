@@ -69,10 +69,5 @@ def test(q, bus, conn, stream):
     assert item['jid'] == 'bob@foo.com'
     assert item['name'] == 'Bobby'
 
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

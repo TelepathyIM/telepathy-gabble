@@ -293,9 +293,6 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
 
     # Tests completed, close the connection
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 def test_too_slow(q, bus, conn, stream, httpd, media_chan, too_slow):
     """
     Regression test for a bug where if the channel was closed before the HTTP

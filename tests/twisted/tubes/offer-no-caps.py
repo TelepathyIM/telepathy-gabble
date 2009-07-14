@@ -108,7 +108,5 @@ def test(q, bus, conn, stream):
     e = q.expect('dbus-error', method='Offer').error
     assert e.get_dbus_name() == cs.NOT_AVAILABLE, e.get_dbus_name()
 
-    conn.Disconnect()
-
 if __name__ == '__main__':
     exec_test(test)

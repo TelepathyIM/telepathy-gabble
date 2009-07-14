@@ -100,10 +100,5 @@ def test(q, bus, conn, stream):
     assert all[u'HandleOwners'] == { 2: 1, 3: 0, 4: 0, 5: 6, 7: 8 }, all
     assert (all[u'GroupFlags'] & 2048) == 2048, all.get('GroupFlags')
 
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

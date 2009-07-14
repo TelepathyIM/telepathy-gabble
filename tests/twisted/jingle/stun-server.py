@@ -175,13 +175,6 @@ def test(q, bus, conn, stream,
                     e.query['action'] == 'session-terminate'),
             EventPattern('dbus-signal', signal='Closed'),
             )
-    # Tests completed, close the connection
-
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
-
 
 if __name__ == '__main__':
     exec_test(lambda q, b, c, s: test(q, b, c, s,

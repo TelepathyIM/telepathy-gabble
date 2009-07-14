@@ -47,9 +47,6 @@ def test(q, bus, conn, stream):
     props_iface.Set(iface, 'Enabled', False)
     snapshot = list(messages)
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
     assert snapshot == messages
 
 if __name__ == '__main__':

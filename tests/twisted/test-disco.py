@@ -22,9 +22,5 @@ def test(q, bus, conn, stream):
     elem = event.stanza
     assert elem['id'] == '1'
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

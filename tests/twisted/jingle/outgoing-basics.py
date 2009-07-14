@@ -253,9 +253,6 @@ def worker(jp, q, bus, conn, stream, variant):
     # Check that we're the actor
     assertEquals(self_handle, mc_event.args[5])
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 def rccs(q, bus, conn, stream):
     """
     Tests that the connection's RequestableChannelClasses for StreamedMedia are

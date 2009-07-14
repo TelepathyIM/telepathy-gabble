@@ -25,10 +25,6 @@ def test(q, bus, conn, stream):
     test_join(q, bus, conn, stream, 'chat@conf.localhost', False)
     test_join(q, bus, conn, stream, 'chien@conf.localhost', True)
 
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     """
     Tells Gabble to join a MUC, but make the first nick it tries conflict with

@@ -311,9 +311,5 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
     offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls)
     offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls, access_control)
 
-    # OK, we're done
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     t.exec_dbus_tube_test(test)

@@ -249,12 +249,5 @@ def worker(jp, q, bus, conn, stream):
         xpath.queryForNodes("/iq/jingle[@action='session-terminate']",
             x.stanza))
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
-
-
 if __name__ == '__main__':
     test_dialects(worker, [JingleProtocol015, JingleProtocol031])
-

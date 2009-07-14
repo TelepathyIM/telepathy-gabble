@@ -101,11 +101,5 @@ def test(q, bus, conn, stream):
         dbus_interface=cs.PROPERTIES_IFACE)
     assertEquals(sockets, stream_tubes_types)
 
-    # OK, we're done
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
-
 if __name__ == '__main__':
     exec_test(test)

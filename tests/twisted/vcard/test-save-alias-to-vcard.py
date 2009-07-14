@@ -24,9 +24,5 @@ def test(q, bus, conn, stream):
 
     expect_and_handle_set_vcard(q, stream, check_vcard)
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test, params={'alias': 'Some Guy'})
-

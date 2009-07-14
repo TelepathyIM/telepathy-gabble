@@ -106,7 +106,5 @@ def test(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='CapabilitiesChanged')
     assertContains(streamed_media_caps, e.args[0])
 
-    conn.Disconnect()
-
 if __name__ == '__main__':
     exec_test(test)

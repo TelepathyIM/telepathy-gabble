@@ -74,10 +74,5 @@ def test(q, bus, conn, stream):
         # the proxy is not announced because we are in a muc
         assert jid != 'proxy.localhost'
 
-    # OK, we're done
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)

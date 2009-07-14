@@ -99,9 +99,6 @@ def worker(jp, q, bus, conn, stream):
     e = q.expect('stream-iq',
         predicate=jp.action_predicate('session-terminate'))
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 def test031(q, bus, conn, stream):
     return worker(JingleProtocol031(),q, bus, conn, stream)
 

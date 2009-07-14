@@ -106,10 +106,6 @@ def test(q, bus, conn, stream, access_control):
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'))
 
-    # OK, we're done
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     # We can't use t.exec_dbus_tube_test() as we can use only the muc bytestream
     exec_test(lambda q, bus, conn, stream:

@@ -141,10 +141,5 @@ def test(q, bus, conn, stream):
     _test_with_hash(q, bus, conn, stream, 'bilbo3@foo.com/Foo', client,
         False)
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-
 if __name__ == '__main__':
     exec_test(test)
-

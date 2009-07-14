@@ -43,9 +43,5 @@ def test(q, bus, conn, stream):
         r2.error.get_dbus_name()
     assert r2.error.args[0] == 'contact vCard has no photo'
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

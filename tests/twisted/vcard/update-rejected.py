@@ -36,7 +36,5 @@ def test(q, bus, conn, stream):
     assert event.error.get_dbus_name() == cs.INVALID_ARGUMENT, \
         event.error.get_dbus_name()
 
-    conn.Disconnect()
-
 if __name__ == '__main__':
     exec_test(test)

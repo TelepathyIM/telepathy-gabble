@@ -65,8 +65,5 @@ def test(jp, q, bus, conn, stream):
         assert xpath.queryForNodes("/jingle/reason/timeout", jingle) is not None, \
             jingle.toXml()
 
-    conn.Disconnect()
-
-
 if __name__ == '__main__':
     test_all_dialects(test)

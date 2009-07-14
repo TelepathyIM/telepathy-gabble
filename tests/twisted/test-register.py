@@ -38,9 +38,6 @@ def test_success(q, bus, conn, stream):
 
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
 
 def test_conflict(q, bus, conn, stream):
     iq = connect_and_send_form(q, conn, stream)

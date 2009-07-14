@@ -32,12 +32,6 @@ def test(q, bus, conn, stream):
     test_create_ensure(q, conn, bus, stream, jids[0], room_handles[0])
     test_ensure_ensure(q, conn, bus, stream, jids[1], room_handles[1])
 
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
-
 def test_create_ensure(q, conn, bus, stream, room_jid, room_handle):
     # Call both Create and Ensure for the same channel.
     call_async(q, conn.Requests, 'CreateChannel',

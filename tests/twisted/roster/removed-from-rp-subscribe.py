@@ -93,8 +93,5 @@ def test(q, bus, conn, stream):
             path=stored.object_path[len(tp_path_prefix):]),
         )
 
-    # Arrivederci!
-    conn.Disconnect()
-
 if __name__ == '__main__':
     exec_test(test)

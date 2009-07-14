@@ -88,9 +88,5 @@ def test(q, bus, conn, stream):
     # body
     assert event.args[5] == 'hello'
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

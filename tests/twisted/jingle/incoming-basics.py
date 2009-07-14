@@ -180,9 +180,5 @@ def test(jp, q, bus, conn, stream):
     jt.terminate()
     q.expect('dbus-signal', signal='Closed', path=path[len(tp_path_prefix):])
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     test_all_dialects(test)
-

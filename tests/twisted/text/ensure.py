@@ -33,10 +33,6 @@ def test(q, bus, conn, stream):
     test_ensure_ensure(q, conn, self_handle, jids[0], handles[0])
     test_request_ensure(q, conn, self_handle, jids[1], handles[1])
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-
 def test_ensure_ensure(q, conn, self_handle, jid, handle):
     """
     Test ensuring a non-existant channel twice.  The first call should succeed

@@ -60,8 +60,5 @@ def test(jp, q, bus, conn, stream):
 
     q.expect('dbus-signal', signal='Close') #XXX - match against the path
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     test_all_dialects(test)

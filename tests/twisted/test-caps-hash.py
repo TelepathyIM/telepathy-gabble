@@ -297,10 +297,5 @@ def test(q, bus, conn, stream):
             'user4@example.com/Res', 6L, 7L,
             'http://telepathy.freedesktop.org/fake-client4', 1)
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-
 if __name__ == '__main__':
     exec_test(test)
-

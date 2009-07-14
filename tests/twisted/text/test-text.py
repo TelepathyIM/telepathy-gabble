@@ -166,10 +166,5 @@ def test(q, bus, conn, stream):
     assert sent.args[1] == 0, sent.args # message type normal
     assert sent.args[2] == u'goodbye', sent.args
 
-
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

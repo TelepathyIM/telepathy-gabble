@@ -396,9 +396,5 @@ def test(q, bus, conn, stream):
     properties = xpath.queryForNodes('/activities/properties', activities[0])
     assert properties is None, repr(properties)
 
-    conn.Disconnect()
-
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)

@@ -90,13 +90,8 @@ def worker(jp, q, bus, conn, stream):
 
     e = q.expect('dbus-signal', signal='Close')
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-
 def test031(q, bus, conn, stream):
     return worker(JingleProtocol031(),q, bus, conn, stream)
 
 if __name__ == '__main__':
     exec_test(test031)
-

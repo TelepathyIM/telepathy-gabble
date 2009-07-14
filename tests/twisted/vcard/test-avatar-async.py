@@ -45,9 +45,5 @@ def test(q, bus, conn, stream):
     assert event.args[2] == 'hello'
     assert event.args[3] == 'image/png'
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 if __name__ == '__main__':
     exec_test(test)
-

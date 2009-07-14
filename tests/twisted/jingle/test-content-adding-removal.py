@@ -154,11 +154,6 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
     # The peer can ack the terminate too, just for completeness.
     stream.send(make_result_iq(stream, st.stanza))
 
-    # Test completed, close the connection
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-
 if __name__ == '__main__':
     test_dialects(gabble_terminates, [JingleProtocol015, JingleProtocol031])
     test_dialects(peer_terminates, [JingleProtocol015, JingleProtocol031])

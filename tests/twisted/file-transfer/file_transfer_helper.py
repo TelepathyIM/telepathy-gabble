@@ -116,8 +116,7 @@ class FileTransferTest(object):
         self.q.expect('dbus-signal', signal='Closed')
 
     def done(self):
-        self.conn.Disconnect()
-        self.q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+        pass
 
     def test(self, q, bus, conn, stream):
         self.q = q

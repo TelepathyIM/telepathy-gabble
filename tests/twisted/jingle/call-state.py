@@ -144,7 +144,6 @@ def test(jp, q, bus, conn, stream):
     # The rest of the test concerns things we only support in the glorious
     # modern Jingle future.
     if not jp.is_modern_jingle():
-        conn.Disconnect()
         return
 
     # The other person puts us on hold.  Gabble should ack the session-info IQ,

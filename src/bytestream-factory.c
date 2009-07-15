@@ -1493,6 +1493,11 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
                              gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+
+  if (priv->dispose_has_run)
+    return;
 
   if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
     {

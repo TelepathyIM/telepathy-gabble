@@ -1020,8 +1020,7 @@ manager_patch_vcard (GabbleVCardManager *manager,
   /* We'll save the patched vcard, and if the server says
    * we're ok, put it into the cache. But we want to leave the
    * original vcard in the cache until that happens. */
-  lm_message_node_ref (patched_vcard);
-  priv->patched_vcard = patched_vcard;
+  priv->patched_vcard = lm_message_node_ref (patched_vcard);
 
   priv->edit_pipeline_item = gabble_request_pipeline_enqueue (
       priv->connection->req_pipeline, msg, 0, replace_reply_cb, manager);
@@ -1103,8 +1102,7 @@ pipeline_reply_cb (GabbleConnection *conn,
     }
 
   /* Put the message in the cache */
-  lm_message_node_ref (vcard_node);
-  entry->vcard_node = vcard_node;
+  entry->vcard_node = lm_message_node_ref (vcard_node);
 
   entry->expires = time (NULL) + VCARD_CACHE_ENTRY_TTL;
   tp_heap_add (priv->timed_cache, entry);

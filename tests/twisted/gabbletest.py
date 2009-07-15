@@ -13,7 +13,7 @@ import ns
 import constants as cs
 import servicetest
 from servicetest import (
-    assertEquals, assertLength, assertContains, wrap_channel, EventPattern,
+    assertEquals, assertLength, assertContains, wrap_channel, EventPattern, call_async
     )
 import twisted
 from twisted.words.xish import domish, xpath
@@ -364,13 +364,17 @@ def install_colourer():
     return sys.stdout
 
 def disconnect_conn(q, conn, stream, expected=[]):
-    conn.Disconnect()
+    call_async(q, conn, 'Disconnect')
 
-    tmp = expected + [EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])]
+    tmp = expected + [
+        EventPattern('dbus-signal', signal='StatusChanged', args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED]),
+        EventPattern('stream-closed')]
 
     events = q.expect_many(*tmp)
-    return events[:-1]
+
+    stream.sendFooter()
+    q.expect('dbus-return', method='Disconnect')
+    return events[:-2]
 
 def exec_test_deferred(funs, params, protocol=None, timeout=None,
                         authenticator=None):

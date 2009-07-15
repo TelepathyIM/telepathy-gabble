@@ -418,10 +418,19 @@ def exec_test_deferred(funs, params, protocol=None, timeout=None,
         # please ignore the POSIX behind the curtain
         d.addBoth((lambda *args: os._exit(1)))
 
+    # Does the Connection object still exist?
+    if not bus.name_has_owner(conn.object.bus_name):
+        # Connection has already been disconnected and destroyed
+        return
+
     try:
-        disconnect_conn(queue, conn, stream)
+        if conn.GetStatus() == cs.CONN_STATUS_CONNECTED:
+            # Connection is connected, properly disconnect it
+            disconnect_conn(queue, conn, stream)
+        else:
+            # Connection is not connected, call Disconnect() to destroy it
+            conn.Disconnect()
     except dbus.DBusException, e:
-        # Connection has already been disconnected
         pass
 
 def exec_tests(funs, params=None, protocol=None, timeout=None,

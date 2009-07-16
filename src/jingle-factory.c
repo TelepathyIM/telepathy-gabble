@@ -235,19 +235,11 @@ take_stun_server (GabbleJingleFactory *self,
       G_OBJECT (self));
 }
 
-/*
- * jingle_info_cb
- *
- * Called by loudmouth when we get an incoming <iq>. This handler
- * is concerned only with Jingle info queries.
- */
+
 static LmHandlerResult
-jingle_info_cb (LmMessageHandler *handler,
-                LmConnection *lmconn,
-                LmMessage *message,
-                gpointer user_data)
+got_jingle_info_stanza (GabbleJingleFactory *fac,
+    LmMessage *message)
 {
-  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (user_data);
   GabbleJingleFactoryPrivate *priv = fac->priv;
   LmMessageSubType sub_type;
   LmMessageNode *query_node, *node;
@@ -404,6 +396,35 @@ jingle_info_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+/*
+ * jingle_info_cb
+ *
+ * Called by loudmouth when we get an incoming <iq>. This handler
+ * is concerned only with Jingle info queries.
+ */
+static LmHandlerResult
+jingle_info_cb (LmMessageHandler *handler,
+                LmConnection *lmconn,
+                LmMessage *message,
+                gpointer user_data)
+{
+  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (user_data);
+
+  return got_jingle_info_stanza (fac, message);
+}
+
+static LmHandlerResult
+jingle_info_reply_cb (GabbleConnection *conn,
+    LmMessage *sent_msg,
+    LmMessage *reply_msg,
+    GObject *factory_obj,
+    gpointer user_data)
+{
+  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (factory_obj);
+
+  return got_jingle_info_stanza (fac, reply_msg);
+}
+
 static void
 jingle_info_send_request (GabbleJingleFactory *fac)
 {
@@ -423,7 +444,8 @@ jingle_info_send_request (GabbleJingleFactory *fac)
   node = lm_message_node_add_child (msg->node, "query", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_GOOGLE_JINGLE_INFO);
 
-  if (!_gabble_connection_send (priv->conn, msg, &error))
+  if (!_gabble_connection_send_with_reply (priv->conn, msg,
+        jingle_info_reply_cb, G_OBJECT (fac), fac, &error))
     {
       DEBUG ("jingle info send failed: %s\n", error->message);
       g_error_free (error);

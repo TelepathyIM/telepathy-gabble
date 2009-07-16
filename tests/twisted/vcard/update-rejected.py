@@ -7,7 +7,7 @@ being sent over the bus.
 from twisted.words.xish import domish
 
 from servicetest import call_async
-from gabbletest import exec_test, expect_and_handle_get_vcard, send_error_reply
+from gabbletest import exec_test, expect_and_handle_get_vcard, send_error_reply, sync_stream
 
 import ns
 import constants as cs
@@ -16,9 +16,12 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     expect_and_handle_get_vcard(q, stream)
+    sync_stream(q, stream)
 
     call_async(q, conn.Avatars, 'SetAvatar', 'william shatner',
         'image/x-actor-name')
+    # Gabble request the last version of the vCard before changing it
+    expect_and_handle_get_vcard(q, stream)
 
     set_vcard_event = q.expect('stream-iq', query_ns=ns.VCARD_TEMP,
         query_name='vCard', iq_type='set')

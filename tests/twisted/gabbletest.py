@@ -301,6 +301,7 @@ class GoogleXmlStream(BaseXmlStream):
             feature['var'] = ns.GOOGLE_JINGLE_INFO
 
             iq['type'] = 'result'
+            iq['from'] = 'localhost'
             self.send(iq)
 
 def make_connection(bus, event_func, params=None):

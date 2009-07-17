@@ -1326,7 +1326,15 @@ got_roster_iq (GabbleRoster *roster,
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (google_roster && !_google_roster_item_should_keep (jid, item))
+              if (google_roster &&
+                  /* Don't hide contacts from stored if they're remote pending.
+                   * This works around Google Talk flickering ask="subscribe"
+                   * when you try to subscribe to someone; see
+                   * test-google-roster.py.
+                   */
+                  !tp_handle_set_is_member (sub_chan->group.remote_pending,
+                      handle) &&
+                  !_google_roster_item_should_keep (jid, item))
                 tp_intset_add (stored_rem, handle);
               else
                 tp_intset_add (stored_add, handle);

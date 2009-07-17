@@ -140,11 +140,15 @@ def test(q, bus, conn, stream):
             predicate=is_subscribe),
         )
 
-    # Gabble shouldn't report any changes to subscribe's members in response to
-    # the next two roster updates.
-    change_event = [EventPattern('dbus-signal', signal='MembersChanged',
-        predicate=is_subscribe)]
-    q.forbid_events(change_event)
+    # Gabble shouldn't report any changes to subscribe or stored's members in
+    # response to the next two roster updates.
+    change_events = [
+        EventPattern('dbus-signal', signal='MembersChanged',
+            predicate=is_subscribe),
+        EventPattern('dbus-signal', signal='MembersChanged',
+            predicate=is_stored),
+        ]
+    q.forbid_events(change_events)
 
     # Send roster update 2: none
     iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
@@ -160,7 +164,7 @@ def test(q, bus, conn, stream):
     # list
     sync_stream(q, stream)
     sync_dbus(bus, q, conn)
-    q.unforbid_events(change_event)
+    q.unforbid_events(change_events)
 
     # Also, when the contact accepts the subscription request, they flicker
     # similarly:
@@ -185,11 +189,9 @@ def test(q, bus, conn, stream):
         args=['', [handle], [], [], [], 0, cs.GC_REASON_NONE],
         predicate=is_subscribe)
 
-    # Gabble shouldn't report any changes to subscribe's members in response to
-    # the next two roster updates.
-    change_event = [EventPattern('dbus-signal', signal='MembersChanged',
-        predicate=is_subscribe)]
-    q.forbid_events(change_event)
+    # Gabble shouldn't report any changes to subscribe or stored's members in
+    # response to the next two roster updates.
+    q.forbid_events(change_events)
 
     # Send roster update 2: subscription=none, ask=subscribe (pending again)
     iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
@@ -205,7 +207,7 @@ def test(q, bus, conn, stream):
     # list
     sync_stream(q, stream)
     sync_dbus(bus, q, conn)
-    q.unforbid_events(change_event)
+    q.unforbid_events(change_events)
 
 if __name__ == '__main__':
     exec_test(test, protocol=GoogleXmlStream)

@@ -18,6 +18,9 @@ Fixes:
 * fd.o#22535: Gabble no longer crashes if you disconnect while it's trying to
   start a Google relay session for a call.
 
+* fd.o#22629: Gabble no longer crashes if the initiator of a tube receives data
+  before it is connected to the application's socket.
+
 telepathy-gabble 0.7.30 (2009-06-29)
 ====================================
 

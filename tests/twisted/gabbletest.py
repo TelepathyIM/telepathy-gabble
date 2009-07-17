@@ -529,19 +529,24 @@ def make_presence(_from, to='test@localhost', type=None, status=None, caps=None)
 
     return presence
 
-def expect_list_channel(q, bus, conn, name, contacts):
+def expect_list_channel(q, bus, conn, name, contacts, lp_contacts=[],
+                        rp_contacts=[]):
     return expect_contact_list_channel(q, bus, conn, cs.HT_LIST, name,
-        contacts)
+        contacts, lp_contacts=lp_contacts, rp_contacts=rp_contacts)
 
-def expect_group_channel(q, bus, conn, name, contacts):
+def expect_group_channel(q, bus, conn, name, contacts, lp_contacts=[],
+                         rp_contacts=[]):
     return expect_contact_list_channel(q, bus, conn, cs.HT_GROUP, name,
-        contacts)
+        contacts, lp_contacts=lp_contacts, rp_contacts=rp_contacts)
 
-def expect_contact_list_channel(q, bus, conn, ht, name, contacts):
+def expect_contact_list_channel(q, bus, conn, ht, name, contacts,
+                                lp_contacts=[], rp_contacts=[]):
     """
     Expects NewChannel and NewChannels signals for the
     contact list with handle type 'ht' and ID 'name', and checks that its
-    members are exactly 'contacts'. Returns a proxy for the channel.
+    members, lp members and rp members are exactly 'contacts', 'lp_contacts'
+    and 'rp_contacts'.
+    Returns a proxy for the channel.
     """
 
     old_signal, new_signal = q.expect_many(
@@ -558,7 +563,11 @@ def expect_contact_list_channel(q, bus, conn, ht, name, contacts):
         cs.CHANNEL_TYPE_CONTACT_LIST)
     members = chan.Group.GetMembers()
 
-    assertEquals(contacts, conn.InspectHandles(cs.HT_CONTACT, members))
+    assertEquals(sorted(contacts),
+        sorted(conn.InspectHandles(cs.HT_CONTACT, members)))
+
+    lp_handles = conn.RequestHandles(cs.HT_CONTACT, lp_contacts)
+    rp_handles = conn.RequestHandles(cs.HT_CONTACT, rp_contacts)
 
     # NB. comma: we're unpacking args. Thython!
     info, = new_signal.args
@@ -586,9 +595,10 @@ def expect_contact_list_channel(q, bus, conn, ht, name, contacts):
     assertContains('Members', group_props)
     assertEquals(members, group_props['Members'])
     assertContains('LocalPendingMembers', group_props)
-    assertEquals([], group_props['LocalPendingMembers'])
+    actual_lp_handles = [x[0] for x in group_props['LocalPendingMembers']]
+    assertEquals(sorted(lp_handles), sorted(actual_lp_handles))
     assertContains('RemotePendingMembers', group_props)
-    assertEquals([], group_props['RemotePendingMembers'])
+    assertEquals(sorted(rp_handles), sorted(group_props['RemotePendingMembers']))
     assertContains('GroupFlags', group_props)
 
     return chan

@@ -59,6 +59,14 @@ def test(q, bus, conn, stream):
     # Gabble suppresses contacts labelled as "hidden" from all roster channels.
     add_roster_item(query, 'should-be-hidden@example.com', 'both', False,
         {'gr:t': 'H'})
+    # Gabble should hide contacts on the Google roster with subscription="none"
+    # and ask!="subscribe", to hide contacts which are actually just email
+    # addresses. (This is in line with Pidgin; the code there was added by Sean
+    # Egan, who worked on Google Talk for Google at the time.)
+    add_roster_item(query, 'probably-an-email-address@badger.com', 'none',
+        False)
+    # This contact is remote pending, so we shouldn't suppress it.
+    add_roster_item(query, 'this-is-a-jid@badger.com', 'none', True)
     add_roster_item(query, 'lp-bug-298293@gmail.com', 'both', False,
         {'gr:autosub': 'true'})
 
@@ -72,11 +80,13 @@ def test(q, bus, conn, stream):
     # where Gabble was incorrectly hiding valid contacts.
 
     expected_contacts = ['lp-bug-298293@gmail.com']
+    rp_contacts = ['this-is-a-jid@badger.com']
 
     publish = expect_list_channel(q, bus, conn, 'publish', expected_contacts)
     subscribe = expect_list_channel(q, bus, conn, 'subscribe',
-        expected_contacts)
-    stored = expect_list_channel(q, bus, conn, 'stored', expected_contacts)
+        expected_contacts, rp_contacts=rp_contacts)
+    stored = expect_list_channel(q, bus, conn, 'stored',
+        expected_contacts+rp_contacts)
 
     contact = 'bob@foo.com'
     handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
@@ -97,10 +107,7 @@ def test(q, bus, conn, stream):
 
     # We don't expect the stored list to be updated here, because Gabble
     # ignores Google Talk roster items with subscription="none" and
-    # ask!="subscribe", to hide contacts which are actually just email
-    # addresses. (This is in line with Pidgin; the code there was added by Sean
-    # Egan, who worked on Google Talk for Google at the time.)
-
+    # ask!="subscribe" as described above.
     event = q.expect('stream-presence', presence_type='subscribe')
 
     # Google's server appears to be buggy. If you send

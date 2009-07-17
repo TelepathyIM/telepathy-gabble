@@ -4,8 +4,13 @@ Test workarounds for gtalk
 
 import dbus
 
-from gabbletest import acknowledge_iq, exec_test
-from servicetest import EventPattern
+from gabbletest import (
+    acknowledge_iq, exec_test, sync_stream, make_result_iq, GoogleXmlStream,
+    )
+from servicetest import (
+    sync_dbus, EventPattern, wrap_channel,
+    assertLength, assertEquals, assertContains,
+    )
 import constants as cs
 import ns
 
@@ -15,21 +20,40 @@ from twisted.words.xish import domish
 def make_set_roster_iq(stream, user, contact, state, ask):
     iq = IQ(stream, 'set')
     query = iq.addElement((ns.ROSTER, 'query'))
+    add_gr_attributes(query)
+    add_roster_item(query, contact, state, ask)
+    return iq
+
+def add_gr_attributes(query):
+    query['xmlns:gr'] = ns.GOOGLE_ROSTER
+    query['gr:ext'] = '2'
+
+def add_roster_item(query, contact, state, ask):
     item = query.addElement('item')
     item['jid'] = contact
     item['subscription'] = state
+
     if ask:
         item['ask'] = 'subscribe'
-    return iq
 
+    return item
 
 def test(q, bus, conn, stream):
     conn.Connect()
 
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
-    # send back empty roster
-    event.stanza['type'] = 'result'
-    stream.send(event.stanza)
+    query = event.query
+    assertContains('gr', query.localPrefixes)
+    assertEquals(ns.GOOGLE_ROSTER, query.localPrefixes['gr'])
+    # We support version 2 of Google's extensions.
+    assertEquals('2', query[(ns.GOOGLE_ROSTER, 'ext')])
+
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    add_gr_attributes(query)
+
+    # Send back the roster
+    stream.send(result)
 
     while True:
         event = q.expect('dbus-signal', signal='NewChannel')
@@ -63,6 +87,12 @@ def test(q, bus, conn, stream):
             "none", False)
     stream.send(iq)
 
+    # We don't expect the stored list to be updated here, because Gabble
+    # ignores Google Talk roster items with subscription="none" and
+    # ask!="subscribe", to hide contacts which are actually just email
+    # addresses. (This is in line with Pidgin; the code there was added by Sean
+    # Egan, who worked on Google Talk for Google at the time.)
+
     event = q.expect('stream-presence', presence_type='subscribe')
 
     # Google's server appears to be buggy. If you send
@@ -86,13 +116,14 @@ def test(q, bus, conn, stream):
         return event.path.endswith('/subscribe')
 
     # Gabble should report this update to the UI.
-    event = q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [handle], [], [], [], 0, cs.GC_REASON_NONE],
-        predicate=is_stored)
-
-    q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [], [], [], [handle], 0, cs.GC_REASON_NONE],
-        predicate=is_subscribe)
+    q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=['', [handle], [], [], [], 0, cs.GC_REASON_NONE],
+            predicate=is_stored),
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=['', [], [], [], [handle], 0, cs.GC_REASON_NONE],
+            predicate=is_subscribe),
+        )
 
     # Gabble shouldn't report any changes to subscribe's members in response to
     # the next two roster updates.
@@ -162,4 +193,4 @@ def test(q, bus, conn, stream):
     q.unforbid_events(change_event)
 
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(test, protocol=GoogleXmlStream)

@@ -425,6 +425,10 @@ _extract_google_alias_for (LmMessageNode *item_node)
 static gboolean
 _google_roster_item_should_keep (GabbleRosterItem *item)
 {
+  /* hide hidden items */
+  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+    return FALSE;
+
   /* skip email addresses that replied to an invite */
   if (item->alias_for != NULL)
     return FALSE;
@@ -613,15 +617,6 @@ _gabble_roster_item_update (GabbleRoster *roster,
       item->google_type = _parse_google_item_type (node);
       g_free (item->alias_for);
       item->alias_for = _extract_google_alias_for (node);
-
-      /* discard roster item if strange */
-      if (!_google_roster_item_should_keep (item))
-        {
-          DEBUG ("Google roster: discarding odd contact %d (%s)",
-              contact_handle,
-              lm_message_node_get_attribute (node, "jid"));
-          item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
-        }
     }
 
   if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
@@ -1252,7 +1247,7 @@ got_roster_iq (GabbleRoster *roster,
             {
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+              if (google_roster && !_google_roster_item_should_keep (item))
                 tp_intset_add (pub_rem, handle);
               else
                 tp_intset_add (pub_add, handle);
@@ -1279,7 +1274,7 @@ got_roster_iq (GabbleRoster *roster,
             {
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+              if (google_roster && !_google_roster_item_should_keep (item))
                 tp_intset_add (sub_rem, handle);
               else
                 tp_intset_add (sub_add, handle);
@@ -1323,7 +1318,7 @@ got_roster_iq (GabbleRoster *roster,
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+              if (google_roster && !_google_roster_item_should_keep (item))
                 tp_intset_add (stored_rem, handle);
               else
                 tp_intset_add (stored_add, handle);

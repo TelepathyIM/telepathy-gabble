@@ -109,6 +109,7 @@ struct _GabbleRosterItem
   gboolean ask_subscribe;
   GoogleItemType google_type;
   gchar *name;
+  gchar *alias_for;
   TpHandleSet *groups;
   /* if not NULL, an edit attempt is already "in-flight" so instead of
    * sending off another, store required edits here until the one we
@@ -287,6 +288,7 @@ _gabble_roster_item_free (GabbleRosterItem *item)
   tp_handle_set_destroy (item->groups);
   item_edit_free (item->unsent_edits);
   g_free (item->name);
+  g_free (item->alias_for);
   g_slice_free (GabbleRosterItem, item);
 }
 
@@ -414,16 +416,17 @@ _parse_google_item_type (LmMessageNode *item_node)
   return GOOGLE_ITEM_TYPE_NORMAL;
 }
 
-static gboolean
-_google_roster_item_should_keep (LmMessageNode *item_node,
-                                 GabbleRosterItem *item)
+static gchar *
+_extract_google_alias_for (LmMessageNode *item_node)
 {
-  const gchar *attr;
+  return g_strdup (lm_message_node_get_attribute (item_node, "gr:alias-for"));
+}
 
+static gboolean
+_google_roster_item_should_keep (GabbleRosterItem *item)
+{
   /* skip email addresses that replied to an invite */
-  attr = lm_message_node_get_attribute (item_node, "gr:alias-for");
-
-  if (attr != NULL)
+  if (item->alias_for != NULL)
     return FALSE;
 
   /* allow items that we've requested a subscription from */
@@ -608,9 +611,11 @@ _gabble_roster_item_update (GabbleRoster *roster,
   if (google_roster_mode)
     {
       item->google_type = _parse_google_item_type (node);
+      g_free (item->alias_for);
+      item->alias_for = _extract_google_alias_for (node);
 
       /* discard roster item if strange */
-      if (!_google_roster_item_should_keep (node, item))
+      if (!_google_roster_item_should_keep (item))
         {
           DEBUG ("Google roster: discarding odd contact %d (%s)",
               contact_handle,

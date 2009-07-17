@@ -6,6 +6,7 @@ import dbus
 
 from gabbletest import (
     acknowledge_iq, exec_test, sync_stream, make_result_iq, GoogleXmlStream,
+    expect_list_channel
     )
 from servicetest import (
     sync_dbus, EventPattern, wrap_channel,
@@ -28,13 +29,16 @@ def add_gr_attributes(query):
     query['xmlns:gr'] = ns.GOOGLE_ROSTER
     query['gr:ext'] = '2'
 
-def add_roster_item(query, contact, state, ask):
+def add_roster_item(query, contact, state, ask, attrs={}):
     item = query.addElement('item')
     item['jid'] = contact
     item['subscription'] = state
 
     if ask:
         item['ask'] = 'subscribe'
+
+    for k, v in attrs.iteritems():
+        item[k] = v
 
     return item
 
@@ -52,29 +56,25 @@ def test(q, bus, conn, stream):
     query = result.firstChildElement()
     add_gr_attributes(query)
 
+    # Gabble suppresses contacts labelled as "hidden" from all roster channels.
+    add_roster_item(query, 'should-be-hidden@example.com', 'both', False,
+        {'gr:t': 'H'})
+
     # Send back the roster
     stream.send(result)
 
-    while True:
-        event = q.expect('dbus-signal', signal='NewChannel')
-        path, type, handle_type, handle, suppress_handler = event.args
-
-        if type != cs.CHANNEL_TYPE_CONTACT_LIST:
-            continue
-
-        chan_name = conn.InspectHandles(handle_type, [handle])[0]
-
-        if chan_name == 'subscribe':
-            break
-
-    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'ContactList')
-    assertLength(0, chan.Group.GetMembers())
+    # This depends on the order in which roster.c creates the channels.
+    # Since s-b-h had the "hidden" flag set, we expect none of subscribe,
+    # publish or stored to have any members.
+    publish = expect_list_channel(q, bus, conn, 'publish', [])
+    subscribe = expect_list_channel(q, bus, conn, 'subscribe', [])
+    stored = expect_list_channel(q, bus, conn, 'stored', [])
 
     contact = 'bob@foo.com'
     handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
 
     # request subscription
-    chan.Group.AddMembers([handle], '')
+    subscribe.Group.AddMembers([handle], '')
 
     event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
     item = event.query.firstChildElement()

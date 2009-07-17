@@ -423,15 +423,22 @@ _extract_google_alias_for (LmMessageNode *item_node)
 }
 
 static gboolean
-_google_roster_item_should_keep (GabbleRosterItem *item)
+_google_roster_item_should_keep (const gchar *jid,
+    GabbleRosterItem *item)
 {
   /* hide hidden items */
   if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-    return FALSE;
+    {
+      DEBUG ("hiding %s: gr:t='H'", jid);
+      return FALSE;
+    }
 
   /* skip email addresses that replied to an invite */
   if (item->alias_for != NULL)
-    return FALSE;
+    {
+      DEBUG ("hiding %s: alias-for is set to %s", jid, item->alias_for);
+      return FALSE;
+    }
 
   /* allow items that we've requested a subscription from */
   if (item->ask_subscribe)
@@ -441,6 +448,7 @@ _google_roster_item_should_keep (GabbleRosterItem *item)
     return TRUE;
 
   /* discard anything else */
+  DEBUG ("hiding %s: no subscription", jid);
   return FALSE;
 }
 
@@ -1247,7 +1255,7 @@ got_roster_iq (GabbleRoster *roster,
             {
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (google_roster && !_google_roster_item_should_keep (item))
+              if (google_roster && !_google_roster_item_should_keep (jid, item))
                 tp_intset_add (pub_rem, handle);
               else
                 tp_intset_add (pub_add, handle);
@@ -1274,7 +1282,7 @@ got_roster_iq (GabbleRoster *roster,
             {
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (google_roster && !_google_roster_item_should_keep (item))
+              if (google_roster && !_google_roster_item_should_keep (jid, item))
                 tp_intset_add (sub_rem, handle);
               else
                 tp_intset_add (sub_add, handle);
@@ -1318,7 +1326,7 @@ got_roster_iq (GabbleRoster *roster,
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (google_roster && !_google_roster_item_should_keep (item))
+              if (google_roster && !_google_roster_item_should_keep (jid, item))
                 tp_intset_add (stored_rem, handle);
               else
                 tp_intset_add (stored_add, handle);

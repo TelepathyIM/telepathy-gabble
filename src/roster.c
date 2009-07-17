@@ -609,15 +609,8 @@ _gabble_roster_item_update (GabbleRoster *roster,
     {
       item->google_type = _parse_google_item_type (node);
 
-      /* discard roster item if strange, just hide it if it's hidden */
-      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-        {
-          DEBUG ("Google roster: caching hidden contact %d (%s)",
-              contact_handle,
-              lm_message_node_get_attribute (node, "jid"));
-          item->subscription = GABBLE_ROSTER_SUBSCRIPTION_NONE;
-        }
-      else if (!_google_roster_item_should_keep (node, item))
+      /* discard roster item if strange */
+      if (!_google_roster_item_should_keep (node, item))
         {
           DEBUG ("Google roster: discarding odd contact %d (%s)",
               contact_handle,
@@ -1254,7 +1247,10 @@ got_roster_iq (GabbleRoster *roster,
             {
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              tp_intset_add (pub_add, handle);
+              if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+                tp_intset_add (pub_rem, handle);
+              else
+                tp_intset_add (pub_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
@@ -1278,7 +1274,10 @@ got_roster_iq (GabbleRoster *roster,
             {
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              tp_intset_add (sub_add, handle);
+              if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+                tp_intset_add (sub_rem, handle);
+              else
+                tp_intset_add (sub_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
@@ -1320,9 +1319,9 @@ got_roster_iq (GabbleRoster *roster,
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
               if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-                  tp_intset_add (stored_rem, handle);
+                tp_intset_add (stored_rem, handle);
               else
-                  tp_intset_add (stored_add, handle);
+                tp_intset_add (stored_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
               tp_intset_add (stored_rem, handle);

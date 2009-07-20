@@ -21,6 +21,21 @@ Fixes:
 * fd.o#22629: Gabble no longer crashes if the initiator of a tube receives data
   before it is connected to the application's socket.
 
+* Gabble no longer erroneously hides Google Talk contacts who were
+  automatically added to your roster, and contacts who Google incorrectly
+  thinks are aliases for another JID.
+
+* Removing a contact from 'subscribe' while they're in remote-pending ("Oops! I
+  didn't mean to subscribe to Randall's presence!") now works. This is on top
+  of the fix for fd.o #21547 in 0.7.28, which made removing the
+  contact from 'stored' work.  Previously, while the subscription request was
+  correctly rescinded, Gabble didn't expose it correctly on the 'subscribe'
+  channel.
+
+* Contacts no longer "flicker" to and from subscribe:remote-pending when you
+  subscribe to them on a Google Talk account. This was a regression in 0.7.28,
+  caused by fixing fd.o #21547.
+
 telepathy-gabble 0.7.30 (2009-06-29)
 ====================================
 

@@ -448,13 +448,6 @@ _google_roster_item_should_keep (const gchar *jid,
       return FALSE;
     }
 
-  /* skip email addresses that replied to an invite */
-  if (item->alias_for != NULL)
-    {
-      DEBUG ("hiding %s: alias-for is set to %s", jid, item->alias_for);
-      return FALSE;
-    }
-
   /* allow items that we've requested a subscription from */
   if (item->ask_subscribe)
     return TRUE;

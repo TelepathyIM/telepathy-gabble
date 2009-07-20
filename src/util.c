@@ -188,12 +188,7 @@ lm_message_node_get_namespace (LmMessageNode *node)
 const gchar *
 lm_message_node_get_name (LmMessageNode *node)
 {
-  gchar *x = strchr (node->name, ':');
-
-  if (x != NULL)
-    return x + 1;
-  else
-    return node->name;
+  return node->name;
 }
 
 gboolean

@@ -352,8 +352,6 @@ add_transport (GabbleTubeStream *self,
                GibberTransport *transport,
                GabbleBytestreamIface *bytestream)
 {
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-
   gibber_transport_set_handler (transport, transport_handler, self);
 
   g_signal_connect (transport, "disconnected",

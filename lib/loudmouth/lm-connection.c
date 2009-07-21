@@ -38,8 +38,6 @@ stanza_cb (WockyPorter *self,
     return TRUE;
 }
 
-GSList *delayed_handlers = NULL;
-
 typedef struct
 {
   LmMessageHandler *handler;
@@ -66,16 +64,16 @@ lm_connection_register_message_handler (LmConnection *connection,
     LmMessageType type,
     LmHandlerPriority priority)
 {
-  if (connection == NULL)
+  if (connection->porter == NULL)
     {
       /* Loudmouth allows to register handler before the connection is
        * connected. We can't do currently do that with Wocky so we store the
-       * handler and will register it once
-       * lm_connection_register_previous_handler is called. */
+       * handler and will register it once lm_connection_set_porter is called.*/
       GSList *found;
       delayed_handler *delayed;
 
-      found = g_slist_find_custom (delayed_handlers, handler, find_handler);
+      found = g_slist_find_custom (connection->delayed_handlers, handler,
+          find_handler);
       if (found != NULL)
         return;
 
@@ -84,7 +82,8 @@ lm_connection_register_message_handler (LmConnection *connection,
       delayed->type = type;
       delayed->priority = priority;
 
-      delayed_handlers = g_slist_prepend (delayed_handlers, delayed);
+      connection->delayed_handlers = g_slist_prepend (
+          connection->delayed_handlers, delayed);
       return;
     }
 
@@ -93,7 +92,7 @@ lm_connection_register_message_handler (LmConnection *connection,
 
   handler->connection = connection;
 
-  handler->handler_id = wocky_porter_register_handler (connection,
+  handler->handler_id = wocky_porter_register_handler (connection->porter,
       type, WOCKY_STANZA_SUB_TYPE_NONE, NULL, priority, stanza_cb,
       handler, WOCKY_STANZA_END);
 }
@@ -108,22 +107,36 @@ lm_connection_unregister_message_handler (LmConnection *connection,
 
   g_assert (handler->connection != NULL);
 
-  wocky_porter_unregister_handler (handler->connection, handler->handler_id);
+  wocky_porter_unregister_handler (handler->connection->porter,
+      handler->handler_id);
 
   handler->handler_id = 0;
   handler->connection = NULL;
 }
 
-LmConnection *
-lm_connection_ref (LmConnection *connection)
-{
-  return g_object_ref (connection);
-}
-
 void
 lm_connection_unref (LmConnection *connection)
 {
-  g_object_unref (connection);
+  GSList *l;
+
+  for (l = connection->delayed_handlers; l != NULL; l = g_slist_next (l))
+    {
+      delayed_handler *delayed = l->data;
+
+      g_slice_free (delayed_handler, delayed);
+    }
+
+  g_slist_free (connection->delayed_handlers);
+  connection->delayed_handlers = NULL;
+
+  g_cancellable_cancel (connection->iq_reply_cancellable);
+  g_object_unref (connection->iq_reply_cancellable);
+  connection->iq_reply_cancellable = NULL;
+
+  if (connection->porter != NULL)
+    g_object_unref (connection->porter);
+
+  g_free (connection);
 }
 
 gboolean
@@ -131,7 +144,7 @@ lm_connection_send (LmConnection *connection,
     LmMessage *message,
     GError **error)
 {
-  wocky_porter_send (connection, message);
+  wocky_porter_send (connection->porter, message);
   return TRUE;
 }
 
@@ -159,8 +172,6 @@ iq_reply_cb (GObject *source,
   lm_message_handler_unref (handler);
 }
 
-GCancellable *iq_reply_cancellable = NULL;
-
 gboolean
 lm_connection_send_with_reply (LmConnection *connection,
     LmMessage *message,
@@ -170,23 +181,37 @@ lm_connection_send_with_reply (LmConnection *connection,
   handler->connection = connection;
   lm_message_handler_ref (handler);
 
-  if (iq_reply_cancellable == NULL)
-    iq_reply_cancellable = g_cancellable_new ();
-
-  wocky_porter_send_iq_async (connection, message, iq_reply_cancellable,
-      iq_reply_cb, handler);
+  wocky_porter_send_iq_async (connection->porter, message,
+      connection->iq_reply_cancellable, iq_reply_cb, handler);
 
   return TRUE;
 }
 
+LmConnection *
+lm_connection_new (void)
+{
+  LmConnection *connection;
+
+  connection = g_malloc (sizeof (LmConnection));
+  connection->porter = NULL;
+  connection->delayed_handlers = NULL;
+  connection->iq_reply_cancellable = g_cancellable_new ();
+
+  return connection;
+}
+
 void
-lm_connection_register_previous_handler (LmConnection *connection)
+lm_connection_set_porter (LmConnection *connection,
+    WockyPorter *porter)
 {
   GSList *l;
 
   g_assert (connection != NULL);
+  g_assert (connection->porter == NULL);
+  connection->porter = g_object_ref (porter);
 
-  for (l = delayed_handlers; l != NULL; l = g_slist_next (l))
+  /* Now that we have a porter we can register the delayed handlers */
+  for (l = connection->delayed_handlers; l != NULL; l = g_slist_next (l))
     {
       delayed_handler *delayed = l->data;
 
@@ -196,29 +221,6 @@ lm_connection_register_previous_handler (LmConnection *connection)
       g_slice_free (delayed_handler, delayed);
     }
 
-  g_slist_free (delayed_handlers);
-  delayed_handlers = NULL;
-}
-
-void
-lm_connection_shutdown (LmConnection *connection)
-{
-  GSList *l;
-
-  for (l = delayed_handlers; l != NULL; l = g_slist_next (l))
-    {
-      delayed_handler *delayed = l->data;
-
-      g_slice_free (delayed_handler, delayed);
-    }
-
-  g_slist_free (delayed_handlers);
-  delayed_handlers = NULL;
-
-  if (iq_reply_cancellable == NULL)
-    return;
-
-  g_cancellable_cancel (iq_reply_cancellable);
-  g_object_unref (iq_reply_cancellable);
-  iq_reply_cancellable = NULL;
+  g_slist_free (connection->delayed_handlers);
+  connection->delayed_handlers = NULL;
 }

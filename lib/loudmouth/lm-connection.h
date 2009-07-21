@@ -30,7 +30,16 @@
 
 G_BEGIN_DECLS
 
+struct _LmConnection
+{
+  WockyPorter *porter;
+  GSList *delayed_handlers;
+  GCancellable *iq_reply_cancellable;
+};
+
 typedef guint LmHandlerPriority;
+
+LmConnection * lm_connection_new (void);
 
 void lm_connection_register_message_handler (LmConnection *connection,
     LmMessageHandler *handler,
@@ -41,7 +50,6 @@ void lm_connection_unregister_message_handler (LmConnection *connection,
     LmMessageHandler *handler,
     LmMessageType type);
 
-LmConnection * lm_connection_ref (LmConnection *connection);
 void lm_connection_unref (LmConnection *connection);
 
 gboolean lm_connection_send (LmConnection *connection,
@@ -55,9 +63,8 @@ gboolean lm_connection_send_with_reply (LmConnection *connection,
 
 /* Fake API. This is not part of loudmouth */
 
-void lm_connection_register_previous_handler (LmConnection *connection);
-
-void lm_connection_shutdown (LmConnection *connection);
+void lm_connection_set_porter (LmConnection *connection,
+    WockyPorter *porter);
 
 G_END_DECLS
 

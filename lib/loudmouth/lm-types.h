@@ -6,7 +6,7 @@
 G_BEGIN_DECLS
 
 typedef struct _LmMessageHandler LmMessageHandler;
-typedef WockyPorter LmConnection;
+typedef struct _LmConnection LmConnection;
 
 G_END_DECLS
 

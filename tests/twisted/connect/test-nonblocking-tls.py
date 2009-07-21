@@ -100,7 +100,7 @@ if __name__ == '__main__':
         }
     conn1 = make_connection(bus, queue.append, params)
     authenticator = BlockForeverTlsAuthenticator('test1', 'pass')
-    stream1 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
+    stream1, port1 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
                           port=4242)
 
     params = {
@@ -112,7 +112,7 @@ if __name__ == '__main__':
         }
     conn2 = make_connection(bus, queue.append, params)
     authenticator = XmppAuthenticator('test2', 'pass')
-    stream2 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
+    stream2, port2 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
                           port=4343)
 
     try:

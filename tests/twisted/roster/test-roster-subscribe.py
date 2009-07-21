@@ -7,7 +7,7 @@ import dbus
 
 from twisted.words.xish import domish
 
-from servicetest import EventPattern
+from servicetest import EventPattern, wrap_channel, assertLength, assertEquals
 from gabbletest import acknowledge_iq, exec_test
 import constants as cs
 import ns
@@ -32,16 +32,16 @@ def test(q, bus, conn, stream):
         if chan_name == 'subscribe':
             break
 
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'ContactList')
+    assertLength(0, chan.Group.GetMembers())
+
     # request subscription
-    chan = bus.get_object(conn.bus_name, path)
-    group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
-    assert group_iface.GetMembers() == []
-    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
-    group_iface.AddMembers([handle], '')
+    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
+    chan.Group.AddMembers([handle], '')
 
     event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
     item = event.query.firstChildElement()
-    assert item["jid"] == 'bob@foo.com'
+    assertEquals('bob@foo.com', item["jid"])
 
     acknowledge_iq(stream, event.stanza)
 
@@ -54,7 +54,7 @@ def test(q, bus, conn, stream):
 
     q.expect_many(
             EventPattern('dbus-signal', signal='MembersChanged',
-                args=['', [2], [], [], [], 0, 0]),
+                args=['', [handle], [], [], [], 0, 0]),
             EventPattern('stream-presence'),
             )
 

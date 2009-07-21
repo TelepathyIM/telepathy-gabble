@@ -109,12 +109,24 @@ struct _GabbleRosterItem
   gboolean ask_subscribe;
   GoogleItemType google_type;
   gchar *name;
+  gchar *alias_for;
   TpHandleSet *groups;
   /* if not NULL, an edit attempt is already "in-flight" so instead of
    * sending off another, store required edits here until the one we
    * already sent is acknowledged - this prevents some race conditions
    */
   GabbleRosterItemEdit *unsent_edits;
+
+  /* If non-zero, the GSource id for a call to flicker_prevention_timeout. */
+  guint flicker_prevention_id;
+};
+
+typedef struct _FlickerPreventionCtx FlickerPreventionCtx;
+struct _FlickerPreventionCtx
+{
+  GabbleRoster *roster;
+  TpHandle handle;
+  GabbleRosterItem *item;
 };
 
 static void channel_manager_iface_init (gpointer, gpointer);
@@ -128,6 +140,7 @@ static void gabble_roster_set_property (GObject *object, guint property_id,
 static void gabble_roster_get_property (GObject *object, guint property_id,
     GValue *value, GParamSpec *pspec);
 
+static void roster_item_cancel_flicker_timeout (GabbleRosterItem *item);
 static void _gabble_roster_item_free (GabbleRosterItem *item);
 static void item_edit_free (GabbleRosterItemEdit *edits);
 static void gabble_roster_close_all (GabbleRoster *roster);
@@ -287,6 +300,10 @@ _gabble_roster_item_free (GabbleRosterItem *item)
   tp_handle_set_destroy (item->groups);
   item_edit_free (item->unsent_edits);
   g_free (item->name);
+  g_free (item->alias_for);
+
+  roster_item_cancel_flicker_timeout (item);
+
   g_slice_free (GabbleRosterItem, item);
 }
 
@@ -414,23 +431,22 @@ _parse_google_item_type (LmMessageNode *item_node)
   return GOOGLE_ITEM_TYPE_NORMAL;
 }
 
-static gboolean
-_google_roster_item_should_keep (LmMessageNode *item_node,
-                                 GabbleRosterItem *item)
+static gchar *
+_extract_google_alias_for (LmMessageNode *item_node)
 {
-  const gchar *attr;
+  return g_strdup (lm_message_node_get_attribute (item_node, "gr:alias-for"));
+}
 
-  /* skip automatically subscribed Google roster items */
-  attr = lm_message_node_get_attribute (item_node, "gr:autosub");
-
-  if (!tp_strdiff (attr, "true"))
-    return FALSE;
-
-  /* skip email addresses that replied to an invite */
-  attr = lm_message_node_get_attribute (item_node, "gr:alias-for");
-
-  if (attr != NULL)
-    return FALSE;
+static gboolean
+_google_roster_item_should_keep (const gchar *jid,
+    GabbleRosterItem *item)
+{
+  /* hide hidden items */
+  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+    {
+      DEBUG ("hiding %s: gr:t='H'", jid);
+      return FALSE;
+    }
 
   /* allow items that we've requested a subscription from */
   if (item->ask_subscribe)
@@ -440,6 +456,7 @@ _google_roster_item_should_keep (LmMessageNode *item_node,
     return TRUE;
 
   /* discard anything else */
+  DEBUG ("hiding %s: no subscription", jid);
   return FALSE;
 }
 
@@ -614,22 +631,8 @@ _gabble_roster_item_update (GabbleRoster *roster,
   if (google_roster_mode)
     {
       item->google_type = _parse_google_item_type (node);
-
-      /* discard roster item if strange, just hide it if it's hidden */
-      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-        {
-          DEBUG ("Google roster: caching hidden contact %d (%s)",
-              contact_handle,
-              lm_message_node_get_attribute (node, "jid"));
-          item->subscription = GABBLE_ROSTER_SUBSCRIPTION_NONE;
-        }
-      else if (!_google_roster_item_should_keep (node, item))
-        {
-          DEBUG ("Google roster: discarding odd contact %d (%s)",
-              contact_handle,
-              lm_message_node_get_attribute (node, "jid"));
-          item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
-        }
+      g_free (item->alias_for);
+      item->alias_for = _extract_google_alias_for (node);
     }
 
   if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
@@ -1098,6 +1101,116 @@ _update_group (gpointer key,
   return TRUE;
 }
 
+static FlickerPreventionCtx *
+flicker_prevention_ctx_new (GabbleRoster *roster,
+    TpHandle handle,
+    GabbleRosterItem *item)
+{
+  FlickerPreventionCtx *ret = g_slice_new (FlickerPreventionCtx);
+
+  /* Not taking a ref to the roster. The context is owned by the Item (well, by
+   * its timeout) which is owned by the roster.
+   */
+  ret->roster = roster;
+  /* Not taking a ref to the handle; we borrow the roster's ref, which is
+   * released after the GabbleRosterItem is freed, at which point this context
+   * will be destroyed.
+   */
+  ret->handle = handle;
+  ret->item = item;
+
+  return ret;
+}
+
+static void
+flicker_prevention_ctx_free (gpointer ctx_)
+{
+  FlickerPreventionCtx *ctx = ctx_;
+
+  ctx->roster = NULL;
+  ctx->handle = 0;
+  ctx->item = NULL;
+
+  g_slice_free (FlickerPreventionCtx, ctx);
+}
+
+/* As described in roster/test-google-roster.py, we work around a Google Talk
+ * server bug to avoid contacts flickering off and onto
+ * subscribe:remote-pending when you try to subscribe to someone's presence.
+ *
+ * When we see a roster item with subscription=none/from and ask=subscribe:
+ *  * if no call to this function is scheduled, we schedule a call
+ *  * if one is already scheduled, we cancel it.
+ *
+ * When we see a roster item with subscription=none/from and no ask=subscribe:
+ *  * if a call to this timeout is scheduled, do nothing, in case the contact
+ *    flickers back to ask=subscribe before this fires;
+ *  * if a call to this timeout is not scheduled, remove the contact from the
+ *    subscribe list.
+ *
+ * This way, our subscription being cancelled or our subscription requests
+ * being rescinded will show up on the subscribe list, albeit with a slight lag
+ * in certain situations in case we're just seeing the Google talk server bug.
+ */
+static gboolean
+flicker_prevention_timeout (gpointer ctx_)
+{
+  FlickerPreventionCtx *ctx = ctx_;
+  GabbleRosterItem *item = ctx->item;
+
+  DEBUG ("called for %u", ctx->handle);
+
+  if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_NONE
+      && !item->ask_subscribe)
+    {
+      GabbleRosterChannel *sub_chan = _gabble_roster_get_channel (ctx->roster,
+          TP_HANDLE_TYPE_LIST, GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
+      TpIntSet *rem = tp_intset_new_containing (ctx->handle);
+
+      DEBUG ("removing %u from subscribe", ctx->handle);
+      tp_group_mixin_change_members ((GObject *) sub_chan, "", NULL, rem, NULL,
+          NULL, 0, 0);
+
+      tp_intset_destroy (rem);
+    }
+  else
+    {
+      DEBUG ("subscription=%s and ask_subscribe=%s, nothing to do",
+          _subscription_to_string (item->subscription),
+          item->ask_subscribe ? "true" : "false");
+    }
+
+  ctx->item->flicker_prevention_id = 0;
+
+  return FALSE;
+}
+
+static void
+roster_item_ensure_flicker_timeout (GabbleRoster *roster,
+    TpHandle handle,
+    GabbleRosterItem *item)
+{
+  if (item->flicker_prevention_id == 0)
+    {
+      FlickerPreventionCtx *ctx = flicker_prevention_ctx_new (roster, handle,
+          item);
+
+      item->flicker_prevention_id = g_timeout_add_seconds_full (
+          G_PRIORITY_DEFAULT, 1, flicker_prevention_timeout, ctx,
+          flicker_prevention_ctx_free);
+    }
+}
+
+static void
+roster_item_cancel_flicker_timeout (GabbleRosterItem *item)
+{
+  if (item->flicker_prevention_id != 0)
+    {
+      g_source_remove (item->flicker_prevention_id);
+      item->flicker_prevention_id = 0;
+    }
+}
+
 /**
  * gabble_roster_iq_cb
  *
@@ -1260,7 +1373,10 @@ got_roster_iq (GabbleRoster *roster,
             {
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              tp_intset_add (pub_add, handle);
+              if (google_roster && !_google_roster_item_should_keep (jid, item))
+                tp_intset_add (pub_rem, handle);
+              else
+                tp_intset_add (pub_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
@@ -1284,7 +1400,13 @@ got_roster_iq (GabbleRoster *roster,
             {
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              tp_intset_add (sub_add, handle);
+              if (google_roster && !_google_roster_item_should_keep (jid, item))
+                tp_intset_add (sub_rem, handle);
+              else
+                tp_intset_add (sub_add, handle);
+
+              roster_item_cancel_flicker_timeout (item);
+
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
@@ -1297,18 +1419,24 @@ got_roster_iq (GabbleRoster *roster,
                     }
                   else
                     {
+                      if (item->flicker_prevention_id == 0)
+                        roster_item_ensure_flicker_timeout (roster, handle, item);
+                      else
+                        roster_item_cancel_flicker_timeout (item);
+
                       tp_intset_add (sub_rp, handle);
                     }
                 }
+              else if (item->flicker_prevention_id == 0)
+                {
+                  /* We're not expecting this contact's ask=subscribe to
+                   * flicker off and on again, so let's remove them immediately.
+                   */
+                  tp_intset_add (sub_rem, handle);
+                }
               else
                 {
-                  /* don't remove remote pending, presence="unsubscribed"
-                   * does that */
-                  if (!tp_handle_set_is_member (sub_chan->group.remote_pending,
-                        handle))
-                    {
-                      tp_intset_add (sub_rem, handle);
-                    }
+                  DEBUG ("delaying removal of %s from pending", jid);
                 }
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
@@ -1325,10 +1453,18 @@ got_roster_iq (GabbleRoster *roster,
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-                  tp_intset_add (stored_rem, handle);
+              if (google_roster &&
+                  /* Don't hide contacts from stored if they're remote pending.
+                   * This works around Google Talk flickering ask="subscribe"
+                   * when you try to subscribe to someone; see
+                   * test-google-roster.py.
+                   */
+                  !tp_handle_set_is_member (sub_chan->group.remote_pending,
+                      handle) &&
+                  !_google_roster_item_should_keep (jid, item))
+                tp_intset_add (stored_rem, handle);
               else
-                  tp_intset_add (stored_add, handle);
+                tp_intset_add (stored_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
               tp_intset_add (stored_rem, handle);

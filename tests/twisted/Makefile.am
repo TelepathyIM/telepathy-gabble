@@ -136,6 +136,7 @@ TWISTED_TESTS = \
 	connect/test-success.py \
 	connect/test-twice.py \
 	connect/test-nonblocking-tls.py \
+	connect/stream-closed.py \
 	test-disco.py \
 	test-disco-no-reply.py \
 	test-fallback-socks5-proxy.py \

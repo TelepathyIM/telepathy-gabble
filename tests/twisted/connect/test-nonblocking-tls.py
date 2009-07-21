@@ -20,14 +20,6 @@ import constants as cs
 NS_XMPP_TLS = 'urn:ietf:params:xml:ns:xmpp-tls'
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
 
-
-print "FIXME: test-nonblocking-tls.py disabled due to a bug in Loudmouth:"
-print "       http://loudmouth.lighthouseapp.com/projects/17276/tickets/5"
-print "       https://bugs.freedesktop.org/show_bug.cgi?id=14341"
-# exiting 77 causes automake to consider the test to have been skipped
-raise SystemExit(77)
-
-
 class BlockForeverTlsAuthenticator(xmlstream.Authenticator):
     """A TLS stream authenticator that is deliberately broken. It sends
     <proceed/> to the client but then do nothing, so the TLS handshake will

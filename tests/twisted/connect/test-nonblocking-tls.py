@@ -13,7 +13,8 @@ from twisted.words.xish import domish
 from twisted.words.protocols.jabber import xmlstream
 
 from gabbletest import (
-    make_connection, make_stream, XmppAuthenticator, XmppXmlStream)
+    make_connection, make_stream, XmppAuthenticator, XmppXmlStream,
+    disconnect_conn)
 
 NS_XMPP_TLS = 'urn:ietf:params:xml:ns:xmpp-tls'
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
@@ -80,10 +81,7 @@ def test(q, bus, conn1, conn2, stream1, stream2):
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     # Disconnection 2
-    conn2.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-    return True
+    disconnect_conn(q, conn2, stream2)
 
 if __name__ == '__main__':
     queue = servicetest.IteratingEventQueue(None)

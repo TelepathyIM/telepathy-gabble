@@ -394,7 +394,7 @@ gabble_connection_init (GabbleConnection *self)
   DEBUG("Initializing (GabbleConnection *)%p", self);
 
   self->priv = priv;
-  self->lmconn = NULL;
+  self->lmconn = lm_connection_new ();
 
   /* Override LM domain log handler. */
   gabble_lm_debug ();
@@ -897,16 +897,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
 }
 
-static gboolean
-_unref_lm_connection (gpointer data)
-{
-  LmConnection *conn = (LmConnection *) data;
-
-  if (conn != NULL)
-    lm_connection_unref (conn);
-  return FALSE;
-}
-
 static void
 gabble_connection_dispose (GObject *object)
 {
@@ -968,13 +958,17 @@ gabble_connection_dispose (GObject *object)
       priv->connector = NULL;
     }
 
-  /*
-   * The Loudmouth connection can't be unref'd immediately because this
-   * function might (indirectly) return into Loudmouth code which expects the
-   * connection to always be there.
-   */
-  g_idle_add (_unref_lm_connection, self->lmconn);
-  lm_connection_shutdown (self->lmconn);
+  if (self->porter != NULL)
+    {
+      g_object_unref (self->porter);
+      self->porter = NULL;
+    }
+
+  if (self->lmconn != NULL)
+    {
+      lm_connection_unref (self->lmconn);
+      self->lmconn = NULL;
+    }
 
   g_hash_table_destroy (priv->client_caps);
   gabble_capability_set_free (priv->all_caps);
@@ -1335,7 +1329,8 @@ remote_error_cb (WockyPorter *porter,
     }
 
   DEBUG ("Force closing of the connection");
-  wocky_porter_force_close_async (self->lmconn, NULL, force_close_cb, self);
+  wocky_porter_force_close_async (self->porter, NULL, force_close_cb,
+      self);
 
   tp_base_connection_change_status ((TpBaseConnection *) self,
       TP_CONNECTION_STATUS_DISCONNECTED, reason);
@@ -1403,15 +1398,16 @@ connector_connect_cb (GObject *source,
 
   DEBUG ("connected (jid: %s)", jid);
 
-  self->lmconn = wocky_porter_new (conn);
+  self->porter = wocky_porter_new (conn);
 
-  g_signal_connect (self->lmconn, "remote-closed",
+  g_signal_connect (self->porter, "remote-closed",
       G_CALLBACK (remote_closed_cb), self);
-  g_signal_connect (self->lmconn, "remote-error",
+  g_signal_connect (self->porter, "remote-error",
       G_CALLBACK (remote_error_cb), self);
 
-  lm_connection_register_previous_handler (self->lmconn);
-  wocky_porter_start (self->lmconn);
+  lm_connection_set_porter (self->lmconn, self->porter);
+
+  wocky_porter_start (self->porter);
 
   base->self_handle = tp_handle_ensure (contact_handles, jid, NULL, &error);
 
@@ -1666,11 +1662,11 @@ connection_shut_down (TpBaseConnection *base)
 {
   GabbleConnection *self = GABBLE_CONNECTION (base);
 
-  if (self->lmconn != NULL)
+  if (self->porter != NULL)
     {
       /* FIXME: set a timer */
       DEBUG ("connection still open; closing it");
-      wocky_porter_close_async (self->lmconn, NULL, closed_cb, self);
+      wocky_porter_close_async (self->porter, NULL, closed_cb, self);
     }
   else
     {

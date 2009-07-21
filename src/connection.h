@@ -139,6 +139,7 @@ struct _GabbleConnection {
 
     /* loudmouth connection */
     LmConnection *lmconn;
+    WockyPorter *porter;
 
     /* channel factories borrowed from TpBaseConnection's list */
     GabbleRoster *roster;

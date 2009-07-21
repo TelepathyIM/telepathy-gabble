@@ -30,6 +30,7 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
+#include <wocky/wocky-connector.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
@@ -152,9 +153,10 @@ enum
 
 struct _GabbleConnectionPrivate
 {
+  WockyConnector *connector;
+
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
-  LmMessageHandler *stream_error_cb;
   LmMessageHandler *pubsub_msg_cb;
   LmMessageHandler *olpc_msg_cb;
   LmMessageHandler *olpc_presence_cb;
@@ -226,6 +228,9 @@ static void connection_capabilities_update_cb (GabblePresenceCache *cache,
     const GabbleCapabilitySet *old_cap_set,
     const GabbleCapabilitySet *new_cap_set,
     gpointer user_data);
+
+static gboolean gabble_connection_refresh_capabilities (GabbleConnection *self,
+    GabbleCapabilitySet **old_out);
 
 static GPtrArray *
 _gabble_connection_create_channel_managers (TpBaseConnection *conn)
@@ -389,7 +394,7 @@ gabble_connection_init (GabbleConnection *self)
   DEBUG("Initializing (GabbleConnection *)%p", self);
 
   self->priv = priv;
-  self->lmconn = lm_connection_new (NULL);
+  self->lmconn = NULL;
 
   /* Override LM domain log handler. */
   gabble_lm_debug ();
@@ -897,7 +902,8 @@ _unref_lm_connection (gpointer data)
 {
   LmConnection *conn = (LmConnection *) data;
 
-  lm_connection_unref (conn);
+  if (conn != NULL)
+    lm_connection_unref (conn);
   return FALSE;
 }
 
@@ -950,15 +956,17 @@ gabble_connection_dispose (GObject *object)
 
   g_hash_table_destroy (self->avatar_requests);
 
-  /* if this is not already the case, we'll crash anyway */
-  g_assert (!lm_connection_is_open (self->lmconn));
-
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
-  g_assert (priv->stream_error_cb == NULL);
   g_assert (priv->pubsub_msg_cb == NULL);
   g_assert (priv->olpc_msg_cb == NULL);
   g_assert (priv->olpc_presence_cb == NULL);
+
+  if (priv->connector != NULL)
+    {
+      g_object_unref (priv->connector);
+      priv->connector = NULL;
+    }
 
   /*
    * The Loudmouth connection can't be unref'd immediately because this
@@ -966,6 +974,7 @@ gabble_connection_dispose (GObject *object)
    * connection to always be there.
    */
   g_idle_add (_unref_lm_connection, self->lmconn);
+  lm_connection_shutdown (self->lmconn);
 
   g_hash_table_destroy (priv->client_caps);
   gabble_capability_set_free (priv->all_caps);
@@ -1249,38 +1258,212 @@ static LmHandlerResult connection_iq_disco_cb (LmMessageHandler *,
     LmConnection *, LmMessage *, gpointer);
 static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler *,
     LmConnection *, LmMessage *, gpointer);
-static LmHandlerResult connection_stream_error_cb (LmMessageHandler *,
-    LmConnection *, LmMessage *, gpointer);
-static LmSSLResponse connection_ssl_cb (LmSSL *, LmSSLStatus, gpointer);
-static void connection_open_cb (LmConnection *, gboolean, gpointer);
-static void connection_auth_cb (LmConnection *, gboolean, gpointer);
 static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
     const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
-static void connection_disconnected_cb (LmConnection *, LmDisconnectReason,
-    gpointer);
 
-
-static gboolean
-do_connect (GabbleConnection *conn, GError **error)
+static void
+remote_closed_cb (WockyPorter *porter,
+    GabbleConnection *self)
 {
-  GError *lmerror = NULL;
+  TpBaseConnection *base = TP_BASE_CONNECTION (self);
 
-  DEBUG ("calling lm_connection_open");
+  if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
+    /* Ignore if we are already disconnecting/disconnected */
+    return;
 
-  if (!lm_connection_open (conn->lmconn, connection_open_cb,
-                           conn, NULL, &lmerror))
+  DEBUG ("server closed its XMPP stream; close ours");
+
+  /* Changing the state to Disconnect will call connection_shut_down which
+   * will properly close the porter. */
+  tp_base_connection_change_status ((TpBaseConnection *) self,
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+}
+
+static void
+force_close_cb (GObject *source,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (user_data);
+  TpBaseConnection *base = TP_BASE_CONNECTION (self);
+  GError *error = NULL;
+
+  if (!wocky_porter_force_close_finish (WOCKY_PORTER (source), res, &error))
     {
-      DEBUG ("lm_connection_open failed %s", lmerror->message);
-
-      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-          "lm_connection_open failed: %s", lmerror->message);
-
-      g_error_free (lmerror);
-
-      return FALSE;
+      DEBUG ("force close failed: %s", error->message);
+      g_error_free (error);
+    }
+  else
+    {
+      DEBUG ("connection properly closed (forced)");
     }
 
-  return TRUE;
+  tp_base_connection_finish_shutdown (base);
+}
+
+static void
+remote_error_cb (WockyPorter *porter,
+    GQuark domain,
+    gint code,
+    gchar *msg,
+    GabbleConnection *self)
+{
+  TpConnectionStatusReason reason = TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
+  TpBaseConnection *base = (TpBaseConnection *) self;
+
+  if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
+    /* Ignore if we are already disconnecting/disconnected */
+    return;
+
+  if (domain == WOCKY_XMPP_STREAM_ERROR)
+    {
+      /* stream error */
+      DEBUG ("Received stream error (%u): %s\n", code, msg);
+
+      if (code == WOCKY_XMPP_STREAM_ERROR_CONFLICT)
+        {
+          /* Another client with the same resource just appeared, we're going
+           * down. */
+          DEBUG ("Another client appeared with the same resource");
+          reason = TP_CONNECTION_STATUS_REASON_NAME_IN_USE;
+        }
+    }
+  else
+    {
+      DEBUG ("remote error: %s", msg);
+    }
+
+  DEBUG ("Force closing of the connection");
+  wocky_porter_force_close_async (self->lmconn, NULL, force_close_cb, self);
+
+  tp_base_connection_change_status ((TpBaseConnection *) self,
+      TP_CONNECTION_STATUS_DISCONNECTED, reason);
+}
+
+/**
+ * connector_connect_cb
+ *
+ * Stage 2 of connecting, this callback if fired once the connect operation
+ * has been finised. It checks if the connection succeed, create and start the
+ * WockyPorter. It sends a discovery request to find the server's features.
+ */
+static void
+connector_connect_cb (GObject *source,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = self->priv;
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  WockyXmppConnection *conn;
+  GError *error = NULL;
+  gchar *jid = NULL;
+
+  conn = wocky_connector_connect_finish (WOCKY_CONNECTOR (source), res, &error,
+      &jid);
+
+  /* We don't need the connector any more */
+  g_object_unref (priv->connector);
+  priv->connector = NULL;
+
+  if (conn == NULL)
+    {
+      TpConnectionStatusReason reason = \
+        TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+
+      DEBUG ("connection failed: %s", error->message);
+
+      if (g_error_matches (error, WOCKY_CONNECTOR_ERROR,
+            WOCKY_CONNECTOR_ERROR_SESSION_DENIED))
+        {
+          reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+        }
+      else if (g_error_matches (error, WOCKY_XMPP_STREAM_ERROR,
+            WOCKY_XMPP_STREAM_ERROR_HOST_UNKNOWN))
+        {
+          /* If we get this while we're logging in, it's because we're trying to
+           * connect to foo@bar.com but the server doesn't know about bar.com,
+           * probably because the user entered a non-GTalk JID into a GTalk
+           * profile that forces the server.
+           */
+          DEBUG ("got <host-unknown> while connecting");
+          reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+        }
+
+      /* FIXME: check SSL errors */
+      tp_base_connection_change_status (base,
+          TP_CONNECTION_STATUS_DISCONNECTED, reason);
+
+      g_error_free (error);
+      return;
+    }
+
+  DEBUG ("connected (jid: %s)", jid);
+
+  self->lmconn = wocky_porter_new (conn);
+
+  g_signal_connect (self->lmconn, "remote-closed",
+      G_CALLBACK (remote_closed_cb), self);
+  g_signal_connect (self->lmconn, "remote-error",
+      G_CALLBACK (remote_error_cb), self);
+
+  lm_connection_register_previous_handler (self->lmconn);
+  wocky_porter_start (self->lmconn);
+
+  base->self_handle = tp_handle_ensure (contact_handles, jid, NULL, &error);
+
+  if (base->self_handle == 0)
+    {
+      DEBUG ("couldn't get our self handle: %s", error->message);
+
+      g_error_free (error);
+
+      tp_base_connection_change_status ((TpBaseConnection *) self,
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+
+      return;
+    }
+
+  /* update priv->resource and priv->stream_server from the server's JID */
+  if (!_gabble_connection_set_properties_from_account (self, jid, &error))
+    {
+      DEBUG ("couldn't parse our own JID: %s", error->message);
+
+      g_error_free (error);
+
+      tp_base_connection_change_status ((TpBaseConnection *) self,
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+
+      return;
+    }
+
+  DEBUG ("Created self handle %d, our JID is %s", base->self_handle, jid);
+
+  /* set initial capabilities */
+  gabble_connection_refresh_capabilities (self, NULL);
+
+  if (!gabble_disco_request_with_timeout (self->disco, GABBLE_DISCO_TYPE_INFO,
+                                          priv->stream_server, NULL,
+                                          disco_reply_timeout,
+                                          connection_disco_cb, self,
+                                          G_OBJECT (self), &error))
+    {
+      DEBUG ("sending disco request failed: %s",
+          error->message);
+
+      g_error_free (error);
+
+      tp_base_connection_change_status ((TpBaseConnection *) self,
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+    }
+
+  g_free (jid);
 }
 
 static void
@@ -1291,7 +1474,6 @@ connect_callbacks (TpBaseConnection *base)
 
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
-  g_assert (priv->stream_error_cb == NULL);
   g_assert (priv->pubsub_msg_cb == NULL);
   g_assert (priv->olpc_msg_cb == NULL);
   g_assert (priv->olpc_presence_cb == NULL);
@@ -1306,12 +1488,6 @@ connect_callbacks (TpBaseConnection *base)
                                             conn, NULL);
   lm_connection_register_message_handler (conn->lmconn, priv->iq_unknown_cb,
                                           LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_LAST);
-
-  priv->stream_error_cb = lm_message_handler_new (connection_stream_error_cb,
-                                            conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->stream_error_cb,
-                                          LM_MESSAGE_TYPE_STREAM_ERROR,
                                           LM_HANDLER_PRIORITY_LAST);
 
   priv->pubsub_msg_cb = lm_message_handler_new (pubsub_msg_event_cb,
@@ -1341,7 +1517,6 @@ disconnect_callbacks (TpBaseConnection *base)
 
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
-  g_assert (priv->stream_error_cb != NULL);
   g_assert (priv->pubsub_msg_cb != NULL);
   g_assert (priv->olpc_msg_cb != NULL);
   g_assert (priv->olpc_presence_cb != NULL);
@@ -1355,11 +1530,6 @@ disconnect_callbacks (TpBaseConnection *base)
                                             LM_MESSAGE_TYPE_IQ);
   lm_message_handler_unref (priv->iq_unknown_cb);
   priv->iq_unknown_cb = NULL;
-
-  lm_connection_unregister_message_handler (conn->lmconn,
-      priv->stream_error_cb, LM_MESSAGE_TYPE_STREAM_ERROR);
-  lm_message_handler_unref (priv->stream_error_cb);
-  priv->stream_error_cb = NULL;
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->pubsub_msg_cb,
                                             LM_MESSAGE_TYPE_MESSAGE);
@@ -1381,14 +1551,12 @@ disconnect_callbacks (TpBaseConnection *base)
  * _gabble_connection_connect
  *
  * Use the stored server & authentication details to commence
- * the stages for connecting to the server and authenticating. Will
- * re-use an existing LmConnection if it is present, or create it
- * if necessary.
+ * the stages for connecting to the server and authenticating.
+ * Will create a WockyConnector.
  *
- * Stage 1 is _gabble_connection_connect calling lm_connection_open
- * Stage 2 is connection_open_cb calling lm_connection_authenticate
- * Stage 3 is connection_auth_cb initiating service discovery
- * Stage 4 is connection_disco_cb advertising initial presence, requesting
+ * Stage 1 is _gabble_connection_connect calling wocky_connector_connect_async
+ * Stage 2 is connector_connect_cb initiating service discovery
+ * Stage 3 is connection_disco_cb advertising initial presence, requesting
  *   the roster and setting the CONNECTED state
  */
 static gboolean
@@ -1399,15 +1567,15 @@ _gabble_connection_connect (TpBaseConnection *base,
   GabbleConnectionPrivate *priv = conn->priv;
   char *jid;
 
+  g_assert (priv->connector == NULL);
   g_assert (priv->port <= G_MAXUINT16);
   g_assert (priv->stream_server != NULL);
   g_assert (priv->username != NULL);
   g_assert (priv->password != NULL);
   g_assert (priv->resource != NULL);
-  g_assert (lm_connection_is_open (conn->lmconn) == FALSE);
 
   jid = gabble_encode_jid (priv->username, priv->stream_server, NULL);
-  lm_connection_set_jid (conn->lmconn, jid);
+  priv->connector = wocky_connector_new (jid, priv->password, priv->resource);
   g_free (jid);
 
   /* If the UI explicitly specified a port or a server, pass them to Loudmouth
@@ -1431,123 +1599,82 @@ _gabble_connection_connect (TpBaseConnection *base,
       DEBUG ("disabling SRV because \"server\" or \"old-ssl\" was specified "
           "or port was not 5222, will connect to %s", server);
 
-      lm_connection_set_server (conn->lmconn, server);
-      lm_connection_set_port (conn->lmconn, priv->port);
+      g_object_set (priv->connector,
+          "xmpp-server", server,
+          "xmpp-port", priv->port,
+          NULL);
     }
   else
     {
       DEBUG ("letting SRV lookup decide server and port");
     }
 
-  if (priv->https_proxy_server)
-    {
-      LmProxy *proxy;
-
-      proxy = lm_proxy_new_with_server (LM_PROXY_TYPE_HTTP,
-          priv->https_proxy_server, priv->https_proxy_port);
-
-      lm_connection_set_proxy (conn->lmconn, proxy);
-
-      lm_proxy_unref (proxy);
-    }
+  g_object_set (priv->connector,
+      "ignore-ssl-errors", priv->ignore_ssl_errors,
+      NULL);
 
   if (priv->old_ssl)
     {
-      LmSSL *ssl = lm_ssl_new (NULL, connection_ssl_cb, conn, NULL);
-      lm_connection_set_ssl (conn->lmconn, ssl);
-      lm_ssl_unref (ssl);
+      g_object_set (priv->connector,
+          "tls-required", FALSE,
+          NULL);
     }
   else
     {
-      LmSSL *ssl = lm_ssl_new (NULL, connection_ssl_cb, conn, NULL);
-      lm_connection_set_ssl (conn->lmconn, ssl);
-
-      /* Try to use StartTLS if possible, but be careful about
-         allowing SSL errors in that default case. */
-      lm_ssl_use_starttls (ssl, TRUE, priv->require_encryption);
-
-      if (!priv->require_encryption)
-          priv->ignore_ssl_errors = TRUE;
-
-      lm_ssl_unref (ssl);
+      g_object_set (priv->connector,
+          "tls-required", priv->require_encryption,
+          "plaintext-auth-allowed", !priv->require_encryption,
+          NULL);
     }
 
-  lm_connection_set_keep_alive_rate (conn->lmconn, priv->keepalive_interval);
+  /* FIXME: support proxy server */
+  /* FIXME: support keep alive */
+  /* FIXME: support register */
 
-  lm_connection_set_disconnect_function (conn->lmconn,
-                                         connection_disconnected_cb,
-                                         conn,
-                                         NULL);
+  DEBUG ("Start connecting");
 
-  return do_connect (conn, error);
+  wocky_connector_connect_async (priv->connector,
+      connector_connect_cb, conn);
+
+  return TRUE;
 }
-
-
 
 static void
-connection_disconnected_cb (LmConnection *lmconn,
-                            LmDisconnectReason lm_reason,
-                            gpointer user_data)
+closed_cb (GObject *source,
+    GAsyncResult *res,
+    gpointer user_data)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  TpBaseConnection *base = (TpBaseConnection *) user_data;
+  GabbleConnection *self = GABBLE_CONNECTION (user_data);
+  TpBaseConnection *base = TP_BASE_CONNECTION (self);
+  GError *error = NULL;
 
-  g_assert (conn->lmconn == lmconn);
-
-  DEBUG ("called with reason %u", lm_reason);
-
-  /* if we were expecting this disconnection, we're done so can tell
-   * the connection manager to unref us. otherwise it's a network error
-   * or some other screw up we didn't expect, so we emit the status
-   * change */
-  if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
+  if (!wocky_porter_close_finish (WOCKY_PORTER (source), res, &error))
     {
-      DEBUG ("expected; emitting DISCONNECTED");
-      tp_base_connection_finish_shutdown ((TpBaseConnection *) conn);
+      DEBUG ("close failed: %s", error->message);
+      g_error_free (error);
     }
   else
     {
-      DEBUG ("unexpected; calling tp_base_connection_change_status");
-      tp_base_connection_change_status ((TpBaseConnection *) conn,
-          TP_CONNECTION_STATUS_DISCONNECTED,
-          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      DEBUG ("connection properly closed");
     }
 
-  /* Under certain circumstances, Loudmouth would end up calling this twice,
-   * because sometimes it calls it in response to a stream error, and sometimes
-   * it doesn't. (It depends on the error!) We don't want this to be called
-   * twice, so:
-   */
-  lm_connection_set_disconnect_function (lmconn, NULL, NULL, NULL);
+  tp_base_connection_finish_shutdown (base);
 }
-
 
 static void
 connection_shut_down (TpBaseConnection *base)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (base);
+  GabbleConnection *self = GABBLE_CONNECTION (base);
 
-  g_assert (GABBLE_IS_CONNECTION (conn));
-
-  /* If we're shutting down by user request, we don't want to be
-   * unreffed until the LM connection actually closes; the event handler
-   * will tell the base class that shutdown has finished.
-   *
-   * On the other hand, if we're shutting down because the connection
-   * suffered a network error, the LM connection will already be closed,
-   * so just tell the base class to finish shutting down immediately.
-   */
-  if (lm_connection_is_open (conn->lmconn))
+  if (self->lmconn != NULL)
     {
-      DEBUG ("still open; calling lm_connection_close");
-      lm_connection_close (conn->lmconn, NULL);
+      /* FIXME: set a timer */
+      DEBUG ("connection still open; closing it");
+      wocky_porter_close_async (self->lmconn, NULL, closed_cb, self);
     }
   else
     {
-      /* lm_connection_is_open() returns FALSE if LmConnection is in the
-       * middle of connecting, so call this just in case */
-      lm_connection_cancel_open (conn->lmconn);
-      DEBUG ("closed; emitting DISCONNECTED");
+      /* FIXME: cancel connecting if we are connecting */
       tp_base_connection_finish_shutdown (base);
     }
 }
@@ -1911,361 +2038,9 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
 }
 
 /**
- * connection_stream_error_cb
- *
- * Called by loudmouth when we get stream error, which means that
- * we're about to close the connection. The message contains the reason
- * for the connection hangup.
- */
-static LmHandlerResult
-connection_stream_error_cb (LmMessageHandler *handler,
-                            LmConnection *connection,
-                            LmMessage *message,
-                            gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  TpConnectionStatusReason r = TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
-
-  g_assert (connection == conn->lmconn);
-
-  NODE_DEBUG (message->node, "got stream error");
-
-  if (lm_message_node_get_child (message->node, "conflict") != NULL)
-    {
-      /* Another client with the same resource just appeared, we're going down.
-       */
-      DEBUG ("found <conflict> node");
-      r = TP_CONNECTION_STATUS_REASON_NAME_IN_USE;
-    }
-  else if (lm_message_node_get_child (message->node, "host-unknown") != NULL)
-    {
-      /* If we get this while we're logging in, it's because we're trying to
-       * connect to foo@bar.com but the server doesn't know about bar.com,
-       * probably because the user entered a non-GTalk JID into a GTalk profile
-       * that forces the server.
-       */
-      if (conn->parent.status == TP_CONNECTION_STATUS_CONNECTING)
-        {
-          DEBUG ("found <host-unknown> and we're connecting");
-          r = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
-        }
-    }
-
-  if (r != TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED)
-    {
-      DEBUG ("changing status to Disconnected for reason %u", r);
-
-      tp_base_connection_change_status ((TpBaseConnection *) conn,
-          TP_CONNECTION_STATUS_DISCONNECTED, r);
-    }
-
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-}
-
-/**
- * connection_ssl_cb
- *
- * If we're doing old SSL, this function gets called if the certificate
- * is dodgy.
- */
-static LmSSLResponse
-connection_ssl_cb (LmSSL      *lmssl,
-                   LmSSLStatus status,
-                   gpointer    data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (data);
-  GabbleConnectionPrivate *priv = conn->priv;
-  const char *reason;
-  TpConnectionStatusReason tp_reason;
-
-  switch (status) {
-    case LM_SSL_STATUS_NO_CERT_FOUND:
-      reason = "The server doesn't provide a certificate.";
-      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_NOT_PROVIDED;
-      break;
-    case LM_SSL_STATUS_UNTRUSTED_CERT:
-      reason = "The certificate can not be trusted.";
-      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_UNTRUSTED;
-      break;
-    case LM_SSL_STATUS_CERT_EXPIRED:
-      reason = "The certificate has expired.";
-      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_EXPIRED;
-      break;
-    case LM_SSL_STATUS_CERT_NOT_ACTIVATED:
-      reason = "The certificate has not been activated.";
-      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_NOT_ACTIVATED;
-      break;
-    case LM_SSL_STATUS_CERT_HOSTNAME_MISMATCH:
-      reason = "The server hostname doesn't match the one in the certificate.";
-      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_HOSTNAME_MISMATCH;
-      break;
-    case LM_SSL_STATUS_CERT_FINGERPRINT_MISMATCH:
-      reason = "The fingerprint doesn't match the expected value.";
-      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_FINGERPRINT_MISMATCH;
-      break;
-    case LM_SSL_STATUS_GENERIC_ERROR:
-      reason = "An unknown SSL error occurred.";
-      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_OTHER_ERROR;
-      break;
-    default:
-      g_assert_not_reached ();
-      reason = "Unknown SSL error code from Loudmouth.";
-      tp_reason = TP_CONNECTION_STATUS_REASON_ENCRYPTION_ERROR;
-      break;
-  }
-
-  DEBUG ("called: %s", reason);
-
-  if (priv->ignore_ssl_errors)
-    {
-      return LM_SSL_RESPONSE_CONTINUE;
-    }
-  else
-    {
-      priv->ssl_error = tp_reason;
-      return LM_SSL_RESPONSE_STOP;
-    }
-}
-
-static void
-do_auth (GabbleConnection *conn)
-{
-  GabbleConnectionPrivate *priv = conn->priv;
-  GError *error = NULL;
-
-  DEBUG ("authenticating with username: %s, password: <hidden>, resource: %s",
-           priv->username, priv->resource);
-
-  if (!lm_connection_authenticate (conn->lmconn, priv->username,
-        priv->password, priv->resource, connection_auth_cb, conn, NULL,
-        &error))
-    {
-      DEBUG ("failed: %s", error->message);
-      g_error_free (error);
-
-      /* the reason this function can fail is through network errors,
-       * authentication failures are reported to our auth_cb */
-      tp_base_connection_change_status ((TpBaseConnection *) conn,
-          TP_CONNECTION_STATUS_DISCONNECTED,
-          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
-    }
-}
-
-static void
-registration_finished_cb (GabbleRegister *reg,
-                          gboolean success,
-                          gint err_code,
-                          const gchar *err_msg,
-                          gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-
-  if (base->status != TP_CONNECTION_STATUS_CONNECTING)
-    {
-      g_assert (base->status == TP_CONNECTION_STATUS_DISCONNECTED);
-      return;
-    }
-
-  DEBUG ("%s", (success) ? "succeeded" : "failed");
-
-  g_object_unref (reg);
-
-  if (success)
-    {
-      do_auth (conn);
-    }
-  else
-    {
-      DEBUG ("err_code = %d, err_msg = '%s'",
-               err_code, err_msg);
-
-      tp_base_connection_change_status ((TpBaseConnection *) conn,
-          TP_CONNECTION_STATUS_DISCONNECTED,
-          (err_code == TP_ERROR_NOT_YOURS) ?
-            TP_CONNECTION_STATUS_REASON_NAME_IN_USE :
-            TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
-    }
-}
-
-static void
-do_register (GabbleConnection *conn)
-{
-  GabbleRegister *reg;
-
-  reg = gabble_register_new (conn);
-
-  g_signal_connect (reg, "finished", (GCallback) registration_finished_cb,
-                    conn);
-
-  gabble_register_start (reg);
-}
-
-/**
- * connection_open_cb
- *
- * Stage 2 of connecting, this function is called by loudmouth after the
- * result of the non-blocking lm_connection_open call is known. It makes
- * a request to authenticate the user with the server, or optionally
- * registers user on the server first.
- */
-static void
-connection_open_cb (LmConnection *lmconn,
-                    gboolean      success,
-                    gpointer      data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (data);
-  GabbleConnectionPrivate *priv = conn->priv;
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-
-  if ((base->status != TP_CONNECTION_STATUS_CONNECTING) &&
-      (base->status != TP_INTERNAL_CONNECTION_STATUS_NEW))
-    {
-      g_assert (base->status == TP_CONNECTION_STATUS_DISCONNECTED);
-      return;
-    }
-
-  g_assert (priv);
-  g_assert (lmconn == conn->lmconn);
-
-  if (!success)
-    {
-      if (lm_connection_get_proxy (lmconn))
-        {
-          DEBUG ("failed, retrying without proxy");
-
-          lm_connection_set_proxy (lmconn, NULL);
-
-          if (do_connect (conn, NULL))
-            {
-              return;
-            }
-        }
-      else
-        {
-          DEBUG ("failed");
-        }
-
-      if (priv->ssl_error)
-        {
-          tp_base_connection_change_status ((TpBaseConnection *) conn,
-            TP_CONNECTION_STATUS_DISCONNECTED,
-            priv->ssl_error);
-        }
-      else
-        {
-          tp_base_connection_change_status ((TpBaseConnection *) conn,
-              TP_CONNECTION_STATUS_DISCONNECTED,
-              TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
-        }
-
-      return;
-    }
-
-  if (!priv->do_register)
-    do_auth (conn);
-  else
-    do_register (conn);
-}
-
-/**
- * connection_auth_cb
- *
- * Stage 3 of connecting, this function is called by loudmouth after the
- * result of the non-blocking lm_connection_authenticate call is known.
- * It sends a discovery request to find the server's features.
- */
-static void
-connection_auth_cb (LmConnection *lmconn,
-                    gboolean      success,
-                    gpointer      data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (data);
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-  GabbleConnectionPrivate *priv = conn->priv;
-  GError *error = NULL;
-  const gchar *jid;
-
-  if (base->status != TP_CONNECTION_STATUS_CONNECTING)
-    {
-      g_assert (base->status == TP_CONNECTION_STATUS_DISCONNECTED);
-      return;
-    }
-
-  g_assert (priv);
-  g_assert (lmconn == conn->lmconn);
-
-  if (!success)
-    {
-      DEBUG ("failed");
-
-      tp_base_connection_change_status ((TpBaseConnection *) conn,
-          TP_CONNECTION_STATUS_DISCONNECTED,
-          TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
-
-      return;
-    }
-
-
-  jid = lm_connection_get_full_jid (lmconn);
-
-  base->self_handle = tp_handle_ensure (contact_handles, jid, NULL, &error);
-
-  if (base->self_handle == 0)
-    {
-      DEBUG ("couldn't get our self handle: %s", error->message);
-
-      g_error_free (error);
-
-      tp_base_connection_change_status ((TpBaseConnection *) conn,
-          TP_CONNECTION_STATUS_DISCONNECTED,
-          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
-
-      return;
-    }
-
-  /* update priv->resource and priv->stream_server from the server's JID */
-  if (!_gabble_connection_set_properties_from_account (conn, jid, &error))
-    {
-      DEBUG ("couldn't parse our own JID: %s", error->message);
-
-      g_error_free (error);
-
-      tp_base_connection_change_status ((TpBaseConnection *) conn,
-          TP_CONNECTION_STATUS_DISCONNECTED,
-          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
-
-      return;
-    }
-
-  DEBUG ("Created self handle %d, our JID is %s", base->self_handle, jid);
-
-  /* set initial capabilities */
-  gabble_connection_refresh_capabilities (conn, NULL);
-
-  if (!gabble_disco_request_with_timeout (conn->disco, GABBLE_DISCO_TYPE_INFO,
-                                          priv->stream_server, NULL,
-                                          disco_reply_timeout,
-                                          connection_disco_cb, conn,
-                                          G_OBJECT (conn), &error))
-    {
-      DEBUG ("sending disco request failed: %s",
-          error->message);
-
-      g_error_free (error);
-
-      tp_base_connection_change_status ((TpBaseConnection *) conn,
-          TP_CONNECTION_STATUS_DISCONNECTED,
-          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
-    }
-}
-
-/**
  * connection_disco_cb
  *
- * Stage 4 of connecting, this function is called by GabbleDisco after the
+ * Stage 3 of connecting, this function is called by GabbleDisco after the
  * result of the non-blocking server feature discovery call is known. It sends
  * the user's initial presence to the server, marking them as available,
  * and requests the roster.

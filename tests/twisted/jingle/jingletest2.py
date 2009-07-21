@@ -380,7 +380,7 @@ class JingleTest2:
         self.stream = stream
         self.sid = 'sess' + str(int(random.random() * 10000))
 
-    def prepare(self):
+    def prepare(self, send_presence=True):
         # If we need to override remote caps, feats, codecs or caps,
         # we should do it prior to calling this method.
 
@@ -401,7 +401,8 @@ class JingleTest2:
                     query_name='vCard'),
                 )
 
-        self.send_presence_and_caps()
+        if send_presence:
+            self.send_presence_and_caps()
 
     def send_presence_and_caps(self):
         # We need remote end's presence for capabilities

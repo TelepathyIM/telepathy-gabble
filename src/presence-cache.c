@@ -818,8 +818,10 @@ void
 gabble_presence_cache_update_cache_entry (
     GHashTable *out, GHashTable *in)
 {
-  g_hash_table_foreach (in, update_caps_helper,
-      out);
+  g_return_if_fail (out != NULL);
+
+  if (in != NULL)
+    g_hash_table_foreach (in, update_caps_helper, out);
 }
 
 static void _caps_disco_cb (GabbleDisco *disco,

@@ -143,6 +143,7 @@ CHECK_TWISTED_SLEEP=0
 check-twisted:
 	$(MAKE) -C tools
 	rm -f tools/core
+	rm -f tools/vgcore.*
 	rm -f tools/gabble-testing.log
 	if test -n "$$GABBLE_TEST_REFDBG"; then \
 	  sleep=6; \

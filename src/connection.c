@@ -219,6 +219,7 @@ struct _GabbleConnectionPrivate
   /* the union of the above */
   GabbleCapabilitySet *all_caps;
 
+  gboolean closing;
   /* gobject housekeeping */
   gboolean dispose_has_run;
 };
@@ -1305,6 +1306,7 @@ remote_error_cb (WockyPorter *porter,
 {
   TpConnectionStatusReason reason = TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
   TpBaseConnection *base = (TpBaseConnection *) self;
+  GabbleConnectionPrivate *priv = self->priv;
 
   if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
     /* Ignore if we are already disconnecting/disconnected */
@@ -1329,6 +1331,7 @@ remote_error_cb (WockyPorter *porter,
     }
 
   DEBUG ("Force closing of the connection");
+  priv->closing = TRUE;
   wocky_porter_force_close_async (self->porter, NULL, force_close_cb,
       self);
 
@@ -1661,11 +1664,16 @@ static void
 connection_shut_down (TpBaseConnection *base)
 {
   GabbleConnection *self = GABBLE_CONNECTION (base);
+  GabbleConnectionPrivate *priv = self->priv;
+
+  if (priv->closing)
+    return;
 
   if (self->porter != NULL)
     {
       /* FIXME: set a timer */
       DEBUG ("connection still open; closing it");
+      priv->closing = TRUE;
       wocky_porter_close_async (self->porter, NULL, closed_cb, self);
     }
   else

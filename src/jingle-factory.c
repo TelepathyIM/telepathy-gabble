@@ -1203,11 +1203,6 @@ gabble_jingle_factory_create_google_relay_session (
 
   if (priv->soup == NULL)
     {
-      /* libsoup uses glib in multiple threads and don't have this, so we have to
-       * enable it manually here */
-      if (!g_thread_supported ())
-        g_thread_init (NULL);
-
       priv->soup = soup_session_async_new ();
 
       /* If we don't get answer in a few seconds, relay won't do

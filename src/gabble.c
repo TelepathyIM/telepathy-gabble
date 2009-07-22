@@ -123,15 +123,22 @@ gabble_lm_debug (void)
 }
 #endif
 
-int
-gabble_main (int argc,
-    char **argv)
+
+void
+gabble_init (void)
 {
   /* libsoup uses glib in multiple threads and don't have this, so we have to
    * enable it manually here */
   if (!g_thread_supported ())
     g_thread_init (NULL);
 
+  g_type_init ();
+}
+
+int
+gabble_main (int argc,
+    char **argv)
+{
   tp_debug_divert_messages (g_getenv ("GABBLE_LOGFILE"));
 
 #ifdef ENABLE_DEBUG

@@ -24,5 +24,6 @@ int
 main (int argc,
       char **argv)
 {
+  gabble_init ();
   return gabble_main (argc, argv);
 }

@@ -48,7 +48,7 @@ Fixes:
   used if a SIP user on sipphone.com calls a SIP URI that looks as though it's
   meant to be a gmail.com JID). (smcv)
 
-* Fix a header guard in debug.h. (Andreas Salomon)
+* Fix a header guard in debug.h. (Andres Salomon)
 
 * Move GThread initialization to the very beginning, since it's meant to be done
   before *any* GLib API usage. (cassidy)

@@ -1,40 +1,48 @@
-telepathy-gabble 0.7.31 (UNRELEASED)
+telepathy-gabble 0.7.31 (2009-07-22)
 ====================================
 
 The “Calypso Wash Motion is the sound of agitated love” release.
 
-Dependencies:
-
 Enhancements:
 
-* The XML sent and received by Gabble is now exposed by the Debug interface
+* The XML sent and received by Gabble is now exposed by the Debug interface.
   (Jonny Lamb)
 
 Fixes:
 
 * Audio codecs' names are forced to match the case expected by the Google Talk
-  desktop client, which is incorrectly case-sensitive
+  desktop client, which is incorrectly case-sensitive. (wjt)
 
 * fd.o#22535: Gabble no longer crashes if you disconnect while it's trying to
-  start a Google relay session for a call.
+  start a Google relay session for a call. (wjt)
 
 * fd.o#22629: Gabble no longer crashes if the initiator of a tube receives data
-  before it is connected to the application's socket.
+  before it is connected to the application's socket. (wjt)
 
-* Gabble no longer erroneously hides Google Talk contacts who were
+* fd.o #22858: Gabble no longer erroneously hides Google Talk contacts who were
   automatically added to your roster, and contacts who Google incorrectly
-  thinks are aliases for another JID.
+  thinks are aliases for another JID. (wjt)
 
-* Removing a contact from 'subscribe' while they're in remote-pending ("Oops! I
-  didn't mean to subscribe to Randall's presence!") now works. This is on top
-  of the fix for fd.o #21547 in 0.7.28, which made removing the
-  contact from 'stored' work.  Previously, while the subscription request was
-  correctly rescinded, Gabble didn't expose it correctly on the 'subscribe'
-  channel.
+* fd.o #22858: Removing a contact from 'subscribe' while they're in
+  remote-pending ("Oops! I didn't mean to subscribe to Randall's presence!")
+  now works. This is on top of the fix for fd.o #21547 in 0.7.28, which made
+  removing the contact from 'stored' work.  Previously, while the subscription
+  request was correctly rescinded, Gabble didn't expose it correctly on the
+  'subscribe' channel. (wjt)
 
-* Contacts no longer "flicker" to and from subscribe:remote-pending when you
-  subscribe to them on a Google Talk account. This was a regression in 0.7.28,
-  caused by fixing fd.o #21547.
+* fd.o #22858: Contacts no longer "flicker" to and from
+  subscribe:remote-pending when you subscribe to them on a Google Talk account.
+  This was a regression in 0.7.28, caused by fixing fd.o #21547. (wjt)
+
+* Gabble no longer crashes if called by a client which is, or pretends to be,
+  an old version of Google Talk (such as gtalk2voip.com, which is automatically
+  used if a SIP user on sipphone.com calls a SIP URI that looks as though it's
+  meant to be a gmail.com JID). (smcv)
+
+* Fix a header guard in debug.h. (Andreas Salomon)
+
+* Move GThread initialization to the very beginning, since it's meant to be done
+  before *any* GLib API usage. (cassidy)
 
 telepathy-gabble 0.7.30 (2009-06-29)
 ====================================

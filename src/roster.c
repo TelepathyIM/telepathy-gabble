@@ -415,7 +415,8 @@ _parse_google_item_type (LmMessageNode *item_node)
 
   g_assert (item_node != NULL);
 
-  google_type = lm_message_node_get_attribute (item_node, "gr:t");
+  google_type = lm_message_node_get_attribute_with_namespace (item_node, "t",
+      NS_GOOGLE_ROSTER);
 
   if (NULL == google_type)
     return GOOGLE_ITEM_TYPE_NORMAL;
@@ -434,7 +435,8 @@ _parse_google_item_type (LmMessageNode *item_node)
 static gchar *
 _extract_google_alias_for (LmMessageNode *item_node)
 {
-  return g_strdup (lm_message_node_get_attribute (item_node, "gr:alias-for"));
+  return g_strdup (lm_message_node_get_attribute_with_namespace (item_node,
+        "alias-for", NS_GOOGLE_ROSTER));
 }
 
 static gboolean
@@ -1261,7 +1263,8 @@ got_roster_iq (GabbleRoster *roster,
     {
       const char *gr_ext;
 
-      gr_ext = lm_message_node_get_attribute (query_node, "gr:ext");
+      gr_ext = lm_message_node_get_attribute_with_namespace (query_node, "ext",
+          NS_GOOGLE_ROSTER);
 
       if (!tp_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
         google_roster = TRUE;

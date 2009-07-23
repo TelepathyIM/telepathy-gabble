@@ -78,6 +78,8 @@ lm_message_node_set_attribute (LmMessageNode *node,
 {
   if (!wocky_strdiff (name, "xmlns"))
     wocky_xmpp_node_set_ns (node, value);
+  else if (!wocky_strdiff (name, "xml:lang"))
+    wocky_xmpp_node_set_language (node, value);
   else
     wocky_xmpp_node_set_attribute (node, name, value);
 }
@@ -88,6 +90,8 @@ lm_message_node_get_attribute (LmMessageNode *node,
 {
   if (!wocky_strdiff (name, "xmlns"))
     return wocky_xmpp_node_get_ns (node);
+  else if (!wocky_strdiff (name, "xml:lang"))
+    return wocky_xmpp_node_get_language (node);
 
   return wocky_xmpp_node_get_attribute (node, name);
 }

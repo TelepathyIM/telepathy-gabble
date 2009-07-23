@@ -162,23 +162,6 @@ lm_message_node_get_child_any_ns (LmMessageNode *node, const gchar *name)
   return NULL;
 }
 
-static const gchar *
-find_namespace_of_prefix (LmMessageNode *node,
-    const gchar *prefix)
-{
-  gchar *attr = g_strdup_printf ("xmlns:%s", prefix);
-  const gchar *node_ns = NULL;
-
-  /* find the namespace in this node or its parents */
-  for (; (node != NULL) && (node_ns == NULL); node = node->parent)
-    {
-      node_ns = lm_message_node_get_attribute (node, attr);
-    }
-
-  g_free (attr);
-  return node_ns;
-}
-
 const gchar *
 lm_message_node_get_namespace (LmMessageNode *node)
 {
@@ -1001,38 +984,7 @@ lm_message_node_get_attribute_with_namespace (LmMessageNode *node,
     const gchar *attribute,
     const gchar *ns)
 {
-  GSList *l;
-  const gchar *result = NULL;
-
-  g_return_val_if_fail (node != NULL, NULL);
-  g_return_val_if_fail (attribute != NULL, NULL);
-  g_return_val_if_fail (ns != NULL, NULL);
-
-  for (l = node->attributes; l != NULL && result == NULL; l = g_slist_next (l))
-    {
-      /* This is NOT part of loudmouth API; it depends LM internals */
-      Attribute *attr = (Attribute *) l->data;
-      gchar **pair;
-
-      pair = g_strsplit (attr->key, ":", 2);
-
-      if (tp_strdiff (pair[1], attribute))
-        /* no prefix (pair[1] == NULL) or the local-name is not the
-         * attribute we are looking for */
-        goto next_attribute;
-
-      if (tp_strdiff (find_namespace_of_prefix (node, pair[0]), ns))
-        /* wrong namespace */
-        goto next_attribute;
-
-      result = attr->value;
-
-next_attribute:
-      g_strfreev (pair);
-      continue;
-    }
-
-  return result;
+  return wocky_xmpp_node_get_attribute_ns (node, attribute, ns);
 }
 
 GPtrArray *

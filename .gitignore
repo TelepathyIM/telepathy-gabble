@@ -66,6 +66,7 @@ cscope.out
 /telepathy-gabble-0*
 /tests/org.freedesktop.Telepathy.ConnectionManager.gabble.service
 /tests/test-base64
+/tests/test-caps-hash
 /tests/test-dtube-unique-names
 /tests/test-handles
 /tests/test-jid-decode

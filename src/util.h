@@ -82,11 +82,14 @@ const gchar * lm_message_node_get_name (LmMessageNode *node);
 LmMessageNode * lm_message_node_get_child_any_ns (LmMessageNode *node,
     const gchar *name);
 
-
 LmMessage *
 lm_iq_message_make_result (LmMessage *iq_message);
 
 void gabble_signal_connect_weak (gpointer instance, const gchar *detailed_signal,
     GCallback c_handler, GObject *user_data);
+
+const gchar * lm_message_node_get_attribute_with_namespace (LmMessageNode *node,
+    const gchar *attribute,
+    const gchar *ns);
 
 #endif /* __GABBLE_UTIL_H__ */

@@ -45,20 +45,19 @@ G_BEGIN_DECLS
 /* List of public SOCKS5 proxies:
  * http://coccinella.im/servers/servers_by_proxy_bytestreams.html */
 #define GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES             \
-    { "proxy.jabber.org", "proxy.jabberfr.org", "proxy.isgeek.info",\
-      "proxy2.isgeek.info", "proxy65.rooyee.biz", "proxy.jabbim.cz",\
-      "proxy.911910.cn", "proxy.brauchen.info",\
-      "proxy.core.im", "proxy.deshalbfrei.org", "proxy.downtempo.de",\
-      "proxy.draugr.de", "proxy.egbers.info",\
-      "proxy.im.flosoft.biz", "proxy.jabber-hispano.org",\
+    { "proxy.jabber.org", "proxy.jabberfr.org",\
+      "proxy65.rooyee.biz", "proxy.jabbim.cz",\
+      "proxy.911910.cn",\
+      "proxy.downtempo.de",\
+      "proxy.im.flosoft.biz",\
       "proxy.jabber.bluendo.com", "proxy.jabber.dk", "proxy.jabber.freenet.de",\
       "proxy.fsinf.at", "proxy.jabber.minus273.org",\
       "proxy.jabber.planetteamspeak.com", "proxy.jabber.tf-network.de",\
       "proxy.jabjab.de", "proxy.jabster.pl",\
-      "proxy.schokokeks.org", "proxy.silper.cz",\
+      "proxy.schokokeks.org",\
       "proxy.ubuntu-jabber.de", "proxy.ubuntu-jabber.net",\
       "proxy65.unstable.nl", "proxy.verdammung.org", "proxy.vke.ru",\
-      "proxy.vodka-pomme.net", "proxy.xabber.de", "proxy.jabbernet.eu",\
+      "proxy.vodka-pomme.net", "proxy.jabbernet.eu",\
       NULL }
 
 /* These proxies appeared to be the same as proxy.jabbernet.eu

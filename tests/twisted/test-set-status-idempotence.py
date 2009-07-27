@@ -7,8 +7,7 @@ import dbus
 
 from servicetest import EventPattern
 from gabbletest import exec_test
-
-ispresence = u'org.freedesktop.Telepathy.Connection.Interface.SimplePresence'
+import constants as cs
 
 def test_presence(q, bus, conn, stream):
     conn.Connect()
@@ -31,7 +30,7 @@ def test_simple_presence(q, bus, conn, stream):
 
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    iface = dbus.Interface (conn, ispresence)
+    iface = dbus.Interface (conn, cs.CONN_IFACE_SIMPLE_PRESENCE)
     run_test(q, bus, conn, stream,
       (lambda status, message = "": iface.SetPresence (status, message)))
 
@@ -46,8 +45,8 @@ def run_test(q, bus, conn, stream, set_status_func):
         EventPattern('stream-presence'))
     assert signal.args == [{1L: (0L, {u'away': {u'message': u'gone'}})}]
     assert simple_signal.args == [{1L: (3L, u'away',  u'gone')}]
-    assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
-      { ispresence + "/presence": (3L, u'away', u'gone'),
+    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
+      { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (3L, u'away', u'gone'),
         'org.freedesktop.Telepathy.Connection/contact-id':
             'test@localhost'}}
 
@@ -60,8 +59,8 @@ def run_test(q, bus, conn, stream, set_status_func):
     # Set presence a second time. Since this call is redundant, there should
     # be no PresenceUpdate or <presence> sent to the server.
     set_status_func('away', 'gone')
-    assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
-      { ispresence + "/presence": (3L, u'away', u'gone'),
+    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
+      { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (3L, u'away', u'gone'),
         'org.freedesktop.Telepathy.Connection/contact-id':
             'test@localhost'}}
 
@@ -79,8 +78,8 @@ def run_test(q, bus, conn, stream, set_status_func):
     children = list(presence.stanza.elements())
     assert children[0].name == 'status'
     assert str(children[0]) == 'yo'
-    assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
-      { ispresence + "/presence": (2L, u'available', u'yo'),
+    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
+      { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (2L, u'available', u'yo'),
         'org.freedesktop.Telepathy.Connection/contact-id':
             'test@localhost'}}
 
@@ -94,8 +93,8 @@ def run_test(q, bus, conn, stream, set_status_func):
         EventPattern('stream-presence'))
     assert signal.args == [{1L: (0L, {u'available': {}})}]
     assert simple_signal.args == [{1L: (2L, u'available',  u'')}]
-    assert conn.Contacts.GetContactAttributes([1], [ispresence], False) == { 1L:
-      { ispresence + "/presence": (2L, u'available', u''),
+    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
+      { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (2L, u'available', u''),
         'org.freedesktop.Telepathy.Connection/contact-id':
             'test@localhost'}}
 

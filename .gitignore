@@ -27,8 +27,10 @@ _gen
 /config.h.in
 /config.log
 /config.status
+/config.status.lineno
 /config.sub
 /configure
+/configure.lineno
 core
 /data/gabble.manager
 /data/org.freedesktop.Telepathy.ConnectionManager.gabble.service

@@ -90,6 +90,7 @@ _free_field (gpointer data, gpointer user_data)
 
   g_free (field->field_name);
   g_ptr_array_foreach (field->values, (GFunc) g_free, NULL);
+  g_ptr_array_free (field->values, TRUE);
 
   g_slice_free (DataFormField, field);
 }
@@ -102,6 +103,7 @@ _free_form (gpointer data, gpointer user_data)
   g_free (form->form_type);
 
   g_ptr_array_foreach (form->fields, _free_field, NULL);
+  g_ptr_array_free (form->fields, TRUE);
 
   g_slice_free (DataForm, form);
 }

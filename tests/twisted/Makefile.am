@@ -1,7 +1,11 @@
 TWISTED_TESTS = \
 	avatar-requirements.py \
+	caps_helper.py \
+	caps/caps-cache.py \
 	caps/from-bare-jid.py \
+	caps/hashed-caps.py \
 	caps/receive-jingle.py \
+	caps/tube-caps.py \
 	muc/name-conflict.py \
 	muc/renamed.py \
 	muc/roomlist.py \
@@ -113,11 +117,7 @@ TWISTED_TESTS = \
 	file-transfer/test-send-file-provide-immediately.py \
 	file-transfer/test-send-file-to-unknown-contact.py \
 	file-transfer/test-send-file-wait-to-provide.py \
-	test-caps-cache.py \
-	test-caps-hash.py \
-	test-caps-tubes.py \
 	test-debug.py \
-	caps_helper.py \
 	connect/multiple-times-to-same-account.py \
 	connect/test-fail.py \
 	connect/test-success.py \

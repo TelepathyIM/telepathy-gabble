@@ -194,6 +194,17 @@ gibber_unix_transport_new_from_fd (int fd)
   return transport;
 }
 
+/* Patches that reimplement these functions for non-Linux would be welcome
+ * (please file a bug) */
+
+#if defined(__linux__)
+
+gboolean
+gibber_unix_transport_supports_credentials (void)
+{
+  return TRUE;
+}
+
 gboolean
 gibber_unix_transport_send_credentials (GibberUnixTransport *transport,
     const guint8 *data,
@@ -356,3 +367,39 @@ gibber_unix_transport_recv_credentials (GibberUnixTransport *self,
   priv->recv_creds_data = user_data;
   return TRUE;
 }
+
+#else /* OSs where we have no implementation */
+
+gboolean
+gibber_unix_transport_supports_credentials (void)
+{
+  return FALSE;
+}
+
+gboolean
+gibber_unix_transport_recv_credentials (GibberUnixTransport *self,
+    GibberUnixTransportRecvCredentialsCb callback,
+    gpointer user_data)
+{
+  DEBUG ("stub implementation, failing");
+  return FALSE;
+}
+
+gboolean
+gibber_unix_transport_send_credentials (GibberUnixTransport *transport,
+    const guint8 *data,
+    gsize size)
+{
+  DEBUG ("stub implementation, failing");
+  return FALSE;
+}
+
+static GibberFdIOResult
+gibber_unix_transport_read (GibberFdTransport *transport,
+    GIOChannel *channel,
+    GError **error)
+{
+  return gibber_fd_transport_read (transport, channel, error);
+}
+
+#endif

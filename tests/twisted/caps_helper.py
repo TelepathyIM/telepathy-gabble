@@ -113,14 +113,18 @@ def make_caps_disco_reply(stream, req, features, dataforms={}):
 
     return iq
 
-def receive_presence_and_ask_caps(q, stream):
+def receive_presence_and_ask_caps(q, stream, expect_dbus=True):
     # receive presence stanza
-    event_stream, event_dbus = q.expect_many(
-            EventPattern('stream-presence'),
-            EventPattern('dbus-signal', signal='ContactCapabilitiesChanged')
-        )
-    assert len(event_dbus.args) == 1
-    signaled_caps = event_dbus.args[0]
+    if expect_dbus:
+        event_stream, event_dbus = q.expect_many(
+                EventPattern('stream-presence'),
+                EventPattern('dbus-signal', signal='ContactCapabilitiesChanged')
+            )
+        assert len(event_dbus.args) == 1
+        signaled_caps = event_dbus.args[0]
+    else:
+        event_stream = q.expect('stream-presence')
+        signaled_caps = None
 
     c_nodes = xpath.queryForNodes('/presence/c', event_stream.stanza)
     assert c_nodes is not None

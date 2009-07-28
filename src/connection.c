@@ -1718,23 +1718,28 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   caps_hash = caps_hash_compute_from_self_presence (self);
 
-  if (NULL == node ||
-      !tp_strdiff (suffix, BUNDLE_VOICE_V1) ||
-      !tp_strdiff (suffix, caps_hash))
+  if (node == NULL || !tp_strdiff (suffix, caps_hash))
     {
       for (i = features; NULL != i; i = i->next)
         {
           const Feature *feature = (const Feature *) i->data;
 
-          /* When BUNDLE_VOICE_V1 is requested, only send the bundle */
-          if (!tp_strdiff (suffix, BUNDLE_VOICE_V1) &&
-              feature->feature_type != FEATURE_BUNDLE_COMPAT)
-            continue;
-
           add_feature_node (result_query, feature->ns);
         }
 
       NODE_DEBUG (result_iq, "sending disco response");
+      _gabble_connection_send_or_complain (self, result,
+          "sending disco response failed");
+    }
+  else if (!tp_strdiff (suffix, BUNDLE_VOICE_V1))
+    {
+      add_feature_node (result_query, NS_GOOGLE_FEAT_VOICE);
+      _gabble_connection_send_or_complain (self, result,
+          "sending disco response failed");
+    }
+  else if (!tp_strdiff (suffix, BUNDLE_VIDEO_V1))
+    {
+      add_feature_node (result_query, NS_GOOGLE_FEAT_VIDEO);
       _gabble_connection_send_or_complain (self, result,
           "sending disco response failed");
     }

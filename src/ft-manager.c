@@ -543,13 +543,13 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   date_str = lm_message_node_get_attribute (file_node, "date");
   if (date_str != NULL)
     {
-      struct tm tm;
+      GTimeVal val;
 
-      memset (&tm, 0, sizeof (struct tm));
+      g_time_val_from_iso8601 (date_str, &val);
 
       /* FIXME: this assume the timezone is always UTC */
-      if (strptime (date_str, "%FT%H:%M:%SZ", &tm) != NULL)
-        date = (guint64) mktime (&tm);
+      if (g_time_val_from_iso8601 (date_str, &val))
+        date = val.tv_sec;
     }
 
   resume_supported = (lm_message_node_get_child (file_node, "range") != NULL);

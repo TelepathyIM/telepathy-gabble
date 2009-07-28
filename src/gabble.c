@@ -25,6 +25,7 @@
 
 #include <telepathy-glib/debug.h>
 #include <telepathy-glib/run.h>
+#include <wocky/wocky.h>
 
 #include "debug.h"
 #include "debugger.h"
@@ -133,6 +134,7 @@ gabble_init (void)
     g_thread_init (NULL);
 
   g_type_init ();
+  wocky_init ();
 }
 
 int

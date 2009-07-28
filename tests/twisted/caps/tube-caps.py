@@ -35,7 +35,8 @@ import dbus
 
 from twisted.words.xish import xpath
 
-from servicetest import assertEquals, assertLength
+from servicetest import assertEquals, assertLength, assertContains,\
+        assertDoesNotContain
 from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 import constants as cs
 
@@ -205,17 +206,17 @@ def advertise_caps(q, conn, stream, filters, expected_features, unexpected_featu
     ret_caps = conn.ContactCapabilities.SetSelfCapabilities(filters)
 
     # Expect Gabble to reply with the correct caps
-    event, caps_str, signaled_caps = receive_presence_and_ask_caps(q, stream)
+    event, namespaces, signaled_caps = receive_presence_and_ask_caps(q, stream)
 
     assertSameElements(expected_caps, signaled_caps)
 
-    assert caps_contain(event, ns.TUBES) == True, caps_str
+    assertContains(ns.TUBES, namespaces)
 
     for var in expected_features:
-        assert caps_contain(event, var), (var, caps_str)
+        assertContains(var, namespaces)
 
     for var in unexpected_features:
-        assert not caps_contain(event, var), (var, caps_str)
+        assertDoesNotContain(var, namespaces)
 
     # Check our own caps
     caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])

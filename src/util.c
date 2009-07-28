@@ -174,6 +174,23 @@ lm_message_node_get_child_any_ns (LmMessageNode *node, const gchar *name)
   return NULL;
 }
 
+static const gchar *
+find_namespace_of_prefix (LmMessageNode *node,
+    const gchar *prefix)
+{
+  gchar *attr = g_strdup_printf ("xmlns:%s", prefix);
+  const gchar *node_ns = NULL;
+
+  /* find the namespace in this node or its parents */
+  for (; (node != NULL) && (node_ns == NULL); node = node->parent)
+    {
+      node_ns = lm_message_node_get_attribute (node, attr);
+    }
+
+  g_free (attr);
+  return node_ns;
+}
+
 const gchar *
 lm_message_node_get_namespace (LmMessageNode *node)
 {
@@ -183,16 +200,9 @@ lm_message_node_get_namespace (LmMessageNode *node)
   if (x != NULL)
     {
       gchar *prefix = g_strndup (node->name, (x - node->name));
-      gchar *attr = g_strdup_printf ("xmlns:%s", prefix);
 
-      /* find the namespace in this node or its parents */
-      for (node_ns = NULL; (node != NULL) && (node_ns == NULL); node = node->parent)
-        {
-          node_ns = lm_message_node_get_attribute (node, attr);
-        }
-
+      node_ns = find_namespace_of_prefix (node, prefix);
       g_free (prefix);
-      g_free (attr);
     }
   else
     {

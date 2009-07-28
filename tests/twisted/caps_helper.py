@@ -11,6 +11,62 @@ from config import PACKAGE_STRING
 import ns
 import constants as cs
 
+# The caps we always have, regardless of any clients' caps
+FIXED_CAPS = [
+    ns.GOOGLE_FEAT_SESSION,
+    ns.NICK,
+    ns.NICK + '+notify',
+    ns.CHAT_STATES,
+    ns.SI,
+    ns.IBB,
+    ns.BYTESTREAMS,
+    ]
+
+JINGLE_CAPS = [
+    # Jingle dialects
+    ns.JINGLE,
+    ns.JINGLE_015,
+    # Jingle transports
+    ns.JINGLE_TRANSPORT_ICEUDP,
+    ns.JINGLE_TRANSPORT_RAWUDP,
+    ns.GOOGLE_P2P,
+    # Jingle streams
+    ns.GOOGLE_FEAT_VOICE,
+    ns.GOOGLE_FEAT_VIDEO,
+    ns.JINGLE_015_AUDIO,
+    ns.JINGLE_015_VIDEO,
+    ns.JINGLE_RTP,
+    ns.JINGLE_RTP_AUDIO,
+    ns.JINGLE_RTP_VIDEO,
+    ]
+
+VARIABLE_CAPS = (
+    JINGLE_CAPS +
+    [
+    # FIXME: currently we always advertise these, but in future we should
+    # only advertise them if >= 1 client supports them:
+    # ns.FILE_TRANSFER,
+    # ns.TUBES,
+
+    # there is an unlimited set of these; only the one actually relevant to
+    # my tests is shown here
+    ns.TUBES + '/stream#x-abiword',
+    ])
+
+def check_caps(disco_response, caps_str, desired):
+    """Assert that all the FIXED_CAPS are supported, and of the VARIABLE_CAPS,
+    every capability in desired is supported, and every other capability is
+    not.
+    """
+    for c in FIXED_CAPS:
+        assert caps_contain(disco_response, c), (c, caps_str)
+
+    for c in VARIABLE_CAPS:
+        if c in desired:
+            assert caps_contain(disco_response, c), (c, caps_str)
+        else:
+            assert not caps_contain(disco_response, c), (c, caps_str)
+
 text_fixed_properties = dbus.Dictionary({
     cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
     cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT
@@ -113,14 +169,18 @@ def make_caps_disco_reply(stream, req, features, dataforms={}):
 
     return iq
 
-def receive_presence_and_ask_caps(q, stream):
+def receive_presence_and_ask_caps(q, stream, expect_dbus=True):
     # receive presence stanza
-    event_stream, event_dbus = q.expect_many(
-            EventPattern('stream-presence'),
-            EventPattern('dbus-signal', signal='ContactCapabilitiesChanged')
-        )
-    assert len(event_dbus.args) == 1
-    signaled_caps = event_dbus.args[0]
+    if expect_dbus:
+        event_stream, event_dbus = q.expect_many(
+                EventPattern('stream-presence'),
+                EventPattern('dbus-signal', signal='ContactCapabilitiesChanged')
+            )
+        assert len(event_dbus.args) == 1
+        signaled_caps = event_dbus.args[0]
+    else:
+        event_stream = q.expect('stream-presence')
+        signaled_caps = None
 
     c_nodes = xpath.queryForNodes('/presence/c', event_stream.stanza)
     assert c_nodes is not None

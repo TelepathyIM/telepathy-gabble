@@ -1,6 +1,5 @@
-
 """
-Test capabilities.
+Test receiving another contact's capabilities.
 """
 
 import dbus

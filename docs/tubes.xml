@@ -31,12 +31,53 @@
     <email>simon.mcvittie@collabora.co.uk</email>
     <jid>simon.mcvittie@collabora.co.uk</jid>
   </author>
+  <author>
+    <firstname>Alban</firstname>
+    <surname>Crequy</surname>
+    <email>alban.crequy@collabora.co.uk</email>
+    <jid>alban.crequy@collabora.co.uk</jid>
+  </author>
+  <author>
+    <firstname>Robert</firstname>
+    <surname>McQueen</surname>
+    <email>robert.mcqueen@collabora.co.uk</email>
+    <jid>robert.mcqueen@collabora.co.uk</jid>
+  </author>
+
+  <revision>
+    <version>Gabble 0.7.17</version>
+    <date>2008-12-14</date>
+    <initials>ac/ram</initials>
+    <remark>
+      <p>Define Tube capabilities.</p>
+    </remark>
+  </revision>
+
+  <revision>
+    <version>Gabble 0.7.0</version>
+    <date>2007-09-27</date>
+    <initials>smcv</initials>
+    <remark>
+      <ul>
+        <li>Don't copy stream tubes into MUC presence</li>
+        <li>Tube IDs must be numeric (uint32)</li>
+        <li>Don't put initiator in MUC stream tube info</li>
+        <li>Use a mesage-based protocol to offer 1-1 stream tubes, rather
+          than the weird default bytestream thing</li>
+        <li>Non-initiator can close 1-1 stream tubes too</li>
+        <li>Remove /protocol/ from namespace URI</li>
+      </ul>
+    </remark>
+  </revision>
+
   <revision>
     <version>0.0.1</version>
-    <date>2007-09-07</date>
+    <date>2007-09-25</date>
     <initials>smcv</initials>
-    <remark><p>First draft.</p></remark>
+    <remark><p>First draft. Only protocol changes are listed in subsequent
+      proto-XEP versions.</p></remark>
   </revision>
+
 </header>
 <section1 topic='Introduction' anchor='intro'>
   <p>The XML namespace defined here is &NS_TUBES; (NS_TUBES in the

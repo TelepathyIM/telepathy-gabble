@@ -20,7 +20,11 @@ def run_test(q, bus, conn, stream):
     # This method call looks wrong, but it's "the other side" of
     # test/twisted/capabilities/legacy-caps.py in MC 5.1 - MC doesn't know
     # how to map Client capabilities into the old Capabilities interface.
+    #
+    # Also, MC sometimes puts the same channel type in the list twice, so
+    # make sure Gabble copes.
     add = [(cs.CHANNEL_TYPE_STREAMED_MEDIA, 2L**32-1),
+            (cs.CHANNEL_TYPE_STREAM_TUBE, 2L**32-1),
             (cs.CHANNEL_TYPE_STREAM_TUBE, 2L**32-1)]
     remove = []
     caps = conn.Capabilities.AdvertiseCapabilities(add, remove)

@@ -1095,6 +1095,13 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 
   g_assert (GABBLE_IS_CONNECTION (conn));
 
+  if (conn->lmconn == NULL)
+    {
+      g_set_error_literal (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "connection is disconnected");
+      return FALSE;
+    }
+
   priv = conn->priv;
 
   if (!lm_connection_send (conn->lmconn, msg, &lmerror))
@@ -1207,6 +1214,13 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
   GError *lmerror = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
+
+  if (conn->lmconn == NULL)
+    {
+      g_set_error_literal (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "connection is disconnected");
+      return FALSE;
+    }
 
   priv = conn->priv;
 

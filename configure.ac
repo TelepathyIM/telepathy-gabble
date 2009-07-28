@@ -160,28 +160,17 @@ AC_CHECK_PROGS([XSLTPROC], [xsltproc])
 if test -z "$XSLTPROC"; then
   AC_MSG_ERROR([xsltproc (from the libxslt source package) is required])
 fi
-# This is for the code generation, not for the tests - any version of Python
-# >= 2.3 with the standard library will do. We prefer older versions,
-# to ensure that when we claim that 2.3 is sufficient we are telling the truth.
-PYTHON=
-AC_CHECK_PROGS([PYTHON], [python2.3 python2.4 python2.5 python])
-if test -z "$PYTHON"; then
-  AC_MSG_ERROR([Python is required to compile this package])
-fi
+
+AM_PATH_PYTHON([2.5])
 
 # Check for a Python >= 2.5 with Twisted, to run the tests
-AC_MSG_CHECKING([for Python >= 2.5 with Twisted and XMPP protocol support])
-for TEST_PYTHON in python2.6 python2.5 python; do
-  if $TEST_PYTHON -c "from sys import version_info; import dbus, dbus.mainloop.glib; raise SystemExit(version_info < (2, 5, 0, 'final', 0))" >/dev/null 2>&1; then
-    if $TEST_PYTHON -c "import twisted.words.xish.domish, twisted.words.protocols.jabber, twisted.internet.reactor" >/dev/null 2>&1; then
-      AC_MSG_RESULT([$TEST_PYTHON])
-      AM_CONDITIONAL([WANT_TWISTED_TESTS], true)
-      break
-    else
-      TEST_PYTHON=false
-    fi
-  fi
-done
+AC_MSG_CHECKING([for Python with Twisted and XMPP protocol support])
+if $PYTHON -c "import twisted.words.xish.domish, twisted.words.protocols.jabber, twisted.internet.reactor" >/dev/null 2>&1; then
+    TEST_PYTHON="$PYTHON"
+else
+    TEST_PYTHON=false
+fi
+AC_MSG_RESULT([$TEST_PYTHON])
 AC_SUBST(TEST_PYTHON)
 AM_CONDITIONAL([WANT_TWISTED_TESTS], test false != "$TEST_PYTHON")
 

@@ -230,15 +230,17 @@ GabbleCapabilitySet *
 gabble_capability_set_new_from_stanza (LmMessageNode *query_result)
 {
   GabbleCapabilitySet *ret;
-  LmMessageNode *child;
   const gchar *var;
+  NodeIter ni;
 
   g_return_val_if_fail (query_result != NULL, NULL);
 
   ret = gabble_capability_set_new ();
 
-  for (child = query_result->children; NULL != child; child = child->next)
+  for (ni = node_iter (query_result); ni != NULL; ni = node_iter_next (ni))
     {
+      LmMessageNode *child = node_iter_data (ni);
+
       if (tp_strdiff (child->name, "feature"))
         continue;
 

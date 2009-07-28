@@ -13,7 +13,9 @@ ispresence = u'org.freedesktop.Telepathy.Connection.Interface.SimplePresence'
 def test_presence(q, bus, conn, stream):
     conn.Connect()
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('stream-presence'))
 
     iface = dbus.Interface (conn,
         u'org.freedesktop.Telepathy.Connection.Interface.Presence')
@@ -29,7 +31,9 @@ def test_presence(q, bus, conn, stream):
 def test_simple_presence(q, bus, conn, stream):
     conn.Connect()
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('stream-presence'))
 
     iface = dbus.Interface (conn, ispresence)
     run_test(q, bus, conn, stream,

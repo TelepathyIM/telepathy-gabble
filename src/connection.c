@@ -1580,6 +1580,19 @@ _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
     }
 }
 
+/* Send @message on @self; ignore errors, other than logging @complaint on
+ * failure.
+ */
+static void
+_gabble_connection_send_or_complain (GabbleConnection *self,
+    LmMessage *message,
+    const gchar *complaint)
+{
+  if (!lm_connection_send (self->lmconn, message, NULL))
+    {
+      DEBUG ("%s", complaint);
+    }
+}
 
 /**
  * _gabble_connection_send_iq_error
@@ -1618,6 +1631,17 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
   _gabble_connection_send (conn, msg, NULL);
 
   lm_message_unref (msg);
+}
+
+static void
+add_feature_node (LmMessageNode *result_query,
+    const gchar *namespace)
+{
+  LmMessageNode *feature_node;
+
+  feature_node = lm_message_node_add_child (result_query, "feature",
+      NULL);
+  lm_message_node_set_attribute (feature_node, "var", namespace);
 }
 
 /**
@@ -1701,25 +1725,18 @@ connection_iq_disco_cb (LmMessageHandler *handler,
       for (i = features; NULL != i; i = i->next)
         {
           const Feature *feature = (const Feature *) i->data;
-          LmMessageNode *feature_node;
 
           /* When BUNDLE_VOICE_V1 is requested, only send the bundle */
           if (!tp_strdiff (suffix, BUNDLE_VOICE_V1) &&
               feature->feature_type != FEATURE_BUNDLE_COMPAT)
             continue;
 
-          /* otherwise (no node or hash), put all features */
-          feature_node = lm_message_node_add_child (result_query, "feature",
-              NULL);
-          lm_message_node_set_attribute (feature_node, "var", feature->ns);
+          add_feature_node (result_query, feature->ns);
         }
 
       NODE_DEBUG (result_iq, "sending disco response");
-
-      if (!lm_connection_send (self->lmconn, result, NULL))
-        {
-          DEBUG ("sending disco response failed");
-        }
+      _gabble_connection_send_or_complain (self, result,
+          "sending disco response failed");
     }
   else
     {

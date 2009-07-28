@@ -143,29 +143,28 @@ omits_content_creators (LmMessageNode *identity)
 }
 
 GabblePresenceCapabilities
-capabilities_parse (LmMessageNode *query_result)
+capabilities_parse (GabbleCapabilitySet *cap_set,
+    LmMessageNode *query_result)
 {
   GabblePresenceCapabilities ret = PRESENCE_CAP_NONE;
   const gchar *var;
+  guint j;
   const Feature *i;
-  NodeIter j;
+  NodeIter ni;
 
-  for (j = node_iter (query_result); j; j = node_iter_next (j))
+  /* special case: OMITS_CONTENT_CREATOR looks at the software version,
+   * not the actual features (sad face) */
+  for (ni = node_iter (query_result); ni != NULL; ni = node_iter_next (ni))
     {
-      LmMessageNode *child = node_iter_data (j);
+      LmMessageNode *child = node_iter_data (ni);
 
-      if (tp_strdiff (child->name, "feature"))
-        {
-          if (omits_content_creators (child))
-            ret |= PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR;
+      if (omits_content_creators (child))
+        ret |= PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR;
+    }
 
-          continue;
-        }
-
-      var = lm_message_node_get_attribute (child, "var");
-
-      if (NULL == var)
-        continue;
+  for (j = 0; j < cap_set->len; j++)
+    {
+      var = g_ptr_array_index (cap_set, j);
 
       for (i = self_advertised_features; i->ns != NULL; i++)
         {

@@ -658,59 +658,50 @@ gabble_private_tubes_factory_free_feat (gpointer data)
   g_free (feat);
 }
 
+static void
+examine_node (const gchar *var,
+    TubesCapabilities *caps)
+{
+  gchar *service;
+
+  if (!g_str_has_prefix (var, NS_TUBES))
+    return;
+
+  /* tubes generic cap or service specific */
+  caps->tubes_supported = TRUE;
+
+  if (g_str_has_prefix (var, NS_TUBES "/"))
+    {
+      /* http://telepathy.freedesktop.org/xmpp/tubes/$type#$service */
+      var += strlen (NS_TUBES "/");
+      if (g_str_has_prefix (var, "stream#"))
+        {
+          var += strlen ("stream#");
+          service = g_strdup (var);
+          g_hash_table_insert (caps->stream_tube_caps, service, NULL);
+        }
+      else if (g_str_has_prefix (var, "dbus#"))
+        {
+          var += strlen ("dbus#");
+          service = g_strdup (var);
+          g_hash_table_insert (caps->dbus_tube_caps, service, NULL);
+        }
+    }
+}
+
 static gpointer
 gabble_private_tubes_factory_parse_caps (
     GabbleCapsChannelManager *manager,
-    LmMessageNode *query_result)
+    GabbleCapabilitySet *cap_set)
 {
-  TubesCapabilities *caps;
-  NodeIter i;
+  TubesCapabilities *caps = g_new0 (TubesCapabilities, 1);
 
-  caps = g_new0 (TubesCapabilities, 1);
   caps->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, gabble_private_tubes_factory_free_feat);
   caps->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, gabble_private_tubes_factory_free_feat);
 
-  for (i = node_iter (query_result); i; i = node_iter_next (i))
-    {
-      LmMessageNode *child = node_iter_data (i);
-      const gchar *var;
-
-      if (0 != strcmp (child->name, "feature"))
-        continue;
-
-      var = lm_message_node_get_attribute (child, "var");
-
-      if (NULL == var)
-        continue;
-
-      if (!g_str_has_prefix (var, NS_TUBES))
-        continue;
-
-      /* tubes generic cap or service specific */
-      caps->tubes_supported = TRUE;
-
-      if (g_str_has_prefix (var, NS_TUBES "/"))
-        {
-          /* http://telepathy.freedesktop.org/xmpp/tubes/$type#$service */
-          var += strlen (NS_TUBES "/");
-          if (g_str_has_prefix (var, "stream#"))
-            {
-              gchar *service;
-              var += strlen ("stream#");
-              service = g_strdup (var);
-              g_hash_table_insert (caps->stream_tube_caps, service, NULL);
-            }
-          else if (g_str_has_prefix (var, "dbus#"))
-            {
-              gchar *service;
-              var += strlen ("dbus#");
-              service = g_strdup (var);
-              g_hash_table_insert (caps->dbus_tube_caps, service, NULL);
-            }
-        }
-    }
+  g_ptr_array_foreach (cap_set, (GFunc) examine_node, caps);
 
   return caps;
 }

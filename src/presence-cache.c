@@ -912,7 +912,7 @@ find_matching_waiter (GSList *waiters,
 
 static GHashTable *
 parse_contact_caps (TpBaseConnection *base_conn,
-    LmMessageNode *query_result)
+    GabbleCapabilitySet *cap_set)
 {
   GHashTable *per_channel_manager_caps = g_hash_table_new (NULL, NULL);
   TpChannelManagerIter iter;
@@ -928,7 +928,7 @@ parse_contact_caps (TpBaseConnection *base_conn,
       g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
       factory_caps = gabble_caps_channel_manager_parse_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result);
+          GABBLE_CAPS_CHANNEL_MANAGER (manager), cap_set);
 
       if (factory_caps != NULL)
         g_hash_table_insert (per_channel_manager_caps,
@@ -1009,6 +1009,7 @@ _caps_disco_cb (GabbleDisco *disco,
   GabblePresenceCache *cache;
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
+  GabbleCapabilitySet *cap_set;
   GabblePresenceCapabilities caps = 0;
   GHashTable *per_channel_manager_caps;
   guint trust;
@@ -1055,8 +1056,10 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  caps = capabilities_parse (query_result);
-  per_channel_manager_caps = parse_contact_caps (base_conn, query_result);
+  cap_set = gabble_capability_set_new_from_stanza (query_result);
+  caps = capabilities_parse (cap_set, query_result);
+  per_channel_manager_caps = parse_contact_caps (base_conn, cap_set);
+  gabble_capability_set_free (cap_set);
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
    * uses another hash algorithm, don't check the hash and fallback to the old

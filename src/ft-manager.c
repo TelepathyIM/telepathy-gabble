@@ -675,28 +675,9 @@ gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
 
 static gpointer
 gabble_ft_manager_parse_caps (GabbleCapsChannelManager *manager,
-                              LmMessageNode *query_result)
+    GabbleCapabilitySet *cap_set)
 {
-  NodeIter i;
-
-  for (i = node_iter (query_result); i; i = node_iter_next (i))
-    {
-      LmMessageNode *child = node_iter_data (i);
-      const gchar *var;
-
-      if (0 != strcmp (child->name, "feature"))
-        continue;
-
-      var = lm_message_node_get_attribute (child, "var");
-
-      if (NULL == var)
-        continue;
-
-      if (!tp_strdiff (var, NS_FILE_TRANSFER))
-        return GINT_TO_POINTER (TRUE);
-    }
-
-  return GINT_TO_POINTER (FALSE);
+  return GINT_TO_POINTER (gabble_capability_set_has (cap_set, NS_FILE_TRANSFER));
 }
 
 static void

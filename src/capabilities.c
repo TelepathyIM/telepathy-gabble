@@ -154,7 +154,7 @@ capabilities_parse (LmMessageNode *query_result)
     {
       LmMessageNode *child = node_iter_data (j);
 
-      if (0 != strcmp (child->name, "feature"))
+      if (tp_strdiff (child->name, "feature"))
         {
           if (omits_content_creators (child))
             ret |= PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR;
@@ -169,7 +169,7 @@ capabilities_parse (LmMessageNode *query_result)
 
       for (i = self_advertised_features; i->ns != NULL; i++)
         {
-          if (0 == strcmp (var, i->ns))
+          if (!tp_strdiff (var, i->ns))
             {
               ret |= i->caps;
               break;
@@ -297,7 +297,7 @@ gabble_capability_set_has (const GabbleCapabilitySet *caps,
   g_return_val_if_fail (cap != NULL, FALSE);
 
   for (i = 0; i < caps->len; i++)
-    if (!strcmp (g_ptr_array_index (caps, i), cap))
+    if (!tp_strdiff (g_ptr_array_index (caps, i), cap))
       return TRUE;
 
   return FALSE;

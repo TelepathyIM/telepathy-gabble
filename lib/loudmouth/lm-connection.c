@@ -134,7 +134,10 @@ lm_connection_unref (LmConnection *connection)
   connection->iq_reply_cancellable = NULL;
 
   if (connection->porter != NULL)
-    g_object_unref (connection->porter);
+    {
+      g_object_unref (connection->porter);
+      connection->porter = NULL;
+    }
 
   g_free (connection);
 }
@@ -144,6 +147,9 @@ lm_connection_send (LmConnection *connection,
     LmMessage *message,
     GError **error)
 {
+  g_assert (connection != NULL);
+  g_assert (connection->porter != NULL);
+
   wocky_porter_send (connection->porter, message);
   return TRUE;
 }
@@ -178,6 +184,9 @@ lm_connection_send_with_reply (LmConnection *connection,
     LmMessageHandler *handler,
     GError **error)
 {
+  g_assert (connection != NULL);
+  g_assert (connection->porter != NULL);
+
   handler->connection = connection;
   lm_message_handler_ref (handler);
 

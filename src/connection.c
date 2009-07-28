@@ -1580,20 +1580,6 @@ _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
     }
 }
 
-/* Send @message on @self; ignore errors, other than logging @complaint on
- * failure.
- */
-static void
-_gabble_connection_send_or_complain (GabbleConnection *self,
-    LmMessage *message,
-    const gchar *complaint)
-{
-  if (!lm_connection_send (self->lmconn, message, NULL))
-    {
-      DEBUG ("%s", complaint);
-    }
-}
-
 /**
  * _gabble_connection_send_iq_error
  *
@@ -1660,8 +1646,8 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query, *identity;
   const gchar *node, *suffix;
-  GSList *features;
-  GSList *i;
+  GabbleCapabilitySet *features;
+  guint i;
   gchar *caps_hash;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
@@ -1709,41 +1695,24 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
   lm_message_node_set_attribute (identity, "type", "pc");
 
-  features = capabilities_get_features (self->self_presence->caps,
-      self->self_presence->per_channel_manager_caps);
+  caps_hash = caps_hash_compute_from_self_presence (self);
 
   /* If node is not NULL, it can be either a caps bundle as defined in the
    * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
    * 1.5. */
-
-  caps_hash = caps_hash_compute_from_self_presence (self);
-
+  /* FIXME: We shouldn't have to copy the sets here */
   if (node == NULL || !tp_strdiff (suffix, caps_hash))
-    {
-      for (i = features; NULL != i; i = i->next)
-        {
-          const Feature *feature = (const Feature *) i->data;
-
-          add_feature_node (result_query, feature->ns);
-        }
-
-      NODE_DEBUG (result_iq, "sending disco response");
-      _gabble_connection_send_or_complain (self, result,
-          "sending disco response failed");
-    }
+    features = gabble_presence_get_caps (self->self_presence);
   else if (!tp_strdiff (suffix, BUNDLE_VOICE_V1))
-    {
-      add_feature_node (result_query, NS_GOOGLE_FEAT_VOICE);
-      _gabble_connection_send_or_complain (self, result,
-          "sending disco response failed");
-    }
+    features = gabble_capability_set_copy (
+        gabble_capabilities_get_bundle_voice_v1 ());
   else if (!tp_strdiff (suffix, BUNDLE_VIDEO_V1))
-    {
-      add_feature_node (result_query, NS_GOOGLE_FEAT_VIDEO);
-      _gabble_connection_send_or_complain (self, result,
-          "sending disco response failed");
-    }
+    features = gabble_capability_set_copy (
+        gabble_capabilities_get_bundle_video_v1 ());
   else
+    features = NULL;
+
+  if (features == NULL)
     {
       /* Return <item-not-found>. It is possible that the remote contact
        * requested an old version (old hash) of our capabilities. In the
@@ -1752,10 +1721,24 @@ connection_iq_disco_cb (LmMessageHandler *handler,
       _gabble_connection_send_iq_error (self, message,
           XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
+  else
+    {
+      for (i = 0; i < features->len; i++)
+        add_feature_node (result_query, g_ptr_array_index (features, i));
+
+      NODE_DEBUG (result_iq, "sending disco response");
+
+      if (!lm_connection_send (self->lmconn, result, NULL))
+        {
+          DEBUG ("sending disco response failed");
+        }
+
+      gabble_capability_set_free (features);
+    }
+
   g_free (caps_hash);
 
   lm_message_unref (result);
-  g_slist_free (features);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

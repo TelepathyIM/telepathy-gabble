@@ -101,35 +101,6 @@ gabble_capabilities_get_bundle_video_v1 ()
   return video_v1_caps;
 }
 
-GSList *
-capabilities_get_features (GabblePresenceCapabilities caps,
-                           GHashTable *per_channel_manager_caps)
-{
-  GHashTableIter channel_manager_iter;
-  GSList *features = NULL;
-  const Feature *i;
-
-  for (i = self_advertised_features; NULL != i->ns; i++)
-    if ((i->caps & caps) == i->caps)
-      features = g_slist_append (features, (gpointer) i);
-
-  if (per_channel_manager_caps != NULL)
-    {
-      gpointer manager;
-      gpointer cap;
-
-      g_hash_table_iter_init (&channel_manager_iter, per_channel_manager_caps);
-      while (g_hash_table_iter_next (&channel_manager_iter,
-                 &manager, &cap))
-        {
-          gabble_caps_channel_manager_get_feature_list (manager, cap,
-              &features);
-        }
-    }
-
-  return features;
-}
-
 static gboolean
 omits_content_creators (LmMessageNode *identity)
 {

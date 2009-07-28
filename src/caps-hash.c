@@ -359,20 +359,10 @@ gchar *
 caps_hash_compute_from_self_presence (GabbleConnection *self)
 {
   GabblePresence *presence = self->self_presence;
-  GSList *features_list = capabilities_get_features (presence->caps,
-      presence->per_channel_manager_caps);
-  GPtrArray *features = g_ptr_array_new ();
+  GPtrArray *features = gabble_presence_get_caps (presence);
   GPtrArray *identities = g_ptr_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
-  GSList *i;
-
-  /* get our features list  */
-  for (i = features_list; NULL != i; i = i->next)
-    {
-      const Feature *feat = (const Feature *) i->data;
-      g_ptr_array_add (features, g_strdup (feat->ns));
-    }
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
   g_ptr_array_add (identities, g_strdup ("client/pc//" PACKAGE_STRING));
@@ -382,7 +372,6 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   str = caps_hash_compute (features, identities, dataforms);
 
   gabble_presence_free_xep0115_hash (features, identities, dataforms);
-  g_slist_free (features_list);
 
   return str;
 }

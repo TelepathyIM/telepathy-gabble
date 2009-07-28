@@ -81,15 +81,6 @@ const GabbleCapabilitySet *gabble_capabilities_get_bundle_voice_v1 (void);
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
 
 /*
- * capabilities_get_features
- *
- * Return a linked list of const Feature structs corresponding to the given
- * GabblePresenceCapabilities.
- */
-GSList *capabilities_get_features (GabblePresenceCapabilities caps,
-    GHashTable *per_channel_manager_caps);
-
-/*
  * capabilities_fill_cache
  *
  * Fill up the given GabblePresenceCache with known feature nodes

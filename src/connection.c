@@ -785,7 +785,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           "fallback-stun-server", "fallback STUN server",
           "Fallback STUN server.",
           GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (object_class, PROP_FALLBACK_STUN_PORT,
       g_param_spec_uint (

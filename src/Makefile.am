@@ -138,7 +138,6 @@ libgabble_convenience_la_SOURCES = \
     vcard-manager.h \
     vcard-manager.c
 
-
 libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la \
    $(top_builddir)/lib/gibber/libgibber.la \
@@ -175,11 +174,11 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@ \
 	    @SOUP_LIBS@ @UUID_LIBS@
 
-# Teach it how to make libgibber.la
-$(top_builddir)/lib/gibber/libgibber.la:
+# build gibber first
+all: gibber
+gibber:
 	${MAKE} -C $(top_builddir)/lib/gibber libgibber.la
-
-.PHONY: $(top_builddir)/lib/gibber/libgibber.la
+.PHONY: gibber
 
 gabble-signals-marshal.list: $(libgabble_convenience_la_SOURCES) Makefile.am
 	@( cd $(srcdir) && \

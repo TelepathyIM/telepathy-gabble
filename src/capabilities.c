@@ -240,7 +240,7 @@ gabble_capability_set_new_from_stanza (LmMessageNode *query_result)
 
   for (child = query_result->children; NULL != child; child = child->next)
     {
-      if (0 != strcmp (child->name, "feature"))
+      if (tp_strdiff (child->name, "feature"))
         continue;
 
       var = lm_message_node_get_attribute (child, "var");

@@ -654,16 +654,12 @@ gabble_im_channel_close (TpSvcChannel *iface,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   GabbleIMChannelPrivate *priv;
-  GabblePresence *presence;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
 
   DEBUG ("called on %p", self);
 
   priv = self->priv;
-
-  presence = gabble_presence_cache_get (priv->conn->presence_cache,
-      priv->handle);
 
   if (priv->closed)
     {

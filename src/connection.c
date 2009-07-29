@@ -1514,6 +1514,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   LmMessageNode *node = lm_message_get_node (message);
   gboolean ret;
   gchar *caps_hash;
+  gboolean voice_v1, video_v1;
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)
     {
@@ -1535,14 +1536,17 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   /* XEP-0115 deprecates 'ext' feature bundles. But we still need
    * BUNDLE_VOICE_V1 it for backward-compatibility with Gabble 0.2 */
 
-  if (presence->caps & (PRESENCE_CAP_GOOGLE_VOICE|PRESENCE_CAP_GOOGLE_VIDEO))
+  voice_v1 = gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VOICE);
+  video_v1 = gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VIDEO);
+
+  if (voice_v1 || video_v1)
     {
       GString *ext = g_string_new ("");
 
-      if (presence->caps & PRESENCE_CAP_GOOGLE_VOICE)
+      if (voice_v1)
         g_string_append (ext, BUNDLE_VOICE_V1);
 
-      if (presence->caps & PRESENCE_CAP_GOOGLE_VIDEO)
+      if (video_v1)
         {
           if (ext->len > 0)
             g_string_append_c (ext, ' ');

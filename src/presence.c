@@ -198,7 +198,8 @@ gabble_presence_pick_resource_by_caps (
 gboolean
 gabble_presence_resource_has_caps (GabblePresence *presence,
                                    const gchar *resource,
-                                   GabblePresenceCapabilities caps)
+                                   GabbleCapabilitySetPredicate predicate,
+                                   gpointer user_data)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
@@ -207,8 +208,8 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
     {
       Resource *res = (Resource *) i->data;
 
-      if (!tp_strdiff (res->name, resource) && (res->caps & caps) == caps)
-        return TRUE;
+      if (!tp_strdiff (res->name, resource))
+        return predicate (res->cap_set, user_data);
     }
 
   return FALSE;

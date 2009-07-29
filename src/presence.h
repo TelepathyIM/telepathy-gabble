@@ -91,8 +91,8 @@ const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
     GabbleCapabilitySetPredicate predicate, gpointer user_data);
 
 gboolean gabble_presence_resource_has_caps (GabblePresence *presence,
-                                   const gchar *resource,
-                                   GabblePresenceCapabilities caps);
+    const gchar *resource, GabbleCapabilitySetPredicate predicate,
+    gpointer user_data);
 
 LmMessage *gabble_presence_as_message (GabblePresence *presence,
     const gchar *to);

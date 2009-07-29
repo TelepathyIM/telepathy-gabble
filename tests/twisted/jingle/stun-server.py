@@ -3,6 +3,7 @@ Test getting STUN server from Google jingleinfo
 """
 
 import dbus
+import socket
 
 from gabbletest import exec_test, make_result_iq, sync_stream, GoogleXmlStream
 from servicetest import make_channel_proxy, tp_path_prefix, EventPattern
@@ -98,8 +99,20 @@ def test(q, bus, conn, stream,
     assert sh_props['NATTraversal'] == 'gtalk-p2p'
     assert sh_props['CreatedLocally'] == False
 
+    if expected_stun_server == None:
+        # If there is no stun server set then gabble should fallback on the
+        # default fallback stunserver (stun.collabora.co.uk)
+        # This test assumes that if python can resolve the stun servers
+        # address then gabble should be able to resolv it as well
+        try:
+            expected_stun_server = \
+                socket.gethostbyaddr("stun.collabora.co.uk")[2][0]
+            expected_stun_port = 3478
+        except:
+            expected_stun_server = None
+
     if expected_stun_server is None:
-        assert sh_props['STUNServers'] == [], sh_props['STUNServers']
+        assert sh_props['STUNServers'] == stun_address, sh_props['STUNServers']
     else:
         assert sh_props['STUNServers'] == \
             [(expected_stun_server, expected_stun_port)], \
@@ -133,7 +146,7 @@ def test(q, bus, conn, stream,
     assert tp_props['gtalk-p2p-relay-token']['sig'] == 's'
 
     if expected_stun_server is None:
-        assert tp_props['stun-server']['flags'] == 0
+        assert tp_props['stun-server']['flags'] == 0, tp_props['stun-server']['flags']
     else:
         assert tp_props['stun-server']['flags'] == cs.PROPERTY_FLAG_READ
 

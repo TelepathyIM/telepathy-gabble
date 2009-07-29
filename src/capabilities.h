@@ -60,12 +60,24 @@ void gabble_capability_set_add (GabbleCapabilitySet *caps,
     const gchar *cap);
 gboolean gabble_capability_set_has (const GabbleCapabilitySet *caps,
     const gchar *cap);
+gboolean gabble_capability_set_at_least (const GabbleCapabilitySet *caps,
+    const GabbleCapabilitySet *query);
 gboolean gabble_capability_set_equals (const GabbleCapabilitySet *a,
     const GabbleCapabilitySet *b);
 void gabble_capability_set_clear (GabbleCapabilitySet *caps);
 void gabble_capability_set_free (GabbleCapabilitySet *caps);
 void gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
     GFunc func, gpointer user_data);
+
+/* A predicate used by the presence code to select suitable resources */
+typedef gboolean (*GabbleCapabilitySetPredicate) (
+    const GabbleCapabilitySet *set, gpointer user_data);
+/* These two functions are compatible with GabbleCapabilitySetPredicate;
+ * pass in the desired capabilities as the user_data */
+#define gabble_capability_set_predicate_has \
+  ((GabbleCapabilitySetPredicate) gabble_capability_set_has)
+#define gabble_capability_set_predicate_at_least \
+  ((GabbleCapabilitySetPredicate) gabble_capability_set_at_least)
 
 /* XEP-0115 version 1.3:
  *

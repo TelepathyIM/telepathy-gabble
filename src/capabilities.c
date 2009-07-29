@@ -379,6 +379,7 @@ gabble_capability_set_free (GabbleCapabilitySet *caps)
   g_slice_free (GabbleCapabilitySet, caps);
 }
 
+/* By design, this function can be used as a GabbleCapabilitySetPredicate */
 gboolean
 gabble_capability_set_has (const GabbleCapabilitySet *caps,
     const gchar *cap)
@@ -397,6 +398,29 @@ gabble_capability_set_has (const GabbleCapabilitySet *caps,
     }
 
   return tp_handle_set_is_member (caps->handles, handle);
+}
+
+/* By design, this function can be used as a GabbleCapabilitySetPredicate */
+gboolean
+gabble_capability_set_at_least (const GabbleCapabilitySet *caps,
+    const GabbleCapabilitySet *query)
+{
+  TpIntSetIter iter;
+
+  g_return_val_if_fail (caps != NULL, FALSE);
+  g_return_val_if_fail (query != NULL, FALSE);
+
+  tp_intset_iter_init (&iter, tp_handle_set_peek (query->handles));
+
+  while (tp_intset_iter_next (&iter))
+    {
+      if (!tp_handle_set_is_member (caps->handles, iter.element))
+        {
+          return FALSE;
+        }
+    }
+
+  return TRUE;
 }
 
 gboolean

@@ -47,11 +47,11 @@ dist-hook:
 	$(shell for x in $(BUILT_SOURCES); do rm -f $(distdir)/$$x ; done)
 
 gibber-signals-marshal.list: $(OUR_SOURCES) Makefile.am
-	$(QUIET_GEN)( cd $(srcdir) && \
+	@( cd $(srcdir) && \
 	sed -n -e 's/.*_gibber_signals_marshal_\([[:upper:][:digit:]]*__[[:upper:][:digit:]_]*\).*/\1/p' \
 	$(OUR_SOURCES) ) \
 	| sed -e 's/__/:/' -e 'y/_/,/' | sort -u > $@.tmp
-	if cmp -s $@.tmp $@; then \
+	@if cmp -s $@.tmp $@; then \
 		rm $@.tmp; \
 		touch $@; \
 	else \

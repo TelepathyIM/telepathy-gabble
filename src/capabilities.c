@@ -81,32 +81,40 @@ static const Feature quirks[] = {
       { 0, NULL, 0 }
 };
 
+static GabbleCapabilitySet *voice_v1_caps = NULL;
+static GabbleCapabilitySet *video_v1_caps = NULL;
+static GabbleCapabilitySet *any_audio_caps = NULL;
+static GabbleCapabilitySet *any_video_caps = NULL;
+static GabbleCapabilitySet *any_transport_caps = NULL;
+
 const GabbleCapabilitySet *
-gabble_capabilities_get_bundle_voice_v1 ()
+gabble_capabilities_get_bundle_voice_v1 (void)
 {
-  static GabbleCapabilitySet *voice_v1_caps = NULL;
-
-  if (voice_v1_caps == NULL)
-    {
-      voice_v1_caps = gabble_capability_set_new ();
-      gabble_capability_set_add (voice_v1_caps, NS_GOOGLE_FEAT_VOICE);
-    }
-
   return voice_v1_caps;
 }
 
 const GabbleCapabilitySet *
-gabble_capabilities_get_bundle_video_v1 ()
+gabble_capabilities_get_bundle_video_v1 (void)
 {
-  static GabbleCapabilitySet *video_v1_caps = NULL;
-
-  if (video_v1_caps == NULL)
-    {
-      video_v1_caps = gabble_capability_set_new ();
-      gabble_capability_set_add (video_v1_caps, NS_GOOGLE_FEAT_VIDEO);
-    }
-
   return video_v1_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_any_audio (void)
+{
+  return any_audio_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_any_video (void)
+{
+  return any_video_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_any_transport (void)
+{
+  return any_transport_caps;
 }
 
 static gboolean
@@ -162,6 +170,29 @@ gabble_capabilities_init (GabbleConnection *conn)
        * to shut it up. */
       feature_handles = tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_CONTACT,
           NULL, NULL);
+
+      /* make the pre-cooked bundles */
+
+      voice_v1_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (voice_v1_caps, NS_GOOGLE_FEAT_VOICE);
+
+      video_v1_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (video_v1_caps, NS_GOOGLE_FEAT_VIDEO);
+
+      any_audio_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (any_audio_caps, NS_JINGLE_RTP_AUDIO);
+      gabble_capability_set_add (any_audio_caps, NS_JINGLE_DESCRIPTION_AUDIO);
+      gabble_capability_set_add (any_audio_caps, NS_GOOGLE_FEAT_VOICE);
+
+      any_video_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (any_video_caps, NS_JINGLE_RTP_VIDEO);
+      gabble_capability_set_add (any_video_caps, NS_JINGLE_DESCRIPTION_VIDEO);
+      gabble_capability_set_add (any_video_caps, NS_GOOGLE_FEAT_VIDEO);
+
+      any_transport_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (any_transport_caps, NS_GOOGLE_TRANSPORT_P2P);
+      gabble_capability_set_add (any_transport_caps, NS_JINGLE_TRANSPORT_ICEUDP);
+      gabble_capability_set_add (any_transport_caps, NS_JINGLE_TRANSPORT_RAWUDP);
     }
 
   g_assert (feature_handles != NULL);
@@ -176,6 +207,18 @@ gabble_capabilities_finalize (GabbleConnection *conn)
 
   if (--feature_handles_refcount == 0)
     {
+      gabble_capability_set_free (voice_v1_caps);
+      gabble_capability_set_free (video_v1_caps);
+      gabble_capability_set_free (any_audio_caps);
+      gabble_capability_set_free (any_video_caps);
+      gabble_capability_set_free (any_transport_caps);
+
+      voice_v1_caps = NULL;
+      video_v1_caps = NULL;
+      any_audio_caps = NULL;
+      any_video_caps = NULL;
+      any_transport_caps = NULL;
+
       g_object_unref (feature_handles);
       feature_handles = NULL;
     }

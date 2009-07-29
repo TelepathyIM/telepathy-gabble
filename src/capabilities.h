@@ -86,6 +86,11 @@ typedef gboolean (*GabbleCapabilitySetPredicate) (
 #define gabble_capability_set_predicate_at_least \
   ((GabbleCapabilitySetPredicate) gabble_capability_set_at_least)
 
+/* Some useful capability sets for Jingle */
+const GabbleCapabilitySet *gabble_capabilities_get_any_audio (void);
+const GabbleCapabilitySet *gabble_capabilities_get_any_video (void);
+const GabbleCapabilitySet *gabble_capabilities_get_any_transport (void);
+
 /* XEP-0115 version 1.3:
  *
  * "The names of the feature bundles MUST NOT be used for semantic purposes:

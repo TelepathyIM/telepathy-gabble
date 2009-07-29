@@ -549,3 +549,33 @@ gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
         func ((gchar *) var, user_data);
     }
 }
+
+void
+gabble_capability_set_dump (const GabbleCapabilitySet *caps)
+{
+  TpIntSetIter iter;
+
+  g_return_if_fail (caps != NULL);
+
+  tp_intset_iter_init (&iter, tp_handle_set_peek (caps->handles));
+
+  DEBUG ("--begin--");
+
+  while (tp_intset_iter_next (&iter))
+    {
+      const gchar *var = tp_handle_inspect (feature_handles, iter.element);
+
+      g_return_if_fail (var != NULL);
+
+      if (var[0] == QUIRK_PREFIX_CHAR)
+        {
+          DEBUG ("Quirk:   %s", var + 1);
+        }
+      else
+        {
+          DEBUG ("Feature: %s", var);
+        }
+    }
+
+  DEBUG ("--end--");
+}

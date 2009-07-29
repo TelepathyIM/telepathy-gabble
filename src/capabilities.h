@@ -67,6 +67,8 @@ void gabble_capability_set_add (GabbleCapabilitySet *caps,
     const gchar *cap);
 gboolean gabble_capability_set_has (const GabbleCapabilitySet *caps,
     const gchar *cap);
+gboolean gabble_capability_set_has_one (const GabbleCapabilitySet *caps,
+    const GabbleCapabilitySet *alternatives);
 gboolean gabble_capability_set_at_least (const GabbleCapabilitySet *caps,
     const GabbleCapabilitySet *query);
 gboolean gabble_capability_set_equals (const GabbleCapabilitySet *a,
@@ -83,6 +85,8 @@ typedef gboolean (*GabbleCapabilitySetPredicate) (
  * pass in the desired capabilities as the user_data */
 #define gabble_capability_set_predicate_has \
   ((GabbleCapabilitySetPredicate) gabble_capability_set_has)
+#define gabble_capability_set_predicate_has_one \
+  ((GabbleCapabilitySetPredicate) gabble_capability_set_has_one)
 #define gabble_capability_set_predicate_at_least \
   ((GabbleCapabilitySetPredicate) gabble_capability_set_at_least)
 

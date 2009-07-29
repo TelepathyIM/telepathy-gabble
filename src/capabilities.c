@@ -472,6 +472,29 @@ gabble_capability_set_has (const GabbleCapabilitySet *caps,
 
 /* By design, this function can be used as a GabbleCapabilitySetPredicate */
 gboolean
+gabble_capability_set_has_one (const GabbleCapabilitySet *caps,
+    const GabbleCapabilitySet *alternatives)
+{
+  TpIntSetIter iter;
+
+  g_return_val_if_fail (caps != NULL, FALSE);
+  g_return_val_if_fail (alternatives != NULL, FALSE);
+
+  tp_intset_iter_init (&iter, tp_handle_set_peek (alternatives->handles));
+
+  while (tp_intset_iter_next (&iter))
+    {
+      if (tp_handle_set_is_member (caps->handles, iter.element))
+        {
+          return TRUE;
+        }
+    }
+
+  return FALSE;
+}
+
+/* By design, this function can be used as a GabbleCapabilitySetPredicate */
+gboolean
 gabble_capability_set_at_least (const GabbleCapabilitySet *caps,
     const GabbleCapabilitySet *query)
 {

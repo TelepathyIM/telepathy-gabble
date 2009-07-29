@@ -1498,7 +1498,6 @@ gabble_jingle_session_detect (LmMessage *message, JingleAction *action, JingleDi
 gboolean
 gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmMessage *message, GError **error)
 {
-  TpHandleRepoIface *contact_repo;
   GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessageNode *iq_node, *session_node;
   const gchar *from, *action_name;
@@ -1545,9 +1544,6 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
           "malformed jingle stanza");
       return FALSE;
     }
-
-  contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (!gabble_jingle_session_defines_action (sess, action))
     {

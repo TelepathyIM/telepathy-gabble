@@ -357,6 +357,8 @@ gabble_connection_init (GabbleConnection *self)
 
   priv->caps_serial = 1;
   priv->port = 5222;
+
+  gabble_capabilities_init (self);
 }
 
 static void
@@ -941,6 +943,8 @@ gabble_connection_finalize (GObject *object)
   tp_contacts_mixin_finalize (G_OBJECT(self));
 
   conn_presence_finalize (self);
+
+  gabble_capabilities_finalize (self);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }

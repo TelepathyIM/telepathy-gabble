@@ -26,6 +26,8 @@
 
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-manager.h>
+#include <telepathy-glib/handle-repo.h>
+#include <telepathy-glib/handle-repo-dynamic.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
@@ -141,8 +143,43 @@ omits_content_creators (LmMessageNode *identity)
     }
 }
 
+gsize feature_handles_refcount = 0;
+static TpHandleRepoIface *feature_handles = NULL;
+
+void
+gabble_capabilities_init (GabbleConnection *conn)
+{
+  DEBUG ("%p", conn);
+
+  if (feature_handles_refcount++ == 0)
+    {
+      g_assert (feature_handles == NULL);
+      /* TpDynamicHandleRepo wants a handle type, which isn't relevant here
+       * (we're just using it as a string pool). Use an arbitrary handle type
+       * to shut it up. */
+      feature_handles = tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_CONTACT,
+          NULL, NULL);
+    }
+
+  g_assert (feature_handles != NULL);
+}
+
+void
+gabble_capabilities_finalize (GabbleConnection *conn)
+{
+  DEBUG ("%p", conn);
+
+  g_assert (feature_handles_refcount > 0);
+
+  if (--feature_handles_refcount == 0)
+    {
+      g_object_unref (feature_handles);
+      feature_handles = NULL;
+    }
+}
+
 struct _GabbleCapabilitySet {
-    GPtrArray *strings;
+    TpHandleSet *handles;
 };
 
 GabblePresenceCapabilities
@@ -151,9 +188,12 @@ capabilities_parse (GabbleCapabilitySet *cap_set,
 {
   GabblePresenceCapabilities ret = PRESENCE_CAP_NONE;
   const gchar *var;
-  guint j;
   const Feature *i;
   NodeIter ni;
+  TpIntSetIter iter;
+
+  g_return_val_if_fail (cap_set != NULL, 0);
+  g_return_val_if_fail (query_result != NULL, 0);
 
   /* special case: OMITS_CONTENT_CREATOR looks at the software version,
    * not the actual features (sad face) */
@@ -165,9 +205,11 @@ capabilities_parse (GabbleCapabilitySet *cap_set,
         ret |= PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR;
     }
 
-  for (j = 0; j < cap_set->strings->len; j++)
+  tp_intset_iter_init (&iter, tp_handle_set_peek (cap_set->handles));
+
+  while (tp_intset_iter_next (&iter))
     {
-      var = g_ptr_array_index (cap_set->strings, j);
+      var = tp_handle_inspect (feature_handles, iter.element);
 
       for (i = self_advertised_features; i->ns != NULL; i++)
         {
@@ -228,7 +270,8 @@ gabble_capability_set_new (void)
 {
   GabbleCapabilitySet *ret = g_slice_new0 (GabbleCapabilitySet);
 
-  ret->strings = g_ptr_array_new ();
+  g_assert (feature_handles != NULL);
+  ret->handles = tp_handle_set_new (feature_handles);
   return ret;
 }
 
@@ -296,37 +339,35 @@ void
 gabble_capability_set_update (GabbleCapabilitySet *target,
     const GabbleCapabilitySet *source)
 {
-  guint i;
-
   g_return_if_fail (target != NULL);
   g_return_if_fail (source != NULL);
 
-  for (i = 0; i < source->strings->len; i++)
-    gabble_capability_set_add (target, g_ptr_array_index (source->strings, i));
+  tp_handle_set_update (target->handles, tp_handle_set_peek (source->handles));
 }
 
 void
 gabble_capability_set_add (GabbleCapabilitySet *caps,
     const gchar *cap)
 {
+  TpHandle handle;
+
   g_return_if_fail (caps != NULL);
   g_return_if_fail (cap != NULL);
 
-  if (!gabble_capability_set_has (caps, cap))
-    g_ptr_array_add (caps->strings, g_strdup (cap));
+  handle = tp_handle_ensure (feature_handles, cap, NULL, NULL);
+
+  tp_handle_set_add (caps->handles, handle);
+  tp_handle_unref (feature_handles, handle);
 }
 
 void
 gabble_capability_set_clear (GabbleCapabilitySet *caps)
 {
-  guint i;
-
   g_return_if_fail (caps != NULL);
 
-  for (i = 0; i < caps->strings->len; i++)
-    g_free (g_ptr_array_index (caps->strings, i));
-
-  g_ptr_array_set_size (caps->strings, 0);
+  /* There is no tp_handle_set_clear, so do the next best thing */
+  tp_handle_set_destroy (caps->handles);
+  caps->handles = tp_handle_set_new (feature_handles);
 }
 
 void
@@ -334,8 +375,7 @@ gabble_capability_set_free (GabbleCapabilitySet *caps)
 {
   g_return_if_fail (caps != NULL);
 
-  gabble_capability_set_clear (caps);
-  g_ptr_array_free (caps->strings, TRUE);
+  tp_handle_set_destroy (caps->handles);
   g_slice_free (GabbleCapabilitySet, caps);
 }
 
@@ -343,40 +383,47 @@ gboolean
 gabble_capability_set_has (const GabbleCapabilitySet *caps,
     const gchar *cap)
 {
-  guint i;
+  TpHandle handle;
 
   g_return_val_if_fail (caps != NULL, FALSE);
   g_return_val_if_fail (cap != NULL, FALSE);
 
-  for (i = 0; i < caps->strings->len; i++)
-    if (!tp_strdiff (g_ptr_array_index (caps->strings, i), cap))
-      return TRUE;
+  handle = tp_handle_lookup (feature_handles, cap, NULL, NULL);
 
-  return FALSE;
+  if (handle == 0)
+    {
+      /* nobody in the whole CM has this capability */
+      return FALSE;
+    }
+
+  return tp_handle_set_is_member (caps->handles, handle);
 }
 
 gboolean
 gabble_capability_set_equals (const GabbleCapabilitySet *a,
     const GabbleCapabilitySet *b)
 {
-  guint i;
-
   g_return_val_if_fail (a != NULL, FALSE);
   g_return_val_if_fail (b != NULL, FALSE);
 
-  if (a->strings->len != b->strings->len)
-    return FALSE;
-
-  for (i = 0; i < a->strings->len; i++)
-    if (!gabble_capability_set_has (b, g_ptr_array_index (a->strings, i)))
-      return FALSE;
-
-  return TRUE;
+  return tp_intset_is_equal (tp_handle_set_peek (a->handles),
+      tp_handle_set_peek (b->handles));
 }
 
 void
 gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
     GFunc func, gpointer user_data)
 {
-  g_ptr_array_foreach (caps->strings, func, user_data);
+  TpIntSetIter iter;
+
+  g_return_if_fail (caps != NULL);
+  g_return_if_fail (func != NULL);
+
+  tp_intset_iter_init (&iter, tp_handle_set_peek (caps->handles));
+
+  while (tp_intset_iter_next (&iter))
+    {
+      func ((gchar *) tp_handle_inspect (feature_handles, iter.element),
+          user_data);
+    }
 }

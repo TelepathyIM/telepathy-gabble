@@ -113,5 +113,8 @@ struct _CapabilityConversionData
 
 extern const CapabilityConversionData capabilities_conversions[];
 
+void gabble_capabilities_init (GabbleConnection *conn);
+void gabble_capabilities_finalize (GabbleConnection *conn);
+
 #endif  /* __GABBLE_CAPABILITIES__H__ */
 

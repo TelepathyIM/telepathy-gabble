@@ -16,6 +16,7 @@ int main (int argc, char **argv)
   GabbleCapabilitySet *cap_set;
 
   g_type_init ();
+  gabble_capabilities_init (NULL);
 
   presence = gabble_presence_new ();
   g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
@@ -174,6 +175,9 @@ int main (int argc, char **argv)
   g_free (dump);
 
   g_object_unref (presence);
+
+  gabble_capabilities_finalize (NULL);
+
   return 0;
 }
 

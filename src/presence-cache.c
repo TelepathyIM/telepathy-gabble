@@ -214,7 +214,6 @@ struct _CapabilityInfo
   gboolean caps_set;
 
   GabbleCapabilitySet *cap_set;
-  GabblePresenceCapabilities caps;
 
   TpIntSet *guys;
   guint trust;
@@ -259,7 +258,8 @@ capability_info_recvd (GabblePresenceCache *cache,
 {
   CapabilityInfo *info = capability_info_get (cache, node);
 
-  if (info->caps != caps || ! info->caps_set)
+  if (!info->caps_set ||
+      !gabble_capability_set_equals (cap_set, info->cap_set))
     {
       /* The caps are not valid, either because we detected inconsistency
        * between several contacts using the same node (when the hash is not
@@ -267,7 +267,6 @@ capability_info_recvd (GabblePresenceCache *cache,
        * never set.
        */
       tp_intset_clear (info->guys);
-      info->caps = caps;
       gabble_capability_set_clear (info->cap_set);
       gabble_capability_set_update (info->cap_set, cap_set);
       info->trust = 0;
@@ -1073,17 +1072,22 @@ _process_caps_uri (GabblePresenceCache *cache,
   if (info->trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST
       || tp_intset_is_member (info->guys, handle))
     {
+      GabblePresence *presence = gabble_presence_cache_get (cache, handle);
       /* we already have enough trust for this node; apply the cached value to
        * the (handle, resource) */
+      if (DEBUGGING)
+        {
+          gchar *tmp = gabble_capability_set_dump (info->cap_set, "  ");
 
-      GabblePresence *presence = gabble_presence_cache_get (cache, handle);
-      DEBUG ("enough trust for URI %s, setting caps for %u (%s) to %u",
-          uri, handle, from, info->caps);
+          DEBUG ("enough trust for URI %s, setting caps for %u (%s) to:\n%s",
+              uri, handle, from, tmp);
+          g_free (tmp);
+        }
 
       if (presence)
         {
           gabble_presence_set_capabilities (presence, resource, info->cap_set,
-              info->caps, serial);
+              capabilities_parse (info->cap_set), serial);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
         }
       else
@@ -1573,7 +1577,6 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
 
   info = capability_info_get (cache, node);
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
-  info->caps |= new_caps;
   gabble_capability_set_add (info->cap_set, namespace);
 }
 

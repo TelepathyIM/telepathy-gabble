@@ -40,6 +40,13 @@ struct _Feature
   GabblePresenceCapabilities caps;
 };
 
+/* Pseudo-capabilities for buggy or strange implementations, represented as
+ * strings starting with a character not allowed in XML (the ASCII beep :-) */
+#define QUIRK_PREFIX_CHAR '\x07'
+#define QUIRK_PREFIX "\x07"
+/* Gabble 0.7.x with 16 <= x < 29 omits @creator on <content/> */
+#define QUIRK_OMITS_CONTENT_CREATORS "\x07omits-content-creators"
+
 /**
  * GabbleCapabilitySet:
  *
@@ -108,8 +115,7 @@ void capabilities_fill_cache (GabblePresenceCache *cache);
  */
 GabblePresenceCapabilities capabilities_get_initial_caps (void);
 
-GabblePresenceCapabilities capabilities_parse (GabbleCapabilitySet *cap_set,
-    LmMessageNode *query_result);
+GabblePresenceCapabilities capabilities_parse (GabbleCapabilitySet *cap_set);
 
 typedef GabblePresenceCapabilities (*TypeFlagsToCapsFunc) (guint typeflags);
 typedef guint (*CapsToTypeFlagsFunc) (GabblePresenceCapabilities caps);

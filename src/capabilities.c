@@ -75,6 +75,12 @@ static const Feature self_advertised_features[] =
   { 0, NULL, 0}
 };
 
+static const Feature quirks[] = {
+      { 0, QUIRK_OMITS_CONTENT_CREATORS,
+        PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR },
+      { 0, NULL, 0 }
+};
+
 const GabbleCapabilitySet *
 gabble_capabilities_get_bundle_voice_v1 ()
 {
@@ -109,9 +115,6 @@ omits_content_creators (LmMessageNode *identity)
   const gchar *name, *suffix;
   gchar *end;
   int ver;
-
-  if (tp_strdiff (identity->name, "identity"))
-    return FALSE;
 
   name = lm_message_node_get_attribute (identity, "name");
 
@@ -183,27 +186,14 @@ struct _GabbleCapabilitySet {
 };
 
 GabblePresenceCapabilities
-capabilities_parse (GabbleCapabilitySet *cap_set,
-    LmMessageNode *query_result)
+capabilities_parse (GabbleCapabilitySet *cap_set)
 {
   GabblePresenceCapabilities ret = PRESENCE_CAP_NONE;
   const gchar *var;
   const Feature *i;
-  NodeIter ni;
   TpIntSetIter iter;
 
   g_return_val_if_fail (cap_set != NULL, 0);
-  g_return_val_if_fail (query_result != NULL, 0);
-
-  /* special case: OMITS_CONTENT_CREATOR looks at the software version,
-   * not the actual features (sad face) */
-  for (ni = node_iter (query_result); ni != NULL; ni = node_iter_next (ni))
-    {
-      LmMessageNode *child = node_iter_data (ni);
-
-      if (omits_content_creators (child))
-        ret |= PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR;
-    }
 
   tp_intset_iter_init (&iter, tp_handle_set_peek (cap_set->handles));
 
@@ -211,17 +201,34 @@ capabilities_parse (GabbleCapabilitySet *cap_set,
     {
       var = tp_handle_inspect (feature_handles, iter.element);
 
-      for (i = self_advertised_features; i->ns != NULL; i++)
+      if (var[0] == QUIRK_PREFIX_CHAR)
         {
-          if (!tp_strdiff (var, i->ns))
+          for (i = quirks; i->ns != NULL; i++)
             {
-              ret |= i->caps;
-              break;
+              if (!tp_strdiff (var, i->ns))
+                {
+                  ret |= i->caps;
+                  break;
+                }
             }
-        }
 
-      if (i->ns == NULL)
-        DEBUG ("ignoring unknown capability %s", var);
+          if (i->ns == NULL)
+            g_warning ("unknown quirk: %s", var + 1);
+        }
+      else
+        {
+          for (i = self_advertised_features; i->ns != NULL; i++)
+            {
+              if (!tp_strdiff (var, i->ns))
+                {
+                  ret |= i->caps;
+                  break;
+                }
+            }
+
+          if (i->ns == NULL)
+            DEBUG ("ignoring unknown capability %s", var);
+        }
     }
 
   return ret;
@@ -290,6 +297,16 @@ gabble_capability_set_new_from_stanza (LmMessageNode *query_result)
     {
       LmMessageNode *child = node_iter_data (ni);
 
+      if (!tp_strdiff (child->name, "identity"))
+        {
+          if (omits_content_creators (child))
+            {
+              gabble_capability_set_add (ret, QUIRK_OMITS_CONTENT_CREATORS);
+            }
+
+          continue;
+        }
+
       if (tp_strdiff (child->name, "feature"))
         continue;
 
@@ -297,6 +314,12 @@ gabble_capability_set_new_from_stanza (LmMessageNode *query_result)
 
       if (NULL == var)
         continue;
+
+      if (G_UNLIKELY (var[0] == QUIRK_PREFIX_CHAR))
+        {
+          /* I think not! (It's not allowed in XML...) */
+          continue;
+        }
 
       /* TODO: only store namespaces we understand. */
       gabble_capability_set_add (ret, var);
@@ -315,6 +338,10 @@ gabble_capability_set_new_from_flags (GabblePresenceCapabilities caps)
   const Feature *i;
 
   for (i = self_advertised_features; NULL != i->ns; i++)
+    if ((i->caps & caps) == i->caps)
+      gabble_capability_set_add (ret, i->ns);
+
+  for (i = quirks; NULL != i->ns; i++)
     if ((i->caps & caps) == i->caps)
       gabble_capability_set_add (ret, i->ns);
 
@@ -434,6 +461,7 @@ gabble_capability_set_equals (const GabbleCapabilitySet *a,
       tp_handle_set_peek (b->handles));
 }
 
+/* Does not iterate over quirks, only real features. */
 void
 gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
     GFunc func, gpointer user_data)
@@ -447,7 +475,11 @@ gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
 
   while (tp_intset_iter_next (&iter))
     {
-      func ((gchar *) tp_handle_inspect (feature_handles, iter.element),
-          user_data);
+      const gchar *var = tp_handle_inspect (feature_handles, iter.element);
+
+      g_return_if_fail (var != NULL);
+
+      if (var[0] != QUIRK_PREFIX_CHAR)
+        func ((gchar *) var, user_data);
     }
 }

@@ -955,7 +955,7 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
   cap_set = gabble_capability_set_new_from_stanza (query_result);
-  caps = capabilities_parse (cap_set, query_result);
+  caps = capabilities_parse (cap_set);
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
    * uses another hash algorithm, don't check the hash and fallback to the old

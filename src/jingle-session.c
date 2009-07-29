@@ -1321,9 +1321,16 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
           if (!tp_strdiff (lm_message_node_get_attribute (node, "type"),
                 "candidates"))
             {
+              GList *contents = gabble_jingle_session_get_contents (sess);
+              GList *l;
+
               DEBUG ("switching to gtalk3 dialect and retransmiting our candidates");
               priv->dialect = JINGLE_DIALECT_GTALK3;
-              gabble_jingle_content_retransmit_candidates (c, TRUE);
+
+              for (l = contents; l != NULL; l = l->next)
+                gabble_jingle_content_retransmit_candidates (l->data, TRUE);
+
+              g_list_free (contents);
             }
           else
             {

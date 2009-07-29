@@ -2274,12 +2274,14 @@ ERROR:
 static void
 _emit_capabilities_changed (GabbleConnection *conn,
                             TpHandle handle,
-                            GabblePresenceCapabilities old_caps,
-                            GabblePresenceCapabilities new_caps)
+                            const GabbleCapabilitySet *old_set,
+                            const GabbleCapabilitySet *new_set)
 {
   GPtrArray *caps_arr;
   const CapabilityConversionData *ccd;
   guint i;
+  GabblePresenceCapabilities old_caps = capabilities_parse (old_set);
+  GabblePresenceCapabilities new_caps = capabilities_parse (new_set);
 
   if (old_caps == new_caps)
     return;
@@ -2426,9 +2428,7 @@ connection_capabilities_update_cb (GabblePresenceCache *cache,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  if (old_caps != new_caps)
-    _emit_capabilities_changed (conn, handle, old_caps, new_caps);
-
+  _emit_capabilities_changed (conn, handle, old_cap_set, new_cap_set);
   _emit_contact_capabilities_changed (conn, handle, old_cap_set, new_cap_set);
 }
 
@@ -2459,6 +2459,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   const CapabilityConversionData *ccd;
   GPtrArray *ret;
   GabbleCapabilitySet *cap_set;
+  GabbleCapabilitySet *save_set;
   GError *error = NULL;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
@@ -2494,6 +2495,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
     }
 
   save_caps = caps = pres->caps;
+  save_set = gabble_presence_get_caps (pres);
 
   caps |= add_caps;
   caps ^= (caps & remove_caps);
@@ -2544,8 +2546,12 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
           return;
         }
 
-      _emit_capabilities_changed (self, base->self_handle, save_caps, caps);
+      cap_set = gabble_capability_set_new_from_flags (caps);
+      _emit_capabilities_changed (self, base->self_handle, save_set, cap_set);
+      gabble_capability_set_free (cap_set);
     }
+
+  gabble_capability_set_free (save_set);
 
   tp_svc_connection_interface_capabilities_return_from_advertise_capabilities (
       context, ret);

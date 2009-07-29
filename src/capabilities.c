@@ -229,7 +229,7 @@ struct _GabbleCapabilitySet {
 };
 
 GabblePresenceCapabilities
-capabilities_parse (GabbleCapabilitySet *cap_set)
+capabilities_parse (const GabbleCapabilitySet *cap_set)
 {
   GabblePresenceCapabilities ret = PRESENCE_CAP_NONE;
   const gchar *var;

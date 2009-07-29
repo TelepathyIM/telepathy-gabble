@@ -85,6 +85,7 @@ void gabble_presence_set_capabilities (GabblePresence *presence,
     GabblePresenceCapabilities caps,
     guint serial);
 
+gboolean gabble_presence_has_cap (GabblePresence *presence, const gchar *ns);
 GabbleCapabilitySet *gabble_presence_get_caps (GabblePresence *presence);
 
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,

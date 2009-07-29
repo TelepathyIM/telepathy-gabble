@@ -152,6 +152,15 @@ resource_better_than (Resource *a, Resource *b)
     return (a->priority > b->priority);
 }
 
+gboolean
+gabble_presence_has_cap (GabblePresence *presence,
+    const gchar *ns)
+{
+  g_return_val_if_fail (presence != NULL, FALSE);
+
+  return gabble_capability_set_has (presence->priv->cap_set, ns);
+}
+
 GabbleCapabilitySet *
 gabble_presence_get_caps (GabblePresence *presence)
 {

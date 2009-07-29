@@ -8,10 +8,12 @@ from twisted.words.xish import domish
 
 from gabbletest import exec_test
 import ns
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     amy_handle = conn.RequestHandles(1, ['amy@foo.com'])[0]
 

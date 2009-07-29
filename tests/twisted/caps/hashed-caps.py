@@ -281,7 +281,8 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     # be notified when the signal CapabilitiesChanged is fired
     conn_caps_iface = dbus.Interface(conn, cs.CONN_IFACE_CAPS)

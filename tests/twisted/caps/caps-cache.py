@@ -113,7 +113,8 @@ def _test_with_hash(q, bus, conn, stream, contact, client, disco):
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     client = 'http://telepathy.freedesktop.org/fake-client'
 

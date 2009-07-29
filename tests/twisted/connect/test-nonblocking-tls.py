@@ -15,6 +15,7 @@ from twisted.words.protocols.jabber import xmlstream
 from gabbletest import (
     make_connection, make_stream, XmppAuthenticator, XmppXmlStream,
     disconnect_conn)
+import constants as cs
 
 NS_XMPP_TLS = 'urn:ietf:params:xml:ns:xmpp-tls'
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
@@ -66,7 +67,8 @@ class BlockForeverTlsAuthenticator(xmlstream.Authenticator):
 def test(q, bus, conn1, conn2, stream1, stream2):
     # Connection 1
     conn1.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
 
     # Connection 1 blocks because the fake jabber server behind conn1 does not
     # proceed to the tls handshake. The second connection is independant and
@@ -74,11 +76,13 @@ def test(q, bus, conn1, conn2, stream1, stream2):
 
     # Connection 2
     conn2.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
     q.expect('stream-authenticated')
     q.expect('dbus-signal', signal='PresenceUpdate',
         args=[{1L: (0L, {u'available': {}})}])
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     # Disconnection 2
     disconnect_conn(q, conn2, stream2)

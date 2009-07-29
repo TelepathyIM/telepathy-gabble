@@ -13,7 +13,8 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     _, e1, e2 = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-iq', to='fallback1-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS),
         EventPattern('stream-iq', to='fallback2-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS),
         )

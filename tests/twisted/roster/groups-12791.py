@@ -22,7 +22,6 @@ def _expect_group_channel(q, bus, conn, name, contacts):
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    # q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'

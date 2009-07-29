@@ -13,7 +13,8 @@ basic_caps = [(2, cs.CHANNEL_TYPE_TEXT, 3, 0)]
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     presence = make_presence('bob@foo.com/Foo', status='hello')
     stream.send(presence)

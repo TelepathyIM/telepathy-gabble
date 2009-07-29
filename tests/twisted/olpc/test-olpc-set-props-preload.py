@@ -14,7 +14,6 @@ def test(q, bus, conn, stream):
     buddy_info_iface.SetProperties({'color': '#ff0000,#0000ff'})
 
     conn.Connect()
-    # q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     # buddy activities
     event = q.expect('stream-iq', iq_type='set', query_name='pubsub')

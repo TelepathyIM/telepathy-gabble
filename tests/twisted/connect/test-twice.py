@@ -12,23 +12,28 @@ import servicetest
 from gabbletest import (
     make_connection, make_stream, JabberAuthenticator, XmppAuthenticator,
     XmppXmlStream, JabberXmlStream, disconnect_conn)
+import constants as cs
 
 def test(q, bus, conn1, conn2, stream1, stream2):
     # Connection 1
     conn1.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
     q.expect('stream-authenticated')
     q.expect('dbus-signal', signal='PresenceUpdate',
         args=[{1L: (0L, {u'available': {}})}])
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     # Connection 2
     conn2.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
     q.expect('stream-authenticated')
     q.expect('dbus-signal', signal='PresenceUpdate',
         args=[{1L: (0L, {u'available': {}})}])
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     # Disconnection 1
     disconnect_conn(q, conn1, stream1)

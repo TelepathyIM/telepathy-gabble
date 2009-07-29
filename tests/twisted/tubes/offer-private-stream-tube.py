@@ -49,7 +49,8 @@ def test(q, bus, conn, stream, bytestream_cls,
     conn.Connect()
 
     _, vcard_event, roster_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
         EventPattern('stream-iq', query_ns=ns.ROSTER))

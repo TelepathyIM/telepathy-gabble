@@ -8,6 +8,7 @@ from twisted.words.xish import domish
 from servicetest import unwrap, EventPattern
 from gabbletest import exec_test, make_result_iq
 import ns
+import constants as cs
 
 def make_presence(jid, sha1sum):
     p = domish.Element((None, 'presence'))
@@ -20,7 +21,8 @@ def make_presence(jid, sha1sum):
 def test(q, bus, conn, stream):
     conn.Connect()
     _, event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-iq', to=None, query_ns=ns.ROSTER,
             query_name='query'))
 

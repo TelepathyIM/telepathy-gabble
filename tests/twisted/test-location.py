@@ -23,7 +23,9 @@ def test(q, bus, conn, stream):
     q.expect_many(
         EventPattern('stream-iq', iq_type='set',
             query_ns='http://jabber.org/protocol/pubsub'),
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]))
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+        )
 
     # check location properties
 

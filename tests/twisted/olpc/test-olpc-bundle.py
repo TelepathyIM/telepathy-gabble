@@ -7,6 +7,7 @@ from gabbletest import exec_test, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
 import ns
+import constants as cs
 
 olpc_features = set([ns.OLPC_BUDDY_PROPS_NOTIFY, ns.OLPC_ACTIVITIES_NOTIFY,
         ns.OLPC_CURRENT_ACTIVITY_NOTIFY, ns.OLPC_ACTIVITY_PROPS_NOTIFY])
@@ -15,7 +16,8 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     _, iq_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'))
 

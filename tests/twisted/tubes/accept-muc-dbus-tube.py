@@ -2,7 +2,7 @@ import dbus
 
 from servicetest import call_async, EventPattern
 from gabbletest import exec_test, acknowledge_iq, make_muc_presence
-import constants as c
+import constants as cs
 
 from twisted.words.xish import xpath
 import ns
@@ -13,7 +13,8 @@ def test(q, bus, conn, stream, access_control):
     conn.Connect()
 
     _, iq_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'))
 
@@ -51,31 +52,31 @@ def test(q, bus, conn, stream, access_control):
     channels = event.args[0]
     path, props = channels[0]
 
-    assert props[c.CHANNEL_TYPE] == c.CHANNEL_TYPE_DBUS_TUBE
-    assert props[c.INITIATOR_ID] == 'chat@conf.localhost/bob'
-    bob_handle = props[c.INITIATOR_HANDLE]
-    assert props[c.INTERFACES] == [c.CHANNEL_IFACE_GROUP, c.CHANNEL_IFACE_TUBE]
-    assert props[c.REQUESTED] == False
-    assert props[c.TARGET_ID] == 'chat@conf.localhost'
-    assert props[c.DBUS_TUBE_SERVICE_NAME] == 'com.example.Test'
-    assert props[c.TUBE_PARAMETERS] == {'foo': 'bar'}
-    assert props[c.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [c.SOCKET_ACCESS_CONTROL_CREDENTIALS,
-        c.SOCKET_ACCESS_CONTROL_LOCALHOST]
+    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
+    assert props[cs.INITIATOR_ID] == 'chat@conf.localhost/bob'
+    bob_handle = props[cs.INITIATOR_HANDLE]
+    assert props[cs.INTERFACES] == [cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_TUBE]
+    assert props[cs.REQUESTED] == False
+    assert props[cs.TARGET_ID] == 'chat@conf.localhost'
+    assert props[cs.DBUS_TUBE_SERVICE_NAME] == 'com.example.Test'
+    assert props[cs.TUBE_PARAMETERS] == {'foo': 'bar'}
+    assert props[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [cs.SOCKET_ACCESS_CONTROL_CREDENTIALS,
+        cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
 
     tube_chan = bus.get_object(conn.bus_name, path)
-    tube_iface = dbus.Interface(tube_chan, c.CHANNEL_IFACE_TUBE)
-    dbus_tube_iface = dbus.Interface(tube_chan, c.CHANNEL_TYPE_DBUS_TUBE)
-    tube_chan_iface = dbus.Interface(tube_chan, c.CHANNEL)
+    tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_IFACE_TUBE)
+    dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
+    tube_chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
 
     # only Bob is in DBusNames
-    dbus_names = tube_chan.Get(c.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=c.PROPERTIES_IFACE)
+    dbus_names = tube_chan.Get(cs.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=cs.PROPERTIES_IFACE)
     assert dbus_names == {bob_handle: bob_bus_name}
 
     call_async(q, dbus_tube_iface, 'Accept', access_control)
 
     return_event, names_changed, presence_event = q.expect_many(
         EventPattern('dbus-return', method='Accept'),
-        EventPattern('dbus-signal', signal='DBusNamesChanged', interface=c.CHANNEL_TYPE_DBUS_TUBE),
+        EventPattern('dbus-signal', signal='DBusNamesChanged', interface=cs.CHANNEL_TYPE_DBUS_TUBE),
         EventPattern('stream-presence', to='chat@conf.localhost/test'))
 
     tube_addr = return_event.value[0]
@@ -90,11 +91,11 @@ def test(q, bus, conn, stream, access_control):
     assert tube_node['id'] == '1'
     self_bus_name = tube_node['dbus-name']
 
-    tubes_self_handle = tube_chan.GetSelfHandle(dbus_interface=c.CHANNEL_IFACE_GROUP)
+    tubes_self_handle = tube_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
     assert tubes_self_handle != 0
 
     # both of us are in DBusNames now
-    dbus_names = tube_chan.Get(c.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=c.PROPERTIES_IFACE)
+    dbus_names = tube_chan.Get(cs.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=cs.PROPERTIES_IFACE)
     assert dbus_names == {bob_handle: bob_bus_name, tubes_self_handle: self_bus_name}
 
     added, removed = names_changed.args
@@ -109,6 +110,6 @@ def test(q, bus, conn, stream, access_control):
 if __name__ == '__main__':
     # We can't use t.exec_dbus_tube_test() as we can use only the muc bytestream
     exec_test(lambda q, bus, conn, stream:
-        test(q, bus, conn, stream, c.SOCKET_ACCESS_CONTROL_CREDENTIALS))
+        test(q, bus, conn, stream, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS))
     exec_test(lambda q, bus, conn, stream:
-        test(q, bus, conn, stream, c.SOCKET_ACCESS_CONTROL_LOCALHOST))
+        test(q, bus, conn, stream, cs.SOCKET_ACCESS_CONTROL_LOCALHOST))

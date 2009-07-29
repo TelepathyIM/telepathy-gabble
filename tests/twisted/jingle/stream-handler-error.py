@@ -17,7 +17,8 @@ def test(q, bus, conn, stream, call_error_on):
 
     conn.Connect()
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
 

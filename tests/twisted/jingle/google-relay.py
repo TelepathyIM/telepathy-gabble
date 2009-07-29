@@ -81,11 +81,13 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
     conn.Connect()
 
     ji_event = q.expect_many(
-            EventPattern('dbus-signal', signal='StatusChanged', args=[1, 1]),
+            EventPattern('dbus-signal', signal='StatusChanged',
+                args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED]),
             EventPattern('stream-authenticated'),
             EventPattern('dbus-signal', signal='PresenceUpdate',
                 args=[{1L: (0L, {u'available': {}})}]),
-            EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+            EventPattern('dbus-signal', signal='StatusChanged',
+                args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
 
             # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
             EventPattern('stream-iq', query_ns='google:jingleinfo',

@@ -16,11 +16,13 @@ from constants import (
     CONN_IFACE_REQUESTS, CHANNEL_TYPE_TEXT, CHANNEL_IFACE_GROUP,
     CHANNEL_TYPE, TARGET_HANDLE_TYPE, TARGET_HANDLE,
     )
+import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     test_join(q, bus, conn, stream, 'chat@conf.localhost', False)
     test_join(q, bus, conn, stream, 'chien@conf.localhost', True)

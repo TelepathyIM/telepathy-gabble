@@ -5,15 +5,18 @@ to its service discovery request
 """
 
 from gabbletest import exec_test, XmppXmlStream
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
     # connecting
-    q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED]),
 
     # We are disconnected with Connection_Status_Reason_Network_Error as the
     # disco request timed out
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 2])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_NETWORK_ERROR]),
 
 class JabberXmlStreamNoDiscoReply (XmppXmlStream):
     """Subclass XmppXmlStream to don't automatically send a disco reply"""

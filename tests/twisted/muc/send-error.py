@@ -13,7 +13,8 @@ from mucutil import join_muc_and_check
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     muc = 'chat@conf.localhost'
     _, text_chan, test_handle, bob_handle = \

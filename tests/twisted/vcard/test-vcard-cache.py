@@ -10,7 +10,8 @@ import constants as cs
 def test(q, bus, conn, stream):
     conn.Connect()
     _, event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'))
 

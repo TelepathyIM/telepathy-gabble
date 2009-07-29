@@ -5,11 +5,13 @@ Test alias support.
 
 from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
     _, event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'))
 

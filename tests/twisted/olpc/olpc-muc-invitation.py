@@ -14,7 +14,8 @@ import ns
 def test(q, bus, conn, stream):
     conn.Connect()
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     handles = {}
     handles['bob'] = conn.RequestHandles(1, ['bob@localhost'])[0]

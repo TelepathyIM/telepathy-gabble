@@ -26,7 +26,8 @@ def run_test(q, bus, conn, stream):
     conn.Connect()
 
     _, initial_presence = q.expect_many(
-            EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+            EventPattern('dbus-signal', signal='StatusChanged',
+                args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
             EventPattern('stream-presence'),
             )
 

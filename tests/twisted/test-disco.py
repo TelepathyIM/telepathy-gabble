@@ -6,10 +6,12 @@ Test that Gabble responds to disco#info queries.
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
+import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     m = domish.Element((None, 'iq'))
     m['from'] = 'foo@bar.com'

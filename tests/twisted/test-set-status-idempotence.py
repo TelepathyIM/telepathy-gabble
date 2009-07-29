@@ -13,7 +13,8 @@ def test_presence(q, bus, conn, stream):
     conn.Connect()
 
     q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-presence'))
 
     iface = dbus.Interface (conn,
@@ -31,7 +32,8 @@ def test_simple_presence(q, bus, conn, stream):
     conn.Connect()
 
     q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-presence'))
 
     iface = dbus.Interface (conn, cs.CONN_IFACE_SIMPLE_PRESENCE)

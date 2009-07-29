@@ -6,7 +6,7 @@ import dbus
 
 from servicetest import call_async, EventPattern
 from gabbletest import exec_test, acknowledge_iq
-
+import constants as cs
 from util import (announce_gadget, send_buddy_changed_current_act_msg,
     answer_to_current_act_pubsub_request, answer_error_to_pubsub_request,
     send_gadget_current_activity_changed_msg, request_random_activity_view)
@@ -16,7 +16,8 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     _, iq_event, disco_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
         EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))

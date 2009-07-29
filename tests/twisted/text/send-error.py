@@ -174,7 +174,8 @@ def test_permanent_error(q, bus, conn, stream):
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     test_temporary_error(q, bus, conn, stream)
     test_permanent_error(q, bus, conn, stream)

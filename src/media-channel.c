@@ -1335,12 +1335,26 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
     }
 }
 
+#define TWICE(x) x, x
+
 static const gchar *
 _pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
   const gchar *resource, JingleMediaType type)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
+  const GabbleFeatureFallback content_types[] = {
+      /* if $thing is supported, then use it */
+        { TRUE, TWICE (NS_JINGLE_RTP) },
+        { type == JINGLE_MEDIA_TYPE_VIDEO, TWICE (NS_JINGLE_DESCRIPTION_VIDEO) },
+        { type == JINGLE_MEDIA_TYPE_AUDIO, TWICE (NS_JINGLE_DESCRIPTION_AUDIO) },
+      /* odd Google ones: if $thing is supported, use $other_thing */
+        { type == JINGLE_MEDIA_TYPE_AUDIO,
+          NS_GOOGLE_FEAT_VOICE, NS_GOOGLE_SESSION_PHONE },
+        { type == JINGLE_MEDIA_TYPE_VIDEO,
+          NS_GOOGLE_FEAT_VIDEO, NS_GOOGLE_SESSION_VIDEO },
+        { FALSE, NULL, NULL }
+  };
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
 
@@ -1350,38 +1364,8 @@ _pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
       return NULL;
     }
 
-  if (gabble_presence_resource_has_caps (presence, resource,
-          PRESENCE_CAP_JINGLE_RTP))
-    {
-      return NS_JINGLE_RTP;
-    }
-
-  if ((type == JINGLE_MEDIA_TYPE_VIDEO) &&
-      gabble_presence_resource_has_caps (presence, resource,
-          PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO))
-    {
-      return NS_JINGLE_DESCRIPTION_VIDEO;
-    }
-
-  if ((type == JINGLE_MEDIA_TYPE_AUDIO) &&
-      gabble_presence_resource_has_caps (presence, resource,
-          PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO))
-    {
-      return NS_JINGLE_DESCRIPTION_AUDIO;
-    }
-  if ((type == JINGLE_MEDIA_TYPE_AUDIO) &&
-      gabble_presence_resource_has_caps (presence, resource,
-          PRESENCE_CAP_GOOGLE_VOICE))
-    {
-      return NS_GOOGLE_SESSION_PHONE;
-    }
-  if ((type == JINGLE_MEDIA_TYPE_VIDEO) &&
-      gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_GOOGLE_VIDEO))
-    {
-      return NS_GOOGLE_SESSION_VIDEO;
-    }
-
+  return gabble_presence_resource_pick_best_feature (presence, resource,
+      content_types, gabble_capability_set_predicate_has);
 
   return NULL;
 }
@@ -1391,6 +1375,14 @@ _pick_best_resource (GabbleMediaChannel *chan,
   TpHandle peer, gboolean want_audio, gboolean want_video,
   const char **transport_ns, JingleDialect *dialect)
 {
+  /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
+   * available). */
+  static const GabbleFeatureFallback transports[] = {
+        { TRUE, TWICE (NS_GOOGLE_TRANSPORT_P2P) },
+        { TRUE, TWICE (NS_JINGLE_TRANSPORT_ICEUDP) },
+        { TRUE, TWICE (NS_JINGLE_TRANSPORT_RAWUDP) },
+        { FALSE, NULL, NULL }
+  };
   GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
   GabbleCapabilitySet *caps;
@@ -1492,26 +1484,12 @@ _pick_best_resource (GabbleMediaChannel *chan,
   goto FINALLY;
 
 CHOOSE_TRANSPORT:
-  /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
-   * available). */
 
-  if (gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_GOOGLE_TRANSPORT_P2P))
-    {
-      *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
-    }
-  else if (gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP))
-    {
-      *transport_ns = NS_JINGLE_TRANSPORT_ICEUDP;
-    }
-  else if (gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP))
-    {
-      *transport_ns = NS_JINGLE_TRANSPORT_RAWUDP;
-    }
-  else if (*dialect == JINGLE_DIALECT_GTALK4
-      || *dialect == JINGLE_DIALECT_GTALK3)
+  *transport_ns = gabble_presence_resource_pick_best_feature (presence,
+      resource, transports, gabble_capability_set_predicate_has);
+
+  if (*transport_ns == NULL && (*dialect == JINGLE_DIALECT_GTALK4
+      || *dialect == JINGLE_DIALECT_GTALK3))
     {
       /* (Some) GTalk clients don't advertise gtalk-p2p, though
        * they support it. If we know it's GTalk and there's no

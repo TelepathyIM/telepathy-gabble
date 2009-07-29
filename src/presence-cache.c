@@ -1566,13 +1566,15 @@ gabble_presence_cache_update_many (
 }
 
 void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
-    const gchar *node, GabblePresenceCapabilities new_caps)
+    const gchar *node, GabblePresenceCapabilities new_caps,
+    const gchar *namespace)
 {
   CapabilityInfo *info;
 
   info = capability_info_get (cache, node);
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
   info->caps |= new_caps;
+  gabble_capability_set_add (info->cap_set, namespace);
 }
 
 void

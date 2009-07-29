@@ -287,7 +287,7 @@ capabilities_fill_cache (GabblePresenceCache *cache)
    * Google Talk do not reply correctly to discovery requests. */
   gabble_presence_cache_add_bundle_caps (cache,
     "http://www.google.com/xmpp/client/caps#voice-v1",
-    PRESENCE_CAP_GOOGLE_VOICE);
+    PRESENCE_CAP_GOOGLE_VOICE, NS_GOOGLE_FEAT_VOICE);
 }
 
 GabblePresenceCapabilities

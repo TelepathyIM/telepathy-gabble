@@ -101,6 +101,17 @@ gchar *gabble_presence_dump (GabblePresence *presence);
 gboolean gabble_presence_added_to_view (GabblePresence *presence);
 gboolean gabble_presence_removed_from_view (GabblePresence *presence);
 
+/* Data-driven feature fallback */
+typedef struct {
+    gboolean considered;
+    gpointer check_data;
+    gpointer result;
+} GabbleFeatureFallback;
+gpointer gabble_presence_resource_pick_best_feature (GabblePresence *presence,
+    const gchar *resource,
+    const GabbleFeatureFallback *table,
+    GabbleCapabilitySetPredicate predicate);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_H__ */

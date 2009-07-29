@@ -600,3 +600,33 @@ gabble_presence_removed_from_view (GabblePresence *self)
   g_free (old_status_message);
   return ret;
 }
+
+gpointer
+gabble_presence_resource_pick_best_feature (GabblePresence *presence,
+    const gchar *resource,
+    const GabbleFeatureFallback *table,
+    GabbleCapabilitySetPredicate predicate)
+{
+  Resource *res;
+  const GabbleFeatureFallback *row;
+
+  g_return_val_if_fail (presence != NULL, NULL);
+  g_return_val_if_fail (resource != NULL, NULL);
+  g_return_val_if_fail (predicate != NULL, NULL);
+  g_return_val_if_fail (table != NULL, NULL);
+
+  res = _find_resource (presence, resource);
+
+  if (res == NULL)
+    return NULL;
+
+  for (row = table; row->result != NULL; row++)
+    {
+      if (row->considered && predicate (res->cap_set, row->check_data))
+        {
+          return row->result;
+        }
+    }
+
+  return NULL;
+}

@@ -349,6 +349,12 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
   return str;
 }
 
+static void
+ptr_array_strdup (gpointer str,
+    gpointer array)
+{
+  g_ptr_array_add (array, g_strdup (str));
+}
 
 /**
  * Compute our hash as defined by the XEP-0115.
@@ -359,7 +365,8 @@ gchar *
 caps_hash_compute_from_self_presence (GabbleConnection *self)
 {
   GabblePresence *presence = self->self_presence;
-  GPtrArray *features = gabble_presence_get_caps (presence);
+  GabbleCapabilitySet *cap_set;
+  GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = g_ptr_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
@@ -368,6 +375,11 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   g_ptr_array_add (identities, g_strdup ("client/pc//" PACKAGE_STRING));
 
   /* Gabble does not use dataforms, let 'dataforms' be empty */
+
+  /* FIXME: somehow allow iteration over this without copying twice */
+  cap_set = gabble_presence_get_caps (presence);
+  gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
+  gabble_capability_set_free (cap_set);
 
   str = caps_hash_compute (features, identities, dataforms);
 

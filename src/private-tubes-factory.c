@@ -517,6 +517,31 @@ add_generic_tube_caps (GPtrArray *arr)
 #define STREAM_CAP_PREFIX (NS_TUBES "/stream#")
 #define DBUS_CAP_PREFIX (NS_TUBES "/dbus#")
 
+typedef struct {
+    gboolean supports_tubes;
+    GPtrArray *arr;
+    TpHandle handle;
+} GetContactCapsClosure;
+
+static void
+get_contact_caps_foreach (gpointer ns,
+    gpointer user_data)
+{
+  GetContactCapsClosure *closure = user_data;
+
+  if (!g_str_has_prefix (ns, NS_TUBES))
+    return;
+
+  closure->supports_tubes = TRUE;
+
+  if (g_str_has_prefix (ns, STREAM_CAP_PREFIX))
+    add_service_to_array (ns + strlen (STREAM_CAP_PREFIX), closure->arr,
+        TP_TUBE_TYPE_STREAM, closure->handle);
+  else if (g_str_has_prefix (ns, DBUS_CAP_PREFIX))
+    add_service_to_array (ns + strlen (DBUS_CAP_PREFIX), closure->arr,
+        TP_TUBE_TYPE_DBUS, closure->handle);
+}
+
 static void
 gabble_private_tubes_factory_get_contact_caps (
     GabbleCapsChannelManager *manager,
@@ -525,30 +550,14 @@ gabble_private_tubes_factory_get_contact_caps (
     GPtrArray *arr)
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (manager);
-  gboolean supports_tubes;
-  guint i;
+  GetContactCapsClosure closure = { FALSE, arr, handle };
 
   /* Always claim that we support tubes. */
-  supports_tubes = (handle == self->priv->conn->parent.self_handle);
+  closure.supports_tubes = (handle == self->priv->conn->parent.self_handle);
 
-  for (i = 0; i < caps->len; i++)
-    {
-      const gchar *ns = g_ptr_array_index (caps, i);
+  gabble_capability_set_foreach (caps, get_contact_caps_foreach, &closure);
 
-      if (!g_str_has_prefix (ns, NS_TUBES))
-        continue;
-
-      supports_tubes = TRUE;
-
-      if (g_str_has_prefix (ns, STREAM_CAP_PREFIX))
-        add_service_to_array (ns + strlen (STREAM_CAP_PREFIX), arr,
-            TP_TUBE_TYPE_STREAM, handle);
-      else if (g_str_has_prefix (ns, DBUS_CAP_PREFIX))
-        add_service_to_array (ns + strlen (DBUS_CAP_PREFIX), arr,
-            TP_TUBE_TYPE_DBUS, handle);
-    }
-
-  if (supports_tubes)
+  if (closure.supports_tubes)
     add_generic_tube_caps (arr);
 }
 

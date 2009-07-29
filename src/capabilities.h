@@ -43,9 +43,9 @@ struct _Feature
 /**
  * GabbleCapabilitySet:
  *
- * A GPtrArray of gchar *, treated as a set.
+ * A set of capabilities.
  */
-typedef GPtrArray GabbleCapabilitySet;
+typedef struct _GabbleCapabilitySet GabbleCapabilitySet;
 
 GabbleCapabilitySet *gabble_capability_set_new (void);
 GabbleCapabilitySet *gabble_capability_set_new_from_stanza (
@@ -64,6 +64,8 @@ gboolean gabble_capability_set_equals (const GabbleCapabilitySet *a,
     const GabbleCapabilitySet *b);
 void gabble_capability_set_clear (GabbleCapabilitySet *caps);
 void gabble_capability_set_free (GabbleCapabilitySet *caps);
+void gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
+    GFunc func, gpointer user_data);
 
 /* XEP-0115 version 1.3:
  *

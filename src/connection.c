@@ -1623,8 +1623,8 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
 }
 
 static void
-add_feature_node (LmMessageNode *result_query,
-    const gchar *namespace)
+add_feature_node (gpointer namespace,
+    gpointer result_query)
 {
   LmMessageNode *feature_node;
 
@@ -1650,7 +1650,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessageNode *iq, *result_iq, *query, *result_query, *identity;
   const gchar *node, *suffix;
   GabbleCapabilitySet *features;
-  guint i;
   gchar *caps_hash;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
@@ -1726,8 +1725,8 @@ connection_iq_disco_cb (LmMessageHandler *handler,
     }
   else
     {
-      for (i = 0; i < features->len; i++)
-        add_feature_node (result_query, g_ptr_array_index (features, i));
+      gabble_capability_set_foreach (features, add_feature_node,
+          result_query);
 
       NODE_DEBUG (result_iq, "sending disco response");
 

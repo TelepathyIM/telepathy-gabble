@@ -141,6 +141,10 @@ omits_content_creators (LmMessageNode *identity)
     }
 }
 
+struct _GabbleCapabilitySet {
+    GPtrArray *strings;
+};
+
 GabblePresenceCapabilities
 capabilities_parse (GabbleCapabilitySet *cap_set,
     LmMessageNode *query_result)
@@ -161,9 +165,9 @@ capabilities_parse (GabbleCapabilitySet *cap_set,
         ret |= PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR;
     }
 
-  for (j = 0; j < cap_set->len; j++)
+  for (j = 0; j < cap_set->strings->len; j++)
     {
-      var = g_ptr_array_index (cap_set, j);
+      var = g_ptr_array_index (cap_set->strings, j);
 
       for (i = self_advertised_features; i->ns != NULL; i++)
         {
@@ -222,7 +226,10 @@ const CapabilityConversionData capabilities_conversions[] =
 GabbleCapabilitySet *
 gabble_capability_set_new (void)
 {
-  return g_ptr_array_new ();
+  GabbleCapabilitySet *ret = g_slice_new0 (GabbleCapabilitySet);
+
+  ret->strings = g_ptr_array_new ();
+  return ret;
 }
 
 GabbleCapabilitySet *
@@ -294,8 +301,8 @@ gabble_capability_set_update (GabbleCapabilitySet *target,
   g_return_if_fail (target != NULL);
   g_return_if_fail (source != NULL);
 
-  for (i = 0; i < source->len; i++)
-    gabble_capability_set_add (target, g_ptr_array_index (source, i));
+  for (i = 0; i < source->strings->len; i++)
+    gabble_capability_set_add (target, g_ptr_array_index (source->strings, i));
 }
 
 void
@@ -306,7 +313,7 @@ gabble_capability_set_add (GabbleCapabilitySet *caps,
   g_return_if_fail (cap != NULL);
 
   if (!gabble_capability_set_has (caps, cap))
-    g_ptr_array_add (caps, g_strdup (cap));
+    g_ptr_array_add (caps->strings, g_strdup (cap));
 }
 
 void
@@ -316,10 +323,10 @@ gabble_capability_set_clear (GabbleCapabilitySet *caps)
 
   g_return_if_fail (caps != NULL);
 
-  for (i = 0; i < caps->len; i++)
-    g_free (g_ptr_array_index (caps, i));
+  for (i = 0; i < caps->strings->len; i++)
+    g_free (g_ptr_array_index (caps->strings, i));
 
-  g_ptr_array_set_size (caps, 0);
+  g_ptr_array_set_size (caps->strings, 0);
 }
 
 void
@@ -328,7 +335,8 @@ gabble_capability_set_free (GabbleCapabilitySet *caps)
   g_return_if_fail (caps != NULL);
 
   gabble_capability_set_clear (caps);
-  g_ptr_array_free (caps, TRUE);
+  g_ptr_array_free (caps->strings, TRUE);
+  g_slice_free (GabbleCapabilitySet, caps);
 }
 
 gboolean
@@ -340,8 +348,8 @@ gabble_capability_set_has (const GabbleCapabilitySet *caps,
   g_return_val_if_fail (caps != NULL, FALSE);
   g_return_val_if_fail (cap != NULL, FALSE);
 
-  for (i = 0; i < caps->len; i++)
-    if (!tp_strdiff (g_ptr_array_index (caps, i), cap))
+  for (i = 0; i < caps->strings->len; i++)
+    if (!tp_strdiff (g_ptr_array_index (caps->strings, i), cap))
       return TRUE;
 
   return FALSE;
@@ -356,12 +364,19 @@ gabble_capability_set_equals (const GabbleCapabilitySet *a,
   g_return_val_if_fail (a != NULL, FALSE);
   g_return_val_if_fail (b != NULL, FALSE);
 
-  if (a->len != b->len)
+  if (a->strings->len != b->strings->len)
     return FALSE;
 
-  for (i = 0; i < a->len; i++)
-    if (!gabble_capability_set_has (b, g_ptr_array_index (a, i)))
+  for (i = 0; i < a->strings->len; i++)
+    if (!gabble_capability_set_has (b, g_ptr_array_index (a->strings, i)))
       return FALSE;
 
   return TRUE;
+}
+
+void
+gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
+    GFunc func, gpointer user_data)
+{
+  g_ptr_array_foreach (caps->strings, func, user_data);
 }

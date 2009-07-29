@@ -133,6 +133,7 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
           DEBUG ("Unexpectedly entered PENDING_HOLD state!");
           priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_HOLD;
           priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_NONE;
+          break;
 
         default:
           /* nothing particularly interesting - we're trying to change hold

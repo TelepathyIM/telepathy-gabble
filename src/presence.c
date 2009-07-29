@@ -171,17 +171,20 @@ gabble_presence_get_caps (GabblePresence *presence)
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,
-    GabblePresenceCapabilities caps)
+    GabbleCapabilitySetPredicate predicate, gpointer user_data)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
   Resource *chosen = NULL;
 
+  g_return_val_if_fail (presence != NULL, NULL);
+  g_return_val_if_fail (predicate != NULL, NULL);
+
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *res = (Resource *) i->data;
 
-      if (((res->caps & caps) == caps) &&
+      if (predicate (res->cap_set, user_data) &&
           (resource_better_than (res, chosen)))
               chosen = res;
     }

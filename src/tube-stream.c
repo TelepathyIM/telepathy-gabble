@@ -512,7 +512,7 @@ start_stream_initiation (GabbleTubeStream *self,
         }
 
       resource = gabble_presence_pick_resource_by_caps (presence,
-          PRESENCE_CAP_SI_TUBES);
+          gabble_capability_set_predicate_has, NS_TUBES);
       if (resource == NULL)
         {
           DEBUG ("initiator doesn't have tubes capabilities");
@@ -2263,7 +2263,7 @@ send_tube_offer (GabbleTubeStream *self,
     }
 
   resource = gabble_presence_pick_resource_by_caps (presence,
-      PRESENCE_CAP_SI_TUBES);
+      gabble_capability_set_predicate_has, NS_TUBES);
   if (resource == NULL)
     {
       DEBUG ("tube recipient doesn't have tubes capabilities");

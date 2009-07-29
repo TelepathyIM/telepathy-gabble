@@ -1386,7 +1386,6 @@ _pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
   return NULL;
 }
 
-
 static const gchar *
 _pick_best_resource (GabbleMediaChannel *chan,
   TpHandle peer, gboolean want_audio, gboolean want_video,
@@ -1394,7 +1393,7 @@ _pick_best_resource (GabbleMediaChannel *chan,
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
-  GabblePresenceCapabilities caps;
+  GabbleCapabilitySet *caps;
   const gchar *resource = NULL;
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
@@ -1410,15 +1409,19 @@ _pick_best_resource (GabbleMediaChannel *chan,
 
   g_return_val_if_fail (want_audio || want_video, NULL);
 
+  /* from here on, goto FINALLY to free this, instead of returning early */
+  caps = gabble_capability_set_new ();
+
   /* Try newest Jingle standard */
-  caps = PRESENCE_CAP_JINGLE_RTP;
+  gabble_capability_set_add (caps, NS_JINGLE_RTP);
 
   if (want_audio)
-    caps |= PRESENCE_CAP_JINGLE_RTP_AUDIO;
+    gabble_capability_set_add (caps, NS_JINGLE_RTP_AUDIO);
   if (want_video)
-    caps |= PRESENCE_CAP_JINGLE_RTP_VIDEO;
+    gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence, caps);
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      gabble_capability_set_predicate_at_least, caps);
 
   if (resource != NULL)
     {
@@ -1427,14 +1430,15 @@ _pick_best_resource (GabbleMediaChannel *chan,
     }
 
   /* Else try older Jingle draft */
-  caps = 0;
+  gabble_capability_set_clear (caps);
 
   if (want_audio)
-    caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
+    gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_AUDIO);
   if (want_video)
-    caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
+    gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence, caps);
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      gabble_capability_set_predicate_at_least, caps);
 
   if (resource != NULL)
     {
@@ -1446,16 +1450,18 @@ _pick_best_resource (GabbleMediaChannel *chan,
   if (!want_audio)
     {
       DEBUG ("No resource which supports video alone available");
-      return NULL;
+      goto FINALLY;
     }
 
   /* Okay, let's try GTalk 0.3, possibly with video. */
-  caps = PRESENCE_CAP_GOOGLE_VOICE;
+  gabble_capability_set_clear (caps);
+  gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
 
   if (want_video)
-    caps |= PRESENCE_CAP_GOOGLE_VIDEO;
+    gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence, caps);
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      gabble_capability_set_predicate_at_least, caps);
 
   if (resource != NULL)
     {
@@ -1466,12 +1472,15 @@ _pick_best_resource (GabbleMediaChannel *chan,
   if (want_video)
     {
       DEBUG ("No resource which supports audio+video available");
-      return NULL;
+      goto FINALLY;
     }
 
   /* Maybe GTalk 0.4 will save us all... ? */
-  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
-  resource = gabble_presence_pick_resource_by_caps (presence, caps);
+  gabble_capability_set_clear (caps);
+  gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
+  gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      gabble_capability_set_predicate_at_least, caps);
 
   if (resource != NULL)
     {
@@ -1480,7 +1489,7 @@ _pick_best_resource (GabbleMediaChannel *chan,
     }
 
   /* Nope, nothing we can do. */
-  return NULL;
+  goto FINALLY;
 
 CHOOSE_TRANSPORT:
   /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
@@ -1511,8 +1520,10 @@ CHOOSE_TRANSPORT:
     }
 
   if (*transport_ns == NULL)
-      return NULL;
+    resource = NULL;
 
+FINALLY:
+  gabble_capability_set_free (caps);
   return resource;
 }
 

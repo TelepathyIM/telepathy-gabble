@@ -32,9 +32,6 @@ def test(q, bus, conn, stream):
     for f in [complete_search, cancelled_while_in_progress]:
         f(q, bus, conn, requests, stream, 'jud.localhost')
 
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
 def complete_search(q, bus, conn, requests, stream, server):
     call_create(q, requests, server)
 

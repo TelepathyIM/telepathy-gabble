@@ -224,8 +224,8 @@ gabble_search_manager_foreach_channel_class (TpChannelManager *manager,
       NULL, (GDestroyNotify) tp_g_value_slice_free);
   GValue *value;
 
-  value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH);
+  value = tp_g_value_slice_new_string (
+      GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH);
   g_hash_table_insert (table, (gchar *) search_channel_fixed_properties[0],
       value);
 

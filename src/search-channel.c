@@ -562,6 +562,7 @@ parse_result_item (GabbleSearchChannel *chan,
     }
 
   emit_search_result (chan, handles, info);
+  g_hash_table_destroy (info);
 }
 
 static void

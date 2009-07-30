@@ -16,24 +16,62 @@ def call_create(q, requests, server):
 
     call_async(q, requests, 'CreateChannel', request)
 
-def answer_field_query(q, stream, server):
+def _wait_for_server_query(q, stream, server):
     # Gabble asks the server what search fields it supports
     iq_event = q.expect('stream-iq', to=server, query_ns=ns.SEARCH)
     iq = iq_event.stanza
 
-    # The server says it supports all the fields in unextended XEP 0055
     result = IQ(stream, "result")
     result["id"] = iq["id"]
     query = result.addElement((ns.SEARCH, 'query'))
     query.addElement("instructions", content="cybar?")
-    for f in ["first", "last", "nick", "email"]:
-        query.addElement(f)
+
+    return result, query
+
+def _send_server_reply(q, stream, result):
     stream.send(result)
 
     ret = q.expect('dbus-return', method='CreateChannel')
     nc_sig = q.expect('dbus-signal', signal='NewChannels')
 
     return (ret, nc_sig)
+
+def answer_field_query(q, stream, server):
+    result, query = _wait_for_server_query(q, stream, server)
+
+    # The server says it supports all the fields in unextended XEP 0055
+    for f in ["first", "last", "nick", "email"]:
+        query.addElement(f)
+
+    return _send_server_reply(q, stream, result)
+
+def answer_extended_field_query(q, stream, server, fields):
+    result, query = _wait_for_server_query(q, stream, server)
+
+    x = query.addElement((ns.X_DATA, 'x'))
+    x['type'] = 'form'
+    x.addElement('title', content="User Directory Search")
+    x.addElement('instructions', content="mooh?")
+    # add FORM_TYPE
+    field = x.addElement('field')
+    field['type'] = 'hidden'
+    field['var'] = 'FORM_TYPE'
+    field.addElement('value', content=ns.SEARCH)
+
+    # add fields
+    for var, type, label, options in fields:
+        field = x.addElement('field')
+        field['var'] = var
+        field['type'] = type
+        field['label'] = label
+
+        # add options (if any)
+        for value, label in options:
+            option = field.addElement('option')
+            option['label'] = label
+            v = option.addElement('value', content=value)
+
+    return _send_server_reply(q, stream, result)
 
 def make_search(q, c_search, c_props, server):
     terms = { 'x-n-family': 'Threepwood' }

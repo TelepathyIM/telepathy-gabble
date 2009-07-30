@@ -194,10 +194,7 @@ def cancelled_while_in_progress(q, bus, conn, requests, stream, server):
     assert state == cs.SEARCH_FAILED, (state, cs.SEARCH_FAILED)
 
     # Now the server sends us the results; SearchResultReceived shouldn't fire
-    def srr_cb(chan, contact, vcard):
-        assert False, "SearchResultReceived shouldn't fire after Stop()"
-
-    c_search.connect_to_signal('SearchResultReceived', srr_cb)
+    q.forbid_events([EventPattern('dbus-signal', signal='SearchResultReceived')])
 
     send_results(stream, iq)
 
@@ -206,10 +203,7 @@ def cancelled_while_in_progress(q, bus, conn, requests, stream, server):
 
     # Hooray! We survived. Now let's call Stop again; it should succeed but do
     # nothing.
-    def search_state_changed_cb(chan, state, reason, details):
-        assert False, "SearchStateChanged shouldn't fire"
-
-    c_search.connect_to_signal('SearchStateChanged', search_state_changed_cb)
+    q.forbid_events([EventPattern('dbus-signal', signal='SearchStateChanged')])
 
     call_async(q, c_search, 'Stop')
     ssc = q.expect('dbus-return', method='Stop')

@@ -194,7 +194,8 @@ def cancelled_while_in_progress(q, bus, conn, requests, stream, server):
     assert state == cs.SEARCH_FAILED, (state, cs.SEARCH_FAILED)
 
     # Now the server sends us the results; SearchResultReceived shouldn't fire
-    q.forbid_events([EventPattern('dbus-signal', signal='SearchResultReceived')])
+    search_result_received_event = EventPattern('dbus-signal', signal='SearchResultReceived')
+    q.forbid_events([search_result_received_event])
 
     send_results(stream, iq)
 
@@ -203,12 +204,14 @@ def cancelled_while_in_progress(q, bus, conn, requests, stream, server):
 
     # Hooray! We survived. Now let's call Stop again; it should succeed but do
     # nothing.
-    q.forbid_events([EventPattern('dbus-signal', signal='SearchStateChanged')])
+    search_state_changed_event = EventPattern('dbus-signal', signal='SearchStateChanged')
+    q.forbid_events([search_state_changed_event])
 
     call_async(q, c_search, 'Stop')
     ssc = q.expect('dbus-return', method='Stop')
 
     c.Close()
+    q.unforbid_events([search_result_received_event, search_state_changed_event])
 
 if __name__ == '__main__':
     exec_test(test)

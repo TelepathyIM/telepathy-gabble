@@ -7,17 +7,20 @@ FIXME: test C.I.Presence too
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
+from servicetest import EventPattern
 import ns
 import constants as cs
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+    _, event = q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+        EventPattern('stream-iq', query_ns=ns.ROSTER),
+        )
 
     amy_handle = conn.RequestHandles(1, ['amy@foo.com'])[0]
 
-    event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'
 
     item = event.query.addElement('item')

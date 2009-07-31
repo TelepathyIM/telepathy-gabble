@@ -930,7 +930,10 @@ build_extended_query (LmMessageNode *query,
   gpointer key, value;
 
   x = lm_message_node_add_child (query, "x", "");
-  lm_message_node_set_attribute (x, "xmlns", NS_X_DATA);
+  lm_message_node_set_attributes (x,
+      "type", "submit",
+      "xmlns", NS_X_DATA,
+      NULL);
 
   /* add FORM_TYPE */
   field = lm_message_node_add_child (x, "field", "");

@@ -62,7 +62,7 @@ def do_one_search(q, bus, conn, requests, stream, fields, expected_search_keys,
     iq = make_search(q, c_search, c_props, server, terms)
     query = iq.firstChildElement()
     fields = xpath.queryForNodes(
-        '/iq/query[@xmlns="%s"]/x[@xmlns="%s"]/field'
+        '/iq/query[@xmlns="%s"]/x[@xmlns="%s"][@type="submit"]/field'
         % (ns.SEARCH, ns.X_DATA), iq)
     assert fields is not None
 

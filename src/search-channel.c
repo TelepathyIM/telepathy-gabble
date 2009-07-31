@@ -212,7 +212,7 @@ parse_unextended_field_response (LmMessageNode *query_node,
           continue;
         }
 
-      tp_name = g_hash_table_lookup (xmpp_to_tp, field->name);
+      tp_name = g_hash_table_lookup (unextended_xmpp_to_tp, field->name);
 
       if (tp_name != NULL)
         {

@@ -456,7 +456,7 @@ emit_search_result (GabbleSearchChannel *chan,
 {
   GPtrArray *info = g_ptr_array_new ();
   gchar *jid, *first, *last, *nick, *email;
-  TpHandle h;
+  TpHandle h = 0;
   GError *e = NULL;
 
   jid = ht_lookup_and_remove (info_map, "jid");

@@ -126,6 +126,9 @@ static const FieldNameMapping field_mappings[] = {
   { "x-gender", "x-gender" },
   { "orgname",  "x-org-name" },
   { "orgunit",  "x-org-unit" },
+  { "given",    "x-n-given" },
+  { "family",   "x-n-family" },
+  { "nickname", "nickname" },
   /* openfire */
   { "search",   "" }, /* one big search box */
   { NULL, NULL },

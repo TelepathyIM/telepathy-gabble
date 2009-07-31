@@ -55,7 +55,7 @@ def complete_search(q, bus, conn, requests, stream, server):
     assert state == cs.SEARCH_NOT_STARTED, state
 
     # We make a search.
-    iq = make_search(q, c_search, c_props, server)
+    iq = make_search(q, c_search, c_props, server, { 'x-n-family': 'Threepwood' })
     query = iq.firstChildElement()
     i = 0
     for field in query.elements():
@@ -118,7 +118,7 @@ def cancelled_while_in_progress(q, bus, conn, requests, stream, server):
     c_props = dbus.Interface(c, cs.PROPERTIES_IFACE)
     c_search = dbus.Interface(c, cs.CHANNEL_TYPE_CONTACT_SEARCH)
 
-    iq = make_search(q, c_search, c_props, server)
+    iq = make_search(q, c_search, c_props, server, { 'x-n-family': 'Threepwood' })
 
     # Before the server sends back the results, the client cancels the search.
     call_async(q, c_search, 'Stop')

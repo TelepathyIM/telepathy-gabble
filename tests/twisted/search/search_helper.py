@@ -73,8 +73,7 @@ def answer_extended_field_query(q, stream, server, fields):
 
     return _send_server_reply(q, stream, result)
 
-def make_search(q, c_search, c_props, server):
-    terms = { 'x-n-family': 'Threepwood' }
+def make_search(q, c_search, c_props, server, terms):
     call_async(q, c_search, 'Search', terms)
 
     _, ssc_event, iq_event = q.expect_many(

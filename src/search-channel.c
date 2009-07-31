@@ -518,7 +518,16 @@ emit_search_result (GabbleSearchChannel *chan,
     }
 
   if (g_hash_table_size (info_map) > 0)
-    DEBUG ("<item> contained fields we don't understand; ignoring them");
+    {
+      GHashTableIter iter;
+      gpointer key;
+
+      DEBUG ("<item> contained fields we don't understand; ignoring them:");
+
+      g_hash_table_iter_init (&iter, info_map);
+      while (g_hash_table_iter_next (&iter, &key, NULL))
+        DEBUG ("\t- %s has been ignored", (gchar *) key);
+    }
 
   gabble_svc_channel_type_contact_search_emit_search_result_received (chan, h, info);
 

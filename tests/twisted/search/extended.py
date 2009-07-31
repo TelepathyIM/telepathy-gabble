@@ -33,7 +33,7 @@ def test(q, bus, conn, stream):
 
     requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
-    for f in [complete_search]:
+    for f in [complete_search, complete_search2]:
         f(q, bus, conn, requests, stream)
 
 def do_one_search(q, bus, conn, requests, stream, fields, expected_search_keys,
@@ -151,6 +151,44 @@ def complete_search(q, bus, conn, requests, stream):
     for h in g_handle, f_handle:
         call_async(q, conn, 'InspectHandles', cs.HT_CONTACT, [h])
         q.expect('dbus-error', method='InspectHandles')
+
+def complete_search2(q, bus, conn, requests, stream):
+    # uses other, dataform specific, fields
+    fields = [('given', 'text-single', 'Name', []),
+        ('family', 'text-single', 'Family Name', []),
+        ('nickname', 'text-single', 'Nickname', [])]
+
+    expected_search_keys = ['nickname', 'x-n-family', 'x-n-given']
+
+    terms = { 'x-n-family': 'Threepwood' }
+
+    results = [g_results, f_results]
+
+    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
+        fields, expected_search_keys, terms, results)
+
+    assert ('family', 'Threepwood') in search_fields, search_fields
+
+    # get results
+    r1 = q.expect('dbus-signal', signal='SearchResultReceived')
+    r2 = q.expect('dbus-signal', signal='SearchResultReceived')
+
+    g_handle, g_info = r1.args
+    f_handle, f_info = r2.args
+
+    jids = conn.InspectHandles(cs.HT_CONTACT, [g_handle, f_handle])
+    assert jids == [g_jid, f_jid], jids
+
+    for i, r in [(g_info, g_results), (f_info, f_results)]:
+        i_ = pformat(unwrap(i))
+        assert ("x-telepathy-identifier", [], [r['jid']]) in i, i_
+        assert ("n", [], [r['last'], r['first'], "", "", ""])    in i, i_
+        assert ("nickname", [], [r['nick']]) in i, i_
+        assert ("email", [], [r['email']]) in i, i_
+
+        assert len(i) == 4, i_
+
+    search_done(q, chan, c_search, c_props)
 
 if __name__ == '__main__':
     exec_test(test)

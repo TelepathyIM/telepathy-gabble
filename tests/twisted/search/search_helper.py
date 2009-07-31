@@ -79,7 +79,7 @@ def make_search(q, c_search, c_props, server, terms):
     _, ssc_event, iq_event = q.expect_many(
         EventPattern('dbus-return', method='Search'),
         EventPattern('dbus-signal', signal='SearchStateChanged'),
-        EventPattern('stream-iq', to=server, query_ns=ns.SEARCH),
+        EventPattern('stream-iq', to=server, query_ns=ns.SEARCH, iq_type='set'),
         )
 
     assert ssc_event.args[0] == cs.SEARCH_IN_PROGRESS

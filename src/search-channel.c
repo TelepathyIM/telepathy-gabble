@@ -974,7 +974,7 @@ do_search (GabbleSearchChannel *chan,
     return FALSE;
 
   msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_GET);
+      LM_MESSAGE_SUB_TYPE_SET);
   query = lm_message_node_add_child (msg->node, "query", NULL);
   lm_message_node_set_attribute (query, "xmlns", NS_SEARCH);
 

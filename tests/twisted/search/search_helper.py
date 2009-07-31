@@ -101,3 +101,28 @@ def send_results(stream, iq, results):
         item.addElement('nick', content=nick)
         item.addElement('email', content=jid)
     stream.send(result)
+
+def send_results_extended(stream, iq, results):
+    result = IQ(stream, 'result')
+    result['id'] = iq['id']
+    query = result.addElement((ns.SEARCH, 'query'))
+
+    x = query.addElement((ns.X_DATA, 'x'))
+    x['type'] = 'result'
+    # add FORM_TYPE
+    field = x.addElement('field')
+    field['type'] = 'hidden'
+    field['var'] = 'FORM_TYPE'
+    field.addElement('value', content=ns.SEARCH)
+
+    # TODO: add reported
+
+    # add results
+    for r in results:
+        item = x.addElement('item')
+        for var, value in r.items():
+            field = item.addElement('field')
+            field['var'] = var
+            field.addElement('value', content=value)
+
+    stream.send(result)

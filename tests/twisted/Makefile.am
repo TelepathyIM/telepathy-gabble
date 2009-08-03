@@ -45,6 +45,7 @@ TWISTED_TESTS = \
 	roster/test-save-alias-to-roster.py \
 	search/ceci-nest-pas-un-serveur.py \
 	search/extended.py \
+	search/no-server-property.py \
 	search/unextended.py \
 	text/initiate.py \
 	text/initiate-requestotron.py \

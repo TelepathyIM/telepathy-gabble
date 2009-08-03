@@ -82,8 +82,10 @@ def complete_search(q, bus, conn, requests, stream, server):
         assert ("n", [], [r[2], r[1], "", "", ""])    in i, i_
         assert ("nickname", [], [r[3]])               in i, i_
         assert ("email", [], [r[0]])                  in i, i_
+        assert ("x-n-family", [], [r[2]]) in i, i_
+        assert ("x-n-given", [], [r[1]]) in i, i_
 
-        assert len(i) == 4, i_
+        assert len(i) == 6, i_
 
     ssc = q.expect('dbus-signal', signal='SearchStateChanged')
     assert ssc.args[0] == cs.SEARCH_COMPLETED, ssc.args

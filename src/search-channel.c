@@ -561,16 +561,13 @@ emit_search_result (GabbleSearchChannel *chan,
                     GHashTable *info_map)
 {
   GPtrArray *info = g_ptr_array_new ();
-  gchar *jid, *first, *last, *nick, *email;
+  gchar *jid, *first = NULL, *last = NULL;
   TpHandle h = 0;
   GError *e = NULL;
+  gpointer key, value;
+  GHashTableIter iter;
 
   jid = ht_lookup_and_remove (info_map, "jid");
-  last = ht_lookup_and_remove (info_map, "last");
-  first = ht_lookup_and_remove (info_map, "first");
-  nick = ht_lookup_and_remove (info_map, "nick");
-  email = ht_lookup_and_remove (info_map, "email");
-
   if (jid == NULL)
     {
       DEBUG ("no jid; giving up");
@@ -593,6 +590,40 @@ emit_search_result (GabbleSearchChannel *chan,
     g_ptr_array_add (info, make_field ("x-telepathy-identifier", components));
   }
 
+  g_hash_table_iter_init (&iter, info_map);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      const gchar *tp_name;
+      gchar *components[] = { value, NULL };
+
+      tp_name = g_hash_table_lookup (xmpp_to_tp, key);
+      if (tp_name == NULL)
+        {
+          DEBUG ("<item> contained field we don't understand (%s); ignoring it:"
+              , (const gchar *) key);
+          continue;
+        }
+
+      if (value == NULL)
+        {
+          DEBUG ("field %s (%s) doesn't have a value; ignoring it",
+              (const gchar *) key, tp_name);
+          continue;
+        }
+
+      DEBUG ("found field %s (%s): %s", (const gchar *) key, tp_name,
+          (const gchar *) value);
+
+      g_ptr_array_add (info, make_field (tp_name, components));
+
+      if (!tp_strdiff (key, "last") ||
+          !tp_strdiff (key, "family"))
+        last = value;
+      else if (!tp_strdiff (key, "first") ||
+        !tp_strdiff (key, "given"))
+        first = value;
+    }
+
   /* Build 'n' field: Family Name, Given Name, Additional Names, Honorific
    * Prefixes, and Honorific Suffixes.
    */
@@ -607,32 +638,6 @@ emit_search_result (GabbleSearchChannel *chan,
           NULL
       };
       g_ptr_array_add (info, make_field ("n", components));
-    }
-
-  /* Build 'nickname' field. */
-  if (nick != NULL)
-    {
-      gchar *components[] = { nick, NULL };
-      g_ptr_array_add (info, make_field ("nickname", components));
-    }
-
-  /* Build 'email' field */
-  if (email != NULL)
-    {
-      gchar *components[] = { email, NULL };
-      g_ptr_array_add (info, make_field ("email", components));
-    }
-
-  if (g_hash_table_size (info_map) > 0)
-    {
-      GHashTableIter iter;
-      gpointer key;
-
-      DEBUG ("<item> contained fields we don't understand; ignoring them:");
-
-      g_hash_table_iter_init (&iter, info_map);
-      while (g_hash_table_iter_next (&iter, &key, NULL))
-        DEBUG ("\t- %s has been ignored", (gchar *) key);
     }
 
   gabble_svc_channel_type_contact_search_emit_search_result_received (chan, h, info);

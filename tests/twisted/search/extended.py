@@ -21,11 +21,6 @@ server = 'jud.localhost'
 g_jid = 'guybrush.threepwood@lucasarts.example.com'
 f_jid = 'freddiet@pgwodehouse.example.com'
 
-g_results = { 'jid': g_jid, 'first': 'Guybrush', 'last': 'Threepwood',
-    'nick': 'Fancy Pants', 'x-gender': 'Male', 'email': g_jid }
-f_results = { 'jid': f_jid, 'first': 'Frederick', 'last': 'Threepwood',
-    'nick': 'Freddie', 'x-gender': 'Male', 'email': f_jid }
-
 def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged',
@@ -116,6 +111,11 @@ def complete_search(q, bus, conn, requests, stream):
 
     terms = { 'x-n-family': 'Threepwood' }
 
+    g_results = { 'jid': g_jid, 'first': 'Guybrush', 'last': 'Threepwood',
+        'nick': 'Fancy Pants', 'x-gender': 'Male', 'email': g_jid }
+    f_results = { 'jid': f_jid, 'first': 'Frederick', 'last': 'Threepwood',
+        'nick': 'Freddie', 'x-gender': 'Male', 'email': f_jid }
+
     results = [g_results, f_results]
 
     search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
@@ -142,8 +142,11 @@ def complete_search(q, bus, conn, requests, stream):
         assert ("n", [], [r['last'], r['first'], "", "", ""])    in i, i_
         assert ("nickname", [], [r['nick']]) in i, i_
         assert ("email", [], [r['email']]) in i, i_
+        assert ("x-gender", [], [r['x-gender']]) in i, i_
+        assert ("x-n-family", [], [r['last']]) in i, i_
+        assert ("x-n-given", [], [r['first']]) in i, i_
 
-        assert len(i) == 4, i_
+        assert len(i) == 7, i_
 
     search_done(q, chan, c_search, c_props)
 
@@ -161,6 +164,11 @@ def complete_search2(q, bus, conn, requests, stream):
     expected_search_keys = ['nickname', 'x-n-family', 'x-n-given']
 
     terms = { 'x-n-family': 'Threepwood' }
+
+    g_results = { 'jid': g_jid, 'given': 'Guybrush', 'family': 'Threepwood',
+        'nickname': 'Fancy Pants', 'email': g_jid }
+    f_results = { 'jid': f_jid, 'given': 'Frederick', 'family': 'Threepwood',
+        'nickname': 'Freddie', 'email': f_jid }
 
     results = [g_results, f_results]
 
@@ -182,11 +190,13 @@ def complete_search2(q, bus, conn, requests, stream):
     for i, r in [(g_info, g_results), (f_info, f_results)]:
         i_ = pformat(unwrap(i))
         assert ("x-telepathy-identifier", [], [r['jid']]) in i, i_
-        assert ("n", [], [r['last'], r['first'], "", "", ""])    in i, i_
-        assert ("nickname", [], [r['nick']]) in i, i_
+        assert ("n", [], [r['family'], r['given'], "", "", ""])    in i, i_
+        assert ("nickname", [], [r['nickname']]) in i, i_
         assert ("email", [], [r['email']]) in i, i_
+        assert ("x-n-family", [], [r['family']]) in i, i_
+        assert ("x-n-given", [], [r['given']]) in i, i_
 
-        assert len(i) == 4, i_
+        assert len(i) == 6, i_
 
     search_done(q, chan, c_search, c_props)
 

@@ -82,7 +82,6 @@ struct _GabbleJingleContentPrivate
   /* Whether we have at least one local candidate. */
   gboolean have_local_candidates;
 
-  guint timer_id;
   guint gtalk4_event_id;
 
   gboolean dispose_has_run;
@@ -787,19 +786,6 @@ gabble_jingle_content_is_ready (GabbleJingleContent *self)
   return FALSE;
 }
 
-static gboolean
-timeout_content (gpointer data)
-{
-  GabbleJingleContent *c = data;
-
-  c->priv->timer_id = 0;
-  DEBUG ("content timed out");
-
-  /* we're handling it as if it were rejected */
-  gabble_jingle_content_remove (c, FALSE);
-  return FALSE;
-}
-
 static void
 send_content_add_or_accept (GabbleJingleContent *self)
 {
@@ -816,10 +802,6 @@ send_content_add_or_accept (GabbleJingleContent *self)
       /* TODO: set a timer for acknowledgement */
       action = JINGLE_ACTION_CONTENT_ADD;
       new_state = JINGLE_CONTENT_STATE_SENT;
-
-      g_assert (priv->timer_id == 0);
-      priv->timer_id = g_timeout_add (DEFAULT_CONTENT_TIMEOUT,
-        timeout_content, self);
     }
   else
     {

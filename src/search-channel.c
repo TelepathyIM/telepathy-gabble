@@ -77,6 +77,10 @@ struct _GabbleSearchChannelPrivate
    * map to the one supported. */
   GHashTable *tp_to_xmpp;
 
+  /* Array of owned (gchar *) containing all the boolean search terms
+   * supported by this server. */
+  GPtrArray *boolean_keys;
+
   TpHandleSet *result_handles;
 };
 
@@ -137,6 +141,9 @@ static const FieldNameMapping field_mappings[] = {
   { "nickname", "nickname" },
   /* openfire */
   { "search",   "" }, /* one big search box */
+  { "Name",     "fn" },
+  { "Email",    "email" },
+  /* openfire also includes "Username" which is the user part of the jid */
   { NULL, NULL },
 };
 
@@ -321,8 +328,8 @@ parse_data_form (
        */
       if (!tp_strdiff (type, "boolean"))
         {
-          /* TODO */
-          ;
+          g_ptr_array_add (self->priv->boolean_keys, g_strdup (var));
+          continue;
         }
 
       tp_name = g_hash_table_lookup (xmpp_to_tp, var);
@@ -974,15 +981,33 @@ build_extended_query (GabbleSearchChannel *self,
 
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      gchar *xmpp_field = g_hash_table_lookup (self->priv->tp_to_xmpp, key);
+      const gchar *tp_name = key;
+      gchar *xmpp_field = g_hash_table_lookup (self->priv->tp_to_xmpp, tp_name);
 
       g_assert (xmpp_field != NULL);
 
       field = lm_message_node_add_child (x, "field", "");
       lm_message_node_set_attribute (field, "var", xmpp_field);
       lm_message_node_add_child (field, "value", value);
-    }
 
+      if (!tp_strdiff (tp_name, ""))
+        {
+          /* Open fire search. Tick all the boolean fields */
+          guint i;
+
+          for (i = 0; i < self->priv->boolean_keys->len; i++)
+            {
+              xmpp_field = g_ptr_array_index (self->priv->boolean_keys, i);
+
+              field = lm_message_node_add_child (x, "field", "");
+              lm_message_node_set_attributes (field,
+                  "var", xmpp_field,
+                  "type", "boolean",
+                  NULL);
+              lm_message_node_add_child (field, "value", "1");
+            }
+        }
+    }
 }
 
 static gboolean
@@ -1081,6 +1106,8 @@ gabble_search_channel_constructor (GType type,
   chan->priv->tp_to_xmpp = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_free);
 
+  chan->priv->boolean_keys = g_ptr_array_new ();
+
   request_search_fields (chan);
 
   return obj;
@@ -1091,6 +1118,7 @@ gabble_search_channel_finalize (GObject *obj)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (obj);
   GabbleSearchChannelPrivate *priv = chan->priv;
+  guint i;
 
   ensure_closed (chan);
 
@@ -1098,6 +1126,12 @@ gabble_search_channel_finalize (GObject *obj)
 
   tp_handle_set_destroy (priv->result_handles);
   g_hash_table_destroy (chan->priv->tp_to_xmpp);
+
+  for (i = 0; i < priv->boolean_keys->len; i++)
+    {
+      g_free (g_ptr_array_index (priv->boolean_keys, i));
+    }
+  g_ptr_array_free (priv->boolean_keys, TRUE);
 
   if (G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize)
     G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize (obj);

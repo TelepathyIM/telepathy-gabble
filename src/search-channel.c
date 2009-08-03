@@ -198,10 +198,11 @@ parse_unextended_field_response (LmMessageNode *query_node,
                                  GError **error)
 {
   GPtrArray *search_keys = g_ptr_array_new ();
-  LmMessageNode *field;
+  NodeIter i;
 
-  for (field = query_node->children; field != NULL; field = field->next)
+  for (i = node_iter (query_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *field = node_iter_data (i);
       gchar *tp_name;
 
       if (!strcmp (field->name, "instructions"))
@@ -541,7 +542,7 @@ parse_result_item (GabbleSearchChannel *chan,
 {
   const gchar *jid = lm_message_node_get_attribute (item, "jid");
   GHashTable *info;
-  LmMessageNode *n;
+  NodeIter i;
 
   if (jid == NULL)
     {
@@ -552,8 +553,9 @@ parse_result_item (GabbleSearchChannel *chan,
   info = g_hash_table_new (g_str_hash, g_str_equal);
   g_hash_table_insert (info, "jid", (gchar *) jid);
 
-  for (n = item->children; n != NULL; n = n->next)
+  for (i = node_iter (item); i; i = node_iter_next (i))
     {
+      LmMessageNode *n = node_iter_data (i);
       gchar *value = (gchar *) lm_message_node_get_value (n);
 
       g_hash_table_insert (info, n->name, value);
@@ -568,10 +570,12 @@ parse_search_results (GabbleSearchChannel *chan,
 {
   TpHandleRepoIface *handles = tp_base_connection_get_handles (
       (TpBaseConnection *) chan->base.conn, TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *item;
+  NodeIter i;
 
-  for (item = query_node->children; item != NULL; item = item->next)
+  for (i = node_iter (query_node); i; i = node_iter_next (i))
     {
+      LmMessageNode *item = node_iter_data (i);
+
       if (!strcmp (item->name, "item"))
         parse_result_item (chan, handles, item);
       else

@@ -32,7 +32,9 @@
 #include "caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
+#include "disco.h"
 #include "search-channel.h"
+#include "util.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
 static void caps_channel_manager_iface_init (gpointer, gpointer);
@@ -60,6 +62,8 @@ struct _GabbleSearchManagerPrivate
    * Keys are GabbleSearchChannel *, values are an arbitrary non-NULL pointer.
    */
   GHashTable *channels;
+
+  gchar *default_jud;
 
   gboolean dispose_has_run;
 };
@@ -94,15 +98,43 @@ gabble_search_manager_close_all (GabbleSearchManager *self)
 }
 
 static void
+disco_item_found_cb (GabbleDisco *disco,
+    GabbleDiscoItem *item,
+    GabbleSearchManager *self)
+{
+  if (tp_strdiff (item->category, "directory") ||
+      tp_strdiff (item->type, "user"))
+    return;
+
+  DEBUG ("Found contact directory: %s\n", item->jid);
+  g_free (self->priv->default_jud);
+  self->priv->default_jud = g_strdup (item->jid);
+}
+
+static void
 connection_status_changed_cb (GabbleConnection *conn,
                               guint status,
                               guint reason,
                               GabbleSearchManager *self)
 {
-  if (status != TP_CONNECTION_STATUS_DISCONNECTED)
-    return;
+  switch (status)
+    {
+      case TP_CONNECTION_STATUS_CONNECTING:
+        /* Track Search server available on the connection.
+         *
+         * The GabbleDisco object is created after the channel manager so we
+         * can connect this signal in our constructor. */
+        gabble_signal_connect_weak (self->priv->conn->disco, "item-found",
+            G_CALLBACK (disco_item_found_cb), G_OBJECT (self));
+        break;
 
-  gabble_search_manager_close_all (self);
+      case TP_CONNECTION_STATUS_DISCONNECTED:
+        gabble_search_manager_close_all (self);
+        break;
+
+      default:
+        return;
+    }
 }
 
 static GObject *
@@ -136,6 +168,18 @@ gabble_search_manager_dispose (GObject *object)
 
   if (G_OBJECT_CLASS (gabble_search_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_search_manager_parent_class)->dispose (object);
+}
+
+static void
+gabble_search_manager_finalize (GObject *object)
+{
+  GabbleSearchManager *fac = GABBLE_SEARCH_MANAGER (object);
+  GabbleSearchManagerPrivate *priv = fac->priv;
+
+  g_free (priv->default_jud);
+
+  if (G_OBJECT_CLASS (gabble_search_manager_parent_class)->finalize)
+    G_OBJECT_CLASS (gabble_search_manager_parent_class)->finalize (object);
 }
 
 static void
@@ -185,6 +229,7 @@ gabble_search_manager_class_init (GabbleSearchManagerClass *klass)
 
   object_class->constructor = gabble_search_manager_constructor;
   object_class->dispose = gabble_search_manager_dispose;
+  object_class->finalize = gabble_search_manager_finalize;
 
   object_class->get_property = gabble_search_manager_get_property;
   object_class->set_property = gabble_search_manager_set_property;
@@ -368,9 +413,16 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
 
   if (server == NULL)
     {
-      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Server must be specified; default not yet implemented");
-      goto error;
+      if (self->priv->default_jud == NULL)
+        {
+          error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "No Server has been specified and no server has been discovered "
+              "on the connection");
+          goto error;
+        }
+
+      DEBUG ("No Server specified; use %s as default", self->priv->default_jud);
+      server = self->priv->default_jud;
     }
 
   new_search_channel (self, server, request_token);

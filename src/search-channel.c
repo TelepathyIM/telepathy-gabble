@@ -71,6 +71,12 @@ struct _GabbleSearchChannelPrivate
 
   gboolean xforms;
 
+  /* owned tp_name (gchar *) => owned xmpp_name (gchar *)
+   * This mapping contains the fields that are supported by the server so
+   * if a tp_name can be mapped to different xmpp_name, the hash table will
+   * map to the one supported. */
+  GHashTable *tp_to_xmpp;
+
   TpHandleSet *result_handles;
 };
 
@@ -138,7 +144,6 @@ static const FieldNameMapping field_mappings[] = {
 
 static GHashTable *xmpp_to_tp = NULL;
 static GHashTable *unextended_xmpp_to_tp = NULL;
-static GHashTable *tp_to_xmpp = NULL;
 
 static void
 build_mapping_tables (void)
@@ -146,18 +151,14 @@ build_mapping_tables (void)
   guint i;
 
   g_return_if_fail (xmpp_to_tp == NULL);
-  g_return_if_fail (tp_to_xmpp == NULL);
 
   xmpp_to_tp = g_hash_table_new (g_str_hash, g_str_equal);
   unextended_xmpp_to_tp = g_hash_table_new (g_str_hash, g_str_equal);
-  tp_to_xmpp = g_hash_table_new (g_str_hash, g_str_equal);
 
   for (i = 0; i < NUM_UNEXTENDED_FIELDS; i++)
     {
       g_hash_table_insert (xmpp_to_tp, field_mappings[i].xmpp_name,
           field_mappings[i].tp_name);
-      g_hash_table_insert (tp_to_xmpp, field_mappings[i].tp_name,
-          field_mappings[i].xmpp_name);
     }
 
   tp_g_hash_table_update (unextended_xmpp_to_tp, xmpp_to_tp, NULL, NULL);
@@ -166,8 +167,6 @@ build_mapping_tables (void)
     {
       g_hash_table_insert (xmpp_to_tp, field_mappings[i].xmpp_name,
           field_mappings[i].tp_name);
-      g_hash_table_insert (tp_to_xmpp, field_mappings[i].tp_name,
-          field_mappings[i].xmpp_name);
     }
 }
 
@@ -216,8 +215,10 @@ supported_field_discovery_failed (GabbleSearchChannel *chan,
 }
 
 static GPtrArray *
-parse_unextended_field_response (LmMessageNode *query_node,
-                                 GError **error)
+parse_unextended_field_response (
+    GabbleSearchChannel *self,
+    LmMessageNode *query_node,
+    GError **error)
 {
   GPtrArray *search_keys = g_ptr_array_new ();
   NodeIter i;
@@ -239,6 +240,8 @@ parse_unextended_field_response (LmMessageNode *query_node,
       if (tp_name != NULL)
         {
           g_ptr_array_add (search_keys, tp_name);
+          g_hash_table_insert (self->priv->tp_to_xmpp, g_strdup (tp_name),
+              g_strdup (field->name));
         }
       else
         {
@@ -254,8 +257,10 @@ parse_unextended_field_response (LmMessageNode *query_node,
 }
 
 static GPtrArray *
-parse_data_form (LmMessageNode *x_node,
-                 GError **error)
+parse_data_form (
+    GabbleSearchChannel *self,
+    LmMessageNode *x_node,
+    GError **error)
 {
   GPtrArray *search_keys = g_ptr_array_new ();
   gboolean found_form_type_search = FALSE;
@@ -324,6 +329,8 @@ parse_data_form (LmMessageNode *x_node,
       if (tp_name != NULL)
         {
           g_ptr_array_add (search_keys, tp_name);
+          g_hash_table_insert (self->priv->tp_to_xmpp, g_strdup (tp_name),
+              g_strdup (var));
         }
       else
         {
@@ -352,12 +359,12 @@ parse_search_field_response (GabbleSearchChannel *chan,
   if (x_node == NULL)
     {
       chan->priv->xforms = FALSE;
-      search_keys = parse_unextended_field_response (query_node, &e);
+      search_keys = parse_unextended_field_response (chan, query_node, &e);
     }
   else
     {
       chan->priv->xforms = TRUE;
-      search_keys = parse_data_form (x_node, &e);
+      search_keys = parse_data_form (chan, x_node, &e);
     }
 
   if (search_keys == NULL)
@@ -369,7 +376,8 @@ parse_search_field_response (GabbleSearchChannel *chan,
 
   DEBUG ("extracted available fields");
   g_ptr_array_add (search_keys, NULL);
-  chan->priv->available_search_keys = (gchar **) g_ptr_array_free (search_keys, FALSE);
+  chan->priv->available_search_keys = (gchar **) g_ptr_array_free (search_keys,
+      FALSE);
 
   supported_fields_discovered (chan);
 }
@@ -918,8 +926,10 @@ validate_terms (GabbleSearchChannel *chan,
 }
 
 static void
-build_unextended_query (LmMessageNode *query,
-                        GHashTable *terms)
+build_unextended_query (
+    GabbleSearchChannel *self,
+    LmMessageNode *query,
+    GHashTable *terms)
 {
   GHashTableIter iter;
   gpointer key, value;
@@ -928,7 +938,7 @@ build_unextended_query (LmMessageNode *query,
 
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      gchar *xmpp_field = g_hash_table_lookup (tp_to_xmpp, key);
+      gchar *xmpp_field = g_hash_table_lookup (self->priv->tp_to_xmpp, key);
 
       g_assert (xmpp_field != NULL);
 
@@ -937,7 +947,8 @@ build_unextended_query (LmMessageNode *query,
 }
 
 static void
-build_extended_query (LmMessageNode *query,
+build_extended_query (GabbleSearchChannel *self,
+    LmMessageNode *query,
     GHashTable *terms)
 {
   LmMessageNode *x, *field;
@@ -963,7 +974,7 @@ build_extended_query (LmMessageNode *query,
 
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      gchar *xmpp_field = g_hash_table_lookup (tp_to_xmpp, key);
+      gchar *xmpp_field = g_hash_table_lookup (self->priv->tp_to_xmpp, key);
 
       g_assert (xmpp_field != NULL);
 
@@ -995,11 +1006,11 @@ do_search (GabbleSearchChannel *chan,
 
   if (chan->priv->xforms)
     {
-      build_extended_query (query, terms);
+      build_extended_query (chan, query, terms);
     }
   else
     {
-      build_unextended_query (query, terms);
+      build_unextended_query (chan, query, terms);
     }
 
   DEBUG ("Sending search");
@@ -1067,6 +1078,9 @@ gabble_search_channel_constructor (GType type,
    */
   base->closed = TRUE;
 
+  chan->priv->tp_to_xmpp = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, g_free);
+
   request_search_fields (chan);
 
   return obj;
@@ -1083,6 +1097,7 @@ gabble_search_channel_finalize (GObject *obj)
   g_free (priv->server);
 
   tp_handle_set_destroy (priv->result_handles);
+  g_hash_table_destroy (chan->priv->tp_to_xmpp);
 
   if (G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize)
     G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize (obj);

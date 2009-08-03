@@ -59,8 +59,8 @@ def complete_search(q, bus, conn, requests, stream, server):
     query = iq.firstChildElement()
     i = 0
     for field in query.elements():
-        #assert field.name == 'last', field.toXml()
-        #assert field.children[0] == u'Threepwood', field.children[0]
+        assert field.name == 'last', field.toXml()
+        assert field.children[0] == u'Threepwood', field.children[0]
         i += 1
     assert i == 1, query
 

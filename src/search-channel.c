@@ -109,6 +109,18 @@ static const FieldNameMapping field_mappings[] = {
   { "nick",     "nickname" },
   { "email",    "email" },
   /* Fields observed in implementations of Data Forms searches */
+  /* ejabberd */
+  { "user",     "x-telepathy-identifier" },
+  { "fn",       "fn" },
+  { "middle",   "x-n-additional" },
+  { "bday",     "bday" },
+  { "ctry",     "x-adr-country" },
+  { "locality", "x-adr-locality" },
+  { "x-gender", "x-gender" },
+  { "orgname",  "x-org-name" },
+  { "orgunit",  "x-org-unit" },
+  /* openfire */
+  { "search",   "" }, /* one big search box */
   { NULL, NULL },
 };
 
@@ -231,6 +243,91 @@ parse_unextended_field_response (LmMessageNode *query_node,
   return search_keys;
 }
 
+static GPtrArray *
+parse_data_form (LmMessageNode *x_node,
+                 GError **error)
+{
+  GPtrArray *search_keys = g_ptr_array_new ();
+  gboolean found_form_type_search = FALSE;
+  NodeIter i;
+
+  if (tp_strdiff (lm_message_node_get_attribute (x_node, "type"), "form"))
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "server is broken: <x> not type='form'");
+      goto fail;
+    }
+
+  for (i = node_iter (x_node); i; i = node_iter_next (i))
+    {
+      LmMessageNode *n = node_iter_data (i);
+      const gchar *type = lm_message_node_get_attribute (n, "type");
+      const gchar *var = lm_message_node_get_attribute (n, "var");
+      gchar *tp_name;
+
+      if (!strcmp (n->name, "title") ||
+          !strcmp (n->name, "instructions"))
+        {
+          DEBUG ("ignoring <%s>: %s", n->name, lm_message_node_get_value (n));
+          continue;
+        }
+
+      if (strcmp (n->name, "field"))
+        {
+          /* <reported> and <item> don't make sense here, and nothing else is
+           * legal.
+           */
+          DEBUG ("<%s> is not <title>, <instructions> or <field>", n->name);
+          continue;
+        }
+
+      if (!strcmp (var, "FORM_TYPE"))
+        {
+          if (node_iter (n) == NULL ||
+              strcmp (lm_message_node_get_value (node_iter_data (
+                    node_iter (n))), NS_SEARCH))
+            {
+              DEBUG ("<x> form does not have FORM_TYPE %s", NS_SEARCH);
+              g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+                  "server is broken: form lacking FORM_TYPE %s", NS_SEARCH);
+              goto fail;
+            }
+
+          found_form_type_search = TRUE;
+          continue;
+        }
+
+      /* Openfire's search plugin has one search box, called "search", and
+       * tickyboxes controlling which fields it searches.
+       *
+       * So: if the only non-tickybox is a field called "search", expose that
+       * field as "", and remember the tickyboxes. When submitting the form,
+       * tick them all (XXX: or maybe have a whitelist?)
+       */
+      if (!tp_strdiff (type, "boolean"))
+        {
+          /* TODO */
+          ;
+        }
+
+      tp_name = g_hash_table_lookup (xmpp_to_tp, var);
+      if (tp_name != NULL)
+        {
+          g_ptr_array_add (search_keys, tp_name);
+        }
+      else
+        {
+          DEBUG ("Unknown data form field: %s\n", var);
+        }
+    }
+
+  return search_keys;
+
+fail:
+  g_ptr_array_free (search_keys, TRUE);
+  return NULL;
+}
+
 static void
 parse_search_field_response (GabbleSearchChannel *chan,
                              LmMessageNode *query_node)
@@ -250,8 +347,7 @@ parse_search_field_response (GabbleSearchChannel *chan,
   else
     {
       chan->priv->xforms = TRUE;
-      e = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "server uses data forms, which are not yet implemented in Gabble");
+      search_keys = parse_data_form (x_node, &e);
     }
 
   if (search_keys == NULL)
@@ -575,8 +671,63 @@ parse_result_item (GabbleSearchChannel *chan,
 }
 
 static void
-parse_search_results (GabbleSearchChannel *chan,
-                      LmMessageNode *query_node)
+parse_extended_result_item (GabbleSearchChannel *chan,
+    TpHandleRepoIface *handles,
+    LmMessageNode *item)
+{
+  GHashTable *info;
+  NodeIter i;
+
+  info = g_hash_table_new (g_str_hash, g_str_equal);
+
+  for (i = node_iter (item); i; i = node_iter_next (i))
+    {
+      LmMessageNode *field = node_iter_data (i);
+      LmMessageNode *value_node;
+      const gchar *var, *value;
+
+      if (tp_strdiff (field->name, "field"))
+        {
+          DEBUG ("found <%s/> in <item/> rather than <field/>, skipping",
+              field->name);
+          continue;
+        }
+
+      var = lm_message_node_get_attribute (field, "var");
+      if (var == NULL)
+        {
+          DEBUG ("Ignore <field/> without 'var' attribut");
+          continue;
+        }
+
+      value_node = lm_message_node_get_child (field, "value");
+      if (value_node == NULL)
+        {
+          DEBUG ("Ignore <field/> without <value/> child");
+          continue;
+        }
+
+      value = lm_message_node_get_value (value_node);
+
+      g_hash_table_insert (info, (gchar *) var, (gchar *) value);
+    }
+
+  if (g_hash_table_lookup (info, "jid") == NULL)
+    {
+      DEBUG ("<item> didn't have a jid attribute; skipping");
+    }
+  else
+    {
+      emit_search_result (chan, handles, info);
+    }
+
+  g_hash_table_destroy (info);
+}
+
+static gboolean
+parse_unextended_search_results (GabbleSearchChannel *chan,
+    LmMessageNode *query_node,
+    GError *error)
 {
   TpHandleRepoIface *handles = tp_base_connection_get_handles (
       (TpBaseConnection *) chan->base.conn, TP_HANDLE_TYPE_CONTACT);
@@ -592,6 +743,54 @@ parse_search_results (GabbleSearchChannel *chan,
         DEBUG ("found <%s/> in <query/> rather than <item/>, skipping",
             item->name);
     }
+
+  return TRUE;
+}
+
+static gboolean
+parse_extended_search_results (GabbleSearchChannel *chan,
+    LmMessageNode *query_node,
+    GError *error)
+{
+  TpHandleRepoIface *handles = tp_base_connection_get_handles (
+      (TpBaseConnection *) chan->base.conn, TP_HANDLE_TYPE_CONTACT);
+  LmMessageNode *x;
+  NodeIter i;
+
+  x = lm_message_node_get_child_with_namespace (query_node, "x", NS_X_DATA);
+  if (x == NULL)
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "reply doens't contain a <x> node");
+      return FALSE;
+    }
+
+  for (i = node_iter (x); i; i = node_iter_next (i))
+    {
+      LmMessageNode *item = node_iter_data (i);
+
+      if (!tp_strdiff (item->name, "item"))
+        parse_extended_result_item (chan, handles, item);
+      else if (!tp_strdiff (item->name, "reported"))
+        /* TODO: check reported? */
+        ;
+      else
+        DEBUG ("found <%s/> in <query/> rather than <item/>, skipping",
+            item->name);
+    }
+
+  return TRUE;
+}
+
+static gboolean
+parse_search_results (GabbleSearchChannel *chan,
+    LmMessageNode *query_node,
+    GError *error)
+{
+  if (chan->priv->xforms)
+    return parse_extended_search_results (chan, query_node, error);
+  else
+    return parse_unextended_search_results (chan, query_node, error);
 }
 
 static LmHandlerResult
@@ -657,22 +856,21 @@ search_reply_cb (GabbleConnection *conn,
     }
 
   if (err != NULL)
-    {
-      DEBUG ("Searching failed: %s", err->message);
+    goto fail;
 
-      change_search_state (chan, GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED,
-          err);
+  if (!parse_search_results (chan, query_node, err))
+    goto fail;
 
-      g_error_free (err);
-    }
-  else
-    {
-      parse_search_results (chan, query_node);
+  change_search_state (chan, GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED,
+      NULL);
 
-      change_search_state (chan, GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED,
-          NULL);
-    }
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
+fail:
+  DEBUG ("Searching failed: %s", err->message);
+
+  change_search_state (chan, GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED, err);
+  g_error_free (err);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -723,6 +921,41 @@ build_unextended_query (LmMessageNode *query,
     }
 }
 
+static void
+build_extended_query (LmMessageNode *query,
+    GHashTable *terms)
+{
+  LmMessageNode *x, *field;
+  GHashTableIter iter;
+  gpointer key, value;
+
+  x = lm_message_node_add_child (query, "x", "");
+  lm_message_node_set_attribute (x, "xmlns", NS_X_DATA);
+
+  /* add FORM_TYPE */
+  field = lm_message_node_add_child (x, "field", "");
+  lm_message_node_set_attributes (field,
+      "type", "hidden",
+      "var", "FORM_TYPE",
+      NULL);
+  lm_message_node_add_child (field, "value", NS_SEARCH);
+
+  /* Add search terms */
+  g_hash_table_iter_init (&iter, terms);
+
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      gchar *xmpp_field = g_hash_table_lookup (tp_to_xmpp, key);
+
+      g_assert (xmpp_field != NULL);
+
+      field = lm_message_node_add_child (x, "field", "");
+      lm_message_node_set_attribute (field, "var", xmpp_field);
+      lm_message_node_add_child (field, "value", value);
+    }
+
+}
+
 static gboolean
 do_search (GabbleSearchChannel *chan,
            GHashTable *terms,
@@ -744,10 +977,7 @@ do_search (GabbleSearchChannel *chan,
 
   if (chan->priv->xforms)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "server uses data forms, which are not yet implemented in Gabble");
-      lm_message_unref (msg);
-      return FALSE;
+      build_extended_query (query, terms);
     }
   else
     {

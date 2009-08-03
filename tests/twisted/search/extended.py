@@ -28,7 +28,7 @@ def test(q, bus, conn, stream):
 
     requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
-    for f in [complete_search, complete_search2]:
+    for f in [complete_search, complete_search2, openfire_search]:
         f(q, bus, conn, requests, stream)
 
 def do_one_search(q, bus, conn, requests, stream, fields, expected_search_keys,
@@ -76,8 +76,6 @@ def do_one_search(q, bus, conn, requests, stream, fields, expected_search_keys,
         assert value.name == 'value'
         search_fields.append((f['var'], value.children[0]))
 
-    assert len(search_fields) == 1
-
     # Server sends the results of the search.
     send_results_extended(stream, iq, results)
 
@@ -121,6 +119,7 @@ def complete_search(q, bus, conn, requests, stream):
     search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
         fields, expected_search_keys, terms, results)
 
+    assert len(search_fields) == 1
     assert ('last', 'Threepwood') in search_fields, search_fields
 
     # get results
@@ -172,6 +171,7 @@ def complete_search2(q, bus, conn, requests, stream):
     search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
         fields, expected_search_keys, terms, results)
 
+    assert len(search_fields) == 1
     assert ('family', 'Threepwood') in search_fields, search_fields
 
     # get results
@@ -196,6 +196,42 @@ def complete_search2(q, bus, conn, requests, stream):
         assert len(i) == 6, i_
 
     search_done(q, chan, c_search, c_props)
+
+def openfire_search(q, bus, conn, requests, stream):
+    # Openfire only supports one text field and a bunch on checkbox
+    fields = [('search', 'text-single', 'Search', []),
+        ('Username', 'boolean', 'Username', []),
+        ('Name', 'boolean', 'Name', []),
+        ('Email', 'boolean', 'Email', [])]
+
+    expected_search_keys = ['']
+
+    terms = { '': '*badger*' }
+
+    jid = 'badger@mushroom.org'
+    results = [{ 'jid': jid, 'Name': 'Badger Badger', 'Email': jid, 'Username': 'badger'}]
+
+    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
+        fields, expected_search_keys, terms, results)
+
+    assert len(search_fields) == 4
+    assert ('search', '*badger*') in search_fields, search_fields
+    assert ('Username', '1') in search_fields, search_fields
+    assert ('Name', '1') in search_fields, search_fields
+    assert ('Email', '1') in search_fields, search_fields
+
+    r = q.expect('dbus-signal', signal='SearchResultReceived')
+    handle, info = r.args
+
+    assert conn.InspectHandles(cs.HT_CONTACT, [handle])[0] == jid
+
+    result = results[0]
+    i_ = pformat(unwrap(info))
+    assert ("x-telepathy-identifier", [], [result['jid']]) in info, i_
+    assert ("fn", [], [result['Name']]) in info, i_
+    assert ("email", [], [result['Email']]) in info, i_
+
+    assert len(info) == 3
 
 if __name__ == '__main__':
     exec_test(test)

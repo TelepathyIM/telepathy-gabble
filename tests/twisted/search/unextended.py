@@ -9,6 +9,7 @@ from twisted.words.protocols.jabber.client import IQ
 
 from gabbletest import exec_test, sync_stream
 from servicetest import call_async, unwrap, make_channel_proxy, EventPattern
+from search_helper import call_create, answer_field_query, make_search, send_results
 
 from pprint import pformat
 
@@ -20,7 +21,6 @@ f_jid = 'freddiet@pgwodehouse.example.com'
 g_results = (g_jid, 'Guybrush', 'Threepwood', 'Fancy Pants')
 f_results = (f_jid, 'Frederick', 'Threepwood', 'Freddie')
 results = [g_results, f_results]
-
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -34,63 +34,6 @@ def test(q, bus, conn, stream):
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
-
-def call_create(q, requests, server):
-    request = dbus.Dictionary(
-        {
-            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CONTACT_SEARCH,
-            cs.CONTACT_SEARCH_SERVER: server,
-        }, signature='sv')
-    call_async(q, requests, 'CreateChannel', request)
-
-def answer_field_query(q, stream, server):
-    # Gabble asks the server what search fields it supports
-    iq_event = q.expect('stream-iq', to=server, query_ns=ns.SEARCH)
-    iq = iq_event.stanza
-
-    # The server says it supports all the fields in unextended XEP 0055
-    result = IQ(stream, "result")
-    result["id"] = iq["id"]
-    query = result.addElement((ns.SEARCH, 'query'))
-    query.addElement("instructions", content="cybar?")
-    for f in ["first", "last", "nick", "email"]:
-        query.addElement(f)
-    stream.send(result)
-
-    ret = q.expect('dbus-return', method='CreateChannel')
-    nc_sig = q.expect('dbus-signal', signal='NewChannels')
-
-    return (ret, nc_sig)
-
-def make_search(q, c_search, c_props, server):
-    terms = { 'x-n-family': 'Threepwood' }
-    call_async(q, c_search, 'Search', terms)
-
-    _, ssc_event, iq_event = q.expect_many(
-        EventPattern('dbus-return', method='Search'),
-        EventPattern('dbus-signal', signal='SearchStateChanged'),
-        EventPattern('stream-iq', to=server, query_ns=ns.SEARCH),
-        )
-
-    assert ssc_event.args[0] == cs.SEARCH_IN_PROGRESS
-
-    state = c_props.Get(cs.CHANNEL_TYPE_CONTACT_SEARCH, 'SearchState')
-    assert state == cs.SEARCH_IN_PROGRESS, state
-
-    return iq_event.stanza
-
-def send_results(stream, iq):
-    result = IQ(stream, 'result')
-    result['id'] = iq['id']
-    query = result.addElement((ns.SEARCH, 'query'))
-    for jid, first, last, nick in results:
-        item = query.addElement('item')
-        item['jid'] = jid
-        item.addElement('first', content=first)
-        item.addElement('last', content=last)
-        item.addElement('nick', content=nick)
-        item.addElement('email', content=jid)
-    stream.send(result)
 
 def complete_search(q, bus, conn, requests, stream, server):
     call_create(q, requests, server)
@@ -125,7 +68,7 @@ def complete_search(q, bus, conn, requests, stream, server):
     assert i == 1, query
 
     # Server sends the results of the search.
-    send_results(stream, iq)
+    send_results(stream, iq, results)
 
     r1 = q.expect('dbus-signal', signal='SearchResultReceived')
     r2 = q.expect('dbus-signal', signal='SearchResultReceived')
@@ -197,7 +140,7 @@ def cancelled_while_in_progress(q, bus, conn, requests, stream, server):
     search_result_received_event = EventPattern('dbus-signal', signal='SearchResultReceived')
     q.forbid_events([search_result_received_event])
 
-    send_results(stream, iq)
+    send_results(stream, iq, results)
 
     # Make sure Gabble's received the results.
     sync_stream(q, stream)

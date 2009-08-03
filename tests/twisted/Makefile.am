@@ -192,6 +192,7 @@ EXTRA_DIST = \
 	olpc/util.py \
 	tubes/muctubeutil.py \
 	tubes/tubetestutil.py \
+	search/search_helper.py \
 	file-transfer/file_transfer_helper.py
 
 noinst_PROGRAMS = \

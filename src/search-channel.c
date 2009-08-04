@@ -26,6 +26,7 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/util.h>
 
 #include <loudmouth/loudmouth.h>
 
@@ -80,6 +81,8 @@ struct _GabbleSearchChannelPrivate
   /* Array of owned (gchar *) containing all the boolean search terms
    * supported by this server. */
   GPtrArray *boolean_keys;
+
+  GHashTable *results;
 
   TpHandleSet *result_handles;
 };
@@ -571,9 +574,9 @@ ht_lookup_and_remove (GHashTable *info_map,
 }
 
 static void
-emit_search_result (GabbleSearchChannel *chan,
-                    TpHandleRepoIface *handles,
-                    GHashTable *info_map)
+add_search_result (GabbleSearchChannel *chan,
+    TpHandleRepoIface *handles,
+    GHashTable *info_map)
 {
   GPtrArray *info = g_ptr_array_new ();
   gchar *jid, *first = NULL, *last = NULL;
@@ -586,7 +589,7 @@ emit_search_result (GabbleSearchChannel *chan,
   if (jid == NULL)
     {
       DEBUG ("no jid; giving up");
-      goto out;
+      return;
     }
 
   h = tp_handle_ensure (handles, jid, NULL, &e);
@@ -595,10 +598,11 @@ emit_search_result (GabbleSearchChannel *chan,
     {
       DEBUG ("invalid jid: %s", e->message);
       g_error_free (e);
-      goto out;
+      return;
     }
 
   tp_handle_set_add (chan->priv->result_handles, h);
+  tp_handle_unref (handles, h);
 
   {
     gchar *components[] = { jid, NULL };
@@ -655,19 +659,7 @@ emit_search_result (GabbleSearchChannel *chan,
       g_ptr_array_add (info, make_field ("n", components));
     }
 
-  gabble_svc_channel_type_contact_search_emit_search_result_received (chan, h, info);
-
-out:
-  {
-    GValue v = { 0, };
-
-    g_value_init (&v, GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
-    g_value_take_boxed (&v, info);
-    g_value_unset (&v);
-
-    if (h != 0)
-      tp_handle_unref (handles, h);
-  }
+  g_hash_table_insert (chan->priv->results, GUINT_TO_POINTER (h), info);
 }
 
 static void
@@ -696,7 +688,7 @@ parse_result_item (GabbleSearchChannel *chan,
       g_hash_table_insert (info, n->name, value);
     }
 
-  emit_search_result (chan, handles, info);
+  add_search_result (chan, handles, info);
   g_hash_table_destroy (info);
 }
 
@@ -748,7 +740,7 @@ parse_extended_result_item (GabbleSearchChannel *chan,
     }
   else
     {
-      emit_search_result (chan, handles, info);
+      add_search_result (chan, handles, info);
     }
 
   g_hash_table_destroy (info);
@@ -890,6 +882,10 @@ search_reply_cb (GabbleConnection *conn,
 
   if (!parse_search_results (chan, query_node, err))
     goto fail;
+
+  /* fire SearchStateChanged */
+  gabble_svc_channel_type_contact_search_emit_search_result_received (chan,
+      chan->priv->results);
 
   change_search_state (chan, GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED,
       NULL);
@@ -1067,6 +1063,16 @@ gabble_search_channel_init (GabbleSearchChannel *self)
   self->priv = priv;
 }
 
+static void
+free_info (GPtrArray *info)
+{
+  GValue v = { 0, };
+
+  g_value_init (&v, GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
+  g_value_take_boxed (&v, info);
+  g_value_unset (&v);
+}
+
 static GObject *
 gabble_search_channel_constructor (GType type,
                                    guint n_props,
@@ -1108,6 +1114,9 @@ gabble_search_channel_constructor (GType type,
 
   chan->priv->boolean_keys = g_ptr_array_new ();
 
+  chan->priv->results = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, (GDestroyNotify) free_info);
+
   request_search_fields (chan);
 
   return obj;
@@ -1132,6 +1141,8 @@ gabble_search_channel_finalize (GObject *obj)
       g_free (g_ptr_array_index (priv->boolean_keys, i));
     }
   g_ptr_array_free (priv->boolean_keys, TRUE);
+
+  g_hash_table_destroy (chan->priv->results);
 
   if (G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize)
     G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize (obj);

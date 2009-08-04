@@ -20,7 +20,7 @@ g_jid = 'guybrush.threepwood@lucasarts.example.com'
 f_jid = 'freddiet@pgwodehouse.example.com'
 g_results = (g_jid, 'Guybrush', 'Threepwood', 'Fancy Pants')
 f_results = (f_jid, 'Frederick', 'Threepwood', 'Freddie')
-results = [g_results, f_results]
+results = { g_jid: g_results, f_jid: f_results }
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -65,18 +65,18 @@ def complete_search(q, bus, conn, requests, stream, server):
     assert i == 1, query
 
     # Server sends the results of the search.
-    send_results(stream, iq, results)
+    send_results(stream, iq, results.values())
 
-    r1 = q.expect('dbus-signal', signal='SearchResultReceived')
-    r2 = q.expect('dbus-signal', signal='SearchResultReceived')
+    r = q.expect('dbus-signal', signal='SearchResultReceived')
+    infos = r.args[0]
 
-    g_handle, g_info = r1.args
-    f_handle, f_info = r2.args
+    handles = infos.keys()
+    jids = conn.InspectHandles(cs.HT_CONTACT, handles)
+    assert set(jids) == set(results.keys())
 
-    jids = conn.InspectHandles(cs.HT_CONTACT, [g_handle, f_handle])
-    assert jids == [g_jid, f_jid], jids
-
-    for i, r in [(g_info, g_results), (f_info, f_results)]:
+    for handle, id in zip(handles, jids):
+        i = infos[handle]
+        r = results[id]
         i_ = pformat(unwrap(i))
         assert ("x-telepathy-identifier", [], [r[0]]) in i, i_
         assert ("n", [], [r[2], r[1], "", "", ""])    in i, i_
@@ -106,7 +106,7 @@ def complete_search(q, bus, conn, requests, stream, server):
         )
 
     # Check that now the channel has gone away the handles have become invalid.
-    for h in g_handle, f_handle:
+    for h in handles:
         call_async(q, conn, 'InspectHandles', cs.HT_CONTACT, [h])
         q.expect('dbus-error', method='InspectHandles')
 
@@ -139,7 +139,7 @@ def cancelled_while_in_progress(q, bus, conn, requests, stream, server):
     search_result_received_event = EventPattern('dbus-signal', signal='SearchResultReceived')
     q.forbid_events([search_result_received_event])
 
-    send_results(stream, iq, results)
+    send_results(stream, iq, results.values())
 
     # Make sure Gabble's received the results.
     sync_stream(q, stream)

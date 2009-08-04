@@ -114,25 +114,24 @@ def complete_search(q, bus, conn, requests, stream):
     f_results = { 'jid': f_jid, 'first': 'Frederick', 'last': 'Threepwood',
         'nick': 'Freddie', 'x-gender': 'Male', 'email': f_jid }
 
-    results = [g_results, f_results]
+    results = { g_jid: g_results, f_jid: f_results }
 
     search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
-        fields, expected_search_keys, terms, results)
+        fields, expected_search_keys, terms, results.values())
 
     assert len(search_fields) == 1
     assert ('last', 'Threepwood') in search_fields, search_fields
 
-    # get results
-    r1 = q.expect('dbus-signal', signal='SearchResultReceived')
-    r2 = q.expect('dbus-signal', signal='SearchResultReceived')
+    e = q.expect('dbus-signal', signal='SearchResultReceived')
+    infos = e.args[0]
 
-    g_handle, g_info = r1.args
-    f_handle, f_info = r2.args
+    handles = infos.keys()
+    jids = conn.InspectHandles(cs.HT_CONTACT, handles)
+    assert set(jids) == set(results.keys())
 
-    jids = conn.InspectHandles(cs.HT_CONTACT, [g_handle, f_handle])
-    assert jids == [g_jid, f_jid], jids
-
-    for i, r in [(g_info, g_results), (f_info, f_results)]:
+    for handle, id in zip(handles, jids):
+        i = infos[handle]
+        r = results[id]
         i_ = pformat(unwrap(i))
         assert ("x-telepathy-identifier", [], [r['jid']]) in i, i_
         assert ("n", [], [r['last'], r['first'], "", "", ""])    in i, i_
@@ -147,7 +146,7 @@ def complete_search(q, bus, conn, requests, stream):
     search_done(q, chan, c_search, c_props)
 
     # Check that now the channel has gone away the handles have become invalid.
-    for h in g_handle, f_handle:
+    for h in handles:
         call_async(q, conn, 'InspectHandles', cs.HT_CONTACT, [h])
         q.expect('dbus-error', method='InspectHandles')
 
@@ -166,25 +165,24 @@ def complete_search2(q, bus, conn, requests, stream):
     f_results = { 'jid': f_jid, 'given': 'Frederick', 'family': 'Threepwood',
         'nickname': 'Freddie', 'email': f_jid }
 
-    results = [g_results, f_results]
+    results = { g_jid: g_results, f_jid: f_results }
 
     search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
-        fields, expected_search_keys, terms, results)
+        fields, expected_search_keys, terms, results.values())
 
     assert len(search_fields) == 1
     assert ('family', 'Threepwood') in search_fields, search_fields
 
-    # get results
-    r1 = q.expect('dbus-signal', signal='SearchResultReceived')
-    r2 = q.expect('dbus-signal', signal='SearchResultReceived')
+    e = q.expect('dbus-signal', signal='SearchResultReceived')
+    infos = e.args[0]
 
-    g_handle, g_info = r1.args
-    f_handle, f_info = r2.args
+    handles = infos.keys()
+    jids = conn.InspectHandles(cs.HT_CONTACT, handles)
+    assert set(jids) == set(results.keys())
 
-    jids = conn.InspectHandles(cs.HT_CONTACT, [g_handle, f_handle])
-    assert jids == [g_jid, f_jid], jids
-
-    for i, r in [(g_info, g_results), (f_info, f_results)]:
+    for handle, id in zip(handles, jids):
+        i = infos[handle]
+        r = results[id]
         i_ = pformat(unwrap(i))
         assert ("x-telepathy-identifier", [], [r['jid']]) in i, i_
         assert ("n", [], [r['family'], r['given'], "", "", ""])    in i, i_
@@ -209,10 +207,10 @@ def openfire_search(q, bus, conn, requests, stream):
     terms = { '': '*badger*' }
 
     jid = 'badger@mushroom.org'
-    results = [{ 'jid': jid, 'Name': 'Badger Badger', 'Email': jid, 'Username': 'badger'}]
+    results = {jid : { 'jid': jid, 'Name': 'Badger Badger', 'Email': jid, 'Username': 'badger'}}
 
     search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
-        fields, expected_search_keys, terms, results)
+        fields, expected_search_keys, terms, results.values())
 
     assert len(search_fields) == 4
     assert ('search', '*badger*') in search_fields, search_fields
@@ -221,17 +219,21 @@ def openfire_search(q, bus, conn, requests, stream):
     assert ('Email', '1') in search_fields, search_fields
 
     r = q.expect('dbus-signal', signal='SearchResultReceived')
-    handle, info = r.args
+    infos = r.args[0]
 
-    assert conn.InspectHandles(cs.HT_CONTACT, [handle])[0] == jid
+    handles = infos.keys()
+    jids = conn.InspectHandles(cs.HT_CONTACT, handles)
+    assert set(jids) == set(results.keys())
 
-    result = results[0]
-    i_ = pformat(unwrap(info))
-    assert ("x-telepathy-identifier", [], [result['jid']]) in info, i_
-    assert ("fn", [], [result['Name']]) in info, i_
-    assert ("email", [], [result['Email']]) in info, i_
+    for handle, id in zip(handles, jids):
+        i = infos[handle]
+        r = results[id]
+        i_ = pformat(unwrap(i))
+        assert ("x-telepathy-identifier", [], [r['jid']]) in i, i_
+        assert ("fn", [], [r['Name']]) in i, i_
+        assert ("email", [], [r['Email']]) in i, i_
 
-    assert len(info) == 3
+        assert len(i) == 3
 
 if __name__ == '__main__':
     exec_test(test)

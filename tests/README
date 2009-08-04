@@ -69,6 +69,10 @@ To debug an individual test you can set one of the following env variable:
     nemiver. You'll be able to set up breakpoints; then hit the "continue"
     button to launch Gabble.
 
+  * GABBLE_TEST_STRACE : to run Gabble inside strace. The report is written
+    to tools/strace.log.
+        export GABBLE_TEST_STRACE=1
+
 
 == Jingle tests ==
 

@@ -21,6 +21,8 @@ elif test -n "$GABBLE_TEST_REFDBG"; then
         if test -z "$GABBLE_WRAPPER" ; then
                 GABBLE_WRAPPER="refdbg"
         fi
+elif test -n "$GABBLE_TEST_STRACE"; then
+        GABBLE_WRAPPER="strace -o strace.log"
 fi
 
 export G_DEBUG=fatal-warnings" ${G_DEBUG}"

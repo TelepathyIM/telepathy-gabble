@@ -1136,6 +1136,8 @@ gabble_search_channel_finalize (GObject *obj)
   tp_handle_set_destroy (priv->result_handles);
   g_hash_table_destroy (chan->priv->tp_to_xmpp);
 
+  g_free (chan->priv->available_search_keys);
+
   for (i = 0; i < priv->boolean_keys->len; i++)
     {
       g_free (g_ptr_array_index (priv->boolean_keys, i));

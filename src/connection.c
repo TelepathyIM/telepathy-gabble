@@ -219,6 +219,9 @@ struct _GabbleConnectionPrivate
   /* the union of the above */
   GabbleCapabilitySet *all_caps;
 
+  /* stream id returned by the connector */
+  gchar *stream_id;
+
   gboolean closing;
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -1001,6 +1004,7 @@ gabble_connection_finalize (GObject *object)
   g_strfreev (priv->fallback_socks5_proxies);
 
   g_free (priv->alias);
+  g_free (priv->stream_id);
 
   tp_contacts_mixin_finalize (G_OBJECT(self));
 
@@ -1375,7 +1379,7 @@ connector_connect_cb (GObject *source,
   gchar *jid = NULL;
 
   conn = wocky_connector_connect_finish (WOCKY_CONNECTOR (source), res, &error,
-      &jid);
+      &jid, &(priv->stream_id));
 
   /* We don't need the connector any more */
   g_object_unref (priv->connector);

@@ -1628,6 +1628,9 @@ _gabble_connection_connect (TpBaseConnection *base,
 
   g_object_set (priv->connector,
       "ignore-ssl-errors", priv->ignore_ssl_errors,
+      "old-ssl", priv->old_ssl,
+      /* We always wants to support old servers */
+      "legacy", TRUE,
       NULL);
 
   if (priv->old_ssl)

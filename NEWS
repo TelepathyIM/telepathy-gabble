@@ -7,6 +7,9 @@ Enhancements:
 
 Fixes:
 
+* fd.o #21153: Remove session initiation and content add timeouts from the
+  Jingle code; this should be client policy.
+
 telepathy-gabble 0.7.31 (2009-07-22)
 ====================================
 

@@ -56,13 +56,13 @@ def do_one_search(q, bus, conn, requests, stream, fields, expected_search_keys,
     # We make a search.
     iq = make_search(q, c_search, c_props, server, terms)
     query = iq.firstChildElement()
-    fields = xpath.queryForNodes(
+    fields_sent = xpath.queryForNodes(
         '/iq/query[@xmlns="%s"]/x[@xmlns="%s"][@type="submit"]/field'
         % (ns.SEARCH, ns.X_DATA), iq)
-    assert fields is not None
+    assert fields_sent is not None
 
     # check FORM_TYPE
-    f = fields[0]
+    f = fields_sent[0]
     assert f['type'] == 'hidden'
     assert f['var'] == 'FORM_TYPE'
     value = f.firstChildElement()
@@ -71,13 +71,13 @@ def do_one_search(q, bus, conn, requests, stream, fields, expected_search_keys,
 
     # extract search fields
     search_fields = []
-    for f in fields[1:]:
+    for f in fields_sent[1:]:
         value = f.firstChildElement()
         assert value.name == 'value'
         search_fields.append((f['var'], value.children[0]))
 
     # Server sends the results of the search.
-    send_results_extended(stream, iq, results)
+    send_results_extended(stream, iq, results, fields)
 
     return search_fields, c, c_search, c_props
 

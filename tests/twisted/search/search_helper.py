@@ -102,7 +102,7 @@ def send_results(stream, iq, results):
         item.addElement('email', content=jid)
     stream.send(result)
 
-def send_results_extended(stream, iq, results):
+def send_results_extended(stream, iq, results, fields):
     result = IQ(stream, 'result')
     result['id'] = iq['id']
     query = result.addElement((ns.SEARCH, 'query'))
@@ -115,7 +115,12 @@ def send_results_extended(stream, iq, results):
     field['var'] = 'FORM_TYPE'
     field.addElement('value', content=ns.SEARCH)
 
-    # TODO: add reported
+    # add reported fields
+    reported = x.addElement('reported')
+    for var, type, label, options in fields:
+        field = reported.addElement('field')
+        field['var'] = var
+        field['label'] = label
 
     # add results
     for r in results:

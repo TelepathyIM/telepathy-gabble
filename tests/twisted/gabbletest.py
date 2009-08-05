@@ -282,7 +282,9 @@ class BaseXmlStream(xmlstream.XmlStream):
 
     def onDocumentEnd(self):
         self.event_func(servicetest.Event('stream-closed'))
-        xmlstream.XmlStream.onDocumentEnd(self)
+        # We don't chain up XmlStream.onDocumentEnd() because it will
+        # disconnect the TCP connection making tests as
+        # connect/disconnect-timeout.py not working
 
 class JabberXmlStream(BaseXmlStream):
     version = (0, 9)

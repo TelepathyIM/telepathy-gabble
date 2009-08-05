@@ -794,11 +794,11 @@ parse_extended_search_results (GabbleSearchChannel *chan,
       if (!tp_strdiff (item->name, "item"))
         parse_extended_result_item (chan, handles, item);
       else if (!tp_strdiff (item->name, "reported"))
-        /* TODO: check reported? */
-        ;
+        /* Ignore <reported> node */
+        continue;
       else
-        DEBUG ("found <%s/> in <query/> rather than <item/>, skipping",
-            item->name);
+        DEBUG ("found <%s/> in <x/> rather than <item/> and <reported/>, "
+            "skipping", item->name);
     }
 
   return TRUE;

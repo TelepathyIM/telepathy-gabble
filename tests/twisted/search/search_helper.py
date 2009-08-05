@@ -110,6 +110,8 @@ def send_results_extended(stream, iq, results, fields):
     x = query.addElement((ns.X_DATA, 'x'))
     x['type'] = 'result'
 
+    x.addElement('title', content='Search result')
+
     # add reported fields
     reported = x.addElement('reported')
     for var, type, label, options in fields:

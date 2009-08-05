@@ -796,9 +796,11 @@ parse_extended_search_results (GabbleSearchChannel *chan,
       else if (!tp_strdiff (item->name, "reported"))
         /* Ignore <reported> node */
         continue;
+      else if (!tp_strdiff (item->name, "title"))
+        DEBUG ("title: %s", lm_message_node_get_value (item));
       else
-        DEBUG ("found <%s/> in <x/> rather than <item/> and <reported/>, "
-            "skipping", item->name);
+        DEBUG ("found <%s/> in <x/> rather than <item/>, <title/> and "
+            "<reported/>, skipping", item->name);
     }
 
   return TRUE;

@@ -95,7 +95,6 @@ TWISTED_TESTS = \
 	jingle/outgoing-basics.py \
 	jingle/outgoing-ensure.py \
 	jingle/outgoing-many-streams.py \
-	jingle/outgoing-not-answered.py \
 	jingle/payload-types.py \
 	jingle/preload-caps-crash.py \
 	jingle/stream-handler-error.py \

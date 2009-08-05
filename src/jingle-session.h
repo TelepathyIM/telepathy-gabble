@@ -129,8 +129,5 @@ gboolean gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess);
 gboolean gabble_jingle_session_defines_action (GabbleJingleSession *sess,
     JingleAction action);
 
-/* Only to be used for the test suite */
-void gabble_set_jingle_session_timeout (guint seconds);
-
 #endif /* __JINGLE_SESSION_H__ */
 

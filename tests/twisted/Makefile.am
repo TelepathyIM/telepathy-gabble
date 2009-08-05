@@ -131,6 +131,7 @@ TWISTED_TESTS = \
 	file-transfer/test-send-file-to-unknown-contact.py \
 	file-transfer/test-send-file-wait-to-provide.py \
 	test-debug.py \
+	connect/disconnect-timeout.py \
 	connect/multiple-times-to-same-account.py \
 	connect/test-fail.py \
 	connect/test-success.py \

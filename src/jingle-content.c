@@ -111,7 +111,6 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
   priv->created_by_us = TRUE;
   priv->media_ready = FALSE;
   priv->have_local_candidates = FALSE;
-  priv->timer_id = 0;
   priv->gtalk4_event_id = 0;
   priv->dispose_has_run = FALSE;
 
@@ -130,15 +129,6 @@ gabble_jingle_content_dispose (GObject *object)
 
   DEBUG ("%p", object);
   priv->dispose_has_run = TRUE;
-
-  /* If we're in the middle of content-add/-accept when the session is
-   * terminated, we'll get disposed without being explicitly removed from
-   * the session. So, remove the timer here. */
-  if (priv->timer_id != 0)
-    {
-      g_source_remove (priv->timer_id);
-      priv->timer_id = 0;
-    }
 
   if (priv->gtalk4_event_id != 0)
     {
@@ -619,10 +609,6 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   if (*error != NULL)
       return;
 
-  if (priv->timer_id != 0)
-      g_source_remove (priv->timer_id);
-  priv->timer_id = 0;
-
   priv->state = JINGLE_CONTENT_STATE_ACKNOWLEDGED;
   g_object_notify ((GObject *) c, "state");
 }
@@ -994,12 +980,6 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
   LmMessageNode *sess_node;
 
   DEBUG ("called for %p (%s)", c, priv->name);
-
-  if (priv->timer_id != 0)
-    {
-      g_source_remove (priv->timer_id);
-      priv->timer_id = 0;
-    }
 
   /* If we were already signalled and removal is not a side-effect of
    * something else (sesssion termination, or removal by peer),

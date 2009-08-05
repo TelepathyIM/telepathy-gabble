@@ -109,11 +109,6 @@ def send_results_extended(stream, iq, results, fields):
 
     x = query.addElement((ns.X_DATA, 'x'))
     x['type'] = 'result'
-    # add FORM_TYPE
-    field = x.addElement('field')
-    field['type'] = 'hidden'
-    field['var'] = 'FORM_TYPE'
-    field.addElement('value', content=ns.SEARCH)
 
     # add reported fields
     reported = x.addElement('reported')

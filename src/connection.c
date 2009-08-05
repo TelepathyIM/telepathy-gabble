@@ -80,6 +80,8 @@ static guint disco_reply_timeout = 5;
 
 #define DEFAULT_RESOURCE_FORMAT "Telepathy.%x"
 
+#define DISCONNECT_TIMEOUT 5
+
 static void conn_service_iface_init (gpointer, gpointer);
 static void capabilities_service_iface_init (gpointer, gpointer);
 static void gabble_conn_contact_caps_iface_init (gpointer, gpointer);
@@ -221,6 +223,9 @@ struct _GabbleConnectionPrivate
 
   /* stream id returned by the connector */
   gchar *stream_id;
+
+  /* timer used when trying to properly disconnect */
+  guint disconnect_timer;
 
   gboolean closing;
   /* gobject housekeeping */
@@ -980,6 +985,12 @@ gabble_connection_dispose (GObject *object)
   gabble_capability_set_free (priv->legacy_caps);
   gabble_capability_set_free (priv->bonus_caps);
 
+  if (priv->disconnect_timer != 0)
+    {
+      g_source_remove (priv->disconnect_timer);
+      priv->disconnect_timer = 0;
+    }
+
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
 }
@@ -1665,12 +1676,33 @@ closed_cb (GObject *source,
     gpointer user_data)
 {
   GabbleConnection *self = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = self->priv;
   TpBaseConnection *base = TP_BASE_CONNECTION (self);
   GError *error = NULL;
+
+  if (priv->disconnect_timer != 0)
+    {
+      /* stop the timer */
+      g_source_remove (priv->disconnect_timer);
+      priv->disconnect_timer = 0;
+    }
 
   if (!wocky_porter_close_finish (WOCKY_PORTER (source), res, &error))
     {
       DEBUG ("close failed: %s", error->message);
+
+      if (g_error_matches (error, WOCKY_PORTER_ERROR,
+            WOCKY_PORTER_ERROR_FORCE_CLOSING))
+        {
+          /* Close operation has been aborted because a force_close operation
+           * has been started. tp_base_connection_finish_shutdown will be
+           * called once this force_close operation is completed so we don't
+           * do it here. */
+
+          g_error_free (error);
+          return;
+        }
+
       g_error_free (error);
     }
   else
@@ -1679,6 +1711,19 @@ closed_cb (GObject *source,
     }
 
   tp_base_connection_finish_shutdown (base);
+}
+
+static gboolean
+disconnect_timeout_cb (gpointer data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (data);
+  GabbleConnectionPrivate *priv = self->priv;
+
+  DEBUG ("Close operation timed out. Force closing");
+  priv->disconnect_timer = 0;
+
+  wocky_porter_force_close_async (self->porter, NULL, force_close_cb, self);
+  return FALSE;
 }
 
 static void
@@ -1692,9 +1737,13 @@ connection_shut_down (TpBaseConnection *base)
 
   if (self->porter != NULL)
     {
-      /* FIXME: set a timer */
       DEBUG ("connection still open; closing it");
       priv->closing = TRUE;
+
+      g_assert (priv->disconnect_timer == 0);
+      priv->disconnect_timer = g_timeout_add_seconds (DISCONNECT_TIMEOUT,
+          disconnect_timeout_cb, self);
+
       wocky_porter_close_async (self->porter, NULL, closed_cb, self);
     }
   else

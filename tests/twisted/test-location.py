@@ -1,3 +1,5 @@
+import dbus
+
 from gabbletest import exec_test, make_result_iq
 from servicetest import call_async, EventPattern, assertEquals
 
@@ -8,11 +10,6 @@ import ns
 Rich_Presence_Access_Control_Type_Publish_List = 1
 
 def test(q, bus, conn, stream):
-    # hack
-    import dbus
-    conn.interfaces['Properties'] = \
-        dbus.Interface(conn, dbus.PROPERTIES_IFACE)
-
     conn.Connect()
 
     # discard activities request and status change
@@ -27,7 +24,7 @@ def test(q, bus, conn, stream):
 
     access_control_types = conn.Get(
             cs.CONN_IFACE_LOCATION, "LocationAccessControlTypes",
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=cs.PROPERTIES_IFACE)
     # only one access control is implemented in Gabble at the moment:
     assert len(access_control_types) == 1, access_control_types
     assert access_control_types[0] == \
@@ -35,14 +32,14 @@ def test(q, bus, conn, stream):
 
     access_control = conn.Get(
             cs.CONN_IFACE_LOCATION, "LocationAccessControl",
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=cs.PROPERTIES_IFACE)
     assert len(access_control) == 2, access_control
     assert access_control[0] == \
         Rich_Presence_Access_Control_Type_Publish_List
 
     properties = conn.GetAll(
             cs.CONN_IFACE_LOCATION,
-            dbus_interface='org.freedesktop.DBus.Properties')
+            dbus_interface=cs.PROPERTIES_IFACE)
 
     assert properties.get('LocationAccessControlTypes') == access_control_types
     assert properties.get('LocationAccessControl') == access_control
@@ -55,7 +52,7 @@ def test(q, bus, conn, stream):
             signature=dbus.Signature('uv'))
     try:
         conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControl', bad_access_control,
-            dbus_interface ='org.freedesktop.DBus.Properties')
+            dbus_interface =cs.PROPERTIES_IFACE)
     except dbus.DBusException, e:
         pass
     else:
@@ -65,7 +62,7 @@ def test(q, bus, conn, stream):
     bad_access_control = dbus.String("This should not be a string")
     try:
         conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControl', bad_access_control,
-            dbus_interface ='org.freedesktop.DBus.Properties')
+            dbus_interface =cs.PROPERTIES_IFACE)
     except dbus.DBusException, e:
         assert e.get_dbus_name() == cs.INVALID_ARGUMENT, e.get_dbus_name()
     else:
@@ -77,7 +74,7 @@ def test(q, bus, conn, stream):
             signature=dbus.Signature('ssv'))
     try:
         conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControl', bad_access_control,
-            dbus_interface ='org.freedesktop.DBus.Properties')
+            dbus_interface =cs.PROPERTIES_IFACE)
     except dbus.DBusException, e:
         assert e.get_dbus_name() == cs.INVALID_ARGUMENT, e.get_dbus_name()
     else:
@@ -85,14 +82,14 @@ def test(q, bus, conn, stream):
 
     # Correct
     conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControl', access_control,
-        dbus_interface ='org.freedesktop.DBus.Properties')
+        dbus_interface =cs.PROPERTIES_IFACE)
 
     # LocationAccessControlTypes is read-only, check Gabble return the
     # PermissionDenied error
     try:
         conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControlTypes',
             access_control_types,
-            dbus_interface ='org.freedesktop.DBus.Properties')
+            dbus_interface =cs.PROPERTIES_IFACE)
     except dbus.DBusException, e:
         assert e.get_dbus_name() == cs.PERMISSION_DENIED, e.get_dbus_name()
     else:

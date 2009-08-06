@@ -368,7 +368,7 @@ def disconnect_conn(q, conn, stream, expected=[]):
     events = q.expect_many(*tmp)
     return events[:-1]
 
-def exec_test_deferred (funs, params, protocol=None, timeout=None,
+def exec_test_deferred(funs, params, protocol=None, timeout=None,
                         authenticator=None):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
@@ -400,8 +400,10 @@ def exec_test_deferred (funs, params, protocol=None, timeout=None,
         error = e
 
     if colourer:
-      sys.stdout = colourer.fh
+        sys.stdout = colourer.fh
+
     d = port.stopListening()
+
     if error is None:
         d.addBoth((lambda *args: reactor.crash()))
     else:
@@ -416,9 +418,9 @@ def exec_test_deferred (funs, params, protocol=None, timeout=None,
 
 def exec_tests(funs, params=None, protocol=None, timeout=None,
                authenticator=None):
-  reactor.callWhenRunning (exec_test_deferred, funs, params, protocol, timeout,
-    authenticator)
-  reactor.run()
+    reactor.callWhenRunning(
+        exec_test_deferred, funs, params, protocol, timeout, authenticator)
+    reactor.run()
 
 def exec_test(fun, params=None, protocol=None, timeout=None,
               authenticator=None):

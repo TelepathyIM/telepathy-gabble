@@ -133,8 +133,18 @@ create_msg_foreach (gpointer key,
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_STRING)
     {
-      lm_message_node_add_child (geoloc, key, g_value_get_string (value));
-      DEBUG ("\t - %s: %s", (gchar *) key, g_value_get_string (value));
+      const gchar *str = g_value_get_string (value);
+
+      if (!tp_strdiff (key, "language"))
+        {
+          /* Set the xml:lang */
+          lm_message_node_set_attribute (geoloc, "xml:lang", str);
+        }
+      else
+        {
+          lm_message_node_add_child (geoloc, key, str);
+        }
+      DEBUG ("\t - %s: %s", (gchar *) key, str);
     }
   else
     DEBUG ("\t - Unknown key dropped: %s", (gchar *) key);

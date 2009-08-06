@@ -1,9 +1,9 @@
 from gabbletest import exec_test, make_result_iq
-from servicetest import call_async, EventPattern
+from servicetest import call_async, EventPattern, assertEquals
 
 from twisted.words.xish import xpath
 import constants as cs
-
+import ns
 
 Rich_Presence_Access_Control_Type_Publish_List = 1
 
@@ -101,10 +101,14 @@ def test(q, bus, conn, stream):
         assert False, "Should have had an error!"
 
     conn.Location.SetLocation({
-        'lat': dbus.Double(0.0, variant_level=1), 'lon': 0.0})
+        'lat': dbus.Double(0.0, variant_level=1),
+        'lon': 0.0,
+        'language': 'en'})
 
-    event = q.expect('stream-iq', predicate=lambda x: 
+    event = q.expect('stream-iq', predicate=lambda x:
         xpath.queryForNodes("/iq/pubsub/publish/item/geoloc", x.stanza))
+    geoloc = xpath.queryForNodes("/iq/pubsub/publish/item/geoloc", event.stanza)[0]
+    assertEquals(geoloc.getAttribute((ns.XML, 'lang')), 'en')
 
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
     call_async(q, conn.Location, 'GetLocations', [handle])

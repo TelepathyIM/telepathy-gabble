@@ -1369,28 +1369,22 @@ remote_error_cb (WockyPorter *porter,
 }
 
 /**
- * connector_connect_cb
+ * connector_connected
  *
- * Stage 2 of connecting, this callback if fired once the connect operation
+ * Stage 2 of connecting, this function if called once the connect operation
  * has been finised. It checks if the connection succeed, create and start the
  * WockyPorter. It sends a discovery request to find the server's features.
  */
 static void
-connector_connect_cb (GObject *source,
-    GAsyncResult *res,
-    gpointer user_data)
+connector_connected (GabbleConnection *self,
+    WockyXmppConnection *conn,
+    const gchar *jid,
+    GError *error)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
-  WockyXmppConnection *conn;
-  GError *error = NULL;
-  gchar *jid = NULL;
-
-  conn = wocky_connector_connect_finish (WOCKY_CONNECTOR (source), res, &error,
-      &jid, &(priv->stream_id));
 
   /* We don't need the connector any more */
   g_object_unref (priv->connector);
@@ -1417,6 +1411,23 @@ connector_connect_cb (GObject *source,
            * profile that forces the server.
            */
           DEBUG ("got <host-unknown> while connecting");
+          reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+        }
+      else if (g_error_matches (error, WOCKY_CONNECTOR_ERROR,
+            WOCKY_CONNECTOR_ERROR_REGISTRATION_CONFLICT))
+        {
+          DEBUG ("Registration failed; jid is already used");
+          reason = TP_CONNECTION_STATUS_REASON_NAME_IN_USE;
+        }
+      else if (
+          g_error_matches (error, WOCKY_CONNECTOR_ERROR,
+            WOCKY_CONNECTOR_ERROR_REGISTRATION_REJECTED) ||
+          g_error_matches (error, WOCKY_CONNECTOR_ERROR,
+            WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED))
+        {
+          /* AuthenticationFailed is the closest ConnectionStatusReason to
+           * "I tried but couldn't register you an account." */
+          DEBUG ("Registration rejected");
           reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
         }
 
@@ -1490,7 +1501,41 @@ connector_connect_cb (GObject *source,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
+}
 
+static void
+connector_connect_cb (GObject *source,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = self->priv;
+  WockyXmppConnection *conn;
+  GError *error = NULL;
+  gchar *jid = NULL;
+
+  conn = wocky_connector_connect_finish (WOCKY_CONNECTOR (source), res, &error,
+      &jid, &(priv->stream_id));
+
+  connector_connected (self, conn, jid, error);
+  g_free (jid);
+}
+
+static void
+connector_register_cb (GObject *source,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = self->priv;
+  WockyXmppConnection *conn;
+  GError *error = NULL;
+  gchar *jid = NULL;
+
+  conn = wocky_connector_register_finish (WOCKY_CONNECTOR (source), res, &error,
+      &jid, &(priv->stream_id));
+
+  connector_connected (self, conn, jid, error);
   g_free (jid);
 }
 
@@ -1583,7 +1628,7 @@ disconnect_callbacks (TpBaseConnection *base)
  * Will create a WockyConnector.
  *
  * Stage 1 is _gabble_connection_connect calling wocky_connector_connect_async
- * Stage 2 is connector_connect_cb initiating service discovery
+ * Stage 2 is connector_connected initiating service discovery
  * Stage 3 is connection_disco_cb advertising initial presence, requesting
  *   the roster and setting the CONNECTED state
  */
@@ -1660,12 +1705,21 @@ _gabble_connection_connect (TpBaseConnection *base,
 
   /* FIXME: support proxy server */
   /* FIXME: support keep alive */
-  /* FIXME: support register */
 
-  DEBUG ("Start connecting");
+  if (priv->do_register)
+    {
+      DEBUG ("Start registering");
 
-  wocky_connector_connect_async (priv->connector,
-      connector_connect_cb, conn);
+      wocky_connector_register_async (priv->connector,
+          connector_register_cb, conn);
+    }
+  else
+    {
+      DEBUG ("Start connecting");
+
+      wocky_connector_connect_async (priv->connector,
+          connector_connect_cb, conn);
+    }
 
   return TRUE;
 }

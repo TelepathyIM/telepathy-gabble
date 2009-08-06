@@ -993,11 +993,13 @@ manager_patch_vcard (GabbleVCardManager *self,
   LmMessageNode *patched_vcard;
   GList *li;
 
-  /* We should only get here if we have outstanding edits to make, but we
-   * don't have a set request in progress.
+  /* Bail out if we don't have outstanding edits to make, or if we already
+   * have a set request in progress.
    */
-  g_assert (priv->edits != NULL);
-  g_assert (priv->edit_pipeline_item == NULL);
+  if (priv->edits == NULL || priv->edit_pipeline_item != NULL)
+      return;
+
+  DEBUG("patching vcard");
 
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_SET);
@@ -1108,10 +1110,8 @@ pipeline_reply_cb (GabbleConnection *conn,
   /* We have freshly updated cache for our vCard, edit it if
    * there are any pending edits and no outstanding set request.
    */
-  if (entry->handle == base->self_handle && priv->edits != NULL &&
-      priv->edit_pipeline_item == NULL)
+  if (entry->handle == base->self_handle)
     {
-      DEBUG("will patch vcard");
       manager_patch_vcard (self, vcard_node);
     }
 

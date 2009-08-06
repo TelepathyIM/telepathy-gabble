@@ -95,6 +95,7 @@ def test(q, bus, conn, stream):
     else:
         assert False, "Should have had an error!"
 
+    # set a Location
     conn.Location.SetLocation({
         'lat': dbus.Double(0.0, variant_level=1),
         'lon': 0.0,
@@ -104,6 +105,10 @@ def test(q, bus, conn, stream):
         xpath.queryForNodes("/iq/pubsub/publish/item/geoloc", x.stanza))
     geoloc = xpath.queryForNodes("/iq/pubsub/publish/item/geoloc", event.stanza)[0]
     assertEquals(geoloc.getAttribute((ns.XML, 'lang')), 'en')
+    lon = xpath.queryForNodes('/geoloc/lon', geoloc)[0]
+    assertEquals(float(str(lon)), 0.0)
+    lat = xpath.queryForNodes('/geoloc/lat', geoloc)[0]
+    assertEquals(float(str(lat)), 0.0)
 
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
     call_async(q, conn.Location, 'GetLocations', [handle])

@@ -417,9 +417,7 @@ update_location_from_msg (GabbleConnection *conn,
           continue;
         }
 
-      if ((strcmp (xmpp_name, "lat") == 0 ||
-           strcmp (xmpp_name, "lon") == 0 ||
-           strcmp (xmpp_name, "alt") == 0))
+      if (mapping->type == G_TYPE_DOUBLE)
         {
           gdouble double_value;
           gchar *end;
@@ -429,9 +427,7 @@ update_location_from_msg (GabbleConnection *conn,
           if (end == str)
             continue;
 
-          value = g_slice_new0 (GValue);
-          g_value_init (value, G_TYPE_DOUBLE);
-          g_value_set_double (value, double_value);
+          value = tp_g_value_slice_new_double (double_value);
           DEBUG ("\t - %s: %f", xmpp_name, double_value);
         }
       else if (strcmp (xmpp_name, "timestamp") == 0)
@@ -439,9 +435,7 @@ update_location_from_msg (GabbleConnection *conn,
           GTimeVal timeval;
           if (g_time_val_from_iso8601 (str, &timeval))
             {
-              value = g_slice_new0 (GValue);
-              g_value_init (value, G_TYPE_INT64);
-              g_value_set_int64 (value, timeval.tv_sec);
+              value = tp_g_value_slice_new_int64 (timeval.tv_sec);
               DEBUG ("\t - %s: %s", xmpp_name, str);
             }
           else
@@ -450,12 +444,14 @@ update_location_from_msg (GabbleConnection *conn,
               continue;
             }
         }
+      else if (mapping->type == G_TYPE_STRING)
+        {
+          value = tp_g_value_slice_new_string (str);
+          DEBUG ("\t - %s: %s", xmpp_name, str);
+        }
       else
         {
-          value = g_slice_new0 (GValue);
-          g_value_init (value, G_TYPE_STRING);
-          g_value_set_string (value, str);
-          DEBUG ("\t - %s: %s", xmpp_name, str);
+          g_assert_not_reached ();
         }
 
       g_hash_table_insert (location, g_strdup (mapping->tp_name), value);

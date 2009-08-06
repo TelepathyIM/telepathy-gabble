@@ -16,8 +16,7 @@ from twisted.words.xish import xpath
 from servicetest import call_async, sync_dbus
 from gabbletest import (
     exec_test, expect_and_handle_get_vcard, expect_and_handle_set_vcard,
-    make_result_iq, sync_stream,
-    )
+    make_result_iq, sync_stream)
 import ns
 
 def test(q, bus, conn, stream):

@@ -101,8 +101,10 @@ def test(q, bus, conn, stream):
         'lon': 0.0,
         'language': 'en'})
 
-    event = q.expect('stream-iq', predicate=lambda x:
+    geoloc_iq_set_event = EventPattern('stream-iq', predicate=lambda x:
         xpath.queryForNodes("/iq/pubsub/publish/item/geoloc", x.stanza))
+
+    event = q.expect_many(geoloc_iq_set_event)[0]
     geoloc = xpath.queryForNodes("/iq/pubsub/publish/item/geoloc", event.stanza)[0]
     assertEquals(geoloc.getAttribute((ns.XML, 'lang')), 'en')
     lon = xpath.queryForNodes('/geoloc/lon', geoloc)[0]
@@ -144,11 +146,13 @@ def test(q, bus, conn, stream):
     assertEquals(location['lat'], 1.234)
     assertEquals(location['lon'], 5.678)
 
-    # Get location again, only GetLocation should get fired
-    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
-    call_async(q, conn.Location, 'GetLocations', [handle])
+    q.forbid_events([geoloc_iq_set_event])
 
-    q.expect('dbus-return', method='GetLocations')
+    # Get location again, Gabble doesn't send a query any more and return the known
+    # location
+    locations = conn.Location.GetLocations([bob_handle])
+    assertLength(1, locations)
+    assertEquals(locations[bob_handle], location)
 
 if __name__ == '__main__':
     exec_test(test)

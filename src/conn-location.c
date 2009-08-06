@@ -15,6 +15,64 @@
 #include "presence-cache.h"
 #include "util.h"
 
+typedef struct
+{
+  gchar *xmpp_name;
+  gchar *tp_name;
+  GType type;
+} LocationMapping;
+
+static const LocationMapping mappings[] = {
+  { "alt", "alt", G_TYPE_DOUBLE },
+  { "area", "area", G_TYPE_STRING },
+  { "bearing", "bearing", G_TYPE_DOUBLE },
+  { "building", "building", G_TYPE_STRING },
+  { "country", "country", G_TYPE_STRING },
+  { "description", "description", G_TYPE_STRING },
+  { "error", "error", G_TYPE_DOUBLE },
+  { "floor", "floor", G_TYPE_STRING },
+  { "lat", "lat", G_TYPE_DOUBLE },
+  { "locality", "locality", G_TYPE_STRING },
+  { "lon", "lon", G_TYPE_DOUBLE },
+  { "postalcode", "postalcode", G_TYPE_STRING },
+  { "region", "region", G_TYPE_STRING },
+  { "room", "room", G_TYPE_STRING },
+  { "speed", "speed", G_TYPE_DOUBLE },
+  { "street", "street", G_TYPE_STRING },
+  { "text", "text", G_TYPE_STRING },
+  { "timestamp", "timestamp", G_TYPE_INT64 },
+  { "uri", "uri", G_TYPE_STRING },
+  /* Not (yet?) part of XEP-0080 */
+  { "countrycode", "countrycode", G_TYPE_STRING },
+  /* language is a special case as it's not mapped on a node but on the
+   * xml:lang attribute of the 'geoloc' node. */
+  { NULL, NULL },
+};
+
+static GHashTable *xmpp_to_tp = NULL;
+static GHashTable *tp_to_xmpp = NULL;
+
+static void
+build_mapping_tables (void)
+{
+  guint i;
+
+  if (xmpp_to_tp != NULL)
+    return;
+  g_assert (tp_to_xmpp == NULL);
+
+  xmpp_to_tp = g_hash_table_new (g_str_hash, g_str_equal);
+  tp_to_xmpp = g_hash_table_new (g_str_hash, g_str_equal);
+
+  for (i = 0; mappings[i].xmpp_name != NULL; i++)
+    {
+      g_hash_table_insert (xmpp_to_tp, mappings[i].xmpp_name,
+          (gpointer) &mappings[i]);
+      g_hash_table_insert (tp_to_xmpp, mappings[i].tp_name,
+          (gpointer) &mappings[i]);
+    }
+}
+
 static gboolean update_location_from_msg (GabbleConnection *conn,
     const gchar *from, LmMessage *msg);
 
@@ -104,11 +162,22 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
 }
 
 static void
-create_msg_foreach (gpointer key,
+create_msg_foreach (gpointer tp_name,
                     gpointer value,
                     gpointer user_data)
 {
   LmMessageNode *geoloc = (LmMessageNode *) user_data;
+  LocationMapping *mapping;
+
+  mapping = g_hash_table_lookup (tp_to_xmpp, tp_name);
+  if (mapping == NULL &&
+      tp_strdiff (tp_name, "language"))
+    {
+      /* We don't raise a D-Bus error if the key is unknown to stay backward
+       * compatible if new keys are added in a future version of the spec. */
+      DEBUG ("Unknown location key: %s ; skipping", (const gchar *) tp_name);
+      return;
+    }
 
   if (G_VALUE_TYPE (value) == G_TYPE_INT64)
     {
@@ -119,35 +188,35 @@ create_msg_foreach (gpointer key,
       timeval.tv_usec = 0;
       str = g_time_val_to_iso8601 (&timeval);
 
-      lm_message_node_add_child (geoloc, key, str);
-      DEBUG ("\t - %s: %s", (gchar *) key, str);
+      lm_message_node_add_child (geoloc, mapping->xmpp_name, str);
+      DEBUG ("\t - %s: %s", (gchar *) tp_name, str);
       g_free (str);
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)
     {
       gchar *str;
       str = g_strdup_printf ("%.6f", g_value_get_double (value));
-      lm_message_node_add_child (geoloc, key, str);
-      DEBUG ("\t - %s: %s", (gchar *) key, str);
+      lm_message_node_add_child (geoloc, mapping->xmpp_name, str);
+      DEBUG ("\t - %s: %s", (gchar *) tp_name, str);
       g_free (str);
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_STRING)
     {
       const gchar *str = g_value_get_string (value);
 
-      if (!tp_strdiff (key, "language"))
+      if (!tp_strdiff (tp_name, "language"))
         {
           /* Set the xml:lang */
           lm_message_node_set_attribute (geoloc, "xml:lang", str);
         }
       else
         {
-          lm_message_node_add_child (geoloc, key, str);
+          lm_message_node_add_child (geoloc, mapping->xmpp_name, str);
         }
-      DEBUG ("\t - %s: %s", (gchar *) key, str);
+      DEBUG ("\t - %s: %s", (gchar *) tp_name, str);
     }
   else
-    DEBUG ("\t - Unknown key dropped: %s", (gchar *) key);
+    DEBUG ("\t - Unknown key dropped: %s", (gchar *) tp_name);
 
 
 }
@@ -179,6 +248,7 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
 
   DEBUG ("SetLocation to");
 
+  build_mapping_tables ();
   g_hash_table_foreach (location, create_msg_foreach, geoloc);
 
   /* XXX: use _ignore_reply */
@@ -325,21 +395,31 @@ update_location_from_msg (GabbleConnection *conn,
           tp_g_value_slice_new_string (lang));
     }
 
+  build_mapping_tables ();
+
   for (i = node_iter (node); i; i = node_iter_next (i))
     {
       LmMessageNode *subloc_node = node_iter_data (i);
       GValue *value = NULL;
-      gchar *key;
+      gchar *xmpp_name;
       const gchar *str;
+      LocationMapping *mapping;
 
-      key = subloc_node->name;
+      xmpp_name = subloc_node->name;
       str = lm_message_node_get_value (subloc_node);
       if (str == NULL)
         continue;
 
-      if ((strcmp (key, "lat") == 0 ||
-           strcmp (key, "lon") == 0 ||
-           strcmp (key, "alt") == 0))
+      mapping = g_hash_table_lookup (xmpp_to_tp, xmpp_name);
+      if (mapping == NULL)
+        {
+          DEBUG ("Unknown location attribute: %s\n", xmpp_name);
+          continue;
+        }
+
+      if ((strcmp (xmpp_name, "lat") == 0 ||
+           strcmp (xmpp_name, "lon") == 0 ||
+           strcmp (xmpp_name, "alt") == 0))
         {
           gdouble double_value;
           gchar *end;
@@ -352,9 +432,9 @@ update_location_from_msg (GabbleConnection *conn,
           value = g_slice_new0 (GValue);
           g_value_init (value, G_TYPE_DOUBLE);
           g_value_set_double (value, double_value);
-          DEBUG ("\t - %s: %f", key, double_value);
+          DEBUG ("\t - %s: %f", xmpp_name, double_value);
         }
-      else if (strcmp (key, "timestamp") == 0)
+      else if (strcmp (xmpp_name, "timestamp") == 0)
         {
           GTimeVal timeval;
           if (g_time_val_from_iso8601 (str, &timeval))
@@ -362,11 +442,11 @@ update_location_from_msg (GabbleConnection *conn,
               value = g_slice_new0 (GValue);
               g_value_init (value, G_TYPE_INT64);
               g_value_set_int64 (value, timeval.tv_sec);
-              DEBUG ("\t - %s: %s", key, str);
+              DEBUG ("\t - %s: %s", xmpp_name, str);
             }
           else
             {
-              DEBUG ("\t - %s: %s: unknown date format", key, str);
+              DEBUG ("\t - %s: %s: unknown date format", xmpp_name, str);
               continue;
             }
         }
@@ -375,10 +455,10 @@ update_location_from_msg (GabbleConnection *conn,
           value = g_slice_new0 (GValue);
           g_value_init (value, G_TYPE_STRING);
           g_value_set_string (value, str);
-          DEBUG ("\t - %s: %s", key, str);
+          DEBUG ("\t - %s: %s", xmpp_name, str);
         }
 
-      g_hash_table_insert (location, g_strdup (key), value);
+      g_hash_table_insert (location, g_strdup (mapping->tp_name), value);
     }
 
   gabble_svc_connection_interface_location_emit_location_updated (conn,

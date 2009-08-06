@@ -6,6 +6,7 @@ DISCO_INFO = "http://jabber.org/protocol/disco#info"
 DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
 FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
 FILE_TRANSFER = 'http://jabber.org/protocol/si/profile/file-transfer'
+GEOLOC = 'http://jabber.org/protocol/geoloc'
 GOOGLE_FEAT_SESSION = 'http://www.google.com/xmpp/protocol/session'
 GOOGLE_FEAT_VOICE = 'http://www.google.com/xmpp/protocol/voice/v1'
 GOOGLE_FEAT_VIDEO = 'http://www.google.com/xmpp/protocol/video/v1'

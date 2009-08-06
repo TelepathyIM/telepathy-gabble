@@ -20,7 +20,7 @@ def test(q, bus, conn, stream):
     # discard activities request and status change
     q.expect_many(
         EventPattern('stream-iq', iq_type='set',
-            query_ns='http://jabber.org/protocol/pubsub'),
+            query_ns=ns.PUBSUB),
         EventPattern('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         )
@@ -114,11 +114,11 @@ def test(q, bus, conn, stream):
     call_async(q, conn.Location, 'GetLocations', [handle])
 
     event = q.expect('stream-iq', iq_type='get',
-        query_ns='http://jabber.org/protocol/pubsub')
+        query_ns=ns.PUBSUB)
     result = make_result_iq(stream, event.stanza)
     result['from'] = 'bob@foo.com'
     query = result.firstChildElement()
-    geoloc = query.addElement(('http://jabber.org/protocol/geoloc', 'geoloc'))
+    geoloc = query.addElement((ns.GEOLOC, 'geoloc'))
     geoloc.addElement('lat', content='1.234')
     geoloc.addElement('lon', content='5.678')
     stream.send(result)

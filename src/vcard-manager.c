@@ -999,14 +999,10 @@ manager_patch_vcard (GabbleVCardManager *manager,
   LmMessageNode *patched_vcard;
   GList *li;
 
+  /* We should only get here if we have outstanding edits to make, but we
+   * don't have a set request in progress.
+   */
   g_assert (priv->edits != NULL);
-
-  /* There can be only one SET request at any given time,
-   * because XMPP server will process requests sequentially.
-   * This function can only be called when GET request for
-   * our vcard returns, but if we do SET and then GET for
-   * our vcard, SET will always return first, and clear the
-   * pipeline item. Or so I hope. */
   g_assert (priv->edit_pipeline_item == NULL);
 
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
@@ -1117,8 +1113,10 @@ pipeline_reply_cb (GabbleConnection *conn,
     }
 
   /* We have freshly updated cache for our vCard, edit it if
-   * there are any pending edits */
-  if (entry->handle == base->self_handle && priv->edits != NULL)
+   * there are any pending edits and no outstanding set request.
+   */
+  if (entry->handle == base->self_handle && priv->edits != NULL &&
+      priv->edit_pipeline_item == NULL)
     {
       DEBUG("will patch vcard");
       manager_patch_vcard (manager, vcard_node);

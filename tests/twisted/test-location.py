@@ -99,7 +99,9 @@ def test(q, bus, conn, stream):
     conn.Location.SetLocation({
         'lat': dbus.Double(0.0, variant_level=1),
         'lon': 0.0,
-        'language': 'en'})
+        'language': 'en',
+        # Gabble silently ignores unknown keys
+        'badger': 'mushroom'})
 
     geoloc_iq_set_event = EventPattern('stream-iq', predicate=lambda x:
         xpath.queryForNodes("/iq/pubsub/publish/item/geoloc", x.stanza))
@@ -134,6 +136,8 @@ def test(q, bus, conn, stream):
     geoloc['xml:lang'] = 'en'
     geoloc.addElement('lat', content='1.234')
     geoloc.addElement('lon', content='5.678')
+    # invalid element, will be discarded by Gabble
+    geoloc.addElement('badger', content='mushroom')
     stream.send(result)
 
     update_event = q.expect('dbus-signal', signal='LocationUpdated')

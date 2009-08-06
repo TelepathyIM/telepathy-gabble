@@ -1171,8 +1171,8 @@ cache_entry_ensure_queued (GabbleVCardCacheEntry *entry, guint timeout)
           ')',
           NULL);
 
-      entry->pipeline_item = gabble_request_pipeline_enqueue
-          (conn->req_pipeline, msg, timeout, pipeline_reply_cb, entry);
+      entry->pipeline_item = gabble_request_pipeline_enqueue (
+          conn->req_pipeline, msg, timeout, pipeline_reply_cb, entry);
 
       lm_message_unref (msg);
 

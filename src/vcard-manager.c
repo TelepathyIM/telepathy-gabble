@@ -173,6 +173,8 @@ gabble_vcard_manager_cache_quark (void)
 
 static void cache_entry_free (void *data);
 static gint cache_entry_compare (gconstpointer a, gconstpointer b);
+static void manager_patch_vcard (
+    GabbleVCardManager *self, LmMessageNode *vcard_node);
 
 static void
 gabble_vcard_manager_init (GabbleVCardManager *obj)
@@ -914,6 +916,9 @@ replace_reply_cb (GabbleConnection *conn,
 
   if (err != NULL)
     g_error_free (err);
+
+  /* If we've received more edit requests in the meantime, send them off. */
+  manager_patch_vcard (self, node);
 }
 
 static void
@@ -1244,7 +1249,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   gabble_vcard_manager_invalidate_cache (self, base->self_handle);
   DEBUG ("checking if we have pending requests already");
   entry = cache_entry_get (self, base->self_handle);
-  if (!entry->pending_requests)
+  if (!priv->edit_pipeline_item && !entry->pending_requests)
     {
       DEBUG ("we don't, create one");
       /* create dummy GET request if neccessary */

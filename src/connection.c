@@ -1378,38 +1378,50 @@ connector_error_disconnect (GabbleConnection *self,
 
   DEBUG ("connection failed: %s", error->message);
 
-  if (g_error_matches (error, WOCKY_CONNECTOR_ERROR,
-        WOCKY_CONNECTOR_ERROR_SESSION_DENIED))
+  if (error->domain == WOCKY_CONNECTOR_ERROR)
     {
-      reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+      /* Connector error */
+      switch (error->code)
+        {
+          case WOCKY_CONNECTOR_ERROR_SESSION_DENIED:
+            reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+            break;
+
+          case WOCKY_CONNECTOR_ERROR_REGISTRATION_CONFLICT:
+            DEBUG ("Registration failed; jid is already used");
+            reason = TP_CONNECTION_STATUS_REASON_NAME_IN_USE;
+            break;
+
+          case WOCKY_CONNECTOR_ERROR_REGISTRATION_REJECTED:
+          case WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED:
+            /* AuthenticationFailed is the closest ConnectionStatusReason to
+             * "I tried but couldn't register you an account." */
+            DEBUG ("Registration rejected");
+            reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+            break;
+
+          default:
+            break;
+        }
     }
-  else if (g_error_matches (error, WOCKY_XMPP_STREAM_ERROR,
-        WOCKY_XMPP_STREAM_ERROR_HOST_UNKNOWN))
+
+  else if (error->domain == WOCKY_XMPP_STREAM_ERROR)
     {
-      /* If we get this while we're logging in, it's because we're trying to
-       * connect to foo@bar.com but the server doesn't know about bar.com,
-       * probably because the user entered a non-GTalk JID into a GTalk
-       * profile that forces the server.
-       */
-      DEBUG ("got <host-unknown> while connecting");
-      reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
-    }
-  else if (g_error_matches (error, WOCKY_CONNECTOR_ERROR,
-        WOCKY_CONNECTOR_ERROR_REGISTRATION_CONFLICT))
-    {
-      DEBUG ("Registration failed; jid is already used");
-      reason = TP_CONNECTION_STATUS_REASON_NAME_IN_USE;
-    }
-  else if (
-      g_error_matches (error, WOCKY_CONNECTOR_ERROR,
-        WOCKY_CONNECTOR_ERROR_REGISTRATION_REJECTED) ||
-      g_error_matches (error, WOCKY_CONNECTOR_ERROR,
-        WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED))
-    {
-      /* AuthenticationFailed is the closest ConnectionStatusReason to
-       * "I tried but couldn't register you an account." */
-      DEBUG ("Registration rejected");
-      reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+      /* Stream error */
+      switch (error->code)
+        {
+          case WOCKY_XMPP_STREAM_ERROR_HOST_UNKNOWN:
+            /* If we get this while we're logging in, it's because we're trying
+             * to connect to foo@bar.com but the server doesn't know about
+             * bar.com, probably because the user entered a non-GTalk JID into
+             * a GTalk profile that forces the server. */
+            DEBUG ("got <host-unknown> while connecting");
+            reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+            break;
+
+          default:
+            break;
+        }
     }
 
   /* FIXME: check SSL errors */

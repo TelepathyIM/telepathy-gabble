@@ -54,6 +54,7 @@ CONN_IFACE_CONTACTS = CONN + '.Interface.Contacts'
 CONN_IFACE_CONTACT_CAPS = CONN + '.Interface.ContactCapabilities.DRAFT'
 CONN_IFACE_SIMPLE_PRESENCE = CONN + '.Interface.SimplePresence'
 CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
+CONN_IFACE_LOCATION = CONN + '.Interface.Location.DRAFT'
 
 STREAM_HANDLER = 'org.freedesktop.Telepathy.Media.StreamHandler'
 

@@ -1368,6 +1368,55 @@ remote_error_cb (WockyPorter *porter,
       TP_CONNECTION_STATUS_DISCONNECTED, reason);
 }
 
+static void
+connector_error_disconnect (GabbleConnection *self,
+    GError *error)
+{
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpConnectionStatusReason reason = \
+    TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+
+  DEBUG ("connection failed: %s", error->message);
+
+  if (g_error_matches (error, WOCKY_CONNECTOR_ERROR,
+        WOCKY_CONNECTOR_ERROR_SESSION_DENIED))
+    {
+      reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+    }
+  else if (g_error_matches (error, WOCKY_XMPP_STREAM_ERROR,
+        WOCKY_XMPP_STREAM_ERROR_HOST_UNKNOWN))
+    {
+      /* If we get this while we're logging in, it's because we're trying to
+       * connect to foo@bar.com but the server doesn't know about bar.com,
+       * probably because the user entered a non-GTalk JID into a GTalk
+       * profile that forces the server.
+       */
+      DEBUG ("got <host-unknown> while connecting");
+      reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+    }
+  else if (g_error_matches (error, WOCKY_CONNECTOR_ERROR,
+        WOCKY_CONNECTOR_ERROR_REGISTRATION_CONFLICT))
+    {
+      DEBUG ("Registration failed; jid is already used");
+      reason = TP_CONNECTION_STATUS_REASON_NAME_IN_USE;
+    }
+  else if (
+      g_error_matches (error, WOCKY_CONNECTOR_ERROR,
+        WOCKY_CONNECTOR_ERROR_REGISTRATION_REJECTED) ||
+      g_error_matches (error, WOCKY_CONNECTOR_ERROR,
+        WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED))
+    {
+      /* AuthenticationFailed is the closest ConnectionStatusReason to
+       * "I tried but couldn't register you an account." */
+      DEBUG ("Registration rejected");
+      reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+    }
+
+  /* FIXME: check SSL errors */
+  tp_base_connection_change_status (base,
+      TP_CONNECTION_STATUS_DISCONNECTED, reason);
+}
+
 /**
  * connector_connected
  *
@@ -1392,49 +1441,7 @@ connector_connected (GabbleConnection *self,
 
   if (conn == NULL)
     {
-      TpConnectionStatusReason reason = \
-        TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
-
-      DEBUG ("connection failed: %s", error->message);
-
-      if (g_error_matches (error, WOCKY_CONNECTOR_ERROR,
-            WOCKY_CONNECTOR_ERROR_SESSION_DENIED))
-        {
-          reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
-        }
-      else if (g_error_matches (error, WOCKY_XMPP_STREAM_ERROR,
-            WOCKY_XMPP_STREAM_ERROR_HOST_UNKNOWN))
-        {
-          /* If we get this while we're logging in, it's because we're trying to
-           * connect to foo@bar.com but the server doesn't know about bar.com,
-           * probably because the user entered a non-GTalk JID into a GTalk
-           * profile that forces the server.
-           */
-          DEBUG ("got <host-unknown> while connecting");
-          reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
-        }
-      else if (g_error_matches (error, WOCKY_CONNECTOR_ERROR,
-            WOCKY_CONNECTOR_ERROR_REGISTRATION_CONFLICT))
-        {
-          DEBUG ("Registration failed; jid is already used");
-          reason = TP_CONNECTION_STATUS_REASON_NAME_IN_USE;
-        }
-      else if (
-          g_error_matches (error, WOCKY_CONNECTOR_ERROR,
-            WOCKY_CONNECTOR_ERROR_REGISTRATION_REJECTED) ||
-          g_error_matches (error, WOCKY_CONNECTOR_ERROR,
-            WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED))
-        {
-          /* AuthenticationFailed is the closest ConnectionStatusReason to
-           * "I tried but couldn't register you an account." */
-          DEBUG ("Registration rejected");
-          reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
-        }
-
-      /* FIXME: check SSL errors */
-      tp_base_connection_change_status (base,
-          TP_CONNECTION_STATUS_DISCONNECTED, reason);
-
+      connector_error_disconnect (self, error);
       g_error_free (error);
       return;
     }

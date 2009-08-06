@@ -245,8 +245,8 @@ gabble_vcard_manager_get_property (GObject *object,
                                    GValue *value,
                                    GParamSpec *pspec)
 {
-  GabbleVCardManager *chan = GABBLE_VCARD_MANAGER (object);
-  GabbleVCardManagerPrivate *priv = chan->priv;
+  GabbleVCardManager *self = GABBLE_VCARD_MANAGER (object);
+  GabbleVCardManagerPrivate *priv = self->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -267,8 +267,8 @@ gabble_vcard_manager_set_property (GObject *object,
                                    const GValue *value,
                                    GParamSpec *pspec)
 {
-  GabbleVCardManager *chan = GABBLE_VCARD_MANAGER (object);
-  GabbleVCardManagerPrivate *priv = chan->priv;
+  GabbleVCardManager *self = GABBLE_VCARD_MANAGER (object);
+  GabbleVCardManagerPrivate *priv = self->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -581,7 +581,7 @@ initial_request_cb (GabbleVCardManager *self,
                     gpointer user_data)
 {
   GabbleVCardManagerPrivate *priv = self->priv;
-  gchar *alias = (gchar *) user_data;
+  gchar *alias = user_data;
   gchar *sha1;
 
   if (vcard)
@@ -636,8 +636,7 @@ status_changed_cb (GObject *object,
               priv->edits = g_hash_table_new_full (g_str_hash, g_str_equal,
                   g_free, g_free);
 
-          g_hash_table_insert (priv->edits, g_strdup ("NICKNAME"),
-              alias);
+          g_hash_table_insert (priv->edits, g_strdup ("NICKNAME"), alias);
         }
 
       /* FIXME: we happen to know that synchronous errors can't happen */
@@ -852,8 +851,8 @@ replace_reply_cb (GabbleConnection *conn,
                   gpointer user_data,
                   GError *error)
 {
-  GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (user_data);
-  GabbleVCardManagerPrivate *priv = manager->priv;
+  GabbleVCardManager *self = GABBLE_VCARD_MANAGER (user_data);
+  GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
   GError *err = get_error_from_pipeline_reply (reply_msg, error);
@@ -876,8 +875,7 @@ replace_reply_cb (GabbleConnection *conn,
     }
   else
     {
-      GabbleVCardCacheEntry *entry = cache_entry_get (manager,
-          base->self_handle);
+      GabbleVCardCacheEntry *entry = cache_entry_get (self, base->self_handle);
 
       /* We must have patched vcard by now */
       g_assert (priv->patched_vcard != NULL);
@@ -890,7 +888,7 @@ replace_reply_cb (GabbleConnection *conn,
       priv->patched_vcard = NULL;
 
       /* observe it so we pick up alias updates */
-      observe_vcard (conn, manager, base->self_handle, entry->vcard_node);
+      observe_vcard (conn, self, base->self_handle, entry->vcard_node);
 
       node = entry->vcard_node;
     }
@@ -986,10 +984,10 @@ vcard_copy (LmMessageNode *parent, LmMessageNode *src)
 }
 
 static void
-manager_patch_vcard (GabbleVCardManager *manager,
+manager_patch_vcard (GabbleVCardManager *self,
                      LmMessageNode *vcard_node)
 {
-  GabbleVCardManagerPrivate *priv = manager->priv;
+  GabbleVCardManagerPrivate *priv = self->priv;
   LmMessage *msg;
   LmMessageNode *patched_vcard;
   GList *li;
@@ -1014,7 +1012,7 @@ manager_patch_vcard (GabbleVCardManager *manager,
   priv->patched_vcard = lm_message_node_ref (patched_vcard);
 
   priv->edit_pipeline_item = gabble_request_pipeline_enqueue (
-      priv->connection->req_pipeline, msg, 0, replace_reply_cb, manager);
+      priv->connection->req_pipeline, msg, 0, replace_reply_cb, self);
 
   lm_message_unref (msg);
 
@@ -1039,11 +1037,11 @@ pipeline_reply_cb (GabbleConnection *conn,
                    GError *error)
 {
   GabbleVCardCacheEntry *entry = user_data;
-  GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (entry->manager);
-  GabbleVCardManagerPrivate *priv = manager->priv;
+  GabbleVCardManager *self = GABBLE_VCARD_MANAGER (entry->manager);
+  GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *contact_repo =
+      tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *vcard_node = NULL;
   GError *err = NULL;
 
@@ -1067,7 +1065,7 @@ pipeline_reply_cb (GabbleConnection *conn,
           g_hash_table_destroy (priv->edits);
           priv->edits = NULL;
 
-          replace_reply_cb (conn, reply_msg, manager, error);
+          replace_reply_cb (conn, reply_msg, self, error);
         }
 
       /* Complete pending GET requests */
@@ -1102,9 +1100,8 @@ pipeline_reply_cb (GabbleConnection *conn,
       GabbleVCardCacheEntry *first =
           tp_heap_peek_first (priv->timed_cache);
 
-      priv->cache_timer = g_timeout_add
-          ((first->expires - time (NULL)) * 1000, cache_entry_timeout,
-           manager);
+      priv->cache_timer = g_timeout_add (
+          (first->expires - time (NULL)) * 1000, cache_entry_timeout, self);
     }
 
   /* We have freshly updated cache for our vCard, edit it if
@@ -1114,11 +1111,11 @@ pipeline_reply_cb (GabbleConnection *conn,
       priv->edit_pipeline_item == NULL)
     {
       DEBUG("will patch vcard");
-      manager_patch_vcard (manager, vcard_node);
+      manager_patch_vcard (self, vcard_node);
     }
 
   /* Observe the vCard as it goes past */
-  observe_vcard (priv->connection, manager, entry->handle, vcard_node);
+  observe_vcard (priv->connection, self, entry->handle, vcard_node);
 
   /* Complete all pending requests successfully */
   cache_entry_complete_requests (entry, NULL);
@@ -1320,9 +1317,9 @@ notify_delete_edit_request (gpointer data, GObject *obj)
 }
 
 static void
-cancel_all_edit_requests (GabbleVCardManager *manager)
+cancel_all_edit_requests (GabbleVCardManager *self)
 {
-  GabbleVCardManagerPrivate *priv = manager->priv;
+  GabbleVCardManagerPrivate *priv = self->priv;
   GError cancelled = { GABBLE_VCARD_MANAGER_ERROR,
       GABBLE_VCARD_MANAGER_ERROR_CANCELLED,
       "Request cancelled" };
@@ -1342,12 +1339,12 @@ cancel_all_edit_requests (GabbleVCardManager *manager)
 
 
 void
-gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
+gabble_vcard_manager_cancel_request (GabbleVCardManager *self,
                                      GabbleVCardManagerRequest *request)
 {
-  g_return_if_fail (GABBLE_IS_VCARD_MANAGER (manager));
+  g_return_if_fail (GABBLE_IS_VCARD_MANAGER (self));
   g_return_if_fail (NULL != request);
-  g_return_if_fail (manager == request->manager);
+  g_return_if_fail (self == request->manager);
 
   cancel_request (request);
 }
@@ -1383,16 +1380,16 @@ gabble_vcard_manager_get_cached (GabbleVCardManager *self,
  * if any. If there is no cached alias, return NULL.
  */
 const gchar *
-gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
+gabble_vcard_manager_get_cached_alias (GabbleVCardManager *self,
                                        TpHandle handle)
 {
   GabbleVCardManagerPrivate *priv;
   TpHandleRepoIface *contact_repo;
   const gchar *s;
 
-  g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (manager), NULL);
+  g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (self), NULL);
 
-  priv = manager->priv;
+  priv = self->priv;
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
 
@@ -1411,16 +1408,16 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
  * Return TRUE if we've tried looking up an alias for this handle before.
  */
 gboolean
-gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
+gabble_vcard_manager_has_cached_alias (GabbleVCardManager *self,
                                        TpHandle handle)
 {
   GabbleVCardManagerPrivate *priv;
   TpHandleRepoIface *contact_repo;
   gpointer p;
 
-  g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (manager), FALSE);
+  g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (self), FALSE);
 
-  priv = manager->priv;
+  priv = self->priv;
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
 

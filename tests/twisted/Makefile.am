@@ -71,6 +71,7 @@ TWISTED_TESTS = \
 	tubes/request-invalid-dbus-tube.py \
 	tubes/test-get-available-tubes.py \
 	tubes/test-socks5-muc.py \
+	vcard/overlapping-sets.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \

@@ -339,8 +339,7 @@ update_location_from_msg (GabbleConnection *conn,
 
       if ((strcmp (key, "lat") == 0 ||
            strcmp (key, "lon") == 0 ||
-           strcmp (key, "alt") == 0 ||
-           strcmp (key, "accuracy") == 0))
+           strcmp (key, "alt") == 0))
         {
           gdouble double_value;
           gchar *end;

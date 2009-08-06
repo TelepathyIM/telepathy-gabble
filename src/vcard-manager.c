@@ -859,6 +859,7 @@ replace_reply_cb (GabbleConnection *conn,
   GList *li;
   LmMessageNode *node;
 
+  g_assert (priv->edit_pipeline_item != NULL);
   priv->edit_pipeline_item = NULL;
 
   DEBUG ("called: %s error", (error) ? "some" : "no");

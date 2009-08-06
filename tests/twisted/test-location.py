@@ -10,8 +10,6 @@ Rich_Presence_Access_Control_Type_Publish_List = 1
 def test(q, bus, conn, stream):
     # hack
     import dbus
-    conn.interfaces['Location'] = \
-        dbus.Interface(conn, cs.CONN_IFACE_LOCATION)
     conn.interfaces['Properties'] = \
         dbus.Interface(conn, dbus.PROPERTIES_IFACE)
 

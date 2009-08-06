@@ -308,6 +308,7 @@ update_location_from_msg (GabbleConnection *conn,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   NodeIter i;
+  const gchar *lang;
 
   TpHandle contact = tp_handle_lookup (contact_repo, from, NULL, NULL);
 
@@ -316,6 +317,13 @@ update_location_from_msg (GabbleConnection *conn,
     return FALSE;
 
   DEBUG ("LocationsUpdate for %s:", from);
+
+  lang = lm_message_node_get_attribute (node, "xml:lang");
+  if (lang != NULL)
+    {
+      g_hash_table_insert (location, g_strdup ("language"),
+          tp_g_value_slice_new_string (lang));
+    }
 
   for (i = node_iter (node); i; i = node_iter_next (i))
     {

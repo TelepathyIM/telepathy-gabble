@@ -119,13 +119,17 @@ def test(q, bus, conn, stream):
     result['from'] = 'bob@foo.com'
     query = result.firstChildElement()
     geoloc = query.addElement((ns.GEOLOC, 'geoloc'))
+    geoloc['xml:lang'] = 'en'
     geoloc.addElement('lat', content='1.234')
     geoloc.addElement('lon', content='5.678')
     stream.send(result)
 
-    q.expect_many(
+    _, update_event = q.expect_many(
         EventPattern('dbus-return', method='GetLocations'),
         EventPattern('dbus-signal', signal='LocationUpdated'))
+
+    handle, location = update_event.args
+    assertEquals(location['language'], 'en')
 
     # Get location again, only GetLocation should get fired
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]

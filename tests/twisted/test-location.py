@@ -1,7 +1,7 @@
 import dbus
 
 from gabbletest import exec_test, make_result_iq
-from servicetest import call_async, EventPattern, assertEquals
+from servicetest import call_async, EventPattern, assertEquals, assertLength
 
 from twisted.words.xish import xpath
 import constants as cs
@@ -110,11 +110,21 @@ def test(q, bus, conn, stream):
     lat = xpath.queryForNodes('/geoloc/lat', geoloc)[0]
     assertEquals(float(str(lat)), 0.0)
 
-    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
-    call_async(q, conn.Location, 'GetLocations', [handle])
+    # Request Bob's location
+    bob_handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
+    call_async(q, conn.Location, 'GetLocations', [bob_handle])
 
+    # Gabble sends a pubsub query
     event = q.expect('stream-iq', iq_type='get',
         query_ns=ns.PUBSUB)
+
+    # GetLocations doesn't wait for the reply
+    e = q.expect('dbus-return', method='GetLocations')
+    locations = e.value[0]
+    # Location isn't known yet
+    assertLength(0, locations)
+
+    # reply with Bob's location
     result = make_result_iq(stream, event.stanza)
     result['from'] = 'bob@foo.com'
     query = result.firstChildElement()
@@ -124,12 +134,15 @@ def test(q, bus, conn, stream):
     geoloc.addElement('lon', content='5.678')
     stream.send(result)
 
-    _, update_event = q.expect_many(
-        EventPattern('dbus-return', method='GetLocations'),
-        EventPattern('dbus-signal', signal='LocationUpdated'))
+    update_event = q.expect('dbus-signal', signal='LocationUpdated')
 
     handle, location = update_event.args
+    assertEquals(handle, bob_handle)
+
+    assertLength(3, location)
     assertEquals(location['language'], 'en')
+    assertEquals(location['lat'], 1.234)
+    assertEquals(location['lon'], 5.678)
 
     # Get location again, only GetLocation should get fired
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]

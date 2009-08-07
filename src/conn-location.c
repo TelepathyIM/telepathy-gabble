@@ -179,6 +179,15 @@ create_msg_foreach (gpointer tp_name,
       return;
     }
 
+  if (mapping != NULL && G_VALUE_TYPE (value) != mapping->type)
+    {
+      /* TODO: we should raise an error in that case */
+      DEBUG ("%s is supposed to be of type %s but is %s",
+          (const char *) tp_name, g_type_name (mapping->type),
+          G_VALUE_TYPE_NAME (value));
+      return;
+    }
+
   if (G_VALUE_TYPE (value) == G_TYPE_INT64)
     {
       GTimeVal timeval;

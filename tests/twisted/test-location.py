@@ -2,7 +2,7 @@ import dbus
 import time
 import datetime
 
-from gabbletest import exec_test, make_result_iq
+from gabbletest import exec_test, make_result_iq, elem
 from servicetest import call_async, EventPattern, assertEquals, assertLength
 
 from twisted.words.xish import xpath
@@ -181,6 +181,26 @@ def test(q, bus, conn, stream):
         assertEquals(e.get_dbus_name(), cs.INVALID_ARGUMENT)
     else:
         assert False
+
+    # Bob updates his location
+    message = elem('message', from_='bob@foo.com')(
+        elem((ns.PUBSUB + "#event"), 'event')(
+            elem('items', node=ns.GEOLOC)(
+                elem('item', id='12345')(
+                    elem(ns.GEOLOC, 'geoloc')(
+                        elem ('country') (u'France')
+                    )
+                )
+            )
+        )
+    )
+    stream.send(message)
+
+    update_event = q.expect('dbus-signal', signal='LocationUpdated')
+    handle, location = update_event.args
+    assertEquals(handle, bob_handle)
+    assertLength(1, location)
+    assertEquals(location['country'], 'France')
 
 if __name__ == '__main__':
     exec_test(test)

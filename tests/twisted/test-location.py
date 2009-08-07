@@ -1,4 +1,6 @@
 import dbus
+import time
+import datetime
 
 from gabbletest import exec_test, make_result_iq
 from servicetest import call_async, EventPattern, assertEquals, assertLength
@@ -95,11 +97,16 @@ def test(q, bus, conn, stream):
     else:
         assert False, "Should have had an error!"
 
+    date = dbus.Int64(time.time())
+    date_str = datetime.datetime.utcfromtimestamp(date).strftime('%FT%H:%M:%SZ')
+
     # set a Location
     conn.Location.SetLocation({
         'lat': dbus.Double(0.0, variant_level=1),
         'lon': 0.0,
         'language': 'en',
+        'timestamp': date,
+        'country': 'Congo',
         # Gabble silently ignores unknown keys
         'badger': 'mushroom'})
 
@@ -113,6 +120,10 @@ def test(q, bus, conn, stream):
     assertEquals(float(str(lon)), 0.0)
     lat = xpath.queryForNodes('/geoloc/lat', geoloc)[0]
     assertEquals(float(str(lat)), 0.0)
+    timestamp = xpath.queryForNodes('/geoloc/timestamp', geoloc)[0]
+    assertEquals(str(timestamp), date_str)
+    country = xpath.queryForNodes('/geoloc/country', geoloc)[0]
+    assertEquals(str(country), 'Congo')
 
     # Request Bob's location
     bob_handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
@@ -136,6 +147,8 @@ def test(q, bus, conn, stream):
     geoloc['xml:lang'] = 'en'
     geoloc.addElement('lat', content='1.234')
     geoloc.addElement('lon', content='5.678')
+    geoloc.addElement('country', content='Belgium')
+    geoloc.addElement('timestamp', content=date_str)
     # invalid element, will be discarded by Gabble
     geoloc.addElement('badger', content='mushroom')
     stream.send(result)
@@ -145,10 +158,12 @@ def test(q, bus, conn, stream):
     handle, location = update_event.args
     assertEquals(handle, bob_handle)
 
-    assertLength(3, location)
+    assertLength(5, location)
     assertEquals(location['language'], 'en')
     assertEquals(location['lat'], 1.234)
     assertEquals(location['lon'], 5.678)
+    assertEquals(location['country'], 'Belgium')
+    assertEquals(location['timestamp'], date)
 
     q.forbid_events([geoloc_iq_set_event])
 

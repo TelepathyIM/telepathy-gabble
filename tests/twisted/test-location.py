@@ -158,5 +158,14 @@ def test(q, bus, conn, stream):
     assertLength(1, locations)
     assertEquals(locations[bob_handle], location)
 
+    # Try to set our location by passing a valid with an invalid type (lat is
+    # supposed to be a double)
+    try:
+        conn.Location.SetLocation({'lat': 'pony'})
+    except dbus.DBusException, e:
+        assertEquals(e.get_dbus_name(), cs.INVALID_ARGUMENT)
+    else:
+        assert False
+
 if __name__ == '__main__':
     exec_test(test)

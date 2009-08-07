@@ -161,10 +161,11 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
 
 }
 
-static void
+static gboolean
 add_to_geoloc_node (const gchar *tp_name,
     GValue *value,
-    LmMessageNode *geoloc)
+    LmMessageNode *geoloc,
+    GError **err)
 {
   LocationMapping *mapping;
 
@@ -172,19 +173,22 @@ add_to_geoloc_node (const gchar *tp_name,
   if (mapping == NULL &&
       tp_strdiff (tp_name, "language"))
     {
+      DEBUG ("Unknown location key: %s ; skipping", (const gchar *) tp_name);
       /* We don't raise a D-Bus error if the key is unknown to stay backward
        * compatible if new keys are added in a future version of the spec. */
-      DEBUG ("Unknown location key: %s ; skipping", (const gchar *) tp_name);
-      return;
+      return TRUE;
     }
 
   if (mapping != NULL && G_VALUE_TYPE (value) != mapping->type)
     {
-      /* TODO: we should raise an error in that case */
-      DEBUG ("%s is supposed to be of type %s but is %s",
-          (const char *) tp_name, g_type_name (mapping->type),
-          G_VALUE_TYPE_NAME (value));
-      return;
+#define ERROR_MSG "'%s' is supposed to be of type %s but is %s",\
+          (const char *) tp_name, g_type_name (mapping->type),\
+          G_VALUE_TYPE_NAME (value)
+
+      DEBUG (ERROR_MSG);
+      g_set_error (err, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, ERROR_MSG);
+#undef ERROR_MSG
+      return FALSE;
     }
 
   if (G_VALUE_TYPE (value) == G_TYPE_INT64)
@@ -226,7 +230,7 @@ add_to_geoloc_node (const gchar *tp_name,
   else
     DEBUG ("\t - Unknown key dropped: %s", (gchar *) tp_name);
 
-
+  return TRUE;
 }
 
 static void
@@ -239,6 +243,7 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
   LmMessageNode *geoloc;
   GHashTableIter iter;
   gpointer key, value;
+  GError *err = NULL;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) conn,
     context);
@@ -262,7 +267,13 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
   g_hash_table_iter_init (&iter, location);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      add_to_geoloc_node ((const gchar *) key, (GValue *) value, geoloc);
+      if (!add_to_geoloc_node ((const gchar *) key, (GValue *) value, geoloc,
+            &err))
+        {
+          dbus_g_method_return_error (context, err);
+          g_error_free (err);
+          goto out;
+        }
     }
 
   /* XXX: use _ignore_reply */
@@ -276,6 +287,7 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
   else
     dbus_g_method_return (context);
 
+out:
   lm_message_unref (msg);
 }
 

@@ -228,7 +228,8 @@ add_to_geoloc_node (const gchar *tp_name,
       DEBUG ("\t - %s: %s", (gchar *) tp_name, str);
     }
   else
-    DEBUG ("\t - Unknown key dropped: %s", (gchar *) tp_name);
+    /* Keys and their type have been checked */
+    g_assert_not_reached ();
 
   return TRUE;
 }

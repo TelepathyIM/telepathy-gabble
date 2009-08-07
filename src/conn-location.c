@@ -168,6 +168,7 @@ add_to_geoloc_node (const gchar *tp_name,
     GError **err)
 {
   LocationMapping *mapping;
+  gchar *str = NULL;
 
   mapping = g_hash_table_lookup (tp_to_xmpp, tp_name);
   if (mapping == NULL &&
@@ -194,43 +195,34 @@ add_to_geoloc_node (const gchar *tp_name,
   if (G_VALUE_TYPE (value) == G_TYPE_INT64)
     {
       GTimeVal timeval;
-      gchar *str;
 
       timeval.tv_sec = CLAMP (g_value_get_int64 (value), 0, G_MAXLONG);
       timeval.tv_usec = 0;
       str = g_time_val_to_iso8601 (&timeval);
-
-      lm_message_node_add_child (geoloc, mapping->xmpp_name, str);
-      DEBUG ("\t - %s: %s", (gchar *) tp_name, str);
-      g_free (str);
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_DOUBLE)
     {
-      gchar *str;
       str = g_strdup_printf ("%.6f", g_value_get_double (value));
-      lm_message_node_add_child (geoloc, mapping->xmpp_name, str);
-      DEBUG ("\t - %s: %s", (gchar *) tp_name, str);
-      g_free (str);
     }
   else if (G_VALUE_TYPE (value) == G_TYPE_STRING)
     {
-      const gchar *str = g_value_get_string (value);
+      str = g_value_dup_string (value);
 
       if (!tp_strdiff (tp_name, "language"))
         {
           /* Set the xml:lang */
           lm_message_node_set_attribute (geoloc, "xml:lang", str);
+          g_free (str);
+          return TRUE;
         }
-      else
-        {
-          lm_message_node_add_child (geoloc, mapping->xmpp_name, str);
-        }
-      DEBUG ("\t - %s: %s", (gchar *) tp_name, str);
     }
   else
     /* Keys and their type have been checked */
     g_assert_not_reached ();
 
+  lm_message_node_add_child (geoloc, mapping->xmpp_name, str);
+  DEBUG ("\t - %s: %s", (gchar *) tp_name, str);
+  g_free (str);
   return TRUE;
 }
 

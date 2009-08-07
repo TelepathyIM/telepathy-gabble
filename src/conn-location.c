@@ -162,11 +162,10 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
 }
 
 static void
-create_msg_foreach (gpointer tp_name,
-                    gpointer value,
-                    gpointer user_data)
+add_to_geoloc_node (const gchar *tp_name,
+    GValue *value,
+    LmMessageNode *geoloc)
 {
-  LmMessageNode *geoloc = (LmMessageNode *) user_data;
   LocationMapping *mapping;
 
   mapping = g_hash_table_lookup (tp_to_xmpp, tp_name);
@@ -238,6 +237,8 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *msg;
   LmMessageNode *geoloc;
+  GHashTableIter iter;
+  gpointer key, value;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED ((TpBaseConnection *) conn,
     context);
@@ -258,7 +259,11 @@ location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
   DEBUG ("SetLocation to");
 
   build_mapping_tables ();
-  g_hash_table_foreach (location, create_msg_foreach, geoloc);
+  g_hash_table_iter_init (&iter, location);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      add_to_geoloc_node ((const gchar *) key, (GValue *) value, geoloc);
+    }
 
   /* XXX: use _ignore_reply */
   if (!_gabble_connection_send (conn, msg, NULL))

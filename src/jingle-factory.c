@@ -816,7 +816,7 @@ REQUEST_ERROR:
 
   if (sess != NULL && new_session)
     gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
-        NULL);
+        NULL, NULL);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

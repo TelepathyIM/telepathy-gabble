@@ -921,7 +921,7 @@ gabble_media_channel_close (GabbleMediaChannel *self)
 
       if (priv->session != NULL)
         gabble_jingle_session_terminate (priv->session,
-            TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
+            TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
 
       tp_svc_channel_emit_closed (self);
     }
@@ -2238,7 +2238,8 @@ gabble_media_channel_remove_member (GObject *obj,
       /* Terminate can fail if the UI provides a reason that makes no sense,
        * like Invited.
        */
-      if (!gabble_jingle_session_terminate (priv->session, reason, error))
+      if (!gabble_jingle_session_terminate (priv->session, reason, message,
+              error))
         {
           g_object_unref (chan);
           return FALSE;
@@ -2450,7 +2451,7 @@ stream_error_cb (GabbleMediaStream *stream,
        */
       DEBUG ("Terminating call in response to stream error");
       gabble_jingle_session_terminate (priv->session,
-          TP_CHANNEL_GROUP_CHANGE_REASON_ERROR, NULL);
+          TP_CHANNEL_GROUP_CHANGE_REASON_ERROR, message, NULL);
     }
 
   g_list_free (contents);

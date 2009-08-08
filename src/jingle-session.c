@@ -1980,9 +1980,15 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
           JINGLE_ACTION_SESSION_TERMINATE, &session_node);
 
       if (priv->dialect == JINGLE_DIALECT_V032 && reason_elt != NULL)
-        lm_message_node_add_child (
-            lm_message_node_add_child (session_node, "reason", NULL),
-            reason_elt, NULL);
+        {
+          LmMessageNode *r = lm_message_node_add_child (session_node, "reason",
+              NULL);
+
+          lm_message_node_add_child (r, reason_elt, NULL);
+
+          if (text != NULL && *text != '\0')
+            lm_message_node_add_child (r, "text", text);
+        }
 
       gabble_jingle_session_send (sess, msg, NULL, NULL);
     }

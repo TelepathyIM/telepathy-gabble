@@ -173,7 +173,9 @@ gabble_media_channel_init (GabbleMediaChannel *self)
 static void session_state_changed_cb (GabbleJingleSession *session,
     GParamSpec *arg1, GabbleMediaChannel *channel);
 static void session_terminated_cb (GabbleJingleSession *session,
-    gboolean local_terminator, TpChannelGroupChangeReason reason,
+    gboolean local_terminator,
+    TpChannelGroupChangeReason reason,
+    const gchar *text,
     gpointer user_data);
 static void session_new_content_cb (GabbleJingleSession *session,
     GabbleJingleContent *c, gpointer user_data);
@@ -2269,6 +2271,7 @@ static void
 session_terminated_cb (GabbleJingleSession *session,
                        gboolean local_terminator,
                        TpChannelGroupChangeReason reason,
+                       const gchar *text,
                        gpointer user_data)
 {
   GabbleMediaChannel *channel = (GabbleMediaChannel *) user_data;
@@ -2298,7 +2301,7 @@ session_terminated_cb (GabbleJingleSession *session,
   tp_intset_add (set, peer);
 
   tp_group_mixin_change_members ((GObject *) channel,
-      "", NULL, set, NULL, NULL, terminator, reason);
+      text, NULL, set, NULL, NULL, terminator, reason);
 
   tp_intset_destroy (set);
 

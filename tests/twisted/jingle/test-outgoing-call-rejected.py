@@ -4,7 +4,7 @@ remote party rejects our call because they're busy.
 """
 
 from gabbletest import make_result_iq
-from servicetest import make_channel_proxy
+from servicetest import make_channel_proxy, assertEquals
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
@@ -44,11 +44,13 @@ def test(jp, q, bus, conn, stream):
     e = q.expect('stream-iq', predicate=jp.action_predicate('session-initiate'))
     stream.send(make_result_iq(stream, e.stanza))
 
+    text = u"begone!"
+
     jt.parse_session_initiate(e.query)
-    jt.terminate(reason="busy")
+    jt.terminate(reason="busy", text=text)
 
     mc = q.expect('dbus-signal', signal='MembersChanged')
-    _, added, removed, lp, rp, actor, reason = mc.args
+    message, added, removed, lp, rp, actor, reason = mc.args
     assert added == [], added
     assert set(removed) == set([self_handle, remote_handle]), \
         (removed, self_handle, remote_handle)
@@ -56,7 +58,8 @@ def test(jp, q, bus, conn, stream):
     assert rp == [], rp
     assert actor == remote_handle, (actor, remote_handle)
     if jp.is_modern_jingle():
-        assert reason == cs.GC_REASON_BUSY, reason
+        assertEquals(text, message)
+        assertEquals(cs.GC_REASON_BUSY, reason)
 
     q.expect('dbus-signal', signal='Close') #XXX - match against the path
 

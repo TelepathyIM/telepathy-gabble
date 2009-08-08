@@ -101,7 +101,9 @@ static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     gboolean local_hold);
 
 static void session_terminated_cb (GabbleJingleSession *sess,
-    gboolean local_terminator, TpChannelGroupChangeReason reason,
+    gboolean local_terminator,
+    TpChannelGroupChangeReason reason,
+    const gchar *text,
     GabbleJingleFactory *fac);
 
 static void connection_status_changed_cb (GabbleConnection *conn,
@@ -925,6 +927,7 @@ static void
 session_terminated_cb (GabbleJingleSession *session,
                        gboolean local_terminator,
                        TpChannelGroupChangeReason reason,
+                       const gchar *text,
                        GabbleJingleFactory *factory)
 {
   gchar *key = make_session_map_key (session->peer,

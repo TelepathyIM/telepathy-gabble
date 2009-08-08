@@ -468,8 +468,8 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 
   signals[TERMINATED] = g_signal_new ("terminated",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
-        0, NULL, NULL, gabble_marshal_VOID__BOOLEAN_UINT,
-        G_TYPE_NONE, 2, G_TYPE_BOOLEAN, G_TYPE_UINT);
+        0, NULL, NULL, gabble_marshal_VOID__BOOLEAN_UINT_STRING,
+        G_TYPE_NONE, 3, G_TYPE_BOOLEAN, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[REMOTE_STATE_CHANGED] = g_signal_new ("remote-state-changed",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
@@ -583,8 +583,10 @@ action_is_allowed (JingleAction action, JingleState state)
 
 static void gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
     const gchar *name);
-static void set_state (GabbleJingleSession *sess, JingleState state,
-    TpChannelGroupChangeReason termination_reason);
+static void set_state (GabbleJingleSession *sess,
+    JingleState state,
+    TpChannelGroupChangeReason termination_reason,
+    const gchar *text);
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 
 static gboolean
@@ -982,7 +984,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
        * disposition; resolve this as soon as the proper procedure is defined
        * in XEP-0166. */
 
-      set_state (sess, JS_STATE_PENDING_INITIATED, 0);
+      set_state (sess, JS_STATE_PENDING_INITIATED, 0, NULL);
 
       gabble_jingle_session_send_rtp_info (sess, "ringing");
     }
@@ -1065,7 +1067,7 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
   if (*error != NULL)
       return;
 
-  set_state (sess, JS_STATE_ACTIVE, 0);
+  set_state (sess, JS_STATE_ACTIVE, 0, NULL);
 
   if (priv->dialect != JINGLE_DIALECT_V032)
     {
@@ -1278,6 +1280,7 @@ on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
   TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+  const gchar *text = NULL;
   LmMessageNode *n = lm_message_node_get_child (node, "reason");
   ReasonMapping *m = NULL;
   NodeIter i;
@@ -1285,27 +1288,36 @@ on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
   /* If the session-terminate stanza has a <reason> child, then iterate across
    * its children, looking for a child whose name we recognise as a
    * machine-readable reason for the call ending (looked up from the table
-   * above). (The XEP also defines <text> for a human-readable message. TODO:
-   * expose and send that as the group change message.) Once we find a reason
-   * we recognise, break out of both loops.
+   * above), and a <text> node containing a human-readable message.
    */
   if (n != NULL)
     for (i = node_iter (n); i; i = node_iter_next (i))
       {
+        const gchar *name;
+
         n = node_iter_data (i);
 
+        name = lm_message_node_get_name (n);
+
+        if (!tp_strdiff (name, "text"))
+          {
+            text = lm_message_node_get_value (n);
+            continue;
+          }
+
         for (m = reasons; m->element != NULL; m++)
-          if (!tp_strdiff (m->element, lm_message_node_get_name (n)))
+          if (!tp_strdiff (m->element, name))
             {
               reason = m->reason;
-              goto pub;
+              break;
             }
       }
 
-pub:
-  DEBUG ("remote end terminated the session with reason %s (%u)",
-      (m != NULL && m->element != NULL ? m->element : "(none)"), reason);
-  set_state (sess, JS_STATE_ENDED, reason);
+  DEBUG ("remote end terminated the session with reason %s (%u) "
+      "and text '%s'",
+      (m != NULL && m->element != NULL ? m->element : "(none)"), reason,
+      (text != NULL ? text : "(none)"));
+  set_state (sess, JS_STATE_ENDED, reason, text);
 }
 
 static void
@@ -1757,7 +1769,7 @@ _on_initiate_reply (GObject *sess_as_obj,
 
   if (success)
     {
-      set_state (sess, JS_STATE_PENDING_INITIATED, 0);
+      set_state (sess, JS_STATE_PENDING_INITIATED, 0, NULL);
 
       if (priv->dialect != JINGLE_DIALECT_V032)
         {
@@ -1770,7 +1782,8 @@ _on_initiate_reply (GObject *sess_as_obj,
     }
   else
     {
-      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+          NULL);
     }
 }
 
@@ -1783,12 +1796,13 @@ _on_accept_reply (GObject *sess_as_obj,
 
   if (success)
     {
-      set_state (sess, JS_STATE_ACTIVE, 0);
+      set_state (sess, JS_STATE_ACTIVE, 0, NULL);
       gabble_jingle_session_send_rtp_info (sess, "active");
     }
   else
     {
-      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+          NULL);
     }
 }
 
@@ -1879,7 +1893,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
   _map_initial_contents (sess, _fill_content, sess_node);
   gabble_jingle_session_send (sess, msg, handler, (GObject *) sess);
-  set_state (sess, new_state, 0);
+  set_state (sess, new_state, 0, NULL);
 
   /* now all initial contents can transmit their candidates */
   _map_initial_contents (sess, _transmit_candidates, NULL);
@@ -1891,11 +1905,14 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
  * @state: the new state for the session
  * @termination_reason: if @state is JS_STATE_ENDED, the reason the session
  *                      ended. Otherwise, must be 0.
+ * @text: if @state is JS_STATE_ENDED, the human-readable reason the session
+ *        ended.
  */
 static void
 set_state (GabbleJingleSession *sess,
            JingleState state,
-           TpChannelGroupChangeReason termination_reason)
+           TpChannelGroupChangeReason termination_reason,
+           const gchar *text)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
 
@@ -1921,7 +1938,7 @@ set_state (GabbleJingleSession *sess,
 
   if (state == JS_STATE_ENDED)
     g_signal_emit (sess, signals[TERMINATED], 0, priv->locally_terminated,
-        termination_reason);
+        termination_reason, text);
 }
 
 void
@@ -2008,7 +2025,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
 
   DEBUG ("we are terminating this session");
   priv->locally_terminated = TRUE;
-  set_state (sess, JS_STATE_ENDED, reason);
+  set_state (sess, JS_STATE_ENDED, reason, text);
 
   return TRUE;
 }

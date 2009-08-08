@@ -933,7 +933,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
       /* We ignore initiate from us, and terminate the session immediately
        * afterwards */
       gabble_jingle_session_terminate (sess,
-          TP_CHANNEL_GROUP_CHANGE_REASON_BUSY, NULL);
+          TP_CHANNEL_GROUP_CHANGE_REASON_BUSY, NULL, NULL);
       return;
     }
 
@@ -1952,6 +1952,7 @@ _get_jingle_reason (GabbleJingleSession *sess,
 gboolean
 gabble_jingle_session_terminate (GabbleJingleSession *sess,
                                  TpChannelGroupChangeReason reason,
+                                 const gchar *text,
                                  GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
@@ -2043,7 +2044,8 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
 
   if (count_active_contents (sess) == 0)
     {
-      gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
+      gabble_jingle_session_terminate (sess,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
     }
   else
     {

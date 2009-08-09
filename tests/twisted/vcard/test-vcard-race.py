@@ -9,34 +9,49 @@ Regression test for https://bugs.freedesktop.org/show_bug.cgi?id=11201
  - Change to NICKNAME in v2 is lost
 """
 
-print "FIXME: test-vcard-race.py disabled because it's racy"
-print "       http://bugs.freedesktop.org/show_bug.cgi?id=22023"
-raise SystemExit(77)
-
 import base64
 
 from twisted.words.xish import xpath
 
-from servicetest import call_async
+from servicetest import call_async, sync_dbus
 from gabbletest import (
-    exec_test, expect_and_handle_get_vcard, expect_and_handle_set_vcard)
+    exec_test, expect_and_handle_get_vcard, expect_and_handle_set_vcard,
+    make_result_iq, sync_stream)
+import ns
 
 def test(q, bus, conn, stream):
     conn.Connect()
 
     expect_and_handle_get_vcard(q, stream)
 
-    call_async(q, conn, 'GetSelfHandle')
-    event = q.expect('dbus-return', method='GetSelfHandle')
-    handle = event.value[0]
+    # Ensure that Gabble's actually got the initial vCard reply; if it hasn't
+    # processed it by the time we call SetAliases, the latter will wait for it
+    # to reply and then set immediately.
+    sync_stream(q, stream)
+
+    handle = conn.GetSelfHandle()
 
     call_async(q, conn.Aliasing, 'SetAliases', {handle: 'Some Guy'})
+
+    # SetAliases requests vCard v1
+    get_vcard_event = q.expect('stream-iq', query_ns=ns.VCARD_TEMP,
+        query_name='vCard', iq_type='get')
+
+    iq = get_vcard_event.stanza
+    vcard = iq.firstChildElement()
+    assert vcard.name == 'vCard', vcard.toXml()
+
     call_async(q, conn.Avatars, 'SetAvatar', 'hello', 'image/png')
 
-    # Gabble asks for the self-vCard again (FIXME: why? Interestingly, when I
-    # called GetSelfHandle synchronously Gabble *didn't* ask for the vCard
-    # again.)
-    expect_and_handle_get_vcard(q, stream)
+    # We don't expect Gabble to send a second vCard request, since there's one
+    # outstanding. But we want to ensure that SetAvatar reaches Gabble before
+    # the empty vCard does.
+    sync_dbus(bus, q, conn)
+
+    # Send back current empty vCard
+    result = make_result_iq(stream, iq)
+    # result already includes the <vCard/> from the query, which is all we need
+    stream.send(result)
 
     def has_nickname_and_photo(vcard):
         nicknames = xpath.queryForNodes('/vCard/NICKNAME', vcard)

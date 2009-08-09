@@ -328,6 +328,10 @@ gabble_request_pipeline_go (GabbleRequestPipeline *pipeline)
   GabbleRequestPipelinePrivate *priv =
       GABBLE_REQUEST_PIPELINE_GET_PRIVATE (pipeline);
 
+  DEBUG ("called; %d pending items, %d items in flight",
+    g_slist_length (priv->pending_items),
+    g_slist_length (priv->items_in_flight));
+
   while (priv->pending_items &&
       (g_slist_length (priv->items_in_flight) < REQUEST_PIPELINE_SIZE))
     {
@@ -395,12 +399,13 @@ gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
   priv->pending_items = g_slist_append (priv->pending_items, item);
 
   DEBUG ("enqueued new request as item %p", item);
+  DEBUG ("number of items in flight: %d", g_slist_length (priv->items_in_flight));
 
-  /* if this is the first request in pipeline, run it delayed so in the
-   * case of errors the callback will be called after this function returns
+  /* If the pipeline isn't full, schedule a run. Run it delayed so that if
+   * there's an error, the callback will be called after this function returns.
    */
-  if (NULL == priv->items_in_flight)
-      g_idle_add (delayed_run_pipeline, pipeline);
+  if (g_slist_length (priv->items_in_flight) < REQUEST_PIPELINE_SIZE)
+    g_idle_add (delayed_run_pipeline, pipeline);
 
   return item;
 }

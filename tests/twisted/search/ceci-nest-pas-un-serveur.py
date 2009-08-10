@@ -152,6 +152,7 @@ def test(q, bus, conn, stream):
     returns_bees_from_search(q, stream, conn, requests)
     disconnected_before_reply(q, stream, conn, requests)
 
+    stream.sendFooter()
     q.expect('dbus-return', method='Disconnect')
 
 if __name__ == '__main__':

@@ -21,20 +21,18 @@ def test(q, bus, conn, stream,
     # Connecting
     conn.Connect()
 
-    q.expect_many(
-            EventPattern('dbus-signal', signal='StatusChanged',
-                args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED]),
-            EventPattern('stream-authenticated'),
-            EventPattern('dbus-signal', signal='PresenceUpdate',
-                args=[{1L: (0L, {u'available': {}})}]),
-            EventPattern('dbus-signal', signal='StatusChanged',
-                args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-            )
+    expected = [EventPattern('dbus-signal', signal='StatusChanged',
+                args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])]
 
     if google:
         # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
-        event = q.expect('stream-iq', query_ns='google:jingleinfo',
-                to='test@localhost')
+        expected.append(EventPattern('stream-iq', query_ns='google:jingleinfo',
+                to='test@localhost'))
+
+    events = q.expect_many(*expected)
+
+    if google:
+        event = events[-1]
         jingleinfo = make_result_iq(stream, event.stanza)
         stun = jingleinfo.firstChildElement().addElement('stun')
         server = stun.addElement('server')

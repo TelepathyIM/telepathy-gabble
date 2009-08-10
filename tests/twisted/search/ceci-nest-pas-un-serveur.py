@@ -6,8 +6,9 @@ fake servers which are broken in various ways.
 import dbus
 
 from twisted.words.protocols.jabber.client import IQ
+from twisted.words.xish import domish
 
-from gabbletest import exec_test
+from gabbletest import exec_test, send_error_reply, make_result_iq
 from servicetest import call_async, unwrap, make_channel_proxy, EventPattern
 
 from pprint import pformat
@@ -34,12 +35,10 @@ def call_create(q, requests, server):
 def not_a_search_server(q, stream, requests):
     iq = call_create(q, requests, 'notajud.localhost')
 
-    result = iq
-    result['type'] = 'error'
-    e = result.addElement('error')
+    e = domish.Element((None, 'error'))
     e['type'] = 'cancel'
     e.addElement((ns.STANZA, 'service-unavailable'))
-    stream.send(result)
+    send_error_reply(stream, iq, e)
 
     event = q.expect('dbus-error', method='CreateChannel')
     assert event.error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
@@ -47,9 +46,8 @@ def not_a_search_server(q, stream, requests):
 def returns_invalid_fields(q, stream, requests):
     iq = call_create(q, requests, 'broken.localhost')
 
-    result = IQ(stream, "result")
-    result["id"] = iq["id"]
-    query = result.addElement((ns.SEARCH, 'query'))
+    result = make_result_iq(stream, iq)
+    query = result.firstChildElement()
     for f in ["first", "shoe-size", "nick", "star-sign"]:
         query.addElement(f)
     stream.send(result)
@@ -61,9 +59,8 @@ def returns_error_from_search(q, stream, conn, requests):
     server = 'nofunforyou.localhost'
     iq = call_create(q, requests, server)
 
-    result = IQ(stream, "result")
-    result["id"] = iq["id"]
-    query = result.addElement((ns.SEARCH, 'query'))
+    result = make_result_iq(stream, iq)
+    query = result.firstChildElement()
     query.addElement("first")
     stream.send(result)
 
@@ -76,13 +73,13 @@ def returns_error_from_search(q, stream, conn, requests):
         EventPattern('stream-iq', to=server, query_ns=ns.SEARCH),
         EventPattern('dbus-signal', signal='SearchStateChanged'),
         )
+
     iq = iq_event.stanza
-    iq['type'] = 'error'
-    error = iq.addElement('error')
+    error = domish.Element((None, 'error'))
     error['type'] = 'modify'
     error.addElement((ns.STANZA, 'not-acceptable'))
     error.addElement((ns.STANZA, 'text'), content="We don't believe in games here.")
-    stream.send(iq)
+    send_error_reply(stream, iq, error)
 
     ssc = q.expect('dbus-signal', signal='SearchStateChanged')
     new_state, reason, details = ssc.args
@@ -100,9 +97,8 @@ def returns_bees_from_search(q, stream, conn, requests):
     server = 'hivemind.localhost'
     iq = call_create(q, requests, server)
 
-    result = IQ(stream, "result")
-    result["id"] = iq["id"]
-    query = result.addElement((ns.SEARCH, 'query'))
+    result = make_result_iq(stream, iq)
+    query = result.firstChildElement()
     query.addElement("nick")
     stream.send(result)
 
@@ -119,6 +115,7 @@ def returns_bees_from_search(q, stream, conn, requests):
 
     result = IQ(stream, 'result')
     result['id'] = iq['id']
+    result['from'] = iq['to']
     result.addElement((ns.SEARCH, 'bees')).addElement('bzzzzzzz')
     stream.send(result)
 

@@ -2,6 +2,7 @@ import dbus
 from twisted.words.protocols.jabber.client import IQ
 
 from servicetest import call_async, EventPattern
+from gabbletest import make_result_iq
 import constants as cs
 import ns
 
@@ -21,9 +22,8 @@ def _wait_for_server_query(q, stream, server):
     iq_event = q.expect('stream-iq', to=server, query_ns=ns.SEARCH)
     iq = iq_event.stanza
 
-    result = IQ(stream, "result")
-    result["id"] = iq["id"]
-    query = result.addElement((ns.SEARCH, 'query'))
+    result = make_result_iq(stream, iq)
+    query = result.firstChildElement()
     query.addElement("instructions", content="cybar?")
 
     return result, query
@@ -90,9 +90,8 @@ def make_search(q, c_search, c_props, server, terms):
     return iq_event.stanza
 
 def send_results(stream, iq, results):
-    result = IQ(stream, 'result')
-    result['id'] = iq['id']
-    query = result.addElement((ns.SEARCH, 'query'))
+    result = make_result_iq(stream, iq)
+    query = result.firstChildElement()
     for jid, first, last, nick in results:
         item = query.addElement('item')
         item['jid'] = jid
@@ -103,9 +102,8 @@ def send_results(stream, iq, results):
     stream.send(result)
 
 def send_results_extended(stream, iq, results, fields):
-    result = IQ(stream, 'result')
-    result['id'] = iq['id']
-    query = result.addElement((ns.SEARCH, 'query'))
+    result = make_result_iq(stream, iq)
+    query = result.firstChildElement()
 
     x = query.addElement((ns.X_DATA, 'x'))
     x['type'] = 'result'

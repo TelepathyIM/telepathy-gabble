@@ -145,8 +145,8 @@ def test(q, bus, conn, stream):
     query = result.firstChildElement()
     geoloc = query.addElement((ns.GEOLOC, 'geoloc'))
     geoloc['xml:lang'] = 'en'
-    geoloc.addElement('lat', content='1.234')
-    geoloc.addElement('lon', content='5.678')
+    geoloc.addElement('lat', content='1.25')
+    geoloc.addElement('lon', content='5.5')
     geoloc.addElement('country', content='Belgium')
     geoloc.addElement('timestamp', content=date_str)
     # invalid element, will be discarded by Gabble
@@ -160,8 +160,8 @@ def test(q, bus, conn, stream):
 
     assertLength(5, location)
     assertEquals(location['language'], 'en')
-    assertEquals(location['lat'], 1.234)
-    assertEquals(location['lon'], 5.678)
+    assertEquals(location['lat'], 1.25)
+    assertEquals(location['lon'], 5.5)
     assertEquals(location['country'], 'Belgium')
     assertEquals(location['timestamp'], date)
 

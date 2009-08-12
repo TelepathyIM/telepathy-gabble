@@ -1012,6 +1012,27 @@ gabble_signal_connect_weak (gpointer instance,
   g_object_weak_ref (user_data, user_data_destroyed_cb, ctx);
 }
 
+static void
+idle_cancel (gpointer data,
+             GObject *dead_object)
+{
+  g_source_remove (GPOINTER_TO_UINT (data));
+}
+
+/* Like g_idle_add(), but cancel the callback if the provided object is
+ * finalized.
+ */
+guint
+gabble_idle_add_weak (GSourceFunc function,
+                      GObject *object)
+{
+  guint id;
+
+  id = g_idle_add (function, object);
+  g_object_weak_ref (object, idle_cancel, GUINT_TO_POINTER (id));
+  return id;
+}
+
 typedef struct {
     gchar *key;
     gchar *value;

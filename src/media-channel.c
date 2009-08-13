@@ -322,8 +322,15 @@ gabble_media_channel_constructor (GType type, guint n_props,
       TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
   tp_intset_destroy (set);
 
-  /* We implement the 0.17.6 properties correctly */
-  tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_PROPERTIES, 0);
+  /* We implement the 0.17.6 properties correctly, and can include a message
+   * when ending a call.
+   */
+  tp_group_mixin_change_flags (obj,
+      TP_CHANNEL_GROUP_FLAG_PROPERTIES |
+      TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE |
+      TP_CHANNEL_GROUP_FLAG_MESSAGE_REJECT |
+      TP_CHANNEL_GROUP_FLAG_MESSAGE_RESCIND,
+      0);
 
   /* Set up Google relay related properties */
   jf = priv->conn->jingle_factory;

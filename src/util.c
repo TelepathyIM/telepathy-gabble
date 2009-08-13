@@ -1022,10 +1022,7 @@ static void
 idle_weak_ref_notify (gpointer data,
                       GObject *dead_object)
 {
-  WeakIdleCtx *ctx = (WeakIdleCtx *) data;
-
-  g_source_remove (ctx->source_id);
-  g_slice_free (WeakIdleCtx, ctx);
+  g_source_remove (GPOINTER_TO_UINT (data));
 }
 
 static void
@@ -1033,7 +1030,8 @@ idle_removed (gpointer data)
 {
   WeakIdleCtx *ctx = (WeakIdleCtx *) data;
 
-  g_object_weak_unref (ctx->object, idle_weak_ref_notify, ctx);
+  g_object_weak_unref (
+      ctx->object, idle_weak_ref_notify, GUINT_TO_POINTER (ctx->source_id));
   g_slice_free (WeakIdleCtx, ctx);
 }
 
@@ -1060,7 +1058,8 @@ gabble_idle_add_weak (GSourceFunc function,
   ctx->source_id = g_idle_add_full (
       G_PRIORITY_DEFAULT_IDLE, idle_callback, ctx, idle_removed);
 
-  g_object_weak_ref (object, idle_weak_ref_notify, (gpointer) ctx);
+  g_object_weak_ref (
+      object, idle_weak_ref_notify, GUINT_TO_POINTER (ctx->source_id));
   return ctx->source_id;
 }
 

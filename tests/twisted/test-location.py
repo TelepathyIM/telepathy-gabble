@@ -173,6 +173,12 @@ def test(q, bus, conn, stream):
     assertLength(1, locations)
     assertEquals(locations[bob_handle], location)
 
+    # check that Contacts interface supports location
+    assert conn.Contacts.GetContactAttributes([bob_handle],
+        [cs.CONN_IFACE_LOCATION], False) == { bob_handle:
+            { cs.CONN_IFACE_LOCATION + '/location': location,
+              'org.freedesktop.Telepathy.Connection/contact-id': 'bob@foo.com'}}
+
     # Try to set our location by passing a valid with an invalid type (lat is
     # supposed to be a double)
     try:

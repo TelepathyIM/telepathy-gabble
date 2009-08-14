@@ -290,6 +290,31 @@ response_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static gboolean
+timeout_cb (gpointer data)
+{
+  GabbleRequestPipelineItem *item = (GabbleRequestPipelineItem *) data;
+  GabbleRequestPipeline *pipeline = item->pipeline;
+  GabbleRequestPipelinePrivate *priv;
+  GError *error = NULL;
+
+  g_assert (GABBLE_IS_REQUEST_PIPELINE (pipeline));
+  priv = GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
+
+  error = g_error_new (GABBLE_REQUEST_PIPELINE_ERROR,
+      GABBLE_REQUEST_PIPELINE_ERROR_TIMEOUT,
+      "Request timed out");
+
+  item->callback (priv->connection, NULL, item->user_data, error);
+
+  item->timer_id = 0;
+  item->zombie = TRUE;
+
+  gabble_request_pipeline_go (pipeline);
+
+  return FALSE;
+}
+
 static void
 send_next_request (GabbleRequestPipeline *pipeline)
 {
@@ -338,31 +363,6 @@ gabble_request_pipeline_go (GabbleRequestPipeline *pipeline)
     {
       send_next_request (pipeline);
     }
-}
-
-static gboolean
-timeout_cb (gpointer data)
-{
-  GabbleRequestPipelineItem *item = (GabbleRequestPipelineItem *) data;
-  GabbleRequestPipeline *pipeline = item->pipeline;
-  GabbleRequestPipelinePrivate *priv;
-  GError *error = NULL;
-
-  g_assert (GABBLE_IS_REQUEST_PIPELINE (pipeline));
-  priv = GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
-
-  error = g_error_new (GABBLE_REQUEST_PIPELINE_ERROR,
-      GABBLE_REQUEST_PIPELINE_ERROR_TIMEOUT,
-      "Request timed out");
-
-  item->callback (priv->connection, NULL, item->user_data, error);
-
-  item->timer_id = 0;
-  item->zombie = TRUE;
-
-  gabble_request_pipeline_go (pipeline);
-
-  return FALSE;
 }
 
 static gboolean

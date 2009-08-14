@@ -300,6 +300,7 @@ def wrap_connection(conn):
               'Presence', 'SimplePresence', 'Requests']] +
         [('Peer', 'org.freedesktop.DBus.Peer'),
          ('ContactCapabilities', cs.CONN_IFACE_CONTACT_CAPS),
+         ('Location', cs.CONN_IFACE_LOCATION),
         ]))
 
 def wrap_channel(chan, type_, extra=None):

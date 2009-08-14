@@ -293,6 +293,7 @@ gabble_connection_constructor (GType type,
   conn_avatars_init (self);
   conn_presence_init (self);
   conn_olpc_activity_properties_init (self);
+  conn_location_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,

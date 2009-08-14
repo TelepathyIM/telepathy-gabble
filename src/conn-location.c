@@ -8,6 +8,8 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_LOCATION
 
+#include <telepathy-glib/gtypes.h>
+
 #include "debug.h"
 #include "extensions/extensions.h"
 #include "namespaces.h"
@@ -517,3 +519,38 @@ geolocation_event_handler (GabbleConnection *conn,
   return update_location_from_msg (conn, from, msg);
 }
 
+static void
+conn_location_fill_contact_attributes (GObject *obj,
+    const GArray *contacts,
+    GHashTable *attributes_hash)
+{
+  guint i;
+  GabbleConnection *self = GABBLE_CONNECTION(obj);
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      TpHandle handle = g_array_index (contacts, TpHandle, i);
+      GHashTable *location;
+
+      location = get_cached_location_or_query (self, handle, NULL);
+      if (location != NULL)
+        {
+          GValue *val = tp_g_value_slice_new_boxed (
+              TP_HASH_TYPE_STRING_VARIANT_MAP, location);
+
+          tp_contacts_mixin_set_contact_attribute (attributes_hash,
+            handle, GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION"/location",
+            val);
+
+          g_hash_table_unref (location);
+        }
+    }
+}
+
+void
+conn_location_init (GabbleConnection *conn)
+{
+  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
+    GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION,
+    conn_location_fill_contact_attributes);
+}

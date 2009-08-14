@@ -1013,6 +1013,64 @@ gabble_signal_connect_weak (gpointer instance,
 }
 
 typedef struct {
+    GSourceFunc function;
+    GObject *object;
+    guint source_id;
+} WeakIdleCtx;
+
+static void
+idle_weak_ref_notify (gpointer data,
+                      GObject *dead_object)
+{
+  g_source_remove (GPOINTER_TO_UINT (data));
+}
+
+static void
+idle_removed (gpointer data)
+{
+  WeakIdleCtx *ctx = (WeakIdleCtx *) data;
+
+  g_slice_free (WeakIdleCtx, ctx);
+}
+
+static gboolean
+idle_callback (gpointer data)
+{
+  WeakIdleCtx *ctx = (WeakIdleCtx *) data;
+
+  if (ctx->function ((gpointer) ctx->object))
+    {
+      return TRUE;
+    }
+  else
+    {
+      g_object_weak_unref (
+          ctx->object, idle_weak_ref_notify, GUINT_TO_POINTER (ctx->source_id));
+      return FALSE;
+    }
+}
+
+/* Like g_idle_add(), but cancel the callback if the provided object is
+ * finalized.
+ */
+guint
+gabble_idle_add_weak (GSourceFunc function,
+                      GObject *object)
+{
+  WeakIdleCtx *ctx;
+
+  ctx = g_slice_new0 (WeakIdleCtx);
+  ctx->function = function;
+  ctx->object = object;
+  ctx->source_id = g_idle_add_full (
+      G_PRIORITY_DEFAULT_IDLE, idle_callback, ctx, idle_removed);
+
+  g_object_weak_ref (
+      object, idle_weak_ref_notify, GUINT_TO_POINTER (ctx->source_id));
+  return ctx->source_id;
+}
+
+typedef struct {
     gchar *key;
     gchar *value;
 } Attribute;

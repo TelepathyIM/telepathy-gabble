@@ -27,6 +27,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "util.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
 #define REQUEST_PIPELINE_SIZE 5
@@ -405,7 +406,7 @@ gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
    * there's an error, the callback will be called after this function returns.
    */
   if (g_slist_length (priv->items_in_flight) < REQUEST_PIPELINE_SIZE)
-    g_idle_add (delayed_run_pipeline, pipeline);
+    gabble_idle_add_weak (delayed_run_pipeline, G_OBJECT (pipeline));
 
   return item;
 }

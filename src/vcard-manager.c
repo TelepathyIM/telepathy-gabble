@@ -1020,7 +1020,8 @@ manager_patch_vcard (GabbleVCardManager *self,
   priv->patched_vcard = lm_message_node_ref (patched_vcard);
 
   priv->edit_pipeline_item = gabble_request_pipeline_enqueue (
-      priv->connection->req_pipeline, msg, 0, replace_reply_cb, self);
+      priv->connection->req_pipeline, msg, DEFAULT_REQUEST_TIMEOUT,
+      replace_reply_cb, self);
 
   lm_message_unref (msg);
 

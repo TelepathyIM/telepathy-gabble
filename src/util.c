@@ -1037,7 +1037,6 @@ static gboolean
 idle_callback (gpointer data)
 {
   WeakIdleCtx *ctx = (WeakIdleCtx *) data;
-  gboolean ret;
 
   if (ctx->function ((gpointer) ctx->object))
     {
@@ -1049,8 +1048,6 @@ idle_callback (gpointer data)
           ctx->object, idle_weak_ref_notify, GUINT_TO_POINTER (ctx->source_id));
       return FALSE;
     }
-
-  return ret;
 }
 
 /* Like g_idle_add(), but cancel the callback if the provided object is

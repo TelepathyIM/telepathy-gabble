@@ -29,8 +29,8 @@
 #include "debug.h"
 #include "util.h"
 
-#define DEFAULT_REQUEST_TIMEOUT 20000
-#define REQUEST_PIPELINE_SIZE 5
+#define DEFAULT_REQUEST_TIMEOUT 180000
+#define REQUEST_PIPELINE_SIZE 10
 
 /* Properties */
 enum

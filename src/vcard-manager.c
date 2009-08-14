@@ -37,7 +37,7 @@
 #include "request-pipeline.h"
 #include "util.h"
 
-#define DEFAULT_REQUEST_TIMEOUT 60000
+#define DEFAULT_REQUEST_TIMEOUT 180000
 #define VCARD_CACHE_ENTRY_TTL 60
 
 static const gchar *NO_ALIAS = "none";

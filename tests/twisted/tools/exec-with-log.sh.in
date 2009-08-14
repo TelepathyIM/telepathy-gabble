@@ -25,5 +25,5 @@ elif test -n "$GABBLE_TEST_STRACE"; then
         GABBLE_WRAPPER="strace -o strace.log"
 fi
 
-export G_DEBUG=fatal-warnings" ${G_DEBUG}"
+export G_DEBUG=fatal-warnings,fatal-criticals" ${G_DEBUG}"
 exec @abs_top_builddir@/libtool --mode=execute $GABBLE_WRAPPER ../telepathy-gabble-debug

@@ -21,11 +21,13 @@ AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
 
 TESTS = $(noinst_PROGRAMS)
 
+TESTS_ENVIRONMENT = G_DEBUG=fatal-warnings,fatal-criticals
+
 check-valgrind:
 	G_SLICE=always-malloc \
 	G_DEBUG=gc-friendly \
 	$(MAKE) \
-		TESTS_ENVIRONMENT="\
+		TESTS_ENVIRONMENT="$(TESTS_ENVIRONMENT) \
 		libtool --mode=execute valgrind \
 			--leak-check=full \
 			--show-reachable=no \

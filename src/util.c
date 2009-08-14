@@ -1030,8 +1030,6 @@ idle_removed (gpointer data)
 {
   WeakIdleCtx *ctx = (WeakIdleCtx *) data;
 
-  g_object_weak_unref (
-      ctx->object, idle_weak_ref_notify, GUINT_TO_POINTER (ctx->source_id));
   g_slice_free (WeakIdleCtx, ctx);
 }
 
@@ -1039,8 +1037,20 @@ static gboolean
 idle_callback (gpointer data)
 {
   WeakIdleCtx *ctx = (WeakIdleCtx *) data;
+  gboolean ret;
 
-  return ctx->function ((gpointer) ctx->object);
+  if (ctx->function ((gpointer) ctx->object))
+    {
+      return TRUE;
+    }
+  else
+    {
+      g_object_weak_unref (
+          ctx->object, idle_weak_ref_notify, GUINT_TO_POINTER (ctx->source_id));
+      return FALSE;
+    }
+
+  return ret;
 }
 
 /* Like g_idle_add(), but cancel the callback if the provided object is

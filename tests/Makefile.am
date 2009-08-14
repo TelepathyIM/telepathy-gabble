@@ -7,6 +7,7 @@ noinst_PROGRAMS = \
 	test-base64 \
 	test-caps-hash \
 	test-dtube-unique-names \
+	test-gabble-idle-weak \
 	test-handles \
 	test-jid-decode \
 	test-parse-message \

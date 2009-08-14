@@ -131,7 +131,7 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
   guint i;
   GError *error = NULL;
   GHashTable *return_locations = g_hash_table_new_full (g_direct_hash,
-      g_direct_equal, NULL, (GDestroyNotify) g_hash_table_destroy);
+      g_direct_equal, NULL, (GDestroyNotify) g_hash_table_unref);
 
   DEBUG ("GetLocation for contacts:");
 

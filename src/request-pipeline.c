@@ -391,6 +391,7 @@ gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
   if (timeout == 0)
       timeout = DEFAULT_REQUEST_TIMEOUT;
   item->timer_id = g_timeout_add (timeout, timeout_cb, item);
+  item->timeout = timeout;
   item->in_flight = FALSE;
   item->callback = callback;
   item->user_data = user_data;

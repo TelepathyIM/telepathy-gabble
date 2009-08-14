@@ -93,6 +93,33 @@ pep_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static GHashTable *
+get_cached_location_or_query (GabbleConnection *conn,
+    TpHandle contact,
+    GError **error)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  GHashTable *location;
+  const gchar *jid;
+  TpHandleRepoIface *contact_repo;
+
+  contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+  jid = tp_handle_inspect (contact_repo, contact);
+
+  location = gabble_presence_cache_get_location (conn->presence_cache, contact);
+  if (location != NULL)
+    {
+      DEBUG (" - %s: cached", jid);
+      return location;
+    }
+
+  /* Send a query */
+  if (pubsub_query (conn, jid, NS_GEOLOC, pep_reply_cb, error))
+    DEBUG (" - %s: requested", jid);
+
+  return NULL;
+}
+
 static void
 location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
                         const GArray *contacts,
@@ -122,43 +149,32 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
       return;
     }
 
-
   for (i = 0; i < contacts->len; i++)
     {
-      TpHandleRepoIface *contact_repo;
-      const gchar *jid;
       GHashTable *location;
       TpHandle contact = g_array_index (contacts, TpHandle, i);
 
-      contact_repo = tp_base_connection_get_handles (base,
-          TP_HANDLE_TYPE_CONTACT);
-      jid = tp_handle_inspect (contact_repo, contact);
-
-      location = gabble_presence_cache_get_location (conn->presence_cache,
-          contact);
-      if (location != NULL)
-        {
-          DEBUG (" - %s: cached", jid);
-          g_hash_table_insert (return_locations, GUINT_TO_POINTER (contact),
-              location);
-        }
-      else if (!pubsub_query (conn, jid, NS_GEOLOC, pep_reply_cb, NULL))
+      location = get_cached_location_or_query (conn, contact, &error);
+      if (error != NULL)
         {
           GError error2 = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "Sending PEP location query failed" };
 
+          DEBUG ("Sending PEP location query failed: %s", error->message);
+          g_error_free (error);
           dbus_g_method_return_error (context, &error2);
           g_hash_table_unref (return_locations);
-
           return;
-        } else
-           DEBUG (" - %s: requested", jid);
+        }
+
+      if (location != NULL)
+        g_hash_table_insert (return_locations, GUINT_TO_POINTER (contact),
+            location);
     }
 
   gabble_svc_connection_interface_location_return_from_get_locations
       (context, return_locations);
   g_hash_table_unref (return_locations);
-
 }
 
 static gboolean

@@ -345,6 +345,7 @@ send_next_request (GabbleRequestPipeline *pipeline)
     {
       priv->items_in_flight = g_slist_prepend (priv->items_in_flight, item);
       item->in_flight = TRUE;
+      item->timer_id = g_timeout_add (item->timeout, timeout_cb, item);
     }
 }
 
@@ -390,7 +391,6 @@ gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
   item->message = msg;
   if (timeout == 0)
       timeout = DEFAULT_REQUEST_TIMEOUT;
-  item->timer_id = g_timeout_add (timeout, timeout_cb, item);
   item->timeout = timeout;
   item->in_flight = FALSE;
   item->callback = callback;

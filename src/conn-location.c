@@ -12,7 +12,6 @@
 #include <telepathy-glib/interfaces.h>
 
 #include "debug.h"
-#include "extensions/extensions.h"
 #include "namespaces.h"
 #include "pubsub.h"
 #include "presence-cache.h"

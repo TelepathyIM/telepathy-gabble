@@ -72,24 +72,6 @@ test_handles (guint handle_type)
   return_jid = tp_handle_inspect (tp_repo, handle);
   g_assert (!strcmp (return_jid, jid));
 
-  if (handle_type != TP_HANDLE_TYPE_LIST)
-    {
-      /* Hold the handle */
-      g_assert (tp_handle_client_hold (tp_repo, "TestSuite", handle, NULL) == TRUE);
-
-      /* Now unref it */
-      tp_handle_unref (tp_repo, handle);
-
-      /* Validate it, should be all healthy because client holds it still */
-      g_assert (tp_handle_is_valid (tp_repo, handle, NULL) == TRUE);
-
-      /* Ref it again */
-      tp_handle_ref (tp_repo, handle);
-
-      /* Client releases it */
-      g_assert (tp_handle_client_release (tp_repo, "TestSuite", handle, NULL) == TRUE);
-    }
-
   /* Now unref it */
   tp_handle_unref (tp_repo, handle);
 

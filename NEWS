@@ -5,7 +5,12 @@ The “Great Big OMG” release.
 
 Dependencies:
 
+* telepathy-glib >= 0.7.34 is now required as Gabble implements the
+  Location API.
+
 Enhancements:
+
+* Location and Debug are now implemented as stable interfaces.
 
 Fixes:
 

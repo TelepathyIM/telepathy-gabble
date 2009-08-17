@@ -9,6 +9,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_LOCATION
 
 #include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/interfaces.h>
 
 #include "debug.h"
 #include "extensions/extensions.h"
@@ -123,7 +124,7 @@ get_cached_location_or_query (GabbleConnection *conn,
 }
 
 static void
-location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
+location_get_locations (TpSvcConnectionInterfaceLocation *iface,
                         const GArray *contacts,
                         DBusGMethodInvocation *context)
 {
@@ -174,7 +175,7 @@ location_get_locations (GabbleSvcConnectionInterfaceLocation *iface,
             location);
     }
 
-  gabble_svc_connection_interface_location_return_from_get_locations
+  tp_svc_connection_interface_location_return_from_get_locations
       (context, return_locations);
   g_hash_table_unref (return_locations);
 }
@@ -245,7 +246,7 @@ add_to_geoloc_node (const gchar *tp_name,
 }
 
 static void
-location_set_location (GabbleSvcConnectionInterfaceLocation *iface,
+location_set_location (TpSvcConnectionInterfaceLocation *iface,
                        GHashTable *location,
                        DBusGMethodInvocation *context)
 {
@@ -305,9 +306,9 @@ out:
 void
 location_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcConnectionInterfaceLocationClass *klass = g_iface;
+  TpSvcConnectionInterfaceLocationClass *klass = g_iface;
 
-#define IMPLEMENT(x) gabble_svc_connection_interface_location_implement_##x \
+#define IMPLEMENT(x) tp_svc_connection_interface_location_implement_##x \
   (klass, location_##x)
   IMPLEMENT(get_locations);
   IMPLEMENT(set_location);
@@ -375,7 +376,7 @@ conn_location_properties_setter (GObject *object,
   GValue *access_control_type_value;
   TpRichPresenceAccessControlType access_control_type;
   g_return_val_if_fail (interface ==
-      GABBLE_IFACE_QUARK_CONNECTION_INTERFACE_LOCATION, FALSE);
+      TP_IFACE_QUARK_CONNECTION_INTERFACE_LOCATION, FALSE);
 
   /* There is only one property with write access. So TpDBusPropertiesMixin
    * already checked this. */
@@ -494,7 +495,7 @@ update_location_from_msg (GabbleConnection *conn,
       g_hash_table_insert (location, g_strdup (mapping->tp_name), value);
     }
 
-  gabble_svc_connection_interface_location_emit_location_updated (conn,
+  tp_svc_connection_interface_location_emit_location_updated (conn,
       contact, location);
   gabble_presence_cache_update_location (conn->presence_cache, contact,
       location);
@@ -539,7 +540,7 @@ conn_location_fill_contact_attributes (GObject *obj,
               TP_HASH_TYPE_STRING_VARIANT_MAP, location);
 
           tp_contacts_mixin_set_contact_attribute (attributes_hash,
-            handle, GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION"/location",
+            handle, TP_IFACE_CONNECTION_INTERFACE_LOCATION"/location",
             val);
 
           g_hash_table_unref (location);
@@ -551,6 +552,6 @@ void
 conn_location_init (GabbleConnection *conn)
 {
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    GABBLE_IFACE_CONNECTION_INTERFACE_LOCATION,
+    TP_IFACE_CONNECTION_INTERFACE_LOCATION,
     conn_location_fill_contact_attributes);
 }

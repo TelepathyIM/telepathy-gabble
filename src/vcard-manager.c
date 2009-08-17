@@ -906,7 +906,7 @@ replace_reply_cb (GabbleConnection *conn,
     {
       GabbleVCardManagerEditRequest *req = li->data;
       li = g_list_next (li);
-      if (req->set_in_pipeline)
+      if (req->set_in_pipeline || err)
         {
           if (req->callback)
             {

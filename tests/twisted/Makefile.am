@@ -83,6 +83,7 @@ TWISTED_TESTS = \
 	vcard/test-set-alias.py \
 	vcard/test-vcard-cache.py \
 	vcard/test-vcard-race.py \
+	vcard/update-get-failed.py \
 	vcard/update-rejected.py \
 	jingle/accept-extra-stream.py \
 	jingle/call-state.py \

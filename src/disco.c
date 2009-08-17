@@ -458,8 +458,7 @@ gabble_disco_request (GabbleDisco *self, GabbleDiscoType type,
  * @type: type of request
  * @jid: Jabber ID to request on
  * @node: node to request on @jid, or NULL
- * @timeout: the time until the request fails, in milliseconds (1/1000ths of
- *           a second)
+ * @timeout: the time until the request fails, in seconds
  * @callback: #GabbleDiscoCb to call on request fullfilment
  * @object: GObject to bind request to. the callback will not be
  *          called if this object has been unrefed. NULL if not needed
@@ -519,7 +518,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
   else
     {
       request->timer_id =
-          g_timeout_add (timeout, timeout_request, request);
+          g_timeout_add_seconds (timeout, timeout_request, request);
       lm_message_unref (msg);
       return request;
     }

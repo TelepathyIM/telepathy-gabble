@@ -29,8 +29,8 @@
 #include "debug.h"
 #include "util.h"
 
-#define DEFAULT_REQUEST_TIMEOUT 20000
-#define REQUEST_PIPELINE_SIZE 5
+#define DEFAULT_REQUEST_TIMEOUT 180
+#define REQUEST_PIPELINE_SIZE 10
 
 /* Properties */
 enum
@@ -279,15 +279,54 @@ response_cb (GabbleConnection *conn,
   priv->items_in_flight = g_slist_remove (priv->items_in_flight, item);
 
   if (!item->zombie)
-      item->callback (priv->connection, reply, item->user_data, NULL);
+    {
+      GError *error = gabble_message_get_xmpp_error (reply);
+
+      if (error)
+        {
+          item->callback (priv->connection, reply, item->user_data, error);
+          g_error_free (error);
+        }
+      else
+        {
+          item->callback (priv->connection, reply, item->user_data, NULL);
+        }
+    }
   else
+    {
       DEBUG ("ignoring zombie connection reply");
+    }
 
   delete_item (item);
 
   gabble_request_pipeline_go (pipeline);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static gboolean
+timeout_cb (gpointer data)
+{
+  GabbleRequestPipelineItem *item = (GabbleRequestPipelineItem *) data;
+  GabbleRequestPipeline *pipeline = item->pipeline;
+  GabbleRequestPipelinePrivate *priv;
+  GError *error = NULL;
+
+  g_assert (GABBLE_IS_REQUEST_PIPELINE (pipeline));
+  priv = GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
+
+  error = g_error_new (GABBLE_REQUEST_PIPELINE_ERROR,
+      GABBLE_REQUEST_PIPELINE_ERROR_TIMEOUT,
+      "Request timed out");
+
+  item->callback (priv->connection, NULL, item->user_data, error);
+
+  item->timer_id = 0;
+  item->zombie = TRUE;
+
+  gabble_request_pipeline_go (pipeline);
+
+  return FALSE;
 }
 
 static void
@@ -320,6 +359,7 @@ send_next_request (GabbleRequestPipeline *pipeline)
     {
       priv->items_in_flight = g_slist_prepend (priv->items_in_flight, item);
       item->in_flight = TRUE;
+      item->timer_id = g_timeout_add_seconds (item->timeout, timeout_cb, item);
     }
 }
 
@@ -338,31 +378,6 @@ gabble_request_pipeline_go (GabbleRequestPipeline *pipeline)
     {
       send_next_request (pipeline);
     }
-}
-
-static gboolean
-timeout_cb (gpointer data)
-{
-  GabbleRequestPipelineItem *item = (GabbleRequestPipelineItem *) data;
-  GabbleRequestPipeline *pipeline = item->pipeline;
-  GabbleRequestPipelinePrivate *priv;
-  GError *error = NULL;
-
-  g_assert (GABBLE_IS_REQUEST_PIPELINE (pipeline));
-  priv = GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
-
-  error = g_error_new (GABBLE_REQUEST_PIPELINE_ERROR,
-      GABBLE_REQUEST_PIPELINE_ERROR_TIMEOUT,
-      "Request timed out");
-
-  item->callback (priv->connection, NULL, item->user_data, error);
-
-  item->timer_id = 0;
-  item->zombie = TRUE;
-
-  gabble_request_pipeline_go (pipeline);
-
-  return FALSE;
 }
 
 static gboolean
@@ -390,7 +405,7 @@ gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
   item->message = msg;
   if (timeout == 0)
       timeout = DEFAULT_REQUEST_TIMEOUT;
-  item->timer_id = g_timeout_add (timeout, timeout_cb, item);
+  item->timeout = timeout;
   item->in_flight = FALSE;
   item->callback = callback;
   item->user_data = user_data;

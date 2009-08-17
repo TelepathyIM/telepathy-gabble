@@ -37,7 +37,7 @@
 #include "request-pipeline.h"
 #include "util.h"
 
-#define DEFAULT_REQUEST_TIMEOUT 60000
+#define DEFAULT_REQUEST_TIMEOUT 180
 #define VCARD_CACHE_ENTRY_TTL 60
 
 static const gchar *NO_ALIAS = "none";
@@ -368,9 +368,8 @@ cache_entry_timeout (gpointer data)
 
   if (entry)
     {
-      priv->cache_timer = g_timeout_add (
-          1000 * (entry->expires - time (NULL)),
-          cache_entry_timeout, manager);
+      priv->cache_timer = g_timeout_add_seconds (
+          entry->expires - time (NULL), cache_entry_timeout, manager);
     }
 
   return FALSE;
@@ -825,28 +824,9 @@ observe_vcard (GabbleConnection *conn,
       g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE], 0, handle);
 }
 
-static GError *
-get_error_from_pipeline_reply (LmMessage *reply_msg, GError *error)
-{
-    GError *err = NULL;
-
-    if (error)
-        return g_error_copy (error);
-
-    if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_ERROR)
-        return NULL;
-
-    err = gabble_message_get_xmpp_error (reply_msg);
-
-    if (err == NULL)
-      {
-        err = g_error_new (GABBLE_VCARD_MANAGER_ERROR,
-            GABBLE_VCARD_MANAGER_ERROR_UNKNOWN, "An unknown error occurred");
-      }
-
-    return err;
-}
-
+/* Called when a pre-set get request failed, or when a set request succeeded
+ * or failed.
+ */
 static void
 replace_reply_cb (GabbleConnection *conn,
                   LmMessage *reply_msg,
@@ -856,25 +836,21 @@ replace_reply_cb (GabbleConnection *conn,
   GabbleVCardManager *self = GABBLE_VCARD_MANAGER (user_data);
   GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) conn;
-
-  GError *err = get_error_from_pipeline_reply (reply_msg, error);
   GList *li;
-  LmMessageNode *node;
+  LmMessageNode *node = NULL;
 
-  g_assert (priv->edit_pipeline_item != NULL);
+  /* If we sent a SET request, it's dead now. */
   priv->edit_pipeline_item = NULL;
 
   DEBUG ("called: %s error", (error) ? "some" : "no");
 
-  if (err)
+  if (error)
     {
       /* We won't need our patched vcard after all */
       if (priv->patched_vcard != NULL)
           lm_message_node_unref (priv->patched_vcard);
 
       priv->patched_vcard = NULL;
-
-      node = NULL;
     }
   else
     {
@@ -901,21 +877,18 @@ replace_reply_cb (GabbleConnection *conn,
   li = priv->edit_requests;
   while (li)
     {
-      GabbleVCardManagerEditRequest *req = (GabbleVCardManagerEditRequest *) li->data;
+      GabbleVCardManagerEditRequest *req = li->data;
       li = g_list_next (li);
-      if (req->set_in_pipeline)
+      if (req->set_in_pipeline || error)
         {
           if (req->callback)
             {
-              (req->callback) (req->manager, req, node, err, req->user_data);
+              (req->callback) (req->manager, req, node, error, req->user_data);
             }
 
           gabble_vcard_manager_remove_edit_request (req);
         }
     }
-
-  if (err != NULL)
-    g_error_free (err);
 
   /* If we've received more edit requests in the meantime, send them off. */
   manager_patch_vcard (self, node);
@@ -1020,7 +993,8 @@ manager_patch_vcard (GabbleVCardManager *self,
   priv->patched_vcard = lm_message_node_ref (patched_vcard);
 
   priv->edit_pipeline_item = gabble_request_pipeline_enqueue (
-      priv->connection->req_pipeline, msg, 0, replace_reply_cb, self);
+      priv->connection->req_pipeline, msg, DEFAULT_REQUEST_TIMEOUT,
+      replace_reply_cb, self);
 
   lm_message_unref (msg);
 
@@ -1051,7 +1025,6 @@ pipeline_reply_cb (GabbleConnection *conn,
   TpHandleRepoIface *contact_repo =
       tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *vcard_node = NULL;
-  GError *err = NULL;
 
   DEBUG("called for entry %p", entry);
 
@@ -1061,8 +1034,7 @@ pipeline_reply_cb (GabbleConnection *conn,
 
   entry->pipeline_item = NULL;
 
-  err = get_error_from_pipeline_reply (reply_msg, error);
-  if (err)
+  if (error)
     {
       /* If request for our own vCard failed, and we do have
        * pending edits to make, cancel those and return error
@@ -1077,9 +1049,7 @@ pipeline_reply_cb (GabbleConnection *conn,
         }
 
       /* Complete pending GET requests */
-      cache_entry_complete_requests (entry, err);
-
-      g_error_free (err);
+      cache_entry_complete_requests (entry, error);
       return;
     }
 
@@ -1108,8 +1078,8 @@ pipeline_reply_cb (GabbleConnection *conn,
       GabbleVCardCacheEntry *first =
           tp_heap_peek_first (priv->timed_cache);
 
-      priv->cache_timer = g_timeout_add (
-          (first->expires - time (NULL)) * 1000, cache_entry_timeout, self);
+      priv->cache_timer = g_timeout_add_seconds (
+          first->expires - time (NULL), cache_entry_timeout, self);
     }
 
   /* We have freshly updated cache for our vCard, edit it if
@@ -1222,7 +1192,8 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   request->entry->pending_requests = g_slist_prepend
       (request->entry->pending_requests, request);
 
-  request->timer_id = g_timeout_add (timeout, timeout_request, request);
+  request->timer_id =
+      g_timeout_add_seconds (timeout, timeout_request, request);
   cache_entry_ensure_queued (request->entry, timeout);
   return request;
 }

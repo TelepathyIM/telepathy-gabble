@@ -25,6 +25,7 @@
 static gboolean
 copy_attribute (const gchar *key,
     const gchar *value,
+    const gchar *prefix,
     const gchar *ns,
     gpointer user_data)
 {

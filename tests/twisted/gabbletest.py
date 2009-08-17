@@ -464,7 +464,8 @@ def _elem_add(elem, *children):
         elif isinstance(child, unicode):
             elem.addContent(child)
         else:
-            raise ValueError('invalid child object %r', child)
+            raise ValueError(
+                'invalid child object %r (must be element or unicode)', child)
 
 def elem(a, b=None, **kw):
     r"""

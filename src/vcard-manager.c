@@ -847,6 +847,9 @@ get_error_from_pipeline_reply (LmMessage *reply_msg, GError *error)
     return err;
 }
 
+/* Called when a pre-set get request failed, or when a set request succeeded
+ * or failed.
+ */
 static void
 replace_reply_cb (GabbleConnection *conn,
                   LmMessage *reply_msg,
@@ -861,7 +864,7 @@ replace_reply_cb (GabbleConnection *conn,
   GList *li;
   LmMessageNode *node;
 
-  g_assert (priv->edit_pipeline_item != NULL);
+  /* If we sent a SET request, it's dead now. */
   priv->edit_pipeline_item = NULL;
 
   DEBUG ("called: %s error", (error) ? "some" : "no");

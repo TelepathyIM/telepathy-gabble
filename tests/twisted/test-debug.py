@@ -14,7 +14,7 @@ if not DEBUGGING:
     raise SystemExit(77)
 
 path = '/org/freedesktop/Telepathy/debug'
-iface = 'org.freedesktop.Telepathy.Debug.DRAFT'
+iface = 'org.freedesktop.Telepathy.Debug'
 
 def test(q, bus, conn, stream):
     messages = []

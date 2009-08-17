@@ -37,7 +37,7 @@
 #include "request-pipeline.h"
 #include "util.h"
 
-#define DEFAULT_REQUEST_TIMEOUT 180000
+#define DEFAULT_REQUEST_TIMEOUT 180
 #define VCARD_CACHE_ENTRY_TTL 60
 
 static const gchar *NO_ALIAS = "none";
@@ -368,9 +368,8 @@ cache_entry_timeout (gpointer data)
 
   if (entry)
     {
-      priv->cache_timer = g_timeout_add (
-          1000 * (entry->expires - time (NULL)),
-          cache_entry_timeout, manager);
+      priv->cache_timer = g_timeout_add_seconds (
+          entry->expires - time (NULL), cache_entry_timeout, manager);
     }
 
   return FALSE;
@@ -1079,8 +1078,8 @@ pipeline_reply_cb (GabbleConnection *conn,
       GabbleVCardCacheEntry *first =
           tp_heap_peek_first (priv->timed_cache);
 
-      priv->cache_timer = g_timeout_add (
-          (first->expires - time (NULL)) * 1000, cache_entry_timeout, self);
+      priv->cache_timer = g_timeout_add_seconds (
+          first->expires - time (NULL), cache_entry_timeout, self);
     }
 
   /* We have freshly updated cache for our vCard, edit it if
@@ -1193,7 +1192,8 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   request->entry->pending_requests = g_slist_prepend
       (request->entry->pending_requests, request);
 
-  request->timer_id = g_timeout_add (timeout, timeout_request, request);
+  request->timer_id =
+      g_timeout_add_seconds (timeout, timeout_request, request);
   cache_entry_ensure_queued (request->entry, timeout);
   return request;
 }

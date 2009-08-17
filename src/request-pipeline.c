@@ -29,7 +29,7 @@
 #include "debug.h"
 #include "util.h"
 
-#define DEFAULT_REQUEST_TIMEOUT 180000
+#define DEFAULT_REQUEST_TIMEOUT 180
 #define REQUEST_PIPELINE_SIZE 10
 
 /* Properties */
@@ -359,7 +359,7 @@ send_next_request (GabbleRequestPipeline *pipeline)
     {
       priv->items_in_flight = g_slist_prepend (priv->items_in_flight, item);
       item->in_flight = TRUE;
-      item->timer_id = g_timeout_add (item->timeout, timeout_cb, item);
+      item->timer_id = g_timeout_add_seconds (item->timeout, timeout_cb, item);
     }
 }
 

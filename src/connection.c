@@ -74,7 +74,7 @@
 #include "util.h"
 #include "vcard-manager.h"
 
-static guint disco_reply_timeout = 5000;
+static guint disco_reply_timeout = 5;
 
 #define DEFAULT_RESOURCE_FORMAT "Telepathy.%x"
 

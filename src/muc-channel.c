@@ -46,11 +46,11 @@
 #include "util.h"
 #include "presence-cache.h"
 
-#define DEFAULT_JOIN_TIMEOUT (180 * 1000)
+#define DEFAULT_JOIN_TIMEOUT 180
 #define MAX_NICK_RETRIES 3
 
-#define PROPS_POLL_INTERVAL_LOW  (60 * 1000 * 5)
-#define PROPS_POLL_INTERVAL_HIGH (60 * 1000)
+#define PROPS_POLL_INTERVAL_LOW  60 * 5
+#define PROPS_POLL_INTERVAL_HIGH 60
 
 static void channel_iface_init (gpointer, gpointer);
 static void password_iface_init (gpointer, gpointer);
@@ -1331,7 +1331,7 @@ channel_state_changed (GabbleMucChannel *chan,
   if (new_state == MUC_STATE_INITIATED)
     {
       priv->join_timer_id =
-        g_timeout_add (DEFAULT_JOIN_TIMEOUT, timeout_join, chan);
+        g_timeout_add_seconds (DEFAULT_JOIN_TIMEOUT, timeout_join, chan);
     }
   else if (new_state == MUC_STATE_JOINED)
     {
@@ -1349,7 +1349,8 @@ channel_state_changed (GabbleMucChannel *chan,
       else
         interval = PROPS_POLL_INTERVAL_HIGH;
 
-      priv->poll_timer_id = g_timeout_add (interval, timeout_poll, chan);
+      priv->poll_timer_id =
+          g_timeout_add_seconds (interval, timeout_poll, chan);
 
       /* no need to keep this around any longer, if it's set */
       g_free (priv->password);

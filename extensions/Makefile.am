@@ -8,7 +8,6 @@ EXTRA_DIST = \
     Channel_Future.xml \
     Connection_Interface_Contact_Capabilities.xml \
     Channel_Type_Streamed_Media_Future.xml \
-    Connection_Interface_Location.xml \
     Debug.xml \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \

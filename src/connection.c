@@ -31,6 +31,7 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 #include <wocky/wocky-connector.h>
+#include <wocky/wocky-xmpp-error.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>

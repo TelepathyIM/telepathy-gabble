@@ -904,7 +904,7 @@ replace_reply_cb (GabbleConnection *conn,
   li = priv->edit_requests;
   while (li)
     {
-      GabbleVCardManagerEditRequest *req = (GabbleVCardManagerEditRequest *) li->data;
+      GabbleVCardManagerEditRequest *req = li->data;
       li = g_list_next (li);
       if (req->set_in_pipeline)
         {

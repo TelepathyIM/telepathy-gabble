@@ -1,7 +1,8 @@
-telepathy-gabble 0.7.33 (UNRELEASED)
-====================================
+telepathy-gabble 0.8.0 (2009-08-18)
+===================================
 
-The “Great Big OMG” release.
+The “place a chair facing the oven and sit in it forever” release. This is the
+first release in the 0.8 stable series.
 
 Dependencies:
 
@@ -12,7 +13,17 @@ Enhancements:
 
 * Location and Debug are now implemented as stable interfaces.
 
+* Timeouts are synchronised to the second where possible, leading to fewer
+  wakeups.
+
 Fixes:
+
+* Fix race condition introduced by fix for fd.o #22023.
+
+* Make vCard request less likely to time out.
+
+* Fix a bug where a vCard request failure could cause SetAvatar or SetAliases
+  not to return.
 
 telepathy-gabble 0.7.32 (2009-08-09)
 ====================================

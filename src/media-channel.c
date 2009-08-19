@@ -620,7 +620,6 @@ static gboolean gabble_media_channel_add_member (GObject *obj,
     GError **error);
 static gboolean gabble_media_channel_remove_member (GObject *obj,
     TpHandle handle, const gchar *message, guint reason, GError **error);
-static void gabble_media_channel_close (GabbleMediaChannel *self);
 
 static void
 gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_class)
@@ -895,7 +894,7 @@ gabble_media_channel_close_async (TpSvcChannel *iface,
   tp_svc_channel_return_from_close (context);
 }
 
-static void
+void
 gabble_media_channel_close (GabbleMediaChannel *self)
 {
   GabbleMediaChannelPrivate *priv = self->priv;

@@ -1894,7 +1894,8 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   g_free (caps_hash);
   lm_message_unref (message);
 
-  gabble_muc_factory_broadcast_presence (self->muc_factory);
+  if (!self->priv->closing)
+    gabble_muc_factory_broadcast_presence (self->muc_factory);
 
   return ret;
 }

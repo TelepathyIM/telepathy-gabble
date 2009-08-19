@@ -823,6 +823,7 @@ gabble_media_channel_dispose (GObject *object)
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_CONTACT);
+  GList *l;
 
   if (priv->dispose_has_run)
     return;
@@ -831,10 +832,20 @@ gabble_media_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* StreamCreationData * holds a reference to the media channel; thus, we
-   * shouldn't be disposed till they've all gone away.
+  if (!priv->closed)
+    gabble_media_channel_close (self);
+
+  g_assert (priv->closed);
+  g_assert (priv->session == NULL);
+
+  /* Since the session's dead, all the stream_creation_datas should have been
+   * cancelled (which is indicated by their 'content' being NULL).
    */
-  g_assert (priv->stream_creation_datas == NULL);
+  for (l = priv->stream_creation_datas; l != NULL; l = l->next)
+    {
+      StreamCreationData *d = l->data;
+      g_assert (d->content == NULL);
+    }
 
   if (priv->delayed_request_streams != NULL)
     {
@@ -852,12 +863,6 @@ gabble_media_channel_dispose (GObject *object)
       tp_handle_unref (contact_handles, priv->initial_peer);
       priv->initial_peer = 0;
     }
-
-  if (!priv->closed)
-    gabble_media_channel_close (self);
-
-  g_assert (priv->closed);
-  g_assert (priv->session == NULL);
 
   /* All of the streams should have closed in response to the contents being
    * removed when the call ended.
@@ -2654,7 +2659,6 @@ static void
 stream_creation_data_free (gpointer p)
 {
   StreamCreationData *d = p;
-  GabbleMediaChannelPrivate *priv = d->self->priv;
 
   g_free (d->name);
 
@@ -2664,9 +2668,15 @@ stream_creation_data_free (gpointer p)
       g_object_unref (d->content);
     }
 
-  priv->stream_creation_datas = g_list_remove (priv->stream_creation_datas, d);
+  if (d->self != NULL)
+    {
+      GabbleMediaChannelPrivate *priv = d->self->priv;
 
-  g_object_unref (d->self);
+      g_object_remove_weak_pointer (G_OBJECT (d->self), (gpointer *) &d->self);
+      priv->stream_creation_datas = g_list_remove (
+          priv->stream_creation_datas, d);
+    }
+
   g_slice_free (StreamCreationData, d);
 }
 
@@ -2675,7 +2685,7 @@ construct_stream_later_cb (gpointer user_data)
 {
   StreamCreationData *d = user_data;
 
-  if (d->content != NULL)
+  if (d->content != NULL && d->self != NULL)
     construct_stream (d->self, d->content, d->name, d->nat_traversal, NULL);
 
   return FALSE;
@@ -2687,7 +2697,7 @@ google_relay_session_cb (GPtrArray *relays,
 {
   StreamCreationData *d = user_data;
 
-  if (d->content != NULL)
+  if (d->content != NULL && d->self != NULL)
     construct_stream (d->self, d->content, d->name, d->nat_traversal, relays);
 
   stream_creation_data_free (d);
@@ -2697,11 +2707,13 @@ static void
 content_removed_cb (GabbleJingleContent *content,
                     StreamCreationData *d)
 {
-  if (d->content != NULL)
+
+  if (d->content == NULL)
+    return;
+
+  if (d->self != NULL)
     {
       GList *link = d->self->priv->pending_stream_requests;
-
-      g_signal_handler_disconnect (d->content, d->removed_id);
 
       /* if any RequestStreams call was waiting for a stream to be created for
        * that content, return from it unsuccessfully */
@@ -2723,10 +2735,11 @@ content_removed_cb (GabbleJingleContent *content,
               link = link->next;
             }
         }
-
-      g_object_unref (d->content);
-      d->content = NULL;
     }
+
+  g_signal_handler_disconnect (d->content, d->removed_id);
+  g_object_unref (d->content);
+  d->content = NULL;
 }
 
 static void
@@ -2747,12 +2760,13 @@ create_stream_from_content (GabbleMediaChannel *self,
       return;
     }
 
-
   d = g_slice_new0 (StreamCreationData);
 
-  d->self = g_object_ref (self);
+  d->self = self;
   d->name = name;
   d->content = g_object_ref (c);
+
+  g_object_add_weak_pointer (G_OBJECT (d->self), (gpointer *) &d->self);
 
   /* If the content gets removed before we've finished looking up its
    * relay (can this happen?) we need to cancel the creation of the stream,

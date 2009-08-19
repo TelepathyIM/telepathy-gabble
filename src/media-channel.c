@@ -139,6 +139,14 @@ const TpPropertySignature channel_property_signatures[NUM_CHAN_PROPS] = {
       { "gtalk-p2p-relay-token",  G_TYPE_STRING }
 };
 
+typedef struct {
+    GabbleMediaChannel *self;
+    GabbleJingleContent *content;
+    gulong removed_id;
+    gchar *name;
+    const gchar *nat_traversal;
+} StreamCreationData;
+
 struct _delayed_request_streams_ctx {
   GabbleMediaChannel *chan;
   gulong caps_disco_id;
@@ -2628,14 +2636,6 @@ construct_stream (GabbleMediaChannel *chan,
 
   g_free (object_path);
 }
-
-typedef struct {
-    GabbleMediaChannel *self;
-    GabbleJingleContent *content;
-    gulong removed_id;
-    gchar *name;
-    const gchar *nat_traversal;
-} StreamCreationData;
 
 static void
 stream_creation_data_cancel (gpointer p,

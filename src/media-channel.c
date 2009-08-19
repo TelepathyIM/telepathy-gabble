@@ -2769,7 +2769,7 @@ create_stream_from_content (GabbleMediaChannel *self,
   g_object_add_weak_pointer (G_OBJECT (d->self), (gpointer *) &d->self);
 
   /* If the content gets removed before we've finished looking up its
-   * relay (can this happen?) we need to cancel the creation of the stream,
+   * relay, we need to cancel the creation of the stream,
    * and make any PendingStreamRequests fail */
   d->removed_id = g_signal_connect (c, "removed",
       G_CALLBACK (content_removed_cb), d);

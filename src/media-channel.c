@@ -2254,14 +2254,7 @@ gabble_media_channel_remove_member (GObject *obj,
 static GPtrArray *
 copy_stream_list (GabbleMediaChannel *channel)
 {
-  GabbleMediaChannelPrivate *priv = channel->priv;
-  guint i;
-  GPtrArray *ret = g_ptr_array_sized_new (priv->streams->len);
-
-  for (i = 0; i < priv->streams->len; i++)
-    g_ptr_array_add (ret, g_ptr_array_index (priv->streams, i));
-
-  return ret;
+  return gabble_g_ptr_array_copy (channel->priv->streams);
 }
 
 static void

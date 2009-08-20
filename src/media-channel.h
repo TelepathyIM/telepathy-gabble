@@ -82,6 +82,8 @@ void gabble_media_channel_request_initial_streams (GabbleMediaChannel *chan,
     GFunc failed_cb,
     gpointer user_data);
 
+void gabble_media_channel_close (GabbleMediaChannel *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_MEDIA_CHANNEL_H__*/

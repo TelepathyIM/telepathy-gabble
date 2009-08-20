@@ -5,7 +5,7 @@ Test getting relay from Google jingleinfo
 from gabbletest import exec_test, make_result_iq, sync_stream, \
         GoogleXmlStream, disconnect_conn
 from servicetest import make_channel_proxy, tp_path_prefix, \
-        EventPattern, call_async, sync_dbus
+        EventPattern, call_async, sync_dbus, assertEquals
 import jingletest
 import gabbletest
 import constants as cs
@@ -302,29 +302,41 @@ def test_too_slow(q, bus, conn, stream, httpd, media_chan, too_slow):
     """
 
     # User gets bored, and ends the call.
+    e = EventPattern('dbus-signal', signal='Closed',
+        path=media_chan.object_path[len(tp_path_prefix):])
+
     if too_slow == TOO_SLOW_CLOSE:
         call_async(q, media_chan, 'Close', dbus_interface=cs.CHANNEL)
     elif too_slow == TOO_SLOW_REMOVE_SELF:
         media_chan.RemoveMembers([conn.GetSelfHandle()], "",
             dbus_interface=cs.CHANNEL_IFACE_GROUP)
     elif too_slow == TOO_SLOW_DISCONNECT:
-        disconnect_conn(q, conn, stream)
+        disconnect_conn(q, conn, stream, [e])
+
+        try:
+            media_chan.GetMembers()
+        except dbus.DBusException, e:
+            # This should fail because the object's gone away, not because
+            # Gabble's crashed.
+            assert cs.UNKNOWN_METHOD == e.get_dbus_name(), \
+                "maybe Gabble crashed? %s" % e
+        else:
+            # Gabble will probably also crash in a moment, because the http
+            # request callbacks will be called after the channel's meant to
+            # have died, which will cause the channel to try to call methods on
+            # the (finalized) connection.
+            assert False, "the channel should be dead by now"
+
         return
 
-    q.expect('dbus-signal', signal='Closed',
-        path=media_chan.object_path[len(tp_path_prefix):])
+    q.expect_many(e)
 
-    # If we've disconnected, Gabble's no longer waiting for the reply. The
-    # Closed signal arriving proves that calling Disconnect() while Gabble was
-    # waiting for an http response didn't crash it (see
-    # <http://bugs.freedesktop.org/show_bug.cgi?id=22535>).
-    if too_slow != TOO_SLOW_DISCONNECT:
-        # Now Google answers!
-        httpd.handle_request()
-        httpd.handle_request()
+    # Now Google answers!
+    httpd.handle_request()
+    httpd.handle_request()
 
-        # Make a misc method call to check that Gabble's still alive.
-        sync_dbus(bus, q, conn)
+    # Make a misc method call to check that Gabble's still alive.
+    sync_dbus(bus, q, conn)
 
 if __name__ == '__main__':
     exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True),

@@ -105,7 +105,8 @@ gabble_media_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   gabble_media_factory_close_all (fac);
-  g_assert (priv->channels == NULL);
+  g_assert (priv->channels->len == 0);
+  g_ptr_array_free (priv->channels, TRUE);
 
   if (G_OBJECT_CLASS (gabble_media_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_factory_parent_class)->dispose (object);
@@ -191,14 +192,11 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
   tp_channel_manager_emit_channel_closed_for_object (fac,
       TP_EXPORTABLE_CHANNEL (chan));
 
-  if (priv->channels != NULL)
-    {
-      DEBUG ("removing media channel %p with ref count %d",
-          chan, G_OBJECT (chan)->ref_count);
+  DEBUG ("removing media channel %p with ref count %d",
+      chan, G_OBJECT (chan)->ref_count);
 
-      g_ptr_array_remove (priv->channels, chan);
-      g_object_unref (chan);
-    }
+  g_ptr_array_remove (priv->channels, chan);
+  g_object_unref (chan);
 }
 
 /**
@@ -253,27 +251,17 @@ static void
 gabble_media_factory_close_all (GabbleMediaFactory *fac)
 {
   GabbleMediaFactoryPrivate *priv = fac->priv;
+  GPtrArray *tmp = gabble_g_ptr_array_copy (priv->channels);
+  guint i;
 
   DEBUG ("closing channels");
 
-  if (priv->channels != NULL)
+  for (i = 0; i < tmp->len; i++)
     {
-      GPtrArray *tmp = priv->channels;
-      guint i;
+      GabbleMediaChannel *chan = g_ptr_array_index (tmp, i);
 
-      priv->channels = NULL;
-
-      for (i = 0; i < tmp->len; i++)
-        {
-          GabbleMediaChannel *chan = g_ptr_array_index (tmp, i);
-
-          DEBUG ("about to unref channel with ref_count %d",
-                   G_OBJECT (chan)->ref_count);
-
-          g_object_unref (chan);
-        }
-
-      g_ptr_array_free (tmp, TRUE);
+      DEBUG ("closing %p", chan);
+      gabble_media_channel_close (chan);
     }
 
   if (priv->status_changed_id != 0)

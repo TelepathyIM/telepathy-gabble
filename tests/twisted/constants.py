@@ -70,6 +70,8 @@ CONNECTION_FAILED = ERROR + '.ConnectionFailed'
 CONNECTION_LOST = ERROR + '.ConnectionLost'
 CANCELLED = ERROR + '.Cancelled'
 
+UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
+
 TUBE_PARAMETERS = CHANNEL_IFACE_TUBE + '.Parameters'
 TUBE_STATE = CHANNEL_IFACE_TUBE + '.State'
 STREAM_TUBE_SERVICE = CHANNEL_TYPE_STREAM_TUBE + '.Service'

@@ -175,7 +175,11 @@ AC_SUBST(TEST_PYTHON)
 AM_CONDITIONAL([WANT_TWISTED_TESTS], test false != "$TEST_PYTHON")
 
 dnl Check for Wocky
-PKG_CHECK_MODULES(WOCKY, wocky >= 0.0.0)
+# re-enable once Wocky has been released as a lib
+#PKG_CHECK_MODULES(WOCKY, wocky >= 0.0.0)
+
+WOCKY_CFLAGS="-I \$(top_srcdir)/lib/ext/wocky"
+WOCKY_LIBS="\$(top_srcdir)/lib/ext/wocky/wocky/libwocky.la"
 AC_SUBST(WOCKY_CFLAGS)
 AC_SUBST(WOCKY_LIBS)
 

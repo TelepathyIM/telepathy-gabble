@@ -479,6 +479,14 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
           g_object_set (c->session, "dialect", JINGLE_DIALECT_GTALK3, NULL);
           transport_type = gabble_jingle_factory_lookup_transport (
               c->conn->jingle_factory, "");
+
+          /* in practice we do support gtalk-p2p, so this can't happen */
+          if (G_UNLIKELY (transport_type == 0))
+            {
+              SET_BAD_REQ ("gtalk-p2p transport unsupported");
+              return;
+            }
+
           priv->transport_ns = g_strdup ("");
         }
     }

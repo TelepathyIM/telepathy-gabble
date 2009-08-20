@@ -183,6 +183,16 @@ WOCKY_LIBS="\$(top_srcdir)/lib/ext/wocky/wocky/libwocky.la"
 AC_SUBST(WOCKY_CFLAGS)
 AC_SUBST(WOCKY_LIBS)
 
+AC_CONFIG_COMMANDS([configure-embedded-wocky],
+  [echo "== Configuring embedded Wocky instance =="
+  origdir=`pwd`
+
+  cd "$top_srcdir"lib/ext/wocky &&
+         ./configure ||
+         AC_MSG_ERROR([Failed to configure embedded Wocky tree])
+     cd "$origdir"
+ ])
+
 dnl Check for libsoup
 PKG_CHECK_MODULES(SOUP, libsoup-2.4)
 AC_SUBST(SOUP_CFLAGS)

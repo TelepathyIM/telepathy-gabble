@@ -1113,3 +1113,15 @@ next_attribute:
 
   return result;
 }
+
+GPtrArray *
+gabble_g_ptr_array_copy (GPtrArray *source)
+{
+  GPtrArray *ret = g_ptr_array_sized_new (source->len);
+  guint i;
+
+  for (i = 0; i < source->len; i++)
+    g_ptr_array_add (ret, g_ptr_array_index (source, i));
+
+  return ret;
+}

@@ -93,4 +93,6 @@ const gchar * lm_message_node_get_attribute_with_namespace (LmMessageNode *node,
     const gchar *attribute,
     const gchar *ns);
 
+GPtrArray *gabble_g_ptr_array_copy (GPtrArray *source);
+
 #endif /* __GABBLE_UTIL_H__ */

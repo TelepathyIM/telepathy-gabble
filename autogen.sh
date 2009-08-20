@@ -15,6 +15,11 @@ fi
 
 autoreconf -i -f
 
+# launch Wocky's autogen.sh
+cd lib/ext/wocky
+sh autogen.sh
+cd ../../..
+
 run_configure=true
 for arg in $*; do
     case $arg in

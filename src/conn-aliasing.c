@@ -308,6 +308,26 @@ aliases_request_pep_cb (GabbleConnection *self,
     aliases_request_free (aliases_request);
 }
 
+typedef struct {
+  GabbleRequestPipelineCb callback;
+  gpointer user_data;
+  TpHandleRepoIface *contact_handles;
+  TpHandle handle;
+} pep_request_ctx;
+
+static void
+pep_request_cb (
+    GabbleConnection *conn,
+    LmMessage *msg,
+    gpointer user_data,
+    GError *error)
+{
+  pep_request_ctx *ctx = user_data;
+
+  ctx->callback (conn, msg, ctx->user_data, error);
+  tp_handle_unref (ctx->contact_handles, ctx->handle);
+  g_slice_free (pep_request_ctx, ctx);
+}
 
 static GabbleRequestPipelineItem *
 gabble_do_pep_request (GabbleConnection *self,
@@ -318,7 +338,14 @@ gabble_do_pep_request (GabbleConnection *self,
 {
   LmMessage *msg;
   GabbleRequestPipelineItem *pep_request;
+  pep_request_ctx *ctx = g_slice_new0 (pep_request_ctx);
 
+  ctx->callback = callback;
+  ctx->user_data = user_data;
+  ctx->contact_handles = contact_handles;
+  ctx->handle = handle;
+
+  tp_handle_ref (contact_handles, handle);
   msg = lm_message_build (tp_handle_inspect (contact_handles, handle),
       LM_MESSAGE_TYPE_IQ,
       '@', "type", "get",
@@ -330,7 +357,7 @@ gabble_do_pep_request (GabbleConnection *self,
       ')',
       NULL);
    pep_request = gabble_request_pipeline_enqueue (self->req_pipeline,
-      msg, 0, callback, user_data);
+      msg, 0, pep_request_cb, ctx);
    lm_message_unref (msg);
 
    return pep_request;

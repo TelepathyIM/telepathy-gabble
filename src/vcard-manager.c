@@ -407,7 +407,7 @@ cache_entry_attempt_to_free (GabbleVCardCacheEntry *entry)
     {
       /* if we do have some pending edits, we should also have
        * some pipeline items or pending requests */
-      g_assert (priv->edits == NULL);
+      g_assert (priv->edit_pipeline_item || priv->edits == NULL);
     }
 
   tp_heap_remove (priv->timed_cache, entry);

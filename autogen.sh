@@ -15,6 +15,14 @@ fi
 
 autoreconf -i -f
 
+# Fetch Wocky if needed
+if test ! -f lib/ext/wocky/autogen.sh;
+then
+  echo "+ Setting up Wocky submodule"
+  git submodule init
+fi
+git submodule update
+
 # launch Wocky's autogen.sh
 cd lib/ext/wocky
 sh autogen.sh

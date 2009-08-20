@@ -1,7 +1,21 @@
-telepathy-gabble 0.8.1 (UNRELEASED)
+telepathy-gabble 0.8.1 (2009-08-20)
 ===================================
 
-???
+The “five pounds of cherries and a live beaver” release.
+
+Fixes:
+
+* fd.o#22535: Gabble no longer crashes if you disconnect while it's
+  trying to start a Google relay session for a call. This should have
+  been fixed in 0.7.31, but it's really fixed now. :-) (wjt)
+
+* Fix an occasional crash when PEP requests time out, or are cancelled
+  when you disconnect. (daf)
+
+* Correct an assertion about vCard edits not to fire incorrectly. (daf)
+
+* Clarify some correct-but-confusing behaviour in libjingle 0.3 mode,
+  which fixes a Coverity false-positive. (smcv)
 
 telepathy-gabble 0.8.0 (2009-08-18)
 ===================================

@@ -2045,7 +2045,7 @@ gabble_media_channel_request_initial_streams (GabbleMediaChannel *chan,
 static gboolean
 contact_is_media_capable (GabbleMediaChannel *chan,
     TpHandle peer,
-    gboolean *wait,
+    gboolean *wait_ret,
     GError **error)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
@@ -2054,21 +2054,21 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_CONTACT);
-  gboolean wait_ = FALSE;
+  gboolean wait = FALSE;
 
   if (gabble_presence_cache_caps_pending (priv->conn->presence_cache, peer))
     {
       DEBUG ("caps are pending for peer %u", peer);
-      wait_ = TRUE;
+      wait = TRUE;
     }
   else if (gabble_presence_cache_is_unsure (priv->conn->presence_cache))
     {
       DEBUG ("presence cache is still unsure (interested in handle %u)", peer);
-      wait_ = TRUE;
+      wait = TRUE;
     }
 
-  if (wait != NULL)
-    *wait = wait_;
+  if (wait_ret != NULL)
+    *wait_ret = wait;
 
   caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE |
     PRESENCE_CAP_JINGLE_RTP |

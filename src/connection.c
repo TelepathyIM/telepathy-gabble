@@ -3273,31 +3273,29 @@ gabble_connection_request_handles (TpSvcConnection *iface,
 
 void
 gabble_connection_ensure_capabilities (GabbleConnection *self,
-                                       GabblePresenceCapabilities caps)
+    const GabbleCapabilitySet *ensured)
 {
   GabbleConnectionPrivate *priv = self->priv;
-  GabblePresenceCapabilities old_caps, new_caps;
   GabbleCapabilitySet *cap_set;
+  GError *error = NULL;
 
-  old_caps = self->self_presence->caps;
-  new_caps = old_caps;
-  new_caps |= caps;
-
-  if (old_caps ^ new_caps)
+  if (gabble_presence_resource_has_caps (self->self_presence,
+        priv->resource, gabble_capability_set_predicate_at_least, ensured))
     {
-      /* We changed capabilities */
-      GError *error = NULL;
+      DEBUG ("nothing to do");
+      return;
+    }
 
-      cap_set = gabble_capability_set_new_from_flags (caps);
-      gabble_presence_set_capabilities (self->self_presence, priv->resource,
-          cap_set, new_caps, priv->caps_serial++);
-      gabble_capability_set_free (cap_set);
+  cap_set = gabble_presence_dup_caps (self->self_presence);
+  gabble_capability_set_update (cap_set, ensured);
+  gabble_presence_set_capabilities (self->self_presence, priv->resource,
+      cap_set, capabilities_parse (cap_set), priv->caps_serial++);
+  gabble_capability_set_free (cap_set);
 
-      if (!_gabble_connection_signal_own_presence (self, &error))
-        {
-          DEBUG ("error sending presence: %s", error->message);
-          g_error_free (error);
-        }
+  if (!_gabble_connection_signal_own_presence (self, &error))
+    {
+      DEBUG ("error sending presence: %s", error->message);
+      g_error_free (error);
     }
 }
 

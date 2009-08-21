@@ -137,7 +137,8 @@ location_get_locations (TpSvcConnectionInterfaceLocation *iface,
 
   DEBUG ("GetLocation for contacts:");
 
-  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_GEOLOCATION);
+  gabble_connection_ensure_capabilities (conn,
+      gabble_capabilities_get_geoloc_notify ());
 
   /* Validate contacts */
   contact_handles = tp_base_connection_get_handles (base,
@@ -268,7 +269,8 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
       return;
     }
 
-  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_GEOLOCATION);
+  gabble_connection_ensure_capabilities (conn,
+      gabble_capabilities_get_geoloc_notify ());
   msg = pubsub_make_publish_msg (NULL, NS_GEOLOC, NS_GEOLOC, "geoloc",
       &geoloc);
 

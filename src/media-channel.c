@@ -2060,7 +2060,6 @@ contact_is_media_capable (GabbleMediaChannel *chan,
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
-  GabblePresenceCapabilities caps;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_CONTACT);
@@ -2080,11 +2079,6 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   if (wait_ret != NULL)
     *wait_ret = wait;
 
-  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_VIDEO |
-    PRESENCE_CAP_JINGLE_RTP_AUDIO | PRESENCE_CAP_JINGLE_RTP_VIDEO |
-    PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
-    PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
-
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
 
   if (presence == NULL)
@@ -2095,15 +2089,22 @@ contact_is_media_capable (GabbleMediaChannel *chan,
       return FALSE;
     }
 
-  if ((presence->caps & caps) == 0)
+  if (gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VOICE) ||
+      gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VIDEO) ||
+      gabble_presence_has_cap (presence, NS_JINGLE_RTP_AUDIO) ||
+      gabble_presence_has_cap (presence, NS_JINGLE_RTP_VIDEO) ||
+      gabble_presence_has_cap (presence, NS_JINGLE_DESCRIPTION_AUDIO) ||
+      gabble_presence_has_cap (presence, NS_JINGLE_DESCRIPTION_VIDEO))
+    {
+      return TRUE;
+    }
+  else
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
           "contact %d (%s) doesn't have sufficient media caps", peer,
           tp_handle_inspect (contact_handles, peer));
       return FALSE;
     }
-
-  return TRUE;
 }
 
 static gboolean

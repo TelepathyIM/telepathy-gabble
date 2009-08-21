@@ -183,12 +183,13 @@ WOCKY_LIBS="\$(top_srcdir)/lib/ext/wocky/wocky/libwocky.la"
 AC_SUBST(WOCKY_CFLAGS)
 AC_SUBST(WOCKY_LIBS)
 
+# Always build Wocky with GTK doc support as we need it when doing "make check"
 AC_CONFIG_COMMANDS([configure-embedded-wocky],
   [echo "== Configuring embedded Wocky instance =="
   origdir=`pwd`
 
   cd "$top_srcdir"lib/ext/wocky &&
-         ./configure ||
+         ./configure --enable-gtk-doc ||
          AC_MSG_ERROR([Failed to configure embedded Wocky tree])
      cd "$origdir"
  ])

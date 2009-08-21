@@ -2290,14 +2290,15 @@ _emit_capabilities_changed (GabbleConnection *conn,
 
   for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
-      if (ccd->c2tf_fn (old_caps | new_caps))
+      guint old_specific = ccd->c2tf_fn (old_caps);
+      guint new_specific = ccd->c2tf_fn (new_caps);
+
+      if (old_specific != 0 || new_specific != 0)
         {
           GValue caps_monster_struct = {0, };
-          guint old_specific = ccd->c2tf_fn (old_caps);
           guint old_generic = old_specific ?
             TP_CONNECTION_CAPABILITY_FLAG_CREATE |
             TP_CONNECTION_CAPABILITY_FLAG_INVITE : 0;
-          guint new_specific = ccd->c2tf_fn (new_caps);
           guint new_generic = new_specific ?
             TP_CONNECTION_CAPABILITY_FLAG_CREATE |
             TP_CONNECTION_CAPABILITY_FLAG_INVITE : 0;

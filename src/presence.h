@@ -81,7 +81,7 @@ gboolean gabble_presence_update (GabblePresence *presence,
 
 void gabble_presence_set_capabilities (GabblePresence *presence,
     const gchar *resource,
-    GabbleCapabilitySet *cap_set,
+    const GabbleCapabilitySet *cap_set,
     GabblePresenceCapabilities caps,
     guint serial);
 

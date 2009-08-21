@@ -227,7 +227,7 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
 void
 gabble_presence_set_capabilities (GabblePresence *presence,
                                   const gchar *resource,
-                                  GabbleCapabilitySet *cap_set,
+                                  const GabbleCapabilitySet *cap_set,
                                   GabblePresenceCapabilities caps,
                                   guint serial)
 {

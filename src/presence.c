@@ -180,7 +180,7 @@ gabble_presence_dup_caps (GabblePresence *presence)
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,
-    GabbleCapabilitySetPredicate predicate, gpointer user_data)
+    GabbleCapabilitySetPredicate predicate, gconstpointer user_data)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
@@ -208,7 +208,7 @@ gboolean
 gabble_presence_resource_has_caps (GabblePresence *presence,
                                    const gchar *resource,
                                    GabbleCapabilitySetPredicate predicate,
-                                   gpointer user_data)
+                                   gconstpointer user_data)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
@@ -611,7 +611,7 @@ gabble_presence_removed_from_view (GabblePresence *self)
   return ret;
 }
 
-gpointer
+gconstpointer
 gabble_presence_resource_pick_best_feature (GabblePresence *presence,
     const gchar *resource,
     const GabbleFeatureFallback *table,

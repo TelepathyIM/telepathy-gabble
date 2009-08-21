@@ -82,7 +82,7 @@ gchar *gabble_capability_set_dump (const GabbleCapabilitySet *caps,
 
 /* A predicate used by the presence code to select suitable resources */
 typedef gboolean (*GabbleCapabilitySetPredicate) (
-    const GabbleCapabilitySet *set, gpointer user_data);
+    const GabbleCapabilitySet *set, gconstpointer user_data);
 /* These two functions are compatible with GabbleCapabilitySetPredicate;
  * pass in the desired capabilities as the user_data */
 #define gabble_capability_set_predicate_has \

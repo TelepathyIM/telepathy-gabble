@@ -89,11 +89,11 @@ gboolean gabble_presence_has_cap (GabblePresence *presence, const gchar *ns);
 GabbleCapabilitySet *gabble_presence_dup_caps (GabblePresence *presence);
 
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
-    GabbleCapabilitySetPredicate predicate, gpointer user_data);
+    GabbleCapabilitySetPredicate predicate, gconstpointer user_data);
 
 gboolean gabble_presence_resource_has_caps (GabblePresence *presence,
     const gchar *resource, GabbleCapabilitySetPredicate predicate,
-    gpointer user_data);
+    gconstpointer user_data);
 
 LmMessage *gabble_presence_as_message (GabblePresence *presence,
     const gchar *to);
@@ -105,10 +105,11 @@ gboolean gabble_presence_removed_from_view (GabblePresence *presence);
 /* Data-driven feature fallback */
 typedef struct {
     gboolean considered;
-    gpointer check_data;
-    gpointer result;
+    gconstpointer check_data;
+    gconstpointer result;
 } GabbleFeatureFallback;
-gpointer gabble_presence_resource_pick_best_feature (GabblePresence *presence,
+gconstpointer gabble_presence_resource_pick_best_feature (
+    GabblePresence *presence,
     const gchar *resource,
     const GabbleFeatureFallback *table,
     GabbleCapabilitySetPredicate predicate);

@@ -11,7 +11,7 @@
 
 static gboolean
 predicate_true (const GabbleCapabilitySet *set,
-    gpointer unused G_GNUC_UNUSED)
+    gconstpointer unused G_GNUC_UNUSED)
 {
   return TRUE;
 }

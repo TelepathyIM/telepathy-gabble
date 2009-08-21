@@ -2064,7 +2064,7 @@ connection_auth_cb (LmConnection *lmconn,
   GError *error = NULL;
   const gchar *jid;
   GabblePresenceCapabilities caps;
-  GabbleCapabilitySet *cap_set;
+  const GabbleCapabilitySet *cap_set;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
@@ -2126,11 +2126,10 @@ connection_auth_cb (LmConnection *lmconn,
       GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
 
   /* set initial capabilities */
-  caps = capabilities_get_initial_caps ();
-  cap_set = gabble_capability_set_new_from_flags (caps);
+  cap_set = gabble_capabilities_get_initial_caps ();
+  caps = capabilities_parse (cap_set);
   gabble_presence_set_capabilities (conn->self_presence, priv->resource,
       cap_set, caps, priv->caps_serial++);
-  gabble_capability_set_free (cap_set);
 
   if (!gabble_disco_request_with_timeout (conn->disco, GABBLE_DISCO_TYPE_INFO,
                                           priv->stream_server, NULL,

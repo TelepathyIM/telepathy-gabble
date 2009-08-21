@@ -119,12 +119,8 @@ const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
  */
 void capabilities_fill_cache (GabblePresenceCache *cache);
 
-/*
- * capabilities_get_initial_caps
- *
- * Return the GabblePresenceCapabilities we always have
- */
-GabblePresenceCapabilities capabilities_get_initial_caps (void);
+/* Return the capabilities we always have */
+const GabbleCapabilitySet *gabble_capabilities_get_initial_caps (void);
 
 GabblePresenceCapabilities capabilities_parse (const GabbleCapabilitySet *cap_set);
 

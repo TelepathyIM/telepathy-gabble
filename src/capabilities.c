@@ -86,6 +86,7 @@ static GabbleCapabilitySet *video_v1_caps = NULL;
 static GabbleCapabilitySet *any_audio_caps = NULL;
 static GabbleCapabilitySet *any_video_caps = NULL;
 static GabbleCapabilitySet *any_transport_caps = NULL;
+static GabbleCapabilitySet *initial_caps = NULL;
 
 const GabbleCapabilitySet *
 gabble_capabilities_get_bundle_voice_v1 (void)
@@ -115,6 +116,12 @@ const GabbleCapabilitySet *
 gabble_capabilities_get_any_transport (void)
 {
   return any_transport_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_initial_caps (void)
+{
+  return initial_caps;
 }
 
 static gboolean
@@ -164,6 +171,8 @@ gabble_capabilities_init (GabbleConnection *conn)
 
   if (feature_handles_refcount++ == 0)
     {
+      const Feature *feat;
+
       g_assert (feature_handles == NULL);
       /* TpDynamicHandleRepo wants a handle type, which isn't relevant here
        * (we're just using it as a string pool). Use an arbitrary handle type
@@ -193,6 +202,14 @@ gabble_capabilities_init (GabbleConnection *conn)
       gabble_capability_set_add (any_transport_caps, NS_GOOGLE_TRANSPORT_P2P);
       gabble_capability_set_add (any_transport_caps, NS_JINGLE_TRANSPORT_ICEUDP);
       gabble_capability_set_add (any_transport_caps, NS_JINGLE_TRANSPORT_RAWUDP);
+
+      initial_caps = gabble_capability_set_new ();
+
+      for (feat = self_advertised_features; feat->ns != NULL; feat++)
+        {
+          if (feat->feature_type == FEATURE_FIXED)
+            gabble_capability_set_add (initial_caps, feat->ns);
+        }
     }
 
   g_assert (feature_handles != NULL);
@@ -212,12 +229,14 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       gabble_capability_set_free (any_audio_caps);
       gabble_capability_set_free (any_video_caps);
       gabble_capability_set_free (any_transport_caps);
+      gabble_capability_set_free (initial_caps);
 
       voice_v1_caps = NULL;
       video_v1_caps = NULL;
       any_audio_caps = NULL;
       any_video_caps = NULL;
       any_transport_caps = NULL;
+      initial_caps = NULL;
 
       g_object_unref (feature_handles);
       feature_handles = NULL;
@@ -288,23 +307,6 @@ capabilities_fill_cache (GabblePresenceCache *cache)
   gabble_presence_cache_add_bundle_caps (cache,
     "http://www.google.com/xmpp/client/caps#voice-v1",
     PRESENCE_CAP_GOOGLE_VOICE, NS_GOOGLE_FEAT_VOICE);
-}
-
-GabblePresenceCapabilities
-capabilities_get_initial_caps ()
-{
-  GabblePresenceCapabilities ret = 0;
-  const Feature *feat;
-
-  for (feat = self_advertised_features; NULL != feat->ns; feat++)
-    {
-      if (feat->feature_type == FEATURE_FIXED)
-        {
-          ret |= feat->caps;
-        }
-    }
-
-  return ret;
 }
 
 const CapabilityConversionData capabilities_conversions[] =

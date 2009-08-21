@@ -515,11 +515,15 @@ class JingleTest2:
                 jp.TransportGoogleP2P() ]) ]) ])
         self.stream.send(jp.xml(node))
 
-    def terminate(self, reason=None):
+    def terminate(self, reason=None, text=""):
         jp = self.jp
 
         if reason is not None and jp.is_modern_jingle():
-            body = [("reason", None, {}, [(reason, None, {}, [])])]
+            body = [("reason", None, {},
+                        [(reason, None, {}, []),
+                         ("text", None, {}, [text]),
+                        ]
+                    )]
         else:
             body = []
 

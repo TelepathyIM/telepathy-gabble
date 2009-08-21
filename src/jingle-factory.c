@@ -101,7 +101,9 @@ static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     gboolean local_hold);
 
 static void session_terminated_cb (GabbleJingleSession *sess,
-    gboolean local_terminator, TpChannelGroupChangeReason reason,
+    gboolean local_terminator,
+    TpChannelGroupChangeReason reason,
+    const gchar *text,
     GabbleJingleFactory *fac);
 
 static void connection_status_changed_cb (GabbleConnection *conn,
@@ -816,7 +818,7 @@ REQUEST_ERROR:
 
   if (sess != NULL && new_session)
     gabble_jingle_session_terminate (sess, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
-        NULL);
+        NULL, NULL);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -925,6 +927,7 @@ static void
 session_terminated_cb (GabbleJingleSession *session,
                        gboolean local_terminator,
                        TpChannelGroupChangeReason reason,
+                       const gchar *text,
                        GabbleJingleFactory *factory)
 {
   gchar *key = make_session_map_key (session->peer,

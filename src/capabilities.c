@@ -87,6 +87,8 @@ static GabbleCapabilitySet *any_audio_caps = NULL;
 static GabbleCapabilitySet *any_video_caps = NULL;
 static GabbleCapabilitySet *any_transport_caps = NULL;
 static GabbleCapabilitySet *initial_caps = NULL;
+static GabbleCapabilitySet *geoloc_caps = NULL;
+static GabbleCapabilitySet *olpc_caps = NULL;
 
 const GabbleCapabilitySet *
 gabble_capabilities_get_bundle_voice_v1 (void)
@@ -122,6 +124,18 @@ const GabbleCapabilitySet *
 gabble_capabilities_get_initial_caps (void)
 {
   return initial_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_geoloc_notify (void)
+{
+  return geoloc_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_olpc_notify (void)
+{
+  return olpc_caps;
 }
 
 static gboolean
@@ -210,6 +224,10 @@ gabble_capabilities_init (GabbleConnection *conn)
           if (feat->feature_type == FEATURE_FIXED)
             gabble_capability_set_add (initial_caps, feat->ns);
         }
+
+      geoloc_caps = gabble_capability_set_new_from_flags (
+          PRESENCE_CAP_GEOLOCATION);
+      olpc_caps = gabble_capability_set_new_from_flags (PRESENCE_CAP_OLPC_1);
     }
 
   g_assert (feature_handles != NULL);
@@ -230,6 +248,8 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       gabble_capability_set_free (any_video_caps);
       gabble_capability_set_free (any_transport_caps);
       gabble_capability_set_free (initial_caps);
+      gabble_capability_set_free (geoloc_caps);
+      gabble_capability_set_free (olpc_caps);
 
       voice_v1_caps = NULL;
       video_v1_caps = NULL;
@@ -237,6 +257,8 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       any_video_caps = NULL;
       any_transport_caps = NULL;
       initial_caps = NULL;
+      geoloc_caps = NULL;
+      olpc_caps = NULL;
 
       g_object_unref (feature_handles);
       feature_handles = NULL;

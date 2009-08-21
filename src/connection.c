@@ -3297,7 +3297,10 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
           priv->resource, new_caps, NULL, priv->caps_serial++);
 
       if (!_gabble_connection_signal_own_presence (self, &error))
-        DEBUG ("error sending presence: %s", error->message);
+        {
+          DEBUG ("error sending presence: %s", error->message);
+          g_error_free (error);
+        }
     }
 }
 

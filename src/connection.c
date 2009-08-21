@@ -1712,7 +1712,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
    * 1.5. */
   /* FIXME: We shouldn't have to copy the sets here */
   if (node == NULL || !tp_strdiff (suffix, caps_hash))
-    features = gabble_presence_get_caps (self->self_presence);
+    features = gabble_presence_dup_caps (self->self_presence);
   else if (!tp_strdiff (suffix, BUNDLE_VOICE_V1))
     features = gabble_capability_set_copy (
         gabble_capabilities_get_bundle_voice_v1 ());
@@ -2357,7 +2357,7 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
   else
     p = gabble_presence_cache_get (self->presence_cache, handle);
 
-  caps = gabble_presence_get_caps (p);
+  caps = gabble_presence_dup_caps (p);
 
   tp_base_connection_channel_manager_iter_init (&iter, base_conn);
 
@@ -2494,7 +2494,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
     }
 
   save_caps = caps = pres->caps;
-  save_set = gabble_presence_get_caps (pres);
+  save_set = gabble_presence_dup_caps (pres);
 
   caps |= add_caps;
   caps ^= (caps & remove_caps);
@@ -2586,7 +2586,7 @@ gabble_connection_set_self_capabilities (
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
-  old_caps = gabble_presence_get_caps (pres);
+  old_caps = gabble_presence_dup_caps (pres);
   new_caps = gabble_capability_set_new ();
 
   for (i = 0; i < caps->len; i++)

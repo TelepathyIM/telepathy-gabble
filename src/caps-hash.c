@@ -377,7 +377,7 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   /* Gabble does not use dataforms, let 'dataforms' be empty */
 
   /* FIXME: somehow allow iteration over this without copying twice */
-  cap_set = gabble_presence_get_caps (presence);
+  cap_set = gabble_presence_dup_caps (presence);
   gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
   gabble_capability_set_free (cap_set);
 

@@ -867,7 +867,7 @@ set_caps_for (DiscoWaiter *waiter,
     return;
 
   save_caps = presence->caps;
-  old_cap_set = gabble_presence_get_caps (presence);
+  old_cap_set = gabble_presence_dup_caps (presence);
 
   DEBUG ("setting caps for %d (thanks to %d %s) to %d (save_caps %d)",
       waiter->handle, responder_handle, responder_jid, caps, save_caps);
@@ -877,7 +877,7 @@ set_caps_for (DiscoWaiter *waiter,
 
   DEBUG ("caps for %d now %d", waiter->handle, presence->caps);
 
-  new_cap_set = gabble_presence_get_caps (presence);
+  new_cap_set = gabble_presence_dup_caps (presence);
 
   emit_capabilities_update (cache, waiter->handle, save_caps, presence->caps,
       old_cap_set, new_cap_set);
@@ -1174,7 +1174,7 @@ _process_caps (GabblePresenceCache *cache,
   if (presence)
     {
       old_caps = presence->caps;
-      old_cap_set = gabble_presence_get_caps (presence);
+      old_cap_set = gabble_presence_dup_caps (presence);
     }
 
   for (i = uris; NULL != i; i = i->next)
@@ -1187,7 +1187,7 @@ _process_caps (GabblePresenceCache *cache,
 
   if (presence)
     {
-      GabbleCapabilitySet *new_cap_set = gabble_presence_get_caps (presence);
+      GabbleCapabilitySet *new_cap_set = gabble_presence_dup_caps (presence);
 
       DEBUG ("Emitting caps update: handle %u, old %u, new %u",
           handle, old_caps, presence->caps);
@@ -1486,12 +1486,12 @@ gabble_presence_cache_do_update (
     presence = _cache_insert (cache, handle);
 
   caps_before = presence->caps;
-  old_cap_set = gabble_presence_get_caps (presence);
+  old_cap_set = gabble_presence_dup_caps (presence);
 
   ret = gabble_presence_update (presence, resource, presence_id,
       status_message, priority);
 
-  new_cap_set = gabble_presence_get_caps (presence);
+  new_cap_set = gabble_presence_dup_caps (presence);
 
   emit_capabilities_update (cache, handle, caps_before, presence->caps,
       old_cap_set, new_cap_set);

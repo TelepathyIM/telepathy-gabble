@@ -162,7 +162,7 @@ gabble_presence_has_cap (GabblePresence *presence,
 }
 
 GabbleCapabilitySet *
-gabble_presence_get_caps (GabblePresence *presence)
+gabble_presence_dup_caps (GabblePresence *presence)
 {
   GabbleCapabilitySet *ret, *tmp;
 

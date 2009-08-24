@@ -1691,8 +1691,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (node)
     lm_message_node_set_attribute (result_query, "node", node);
 
-  DEBUG ("got disco request for node %s, caps are %x", node,
-      gabble_presence_get_caps_bitfield (self->self_presence));
+  DEBUG ("got disco request for node %s", node);
 
   /* Every entity MUST have at least one identity (XEP-0030). Gabble publishs
    * one identity. If you change the identity here, you also need to change
@@ -2459,8 +2458,6 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
-  DEBUG ("caps before: %x", gabble_presence_get_caps_bitfield (pres));
-
   add_set = gabble_capability_set_new ();
   remove_set = gabble_capability_set_new ();
 
@@ -2510,7 +2507,6 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
       DEBUG ("before != after, changing");
       gabble_presence_set_capabilities (pres, priv->resource, cap_set,
           capabilities_parse (cap_set), priv->caps_serial++);
-      DEBUG ("set caps: %x", gabble_presence_get_caps_bitfield (pres));
     }
 
   ret = g_ptr_array_new ();

@@ -870,14 +870,11 @@ set_caps_for (DiscoWaiter *waiter,
   save_caps = gabble_presence_get_caps_bitfield (presence);
   old_cap_set = gabble_presence_dup_caps (presence);
 
-  DEBUG ("setting caps for %d (thanks to %d %s) to %d (save_caps %d)",
-      waiter->handle, responder_handle, responder_jid, caps, save_caps);
+  DEBUG ("setting caps for %d (thanks to %d %s)",
+      waiter->handle, responder_handle, responder_jid);
 
   gabble_presence_set_capabilities (presence, waiter->resource, cap_set,
       caps, waiter->serial);
-
-  DEBUG ("caps for %d now %d", waiter->handle,
-      gabble_presence_get_caps_bitfield (presence));
 
   new_cap_set = gabble_presence_dup_caps (presence);
 
@@ -1092,8 +1089,6 @@ _process_caps_uri (GabblePresenceCache *cache,
         {
           gabble_presence_set_capabilities (presence, resource, info->cap_set,
               capabilities_parse (info->cap_set), serial);
-          DEBUG ("caps for %d (%s) now %d", handle, from,
-              gabble_presence_get_caps_bitfield (presence));
         }
       else
         {

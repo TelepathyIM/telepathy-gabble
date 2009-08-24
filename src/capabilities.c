@@ -550,32 +550,40 @@ gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
     }
 }
 
-void
-gabble_capability_set_dump (const GabbleCapabilitySet *caps)
+gchar *
+gabble_capability_set_dump (const GabbleCapabilitySet *caps,
+    const gchar *indent)
 {
+  GString *ret;
   TpIntSetIter iter;
 
-  g_return_if_fail (caps != NULL);
+  g_return_val_if_fail (caps != NULL, NULL);
+
+  if (indent == NULL)
+    indent = "";
+
+  ret = g_string_new (indent);
+  g_string_append (ret, "--begin--\n");
 
   tp_intset_iter_init (&iter, tp_handle_set_peek (caps->handles));
-
-  DEBUG ("--begin--");
 
   while (tp_intset_iter_next (&iter))
     {
       const gchar *var = tp_handle_inspect (feature_handles, iter.element);
 
-      g_return_if_fail (var != NULL);
+      g_return_val_if_fail (var != NULL, NULL);
 
       if (var[0] == QUIRK_PREFIX_CHAR)
         {
-          DEBUG ("Quirk:   %s", var + 1);
+          g_string_append_printf (ret, "%sQuirk:   %s\n", indent, var + 1);
         }
       else
         {
-          DEBUG ("Feature: %s", var);
+          g_string_append_printf (ret, "%sFeature: %s\n", indent, var);
         }
     }
 
-  DEBUG ("--end--");
+  g_string_append (ret, indent);
+  g_string_append (ret, "--end--\n");
+  return g_string_free (ret, FALSE);
 }

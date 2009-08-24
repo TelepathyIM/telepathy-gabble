@@ -77,7 +77,8 @@ void gabble_capability_set_clear (GabbleCapabilitySet *caps);
 void gabble_capability_set_free (GabbleCapabilitySet *caps);
 void gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
     GFunc func, gpointer user_data);
-void gabble_capability_set_dump (const GabbleCapabilitySet *caps);
+gchar *gabble_capability_set_dump (const GabbleCapabilitySet *caps,
+    const gchar *indent);
 
 /* A predicate used by the presence code to select suitable resources */
 typedef gboolean (*GabbleCapabilitySetPredicate) (

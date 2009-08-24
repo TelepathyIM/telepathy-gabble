@@ -2290,14 +2290,15 @@ _emit_capabilities_changed (GabbleConnection *conn,
 
   for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
-      if (ccd->c2tf_fn (old_caps | new_caps))
+      guint old_specific = ccd->c2tf_fn (old_caps);
+      guint new_specific = ccd->c2tf_fn (new_caps);
+
+      if (old_specific != 0 || new_specific != 0)
         {
           GValue caps_monster_struct = {0, };
-          guint old_specific = ccd->c2tf_fn (old_caps);
           guint old_generic = old_specific ?
             TP_CONNECTION_CAPABILITY_FLAG_CREATE |
             TP_CONNECTION_CAPABILITY_FLAG_INVITE : 0;
-          guint new_specific = ccd->c2tf_fn (new_caps);
           guint new_generic = new_specific ?
             TP_CONNECTION_CAPABILITY_FLAG_CREATE |
             TP_CONNECTION_CAPABILITY_FLAG_INVITE : 0;
@@ -2527,7 +2528,9 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 
   for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
-      if (ccd->c2tf_fn (pres->caps))
+      guint tp_caps = ccd->c2tf_fn (pres->caps);
+
+      if (tp_caps != 0)
         {
           GValue iface_flags_pair = {0, };
 
@@ -2538,7 +2541,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 
           dbus_g_type_struct_set (&iface_flags_pair,
                                   0, ccd->iface,
-                                  1, ccd->c2tf_fn (pres->caps),
+                                  1, tp_caps,
                                   G_MAXUINT);
 
           g_ptr_array_add (ret, g_value_get_boxed (&iface_flags_pair));
@@ -3297,7 +3300,10 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
           priv->resource, new_caps, NULL, priv->caps_serial++);
 
       if (!_gabble_connection_signal_own_presence (self, &error))
-        DEBUG ("error sending presence: %s", error->message);
+        {
+          DEBUG ("error sending presence: %s", error->message);
+          g_error_free (error);
+        }
     }
 }
 

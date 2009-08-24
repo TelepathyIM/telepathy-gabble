@@ -2066,7 +2066,7 @@ gabble_media_channel_request_initial_streams (GabbleMediaChannel *chan,
 static gboolean
 contact_is_media_capable (GabbleMediaChannel *chan,
     TpHandle peer,
-    gboolean *wait,
+    gboolean *wait_ret,
     GError **error)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
@@ -2075,24 +2075,24 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_CONTACT);
-  gboolean wait_ = FALSE;
+  gboolean wait = FALSE;
 
   if (gabble_presence_cache_caps_pending (priv->conn->presence_cache, peer))
     {
       DEBUG ("caps are pending for peer %u", peer);
-      wait_ = TRUE;
+      wait = TRUE;
     }
   else if (gabble_presence_cache_is_unsure (priv->conn->presence_cache))
     {
       DEBUG ("presence cache is still unsure (interested in handle %u)", peer);
-      wait_ = TRUE;
+      wait = TRUE;
     }
 
-  if (wait != NULL)
-    *wait = wait_;
+  if (wait_ret != NULL)
+    *wait_ret = wait;
 
-  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE |
-    PRESENCE_CAP_JINGLE_RTP |
+  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_VIDEO |
+    PRESENCE_CAP_JINGLE_RTP_AUDIO | PRESENCE_CAP_JINGLE_RTP_VIDEO |
     PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
     PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
 
@@ -2509,10 +2509,6 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
 #define GTALK_VIDEO_CAPS \
    ( PRESENCE_CAP_GOOGLE_VIDEO )
 
-#define JINGLE_CAPS \
-  ( PRESENCE_CAP_JINGLE015 | PRESENCE_CAP_JINGLE032 \
-  | PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP )
-
 #define JINGLE_AUDIO_CAPS \
   ( PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE_RTP_AUDIO \
   | PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO )
@@ -2527,12 +2523,13 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
   GabblePresenceCapabilities caps = 0;
   gboolean gtalk_p2p;
 
-  DEBUG ("adding Jingle caps (%s, %s)",
+  DEBUG ("adding Jingle caps %u (%s, %s, %s, %s)", flags,
     flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO ? "audio" : "no audio",
-    flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO ? "video" : "no video");
-
-  /* We speak Jingle (old and new), and can always do raw UDP */
-  caps |= JINGLE_CAPS;
+    flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO ? "video" : "no video",
+    flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P
+        ? "gtalk-p2p" : "no gtalk-p2p",
+    flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP
+        ? "ice-udp" : "no ice-udp");
 
   if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP)
     caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP;

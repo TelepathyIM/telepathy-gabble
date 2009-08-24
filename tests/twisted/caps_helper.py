@@ -14,7 +14,10 @@ import constants as cs
 
 # The caps we always have, regardless of any clients' caps
 FIXED_CAPS = [
+    ns.JINGLE,
+    ns.JINGLE_015,
     ns.GOOGLE_FEAT_SESSION,
+    ns.JINGLE_TRANSPORT_RAWUDP,
     ns.NICK,
     ns.NICK + '+notify',
     ns.CHAT_STATES,
@@ -24,14 +27,10 @@ FIXED_CAPS = [
     ]
 
 JINGLE_CAPS = [
-    # Jingle dialects
-    ns.JINGLE,
-    ns.JINGLE_015,
-    # Jingle transports
+    # Additional Jingle transports
     ns.JINGLE_TRANSPORT_ICEUDP,
-    ns.JINGLE_TRANSPORT_RAWUDP,
     ns.GOOGLE_P2P,
-    # Jingle streams
+    # Jingle content types
     ns.GOOGLE_FEAT_VOICE,
     ns.GOOGLE_FEAT_VIDEO,
     ns.JINGLE_015_AUDIO,

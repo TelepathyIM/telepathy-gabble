@@ -2804,25 +2804,34 @@ TpChannelMediaCapabilities
 _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
 {
   TpChannelMediaCapabilities typeflags = 0;
+  gboolean has_a_transport;
 
-  /* this is intentionally asymmetric to the previous function - we don't
-   * require the other end to advertise the GTalk-P2P transport capability
-   * separately because old GTalk clients didn't do that - having Google voice
-   * implied Google session and GTalk-P2P */
+  /* FIXME: shouldn't we support audio/video for people with any transport
+   * that we ourselves support, not just gtalk-p2p? */
+  has_a_transport = ((caps & PRESENCE_CAP_GOOGLE_TRANSPORT_P2P) != 0);
 
-  if ((caps & PRESENCE_CAP_GOOGLE_VOICE) ||
-      ((caps & ( PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO
-               | PRESENCE_CAP_JINGLE_RTP_AUDIO
-               )) &&
-       (caps & PRESENCE_CAP_GOOGLE_TRANSPORT_P2P)))
-        typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
+  if (has_a_transport &&
+    (caps & (PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
+             PRESENCE_CAP_JINGLE_RTP_AUDIO |
+             PRESENCE_CAP_GOOGLE_VOICE)) != 0)
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
 
-  if ( (caps & PRESENCE_CAP_GOOGLE_VIDEO) ||
-      ((caps & ( PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO
-               | PRESENCE_CAP_JINGLE_RTP_VIDEO
-               )) &&
-       (caps & PRESENCE_CAP_GOOGLE_TRANSPORT_P2P)))
-        typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+  if (has_a_transport &&
+    (caps & (PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO |
+             PRESENCE_CAP_JINGLE_RTP_VIDEO |
+             PRESENCE_CAP_GOOGLE_VIDEO)) != 0)
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+
+  /* The checks below are an intentional asymmetry with the function going the
+   * other way - we don't require the other end to advertise the GTalk-P2P
+   * transport capability separately because old GTalk clients didn't do that.
+   * Having Google voice implied Google session and GTalk-P2P. */
+
+  if ((caps & PRESENCE_CAP_GOOGLE_VOICE) != 0)
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
+
+  if ((caps & PRESENCE_CAP_GOOGLE_VIDEO) != 0)
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
 
   return typeflags;
 }

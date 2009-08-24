@@ -299,8 +299,7 @@ capabilities_fill_cache (GabblePresenceCache *cache)
    * XMPP does not require to cache this bundle but some old versions of
    * Google Talk do not reply correctly to discovery requests. */
   gabble_presence_cache_add_bundle_caps (cache,
-    "http://www.google.com/xmpp/client/caps#voice-v1",
-    PRESENCE_CAP_GOOGLE_VOICE, NS_GOOGLE_FEAT_VOICE);
+    "http://www.google.com/xmpp/client/caps#voice-v1", NS_GOOGLE_FEAT_VOICE);
 }
 
 const CapabilityConversionData capabilities_conversions[] =

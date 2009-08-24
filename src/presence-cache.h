@@ -81,7 +81,7 @@ void gabble_presence_cache_update_many (GabblePresenceCache *cache,
 void gabble_presence_cache_maybe_remove (GabblePresenceCache *cache,
     TpHandle handle);
 void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
-    const gchar *node, GabblePresenceCapabilities caps, const gchar *ns);
+    const gchar *node, const gchar *ns);
 void gabble_presence_cache_really_remove (GabblePresenceCache *cache,
     TpHandle handle);
 

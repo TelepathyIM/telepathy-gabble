@@ -58,6 +58,8 @@ GType gabble_search_channel_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_SEARCH_CHANNEL, \
                               GabbleSearchChannelClass))
 
+void gabble_search_channel_close (GabbleSearchChannel *chan);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_SEARCH_CHANNEL_H__*/

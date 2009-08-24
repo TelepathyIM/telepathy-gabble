@@ -1291,13 +1291,13 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
 }
 
 /**
- * gabble_search_channel_close
+ * gabble_search_channel_close_async
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
  */
 static void
-gabble_search_channel_close (TpSvcChannel *iface,
+gabble_search_channel_close_async (TpSvcChannel *iface,
                              DBusGMethodInvocation *context)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (iface);
@@ -1313,9 +1313,9 @@ channel_iface_init (gpointer g_iface,
 {
   TpSvcChannelClass *klass = g_iface;
 
-#define IMPLEMENT(x) tp_svc_channel_implement_##x (\
-    klass, gabble_search_channel_##x)
-  IMPLEMENT(close);
+#define IMPLEMENT(x, suffix) tp_svc_channel_implement_##x (\
+    klass, gabble_search_channel_##x##suffix)
+  IMPLEMENT(close,_async);
 #undef IMPLEMENT
 }
 
@@ -1378,6 +1378,12 @@ gabble_search_channel_stop (GabbleSvcChannelTypeContactSearch *self,
       case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_MORE_AVAILABLE:
         g_assert_not_reached ();
     }
+}
+
+void
+gabble_search_channel_close (GabbleSearchChannel *self)
+{
+  ensure_closed (self);
 }
 
 static void

@@ -84,17 +84,26 @@ gabble_search_manager_init (GabbleSearchManager *self)
 static void
 gabble_search_manager_close_all (GabbleSearchManager *self)
 {
-  /* Use a temporary variable because we don't want search_channel_closed_cb to
-   * remove the channel from the hash table a second time
-   */
-  if (self->priv->channels != NULL)
-    {
-      GHashTable *tmp = self->priv->channels;
+  GList *chans, *l;
 
-      DEBUG ("closing channels");
-      self->priv->channels = NULL;
-      g_hash_table_destroy (tmp);
+  if (self->priv->channels == NULL)
+    return;
+
+  DEBUG ("closing channels");
+
+  /* We can't use a GHashTableIter as closing the channel while remove it from
+   * the hash table and we can't modify a hash table while iterating on it. */
+  chans = g_hash_table_get_keys (self->priv->channels);
+  for (l = chans; l != NULL; l = g_list_next (l))
+    {
+      GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (l->data);
+
+      gabble_search_channel_close (chan);
     }
+
+  g_hash_table_destroy (self->priv->channels);
+  self->priv->channels = NULL;
+  g_list_free (chans);
 }
 
 static void

@@ -71,8 +71,8 @@ GType gabble_media_channel_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_CHANNEL, \
                               GabbleMediaChannelClass))
 
-GabblePresenceCapabilities
-_gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags);
+void _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags,
+    GabbleCapabilitySet *caps);
 
 TpChannelMediaCapabilities
 _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps);

@@ -126,7 +126,7 @@ const GabbleCapabilitySet *gabble_capabilities_get_initial_caps (void);
 
 GabblePresenceCapabilities capabilities_parse (const GabbleCapabilitySet *cap_set);
 
-typedef GabblePresenceCapabilities (*TypeFlagsToCapsFunc) (guint typeflags);
+typedef void (*TypeFlagsToCapsFunc) (guint typeflags, GabbleCapabilitySet *caps);
 typedef guint (*CapsToTypeFlagsFunc) (GabblePresenceCapabilities caps);
 
 typedef struct _CapabilityConversionData CapabilityConversionData;

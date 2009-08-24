@@ -2460,10 +2460,14 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   GabbleCapabilitySet *cap_set;
   GabbleCapabilitySet *save_set;
   GError *error = NULL;
+  GabbleCapabilitySet *add_set, *remove_set;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   DEBUG ("caps before: %x", pres->caps);
+
+  add_set = gabble_capability_set_new ();
+  remove_set = gabble_capability_set_new ();
 
   for (i = 0; i < add->len; i++)
     {
@@ -2481,7 +2485,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 
       for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
           if (g_str_equal (channel_type, ccd->iface))
-            add_caps |= ccd->tf2c_fn (flags);
+            ccd->tf2c_fn (flags, add_set);
 
       g_free (channel_type);
     }
@@ -2490,8 +2494,14 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
     {
       for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
           if (g_str_equal (del[i], ccd->iface))
-            remove_caps |= ccd->tf2c_fn (~0);
+            ccd->tf2c_fn (~0, remove_set);
     }
+
+  add_caps = capabilities_parse (add_set);
+  remove_caps = capabilities_parse (remove_set);
+
+  gabble_capability_set_free (add_set);
+  gabble_capability_set_free (remove_set);
 
   save_caps = caps = pres->caps;
   save_set = gabble_presence_dup_caps (pres);

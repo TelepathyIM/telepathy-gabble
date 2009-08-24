@@ -2493,24 +2493,10 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
       chan, id, direction, pending_send);
 }
 
-#define GTALK_CAPS \
-  ( PRESENCE_CAP_GOOGLE_VOICE )
-
-#define GTALK_VIDEO_CAPS \
-   ( PRESENCE_CAP_GOOGLE_VIDEO )
-
-#define JINGLE_AUDIO_CAPS \
-  ( PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE_RTP_AUDIO \
-  | PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO )
-
-#define JINGLE_VIDEO_CAPS \
-  ( PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE_RTP_VIDEO \
-  | PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO )
-
-GabblePresenceCapabilities
-_gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
+void
+_gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags,
+    GabbleCapabilitySet *caps)
 {
-  GabblePresenceCapabilities caps = 0;
   gboolean gtalk_p2p;
 
   DEBUG ("adding Jingle caps %u (%s, %s, %s, %s)", flags,
@@ -2522,30 +2508,32 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
         ? "ice-udp" : "no ice-udp");
 
   if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP)
-    caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP;
+    gabble_capability_set_add (caps, NS_JINGLE_TRANSPORT_ICEUDP);
 
   gtalk_p2p = flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P;
 
   if (gtalk_p2p)
-    caps |= PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
+    gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
 
   if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
     {
-      caps |= JINGLE_AUDIO_CAPS;
+      gabble_capability_set_add (caps, NS_JINGLE_RTP);
+      gabble_capability_set_add (caps, NS_JINGLE_RTP_AUDIO);
+      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_AUDIO);
 
       if (gtalk_p2p)
-        caps |= GTALK_CAPS;
+        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
     }
 
   if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
     {
-      caps |= JINGLE_VIDEO_CAPS;
+      gabble_capability_set_add (caps, NS_JINGLE_RTP);
+      gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
+      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
 
       if (gtalk_p2p)
-        caps |= GTALK_VIDEO_CAPS;
+        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
     }
-
-  return caps;
 }
 
 static void

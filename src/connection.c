@@ -206,8 +206,6 @@ struct _GabbleConnectionPrivate
 
 static void connection_capabilities_update_cb (GabblePresenceCache *cache,
     TpHandle handle,
-    GabblePresenceCapabilities old_caps,
-    GabblePresenceCapabilities new_caps,
     const GabbleCapabilitySet *old_cap_set,
     const GabbleCapabilitySet *new_cap_set,
     gpointer user_data);
@@ -2419,8 +2417,6 @@ _emit_contact_capabilities_changed (GabbleConnection *conn,
 static void
 connection_capabilities_update_cb (GabblePresenceCache *cache,
     TpHandle handle,
-    GabblePresenceCapabilities old_caps,
-    GabblePresenceCapabilities new_caps,
     const GabbleCapabilitySet *old_cap_set,
     const GabbleCapabilitySet *new_cap_set,
     gpointer user_data)

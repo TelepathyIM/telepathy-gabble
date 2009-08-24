@@ -346,8 +346,8 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    gabble_marshal_VOID__UINT_UINT_UINT_POINTER_POINTER, G_TYPE_NONE,
-    5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_POINTER, G_TYPE_POINTER);
+    gabble_marshal_VOID__UINT_POINTER_POINTER, G_TYPE_NONE,
+    3, G_TYPE_UINT, G_TYPE_POINTER, G_TYPE_POINTER);
   signals[AVATAR_UPDATE] = g_signal_new (
     "avatar-update",
     G_TYPE_FROM_CLASS (klass),
@@ -838,13 +838,11 @@ find_matching_waiter (GSList *waiters,
 static void
 emit_capabilities_update (GabblePresenceCache *cache,
     TpHandle handle,
-    GabblePresenceCapabilities old_caps,
-    GabblePresenceCapabilities new_caps,
     const GabbleCapabilitySet *old_cap_set,
     const GabbleCapabilitySet *new_cap_set)
 {
   g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-      handle, old_caps, new_caps, old_cap_set, new_cap_set);
+      handle, old_cap_set, new_cap_set);
 }
 
 /**
@@ -883,8 +881,7 @@ set_caps_for (DiscoWaiter *waiter,
 
   new_cap_set = gabble_presence_dup_caps (presence);
 
-  emit_capabilities_update (cache, waiter->handle, save_caps,
-      gabble_presence_get_caps_bitfield (presence), old_cap_set, new_cap_set);
+  emit_capabilities_update (cache, waiter->handle, old_cap_set, new_cap_set);
 
   gabble_capability_set_free (old_cap_set);
   gabble_capability_set_free (new_cap_set);
@@ -1200,9 +1197,7 @@ _process_caps (GabblePresenceCache *cache,
       DEBUG ("Emitting caps update: handle %u, old %u, new %u",
           handle, old_caps, gabble_presence_get_caps_bitfield (presence));
 
-      emit_capabilities_update (cache, handle, old_caps,
-          gabble_presence_get_caps_bitfield (presence),
-          old_cap_set, new_cap_set);
+      emit_capabilities_update (cache, handle, old_cap_set, new_cap_set);
 
       gabble_capability_set_free (new_cap_set);
     }
@@ -1502,8 +1497,7 @@ gabble_presence_cache_do_update (
 
   new_cap_set = gabble_presence_dup_caps (presence);
 
-  emit_capabilities_update (cache, handle, caps_before,
-      gabble_presence_get_caps_bitfield (presence), old_cap_set, new_cap_set);
+  emit_capabilities_update (cache, handle, old_cap_set, new_cap_set);
 
   gabble_capability_set_free (old_cap_set);
   gabble_capability_set_free (new_cap_set);

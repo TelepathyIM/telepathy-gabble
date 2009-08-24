@@ -81,6 +81,7 @@ static const Feature quirks[] = {
       { 0, NULL, 0 }
 };
 
+static GabbleCapabilitySet *legacy_caps = NULL;
 static GabbleCapabilitySet *voice_v1_caps = NULL;
 static GabbleCapabilitySet *video_v1_caps = NULL;
 static GabbleCapabilitySet *any_audio_caps = NULL;
@@ -89,6 +90,12 @@ static GabbleCapabilitySet *any_transport_caps = NULL;
 static GabbleCapabilitySet *initial_caps = NULL;
 static GabbleCapabilitySet *geoloc_caps = NULL;
 static GabbleCapabilitySet *olpc_caps = NULL;
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_legacy (void)
+{
+  return legacy_caps;
+}
 
 const GabbleCapabilitySet *
 gabble_capabilities_get_bundle_voice_v1 (void)
@@ -196,6 +203,13 @@ gabble_capabilities_init (GabbleConnection *conn)
 
       /* make the pre-cooked bundles */
 
+      legacy_caps = gabble_capability_set_new ();
+
+      for (feat = self_advertised_features; feat->ns != NULL; feat++)
+        {
+          gabble_capability_set_add (legacy_caps, feat->ns);
+        }
+
       voice_v1_caps = gabble_capability_set_new ();
       gabble_capability_set_add (voice_v1_caps, NS_GOOGLE_FEAT_VOICE);
 
@@ -242,6 +256,7 @@ gabble_capabilities_finalize (GabbleConnection *conn)
 
   if (--feature_handles_refcount == 0)
     {
+      gabble_capability_set_free (legacy_caps);
       gabble_capability_set_free (voice_v1_caps);
       gabble_capability_set_free (video_v1_caps);
       gabble_capability_set_free (any_audio_caps);
@@ -251,6 +266,7 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       gabble_capability_set_free (geoloc_caps);
       gabble_capability_set_free (olpc_caps);
 
+      legacy_caps = NULL;
       voice_v1_caps = NULL;
       video_v1_caps = NULL;
       any_audio_caps = NULL;

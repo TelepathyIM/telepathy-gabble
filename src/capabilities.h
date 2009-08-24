@@ -99,6 +99,7 @@ typedef gboolean (*GabbleCapabilitySetPredicate) (
   ((GabbleCapabilitySetPredicate) gabble_capability_set_at_least)
 
 /* Some useful capability sets for Jingle etc. */
+const GabbleCapabilitySet *gabble_capabilities_get_legacy (void);
 const GabbleCapabilitySet *gabble_capabilities_get_any_audio (void);
 const GabbleCapabilitySet *gabble_capabilities_get_any_video (void);
 const GabbleCapabilitySet *gabble_capabilities_get_any_transport (void);

@@ -2507,9 +2507,13 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
   GabblePresenceCapabilities caps = 0;
   gboolean gtalk_p2p;
 
-  DEBUG ("adding Jingle caps (%s, %s)",
+  DEBUG ("adding Jingle caps %u (%s, %s, %s, %s)", flags,
     flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO ? "audio" : "no audio",
-    flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO ? "video" : "no video");
+    flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO ? "video" : "no video",
+    flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P
+        ? "gtalk-p2p" : "no gtalk-p2p",
+    flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP
+        ? "ice-udp" : "no ice-udp");
 
   if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP)
     caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP;

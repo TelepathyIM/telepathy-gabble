@@ -285,55 +285,6 @@ struct _GabbleCapabilitySet {
     TpHandleSet *handles;
 };
 
-GabblePresenceCapabilities
-capabilities_parse (const GabbleCapabilitySet *cap_set)
-{
-  GabblePresenceCapabilities ret = PRESENCE_CAP_NONE;
-  const gchar *var;
-  const Feature *i;
-  TpIntSetIter iter;
-
-  g_return_val_if_fail (cap_set != NULL, 0);
-
-  tp_intset_iter_init (&iter, tp_handle_set_peek (cap_set->handles));
-
-  while (tp_intset_iter_next (&iter))
-    {
-      var = tp_handle_inspect (feature_handles, iter.element);
-
-      if (var[0] == QUIRK_PREFIX_CHAR)
-        {
-          for (i = quirks; i->ns != NULL; i++)
-            {
-              if (!tp_strdiff (var, i->ns))
-                {
-                  ret |= i->caps;
-                  break;
-                }
-            }
-
-          if (i->ns == NULL)
-            g_warning ("unknown quirk: %s", var + 1);
-        }
-      else
-        {
-          for (i = self_advertised_features; i->ns != NULL; i++)
-            {
-              if (!tp_strdiff (var, i->ns))
-                {
-                  ret |= i->caps;
-                  break;
-                }
-            }
-
-          if (i->ns == NULL)
-            DEBUG ("ignoring unknown capability %s", var);
-        }
-    }
-
-  return ret;
-}
-
 void
 capabilities_fill_cache (GabblePresenceCache *cache)
 {

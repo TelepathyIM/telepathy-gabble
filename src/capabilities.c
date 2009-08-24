@@ -439,6 +439,48 @@ gabble_capability_set_update (GabbleCapabilitySet *target,
   tp_handle_set_update (target->handles, tp_handle_set_peek (source->handles));
 }
 
+typedef struct {
+    GSList *deleted;
+    TpHandleSet *intersect_with;
+} IntersectHelper;
+
+static void
+intersect_helper (TpHandleSet *unused G_GNUC_UNUSED,
+    TpHandle handle,
+    gpointer p)
+{
+  IntersectHelper *data = p;
+
+  if (!tp_handle_set_is_member (data->intersect_with, handle))
+    data->deleted = g_slist_prepend (data->deleted, GUINT_TO_POINTER (handle));
+}
+
+void
+gabble_capability_set_intersect (GabbleCapabilitySet *target,
+    const GabbleCapabilitySet *source)
+{
+  IntersectHelper data = { NULL, NULL };
+
+  g_return_if_fail (target != NULL);
+  g_return_if_fail (source != NULL);
+
+  if (target == source)
+    return;
+
+  data.intersect_with = source->handles;
+
+  tp_handle_set_foreach (target->handles, intersect_helper, &data);
+
+  while (data.deleted != NULL)
+    {
+      DEBUG ("dropping %s", tp_handle_inspect (feature_handles,
+            GPOINTER_TO_UINT (data.deleted->data)));
+      tp_handle_set_remove (target->handles,
+          GPOINTER_TO_UINT (data.deleted->data));
+      data.deleted = g_slist_delete_link (data.deleted, data.deleted);
+    }
+}
+
 static void
 remove_from_set (TpHandleSet *unused G_GNUC_UNUSED,
     TpHandle handle,

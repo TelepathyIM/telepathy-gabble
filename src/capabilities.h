@@ -69,6 +69,8 @@ gboolean gabble_capability_set_remove (GabbleCapabilitySet *caps,
     const gchar *cap);
 void gabble_capability_set_exclude (GabbleCapabilitySet *caps,
     const GabbleCapabilitySet *removed);
+void gabble_capability_set_intersect (GabbleCapabilitySet *target,
+    const GabbleCapabilitySet *source);
 gboolean gabble_capability_set_has (const GabbleCapabilitySet *caps,
     const gchar *cap);
 gboolean gabble_capability_set_has_one (const GabbleCapabilitySet *caps,

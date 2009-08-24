@@ -65,6 +65,10 @@ void gabble_capability_set_update (GabbleCapabilitySet *target,
     const GabbleCapabilitySet *source);
 void gabble_capability_set_add (GabbleCapabilitySet *caps,
     const gchar *cap);
+gboolean gabble_capability_set_remove (GabbleCapabilitySet *caps,
+    const gchar *cap);
+void gabble_capability_set_exclude (GabbleCapabilitySet *caps,
+    const GabbleCapabilitySet *removed);
 gboolean gabble_capability_set_has (const GabbleCapabilitySet *caps,
     const gchar *cap);
 gboolean gabble_capability_set_has_one (const GabbleCapabilitySet *caps,

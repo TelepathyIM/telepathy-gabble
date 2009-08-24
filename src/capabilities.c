@@ -439,6 +439,30 @@ gabble_capability_set_update (GabbleCapabilitySet *target,
   tp_handle_set_update (target->handles, tp_handle_set_peek (source->handles));
 }
 
+static void
+remove_from_set (TpHandleSet *unused G_GNUC_UNUSED,
+    TpHandle handle,
+    gpointer handles)
+{
+  tp_handle_set_remove (handles, handle);
+}
+
+void
+gabble_capability_set_exclude (GabbleCapabilitySet *caps,
+    const GabbleCapabilitySet *removed)
+{
+  g_return_if_fail (caps != NULL);
+  g_return_if_fail (removed != NULL);
+
+  if (caps == removed)
+    {
+      gabble_capability_set_clear (caps);
+      return;
+    }
+
+  tp_handle_set_foreach (removed->handles, remove_from_set, caps->handles);
+}
+
 void
 gabble_capability_set_add (GabbleCapabilitySet *caps,
     const gchar *cap)
@@ -452,6 +476,23 @@ gabble_capability_set_add (GabbleCapabilitySet *caps,
 
   tp_handle_set_add (caps->handles, handle);
   tp_handle_unref (feature_handles, handle);
+}
+
+gboolean
+gabble_capability_set_remove (GabbleCapabilitySet *caps,
+    const gchar *cap)
+{
+  TpHandle handle;
+
+  g_return_val_if_fail (caps != NULL, FALSE);
+  g_return_val_if_fail (cap != NULL, FALSE);
+
+  handle = tp_handle_lookup (feature_handles, cap, NULL, NULL);
+
+  if (handle == 0)
+    return FALSE;
+
+  return tp_handle_set_remove (caps->handles, handle);
 }
 
 void

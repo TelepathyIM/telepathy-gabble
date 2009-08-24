@@ -369,7 +369,6 @@ search_channel_ready_or_not_cb (GabbleSearchChannel *chan,
            * - Should XMPP_ERROR_JID_MALFORMED be mapped to InvalidArgument?
            */
           code = TP_ERROR_NOT_AVAILABLE;
-          /* Do we want to prefix the error string with something? */
         }
       else
         {

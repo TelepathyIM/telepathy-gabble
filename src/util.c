@@ -457,10 +457,6 @@ gabble_decode_jid (const gchar *jid,
 
       *tmp_domain = '\0';
       tmp_domain++;
-
-      /* store the username if the user provided a pointer */
-      if (node != NULL)
-        *node = g_utf8_strdown (tmp_node, -1);
     }
   else
     {
@@ -476,16 +472,20 @@ gabble_decode_jid (const gchar *jid,
     {
       *tmp_resource = '\0';
       tmp_resource++;
-
-      /* store the resource if the user provided a pointer */
-      if (resource != NULL)
-        *resource = g_strdup (tmp_resource);
     }
 
-  /* the server must be stored after the resource, in case we truncated a
-   * resource from it */
-  if (domain != NULL)
+  /* the server must be stored after we find the resource, in case we
+   * truncated a resource from it */
+  if (tmp_domain != NULL && domain != NULL)
     *domain = g_utf8_strdown (tmp_domain, -1);
+
+  /* store the username if the user provided a pointer */
+  if (tmp_node != NULL && node != NULL)
+    *node = g_utf8_strdown (tmp_node, -1);
+
+  /* store the resource if the user provided a pointer */
+  if (tmp_resource != NULL && resource != NULL)
+    *resource = g_strdup (tmp_resource);
 
   /* free our working copy */
   g_free (tmp_jid);

@@ -47,6 +47,11 @@ def complete_search(q, bus, conn, requests, stream, server):
         pformat(props)
     assert cs.CONTACT_SEARCH_STATE not in props, pformat(props)
 
+    # check that channel is listed in Requests.Channels
+    channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
+        dbus_interface=cs.PROPERTIES_IFACE)
+    assert (path, props) in channels
+
     c = make_channel_proxy(conn, path, 'Channel')
     c_props = dbus.Interface(c, cs.PROPERTIES_IFACE)
     c_search = dbus.Interface(c, cs.CHANNEL_TYPE_CONTACT_SEARCH)

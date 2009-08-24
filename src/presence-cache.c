@@ -858,14 +858,12 @@ set_caps_for (DiscoWaiter *waiter,
     const gchar *responder_jid)
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, waiter->handle);
-  GabblePresenceCapabilities save_caps;
   GabbleCapabilitySet *old_cap_set;
   GabbleCapabilitySet *new_cap_set;
 
   if (presence == NULL)
     return;
 
-  save_caps = gabble_presence_get_caps_bitfield (presence);
   old_cap_set = gabble_presence_dup_caps (presence);
 
   DEBUG ("setting caps for %d (thanks to %d %s)",
@@ -1153,7 +1151,6 @@ _process_caps (GabblePresenceCache *cache,
   const gchar *resource;
   GSList *uris, *i;
   GabblePresenceCachePrivate *priv;
-  GabblePresenceCapabilities old_caps = 0;
   GabbleCapabilitySet *old_cap_set = NULL;
   guint serial;
   const gchar *hash, *ver;
@@ -1169,7 +1166,6 @@ _process_caps (GabblePresenceCache *cache,
 
   if (presence)
     {
-      old_caps = gabble_presence_get_caps_bitfield (presence);
       old_cap_set = gabble_presence_dup_caps (presence);
     }
 
@@ -1464,7 +1460,6 @@ gabble_presence_cache_do_update (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *jid;
   GabblePresence *presence;
-  GabblePresenceCapabilities caps_before;
   GabbleCapabilitySet *old_cap_set, *new_cap_set;
   gboolean ret = FALSE;
 
@@ -1480,7 +1475,6 @@ gabble_presence_cache_do_update (
   if (presence == NULL)
     presence = _cache_insert (cache, handle);
 
-  caps_before = gabble_presence_get_caps_bitfield (presence);
   old_cap_set = gabble_presence_dup_caps (presence);
 
   ret = gabble_presence_update (presence, resource, presence_id,

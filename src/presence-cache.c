@@ -1281,7 +1281,7 @@ _process_caps (GabblePresenceCache *cache,
   GSList *uris, *i;
   GabblePresenceCachePrivate *priv;
   GabblePresenceCapabilities old_caps = 0;
-  GabbleCapabilitySet *old_cap_set;
+  GabbleCapabilitySet *old_cap_set = NULL;
   guint serial;
   const gchar *hash, *ver;
 
@@ -1326,7 +1326,9 @@ _process_caps (GabblePresenceCache *cache,
           presence->caps, handle);
     }
 
-  gabble_capability_set_free (old_cap_set);
+  if (old_cap_set != NULL)
+    gabble_capability_set_free (old_cap_set);
+
   g_slist_free (uris);
 }
 

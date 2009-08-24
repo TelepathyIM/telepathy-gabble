@@ -2590,7 +2590,8 @@ gabble_connection_set_self_capabilities (
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   old_caps = gabble_presence_dup_caps (pres);
-  new_caps = gabble_capability_set_new ();
+  new_caps = gabble_capability_set_copy (old_caps);
+  gabble_capability_set_intersect (new_caps, gabble_capabilities_get_legacy ());
 
   for (i = 0; i < caps->len; i++)
     {

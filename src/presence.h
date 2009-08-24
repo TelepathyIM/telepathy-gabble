@@ -83,9 +83,6 @@ void gabble_presence_set_capabilities (GabblePresence *presence,
     const GabbleCapabilitySet *cap_set,
     guint serial);
 
-GabblePresenceCapabilities gabble_presence_get_caps_bitfield (
-    GabblePresence *presence);
-
 gboolean gabble_presence_has_cap (GabblePresence *presence, const gchar *ns);
 GabbleCapabilitySet *gabble_presence_dup_caps (GabblePresence *presence);
 

@@ -21,6 +21,8 @@
 #define __GIBBER_UTIL_H__
 
 #include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #include <glib.h>
 

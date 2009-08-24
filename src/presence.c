@@ -42,7 +42,6 @@ typedef struct _Resource Resource;
 struct _Resource {
     gchar *name;
     GabbleCapabilitySet *cap_set;
-    GabblePresenceCapabilities caps;
     guint caps_serial;
     GabblePresenceId status;
     gchar *status_message;
@@ -65,7 +64,6 @@ _resource_new (gchar *name)
   Resource *new = g_slice_new0 (Resource);
   new->name = name;
   new->cap_set = gabble_capability_set_new ();
-  new->caps = PRESENCE_CAP_NONE;
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   new->priority = 0;
@@ -267,7 +265,6 @@ gabble_presence_set_capabilities (GabblePresence *presence,
             {
               DEBUG ("new serial %u, old %u, clearing caps", serial,
                 tmp->caps_serial);
-              tmp->caps = 0;
               tmp->caps_serial = serial;
               gabble_capability_set_clear (tmp->cap_set);
             }
@@ -275,8 +272,6 @@ gabble_presence_set_capabilities (GabblePresence *presence,
           if (serial >= tmp->caps_serial)
             {
               DEBUG ("adding caps %u to resource %s", caps, resource);
-              tmp->caps |= caps;
-              DEBUG ("resource %s caps now %u", resource, tmp->caps);
 
               gabble_capability_set_update (tmp->cap_set, cap_set);
             }
@@ -544,10 +539,9 @@ gabble_presence_dump (GabblePresence *presence)
 
       g_string_append_printf (ret,
         "  %s\n"
-        "    capabilities: %d\n"
         "    status: %d\n"
         "    status msg: %s\n"
-        "    priority: %d\n", res->name, res->caps, res->status,
+        "    priority: %d\n", res->name, res->status,
         res->status_message, res->priority);
     }
 

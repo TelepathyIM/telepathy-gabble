@@ -27,19 +27,6 @@
 
 #include "types.h"
 
-typedef struct _Feature Feature;
-
-struct _Feature
-{
-  enum {
-    FEATURE_FIXED,
-    FEATURE_OPTIONAL,
-    FEATURE_BUNDLE_COMPAT   /* just for voice-v1/video-v1 */
-  } feature_type;
-  gchar *ns;
-  GabblePresenceCapabilities caps;
-};
-
 /* Pseudo-capabilities for buggy or strange implementations, represented as
  * strings starting with a character not allowed in XML (the ASCII beep :-) */
 #define QUIRK_PREFIX_CHAR '\x07'

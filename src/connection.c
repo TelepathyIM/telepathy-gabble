@@ -2453,7 +2453,6 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   TpBaseConnection *base = (TpBaseConnection *) self;
   guint i;
   GabblePresence *pres = self->self_presence;
-  GabblePresenceCapabilities add_caps = 0, remove_caps = 0, caps, save_caps;
   GabbleConnectionPrivate *priv = self->priv;
   const CapabilityConversionData *ccd;
   GPtrArray *ret;
@@ -2497,29 +2496,24 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
             ccd->tf2c_fn (~0, remove_set);
     }
 
-  add_caps = capabilities_parse (add_set);
-  remove_caps = capabilities_parse (remove_set);
+  save_set = gabble_presence_dup_caps (pres);
+  cap_set = gabble_capability_set_copy (save_set);
+
+  gabble_capability_set_update (cap_set, add_set);
+  gabble_capability_set_exclude (cap_set, remove_set);
+
+  DEBUG ("caps to add: %x", capabilities_parse (add_set));
+  DEBUG ("caps to remove: %x", capabilities_parse (remove_set));
+  DEBUG ("caps after: %x", capabilities_parse (cap_set));
 
   gabble_capability_set_free (add_set);
   gabble_capability_set_free (remove_set);
 
-  save_caps = caps = pres->caps;
-  save_set = gabble_presence_dup_caps (pres);
-
-  caps |= add_caps;
-  caps ^= (caps & remove_caps);
-
-  DEBUG ("caps to add: %x", add_caps);
-  DEBUG ("caps to remove: %x", remove_caps);
-  DEBUG ("caps after: %x", caps);
-
-  if (caps ^ save_caps)
+  if (!gabble_capability_set_equals (save_set, cap_set))
     {
       DEBUG ("before != after, changing");
-      cap_set = gabble_capability_set_new_from_flags (caps);
-      gabble_presence_set_capabilities (pres, priv->resource, cap_set, caps,
-          priv->caps_serial++);
-      gabble_capability_set_free (cap_set);
+      gabble_presence_set_capabilities (pres, priv->resource, cap_set,
+          capabilities_parse (cap_set), priv->caps_serial++);
       DEBUG ("set caps: %x", pres->caps);
     }
 
@@ -2547,7 +2541,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
         }
     }
 
-  if (caps ^ save_caps)
+  if (!gabble_capability_set_equals (save_set, cap_set))
     {
       if (!_gabble_connection_signal_own_presence (self, &error))
         {
@@ -2555,11 +2549,10 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
           return;
         }
 
-      cap_set = gabble_capability_set_new_from_flags (caps);
       _emit_capabilities_changed (self, base->self_handle, save_set, cap_set);
-      gabble_capability_set_free (cap_set);
     }
 
+  gabble_capability_set_free (cap_set);
   gabble_capability_set_free (save_set);
 
   tp_svc_connection_interface_capabilities_return_from_advertise_capabilities (

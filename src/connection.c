@@ -2528,7 +2528,9 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 
   for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
-      if (ccd->c2tf_fn (pres->caps))
+      guint tp_caps = ccd->c2tf_fn (pres->caps);
+
+      if (tp_caps != 0)
         {
           GValue iface_flags_pair = {0, };
 
@@ -2539,7 +2541,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 
           dbus_g_type_struct_set (&iface_flags_pair,
                                   0, ccd->iface,
-                                  1, ccd->c2tf_fn (pres->caps),
+                                  1, tp_caps,
                                   G_MAXUINT);
 
           g_ptr_array_add (ret, g_value_get_boxed (&iface_flags_pair));

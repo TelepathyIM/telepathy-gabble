@@ -121,8 +121,7 @@ int main (int argc, char **argv)
   g_assert (FALSE == gabble_presence_update (presence, "bar",
     GABBLE_PRESENCE_AVAILABLE, "dingoes", -1));
   cap_set = gabble_capability_set_new_from_flags (PRESENCE_CAP_GOOGLE_VOICE);
-  gabble_presence_set_capabilities (presence, "bar", cap_set,
-      PRESENCE_CAP_GOOGLE_VOICE, 0);
+  gabble_presence_set_capabilities (presence, "bar", cap_set, 0);
   gabble_capability_set_free (cap_set);
 
   /* no resource with non-negative priority has the Google voice cap */
@@ -132,8 +131,7 @@ int main (int argc, char **argv)
 
   /* give voice cap to first resource */
   cap_set = gabble_capability_set_new_from_flags (PRESENCE_CAP_GOOGLE_VOICE);
-  gabble_presence_set_capabilities (presence, "foo", cap_set,
-      PRESENCE_CAP_GOOGLE_VOICE, 0);
+  gabble_presence_set_capabilities (presence, "foo", cap_set, 0);
   gabble_capability_set_free (cap_set);
 
   /* resource has voice cap */

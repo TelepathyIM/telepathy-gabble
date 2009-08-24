@@ -2060,7 +2060,6 @@ connection_auth_cb (LmConnection *lmconn,
   GabbleConnectionPrivate *priv = conn->priv;
   GError *error = NULL;
   const gchar *jid;
-  GabblePresenceCapabilities caps;
   const GabbleCapabilitySet *cap_set;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTING)
@@ -2124,9 +2123,8 @@ connection_auth_cb (LmConnection *lmconn,
 
   /* set initial capabilities */
   cap_set = gabble_capabilities_get_initial_caps ();
-  caps = capabilities_parse (cap_set);
   gabble_presence_set_capabilities (conn->self_presence, priv->resource,
-      cap_set, caps, priv->caps_serial++);
+      cap_set, priv->caps_serial++);
 
   if (!gabble_disco_request_with_timeout (conn->disco, GABBLE_DISCO_TYPE_INFO,
                                           priv->stream_server, NULL,
@@ -2506,7 +2504,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
     {
       DEBUG ("before != after, changing");
       gabble_presence_set_capabilities (pres, priv->resource, cap_set,
-          capabilities_parse (cap_set), priv->caps_serial++);
+          priv->caps_serial++);
     }
 
   ret = g_ptr_array_new ();
@@ -2603,7 +2601,7 @@ gabble_connection_set_self_capabilities (
     }
 
   gabble_presence_set_capabilities (pres, priv->resource, new_caps,
-      gabble_presence_get_caps_bitfield (pres), priv->caps_serial++);
+      priv->caps_serial++);
 
   if (_gabble_connection_signal_own_presence (self, &error))
     {
@@ -3287,7 +3285,7 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
   cap_set = gabble_presence_dup_caps (self->self_presence);
   gabble_capability_set_update (cap_set, ensured);
   gabble_presence_set_capabilities (self->self_presence, priv->resource,
-      cap_set, capabilities_parse (cap_set), priv->caps_serial++);
+      cap_set, priv->caps_serial++);
   gabble_capability_set_free (cap_set);
 
   if (!_gabble_connection_signal_own_presence (self, &error))

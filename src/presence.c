@@ -223,7 +223,6 @@ void
 gabble_presence_set_capabilities (GabblePresence *presence,
                                   const gchar *resource,
                                   const GabbleCapabilitySet *cap_set,
-                                  GabblePresenceCapabilities caps,
                                   guint serial)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
@@ -245,13 +244,26 @@ gabble_presence_set_capabilities (GabblePresence *presence,
 
   if (resource == NULL)
     {
-      DEBUG ("adding caps %u to bare jid", caps);
+      if (DEBUGGING)
+        {
+          gchar *tmp = gabble_capability_set_dump (cap_set, "  ");
+
+          DEBUG ("Setting capabilities for bare JID:\n%s", tmp);
+          g_free (tmp);
+        }
+
       gabble_capability_set_update (priv->cap_set, cap_set);
       return;
     }
 
-  DEBUG ("about to add caps %u to resource %s with serial %u", caps, resource,
-    serial);
+  if (DEBUGGING)
+    {
+      gchar *tmp = gabble_capability_set_dump (cap_set, "  ");
+
+      DEBUG ("about to add caps to resource %s with serial %u:\n%s", resource,
+          serial, tmp);
+      g_free (tmp);
+    }
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
@@ -271,7 +283,7 @@ gabble_presence_set_capabilities (GabblePresence *presence,
 
           if (serial >= tmp->caps_serial)
             {
-              DEBUG ("adding caps %u to resource %s", caps, resource);
+              DEBUG ("adding caps to resource %s", resource);
 
               gabble_capability_set_update (tmp->cap_set, cap_set);
             }
@@ -284,7 +296,7 @@ gabble_presence_set_capabilities (GabblePresence *presence,
     {
       gchar *tmp = gabble_capability_set_dump (priv->cap_set, "  ");
 
-      DEBUG ("Capabilities are now:\n%s", tmp);
+      DEBUG ("Aggregate capabilities are now:\n%s", tmp);
       g_free (tmp);
     }
 }

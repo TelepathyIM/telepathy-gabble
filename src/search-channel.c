@@ -585,7 +585,7 @@ add_search_result (GabbleSearchChannel *chan,
 {
   GPtrArray *info = g_ptr_array_new ();
   gchar *jid, *first = NULL, *last = NULL;
-  TpHandle h = 0;
+  TpHandle h;
   GError *e = NULL;
   gpointer key, value;
   GHashTableIter iter;

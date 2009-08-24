@@ -1181,8 +1181,16 @@ _process_caps (GabblePresenceCache *cache,
     {
       GabbleCapabilitySet *new_cap_set = gabble_presence_dup_caps (presence);
 
-      DEBUG ("Emitting caps update: handle %u, old %u, new %u",
-          handle, old_caps, gabble_presence_get_caps_bitfield (presence));
+      if (DEBUGGING)
+        {
+          gchar *old_dump = gabble_capability_set_dump (old_cap_set, "  ");
+          gchar *new_dump = gabble_capability_set_dump (new_cap_set, "  ");
+
+          DEBUG ("Emitting caps update for handle %u, from:\n%sto:\n%s",
+              handle, old_dump, new_dump);
+          g_free (old_dump);
+          g_free (new_dump);
+        }
 
       emit_capabilities_update (cache, handle, old_cap_set, new_cap_set);
 
@@ -1190,8 +1198,7 @@ _process_caps (GabblePresenceCache *cache,
     }
   else
     {
-      DEBUG ("No change in caps %u for handle %u, not updating",
-          gabble_presence_get_caps_bitfield (presence), handle);
+      DEBUG ("No change in caps for handle %u, not updating", handle);
     }
 
   if (old_cap_set != NULL)

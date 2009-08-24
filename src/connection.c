@@ -2493,9 +2493,16 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   gabble_capability_set_update (cap_set, add_set);
   gabble_capability_set_exclude (cap_set, remove_set);
 
-  DEBUG ("caps to add: %x", capabilities_parse (add_set));
-  DEBUG ("caps to remove: %x", capabilities_parse (remove_set));
-  DEBUG ("caps after: %x", capabilities_parse (cap_set));
+  if (DEBUGGING)
+    {
+      gchar *add_str = gabble_capability_set_dump (add_set, "  ");
+      gchar *remove_str = gabble_capability_set_dump (remove_set, "  ");
+
+      DEBUG ("caps to add:\n%s", add_str);
+      DEBUG ("caps to remove:\n%s", remove_str);
+      g_free (add_str);
+      g_free (remove_str);
+    }
 
   gabble_capability_set_free (add_set);
   gabble_capability_set_free (remove_set);

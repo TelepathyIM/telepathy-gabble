@@ -84,6 +84,10 @@ struct _GabbleSearchChannelPrivate
 
   GHashTable *results;
 
+  /* TRUE if the channel is ready to be used (we received the keys supported
+   * by the server). */
+  gboolean ready;
+
   TpHandleSet *result_handles;
 };
 
@@ -208,6 +212,7 @@ supported_fields_discovered (GabbleSearchChannel *chan)
 
   chan->base.closed = FALSE;
   gabble_base_channel_register ((GabbleBaseChannel *) chan);
+  chan->priv->ready = TRUE;
   g_signal_emit (chan, signals[READY_OR_NOT], 0, 0, 0, NULL);
 }
 
@@ -1384,6 +1389,12 @@ void
 gabble_search_channel_close (GabbleSearchChannel *self)
 {
   ensure_closed (self);
+}
+
+gboolean
+gabble_search_channel_is_ready (GabbleSearchChannel *self)
+{
+  return self->priv->ready;
 }
 
 static void

@@ -60,6 +60,8 @@ GType gabble_search_channel_get_type (void);
 
 void gabble_search_channel_close (GabbleSearchChannel *chan);
 
+gboolean gabble_search_channel_is_ready (GabbleSearchChannel *chan);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_SEARCH_CHANNEL_H__*/

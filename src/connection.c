@@ -2274,18 +2274,16 @@ _emit_capabilities_changed (GabbleConnection *conn,
   GPtrArray *caps_arr;
   const CapabilityConversionData *ccd;
   guint i;
-  GabblePresenceCapabilities old_caps = capabilities_parse (old_set);
-  GabblePresenceCapabilities new_caps = capabilities_parse (new_set);
 
-  if (old_caps == new_caps)
+  if (gabble_capability_set_equals (old_set, new_set))
     return;
 
   caps_arr = g_ptr_array_new ();
 
   for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
-      guint old_specific = ccd->c2tf_fn (old_caps);
-      guint new_specific = ccd->c2tf_fn (new_caps);
+      guint old_specific = ccd->c2tf_fn (old_set);
+      guint new_specific = ccd->c2tf_fn (new_set);
 
       if (old_specific != 0 || new_specific != 0)
         {
@@ -2518,7 +2516,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 
   for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
-      guint tp_caps = ccd->c2tf_fn (gabble_presence_get_caps_bitfield (pres));
+      guint tp_caps = ccd->c2tf_fn (cap_set);
 
       if (tp_caps != 0)
         {
@@ -2662,9 +2660,11 @@ gabble_connection_get_handle_capabilities (GabbleConnection *self,
 
   if (NULL != pres)
     {
+      GabbleCapabilitySet *cap_set = gabble_presence_dup_caps (pres);
+
       for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
         {
-          typeflags = ccd->c2tf_fn (gabble_presence_get_caps_bitfield (pres));
+          typeflags = ccd->c2tf_fn (cap_set);
 
           if (typeflags)
             {
@@ -2686,6 +2686,8 @@ gabble_connection_get_handle_capabilities (GabbleConnection *self,
               g_ptr_array_add (arr, g_value_get_boxed (&monster));
             }
         }
+
+      gabble_capability_set_free (cap_set);
     }
 
   for (assumed = assumed_caps; NULL != *assumed; assumed++)

@@ -35,6 +35,12 @@ def test(q, bus, conn, stream):
 def complete_search(q, bus, conn, requests, stream, server):
     call_create(q, requests, server)
 
+    # the channel is not yet in Requests.Channels as it's not ready yet
+    channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
+        dbus_interface=cs.PROPERTIES_IFACE)
+    for path, props in channels:
+        assert props[cs.CHANNEL_TYPE] != cs.CHANNEL_TYPE_CONTACT_SEARCH
+
     ret, nc_sig = answer_field_query(q, stream, server)
 
     path, props = ret.value

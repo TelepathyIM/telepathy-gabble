@@ -120,7 +120,8 @@ int main (int argc, char **argv)
   /* give voice cap to second resource, but make priority negative */
   g_assert (FALSE == gabble_presence_update (presence, "bar",
     GABBLE_PRESENCE_AVAILABLE, "dingoes", -1));
-  cap_set = gabble_capability_set_new_from_flags (PRESENCE_CAP_GOOGLE_VOICE);
+  cap_set = gabble_capability_set_new ();
+  gabble_capability_set_add (cap_set, NS_GOOGLE_FEAT_VOICE);
   gabble_presence_set_capabilities (presence, "bar", cap_set, 0);
   gabble_capability_set_free (cap_set);
 
@@ -130,7 +131,8 @@ int main (int argc, char **argv)
   g_assert (NULL == resource);
 
   /* give voice cap to first resource */
-  cap_set = gabble_capability_set_new_from_flags (PRESENCE_CAP_GOOGLE_VOICE);
+  cap_set = gabble_capability_set_new ();
+  gabble_capability_set_add (cap_set, NS_GOOGLE_FEAT_VOICE);
   gabble_presence_set_capabilities (presence, "foo", cap_set, 0);
   gabble_capability_set_free (cap_set);
 

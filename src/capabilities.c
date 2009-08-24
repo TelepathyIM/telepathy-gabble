@@ -239,9 +239,14 @@ gabble_capabilities_init (GabbleConnection *conn)
             gabble_capability_set_add (initial_caps, feat->ns);
         }
 
-      geoloc_caps = gabble_capability_set_new_from_flags (
-          PRESENCE_CAP_GEOLOCATION);
-      olpc_caps = gabble_capability_set_new_from_flags (PRESENCE_CAP_OLPC_1);
+      geoloc_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (geoloc_caps, NS_GEOLOC "+notify");
+
+      olpc_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (olpc_caps, NS_OLPC_BUDDY_PROPS "+notify");
+      gabble_capability_set_add (olpc_caps, NS_OLPC_ACTIVITIES "+notify");
+      gabble_capability_set_add (olpc_caps, NS_OLPC_CURRENT_ACTIVITY "+notify");
+      gabble_capability_set_add (olpc_caps, NS_OLPC_ACTIVITY_PROPS "+notify");
     }
 
   g_assert (feature_handles != NULL);
@@ -358,26 +363,6 @@ gabble_capability_set_new_from_stanza (LmMessageNode *query_result)
       /* TODO: only store namespaces we understand. */
       gabble_capability_set_add (ret, var);
     }
-
-  return ret;
-}
-
-/* This function should disappear when GabbleCapabilitySet replaces
- * GabblePresenceCapabilities.
- */
-GabbleCapabilitySet *
-gabble_capability_set_new_from_flags (GabblePresenceCapabilities caps)
-{
-  GabbleCapabilitySet *ret = gabble_capability_set_new ();
-  const Feature *i;
-
-  for (i = self_advertised_features; NULL != i->ns; i++)
-    if ((i->caps & caps) == i->caps)
-      gabble_capability_set_add (ret, i->ns);
-
-  for (i = quirks; NULL != i->ns; i++)
-    if ((i->caps & caps) == i->caps)
-      gabble_capability_set_add (ret, i->ns);
 
   return ret;
 }

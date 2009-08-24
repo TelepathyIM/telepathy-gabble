@@ -56,7 +56,6 @@ enum
 struct _GabbleSearchManagerPrivate
 {
   GabbleConnection *conn;
-  gulong status_changed_id;
 
   /* Used to represent a set of channels.
    * Keys are GabbleSearchChannel *, values are an arbitrary non-NULL pointer.
@@ -155,8 +154,8 @@ gabble_search_manager_constructor (GType type,
            constructor (type, n_props, props);
   GabbleSearchManager *self = GABBLE_SEARCH_MANAGER (obj);
 
-  self->priv->status_changed_id = g_signal_connect (self->priv->conn,
-      "status-changed", (GCallback) connection_status_changed_cb, obj);
+  gabble_signal_connect_weak (self->priv->conn, "status-changed",
+      G_CALLBACK (connection_status_changed_cb), G_OBJECT (obj));
 
   return obj;
 }

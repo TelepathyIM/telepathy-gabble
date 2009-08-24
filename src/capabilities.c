@@ -44,7 +44,8 @@ struct _Feature
 {
   enum {
     FEATURE_FIXED,
-    FEATURE_OPTIONAL
+    FEATURE_OPTIONAL,
+    FEATURE_OLPC
   } feature_type;
   gchar *ns;
 };
@@ -74,10 +75,10 @@ static const Feature self_advertised_features[] =
   { FEATURE_OPTIONAL, NS_JINGLE_RTP_AUDIO },
   { FEATURE_OPTIONAL, NS_JINGLE_RTP_VIDEO },
 
-  { FEATURE_OPTIONAL, NS_OLPC_BUDDY_PROPS "+notify" },
-  { FEATURE_OPTIONAL, NS_OLPC_ACTIVITIES "+notify" },
-  { FEATURE_OPTIONAL, NS_OLPC_CURRENT_ACTIVITY "+notify" },
-  { FEATURE_OPTIONAL, NS_OLPC_ACTIVITY_PROPS "+notify" },
+  { FEATURE_OLPC, NS_OLPC_BUDDY_PROPS "+notify" },
+  { FEATURE_OLPC, NS_OLPC_ACTIVITIES "+notify" },
+  { FEATURE_OLPC, NS_OLPC_CURRENT_ACTIVITY "+notify" },
+  { FEATURE_OLPC, NS_OLPC_ACTIVITY_PROPS "+notify" },
 
   { FEATURE_OPTIONAL, NS_GEOLOC "+notify" },
 
@@ -251,10 +252,12 @@ gabble_capabilities_init (GabbleConnection *conn)
       gabble_capability_set_add (geoloc_caps, NS_GEOLOC "+notify");
 
       olpc_caps = gabble_capability_set_new ();
-      gabble_capability_set_add (olpc_caps, NS_OLPC_BUDDY_PROPS "+notify");
-      gabble_capability_set_add (olpc_caps, NS_OLPC_ACTIVITIES "+notify");
-      gabble_capability_set_add (olpc_caps, NS_OLPC_CURRENT_ACTIVITY "+notify");
-      gabble_capability_set_add (olpc_caps, NS_OLPC_ACTIVITY_PROPS "+notify");
+
+      for (feat = self_advertised_features; feat->ns != NULL; feat++)
+        {
+          if (feat->feature_type == FEATURE_OLPC)
+            gabble_capability_set_add (olpc_caps, feat->ns);
+        }
     }
 
   g_assert (feature_handles != NULL);

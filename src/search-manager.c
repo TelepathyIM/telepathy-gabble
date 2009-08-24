@@ -254,7 +254,15 @@ gabble_search_manager_foreach_channel (TpChannelManager *manager,
                                    TpExportableChannelFunc func,
                                    gpointer user_data)
 {
-  /* GabbleSearchManager *self = GABBLE_SEARCH_MANAGER (manager); */
+  GabbleSearchManager *self = GABBLE_SEARCH_MANAGER (manager);
+  GHashTableIter iter;
+  gpointer chan;
+
+  g_hash_table_iter_init (&iter, self->priv->channels);
+  while (g_hash_table_iter_next (&iter, &chan, NULL))
+    {
+      func (chan, user_data);
+    }
 }
 
 static const gchar * const search_channel_fixed_properties[] = {

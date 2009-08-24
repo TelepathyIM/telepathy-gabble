@@ -19,7 +19,6 @@ predicate_true (const GabbleCapabilitySet *set,
 int main (int argc, char **argv)
 {
   const gchar *resource;
-  gchar *dump;
   GabblePresence *presence;
   GabbleCapabilitySet *cap_set;
 
@@ -126,26 +125,6 @@ int main (int argc, char **argv)
       PRESENCE_CAP_GOOGLE_VOICE, 0);
   gabble_capability_set_free (cap_set);
 
-  dump = gabble_presence_dump (presence);
-  g_assert (0 == strcmp (dump,
-    "nickname: (null)\n"
-    "accumulated status: 8\n"
-    "accumulated status msg: status message\n"
-    "accumulated capabilities: 2\n"
-    "kept while unavailable: 0\n"
-    "resources:\n"
-    "  foo\n"
-    "    capabilities: 0\n"
-    "    status: 8\n"
-    "    status msg: status message\n"
-    "    priority: 0\n"
-    "  bar\n"
-    "    capabilities: 2\n"
-    "    status: 7\n"
-    "    status msg: dingoes\n"
-    "    priority: -1\n"));
-  g_free (dump);
-
   /* no resource with non-negative priority has the Google voice cap */
   resource = gabble_presence_pick_resource_by_caps (presence,
       gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_VOICE);
@@ -173,17 +152,6 @@ int main (int argc, char **argv)
   resource = gabble_presence_pick_resource_by_caps (presence,
       gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_VOICE);
   g_assert (NULL == resource);
-
-  dump = gabble_presence_dump (presence);
-  g_assert (0 == strcmp (dump,
-    "nickname: (null)\n"
-    "accumulated status: 0\n"
-    "accumulated status msg: gone\n"
-    "accumulated capabilities: 2\n"
-    "kept while unavailable: 0\n"
-    "resources:\n"
-    "  (none)\n"));
-  g_free (dump);
 
   g_object_unref (presence);
 

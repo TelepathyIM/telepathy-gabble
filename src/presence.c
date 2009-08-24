@@ -171,17 +171,8 @@ gabble_presence_has_cap (GabblePresence *presence,
 GabbleCapabilitySet *
 gabble_presence_dup_caps (GabblePresence *presence)
 {
-  GabbleCapabilitySet *ret, *tmp;
-
   g_return_val_if_fail (presence != NULL, NULL);
-
-  ret = gabble_capability_set_copy (presence->priv->cap_set);
-
-  tmp = gabble_capability_set_new_from_flags (presence->priv->caps);
-  gabble_capability_set_update (ret, tmp);
-  gabble_capability_set_free (tmp);
-
-  return ret;
+  return gabble_capability_set_copy (presence->priv->cap_set);
 }
 
 const gchar *

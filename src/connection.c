@@ -1694,7 +1694,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
     lm_message_node_set_attribute (result_query, "node", node);
 
   DEBUG ("got disco request for node %s, caps are %x", node,
-      self->self_presence->caps);
+      gabble_presence_get_caps_bitfield (self->self_presence));
 
   /* Every entity MUST have at least one identity (XEP-0030). Gabble publishs
    * one identity. If you change the identity here, you also need to change
@@ -2463,7 +2463,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
-  DEBUG ("caps before: %x", pres->caps);
+  DEBUG ("caps before: %x", gabble_presence_get_caps_bitfield (pres));
 
   add_set = gabble_capability_set_new ();
   remove_set = gabble_capability_set_new ();
@@ -2514,14 +2514,14 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
       DEBUG ("before != after, changing");
       gabble_presence_set_capabilities (pres, priv->resource, cap_set,
           capabilities_parse (cap_set), priv->caps_serial++);
-      DEBUG ("set caps: %x", pres->caps);
+      DEBUG ("set caps: %x", gabble_presence_get_caps_bitfield (pres));
     }
 
   ret = g_ptr_array_new ();
 
   for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
-      guint tp_caps = ccd->c2tf_fn (pres->caps);
+      guint tp_caps = ccd->c2tf_fn (gabble_presence_get_caps_bitfield (pres));
 
       if (tp_caps != 0)
         {
@@ -2609,8 +2609,8 @@ gabble_connection_set_self_capabilities (
         }
     }
 
-  gabble_presence_set_capabilities (pres, priv->resource, new_caps, pres->caps,
-      priv->caps_serial++);
+  gabble_presence_set_capabilities (pres, priv->resource, new_caps,
+      gabble_presence_get_caps_bitfield (pres), priv->caps_serial++);
 
   if (_gabble_connection_signal_own_presence (self, &error))
     {
@@ -2666,7 +2666,7 @@ gabble_connection_get_handle_capabilities (GabbleConnection *self,
     {
       for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
         {
-          typeflags = ccd->c2tf_fn (pres->caps);
+          typeflags = ccd->c2tf_fn (gabble_presence_get_caps_bitfield (pres));
 
           if (typeflags)
             {

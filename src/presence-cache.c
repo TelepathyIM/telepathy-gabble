@@ -869,7 +869,7 @@ set_caps_for (DiscoWaiter *waiter,
   if (presence == NULL)
     return;
 
-  save_caps = presence->caps;
+  save_caps = gabble_presence_get_caps_bitfield (presence);
   old_cap_set = gabble_presence_dup_caps (presence);
 
   DEBUG ("setting caps for %d (thanks to %d %s) to %d (save_caps %d)",
@@ -878,12 +878,13 @@ set_caps_for (DiscoWaiter *waiter,
   gabble_presence_set_capabilities (presence, waiter->resource, cap_set,
       caps, waiter->serial);
 
-  DEBUG ("caps for %d now %d", waiter->handle, presence->caps);
+  DEBUG ("caps for %d now %d", waiter->handle,
+      gabble_presence_get_caps_bitfield (presence));
 
   new_cap_set = gabble_presence_dup_caps (presence);
 
-  emit_capabilities_update (cache, waiter->handle, save_caps, presence->caps,
-      old_cap_set, new_cap_set);
+  emit_capabilities_update (cache, waiter->handle, save_caps,
+      gabble_presence_get_caps_bitfield (presence), old_cap_set, new_cap_set);
 
   gabble_capability_set_free (old_cap_set);
   gabble_capability_set_free (new_cap_set);
@@ -1094,7 +1095,8 @@ _process_caps_uri (GabblePresenceCache *cache,
         {
           gabble_presence_set_capabilities (presence, resource, info->cap_set,
               capabilities_parse (info->cap_set), serial);
-          DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
+          DEBUG ("caps for %d (%s) now %d", handle, from,
+              gabble_presence_get_caps_bitfield (presence));
         }
       else
         {
@@ -1179,7 +1181,7 @@ _process_caps (GabblePresenceCache *cache,
 
   if (presence)
     {
-      old_caps = presence->caps;
+      old_caps = gabble_presence_get_caps_bitfield (presence);
       old_cap_set = gabble_presence_dup_caps (presence);
     }
 
@@ -1196,9 +1198,10 @@ _process_caps (GabblePresenceCache *cache,
       GabbleCapabilitySet *new_cap_set = gabble_presence_dup_caps (presence);
 
       DEBUG ("Emitting caps update: handle %u, old %u, new %u",
-          handle, old_caps, presence->caps);
+          handle, old_caps, gabble_presence_get_caps_bitfield (presence));
 
-      emit_capabilities_update (cache, handle, old_caps, presence->caps,
+      emit_capabilities_update (cache, handle, old_caps,
+          gabble_presence_get_caps_bitfield (presence),
           old_cap_set, new_cap_set);
 
       gabble_capability_set_free (new_cap_set);
@@ -1206,7 +1209,7 @@ _process_caps (GabblePresenceCache *cache,
   else
     {
       DEBUG ("No change in caps %u for handle %u, not updating",
-          presence->caps, handle);
+          gabble_presence_get_caps_bitfield (presence), handle);
     }
 
   if (old_cap_set != NULL)
@@ -1491,7 +1494,7 @@ gabble_presence_cache_do_update (
   if (presence == NULL)
     presence = _cache_insert (cache, handle);
 
-  caps_before = presence->caps;
+  caps_before = gabble_presence_get_caps_bitfield (presence);
   old_cap_set = gabble_presence_dup_caps (presence);
 
   ret = gabble_presence_update (presence, resource, presence_id,
@@ -1499,8 +1502,8 @@ gabble_presence_cache_do_update (
 
   new_cap_set = gabble_presence_dup_caps (presence);
 
-  emit_capabilities_update (cache, handle, caps_before, presence->caps,
-      old_cap_set, new_cap_set);
+  emit_capabilities_update (cache, handle, caps_before,
+      gabble_presence_get_caps_bitfield (presence), old_cap_set, new_cap_set);
 
   gabble_capability_set_free (old_cap_set);
   gabble_capability_set_free (new_cap_set);

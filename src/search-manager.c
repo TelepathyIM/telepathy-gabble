@@ -261,7 +261,10 @@ gabble_search_manager_foreach_channel (TpChannelManager *manager,
   g_hash_table_iter_init (&iter, self->priv->channels);
   while (g_hash_table_iter_next (&iter, &chan, NULL))
     {
-      func (chan, user_data);
+      /* Don't list channels which are not ready as they have not been
+       * announced in NewChannels yet.*/
+      if (gabble_search_channel_is_ready (GABBLE_SEARCH_CHANNEL (chan)))
+          func (chan, user_data);
     }
 }
 

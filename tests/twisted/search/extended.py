@@ -196,7 +196,7 @@ def complete_search2(q, bus, conn, requests, stream):
     search_done(q, chan, c_search, c_props)
 
 def openfire_search(q, bus, conn, requests, stream):
-    # Openfire only supports one text field and a bunch on checkbox
+    # Openfire only supports one text field and a bunch of checkboxes
     fields = [('search', 'text-single', 'Search', []),
         ('Username', 'boolean', 'Username', []),
         ('Name', 'boolean', 'Name', []),

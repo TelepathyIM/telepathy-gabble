@@ -1068,11 +1068,7 @@ gabble_search_channel_init (GabbleSearchChannel *self)
 static void
 free_info (GPtrArray *info)
 {
-  GValue v = { 0, };
-
-  g_value_init (&v, GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
-  g_value_take_boxed (&v, info);
-  g_value_unset (&v);
+  g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, info);
 }
 
 static GObject *

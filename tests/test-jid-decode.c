@@ -5,7 +5,7 @@
 
 #include "src/util.h"
 
-static gboolean
+static void
 test1 (void)
 {
   gchar *node = NULL;
@@ -17,10 +17,9 @@ test1 (void)
   g_assert (0 == strcmp (server, ""));
   g_assert (resource == NULL);
   g_free (server);
-  return TRUE;
 }
 
-static gboolean
+static void
 test2 (void)
 {
   gchar *node = NULL;
@@ -32,10 +31,9 @@ test2 (void)
   g_assert (0 == strcmp (server, "bar"));
   g_assert (resource == NULL);
   g_free (server);
-  return TRUE;
 }
 
-static gboolean
+static void
 test3 (void)
 {
   gchar *node = NULL;
@@ -48,10 +46,9 @@ test3 (void)
   g_assert (resource == NULL);
   g_free (node);
   g_free (server);
-  return TRUE;
 }
 
-static gboolean
+static void
 test4 (void)
 {
   gchar *node = NULL;
@@ -65,16 +62,15 @@ test4 (void)
   g_free (node);
   g_free (server);
   g_free (resource);
-  return TRUE;
 }
 
 int
 main (void)
 {
-  g_assert (test1 ());
-  g_assert (test2 ());
-  g_assert (test3 ());
-  g_assert (test4 ());
+  test1 ();
+  test2 ();
+  test3 ();
+  test4 ();
 
   return 0;
 }

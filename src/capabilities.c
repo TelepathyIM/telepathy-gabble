@@ -44,8 +44,7 @@ struct _Feature
 {
   enum {
     FEATURE_FIXED,
-    FEATURE_OPTIONAL,
-    FEATURE_BUNDLE_COMPAT   /* just for voice-v1/video-v1 */
+    FEATURE_OPTIONAL
   } feature_type;
   gchar *ns;
 };
@@ -67,7 +66,7 @@ static const Feature self_advertised_features[] =
   { FEATURE_FIXED, NS_BYTESTREAMS },
   { FEATURE_FIXED, NS_FILE_TRANSFER },
 
-  { FEATURE_BUNDLE_COMPAT, NS_GOOGLE_FEAT_VOICE },
+  { FEATURE_OPTIONAL, NS_GOOGLE_FEAT_VOICE },
   { FEATURE_OPTIONAL, NS_GOOGLE_FEAT_VIDEO },
   { FEATURE_OPTIONAL, NS_JINGLE_DESCRIPTION_AUDIO },
   { FEATURE_OPTIONAL, NS_JINGLE_DESCRIPTION_VIDEO },

@@ -522,16 +522,27 @@ gabble_presence_dump (GabblePresence *presence)
 {
   GSList *i;
   GString *ret = g_string_new ("");
+  gchar *tmp;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
 
   g_string_append_printf (ret,
     "nickname: %s\n"
     "accumulated status: %d\n"
     "accumulated status msg: %s\n"
-    "kept while unavailable: %d\n"
-    "resources:\n", presence->nickname, presence->status,
+    "kept while unavailable: %d\n",
+    presence->nickname, presence->status,
     presence->status_message,
     presence->keep_unavailable);
+
+  if (priv->cap_set == NULL)
+    {
+      tmp = gabble_capability_set_dump (priv->cap_set, "  ");
+      g_string_append (ret, "capabilities:\n");
+      g_string_append (ret, tmp);
+      g_free (tmp);
+    }
+
+  g_string_append_printf (ret, "resources:\n");
 
   for (i = priv->resources; i; i = i->next)
     {
@@ -543,6 +554,14 @@ gabble_presence_dump (GabblePresence *presence)
         "    status msg: %s\n"
         "    priority: %d\n", res->name, res->status,
         res->status_message, res->priority);
+
+      if (res->cap_set == NULL)
+        {
+          tmp = gabble_capability_set_dump (res->cap_set, "        ");
+          g_string_append (ret, "    capabilities:\n");
+          g_string_append (ret, tmp);
+          g_free (tmp);
+        }
     }
 
   if (priv->resources == NULL)

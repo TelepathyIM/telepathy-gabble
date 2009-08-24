@@ -52,7 +52,6 @@ struct _Resource {
 
 struct _GabblePresencePrivate {
     /* The aggregated caps of all the contacts' resources. */
-    GabblePresenceCapabilities caps;
     GabbleCapabilitySet *cap_set;
 
     gchar *no_resource_status_message;
@@ -156,7 +155,7 @@ resource_better_than (Resource *a, Resource *b)
 GabblePresenceCapabilities
 gabble_presence_get_caps_bitfield (GabblePresence *presence)
 {
-  return presence->priv->caps;
+  return capabilities_parse (presence->priv->cap_set);
 }
 
 gboolean
@@ -244,13 +243,11 @@ gabble_presence_set_capabilities (GabblePresence *presence,
       return;
     }
 
-  presence->priv->caps = 0;
   gabble_capability_set_clear (priv->cap_set);
 
   if (resource == NULL)
     {
       DEBUG ("adding caps %u to bare jid", caps);
-      presence->priv->caps = caps;
       gabble_capability_set_update (priv->cap_set, cap_set);
       return;
     }
@@ -285,11 +282,16 @@ gabble_presence_set_capabilities (GabblePresence *presence,
             }
         }
 
-      presence->priv->caps |= tmp->caps;
       gabble_capability_set_update (priv->cap_set, tmp->cap_set);
     }
 
-  DEBUG ("total caps now %u", presence->priv->caps);
+  if (DEBUGGING)
+    {
+      gchar *tmp = gabble_capability_set_dump (priv->cap_set, "  ");
+
+      DEBUG ("Capabilities are now:\n%s", tmp);
+      g_free (tmp);
+    }
 }
 
 static Resource *
@@ -318,7 +320,6 @@ aggregate_resources (GabblePresence *presence)
 
   /* select the most preferable Resource and update presence->* based on our
    * choice */
-  presence->priv->caps = 0;
   gabble_capability_set_clear (priv->cap_set);
   presence->status = GABBLE_PRESENCE_OFFLINE;
 
@@ -328,7 +329,6 @@ aggregate_resources (GabblePresence *presence)
     {
       Resource *r = (Resource *) i->data;
 
-      presence->priv->caps |= r->caps;
       gabble_capability_set_update (priv->cap_set, r->cap_set);
 
       /* trump existing status & message if it's more present
@@ -404,14 +404,12 @@ gabble_presence_update (GabblePresence *presence,
           res = NULL;
 
           /* recalculate aggregate capability mask */
-          presence->priv->caps = 0;
           gabble_capability_set_clear (priv->cap_set);
 
           for (i = priv->resources; i; i = i->next)
             {
               Resource *r = (Resource *) i->data;
 
-              presence->priv->caps |= r->caps;
               gabble_capability_set_update (priv->cap_set, r->cap_set);
             }
         }
@@ -440,7 +438,6 @@ gabble_presence_update (GabblePresence *presence,
 
   /* select the most preferable Resource and update presence->* based on our
    * choice */
-  presence->priv->caps = 0;
   gabble_capability_set_clear (priv->cap_set);
   presence->status = GABBLE_PRESENCE_OFFLINE;
 
@@ -536,10 +533,9 @@ gabble_presence_dump (GabblePresence *presence)
     "nickname: %s\n"
     "accumulated status: %d\n"
     "accumulated status msg: %s\n"
-    "accumulated capabilities: %d\n"
     "kept while unavailable: %d\n"
     "resources:\n", presence->nickname, presence->status,
-    presence->status_message, presence->priv->caps,
+    presence->status_message,
     presence->keep_unavailable);
 
   for (i = priv->resources; i; i = i->next)

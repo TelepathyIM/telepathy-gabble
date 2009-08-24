@@ -2493,10 +2493,6 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
 #define GTALK_VIDEO_CAPS \
    ( PRESENCE_CAP_GOOGLE_VIDEO )
 
-#define JINGLE_CAPS \
-  ( PRESENCE_CAP_JINGLE015 | PRESENCE_CAP_JINGLE032 \
-  | PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP )
-
 #define JINGLE_AUDIO_CAPS \
   ( PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE_RTP_AUDIO \
   | PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO )
@@ -2514,9 +2510,6 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
   DEBUG ("adding Jingle caps (%s, %s)",
     flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO ? "audio" : "no audio",
     flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO ? "video" : "no video");
-
-  /* We speak Jingle (old and new), and can always do raw UDP */
-  caps |= JINGLE_CAPS;
 
   if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP)
     caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP;

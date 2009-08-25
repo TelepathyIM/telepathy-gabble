@@ -974,7 +974,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
           goto out;
         }
 
-      if (!peer_resource || peer_resource[0] == '\0')
+      if (!peer_resource)
         {
           DEBUG ("Got an SI IQ response from a JID without a resource."
               "Ignoring.");
@@ -1885,7 +1885,7 @@ streaminit_reply_cb (GabbleConnection *conn,
           goto END;
         }
 
-      if (peer_resource == NULL || peer_resource[0] == '\0')
+      if (peer_resource == NULL)
         {
           DEBUG ("Got an SI request from a JID without a resource; ignoring");
           goto END;

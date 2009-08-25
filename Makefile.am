@@ -18,4 +18,5 @@ check-local::
 include tools/lcov.am
 LCOV_CHECK_ARGS = CHECK_TWISTED_SLEEP=6
 
+CHANGELOG_RANGE = telepathy-gabble-0.6.0..
 include tools/telepathy.am

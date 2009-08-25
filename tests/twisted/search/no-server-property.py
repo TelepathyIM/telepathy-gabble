@@ -7,7 +7,7 @@ import dbus
 
 from twisted.words.xish import xpath
 
-from gabbletest import exec_test, sync_stream, make_result_iq, acknowledge_iq, elem_iq, elem
+from gabbletest import exec_test, sync_stream, make_result_iq, acknowledge_iq, elem_iq, elem, disconnect_conn
 from servicetest import EventPattern
 from search_helper import call_create, answer_field_query
 
@@ -89,6 +89,29 @@ def no_server_discovered(q, bus, conn, stream):
     e = q.expect('dbus-error', method='CreateChannel')
     assert e.error.get_dbus_name() == cs.INVALID_ARGUMENT
 
+def disconnect_before_disco(q, bus, conn, stream):
+    conn.Connect()
+
+    _, iq_event, disco_event = q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard'),
+        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
+
+    acknowledge_iq(stream, iq_event.stanza)
+
+    requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
+
+    # try to create a channel before the disco process is completed.
+    # This creation will fail
+    call_create(q, requests, server=None)
+
+    # connection is disconnected. CreateChannel fails
+    disconnect_conn(q, conn, stream, [
+        EventPattern('dbus-error', method='CreateChannel', name=cs.DISCONNECTED)])
+
 if __name__ == '__main__':
     exec_test(server_discovered)
     exec_test(no_server_discovered)
+    exec_test(disconnect_before_disco)

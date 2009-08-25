@@ -967,7 +967,19 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   if (room_handle == 0)
     {
       /* jid is not a muc jid so we need contact's resource */
-      gabble_decode_jid (from, NULL, NULL, &peer_resource);
+
+      if (!gabble_decode_jid (from, NULL, NULL, &peer_resource))
+        {
+          DEBUG ("Got an SI IQ response from a bad JID. Ignoring.");
+          goto out;
+        }
+
+      if (!peer_resource || peer_resource[0] == '\0')
+        {
+          DEBUG ("Got an SI IQ response from a JID without a resource."
+              "Ignoring.");
+          goto out;
+        }
 
       peer_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
 
@@ -1866,7 +1878,18 @@ streaminit_reply_cb (GabbleConnection *conn,
   if (room_handle == 0)
     {
       /* jid is not a muc jid so we need contact's resource */
-      gabble_decode_jid (from, NULL, NULL, &peer_resource);
+
+      if (!gabble_decode_jid (from, NULL, NULL, &peer_resource))
+        {
+          DEBUG ("Got an SI request with a bad JID");
+          goto END;
+        }
+
+      if (peer_resource == NULL || peer_resource[0] == '\0')
+        {
+          DEBUG ("Got an SI request from a JID without a resource; ignoring");
+          goto END;
+        }
 
       /* we are not in a muc so our own jid is the one in the 'to' attribute */
       self_jid = g_strdup (lm_message_node_get_attribute (reply_msg->node,

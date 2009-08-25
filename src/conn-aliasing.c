@@ -889,10 +889,10 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
   jid = tp_handle_inspect (contact_handles, handle);
   g_assert (NULL != jid);
 
-  gabble_decode_jid (jid, NULL, NULL, &resource);
 
   /* MUC handles have the nickname in the resource */
-  if (NULL != resource)
+  if (gabble_decode_jid (jid, NULL, NULL, &resource) &&
+      NULL != resource)
     {
       set_or_clear (alias, resource);
       return GABBLE_CONNECTION_ALIAS_FROM_MUC_RESOURCE;

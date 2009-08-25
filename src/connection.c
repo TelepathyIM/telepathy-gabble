@@ -3164,9 +3164,7 @@ room_jid_verify (RoomVerifyBatch *batch,
       g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unable to get room name and service from JID %s",
           batch->contexts[i].jid);
-
       ret = FALSE;
-
       goto out;
     }
 

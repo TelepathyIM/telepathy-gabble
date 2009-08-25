@@ -474,9 +474,20 @@ gabble_decode_jid (const gchar *jid,
       tmp_resource++;
     }
 
+  /* Domain must be non-empty. If the node or the resource exist, they must be
+   * non-empty.
+   */
+  if (*tmp_domain == '\0' ||
+      (tmp_node != NULL && *tmp_node == '\0') ||
+      (tmp_resource != NULL && *tmp_resource == '\0'))
+    {
+      g_free (tmp_jid);
+      return FALSE;
+    }
+
   /* the server must be stored after we find the resource, in case we
    * truncated a resource from it */
-  if (tmp_domain != NULL && domain != NULL)
+  if (domain != NULL)
     *domain = g_utf8_strdown (tmp_domain, -1);
 
   /* store the username if the user provided a pointer */

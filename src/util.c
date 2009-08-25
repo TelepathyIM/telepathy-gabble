@@ -598,11 +598,10 @@ gabble_normalize_contact (TpHandleRepoIface *repo,
   gchar *username = NULL, *server = NULL, *resource = NULL;
   gchar *ret = NULL;
 
-  if (!gabble_decode_jid (jid, &username, &server, &resource) ||
-      !username || !server || !username[0] || !server[0])
+  if (!gabble_decode_jid (jid, &username, &server, &resource) || !username)
     {
       INVALID_HANDLE (error,
-          "jid %s has invalid username or server", jid);
+          "JID %s is invalid or has no node part", jid);
       goto OUT;
     }
 

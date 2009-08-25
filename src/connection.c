@@ -970,8 +970,7 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   result = TRUE;
 
   if (!gabble_decode_jid (account, &username, &server, &resource) ||
-      username == NULL || server == NULL ||
-      *username == '\0' || *server == '\0')
+      username == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unable to get username and server from account");
@@ -3160,7 +3159,7 @@ room_jid_verify (RoomVerifyBatch *batch,
   room = service = NULL;
 
   if (!gabble_decode_jid (batch->contexts[i].jid, &room, &service, NULL) ||
-      room == NULL || *room == '\0' || service == NULL || *service == '\0')
+      room == NULL)
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unable to get room name and service from JID %s",

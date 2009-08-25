@@ -922,6 +922,7 @@ gabble_tube_dbus_constructor (GType type,
       g_assert (gabble_decode_jid (
           tp_handle_inspect (contact_repo, priv->self_handle),
           NULL, NULL, &nick));
+      g_assert (nick != NULL);
 
       priv->dbus_local_name = _gabble_generate_dbus_unique_name (nick);
 

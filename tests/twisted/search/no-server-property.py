@@ -16,7 +16,7 @@ import ns
 
 JUD_SERVER = 'jud.localhost'
 
-def test(q, bus, conn, stream):
+def server_discovered(q, bus, conn, stream):
     conn.Connect()
 
     _, iq_event, disco_event = q.expect_many(
@@ -61,5 +61,33 @@ def test(q, bus, conn, stream):
     # JUD_SERVER is used as default
     answer_field_query(q, stream, JUD_SERVER)
 
+def no_server_discovered(q, bus, conn, stream):
+    conn.Connect()
+
+    _, iq_event, disco_event = q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard'),
+        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
+
+    acknowledge_iq(stream, iq_event.stanza)
+
+    requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
+
+    # reply to IQ query. No search server is present
+    reply = make_result_iq(stream, disco_event.stanza)
+    stream.send(reply)
+
+    # Make sure Gabble's received the reply
+    sync_stream(q, stream)
+
+    # This server doesn't have a search server. We can't create Search channel
+    # without specifying a Server property
+    call_create(q, requests, server=None)
+    e = q.expect('dbus-error', method='CreateChannel')
+    assert e.error.get_dbus_name() == cs.INVALID_ARGUMENT
+
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(server_discovered)
+    exec_test(no_server_discovered)

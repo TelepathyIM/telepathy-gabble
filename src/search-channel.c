@@ -271,6 +271,21 @@ parse_unextended_field_response (
   return search_keys;
 }
 
+static gboolean
+name_in_array (GPtrArray *array,
+    const gchar *name)
+{
+  guint i;
+
+  for (i = 0; i < array->len; i++)
+    {
+      if (!tp_strdiff (g_ptr_array_index (array, i), name))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
 static GPtrArray *
 parse_data_form (
     GabbleSearchChannel *self,
@@ -341,9 +356,17 @@ parse_data_form (
       tp_name = g_hash_table_lookup (xmpp_to_tp, var);
       if (tp_name != NULL)
         {
-          g_ptr_array_add (search_keys, tp_name);
-          g_hash_table_insert (self->priv->tp_to_xmpp, g_strdup (tp_name),
-              g_strdup (var));
+          if (name_in_array (search_keys, tp_name))
+            {
+              DEBUG ("%s has already been added as a search key; Skipping",
+                  tp_name);
+            }
+          else
+            {
+              g_ptr_array_add (search_keys, tp_name);
+              g_hash_table_insert (self->priv->tp_to_xmpp, g_strdup (tp_name),
+                  g_strdup (var));
+            }
         }
       else
         {

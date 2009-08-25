@@ -278,7 +278,6 @@ parse_data_form (
     GError **error)
 {
   GPtrArray *search_keys = g_ptr_array_new ();
-  gboolean found_form_type_search = FALSE;
   NodeIter i;
 
   if (tp_strdiff (lm_message_node_get_attribute (x_node, "type"), "form"))
@@ -323,7 +322,6 @@ parse_data_form (
               goto fail;
             }
 
-          found_form_type_search = TRUE;
           continue;
         }
 

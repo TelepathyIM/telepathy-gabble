@@ -28,7 +28,7 @@ def test(q, bus, conn, stream):
 
     requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
-    for f in [complete_search, complete_search2, openfire_search]:
+    for f in [complete_search, complete_search2, openfire_search, double_nick]:
         f(q, bus, conn, requests, stream)
 
 def do_one_search(q, bus, conn, requests, stream, fields, expected_search_keys,
@@ -234,6 +234,22 @@ def openfire_search(q, bus, conn, requests, stream):
         assert ("email", [], [r['Email']]) in i, i_
 
         assert len(i) == 3
+
+# Server supports 'nickname' and 'nick' which are both mapped to the
+# "nickname" in Telepathy
+def double_nick(q, bus, conn, requests, stream):
+    fields = [('nickname', 'text-single', 'NickName', []),
+        ('nick', 'text-single', 'Nick', []),]
+
+    # ensure that 'nickname' is not added twice
+    expected_search_keys = ['nickname']
+
+    terms = { 'nickname': 'Badger' }
+
+    results = { }
+
+    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
+        fields, expected_search_keys, terms, results.values())
 
 if __name__ == '__main__':
     exec_test(test)

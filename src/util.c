@@ -406,6 +406,36 @@ lm_message_build_with_sub_type (const gchar *to, LmMessageType type,
   return msg;
 }
 
+static gboolean
+validate_jid_node (const gchar *node)
+{
+  const gchar *c;
+
+  for (c = node; *c; c++)
+    if (strchr ("\"&'/:<>@", *c))
+      /* RFC 3920 §A.5 */
+      return FALSE;
+
+  return TRUE;
+}
+
+static gboolean
+validate_jid_domain (const gchar *domain)
+{
+  /* XXX: This doesn't do proper validation, it just checks the character
+   * range. In theory, we check that the domain is a well-formed IDN or
+   * an IPv4/IPv6 address literal.
+   */
+
+  const gchar *c;
+
+  for (c = domain; *c; c++)
+    if (!g_ascii_isalnum (*c) && !strchr (":-.", *c))
+      return FALSE;
+
+  return TRUE;
+}
+
 /**
  * gabble_decode_jid
  *
@@ -474,7 +504,9 @@ gabble_decode_jid (const gchar *jid,
    * non-empty.
    */
   if (*tmp_domain == '\0' ||
-      (tmp_node != NULL && *tmp_node == '\0') ||
+      !validate_jid_domain (tmp_domain) ||
+      (tmp_node != NULL &&
+         (*tmp_node == '\0' || !validate_jid_node (tmp_node))) ||
       (tmp_resource != NULL && *tmp_resource == '\0'))
     {
       g_free (tmp_jid);

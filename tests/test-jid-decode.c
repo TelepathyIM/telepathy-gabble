@@ -47,6 +47,7 @@ main (void)
   test_pass ("foo@bar/baz", "foo", "bar", "baz");
   test_fail ("@bar");
   test_fail ("foo@bar/");
+  test_pass ("Foo@Bar/Baz", "foo", "bar", "Baz");
 
   return 0;
 }

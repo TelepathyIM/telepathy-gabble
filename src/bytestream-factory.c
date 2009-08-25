@@ -1865,12 +1865,12 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   if (room_handle == 0)
     {
-     /* jid is not a muc jid so we need contact's resource */
-     gabble_decode_jid (from, NULL, NULL, &peer_resource);
+      /* jid is not a muc jid so we need contact's resource */
+      gabble_decode_jid (from, NULL, NULL, &peer_resource);
 
-     /* we are not in a muc so our own jid is the one in the 'to' attribute */
-     self_jid = g_strdup (lm_message_node_get_attribute (reply_msg->node,
-           "to"));
+      /* we are not in a muc so our own jid is the one in the 'to' attribute */
+      self_jid = g_strdup (lm_message_node_get_attribute (reply_msg->node,
+            "to"));
     }
   else
     {

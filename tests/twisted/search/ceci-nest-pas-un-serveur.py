@@ -139,6 +139,28 @@ def disconnected_before_reply(q, stream, conn, requests):
     event = q.expect('dbus-error', method='CreateChannel')
     assert event.error.get_dbus_name() == cs.DISCONNECTED, event.error
 
+def forbidden(q, stream, conn, requests):
+    iq = call_create(q, requests, 'notforyou.localhost')
+
+    e = domish.Element((None, 'error'))
+    e['type'] = 'cancel'
+    e.addElement((ns.STANZA, 'forbidden'))
+    send_error_reply(stream, iq, e)
+
+    event = q.expect('dbus-error', method='CreateChannel')
+    assert event.error.get_dbus_name() == cs.PERMISSION_DENIED, event.error
+
+def invalid_jid(q, stream, conn, requests):
+    iq = call_create(q, requests, 'invalid.localhost')
+
+    e = domish.Element((None, 'error'))
+    e['type'] = 'cancel'
+    e.addElement((ns.STANZA, 'jid-malformed'))
+    send_error_reply(stream, iq, e)
+
+    event = q.expect('dbus-error', method='CreateChannel')
+    assert event.error.get_dbus_name() == cs.INVALID_ARGUMENT, event.error
+
 def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged',
@@ -150,6 +172,8 @@ def test(q, bus, conn, stream):
     returns_invalid_fields(q, stream, requests)
     returns_error_from_search(q, stream, conn, requests)
     returns_bees_from_search(q, stream, conn, requests)
+    forbidden(q, stream, conn, requests)
+    invalid_jid(q, stream, conn, requests)
     disconnected_before_reply(q, stream, conn, requests)
 
     stream.sendFooter()

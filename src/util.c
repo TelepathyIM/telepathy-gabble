@@ -426,7 +426,7 @@ lm_message_build_with_sub_type (const gchar *to, LmMessageType type,
  * domain are lower-cased because the Jabber protocol treats them
  * case-insensitively.
  */
-void
+gboolean
 gabble_decode_jid (const gchar *jid,
                    gchar **node,
                    gchar **domain,
@@ -489,6 +489,7 @@ gabble_decode_jid (const gchar *jid,
 
   /* free our working copy */
   g_free (tmp_jid);
+  return TRUE;
 }
 
 /**
@@ -590,9 +591,8 @@ gabble_normalize_contact (TpHandleRepoIface *repo,
   gchar *username = NULL, *server = NULL, *resource = NULL;
   gchar *ret = NULL;
 
-  gabble_decode_jid (jid, &username, &server, &resource);
-
-  if (!username || !server || !username[0] || !server[0])
+  if (!gabble_decode_jid (jid, &username, &server, &resource) ||
+      !username || !server || !username[0] || !server[0])
     {
       INVALID_HANDLE (error,
           "jid %s has invalid username or server", jid);

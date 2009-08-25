@@ -919,8 +919,9 @@ gabble_tube_dbus_constructor (GType type,
       priv->dbus_name_to_handle = g_hash_table_new_full (g_str_hash,
          g_str_equal, NULL, NULL);
 
-      gabble_decode_jid (tp_handle_inspect (contact_repo, priv->self_handle),
-          NULL, NULL, &nick);
+      g_assert (gabble_decode_jid (
+          tp_handle_inspect (contact_repo, priv->self_handle),
+          NULL, NULL, &nick));
 
       priv->dbus_local_name = _gabble_generate_dbus_unique_name (nick);
 
@@ -1679,7 +1680,7 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
       const gchar *jid;
 
       jid = tp_handle_inspect (contact_repo, handle);
-      gabble_decode_jid (jid, NULL, NULL, &nick);
+      g_assert (gabble_decode_jid (jid, NULL, NULL, &nick));
       supposed_name = _gabble_generate_dbus_unique_name (nick);
       g_free (nick);
 

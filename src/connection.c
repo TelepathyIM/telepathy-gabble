@@ -975,9 +975,8 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   username = server = resource = NULL;
   result = TRUE;
 
-  gabble_decode_jid (account, &username, &server, &resource);
-
-  if (username == NULL || server == NULL ||
+  if (!gabble_decode_jid (account, &username, &server, &resource) ||
+      username == NULL || server == NULL ||
       *username == '\0' || *server == '\0')
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
@@ -3190,9 +3189,9 @@ room_jid_verify (RoomVerifyBatch *batch,
   GError *error = NULL;
 
   room = service = NULL;
-  gabble_decode_jid (batch->contexts[i].jid, &room, &service, NULL);
 
-  if (room == NULL || *room == '\0' || service == NULL || *service == '\0')
+  if (!gabble_decode_jid (batch->contexts[i].jid, &room, &service, NULL) ||
+      room == NULL || *room == '\0' || service == NULL || *service == '\0')
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unable to get room name and service from JID %s",

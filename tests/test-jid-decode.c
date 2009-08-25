@@ -12,7 +12,7 @@ test1 (void)
   gchar *server = NULL;
   gchar *resource = NULL;
 
-  gabble_decode_jid ("", &node, &server, &resource);
+  g_assert (gabble_decode_jid ("", &node, &server, &resource));
   g_assert (node == NULL);
   g_assert (0 == strcmp (server, ""));
   g_assert (resource == NULL);
@@ -26,7 +26,7 @@ test2 (void)
   gchar *server = NULL;
   gchar *resource = NULL;
 
-  gabble_decode_jid ("bar", &node, &server, &resource);
+  g_assert (gabble_decode_jid ("bar", &node, &server, &resource));
   g_assert (node == NULL);
   g_assert (0 == strcmp (server, "bar"));
   g_assert (resource == NULL);
@@ -40,7 +40,7 @@ test3 (void)
   gchar *server = NULL;
   gchar *resource = NULL;
 
-  gabble_decode_jid ("foo@bar", &node, &server, &resource);
+  g_assert (gabble_decode_jid ("foo@bar", &node, &server, &resource));
   g_assert (0 == strcmp (node, "foo"));
   g_assert (0 == strcmp (server, "bar"));
   g_assert (resource == NULL);
@@ -55,7 +55,7 @@ test4 (void)
   gchar *server = NULL;
   gchar *resource = NULL;
 
-  gabble_decode_jid ("foo@bar/baz", &node, &server, &resource);
+  g_assert (gabble_decode_jid ("foo@bar/baz", &node, &server, &resource));
   g_assert (0 == strcmp (node, "foo"));
   g_assert (0 == strcmp (server, "bar"));
   g_assert (0 == strcmp (resource, "baz"));

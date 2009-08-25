@@ -30,11 +30,9 @@ def server_discovered(q, bus, conn, stream):
 
     requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
-    # no search server has been discovered yet. Requesting a search channel
-    # without specifying the Server will fail
+    # no search server has been discovered yet. The CreateChannel operation
+    # will be completed once the disco process is finished.
     call_create(q, requests, server=None)
-    e = q.expect('dbus-error', method='CreateChannel')
-    assert e.error.get_dbus_name() == cs.INVALID_ARGUMENT
 
     # reply to IQ query
     reply = make_result_iq(stream, disco_event.stanza)
@@ -53,12 +51,11 @@ def server_discovered(q, bus, conn, stream):
 
     stream.send(reply)
 
-    # Make sure Gabble's received the reply
-    sync_stream(q, stream)
-
-    call_create(q, requests, server=None)
-
     # JUD_SERVER is used as default
+    answer_field_query(q, stream, JUD_SERVER)
+
+    # Now that the search server has been discovered, it is used right away.
+    call_create(q, requests, server=None)
     answer_field_query(q, stream, JUD_SERVER)
 
 def no_server_discovered(q, bus, conn, stream):
@@ -75,12 +72,16 @@ def no_server_discovered(q, bus, conn, stream):
 
     requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
 
+    # no search server has been discovered yet. The CreateChannel operation
+    # will fail once the disco process is finished.
+    call_create(q, requests, server=None)
+
     # reply to IQ query. No search server is present
     reply = make_result_iq(stream, disco_event.stanza)
     stream.send(reply)
 
-    # Make sure Gabble's received the reply
-    sync_stream(q, stream)
+    # creation of the channel failed
+    e = q.expect('dbus-error', method='CreateChannel', name=cs.INVALID_ARGUMENT)
 
     # This server doesn't have a search server. We can't create Search channel
     # without specifying a Server property

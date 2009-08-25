@@ -46,6 +46,10 @@ G_DEFINE_TYPE_WITH_CODE (GabbleSearchManager, gabble_search_manager,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
       caps_channel_manager_iface_init));
 
+static void new_search_channel (GabbleSearchManager *self,
+    const gchar *server,
+    gpointer request_token);
+
 /* properties */
 enum
 {
@@ -63,6 +67,11 @@ struct _GabbleSearchManagerPrivate
   GHashTable *channels;
 
   gchar *default_jud;
+  gboolean disco_done;
+
+  /* List of request tokens (gpointer) waiting that the disco process is
+   * completed. */
+  GSList *requests_waiting_disco;
 
   gboolean dispose_has_run;
 };
@@ -78,6 +87,9 @@ gabble_search_manager_init (GabbleSearchManager *self)
 
   self->priv->conn = NULL;
   self->priv->dispose_has_run = FALSE;
+
+  self->priv->disco_done = FALSE;
+  self->priv->requests_waiting_disco = NULL;
 }
 
 static void
@@ -120,6 +132,37 @@ disco_item_found_cb (GabbleDisco *disco,
 }
 
 static void
+disco_done_cb (GabbleDisco *disco,
+    GabbleSearchManager *self)
+{
+  GSList *l;
+
+  DEBUG ("Disco is done; complete pending requests");
+
+  self->priv->disco_done = TRUE;
+
+  for (l = self->priv->requests_waiting_disco; l != NULL; l = g_slist_next (l))
+    {
+      gpointer request_token = l->data;
+
+      if (self->priv->default_jud != NULL)
+        {
+          new_search_channel (self, self->priv->default_jud, request_token);
+        }
+      else
+        {
+          tp_channel_manager_emit_request_failed (self, request_token,
+              TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "No Server has been specified and no server has been "
+              "discovered on the connection");
+        }
+    }
+
+  g_slist_free (self->priv->requests_waiting_disco);
+  self->priv->requests_waiting_disco = NULL;
+}
+
+static void
 connection_status_changed_cb (GabbleConnection *conn,
                               guint status,
                               guint reason,
@@ -134,6 +177,8 @@ connection_status_changed_cb (GabbleConnection *conn,
          * can connect this signal in our constructor. */
         gabble_signal_connect_weak (self->priv->conn->disco, "item-found",
             G_CALLBACK (disco_item_found_cb), G_OBJECT (self));
+        gabble_signal_connect_weak (self->priv->conn->disco, "done",
+            G_CALLBACK (disco_done_cb), G_OBJECT (self));
         break;
 
       case TP_CONNECTION_STATUS_DISCONNECTED:
@@ -433,10 +478,22 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
     {
       if (self->priv->default_jud == NULL)
         {
-          error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "No Server has been specified and no server has been discovered "
-              "on the connection");
-          goto error;
+          if (self->priv->disco_done)
+            {
+              error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "No Server has been specified and no server has been "
+                  "discovered on the connection");
+              goto error;
+            }
+
+          /* Wait until disco is finished as we still have a chance to
+           * discover a search server. */
+          DEBUG ("No Server has been specified; wait for the end of "
+              "the disco process");
+
+          self->priv->requests_waiting_disco = g_slist_append (
+              self->priv->requests_waiting_disco, request_token);
+          return TRUE;
         }
 
       DEBUG ("No Server specified; use %s as default", self->priv->default_jud);

@@ -414,11 +414,18 @@ search_channel_ready_or_not_cb (GabbleSearchChannel *chan,
       if (domain == GABBLE_XMPP_ERROR)
         {
           domain = TP_ERRORS;
-          /* - Maybe CreateChannel should be specced to raise PermissionDenied?
-           *   Then we could map XMPP_ERROR_FORBIDDEN to that.
-           * - Should XMPP_ERROR_JID_MALFORMED be mapped to InvalidArgument?
-           */
-          code = TP_ERROR_NOT_AVAILABLE;
+
+          switch (code)
+            {
+            case XMPP_ERROR_FORBIDDEN:
+              code = TP_ERROR_PERMISSION_DENIED;
+              break;
+            case XMPP_ERROR_JID_MALFORMED:
+              code = TP_ERROR_INVALID_ARGUMENT;
+              break;
+            default:
+              code = TP_ERROR_NOT_AVAILABLE;
+            }
         }
       else
         {

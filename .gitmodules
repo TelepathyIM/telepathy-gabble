@@ -1,0 +1,3 @@
+[submodule "lib/ext/wocky"]
+	path = lib/ext/wocky
+	url = git://git.collabora.co.uk/git/wocky.git

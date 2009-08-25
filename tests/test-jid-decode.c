@@ -12,9 +12,9 @@ test1 (void)
   gchar *server = NULL;
   gchar *resource = NULL;
 
-  g_assert (gabble_decode_jid ("", &node, &server, &resource));
+  g_assert (!gabble_decode_jid ("", &node, &server, &resource));
   g_assert (node == NULL);
-  g_assert (0 == strcmp (server, ""));
+  g_assert (server == NULL);
   g_assert (resource == NULL);
   g_free (server);
 }
@@ -64,6 +64,38 @@ test4 (void)
   g_free (resource);
 }
 
+static void
+test5 (void)
+{
+  gchar *node = NULL;
+  gchar *server = NULL;
+  gchar *resource = NULL;
+
+  g_assert (!gabble_decode_jid ("@bar", &node, &server, &resource));
+  g_assert (node == NULL);
+  g_assert (server == NULL);
+  g_assert (resource == NULL);
+  g_free (node);
+  g_free (server);
+  g_free (resource);
+}
+
+static void
+test6 (void)
+{
+  gchar *node = NULL;
+  gchar *server = NULL;
+  gchar *resource = NULL;
+
+  g_assert (!gabble_decode_jid ("foo@bar/", &node, &server, &resource));
+  g_assert (node == NULL);
+  g_assert (server == NULL);
+  g_assert (resource == NULL);
+  g_free (node);
+  g_free (server);
+  g_free (resource);
+}
+
 int
 main (void)
 {
@@ -71,6 +103,8 @@ main (void)
   test2 ();
   test3 ();
   test4 ();
+  test5 ();
+  test6 ();
 
   return 0;
 }

@@ -416,15 +416,11 @@ lm_message_build_with_sub_type (const gchar *to, LmMessageType type,
  *  node@domain
  *  node@domain/resource
  *
- * Sets the caller's node, domain and resource pointers to the node, domain
- * and resource parts respectively, if available in the provided JID. The
- * caller may set any of the pointers to NULL if they are not interested in a
- * certain component.
- *
- * The returned values may be NULL or zero-length if a component was either
- * not present or zero-length respectively in the given JID. The node and
- * domain are lower-cased because the Jabber protocol treats them
- * case-insensitively.
+ * If the JID is valid, returns TRUE and sets the caller's
+ * node/domain/resource pointers if they are not NULL. The node and resource
+ * pointers will be set to NULL if the respective part is not present in the
+ * JID. The node and domain are lower-cased because the Jabber protocol treats
+ * them case-insensitively.
  */
 gboolean
 gabble_decode_jid (const gchar *jid,

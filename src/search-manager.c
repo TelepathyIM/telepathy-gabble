@@ -115,6 +115,11 @@ gabble_search_manager_close_all (GabbleSearchManager *self)
   g_hash_table_destroy (self->priv->channels);
   self->priv->channels = NULL;
   g_list_free (chans);
+
+  /* base-connection cancels all the pending requests when disconnecting so we
+   * don't have to do anything. */
+  g_slist_free (self->priv->requests_waiting_disco);
+  self->priv->requests_waiting_disco = NULL;
 }
 
 static void

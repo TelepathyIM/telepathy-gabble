@@ -471,33 +471,40 @@ gabble_decode_jid (const gchar *jid,
   if (resource != NULL)
     *resource = NULL;
 
-  /* take a local copy so we don't modify the caller's string */
+  /* Take a local copy so we don't modify the caller's string. */
   tmp_jid = g_strdup (jid);
 
-  /* find an @ in username, truncate username to that length, and point
-   * 'server' to the byte afterwards */
-  tmp_domain = strchr (tmp_jid, '@');
-  if (tmp_domain)
-    {
-      tmp_node = tmp_jid;
+  /* If there's a slash in tmp_jid, split it in two and take the second part as
+   * the resource.
+   */
+  tmp_resource = strchr (tmp_jid, '/');
 
-      *tmp_domain = '\0';
-      tmp_domain++;
-    }
-  else
-    {
-      tmp_node = NULL;
-      tmp_domain = tmp_jid;
-    }
-
-  /* if we have a server, find a / in it, truncate it to that length, and point
-   * 'resource' to the byte afterwards. otherwise, do the same to username to
-   * find any resource there. */
-  tmp_resource = strchr (tmp_domain, '/');
   if (tmp_resource)
     {
       *tmp_resource = '\0';
       tmp_resource++;
+    }
+  else
+    {
+      tmp_resource = NULL;
+    }
+
+  /* If there's an at sign in tmp_jid, split it in two and set tmp_node and
+   * tmp_domain appropriately. Otherwise, tmp_node is NULL and the domain is
+   * the whole string.
+   */
+  tmp_domain = strchr (tmp_jid, '@');
+
+  if (tmp_domain)
+    {
+      *tmp_domain = '\0';
+      tmp_domain++;
+      tmp_node = tmp_jid;
+    }
+  else
+    {
+      tmp_domain = tmp_jid;
+      tmp_node = NULL;
     }
 
   /* Domain must be non-empty. If the node or the resource exist, they must be

@@ -50,6 +50,7 @@ main (void)
   test_pass ("Foo@Bar/Baz", "foo", "bar", "Baz");
   test_fail ("foo@@");
   test_fail ("foo&bar@baz");
+  test_pass ("foo/bar@baz", NULL, "foo", "bar@baz");
   test_pass ("foo@bar/foo@bar/foo@bar", "foo", "bar", "foo@bar/foo@bar");
 
   return 0;

@@ -9,7 +9,7 @@ from twisted.words.xish import xpath, domish
 from servicetest import EventPattern
 from gabbletest import exec_test, sync_stream
 from caps_helper import caps_contain, receive_presence_and_ask_caps, \
-        FIXED_CAPS, JINGLE_CAPS, VARIABLE_CAPS, check_caps
+        FIXED_CAPS, JINGLE_CAPS, VARIABLE_CAPS, check_caps, disco_caps
 import constants as cs
 import ns
 
@@ -26,6 +26,17 @@ JINGLE_CAPS_EXCEPT_GVIDEO = [n for n in JINGLE_CAPS
     if n != ns.GOOGLE_FEAT_VIDEO]
 
 def run_test(q, bus, conn, stream):
+    conn.ContactCapabilities.UpdateCapabilities([
+        (cs.CLIENT + '.AbiWord', [
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+            cs.STREAM_TUBE_SERVICE: 'x-abiword' },
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+            cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+            cs.STREAM_TUBE_SERVICE: 'x-abiword' },
+        ], []),
+        ])
+
     conn.Connect()
 
     _, initial_presence = q.expect_many(
@@ -33,6 +44,8 @@ def run_test(q, bus, conn, stream):
                 args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
             EventPattern('stream-presence'),
             )
+    (disco_response, namespaces) = disco_caps(q, stream, initial_presence)
+    check_caps(namespaces, [ns.TUBES + '/stream#x-abiword'])
 
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + '.AbiWord', [

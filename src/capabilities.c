@@ -97,7 +97,7 @@ static GabbleCapabilitySet *video_v1_caps = NULL;
 static GabbleCapabilitySet *any_audio_caps = NULL;
 static GabbleCapabilitySet *any_video_caps = NULL;
 static GabbleCapabilitySet *any_transport_caps = NULL;
-static GabbleCapabilitySet *initial_caps = NULL;
+static GabbleCapabilitySet *fixed_caps = NULL;
 static GabbleCapabilitySet *geoloc_caps = NULL;
 static GabbleCapabilitySet *olpc_caps = NULL;
 
@@ -138,9 +138,9 @@ gabble_capabilities_get_any_transport (void)
 }
 
 const GabbleCapabilitySet *
-gabble_capabilities_get_initial_caps (void)
+gabble_capabilities_get_fixed_caps (void)
 {
-  return initial_caps;
+  return fixed_caps;
 }
 
 const GabbleCapabilitySet *
@@ -241,12 +241,12 @@ gabble_capabilities_init (GabbleConnection *conn)
       gabble_capability_set_add (any_transport_caps, NS_JINGLE_TRANSPORT_ICEUDP);
       gabble_capability_set_add (any_transport_caps, NS_JINGLE_TRANSPORT_RAWUDP);
 
-      initial_caps = gabble_capability_set_new ();
+      fixed_caps = gabble_capability_set_new ();
 
       for (feat = self_advertised_features; feat->ns != NULL; feat++)
         {
           if (feat->feature_type == FEATURE_FIXED)
-            gabble_capability_set_add (initial_caps, feat->ns);
+            gabble_capability_set_add (fixed_caps, feat->ns);
         }
 
       geoloc_caps = gabble_capability_set_new ();
@@ -279,7 +279,7 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       gabble_capability_set_free (any_audio_caps);
       gabble_capability_set_free (any_video_caps);
       gabble_capability_set_free (any_transport_caps);
-      gabble_capability_set_free (initial_caps);
+      gabble_capability_set_free (fixed_caps);
       gabble_capability_set_free (geoloc_caps);
       gabble_capability_set_free (olpc_caps);
 
@@ -289,7 +289,7 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       any_audio_caps = NULL;
       any_video_caps = NULL;
       any_transport_caps = NULL;
-      initial_caps = NULL;
+      fixed_caps = NULL;
       geoloc_caps = NULL;
       olpc_caps = NULL;
 

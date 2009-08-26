@@ -117,7 +117,7 @@ const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
 void capabilities_fill_cache (GabblePresenceCache *cache);
 
 /* Return the capabilities we always have */
-const GabbleCapabilitySet *gabble_capabilities_get_initial_caps (void);
+const GabbleCapabilitySet *gabble_capabilities_get_fixed_caps (void);
 
 typedef void (*TypeFlagsToCapsFunc) (guint typeflags, GabbleCapabilitySet *caps);
 typedef guint (*CapsToTypeFlagsFunc) (const GabbleCapabilitySet *caps);

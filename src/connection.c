@@ -1597,7 +1597,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self)
   gabble_capability_set_clear (self->priv->all_caps);
 
   gabble_capability_set_update (self->priv->all_caps,
-      gabble_capabilities_get_initial_caps ());
+      gabble_capabilities_get_fixed_caps ());
   gabble_capability_set_update (self->priv->all_caps, self->priv->notify_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->legacy_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->draft1_caps);

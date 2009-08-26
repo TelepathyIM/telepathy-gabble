@@ -656,6 +656,54 @@ channel_manager_iface_init (gpointer g_iface,
   iface->ensure_channel = gabble_media_factory_ensure_channel;
 }
 
+static void
+gabble_media_factory_add_caps (GabbleCapabilitySet *caps,
+    const gchar *client_name,
+    gboolean audio,
+    gboolean video,
+    gboolean gtalk_p2p,
+    gboolean ice_udp,
+    gboolean h264)
+{
+  DEBUG ("Client %s media capabilities:%s%s%s%s%s",
+      client_name,
+      audio ? " audio" : "",
+      video ? " video" : "",
+      gtalk_p2p ? " gtalk-p2p" : "",
+      ice_udp ? " ice-udp" : "",
+      h264 ? " H.264" : "");
+
+  if (gtalk_p2p)
+    gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
+
+  if (ice_udp)
+    gabble_capability_set_add (caps, NS_JINGLE_TRANSPORT_ICEUDP);
+
+  if (audio)
+    {
+      gabble_capability_set_add (caps, NS_JINGLE_RTP);
+      gabble_capability_set_add (caps, NS_JINGLE_RTP_AUDIO);
+      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_AUDIO);
+
+      /* voice-v1 implies that we interop with GTalk, i.e. we have gtalk-p2p
+       * as well as audio */
+      if (gtalk_p2p)
+        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
+    }
+
+  if (video)
+    {
+      gabble_capability_set_add (caps, NS_JINGLE_RTP);
+      gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
+      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
+
+      /* video-v1 implies that we interop with Google Video Chat, i.e. we have
+       * gtalk-p2p and H.264 as well as video */
+      if (gtalk_p2p && h264)
+        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
+    }
+}
+
 TpChannelMediaCapabilities
 _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
 {
@@ -694,43 +742,14 @@ void
 _gabble_media_factory_typeflags_to_caps (TpChannelMediaCapabilities flags,
     GabbleCapabilitySet *caps)
 {
-  gboolean gtalk_p2p;
+  DEBUG ("adding Jingle caps %u", flags);
 
-  DEBUG ("adding Jingle caps %u (%s, %s, %s, %s)", flags,
-    flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO ? "audio" : "no audio",
-    flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO ? "video" : "no video",
-    flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P
-        ? "gtalk-p2p" : "no gtalk-p2p",
-    flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP
-        ? "ice-udp" : "no ice-udp");
-
-  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP)
-    gabble_capability_set_add (caps, NS_JINGLE_TRANSPORT_ICEUDP);
-
-  gtalk_p2p = flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P;
-
-  if (gtalk_p2p)
-    gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
-
-  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
-    {
-      gabble_capability_set_add (caps, NS_JINGLE_RTP);
-      gabble_capability_set_add (caps, NS_JINGLE_RTP_AUDIO);
-      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_AUDIO);
-
-      if (gtalk_p2p)
-        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
-    }
-
-  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
-    {
-      gabble_capability_set_add (caps, NS_JINGLE_RTP);
-      gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
-      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
-
-      if (gtalk_p2p)
-        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
-    }
+  gabble_media_factory_add_caps (caps, "<legacy Capabilities>",
+      (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO) != 0,
+      (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO) != 0,
+      (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P) != 0,
+      (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP) != 0,
+      TRUE /* assume we have H.264 for now */);
 }
 
 static void

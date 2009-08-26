@@ -777,6 +777,40 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
     const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
+  TpChannelMediaCapabilities typeflags =
+    _gabble_media_factory_caps_to_typeflags (caps);
+  GValueArray *va;
+  const gchar * const *allowed;
+
+  typeflags &= (TP_CHANNEL_MEDIA_CAPABILITY_AUDIO |
+      TP_CHANNEL_MEDIA_CAPABILITY_VIDEO);
+
+  switch (typeflags)
+    {
+    case 0:
+      return;
+
+    case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO:
+      allowed = audio_allowed;
+      break;
+
+    case TP_CHANNEL_MEDIA_CAPABILITY_VIDEO:
+      allowed = video_allowed;
+      break;
+
+    default: /* both */
+      allowed = both_allowed;
+    }
+
+  va = g_value_array_new (2);
+  g_value_array_append (va, NULL);
+  g_value_array_append (va, NULL);
+  g_value_init (va->values + 0, TP_HASH_TYPE_CHANNEL_CLASS);
+  g_value_init (va->values + 1, G_TYPE_STRV);
+  g_value_take_boxed (va->values + 0, gabble_media_factory_channel_class ());
+  g_value_set_static_boxed (va->values + 1, allowed);
+
+  g_ptr_array_add (arr, va);
 }
 
 static void

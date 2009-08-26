@@ -97,9 +97,6 @@ gabble_search_manager_close_all (GabbleSearchManager *self)
 {
   GList *chans, *l;
 
-  if (self->priv->channels == NULL)
-    return;
-
   DEBUG ("closing channels");
 
   /* We can't use a GHashTableIter as closing the channel while remove it from
@@ -112,8 +109,6 @@ gabble_search_manager_close_all (GabbleSearchManager *self)
       gabble_search_channel_close (chan);
     }
 
-  g_hash_table_destroy (self->priv->channels);
-  self->priv->channels = NULL;
   g_list_free (chans);
 
   /* base-connection cancels all the pending requests when disconnecting so we
@@ -236,6 +231,10 @@ gabble_search_manager_finalize (GObject *object)
 
   g_free (priv->default_jud);
 
+  /* close_all removed all the channels from the hash table */
+  g_assert_cmpuint (g_hash_table_size (priv->channels), ==, 0);
+  g_hash_table_destroy (priv->channels);
+
   if (G_OBJECT_CLASS (gabble_search_manager_parent_class)->finalize)
     G_OBJECT_CLASS (gabble_search_manager_parent_class)->finalize (object);
 }
@@ -352,8 +351,7 @@ static void
 remove_search_channel (GabbleSearchManager *self,
                        GabbleSearchChannel *chan)
 {
-  if (self->priv->channels != NULL)
-    g_hash_table_remove (self->priv->channels, chan);
+  g_hash_table_remove (self->priv->channels, chan);
 }
 
 static void

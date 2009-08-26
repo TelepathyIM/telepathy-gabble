@@ -767,6 +767,103 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     const gchar * const *cap_tokens,
     GabbleCapabilitySet *cap_set)
 {
+  static GQuark q_gtalk_p2p = 0, q_ice_udp = 0, q_h264 = 0;
+  gboolean gtalk_p2p = FALSE, h264 = FALSE, audio = FALSE, video = FALSE,
+           ice_udp = FALSE;
+  guint i;
+
+  /* One-time initialization - turn the tokens we care about into quarks */
+  if (G_UNLIKELY (q_gtalk_p2p == 0))
+    {
+      q_gtalk_p2p = g_quark_from_static_string (
+          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/gtalk-p2p");
+      q_ice_udp = g_quark_from_static_string (
+          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/ice-udp");
+      q_h264 = g_quark_from_static_string (
+          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/video/h264");
+    }
+
+  if (cap_tokens != NULL)
+    {
+      const gchar * const *token;
+
+      for (token = cap_tokens; *token != NULL; token++)
+        {
+          GQuark quark = g_quark_try_string (*token);
+
+          if (quark == 0)
+            {
+              continue;
+            }
+          else if (quark == q_gtalk_p2p)
+            {
+              gtalk_p2p = TRUE;
+            }
+          else if (quark == q_ice_udp)
+            {
+              ice_udp = TRUE;
+            }
+          else if (quark == q_h264)
+            {
+              h264 = TRUE;
+            }
+        }
+    }
+
+  for (i = 0; i < filters->len; i++)
+    {
+      GHashTable *filter = g_ptr_array_index (filters, i);
+
+      if (tp_asv_size (filter) == 0)
+        {
+          /* a client that claims to be able to do absolutely everything can
+           * presumably do audio, video, smell, etc. etc. */
+          audio = TRUE;
+          video = TRUE;
+          continue;
+        }
+
+      if (tp_strdiff (tp_asv_get_string (filter,
+              TP_IFACE_CHANNEL ".ChannelType"),
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
+        {
+          /* not interesting to this channel manager */
+          continue;
+        }
+
+      if (tp_asv_lookup (filter, TP_IFACE_CHANNEL ".TargetHandleType")
+          != NULL &&
+          tp_asv_get_uint32 (filter, TP_IFACE_CHANNEL ".TargetHandleType",
+            NULL) != TP_HANDLE_TYPE_CONTACT)
+        {
+          /* not interesting to this channel manager: we only care about
+           * Jingle calls involving contacts (or about clients that support
+           * all Jingle calls regardless of handle type) */
+          continue;
+        }
+
+      /* for now, accept either the current InitialAudio (which is in
+       * the FUTURE) or the hypothetical final version */
+      if (tp_asv_get_boolean (filter,
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL) ||
+          tp_asv_get_boolean (filter,
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".FUTURE.InitialAudio", NULL))
+        audio = TRUE;
+
+      if (tp_asv_get_boolean (filter,
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL) ||
+          tp_asv_get_boolean (filter,
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".FUTURE.InitialVideo", NULL))
+        video = TRUE;
+
+      /* If we've picked up all the capabilities we're ever going to, then
+       * we don't need to look at the rest of the filters */
+      if (audio && video)
+        break;
+    }
+
+  gabble_media_factory_add_caps (cap_set, client_name, audio, video, gtalk_p2p,
+      ice_udp, h264);
 }
 
 static void

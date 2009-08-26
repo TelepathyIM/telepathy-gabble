@@ -409,6 +409,7 @@ lm_message_build_with_sub_type (const gchar *to, LmMessageType type,
 static gboolean
 validate_jid_node (const gchar *node)
 {
+  /* See RFC 3920 §3.3. */
   const gchar *c;
 
   for (c = node; *c; c++)
@@ -425,6 +426,8 @@ validate_jid_domain (const gchar *domain)
   /* XXX: This doesn't do proper validation, it just checks the character
    * range. In theory, we check that the domain is a well-formed IDN or
    * an IPv4/IPv6 address literal.
+   *
+   * See RFC 3920 §3.2.
    */
 
   const gchar *c;
@@ -451,6 +454,10 @@ validate_jid_domain (const gchar *domain)
  * pointers will be set to NULL if the respective part is not present in the
  * JID. The node and domain are lower-cased because the Jabber protocol treats
  * them case-insensitively.
+ *
+ * XXX: Do nodeprep/resourceprep and length checking.
+ *
+ * See RFC 3920 §3.
  */
 gboolean
 gabble_decode_jid (const gchar *jid,
@@ -507,8 +514,9 @@ gabble_decode_jid (const gchar *jid,
       tmp_node = NULL;
     }
 
-  /* Domain must be non-empty. If the node or the resource exist, they must be
-   * non-empty.
+  /* Domain must be non-empty and not contain invalid characters. If the node
+   * or the resource exist, they must be non-empty and the node must not
+   * contain invalid characters.
    */
   if (*tmp_domain == '\0' ||
       !validate_jid_domain (tmp_domain) ||
@@ -647,7 +655,7 @@ gabble_normalize_contact (TpHandleRepoIface *repo,
   if (mode == GABBLE_JID_ROOM_MEMBER && resource == NULL)
     {
       INVALID_HANDLE (error,
-          "jid %s can't be a room member - it has no resource", jid);
+          "JID %s can't be a room member - it has no resource", jid);
       goto OUT;
     }
 

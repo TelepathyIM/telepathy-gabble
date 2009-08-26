@@ -1593,7 +1593,8 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
 }
 
 static gboolean
-gabble_connection_refresh_capabilities (GabbleConnection *self)
+gabble_connection_refresh_capabilities (GabbleConnection *self,
+    GabbleCapabilitySet **old_out)
 {
   TpBaseConnection *base = (TpBaseConnection *) self;
   GError *error = NULL;
@@ -1652,7 +1653,11 @@ gabble_connection_refresh_capabilities (GabbleConnection *self)
       return FALSE;
     }
 
-  gabble_capability_set_free (save_set);
+  if (old_out == NULL)
+    gabble_capability_set_free (save_set);
+  else
+    *old_out = save_set;
+
   return TRUE;
 }
 
@@ -2211,7 +2216,7 @@ connection_auth_cb (LmConnection *lmconn,
       GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
 
   /* set initial capabilities */
-  gabble_connection_refresh_capabilities (conn);
+  gabble_connection_refresh_capabilities (conn, NULL);
 
   if (!gabble_disco_request_with_timeout (conn->disco, GABBLE_DISCO_TYPE_INFO,
                                           priv->stream_server, NULL,
@@ -2564,8 +2569,6 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
             ccd->tf2c_fn (~0, remove_set);
     }
 
-  save_set = gabble_capability_set_copy (priv->all_caps);
-
   gabble_capability_set_update (priv->legacy_caps, add_set);
   gabble_capability_set_exclude (priv->legacy_caps, remove_set);
 
@@ -2583,10 +2586,11 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   gabble_capability_set_free (add_set);
   gabble_capability_set_free (remove_set);
 
-  if (gabble_connection_refresh_capabilities (self))
+  if (gabble_connection_refresh_capabilities (self, &save_set))
     {
       _emit_capabilities_changed (self, base->self_handle, save_set,
           priv->all_caps);
+      gabble_capability_set_free (save_set);
     }
 
   ret = g_ptr_array_new ();
@@ -2612,8 +2616,6 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
           g_ptr_array_add (ret, g_value_get_boxed (&iface_flags_pair));
         }
     }
-
-  gabble_capability_set_free (save_set);
 
   tp_svc_connection_interface_capabilities_return_from_advertise_capabilities (
       context, ret);
@@ -2700,16 +2702,15 @@ gabble_connection_update_capabilities (
         }
     }
 
-  if (gabble_connection_refresh_capabilities (self))
+  if (gabble_connection_refresh_capabilities (self, &old_caps))
     {
       _emit_capabilities_changed (self, base->self_handle, old_caps,
           self->priv->all_caps);
+      gabble_capability_set_free (old_caps);
     }
 
   gabble_svc_connection_interface_contact_capabilities_return_from_update_capabilities (
       context);
-
-  gabble_capability_set_free (old_caps);
 }
 
 static const gchar *assumed_caps[] =
@@ -3368,7 +3369,7 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
     const GabbleCapabilitySet *ensured)
 {
   gabble_capability_set_update (self->priv->notify_caps, ensured);
-  gabble_connection_refresh_capabilities (self);
+  gabble_connection_refresh_capabilities (self, NULL);
 }
 
 gboolean

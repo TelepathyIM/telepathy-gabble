@@ -78,11 +78,6 @@ void gabble_caps_channel_manager_get_contact_capabilities (
     const GabbleCapabilitySet *caps,
     GPtrArray *arr);
 
-void gabble_caps_channel_manager_add_capability (
-    GabbleCapsChannelManager *caps_manager,
-    GHashTable *cap,
-    GabbleCapabilitySet *cap_set);
-
 void gabble_caps_channel_manager_represent_client (
     GabbleCapsChannelManager *caps_manager,
     const gchar *client_name,
@@ -94,10 +89,8 @@ struct _GabbleCapsChannelManagerIface {
     GTypeInterface parent;
 
     GabbleCapsChannelManagerGetContactCapsFunc get_contact_caps;
-    GabbleCapsChannelManagerAddCapFunc add_cap;
     GabbleCapsChannelManagerRepresentClientFunc represent_client;
 
-    GCallback _future[8];
     gpointer priv;
 };
 

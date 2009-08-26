@@ -25,7 +25,7 @@ git submodule update
 
 # launch Wocky's autogen.sh
 cd lib/ext/wocky
-sh autogen.sh
+sh autogen.sh --no-configure
 cd ../../..
 
 run_configure=true

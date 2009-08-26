@@ -518,6 +518,13 @@ gabble_capability_set_free (GabbleCapabilitySet *caps)
   g_slice_free (GabbleCapabilitySet, caps);
 }
 
+gboolean
+gabble_capability_set_is_empty (const GabbleCapabilitySet *caps)
+{
+  g_return_val_if_fail (caps != NULL, TRUE);
+  return (tp_handle_set_size (caps->handles) == 0);
+}
+
 /* By design, this function can be used as a GabbleCapabilitySetPredicate */
 gboolean
 gabble_capability_set_has (const GabbleCapabilitySet *caps,

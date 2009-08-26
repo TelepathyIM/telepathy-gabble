@@ -607,6 +607,23 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
     }
 }
 
+static void
+gabble_private_tubes_factory_represent_client (
+    GabbleCapsChannelManager *manager,
+    const gchar *client_name,
+    const GPtrArray *filters,
+    const gchar * const *cap_tokens,
+    GabbleCapabilitySet *cap_set)
+{
+  guint i;
+
+  for (i = 0; i < filters->len; i++)
+    {
+      gabble_private_tubes_factory_add_cap (manager,
+          g_ptr_array_index (filters, i), cap_set);
+    }
+}
+
 struct _ForeachData
 {
   TpExportableChannelFunc foreach;
@@ -1080,4 +1097,5 @@ caps_channel_manager_iface_init (gpointer g_iface,
 
   iface->get_contact_caps = gabble_private_tubes_factory_get_contact_caps;
   iface->add_cap = gabble_private_tubes_factory_add_cap;
+  iface->represent_client = gabble_private_tubes_factory_represent_client;
 }

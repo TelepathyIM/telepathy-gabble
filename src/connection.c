@@ -2618,10 +2618,12 @@ gabble_connection_set_self_capabilities (
     const GPtrArray *caps,
     DBusGMethodInvocation *context)
 {
+  static const gchar *null_string = NULL;
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
   GabbleCapabilitySet *old_caps;
-  guint i;
+  TpChannelManagerIter iter;
+  TpChannelManager *manager;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
@@ -2629,22 +2631,17 @@ gabble_connection_set_self_capabilities (
 
   gabble_capability_set_clear (self->priv->draft1_caps);
 
-  for (i = 0; i < caps->len; i++)
+  tp_base_connection_channel_manager_iter_init (&iter, base);
+
+  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
     {
-      GHashTable *cap_to_add = g_ptr_array_index (caps, i);
-      TpChannelManagerIter iter;
-      TpChannelManager *manager;
+      /* all channel managers must implement the capability interface */
+      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
-      tp_base_connection_channel_manager_iter_init (&iter, base);
-      while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
-        {
-          /* all channel managers must implement the capability interface */
-          g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
-
-          gabble_caps_channel_manager_add_capability (
-              GABBLE_CAPS_CHANNEL_MANAGER (manager), cap_to_add,
-              self->priv->draft1_caps);
-        }
+      gabble_caps_channel_manager_represent_client (
+          GABBLE_CAPS_CHANNEL_MANAGER (manager),
+          "<ContactCapabilities.DRAFT1>", caps, &null_string,
+          self->priv->draft1_caps);
     }
 
   if (gabble_connection_refresh_capabilities (self))

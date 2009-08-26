@@ -373,11 +373,23 @@ static const gchar * const media_channel_fixed_properties[] = {
     NULL
 };
 
+/* If you change this at all, you'll probably also need to change both_allowed
+ * and video_allowed */
 static const gchar * const named_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
     GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
     GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo",
+    NULL
+};
+
+static const gchar * const * both_allowed =
+    named_channel_allowed_properties + 2;
+static const gchar * const * video_allowed =
+    named_channel_allowed_properties + 3;
+
+static const gchar * const audio_allowed[] = {
+    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
     NULL
 };
 
@@ -387,11 +399,8 @@ static const gchar * const anon_channel_allowed_properties[] = {
     NULL
 };
 
-
-static void
-gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
-    gpointer user_data)
+static GHashTable *
+gabble_media_factory_channel_class (void)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) tp_g_value_slice_free);
@@ -404,6 +413,16 @@ gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
   value = tp_g_value_slice_new (G_TYPE_UINT);
   g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
+
+  return table;
+}
+
+static void
+gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
+    TpChannelManagerChannelClassFunc func,
+    gpointer user_data)
+{
+  GHashTable *table = gabble_media_factory_channel_class ();
 
   func (manager, table, named_channel_allowed_properties, user_data);
 

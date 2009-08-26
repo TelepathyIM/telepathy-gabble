@@ -2321,6 +2321,9 @@ ERROR:
  *                          D-BUS EXPORTED METHODS                          *
  ****************************************************************************/
 
+static void gabble_connection_get_handle_contact_capabilities (
+    GabbleConnection *self, TpHandle handle, GPtrArray *arr);
+static void gabble_free_enhanced_contact_capabilities (GPtrArray *caps);
 
 static void
 _emit_capabilities_changed (GabbleConnection *conn,
@@ -2330,10 +2333,13 @@ _emit_capabilities_changed (GabbleConnection *conn,
 {
   GPtrArray *caps_arr;
   const CapabilityConversionData *ccd;
+  GHashTable *hash;
   guint i;
 
   if (gabble_capability_set_equals (old_set, new_set))
     return;
+
+  /* Capabilities */
 
   caps_arr = g_ptr_array_new ();
 
@@ -2385,6 +2391,22 @@ _emit_capabilities_changed (GabbleConnection *conn,
           g_ptr_array_index (caps_arr, i));
     }
   g_ptr_array_free (caps_arr, TRUE);
+
+  /* ContactCapabilities (draft 1) */
+
+  caps_arr = g_ptr_array_new ();
+
+  gabble_connection_get_handle_contact_capabilities (conn, handle,
+      caps_arr);
+
+  hash = g_hash_table_new (NULL, NULL);
+  g_hash_table_insert (hash, GUINT_TO_POINTER (handle), caps_arr);
+
+  gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
+      conn, hash);
+
+  g_hash_table_destroy (hash);
+  gabble_free_enhanced_contact_capabilities (caps_arr);
 }
 
 /**
@@ -2437,36 +2459,6 @@ gabble_free_enhanced_contact_capabilities (GPtrArray *caps)
 }
 
 static void
-_emit_contact_capabilities_changed (GabbleConnection *conn,
-    TpHandle handle,
-    const GabbleCapabilitySet *old_caps,
-    const GabbleCapabilitySet *new_caps)
-{
-  GPtrArray *ret;
-  GHashTable *hash;
-
-  /* Don't emit the D-Bus signal if there is no change */
-  if (gabble_capability_set_equals (old_caps, new_caps))
-    {
-      DEBUG ("unchanged; not emitting ContactCapabilitiesChanged");
-      return;
-    }
-
-  ret = g_ptr_array_new ();
-
-  gabble_connection_get_handle_contact_capabilities (conn, handle, ret);
-
-  hash = g_hash_table_new (NULL, NULL);
-  g_hash_table_insert (hash, GUINT_TO_POINTER (handle), ret);
-
-  gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
-      conn, hash);
-
-  g_hash_table_destroy (hash);
-  gabble_free_enhanced_contact_capabilities (ret);
-}
-
-static void
 connection_capabilities_update_cb (GabblePresenceCache *cache,
     TpHandle handle,
     const GabbleCapabilitySet *old_cap_set,
@@ -2476,7 +2468,6 @@ connection_capabilities_update_cb (GabblePresenceCache *cache,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
   _emit_capabilities_changed (conn, handle, old_cap_set, new_cap_set);
-  _emit_contact_capabilities_changed (conn, handle, old_cap_set, new_cap_set);
 }
 
 /**
@@ -2646,7 +2637,7 @@ gabble_connection_set_self_capabilities (
 
   if (gabble_connection_refresh_capabilities (self))
     {
-      _emit_contact_capabilities_changed (self, base->self_handle, old_caps,
+      _emit_capabilities_changed (self, base->self_handle, old_caps,
           self->priv->all_caps);
     }
 

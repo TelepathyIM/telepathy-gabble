@@ -119,12 +119,10 @@ typedef struct {
     gchar *tp_name;
 } FieldNameMapping;
 
-/* FIXME: it's unclear how "first" and "last" should be mapped.
- * http://xmpp.org/registrar/formtypes.html#jabber:iq:search maps
- * "first" with "First Name" and "last" with "Family Name".
- * But Example 7 of XEP-0055 describes "first" as the "Given Name".
- * Maybe we need to add x-first and x-last?
- */
+/* XMPP is not clear about the semantic of "first" and "last". We asked for
+ * clarifications on the standards mailing list and got confirmation
+ * that "first" is actually "Given Name" and "last" is "Family Name".
+ * See http://mail.jabber.org/pipermail/standards/2009-August/022530.html */
 
 static const FieldNameMapping field_mappings[] = {
   /* Fields specified for non-Data Forms searches */

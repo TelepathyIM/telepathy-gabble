@@ -63,6 +63,8 @@ G_GNUC_NULL_TERMINATED LmMessage * lm_message_build_with_sub_type (
 
 G_GNUC_WARN_UNUSED_RESULT
 gboolean gabble_decode_jid (const gchar *jid, gchar **a, gchar **b, gchar **c);
+gchar *gabble_encode_jid (const gchar *node, const gchar *domain,
+    const gchar *resource);
 
 gchar *gabble_remove_resource (const gchar *jid);
 gchar *gabble_normalize_contact (TpHandleRepoIface *repo, const gchar *jid,

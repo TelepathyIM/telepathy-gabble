@@ -636,6 +636,28 @@ gabble_remove_resource (const gchar *jid)
 }
 
 gchar *
+gabble_encode_jid (
+    const gchar *node,
+    const gchar *domain,
+    const gchar *resource)
+{
+  gchar *tmp, *ret;
+
+  if (node != NULL && resource != NULL)
+    tmp = g_strdup_printf ("%s@%s/%s", node, domain, resource);
+  else if (node != NULL)
+    tmp = g_strdup_printf ("%s@%s", node, domain);
+  else if (resource != NULL)
+    tmp = g_strdup_printf ("%s/%s", domain, resource);
+  else
+    tmp = g_strdup (domain);
+
+  ret = g_utf8_normalize (tmp, -1, G_NORMALIZE_NFKC);
+  g_free (tmp);
+  return ret;
+}
+
+gchar *
 gabble_normalize_contact (TpHandleRepoIface *repo,
                           const gchar *jid,
                           gpointer context,
@@ -661,7 +683,7 @@ gabble_normalize_contact (TpHandleRepoIface *repo,
 
   if (mode != GABBLE_JID_GLOBAL && resource != NULL)
     {
-      ret = g_strdup_printf ("%s@%s/%s", username, server, resource);
+      ret = gabble_encode_jid (username, server, resource);
 
       if (mode == GABBLE_JID_ROOM_MEMBER
           || (repo != NULL
@@ -682,7 +704,7 @@ gabble_normalize_contact (TpHandleRepoIface *repo,
    * says it is, or because the context isn't sure and we haven't seen it in
    * use as a room member
    */
-  ret = g_strdup_printf ("%s@%s", username, server);
+  ret = gabble_encode_jid (username, server, NULL);
 
 OUT:
   g_free (username);

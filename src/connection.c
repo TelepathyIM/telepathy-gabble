@@ -1595,11 +1595,14 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
 static gboolean
 gabble_connection_refresh_capabilities (GabbleConnection *self)
 {
+  TpBaseConnection *base = (TpBaseConnection *) self;
   GError *error = NULL;
   GHashTableIter iter;
   gpointer k, v;
+  GabbleCapabilitySet *save_set;
 
-  gabble_capability_set_clear (self->priv->all_caps);
+  save_set = self->priv->all_caps;
+  self->priv->all_caps = gabble_capability_set_new ();
 
   gabble_capability_set_update (self->priv->all_caps,
       gabble_capabilities_get_fixed_caps ());
@@ -1622,24 +1625,34 @@ gabble_connection_refresh_capabilities (GabbleConnection *self)
       gabble_capability_set_update (self->priv->all_caps, v);
     }
 
-  if (gabble_presence_resource_has_caps (self->self_presence,
-        self->priv->resource, gabble_capability_set_predicate_equals,
-        self->priv->all_caps))
+  if (self->self_presence != NULL)
+    gabble_presence_set_capabilities (self->self_presence,
+        self->priv->resource, self->priv->all_caps, self->priv->caps_serial++);
+
+  if (gabble_capability_set_equals (self->priv->all_caps, save_set))
     {
+      gabble_capability_set_free (save_set);
       DEBUG ("nothing to do");
       return FALSE;
     }
 
-  gabble_presence_set_capabilities (self->self_presence, self->priv->resource,
-      self->priv->all_caps, self->priv->caps_serial++);
+  /* don't signal presence unless we're already CONNECTED */
+  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      gabble_capability_set_free (save_set);
+      DEBUG ("not emitting signal: not connected yet");
+      return FALSE;
+    }
 
   if (!_gabble_connection_signal_own_presence (self, &error))
     {
+      gabble_capability_set_free (save_set);
       DEBUG ("error sending presence: %s", error->message);
       g_error_free (error);
       return FALSE;
     }
 
+  gabble_capability_set_free (save_set);
   return TRUE;
 }
 
@@ -2626,8 +2639,6 @@ gabble_connection_update_capabilities (
   TpChannelManagerIter iter;
   TpChannelManager *manager;
   guint i;
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   old_caps = gabble_capability_set_copy (self->priv->all_caps);
 

@@ -35,7 +35,7 @@
 #include "debug.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include "media-channel.h"
+#include "media-factory.h"
 #include "util.h"
 
 typedef struct _Feature Feature;
@@ -317,8 +317,8 @@ capabilities_fill_cache (GabblePresenceCache *cache)
 const CapabilityConversionData capabilities_conversions[] =
 {
   { TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA,
-    _gabble_media_channel_typeflags_to_caps,
-    _gabble_media_channel_caps_to_typeflags },
+    _gabble_media_factory_typeflags_to_caps,
+    _gabble_media_factory_caps_to_typeflags },
   { NULL, NULL, NULL}
 };
 

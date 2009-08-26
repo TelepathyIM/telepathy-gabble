@@ -205,6 +205,7 @@ struct _GabbleConnectionPrivate
   GabbleCapabilitySet *notify_caps;
   GabbleCapabilitySet *legacy_caps;
   GabbleCapabilitySet *draft1_caps;
+  GabbleCapabilitySet *bonus_caps;
 
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -326,14 +327,14 @@ gabble_connection_constructor (GType type,
   priv->all_caps = gabble_capability_set_new ();
   priv->notify_caps = gabble_capability_set_new ();
   priv->legacy_caps = gabble_capability_set_new ();
+  priv->draft1_caps = gabble_capability_set_new ();
 
   /* Historically, the optional Jingle transports were in our initial
    * presence, but could be removed by AdvertiseCapabilities(). Emulate
    * that here for now. */
-  gabble_capability_set_add (priv->legacy_caps, NS_GOOGLE_TRANSPORT_P2P);
-  gabble_capability_set_add (priv->legacy_caps, NS_JINGLE_TRANSPORT_ICEUDP);
-
-  priv->draft1_caps = gabble_capability_set_new ();
+  priv->bonus_caps = gabble_capability_set_new ();
+  gabble_capability_set_add (priv->bonus_caps, NS_GOOGLE_TRANSPORT_P2P);
+  gabble_capability_set_add (priv->bonus_caps, NS_JINGLE_TRANSPORT_ICEUDP);
 
   return (GObject *) self;
 }
@@ -935,6 +936,7 @@ gabble_connection_dispose (GObject *object)
   gabble_capability_set_free (priv->notify_caps);
   gabble_capability_set_free (priv->legacy_caps);
   gabble_capability_set_free (priv->draft1_caps);
+  gabble_capability_set_free (priv->bonus_caps);
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
@@ -1601,6 +1603,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self)
   gabble_capability_set_update (self->priv->all_caps, self->priv->notify_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->legacy_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->draft1_caps);
+  gabble_capability_set_update (self->priv->all_caps, self->priv->bonus_caps);
 
   if (gabble_presence_resource_has_caps (self->self_presence,
         self->priv->resource, gabble_capability_set_predicate_equals,
@@ -2504,6 +2507,10 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   GabbleCapabilitySet *add_set, *remove_set;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
+  /* Now that someone has told us our *actual* capabilities, we can stop
+   * advertising spurious caps in initial presence */
+  gabble_capability_set_clear (self->priv->bonus_caps);
 
   add_set = gabble_capability_set_new ();
   remove_set = gabble_capability_set_new ();

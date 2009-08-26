@@ -48,12 +48,14 @@
 #include "util.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
+static void caps_channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaFactory, gabble_media_factory,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
+      caps_channel_manager_iface_init));
 
 /* properties */
 enum
@@ -652,4 +654,31 @@ channel_manager_iface_init (gpointer g_iface,
   iface->request_channel = gabble_media_factory_request_channel;
   iface->create_channel = gabble_media_factory_create_channel;
   iface->ensure_channel = gabble_media_factory_ensure_channel;
+}
+
+static void
+gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
+    TpHandle handle,
+    const GabbleCapabilitySet *caps,
+    GPtrArray *arr)
+{
+}
+
+static void
+gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
+    const gchar *client_name,
+    const GPtrArray *filters,
+    const gchar * const *cap_tokens,
+    GabbleCapabilitySet *cap_set)
+{
+}
+
+static void
+caps_channel_manager_iface_init (gpointer g_iface,
+                                 gpointer iface_data)
+{
+  GabbleCapsChannelManagerIface *iface = g_iface;
+
+  iface->get_contact_caps = gabble_media_factory_get_contact_caps;
+  iface->represent_client = gabble_media_factory_represent_client;
 }

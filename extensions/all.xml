@@ -46,6 +46,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 
 <xi:include href="Connection_Interface_Contact_Capabilities.xml"/>
 
+<xi:include href="Channel_Type_Contact_Search.xml"/>
+<xi:include href="Connection_Interface_Contact_Info.xml"/>
+
 <tp:generic-types>
   <tp:external-type name="Contact_Handle" type="u"
     from="Telepathy specification"/>

@@ -44,6 +44,10 @@ TWISTED_TESTS = \
 	roster/test-roster-item-deletion.py \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
+	search/ceci-nest-pas-un-serveur.py \
+	search/extended.py \
+	search/no-server-property.py \
+	search/unextended.py \
 	text/initiate.py \
 	text/initiate-requestotron.py \
 	text/destroy.py \
@@ -191,6 +195,7 @@ EXTRA_DIST = \
 	olpc/util.py \
 	tubes/muctubeutil.py \
 	tubes/tubetestutil.py \
+	search/search_helper.py \
 	file-transfer/file_transfer_helper.py
 
 noinst_PROGRAMS = \

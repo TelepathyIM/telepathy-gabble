@@ -13,6 +13,8 @@ noinst_PROGRAMS = write-mgr-file
 libgabble_convenience_la_SOURCES = \
     base64.h \
     base64.c \
+    base-channel.h \
+    base-channel.c \
     bytestream-factory.h \
     bytestream-factory.c \
     bytestream-ibb.h \
@@ -124,6 +126,10 @@ libgabble_convenience_la_SOURCES = \
     roomlist-channel.c \
     roomlist-manager.h \
     roomlist-manager.c \
+    search-channel.h \
+    search-channel.c \
+    search-manager.h \
+    search-manager.c \
     tube-iface.h \
     tube-iface.c \
     tubes-channel.h \

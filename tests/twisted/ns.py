@@ -46,6 +46,7 @@ OLPC_CURRENT_ACTIVITY_NOTIFY = "%s+notify" % OLPC_CURRENT_ACTIVITY
 PUBSUB = "http://jabber.org/protocol/pubsub"
 REGISTER = "jabber:iq:register"
 ROSTER = "jabber:iq:roster"
+SEARCH = 'jabber:iq:search'
 SI = 'http://jabber.org/protocol/si'
 SI_MULTIPLE = 'http://telepathy.freedesktop.org/xmpp/si-multiple'
 STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"

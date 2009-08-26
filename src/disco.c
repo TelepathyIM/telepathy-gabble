@@ -48,6 +48,7 @@
 enum
 {
   ITEM_FOUND,
+  DONE,
   LAST_SIGNAL
 };
 
@@ -139,6 +140,16 @@ gabble_disco_class_init (GabbleDiscoClass *gabble_disco_class)
                   NULL, NULL,
                   gabble_marshal_VOID__POINTER,
                   G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+  signals[DONE] =
+    g_signal_new ("done",
+                  G_OBJECT_CLASS_TYPE (gabble_disco_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
 }
 
 static void
@@ -884,7 +895,7 @@ end_cb (gpointer pipeline, gpointer user_data)
   gabble_disco_pipeline_destroy (pipeline);
   priv->service_cache = g_slist_reverse (priv->service_cache);
 
-  /* FIXME - service discovery done - signal that somehow */
+  g_signal_emit (G_OBJECT (disco), signals[DONE], 0);
 }
 
 static void

@@ -204,8 +204,8 @@ struct _GabbleConnectionPrivate
   GabbleCapabilitySet *all_caps;
   GabbleCapabilitySet *notify_caps;
   GabbleCapabilitySet *legacy_caps;
-  GabbleCapabilitySet *draft1_caps;
   GabbleCapabilitySet *bonus_caps;
+  GHashTable *client_caps;
 
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -327,7 +327,8 @@ gabble_connection_constructor (GType type,
   priv->all_caps = gabble_capability_set_new ();
   priv->notify_caps = gabble_capability_set_new ();
   priv->legacy_caps = gabble_capability_set_new ();
-  priv->draft1_caps = gabble_capability_set_new ();
+  priv->client_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, (GDestroyNotify) gabble_capability_set_free);
 
   /* Historically, the optional Jingle transports were in our initial
    * presence, but could be removed by AdvertiseCapabilities(). Emulate
@@ -932,10 +933,10 @@ gabble_connection_dispose (GObject *object)
    */
   g_idle_add (_unref_lm_connection, self->lmconn);
 
+  g_hash_table_destroy (priv->client_caps);
   gabble_capability_set_free (priv->all_caps);
   gabble_capability_set_free (priv->notify_caps);
   gabble_capability_set_free (priv->legacy_caps);
-  gabble_capability_set_free (priv->draft1_caps);
   gabble_capability_set_free (priv->bonus_caps);
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
@@ -1595,6 +1596,8 @@ static gboolean
 gabble_connection_refresh_capabilities (GabbleConnection *self)
 {
   GError *error = NULL;
+  GHashTableIter iter;
+  gpointer k, v;
 
   gabble_capability_set_clear (self->priv->all_caps);
 
@@ -1602,8 +1605,22 @@ gabble_connection_refresh_capabilities (GabbleConnection *self)
       gabble_capabilities_get_fixed_caps ());
   gabble_capability_set_update (self->priv->all_caps, self->priv->notify_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->legacy_caps);
-  gabble_capability_set_update (self->priv->all_caps, self->priv->draft1_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->bonus_caps);
+
+  g_hash_table_iter_init (&iter, self->priv->client_caps);
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      if (DEBUGGING)
+        {
+          gchar *s = gabble_capability_set_dump (v, "  ");
+
+          DEBUG ("incorporating caps for %s:\n%s", (const gchar *) k, s);
+          g_free (s);
+        }
+
+      gabble_capability_set_update (self->priv->all_caps, v);
+    }
 
   if (gabble_presence_resource_has_caps (self->self_presence,
         self->priv->resource, gabble_capability_set_predicate_equals,
@@ -2392,7 +2409,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
     }
   g_ptr_array_free (caps_arr, TRUE);
 
-  /* ContactCapabilities (draft 1) */
+  /* ContactCapabilities (draft 2) */
 
   caps_arr = g_ptr_array_new ();
 
@@ -2591,48 +2608,85 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 }
 
 /**
- * gabble_connection_set_self_capabilities
+ * gabble_connection_update_capabilities
  *
- * Implements D-Bus method SetSelfCapabilities
+ * Implements D-Bus method UpdateCapabilities
  * on interface
  * org.freedesktop.Telepathy.Connection.Interface.ContactCapabilities
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_set_self_capabilities (
+gabble_connection_update_capabilities (
     GabbleSvcConnectionInterfaceContactCapabilities *iface,
-    const GPtrArray *caps,
+    const GPtrArray *clients,
     DBusGMethodInvocation *context)
 {
-  static const gchar *null_string = NULL;
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
   GabbleCapabilitySet *old_caps;
   TpChannelManagerIter iter;
   TpChannelManager *manager;
+  guint i;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   old_caps = gabble_capability_set_copy (self->priv->all_caps);
 
-  gabble_capability_set_clear (self->priv->draft1_caps);
+  /* Now that someone has told us our *actual* capabilities, we can stop
+   * advertising spurious caps in initial presence */
+  gabble_capability_set_clear (self->priv->bonus_caps);
 
-  tp_base_connection_channel_manager_iter_init (&iter, base);
+  DEBUG ("enter");
 
-  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
+  for (i = 0; i < clients->len; i++)
     {
-      /* all channel managers must implement the capability interface */
-      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
+      GValueArray *va = g_ptr_array_index (clients, i);
+      const gchar *client_name = g_value_get_string (va->values + 0);
+      const GPtrArray *filters = g_value_get_boxed (va->values + 1);
+      const gchar * const * cap_tokens = g_value_get_boxed (va->values + 2);
+      GabbleCapabilitySet *cap_set;
 
-      gabble_caps_channel_manager_represent_client (
-          GABBLE_CAPS_CHANNEL_MANAGER (manager),
-          "<ContactCapabilities.DRAFT1>", caps, &null_string,
-          self->priv->draft1_caps);
+      g_hash_table_remove (self->priv->client_caps, client_name);
+
+      if ((cap_tokens == NULL || cap_tokens[0] != NULL) &&
+          filters->len == 0)
+        {
+          /* no capabilities */
+          DEBUG ("client %s can't do anything", client_name);
+          continue;
+        }
+
+      cap_set = gabble_capability_set_new ();
+
+      tp_base_connection_channel_manager_iter_init (&iter, base);
+
+      while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
+        {
+          /* all channel managers must implement the capability interface */
+          g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
+
+          gabble_caps_channel_manager_represent_client (
+              GABBLE_CAPS_CHANNEL_MANAGER (manager), client_name, filters,
+              cap_tokens, cap_set);
+        }
+
+      if (gabble_capability_set_is_empty (cap_set))
+        {
+          DEBUG ("client %s has no interesting capabilities", client_name);
+          gabble_capability_set_free (cap_set);
+        }
+      else
+        {
+          if (DEBUGGING)
+            {
+              gchar *s = gabble_capability_set_dump (cap_set, "  ");
+
+              DEBUG ("client %s contributes:\n%s", client_name, s);
+              g_free (s);
+            }
+
+          g_hash_table_insert (self->priv->client_caps, g_strdup (client_name),
+              cap_set);
+        }
     }
 
   if (gabble_connection_refresh_capabilities (self))
@@ -2641,7 +2695,7 @@ gabble_connection_set_self_capabilities (
           self->priv->all_caps);
     }
 
-  gabble_svc_connection_interface_contact_capabilities_return_from_set_self_capabilities (
+  gabble_svc_connection_interface_contact_capabilities_return_from_update_capabilities (
       context);
 
   gabble_capability_set_free (old_caps);
@@ -3369,7 +3423,7 @@ gabble_conn_contact_caps_iface_init (gpointer g_iface, gpointer iface_data)
     gabble_svc_connection_interface_contact_capabilities_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(get_contact_capabilities);
-  IMPLEMENT(set_self_capabilities);
+  IMPLEMENT(update_capabilities);
 #undef IMPLEMENT
 }
 

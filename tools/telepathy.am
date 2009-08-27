@@ -3,7 +3,7 @@
 dist-hook:
 	chmod u+w ${distdir}/ChangeLog
 	if test -d ${top_srcdir}/.git; then \
-		git log $(CHANGELOG_RANGE) > ${distdir}/ChangeLog; \
+		git log --date=iso $(CHANGELOG_RANGE) > ${distdir}/ChangeLog; \
 	fi
 
 maintainer-upload-release: _maintainer-upload-release

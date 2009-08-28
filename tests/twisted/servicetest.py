@@ -269,6 +269,8 @@ def call_async(test, proxy, method, *args, **kw):
 
 def sync_dbus(bus, q, conn):
     # Dummy D-Bus method call
+    # This won't do the right thing unless the proxy has a unique name.
+    assert conn.object.bus_name.startswith(':')
     root_object = bus.get_object(conn.object.bus_name, '/')
     call_async(
         q, dbus.Interface(root_object, 'org.freedesktop.DBus.Peer'), 'Ping')

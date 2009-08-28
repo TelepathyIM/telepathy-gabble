@@ -72,6 +72,7 @@ TWISTED_TESTS = \
 	tubes/test-get-available-tubes.py \
 	tubes/test-socks5-muc.py \
 	vcard/overlapping-sets.py \
+	vcard/set-set-disconnect.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \

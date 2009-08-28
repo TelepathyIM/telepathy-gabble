@@ -269,9 +269,10 @@ def call_async(test, proxy, method, *args, **kw):
 
 def sync_dbus(bus, q, conn):
     # Dummy D-Bus method call
-    call_async(q, conn, "InspectHandles", 1, [])
-
-    event = q.expect('dbus-return', method='InspectHandles')
+    root_object = bus.get_object(conn.object.bus_name, '/')
+    call_async(
+        q, dbus.Interface(root_object, 'org.freedesktop.DBus.Peer'), 'Ping')
+    q.expect('dbus-return', method='Ping')
 
 class ProxyWrapper:
     def __init__(self, object, default, others):

@@ -79,7 +79,7 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     # think that it's got the whole userlist now. If so, syncing here will make
     # CreateChannel incorrectly return here.
     sync_stream(q, stream)
-    sync_dbus(stream, q, conn)
+    sync_dbus(bus, q, conn)
 
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', room_jid, 'test_'))

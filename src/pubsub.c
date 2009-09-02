@@ -95,14 +95,15 @@ pubsub_query (
   WockyXmppStanza *msg;
   gboolean ret;
 
-  msg = lm_message_build (jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "get",
-      '(', "pubsub", "",
-        '@', "xmlns", NS_PUBSUB,
-        '(', "items", "",
-          '@', "node", ns,
-        ')',
-      ')', NULL);
+  msg = wocky_xmpp_stanza_build (
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, jid,
+      WOCKY_NODE, "pubsub",
+        WOCKY_NODE_XMLNS, NS_PUBSUB,
+        WOCKY_NODE, "items",
+          WOCKY_NODE_ATTRIBUTE, "node", ns,
+        WOCKY_NODE_END,
+      WOCKY_NODE_END, WOCKY_STANZA_END);
 
   ret = _gabble_connection_send_with_reply (conn, msg, reply_func, NULL,
       user_data, NULL);

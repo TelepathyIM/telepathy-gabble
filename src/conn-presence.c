@@ -249,12 +249,18 @@ set_own_status_cb (GObject *obj,
   if (gabble_presence_update (conn->self_presence, resource, i,
         message_str, prio))
     {
-      emit_one_presence_update (conn, base->self_handle);
-      retval = _gabble_connection_signal_own_presence (conn, error);
+      if (base->status == TP_CONNECTION_STATUS_CONNECTED)
+        {
+          emit_one_presence_update (conn, base->self_handle);
+          retval = _gabble_connection_signal_own_presence (conn, error);
+        }
+      else
+        {
+          retval = TRUE;
+        }
     }
 
 OUT:
-
   g_free (resource);
 
   return retval;
@@ -293,10 +299,12 @@ status_available_cb (GObject *obj, guint status)
   GabbleConnection *conn = GABBLE_CONNECTION (obj);
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
-  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
-    return FALSE;
+  /* If we've gone online and found that the server doesn't support invisible,
+   * reject it.
+   */
 
-  if (gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
+  if (base->status == TP_CONNECTION_STATUS_CONNECTED &&
+      gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
       (conn->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) == 0)
     return FALSE;
   else

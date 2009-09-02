@@ -66,7 +66,7 @@ lm_connection_register_message_handler (LmConnection *connection,
 {
   if (connection->porter == NULL)
     {
-      /* Loudmouth allows to register handler before the connection is
+      /* Loudmouth lets you register handlers before the connection is
        * connected. We can't do currently do that with Wocky so we store the
        * handler and will register it once lm_connection_set_porter is called.*/
       GSList *found;

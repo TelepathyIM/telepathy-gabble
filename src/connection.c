@@ -1433,9 +1433,10 @@ connector_error_disconnect (GabbleConnection *self,
 /**
  * connector_connected
  *
- * Stage 2 of connecting, this function if called once the connect operation
- * has been finised. It checks if the connection succeed, create and start the
- * WockyPorter. It sends a discovery request to find the server's features.
+ * Stage 2 of connecting, this function is called once the connect operation
+ * has finished. It checks if the connection succeeded, creates and starts
+ * the WockyPorter, then sends a discovery request to find the
+ * server's features.
  */
 static void
 connector_connected (GabbleConnection *self,

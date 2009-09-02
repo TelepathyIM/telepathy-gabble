@@ -62,7 +62,7 @@ copy_node (WockyXmppNode *node)
 LmMessageNode *
 lm_message_node_ref (LmMessageNode *node)
 {
-  /* WockyXmppNode are not ref counted. Return a copy of the node */
+  /* WockyXmppNode is not ref counted. Return a copy of the node */
   return copy_node (node);
 }
 

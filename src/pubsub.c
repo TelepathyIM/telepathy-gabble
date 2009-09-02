@@ -31,6 +31,12 @@
 #include "conn-olpc.h"
 #include "conn-location.h"
 
+typedef struct
+{
+    const gchar *ns;
+    GabblePubsubEventHandlerFunction handle_function;
+} GabblePubsubEventHandler;
+
 static const GabblePubsubEventHandler pubsub_event_handlers[] =
 {
     { NS_NICK, gabble_conn_aliasing_pep_nick_event_handler },

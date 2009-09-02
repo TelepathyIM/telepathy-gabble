@@ -28,14 +28,6 @@ typedef gboolean (* GabblePubsubEventHandlerFunction) (GabbleConnection *conn,
                                                        LmMessage *msg,
                                                        TpHandle handle);
 
-typedef struct _GabblePubsubEventHandler GabblePubsubEventHandler;
-
-struct _GabblePubsubEventHandler
-{
-    const gchar *ns;
-    GabblePubsubEventHandlerFunction handle_function;
-};
-
 gboolean
 gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
     TpHandle handle);

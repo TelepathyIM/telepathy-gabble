@@ -186,7 +186,7 @@ cd "$origdir"
 
 dnl Check for Wocky
 # re-enable once Wocky has been released as a lib
-export PKG_CONFIG_PATH=lib/ext/wocky/wocky:$PKG_CONFIG_PATH
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:lib/ext/wocky/wocky
 PKG_CHECK_MODULES(WOCKY, wocky >= 0.0.0)
 AC_SUBST(WOCKY_CFLAGS)
 AC_SUBST(WOCKY_LIBS)

@@ -183,6 +183,8 @@ set_own_status_cb (GObject *obj,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (obj);
   TpBaseConnection *base = (TpBaseConnection *) conn;
+  GabblePresenceId i = GABBLE_PRESENCE_AVAILABLE;
+  const gchar *message_str = NULL;
   gchar *resource;
   gint8 prio;
   gboolean retval = TRUE;
@@ -194,10 +196,10 @@ set_own_status_cb (GObject *obj,
 
   if (status)
     {
-      GabblePresenceId i = status->index;
       GHashTable *args = status->optional_arguments;
       GValue *message = NULL, *priority = NULL;
-      const gchar *message_str = NULL;
+
+      i = status->index;
 
       /* Workaround for tp-glib not checking whether we support setting
        * a particular status (can be removed once we depend on tp-glib
@@ -242,23 +244,13 @@ set_own_status_cb (GObject *obj,
             }
           prio = CLAMP (g_value_get_int (priority), G_MININT8, G_MAXINT8);
         }
-
-      if (gabble_presence_update (conn->self_presence, resource, i,
-            message_str, prio))
-        {
-          emit_one_presence_update (conn, base->self_handle);
-          retval = _gabble_connection_signal_own_presence (conn,
-              error);
-        }
     }
-  else
+
+  if (gabble_presence_update (conn->self_presence, resource, i,
+        message_str, prio))
     {
-      if (gabble_presence_update (conn->self_presence, resource,
-          GABBLE_PRESENCE_AVAILABLE, NULL, prio))
-        {
-          emit_one_presence_update (conn, base->self_handle);
-          retval = _gabble_connection_signal_own_presence (conn, error);
-        }
+      emit_one_presence_update (conn, base->self_handle);
+      retval = _gabble_connection_signal_own_presence (conn, error);
     }
 
 OUT:

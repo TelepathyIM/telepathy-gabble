@@ -29,6 +29,8 @@
 #include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 
+#include <wocky/wocky-session.h>
+
 #include "capabilities.h"
 #include "error.h"
 #include "ft-manager.h"
@@ -139,7 +141,7 @@ struct _GabbleConnection {
 
     /* loudmouth connection */
     LmConnection *lmconn;
-    WockyPorter *porter;
+    WockySession *session;
 
     /* channel factories borrowed from TpBaseConnection's list */
     GabbleRoster *roster;

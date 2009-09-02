@@ -157,6 +157,7 @@ enum
 struct _GabbleConnectionPrivate
 {
   WockyConnector *connector;
+  WockyPorter *porter;
 
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
@@ -968,10 +969,10 @@ gabble_connection_dispose (GObject *object)
       priv->connector = NULL;
     }
 
-  if (self->porter != NULL)
+  if (self->session != NULL)
     {
-      g_object_unref (self->porter);
-      self->porter = NULL;
+      g_object_unref (self->session);
+      self->session = NULL;
     }
 
   if (self->lmconn != NULL)
@@ -1362,7 +1363,7 @@ remote_error_cb (WockyPorter *porter,
 
   DEBUG ("Force closing of the connection");
   priv->closing = TRUE;
-  wocky_porter_force_close_async (self->porter, NULL, force_close_cb,
+  wocky_porter_force_close_async (priv->porter, NULL, force_close_cb,
       self);
 
   tp_base_connection_change_status ((TpBaseConnection *) self,
@@ -1475,16 +1476,19 @@ connector_connected (GabbleConnection *self,
 
   DEBUG ("connected (jid: %s)", jid);
 
-  self->porter = wocky_porter_new (conn);
+  self->session = wocky_session_new (conn);
+  priv->porter = wocky_session_get_porter (self->session);
 
-  g_signal_connect (self->porter, "remote-closed",
+  g_signal_connect (priv->porter, "remote-closed",
       G_CALLBACK (remote_closed_cb), self);
-  g_signal_connect (self->porter, "remote-error",
+  g_signal_connect (priv->porter, "remote-error",
       G_CALLBACK (remote_error_cb), self);
 
-  lm_connection_set_porter (self->lmconn, self->porter);
+  lm_connection_set_porter (self->lmconn, priv->porter);
 
-  wocky_porter_start (self->porter);
+  /* Don't use wocky_session_start as we don't want to start all the
+   * components (Roster, presence-manager, etc) for now */
+  wocky_porter_start (priv->porter);
 
   base->self_handle = tp_handle_ensure (contact_handles, jid, NULL, &error);
 
@@ -1810,7 +1814,7 @@ disconnect_timeout_cb (gpointer data)
   DEBUG ("Close operation timed out. Force closing");
   priv->disconnect_timer = 0;
 
-  wocky_porter_force_close_async (self->porter, NULL, force_close_cb, self);
+  wocky_porter_force_close_async (priv->porter, NULL, force_close_cb, self);
   return FALSE;
 }
 
@@ -1825,7 +1829,7 @@ connection_shut_down (TpBaseConnection *base)
 
   priv->closing = TRUE;
 
-  if (self->porter != NULL)
+  if (priv->porter != NULL)
     {
       DEBUG ("connection still open; closing it");
 
@@ -1834,7 +1838,7 @@ connection_shut_down (TpBaseConnection *base)
       priv->disconnect_timer = g_timeout_add_seconds (DISCONNECT_TIMEOUT,
           disconnect_timeout_cb, self);
 
-      wocky_porter_close_async (self->porter, NULL, closed_cb, self);
+      wocky_porter_close_async (priv->porter, NULL, closed_cb, self);
     }
   else if (priv->connector != NULL)
     {

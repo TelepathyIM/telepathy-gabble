@@ -13,7 +13,7 @@
 
 #include "debug.h"
 #include "namespaces.h"
-#include "pubsub.h"
+#include "wocky-pubsub.h"
 #include "presence-cache.h"
 #include "util.h"
 

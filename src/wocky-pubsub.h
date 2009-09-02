@@ -1,5 +1,5 @@
 /*
- * pubsub.h - Header of Gabble Pubsub functions
+ * wocky-pubsub.h - Header of Wocky Pubsub
  * Copyright (C) 2007 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or

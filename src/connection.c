@@ -68,7 +68,7 @@
 #include "olpc-gadget-manager.h"
 #include "presence-cache.h"
 #include "presence.h"
-#include "pubsub.h"
+#include "wocky-pubsub.h"
 #include "request-pipeline.h"
 #include "roomlist-manager.h"
 #include "roster.h"

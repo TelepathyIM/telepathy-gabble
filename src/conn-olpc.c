@@ -33,7 +33,7 @@
 #include "muc-channel.h"
 #include "presence-cache.h"
 #include "namespaces.h"
-#include "pubsub.h"
+#include "wocky-pubsub.h"
 #include "disco.h"
 #include "util.h"
 #include "olpc-activity.h"

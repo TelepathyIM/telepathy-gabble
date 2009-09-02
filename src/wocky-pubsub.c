@@ -1,5 +1,5 @@
 /*
- * pubsub.c - Gabble Pubsub functions
+ * wocky-pubsub.c - Wocky Pubsub
  * Copyright (C) 2007 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -18,7 +18,7 @@
  */
 
 #include "config.h"
-#include "pubsub.h"
+#include "wocky-pubsub.h"
 
 #include <string.h>
 

@@ -32,7 +32,7 @@
 #include "debug.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include "pubsub.h"
+#include "wocky-pubsub.h"
 #include "request-pipeline.h"
 #include "roster.h"
 #include "util.h"

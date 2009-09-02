@@ -643,6 +643,8 @@ gabble_encode_jid (
 {
   gchar *tmp, *ret;
 
+  g_return_val_if_fail (domain != NULL, NULL);
+
   if (node != NULL && resource != NULL)
     tmp = g_strdup_printf ("%s@%s/%s", node, domain, resource);
   else if (node != NULL)

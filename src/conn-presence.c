@@ -250,11 +250,6 @@ set_own_status_cb (GObject *obj,
           retval = _gabble_connection_signal_own_presence (conn,
               error);
         }
-      else
-        {
-          /* Nothing actually changed. */
-          retval = TRUE;
-        }
     }
   else
     {

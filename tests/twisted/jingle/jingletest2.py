@@ -119,11 +119,11 @@ class JingleProtocol:
     def match_jingle_action(self, q, action):
         return q is not None and q.name == 'jingle' and q['action'] == action
 
-    def extract_session_id(self, query):
+    def _extract_session_id(self, query):
         return query['sid']
 
     def validate_session_initiate(self, query):
-        return True
+        raise NotImplementedError()
 
     def can_do_video(self):
         return True
@@ -207,14 +207,15 @@ class GtalkProtocol03(JingleProtocol):
     def TransportGoogleP2P(self):
         return None
 
-    def extract_session_id(self, query):
+    def _extract_session_id(self, query):
         return query['id']
 
     def can_do_video_only(self):
         return False
 
     def validate_session_initiate(self, query):
-        assert query['id'] != None
+        sid = self._extract_session_id(query)
+
         # No transport in GTalk03
         assert xpath.queryForNodes('/session/transport', query) == None
 
@@ -232,8 +233,9 @@ class GtalkProtocol03(JingleProtocol):
             assert xpath.queryForNodes(
                 '/session/description/payload-type[@xmlns="%s"]' %
                     ns.GOOGLE_SESSION_PHONE, query)
-
-        return True
+            return (sid, ['fake-audio'], ['fake-video'])
+        else:
+            return (sid, ['fake-audio'], [])
 
     def seperate_contents(self):
         return False
@@ -279,8 +281,12 @@ class GtalkProtocol04(JingleProtocol):
         action = self._action_map(action)
         return q is not None and q.name == 'session' and q['type'] == action
 
-    def extract_session_id(self, query):
+    def _extract_session_id(self, query):
         return query['id']
+
+    def validate_session_initiate(self, query):
+        # FIXME: validate it!
+        return (self._extract_session_id(query), ['fake-audio'], [])
 
     def can_do_video(self):
         return False
@@ -311,6 +317,36 @@ class JingleProtocol015(JingleProtocol):
         else:
             namespace = 'unexistent-namespace'
         return ('description', namespace, { 'type': type }, children)
+
+    def validate_session_initiate(self, query):
+        contents = xpath.queryForNodes(
+            '/jingle[@xmlns="%s"]/content' % ns.JINGLE_015,
+            query)
+
+        audio, video = [], []
+
+        for c in contents:
+            a_desc = xpath.queryForNodes(
+                '/content/description[@xmlns="%s"]' % ns.JINGLE_015_AUDIO,
+                c)
+            v_desc = xpath.queryForNodes(
+                '/content/description[@xmlns="%s"]' % ns.JINGLE_015_VIDEO,
+                c)
+
+            if a_desc is not None:
+                assert len(a_desc) == 1, c.toXml()
+                assert v_desc is None
+                audio.append(c['name'])
+            elif v_desc is not None:
+                assert len(v_desc) == 1, c.toXml()
+                assert a_desc is None
+                video.append(c['name'])
+            else:
+                assert False, c.toXml()
+
+        assert len(audio) + len(video) > 0, query.toXml()
+
+        return (self._extract_session_id(query), audio, video)
 
 class JingleProtocol031(JingleProtocol):
     features = [ ns.JINGLE, ns.JINGLE_RTP, ns.JINGLE_RTP_AUDIO,
@@ -345,6 +381,33 @@ class JingleProtocol031(JingleProtocol):
                 n.name == name
 
         return EventPattern('stream-iq', predicate=p)
+
+    def validate_session_initiate(self, query):
+        contents = xpath.queryForNodes(
+            '/jingle[@xmlns="%s"]/content' % ns.JINGLE,
+            query)
+
+        audio, video = [], []
+
+        for c in contents:
+            descs = xpath.queryForNodes(
+                '/content/description[@xmlns="%s"]' % ns.JINGLE_RTP,
+                c)
+
+            assert len(descs) == 1, c.toXml()
+
+            d = descs[0]
+
+            if d['media'] == 'audio':
+                audio.append(c['name'])
+            elif d['media'] == 'video':
+                video.append(c['name'])
+            else:
+                assert False, c.toXml()
+
+        assert len(audio) + len(video) > 0, query.toXml()
+
+        return (self._extract_session_id(query), audio, video)
 
 class JingleTest2:
     # Default caps for the remote end
@@ -476,9 +539,9 @@ class JingleTest2:
         self.stream.send(jp.xml(node))
 
     def parse_session_initiate (self, query):
-        # Validate the session initiate and get some useful ifo from it
-        self.jp.validate_session_initiate (query)
-        self.sid = self.jp.extract_session_id(query)
+        # Validate the session initiate and get some useful info from it
+        self.sid, self.audio_names, self.video_names = \
+            self.jp.validate_session_initiate(query)
 
     def accept(self, with_video=False):
         jp = self.jp

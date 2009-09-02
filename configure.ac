@@ -177,16 +177,18 @@ AM_CONDITIONAL([WANT_TWISTED_TESTS], test false != "$TEST_PYTHON")
 # Always build Wocky with GTK doc support as we need it when doing "make check"
 # We have to run Wocky's configure *before* looking for it with PKG_CHECK_MODULES so wocky-uninstalled.pc has been generated
 echo "== Configuring embedded Wocky instance =="
+AS_MKDIR_P(["$ac_top_build_prefix"lib/ext/wocky])
 origdir=`pwd`
 
-cd "$top_srcdir"lib/ext/wocky &&
-  ./configure --enable-gtk-doc ||
+confcmd="$origdir"/"$srcdir"/lib/ext/wocky/configure
+cd "$ac_top_build_prefix"lib/ext/wocky &&
+  $confcmd --enable-gtk-doc ||
   AC_MSG_ERROR([Failed to configure embedded Wocky tree])
 cd "$origdir"
 
 dnl Check for Wocky
 # re-enable once Wocky has been released as a lib
-export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:lib/ext/wocky/wocky
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$ac_top_build_prefix"lib/ext/wocky/wocky
 PKG_CHECK_MODULES(WOCKY, wocky >= 0.0.0)
 AC_SUBST(WOCKY_CFLAGS)
 AC_SUBST(WOCKY_LIBS)

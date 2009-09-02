@@ -48,7 +48,7 @@ static const GabblePubsubEventHandler pubsub_event_handlers[] =
     { NULL, NULL}
 };
 
-gboolean
+static gboolean
 gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
     TpHandle handle)
 {

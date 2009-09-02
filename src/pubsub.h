@@ -29,10 +29,6 @@ typedef gboolean (* GabblePubsubEventHandlerFunction) (GabbleConnection *conn,
                                                        TpHandle handle);
 
 gboolean
-gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
-    TpHandle handle);
-
-gboolean
 pubsub_query (GabbleConnection *conn, const gchar *jid, const gchar *ns,
     GabbleConnectionMsgReplyFunc reply_func, gpointer user_data);
 

@@ -49,18 +49,13 @@ static const GabblePubsubEventHandler pubsub_event_handlers[] =
 };
 
 static gboolean
-gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
-    const gchar *from)
+gabble_pubsub_event_handler (GabbleConnection *conn,
+    WockyXmppStanza *msg,
+    const gchar *from,
+    WockyXmppNode *item_node)
 {
   const GabblePubsubEventHandler *i;
-  LmMessageNode *item_node;
   const gchar *event_ns;
-
-  item_node = lm_message_node_find_child (msg->node, "item");
-  if (item_node == NULL)
-    {
-      return FALSE;
-    }
 
   if (node_iter (item_node) == NULL)
     {
@@ -70,8 +65,7 @@ gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
   /*
    * the namespace of the item is that of the first child of the <item> node
    */
-  event_ns = lm_message_node_get_attribute (
-      node_iter_data (node_iter (item_node)), "xmlns");
+  event_ns = wocky_xmpp_node_get_ns (node_iter_data (node_iter (item_node)));
 
   if (event_ns == NULL)
     {
@@ -98,7 +92,7 @@ pubsub_query (
     GabbleConnectionMsgReplyFunc reply_func,
     gpointer user_data)
 {
-  LmMessage *msg;
+  WockyXmppStanza *msg;
   gboolean ret;
 
   msg = lm_message_build (jid, LM_MESSAGE_TYPE_IQ,
@@ -112,17 +106,17 @@ pubsub_query (
 
   ret = _gabble_connection_send_with_reply (conn, msg, reply_func, NULL,
       user_data, NULL);
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return ret;
 }
 
-LmMessage *
+WockyXmppStanza *
 pubsub_make_publish_msg (
     const gchar *to,
     const gchar *node_name,
     const gchar *item_ns,
     const gchar *item_name,
-    LmMessageNode **node)
+    WockyXmppNode **node)
 {
   return lm_message_build (to, LM_MESSAGE_TYPE_IQ,
     '@', "type", "set",
@@ -148,19 +142,19 @@ pubsub_make_publish_msg (
  */
 LmHandlerResult
 pubsub_msg_event_cb (LmMessageHandler *handler,
-                 LmConnection *connection,
-                 LmMessage *message,
-                 gpointer user_data)
+    LmConnection *connection,
+    WockyXmppStanza *message,
+    gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  LmMessageNode *node;
+  WockyXmppNode *node;
   const gchar *event_ns, *from;
 
-  node = lm_message_node_get_child (message->node, "event");
+  node = wocky_xmpp_node_get_child (message->node, "event");
 
   if (node)
     {
-      event_ns = lm_message_node_get_attribute (node, "xmlns");
+      event_ns = wocky_xmpp_node_get_ns (node);
     }
   else
     {
@@ -172,13 +166,25 @@ pubsub_msg_event_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  from = lm_message_node_get_attribute (message->node, "from");
+  from = wocky_xmpp_node_get_attribute (message->node, "from");
   if (from == NULL)
     {
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  gabble_pubsub_event_handler (conn, message, from);
+  node = wocky_xmpp_node_get_child (node, "items");
+  if (node == NULL)
+    {
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  node = wocky_xmpp_node_get_child (node, "item");
+  if (node == NULL)
+    {
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  gabble_pubsub_event_handler (conn, message, from, node);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

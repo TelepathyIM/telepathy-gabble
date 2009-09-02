@@ -22,24 +22,30 @@
 
 #include "connection.h"
 
+#include <wocky/wocky-xmpp-stanza.h>
+
 G_BEGIN_DECLS
 
 typedef gboolean (* GabblePubsubEventHandlerFunction) (GabbleConnection *conn,
-    LmMessage *msg,
+    WockyXmppStanza *msg,
     const gchar *from);
 
-gboolean
-pubsub_query (GabbleConnection *conn, const gchar *jid, const gchar *ns,
-    GabbleConnectionMsgReplyFunc reply_func, gpointer user_data);
+gboolean pubsub_query (GabbleConnection *conn,
+    const gchar *jid,
+    const gchar *ns,
+    GabbleConnectionMsgReplyFunc reply_func,
+    gpointer user_data);
 
-LmMessage *
-pubsub_make_publish_msg (const gchar *to, const gchar *node_name,
-    const gchar *item_ns, const gchar *item_name, LmMessageNode **node);
+WockyXmppStanza * pubsub_make_publish_msg (const gchar *to,
+    const gchar *node_name,
+    const gchar *item_ns,
+    const gchar *item_name,
+    WockyXmppNode **node);
 
-LmHandlerResult
-pubsub_msg_event_cb (LmMessageHandler *handler, LmConnection *connection,
-    LmMessage *message, gpointer user_data);
-
+LmHandlerResult pubsub_msg_event_cb (LmMessageHandler *handler,
+    LmConnection *connection,
+    WockyXmppStanza *message,
+    gpointer user_data);
 
 G_END_DECLS
 

@@ -31,7 +31,7 @@ void conn_aliasing_init (GabbleConnection *conn);
 void conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data);
 
 gboolean gabble_conn_aliasing_pep_nick_event_handler (GabbleConnection *conn,
-    LmMessage *msg, TpHandle handle);
+    LmMessage *msg, const gchar *from);
 
 void gabble_conn_aliasing_nickname_updated (GObject *object,
     TpHandle handle, gpointer user_data);

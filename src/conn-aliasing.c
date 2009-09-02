@@ -661,9 +661,19 @@ _grab_nickname (GabbleConnection *self,
 gboolean
 gabble_conn_aliasing_pep_nick_event_handler (GabbleConnection *conn,
                                              LmMessage *msg,
-                                             TpHandle handle)
+                                             const gchar *from)
 {
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *node;
+  TpHandle handle;
+
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("Invalid from: %s", from);
+      return FALSE;
+    }
 
   node = lm_message_node_find_child (msg->node, "item");
   if (NULL == node)

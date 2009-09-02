@@ -25,8 +25,8 @@
 G_BEGIN_DECLS
 
 typedef gboolean (* GabblePubsubEventHandlerFunction) (GabbleConnection *conn,
-                                                       LmMessage *msg,
-                                                       TpHandle handle);
+    LmMessage *msg,
+    const gchar *from);
 
 gboolean
 pubsub_query (GabbleConnection *conn, const gchar *jid, const gchar *ns,

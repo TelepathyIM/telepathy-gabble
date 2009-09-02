@@ -513,16 +513,23 @@ update_location_from_msg (GabbleConnection *conn,
 gboolean
 geolocation_event_handler (GabbleConnection *conn,
                            LmMessage *msg,
-                           TpHandle handle)
+                           const gchar *from)
 {
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  const gchar *from;
+  TpHandle handle;
+
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("Invalid from: %s", from);
+      return FALSE;
+    }
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
     return TRUE;
-
-  from = lm_message_node_get_attribute (msg->node, "from");
 
   return update_location_from_msg (conn, from, msg);
 }

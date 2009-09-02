@@ -50,7 +50,7 @@ static const GabblePubsubEventHandler pubsub_event_handlers[] =
 
 static gboolean
 gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
-    TpHandle handle)
+    const gchar *from)
 {
   const GabblePubsubEventHandler *i;
   LmMessageNode *item_node;
@@ -82,7 +82,7 @@ gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
     {
       if (strcmp (i->ns, event_ns) == 0)
         {
-          i->handle_function (conn, msg, handle);
+          i->handle_function (conn, msg, from);
           return TRUE;
         }
     }
@@ -153,10 +153,7 @@ pubsub_msg_event_cb (LmMessageHandler *handler,
                  gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *node;
-  TpHandle handle;
   const gchar *event_ns, *from;
 
   node = lm_message_node_get_child (message->node, "event");
@@ -181,15 +178,7 @@ pubsub_msg_event_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
-  if (handle == 0)
-    {
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  gabble_pubsub_event_handler (conn, message, handle);
-
-  tp_handle_unref (contact_repo, handle);
+  gabble_pubsub_event_handler (conn, message, from);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

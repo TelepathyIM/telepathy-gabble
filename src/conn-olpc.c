@@ -562,11 +562,21 @@ olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
 gboolean
 olpc_buddy_info_properties_event_handler (GabbleConnection *conn,
                                           LmMessage *msg,
-                                          TpHandle handle)
+                                          const gchar *from)
 {
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   GHashTable *properties;
   LmMessageNode *node;
   TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandle handle;
+
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("Invalid from: %s", from);
+      return FALSE;
+    }
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
@@ -1171,10 +1181,20 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
 gboolean
 olpc_buddy_info_activities_event_handler (GabbleConnection *conn,
                                           LmMessage *msg,
-                                          TpHandle handle)
+                                          const gchar *from)
 {
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   GPtrArray *activities;
   TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandle handle;
+
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("Invalid from: %s", from);
+      return FALSE;
+    }
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
@@ -1498,18 +1518,26 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
 gboolean
 olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
                                                 LmMessage *msg,
-                                                TpHandle handle)
+                                                const gchar *from)
 {
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   LmMessageNode *node;
-  const gchar *from;
   GabbleOlpcActivity *activity;
+  TpHandle handle;
+
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("Invalid from: %s", from);
+      return FALSE;
+    }
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
     return TRUE;
 
-  from = lm_message_node_get_attribute (msg->node, "from");
   node = lm_message_node_find_child (msg->node, "activity");
 
   activity = extract_current_activity (conn, node, from, TRUE);
@@ -2064,16 +2092,23 @@ update_activities_properties (GabbleConnection *conn,
 gboolean
 olpc_activities_properties_event_handler (GabbleConnection *conn,
                                           LmMessage *msg,
-                                          TpHandle handle)
+                                          const gchar *from)
 {
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  const gchar *from;
+  TpHandle handle;
+
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("Invalid from: %s", from);
+      return FALSE;
+    }
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
     return TRUE;
-
-  from = lm_message_node_get_attribute (msg->node, "from");
 
   return update_activities_properties (conn, from, msg);
 }

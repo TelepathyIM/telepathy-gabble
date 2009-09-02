@@ -118,20 +118,21 @@ pubsub_make_publish_msg (
     const gchar *item_name,
     WockyXmppNode **node)
 {
-  return lm_message_build (to, LM_MESSAGE_TYPE_IQ,
-    '@', "type", "set",
-    '(', "pubsub", "",
-      '@', "xmlns", NS_PUBSUB,
-      '(', "publish", "",
-          '@', "node", node_name,
-        '(', "item", "",
-          '(', item_name, "",
-            '*', node,
-            '@', "xmlns", item_ns,
-          ')',
-        ')',
-      ')',
-    ')', NULL);
+  return wocky_xmpp_stanza_build (
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, to,
+      WOCKY_NODE, "pubsub",
+        WOCKY_NODE_XMLNS, NS_PUBSUB,
+        WOCKY_NODE, "publish",
+          WOCKY_NODE_ATTRIBUTE, "node", node_name,
+          WOCKY_NODE, "item",
+            WOCKY_NODE, item_name,
+              WOCKY_NODE_ASSIGN_TO, node,
+              WOCKY_NODE_XMLNS, item_ns,
+            WOCKY_NODE_END,
+          WOCKY_NODE_END,
+        WOCKY_NODE_END,
+      WOCKY_NODE_END, WOCKY_STANZA_END);
 }
 
 /**

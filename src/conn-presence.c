@@ -207,7 +207,8 @@ set_own_status_cb (GObject *obj,
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "Status '%s' can not be requested in this connection",
                 gabble_statuses[i].name);
-          return FALSE;
+          retval = FALSE;
+          goto OUT;
         }
 
       if (args != NULL)

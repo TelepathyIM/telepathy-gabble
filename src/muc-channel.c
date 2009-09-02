@@ -697,7 +697,7 @@ create_room_identity (GabbleMucChannel *chan)
        */
       gchar *local_part;
 
-      gabble_decode_jid (alias, &local_part, NULL, NULL);
+      g_assert (gabble_decode_jid (alias, &local_part, NULL, NULL));
       g_assert (local_part != NULL);
       g_free (alias);
 

@@ -4,9 +4,12 @@ exposing the initial contents of incoming calls as values of InitialAudio and
 InitialVideo
 """
 
+import operator
+
 from servicetest import (
     assertContains, assertEquals, assertLength,
     wrap_channel, EventPattern, call_async, make_channel_proxy,
+    tp_path_prefix,
     )
 
 from jingletest2 import JingleTest2, test_all_dialects
@@ -130,6 +133,17 @@ def check_iav(jt, q, conn, bus, stream, remote_handle, initial_audio,
         e = q.expect('stream-iq',
             predicate=jt.jp.action_predicate('session-initiate'))
         jt.parse_session_initiate (e.query)
+
+        jt.accept()
+
+        events = reduce(operator.concat,
+            [ [ EventPattern('dbus-signal', signal='SetRemoteCodecs',
+                    path=p[len(tp_path_prefix):]),
+                EventPattern('dbus-signal', signal='SetStreamPlaying',
+                    path=p[len(tp_path_prefix):]),
+              ] for p in stream_handler_paths
+            ], [])
+        q.expect_many(*events)
 
         chan.Close()
 

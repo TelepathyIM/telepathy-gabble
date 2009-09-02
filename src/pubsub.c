@@ -31,6 +31,146 @@
 #include "conn-olpc.h"
 #include "conn-location.h"
 
+G_DEFINE_TYPE (WockyPubsub, wocky_pubsub, G_TYPE_OBJECT)
+
+/* properties */
+enum
+{
+  PROP_SESSION = 1,
+};
+
+/* signal enum */
+enum
+{
+  LAST_SIGNAL,
+};
+
+/*
+static guint signals[LAST_SIGNAL] = {0};
+*/
+
+/* private structure */
+typedef struct _WockyPubsubPrivate WockyPubsubPrivate;
+
+struct _WockyPubsubPrivate
+{
+  WockySession *session;
+
+  gboolean dispose_has_run;
+};
+
+#define WOCKY_PUBSUB_GET_PRIVATE(o)  \
+    (G_TYPE_INSTANCE_GET_PRIVATE ((o), WOCKY_TYPE_PUBSUB, \
+    WockyPubsubPrivate))
+
+
+static void
+wocky_pubsub_init (WockyPubsub *obj)
+{
+  /*
+  WockyPubsub *self = WOCKY_PUBSUB (obj);
+  WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
+  */
+}
+
+static void
+wocky_pubsub_set_property (GObject *object,
+    guint property_id,
+    const GValue *value,
+    GParamSpec *pspec)
+{
+  WockyPubsubPrivate *priv =
+      WOCKY_PUBSUB_GET_PRIVATE (object);
+
+  switch (property_id)
+    {
+      case PROP_SESSION:
+        priv->session = g_value_get_object (value);
+        break;
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+        break;
+    }
+}
+
+static void
+wocky_pubsub_get_property (GObject *object,
+    guint property_id,
+    GValue *value,
+    GParamSpec *pspec)
+{
+  WockyPubsubPrivate *priv =
+      WOCKY_PUBSUB_GET_PRIVATE (object);
+
+  switch (property_id)
+    {
+      case PROP_SESSION:
+        g_value_set_object (value, priv->session);
+        break;
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+        break;
+    }
+}
+
+static void
+wocky_pubsub_constructed (GObject *object)
+{
+  WockyPubsub *self = WOCKY_PUBSUB (object);
+  WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
+
+  g_assert (priv->session != NULL);
+}
+
+static void
+wocky_pubsub_dispose (GObject *object)
+{
+  WockyPubsub *self = WOCKY_PUBSUB (object);
+  WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
+
+  if (priv->dispose_has_run)
+    return;
+
+  priv->dispose_has_run = TRUE;
+
+  if (G_OBJECT_CLASS (wocky_pubsub_parent_class)->dispose)
+    G_OBJECT_CLASS (wocky_pubsub_parent_class)->dispose (object);
+}
+
+static void
+wocky_pubsub_finalize (GObject *object)
+{
+  /*
+  WockyPubsub *self = WOCKY_PUBSUB (object);
+  WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
+  */
+
+  G_OBJECT_CLASS (wocky_pubsub_parent_class)->finalize (object);
+}
+
+static void
+wocky_pubsub_class_init (WockyPubsubClass *wocky_pubsub_class)
+{
+  GObjectClass *object_class = G_OBJECT_CLASS (wocky_pubsub_class);
+  GParamSpec *spec;
+
+  g_type_class_add_private (wocky_pubsub_class,
+      sizeof (WockyPubsubPrivate));
+
+  object_class->constructed = wocky_pubsub_constructed;
+  object_class->set_property = wocky_pubsub_set_property;
+  object_class->get_property = wocky_pubsub_get_property;
+  object_class->dispose = wocky_pubsub_dispose;
+  object_class->finalize = wocky_pubsub_finalize;
+
+  spec = g_param_spec_object ("session", "Session",
+      "Wocky Session",
+      WOCKY_TYPE_SESSION,
+      G_PARAM_READWRITE |
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SESSION, spec);
+}
+
 typedef struct
 {
     const gchar *ns;
@@ -189,4 +329,12 @@ pubsub_msg_event_cb (LmMessageHandler *handler,
   gabble_pubsub_event_handler (conn, message, from, node);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+WockyPubsub *
+wocky_pubsub_new (WockySession *session)
+{
+  return g_object_new (WOCKY_TYPE_PUBSUB,
+      "session", session,
+      NULL);
 }

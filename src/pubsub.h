@@ -17,15 +17,47 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __PUBSUB_H__
-#define __PUBSUB_H__
+#ifndef __WOCKY_PUBSUB_H__
+#define __WOCKY_PUBSUB_H__
+
+#include <glib-object.h>
+#include <wocky/wocky-xmpp-stanza.h>
 
 #include "connection.h"
 
-#include <wocky/wocky-xmpp-stanza.h>
-
 G_BEGIN_DECLS
 
+typedef struct _WockyPubsubClass WockyPubsubClass;
+
+struct _WockyPubsubClass {
+  GObjectClass parent_class;
+};
+
+struct _WockyPubsub {
+  GObject parent;
+};
+
+GType wocky_pubsub_get_type (void);
+
+#define WOCKY_TYPE_PUBSUB \
+  (wocky_pubsub_get_type ())
+#define WOCKY_PUBSUB(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), WOCKY_TYPE_PUBSUB, \
+   WockyPubsub))
+#define WOCKY_PUBSUB_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), WOCKY_TYPE_PUBSUB, \
+   WockyPubsubClass))
+#define WOCKY_IS_PUBSUB(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), WOCKY_TYPE_PUBSUB))
+#define WOCKY_IS_PUBSUB_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), WOCKY_TYPE_PUBSUB))
+#define WOCKY_PUBSUB_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), WOCKY_TYPE_PUBSUB, \
+   WockyPubsubClass))
+
+WockyPubsub * wocky_pubsub_new (WockySession *session);
+
+/* not methods */
 typedef gboolean (* GabblePubsubEventHandlerFunction) (GabbleConnection *conn,
     WockyXmppStanza *msg,
     const gchar *from);
@@ -49,5 +81,4 @@ LmHandlerResult pubsub_msg_event_cb (LmMessageHandler *handler,
 
 G_END_DECLS
 
-#endif /* __PUBSUB_H__ */
-
+#endif /* __WOCKY_PUBSUB_H__ */

@@ -84,6 +84,7 @@ main (int argc,
 
   ret = gabble_main (argc, argv);
 
+  g_object_unref (bus_daemon);
 out:
   return ret;
 }

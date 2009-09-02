@@ -43,6 +43,7 @@ class File(object):
 
 class FileTransferTest(object):
     CONTACT_NAME = 'test-ft@localhost'
+    CONTACT_FULL_JID = 'test-ft@localhost/Telepathy'
 
     def __init__(self, bytestream_cls, file, address_type, access_control, access_control_param):
         self.file = file
@@ -65,7 +66,7 @@ class FileTransferTest(object):
         roster = make_result_iq(self.stream, roster_event.stanza)
         query = roster.firstChildElement()
         item = query.addElement('item')
-        item['jid'] = self.CONTACT_NAME
+        item['jid'] = self.CONTACT_FULL_JID
         item['subscription'] = 'both'
         self.stream.send(roster)
 
@@ -150,7 +151,7 @@ class ReceiveFileTest(FileTransferTest):
 
     def send_ft_offer_iq(self):
         self.bytestream = self.bytestream_cls(self.stream, self.q, 'alpha',
-            self.contact_name, 'test@localhost/Resource', True)
+            self.contact_full_jid, 'test@localhost/Resource', True)
 
         iq, si = self.bytestream.create_si_offer(ns.FILE_TRANSFER)
 

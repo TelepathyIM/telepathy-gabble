@@ -545,10 +545,8 @@ gabble_connection_get_unique_name (TpBaseConnection *self)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION (self)->priv;
 
-  return g_strdup_printf ("%s@%s/%s",
-                          priv->username,
-                          priv->stream_server,
-                          priv->resource);
+  return gabble_encode_jid (
+      priv->username, priv->stream_server, priv->resource);
 }
 
 /* must be in the same order as GabbleListHandle in connection.h */
@@ -969,10 +967,8 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   username = server = resource = NULL;
   result = TRUE;
 
-  gabble_decode_jid (account, &username, &server, &resource);
-
-  if (username == NULL || server == NULL ||
-      *username == '\0' || *server == '\0')
+  if (!gabble_decode_jid (account, &username, &server, &resource) ||
+      username == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unable to get username and server from account");
@@ -1343,7 +1339,7 @@ _gabble_connection_connect (TpBaseConnection *base,
   g_assert (priv->resource != NULL);
   g_assert (lm_connection_is_open (conn->lmconn) == FALSE);
 
-  jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
+  jid = gabble_encode_jid (priv->username, priv->stream_server, NULL);
   lm_connection_set_jid (conn->lmconn, jid);
   g_free (jid);
 
@@ -2901,7 +2897,7 @@ _gabble_connection_get_canonical_room_name (GabbleConnection *conn,
   if (server == NULL)
     return NULL;
 
-  return g_strdup_printf ("%s@%s", name, server);
+  return gabble_encode_jid (name, server, NULL);
 }
 
 
@@ -3159,16 +3155,14 @@ room_jid_verify (RoomVerifyBatch *batch,
   GError *error = NULL;
 
   room = service = NULL;
-  gabble_decode_jid (batch->contexts[i].jid, &room, &service, NULL);
 
-  if (room == NULL || *room == '\0' || service == NULL || *service == '\0')
+  if (!gabble_decode_jid (batch->contexts[i].jid, &room, &service, NULL) ||
+      room == NULL)
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unable to get room name and service from JID %s",
           batch->contexts[i].jid);
-
       ret = FALSE;
-
       goto out;
     }
 

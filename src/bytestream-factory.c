@@ -966,14 +966,26 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
   if (room_handle == 0)
     {
-     /* jid is not a muc jid so we need contact's resource */
-     gabble_decode_jid (from, NULL, NULL, &peer_resource);
+      /* jid is not a muc jid so we need contact's resource */
 
-     peer_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+      if (!gabble_decode_jid (from, NULL, NULL, &peer_resource))
+        {
+          DEBUG ("Got an SI IQ response from a bad JID. Ignoring.");
+          goto out;
+        }
 
-     /* we are not in a muc so our own jid is the one in the 'to' attribute */
-     self_jid = g_strdup (lm_message_node_get_attribute (msg->node,
-           "to"));
+      if (!peer_resource)
+        {
+          DEBUG ("Got an SI IQ response from a JID without a resource."
+              "Ignoring.");
+          goto out;
+        }
+
+      peer_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+
+      /* we are not in a muc so our own jid is the one in the 'to' attribute */
+      self_jid = g_strdup (lm_message_node_get_attribute (msg->node,
+            "to"));
     }
   else
     {
@@ -988,7 +1000,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
       if (muc == NULL)
         {
-          DEBUG ("Got an IQ from a muc in which we are not. Ignoring");
+          DEBUG ("Got an IQ from a muc in which we are not. Ignoring.");
           goto out;
         }
 
@@ -1865,12 +1877,23 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   if (room_handle == 0)
     {
-     /* jid is not a muc jid so we need contact's resource */
-     gabble_decode_jid (from, NULL, NULL, &peer_resource);
+      /* jid is not a muc jid so we need contact's resource */
 
-     /* we are not in a muc so our own jid is the one in the 'to' attribute */
-     self_jid = g_strdup (lm_message_node_get_attribute (reply_msg->node,
-           "to"));
+      if (!gabble_decode_jid (from, NULL, NULL, &peer_resource))
+        {
+          DEBUG ("Got an SI request with a bad JID");
+          goto END;
+        }
+
+      if (peer_resource == NULL)
+        {
+          DEBUG ("Got an SI request from a JID without a resource; ignoring");
+          goto END;
+        }
+
+      /* we are not in a muc so our own jid is the one in the 'to' attribute */
+      self_jid = g_strdup (lm_message_node_get_attribute (reply_msg->node,
+            "to"));
     }
   else
     {

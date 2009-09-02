@@ -191,6 +191,9 @@ struct _GabbleConnection {
     /* file transfer manager */
     GabbleFtManager *ft_manager;
 
+    /* pubsub */
+    WockyPubsub *pubsub;
+
     GabbleConnectionPrivate *priv;
 };
 

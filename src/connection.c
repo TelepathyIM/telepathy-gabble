@@ -990,6 +990,12 @@ gabble_connection_dispose (GObject *object)
       priv->disconnect_timer = 0;
     }
 
+  if (self->pubsub != NULL)
+    {
+      g_object_unref (self->pubsub);
+      self->pubsub = NULL;
+    }
+
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
 }
@@ -1519,6 +1525,8 @@ connector_connected (GabbleConnection *self,
       G_CALLBACK (remote_error_cb), self);
 
   lm_connection_set_porter (self->lmconn, priv->porter);
+
+  self->pubsub = wocky_pubsub_new (self->session);
 
   /* Don't use wocky_session_start as we don't want to start all the
    * components (Roster, presence-manager, etc) for now */

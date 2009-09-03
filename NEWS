@@ -1,3 +1,27 @@
+telepathy-gabble 0.8.2 (2009-09-03)
+===================================
+
+The “tape two fried eggs over your eyes and walk the streets of Paris for an
+hour” release.
+
+Enhancements:
+
+* Improve jid validation, so that obviously-invalid jids are rejected.
+  (daf)
+
+Fixes:
+
+* Don't crash when a vCard set fails, and there are edits pending. This
+  can happen if you're trying to set your avatar and then disconnect.
+  (daf)
+
+* fd.o#23013: ContactCapabilities.SetSelfCapabilities can crash gabble
+  with wrong parms (sjoerd)
+
+* Fix parsing of incoming session accept from Google Video Chat. This
+  should make outgoing calls to Google Video Chat users work, as well as
+  incoming calls. Hooray! (wjt, with help from sjoerd and Olivier Crête)
+
 telepathy-gabble 0.8.1 (2009-08-20)
 ===================================
 

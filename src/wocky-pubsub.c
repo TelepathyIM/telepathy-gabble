@@ -24,6 +24,7 @@
 
 #include <wocky/wocky-porter.h>
 #include <wocky/wocky-utils.h>
+#include <wocky/wocky-namespaces.h>
 
 #include "conn-aliasing.h"
 #include "namespaces.h"
@@ -242,7 +243,7 @@ pubsub_query (
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
       NULL, jid,
       WOCKY_NODE, "pubsub",
-        WOCKY_NODE_XMLNS, NS_PUBSUB,
+        WOCKY_NODE_XMLNS, WOCKY_XMPP_NS_PUBSUB,
         WOCKY_NODE, "items",
           WOCKY_NODE_ATTRIBUTE, "node", ns,
         WOCKY_NODE_END,
@@ -266,7 +267,7 @@ pubsub_make_publish_msg (
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
       NULL, to,
       WOCKY_NODE, "pubsub",
-        WOCKY_NODE_XMLNS, NS_PUBSUB,
+        WOCKY_NODE_XMLNS, WOCKY_XMPP_NS_PUBSUB,
         WOCKY_NODE, "publish",
           WOCKY_NODE_ATTRIBUTE, "node", node_name,
           WOCKY_NODE, "item",
@@ -305,7 +306,7 @@ pubsub_msg_event_cb (WockyPorter *porter,
       return FALSE;
     }
 
-  if (event_ns == NULL || !g_str_has_prefix (event_ns, NS_PUBSUB))
+  if (event_ns == NULL || !g_str_has_prefix (event_ns, WOCKY_XMPP_NS_PUBSUB))
     {
       return FALSE;
     }

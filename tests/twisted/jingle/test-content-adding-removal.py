@@ -75,7 +75,7 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
     e2 = q.expect('stream-iq', predicate=jp.action_predicate('content-remove'))
 
     # ...but before the peer notices, they accept the call.
-    jt.accept(with_video=True)
+    jt.accept()
 
     # Only now the remote end removes the video stream; if gabble mistakenly
     # marked it as accepted on session acceptance, it'll crash right about

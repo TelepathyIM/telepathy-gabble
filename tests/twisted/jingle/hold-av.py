@@ -165,7 +165,7 @@ def test(jp, q, bus, conn, stream):
     stream.send(make_result_iq(stream, e.stanza))
 
     jt.parse_session_initiate(e.query)
-    jt.accept(with_video=True)
+    jt.accept()
 
     q.expect('stream-iq', iq_type='result')
 

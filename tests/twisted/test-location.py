@@ -190,7 +190,7 @@ def test(q, bus, conn, stream):
 
     # Bob updates his location
     message = elem('message', from_='bob@foo.com')(
-        elem((ns.PUBSUB + "#event"), 'event')(
+        elem((ns.PUBSUB_EVENT), 'event')(
             elem('items', node=ns.GEOLOC)(
                 elem('item', id='12345')(
                     elem(ns.GEOLOC, 'geoloc')(

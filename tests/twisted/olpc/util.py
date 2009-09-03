@@ -72,7 +72,7 @@ def _make_pubsub_event_msg(from_, node):
     item = domish.Element((None, 'item'))
 
     message = elem('message', from_=from_, to='test@localhost')(
-        elem("%s#event" % ns.PUBSUB, 'event')(
+        elem(ns.PUBSUB_EVENT, 'event')(
             elem('items', node=node)(item)))
 
     return message, item

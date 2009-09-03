@@ -48,7 +48,7 @@ def test(q, bus, conn, stream):
     # <https://bugs.freedesktop.org/show_bug.cgi?id=21817>, where this would
     # crash Gabble.
     message = elem('message', from_='bob@foo.com')(
-        elem((ns.PUBSUB + "#event"), 'event')(
+        elem((ns.PUBSUB_EVENT), 'event')(
             elem('items', node=ns.NICK)(
                 elem('item')(
                     elem(ns.NICK, 'nick')

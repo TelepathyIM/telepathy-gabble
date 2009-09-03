@@ -30,7 +30,7 @@ def test(q, bus, conn, stream):
 
     # event node without 'from'
     message = elem('message')(
-        elem((ns.PUBSUB + "#event"), 'event')(
+        elem((ns.PUBSUB_EVENT), 'event')(
             elem('items', node=ns.GEOLOC)(
                 elem('item', id='12345')(
                     elem(ns.GEOLOC, 'geoloc')(
@@ -39,7 +39,7 @@ def test(q, bus, conn, stream):
 
     # event node with an invalid 'from'
     message = elem('message', from_='aaaa')(
-        elem((ns.PUBSUB + "#event"), 'event')(
+        elem((ns.PUBSUB_EVENT), 'event')(
             elem('items', node=ns.GEOLOC)(
                 elem('item', id='12345')(
                     elem(ns.GEOLOC, 'geoloc')(
@@ -48,25 +48,25 @@ def test(q, bus, conn, stream):
 
     # no items node
     message = elem('message', from_='bob@foo.com')(
-        elem((ns.PUBSUB + "#event"), 'event')())
+        elem((ns.PUBSUB_EVENT), 'event')())
     stream.send(message)
 
     # no item node
     message = elem('message', from_='bob@foo.com')(
-        elem((ns.PUBSUB + "#event"), 'event')(
+        elem((ns.PUBSUB_EVENT), 'event')(
             elem('items', node=ns.GEOLOC)()))
     stream.send(message)
 
     # item node doesn't have any child
     message = elem('message', from_='bob@foo.com')(
-        elem((ns.PUBSUB + "#event"), 'event')(
+        elem((ns.PUBSUB_EVENT), 'event')(
             elem('items', node=ns.GEOLOC)(
                 elem('item', id='12345')())))
     stream.send(message)
 
     # the child of the item node doesn't have a NS
     message = elem('message', from_='bob@foo.com')(
-        elem((ns.PUBSUB + "#event"), 'event')(
+        elem((ns.PUBSUB_EVENT), 'event')(
             elem('items', node=ns.GEOLOC)(
                 elem('item', id='12345')(
                     elem('geoloc')(
@@ -75,7 +75,7 @@ def test(q, bus, conn, stream):
 
     # valid but unknown pubsub notification
     message = elem('message', from_='bob@foo.com')(
-        elem((ns.PUBSUB + "#event"), 'event')(
+        elem((ns.PUBSUB_EVENT), 'event')(
             elem('items', node='http://www.badger.com')(
                 elem('item', id='12345')(
                     elem('http://www.badger.com', 'badger')(

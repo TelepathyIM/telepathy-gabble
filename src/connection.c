@@ -1449,6 +1449,19 @@ connector_connected (GabbleConnection *self,
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
+  /* We went to closing while we were connecting... drop the connection and
+   * finish the shutdown */
+  if (priv->closing)
+    {
+      if (conn != NULL)
+        g_object_unref (conn);
+      else
+        g_error_free (error);
+
+      tp_base_connection_finish_shutdown (base);
+      return;
+    }
+
   /* We don't need the connector any more */
   g_object_unref (priv->connector);
   priv->connector = NULL;
@@ -1810,20 +1823,27 @@ connection_shut_down (TpBaseConnection *base)
   if (priv->closing)
     return;
 
+  priv->closing = TRUE;
+
   if (self->porter != NULL)
     {
       DEBUG ("connection still open; closing it");
-      priv->closing = TRUE;
 
+      /* We were connected and setup, disconnect now.. */
       g_assert (priv->disconnect_timer == 0);
       priv->disconnect_timer = g_timeout_add_seconds (DISCONNECT_TIMEOUT,
           disconnect_timeout_cb, self);
 
       wocky_porter_close_async (self->porter, NULL, closed_cb, self);
     }
+  else if (priv->connector != NULL)
+    {
+      /* FIXME: cancel connecting if we are connecting, for now we wait until
+       * the connection is finished and then drop it directly */
+      DEBUG ("connecting waiting for it to finish before closing");
+    }
   else
     {
-      /* FIXME: cancel connecting if we are connecting */
       tp_base_connection_finish_shutdown (base);
     }
 }

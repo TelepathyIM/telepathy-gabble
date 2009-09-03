@@ -23,7 +23,7 @@
 #include <string.h>
 
 #include <wocky/wocky-porter.h>
-#include <telepathy-glib/enums.h>
+#include <wocky/wocky-utils.h>
 
 #include "conn-aliasing.h"
 #include "namespaces.h"
@@ -217,7 +217,7 @@ gabble_pubsub_event_handler (WockyPubsub *self,
     {
       PubsubEventHandler *handler = l->data;
 
-      if (strcmp (handler->ns, event_ns) == 0)
+      if (!wocky_strdiff (handler->ns, event_ns))
         {
           handler->handle_function (self, msg, from, handler->user_data);
           return TRUE;

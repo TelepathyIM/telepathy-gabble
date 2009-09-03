@@ -33,6 +33,36 @@
 
 G_DEFINE_TYPE (WockyPubsub, wocky_pubsub, G_TYPE_OBJECT)
 
+typedef struct
+{
+    gchar *ns;
+    WockyPubsubEventHandlerFunction handle_function;
+    gpointer user_data;
+    guint id;
+} PubsubEventHandler;
+
+static PubsubEventHandler *
+pubsub_event_handler_new (const gchar *ns,
+    WockyPubsubEventHandlerFunction func,
+    gpointer user_data,
+    guint id)
+{
+  PubsubEventHandler *handler = g_slice_new (PubsubEventHandler);
+  handler->ns = g_strdup (ns);
+  handler->handle_function = func;
+  handler->user_data = user_data;
+  handler->id = id;
+
+  return handler;
+}
+
+static void
+pubsub_event_handler_free (PubsubEventHandler *handler)
+{
+  g_free (handler->ns);
+  g_slice_free (PubsubEventHandler, handler);
+}
+
 /* properties */
 enum
 {
@@ -55,6 +85,10 @@ typedef struct _WockyPubsubPrivate WockyPubsubPrivate;
 struct _WockyPubsubPrivate
 {
   WockySession *session;
+
+  /* list of owned (PubsubEventHandler *) */
+  GSList *handlers;
+  guint last_id_used;
 
   gboolean dispose_has_run;
 };
@@ -120,6 +154,20 @@ wocky_pubsub_constructed (GObject *object)
   WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
 
   g_assert (priv->session != NULL);
+
+  /* FIXME: should be done by the components */
+  wocky_pubsub_register_event_handler (self, NS_NICK,
+      gabble_conn_aliasing_pep_nick_event_handler, NULL);
+  wocky_pubsub_register_event_handler (self, NS_OLPC_BUDDY_PROPS,
+      olpc_buddy_info_properties_event_handler, NULL);
+  wocky_pubsub_register_event_handler (self, NS_OLPC_ACTIVITIES,
+      olpc_buddy_info_activities_event_handler, NULL);
+  wocky_pubsub_register_event_handler (self, NS_OLPC_CURRENT_ACTIVITY,
+      olpc_buddy_info_current_activity_event_handler, NULL);
+  wocky_pubsub_register_event_handler (self, NS_OLPC_ACTIVITY_PROPS,
+      olpc_activities_properties_event_handler, NULL);
+  wocky_pubsub_register_event_handler (self, NS_GEOLOC,
+       geolocation_event_handler, NULL);
 }
 
 static void
@@ -140,10 +188,17 @@ wocky_pubsub_dispose (GObject *object)
 static void
 wocky_pubsub_finalize (GObject *object)
 {
-  /*
   WockyPubsub *self = WOCKY_PUBSUB (object);
   WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
-  */
+  GSList *l;
+
+  for (l = priv->handlers; l != NULL; l = g_slist_next (l))
+    {
+      PubsubEventHandler *handler = (PubsubEventHandler *) l->data;
+
+      pubsub_event_handler_free (handler);
+    }
+  g_slist_free (priv->handlers);
 
   G_OBJECT_CLASS (wocky_pubsub_parent_class)->finalize (object);
 }
@@ -171,31 +226,16 @@ wocky_pubsub_class_init (WockyPubsubClass *wocky_pubsub_class)
   g_object_class_install_property (object_class, PROP_SESSION, spec);
 }
 
-typedef struct
-{
-    const gchar *ns;
-    WockyPubsubEventHandlerFunction handle_function;
-} PubsubEventHandler;
-
-static const PubsubEventHandler pubsub_event_handlers[] =
-{
-    { NS_NICK, gabble_conn_aliasing_pep_nick_event_handler },
-    { NS_OLPC_BUDDY_PROPS, olpc_buddy_info_properties_event_handler},
-    { NS_OLPC_ACTIVITIES, olpc_buddy_info_activities_event_handler},
-    { NS_OLPC_CURRENT_ACTIVITY, olpc_buddy_info_current_activity_event_handler},
-    { NS_OLPC_ACTIVITY_PROPS, olpc_activities_properties_event_handler},
-    { NS_GEOLOC, geolocation_event_handler},
-    { NULL, NULL}
-};
-
 static gboolean
-gabble_pubsub_event_handler (GabbleConnection *conn,
+gabble_pubsub_event_handler (WockyPubsub *self,
+    GabbleConnection *conn,
     WockyXmppStanza *msg,
     const gchar *from,
     WockyXmppNode *item_node)
 {
-  const PubsubEventHandler *i;
+  WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
   const gchar *event_ns;
+  GSList *l;
 
   if (node_iter (item_node) == NULL)
     {
@@ -212,11 +252,13 @@ gabble_pubsub_event_handler (GabbleConnection *conn,
       return FALSE;
     }
 
-  for (i = pubsub_event_handlers; i->ns != NULL; i++)
+  for (l = priv->handlers; l != NULL; l = g_slist_next (l))
     {
-      if (strcmp (i->ns, event_ns) == 0)
+      PubsubEventHandler *handler = l->data;
+
+      if (strcmp (handler->ns, event_ns) == 0)
         {
-          i->handle_function (conn, msg, from);
+          handler->handle_function (conn, msg, from);
           return TRUE;
         }
     }
@@ -289,6 +331,7 @@ pubsub_msg_event_cb (LmMessageHandler *handler,
     gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  WockyPubsub *self = conn->pubsub;
   WockyXmppNode *node;
   const gchar *event_ns, *from;
 
@@ -326,7 +369,7 @@ pubsub_msg_event_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  gabble_pubsub_event_handler (conn, message, from, node);
+  gabble_pubsub_event_handler (self, conn, message, from, node);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -337,4 +380,21 @@ wocky_pubsub_new (WockySession *session)
   return g_object_new (WOCKY_TYPE_PUBSUB,
       "session", session,
       NULL);
+}
+
+guint
+wocky_pubsub_register_event_handler (WockyPubsub *self,
+    const gchar *ns,
+    WockyPubsubEventHandlerFunction func,
+    gpointer user_data)
+{
+  WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
+  PubsubEventHandler *handler;
+
+  priv->last_id_used++;
+  handler = pubsub_event_handler_new (ns, func, user_data, priv->last_id_used);
+
+  priv->handlers = g_slist_append (priv->handlers, handler);
+
+  return priv->last_id_used;
 }

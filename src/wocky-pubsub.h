@@ -57,11 +57,16 @@ GType wocky_pubsub_get_type (void);
 
 WockyPubsub * wocky_pubsub_new (WockySession *session);
 
-/* not methods */
 typedef gboolean (* WockyPubsubEventHandlerFunction) (GabbleConnection *conn,
     WockyXmppStanza *msg,
     const gchar *from);
 
+guint wocky_pubsub_register_event_handler (WockyPubsub *pubsub,
+    const gchar *ns,
+    WockyPubsubEventHandlerFunction func,
+    gpointer user_data);
+
+/* not methods */
 gboolean pubsub_query (GabbleConnection *conn,
     const gchar *jid,
     const gchar *ns,

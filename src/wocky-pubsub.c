@@ -63,12 +63,6 @@ pubsub_event_handler_free (PubsubEventHandler *handler)
   g_slice_free (PubsubEventHandler, handler);
 }
 
-/* properties */
-enum
-{
-  PROP_SESSION = 1,
-};
-
 /* signal enum */
 enum
 {
@@ -97,7 +91,6 @@ struct _WockyPubsubPrivate
     (G_TYPE_INSTANCE_GET_PRIVATE ((o), WOCKY_TYPE_PUBSUB, \
     WockyPubsubPrivate))
 
-
 static void
 wocky_pubsub_init (WockyPubsub *obj)
 {
@@ -113,14 +106,8 @@ wocky_pubsub_set_property (GObject *object,
     const GValue *value,
     GParamSpec *pspec)
 {
-  WockyPubsubPrivate *priv =
-      WOCKY_PUBSUB_GET_PRIVATE (object);
-
   switch (property_id)
     {
-      case PROP_SESSION:
-        priv->session = g_value_get_object (value);
-        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -133,14 +120,8 @@ wocky_pubsub_get_property (GObject *object,
     GValue *value,
     GParamSpec *pspec)
 {
-  WockyPubsubPrivate *priv =
-      WOCKY_PUBSUB_GET_PRIVATE (object);
-
   switch (property_id)
     {
-      case PROP_SESSION:
-        g_value_set_object (value, priv->session);
-        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -151,9 +132,6 @@ static void
 wocky_pubsub_constructed (GObject *object)
 {
   WockyPubsub *self = WOCKY_PUBSUB (object);
-  WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
-
-  g_assert (priv->session != NULL);
 
   /* FIXME: should be done by the components */
   wocky_pubsub_register_event_handler (self, NS_NICK,
@@ -207,7 +185,6 @@ static void
 wocky_pubsub_class_init (WockyPubsubClass *wocky_pubsub_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (wocky_pubsub_class);
-  GParamSpec *spec;
 
   g_type_class_add_private (wocky_pubsub_class,
       sizeof (WockyPubsubPrivate));
@@ -217,13 +194,6 @@ wocky_pubsub_class_init (WockyPubsubClass *wocky_pubsub_class)
   object_class->get_property = wocky_pubsub_get_property;
   object_class->dispose = wocky_pubsub_dispose;
   object_class->finalize = wocky_pubsub_finalize;
-
-  spec = g_param_spec_object ("session", "Session",
-      "Wocky Session",
-      WOCKY_TYPE_SESSION,
-      G_PARAM_READWRITE |
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_SESSION, spec);
 }
 
 static gboolean
@@ -375,11 +345,22 @@ pubsub_msg_event_cb (LmMessageHandler *handler,
 }
 
 WockyPubsub *
-wocky_pubsub_new (WockySession *session)
+wocky_pubsub_new (void)
 {
   return g_object_new (WOCKY_TYPE_PUBSUB,
-      "session", session,
       NULL);
+}
+
+void
+wocky_pubsub_start (WockyPubsub *self,
+    WockySession *session)
+{
+  WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
+
+  g_assert (priv->session == NULL);
+  priv->session = session;
+
+  /* TODO: register handler */
 }
 
 guint

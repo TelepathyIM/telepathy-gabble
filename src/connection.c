@@ -328,6 +328,8 @@ gabble_connection_constructor (GType type,
 
   tp_base_connection_register_with_contacts_mixin (TP_BASE_CONNECTION (self));
 
+  self->pubsub = wocky_pubsub_new ();
+
   conn_aliasing_init (self);
   conn_avatars_init (self);
   conn_presence_init (self);
@@ -1526,7 +1528,7 @@ connector_connected (GabbleConnection *self,
 
   lm_connection_set_porter (self->lmconn, priv->porter);
 
-  self->pubsub = wocky_pubsub_new (self->session);
+  wocky_pubsub_start (self->pubsub, self->session);
 
   /* Don't use wocky_session_start as we don't want to start all the
    * components (Roster, presence-manager, etc) for now */

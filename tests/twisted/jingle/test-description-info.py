@@ -143,11 +143,15 @@ def test(q, bus, conn, stream, send_early_description_info=False):
                    ('PCMU', 0, 8000, {}) ]
     stream_handler.CodecsUpdated(jt2.dbusify_codecs_with_params(new_codecs))
 
+    audio_content = jt2.audio_names[0]
+
     e = q.expect('stream-iq', iq_type='set', predicate=lambda x:
         xpath.queryForNodes("/iq/jingle[@action='description-info']",
             x.stanza))
     payload_types = xpath.queryForNodes(
-        "/iq/jingle/content[@name='stream1']/description/payload-type", e.stanza)
+        "/iq/jingle/content[@name='%s']/description/payload-type"
+            % audio_content,
+        e.stanza)
     # Gabble SHOULD only include the changed codecs in description-info
     assert len(payload_types) == 2, payload_types
 
@@ -162,7 +166,7 @@ def test(q, bus, conn, stream, send_early_description_info=False):
     # error back.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'description-info', [
-            jp.Content('stream1', 'initiator', 'both', [
+            jp.Content(audio_content, 'initiator', 'both', [
                 jp.Description('audio', [
                     jp.PayloadType('PCMU', '1600', '0') ]) ]) ]) ])
     stream.send(jp.xml(node))
@@ -178,7 +182,7 @@ def test(q, bus, conn, stream, send_early_description_info=False):
     c = new_codecs[2]
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'description-info', [
-            jp.Content('stream1', 'initiator', 'both', [
+            jp.Content(audio_content, 'initiator', 'both', [
                 jp.Description('audio', [
                     jp.PayloadType(c[0], str(c[2]), str(c[1]), c[3])
                 ]) ]) ]) ])

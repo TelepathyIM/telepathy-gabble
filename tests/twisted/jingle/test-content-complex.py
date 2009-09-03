@@ -123,11 +123,10 @@ def worker(jp, q, bus, conn, stream):
     else:
         q.expect('stream-iq', iq_type='error')
 
-
     # Remote end then tries to create a content with a name it's already used
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
-            jp.Content('stream1', 'initiator', 'both', [
+            jp.Content(jt2.audio_names[0], 'initiator', 'both', [
                 jp.Description('audio', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),

@@ -1043,12 +1043,21 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
 
   DEBUG ("called");
 
-  /* handle single-content special case */
   if ((priv->dialect == JINGLE_DIALECT_GTALK3) ||
       (priv->dialect == JINGLE_DIALECT_GTALK4))
     {
-      GabbleJingleContent *c = _get_any_content (sess);
-      _each_content_accept (sess, c, node, error);
+      /* Google Talk calls don't have contents per se; they just have
+       * <payload-type>s in different namespaces for audio and video, in the
+       * same <description> stanza. So we need to feed the whole stanza to each
+       * content in turn.
+       */
+      GList *cs = gabble_jingle_session_get_contents (sess);
+      GList *l;
+
+      for (l = cs; l != NULL; l = l->next)
+        _each_content_accept (sess, l->data, node, error);
+
+      g_list_free (cs);
     }
   else
     {

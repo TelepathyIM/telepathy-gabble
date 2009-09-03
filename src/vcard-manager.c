@@ -890,8 +890,21 @@ replace_reply_cb (GabbleConnection *conn,
         }
     }
 
-  /* If we've received more edit requests in the meantime, send them off. */
-  manager_patch_vcard (self, node);
+  if (error != NULL)
+    {
+      if (priv->edits != NULL)
+        {
+          /* All the requests for these edits have just been cancelled. */
+          g_hash_table_destroy (priv->edits);
+          priv->edits = NULL;
+        }
+    }
+  else
+    {
+      /* If we've received more edit requests in the meantime, send them off.
+       */
+      manager_patch_vcard (self, node);
+    }
 }
 
 static void

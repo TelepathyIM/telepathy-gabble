@@ -228,16 +228,40 @@ gabble_pubsub_event_handler (WockyPubsub *self,
   return FALSE;
 }
 
-gboolean
-pubsub_query (
-    GabbleConnection *conn,
-    const gchar *jid,
-    const gchar *ns,
-    GabbleConnectionMsgReplyFunc reply_func,
+static void
+send_query_cb (GObject *source,
+    GAsyncResult *res,
     gpointer user_data)
 {
+  GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GError *error = NULL;
+  WockyXmppStanza *reply;
+
+  reply = wocky_porter_send_iq_finish (WOCKY_PORTER (source), res, &error);
+  if (reply == NULL)
+    {
+      g_simple_async_result_set_from_error (result, error);
+      g_error_free (error);
+    }
+
+  g_simple_async_result_set_op_res_gpointer (result, reply, NULL);
+  g_simple_async_result_complete (result);
+  g_object_unref (result);
+}
+
+void
+wocky_pubsub_send_query_async (WockyPubsub *self,
+    const gchar *jid,
+    const gchar *ns,
+    GCancellable *cancellable,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
   WockyXmppStanza *msg;
-  gboolean ret;
+  GSimpleAsyncResult *result;
+
+  g_assert (priv->porter != NULL);
 
   msg = wocky_xmpp_stanza_build (
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
@@ -249,10 +273,29 @@ pubsub_query (
         WOCKY_NODE_END,
       WOCKY_NODE_END, WOCKY_STANZA_END);
 
-  ret = _gabble_connection_send_with_reply (conn, msg, reply_func, NULL,
-      user_data, NULL);
+  result = g_simple_async_result_new (G_OBJECT (self),
+    callback, user_data, wocky_pubsub_send_query_finish);
+
+  wocky_porter_send_iq_async (priv->porter, msg, cancellable, send_query_cb,
+      result);
+
   g_object_unref (msg);
-  return ret;
+}
+
+WockyXmppStanza *
+wocky_pubsub_send_query_finish (WockyPubsub *self,
+    GAsyncResult *result,
+    GError **error)
+{
+  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
+      error))
+    return NULL;
+
+  g_return_val_if_fail (g_simple_async_result_is_valid (result,
+    G_OBJECT (self), wocky_pubsub_send_query_finish), NULL);
+
+  return g_simple_async_result_get_op_res_gpointer (
+      G_SIMPLE_ASYNC_RESULT (result));
 }
 
 WockyXmppStanza *

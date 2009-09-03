@@ -70,13 +70,18 @@ guint wocky_pubsub_register_event_handler (WockyPubsub *pubsub,
     WockyPubsubEventHandlerFunction func,
     gpointer user_data);
 
-/* not methods */
-gboolean pubsub_query (GabbleConnection *conn,
+void wocky_pubsub_send_query_async (WockyPubsub *pubsub,
     const gchar *jid,
     const gchar *ns,
-    GabbleConnectionMsgReplyFunc reply_func,
+    GCancellable *cancellable,
+    GAsyncReadyCallback callback,
     gpointer user_data);
 
+WockyXmppStanza * wocky_pubsub_send_query_finish (WockyPubsub *pubsub,
+    GAsyncResult *result,
+    GError **error);
+
+/* not methods */
 WockyXmppStanza * pubsub_make_publish_msg (const gchar *to,
     const gchar *node_name,
     const gchar *item_ns,

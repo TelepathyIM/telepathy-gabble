@@ -78,21 +78,30 @@ build_mapping_tables (void)
 static gboolean update_location_from_msg (GabbleConnection *conn,
     const gchar *from, LmMessage *msg);
 
-static LmHandlerResult
-pep_reply_cb (GabbleConnection *conn,
-              LmMessage *sent_msg,
-              LmMessage *reply_msg,
-              GObject *object,
-              gpointer user_data)
+static void
+pep_reply_cb (GObject *source,
+    GAsyncResult *res,
+    gpointer user_data)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  WockyXmppStanza *reply_msg;
+  GError *error = NULL;
   const gchar *from;
+
+  reply_msg = wocky_pubsub_send_query_finish (WOCKY_PUBSUB (source), res,
+      &error);
+  if (reply_msg == NULL)
+    {
+      DEBUG ("Query failed: %s", error->message);
+      g_error_free (error);
+      return;
+    }
 
   from = lm_message_node_get_attribute (reply_msg->node, "from");
 
   if (from != NULL)
     update_location_from_msg (conn, from, reply_msg);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  g_object_unref (reply_msg);
 }
 
 static GHashTable *
@@ -116,8 +125,8 @@ get_cached_location_or_query (GabbleConnection *conn,
     }
 
   /* Send a query */
-  if (pubsub_query (conn, jid, NS_GEOLOC, pep_reply_cb, error))
-    DEBUG (" - %s: requested", jid);
+  wocky_pubsub_send_query_async (conn->pubsub, jid, NS_GEOLOC, NULL,
+      pep_reply_cb, conn);
 
   return NULL;
 }

@@ -22,8 +22,9 @@
 
 #include <glib-object.h>
 #include <wocky/wocky-xmpp-stanza.h>
+#include <wocky/wocky-session.h>
 
-#include "connection.h"
+#include "types.h"
 
 G_BEGIN_DECLS
 

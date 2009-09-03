@@ -17,20 +17,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "config.h"
 #include "wocky-pubsub.h"
-
-#include <string.h>
 
 #include <wocky/wocky-porter.h>
 #include <wocky/wocky-utils.h>
 #include <wocky/wocky-namespaces.h>
 
-#include "conn-aliasing.h"
-#include "namespaces.h"
 #include "util.h"
-#include "conn-olpc.h"
-#include "conn-location.h"
 
 G_DEFINE_TYPE (WockyPubsub, wocky_pubsub, G_TYPE_OBJECT)
 

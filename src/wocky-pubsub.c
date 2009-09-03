@@ -174,10 +174,10 @@ wocky_pubsub_class_init (WockyPubsubClass *wocky_pubsub_class)
 typedef struct
 {
     const gchar *ns;
-    GabblePubsubEventHandlerFunction handle_function;
-} GabblePubsubEventHandler;
+    WockyPubsubEventHandlerFunction handle_function;
+} PubsubEventHandler;
 
-static const GabblePubsubEventHandler pubsub_event_handlers[] =
+static const PubsubEventHandler pubsub_event_handlers[] =
 {
     { NS_NICK, gabble_conn_aliasing_pep_nick_event_handler },
     { NS_OLPC_BUDDY_PROPS, olpc_buddy_info_properties_event_handler},
@@ -194,7 +194,7 @@ gabble_pubsub_event_handler (GabbleConnection *conn,
     const gchar *from,
     WockyXmppNode *item_node)
 {
-  const GabblePubsubEventHandler *i;
+  const PubsubEventHandler *i;
   const gchar *event_ns;
 
   if (node_iter (item_node) == NULL)

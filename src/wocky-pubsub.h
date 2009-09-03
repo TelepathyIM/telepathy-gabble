@@ -58,7 +58,7 @@ GType wocky_pubsub_get_type (void);
 WockyPubsub * wocky_pubsub_new (WockySession *session);
 
 /* not methods */
-typedef gboolean (* GabblePubsubEventHandlerFunction) (GabbleConnection *conn,
+typedef gboolean (* WockyPubsubEventHandlerFunction) (GabbleConnection *conn,
     WockyXmppStanza *msg,
     const gchar *from);
 

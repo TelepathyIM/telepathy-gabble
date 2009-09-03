@@ -138,7 +138,8 @@ TWISTED_TESTS = \
 	test-fallback-socks5-proxy.py \
 	test-register.py \
 	test-set-status-idempotence.py \
-        test-location.py
+        test-location.py \
+	pubsub.py
 
 TESTS =
 

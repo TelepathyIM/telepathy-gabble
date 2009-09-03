@@ -559,11 +559,13 @@ olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
     }
 }
 
-gboolean
-olpc_buddy_info_properties_event_handler (GabbleConnection *conn,
-                                          LmMessage *msg,
-                                          const gchar *from)
+static gboolean
+olpc_buddy_info_properties_event_handler (WockyPubsub *pubsub,
+    LmMessage *msg,
+    const gchar *from,
+    gpointer user_data)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   GHashTable *properties;
@@ -1178,11 +1180,13 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
    * the case */
 }
 
-gboolean
-olpc_buddy_info_activities_event_handler (GabbleConnection *conn,
-                                          LmMessage *msg,
-                                          const gchar *from)
+static gboolean
+olpc_buddy_info_activities_event_handler (WockyPubsub *pubsub,
+    LmMessage *msg,
+    const gchar *from,
+    gpointer user_data)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   GPtrArray *activities;
@@ -1515,11 +1519,13 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   lm_message_unref (msg);
 }
 
-gboolean
-olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
-                                                LmMessage *msg,
-                                                const gchar *from)
+static gboolean
+olpc_buddy_info_current_activity_event_handler (WockyPubsub *pubsub,
+    LmMessage *msg,
+    const gchar *from,
+    gpointer user_data)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpBaseConnection *base = (TpBaseConnection *) conn;
@@ -2089,11 +2095,13 @@ update_activities_properties (GabbleConnection *conn,
   return TRUE;
 }
 
-gboolean
-olpc_activities_properties_event_handler (GabbleConnection *conn,
-                                          LmMessage *msg,
-                                          const gchar *from)
+static gboolean
+olpc_activities_properties_event_handler (WockyPubsub *pubsub,
+    LmMessage *msg,
+    const gchar *from,
+    gpointer user_data)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpBaseConnection *base = (TpBaseConnection *) conn;
@@ -3680,6 +3688,15 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
 
   g_signal_connect (conn->olpc_gadget_manager, "new-channels",
       G_CALLBACK (gadget_manager_new_channels_cb), conn);
+
+  wocky_pubsub_register_event_handler (conn->pubsub, NS_OLPC_BUDDY_PROPS,
+      olpc_buddy_info_properties_event_handler, conn);
+  wocky_pubsub_register_event_handler (conn->pubsub, NS_OLPC_ACTIVITIES,
+      olpc_buddy_info_activities_event_handler, conn);
+  wocky_pubsub_register_event_handler (conn->pubsub, NS_OLPC_CURRENT_ACTIVITY,
+      olpc_buddy_info_current_activity_event_handler, conn);
+  wocky_pubsub_register_event_handler (conn->pubsub, NS_OLPC_ACTIVITY_PROPS,
+      olpc_activities_properties_event_handler, conn);
 }
 
 static void

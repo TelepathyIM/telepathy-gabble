@@ -129,26 +129,6 @@ wocky_pubsub_get_property (GObject *object,
 }
 
 static void
-wocky_pubsub_constructed (GObject *object)
-{
-  WockyPubsub *self = WOCKY_PUBSUB (object);
-
-  /* FIXME: should be done by the components */
-  wocky_pubsub_register_event_handler (self, NS_NICK,
-      gabble_conn_aliasing_pep_nick_event_handler, NULL);
-  wocky_pubsub_register_event_handler (self, NS_OLPC_BUDDY_PROPS,
-      olpc_buddy_info_properties_event_handler, NULL);
-  wocky_pubsub_register_event_handler (self, NS_OLPC_ACTIVITIES,
-      olpc_buddy_info_activities_event_handler, NULL);
-  wocky_pubsub_register_event_handler (self, NS_OLPC_CURRENT_ACTIVITY,
-      olpc_buddy_info_current_activity_event_handler, NULL);
-  wocky_pubsub_register_event_handler (self, NS_OLPC_ACTIVITY_PROPS,
-      olpc_activities_properties_event_handler, NULL);
-  wocky_pubsub_register_event_handler (self, NS_GEOLOC,
-       geolocation_event_handler, NULL);
-}
-
-static void
 wocky_pubsub_dispose (GObject *object)
 {
   WockyPubsub *self = WOCKY_PUBSUB (object);
@@ -189,7 +169,6 @@ wocky_pubsub_class_init (WockyPubsubClass *wocky_pubsub_class)
   g_type_class_add_private (wocky_pubsub_class,
       sizeof (WockyPubsubPrivate));
 
-  object_class->constructed = wocky_pubsub_constructed;
   object_class->set_property = wocky_pubsub_set_property;
   object_class->get_property = wocky_pubsub_get_property;
   object_class->dispose = wocky_pubsub_dispose;
@@ -198,7 +177,6 @@ wocky_pubsub_class_init (WockyPubsubClass *wocky_pubsub_class)
 
 static gboolean
 gabble_pubsub_event_handler (WockyPubsub *self,
-    GabbleConnection *conn,
     WockyXmppStanza *msg,
     const gchar *from,
     WockyXmppNode *item_node)
@@ -228,7 +206,7 @@ gabble_pubsub_event_handler (WockyPubsub *self,
 
       if (strcmp (handler->ns, event_ns) == 0)
         {
-          handler->handle_function (conn, msg, from);
+          handler->handle_function (self, msg, from, handler->user_data);
           return TRUE;
         }
     }
@@ -339,7 +317,7 @@ pubsub_msg_event_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  gabble_pubsub_event_handler (self, conn, message, from, node);
+  gabble_pubsub_event_handler (self, message, from, node);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

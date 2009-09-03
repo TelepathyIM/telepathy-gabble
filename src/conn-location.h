@@ -14,9 +14,6 @@ void conn_location_properties_getter (GObject *object, GQuark interface,
 gboolean conn_location_properties_setter (GObject *object, GQuark interface,
     GQuark name, const GValue *value, gpointer setter_data, GError **error);
 
-gboolean geolocation_event_handler (GabbleConnection *conn,
-    LmMessage *msg, const gchar *from);
-
 void conn_location_init (GabbleConnection *conn);
 
 G_END_DECLS

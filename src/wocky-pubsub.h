@@ -60,9 +60,10 @@ WockyPubsub * wocky_pubsub_new (void);
 void wocky_pubsub_start (WockyPubsub *pubsub,
     WockySession *session);
 
-typedef gboolean (* WockyPubsubEventHandlerFunction) (GabbleConnection *conn,
+typedef gboolean (* WockyPubsubEventHandlerFunction) (WockyPubsub *pubsub,
     WockyXmppStanza *msg,
-    const gchar *from);
+    const gchar *from,
+    gpointer user_data);
 
 guint wocky_pubsub_register_event_handler (WockyPubsub *pubsub,
     const gchar *ns,

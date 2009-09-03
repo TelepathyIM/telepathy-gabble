@@ -510,11 +510,13 @@ update_location_from_msg (GabbleConnection *conn,
   return TRUE;
 }
 
-gboolean
-geolocation_event_handler (GabbleConnection *conn,
-                           LmMessage *msg,
-                           const gchar *from)
+static gboolean
+geolocation_event_handler (WockyPubsub *pubsub,
+    LmMessage *msg,
+    const gchar *from,
+    gpointer user_data)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpBaseConnection *base = (TpBaseConnection *) conn;
@@ -568,4 +570,7 @@ conn_location_init (GabbleConnection *conn)
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
     TP_IFACE_CONNECTION_INTERFACE_LOCATION,
     conn_location_fill_contact_attributes);
+
+  wocky_pubsub_register_event_handler (conn->pubsub, NS_GEOLOC,
+       geolocation_event_handler, conn);
 }

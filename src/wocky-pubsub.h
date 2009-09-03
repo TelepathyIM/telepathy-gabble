@@ -83,11 +83,6 @@ WockyXmppStanza * pubsub_make_publish_msg (const gchar *to,
     const gchar *item_name,
     WockyXmppNode **node);
 
-LmHandlerResult pubsub_msg_event_cb (LmMessageHandler *handler,
-    LmConnection *connection,
-    WockyXmppStanza *message,
-    gpointer user_data);
-
 G_END_DECLS
 
 #endif /* __WOCKY_PUBSUB_H__ */

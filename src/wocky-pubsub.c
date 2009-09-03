@@ -22,7 +22,7 @@
 
 #include <string.h>
 
-#include <loudmouth/loudmouth.h>
+#include <wocky/wocky-porter.h>
 #include <telepathy-glib/enums.h>
 
 #include "conn-aliasing.h"
@@ -79,6 +79,9 @@ typedef struct _WockyPubsubPrivate WockyPubsubPrivate;
 struct _WockyPubsubPrivate
 {
   WockySession *session;
+  WockyPorter *porter;
+
+  guint handler_id;
 
   /* list of owned (PubsubEventHandler *) */
   GSList *handlers;
@@ -128,6 +131,7 @@ wocky_pubsub_get_property (GObject *object,
     }
 }
 
+
 static void
 wocky_pubsub_dispose (GObject *object)
 {
@@ -138,6 +142,15 @@ wocky_pubsub_dispose (GObject *object)
     return;
 
   priv->dispose_has_run = TRUE;
+
+  if (priv->handler_id != 0)
+    {
+      wocky_porter_unregister_handler (priv->porter, priv->handler_id);
+      priv->handler_id = 0;
+    }
+
+  if (priv->porter != NULL)
+    g_object_unref (priv->porter);
 
   if (G_OBJECT_CLASS (wocky_pubsub_parent_class)->dispose)
     G_OBJECT_CLASS (wocky_pubsub_parent_class)->dispose (object);
@@ -269,17 +282,15 @@ pubsub_make_publish_msg (
 /**
  * pubsub_msg_event_cb
  *
- * Called by loudmouth when we get an incoming <message>. This handler handles
+ * Called by Wocky when we get an incoming <message>. This handler handles
  * pubsub events.
  */
-LmHandlerResult
-pubsub_msg_event_cb (LmMessageHandler *handler,
-    LmConnection *connection,
+static gboolean
+pubsub_msg_event_cb (WockyPorter *porter,
     WockyXmppStanza *message,
     gpointer user_data)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  WockyPubsub *self = conn->pubsub;
+  WockyPubsub *self = WOCKY_PUBSUB (user_data);
   WockyXmppNode *node;
   const gchar *event_ns, *from;
 
@@ -291,35 +302,35 @@ pubsub_msg_event_cb (LmMessageHandler *handler,
     }
   else
     {
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return FALSE;
     }
 
   if (event_ns == NULL || !g_str_has_prefix (event_ns, NS_PUBSUB))
     {
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return FALSE;
     }
 
   from = wocky_xmpp_node_get_attribute (message->node, "from");
   if (from == NULL)
     {
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return TRUE;
     }
 
   node = wocky_xmpp_node_get_child (node, "items");
   if (node == NULL)
     {
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return TRUE;
     }
 
   node = wocky_xmpp_node_get_child (node, "item");
   if (node == NULL)
     {
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return TRUE;
     }
 
   gabble_pubsub_event_handler (self, message, from, node);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 }
 
 WockyPubsub *
@@ -338,7 +349,14 @@ wocky_pubsub_start (WockyPubsub *self,
   g_assert (priv->session == NULL);
   priv->session = session;
 
-  /* TODO: register handler */
+  priv->porter = wocky_session_get_porter (priv->session);
+  g_object_ref (priv->porter);
+
+  /* Register message handler */
+  priv->handler_id = wocky_porter_register_handler (priv->porter,
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE, NULL,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX,
+      pubsub_msg_event_cb, self, WOCKY_STANZA_END);
 }
 
 guint

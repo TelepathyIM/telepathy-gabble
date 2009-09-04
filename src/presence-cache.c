@@ -1327,10 +1327,23 @@ _parse_presence_message (GabblePresenceCache *cache,
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   gint8 priority = 0;
   const gchar *resource, *status_message = NULL;
+  gchar *my_full_jid;
   LmMessageNode *presence_node, *child_node;
   LmHandlerResult ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
   GabblePresenceId presence_id;
   GabblePresence *presence;
+
+  /* The server should not send back the presence stanza about ourself (same
+   * resource). If it does, we just ignore the received stanza. We want to
+   * avoid any infinite ping-pong with the server due to XEP-0153 4.2-2-3.
+   */
+  my_full_jid = gabble_connection_get_full_jid (priv->conn);
+  if (!tp_strdiff (from, my_full_jid))
+    {
+      g_free (my_full_jid);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+  g_free (my_full_jid);
 
   presence_node = message->node;
   g_assert (0 == strcmp (presence_node->name, "presence"));

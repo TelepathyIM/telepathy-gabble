@@ -5,5 +5,6 @@ all-local:
 	cd wocky && $(MAKE)
 
 clean-local:
-	cd wocky && $(MAKE) clean
-
+	if test -e wocky/Makefile ; then \
+		cd wocky && $(MAKE) clean ; \
+	fi

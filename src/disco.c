@@ -41,7 +41,7 @@
 #include "util.h"
 #include "gabble-signals-marshal.h"
 
-#define DEFAULT_REQUEST_TIMEOUT 20000
+#define DEFAULT_REQUEST_TIMEOUT 20
 #define DISCO_PIPELINE_SIZE 10
 
 /* signals */

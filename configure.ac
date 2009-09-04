@@ -180,9 +180,16 @@ echo "== Configuring embedded Wocky instance =="
 AS_MKDIR_P(["$ac_top_build_prefix"lib/ext/wocky])
 origdir=`pwd`
 
+AC_ARG_ENABLE(wocky-gtk-doc,
+  AC_HELP_STRING([--enable-wocky-gtk-doc],[compile wocky with gtk-doc enabled]),
+    enable_wocky_gtk_doc=$enableval, enable_wocky_gtk_doc=no )
+
 confcmd="$origdir"/"$srcdir"/lib/ext/wocky/configure
-cd "$ac_top_build_prefix"lib/ext/wocky &&
-  $confcmd --enable-gtk-doc ||
+if test x$enable_wocky_gtk_doc != xno; then
+  confcmd="$confcmd --enable-gtk-doc"
+fi
+cd "$ac_top_build_prefix"lib/ext/wocky && echo "running $confcmd" &&
+  $confcmd ||
   AC_MSG_ERROR([Failed to configure embedded Wocky tree])
 cd "$origdir"
 

@@ -20,6 +20,7 @@
 
 #include "config.h"
 #include "presence-cache.h"
+#include "vcard-manager.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -644,6 +645,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
                    const gchar *from,
                    LmMessageNode *node)
 {
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   const gchar *sha1;
   LmMessageNode *x_node, *photo_node;
   GabblePresence *presence;
@@ -687,18 +689,30 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
   if (tp_strdiff (presence->avatar_sha1, sha1))
     {
       g_free (presence->avatar_sha1);
-      presence->avatar_sha1 = g_strdup (sha1);
+      if (handle == priv->conn->parent.self_handle)
+        {
+          /* according to XEP-0153 section 4.3-2. 3rd bullet:
+           * if we receive a photo from another resource, then we MUST
+           * immediately send a presence update with an empty update child
+           * element (no photo node), then re-download our own vCard;
+           * when that arrives, we may start setting the photo node in our
+           * presence again.
+           */
+          GError *error = NULL;
+          presence->avatar_sha1 = NULL;
+          if (!_gabble_connection_signal_own_presence (priv->conn, &error))
+            {
+              DEBUG ("failed to send own presence: %s", error->message);
+              g_error_free (error);
+            }
 
-      /* FIXME: according to XEP-0153,
-       * if (handle == priv->conn->parent.self_handle), then we MUST
-       * immediately send a presence update with an empty update child
-       * element (no photo node), then re-download our own vCard;
-       * when that arrives, we may start setting the photo node in our
-       * presence again.
-       *
-       * At the moment we ignore that requirement and trust that our other
-       * resource is getting its sha1 right - but it's a good policy to not
-       * trust anyone's XMPP implementation :-) */
+          gabble_vcard_manager_invalidate_cache (priv->conn->vcard_manager,
+              priv->conn->parent.self_handle);
+          gabble_vcard_manager_request (priv->conn->vcard_manager,
+              priv->conn->parent.self_handle, 0, NULL, NULL, NULL);
+        }
+      else
+        presence->avatar_sha1 = g_strdup (sha1);
 
       g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle);
     }

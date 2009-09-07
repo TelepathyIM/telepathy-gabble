@@ -540,7 +540,7 @@ gabble_presence_dump (GabblePresence *presence)
     presence->status_message,
     presence->keep_unavailable);
 
-  if (priv->cap_set == NULL)
+  if (priv->cap_set != NULL)
     {
       tmp = gabble_capability_set_dump (priv->cap_set, "  ");
       g_string_append (ret, "capabilities:\n");
@@ -561,7 +561,7 @@ gabble_presence_dump (GabblePresence *presence)
         "    priority: %d\n", res->name, res->status,
         res->status_message, res->priority);
 
-      if (res->cap_set == NULL)
+      if (res->cap_set != NULL)
         {
           tmp = gabble_capability_set_dump (res->cap_set, "        ");
           g_string_append (ret, "    capabilities:\n");

@@ -11,8 +11,7 @@
 
 #include <glib/gstdio.h>
 #include <telepathy-glib/debug.h>
-
-#include "debugger.h"
+#include <telepathy-glib/debug-sender.h>
 
 #ifdef ENABLE_DEBUG
 
@@ -70,54 +69,57 @@ gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag)
   return flag & flags;
 }
 
-GHashTable *flag_to_keys = NULL;
+GHashTable *flag_to_domains = NULL;
 
 static const gchar *
-debug_flag_to_key (GabbleDebugFlags flag)
+debug_flag_to_domain (GabbleDebugFlags flag)
 {
-  if (flag_to_keys == NULL)
+  if (G_UNLIKELY (flag_to_domains == NULL))
     {
       guint i;
 
-      flag_to_keys = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      flag_to_domains = g_hash_table_new_full (g_direct_hash, g_direct_equal,
           NULL, g_free);
 
       for (i = 0; keys[i].value; i++)
         {
           GDebugKey key = (GDebugKey) keys[i];
-          g_hash_table_insert (flag_to_keys, GUINT_TO_POINTER (key.value),
-              g_strdup (key.key));
+          gchar *val;
+
+          val = g_strdup_printf ("%s/%s", G_LOG_DOMAIN, key.key);
+          g_hash_table_insert (flag_to_domains,
+              GUINT_TO_POINTER (key.value), val);
         }
     }
 
-  return g_hash_table_lookup (flag_to_keys, GUINT_TO_POINTER (flag));
+  return g_hash_table_lookup (flag_to_domains, GUINT_TO_POINTER (flag));
 }
 
 void
 gabble_debug_free (void)
 {
-  if (flag_to_keys == NULL)
+  if (flag_to_domains == NULL)
     return;
 
-  g_hash_table_destroy (flag_to_keys);
-  flag_to_keys = NULL;
+  g_hash_table_destroy (flag_to_domains);
+  flag_to_domains = NULL;
 }
 
 static void
-log_to_debugger (GabbleDebugFlags flag,
+log_to_debug_sender (GabbleDebugFlags flag,
     const gchar *message)
 {
-  GabbleDebugger *dbg = gabble_debugger_get_singleton ();
-  gchar *domain;
+  TpDebugSender *dbg;
   GTimeVal now;
+
+  dbg = tp_debug_sender_dup ();
 
   g_get_current_time (&now);
 
-  domain = g_strdup_printf ("%s/%s", G_LOG_DOMAIN, debug_flag_to_key (flag));
+  tp_debug_sender_add_message (dbg, &now, debug_flag_to_domain (flag),
+      G_LOG_LEVEL_DEBUG, message);
 
-  gabble_debugger_add_message (dbg, &now, domain, G_LOG_LEVEL_DEBUG, message);
-
-  g_free (domain);
+  g_object_unref (dbg);
 }
 
 void gabble_debug (GabbleDebugFlags flag,
@@ -131,7 +133,7 @@ void gabble_debug (GabbleDebugFlags flag,
   message = g_strdup_vprintf (format, args);
   va_end (args);
 
-  log_to_debugger (flag, message);
+  log_to_debug_sender (flag, message);
 
   if (flag & flags)
     g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s", message);

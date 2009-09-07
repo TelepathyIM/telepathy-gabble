@@ -6,7 +6,6 @@ EXTRA_DIST = \
     Channel_Future.xml \
     Connection_Interface_Contact_Info.xml \
     Channel_Type_Contact_Search.xml \
-    Debug.xml \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \
     OLPC_Gadget.xml \

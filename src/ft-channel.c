@@ -1159,7 +1159,8 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       /* Not a MUC jid, need to get a resource */
       const gchar *resource;
 
-      /* FIXME: should we check for SI, bytestreams and/or IBB too? */
+      /* FIXME: should we check for SI, bytestreams and/or IBB too?
+       * http://bugs.freedesktop.org/show_bug.cgi?id=23777 */
       resource = gabble_presence_pick_resource_by_caps (presence,
           gabble_capability_set_predicate_has, NS_FILE_TRANSFER);
 

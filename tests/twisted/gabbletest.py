@@ -8,6 +8,7 @@ import os
 import hashlib
 import sys
 import random
+import traceback
 
 import ns
 import constants as cs
@@ -395,7 +396,6 @@ def exec_test_deferred(funs, params, protocol=None, timeout=None,
             conn = make_connection(bus, queue.append, params)
             f(queue, bus, conn, stream)
     except Exception, e:
-        import traceback
         traceback.print_exc()
         error = e
 

@@ -191,7 +191,7 @@ omits_content_creators (LmMessageNode *identity)
     }
 }
 
-gsize feature_handles_refcount = 0;
+static gsize feature_handles_refcount = 0;
 static TpHandleRepoIface *feature_handles = NULL;
 
 void

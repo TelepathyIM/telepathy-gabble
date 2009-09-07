@@ -200,12 +200,21 @@ struct _GabbleConnectionPrivate
   /* serial number of current advertised caps */
   guint caps_serial;
 
-  /* capabilities from various sources */
-  GabbleCapabilitySet *all_caps;
+  /* capabilities from various sources: */
+  /* subscriptions on behalf of the Connection, like PEP "+notify"
+   * namespaces (this one is add-only) */
   GabbleCapabilitySet *notify_caps;
+  /* caps provided by Capabilities.AdvertiseCapabilities (tp-spec 0.16) */
   GabbleCapabilitySet *legacy_caps;
+  /* additional caps that we advertise until the first call to
+   * AdvertiseCapabilities or UpdateCapabilities, for vague historical
+   * reasons */
   GabbleCapabilitySet *bonus_caps;
+  /* caps provided via ContactCapabilities.UpdateCapabilities ()
+   * gchar * (client name) => GabbleCapabilitySet * */
   GHashTable *client_caps;
+  /* the union of the above */
+  GabbleCapabilitySet *all_caps;
 
   /* gobject housekeeping */
   gboolean dispose_has_run;

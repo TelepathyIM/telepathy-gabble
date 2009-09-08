@@ -684,6 +684,8 @@ gabble_media_factory_add_caps (GabbleCapabilitySet *caps,
     gboolean ice_udp,
     gboolean h264)
 {
+  gboolean any_content = audio || video;
+
   DEBUG ("Client %s media capabilities:%s%s%s%s%s",
       client_name,
       audio ? " audio" : "",
@@ -692,10 +694,10 @@ gabble_media_factory_add_caps (GabbleCapabilitySet *caps,
       ice_udp ? " ice-udp" : "",
       h264 ? " H.264" : "");
 
-  if (gtalk_p2p)
+  if (gtalk_p2p && any_content)
     gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
 
-  if (ice_udp)
+  if (ice_udp && any_content)
     gabble_capability_set_add (caps, NS_JINGLE_TRANSPORT_ICEUDP);
 
   if (audio)

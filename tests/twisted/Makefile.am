@@ -4,6 +4,7 @@ TWISTED_TESTS = \
 	caps/advertise-draft1.py \
 	caps/advertise-legacy.py \
 	caps/caps-cache.py \
+	caps/compat-bundles.py \
 	caps/from-bare-jid.py \
 	caps/hashed-caps.py \
 	caps/initial-caps.py \

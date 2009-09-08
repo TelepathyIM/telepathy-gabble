@@ -369,7 +369,7 @@ def disconnect_conn(q, conn, stream, expected=[]):
     events = q.expect_many(*tmp)
     return events[:-1]
 
-def exec_test_deferred(funs, params, protocol=None, timeout=None,
+def exec_test_deferred(fun, params, protocol=None, timeout=None,
                         authenticator=None):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
@@ -384,7 +384,7 @@ def exec_test_deferred(funs, params, protocol=None, timeout=None,
         or '-v' in sys.argv)
 
     bus = dbus.SessionBus()
-    # conn = make_connection(bus, queue.append, params)
+    conn = make_connection(bus, queue.append, params)
     resource = params.get('resource') if params is not None else None
     (stream, port) = make_stream(queue.append, protocol=protocol,
         authenticator=authenticator, resource=resource)
@@ -392,9 +392,7 @@ def exec_test_deferred(funs, params, protocol=None, timeout=None,
     error = None
 
     try:
-        for f in funs:
-            conn = make_connection(bus, queue.append, params)
-            f(queue, bus, conn, stream)
+        fun(queue, bus, conn, stream)
     except Exception, e:
         traceback.print_exc()
         error = e
@@ -416,15 +414,11 @@ def exec_test_deferred(funs, params, protocol=None, timeout=None,
         # Connection has already been disconnected
         pass
 
-def exec_tests(funs, params=None, protocol=None, timeout=None,
-               authenticator=None):
-    reactor.callWhenRunning(
-        exec_test_deferred, funs, params, protocol, timeout, authenticator)
-    reactor.run()
-
 def exec_test(fun, params=None, protocol=None, timeout=None,
               authenticator=None):
-  exec_tests([fun], params, protocol, timeout, authenticator)
+    reactor.callWhenRunning(
+        exec_test_deferred, fun, params, protocol, timeout, authenticator)
+    reactor.run()
 
 # Useful routines for server-side vCard handling
 current_vcard = domish.Element(('vcard-temp', 'vCard'))

@@ -24,6 +24,7 @@
 #include <string.h>
 #include <telepathy-glib/channel-manager.h>
 
+#include "capabilities.h"
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "util.h"
@@ -40,8 +41,7 @@ typedef struct _Resource Resource;
 
 struct _Resource {
     gchar *name;
-    GabblePresenceCapabilities caps;
-    GHashTable *per_channel_manager_caps;
+    GabbleCapabilitySet *cap_set;
     guint caps_serial;
     GabblePresenceId status;
     gchar *status_message;
@@ -50,6 +50,9 @@ struct _Resource {
 };
 
 struct _GabblePresencePrivate {
+    /* The aggregated caps of all the contacts' resources. */
+    GabbleCapabilitySet *cap_set;
+
     gchar *no_resource_status_message;
     GSList *resources;
     guint olpc_views;
@@ -60,8 +63,7 @@ _resource_new (gchar *name)
 {
   Resource *new = g_slice_new0 (Resource);
   new->name = name;
-  new->caps = PRESENCE_CAP_NONE;
-  new->per_channel_manager_caps = NULL;
+  new->cap_set = gabble_capability_set_new ();
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   new->priority = 0;
@@ -76,12 +78,7 @@ _resource_free (Resource *resource)
 {
   g_free (resource->name);
   g_free (resource->status_message);
-  if (resource->per_channel_manager_caps != NULL)
-    {
-      gabble_presence_cache_free_cache_entry
-        (resource->per_channel_manager_caps);
-      resource->per_channel_manager_caps = NULL;
-    }
+  gabble_capability_set_free (resource->cap_set);
 
   g_slice_free (Resource, resource);
 }
@@ -96,14 +93,9 @@ gabble_presence_finalize (GObject *object)
   for (i = priv->resources; NULL != i; i = i->next)
     _resource_free (i->data);
 
-  if (presence->per_channel_manager_caps != NULL)
-    {
-      gabble_presence_cache_free_cache_entry
-        (presence->per_channel_manager_caps);
-      presence->per_channel_manager_caps = NULL;
-    }
-
   g_slist_free (priv->resources);
+  gabble_capability_set_free (priv->cap_set);
+
   g_free (presence->nickname);
   g_free (presence->avatar_sha1);
   g_free (priv->no_resource_status_message);
@@ -120,9 +112,14 @@ gabble_presence_class_init (GabblePresenceClass *klass)
 static void
 gabble_presence_init (GabblePresence *self)
 {
+  GabblePresencePrivate *priv;
+
   self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_PRESENCE, GabblePresencePrivate);
-  ((GabblePresencePrivate *) self->priv)->resources = NULL;
+
+  priv = self->priv;
+  priv->cap_set = gabble_capability_set_new ();
+  priv->resources = NULL;
 }
 
 GabblePresence *
@@ -153,20 +150,39 @@ resource_better_than (Resource *a, Resource *b)
     return (a->priority > b->priority);
 }
 
+gboolean
+gabble_presence_has_cap (GabblePresence *presence,
+    const gchar *ns)
+{
+  g_return_val_if_fail (presence != NULL, FALSE);
+
+  return gabble_capability_set_has (presence->priv->cap_set, ns);
+}
+
+GabbleCapabilitySet *
+gabble_presence_dup_caps (GabblePresence *presence)
+{
+  g_return_val_if_fail (presence != NULL, NULL);
+  return gabble_capability_set_copy (presence->priv->cap_set);
+}
+
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,
-    GabblePresenceCapabilities caps)
+    GabbleCapabilitySetPredicate predicate, gconstpointer user_data)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
   Resource *chosen = NULL;
 
+  g_return_val_if_fail (presence != NULL, NULL);
+  g_return_val_if_fail (predicate != NULL, NULL);
+
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *res = (Resource *) i->data;
 
-      if (((res->caps & caps) == caps) &&
+      if (predicate (res->cap_set, user_data) &&
           (resource_better_than (res, chosen)))
               chosen = res;
     }
@@ -180,7 +196,8 @@ gabble_presence_pick_resource_by_caps (
 gboolean
 gabble_presence_resource_has_caps (GabblePresence *presence,
                                    const gchar *resource,
-                                   GabblePresenceCapabilities caps)
+                                   GabbleCapabilitySetPredicate predicate,
+                                   gconstpointer user_data)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
@@ -189,8 +206,8 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
     {
       Resource *res = (Resource *) i->data;
 
-      if (!tp_strdiff (res->name, resource) && (res->caps & caps) == caps)
-        return TRUE;
+      if (!tp_strdiff (res->name, resource))
+        return predicate (res->cap_set, user_data);
     }
 
   return FALSE;
@@ -199,8 +216,7 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
 void
 gabble_presence_set_capabilities (GabblePresence *presence,
                                   const gchar *resource,
-                                  GabblePresenceCapabilities caps,
-                                  GHashTable *per_channel_manager_caps,
+                                  const GabbleCapabilitySet *cap_set,
                                   guint serial)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
@@ -218,26 +234,30 @@ gabble_presence_set_capabilities (GabblePresence *presence,
       return;
     }
 
-  presence->caps = 0;
-  if (presence->per_channel_manager_caps != NULL)
-    {
-      gabble_presence_cache_free_cache_entry
-        (presence->per_channel_manager_caps);
-      presence->per_channel_manager_caps = NULL;
-    }
-  presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
+  gabble_capability_set_clear (priv->cap_set);
 
   if (resource == NULL)
     {
-      DEBUG ("adding caps %u to bare jid", caps);
-      presence->caps = caps;
-      gabble_presence_cache_update_cache_entry (
-          presence->per_channel_manager_caps, per_channel_manager_caps);
+      if (DEBUGGING)
+        {
+          gchar *tmp = gabble_capability_set_dump (cap_set, "  ");
+
+          DEBUG ("Setting capabilities for bare JID:\n%s", tmp);
+          g_free (tmp);
+        }
+
+      gabble_capability_set_update (priv->cap_set, cap_set);
       return;
     }
 
-  DEBUG ("about to add caps %u to resource %s with serial %u", caps, resource,
-    serial);
+  if (DEBUGGING)
+    {
+      gchar *tmp = gabble_capability_set_dump (cap_set, "  ");
+
+      DEBUG ("about to add caps to resource %s with serial %u:\n%s", resource,
+          serial, tmp);
+      g_free (tmp);
+    }
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
@@ -251,37 +271,28 @@ gabble_presence_set_capabilities (GabblePresence *presence,
             {
               DEBUG ("new serial %u, old %u, clearing caps", serial,
                 tmp->caps_serial);
-              tmp->caps = 0;
               tmp->caps_serial = serial;
+              gabble_capability_set_clear (tmp->cap_set);
             }
 
           if (serial >= tmp->caps_serial)
             {
-              DEBUG ("adding caps %u to resource %s", caps, resource);
-              tmp->caps |= caps;
-              DEBUG ("resource %s caps now %u", resource, tmp->caps);
+              DEBUG ("adding caps to resource %s", resource);
 
-              if (tmp->per_channel_manager_caps != NULL)
-                {
-                  gabble_presence_cache_free_cache_entry
-                      (tmp->per_channel_manager_caps);
-                  tmp->per_channel_manager_caps = NULL;
-                }
-              if (per_channel_manager_caps != NULL)
-                gabble_presence_cache_copy_cache_entry
-                    (&tmp->per_channel_manager_caps, per_channel_manager_caps);
+              gabble_capability_set_update (tmp->cap_set, cap_set);
             }
         }
 
-      presence->caps |= tmp->caps;
-
-      if (tmp->per_channel_manager_caps != NULL)
-        gabble_presence_cache_update_cache_entry
-            (presence->per_channel_manager_caps,
-             tmp->per_channel_manager_caps);
+      gabble_capability_set_update (priv->cap_set, tmp->cap_set);
     }
 
-  DEBUG ("total caps now %u", presence->caps);
+  if (DEBUGGING)
+    {
+      gchar *tmp = gabble_capability_set_dump (priv->cap_set, "  ");
+
+      DEBUG ("Aggregate capabilities are now:\n%s", tmp);
+      g_free (tmp);
+    }
 }
 
 static Resource *
@@ -310,7 +321,7 @@ aggregate_resources (GabblePresence *presence)
 
   /* select the most preferable Resource and update presence->* based on our
    * choice */
-  presence->caps = 0;
+  gabble_capability_set_clear (priv->cap_set);
   presence->status = GABBLE_PRESENCE_OFFLINE;
 
   prio = -128;
@@ -319,7 +330,7 @@ aggregate_resources (GabblePresence *presence)
     {
       Resource *r = (Resource *) i->data;
 
-      presence->caps |= r->caps;
+      gabble_capability_set_update (priv->cap_set, r->cap_set);
 
       /* trump existing status & message if it's more present
        * or has the same presence and a higher priority */
@@ -394,25 +405,13 @@ gabble_presence_update (GabblePresence *presence,
           res = NULL;
 
           /* recalculate aggregate capability mask */
-          if (presence->per_channel_manager_caps != NULL)
-            {
-              gabble_presence_cache_free_cache_entry
-                (presence->per_channel_manager_caps);
-              presence->per_channel_manager_caps = NULL;
-            }
-          presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
-          presence->caps = 0;
+          gabble_capability_set_clear (priv->cap_set);
 
           for (i = priv->resources; i; i = i->next)
             {
               Resource *r = (Resource *) i->data;
 
-              presence->caps |= r->caps;
-
-              if (r->per_channel_manager_caps != NULL)
-                gabble_presence_cache_update_cache_entry
-                    (presence->per_channel_manager_caps,
-                     r->per_channel_manager_caps);
+              gabble_capability_set_update (priv->cap_set, r->cap_set);
             }
         }
     }
@@ -440,7 +439,7 @@ gabble_presence_update (GabblePresence *presence,
 
   /* select the most preferable Resource and update presence->* based on our
    * choice */
-  presence->caps = 0;
+  gabble_capability_set_clear (priv->cap_set);
   presence->status = GABBLE_PRESENCE_OFFLINE;
 
   /* use the status message from any offline Resource we're
@@ -529,17 +528,27 @@ gabble_presence_dump (GabblePresence *presence)
 {
   GSList *i;
   GString *ret = g_string_new ("");
+  gchar *tmp;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
 
   g_string_append_printf (ret,
     "nickname: %s\n"
     "accumulated status: %d\n"
     "accumulated status msg: %s\n"
-    "accumulated capabilities: %d\n"
-    "kept while unavailable: %d\n"
-    "resources:\n", presence->nickname, presence->status,
-    presence->status_message, presence->caps,
+    "kept while unavailable: %d\n",
+    presence->nickname, presence->status,
+    presence->status_message,
     presence->keep_unavailable);
+
+  if (priv->cap_set != NULL)
+    {
+      tmp = gabble_capability_set_dump (priv->cap_set, "  ");
+      g_string_append (ret, "capabilities:\n");
+      g_string_append (ret, tmp);
+      g_free (tmp);
+    }
+
+  g_string_append_printf (ret, "resources:\n");
 
   for (i = priv->resources; i; i = i->next)
     {
@@ -547,11 +556,18 @@ gabble_presence_dump (GabblePresence *presence)
 
       g_string_append_printf (ret,
         "  %s\n"
-        "    capabilities: %d\n"
         "    status: %d\n"
         "    status msg: %s\n"
-        "    priority: %d\n", res->name, res->caps, res->status,
+        "    priority: %d\n", res->name, res->status,
         res->status_message, res->priority);
+
+      if (res->cap_set != NULL)
+        {
+          tmp = gabble_capability_set_dump (res->cap_set, "        ");
+          g_string_append (ret, "    capabilities:\n");
+          g_string_append (ret, tmp);
+          g_free (tmp);
+        }
     }
 
   if (priv->resources == NULL)
@@ -606,4 +622,34 @@ gabble_presence_removed_from_view (GabblePresence *self)
 
   g_free (old_status_message);
   return ret;
+}
+
+gconstpointer
+gabble_presence_resource_pick_best_feature (GabblePresence *presence,
+    const gchar *resource,
+    const GabbleFeatureFallback *table,
+    GabbleCapabilitySetPredicate predicate)
+{
+  Resource *res;
+  const GabbleFeatureFallback *row;
+
+  g_return_val_if_fail (presence != NULL, NULL);
+  g_return_val_if_fail (resource != NULL, NULL);
+  g_return_val_if_fail (predicate != NULL, NULL);
+  g_return_val_if_fail (table != NULL, NULL);
+
+  res = _find_resource (presence, resource);
+
+  if (res == NULL)
+    return NULL;
+
+  for (row = table; row->result != NULL; row++)
+    {
+      if (row->considered && predicate (res->cap_set, row->check_data))
+        {
+          return row->result;
+        }
+    }
+
+  return NULL;
 }

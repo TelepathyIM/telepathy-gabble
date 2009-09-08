@@ -60,10 +60,11 @@ gabble_caps_channel_manager_get_type (void)
 
 /* Virtual-method wrappers */
 
-void gabble_caps_channel_manager_get_contact_capabilities (
+void
+gabble_caps_channel_manager_get_contact_capabilities (
     GabbleCapsChannelManager *caps_manager,
-    GabbleConnection *conn,
     TpHandle handle,
+    const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
   GabbleCapsChannelManagerIface *iface =
@@ -72,116 +73,25 @@ void gabble_caps_channel_manager_get_contact_capabilities (
 
   if (method != NULL)
     {
-      method (caps_manager, conn, handle, arr);
+      method (caps_manager, handle, caps, arr);
     }
   /* ... else assume there is not caps for this kind of channels */
 }
 
-void gabble_caps_channel_manager_get_feature_list (
-    GabbleCapsChannelManager *caps_manager,
-    gpointer specific_caps,
-    GSList **features)
-{
-  GabbleCapsChannelManagerIface *iface =
-    GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
-  GabbleCapsChannelManagerGetFeatureListFunc method = iface->get_feature_list;
-
-  if (method != NULL)
-    {
-      method (caps_manager, specific_caps, features);
-    }
-  /* ... else nothing to do */
-}
-
-gpointer gabble_caps_channel_manager_parse_capabilities (
-    GabbleCapsChannelManager *caps_manager,
-    LmMessageNode *query_result)
-{
-  GabbleCapsChannelManagerIface *iface =
-    GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
-  GabbleCapsChannelManagerParseCapsFunc method = iface->parse_caps;
-
-  if (method != NULL)
-    {
-      return method (caps_manager, query_result);
-    }
-  /* ... else assume there is not caps for this kind of channels */
-  return NULL;
-}
-
-void gabble_caps_channel_manager_free_capabilities (
-    GabbleCapsChannelManager *caps_manager,
-    gpointer specific_caps)
-{
-  GabbleCapsChannelManagerIface *iface =
-    GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
-  GabbleCapsChannelManagerFreeCapsFunc method = iface->free_caps;
-
-  if (method != NULL)
-    {
-      method (caps_manager, specific_caps);
-    }
-  /* ... else assume there is no need to free */
-}
-
-void gabble_caps_channel_manager_copy_capabilities (
-    GabbleCapsChannelManager *caps_manager,
-    gpointer *specific_caps_out,
-    gpointer specific_caps_in)
-{
-  GabbleCapsChannelManagerIface *iface =
-    GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
-  GabbleCapsChannelManagerCopyCapsFunc method = iface->copy_caps;
-
-  if (method != NULL)
-    {
-      method (caps_manager, specific_caps_out, specific_caps_in);
-    }
-  else
-    *specific_caps_out = NULL;
-}
-
-void gabble_caps_channel_manager_update_capabilities (
-    GabbleCapsChannelManager *caps_manager,
-    gpointer specific_caps_out,
-    gpointer specific_caps_in)
-{
-  GabbleCapsChannelManagerIface *iface =
-    GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
-  GabbleCapsChannelManagerUpdateCapsFunc method = iface->update_caps;
-
-  /* cannot be called if not implemented */
-  if (method != NULL)
-    method (caps_manager, specific_caps_out, specific_caps_in);
-  else
-    DEBUG (":'( No caps update function");
-}
-
-gboolean gabble_caps_channel_manager_capabilities_diff (
-    GabbleCapsChannelManager *caps_manager,
-    TpHandle handle,
-    gpointer specific_old_caps,
-    gpointer specific_new_caps)
-{
-  GabbleCapsChannelManagerIface *iface =
-    GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
-  GabbleCapsChannelManagerCapsDiffFunc method = iface->caps_diff;
-
-  if (method != NULL)
-    {
-      return method (caps_manager, handle, specific_old_caps,
-          specific_new_caps);
-    }
-  /* ... else, nothing to do */
-  return FALSE;
-}
-
+/**
+ * gabble_caps_channel_manager_add_capability:
+ * @cap: the Telepathy-level capability to add
+ * @cap_set: a set of XMPP namespaces, to which the namespaces corresponding to
+ *           @cap should be added
+ *
+ * Used to advertise that we support the XMPP capabilities corresponding to the
+ * Telepathy capability supplied.
+ */
 void
 gabble_caps_channel_manager_add_capability (
     GabbleCapsChannelManager *caps_manager,
-    GabbleConnection *conn,
-    TpHandle handle,
-    GHashTable *cap)
+    GHashTable *cap,
+    GabbleCapabilitySet *cap_set)
 {
   GabbleCapsChannelManagerIface *iface =
     GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
@@ -189,7 +99,7 @@ gabble_caps_channel_manager_add_capability (
 
   if (method != NULL)
     {
-      method (caps_manager, conn, handle, cap);
+      method (caps_manager, cap, cap_set);
     }
   /* ... else, nothing to do */
 }

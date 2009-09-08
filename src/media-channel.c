@@ -1335,12 +1335,26 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
     }
 }
 
+#define TWICE(x) x, x
+
 static const gchar *
 _pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
   const gchar *resource, JingleMediaType type)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
+  const GabbleFeatureFallback content_types[] = {
+      /* if $thing is supported, then use it */
+        { TRUE, TWICE (NS_JINGLE_RTP) },
+        { type == JINGLE_MEDIA_TYPE_VIDEO, TWICE (NS_JINGLE_DESCRIPTION_VIDEO) },
+        { type == JINGLE_MEDIA_TYPE_AUDIO, TWICE (NS_JINGLE_DESCRIPTION_AUDIO) },
+      /* odd Google ones: if $thing is supported, use $other_thing */
+        { type == JINGLE_MEDIA_TYPE_AUDIO,
+          NS_GOOGLE_FEAT_VOICE, NS_GOOGLE_SESSION_PHONE },
+        { type == JINGLE_MEDIA_TYPE_VIDEO,
+          NS_GOOGLE_FEAT_VIDEO, NS_GOOGLE_SESSION_VIDEO },
+        { FALSE, NULL, NULL }
+  };
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
 
@@ -1350,51 +1364,28 @@ _pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
       return NULL;
     }
 
-  if (gabble_presence_resource_has_caps (presence, resource,
-          PRESENCE_CAP_JINGLE_RTP))
-    {
-      return NS_JINGLE_RTP;
-    }
-
-  if ((type == JINGLE_MEDIA_TYPE_VIDEO) &&
-      gabble_presence_resource_has_caps (presence, resource,
-          PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO))
-    {
-      return NS_JINGLE_DESCRIPTION_VIDEO;
-    }
-
-  if ((type == JINGLE_MEDIA_TYPE_AUDIO) &&
-      gabble_presence_resource_has_caps (presence, resource,
-          PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO))
-    {
-      return NS_JINGLE_DESCRIPTION_AUDIO;
-    }
-  if ((type == JINGLE_MEDIA_TYPE_AUDIO) &&
-      gabble_presence_resource_has_caps (presence, resource,
-          PRESENCE_CAP_GOOGLE_VOICE))
-    {
-      return NS_GOOGLE_SESSION_PHONE;
-    }
-  if ((type == JINGLE_MEDIA_TYPE_VIDEO) &&
-      gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_GOOGLE_VIDEO))
-    {
-      return NS_GOOGLE_SESSION_VIDEO;
-    }
-
+  return gabble_presence_resource_pick_best_feature (presence, resource,
+      content_types, gabble_capability_set_predicate_has);
 
   return NULL;
 }
-
 
 static const gchar *
 _pick_best_resource (GabbleMediaChannel *chan,
   TpHandle peer, gboolean want_audio, gboolean want_video,
   const char **transport_ns, JingleDialect *dialect)
 {
+  /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
+   * available). */
+  static const GabbleFeatureFallback transports[] = {
+        { TRUE, TWICE (NS_GOOGLE_TRANSPORT_P2P) },
+        { TRUE, TWICE (NS_JINGLE_TRANSPORT_ICEUDP) },
+        { TRUE, TWICE (NS_JINGLE_TRANSPORT_RAWUDP) },
+        { FALSE, NULL, NULL }
+  };
   GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
-  GabblePresenceCapabilities caps;
+  GabbleCapabilitySet *caps;
   const gchar *resource = NULL;
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
@@ -1410,15 +1401,19 @@ _pick_best_resource (GabbleMediaChannel *chan,
 
   g_return_val_if_fail (want_audio || want_video, NULL);
 
+  /* from here on, goto FINALLY to free this, instead of returning early */
+  caps = gabble_capability_set_new ();
+
   /* Try newest Jingle standard */
-  caps = PRESENCE_CAP_JINGLE_RTP;
+  gabble_capability_set_add (caps, NS_JINGLE_RTP);
 
   if (want_audio)
-    caps |= PRESENCE_CAP_JINGLE_RTP_AUDIO;
+    gabble_capability_set_add (caps, NS_JINGLE_RTP_AUDIO);
   if (want_video)
-    caps |= PRESENCE_CAP_JINGLE_RTP_VIDEO;
+    gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence, caps);
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      gabble_capability_set_predicate_at_least, caps);
 
   if (resource != NULL)
     {
@@ -1427,14 +1422,15 @@ _pick_best_resource (GabbleMediaChannel *chan,
     }
 
   /* Else try older Jingle draft */
-  caps = 0;
+  gabble_capability_set_clear (caps);
 
   if (want_audio)
-    caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
+    gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_AUDIO);
   if (want_video)
-    caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
+    gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence, caps);
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      gabble_capability_set_predicate_at_least, caps);
 
   if (resource != NULL)
     {
@@ -1446,16 +1442,18 @@ _pick_best_resource (GabbleMediaChannel *chan,
   if (!want_audio)
     {
       DEBUG ("No resource which supports video alone available");
-      return NULL;
+      goto FINALLY;
     }
 
   /* Okay, let's try GTalk 0.3, possibly with video. */
-  caps = PRESENCE_CAP_GOOGLE_VOICE;
+  gabble_capability_set_clear (caps);
+  gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
 
   if (want_video)
-    caps |= PRESENCE_CAP_GOOGLE_VIDEO;
+    gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence, caps);
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      gabble_capability_set_predicate_at_least, caps);
 
   if (resource != NULL)
     {
@@ -1466,12 +1464,15 @@ _pick_best_resource (GabbleMediaChannel *chan,
   if (want_video)
     {
       DEBUG ("No resource which supports audio+video available");
-      return NULL;
+      goto FINALLY;
     }
 
   /* Maybe GTalk 0.4 will save us all... ? */
-  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
-  resource = gabble_presence_pick_resource_by_caps (presence, caps);
+  gabble_capability_set_clear (caps);
+  gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
+  gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      gabble_capability_set_predicate_at_least, caps);
 
   if (resource != NULL)
     {
@@ -1480,29 +1481,15 @@ _pick_best_resource (GabbleMediaChannel *chan,
     }
 
   /* Nope, nothing we can do. */
-  return NULL;
+  goto FINALLY;
 
 CHOOSE_TRANSPORT:
-  /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
-   * available). */
 
-  if (gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_GOOGLE_TRANSPORT_P2P))
-    {
-      *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
-    }
-  else if (gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP))
-    {
-      *transport_ns = NS_JINGLE_TRANSPORT_ICEUDP;
-    }
-  else if (gabble_presence_resource_has_caps (presence, resource,
-        PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP))
-    {
-      *transport_ns = NS_JINGLE_TRANSPORT_RAWUDP;
-    }
-  else if (*dialect == JINGLE_DIALECT_GTALK4
-      || *dialect == JINGLE_DIALECT_GTALK3)
+  *transport_ns = gabble_presence_resource_pick_best_feature (presence,
+      resource, transports, gabble_capability_set_predicate_has);
+
+  if (*transport_ns == NULL && (*dialect == JINGLE_DIALECT_GTALK4
+      || *dialect == JINGLE_DIALECT_GTALK3))
     {
       /* (Some) GTalk clients don't advertise gtalk-p2p, though
        * they support it. If we know it's GTalk and there's no
@@ -1511,8 +1498,10 @@ CHOOSE_TRANSPORT:
     }
 
   if (*transport_ns == NULL)
-      return NULL;
+    resource = NULL;
 
+FINALLY:
+  gabble_capability_set_free (caps);
   return resource;
 }
 
@@ -2071,7 +2060,6 @@ contact_is_media_capable (GabbleMediaChannel *chan,
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   GabblePresence *presence;
-  GabblePresenceCapabilities caps;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_CONTACT);
@@ -2091,11 +2079,6 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   if (wait_ret != NULL)
     *wait_ret = wait;
 
-  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_VIDEO |
-    PRESENCE_CAP_JINGLE_RTP_AUDIO | PRESENCE_CAP_JINGLE_RTP_VIDEO |
-    PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
-    PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
-
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
 
   if (presence == NULL)
@@ -2106,15 +2089,22 @@ contact_is_media_capable (GabbleMediaChannel *chan,
       return FALSE;
     }
 
-  if ((presence->caps & caps) == 0)
+  if (gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VOICE) ||
+      gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VIDEO) ||
+      gabble_presence_has_cap (presence, NS_JINGLE_RTP_AUDIO) ||
+      gabble_presence_has_cap (presence, NS_JINGLE_RTP_VIDEO) ||
+      gabble_presence_has_cap (presence, NS_JINGLE_DESCRIPTION_AUDIO) ||
+      gabble_presence_has_cap (presence, NS_JINGLE_DESCRIPTION_VIDEO))
+    {
+      return TRUE;
+    }
+  else
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
           "contact %d (%s) doesn't have sufficient media caps", peer,
           tp_handle_inspect (contact_handles, peer));
       return FALSE;
     }
-
-  return TRUE;
 }
 
 static gboolean
@@ -2503,24 +2493,10 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
       chan, id, direction, pending_send);
 }
 
-#define GTALK_CAPS \
-  ( PRESENCE_CAP_GOOGLE_VOICE )
-
-#define GTALK_VIDEO_CAPS \
-   ( PRESENCE_CAP_GOOGLE_VIDEO )
-
-#define JINGLE_AUDIO_CAPS \
-  ( PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE_RTP_AUDIO \
-  | PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO )
-
-#define JINGLE_VIDEO_CAPS \
-  ( PRESENCE_CAP_JINGLE_RTP | PRESENCE_CAP_JINGLE_RTP_VIDEO \
-  | PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO )
-
-GabblePresenceCapabilities
-_gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
+void
+_gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags,
+    GabbleCapabilitySet *caps)
 {
-  GabblePresenceCapabilities caps = 0;
   gboolean gtalk_p2p;
 
   DEBUG ("adding Jingle caps %u (%s, %s, %s, %s)", flags,
@@ -2532,30 +2508,32 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
         ? "ice-udp" : "no ice-udp");
 
   if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP)
-    caps |= PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP;
+    gabble_capability_set_add (caps, NS_JINGLE_TRANSPORT_ICEUDP);
 
   gtalk_p2p = flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P;
 
   if (gtalk_p2p)
-    caps |= PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
+    gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
 
   if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
     {
-      caps |= JINGLE_AUDIO_CAPS;
+      gabble_capability_set_add (caps, NS_JINGLE_RTP);
+      gabble_capability_set_add (caps, NS_JINGLE_RTP_AUDIO);
+      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_AUDIO);
 
       if (gtalk_p2p)
-        caps |= GTALK_CAPS;
+        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
     }
 
   if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
     {
-      caps |= JINGLE_VIDEO_CAPS;
+      gabble_capability_set_add (caps, NS_JINGLE_RTP);
+      gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
+      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
 
       if (gtalk_p2p)
-        caps |= GTALK_VIDEO_CAPS;
+        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
     }
-
-  return caps;
 }
 
 static void
@@ -2823,28 +2801,35 @@ session_new_content_cb (GabbleJingleSession *session,
 }
 
 TpChannelMediaCapabilities
-_gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
+_gabble_media_channel_caps_to_typeflags (const GabbleCapabilitySet *caps)
 {
   TpChannelMediaCapabilities typeflags = 0;
+  gboolean has_a_transport;
 
-  /* this is intentionally asymmetric to the previous function - we don't
-   * require the other end to advertise the GTalk-P2P transport capability
-   * separately because old GTalk clients didn't do that - having Google voice
-   * implied Google session and GTalk-P2P */
+  /* FIXME: shouldn't we support audio/video for people with any transport
+   * that we ourselves support, not just gtalk-p2p? */
+  has_a_transport = gabble_capability_set_has (caps, NS_GOOGLE_TRANSPORT_P2P);
 
-  if ((caps & PRESENCE_CAP_GOOGLE_VOICE) ||
-      ((caps & ( PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO
-               | PRESENCE_CAP_JINGLE_RTP_AUDIO
-               )) &&
-       (caps & PRESENCE_CAP_GOOGLE_TRANSPORT_P2P)))
-        typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
+  if (has_a_transport &&
+      gabble_capability_set_has_one (caps,
+        gabble_capabilities_get_any_audio ()))
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
 
-  if ( (caps & PRESENCE_CAP_GOOGLE_VIDEO) ||
-      ((caps & ( PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO
-               | PRESENCE_CAP_JINGLE_RTP_VIDEO
-               )) &&
-       (caps & PRESENCE_CAP_GOOGLE_TRANSPORT_P2P)))
-        typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+  if (has_a_transport &&
+      gabble_capability_set_has_one (caps,
+        gabble_capabilities_get_any_video ()))
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+
+  /* The checks below are an intentional asymmetry with the function going the
+   * other way - we don't require the other end to advertise the GTalk-P2P
+   * transport capability separately because old GTalk clients didn't do that.
+   * Having Google voice implied Google session and GTalk-P2P. */
+
+  if (gabble_capability_set_has (caps, NS_GOOGLE_FEAT_VOICE))
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
+
+  if (gabble_capability_set_has (caps, NS_GOOGLE_FEAT_VIDEO))
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
 
   return typeflags;
 }

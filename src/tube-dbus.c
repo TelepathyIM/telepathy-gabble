@@ -1255,7 +1255,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
         }
 
       resource = gabble_presence_pick_resource_by_caps (presence,
-          PRESENCE_CAP_SI_TUBES);
+          gabble_capability_set_predicate_has, NS_TUBES);
 
       if (resource == NULL)
         {

@@ -7,14 +7,23 @@
 #include <glib.h>
 
 #include "src/presence.h"
+#include "src/namespaces.h"
+
+static gboolean
+predicate_true (const GabbleCapabilitySet *set,
+    gconstpointer unused G_GNUC_UNUSED)
+{
+  return TRUE;
+}
 
 int main (int argc, char **argv)
 {
   const gchar *resource;
-  gchar *dump;
   GabblePresence *presence;
+  GabbleCapabilitySet *cap_set;
 
   g_type_init ();
+  gabble_capabilities_init (NULL);
 
   presence = gabble_presence_new ();
   g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
@@ -58,7 +67,8 @@ int main (int argc, char **argv)
 
   /* but if we were to make a voip call, we would prefer the newer one */
   g_assert (0 == strcmp ("bar",
-        gabble_presence_pick_resource_by_caps (presence, 0)));
+        gabble_presence_pick_resource_by_caps (presence, predicate_true,
+          NULL)));
 
   /* sleep a while so the next resource will have different timestamp */
   sleep (1);
@@ -77,7 +87,8 @@ int main (int argc, char **argv)
   g_assert (FALSE == gabble_presence_update (presence, "foo",
     GABBLE_PRESENCE_AVAILABLE, "status message", 0));
   g_assert (0 == strcmp ("foo",
-        gabble_presence_pick_resource_by_caps (presence, 0)));
+        gabble_presence_pick_resource_by_caps (presence, predicate_true,
+          NULL)));
 
   /* sleep a while so the next resource will have different timestamp */
   sleep (1);
@@ -95,54 +106,39 @@ int main (int argc, char **argv)
 
   /* we still prefer foo for the voip calls, because it's more present */
   g_assert (0 == strcmp ("foo",
-        gabble_presence_pick_resource_by_caps (presence, 0)));
+        gabble_presence_pick_resource_by_caps (presence, predicate_true,
+          NULL)));
 
   g_assert (GABBLE_PRESENCE_CHAT == presence->status);
   g_assert (0 == strcmp ("status message", presence->status_message));
 
   /* no resource has the Google voice cap */
   resource = gabble_presence_pick_resource_by_caps (presence,
-    PRESENCE_CAP_GOOGLE_VOICE);
+      gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_VOICE);
   g_assert (NULL == resource);
 
   /* give voice cap to second resource, but make priority negative */
   g_assert (FALSE == gabble_presence_update (presence, "bar",
     GABBLE_PRESENCE_AVAILABLE, "dingoes", -1));
-  gabble_presence_set_capabilities (presence, "bar",
-      PRESENCE_CAP_GOOGLE_VOICE, NULL, 0);
-
-  dump = gabble_presence_dump (presence);
-  g_assert (0 == strcmp (dump,
-    "nickname: (null)\n"
-    "accumulated status: 8\n"
-    "accumulated status msg: status message\n"
-    "accumulated capabilities: 2\n"
-    "kept while unavailable: 0\n"
-    "resources:\n"
-    "  foo\n"
-    "    capabilities: 0\n"
-    "    status: 8\n"
-    "    status msg: status message\n"
-    "    priority: 0\n"
-    "  bar\n"
-    "    capabilities: 2\n"
-    "    status: 7\n"
-    "    status msg: dingoes\n"
-    "    priority: -1\n"));
-  g_free (dump);
+  cap_set = gabble_capability_set_new ();
+  gabble_capability_set_add (cap_set, NS_GOOGLE_FEAT_VOICE);
+  gabble_presence_set_capabilities (presence, "bar", cap_set, 0);
+  gabble_capability_set_free (cap_set);
 
   /* no resource with non-negative priority has the Google voice cap */
   resource = gabble_presence_pick_resource_by_caps (presence,
-    PRESENCE_CAP_GOOGLE_VOICE);
+      gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_VOICE);
   g_assert (NULL == resource);
 
   /* give voice cap to first resource */
-  gabble_presence_set_capabilities (presence, "foo",
-      PRESENCE_CAP_GOOGLE_VOICE, NULL, 0);
+  cap_set = gabble_capability_set_new ();
+  gabble_capability_set_add (cap_set, NS_GOOGLE_FEAT_VOICE);
+  gabble_presence_set_capabilities (presence, "foo", cap_set, 0);
+  gabble_capability_set_free (cap_set);
 
   /* resource has voice cap */
   resource = gabble_presence_pick_resource_by_caps (presence,
-    PRESENCE_CAP_GOOGLE_VOICE);
+      gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_VOICE);
   g_assert (0 == strcmp ("foo", resource));
 
   /* presence turns up from null resource; it trumps other presence regardless
@@ -154,21 +150,13 @@ int main (int argc, char **argv)
 
   /* caps are gone too */
   resource = gabble_presence_pick_resource_by_caps (presence,
-    PRESENCE_CAP_GOOGLE_VOICE);
+      gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_VOICE);
   g_assert (NULL == resource);
 
-  dump = gabble_presence_dump (presence);
-  g_assert (0 == strcmp (dump,
-    "nickname: (null)\n"
-    "accumulated status: 0\n"
-    "accumulated status msg: gone\n"
-    "accumulated capabilities: 2\n"
-    "kept while unavailable: 0\n"
-    "resources:\n"
-    "  (none)\n"));
-  g_free (dump);
-
   g_object_unref (presence);
+
+  gabble_capabilities_finalize (NULL);
+
   return 0;
 }
 

@@ -642,78 +642,18 @@ add_file_transfer_channel_class (GPtrArray *arr,
 
 static void
 gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
-                                    GabbleConnection *conn,
-                                    TpHandle handle,
-                                    GPtrArray *arr)
+    TpHandle handle,
+    const GabbleCapabilitySet *caps,
+    GPtrArray *arr)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  GabblePresence *presence;
+  GabbleFtManager *self = GABBLE_FT_MANAGER (manager);
 
   g_assert (handle != 0);
 
-  if (handle == base->self_handle)
-    {
-      /* We support file transfer */
-      add_file_transfer_channel_class (arr, handle);
-      return;
-    }
-
- presence = gabble_presence_cache_get (conn->presence_cache, handle);
- if (presence == NULL)
-   return;
-
- if (presence->per_channel_manager_caps == NULL)
-   return;
-
- if (!GPOINTER_TO_INT (g_hash_table_lookup (presence->per_channel_manager_caps,
-         manager)))
-   return;
-
-  /* FT is supported */
-  add_file_transfer_channel_class (arr, handle);
-}
-
-static gpointer
-gabble_ft_manager_parse_caps (GabbleCapsChannelManager *manager,
-                              LmMessageNode *query_result)
-{
-  NodeIter i;
-
-  for (i = node_iter (query_result); i; i = node_iter_next (i))
-    {
-      LmMessageNode *child = node_iter_data (i);
-      const gchar *var;
-
-      if (0 != strcmp (child->name, "feature"))
-        continue;
-
-      var = lm_message_node_get_attribute (child, "var");
-
-      if (NULL == var)
-        continue;
-
-      if (!tp_strdiff (var, NS_FILE_TRANSFER))
-        return GINT_TO_POINTER (TRUE);
-    }
-
-  return GINT_TO_POINTER (FALSE);
-}
-
-static void
-gabble_ft_manager_copy_caps (GabbleCapsChannelManager *manager,
-                             gpointer *specific_caps_out,
-                             gpointer specific_caps_in)
-{
-  *specific_caps_out = specific_caps_in;
-}
-
-static gboolean
-gabble_ft_manager_caps_diff (GabbleCapsChannelManager *manager,
-                             TpHandle handle,
-                             gpointer specific_old_caps,
-                             gpointer specific_new_caps)
-{
-  return specific_old_caps != specific_new_caps;
+  /* We always support file transfer */
+  if (handle == self->priv->connection->parent.self_handle ||
+      gabble_capability_set_has (caps, NS_FILE_TRANSFER))
+    add_file_transfer_channel_class (arr, handle);
 }
 
 static void
@@ -723,7 +663,4 @@ caps_channel_manager_iface_init (gpointer g_iface,
   GabbleCapsChannelManagerIface *iface = g_iface;
 
   iface->get_contact_caps = gabble_ft_manager_get_contact_caps;
-  iface->parse_caps = gabble_ft_manager_parse_caps;
-  iface->copy_caps = gabble_ft_manager_copy_caps;
-  iface->caps_diff = gabble_ft_manager_caps_diff;
 }

@@ -349,6 +349,12 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
   return str;
 }
 
+static void
+ptr_array_strdup (gpointer str,
+    gpointer array)
+{
+  g_ptr_array_add (array, g_strdup (str));
+}
 
 /**
  * Compute our hash as defined by the XEP-0115.
@@ -359,30 +365,25 @@ gchar *
 caps_hash_compute_from_self_presence (GabbleConnection *self)
 {
   GabblePresence *presence = self->self_presence;
-  GSList *features_list = capabilities_get_features (presence->caps,
-      presence->per_channel_manager_caps);
+  GabbleCapabilitySet *cap_set;
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = g_ptr_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
-  GSList *i;
-
-  /* get our features list  */
-  for (i = features_list; NULL != i; i = i->next)
-    {
-      const Feature *feat = (const Feature *) i->data;
-      g_ptr_array_add (features, g_strdup (feat->ns));
-    }
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
   g_ptr_array_add (identities, g_strdup ("client/pc//" PACKAGE_STRING));
 
   /* Gabble does not use dataforms, let 'dataforms' be empty */
 
+  /* FIXME: somehow allow iteration over this without copying twice */
+  cap_set = gabble_presence_dup_caps (presence);
+  gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
+  gabble_capability_set_free (cap_set);
+
   str = caps_hash_compute (features, identities, dataforms);
 
   gabble_presence_free_xep0115_hash (features, identities, dataforms);
-  g_slist_free (features_list);
 
   return str;
 }

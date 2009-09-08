@@ -28,6 +28,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
+#include "capabilities.h"
 #include "connection.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
@@ -631,7 +632,8 @@ lookup_content (GabbleJingleSession *sess,
 
       if (creator == NULL && presence != NULL &&
           gabble_presence_resource_has_caps (presence, priv->peer_resource,
-              PRESENCE_CAP_JINGLE_OMITS_CONTENT_CREATOR))
+              gabble_capability_set_predicate_has,
+              QUIRK_OMITS_CONTENT_CREATORS))
         {
           DEBUG ("working around missing 'creator' attribute");
 

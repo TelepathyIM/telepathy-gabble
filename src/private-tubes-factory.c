@@ -91,37 +91,6 @@ struct _GabblePrivateTubesFactoryPrivate
 
 #define GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE(obj) ((obj)->priv)
 
-typedef struct _TubesCapabilities TubesCapabilities;
-struct _TubesCapabilities
-{
-  /* Stores the list of tubes supported by a contact. We use a hash table. The
-   * key is the service name and the value is NULL.
-   *
-   * It can also be used to store the list of tubes that Gabble advertises to
-   * support when Gabble replies to XEP-0115 Entity Capabilities requests. In
-   * this case, a Feature structure is associated with each tube type in order
-   * to be returned by gabble_private_tubes_factory_get_feature_list().
-   *
-   * So the value of the hash table is either NULL (if the variable is related
-   * to a contact handle), or a Feature structure (if the variable is related
-   * to the self_handle).
-   */
-
-  /* gchar *Service -> NULL
-   *  or
-   * gchar *Service -> Feature *feature
-   */
-  GHashTable *stream_tube_caps;
-
-  /* gchar *ServiceName -> NULL
-   *  or
-   * gchar *ServiceName -> Feature *feature
-   */
-  GHashTable *dbus_tube_caps;
-
-  gboolean tubes_supported;
-};
-
 static const gchar * const tubes_channel_fixed_properties[] = {
     TP_IFACE_CHANNEL ".ChannelType",
     TP_IFACE_CHANNEL ".TargetHandleType",
@@ -416,7 +385,7 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
 }
 
 static void
-add_service_to_array (gchar *service,
+add_service_to_array (const gchar *service,
                       GPtrArray *arr,
                       TpTubeType type,
                       TpHandle handle)
@@ -545,305 +514,60 @@ add_generic_tube_caps (GPtrArray *arr)
   g_ptr_array_add (arr, g_value_get_boxed (&monster2));
 }
 
+#define STREAM_CAP_PREFIX (NS_TUBES "/stream#")
+#define DBUS_CAP_PREFIX (NS_TUBES "/dbus#")
+
+typedef struct {
+    gboolean supports_tubes;
+    GPtrArray *arr;
+    TpHandle handle;
+} GetContactCapsClosure;
+
+static void
+get_contact_caps_foreach (gpointer ns,
+    gpointer user_data)
+{
+  GetContactCapsClosure *closure = user_data;
+
+  if (!g_str_has_prefix (ns, NS_TUBES))
+    return;
+
+  closure->supports_tubes = TRUE;
+
+  if (g_str_has_prefix (ns, STREAM_CAP_PREFIX))
+    add_service_to_array (ns + strlen (STREAM_CAP_PREFIX), closure->arr,
+        TP_TUBE_TYPE_STREAM, closure->handle);
+  else if (g_str_has_prefix (ns, DBUS_CAP_PREFIX))
+    add_service_to_array (ns + strlen (DBUS_CAP_PREFIX), closure->arr,
+        TP_TUBE_TYPE_DBUS, closure->handle);
+}
+
 static void
 gabble_private_tubes_factory_get_contact_caps (
     GabbleCapsChannelManager *manager,
-    GabbleConnection *conn,
     TpHandle handle,
+    const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  TubesCapabilities *caps;
-  GHashTable *stream_tube_caps;
-  GHashTable *dbus_tube_caps;
-  GabblePresence *presence;
-  GHashTableIter tube_caps_iter;
-  gpointer service;
+  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (manager);
+  GetContactCapsClosure closure = { FALSE, arr, handle };
 
-  g_assert (handle != 0);
+  /* Always claim that we support tubes. */
+  closure.supports_tubes = (handle == self->priv->conn->parent.self_handle);
 
-  if (handle == base->self_handle)
-    presence = conn->self_presence;
-  else
-    presence = gabble_presence_cache_get (conn->presence_cache, handle);
+  gabble_capability_set_foreach (caps, get_contact_caps_foreach, &closure);
 
-  if (presence == NULL)
-    return;
-
-  if (handle == base->self_handle &&
-      (presence->per_channel_manager_caps == NULL ||
-       g_hash_table_lookup (presence->per_channel_manager_caps, manager)
-       == NULL))
-    {
-      /* No tubes capabilities have been set but we always support at
-       * least generic tubes caps */
-      add_generic_tube_caps (arr);
-      return;
-    }
-
-  if (presence->per_channel_manager_caps == NULL)
-    return;
-
-  caps = g_hash_table_lookup (presence->per_channel_manager_caps, manager);
-
-  if (caps == NULL)
-    return;
-
-  if (!caps->tubes_supported)
-    return;
-
-  add_generic_tube_caps (arr);
-
-  stream_tube_caps = caps->stream_tube_caps;
-  dbus_tube_caps = caps->dbus_tube_caps;
-
-  if (stream_tube_caps != NULL)
-    {
-      g_hash_table_iter_init (&tube_caps_iter, stream_tube_caps);
-      while (g_hash_table_iter_next (&tube_caps_iter, &service,
-            NULL))
-        {
-          add_service_to_array (service, arr, TP_TUBE_TYPE_STREAM, handle);
-        }
-    }
-
-  if (dbus_tube_caps != NULL)
-    {
-      g_hash_table_iter_init (&tube_caps_iter, dbus_tube_caps);
-      while (g_hash_table_iter_next (&tube_caps_iter, &service,
-            NULL))
-        {
-          add_service_to_array (service, arr, TP_TUBE_TYPE_DBUS, handle);
-        }
-    }
-}
-
-static void
-gabble_private_tubes_factory_get_feature_list (
-    GabbleCapsChannelManager *manager,
-    gpointer specific_caps,
-    GSList **features)
-{
-  TubesCapabilities *caps = specific_caps;
-  GHashTableIter iter;
-  gpointer service;
-  gpointer feat;
-
-  g_hash_table_iter_init (&iter, caps->stream_tube_caps);
-  while (g_hash_table_iter_next (&iter, &service,
-        &feat))
-    {
-      *features = g_slist_append (*features, feat);
-    }
-
-  g_hash_table_iter_init (&iter, caps->dbus_tube_caps);
-  while (g_hash_table_iter_next (&iter, &service,
-        &feat))
-    {
-      *features = g_slist_append (*features, feat);
-    }
-}
-
-static void
-gabble_private_tubes_factory_free_feat (gpointer data)
-{
-  Feature *feat = (Feature *) data;
-
-  if (feat == NULL)
-    return;
-
-  if (feat->ns != NULL)
-    g_free (feat->ns);
-
-  g_free (feat);
-}
-
-static gpointer
-gabble_private_tubes_factory_parse_caps (
-    GabbleCapsChannelManager *manager,
-    LmMessageNode *query_result)
-{
-  TubesCapabilities *caps;
-  NodeIter i;
-
-  caps = g_new0 (TubesCapabilities, 1);
-  caps->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, gabble_private_tubes_factory_free_feat);
-  caps->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, gabble_private_tubes_factory_free_feat);
-
-  for (i = node_iter (query_result); i; i = node_iter_next (i))
-    {
-      LmMessageNode *child = node_iter_data (i);
-      const gchar *var;
-
-      if (0 != strcmp (child->name, "feature"))
-        continue;
-
-      var = lm_message_node_get_attribute (child, "var");
-
-      if (NULL == var)
-        continue;
-
-      if (!g_str_has_prefix (var, NS_TUBES))
-        continue;
-
-      /* tubes generic cap or service specific */
-      caps->tubes_supported = TRUE;
-
-      if (g_str_has_prefix (var, NS_TUBES "/"))
-        {
-          /* http://telepathy.freedesktop.org/xmpp/tubes/$type#$service */
-          var += strlen (NS_TUBES "/");
-          if (g_str_has_prefix (var, "stream#"))
-            {
-              gchar *service;
-              var += strlen ("stream#");
-              service = g_strdup (var);
-              g_hash_table_insert (caps->stream_tube_caps, service, NULL);
-            }
-          else if (g_str_has_prefix (var, "dbus#"))
-            {
-              gchar *service;
-              var += strlen ("dbus#");
-              service = g_strdup (var);
-              g_hash_table_insert (caps->dbus_tube_caps, service, NULL);
-            }
-        }
-    }
-
-  return caps;
-}
-
-static void
-gabble_private_tubes_factory_free_caps (
-    GabbleCapsChannelManager *manager,
-    gpointer data)
-{
- TubesCapabilities *caps = data;
- g_hash_table_destroy (caps->stream_tube_caps);
- g_hash_table_destroy (caps->dbus_tube_caps);
- g_free (caps);
-}
-
-static void
-copy_caps_helper (gpointer key, gpointer value, gpointer user_data)
-{
-  GHashTable *out = user_data;
-  gchar *str = key;
-
-  g_hash_table_insert (out, g_strdup (str), NULL);
-}
-
-static void
-gabble_private_tubes_factory_copy_caps (
-    GabbleCapsChannelManager *manager,
-    gpointer *specific_caps_out,
-    gpointer specific_caps_in)
-{
-  TubesCapabilities *caps_in = specific_caps_in;
-  TubesCapabilities *caps_out = g_new0 (TubesCapabilities, 1);
-
-  caps_out->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, gabble_private_tubes_factory_free_feat);
-  g_hash_table_foreach (caps_in->stream_tube_caps, copy_caps_helper,
-      caps_out->stream_tube_caps);
-
-  caps_out->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, gabble_private_tubes_factory_free_feat);
-  g_hash_table_foreach (caps_in->dbus_tube_caps, copy_caps_helper,
-      caps_out->dbus_tube_caps);
-
-  caps_out->tubes_supported = caps_in->tubes_supported;
-
-  *specific_caps_out = caps_out;
-}
-
-static void
-gabble_private_tubes_factory_update_caps (
-    GabbleCapsChannelManager *manager,
-    gpointer specific_caps_out,
-    gpointer specific_caps_in)
-{
-  TubesCapabilities *caps_out = (TubesCapabilities *) specific_caps_out;
-  TubesCapabilities *caps_in = (TubesCapabilities *) specific_caps_in;
-
-  if (caps_in == NULL)
-    return;
-
-  tp_g_hash_table_update (caps_out->stream_tube_caps,
-      caps_in->stream_tube_caps, (GBoxedCopyFunc) g_strdup, NULL);
-  tp_g_hash_table_update (caps_out->dbus_tube_caps,
-      caps_in->dbus_tube_caps, (GBoxedCopyFunc) g_strdup, NULL);
-}
-
-static gboolean
-hash_table_is_subset (GHashTable *superset,
-                      GHashTable *subset)
-{
-  GHashTableIter iter;
-  gpointer look_for;
-
-  g_hash_table_iter_init (&iter, subset);
-  while (g_hash_table_iter_next (&iter, &look_for, NULL))
-    {
-      if (!g_hash_table_lookup_extended (superset, look_for, NULL, NULL))
-        /* One of subset's key is not in superset */
-        return FALSE;
-    }
-
-  return TRUE;
-}
-
-static gboolean
-gabble_private_tubes_factory_caps_diff (
-    GabbleCapsChannelManager *manager,
-    TpHandle handle,
-    gpointer specific_old_caps,
-    gpointer specific_new_caps)
-{
-  TubesCapabilities *old_caps = specific_old_caps;
-  TubesCapabilities *new_caps = specific_new_caps;
-
-  if (old_caps == new_caps)
-    return FALSE;
-
-  if (old_caps == NULL || new_caps == NULL)
-    return TRUE;
-
-  if (old_caps->tubes_supported != new_caps->tubes_supported)
-    return TRUE;
-
-  if (g_hash_table_size (old_caps->stream_tube_caps) !=
-      g_hash_table_size (new_caps->stream_tube_caps))
-    return TRUE;
-
-  if (g_hash_table_size (old_caps->dbus_tube_caps) !=
-      g_hash_table_size (new_caps->dbus_tube_caps))
-    return TRUE;
-
-  /* Hash tables have the same size */
-  if (!hash_table_is_subset (new_caps->stream_tube_caps,
-        old_caps->stream_tube_caps))
-    return TRUE;
-
-  if (!hash_table_is_subset (new_caps->dbus_tube_caps,
-        old_caps->dbus_tube_caps))
-    return TRUE;
-
-  return FALSE;
+  if (closure.supports_tubes)
+    add_generic_tube_caps (arr);
 }
 
 static void
 gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
-                                      GabbleConnection *conn,
-                                      TpHandle handle,
-                                      GHashTable *cap)
+    GHashTable *cap,
+    GabbleCapabilitySet *cap_set)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  GabblePresence *presence;
-  TubesCapabilities *caps;
-  const gchar *channel_type;
+  const gchar *channel_type, *service;
+  gchar *ns = NULL;
 
   channel_type = tp_asv_get_string (cap,
             TP_IFACE_CHANNEL ".ChannelType");
@@ -858,56 +582,28 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
         TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
     return;
 
-  if (handle == base->self_handle)
-    presence = conn->self_presence;
-  else
-    presence = gabble_presence_cache_get (conn->presence_cache, handle);
-
-  g_assert (presence != NULL);
-
-  if (presence->per_channel_manager_caps == NULL)
-    presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
-
-  caps = g_hash_table_lookup (presence->per_channel_manager_caps, manager);
-  if (caps == NULL)
-    {
-      caps = g_new0 (TubesCapabilities, 1);
-      caps->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-          g_free, gabble_private_tubes_factory_free_feat);
-      caps->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
-          g_free, gabble_private_tubes_factory_free_feat);
-      g_hash_table_insert (presence->per_channel_manager_caps, manager, caps);
-
-      if (handle == base->self_handle)
-        /* We always support generic tubes caps */
-        caps->tubes_supported = TRUE;
-    }
-
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
     {
-      Feature *feat = g_new0 (Feature, 1);
-      gchar *service = g_strdup (tp_asv_get_string (cap,
-          TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service"));
+      service = tp_asv_get_string (cap,
+          TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+
       if (service != NULL)
-        {
-          feat->feature_type = FEATURE_OPTIONAL;
-          feat->ns = g_strdup_printf ("%s/stream#%s", NS_TUBES, service);
-          feat->caps = 0;
-          g_hash_table_insert (caps->stream_tube_caps, service, feat);
-        }
+        ns = g_strconcat (STREAM_CAP_PREFIX, service, NULL);
     }
   else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     {
-      Feature *feat = g_new0 (Feature, 1);
-      gchar *service = g_strdup (tp_asv_get_string (cap,
-          TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName"));
+      service = tp_asv_get_string (cap,
+          TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+
       if (service != NULL)
-        {
-          feat->feature_type = FEATURE_OPTIONAL;
-          feat->ns = g_strdup_printf ("%s/dbus#%s", NS_TUBES, service);
-          feat->caps = 0;
-          g_hash_table_insert (caps->dbus_tube_caps, service, feat);
-        }
+        ns = g_strconcat (DBUS_CAP_PREFIX, service, NULL);
+    }
+
+  if (ns != NULL)
+    {
+      DEBUG ("adding capability %s", ns);
+      gabble_capability_set_add (cap_set, ns);
+      g_free (ns);
     }
 }
 
@@ -1383,11 +1079,5 @@ caps_channel_manager_iface_init (gpointer g_iface,
   GabbleCapsChannelManagerIface *iface = g_iface;
 
   iface->get_contact_caps = gabble_private_tubes_factory_get_contact_caps;
-  iface->get_feature_list = gabble_private_tubes_factory_get_feature_list;
-  iface->parse_caps = gabble_private_tubes_factory_parse_caps;
-  iface->free_caps = gabble_private_tubes_factory_free_caps;
-  iface->copy_caps = gabble_private_tubes_factory_copy_caps;
-  iface->update_caps = gabble_private_tubes_factory_update_caps;
-  iface->caps_diff = gabble_private_tubes_factory_caps_diff;
   iface->add_cap = gabble_private_tubes_factory_add_cap;
 }

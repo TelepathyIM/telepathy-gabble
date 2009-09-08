@@ -63,10 +63,11 @@ def run_test(q, bus, conn, stream):
     caps = conn.Capabilities.AdvertiseCapabilities(add, remove)
     (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
             False)
-    check_caps(namespaces, [])
-    # the call to SSC has no effect here
+    check_caps(namespaces, [ns.TUBES + '/stream#x-abiword'])
     conn.ContactCapabilities.SetSelfCapabilities([])
-    noop_presence_update(q, stream)
+    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+            False)
+    check_caps(namespaces, [])
 
     # Add caps selectively (i.e. what a client that actually understood the
     # old Capabilities interface would do). With AUDIO and GTALK_P2P, we're

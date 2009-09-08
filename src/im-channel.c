@@ -39,6 +39,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "message-util.h"
+#include "namespaces.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "roster.h"
@@ -404,7 +405,7 @@ emit_closed_and_send_gone (GabbleIMChannel *self)
       presence = gabble_presence_cache_get (priv->conn->presence_cache,
           priv->handle);
 
-      if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
+      if (presence && gabble_presence_has_cap (presence, NS_CHAT_STATES))
         gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
             LM_MESSAGE_SUB_TYPE_NORMAL, TP_CHANNEL_CHAT_STATE_GONE,
             priv->peer_jid, NULL);
@@ -495,7 +496,7 @@ _gabble_im_channel_send_message (GObject *object,
   presence = gabble_presence_cache_get (priv->conn->presence_cache,
       priv->handle);
 
-  if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
+  if (presence && gabble_presence_has_cap (presence, NS_CHAT_STATES))
     {
       state = TP_CHANNEL_CHAT_STATE_ACTIVE;
       priv->send_gone = TRUE;
@@ -799,7 +800,7 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
   presence = gabble_presence_cache_get (priv->conn->presence_cache,
       priv->handle);
 
-  if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
+  if (presence && gabble_presence_has_cap (presence, NS_CHAT_STATES))
     {
       if (state >= NUM_TP_CHANNEL_CHAT_STATES)
         {

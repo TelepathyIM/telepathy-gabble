@@ -24,6 +24,7 @@
 
 #include <glib-object.h>
 
+#include "capabilities.h"
 #include "connection.h"
 #include "types.h"
 
@@ -55,8 +56,6 @@ typedef struct _GabblePresencePrivate GabblePresencePrivate;
 
 struct _GabblePresence {
     GObject parent;
-    GabblePresenceCapabilities caps;
-    GHashTable *per_channel_manager_caps;
     GabblePresenceId status;
     gchar *status_message;
     gchar *nickname;
@@ -80,15 +79,19 @@ gboolean gabble_presence_update (GabblePresence *presence,
     const gchar *status_message, gint8 priority);
 
 void gabble_presence_set_capabilities (GabblePresence *presence,
-    const gchar *resource, GabblePresenceCapabilities caps,
-    GHashTable *per_channel_manager_caps, guint serial);
+    const gchar *resource,
+    const GabbleCapabilitySet *cap_set,
+    guint serial);
+
+gboolean gabble_presence_has_cap (GabblePresence *presence, const gchar *ns);
+GabbleCapabilitySet *gabble_presence_dup_caps (GabblePresence *presence);
 
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
-    GabblePresenceCapabilities caps);
+    GabbleCapabilitySetPredicate predicate, gconstpointer user_data);
 
 gboolean gabble_presence_resource_has_caps (GabblePresence *presence,
-                                   const gchar *resource,
-                                   GabblePresenceCapabilities caps);
+    const gchar *resource, GabbleCapabilitySetPredicate predicate,
+    gconstpointer user_data);
 
 LmMessage *gabble_presence_as_message (GabblePresence *presence,
     const gchar *to);
@@ -96,6 +99,18 @@ gchar *gabble_presence_dump (GabblePresence *presence);
 
 gboolean gabble_presence_added_to_view (GabblePresence *presence);
 gboolean gabble_presence_removed_from_view (GabblePresence *presence);
+
+/* Data-driven feature fallback */
+typedef struct {
+    gboolean considered;
+    gconstpointer check_data;
+    gconstpointer result;
+} GabbleFeatureFallback;
+gconstpointer gabble_presence_resource_pick_best_feature (
+    GabblePresence *presence,
+    const gchar *resource,
+    const GabbleFeatureFallback *table,
+    GabbleCapabilitySetPredicate predicate);
 
 G_END_DECLS
 

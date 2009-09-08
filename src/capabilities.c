@@ -193,6 +193,11 @@ omits_content_creators (LmMessageNode *identity)
 }
 
 gsize feature_handles_refcount = 0;
+/* The handles in this repository are not really handles in the tp-spec sense
+ * of the word; we're just using it as a convenient implementation of a
+ * refcounted string pool. Their string values are either XMPP namespaces,
+ * or "quirk" pseudo-namespaces starting with QUIRK_PREFIX_CHAR (like
+ * QUIRK_OMITS_CONTENT_CREATORS). */
 static TpHandleRepoIface *feature_handles = NULL;
 
 void

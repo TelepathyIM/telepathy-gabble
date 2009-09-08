@@ -1650,7 +1650,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
   if (base->status != TP_CONNECTION_STATUS_CONNECTED)
     {
       gabble_capability_set_free (save_set);
-      DEBUG ("not emitting signal: not connected yet");
+      DEBUG ("not emitting self-presence stanza: not connected yet");
       return FALSE;
     }
 

@@ -763,6 +763,8 @@ _gabble_media_factory_typeflags_to_caps (TpChannelMediaCapabilities flags,
 {
   DEBUG ("adding Jingle caps %u", flags);
 
+  /* The client name just appears in a debug message, so use something that
+   * won't, in practice, clash with any client that uses ContactCapabilities */
   gabble_media_factory_add_caps (caps, "<legacy Capabilities>",
       (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO) != 0,
       (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO) != 0,

@@ -336,30 +336,6 @@ def make_stream(event_func, authenticator=None, protocol=None, port=4242, resour
     port = reactor.listenTCP(port, factory)
     return (stream, port)
 
-def install_colourer():
-    def red(s):
-        return '\x1b[31m%s\x1b[0m' % s
-
-    def green(s):
-        return '\x1b[32m%s\x1b[0m' % s
-
-    patterns = {
-        'handled': green,
-        'not handled': red,
-        }
-
-    class Colourer:
-        def __init__(self, fh, patterns):
-            self.fh = fh
-            self.patterns = patterns
-
-        def write(self, s):
-            f = self.patterns.get(s, lambda x: x)
-            self.fh.write(f(s))
-
-    sys.stdout = Colourer(sys.stdout, patterns)
-    return sys.stdout
-
 def disconnect_conn(q, conn, stream, expected=[]):
     conn.Disconnect()
 
@@ -376,7 +352,7 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
     colourer = None
 
     if sys.stdout.isatty():
-        colourer = install_colourer()
+        colourer = servicetest.install_colourer()
 
     queue = servicetest.IteratingEventQueue(timeout)
     queue.verbose = (

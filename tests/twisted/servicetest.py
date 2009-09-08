@@ -6,6 +6,7 @@ Infrastructure code for testing connection managers.
 from twisted.internet import glib2reactor
 from twisted.internet.protocol import Protocol, Factory, ClientFactory
 glib2reactor.install()
+import sys
 
 import pprint
 import unittest
@@ -428,6 +429,30 @@ def assertLength(length, value):
     assert len(value) == length, \
         "expected: length %d, got length %d:\n%s" % (
         length, len(value), pretty(value))
+
+def install_colourer():
+    def red(s):
+        return '\x1b[31m%s\x1b[0m' % s
+
+    def green(s):
+        return '\x1b[32m%s\x1b[0m' % s
+
+    patterns = {
+        'handled': green,
+        'not handled': red,
+        }
+
+    class Colourer:
+        def __init__(self, fh, patterns):
+            self.fh = fh
+            self.patterns = patterns
+
+        def write(self, s):
+            f = self.patterns.get(s, lambda x: x)
+            self.fh.write(f(s))
+
+    sys.stdout = Colourer(sys.stdout, patterns)
+    return sys.stdout
 
 if __name__ == '__main__':
     unittest.main()

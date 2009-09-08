@@ -2383,7 +2383,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
   if (gabble_capability_set_equals (old_set, new_set))
     return;
 
-  /* Capabilities */
+  /* o.f.T.C.Capabilities */
 
   caps_arr = g_ptr_array_new ();
 
@@ -2436,7 +2436,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
     }
   g_ptr_array_free (caps_arr, TRUE);
 
-  /* ContactCapabilities (draft 2) */
+  /* o.f.T.C.ContactCapabilities (draft 2) */
 
   caps_arr = g_ptr_array_new ();
 

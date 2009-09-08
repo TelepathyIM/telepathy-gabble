@@ -106,6 +106,34 @@ def run_test(q, bus, conn, stream):
             False)
     check_caps(namespaces, [])
 
+    # If AbiWord claims that it can do MediaSignalling things on its Tubes
+    # channels, then it's wrong, and that still doesn't make us callable.
+    conn.ContactCapabilities.UpdateCapabilities([
+        (cs.CLIENT + '.AbiWord', [
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+            cs.STREAM_TUBE_SERVICE: 'x-abiword' },
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+            cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+            cs.STREAM_TUBE_SERVICE: 'x-abiword' },
+        ], [
+            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/gtalk-p2p',
+            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/ice-udp',
+            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/video/h264',
+            ]),
+        ])
+    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+            False)
+    check_caps(namespaces, [ns.TUBES + '/stream#x-abiword'])
+
+    # Remove the broken version of AbiWord's caps
+    conn.ContactCapabilities.UpdateCapabilities([
+        (cs.CLIENT + '.AbiWord', [], []),
+        ])
+    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+            False)
+    check_caps(namespaces, [])
+
     # Add caps selectively. Here we're callable, but not via ICE-UDP, and not
     # with video.
     #

@@ -208,6 +208,9 @@ def test(q, bus, conn, stream, access_control):
             got_text = True
         elif props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TUBES:
             got_tubes = True
+
+            tubes_iface = dbus.Interface(bus.get_object(conn.bus_name, path),
+                cs.CHANNEL_TYPE_TUBES)
         else:
             assert False
 
@@ -289,6 +292,9 @@ def test(q, bus, conn, stream, access_control):
 
     bob_bus_name = ':2.Ym9i'
     bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['chat2@conf.localhost/bob'])[0]
+
+    tubes = tubes_iface.ListTubes(byte_arrays=True)
+    assertEquals(1, len(tubes))
 
     # Bob joins the tube
     presence = elem('presence', from_='chat2@conf.localhost/bob', to='chat2@conf.localhost')(

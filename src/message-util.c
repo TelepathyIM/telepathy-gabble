@@ -246,6 +246,12 @@ _tp_send_error_from_error_node (LmMessageNode *error_node,
       /* these are based on descriptions of errors, and some testing */
       switch (err)
         {
+        /* Note: Google replies with <service-unavailable/> if you send a
+         * message to someone you're not subscribed to. But
+         * http://xmpp.org/rfcs/rfc3921.html#rules explicitly says that means
+         * the user is offline and doesn't have offline storage. I think Google
+         * should be returning <forbidden/> or <not-authorized/>. --wjt
+         */
         case XMPP_ERROR_SERVICE_UNAVAILABLE:
         case XMPP_ERROR_RECIPIENT_UNAVAILABLE:
           return TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;

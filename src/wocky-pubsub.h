@@ -82,6 +82,9 @@ WockyXmppStanza * wocky_pubsub_send_query_finish (WockyPubsub *pubsub,
     GAsyncResult *result,
     GError **error);
 
+void wocky_pubsub_unregister_event_handler (WockyPubsub *pubsub,
+    guint id);
+
 /* not methods */
 WockyXmppStanza * pubsub_make_publish_msg (const gchar *to,
     const gchar *node_name,

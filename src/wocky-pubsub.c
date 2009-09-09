@@ -412,3 +412,22 @@ wocky_pubsub_register_event_handler (WockyPubsub *self,
 
   return priv->last_id_used;
 }
+
+void
+wocky_pubsub_unregister_event_handler (WockyPubsub *self,
+    guint id)
+{
+  WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
+  GSList *l;
+
+  for (l = priv->handlers; l != NULL; l = g_slist_next (l))
+    {
+      PubsubEventHandler *handler = l->data;
+
+      if (handler->id == id)
+        {
+          priv->handlers = g_slist_delete_link (priv->handlers, l);
+          return;
+        }
+    }
+}

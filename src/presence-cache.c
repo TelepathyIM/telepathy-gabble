@@ -646,6 +646,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
                    LmMessageNode *node)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   const gchar *sha1;
   LmMessageNode *x_node, *photo_node;
   GabblePresence *presence;
@@ -660,7 +661,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
 
   if (NULL == x_node)
     {
-      /* If (handle == priv->conn->parent.self_handle), then this means
+      /* If (handle == base_conn->self_handle), then this means
        * that one of our other resources does not support XEP-0153. According
        * to that XEP, we MUST now stop advertising the image hash, at least
        * until all instances of non-conforming resources have gone offline, by
@@ -689,7 +690,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
   if (tp_strdiff (presence->avatar_sha1, sha1))
     {
       g_free (presence->avatar_sha1);
-      if (handle == priv->conn->parent.self_handle)
+      if (handle == base_conn->self_handle)
         {
           /* according to XEP-0153 section 4.3-2. 3rd bullet:
            * if we receive a photo from another resource, then we MUST
@@ -707,9 +708,9 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
             }
 
           gabble_vcard_manager_invalidate_cache (priv->conn->vcard_manager,
-              priv->conn->parent.self_handle);
+              base_conn->self_handle);
           gabble_vcard_manager_request (priv->conn->vcard_manager,
-              priv->conn->parent.self_handle, 0, NULL, NULL, NULL);
+              base_conn->self_handle, 0, NULL, NULL, NULL);
         }
       else
         {

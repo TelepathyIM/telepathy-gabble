@@ -539,7 +539,8 @@ create_new_tube (GabbleTubesChannel *self,
                  GHashTable *parameters,
                  const gchar *stream_id,
                  guint tube_id,
-                 GabbleBytestreamIface *bytestream)
+                 GabbleBytestreamIface *bytestream,
+                 gboolean requested)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube;
@@ -550,7 +551,8 @@ create_new_tube (GabbleTubesChannel *self,
     case TP_TUBE_TYPE_DBUS:
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
           priv->handle, priv->handle_type, priv->self_handle, initiator,
-          service, parameters, stream_id, tube_id, bytestream, self->muc));
+          service, parameters, stream_id, tube_id, bytestream, self->muc,
+          requested));
       break;
     case TP_TUBE_TYPE_STREAM:
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,
@@ -901,7 +903,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                 }
 
               tube = create_new_tube (self, type, initiator_handle,
-                  service, parameters, stream_id, tube_id, NULL);
+                  service, parameters, stream_id, tube_id, NULL, FALSE);
 
               tp_channel_manager_emit_new_channel (priv->conn->muc_factory,
                   TP_EXPORTABLE_CHANNEL (tube), NULL);
@@ -1223,7 +1225,8 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
     }
 
   tube = create_new_tube (self, type, priv->handle, service,
-      parameters, stream_id, tube_id, (GabbleBytestreamIface *) bytestream);
+      parameters, stream_id, tube_id, (GabbleBytestreamIface *) bytestream,
+      FALSE);
 
   tp_channel_manager_emit_new_channel (priv->conn->private_tubes_factory,
       TP_EXPORTABLE_CHANNEL (tube), NULL);
@@ -1401,7 +1404,7 @@ tube_msg_offered (GabbleTubesChannel *self,
     }
 
   tube = create_new_tube (self, type, priv->handle, service,
-      parameters, NULL, tube_id, NULL);
+      parameters, NULL, tube_id, NULL, FALSE);
 
   tp_channel_manager_emit_new_channel (priv->conn->private_tubes_factory,
       TP_EXPORTABLE_CHANNEL (tube), NULL);
@@ -1539,7 +1542,7 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
   tube = create_new_tube (self, type, priv->self_handle, service,
-      parameters, stream_id, tube_id, NULL);
+      parameters, stream_id, tube_id, NULL, TRUE);
   g_free (stream_id);
   g_hash_table_destroy (parameters);
 
@@ -1575,7 +1578,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   tube_id = generate_tube_id ();
 
   tube = create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
-      service, parameters, (const gchar *) stream_id, tube_id, NULL);
+      service, parameters, (const gchar *) stream_id, tube_id, NULL, TRUE);
 
   if (!gabble_tube_dbus_offer (GABBLE_TUBE_DBUS (tube), &error))
     {
@@ -1653,7 +1656,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   tube_id = generate_tube_id ();
 
   tube = create_new_tube (self, TP_TUBE_TYPE_STREAM, priv->self_handle,
-      service, parameters, (const gchar *) stream_id, tube_id, NULL);
+      service, parameters, (const gchar *) stream_id, tube_id, NULL, TRUE);
 
   g_object_set (tube,
       "address-type", address_type,

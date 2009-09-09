@@ -161,6 +161,7 @@ struct _GabbleTubeDBusPrivate
    * incoming tubes, always TRUE.
    */
   gboolean offered;
+  gboolean requested;
 
   /* our unique D-Bus name on the virtual tube bus (NULL for 1-1 D-Bus tubes)*/
   gchar *dbus_local_name;
@@ -755,8 +756,7 @@ gabble_tube_dbus_get_property (GObject *object,
         }
         break;
       case PROP_REQUESTED:
-        g_value_set_boolean (value,
-            (priv->initiator == priv->self_handle));
+        g_value_set_boolean (value, priv->requested);
         break;
       case PROP_INITIATOR_ID:
           {
@@ -862,6 +862,9 @@ gabble_tube_dbus_set_property (GObject *object,
         break;
       case PROP_MUC:
         priv->muc = g_value_get_object (value);
+        break;
+      case PROP_REQUESTED:
+        priv->requested = g_value_get_boolean (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1138,7 +1141,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_object ("muc", "GabbleMucChannel object",
@@ -1533,7 +1536,8 @@ gabble_tube_dbus_new (GabbleConnection *conn,
                       const gchar *stream_id,
                       guint id,
                       GabbleBytestreamIface *bytestream,
-                      GabbleMucChannel *muc)
+                      GabbleMucChannel *muc,
+                      gboolean requested)
 {
   GabbleTubeDBus *tube;
   gchar *object_path;
@@ -1553,6 +1557,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
       "stream-id", stream_id,
       "id", id,
       "muc", muc,
+      "requested", requested,
       NULL);
 
   if (bytestream != NULL)

@@ -193,6 +193,12 @@ struct _GabbleConnection {
 
     /* pubsub */
     WockyPubsub *pubsub;
+    guint pubsub_alias_event_id;
+    guint pubsub_location_event_id;
+    guint pubsub_olpc_buddy_props_event_id;
+    guint pubsub_olpc_activities_event_id;
+    guint pubsub_olpc_current_act_props_event_id;
+    guint pubsub_olpc_act_props_props_event_id;
 
     GabbleConnectionPrivate *priv;
 };

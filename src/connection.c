@@ -990,6 +990,20 @@ gabble_connection_dispose (GObject *object)
       priv->disconnect_timer = 0;
     }
 
+  /* unregister pubsub event handlers */
+  wocky_pubsub_unregister_event_handler (self->pubsub,
+      self->pubsub_alias_event_id);
+  wocky_pubsub_unregister_event_handler (self->pubsub,
+      self->pubsub_location_event_id);
+  wocky_pubsub_unregister_event_handler (self->pubsub,
+      self->pubsub_olpc_buddy_props_event_id);
+  wocky_pubsub_unregister_event_handler (self->pubsub,
+      self->pubsub_olpc_activities_event_id);
+  wocky_pubsub_unregister_event_handler (self->pubsub,
+      self->pubsub_olpc_current_act_props_event_id);
+  wocky_pubsub_unregister_event_handler (self->pubsub,
+      self->pubsub_olpc_act_props_props_event_id);
+
   if (self->pubsub != NULL)
     {
       g_object_unref (self->pubsub);

@@ -3776,13 +3776,17 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
   g_signal_connect (conn->olpc_gadget_manager, "new-channels",
       G_CALLBACK (gadget_manager_new_channels_cb), conn);
 
-  wocky_pubsub_register_event_handler (conn->pubsub, NS_OLPC_BUDDY_PROPS,
+  conn->pubsub_olpc_buddy_props_event_id = wocky_pubsub_register_event_handler (
+      conn->pubsub, NS_OLPC_BUDDY_PROPS,
       olpc_buddy_info_properties_event_handler, conn);
-  wocky_pubsub_register_event_handler (conn->pubsub, NS_OLPC_ACTIVITIES,
+  conn->pubsub_olpc_activities_event_id = wocky_pubsub_register_event_handler (
+      conn->pubsub, NS_OLPC_ACTIVITIES,
       olpc_buddy_info_activities_event_handler, conn);
-  wocky_pubsub_register_event_handler (conn->pubsub, NS_OLPC_CURRENT_ACTIVITY,
+  conn->pubsub_olpc_current_act_props_event_id =
+    wocky_pubsub_register_event_handler (conn->pubsub, NS_OLPC_CURRENT_ACTIVITY,
       olpc_buddy_info_current_activity_event_handler, conn);
-  wocky_pubsub_register_event_handler (conn->pubsub, NS_OLPC_ACTIVITY_PROPS,
+  conn->pubsub_olpc_act_props_props_event_id =
+    wocky_pubsub_register_event_handler (conn->pubsub, NS_OLPC_ACTIVITY_PROPS,
       olpc_activities_properties_event_handler, conn);
 }
 

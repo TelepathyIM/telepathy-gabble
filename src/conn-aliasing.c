@@ -1040,8 +1040,8 @@ conn_aliasing_init (GabbleConnection *conn)
     TP_IFACE_CONNECTION_INTERFACE_ALIASING,
     conn_aliasing_fill_contact_attributes);
 
-  wocky_pubsub_register_event_handler (conn->pubsub, NS_NICK,
-      gabble_conn_aliasing_pep_nick_event_handler, conn);
+  conn->pubsub_alias_event_id = wocky_pubsub_register_event_handler (
+      conn->pubsub, NS_NICK, gabble_conn_aliasing_pep_nick_event_handler, conn);
 }
 
 void

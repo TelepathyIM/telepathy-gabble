@@ -580,6 +580,6 @@ conn_location_init (GabbleConnection *conn)
     TP_IFACE_CONNECTION_INTERFACE_LOCATION,
     conn_location_fill_contact_attributes);
 
-  wocky_pubsub_register_event_handler (conn->pubsub, NS_GEOLOC,
-       geolocation_event_handler, conn);
+  conn->pubsub_location_event_id = wocky_pubsub_register_event_handler (
+      conn->pubsub, NS_GEOLOC, geolocation_event_handler, conn);
 }

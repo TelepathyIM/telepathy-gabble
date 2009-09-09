@@ -46,12 +46,13 @@ def test(q, bus, conn, stream):
     stream.send(make_presence('test@localhost/resource1',
         'SHA1SUM-FOR-MYSELF-RES1'))
     q.forbid_events([AvatarRetrieved_event])
-    event = q.expect('stream-presence')
-    event = q.expect('dbus-signal', signal='AvatarUpdated')
-    assert event.args[0] == 1, event.args
-    assert event.args[1] == "", event.args
-    event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
-            query_name='vCard')
+    stream_presence, avatar_update, stream_iq = q.expect_many(
+        EventPattern('stream-presence'),
+        EventPattern('dbus-signal', signal='AvatarUpdated'),
+        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard'))
+    assert avatar_update.args[0] == 1, avatar_update.args
+    assert avatar_update.args[1] == "", avatar_update.args
     sync_dbus(bus, q, conn)
     q.unforbid_events([AvatarRetrieved_event])
 

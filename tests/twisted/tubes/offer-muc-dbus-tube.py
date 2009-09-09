@@ -7,7 +7,7 @@ from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, assertContains, assertEquals
-from gabbletest import exec_test, acknowledge_iq, elem
+from gabbletest import exec_test, acknowledge_iq, elem, make_muc_presence
 import ns
 import constants as cs
 import tubetestutil as t
@@ -206,6 +206,9 @@ def test(q, bus, conn, stream, access_control):
     for path, props in channels:
         if props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT:
             got_text = True
+
+            text_chan = dbus.Interface(bus.get_object(conn.bus_name, path),
+                cs.CHANNEL)
         elif props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TUBES:
             got_tubes = True
 
@@ -352,6 +355,53 @@ def test(q, bus, conn, stream, access_control):
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'))
+
+    # leave the room
+    text_chan.Close()
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-signal', signal='ChannelClosed'))
+
+    # rejoin the room
+    call_async(q, conn.Requests, 'CreateChannel',
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+          cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+          cs.TARGET_ID: 'chat2@conf.localhost' })
+
+    q.expect('stream-presence', to='chat2@conf.localhost/test')
+
+    # Bob is in the room and in the tube
+    bob_in_tube()
+
+    # Send presence for own membership of room.
+    stream.send(make_muc_presence('none', 'participant', muc, 'test'))
+
+    # tubes channel is created
+    e = q.expect('dbus-signal', signal='NewChannels')
+    path, props = e.args[0][0]
+    assertEquals(cs.CHANNEL_TYPE_TUBES, props[cs.CHANNEL_TYPE])
+
+    tubes_iface = dbus.Interface(bus.get_object(conn.bus_name, path),
+        cs.CHANNEL_TYPE_TUBES)
+
+    # tube is created as well
+    e = q.expect('dbus-signal', signal='NewChannels')
+    path, props = e.args[0][0]
+    assertEquals(cs.CHANNEL_TYPE_DBUS_TUBE, props[cs.CHANNEL_TYPE])
+    assertEquals('chat2@conf.localhost/test', props[cs.INITIATOR_ID])
+    assertEquals(False, props[cs.REQUESTED])
+    assertEquals(cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])
+    assertEquals('com.example.TestCase', props[cs.DBUS_TUBE_SERVICE_NAME])
+
+    # tube is local-pending
+    tube_chan = bus.get_object(conn.bus_name, path)
+    state = tube_chan.Get(cs.CHANNEL_IFACE_TUBE, 'State',
+            dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals(cs.TUBE_STATE_LOCAL_PENDING, state)
+
+    # tube is listed on the old interface
+    tubes = tubes_iface.ListTubes(byte_arrays=True)
+    assertEquals(1, len(tubes))
 
 if __name__ == '__main__':
     # We can't use t.exec_dbus_tube_test() as we can use only the muc bytestream

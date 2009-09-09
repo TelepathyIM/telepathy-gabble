@@ -309,7 +309,7 @@ def test(q, bus, conn, stream, access_control):
                         elem('parameter', name='u', type='uint')(u'123')
                         ))))
 
-    # have to add stream-id and dbus-name attributes manuallya as we can't use
+    # have to add stream-id and dbus-name attributes manually as we can't use
     # keyword with '-'...
     tube_node = xpath.queryForNodes('/presence/tubes/tube', presence)[0]
     tube_node['stream-id'] = dbus_stream_id

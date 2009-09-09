@@ -957,7 +957,12 @@ gabble_tube_dbus_constructor (GType type,
       g_assert (priv->muc == NULL);
     }
 
-  if (priv->initiator == priv->self_handle)
+  /* Tube needs to be offered if we initiated AND requested it. Being
+   * the initiator is not enough as we could re-join a muc containing and old
+   * tube we created when we were in this room some time ago. In that case, we
+   * have to accept it if we want to re-join the tube. */
+  if (priv->initiator == priv->self_handle &&
+      priv->requested)
     {
       priv->offered = FALSE;
     }

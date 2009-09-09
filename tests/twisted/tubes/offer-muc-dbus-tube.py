@@ -296,25 +296,28 @@ def test(q, bus, conn, stream, access_control):
     tubes = tubes_iface.ListTubes(byte_arrays=True)
     assertEquals(1, len(tubes))
 
-    # Bob joins the tube
-    presence = elem('presence', from_='chat2@conf.localhost/bob', to='chat2@conf.localhost')(
-        elem('x', xmlns=ns.MUC),
-        elem('tubes', xmlns=ns.TUBES)(
-            elem('tube', type='dbus', initiator='chat2@conf.localhost/test',
-                service='com.example.TestCase', id=str(dbus_tube_id))(
-                    elem('parameters')(
-                        elem('parameter', name='ay', type='bytes')(u'aGVsbG8='),
-                        elem('parameter', name='s', type='str')(u'hello'),
-                        elem('parameter', name='i', type='int')(u'-123'),
-                        elem('parameter', name='u', type='uint')(u'123')
-                        ))))
+    def bob_in_tube():
+        presence = elem('presence', from_='chat2@conf.localhost/bob', to='chat2@conf.localhost')(
+            elem('x', xmlns=ns.MUC),
+            elem('tubes', xmlns=ns.TUBES)(
+                elem('tube', type='dbus', initiator='chat2@conf.localhost/test',
+                    service='com.example.TestCase', id=str(dbus_tube_id))(
+                        elem('parameters')(
+                            elem('parameter', name='ay', type='bytes')(u'aGVsbG8='),
+                            elem('parameter', name='s', type='str')(u'hello'),
+                            elem('parameter', name='i', type='int')(u'-123'),
+                            elem('parameter', name='u', type='uint')(u'123')
+                            ))))
 
-    # have to add stream-id and dbus-name attributes manually as we can't use
-    # keyword with '-'...
-    tube_node = xpath.queryForNodes('/presence/tubes/tube', presence)[0]
-    tube_node['stream-id'] = dbus_stream_id
-    tube_node['dbus-name'] = bob_bus_name
-    stream.send(presence)
+        # have to add stream-id and dbus-name attributes manually as we can't use
+        # keyword with '-'...
+        tube_node = xpath.queryForNodes('/presence/tubes/tube', presence)[0]
+        tube_node['stream-id'] = dbus_stream_id
+        tube_node['dbus-name'] = bob_bus_name
+        stream.send(presence)
+
+    # Bob joins the tube
+    bob_in_tube()
 
     dbus_changed_event = q.expect('dbus-signal', signal='DBusNamesChanged',
         interface=cs.CHANNEL_TYPE_DBUS_TUBE)

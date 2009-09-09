@@ -712,7 +712,9 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
               priv->conn->parent.self_handle, 0, NULL, NULL, NULL);
         }
       else
-        presence->avatar_sha1 = g_strdup (sha1);
+        {
+          presence->avatar_sha1 = g_strdup (sha1);
+        }
 
       g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle);
     }

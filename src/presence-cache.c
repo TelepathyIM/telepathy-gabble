@@ -1214,43 +1214,41 @@ _process_caps_uri (GabblePresenceCache *cache,
     }
   else
     {
-      /* Append the (handle, resource) pair to the list of such pairs
-       * waiting for capabilities for this uri, and send a disco request
-       * if we don't have enough possible trust yet */
-
       GSList *waiters;
       DiscoWaiter *waiter;
       guint possible_trust;
+      gboolean found;
       gpointer key;
       gpointer value = NULL;
 
       DEBUG ("not enough trust for URI %s", uri);
 
-      /* If the URI is in the hash table, steal it and its value; we can
-       * reuse the same URI for the following insertion. Otherwise, make a
-       * copy of the URI for use as a key.
-       */
-
-      if (g_hash_table_lookup_extended (priv->disco_pending, uri, &key,
-            &value))
-        {
-          g_hash_table_steal (priv->disco_pending, key);
-        }
-      else
-        {
-          key = g_strdup (uri);
-        }
-
+      /* Are we already waiting for responses for this URI? */
+      found = g_hash_table_lookup_extended (priv->disco_pending, uri, &key,
+          &value);
       waiters = (GSList *) value;
+
       waiter = disco_waiter_new (contact_repo, handle, resource,
           hash, ver, serial);
       waiters = g_slist_prepend (waiters, waiter);
+
+      /* If the URI was already in the hash table, steal it and re-use the same
+       * URI for the following insertion. Otherwise, make a copy of the URI for
+       * use as a key.
+       */
+      if (found)
+        g_hash_table_steal (priv->disco_pending, key);
+      else
+        key = g_strdup (uri);
+
       g_hash_table_insert (priv->disco_pending, key, waiters);
 
+      /* When all the responses we're waiting for return, will we have enough
+       * trust?
+       */
       possible_trust = disco_waiter_list_get_request_count (waiters);
 
-      if (!value
-          || info->trust + possible_trust < CAPABILITY_BUNDLE_ENOUGH_TRUST)
+      if (info->trust + possible_trust < CAPABILITY_BUNDLE_ENOUGH_TRUST)
         {
           /* DISCO */
           DEBUG ("only %u trust out of %u possible thus far, sending "

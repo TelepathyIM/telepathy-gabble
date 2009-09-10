@@ -24,6 +24,10 @@ Fixes:
 
 * Improve pubsub.c test coverage (cassidy)
 
+* fd.o #22968: don't try to pass credentials through Unix sockets on non-Linux,
+  since the way we currently do it is known to be non-portable. Patches to
+  implement Credentials on more OSs would be welcomed. (smcv)
+
 telepathy-gabble 0.8.3 (UNRELEASED)
 ===================================
 

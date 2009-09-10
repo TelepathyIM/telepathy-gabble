@@ -412,25 +412,29 @@ def pretty(x):
     return pprint.pformat(unwrap(x))
 
 def assertEquals(expected, value):
-    assert expected == value, "expected:\n%s;\ngot:\n%s" % (
-        pretty(expected), pretty(value))
+    if expected != value:
+        raise AssertionError(
+            "expected:\n%s;\ngot:\n%s" % (pretty(expected), pretty(value)))
 
 def assertNotEquals(expected, value):
-    assert expected != value, "expected:\n%s;\ngot:\n%s" % (
-        pretty(expected), pretty(value))
+    if expected == value:
+        raise AssertionError(
+            "expected:\n%s;\ngot:\n%s" % (pretty(expected), pretty(value)))
 
 def assertContains(element, value):
-    assert element in value, "expected:\n%s\nin:\n%s" % (
-        pretty(element), pretty(value))
+    if element not in value:
+        raise AssertionError(
+            "expected:\n%s\nin:\n%s" % (pretty(element), pretty(value)))
 
 def assertDoesNotContain(element, value):
-    assert element not in value, "expected:\n%s\nnot in:\n%s" % (
-        pretty(element), pretty(value))
+    if element in value:
+        raise AssertionError(
+            "expected:\n%s\nnot in:\n%s" % (pretty(element), pretty(value)))
 
 def assertLength(length, value):
-    assert len(value) == length, \
-        "expected: length %d, got length %d:\n%s" % (
-        length, len(value), pretty(value))
+    if len(value) != length:
+        raise AssertionError("expected: length %d, got length %d:\n%s" % (
+            length, len(value), pretty(value)))
 
 def install_colourer():
     def red(s):

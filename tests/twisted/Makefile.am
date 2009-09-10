@@ -1,7 +1,7 @@
 TWISTED_TESTS = \
 	avatar-requirements.py \
 	caps_helper.py \
-	caps/advertise-draft1.py \
+	caps/advertise-draft2.py \
 	caps/advertise-legacy.py \
 	caps/caps-cache.py \
 	caps/compat-bundles.py \

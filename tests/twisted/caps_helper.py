@@ -210,7 +210,7 @@ def disco_caps(q, stream, presence):
     stream.send(request)
 
     # receive caps
-    event = q.expect('stream-iq', query_ns=ns.DISCO_INFO)
+    event = q.expect('stream-iq', query_ns=ns.DISCO_INFO, iq_id='disco1')
 
     features = []
     for feature in xpath.queryForNodes('/iq/query/feature', event.stanza):

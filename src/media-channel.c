@@ -2493,49 +2493,6 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
       chan, id, direction, pending_send);
 }
 
-void
-_gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags,
-    GabbleCapabilitySet *caps)
-{
-  gboolean gtalk_p2p;
-
-  DEBUG ("adding Jingle caps %u (%s, %s, %s, %s)", flags,
-    flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO ? "audio" : "no audio",
-    flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO ? "video" : "no video",
-    flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P
-        ? "gtalk-p2p" : "no gtalk-p2p",
-    flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP
-        ? "ice-udp" : "no ice-udp");
-
-  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP)
-    gabble_capability_set_add (caps, NS_JINGLE_TRANSPORT_ICEUDP);
-
-  gtalk_p2p = flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P;
-
-  if (gtalk_p2p)
-    gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
-
-  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
-    {
-      gabble_capability_set_add (caps, NS_JINGLE_RTP);
-      gabble_capability_set_add (caps, NS_JINGLE_RTP_AUDIO);
-      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_AUDIO);
-
-      if (gtalk_p2p)
-        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
-    }
-
-  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
-    {
-      gabble_capability_set_add (caps, NS_JINGLE_RTP);
-      gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
-      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
-
-      if (gtalk_p2p)
-        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
-    }
-}
-
 static void
 construct_stream (GabbleMediaChannel *chan,
                   GabbleJingleContent *c,
@@ -2798,40 +2755,6 @@ session_new_content_cb (GabbleJingleSession *session,
   DEBUG ("called");
 
   create_stream_from_content (chan, c);
-}
-
-TpChannelMediaCapabilities
-_gabble_media_channel_caps_to_typeflags (const GabbleCapabilitySet *caps)
-{
-  TpChannelMediaCapabilities typeflags = 0;
-  gboolean has_a_transport;
-
-  /* FIXME: shouldn't we support audio/video for people with any transport
-   * that we ourselves support, not just gtalk-p2p? */
-  has_a_transport = gabble_capability_set_has (caps, NS_GOOGLE_TRANSPORT_P2P);
-
-  if (has_a_transport &&
-      gabble_capability_set_has_one (caps,
-        gabble_capabilities_get_any_audio ()))
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
-
-  if (has_a_transport &&
-      gabble_capability_set_has_one (caps,
-        gabble_capabilities_get_any_video ()))
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
-
-  /* The checks below are an intentional asymmetry with the function going the
-   * other way - we don't require the other end to advertise the GTalk-P2P
-   * transport capability separately because old GTalk clients didn't do that.
-   * Having Google voice implied Google session and GTalk-P2P. */
-
-  if (gabble_capability_set_has (caps, NS_GOOGLE_FEAT_VOICE))
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
-
-  if (gabble_capability_set_has (caps, NS_GOOGLE_FEAT_VIDEO))
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
-
-  return typeflags;
 }
 
 static void

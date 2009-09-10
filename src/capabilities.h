@@ -56,6 +56,7 @@ void gabble_capability_set_exclude (GabbleCapabilitySet *caps,
     const GabbleCapabilitySet *removed);
 void gabble_capability_set_intersect (GabbleCapabilitySet *target,
     const GabbleCapabilitySet *source);
+gboolean gabble_capability_set_is_empty (const GabbleCapabilitySet *caps);
 gboolean gabble_capability_set_has (const GabbleCapabilitySet *caps,
     const gchar *cap);
 gboolean gabble_capability_set_has_one (const GabbleCapabilitySet *caps,
@@ -74,8 +75,10 @@ gchar *gabble_capability_set_dump (const GabbleCapabilitySet *caps,
 /* A predicate used by the presence code to select suitable resources */
 typedef gboolean (*GabbleCapabilitySetPredicate) (
     const GabbleCapabilitySet *set, gconstpointer user_data);
-/* These two functions are compatible with GabbleCapabilitySetPredicate;
+/* These functions are compatible with GabbleCapabilitySetPredicate;
  * pass in the desired capabilities as the user_data */
+#define gabble_capability_set_predicate_equals \
+  ((GabbleCapabilitySetPredicate) gabble_capability_set_equals)
 #define gabble_capability_set_predicate_has \
   ((GabbleCapabilitySetPredicate) gabble_capability_set_has)
 #define gabble_capability_set_predicate_has_one \
@@ -114,7 +117,7 @@ const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
 void capabilities_fill_cache (GabblePresenceCache *cache);
 
 /* Return the capabilities we always have */
-const GabbleCapabilitySet *gabble_capabilities_get_initial_caps (void);
+const GabbleCapabilitySet *gabble_capabilities_get_fixed_caps (void);
 
 typedef void (*TypeFlagsToCapsFunc) (guint typeflags, GabbleCapabilitySet *caps);
 typedef guint (*CapsToTypeFlagsFunc) (const GabbleCapabilitySet *caps);

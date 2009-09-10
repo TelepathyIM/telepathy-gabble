@@ -79,28 +79,34 @@ gabble_caps_channel_manager_get_contact_capabilities (
 }
 
 /**
- * gabble_caps_channel_manager_add_capability:
- * @cap: the Telepathy-level capability to add
- * @cap_set: a set of XMPP namespaces, to which the namespaces corresponding to
- *           @cap should be added
+ * gabble_caps_channel_manager_represent_client:
+ * @self: a channel manager
+ * @client_name: the name of the client, for any debug messages
+ * @filters: the channel classes accepted by the client, as an array of
+ *  GHashTable with string keys and GValue values
+ * @cap_tokens: the handler capability tokens supported by the client
+ * @cap_set: a set into which to merge additional XMPP capabilities
  *
- * Used to advertise that we support the XMPP capabilities corresponding to the
- * Telepathy capability supplied.
+ * Convert the capabilities of a Telepathy client into XMPP capabilities to be
+ * advertised.
+ *
+ * (The actual XMPP capabilities advertised will be the union of the XMPP
+ * capabilities of every installed client.)
  */
 void
-gabble_caps_channel_manager_add_capability (
+gabble_caps_channel_manager_represent_client (
     GabbleCapsChannelManager *caps_manager,
-    GHashTable *cap,
+    const gchar *client_name,
+    const GPtrArray *filters,
+    const gchar * const *cap_tokens,
     GabbleCapabilitySet *cap_set)
 {
   GabbleCapsChannelManagerIface *iface =
     GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
-  GabbleCapsChannelManagerAddCapFunc method = iface->add_cap;
+  GabbleCapsChannelManagerRepresentClientFunc method = iface->represent_client;
 
   if (method != NULL)
     {
-      method (caps_manager, cap, cap_set);
+      method (caps_manager, client_name, filters, cap_tokens, cap_set);
     }
-  /* ... else, nothing to do */
 }
-

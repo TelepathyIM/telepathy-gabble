@@ -15,7 +15,7 @@ results.
 - 1 stream tube + 1 D-Bus tube caps, again, to test whether the caps cache
   works with tubes
 
-2. Test SetSelfCapabilities and test that a presence stanza is sent to the
+2. Test UpdateCapabilities and test that a presence stanza is sent to the
 contacts, test that the D-Bus signal ContactCapabilitiesChanged is fired for
 the self handle, ask Gabble for its caps with an iq request, check the reply
 is correct, and ask Gabble for its caps using D-Bus method
@@ -203,7 +203,8 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact):
 def advertise_caps(q, conn, stream, filters, expected_features, unexpected_features,
                    expected_caps):
     self_handle = conn.GetSelfHandle()
-    ret_caps = conn.ContactCapabilities.SetSelfCapabilities(filters)
+    ret_caps = conn.ContactCapabilities.UpdateCapabilities(
+            [(cs.CLIENT + '.Foo', filters, [])])
 
     # Expect Gabble to reply with the correct caps
     event, namespaces, signaled_caps = receive_presence_and_ask_caps(q, stream)
@@ -276,7 +277,8 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
     assertEquals(caps[self_handle], caps_via_contacts_iface)
 
     # Advertise nothing
-    conn.ContactCapabilities.SetSelfCapabilities([])
+    conn.ContactCapabilities.UpdateCapabilities(
+            [(cs.CLIENT + '.Foo', {}, [])])
 
     # Check our own caps
     caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])

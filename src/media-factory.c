@@ -48,12 +48,14 @@
 #include "util.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
+static void caps_channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaFactory, gabble_media_factory,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
+      caps_channel_manager_iface_init));
 
 /* properties */
 enum
@@ -371,11 +373,23 @@ static const gchar * const media_channel_fixed_properties[] = {
     NULL
 };
 
+/* If you change this at all, you'll probably also need to change both_allowed
+ * and video_allowed */
 static const gchar * const named_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
     GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
     GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo",
+    NULL
+};
+
+static const gchar * const * both_allowed =
+    named_channel_allowed_properties + 2;
+static const gchar * const * video_allowed =
+    named_channel_allowed_properties + 3;
+
+static const gchar * const audio_allowed[] = {
+    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
     NULL
 };
 
@@ -385,11 +399,8 @@ static const gchar * const anon_channel_allowed_properties[] = {
     NULL
 };
 
-
-static void
-gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
-    gpointer user_data)
+static GHashTable *
+gabble_media_factory_channel_class (void)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) tp_g_value_slice_free);
@@ -402,6 +413,16 @@ gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
   value = tp_g_value_slice_new (G_TYPE_UINT);
   g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
+
+  return table;
+}
+
+static void
+gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
+    TpChannelManagerChannelClassFunc func,
+    gpointer user_data)
+{
+  GHashTable *table = gabble_media_factory_channel_class ();
 
   func (manager, table, named_channel_allowed_properties, user_data);
 
@@ -652,4 +673,262 @@ channel_manager_iface_init (gpointer g_iface,
   iface->request_channel = gabble_media_factory_request_channel;
   iface->create_channel = gabble_media_factory_create_channel;
   iface->ensure_channel = gabble_media_factory_ensure_channel;
+}
+
+static void
+gabble_media_factory_add_caps (GabbleCapabilitySet *caps,
+    const gchar *client_name,
+    gboolean audio,
+    gboolean video,
+    gboolean gtalk_p2p,
+    gboolean ice_udp,
+    gboolean h264)
+{
+  gboolean any_content = audio || video;
+
+  DEBUG ("Client %s media capabilities:%s%s%s%s%s",
+      client_name,
+      audio ? " audio" : "",
+      video ? " video" : "",
+      gtalk_p2p ? " gtalk-p2p" : "",
+      ice_udp ? " ice-udp" : "",
+      h264 ? " H.264" : "");
+
+  if (gtalk_p2p && any_content)
+    gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
+
+  if (ice_udp && any_content)
+    gabble_capability_set_add (caps, NS_JINGLE_TRANSPORT_ICEUDP);
+
+  if (audio)
+    {
+      gabble_capability_set_add (caps, NS_JINGLE_RTP);
+      gabble_capability_set_add (caps, NS_JINGLE_RTP_AUDIO);
+      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_AUDIO);
+
+      /* voice-v1 implies that we interop with GTalk, i.e. we have gtalk-p2p
+       * as well as audio */
+      if (gtalk_p2p)
+        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
+    }
+
+  if (video)
+    {
+      gabble_capability_set_add (caps, NS_JINGLE_RTP);
+      gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
+      gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
+
+      /* video-v1 implies that we interop with Google Video Chat, i.e. we have
+       * gtalk-p2p and H.264 as well as video */
+      if (gtalk_p2p && h264)
+        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
+    }
+}
+
+TpChannelMediaCapabilities
+_gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
+{
+  TpChannelMediaCapabilities typeflags = 0;
+  gboolean has_a_transport;
+
+  /* FIXME: shouldn't we support audio/video for people with any transport
+   * that we ourselves support, not just gtalk-p2p? */
+  has_a_transport = gabble_capability_set_has (caps, NS_GOOGLE_TRANSPORT_P2P);
+
+  if (has_a_transport &&
+      gabble_capability_set_has_one (caps,
+        gabble_capabilities_get_any_audio ()))
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
+
+  if (has_a_transport &&
+      gabble_capability_set_has_one (caps,
+        gabble_capabilities_get_any_video ()))
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+
+  /* The checks below are an intentional asymmetry with the function going the
+   * other way - we don't require the other end to advertise the GTalk-P2P
+   * transport capability separately because old GTalk clients didn't do that.
+   * Having Google voice implied Google session and GTalk-P2P. */
+
+  if (gabble_capability_set_has (caps, NS_GOOGLE_FEAT_VOICE))
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
+
+  if (gabble_capability_set_has (caps, NS_GOOGLE_FEAT_VIDEO))
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+
+  return typeflags;
+}
+
+void
+_gabble_media_factory_typeflags_to_caps (TpChannelMediaCapabilities flags,
+    GabbleCapabilitySet *caps)
+{
+  DEBUG ("adding Jingle caps %u", flags);
+
+  /* The client name just appears in a debug message, so use something that
+   * won't, in practice, clash with any client that uses ContactCapabilities */
+  gabble_media_factory_add_caps (caps, "<legacy Capabilities>",
+      (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO) != 0,
+      (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO) != 0,
+      (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P) != 0,
+      (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP) != 0,
+      TRUE /* assume we have H.264 for now */);
+}
+
+static void
+gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
+    TpHandle handle,
+    const GabbleCapabilitySet *caps,
+    GPtrArray *arr)
+{
+  TpChannelMediaCapabilities typeflags =
+    _gabble_media_factory_caps_to_typeflags (caps);
+  GValueArray *va;
+  const gchar * const *allowed;
+
+  typeflags &= (TP_CHANNEL_MEDIA_CAPABILITY_AUDIO |
+      TP_CHANNEL_MEDIA_CAPABILITY_VIDEO);
+
+  switch (typeflags)
+    {
+    case 0:
+      return;
+
+    case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO:
+      allowed = audio_allowed;
+      break;
+
+    case TP_CHANNEL_MEDIA_CAPABILITY_VIDEO:
+      allowed = video_allowed;
+      break;
+
+    default: /* both */
+      allowed = both_allowed;
+    }
+
+  va = g_value_array_new (2);
+  g_value_array_append (va, NULL);
+  g_value_array_append (va, NULL);
+  g_value_init (va->values + 0, TP_HASH_TYPE_CHANNEL_CLASS);
+  g_value_init (va->values + 1, G_TYPE_STRV);
+  g_value_take_boxed (va->values + 0, gabble_media_factory_channel_class ());
+  g_value_set_static_boxed (va->values + 1, allowed);
+
+  g_ptr_array_add (arr, va);
+}
+
+static void
+gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
+    const gchar *client_name,
+    const GPtrArray *filters,
+    const gchar * const *cap_tokens,
+    GabbleCapabilitySet *cap_set)
+{
+  static GQuark q_gtalk_p2p = 0, q_ice_udp = 0, q_h264 = 0;
+  gboolean gtalk_p2p = FALSE, h264 = FALSE, audio = FALSE, video = FALSE,
+           ice_udp = FALSE;
+  guint i;
+
+  /* One-time initialization - turn the tokens we care about into quarks */
+  if (G_UNLIKELY (q_gtalk_p2p == 0))
+    {
+      q_gtalk_p2p = g_quark_from_static_string (
+          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/gtalk-p2p");
+      q_ice_udp = g_quark_from_static_string (
+          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/ice-udp");
+      q_h264 = g_quark_from_static_string (
+          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/video/h264");
+    }
+
+  if (cap_tokens != NULL)
+    {
+      const gchar * const *token;
+
+      for (token = cap_tokens; *token != NULL; token++)
+        {
+          GQuark quark = g_quark_try_string (*token);
+
+          if (quark == 0)
+            {
+              continue;
+            }
+          else if (quark == q_gtalk_p2p)
+            {
+              gtalk_p2p = TRUE;
+            }
+          else if (quark == q_ice_udp)
+            {
+              ice_udp = TRUE;
+            }
+          else if (quark == q_h264)
+            {
+              h264 = TRUE;
+            }
+        }
+    }
+
+  for (i = 0; i < filters->len; i++)
+    {
+      GHashTable *filter = g_ptr_array_index (filters, i);
+
+      if (tp_asv_size (filter) == 0)
+        {
+          /* a client that claims to be able to do absolutely everything can
+           * presumably do audio, video, smell, etc. etc. */
+          audio = TRUE;
+          video = TRUE;
+          continue;
+        }
+
+      if (tp_strdiff (tp_asv_get_string (filter,
+              TP_IFACE_CHANNEL ".ChannelType"),
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
+        {
+          /* not interesting to this channel manager */
+          continue;
+        }
+
+      if (tp_asv_lookup (filter, TP_IFACE_CHANNEL ".TargetHandleType")
+          != NULL &&
+          tp_asv_get_uint32 (filter, TP_IFACE_CHANNEL ".TargetHandleType",
+            NULL) != TP_HANDLE_TYPE_CONTACT)
+        {
+          /* not interesting to this channel manager: we only care about
+           * Jingle calls involving contacts (or about clients that support
+           * all Jingle calls regardless of handle type) */
+          continue;
+        }
+
+      /* for now, accept either the current InitialAudio (which is in
+       * the FUTURE) or the hypothetical final version */
+      if (tp_asv_get_boolean (filter,
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL) ||
+          tp_asv_get_boolean (filter,
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".FUTURE.InitialAudio", NULL))
+        audio = TRUE;
+
+      if (tp_asv_get_boolean (filter,
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL) ||
+          tp_asv_get_boolean (filter,
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".FUTURE.InitialVideo", NULL))
+        video = TRUE;
+
+      /* If we've picked up all the capabilities we're ever going to, then
+       * we don't need to look at the rest of the filters */
+      if (audio && video)
+        break;
+    }
+
+  gabble_media_factory_add_caps (cap_set, client_name, audio, video, gtalk_p2p,
+      ice_udp, h264);
+}
+
+static void
+caps_channel_manager_iface_init (gpointer g_iface,
+                                 gpointer iface_data)
+{
+  GabbleCapsChannelManagerIface *iface = g_iface;
+
+  iface->get_contact_caps = gabble_media_factory_get_contact_caps;
+  iface->represent_client = gabble_media_factory_represent_client;
 }

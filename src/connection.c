@@ -201,6 +201,22 @@ struct _GabbleConnectionPrivate
   /* serial number of current advertised caps */
   guint caps_serial;
 
+  /* capabilities from various sources: */
+  /* subscriptions on behalf of the Connection, like PEP "+notify"
+   * namespaces (this one is add-only) */
+  GabbleCapabilitySet *notify_caps;
+  /* caps provided by Capabilities.AdvertiseCapabilities (tp-spec 0.16) */
+  GabbleCapabilitySet *legacy_caps;
+  /* additional caps that we advertise until the first call to
+   * AdvertiseCapabilities or UpdateCapabilities, for vague historical
+   * reasons */
+  GabbleCapabilitySet *bonus_caps;
+  /* caps provided via ContactCapabilities.UpdateCapabilities ()
+   * gchar * (client name) => GabbleCapabilitySet * */
+  GHashTable *client_caps;
+  /* the union of the above */
+  GabbleCapabilitySet *all_caps;
+
   /* gobject housekeeping */
   gboolean dispose_has_run;
 };
@@ -322,6 +338,19 @@ gabble_connection_constructor (GType type,
       g_object_set (self, "fallback-socks5-proxies", default_socks5_proxies,
           NULL);
     }
+
+  priv->all_caps = gabble_capability_set_new ();
+  priv->notify_caps = gabble_capability_set_new ();
+  priv->legacy_caps = gabble_capability_set_new ();
+  priv->client_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, (GDestroyNotify) gabble_capability_set_free);
+
+  /* Historically, the optional Jingle transports were in our initial
+   * presence, but could be removed by AdvertiseCapabilities(). Emulate
+   * that here for now. */
+  priv->bonus_caps = gabble_capability_set_new ();
+  gabble_capability_set_add (priv->bonus_caps, NS_GOOGLE_TRANSPORT_P2P);
+  gabble_capability_set_add (priv->bonus_caps, NS_JINGLE_TRANSPORT_ICEUDP);
 
   return (GObject *) self;
 }
@@ -916,6 +945,12 @@ gabble_connection_dispose (GObject *object)
    * connection to always be there.
    */
   g_idle_add (_unref_lm_connection, self->lmconn);
+
+  g_hash_table_destroy (priv->client_caps);
+  gabble_capability_set_free (priv->all_caps);
+  gabble_capability_set_free (priv->notify_caps);
+  gabble_capability_set_free (priv->legacy_caps);
+  gabble_capability_set_free (priv->bonus_caps);
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
@@ -1568,6 +1603,75 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   return ret;
 }
 
+static gboolean
+gabble_connection_refresh_capabilities (GabbleConnection *self,
+    GabbleCapabilitySet **old_out)
+{
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  GError *error = NULL;
+  GHashTableIter iter;
+  gpointer k, v;
+  GabbleCapabilitySet *save_set;
+
+  save_set = self->priv->all_caps;
+  self->priv->all_caps = gabble_capability_set_new ();
+
+  gabble_capability_set_update (self->priv->all_caps,
+      gabble_capabilities_get_fixed_caps ());
+  gabble_capability_set_update (self->priv->all_caps, self->priv->notify_caps);
+  gabble_capability_set_update (self->priv->all_caps, self->priv->legacy_caps);
+  gabble_capability_set_update (self->priv->all_caps, self->priv->bonus_caps);
+
+  g_hash_table_iter_init (&iter, self->priv->client_caps);
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      if (DEBUGGING)
+        {
+          gchar *s = gabble_capability_set_dump (v, "  ");
+
+          DEBUG ("incorporating caps for %s:\n%s", (const gchar *) k, s);
+          g_free (s);
+        }
+
+      gabble_capability_set_update (self->priv->all_caps, v);
+    }
+
+  if (self->self_presence != NULL)
+    gabble_presence_set_capabilities (self->self_presence,
+        self->priv->resource, self->priv->all_caps, self->priv->caps_serial++);
+
+  if (gabble_capability_set_equals (self->priv->all_caps, save_set))
+    {
+      gabble_capability_set_free (save_set);
+      DEBUG ("nothing to do");
+      return FALSE;
+    }
+
+  /* don't signal presence unless we're already CONNECTED */
+  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      gabble_capability_set_free (save_set);
+      DEBUG ("not emitting self-presence stanza: not connected yet");
+      return FALSE;
+    }
+
+  if (!_gabble_connection_signal_own_presence (self, &error))
+    {
+      gabble_capability_set_free (save_set);
+      DEBUG ("error sending presence: %s", error->message);
+      g_error_free (error);
+      return FALSE;
+    }
+
+  if (old_out == NULL)
+    gabble_capability_set_free (save_set);
+  else
+    *old_out = save_set;
+
+  return TRUE;
+}
+
 /**
  * _gabble_connection_send_iq_result
  *
@@ -2062,7 +2166,6 @@ connection_auth_cb (LmConnection *lmconn,
   GabbleConnectionPrivate *priv = conn->priv;
   GError *error = NULL;
   const gchar *jid;
-  const GabbleCapabilitySet *cap_set;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
@@ -2124,9 +2227,7 @@ connection_auth_cb (LmConnection *lmconn,
       GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
 
   /* set initial capabilities */
-  cap_set = gabble_capabilities_get_initial_caps ();
-  gabble_presence_set_capabilities (conn->self_presence, priv->resource,
-      cap_set, priv->caps_serial++);
+  gabble_connection_refresh_capabilities (conn, NULL);
 
   if (!gabble_disco_request_with_timeout (conn->disco, GABBLE_DISCO_TYPE_INFO,
                                           priv->stream_server, NULL,
@@ -2266,6 +2367,9 @@ ERROR:
  *                          D-BUS EXPORTED METHODS                          *
  ****************************************************************************/
 
+static void gabble_connection_get_handle_contact_capabilities (
+    GabbleConnection *self, TpHandle handle, GPtrArray *arr);
+static void gabble_free_enhanced_contact_capabilities (GPtrArray *caps);
 
 static void
 _emit_capabilities_changed (GabbleConnection *conn,
@@ -2275,10 +2379,13 @@ _emit_capabilities_changed (GabbleConnection *conn,
 {
   GPtrArray *caps_arr;
   const CapabilityConversionData *ccd;
+  GHashTable *hash;
   guint i;
 
   if (gabble_capability_set_equals (old_set, new_set))
     return;
+
+  /* o.f.T.C.Capabilities */
 
   caps_arr = g_ptr_array_new ();
 
@@ -2330,6 +2437,22 @@ _emit_capabilities_changed (GabbleConnection *conn,
           g_ptr_array_index (caps_arr, i));
     }
   g_ptr_array_free (caps_arr, TRUE);
+
+  /* o.f.T.C.ContactCapabilities (draft 2) */
+
+  caps_arr = g_ptr_array_new ();
+
+  gabble_connection_get_handle_contact_capabilities (conn, handle,
+      caps_arr);
+
+  hash = g_hash_table_new (NULL, NULL);
+  g_hash_table_insert (hash, GUINT_TO_POINTER (handle), caps_arr);
+
+  gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
+      conn, hash);
+
+  g_hash_table_destroy (hash);
+  gabble_free_enhanced_contact_capabilities (caps_arr);
 }
 
 /**
@@ -2382,36 +2505,6 @@ gabble_free_enhanced_contact_capabilities (GPtrArray *caps)
 }
 
 static void
-_emit_contact_capabilities_changed (GabbleConnection *conn,
-    TpHandle handle,
-    const GabbleCapabilitySet *old_caps,
-    const GabbleCapabilitySet *new_caps)
-{
-  GPtrArray *ret;
-  GHashTable *hash;
-
-  /* Don't emit the D-Bus signal if there is no change */
-  if (gabble_capability_set_equals (old_caps, new_caps))
-    {
-      DEBUG ("unchanged; not emitting ContactCapabilitiesChanged");
-      return;
-    }
-
-  ret = g_ptr_array_new ();
-
-  gabble_connection_get_handle_contact_capabilities (conn, handle, ret);
-
-  hash = g_hash_table_new (NULL, NULL);
-  g_hash_table_insert (hash, GUINT_TO_POINTER (handle), ret);
-
-  gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
-      conn, hash);
-
-  g_hash_table_destroy (hash);
-  gabble_free_enhanced_contact_capabilities (ret);
-}
-
-static void
 connection_capabilities_update_cb (GabblePresenceCache *cache,
     TpHandle handle,
     const GabbleCapabilitySet *old_cap_set,
@@ -2421,7 +2514,6 @@ connection_capabilities_update_cb (GabblePresenceCache *cache,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
   _emit_capabilities_changed (conn, handle, old_cap_set, new_cap_set);
-  _emit_contact_capabilities_changed (conn, handle, old_cap_set, new_cap_set);
 }
 
 /**
@@ -2445,16 +2537,17 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
   guint i;
-  GabblePresence *pres = self->self_presence;
   GabbleConnectionPrivate *priv = self->priv;
   const CapabilityConversionData *ccd;
   GPtrArray *ret;
-  GabbleCapabilitySet *cap_set;
   GabbleCapabilitySet *save_set;
-  GError *error = NULL;
   GabbleCapabilitySet *add_set, *remove_set;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
+  /* Now that someone has told us our *actual* capabilities, we can stop
+   * advertising spurious caps in initial presence */
+  gabble_capability_set_clear (self->priv->bonus_caps);
 
   add_set = gabble_capability_set_new ();
   remove_set = gabble_capability_set_new ();
@@ -2487,11 +2580,8 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
             ccd->tf2c_fn (~0, remove_set);
     }
 
-  save_set = gabble_presence_dup_caps (pres);
-  cap_set = gabble_capability_set_copy (save_set);
-
-  gabble_capability_set_update (cap_set, add_set);
-  gabble_capability_set_exclude (cap_set, remove_set);
+  gabble_capability_set_update (priv->legacy_caps, add_set);
+  gabble_capability_set_exclude (priv->legacy_caps, remove_set);
 
   if (DEBUGGING)
     {
@@ -2507,18 +2597,18 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   gabble_capability_set_free (add_set);
   gabble_capability_set_free (remove_set);
 
-  if (!gabble_capability_set_equals (save_set, cap_set))
+  if (gabble_connection_refresh_capabilities (self, &save_set))
     {
-      DEBUG ("before != after, changing");
-      gabble_presence_set_capabilities (pres, priv->resource, cap_set,
-          priv->caps_serial++);
+      _emit_capabilities_changed (self, base->self_handle, save_set,
+          priv->all_caps);
+      gabble_capability_set_free (save_set);
     }
 
   ret = g_ptr_array_new ();
 
   for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
-      guint tp_caps = ccd->c2tf_fn (cap_set);
+      guint tp_caps = ccd->c2tf_fn (self->priv->all_caps);
 
       if (tp_caps != 0)
         {
@@ -2538,93 +2628,100 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
         }
     }
 
-  if (!gabble_capability_set_equals (save_set, cap_set))
-    {
-      if (!_gabble_connection_signal_own_presence (self, &error))
-        {
-          dbus_g_method_return_error (context, error);
-          return;
-        }
-
-      _emit_capabilities_changed (self, base->self_handle, save_set, cap_set);
-    }
-
-  gabble_capability_set_free (cap_set);
-  gabble_capability_set_free (save_set);
-
   tp_svc_connection_interface_capabilities_return_from_advertise_capabilities (
       context, ret);
   g_ptr_array_free (ret, TRUE);
 }
 
 /**
- * gabble_connection_set_self_capabilities
+ * gabble_connection_update_capabilities
  *
- * Implements D-Bus method SetSelfCapabilities
+ * Implements D-Bus method UpdateCapabilities
  * on interface
  * org.freedesktop.Telepathy.Connection.Interface.ContactCapabilities
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_set_self_capabilities (
+gabble_connection_update_capabilities (
     GabbleSvcConnectionInterfaceContactCapabilities *iface,
-    const GPtrArray *caps,
+    const GPtrArray *clients,
     DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
-  GabbleConnectionPrivate *priv = self->priv;
-  GabbleCapabilitySet *old_caps, *new_caps;
+  GabbleCapabilitySet *old_caps;
+  TpChannelManagerIter iter;
+  TpChannelManager *manager;
   guint i;
-  GabblePresence *pres = self->self_presence;
-  GError *error = NULL;
 
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+  old_caps = gabble_capability_set_copy (self->priv->all_caps);
 
-  old_caps = gabble_presence_dup_caps (pres);
-  new_caps = gabble_capability_set_copy (old_caps);
-  gabble_capability_set_intersect (new_caps, gabble_capabilities_get_legacy ());
+  /* Now that someone has told us our *actual* capabilities, we can stop
+   * advertising spurious caps in initial presence */
+  gabble_capability_set_clear (self->priv->bonus_caps);
 
-  for (i = 0; i < caps->len; i++)
+  DEBUG ("enter");
+
+  for (i = 0; i < clients->len; i++)
     {
-      GHashTable *cap_to_add = g_ptr_array_index (caps, i);
-      TpChannelManagerIter iter;
-      TpChannelManager *manager;
+      GValueArray *va = g_ptr_array_index (clients, i);
+      const gchar *client_name = g_value_get_string (va->values + 0);
+      const GPtrArray *filters = g_value_get_boxed (va->values + 1);
+      const gchar * const * cap_tokens = g_value_get_boxed (va->values + 2);
+      GabbleCapabilitySet *cap_set;
+
+      g_hash_table_remove (self->priv->client_caps, client_name);
+
+      if ((cap_tokens == NULL || cap_tokens[0] != NULL) &&
+          filters->len == 0)
+        {
+          /* no capabilities */
+          DEBUG ("client %s can't do anything", client_name);
+          continue;
+        }
+
+      cap_set = gabble_capability_set_new ();
 
       tp_base_connection_channel_manager_iter_init (&iter, base);
+
       while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
         {
           /* all channel managers must implement the capability interface */
           g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
-          gabble_caps_channel_manager_add_capability (
-              GABBLE_CAPS_CHANNEL_MANAGER (manager), cap_to_add, new_caps);
+          gabble_caps_channel_manager_represent_client (
+              GABBLE_CAPS_CHANNEL_MANAGER (manager), client_name, filters,
+              cap_tokens, cap_set);
+        }
+
+      if (gabble_capability_set_is_empty (cap_set))
+        {
+          DEBUG ("client %s has no interesting capabilities", client_name);
+          gabble_capability_set_free (cap_set);
+        }
+      else
+        {
+          if (DEBUGGING)
+            {
+              gchar *s = gabble_capability_set_dump (cap_set, "  ");
+
+              DEBUG ("client %s contributes:\n%s", client_name, s);
+              g_free (s);
+            }
+
+          g_hash_table_insert (self->priv->client_caps, g_strdup (client_name),
+              cap_set);
         }
     }
 
-  gabble_presence_set_capabilities (pres, priv->resource, new_caps,
-      priv->caps_serial++);
-
-  if (_gabble_connection_signal_own_presence (self, &error))
+  if (gabble_connection_refresh_capabilities (self, &old_caps))
     {
-      _emit_contact_capabilities_changed (self, base->self_handle, old_caps,
-          new_caps);
-
-      gabble_svc_connection_interface_contact_capabilities_return_from_set_self_capabilities (
-          context);
-    }
-  else
-    {
-      dbus_g_method_return_error (context, error);
+      _emit_capabilities_changed (self, base->self_handle, old_caps,
+          self->priv->all_caps);
+      gabble_capability_set_free (old_caps);
     }
 
-  gabble_capability_set_free (old_caps);
-  gabble_capability_set_free (new_caps);
+  gabble_svc_connection_interface_contact_capabilities_return_from_update_capabilities (
+      context);
 }
 
 static const gchar *assumed_caps[] =
@@ -3280,28 +3377,8 @@ void
 gabble_connection_ensure_capabilities (GabbleConnection *self,
     const GabbleCapabilitySet *ensured)
 {
-  GabbleConnectionPrivate *priv = self->priv;
-  GabbleCapabilitySet *cap_set;
-  GError *error = NULL;
-
-  if (gabble_presence_resource_has_caps (self->self_presence,
-        priv->resource, gabble_capability_set_predicate_at_least, ensured))
-    {
-      DEBUG ("nothing to do");
-      return;
-    }
-
-  cap_set = gabble_presence_dup_caps (self->self_presence);
-  gabble_capability_set_update (cap_set, ensured);
-  gabble_presence_set_capabilities (self->self_presence, priv->resource,
-      cap_set, priv->caps_serial++);
-  gabble_capability_set_free (cap_set);
-
-  if (!_gabble_connection_signal_own_presence (self, &error))
-    {
-      DEBUG ("error sending presence: %s", error->message);
-      g_error_free (error);
-    }
+  gabble_capability_set_update (self->priv->notify_caps, ensured);
+  gabble_connection_refresh_capabilities (self, NULL);
 }
 
 gboolean
@@ -3367,7 +3444,7 @@ gabble_conn_contact_caps_iface_init (gpointer g_iface, gpointer iface_data)
     gabble_svc_connection_interface_contact_capabilities_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(get_contact_capabilities);
-  IMPLEMENT(set_self_capabilities);
+  IMPLEMENT(update_capabilities);
 #undef IMPLEMENT
 }
 

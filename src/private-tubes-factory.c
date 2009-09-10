@@ -563,6 +563,7 @@ gabble_private_tubes_factory_get_contact_caps (
 
 static void
 gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
+    const gchar *client_name,
     GHashTable *cap,
     GabbleCapabilitySet *cap_set)
 {
@@ -601,9 +602,26 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
 
   if (ns != NULL)
     {
-      DEBUG ("adding capability %s", ns);
+      DEBUG ("%s: adding capability %s", client_name, ns);
       gabble_capability_set_add (cap_set, ns);
       g_free (ns);
+    }
+}
+
+static void
+gabble_private_tubes_factory_represent_client (
+    GabbleCapsChannelManager *manager,
+    const gchar *client_name,
+    const GPtrArray *filters,
+    const gchar * const *cap_tokens,
+    GabbleCapabilitySet *cap_set)
+{
+  guint i;
+
+  for (i = 0; i < filters->len; i++)
+    {
+      gabble_private_tubes_factory_add_cap (manager, client_name,
+          g_ptr_array_index (filters, i), cap_set);
     }
 }
 
@@ -1079,5 +1097,5 @@ caps_channel_manager_iface_init (gpointer g_iface,
   GabbleCapsChannelManagerIface *iface = g_iface;
 
   iface->get_contact_caps = gabble_private_tubes_factory_get_contact_caps;
-  iface->add_cap = gabble_private_tubes_factory_add_cap;
+  iface->represent_client = gabble_private_tubes_factory_represent_client;
 }

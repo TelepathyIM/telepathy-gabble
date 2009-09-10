@@ -188,12 +188,6 @@ struct _GabbleConnection {
     /* file transfer manager */
     GabbleFtManager *ft_manager;
 
-    /* temporary, for requestotron support */
-    GPtrArray *channel_factories;
-    GPtrArray *channel_managers;
-    GPtrArray *channel_requests;
-    gboolean has_tried_connection;
-
     GabbleConnectionPrivate *priv;
 };
 

@@ -29,7 +29,8 @@ def disco_bundle(q, bus, conn, stream, node, features):
 """
     stream.send(request)
 
-    disco_response = q.expect('stream-iq', query_ns=ns.DISCO_INFO)
+    disco_response = q.expect('stream-iq', query_ns=ns.DISCO_INFO,
+            iq_id='disco1')
     nodes = xpath.queryForNodes('/iq/query/feature', disco_response.stanza)
     vars = [n["var"] for n in nodes]
     assertEquals(set(features), set(vars))

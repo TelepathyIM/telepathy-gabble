@@ -66,6 +66,12 @@ const gchar * _gabble_media_factory_register_sid (GabbleMediaFactory *fac,
 void _gabble_media_factory_free_sid (GabbleMediaFactory *fac,
     const gchar *sid);
 
+void _gabble_media_factory_typeflags_to_caps (TpChannelMediaCapabilities flags,
+    GabbleCapabilitySet *caps);
+
+TpChannelMediaCapabilities
+_gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps);
+
 G_END_DECLS
 
 #endif /* #ifndef __MEDIA_FACTORY_H__ */

@@ -912,7 +912,8 @@ disco_failed (GabblePresenceCache *cache,
 
 static DiscoWaiter *
 find_matching_waiter (GSList *waiters,
-    TpHandle handle)
+    TpHandle godot,
+    const gchar *resource)
 {
   GSList *i;
 
@@ -920,7 +921,7 @@ find_matching_waiter (GSList *waiters,
     {
       DiscoWaiter *waiter = i->data;
 
-      if (waiter->handle == handle)
+      if (waiter->handle == godot && !tp_strdiff (waiter->resource, resource))
         return waiter;
     }
 
@@ -1032,6 +1033,7 @@ _caps_disco_cb (GabbleDisco *disco,
   TpHandle handle = 0;
   gboolean bad_hash = FALSE;
   TpBaseConnection *base_conn;
+  gchar *resource;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -1064,11 +1066,14 @@ _caps_disco_cb (GabbleDisco *disco,
       return;
     }
 
-  waiter_self = find_matching_waiter (waiters, handle);
+  /* If tp_handle_ensure () was happy with the jid, it's valid. */
+  g_assert (gabble_decode_jid (jid, NULL, NULL, &resource));
+  waiter_self = find_matching_waiter (waiters, handle, resource);
+  g_free (resource);
 
   if (NULL == waiter_self)
     {
-      DEBUG ("Ignoring non requested disco reply");
+      DEBUG ("Ignoring non requested disco reply from %s", jid);
       goto OUT;
     }
 

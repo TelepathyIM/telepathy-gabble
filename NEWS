@@ -31,6 +31,11 @@ Fixes:
 telepathy-gabble 0.8.3 (UNRELEASED)
 ===================================
 
+Enhancements:
+
+* fd.o #23681: Allow setting presence on a connection before it goes online.
+  This avoids e.g. going from Available -> Busy immediately when signing on.
+
 Fixes:
 
 * fd.o #23684: fix handling of avatar conflict with several resources, and

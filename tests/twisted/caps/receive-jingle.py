@@ -35,11 +35,12 @@ def test(q, bus, conn, stream):
     # send updated presence with Jingle audio/video caps info. we turn on both
     # audio and video at the same time to test that all of the capabilities are
     # discovered before any capabilities change signal is emitted
-    presence = make_presence('bob@foo.com/Foo', status='hello')
-    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
-    c['node'] = 'http://telepathy.freedesktop.org/fake-client'
-    c['ver'] = '0.1'
-    c['ext'] = 'video'
+    presence = make_presence('bob@foo.com/Foo', status='hello',
+        caps={
+            'node': 'http://telepathy.freedesktop.org/fake-client',
+            'ver' : '0.1',
+            'ext' : 'video',
+        })
     stream.send(presence)
 
     # Gabble looks up both the version and the video bundles, in any order
@@ -83,10 +84,11 @@ def test(q, bus, conn, stream):
     assert (2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 3) in caps[2L][icaps_attr]
 
     # send updated presence without video support
-    presence = make_presence('bob@foo.com/Foo', status='hello')
-    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
-    c['node'] = 'http://telepathy.freedesktop.org/fake-client'
-    c['ver'] = '0.1'
+    presence = make_presence('bob@foo.com/Foo', status='hello',
+        caps={
+            'node': 'http://telepathy.freedesktop.org/fake-client',
+            'ver' : '0.1',
+        })
     stream.send(presence)
 
     # we can now do only audio calls

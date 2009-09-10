@@ -40,14 +40,6 @@ def caps_changed_cb(dummy):
     global caps_changed_flag
     caps_changed_flag = True
 
-def presence_add_caps(presence, ver, client, hash=None):
-    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
-    c['node'] = client
-    c['ver'] = ver
-    if hash is not None:
-        c['hash'] = hash
-    return presence
-
 def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     global caps_changed_flag
 
@@ -67,8 +59,10 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
 
     # send updated presence with Jingle caps info
-    presence = make_presence(contact, status='hello')
-    presence = presence_add_caps(presence, '0.1', client)
+    presence = make_presence(contact, status='hello',
+        caps={'node': client,
+              'ver':  '0.1',
+             })
     stream.send(presence)
 
     # Gabble looks up our capabilities
@@ -90,11 +84,12 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     caps_changed_flag = False
 
     # send bogus presence
-    presence = make_presence(contact, status='hello')
-    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
-    c['node'] = client
-    c['ver'] = 'ceci=nest=pas=un=hash'
-    c['hash'] = 'sha-1'
+    caps = {
+        'node': client,
+        'ver':  'ceci=nest=pas=un=hash',
+        'hash': 'sha-1',
+        }
+    presence = make_presence(contact, status='hello', caps=caps)
     stream.send(presence)
 
     # Gabble looks up our capabilities
@@ -102,7 +97,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         query_ns='http://jabber.org/protocol/disco#info')
     query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
     assert query_node.attributes['node'] == \
-        client + '#' + c['ver']
+        client + '#' + caps['ver']
 
     # send bogus reply
     stream.send(make_caps_disco_reply(stream, event.stanza,
@@ -115,8 +110,10 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
 
     # send presence with empty caps
-    presence = make_presence(contact, status='hello')
-    presence = presence_add_caps(presence, '0.0', client)
+    presence = make_presence(contact, status='hello',
+        caps={'node': client,
+              'ver':  '0.0',
+             })
     stream.send(presence)
 
     # Gabble looks up our capabilities
@@ -148,11 +145,13 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         'http://www.google.com/transport/p2p',
         ]
 
-    presence = make_presence(contact, status='hello')
-    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
-    c['node'] = client
-    c['ver'] = compute_caps_hash([], features, fake_client_dataforms)
-    c['hash'] = 'sha-1'
+    ver = compute_caps_hash([], features, fake_client_dataforms)
+    caps = {
+        'node': client,
+        'ver':  ver,
+        'hash': 'sha-1',
+        }
+    presence = make_presence(contact, status='hello', caps=caps)
     stream.send(presence)
 
     # Gabble looks up our capabilities
@@ -160,7 +159,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         query_ns='http://jabber.org/protocol/disco#info')
     query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
     assert query_node.attributes['node'] == \
-        client + '#' + c['ver']
+        client + '#' + caps['ver']
 
     # don't receive any D-Bus signal
     sync_dbus(bus, q, conn)
@@ -210,19 +209,20 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     assert conn.Capabilities.GetCapabilities([contact_handle2]) == basic_caps
 
     # send updated presence with Jingle caps info
-    presence = make_presence(contact1, status='hello')
     features = [
         'http://jabber.org/protocol/jingle',
         'http://jabber.org/protocol/jingle/description/audio',
         'http://www.google.com/transport/p2p',
         ]
     ver = compute_caps_hash([], features, {})
-    presence = presence_add_caps(presence, ver, client,
-            hash='sha-1')
+    caps = {
+        'node': client,
+        'ver': ver,
+        'hash': 'sha-1',
+        }
+    presence = make_presence(contact1, status='hello', caps=caps)
     stream.send(presence)
-    presence = make_presence(contact2, status='hello')
-    presence = presence_add_caps(presence, ver, client,
-            hash='sha-1')
+    presence = make_presence(contact2, status='hello', caps=caps)
     stream.send(presence)
 
     # Gabble looks up our capabilities

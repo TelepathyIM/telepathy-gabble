@@ -40,10 +40,11 @@ def test(q, bus, conn, stream):
     chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
         ['ChatState', 'Destroyable'])
 
-    presence = make_presence('foo@bar.com/Foo', status='hello')
-    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
-    c['node'] = 'http://telepathy.freedesktop.org/homeopathy'
-    c['ver'] = '0.1'
+    presence = make_presence('foo@bar.com/Foo', status='hello',
+        caps={
+            'node': 'http://telepathy.freedesktop.org/homeopathy',
+            'ver' : '0.1',
+        })
     stream.send(presence)
 
     version_event = q.expect('stream-iq', to='foo@bar.com/Foo',

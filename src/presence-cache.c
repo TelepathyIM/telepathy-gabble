@@ -912,7 +912,8 @@ disco_failed (GabblePresenceCache *cache,
 
 static DiscoWaiter *
 find_matching_waiter (GSList *waiters,
-    TpHandle handle)
+    TpHandle godot,
+    const gchar *resource)
 {
   GSList *i;
 
@@ -920,7 +921,7 @@ find_matching_waiter (GSList *waiters,
     {
       DiscoWaiter *waiter = i->data;
 
-      if (waiter->handle == handle)
+      if (waiter->handle == godot && !tp_strdiff (waiter->resource, resource))
         return waiter;
     }
 
@@ -1032,6 +1033,8 @@ _caps_disco_cb (GabbleDisco *disco,
   TpHandle handle = 0;
   gboolean bad_hash = FALSE;
   TpBaseConnection *base_conn;
+  gchar *resource;
+  gboolean jid_is_valid;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -1064,11 +1067,15 @@ _caps_disco_cb (GabbleDisco *disco,
       return;
     }
 
-  waiter_self = find_matching_waiter (waiters, handle);
+  /* If tp_handle_ensure () was happy with the jid, it's valid. */
+  jid_is_valid = gabble_decode_jid (jid, NULL, NULL, &resource);
+  g_assert (jid_is_valid);
+  waiter_self = find_matching_waiter (waiters, handle, resource);
+  g_free (resource);
 
   if (NULL == waiter_self)
     {
-      DEBUG ("Ignoring non requested disco reply");
+      DEBUG ("Ignoring non requested disco reply from %s", jid);
       goto OUT;
     }
 
@@ -1214,43 +1221,54 @@ _process_caps_uri (GabblePresenceCache *cache,
     }
   else
     {
-      /* Append the (handle, resource) pair to the list of such pairs
-       * waiting for capabilities for this uri, and send a disco request
-       * if we don't have enough possible trust yet */
-
       GSList *waiters;
       DiscoWaiter *waiter;
       guint possible_trust;
+      gboolean found;
       gpointer key;
       gpointer value = NULL;
 
       DEBUG ("not enough trust for URI %s", uri);
 
-      /* If the URI is in the hash table, steal it and its value; we can
-       * reuse the same URI for the following insertion. Otherwise, make a
-       * copy of the URI for use as a key.
-       */
-
-      if (g_hash_table_lookup_extended (priv->disco_pending, uri, &key,
-            &value))
-        {
-          g_hash_table_steal (priv->disco_pending, key);
-        }
-      else
-        {
-          key = g_strdup (uri);
-        }
-
+      /* Are we already waiting for responses for this URI? */
+      found = g_hash_table_lookup_extended (priv->disco_pending, uri, &key,
+          &value);
       waiters = (GSList *) value;
+
+      waiter = find_matching_waiter (waiters, handle, resource);
+
+      if (waiter != NULL)
+        {
+          /* We've already asked this jid about this node; just update the
+           * serial.
+           */
+          DEBUG ("updating serial for waiter (%s, %s) from %u to %u",
+              from, uri, waiter->serial, serial);
+          waiter->serial = serial;
+          return;
+        }
+
       waiter = disco_waiter_new (contact_repo, handle, resource,
           hash, ver, serial);
       waiters = g_slist_prepend (waiters, waiter);
+
+      /* If the URI was already in the hash table, steal it and re-use the same
+       * URI for the following insertion. Otherwise, make a copy of the URI for
+       * use as a key.
+       */
+      if (found)
+        g_hash_table_steal (priv->disco_pending, key);
+      else
+        key = g_strdup (uri);
+
       g_hash_table_insert (priv->disco_pending, key, waiters);
 
+      /* When all the responses we're waiting for return, will we have enough
+       * trust?
+       */
       possible_trust = disco_waiter_list_get_request_count (waiters);
 
-      if (!value
-          || info->trust + possible_trust < CAPABILITY_BUNDLE_ENOUGH_TRUST)
+      if (info->trust + possible_trust < CAPABILITY_BUNDLE_ENOUGH_TRUST)
         {
           /* DISCO */
           DEBUG ("only %u trust out of %u possible thus far, sending "

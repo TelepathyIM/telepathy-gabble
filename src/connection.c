@@ -372,6 +372,12 @@ gabble_connection_constructed (GObject *object)
           g_random_int ());
       DEBUG ("defaulted resource to %s", priv->resource);
     }
+
+  /* set initial presence */
+  self->self_presence = gabble_presence_new ();
+  g_assert (priv->resource);
+  gabble_presence_update (self->self_presence, priv->resource,
+      GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
 }
 
 static void
@@ -518,8 +524,23 @@ gabble_connection_set_property (GObject      *object,
       priv->password = g_value_dup_string (value);
       break;
     case PROP_RESOURCE:
-      g_free (priv->resource);
-      priv->resource = g_value_dup_string (value);
+      if (tp_strdiff (priv->resource, g_value_get_string (value)))
+        {
+          gchar *old_resource = g_strdup (priv->resource);
+          gchar *new_resource = g_value_dup_string (value);
+
+          priv->resource = new_resource;
+
+          /* Add self presence for new resource... */
+          gabble_presence_update (self->self_presence, new_resource,
+              self->self_presence->status, self->self_presence->status_message,
+              priv->priority);
+          /* ...and remove it for the old one. */
+          gabble_presence_update (self->self_presence, old_resource,
+              GABBLE_PRESENCE_OFFLINE, NULL, 0);
+
+          g_free (old_resource);
+        }
       break;
     case PROP_PRIORITY:
       priv->priority = g_value_get_char (value);
@@ -2220,11 +2241,6 @@ connection_auth_cb (LmConnection *lmconn,
     }
 
   DEBUG ("Created self handle %d, our JID is %s", base->self_handle, jid);
-
-  /* set initial presence */
-  conn->self_presence = gabble_presence_new ();
-  gabble_presence_update (conn->self_presence, priv->resource,
-      GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
 
   /* set initial capabilities */
   gabble_connection_refresh_capabilities (conn, NULL);

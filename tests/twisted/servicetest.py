@@ -412,6 +412,10 @@ def assertEquals(expected, value):
     assert expected == value, "expected:\n%s;\ngot:\n%s" % (
         pretty(expected), pretty(value))
 
+def assertNotEquals(expected, value):
+    assert expected != value, "expected:\n%s;\ngot:\n%s" % (
+        pretty(expected), pretty(value))
+
 def assertContains(element, value):
     assert element in value, "expected:\n%s\nin:\n%s" % (
         pretty(element), pretty(value))

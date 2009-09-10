@@ -183,6 +183,8 @@ set_own_status_cb (GObject *obj,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (obj);
   TpBaseConnection *base = (TpBaseConnection *) conn;
+  GabblePresenceId i = GABBLE_PRESENCE_AVAILABLE;
+  const gchar *message_str = NULL;
   gchar *resource;
   gint8 prio;
   gboolean retval = TRUE;
@@ -194,10 +196,10 @@ set_own_status_cb (GObject *obj,
 
   if (status)
     {
-      GabblePresenceId i = status->index;
       GHashTable *args = status->optional_arguments;
       GValue *message = NULL, *priority = NULL;
-      const gchar *message_str = NULL;
+
+      i = status->index;
 
       /* Workaround for tp-glib not checking whether we support setting
        * a particular status (can be removed once we depend on tp-glib
@@ -207,7 +209,8 @@ set_own_status_cb (GObject *obj,
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "Status '%s' can not be requested in this connection",
                 gabble_statuses[i].name);
-          return FALSE;
+          retval = FALSE;
+          goto OUT;
         }
 
       if (args != NULL)
@@ -241,32 +244,23 @@ set_own_status_cb (GObject *obj,
             }
           prio = CLAMP (g_value_get_int (priority), G_MININT8, G_MAXINT8);
         }
-
-      if (gabble_presence_update (conn->self_presence, resource, i,
-            message_str, prio))
-        {
-          emit_one_presence_update (conn, base->self_handle);
-          retval = _gabble_connection_signal_own_presence (conn,
-              error);
-        }
-      else
-        {
-          /* Nothing actually changed. */
-          retval = TRUE;
-        }
     }
-  else
+
+  if (gabble_presence_update (conn->self_presence, resource, i,
+        message_str, prio))
     {
-      if (gabble_presence_update (conn->self_presence, resource,
-          GABBLE_PRESENCE_AVAILABLE, NULL, prio))
+      if (base->status == TP_CONNECTION_STATUS_CONNECTED)
         {
           emit_one_presence_update (conn, base->self_handle);
           retval = _gabble_connection_signal_own_presence (conn, error);
         }
+      else
+        {
+          retval = TRUE;
+        }
     }
 
 OUT:
-
   g_free (resource);
 
   return retval;
@@ -305,10 +299,12 @@ status_available_cb (GObject *obj, guint status)
   GabbleConnection *conn = GABBLE_CONNECTION (obj);
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
-  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
-    return FALSE;
+  /* If we've gone online and found that the server doesn't support invisible,
+   * reject it.
+   */
 
-  if (gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
+  if (base->status == TP_CONNECTION_STATUS_CONNECTED &&
+      gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
       (conn->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) == 0)
     return FALSE;
   else

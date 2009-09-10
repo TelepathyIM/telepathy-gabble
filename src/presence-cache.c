@@ -1034,6 +1034,7 @@ _caps_disco_cb (GabbleDisco *disco,
   gboolean bad_hash = FALSE;
   TpBaseConnection *base_conn;
   gchar *resource;
+  gboolean jid_is_valid;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -1067,7 +1068,8 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
   /* If tp_handle_ensure () was happy with the jid, it's valid. */
-  g_assert (gabble_decode_jid (jid, NULL, NULL, &resource));
+  jid_is_valid = gabble_decode_jid (jid, NULL, NULL, &resource);
+  g_assert (jid_is_valid);
   waiter_self = find_matching_waiter (waiters, handle, resource);
   g_free (resource);
 

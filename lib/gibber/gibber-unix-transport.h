@@ -79,6 +79,8 @@ GType gibber_unix_transport_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GIBBER_TYPE_UNIX_TRANSPORT, \
    GibberUnixTransportClass))
 
+gboolean gibber_unix_transport_supports_credentials (void);
+
 GibberUnixTransport * gibber_unix_transport_new (void);
 
 GibberUnixTransport * gibber_unix_transport_new_from_fd (int fd);

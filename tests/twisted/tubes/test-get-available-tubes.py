@@ -1,5 +1,7 @@
 """Test GetAvailableStreamTubeTypes and GetAvailableTubeTypes"""
 
+import sys
+
 import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix,\
@@ -82,8 +84,14 @@ def test(q, bus, conn, stream):
     # test GetAvailableStreamTubeTypes (old API)
     stream_tubes_types = tubes_iface_muc.GetAvailableStreamTubeTypes()
     assertLength(3, stream_tubes_types)
-    assertEquals([cs.SOCKET_ACCESS_CONTROL_LOCALHOST, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS],
-        stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX])
+    assert cs.SOCKET_ACCESS_CONTROL_LOCALHOST in \
+        stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX], \
+        stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX]
+    # so far we only guarantee to support credentials-passing on Linux
+    if sys.platform == 'linux2':
+        assert cs.SOCKET_ACCESS_CONTROL_CREDENTIALS in \
+            stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX], \
+            stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_UNIX]
     assertEquals([cs.SOCKET_ACCESS_CONTROL_LOCALHOST, cs.SOCKET_ACCESS_CONTROL_PORT],
         stream_tubes_types[cs.SOCKET_ADDRESS_TYPE_IPV4])
     assertEquals([cs.SOCKET_ACCESS_CONTROL_LOCALHOST, cs.SOCKET_ACCESS_CONTROL_PORT],

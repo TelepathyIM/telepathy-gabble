@@ -13,14 +13,6 @@ from caps_helper import (
     compute_caps_hash, make_caps_disco_reply, fake_client_dataforms,
     )
 
-def presence_add_caps(presence, ver, client, hash=None):
-    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
-    c['node'] = client
-    c['ver'] = ver
-    if hash is not None:
-        c['hash'] = hash
-    return presence
-
 def _test_without_hash(q, bus, conn, stream, contact, client, disco):
     contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
     presence = make_presence(contact, status='hello')
@@ -40,8 +32,10 @@ def _test_without_hash(q, bus, conn, stream, contact, client, disco):
     assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
 
     # send updated presence with Jingle caps info
-    presence = make_presence(contact, status='hello')
-    presence = presence_add_caps(presence, '0.1', client)
+    presence = make_presence(contact, status='hello',
+        caps={ 'node': client,
+               'ver':  '0.1',
+             })
     stream.send(presence)
 
     if disco:
@@ -87,11 +81,13 @@ def _test_with_hash(q, bus, conn, stream, contact, client, disco):
         ]
 
     # send updated presence with Jingle caps info
-    presence = make_presence(contact, status='hello')
-    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
-    c['node'] = client
-    c['ver'] = compute_caps_hash([], features, fake_client_dataforms)
-    c['hash'] = 'sha-1'
+    ver = compute_caps_hash([], features, fake_client_dataforms)
+    caps = {
+        'node': client,
+        'ver':  ver,
+        'hash': 'sha-1',
+        }
+    presence = make_presence(contact, status='hello', caps=caps)
     stream.send(presence)
 
     if disco:
@@ -100,7 +96,7 @@ def _test_with_hash(q, bus, conn, stream, contact, client, disco):
             query_ns='http://jabber.org/protocol/disco#info')
         query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
         assert query_node.attributes['node'] == \
-            client + '#' + c['ver']
+            client + '#' + ver
 
         # send good reply
         result = make_caps_disco_reply(stream, event.stanza, features,

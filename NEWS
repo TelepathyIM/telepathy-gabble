@@ -3,6 +3,14 @@ telepathy-gabble 0.8.3 (UNRELEASED)
 
 Fixes:
 
+* fd.o #23684: fix handling of avatar conflict with several resources, and
+  a possible infinite ping-pong of presence stanzas from the server (albanc)
+
+* Time out disco requests after 20, not 20,000, seconds! (grundleborg)
+
+* Correctly respond to disco requests for video-v1 bundle, avoiding a loop
+  when iChat blindly retries failed disco requests (smcv)
+
 * Fix Requested and State properties of muc D-Bus tubes that we previously
   created and are still present when we re-join the muc. These tubes are now
   listed in Tubes.ListTubes(). fd.o #23678. (cassidy)

@@ -1,7 +1,31 @@
 telepathy-gabble 0.9.0 (UNRELEASED)
 ===================================
 
-???
+Enhancements:
+
+* Add the ability to send a message when terminating a VoIP call (wjt)
+
+* Add ContactSearch channels using spec draft 2 (wjt, cassidy)
+
+* Implement ContactCapabilities spec draft 2 (wjt, smcv)
+
+* Refactor Capabilities code to represent capabilities as sets of XML
+  namespaces, rather than bitfields
+
+Fixes:
+
+* fd.o #23348, #23349: fix compilation on NetBSD by including more headers
+  (Thomas Klausner)
+
+* fd.o #21327: force ISO date format in ChangeLog (wjt)
+
+* Reduce the size of the ChangeLog by truncating at version 0.6.0 and not
+  including diffstats (previously, the changelog.gz in our Debian packages
+  was larger than Gabble itself!) (smcv)
+
+* Improve correctness of gabble_decode_jid() (daf)
+
+* Improve pubsub.c test coverage (cassidy)
 
 telepathy-gabble 0.8.3 (UNRELEASED)
 ===================================

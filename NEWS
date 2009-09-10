@@ -7,10 +7,9 @@ Enhancements:
 
 * Add ContactSearch channels using spec draft 2 (wjt, cassidy)
 
-* Implement ContactCapabilities spec draft 2 (wjt, smcv)
-
-* Refactor Capabilities code to represent capabilities as sets of XML
-  namespaces, rather than bitfields
+* Implement ContactCapabilities spec draft 2, and refactor Capabilities code
+  to represent capabilities as sets of XML namespaces, rather than
+  bitfields (wjt, smcv)
 
 Fixes:
 

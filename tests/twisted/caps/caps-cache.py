@@ -23,6 +23,15 @@ features = [
 
 def presence_and_disco(q, conn, stream, contact, disco,
                        caps, dataforms={}):
+    h = send_presence(q, conn, stream, contact, caps)
+
+    if disco:
+        stanza = expect_disco(q, contact, caps)
+        send_disco_reply(stream, stanza, dataforms)
+
+    expect_caps(q, conn, h)
+
+def send_presence(q, conn, stream, contact, caps):
     h = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
 
     stream.send(make_presence(contact, status='hello'))
@@ -42,16 +51,21 @@ def presence_and_disco(q, conn, stream, contact, disco,
     # send updated presence with Jingle caps info
     stream.send(make_presence(contact, status='hello', caps=caps))
 
-    if disco:
-        # Gabble looks up our capabilities
-        event = q.expect('stream-iq', to=contact, query_ns=ns.DISCO_INFO)
-        assertEquals(client + '#' + caps['ver'], event.query['node'])
+    return h
 
-        # send good reply
-        result = make_caps_disco_reply(stream, event.stanza, features,
-            dataforms)
-        stream.send(result)
+def expect_disco(q, contact, caps):
+    # Gabble looks up our capabilities
+    event = q.expect('stream-iq', to=contact, query_ns=ns.DISCO_INFO)
+    assertEquals(client + '#' + caps['ver'], event.query['node'])
 
+    return event.stanza
+
+def send_disco_reply(stream, stanza, dataforms):
+    # send good reply
+    result = make_caps_disco_reply(stream, stanza, features, dataforms)
+    stream.send(result)
+
+def expect_caps(q, conn, h):
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
     assertContains((h, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, cs.MEDIA_CAP_AUDIO),

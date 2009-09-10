@@ -86,6 +86,13 @@ class BaseEventQueue:
         if self.verbose:
             print s
 
+    def log_event(self, e):
+        if self.verbose:
+            self.log('got event:')
+
+            if self.verbose:
+                map(self.log, format_event(event))
+
     def forbid_events(self, patterns):
         """
         Add patterns (an iterable of EventPattern) to the set of forbidden
@@ -115,9 +122,7 @@ class BaseEventQueue:
 
         while True:
             event = self.wait()
-            self.log('got event:')
-            map(self.log, format_event(event))
-
+            self.log_event(event)
             self._check_forbidden(event)
 
             if pattern.match(event):
@@ -133,9 +138,7 @@ class BaseEventQueue:
 
         while None in ret:
             event = self.wait()
-            self.log('got event:')
-            map(self.log, format_event(event))
-
+            self.log_event(event)
             self._check_forbidden(event)
 
             for i, pattern in enumerate(patterns):
@@ -154,8 +157,7 @@ class BaseEventQueue:
         pattern = EventPattern(type, **kw)
 
         event = self.wait()
-        self.log('got event:')
-        map(self.log, format_event(event))
+        self.log_event(event)
 
         if pattern.match(event):
             self.log('handled')

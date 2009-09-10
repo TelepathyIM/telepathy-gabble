@@ -5,6 +5,7 @@ TWISTED_TESTS = \
 	caps/advertise-legacy.py \
 	caps/caps-cache.py \
 	caps/compat-bundles.py \
+	caps/double-disco.py \
 	caps/from-bare-jid.py \
 	caps/hashed-caps.py \
 	caps/initial-caps.py \

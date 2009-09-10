@@ -1233,6 +1233,19 @@ _process_caps_uri (GabblePresenceCache *cache,
           &value);
       waiters = (GSList *) value;
 
+      waiter = find_matching_waiter (waiters, handle, resource);
+
+      if (waiter != NULL)
+        {
+          /* We've already asked this jid about this node; just update the
+           * serial.
+           */
+          DEBUG ("updating serial for waiter (%s, %s) from %u to %u",
+              from, uri, waiter->serial, serial);
+          waiter->serial = serial;
+          return;
+        }
+
       waiter = disco_waiter_new (contact_repo, handle, resource,
           hash, ver, serial);
       waiters = g_slist_prepend (waiters, waiter);

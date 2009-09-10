@@ -4,6 +4,7 @@ TWISTED_TESTS = \
 	caps/advertise-draft1.py \
 	caps/advertise-legacy.py \
 	caps/caps-cache.py \
+	caps/compat-bundles.py \
 	caps/from-bare-jid.py \
 	caps/hashed-caps.py \
 	caps/initial-caps.py \
@@ -80,6 +81,7 @@ TWISTED_TESTS = \
 	vcard/test-avatar.py \
 	vcard/test-avatar-retrieved.py \
 	vcard/test-avatar-tokens.py \
+        vcard/test-avatar-multiple-resources.py \
 	vcard/test-save-alias-to-vcard.py \
 	vcard/test-set-alias.py \
 	vcard/test-vcard-cache.py \

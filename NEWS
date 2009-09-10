@@ -1,3 +1,12 @@
+telepathy-gabble 0.8.3 (UNRELEASED)
+===================================
+
+Fixes:
+
+* Fix Requested and State properties of muc D-Bus tubes that we previously
+  created and are still present when we re-join the muc. These tubes are now
+  listed in Tubes.ListTubes(). fd.o #23678. (cassidy)
+
 telepathy-gabble 0.8.2 (2009-09-03)
 ===================================
 

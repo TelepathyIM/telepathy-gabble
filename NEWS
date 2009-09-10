@@ -22,8 +22,6 @@ Fixes:
   including diffstats (previously, the changelog.gz in our Debian packages
   was larger than Gabble itself!) (smcv)
 
-* Improve correctness of gabble_decode_jid() (daf)
-
 * Improve pubsub.c test coverage (cassidy)
 
 telepathy-gabble 0.8.3 (UNRELEASED)

@@ -4,7 +4,7 @@ telepathy-gabble 0.9.0 (UNRELEASED)
 This is the first release in the 0.9 development branch.
 Most users should continue to use the 0.8.x stable branch for now.
 This release introduces some regressions: proxies and keep-alive aren't
-supported any more. These features should be back in future releases.
+supported any more. These features will be back in future releases.
 
 Dependencies:
 

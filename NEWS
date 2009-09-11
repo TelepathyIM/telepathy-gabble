@@ -1,6 +1,17 @@
 telepathy-gabble 0.9.0 (UNRELEASED)
 ===================================
 
+This is the first release in the 0.9 development branch.
+Most users should continue to use the 0.8.x stable branch for now.
+This release introduces some regressions: proxies and keep-alive aren't
+supported any more. These features should be back in future releases.
+
+Dependencies:
+
+* Gabble doesn't depend on loudmouth anymore. Instead, it ships a
+  copy of Wocky, a new XMPP library based on gio. As a side effect of this,
+  gio >= 2.21 and gnutls >= 2.8.2 are now needed to build Gabble.
+
 Enhancements:
 
 * Add the ability to send a message when terminating a VoIP call (wjt)

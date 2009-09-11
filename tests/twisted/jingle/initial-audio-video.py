@@ -32,6 +32,8 @@ def outgoing(jp, q, bus, conn, stream):
     fixed, allowed = media_classes[0]
     assertContains(cs.INITIAL_AUDIO, allowed)
     assertContains(cs.INITIAL_VIDEO, allowed)
+    assertContains(cs.INITIAL_AUDIO.replace('.FUTURE.', '.'), allowed)
+    assertContains(cs.INITIAL_VIDEO.replace('.FUTURE.', '.'), allowed)
 
     check_neither(q, conn, bus, stream, remote_handle)
     check_iav(jt, q, conn, bus, stream, remote_handle, True, False)
@@ -76,8 +78,8 @@ def check_iav(jt, q, conn, bus, stream, remote_handle, initial_audio,
         cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
         cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
         cs.TARGET_HANDLE: remote_handle,
-        cs.INITIAL_AUDIO: initial_audio,
-        cs.INITIAL_VIDEO: initial_video,
+        cs.INITIAL_AUDIO.replace('.FUTURE.', '.'): initial_audio,
+        cs.INITIAL_VIDEO.replace('.FUTURE.', '.'): initial_video,
         })
     if initial_video and (not jt.jp.can_do_video()
             or (not initial_audio and not jt.jp.can_do_video_only ())):

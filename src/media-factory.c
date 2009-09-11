@@ -378,6 +378,8 @@ static const gchar * const media_channel_fixed_properties[] = {
 static const gchar * const named_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo",
     GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
     GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo",
     NULL
@@ -389,6 +391,7 @@ static const gchar * const * video_allowed =
     named_channel_allowed_properties + 3;
 
 static const gchar * const audio_allowed[] = {
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
     GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
     NULL
 };
@@ -551,8 +554,13 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
 
   initial_audio = tp_asv_get_boolean (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio", NULL);
+      TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL);
   initial_video = tp_asv_get_boolean (request_properties,
+      TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL);
+
+  initial_audio = initial_audio || tp_asv_get_boolean (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio", NULL);
+  initial_video = initial_video || tp_asv_get_boolean (request_properties,
       GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo", NULL);
 
   switch (handle_type)

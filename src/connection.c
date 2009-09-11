@@ -2399,7 +2399,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
     }
   g_ptr_array_free (caps_arr, TRUE);
 
-  /* o.f.T.C.ContactCapabilities (draft 2) */
+  /* o.f.T.C.ContactCapabilities */
 
   caps_arr = g_ptr_array_new ();
 

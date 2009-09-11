@@ -18,11 +18,9 @@ Lesser General Public License for more details.</p>
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</p>
   </tp:license>
-  <interface name="org.freedesktop.Telepathy.Connection.Interface.ContactCapabilities.DRAFT2"
-    tp:causes-havoc="experimental">
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.ContactCapabilities">
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
-    <tp:added version="0.17.16">(as a draft)</tp:added>
-    <tp:changed version="0.17.27">(draft 2)</tp:changed>
+    <tp:added version="0.17.UNRELEASED">(as stable API)</tp:added>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>Contact capabilities describe the channel classes which may be

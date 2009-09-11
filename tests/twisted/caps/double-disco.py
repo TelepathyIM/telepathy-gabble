@@ -12,7 +12,7 @@ def test(q, bus, conn, stream):
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     contact = 'grapes@graze.box/delicious'
-    presence = make_presence(contact, type='available', status='eat me!',
+    presence = make_presence(contact, status='eat me!',
         caps={ 'node': 'oh:hai',
                'ver':  'thar',
              })
@@ -33,7 +33,7 @@ def test(q, bus, conn, stream):
 
     # If we get a presence update from this contact with some new ext=''
     # bundles, we should disco those, but not the nodes we're already querying.
-    presence = make_presence(contact, type='available', status='eat me!',
+    presence = make_presence(contact, status='eat me!',
         caps={ 'node': 'oh:hai',
                'ver':  'thar',
                'ext':  'good-sir',

@@ -1425,8 +1425,45 @@ connector_error_disconnect (GabbleConnection *self,
             break;
         }
     }
+  else if (error->domain == WOCKY_TLS_CERT_ERROR)
+    {
+      /* certificate error */
+      switch (error->code)
+        {
+          case WOCKY_TLS_CERT_NO_CERTIFICATE:
+            DEBUG ("The server doesn't provide a certificate.");
+            reason = TP_CONNECTION_STATUS_REASON_CERT_NOT_PROVIDED;
+            break;
+          case WOCKY_TLS_CERT_INSECURE:
+          case WOCKY_TLS_CERT_SIGNER_UNKNOWN:
+          case WOCKY_TLS_CERT_SIGNER_UNAUTHORISED:
+          case WOCKY_TLS_CERT_REVOKED:
+          case WOCKY_TLS_CERT_MAYBE_DOS:
+            DEBUG ("The certificate cannot be trusted.");
+            reason = TP_CONNECTION_STATUS_REASON_CERT_UNTRUSTED;
+            break;
+          case WOCKY_TLS_CERT_EXPIRED:
+            DEBUG ("The certificate has expired.");
+            reason = TP_CONNECTION_STATUS_REASON_CERT_EXPIRED;
+            break;
+          case WOCKY_TLS_CERT_NOT_ACTIVE:
+            DEBUG ("The certificate has not been activated.");
+            reason = TP_CONNECTION_STATUS_REASON_CERT_NOT_ACTIVATED;
+            break;
+          case WOCKY_TLS_CERT_NAME_MISMATCH:
+            DEBUG ("The server hostname doesn't match the one in the"
+                " certificate.");
+            reason = TP_CONNECTION_STATUS_REASON_CERT_HOSTNAME_MISMATCH;
+            break;
+          case WOCKY_TLS_CERT_INTERNAL_ERROR:
+          case WOCKY_TLS_CERT_UNKNOWN_ERROR:
+          default:
+            DEBUG ("Unknown certificate error: %s", error->message);
+            reason = TP_CONNECTION_STATUS_REASON_CERT_OTHER_ERROR;
+            break;
+        }
+    }
 
-  /* FIXME: check SSL errors */
   tp_base_connection_change_status (base,
       TP_CONNECTION_STATUS_DISCONNECTED, reason);
 }

@@ -1485,16 +1485,16 @@ _pick_best_resource (GabbleMediaChannel *chan,
 
 CHOOSE_TRANSPORT:
 
-  *transport_ns = gabble_presence_resource_pick_best_feature (presence,
-      resource, transports, gabble_capability_set_predicate_has);
 
-  if (*transport_ns == NULL && (*dialect == JINGLE_DIALECT_GTALK4
-      || *dialect == JINGLE_DIALECT_GTALK3))
+  if (*dialect == JINGLE_DIALECT_GTALK4 || *dialect == JINGLE_DIALECT_GTALK3)
     {
-      /* (Some) GTalk clients don't advertise gtalk-p2p, though
-       * they support it. If we know it's GTalk and there's no
-       * transport, we can assume it also. */
+      /* the GTalk dialects only support google p2p as transport protocol. */
       *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
+    }
+  else
+    {
+      *transport_ns = gabble_presence_resource_pick_best_feature (presence,
+        resource, transports, gabble_capability_set_predicate_has);
     }
 
   if (*transport_ns == NULL)

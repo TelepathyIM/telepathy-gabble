@@ -1477,7 +1477,12 @@ CHOOSE_TRANSPORT:
   /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
    * available). */
 
-  if (gabble_presence_resource_has_caps (presence, resource,
+  if (*dialect == JINGLE_DIALECT_GTALK4 || *dialect == JINGLE_DIALECT_GTALK3)
+    {
+      /* the GTalk dialects only support google p2p as transport protocol. */
+      *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
+    }
+  else if (gabble_presence_resource_has_caps (presence, resource,
         PRESENCE_CAP_GOOGLE_TRANSPORT_P2P))
     {
       *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
@@ -1491,14 +1496,6 @@ CHOOSE_TRANSPORT:
         PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP))
     {
       *transport_ns = NS_JINGLE_TRANSPORT_RAWUDP;
-    }
-  else if (*dialect == JINGLE_DIALECT_GTALK4
-      || *dialect == JINGLE_DIALECT_GTALK3)
-    {
-      /* (Some) GTalk clients don't advertise gtalk-p2p, though
-       * they support it. If we know it's GTalk and there's no
-       * transport, we can assume it also. */
-      *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
     }
 
   if (*transport_ns == NULL)

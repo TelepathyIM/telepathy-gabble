@@ -1500,6 +1500,15 @@ gabble_file_transfer_channel_provide_file (
       return;
     }
 
+  if (self->priv->state != TP_FILE_TRANSFER_STATE_PENDING &&
+      self->priv->state != TP_FILE_TRANSFER_STATE_ACCEPTED)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "State is not pending or accepted; cannot provide file");
+      dbus_g_method_return_error (context, error);
+      return;
+    }
+
   if (self->priv->socket_address != NULL)
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,

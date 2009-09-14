@@ -414,7 +414,7 @@ def pretty(x):
 def assertEquals(expected, value):
     if expected != value:
         raise AssertionError(
-            "expected:\n%s;\ngot:\n%s" % (pretty(expected), pretty(value)))
+            "expected:\n%s\ngot:\n%s" % (pretty(expected), pretty(value)))
 
 def assertNotEquals(expected, value):
     if expected == value:

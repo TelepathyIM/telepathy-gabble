@@ -380,8 +380,6 @@ static const gchar * const named_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetID",
     TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
     TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo",
-    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
-    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo",
     NULL
 };
 
@@ -392,7 +390,6 @@ static const gchar * const * video_allowed =
 
 static const gchar * const audio_allowed[] = {
     TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
-    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
     NULL
 };
 
@@ -557,11 +554,6 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
       TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL);
   initial_video = tp_asv_get_boolean (request_properties,
       TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL);
-
-  initial_audio = initial_audio || tp_asv_get_boolean (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio", NULL);
-  initial_video = initial_video || tp_asv_get_boolean (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo", NULL);
 
   switch (handle_type)
     {
@@ -907,18 +899,12 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
           continue;
         }
 
-      /* for now, accept either the current InitialAudio (which is in
-       * the FUTURE) or the hypothetical final version */
       if (tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL) ||
-          tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".FUTURE.InitialAudio", NULL))
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL))
         audio = TRUE;
 
       if (tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL) ||
-          tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".FUTURE.InitialVideo", NULL))
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL))
         video = TRUE;
 
       /* If we've picked up all the capabilities we're ever going to, then

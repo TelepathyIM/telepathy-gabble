@@ -1726,6 +1726,9 @@ _gabble_connection_connect (TpBaseConnection *base,
   priv->connector = wocky_connector_new (jid, priv->password, priv->resource);
   g_free (jid);
 
+  wocky_connector_add_ca (priv->connector,
+      "/etc/ssl/certs/ca-certificates.crt");
+
   /* If the UI explicitly specified a port or a server, pass them to Loudmouth
    * rather than letting it do an SRV lookup.
    *

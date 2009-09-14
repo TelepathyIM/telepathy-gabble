@@ -1,3 +1,4 @@
+import dbus
 import constants as cs
 from file_transfer_helper import SendFileTest, exec_file_transfer_test
 
@@ -29,6 +30,14 @@ class SendFileDeclinedTest(SendFileTest):
         transferred = self.ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER, 'TransferredBytes')
         # no byte has been transferred as the file was declined
         assert transferred == 0
+
+        # try to provide the file
+        try:
+            self.provide_file()
+        except dbus.DBusException, e:
+            assert e.get_dbus_name() == cs.NOT_AVAILABLE
+        else:
+            assert False
 
         # stop test
         return True

@@ -117,7 +117,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_ACTIVITY_PROPERTIES,
       olpc_activity_properties_iface_init);
     G_IMPLEMENT_INTERFACE
-      (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
+      (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
       gabble_conn_contact_caps_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_GADGET,
       olpc_gadget_iface_init);
@@ -338,7 +338,7 @@ gabble_connection_constructor (GType type,
           conn_capabilities_fill_contact_attributes);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
-      GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
+      TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
           conn_contact_capabilities_fill_contact_attributes);
 
   self->bytestream_factory = gabble_bytestream_factory_new (self);
@@ -675,7 +675,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
       TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
       GABBLE_IFACE_OLPC_GADGET,
-      GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
+      TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
       TP_IFACE_CONNECTION_INTERFACE_LOCATION,
       NULL };
   static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
@@ -2409,7 +2409,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
   hash = g_hash_table_new (NULL, NULL);
   g_hash_table_insert (hash, GUINT_TO_POINTER (handle), caps_arr);
 
-  gabble_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
+  tp_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
       conn, hash);
 
   g_hash_table_destroy (hash);
@@ -2603,7 +2603,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
  */
 static void
 gabble_connection_update_capabilities (
-    GabbleSvcConnectionInterfaceContactCapabilities *iface,
+    TpSvcConnectionInterfaceContactCapabilities *iface,
     const GPtrArray *clients,
     DBusGMethodInvocation *context)
 {
@@ -2681,7 +2681,7 @@ gabble_connection_update_capabilities (
       gabble_capability_set_free (old_caps);
     }
 
-  gabble_svc_connection_interface_contact_capabilities_return_from_update_capabilities (
+  tp_svc_connection_interface_contact_capabilities_return_from_update_capabilities (
       context);
 }
 
@@ -2832,7 +2832,7 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
           g_value_take_boxed (val, array);
           tp_contacts_mixin_set_contact_attribute (attributes_hash,
               handle,
-              GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES"/caps",
+              TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES"/caps",
               val);
 
           array = NULL;
@@ -2900,7 +2900,7 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
  */
 static void
 gabble_connection_get_contact_capabilities (
-    GabbleSvcConnectionInterfaceContactCapabilities *iface,
+    TpSvcConnectionInterfaceContactCapabilities *iface,
     const GArray *handles,
     DBusGMethodInvocation *context)
 {
@@ -2934,7 +2934,7 @@ gabble_connection_get_contact_capabilities (
       g_hash_table_insert (ret, GUINT_TO_POINTER (handle), arr);
     }
 
-  gabble_svc_connection_interface_contact_capabilities_return_from_get_contact_capabilities
+  tp_svc_connection_interface_contact_capabilities_return_from_get_contact_capabilities
       (context, ret);
 
   g_hash_table_destroy (ret);
@@ -3398,11 +3398,10 @@ capabilities_service_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 gabble_conn_contact_caps_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcConnectionInterfaceContactCapabilitiesClass *klass =
-    (GabbleSvcConnectionInterfaceContactCapabilitiesClass *) g_iface;
+  TpSvcConnectionInterfaceContactCapabilitiesClass *klass = g_iface;
 
 #define IMPLEMENT(x) \
-    gabble_svc_connection_interface_contact_capabilities_implement_##x (\
+    tp_svc_connection_interface_contact_capabilities_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(get_contact_capabilities);
   IMPLEMENT(update_capabilities);

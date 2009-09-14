@@ -1411,7 +1411,16 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
                                           DBusGMethodInvocation *context)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (iface);
+  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->connection;
   GError *error = NULL;
+
+  if (self->priv->initiator == base_conn->self_handle)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Channel is not an incoming transfer");
+      dbus_g_method_return_error (context, error);
+      return;
+    }
 
   if (self->priv->state != TP_FILE_TRANSFER_STATE_PENDING)
     {

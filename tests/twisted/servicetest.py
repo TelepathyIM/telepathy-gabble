@@ -86,7 +86,7 @@ class BaseEventQueue:
         if self.verbose:
             print s
 
-    def log_event(self, e):
+    def log_event(self, event):
         if self.verbose:
             self.log('got event:')
 
@@ -419,7 +419,7 @@ def assertEquals(expected, value):
 def assertNotEquals(expected, value):
     if expected == value:
         raise AssertionError(
-            "expected something other than:\n%s" % pretty(value)
+            "expected something other than:\n%s" % pretty(value))
 
 def assertContains(element, value):
     if element not in value:

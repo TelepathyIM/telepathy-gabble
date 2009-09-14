@@ -8,6 +8,7 @@ import os
 import hashlib
 import sys
 import random
+import traceback
 
 import ns
 import constants as cs
@@ -341,30 +342,6 @@ def make_stream(event_func, authenticator=None, protocol=None, port=4242, resour
     port = reactor.listenTCP(port, factory)
     return (stream, port)
 
-def install_colourer():
-    def red(s):
-        return '\x1b[31m%s\x1b[0m' % s
-
-    def green(s):
-        return '\x1b[32m%s\x1b[0m' % s
-
-    patterns = {
-        'handled': green,
-        'not handled': red,
-        }
-
-    class Colourer:
-        def __init__(self, fh, patterns):
-            self.fh = fh
-            self.patterns = patterns
-
-        def write(self, s):
-            f = self.patterns.get(s, lambda x: x)
-            self.fh.write(f(s))
-
-    sys.stdout = Colourer(sys.stdout, patterns)
-    return sys.stdout
-
 def disconnect_conn(q, conn, stream, expected=[]):
     call_async(q, conn, 'Disconnect')
 
@@ -378,14 +355,14 @@ def disconnect_conn(q, conn, stream, expected=[]):
     q.expect('dbus-return', method='Disconnect')
     return events[:-2]
 
-def exec_test_deferred(funs, params, protocol=None, timeout=None,
+def exec_test_deferred(fun, params, protocol=None, timeout=None,
                         authenticator=None):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
     colourer = None
 
     if sys.stdout.isatty():
-        colourer = install_colourer()
+        colourer = servicetest.install_colourer()
 
     queue = servicetest.IteratingEventQueue(timeout)
     queue.verbose = (
@@ -393,7 +370,7 @@ def exec_test_deferred(funs, params, protocol=None, timeout=None,
         or '-v' in sys.argv)
 
     bus = dbus.SessionBus()
-    # conn = make_connection(bus, queue.append, params)
+    conn = make_connection(bus, queue.append, params)
     resource = params.get('resource') if params is not None else None
     (stream, port) = make_stream(queue.append, protocol=protocol,
         authenticator=authenticator, resource=resource)
@@ -401,11 +378,8 @@ def exec_test_deferred(funs, params, protocol=None, timeout=None,
     error = None
 
     try:
-        for f in funs:
-            conn = make_connection(bus, queue.append, params)
-            f(queue, bus, conn, stream)
+        fun(queue, bus, conn, stream)
     except Exception, e:
-        import traceback
         traceback.print_exc()
         error = e
 
@@ -435,15 +409,11 @@ def exec_test_deferred(funs, params, protocol=None, timeout=None,
     except dbus.DBusException, e:
         pass
 
-def exec_tests(funs, params=None, protocol=None, timeout=None,
-               authenticator=None):
-    reactor.callWhenRunning(
-        exec_test_deferred, funs, params, protocol, timeout, authenticator)
-    reactor.run()
-
 def exec_test(fun, params=None, protocol=None, timeout=None,
               authenticator=None):
-  exec_tests([fun], params, protocol, timeout, authenticator)
+    reactor.callWhenRunning(
+        exec_test_deferred, fun, params, protocol, timeout, authenticator)
+    reactor.run()
 
 # Useful routines for server-side vCard handling
 current_vcard = domish.Element(('vcard-temp', 'vCard'))

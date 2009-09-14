@@ -6,6 +6,7 @@ Infrastructure code for testing connection managers.
 from twisted.internet import glib2reactor
 from twisted.internet.protocol import Protocol, Factory, ClientFactory
 glib2reactor.install()
+import sys
 
 import pprint
 import unittest
@@ -85,6 +86,13 @@ class BaseEventQueue:
         if self.verbose:
             print s
 
+    def log_event(self, e):
+        if self.verbose:
+            self.log('got event:')
+
+            if self.verbose:
+                map(self.log, format_event(event))
+
     def forbid_events(self, patterns):
         """
         Add patterns (an iterable of EventPattern) to the set of forbidden
@@ -114,9 +122,7 @@ class BaseEventQueue:
 
         while True:
             event = self.wait()
-            self.log('got event:')
-            map(self.log, format_event(event))
-
+            self.log_event(event)
             self._check_forbidden(event)
 
             if pattern.match(event):
@@ -132,9 +138,7 @@ class BaseEventQueue:
 
         while None in ret:
             event = self.wait()
-            self.log('got event:')
-            map(self.log, format_event(event))
-
+            self.log_event(event)
             self._check_forbidden(event)
 
             for i, pattern in enumerate(patterns):
@@ -153,8 +157,7 @@ class BaseEventQueue:
         pattern = EventPattern(type, **kw)
 
         event = self.wait()
-        self.log('got event:')
-        map(self.log, format_event(event))
+        self.log_event(event)
 
         if pattern.match(event):
             self.log('handled')
@@ -409,25 +412,53 @@ def pretty(x):
     return pprint.pformat(unwrap(x))
 
 def assertEquals(expected, value):
-    assert expected == value, "expected:\n%s;\ngot:\n%s" % (
-        pretty(expected), pretty(value))
+    if expected != value:
+        raise AssertionError(
+            "expected:\n%s\ngot:\n%s" % (pretty(expected), pretty(value)))
 
 def assertNotEquals(expected, value):
-    assert expected != value, "expected:\n%s;\ngot:\n%s" % (
-        pretty(expected), pretty(value))
+    if expected == value:
+        raise AssertionError(
+            "expected something other than:\n%s" % pretty(value)
 
 def assertContains(element, value):
-    assert element in value, "expected:\n%s\nin:\n%s" % (
-        pretty(element), pretty(value))
+    if element not in value:
+        raise AssertionError(
+            "expected:\n%s\nin:\n%s" % (pretty(element), pretty(value)))
 
 def assertDoesNotContain(element, value):
-    assert element not in value, "expected:\n%s\nnot in:\n%s" % (
-        pretty(element), pretty(value))
+    if element in value:
+        raise AssertionError(
+            "expected:\n%s\nnot in:\n%s" % (pretty(element), pretty(value)))
 
 def assertLength(length, value):
-    assert len(value) == length, \
-        "expected: length %d, got length %d:\n%s" % (
-        length, len(value), pretty(value))
+    if len(value) != length:
+        raise AssertionError("expected: length %d, got length %d:\n%s" % (
+            length, len(value), pretty(value)))
+
+def install_colourer():
+    def red(s):
+        return '\x1b[31m%s\x1b[0m' % s
+
+    def green(s):
+        return '\x1b[32m%s\x1b[0m' % s
+
+    patterns = {
+        'handled': green,
+        'not handled': red,
+        }
+
+    class Colourer:
+        def __init__(self, fh, patterns):
+            self.fh = fh
+            self.patterns = patterns
+
+        def write(self, s):
+            f = self.patterns.get(s, lambda x: x)
+            self.fh.write(f(s))
+
+    sys.stdout = Colourer(sys.stdout, patterns)
+    return sys.stdout
 
 if __name__ == '__main__':
     unittest.main()

@@ -35,7 +35,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 
 <xi:include href="Channel_Bundle.xml"/>
 <xi:include href="Channel_Future.xml"/>
-<xi:include href="Channel_Type_Streamed_Media_Future.xml"/>
 <xi:include href="Debug.xml"/>
 <xi:include href="OLPC_Buddy_Info.xml"/>
 <xi:include href="OLPC_Activity_Properties.xml"/>
@@ -43,8 +42,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <xi:include href="OLPC_Channel_Interface_View.xml"/>
 <xi:include href="OLPC_Channel_Type_BuddyView.xml"/>
 <xi:include href="OLPC_Channel_Type_ActivityView.xml"/>
-
-<xi:include href="Connection_Interface_Contact_Capabilities.xml"/>
 
 <xi:include href="Channel_Type_Contact_Search.xml"/>
 <xi:include href="Connection_Interface_Contact_Info.xml"/>

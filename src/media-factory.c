@@ -378,8 +378,8 @@ static const gchar * const media_channel_fixed_properties[] = {
 static const gchar * const named_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
-    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
-    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo",
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo",
     NULL
 };
 
@@ -389,7 +389,7 @@ static const gchar * const * video_allowed =
     named_channel_allowed_properties + 3;
 
 static const gchar * const audio_allowed[] = {
-    GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio",
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
     NULL
 };
 
@@ -551,9 +551,9 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
 
   initial_audio = tp_asv_get_boolean (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialAudio", NULL);
+      TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL);
   initial_video = tp_asv_get_boolean (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE ".InitialVideo", NULL);
+      TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL);
 
   switch (handle_type)
     {
@@ -899,18 +899,12 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
           continue;
         }
 
-      /* for now, accept either the current InitialAudio (which is in
-       * the FUTURE) or the hypothetical final version */
       if (tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL) ||
-          tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".FUTURE.InitialAudio", NULL))
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL))
         audio = TRUE;
 
       if (tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL) ||
-          tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".FUTURE.InitialVideo", NULL))
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL))
         video = TRUE;
 
       /* If we've picked up all the capabilities we're ever going to, then

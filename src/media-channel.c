@@ -71,8 +71,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
       media_signalling_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_STREAMED_MEDIA,
       streamed_media_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE,
-      NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
       tp_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
@@ -518,8 +516,8 @@ gabble_media_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "InitiatorID",
               TP_IFACE_CHANNEL, "Requested",
               TP_IFACE_CHANNEL, "Interfaces",
-              GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE, "InitialAudio",
-              GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE, "InitialVideo",
+              TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, "InitialAudio",
+              TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, "InitialVideo",
               NULL));
       break;
     case PROP_SESSION:
@@ -663,7 +661,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
         NULL,
         channel_props,
       },
-      { GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE,
+      { TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         streamed_media_props,

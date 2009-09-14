@@ -45,14 +45,14 @@ INITIATOR_HANDLE = CHANNEL + '.InitiatorHandle'
 INITIATOR_ID = CHANNEL + '.InitiatorID'
 INTERFACES = CHANNEL + '.Interfaces'
 
-INITIAL_AUDIO = CHANNEL_TYPE_STREAMED_MEDIA + '.FUTURE.InitialAudio'
-INITIAL_VIDEO = CHANNEL_TYPE_STREAMED_MEDIA + '.FUTURE.InitialVideo'
+INITIAL_AUDIO = CHANNEL_TYPE_STREAMED_MEDIA + '.InitialAudio'
+INITIAL_VIDEO = CHANNEL_TYPE_STREAMED_MEDIA + '.InitialVideo'
 
 CONN = "org.freedesktop.Telepathy.Connection"
 CONN_IFACE_AVATARS = CONN + '.Interface.Avatars'
 CONN_IFACE_CAPS = CONN + '.Interface.Capabilities'
 CONN_IFACE_CONTACTS = CONN + '.Interface.Contacts'
-CONN_IFACE_CONTACT_CAPS = CONN + '.Interface.ContactCapabilities.DRAFT2'
+CONN_IFACE_CONTACT_CAPS = CONN + '.Interface.ContactCapabilities'
 CONN_IFACE_SIMPLE_PRESENCE = CONN + '.Interface.SimplePresence'
 CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
 CONN_IFACE_LOCATION = CONN + '.Interface.Location'

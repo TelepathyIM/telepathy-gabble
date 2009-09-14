@@ -12,15 +12,20 @@ Dependencies:
   copy of Wocky, a new XMPP library based on gio. As a side effect of this,
   gio >= 2.21 and gnutls >= 2.8.2 are now needed to build Gabble.
 
+* telepathy-glib >= 0.7.37 is now required
+
 Enhancements:
 
 * Add the ability to send a message when terminating a VoIP call (wjt)
 
 * Add ContactSearch channels using spec draft 2 (wjt, cassidy)
 
-* Implement ContactCapabilities spec draft 2, and refactor Capabilities code
+* Implement the final ContactCapabilities spec, and refactor Capabilities code
   to represent capabilities as sets of XML namespaces, rather than
   bitfields (wjt, smcv)
+
+* fd.o#19952: Support requesting channels with InitialAudio/InitialVideo
+  through the final API from telepathy-spec 0.17.28 (smcv)
 
 Fixes:
 

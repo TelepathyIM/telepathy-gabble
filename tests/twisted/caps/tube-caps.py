@@ -1,6 +1,6 @@
 
 """
-Test tubes capabilities with Connection.Interface.ContactCapabilities.DRAFT
+Test tubes capabilities with Connection.Interface.ContactCapabilities
 
 1. Receive presence and caps from contacts and check that
 GetContactCapabilities works correctly and that ContactCapabilitiesChanged is

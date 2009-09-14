@@ -55,7 +55,7 @@ def check_neither(q, conn, bus, stream, remote_handle):
 
     chan = wrap_channel(bus.get_object(conn.bus_name, path),
         cs.CHANNEL_TYPE_STREAMED_MEDIA, ['MediaSignalling'])
-    props = chan.Properties.GetAll(cs.CHANNEL_TYPE_STREAMED_MEDIA + '.FUTURE')
+    props = chan.Properties.GetAll(cs.CHANNEL_TYPE_STREAMED_MEDIA)
     assertContains(('InitialAudio', False), props.items())
     assertContains(('InitialVideo', False), props.items())
 
@@ -92,7 +92,7 @@ def check_iav(jt, q, conn, bus, stream, remote_handle, initial_audio,
 
         chan = wrap_channel(bus.get_object(conn.bus_name, path),
             cs.CHANNEL_TYPE_STREAMED_MEDIA, ['MediaSignalling'])
-        props = chan.Properties.GetAll(cs.CHANNEL_TYPE_STREAMED_MEDIA + '.FUTURE')
+        props = chan.Properties.GetAll(cs.CHANNEL_TYPE_STREAMED_MEDIA)
         assertContains(('InitialAudio', initial_audio), props.items())
         assertContains(('InitialVideo', initial_video), props.items())
 

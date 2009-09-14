@@ -419,7 +419,7 @@ def assertEquals(expected, value):
 def assertNotEquals(expected, value):
     if expected == value:
         raise AssertionError(
-            "expected:\n%s;\ngot:\n%s" % (pretty(expected), pretty(value)))
+            "expected something other than:\n%s" % pretty(value)
 
 def assertContains(element, value):
     if element not in value:

@@ -1,8 +1,20 @@
+import dbus
 import constants as cs
 from file_transfer_helper import SendFileTest, exec_file_transfer_test
 
 class SendFileTransferProvideImmediately(SendFileTest):
     def provide_file(self):
+
+        # try to accept our outgoing file transfer
+        try:
+            self.ft_channel.AcceptFile(self.address_type,
+                self.access_control, self.access_control_param, self.file.offset,
+                byte_arrays=True)
+        except dbus.DBusException, e:
+            assert e.get_dbus_name() == cs.NOT_AVAILABLE
+        else:
+            assert False
+
         SendFileTest.provide_file(self)
 
         # state is still Pending as remote didn't accept the transfer yet

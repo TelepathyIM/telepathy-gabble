@@ -1714,6 +1714,7 @@ _gabble_connection_connect (TpBaseConnection *base,
   GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = conn->priv;
   char *jid;
+  gchar *user_certs_dir;
 
   g_assert (priv->connector == NULL);
   g_assert (priv->port <= G_MAXUINT16);
@@ -1726,8 +1727,15 @@ _gabble_connection_connect (TpBaseConnection *base,
   priv->connector = wocky_connector_new (jid, priv->password, priv->resource);
   g_free (jid);
 
+  /* system certs */
   wocky_connector_add_ca (priv->connector,
       "/etc/ssl/certs/ca-certificates.crt");
+
+  /* user certs */
+  user_certs_dir = g_build_filename (g_get_user_config_dir (),
+      "telepathy", "certs", NULL);
+  wocky_connector_add_ca (priv->connector, user_certs_dir);
+  g_free (user_certs_dir);
 
   /* If the UI explicitly specified a port or a server, pass them to Loudmouth
    * rather than letting it do an SRV lookup.

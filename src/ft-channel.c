@@ -1358,6 +1358,10 @@ data_received_cb (GabbleBytestreamIface *stream,
           TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
           TP_FILE_TRANSFER_STATE_COMPLETED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
+
+      if (gibber_transport_buffer_is_empty (self->priv->transport))
+        gibber_transport_disconnect (self->priv->transport);
+
       return;
     }
 
@@ -1689,6 +1693,9 @@ transport_buffer_empty_cb (GibberTransport *transport,
   /* Buffer is empty so we can unblock the buffer if it was blocked */
   DEBUG ("file transfer buffer is empty. Unblock the bytestream");
   gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
+
+  if (self->priv->state > TP_FILE_TRANSFER_STATE_OPEN)
+    gibber_transport_disconnect (transport);
 }
 
 /*

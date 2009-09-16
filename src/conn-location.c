@@ -189,9 +189,27 @@ add_to_geoloc_node (const gchar *tp_name,
   LocationMapping *mapping;
   gchar *str = NULL;
 
+  /* Map "language" to the xml:lang attribute. */
+  if (!tp_strdiff (tp_name, "language"))
+    {
+      if (G_VALUE_TYPE (value) != G_TYPE_STRING)
+        {
+#define ERROR_MSG "expecting string for language value, but got %s",\
+              G_VALUE_TYPE_NAME (value)
+          DEBUG (ERROR_MSG);
+          g_set_error (err, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, ERROR_MSG);
+#undef ERROR_MSG
+          return FALSE;
+        }
+
+      lm_message_node_set_attribute (
+          geoloc, "xml:lang", g_value_get_string (value));
+      return TRUE;
+    }
+
   mapping = g_hash_table_lookup (tp_to_xmpp, tp_name);
-  if (mapping == NULL &&
-      tp_strdiff (tp_name, "language"))
+
+  if (mapping == NULL)
     {
       DEBUG ("Unknown location key: %s ; skipping", (const gchar *) tp_name);
       /* We don't raise a D-Bus error if the key is unknown to stay backward
@@ -226,14 +244,6 @@ add_to_geoloc_node (const gchar *tp_name,
   else if (G_VALUE_TYPE (value) == G_TYPE_STRING)
     {
       str = g_value_dup_string (value);
-
-      if (!tp_strdiff (tp_name, "language"))
-        {
-          /* Set the xml:lang */
-          lm_message_node_set_attribute (geoloc, "xml:lang", str);
-          g_free (str);
-          return TRUE;
-        }
     }
   else
     /* Keys and their type have been checked */

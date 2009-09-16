@@ -186,23 +186,15 @@ static gboolean
 gabble_pubsub_event_handler (WockyPubsub *self,
     WockyXmppStanza *msg,
     const gchar *from,
-    WockyXmppNode *item_node)
+    WockyXmppNode *items_node)
 {
   WockyPubsubPrivate *priv = WOCKY_PUBSUB_GET_PRIVATE (self);
-  const gchar *event_ns;
+  const gchar *node;
   GSList *l;
 
-  if (node_iter (item_node) == NULL)
-    {
-      return FALSE;
-    }
+  node = wocky_xmpp_node_get_attribute (items_node, "node");
 
-  /*
-   * the namespace of the item is that of the first child of the <item> node
-   */
-  event_ns = wocky_xmpp_node_get_ns (node_iter_data (node_iter (item_node)));
-
-  if (event_ns == NULL)
+  if (node == NULL)
     {
       return FALSE;
     }
@@ -211,7 +203,7 @@ gabble_pubsub_event_handler (WockyPubsub *self,
     {
       PubsubEventHandler *handler = l->data;
 
-      if (!wocky_strdiff (handler->node, event_ns))
+      if (!wocky_strdiff (handler->node, node))
         {
           handler->handle_function (self, msg, from, handler->user_data);
           return TRUE;
@@ -354,12 +346,6 @@ pubsub_msg_event_cb (WockyPorter *porter,
     }
 
   node = wocky_xmpp_node_get_child (node, "items");
-  if (node == NULL)
-    {
-      return TRUE;
-    }
-
-  node = wocky_xmpp_node_get_child (node, "item");
   if (node == NULL)
     {
       return TRUE;

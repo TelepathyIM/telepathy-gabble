@@ -27,6 +27,9 @@ Enhancements:
 * fd.o#19952: Support requesting channels with InitialAudio/InitialVideo
   through the final API from telepathy-spec 0.17.28 (smcv)
 
+* Gabble now loads certificates from ~/.config/telepathy/certs/ as well as
+  from the system-wide location (/etc/ssl/certs/ca-certificates.crt).
+
 Fixes:
 
 * Improve pubsub.c test coverage (cassidy)

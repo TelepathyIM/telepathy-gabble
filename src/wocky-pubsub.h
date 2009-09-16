@@ -67,13 +67,13 @@ typedef gboolean (* WockyPubsubEventHandlerFunction) (WockyPubsub *pubsub,
     gpointer user_data);
 
 guint wocky_pubsub_register_event_handler (WockyPubsub *pubsub,
-    const gchar *ns,
+    const gchar *node,
     WockyPubsubEventHandlerFunction func,
     gpointer user_data);
 
 void wocky_pubsub_send_query_async (WockyPubsub *pubsub,
     const gchar *jid,
-    const gchar *ns,
+    const gchar *node,
     GCancellable *cancellable,
     GAsyncReadyCallback callback,
     gpointer user_data);

@@ -29,20 +29,20 @@ G_DEFINE_TYPE (WockyPubsub, wocky_pubsub, G_TYPE_OBJECT)
 
 typedef struct
 {
-    gchar *ns;
+    gchar *node;
     WockyPubsubEventHandlerFunction handle_function;
     gpointer user_data;
     guint id;
 } PubsubEventHandler;
 
 static PubsubEventHandler *
-pubsub_event_handler_new (const gchar *ns,
+pubsub_event_handler_new (const gchar *node,
     WockyPubsubEventHandlerFunction func,
     gpointer user_data,
     guint id)
 {
   PubsubEventHandler *handler = g_slice_new (PubsubEventHandler);
-  handler->ns = g_strdup (ns);
+  handler->node = g_strdup (node);
   handler->handle_function = func;
   handler->user_data = user_data;
   handler->id = id;
@@ -53,7 +53,7 @@ pubsub_event_handler_new (const gchar *ns,
 static void
 pubsub_event_handler_free (PubsubEventHandler *handler)
 {
-  g_free (handler->ns);
+  g_free (handler->node);
   g_slice_free (PubsubEventHandler, handler);
 }
 
@@ -211,7 +211,7 @@ gabble_pubsub_event_handler (WockyPubsub *self,
     {
       PubsubEventHandler *handler = l->data;
 
-      if (!wocky_strdiff (handler->ns, event_ns))
+      if (!wocky_strdiff (handler->node, event_ns))
         {
           handler->handle_function (self, msg, from, handler->user_data);
           return TRUE;
@@ -245,7 +245,7 @@ send_query_cb (GObject *source,
 void
 wocky_pubsub_send_query_async (WockyPubsub *self,
     const gchar *jid,
-    const gchar *ns,
+    const gchar *node,
     GCancellable *cancellable,
     GAsyncReadyCallback callback,
     gpointer user_data)
@@ -262,7 +262,7 @@ wocky_pubsub_send_query_async (WockyPubsub *self,
       WOCKY_NODE, "pubsub",
         WOCKY_NODE_XMLNS, WOCKY_XMPP_NS_PUBSUB,
         WOCKY_NODE, "items",
-          WOCKY_NODE_ATTRIBUTE, "node", ns,
+          WOCKY_NODE_ATTRIBUTE, "node", node,
         WOCKY_NODE_END,
       WOCKY_NODE_END, WOCKY_STANZA_END);
 
@@ -398,7 +398,7 @@ wocky_pubsub_start (WockyPubsub *self,
 
 guint
 wocky_pubsub_register_event_handler (WockyPubsub *self,
-    const gchar *ns,
+    const gchar *node,
     WockyPubsubEventHandlerFunction func,
     gpointer user_data)
 {
@@ -406,7 +406,8 @@ wocky_pubsub_register_event_handler (WockyPubsub *self,
   PubsubEventHandler *handler;
 
   priv->last_id_used++;
-  handler = pubsub_event_handler_new (ns, func, user_data, priv->last_id_used);
+  handler = pubsub_event_handler_new (node, func, user_data,
+      priv->last_id_used);
 
   priv->handlers = g_slist_append (priv->handlers, handler);
 

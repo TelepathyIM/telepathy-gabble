@@ -23,8 +23,6 @@
 #include <wocky/wocky-utils.h>
 #include <wocky/wocky-namespaces.h>
 
-#include "util.h"
-
 G_DEFINE_TYPE (WockyPubsub, wocky_pubsub, G_TYPE_OBJECT)
 
 typedef struct

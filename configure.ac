@@ -8,9 +8,9 @@ AC_PREREQ([2.59])
 #   set gabble_nano_version to 0.
 
 m4_define([gabble_major_version], [0])
-m4_define([gabble_minor_version], [8])
-m4_define([gabble_micro_version], [999])
-m4_define([gabble_nano_version], [1])
+m4_define([gabble_minor_version], [9])
+m4_define([gabble_micro_version], [0])
+m4_define([gabble_nano_version], [0])
 
 # Some magic
 m4_define([gabble_base_version],

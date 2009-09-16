@@ -143,6 +143,7 @@ typedef struct {
     gulong removed_id;
     gchar *name;
     const gchar *nat_traversal;
+    gboolean initial;
 } StreamCreationData;
 
 struct _delayed_request_streams_ctx {
@@ -186,7 +187,7 @@ static void session_terminated_cb (GabbleJingleSession *session,
 static void session_new_content_cb (GabbleJingleSession *session,
     GabbleJingleContent *c, gpointer user_data);
 static void create_stream_from_content (GabbleMediaChannel *chan,
-    GabbleJingleContent *c);
+    GabbleJingleContent *c, gboolean initial);
 static gboolean contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer,
     gboolean *wait, GError **error);
 static void stream_creation_data_cancel (gpointer p, gpointer unused);
@@ -228,7 +229,7 @@ create_initial_streams (GabbleMediaChannel *chan)
           g_assert_not_reached ();
         }
 
-      create_stream_from_content (chan, c);
+      create_stream_from_content (chan, c, TRUE);
     }
 
   DEBUG ("initial_audio: %s, initial_video: %s",
@@ -2496,7 +2497,8 @@ construct_stream (GabbleMediaChannel *chan,
                   GabbleJingleContent *c,
                   const gchar *name,
                   const gchar *nat_traversal,
-                  const GPtrArray *relays)
+                  const GPtrArray *relays,
+                  gboolean initial)
 {
   GObject *chan_o = (GObject *) chan;
   GabbleMediaChannelPrivate *priv = chan->priv;
@@ -2552,6 +2554,17 @@ construct_stream (GabbleMediaChannel *chan,
       (GCallback) stream_state_changed_cb, chan_o);
   gabble_signal_connect_weak (stream, "notify::combined-direction",
       (GCallback) stream_direction_changed_cb, chan_o);
+
+  if (initial)
+    {
+      /* If we accepted the call, then automagically accept the initial streams
+       * when they pop up */
+      if (tp_handle_set_is_member (chan->group.members,
+          chan->group.self_handle))
+        {
+          gabble_media_stream_accept_pending_local_send (stream);
+        }
+    }
 
   /* emit StreamAdded */
   mtype = gabble_media_stream_get_media_type (stream);
@@ -2627,7 +2640,8 @@ construct_stream_later_cb (gpointer user_data)
   StreamCreationData *d = user_data;
 
   if (d->content != NULL && d->self != NULL)
-    construct_stream (d->self, d->content, d->name, d->nat_traversal, NULL);
+    construct_stream (d->self, d->content, d->name, d->nat_traversal, NULL,
+      d->initial);
 
   return FALSE;
 }
@@ -2639,7 +2653,8 @@ google_relay_session_cb (GPtrArray *relays,
   StreamCreationData *d = user_data;
 
   if (d->content != NULL && d->self != NULL)
-    construct_stream (d->self, d->content, d->name, d->nat_traversal, relays);
+    construct_stream (d->self, d->content, d->name, d->nat_traversal, relays,
+      d->initial);
 
   stream_creation_data_free (d);
 }
@@ -2685,7 +2700,8 @@ content_removed_cb (GabbleJingleContent *content,
 
 static void
 create_stream_from_content (GabbleMediaChannel *self,
-                            GabbleJingleContent *c)
+                            GabbleJingleContent *c,
+                            gboolean initial)
 {
   gchar *name;
   StreamCreationData *d;
@@ -2706,6 +2722,7 @@ create_stream_from_content (GabbleMediaChannel *self,
   d->self = self;
   d->name = name;
   d->content = g_object_ref (c);
+  d->initial = initial;
 
   g_object_add_weak_pointer (G_OBJECT (d->self), (gpointer *) &d->self);
 
@@ -2752,7 +2769,7 @@ session_new_content_cb (GabbleJingleSession *session,
 
   DEBUG ("called");
 
-  create_stream_from_content (chan, c);
+  create_stream_from_content (chan, c, FALSE);
 }
 
 static void

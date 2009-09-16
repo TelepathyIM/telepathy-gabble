@@ -67,7 +67,7 @@ gibber-signals-marshal.list: $(OUR_SOURCES) Makefile.am
 	} > $@
 
 
-AM_CFLAGS = $(ERROR_CFLAGS) $(GCOV_CFLAGS) @GLIB_CFLAGS@
+AM_CFLAGS = $(ERROR_CFLAGS) $(GCOV_CFLAGS) @GLIB_CFLAGS@ -fno-strict-aliasing
 
 AM_LDFLAGS = $(GCOV_LIBS) @GLIB_LIBS@ @RESOLV_LIBS@
 

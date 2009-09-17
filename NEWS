@@ -1,3 +1,11 @@
+telepathy-gabble 0.8.4 (UNRELEASED)
+===================================
+
+Fixes:
+
+* When receiving a file, Gabble now closes the local socket once all the data
+  has been written.
+
 telepathy-gabble 0.8.3 (2009-09-10)
 ===================================
 

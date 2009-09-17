@@ -7,6 +7,9 @@ Enhancements:
 
 Fixes:
 
+* When receiving a file, Gabble now closes the local socket once all the data
+  has been written.
+
 telepathy-gabble 0.9.0 (2009-09-16)
 ===================================
 

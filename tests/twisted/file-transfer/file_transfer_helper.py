@@ -261,9 +261,11 @@ class ReceiveFileTest(FileTransferTest):
         e = self.q.expect('dbus-signal', signal='TransferredBytesChanged')
         count = e.args[0]
 
-        while read < to_receive:
-            data += s.recv(to_receive - read)
-            read = len(data)
+        while True:
+            received = s.recv(1024)
+            if len(received) == 0:
+                break
+            data += received
         assert data == self.file.data[self.file.offset:]
 
         while count < to_receive:

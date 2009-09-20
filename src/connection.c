@@ -407,9 +407,6 @@ gabble_connection_init (GabbleConnection *self)
   self->priv = priv;
   self->lmconn = lm_connection_new ();
 
-  /* Override LM domain log handler. */
-  gabble_lm_debug ();
-
   priv->caps_serial = 1;
   priv->port = 5222;
 

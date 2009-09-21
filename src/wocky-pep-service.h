@@ -72,6 +72,9 @@ WockyXmppStanza * wocky_pep_service_get_finish (WockyPepService *pep,
     GAsyncResult *result,
     GError **error);
 
+WockyXmppStanza * wocky_pep_service_make_publish_stanza (WockyPepService *pep,
+    WockyXmppNode **item);
+
 G_END_DECLS
 
 #endif /* __WOCKY_PEP_SERVICE_H__ */

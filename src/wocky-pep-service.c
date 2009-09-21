@@ -21,18 +21,20 @@
 
 #include <wocky/wocky-porter.h>
 #include <wocky/wocky-utils.h>
+#include <wocky/wocky-namespaces.h>
+
+#include "gabble-signals-marshal.h"
 
 G_DEFINE_TYPE (WockyPepService, wocky_pep_service, G_TYPE_OBJECT)
 
 /* signal enum */
 enum
 {
+  CHANGED,
   LAST_SIGNAL,
 };
 
-/*
 static guint signals[LAST_SIGNAL] = {0};
-*/
 
 enum
 {
@@ -47,9 +49,11 @@ struct _WockyPepServicePrivate
 {
   WockySession *session;
   WockyPorter *porter;
+  WockyContactFactory *contact_factory;
 
   gchar *node;
   gboolean subscribe;
+  guint handler_id;
 
   gboolean dispose_has_run;
 };
@@ -125,8 +129,17 @@ wocky_pep_service_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  if (priv->handler_id != 0)
+    {
+      wocky_porter_unregister_handler (priv->porter, priv->handler_id);
+      priv->handler_id = 0;
+    }
+
   if (priv->porter != NULL)
     g_object_unref (priv->porter);
+
+  if (priv->contact_factory != NULL)
+    g_object_unref (priv->contact_factory);
 
   if (G_OBJECT_CLASS (wocky_pep_service_parent_class)->dispose)
     G_OBJECT_CLASS (wocky_pep_service_parent_class)->dispose (object);
@@ -178,6 +191,14 @@ wocky_pep_service_class_init (WockyPepServiceClass *wocky_pep_service_class)
       FALSE,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SUBSCRIBE, param_spec);
+
+  signals[CHANGED] = g_signal_new ("changed",
+      G_OBJECT_CLASS_TYPE (wocky_pep_service_class),
+      G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+      0,
+      NULL, NULL,
+      gabble_marshal_VOID__OBJECT_OBJECT,
+      G_TYPE_NONE, 2, G_TYPE_OBJECT, G_TYPE_OBJECT);
 }
 
 WockyPepService *
@@ -188,6 +209,29 @@ wocky_pep_service_new (const gchar *node,
       "node", node,
       "subscribe", subscribe,
       NULL);
+}
+
+static gboolean
+msg_event_cb (WockyPorter *porter,
+    WockyXmppStanza *stanza,
+    gpointer user_data)
+{
+  WockyPepService *self = WOCKY_PEP_SERVICE (user_data);
+  WockyPepServicePrivate *priv = WOCKY_PEP_SERVICE_GET_PRIVATE (self);
+  const gchar *from;
+  WockyBareContact *contact;
+
+  from = wocky_xmpp_node_get_attribute (stanza->node, "from");
+  if (from == NULL)
+    return FALSE;
+
+  contact = wocky_contact_factory_ensure_bare_contact (
+      priv->contact_factory, from);
+
+  g_signal_emit (G_OBJECT (self), signals[CHANGED], 0, contact, stanza);
+
+  g_object_unref (contact);
+  return TRUE;
 }
 
 void
@@ -201,4 +245,20 @@ wocky_pep_service_start (WockyPepService *self,
 
   priv->porter = wocky_session_get_porter (priv->session);
   g_object_ref (priv->porter);
+
+  priv->contact_factory = wocky_session_get_contact_factory (priv->session);
+  g_object_ref (priv->contact_factory);
+
+  /* Register event handler */
+  priv->handler_id = wocky_porter_register_handler (priv->porter,
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE, NULL,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX,
+      msg_event_cb, self,
+      WOCKY_NODE, "event",
+        WOCKY_NODE_XMLNS, WOCKY_XMPP_NS_PUBSUB_EVENT,
+        WOCKY_NODE, "items",
+        WOCKY_NODE_ATTRIBUTE, "node", priv->node,
+        WOCKY_NODE_END,
+      WOCKY_NODE_END,
+      WOCKY_STANZA_END);
 }

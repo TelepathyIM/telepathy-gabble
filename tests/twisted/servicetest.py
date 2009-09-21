@@ -142,7 +142,7 @@ class BaseEventQueue:
             self._check_forbidden(event)
 
             for i, pattern in enumerate(patterns):
-                if pattern.match(event):
+                if ret[i] is None and pattern.match(event):
                     self.log('handled')
                     self.log('')
                     ret[i] = event
@@ -221,6 +221,16 @@ class EventQueueTest(unittest.TestCase):
             EventPattern('foo'))
         assert bar.type == 'bar'
         assert foo.type == 'foo'
+
+    def test_expect_many2(self):
+        # Test that events are only matched against patterns that haven't yet
+        # been matched. This tests a regression.
+        queue = TestEventQueue([Event('foo', x=1), Event('foo', x=2)])
+        foo1, foo2 = queue.expect_many(
+            EventPattern('foo'),
+            EventPattern('foo'))
+        assert foo1.type == 'foo' and foo1.x == 1
+        assert foo2.type == 'foo' and foo2.x == 2
 
     def test_timeout(self):
         queue = TestEventQueue([])

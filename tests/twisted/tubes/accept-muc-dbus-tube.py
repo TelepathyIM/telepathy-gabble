@@ -76,8 +76,9 @@ def test(q, bus, conn, stream, access_control):
 
     call_async(q, dbus_tube_iface, 'Accept', access_control)
 
-    return_event, names_changed, presence_event = q.expect_many(
+    return_event, names_changed1, names_changed2, presence_event = q.expect_many(
         EventPattern('dbus-return', method='Accept'),
+        EventPattern('dbus-signal', signal='DBusNamesChanged', interface=cs.CHANNEL_TYPE_DBUS_TUBE),
         EventPattern('dbus-signal', signal='DBusNamesChanged', interface=cs.CHANNEL_TYPE_DBUS_TUBE),
         EventPattern('stream-presence', to='chat@conf.localhost/test'))
 
@@ -100,7 +101,11 @@ def test(q, bus, conn, stream, access_control):
     dbus_names = tube_chan.Get(cs.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=cs.PROPERTIES_IFACE)
     assertEquals({bob_handle: bob_bus_name, tubes_self_handle: self_bus_name}, dbus_names)
 
-    added, removed = names_changed.args
+    added, removed = names_changed1.args
+    assertEquals({bob_handle: bob_bus_name}, added)
+    assertEquals([], removed)
+
+    added, removed = names_changed2.args
     assertEquals({tubes_self_handle: self_bus_name}, added)
     assertEquals([], removed)
 

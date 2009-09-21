@@ -595,7 +595,6 @@ transport_buffer_empty_cb (GibberTransport *transport,
     }
   else if (priv->write_blocked)
     {
-      DEBUG ("buffer is empty, unblock write to the bytestream");
       change_write_blocked_state (self, FALSE);
     }
 }
@@ -1188,8 +1187,6 @@ transport_handler (GibberTransport *transport,
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gsize used_bytes;
 
-  DEBUG ("got %" G_GSIZE_FORMAT " bytes from sock5 transport", data->length);
-
   g_assert (priv->read_buffer != NULL);
   g_string_append_len (priv->read_buffer, (const gchar *) data->data,
       data->length);
@@ -1358,17 +1355,11 @@ gabble_bytestream_socks5_send (GabbleBytestreamIface *iface,
       return FALSE;
     }
 
-  if (priv->write_blocked)
-    {
-      DEBUG ("sending data while the bytestream was blocked");
-    }
-
   /* if something goes wrong during the sending, the bytestream could be
    * closed and so disposed by the bytestream factory. Ref it to keep it
    * artifically alive if such case happen. */
   g_object_ref (self);
 
-  DEBUG ("send %u bytes through bytestream", len);
   if (!write_to_transport (self, str, len, &error))
     {
       DEBUG ("sending failed: %s", error->message);
@@ -1393,7 +1384,6 @@ gabble_bytestream_socks5_send (GabbleBytestreamIface *iface,
   if (!gibber_transport_buffer_is_empty (priv->transport))
     {
       /* We >don't want to send more data while the buffer isn't empty */
-      DEBUG ("buffer isn't empty. Block write to the bytestream");
       change_write_blocked_state (self, TRUE);
     }
 
@@ -1932,8 +1922,6 @@ gabble_bytestream_socks5_block_reading (GabbleBytestreamIface *iface,
     return;
 
   priv->read_blocked = block;
-
-  DEBUG ("%s the transport bytestream", block ? "block": "unblock");
 
   if (priv->transport != NULL)
     gibber_transport_block_receiving (priv->transport, block);

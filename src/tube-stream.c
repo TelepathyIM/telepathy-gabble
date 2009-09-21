@@ -247,8 +247,6 @@ transport_handler (GibberTransport *transport,
       return;
     }
 
-  DEBUG ("read %" G_GSIZE_FORMAT " bytes from socket", data->length);
-
   gabble_bytestream_iface_send (bytestream, data->length,
       (const gchar *) data->data);
 }
@@ -343,7 +341,6 @@ transport_buffer_empty_cb (GibberTransport *transport,
     }
 
   /* Buffer is empty so we can unblock the buffer if it was blocked */
-  DEBUG ("tube buffer is empty. Unblock the bytestream");
   gabble_bytestream_iface_block_reading (bytestream, FALSE);
 }
 
@@ -374,15 +371,6 @@ bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
   transport = g_hash_table_lookup (priv->bytestream_to_transport,
       bytestream);
   g_assert (transport != NULL);
-
-  if (blocked)
-    {
-      DEBUG ("bytestream blocked, stop to read data from the tube socket");
-    }
-  else
-    {
-      DEBUG ("bytestream unblocked, restart to read data from the tube socket");
-    }
 
   gibber_transport_block_receiving (transport, blocked);
 }
@@ -1773,8 +1761,6 @@ data_received_cb (GabbleBytestreamIface *bytestream,
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (tube);
   GibberTransport *transport;
   GError *error = NULL;
-
-  DEBUG ("received %" G_GSIZE_FORMAT " bytes from bytestream", data->len);
 
   transport = g_hash_table_lookup (priv->bytestream_to_transport, bytestream);
   g_assert (transport != NULL);

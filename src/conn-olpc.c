@@ -33,7 +33,6 @@
 #include "muc-channel.h"
 #include "presence-cache.h"
 #include "namespaces.h"
-#include "wocky-pubsub.h"
 #include "disco.h"
 #include "util.h"
 #include "olpc-activity.h"
@@ -497,7 +496,7 @@ transmit_properties (GabbleConnection *conn,
                      DBusGMethodInvocation *context)
 {
   LmMessage *msg;
-  LmMessageNode *publish;
+  WockyXmppNode *item, *props_node;
 
   gabble_connection_ensure_capabilities (conn,
       gabble_capabilities_get_olpc_notify ());
@@ -505,10 +504,12 @@ transmit_properties (GabbleConnection *conn,
   if (!check_pep (conn, context))
     return;
 
-  msg = pubsub_make_publish_msg (NULL, NS_OLPC_BUDDY_PROPS,
-      NS_OLPC_BUDDY_PROPS, "properties", &publish);
+  msg = wocky_pep_service_make_publish_stanza (conn->pep_olpc_buddy_props,
+      &item);
+  props_node = wocky_xmpp_node_add_child_ns (item, "properties",
+      NS_OLPC_BUDDY_PROPS);
 
-  lm_message_node_add_children_from_properties (publish, properties,
+  lm_message_node_add_children_from_properties (props_node, properties,
       "property");
 
   if (!_gabble_connection_send_with_reply (conn, msg,
@@ -1071,13 +1072,17 @@ upload_activities_pep (GabbleConnection *conn,
                        GError **error)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  LmMessageNode *publish;
-  LmMessage *msg = pubsub_make_publish_msg (NULL, NS_OLPC_ACTIVITIES,
-      NS_OLPC_ACTIVITIES, "activities", &publish);
+  WockyXmppNode *item, *activities;
+  LmMessage *msg;
   TpHandleSet *my_activities = g_hash_table_lookup
       (conn->olpc_pep_activities, GUINT_TO_POINTER (base->self_handle));
   GError *e = NULL;
   gboolean ret;
+
+  msg = wocky_pep_service_make_publish_stanza (conn->pep_olpc_activities,
+      &item);
+  activities = wocky_xmpp_node_add_child_ns (item, "activities",
+      NS_OLPC_ACTIVITIES);
 
   if (my_activities != NULL)
     {
@@ -1094,7 +1099,7 @@ upload_activities_pep (GabbleConnection *conn,
           if (!gabble_olpc_activity_is_visible (activity))
             continue;
 
-          activity_node = lm_message_node_add_child (publish,
+          activity_node = lm_message_node_add_child (activities,
               "activity", "");
           lm_message_node_set_attributes (activity_node,
               "type", activity->id,
@@ -1583,7 +1588,7 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   LmMessage *msg;
-  LmMessageNode *publish;
+  WockyXmppNode *item, *publish;
   const gchar *room = "";
 
   DEBUG ("called");
@@ -1611,8 +1616,10 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
         }
     }
 
-  msg = pubsub_make_publish_msg (NULL, NS_OLPC_CURRENT_ACTIVITY,
-      NS_OLPC_CURRENT_ACTIVITY, "activity", &publish);
+  msg = wocky_pep_service_make_publish_stanza (conn->pep_olpc_current_act,
+      &item);
+  publish = wocky_xmpp_node_add_child_ns (item, "activity",
+      NS_OLPC_CURRENT_ACTIVITY);
 
   lm_message_node_set_attributes (publish,
       "type", activity,
@@ -1704,13 +1711,16 @@ upload_activity_properties_pep (GabbleConnection *conn,
                                 GError **error)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  LmMessageNode *publish;
-  LmMessage *msg = pubsub_make_publish_msg (NULL, NS_OLPC_ACTIVITY_PROPS,
-      NS_OLPC_ACTIVITY_PROPS, "activities", &publish);
+  LmMessageNode *publish, *item;
+  LmMessage *msg;
   GError *e = NULL;
   gboolean ret;
   TpHandleSet *my_activities = g_hash_table_lookup (conn->olpc_pep_activities,
       GUINT_TO_POINTER (base->self_handle));
+
+  msg = wocky_pep_service_make_publish_stanza (conn->pep_olpc_act_props, &item);
+  publish = wocky_xmpp_node_add_child_ns (item, "activities",
+      NS_OLPC_ACTIVITY_PROPS);
 
   if (my_activities != NULL)
     {

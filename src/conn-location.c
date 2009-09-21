@@ -519,30 +519,34 @@ update_location_from_msg (GabbleConnection *conn,
   return TRUE;
 }
 
-static gboolean
-geolocation_event_handler (WockyPubsub *pubsub,
-    LmMessage *msg,
-    const gchar *from,
-    gpointer user_data)
+static void
+location_pep_node_changed (WockyPepService *pep,
+    WockyBareContact *contact,
+    WockyXmppStanza *stanza,
+    GabbleConnection *conn)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandle handle;
+  const gchar *jid;
 
-  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  jid = wocky_bare_contact_get_jid (contact);
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
   if (handle == 0)
     {
-      DEBUG ("Invalid from: %s", from);
-      return FALSE;
+      DEBUG ("Invalid from: %s", jid);
+      return;
     }
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
-    return TRUE;
+    goto out;
 
-  return update_location_from_msg (conn, from, msg);
+  update_location_from_msg (conn, jid, stanza);
+
+out:
+  tp_handle_unref (contact_repo, handle);
 }
 
 static void
@@ -580,6 +584,8 @@ conn_location_init (GabbleConnection *conn)
     TP_IFACE_CONNECTION_INTERFACE_LOCATION,
     conn_location_fill_contact_attributes);
 
-  conn->pubsub_location_event_id = wocky_pubsub_register_event_handler (
-      conn->pubsub, NS_GEOLOC, geolocation_event_handler, conn);
+  conn->pep_location = wocky_pep_service_new (NS_GEOLOC, TRUE);
+
+  g_signal_connect (conn->pep_location, "changed",
+      G_CALLBACK (location_pep_node_changed), conn);
 }

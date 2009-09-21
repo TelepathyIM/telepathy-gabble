@@ -30,6 +30,7 @@
 #include <telepathy-glib/dbus-properties-mixin.h>
 
 #include <wocky/wocky-session.h>
+#include "wocky-pep-service.h"
 
 #include "capabilities.h"
 #include "error.h"
@@ -194,7 +195,7 @@ struct _GabbleConnection {
     /* pubsub */
     WockyPubsub *pubsub;
     guint pubsub_alias_event_id;
-    guint pubsub_location_event_id;
+    WockyPepService *pep_location;
     guint pubsub_olpc_buddy_props_event_id;
     guint pubsub_olpc_activities_event_id;
     guint pubsub_olpc_current_act_props_event_id;

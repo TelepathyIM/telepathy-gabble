@@ -194,7 +194,7 @@ struct _GabbleConnection {
 
     /* pubsub */
     WockyPubsub *pubsub;
-    guint pubsub_alias_event_id;
+    WockyPepService *pep_nick;
     WockyPepService *pep_location;
     guint pubsub_olpc_buddy_props_event_id;
     guint pubsub_olpc_activities_event_id;

@@ -32,7 +32,6 @@
 #include "debug.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include "wocky-pubsub.h"
 #include "request-pipeline.h"
 #include "roster.h"
 #include "util.h"
@@ -535,11 +534,12 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
         {
           /* Publish nick using PEP */
           LmMessage *msg;
-          LmMessageNode *publish;
+          WockyXmppNode *item;
 
-          msg = pubsub_make_publish_msg (NULL, NS_NICK, NS_NICK, "nick",
-              &publish);
-          lm_message_node_set_value (publish, alias);
+          msg = wocky_pep_service_make_publish_stanza (data->conn->pep_nick,
+              &item);
+          wocky_xmpp_node_add_child_with_content_ns (item, "nick",
+              alias, NS_NICK);
 
           _gabble_connection_send_with_reply (data->conn, msg,
               nick_publish_msg_reply_cb, NULL, NULL, NULL);
@@ -658,35 +658,34 @@ _grab_nickname (GabbleConnection *self,
 }
 
 
-static gboolean
-gabble_conn_aliasing_pep_nick_event_handler (WockyPubsub *pubsub,
-    LmMessage *msg,
-    const gchar *from,
-    gpointer user_data)
+static void
+location_nick_node_changed (WockyPepService *pep,
+    WockyBareContact *contact,
+    WockyXmppStanza *stanza,
+    GabbleConnection *conn)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *node;
   TpHandle handle;
+  const gchar *jid;
 
-  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  jid = wocky_bare_contact_get_jid (contact);
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
   if (handle == 0)
     {
-      DEBUG ("Invalid from: %s", from);
-      return FALSE;
+      DEBUG ("Invalid from: %s", jid);
+      return;
     }
 
-  node = lm_message_node_find_child (msg->node, "item");
+  node = lm_message_node_find_child (stanza->node, "item");
   if (NULL == node)
     {
-    NODE_DEBUG (msg->node, "PEP event without item node, ignoring");
-    return FALSE;
+    NODE_DEBUG (stanza->node, "PEP event without item node, ignoring");
+    return;
   }
 
   _grab_nickname (conn, handle, node);
-
-  return TRUE;
 }
 
 
@@ -1040,8 +1039,10 @@ conn_aliasing_init (GabbleConnection *conn)
     TP_IFACE_CONNECTION_INTERFACE_ALIASING,
     conn_aliasing_fill_contact_attributes);
 
-  conn->pubsub_alias_event_id = wocky_pubsub_register_event_handler (
-      conn->pubsub, NS_NICK, gabble_conn_aliasing_pep_nick_event_handler, conn);
+  conn->pep_nick = wocky_pep_service_new (NS_NICK, TRUE);
+
+  g_signal_connect (conn->pep_nick, "changed",
+      G_CALLBACK (location_nick_node_changed), conn);
 }
 
 void

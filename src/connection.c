@@ -992,8 +992,6 @@ gabble_connection_dispose (GObject *object)
 
   /* unregister pubsub event handlers */
   wocky_pubsub_unregister_event_handler (self->pubsub,
-      self->pubsub_alias_event_id);
-  wocky_pubsub_unregister_event_handler (self->pubsub,
       self->pubsub_olpc_buddy_props_event_id);
   wocky_pubsub_unregister_event_handler (self->pubsub,
       self->pubsub_olpc_activities_event_id);
@@ -1006,6 +1004,12 @@ gabble_connection_dispose (GObject *object)
     {
       g_object_unref (self->pep_location);
       self->pep_location = NULL;
+    }
+
+  if (self->pep_nick != NULL)
+    {
+      g_object_unref (self->pep_nick);
+      self->pep_nick = NULL;
     }
 
   if (self->pubsub != NULL)
@@ -1546,6 +1550,7 @@ connector_connected (GabbleConnection *self,
 
   wocky_pubsub_start (self->pubsub, self->session);
   wocky_pep_service_start (self->pep_location, self->session);
+  wocky_pep_service_start (self->pep_nick, self->session);
 
   /* Don't use wocky_session_start as we don't want to start all the
    * components (Roster, presence-manager, etc) for now */

@@ -331,26 +331,19 @@ def test_too_slow(q, bus, conn, stream, req1, req2, media_chan, too_slow):
     # Make a misc method call to check that Gabble's still alive.
     sync_dbus(bus, q, conn)
 
+def exec_relay_test(incoming, too_slow=None):
+    exec_test(
+        lambda q, b, c, s:
+            test(q, b, c, s, incoming=incoming, too_slow=too_slow),
+        protocol=GoogleXmlStream)
+
 if __name__ == '__main__':
-    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True),
-            protocol=GoogleXmlStream)
-    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False),
-            protocol=GoogleXmlStream)
-    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True,
-                                      too_slow=TOO_SLOW_CLOSE),
-            protocol=GoogleXmlStream)
-    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False,
-                                      too_slow=TOO_SLOW_CLOSE),
-            protocol=GoogleXmlStream)
-    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True,
-                                      too_slow=TOO_SLOW_REMOVE_SELF),
-            protocol=GoogleXmlStream)
-    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False,
-                                      too_slow=TOO_SLOW_REMOVE_SELF),
-            protocol=GoogleXmlStream)
-    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=True,
-                                      too_slow=TOO_SLOW_DISCONNECT),
-            protocol=GoogleXmlStream)
-    exec_test(lambda q, b, c, s: test(q, b, c, s, incoming=False,
-                                      too_slow=TOO_SLOW_DISCONNECT),
-            protocol=GoogleXmlStream)
+    exec_relay_test(True)
+    exec_relay_test(False)
+    exec_relay_test(True,  TOO_SLOW_CLOSE)
+    exec_relay_test(False, TOO_SLOW_CLOSE)
+    exec_relay_test(True,  TOO_SLOW_REMOVE_SELF)
+    exec_relay_test(False, TOO_SLOW_REMOVE_SELF)
+    exec_relay_test(True,  TOO_SLOW_DISCONNECT)
+    exec_relay_test(False, TOO_SLOW_DISCONNECT)
+

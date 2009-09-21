@@ -261,4 +261,6 @@ wocky_pep_service_start (WockyPepService *self,
         WOCKY_NODE_END,
       WOCKY_NODE_END,
       WOCKY_STANZA_END);
+
+  /* TODO: subscribe to node if needed */
 }

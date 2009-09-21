@@ -10,51 +10,41 @@ import jingletest
 import gabbletest
 import constants as cs
 import dbus
-import BaseHTTPServer
 
-http_req = 0
+from twisted.web import http
 
-class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+from httptest import listen_http
 
-    def do_GET(self):
-        # A real request/response looks like this:
-        #
-        # GET /create_session HTTP/1.1
-        # Connection: Keep-Alive
-        # Content-Length: 0
-        # Host: relay.l.google.com
-        # User-Agent: farsight-libjingle
-        # X-Google-Relay-Auth: censored
-        # X-Talk-Google-Relay-Auth: censored
-        #
-        # HTTP/1.1 200 OK
-        # Content-Type: text/plain
-        # Date: Tue, 03 Mar 2009 18:33:28 GMT
-        # Server: MediaProxy
-        # Cache-Control: private, x-gzip-ok=""
-        # Transfer-Encoding: chunked
-        #
-        # c3
-        # relay.ip=74.125.47.126
-        # relay.udp_port=19295
-        # relay.tcp_port=19294
-        # relay.ssltcp_port=443
-        # stun.ip=74.125.47.126
-        # stun.port=19302
-        # username=censored
-        # password=censored
-        # magic_cookie=censored
-        #
-        # 0
-
-        global http_req
-
-        assert self.path == '/create_session'
-        self.send_response(200)
-        self.send_header('Content-Type', 'text/plain')
-        self.end_headers()
-        self.wfile.write("""
-c3
+# A real request/response looks like this:
+#
+# GET /create_session HTTP/1.1
+# Connection: Keep-Alive
+# Content-Length: 0
+# Host: relay.l.google.com
+# User-Agent: farsight-libjingle
+# X-Google-Relay-Auth: censored
+# X-Talk-Google-Relay-Auth: censored
+#
+# HTTP/1.1 200 OK
+# Content-Type: text/plain
+# Date: Tue, 03 Mar 2009 18:33:28 GMT
+# Server: MediaProxy
+# Cache-Control: private, x-gzip-ok=""
+# Transfer-Encoding: chunked
+#
+# c3
+# relay.ip=74.125.47.126
+# relay.udp_port=19295
+# relay.tcp_port=19294
+# relay.ssltcp_port=443
+# stun.ip=74.125.47.126
+# stun.port=19302
+# username=censored
+# password=censored
+# magic_cookie=censored
+#
+# 0
+response_template = """c3
 relay.ip=127.0.0.1
 relay.udp_port=11111
 relay.tcp_port=22222
@@ -64,8 +54,13 @@ stun.port=12345
 username=UUUUUUUU%d
 password=PPPPPPPP%d
 magic_cookie=MMMMMMMM
-""" % (http_req, http_req))
-        http_req += 1
+"""
+
+def handle_request(req, n):
+    req.setResponseCode(http.OK)
+    req.setHeader("Content-Type", "text/plain")
+    req.write(response_template % (n, n))
+    req.finish()
 
 TOO_SLOW_CLOSE = 1
 TOO_SLOW_REMOVE_SELF = 2
@@ -94,7 +89,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
                 to='test@localhost'),
             )[-1]
 
-    httpd = BaseHTTPServer.HTTPServer(('127.0.0.1', 0), HTTPHandler)
+    listen_port = listen_http(q, 0)
 
     jingleinfo = make_result_iq(stream, ji_event.stanza)
     stun = jingleinfo.firstChildElement().addElement('stun')
@@ -132,7 +127,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
     server['tcpssl'] = '443'
     # The special regression-test build of Gabble parses this attribute,
     # because we can't listen on port 80
-    server['gabble-test-http-port'] = str(httpd.server_port)
+    server['gabble-test-http-port'] = str(listen_port.getHost().port)
     stream.send(jingleinfo)
 
     # We need remote end's presence for capabilities
@@ -149,6 +144,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
 
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
     self_handle = conn.GetSelfHandle()
+    req_pattern = EventPattern('http-request', method='GET', path='/create_session')
 
     if incoming:
         # Remote end calls us
@@ -157,15 +153,18 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
         # FIXME: these signals are not observable by real clients, since they
         #        happen before NewChannels.
         # The caller is in members
-        e = q.expect('dbus-signal', signal='MembersChanged',
-                 args=[u'', [remote_handle], [], [], [], 0, 0])
-
         # We're pending because of remote_handle
-        e = q.expect('dbus-signal', signal='MembersChanged',
+        mc, _, e, req1, req2 = q.expect_many(
+            EventPattern('dbus-signal', signal='MembersChanged',
+                 args=[u'', [remote_handle], [], [], [], 0, 0]),
+            EventPattern('dbus-signal', signal='MembersChanged',
                  args=[u'', [], [], [self_handle], [], remote_handle,
-                       cs.GC_REASON_INVITED])
+                       cs.GC_REASON_INVITED]),
+            EventPattern('dbus-signal', signal='NewSessionHandler'),
+            req_pattern,
+            req_pattern)
 
-        media_chan = make_channel_proxy(conn, tp_path_prefix + e.path,
+        media_chan = make_channel_proxy(conn, tp_path_prefix + mc.path,
             'Channel.Interface.Group')
     else:
         call_async(q, conn.Requests, 'CreateChannel',
@@ -184,19 +183,22 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
                 'Channel.Type.StreamedMedia')
         call_async(q, media_iface, 'RequestStreams',
                 remote_handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
+        e, req1, req2 = q.expect_many(
+            EventPattern('dbus-signal', signal='NewSessionHandler'),
+            req_pattern,
+            req_pattern)
 
     # S-E gets notified about new session handler, and calls Ready on it
-    e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
 
     if too_slow is not None:
-        test_too_slow(q, bus, conn, stream, httpd, media_chan, too_slow)
+        test_too_slow(q, bus, conn, stream, req1, req2, media_chan, too_slow)
         return
 
     # In response to the streams call, we now have two HTTP requests
     # (for RTP and RTCP)
-    httpd.handle_request()
-    httpd.handle_request()
+    handle_request(req1.request, 0)
+    handle_request(req2.request, 1)
 
     if not incoming:
         # Now that we have the relay info, RequestStreams can return
@@ -256,21 +258,12 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
     assert (2, 'tcp') in credentials
     assert (2, 'tls') in credentials
 
-    if incoming:
-        # this one runs first so it gets the smaller numbers
-        assert ('0', 'udp') in credentials_used
-        assert ('0', 'tcp') in credentials_used
-        assert ('0', 'tls') in credentials_used
-        assert ('1', 'udp') in credentials_used
-        assert ('1', 'tcp') in credentials_used
-        assert ('1', 'tls') in credentials_used
-    else:
-        assert ('2', 'udp') in credentials_used
-        assert ('2', 'tcp') in credentials_used
-        assert ('2', 'tls') in credentials_used
-        assert ('3', 'udp') in credentials_used
-        assert ('3', 'tcp') in credentials_used
-        assert ('3', 'tls') in credentials_used
+    assert ('0', 'udp') in credentials_used
+    assert ('0', 'tcp') in credentials_used
+    assert ('0', 'tls') in credentials_used
+    assert ('1', 'udp') in credentials_used
+    assert ('1', 'tcp') in credentials_used
+    assert ('1', 'tls') in credentials_used
 
     # consistency check, since we currently reimplement Get separately
     for k in sh_props:
@@ -295,7 +288,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
 
     # Tests completed, close the connection
 
-def test_too_slow(q, bus, conn, stream, httpd, media_chan, too_slow):
+def test_too_slow(q, bus, conn, stream, req1, req2, media_chan, too_slow):
     """
     Regression test for a bug where if the channel was closed before the HTTP
     responses arrived, the responses finally arriving crashed Gabble.
@@ -332,8 +325,8 @@ def test_too_slow(q, bus, conn, stream, httpd, media_chan, too_slow):
     q.expect_many(e)
 
     # Now Google answers!
-    httpd.handle_request()
-    httpd.handle_request()
+    handle_request(req1.request, 2)
+    handle_request(req2.request, 3)
 
     # Make a misc method call to check that Gabble's still alive.
     sync_dbus(bus, q, conn)

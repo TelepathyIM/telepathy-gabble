@@ -957,7 +957,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
         else if (string->str[3] == 0x00)
           {
             DEBUG ("Got 0x00 as domain. Pretend it's ok to be able to interop "
-                "with ejabber < 2.0.2");
+                "with ejabberd < 2.0.2");
             addr_len = 0;
           }
         else

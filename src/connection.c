@@ -990,16 +990,6 @@ gabble_connection_dispose (GObject *object)
       priv->disconnect_timer = 0;
     }
 
-  /* unregister pubsub event handlers */
-  wocky_pubsub_unregister_event_handler (self->pubsub,
-      self->pubsub_olpc_buddy_props_event_id);
-  wocky_pubsub_unregister_event_handler (self->pubsub,
-      self->pubsub_olpc_activities_event_id);
-  wocky_pubsub_unregister_event_handler (self->pubsub,
-      self->pubsub_olpc_current_act_props_event_id);
-  wocky_pubsub_unregister_event_handler (self->pubsub,
-      self->pubsub_olpc_act_props_props_event_id);
-
   if (self->pep_location != NULL)
     {
       g_object_unref (self->pep_location);
@@ -1010,6 +1000,30 @@ gabble_connection_dispose (GObject *object)
     {
       g_object_unref (self->pep_nick);
       self->pep_nick = NULL;
+    }
+
+  if (self->pep_olpc_buddy_props != NULL)
+    {
+      g_object_unref (self->pep_olpc_buddy_props);
+      self->pep_olpc_buddy_props = NULL;
+    }
+
+  if (self->pep_olpc_activities != NULL)
+    {
+      g_object_unref (self->pep_olpc_activities);
+      self->pep_olpc_activities = NULL;
+    }
+
+  if (self->pep_olpc_current_act != NULL)
+    {
+      g_object_unref (self->pep_olpc_current_act);
+      self->pep_olpc_current_act = NULL;
+    }
+
+  if (self->pep_olpc_act_props != NULL)
+    {
+      g_object_unref (self->pep_olpc_act_props);
+      self->pep_olpc_act_props = NULL;
     }
 
   if (self->pubsub != NULL)
@@ -1551,6 +1565,10 @@ connector_connected (GabbleConnection *self,
   wocky_pubsub_start (self->pubsub, self->session);
   wocky_pep_service_start (self->pep_location, self->session);
   wocky_pep_service_start (self->pep_nick, self->session);
+  wocky_pep_service_start (self->pep_olpc_buddy_props, self->session);
+  wocky_pep_service_start (self->pep_olpc_activities, self->session);
+  wocky_pep_service_start (self->pep_olpc_current_act, self->session);
+  wocky_pep_service_start (self->pep_olpc_act_props, self->session);
 
   /* Don't use wocky_session_start as we don't want to start all the
    * components (Roster, presence-manager, etc) for now */

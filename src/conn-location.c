@@ -13,7 +13,6 @@
 
 #include "debug.h"
 #include "namespaces.h"
-#include "wocky-pubsub.h"
 #include "presence-cache.h"
 #include "util.h"
 
@@ -274,6 +273,7 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *msg;
   LmMessageNode *geoloc;
+  WockyXmppNode *item;
   GHashTableIter iter;
   gpointer key, value;
   GError *err = NULL;
@@ -292,8 +292,8 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
 
   gabble_connection_ensure_capabilities (conn,
       gabble_capabilities_get_geoloc_notify ());
-  msg = pubsub_make_publish_msg (NULL, NS_GEOLOC, NS_GEOLOC, "geoloc",
-      &geoloc);
+  msg = wocky_pep_service_make_publish_stanza (conn->pep_location, &item);
+  geoloc = wocky_xmpp_node_add_child_ns (item, "geoloc", NS_GEOLOC);
 
   DEBUG ("SetLocation to");
 

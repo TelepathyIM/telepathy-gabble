@@ -1,6 +1,6 @@
 import dbus
 
-from servicetest import call_async, EventPattern
+from servicetest import assertEquals, assertNotEquals, call_async, EventPattern
 from gabbletest import exec_test, acknowledge_iq, make_muc_presence
 import constants as cs
 
@@ -52,16 +52,18 @@ def test(q, bus, conn, stream, access_control):
     channels = event.args[0]
     path, props = channels[0]
 
-    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
-    assert props[cs.INITIATOR_ID] == 'chat@conf.localhost/bob'
+    assertEquals(cs.CHANNEL_TYPE_DBUS_TUBE, props[cs.CHANNEL_TYPE])
+    assertEquals('chat@conf.localhost/bob', props[cs.INITIATOR_ID])
     bob_handle = props[cs.INITIATOR_HANDLE]
-    assert props[cs.INTERFACES] == [cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_TUBE]
-    assert props[cs.REQUESTED] == False
-    assert props[cs.TARGET_ID] == 'chat@conf.localhost'
-    assert props[cs.DBUS_TUBE_SERVICE_NAME] == 'com.example.Test'
-    assert props[cs.TUBE_PARAMETERS] == {'foo': 'bar'}
-    assert props[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS] == [cs.SOCKET_ACCESS_CONTROL_CREDENTIALS,
-        cs.SOCKET_ACCESS_CONTROL_LOCALHOST]
+    assertEquals([cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_TUBE],
+        props[cs.INTERFACES])
+    assertEquals(False, props[cs.REQUESTED])
+    assertEquals('chat@conf.localhost', props[cs.TARGET_ID])
+    assertEquals('com.example.Test', props[cs.DBUS_TUBE_SERVICE_NAME])
+    assertEquals({'foo': 'bar'}, props[cs.TUBE_PARAMETERS])
+    assertEquals([cs.SOCKET_ACCESS_CONTROL_CREDENTIALS,
+                    cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
+        props[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS])
 
     tube_chan = bus.get_object(conn.bus_name, path)
     tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_IFACE_TUBE)
@@ -70,7 +72,7 @@ def test(q, bus, conn, stream, access_control):
 
     # only Bob is in DBusNames
     dbus_names = tube_chan.Get(cs.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=cs.PROPERTIES_IFACE)
-    assert dbus_names == {bob_handle: bob_bus_name}
+    assertEquals({bob_handle: bob_bus_name}, dbus_names)
 
     call_async(q, dbus_tube_iface, 'Accept', access_control)
 
@@ -84,23 +86,23 @@ def test(q, bus, conn, stream, access_control):
 
     # check presence stanza
     tube_node = xpath.queryForNodes('/presence/tubes/tube', presence_event.stanza)[0]
-    assert tube_node['initiator'] == 'chat@conf.localhost/bob'
-    assert tube_node['service'] == 'com.example.Test'
-    assert tube_node['stream-id'] == '10'
-    assert tube_node['type'] == 'dbus'
-    assert tube_node['id'] == '1'
+    assertEquals('chat@conf.localhost/bob', tube_node['initiator'])
+    assertEquals('com.example.Test', tube_node['service'])
+    assertEquals('10', tube_node['stream-id'])
+    assertEquals('dbus', tube_node['type'])
+    assertEquals('1', tube_node['id'])
     self_bus_name = tube_node['dbus-name']
 
     tubes_self_handle = tube_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
-    assert tubes_self_handle != 0
+    assertNotEquals(0, tubes_self_handle)
 
     # both of us are in DBusNames now
     dbus_names = tube_chan.Get(cs.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=cs.PROPERTIES_IFACE)
-    assert dbus_names == {bob_handle: bob_bus_name, tubes_self_handle: self_bus_name}
+    assertEquals({bob_handle: bob_bus_name, tubes_self_handle: self_bus_name}, dbus_names)
 
     added, removed = names_changed.args
-    assert added == {tubes_self_handle: self_bus_name}
-    assert removed == []
+    assertEquals({tubes_self_handle: self_bus_name}, added)
+    assertEquals([], removed)
 
     tube_chan_iface.Close()
     q.expect_many(

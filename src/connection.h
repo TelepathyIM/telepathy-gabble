@@ -192,8 +192,7 @@ struct _GabbleConnection {
     /* file transfer manager */
     GabbleFtManager *ft_manager;
 
-    /* pubsub */
-    WockyPubsub *pubsub;
+    /* PEP */
     WockyPepService *pep_nick;
     WockyPepService *pep_location;
     WockyPepService *pep_olpc_buddy_props;

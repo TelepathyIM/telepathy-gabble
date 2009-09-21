@@ -68,7 +68,6 @@
 #include "olpc-gadget-manager.h"
 #include "presence-cache.h"
 #include "presence.h"
-#include "wocky-pubsub.h"
 #include "request-pipeline.h"
 #include "roomlist-manager.h"
 #include "roster.h"
@@ -326,8 +325,6 @@ gabble_connection_constructor (GType type,
       G_STRUCT_OFFSET (GabbleConnection, contacts));
 
   tp_base_connection_register_with_contacts_mixin (TP_BASE_CONNECTION (self));
-
-  self->pubsub = wocky_pubsub_new ();
 
   conn_aliasing_init (self);
   conn_avatars_init (self);
@@ -1026,12 +1023,6 @@ gabble_connection_dispose (GObject *object)
       self->pep_olpc_act_props = NULL;
     }
 
-  if (self->pubsub != NULL)
-    {
-      g_object_unref (self->pubsub);
-      self->pubsub = NULL;
-    }
-
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
 }
@@ -1562,7 +1553,6 @@ connector_connected (GabbleConnection *self,
 
   lm_connection_set_porter (self->lmconn, priv->porter);
 
-  wocky_pubsub_start (self->pubsub, self->session);
   wocky_pep_service_start (self->pep_location, self->session);
   wocky_pep_service_start (self->pep_nick, self->session);
   wocky_pep_service_start (self->pep_olpc_buddy_props, self->session);

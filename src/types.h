@@ -52,7 +52,6 @@ typedef struct _GabbleJingleTransportIceUdp GabbleJingleTransportIceUdp;
 typedef struct _GabbleJingleMediaRtp GabbleJingleMediaRtp;
 
 typedef struct _JingleCandidate JingleCandidate;
-typedef struct _WockyPubsub WockyPubsub;
 
 typedef enum {
     INITIATOR_INVALID = -1,

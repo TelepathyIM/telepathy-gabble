@@ -106,8 +106,6 @@ libgabble_convenience_la_SOURCES = \
     olpc-gadget-manager.c \
     olpc-view.h \
     olpc-view.c \
-    wocky-pubsub.h \
-    wocky-pubsub.c \
     wocky-pep-service.h \
     wocky-pep-service.c \
     presence.h \

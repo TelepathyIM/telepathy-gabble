@@ -88,7 +88,7 @@ pep_reply_cb (GObject *source,
   GError *error = NULL;
   const gchar *from;
 
-  reply_msg = wocky_pubsub_send_query_finish (WOCKY_PUBSUB (source), res,
+  reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
       &error);
   if (reply_msg == NULL)
     {
@@ -106,28 +106,35 @@ pep_reply_cb (GObject *source,
 
 static GHashTable *
 get_cached_location_or_query (GabbleConnection *conn,
-    TpHandle contact,
+    TpHandle handle,
     GError **error)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   GHashTable *location;
   const gchar *jid;
   TpHandleRepoIface *contact_repo;
+  WockyContactFactory *contact_factory;
+  WockyBareContact *contact;
 
   contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
-  jid = tp_handle_inspect (contact_repo, contact);
+  jid = tp_handle_inspect (contact_repo, handle);
 
-  location = gabble_presence_cache_get_location (conn->presence_cache, contact);
+  location = gabble_presence_cache_get_location (conn->presence_cache, handle);
   if (location != NULL)
     {
       DEBUG (" - %s: cached", jid);
       return location;
     }
 
-  /* Send a query */
-  wocky_pubsub_send_query_async (conn->pubsub, jid, NS_GEOLOC, NULL,
-      pep_reply_cb, conn);
+  contact_factory = wocky_session_get_contact_factory (conn->session);
+  contact = wocky_contact_factory_ensure_bare_contact (contact_factory,
+      jid);
 
+  /* Send a query */
+  wocky_pep_service_get_async (conn->pep_location, contact, NULL, pep_reply_cb,
+      conn);
+
+  g_object_unref (contact);
   return NULL;
 }
 

@@ -47,6 +47,9 @@ class EventPattern:
             del properties['predicate']
         self.properties = properties
 
+    def __repr__(self):
+        return 'EventPattern(%r, %r)' % (self.type, self.properties)
+
     def match(self, event):
         if event.type != self.type:
             return False
@@ -137,7 +140,15 @@ class BaseEventQueue:
         ret = [None] * len(patterns)
 
         while None in ret:
-            event = self.wait()
+            try:
+                event = self.wait()
+            except TimeoutError:
+                self.log('timeout')
+                self.log('still expecting:')
+                for i, pattern in enumerate(patterns):
+                    if ret[i] is None:
+                        self.log(' - %r' % pattern)
+                raise
             self.log_event(event)
             self._check_forbidden(event)
 

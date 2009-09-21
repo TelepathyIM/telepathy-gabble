@@ -21,6 +21,7 @@
 #define __WOCKY_PEP_SERVICE_H__
 
 #include <glib-object.h>
+#include <gio/gio.h>
 #include <wocky/wocky-xmpp-stanza.h>
 #include <wocky/wocky-session.h>
 
@@ -60,6 +61,16 @@ WockyPepService * wocky_pep_service_new (const gchar *node,
 
 void wocky_pep_service_start (WockyPepService *pep_service,
     WockySession *session);
+
+void wocky_pep_service_get_async (WockyPepService *pep,
+    WockyBareContact *contact,
+    GCancellable *cancellable,
+    GAsyncReadyCallback callback,
+    gpointer user_data);
+
+WockyXmppStanza * wocky_pep_service_get_finish (WockyPepService *pep,
+    GAsyncResult *result,
+    GError **error);
 
 G_END_DECLS
 

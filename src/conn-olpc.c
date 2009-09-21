@@ -383,7 +383,7 @@ get_properties_reply_cb (GObject *source,
   GHashTable *properties;
   LmMessageNode *node;
 
-  reply_msg = wocky_pubsub_send_query_finish (WOCKY_PUBSUB (source), res,
+  reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
       &error);
   if (reply_msg == NULL)
     {
@@ -424,7 +424,7 @@ out:
 
 static void
 olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
-                                guint contact,
+                                guint handle,
                                 DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
@@ -432,6 +432,8 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   const gchar *jid;
   GHashTable *properties;
   pubsub_query_ctx *ctx;
+  WockyContactFactory *contact_factory;
+  WockyBareContact *contact;
 
   DEBUG ("called");
 
@@ -445,7 +447,7 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   /* FIXME: Maybe we should first try the PEP node as we do for buddy
    * activities ? */
   properties = gabble_olpc_gadget_manager_find_buddy_properties (
-      conn->olpc_gadget_manager, contact);
+      conn->olpc_gadget_manager, handle);
   if (properties != NULL)
     {
       gabble_svc_olpc_buddy_info_return_from_get_properties (context,
@@ -454,14 +456,20 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
     }
 
   /* Then try to query the PEP node */
-  jid = inspect_contact (base, context, contact);
+  jid = inspect_contact (base, context, handle);
   if (jid == NULL)
     return;
 
   ctx = pubsub_query_ctx_new (conn, context);
 
-  wocky_pubsub_send_query_async (conn->pubsub, jid, NS_OLPC_BUDDY_PROPS, NULL,
+  contact_factory = wocky_session_get_contact_factory (conn->session);
+  contact = wocky_contact_factory_ensure_bare_contact (contact_factory,
+      jid);
+
+  wocky_pep_service_get_async (conn->pep_olpc_buddy_props, contact, NULL,
       get_properties_reply_cb, ctx);
+
+  g_object_unref (contact);
 }
 
 /* context may be NULL. */
@@ -643,7 +651,7 @@ get_activity_properties_reply_cb (GObject *source,
   WockyXmppStanza *reply_msg;
   GError *error = NULL;
 
-  reply_msg = wocky_pubsub_send_query_finish (WOCKY_PUBSUB (source), res,
+  reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
       &error);
   if (reply_msg == NULL)
     {
@@ -919,8 +927,17 @@ check_activity_properties (GabbleConnection *conn,
 
   if (query_needed)
     {
-      wocky_pubsub_send_query_async (conn->pubsub, from, NS_OLPC_BUDDY_PROPS,
+      WockyContactFactory *contact_factory;
+      WockyBareContact *contact;
+
+      contact_factory = wocky_session_get_contact_factory (conn->session);
+      contact = wocky_contact_factory_ensure_bare_contact (contact_factory,
+          from);
+
+      wocky_pep_service_get_async (conn->pep_olpc_buddy_props, contact,
           NULL, get_activity_properties_reply_cb, conn);
+
+      g_object_unref (contact);
     }
 }
 
@@ -953,7 +970,7 @@ get_activities_reply_cb (GObject *source,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) ctx->conn, TP_HANDLE_TYPE_CONTACT);
 
-  reply_msg = wocky_pubsub_send_query_finish (WOCKY_PUBSUB (source), res,
+  reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
       &err);
   if (reply_msg == NULL)
     {
@@ -1013,13 +1030,15 @@ out:
 
 static void
 olpc_buddy_info_get_activities (GabbleSvcOLPCBuddyInfo *iface,
-                                guint contact,
+                                guint handle,
                                 DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   const gchar *jid;
   pubsub_query_ctx *ctx;
+  WockyContactFactory *contact_factory;
+  WockyBareContact *contact;
 
   DEBUG ("called");
 
@@ -1029,14 +1048,19 @@ olpc_buddy_info_get_activities (GabbleSvcOLPCBuddyInfo *iface,
   if (!check_pep (conn, context))
     return;
 
-  jid = inspect_contact (base, context, contact);
+  jid = inspect_contact (base, context, handle);
   if (jid == NULL)
     return;
 
   ctx = pubsub_query_ctx_new (conn, context);
 
-  wocky_pubsub_send_query_async (conn->pubsub, jid, NS_OLPC_ACTIVITIES, NULL,
+  contact_factory = wocky_session_get_contact_factory (conn->session);
+  contact = wocky_contact_factory_ensure_bare_contact (contact_factory, jid);
+
+  wocky_pep_service_get_async (conn->pep_olpc_activities, contact, NULL,
       get_activities_reply_cb, ctx);
+
+  g_object_unref (contact);
 }
 
 /* FIXME: API could be improved */
@@ -1408,7 +1432,7 @@ get_current_activity_reply_cb (GObject *source,
   const gchar *from;
   GabbleOlpcActivity *activity;
 
-  reply_msg = wocky_pubsub_send_query_finish (WOCKY_PUBSUB (source), res,
+  reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
       &error);
   if (reply_msg == NULL)
     {
@@ -1459,7 +1483,7 @@ out:
 
 static void
 olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
-                                      guint contact,
+                                      guint handle,
                                       DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
@@ -1467,8 +1491,10 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   const gchar *jid;
   GabbleOlpcActivity *activity;
   pubsub_query_ctx *ctx;
+  WockyContactFactory *contact_factory;
+  WockyBareContact *contact;
 
-  DEBUG ("called for contact#%u", contact);
+  DEBUG ("called for contact#%u", handle);
 
   gabble_connection_ensure_capabilities (conn,
       gabble_capabilities_get_olpc_notify ());
@@ -1476,12 +1502,12 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   if (!check_pep (conn, context))
     return;
 
-  jid = inspect_contact (base, context, contact);
+  jid = inspect_contact (base, context, handle);
   if (jid == NULL)
     return;
 
   activity = g_hash_table_lookup (conn->olpc_current_act,
-      GUINT_TO_POINTER (contact));
+      GUINT_TO_POINTER (handle));
   if (activity != NULL)
     {
       DEBUG ("found current activity in cache: %s (%u)", activity->id,
@@ -1496,18 +1522,13 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
 
   ctx = pubsub_query_ctx_new (conn, context);
 
-  wocky_pubsub_send_query_async (conn->pubsub, jid, NS_OLPC_CURRENT_ACTIVITY,
-      NULL, get_current_activity_reply_cb, ctx);
-#if 0
-    if (!pubsub_query (conn, jid, NS_OLPC_CURRENT_ACTIVITY,
-        get_current_activity_reply_cb, context))
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "Failed to send property request to server" };
+  contact_factory = wocky_session_get_contact_factory (conn->session);
+  contact = wocky_contact_factory_ensure_bare_contact (contact_factory, jid);
 
-      dbus_g_method_return_error (context, &error);
-    }
-#endif
+  wocky_pep_service_get_async (conn->pep_olpc_current_act, contact,
+      NULL, get_current_activity_reply_cb, ctx);
+
+  g_object_unref (contact);
 }
 
 static LmHandlerResult

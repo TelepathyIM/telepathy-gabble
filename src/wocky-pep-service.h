@@ -55,7 +55,8 @@ GType wocky_pep_service_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), WOCKY_TYPE_PEP_SERVICE, \
    WockyPepServiceClass))
 
-WockyPepService * wocky_pep_service_new (void);
+WockyPepService * wocky_pep_service_new (const gchar *node,
+    gboolean subscribe);
 
 void wocky_pep_service_start (WockyPepService *pep_service,
     WockySession *session);

@@ -34,6 +34,12 @@ enum
 static guint signals[LAST_SIGNAL] = {0};
 */
 
+enum
+{
+  PROP_NODE = 1,
+  PROP_SUBSCRIBE,
+};
+
 /* private structure */
 typedef struct _WockyPepServicePrivate WockyPepServicePrivate;
 
@@ -41,6 +47,9 @@ struct _WockyPepServicePrivate
 {
   WockySession *session;
   WockyPorter *porter;
+
+  gchar *node;
+  gboolean subscribe;
 
   gboolean dispose_has_run;
 };
@@ -64,8 +73,17 @@ wocky_pep_service_set_property (GObject *object,
     const GValue *value,
     GParamSpec *pspec)
 {
+  WockyPepService *self = WOCKY_PEP_SERVICE (object);
+  WockyPepServicePrivate *priv = WOCKY_PEP_SERVICE_GET_PRIVATE (self);
+
   switch (property_id)
     {
+      case PROP_NODE:
+        priv->node = g_value_dup_string (value);
+        break;
+      case PROP_SUBSCRIBE:
+        priv->subscribe = g_value_get_boolean (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -78,8 +96,17 @@ wocky_pep_service_get_property (GObject *object,
     GValue *value,
     GParamSpec *pspec)
 {
+  WockyPepService *self = WOCKY_PEP_SERVICE (object);
+  WockyPepServicePrivate *priv = WOCKY_PEP_SERVICE_GET_PRIVATE (self);
+
   switch (property_id)
     {
+      case PROP_NODE:
+        g_value_set_string (value, priv->node);
+        break;
+      case PROP_SUBSCRIBE:
+        g_value_set_boolean (value, priv->subscribe);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -108,13 +135,28 @@ wocky_pep_service_dispose (GObject *object)
 static void
 wocky_pep_service_finalize (GObject *object)
 {
+  WockyPepService *self = WOCKY_PEP_SERVICE (object);
+  WockyPepServicePrivate *priv = WOCKY_PEP_SERVICE_GET_PRIVATE (self);
+
+  g_free (priv->node);
+
   G_OBJECT_CLASS (wocky_pep_service_parent_class)->finalize (object);
+}
+
+static void
+wocky_pep_service_constructed (GObject *object)
+{
+  WockyPepService *self = WOCKY_PEP_SERVICE (object);
+  WockyPepServicePrivate *priv = WOCKY_PEP_SERVICE_GET_PRIVATE (self);
+
+  g_assert (priv->node != NULL);
 }
 
 static void
 wocky_pep_service_class_init (WockyPepServiceClass *wocky_pep_service_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (wocky_pep_service_class);
+  GParamSpec *param_spec;
 
   g_type_class_add_private (wocky_pep_service_class,
       sizeof (WockyPepServicePrivate));
@@ -123,12 +165,28 @@ wocky_pep_service_class_init (WockyPepServiceClass *wocky_pep_service_class)
   object_class->get_property = wocky_pep_service_get_property;
   object_class->dispose = wocky_pep_service_dispose;
   object_class->finalize = wocky_pep_service_finalize;
+  object_class->constructed = wocky_pep_service_constructed;
+
+  param_spec = g_param_spec_string ("node", "node",
+      "namespace of the pep node",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_NODE, param_spec);
+
+  param_spec = g_param_spec_boolean ("subscribe", "subscribe",
+      "if TRUE, Wocky will subscribe to the notifications of the node",
+      FALSE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SUBSCRIBE, param_spec);
 }
 
 WockyPepService *
-wocky_pep_service_new (void)
+wocky_pep_service_new (const gchar *node,
+    gboolean subscribe)
 {
   return g_object_new (WOCKY_TYPE_PEP_SERVICE,
+      "node", node,
+      "subscribe", subscribe,
       NULL);
 }
 

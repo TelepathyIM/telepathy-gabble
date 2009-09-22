@@ -8,7 +8,7 @@ import dbus
 
 from gabbletest import exec_test, sync_stream
 from servicetest import (
-    make_channel_proxy, tp_path_prefix, call_async, EventPattern)
+    make_channel_proxy, call_async, EventPattern)
 import jingletest
 import gabbletest
 
@@ -218,10 +218,10 @@ def test(q, bus, conn, stream):
 
     # Everything closes
     closes = [ EventPattern('dbus-signal', signal='Close',
-                   path=stream_handler_paths[i][len(tp_path_prefix):])
+                   path=stream_handler_paths[i])
                for i in range(0,7) ]
     removeds = [ EventPattern('dbus-signal', signal='StreamRemoved',
-                     args=[stream_ids[i]], path=path[len(tp_path_prefix):])
+                     args=[stream_ids[i]], path=path)
                for i in range(0,7) ]
     q.expect_many(
         EventPattern('dbus-signal', signal='ChannelClosed', args=[path]),

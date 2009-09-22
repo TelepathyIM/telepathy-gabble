@@ -4,8 +4,8 @@ Test emition and handling of codec update using description-info
 
 from gabbletest import exec_test, sync_stream
 from servicetest import (
-    wrap_channel, assertEquals,
-    make_channel_proxy, unwrap, tp_path_prefix, EventPattern, call_async)
+    wrap_channel, assertEquals, make_channel_proxy, unwrap, EventPattern,
+    call_async)
 from jingletest2 import JingleTest2, JingleProtocol031
 import constants as cs
 
@@ -44,7 +44,7 @@ def test(q, bus, conn, stream, send_early_description_info=False):
              args=[u'', [], [], [self_handle], [], remote_handle,
                    cs.GC_REASON_INVITED])
 
-    chan = wrap_channel(bus.get_object(conn.bus_name, tp_path_prefix + e.path),
+    chan = wrap_channel(bus.get_object(conn.bus_name,  e.path),
         'StreamedMedia')
 
     # S-E gets notified about new session handler, and calls Ready on it

@@ -4,7 +4,7 @@ Regression tests for rescinding outstanding subscription requests.
 
 from twisted.words.protocols.jabber.client import IQ
 
-from servicetest import tp_path_prefix, EventPattern, assertEquals
+from servicetest import EventPattern, assertEquals
 from gabbletest import exec_test, expect_list_channel, GoogleXmlStream
 import constants as cs
 import ns
@@ -47,8 +47,7 @@ def test(q, bus, conn, stream, remove, local):
 
     # In response, Gabble should add Marco to stored:
     q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [h], [], [], [], 0, 0],
-        path=stored.object_path[len(tp_path_prefix):])
+        args=['', [h], [], [], [], 0, 0], path=stored.object_path)
 
     # Gajim sends a <presence type='subscribe'/> to Marco. 'As a result, the
     # user's server MUST initiate a second roster push to all of the user's
@@ -64,7 +63,7 @@ def test(q, bus, conn, stream, remove, local):
     # In response, Gabble should add Marco to subscribe:remote-pending:
     q.expect('dbus-signal', signal='MembersChanged',
         args=['', [], [], [], [h], 0, 0],
-        path=subscribe.object_path[len(tp_path_prefix):])
+        path=subscribe.object_path)
 
     # The user decides that they don't care what Marco's baking after all
     # (maybe they read his blog instead?) and:
@@ -100,10 +99,10 @@ def test(q, bus, conn, stream, remove, local):
         q.expect_many(
             EventPattern('dbus-signal', signal='MembersChanged',
                 args=['', [], [h], [], [], 0, 0],
-                path=subscribe.object_path[len(tp_path_prefix):]),
+                path=subscribe.object_path),
             EventPattern('dbus-signal', signal='MembersChanged',
                 args=['', [], [h], [], [], 0, 0],
-                path=stored.object_path[len(tp_path_prefix):]),
+                path=stored.object_path),
             )
     else:
         # ...rescinds the subscription request...
@@ -130,7 +129,7 @@ def test(q, bus, conn, stream, remove, local):
         # that it's never delivered.
         q.expect('dbus-signal', signal='MembersChanged',
             args=['', [], [h], [], [], 0, 0],
-            path=subscribe.object_path[len(tp_path_prefix):])
+            path=subscribe.object_path)
 
 def test_remove_local(q, bus, conn, stream):
     test(q, bus, conn, stream, remove=True, local=True)

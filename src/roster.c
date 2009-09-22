@@ -1546,6 +1546,7 @@ got_roster_iq (GabbleRoster *roster,
 
       if (sub_type == LM_MESSAGE_SUB_TYPE_RESULT)
         {
+          /* We are handling the response to our initial roster request. */
           GArray *members;
 
           tp_group_mixin_get_members ((GObject *) pub_chan, &members, NULL);

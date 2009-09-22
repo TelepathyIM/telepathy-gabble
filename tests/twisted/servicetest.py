@@ -269,7 +269,10 @@ def unwrap(x):
     if isinstance(x, dict):
         return dict([(unwrap(k), unwrap(v)) for k, v in x.iteritems()])
 
-    for t in [unicode, str, long, int, float, bool]:
+    if isinstance(x, dbus.Boolean):
+        return bool(x)
+
+    for t in [unicode, str, long, int, float]:
         if isinstance(x, t):
             return t(x)
 

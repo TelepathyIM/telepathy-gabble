@@ -358,7 +358,7 @@ def make_connection(bus, event_func, name, proto, params):
         lambda *args, **kw:
             event_func(
                 Event('dbus-signal',
-                    path=unwrap(kw['path'])[len(tp_path_prefix):],
+                    path=unwrap(kw['path']),
                     signal=kw['member'], args=map(unwrap, args),
                     interface=kw['interface'])),
         None,       # signal name

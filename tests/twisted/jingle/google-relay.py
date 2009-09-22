@@ -4,7 +4,7 @@ Test getting relay from Google jingleinfo
 
 from gabbletest import exec_test, make_result_iq, sync_stream, \
         GoogleXmlStream, disconnect_conn
-from servicetest import make_channel_proxy, tp_path_prefix, \
+from servicetest import make_channel_proxy, \
         EventPattern, call_async, sync_dbus, assertEquals
 import jingletest
 import gabbletest
@@ -164,7 +164,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
             req_pattern,
             req_pattern)
 
-        media_chan = make_channel_proxy(conn, tp_path_prefix + mc.path,
+        media_chan = make_channel_proxy(conn, mc.path,
             'Channel.Interface.Group')
     else:
         call_async(q, conn.Requests, 'CreateChannel',
@@ -296,7 +296,7 @@ def test_too_slow(q, bus, conn, stream, req1, req2, media_chan, too_slow):
 
     # User gets bored, and ends the call.
     e = EventPattern('dbus-signal', signal='Closed',
-        path=media_chan.object_path[len(tp_path_prefix):])
+        path=media_chan.object_path)
 
     if too_slow == TOO_SLOW_CLOSE:
         call_async(q, media_chan, 'Close', dbus_interface=cs.CHANNEL)

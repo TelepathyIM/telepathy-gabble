@@ -5,7 +5,7 @@ Test getting relay from Google jingleinfo
 from gabbletest import exec_test, make_result_iq, sync_stream, \
         GoogleXmlStream, disconnect_conn
 from servicetest import make_channel_proxy, \
-        EventPattern, call_async, sync_dbus, assertEquals
+        EventPattern, call_async, sync_dbus, assertEquals, assertLength
 import jingletest
 import gabbletest
 import constants as cs
@@ -166,6 +166,8 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
 
         media_chan = make_channel_proxy(conn, mc.path,
             'Channel.Interface.Group')
+        media_iface = make_channel_proxy(conn, mc.path,
+            'Channel.Type.StreamedMedia')
     else:
         call_async(q, conn.Requests, 'CreateChannel',
                 { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
@@ -195,12 +197,25 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
         test_too_slow(q, bus, conn, stream, req1, req2, media_chan, too_slow)
         return
 
+    if incoming:
+        assertLength(0, media_iface.ListStreams())
+        # Accept the call.
+        media_chan.AddMembers([self_handle], '')
+
     # In response to the streams call, we now have two HTTP requests
     # (for RTP and RTCP)
     handle_request(req1.request, 0)
     handle_request(req2.request, 1)
 
-    if not incoming:
+    if incoming:
+        # We accepted the call, and it should get a new, bidirectional stream
+        # now that the relay info request has finished. This tests against a
+        # regression of bug #24023.
+        q.expect('dbus-signal', signal='StreamAdded',
+            args=[1, remote_handle, cs.MEDIA_STREAM_TYPE_AUDIO])
+        q.expect('dbus-signal', signal='StreamDirectionChanged',
+            args=[1, cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL, 0])
+    else:
         # Now that we have the relay info, RequestStreams can return
         q.expect('dbus-return', method='RequestStreams')
 

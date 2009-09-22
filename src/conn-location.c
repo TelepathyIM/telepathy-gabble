@@ -194,11 +194,9 @@ add_to_geoloc_node (const gchar *tp_name,
     {
       if (G_VALUE_TYPE (value) != G_TYPE_STRING)
         {
-#define ERROR_MSG "expecting string for language value, but got %s",\
-              G_VALUE_TYPE_NAME (value)
-          DEBUG (ERROR_MSG);
-          g_set_error (err, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, ERROR_MSG);
-#undef ERROR_MSG
+          g_set_error (err, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "expecting string for language value, but got %s",
+                  G_VALUE_TYPE_NAME (value));
           return FALSE;
         }
 
@@ -219,13 +217,10 @@ add_to_geoloc_node (const gchar *tp_name,
 
   if (G_VALUE_TYPE (value) != mapping->type)
     {
-#define ERROR_MSG "'%s' is supposed to be of type %s but is %s",\
-          (const char *) tp_name, g_type_name (mapping->type),\
-          G_VALUE_TYPE_NAME (value)
-
-      DEBUG (ERROR_MSG);
-      g_set_error (err, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, ERROR_MSG);
-#undef ERROR_MSG
+      g_set_error (err, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is supposed to be of type %s but is %s",
+          (const char *) tp_name, g_type_name (mapping->type),
+          G_VALUE_TYPE_NAME (value));
       return FALSE;
     }
 
@@ -293,6 +288,7 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
       if (!add_to_geoloc_node ((const gchar *) key, (GValue *) value, geoloc,
             &err))
         {
+          DEBUG ("%s", err->message);
           dbus_g_method_return_error (context, err);
           g_error_free (err);
           goto out;

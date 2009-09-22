@@ -217,7 +217,7 @@ add_to_geoloc_node (const gchar *tp_name,
       return TRUE;
     }
 
-  if (mapping != NULL && G_VALUE_TYPE (value) != mapping->type)
+  if (G_VALUE_TYPE (value) != mapping->type)
     {
 #define ERROR_MSG "'%s' is supposed to be of type %s but is %s",\
           (const char *) tp_name, g_type_name (mapping->type),\

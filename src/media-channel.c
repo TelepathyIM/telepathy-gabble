@@ -2420,6 +2420,7 @@ stream_error_cb (GabbleMediaStream *stream,
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   GabbleJingleMediaRtp *c;
+  GList *contents;
   guint id;
 
   /* emit signal */
@@ -2427,7 +2428,10 @@ stream_error_cb (GabbleMediaStream *stream,
   tp_svc_channel_type_streamed_media_emit_stream_error (chan, id, errno,
       message);
 
-  if (gabble_jingle_session_can_modify_contents (priv->session))
+  contents = gabble_jingle_session_get_contents (priv->session);
+
+  if (gabble_jingle_session_can_modify_contents (priv->session) &&
+      g_list_length (contents) > 1)
     {
       /* remove stream from session (removal will be signalled
        * so we can dispose of the stream)
@@ -2438,14 +2442,17 @@ stream_error_cb (GabbleMediaStream *stream,
     }
   else
     {
-      /* We can't remove the content; let's terminate the call. (The
-       * alternative is to carry on the call with only audio/video, which will
-       * look or sound bad to the Google Talk-using peer.)
+      /* We can't remove the content, or it's the only one left; let's
+       * terminate the call. (The alternative is to carry on the call with
+       * only audio/video, which will look or sound bad to the Google
+       * Talk-using peer.)
        */
       DEBUG ("Terminating call in response to stream error");
       gabble_jingle_session_terminate (priv->session,
           TP_CHANNEL_GROUP_CHANGE_REASON_ERROR, NULL);
     }
+
+  g_list_free (contents);
 }
 
 static void

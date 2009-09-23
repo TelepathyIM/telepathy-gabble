@@ -48,7 +48,13 @@ class EventPattern:
         self.properties = properties
 
     def __repr__(self):
-        return 'EventPattern(%r, %r)' % (self.type, self.properties)
+        properties = dict(self.properties)
+
+        if self.predicate:
+            properties['predicate'] = self.predicate
+
+        return '%s(%r, **%r)' % (
+            self.__class__.__name__, self.type, properties)
 
     def match(self, event):
         if event.type != self.type:

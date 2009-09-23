@@ -6,7 +6,7 @@ FIXME: test C.I.Presence too
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test
+from gabbletest import exec_test, make_presence
 from servicetest import EventPattern
 import ns
 import constants as cs
@@ -28,27 +28,15 @@ def test(q, bus, conn, stream):
     item['subscription'] = 'both'
 
     stream.send(event.stanza)
+    stream.send(make_presence('amy@foo.com', show='away', status='At the pub'))
 
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'amy@foo.com'
-    show = presence.addElement((None, 'show'))
-    show.addContent('away')
-    status = presence.addElement((None, 'status'))
-    status.addContent('At the pub')
-    stream.send(presence)
-
-    event = q.expect('dbus-signal', signal='PresencesChanged',
+    q.expect('dbus-signal', signal='PresencesChanged',
         args=[{amy_handle: (3, 'away', 'At the pub')}])
 
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = 'amy@foo.com'
-    show = presence.addElement((None, 'show'))
-    show.addContent('chat')
-    status = presence.addElement((None, 'status'))
-    status.addContent('I may have been drinking')
-    stream.send(presence)
+    stream.send(make_presence(
+        'amy@foo.com', show='chat', status='I may have been drinking'))
 
-    event = q.expect('dbus-signal', signal='PresencesChanged',
+    q.expect('dbus-signal', signal='PresencesChanged',
         args=[{amy_handle: (2, 'chat', 'I may have been drinking')}])
 
 if __name__ == '__main__':

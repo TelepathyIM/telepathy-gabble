@@ -42,7 +42,7 @@ def test(jp, q, bus, conn, stream):
 
     # Bye bye members.
     q.expect('dbus-signal', signal='MembersChanged',
-        args=[u'', [], [self_handle, remote_handle], [], [], self_handle,
+        args=[u'o noes', [], [self_handle, remote_handle], [], [], self_handle,
             cs.GC_REASON_ERROR])
     # Bye bye stream.
     q.expect('dbus-signal', signal='Close')

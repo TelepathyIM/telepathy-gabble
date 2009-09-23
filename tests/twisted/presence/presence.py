@@ -31,13 +31,14 @@ def test(q, bus, conn, stream):
     stream.send(make_presence('amy@foo.com', show='away', status='At the pub'))
 
     q.expect('dbus-signal', signal='PresencesChanged',
-        args=[{amy_handle: (3, 'away', 'At the pub')}])
+        args=[{amy_handle: (cs.PRESENCE_AWAY, 'away', 'At the pub')}])
 
     stream.send(make_presence(
         'amy@foo.com', show='chat', status='I may have been drinking'))
 
     q.expect('dbus-signal', signal='PresencesChanged',
-        args=[{amy_handle: (2, 'chat', 'I may have been drinking')}])
+        args=[{amy_handle:
+            (cs.PRESENCE_AVAILABLE, 'chat', 'I may have been drinking')}])
 
 if __name__ == '__main__':
     exec_test(test)

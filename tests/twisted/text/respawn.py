@@ -7,7 +7,7 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import call_async, EventPattern, tp_path_prefix
+from servicetest import call_async, EventPattern
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -106,8 +106,8 @@ def test(q, bus, conn, stream):
             EventPattern('dbus-signal', signal='Closed'),
             EventPattern('dbus-signal', signal='ChannelClosed'),
             )
-    assert tp_path_prefix + old.path == text_chan.object_path,\
-            (tp_path_prefix + old.path, text_chan.object_path)
+    assert old.path == text_chan.object_path,\
+            (old.path, text_chan.object_path)
     assert new.args[0] == text_chan.object_path,\
             (new.args[0], text_chan.object_path)
 
@@ -154,8 +154,8 @@ def test(q, bus, conn, stream):
     call_async(q, chan_iface, 'Close')
 
     event = q.expect('dbus-signal', signal='Closed')
-    assert tp_path_prefix + event.path == text_chan.object_path,\
-            (tp_path_prefix + event.path, text_chan.object_path)
+    assert event.path == text_chan.object_path,\
+            (event.path, text_chan.object_path)
 
     event = q.expect('dbus-return', method='Close')
 

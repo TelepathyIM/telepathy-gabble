@@ -6,7 +6,7 @@ import dbus
 import socket
 
 from gabbletest import exec_test, make_result_iq, sync_stream, GoogleXmlStream
-from servicetest import make_channel_proxy, tp_path_prefix, EventPattern
+from servicetest import make_channel_proxy, EventPattern
 import jingletest
 import constants as cs
 
@@ -79,7 +79,7 @@ def test(q, bus, conn, stream,
     e = q.expect('dbus-signal', signal='NewStreamHandler')
     stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
 
-    media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
+    media_chan = make_channel_proxy(conn, e.path, 'Channel.Interface.Group')
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(

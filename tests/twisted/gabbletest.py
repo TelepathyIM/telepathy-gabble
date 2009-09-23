@@ -361,7 +361,7 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
     domish.Element.__repr__ = domish.Element.toXml
     colourer = None
 
-    if sys.stdout.isatty():
+    if sys.stdout.isatty() or 'CHECK_FORCE_COLOR' in os.environ:
         colourer = servicetest.install_colourer()
 
     queue = servicetest.IteratingEventQueue(timeout)

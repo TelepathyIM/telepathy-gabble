@@ -5,8 +5,7 @@ reason.
 
 from twisted.words.xish import xpath
 
-from servicetest import make_channel_proxy, tp_path_prefix, EventPattern, \
-    call_async
+from servicetest import make_channel_proxy, EventPattern, call_async
 from jingletest2 import JingleTest2, test_all_dialects
 
 import constants as cs
@@ -47,7 +46,7 @@ def test(jp, q, bus, conn, stream, busy):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
+    media_chan = make_channel_proxy(conn, e.path, 'Channel.Interface.Group')
 
     # Exercise channel properties
     channel_props = media_chan.GetAll(cs.CHANNEL,

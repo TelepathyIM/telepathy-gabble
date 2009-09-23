@@ -8,9 +8,7 @@ import operator
 
 from servicetest import (
     assertContains, assertEquals, assertLength,
-    wrap_channel, EventPattern, call_async, make_channel_proxy,
-    tp_path_prefix,
-    )
+    wrap_channel, EventPattern, call_async, make_channel_proxy)
 
 from jingletest2 import JingleTest2, test_all_dialects
 
@@ -137,10 +135,8 @@ def check_iav(jt, q, conn, bus, stream, remote_handle, initial_audio,
         jt.accept()
 
         events = reduce(operator.concat,
-            [ [ EventPattern('dbus-signal', signal='SetRemoteCodecs',
-                    path=p[len(tp_path_prefix):]),
-                EventPattern('dbus-signal', signal='SetStreamPlaying',
-                    path=p[len(tp_path_prefix):]),
+            [ [ EventPattern('dbus-signal', signal='SetRemoteCodecs', path=p),
+                EventPattern('dbus-signal', signal='SetStreamPlaying', path=p),
               ] for p in stream_handler_paths
             ], [])
         q.expect_many(*events)

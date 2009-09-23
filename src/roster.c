@@ -35,6 +35,7 @@
 
 #include "caps-channel-manager.h"
 #include "conn-aliasing.h"
+#include "conn-presence.h"
 #include "connection.h"
 #include "debug.h"
 #include "namespaces.h"
@@ -1542,6 +1543,18 @@ got_roster_iq (GabbleRoster *roster,
       for (i = 0; i < removed->len; i++)
           _gabble_roster_item_remove (roster,
               g_array_index (removed, TpHandle, i));
+
+      if (sub_type == LM_MESSAGE_SUB_TYPE_RESULT)
+        {
+          /* We are handling the response to our initial roster request. */
+          GArray *members;
+
+          tp_group_mixin_get_members ((GObject *) pub_chan, &members, NULL);
+          /* If somebody's on our roster, and we haven't received presence
+           * from them, we know they're offline. Let clients know that.
+           */
+          conn_presence_emit_presence_update (priv->conn, members);
+        }
 
       tp_intset_destroy (pub_add);
       tp_intset_destroy (pub_rem);

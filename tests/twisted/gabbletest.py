@@ -484,13 +484,17 @@ def elem_iq(server, type, **kw):
 
     return iq
 
-def make_presence(_from, to='test@localhost', type=None, status=None, caps=None):
+def make_presence(_from, to='test@localhost', type=None, show=None,
+        status=None, caps=None):
     presence = domish.Element((None, 'presence'))
     presence['from'] = _from
     presence['to'] = to
 
     if type is not None:
         presence['type'] = type
+
+    if show is not None:
+        presence.addElement('show', content=show)
 
     if status is not None:
         presence.addElement('status', content=status)

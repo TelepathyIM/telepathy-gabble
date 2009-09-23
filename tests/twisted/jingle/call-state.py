@@ -7,7 +7,7 @@ from twisted.words.xish import xpath
 
 from gabbletest import make_result_iq
 from servicetest import (
-    wrap_channel, make_channel_proxy, EventPattern, tp_path_prefix, sync_dbus)
+    wrap_channel, make_channel_proxy, EventPattern, sync_dbus)
 import ns
 import constants as cs
 
@@ -46,7 +46,6 @@ def test(jp, q, bus, conn, stream):
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
     audio_path = e.args[0]
-    audio_path_suffix = audio_path[len(tp_path_prefix):]
     stream_handler = make_channel_proxy(conn, audio_path, 'Media.StreamHandler')
 
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
@@ -86,7 +85,7 @@ def test(jp, q, bus, conn, stream):
 
         forbidden = [
             EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
-                path=audio_path_suffix),
+                path=audio_path),
                 ]
         q.forbid_events(forbidden)
 
@@ -133,7 +132,7 @@ def test(jp, q, bus, conn, stream):
     # Jingle.
     q.expect_many(
         EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
-            path=audio_path_suffix),
+            path=audio_path),
         EventPattern('dbus-signal', signal='CallStateChanged',
             args=[ handle, 0 ]),
         )
@@ -156,7 +155,7 @@ def test(jp, q, bus, conn, stream):
     q.expect_many(
         EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
         EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
-            path=audio_path_suffix),
+            path=audio_path),
         EventPattern('dbus-signal', signal='CallStateChanged',
             args=[handle, cs.CALL_STATE_HELD]),
         )
@@ -197,7 +196,7 @@ def test(jp, q, bus, conn, stream):
     q.expect_many(
         EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
         EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
-            path=audio_path_suffix),
+            path=audio_path),
         EventPattern('dbus-signal', signal='CallStateChanged',
             args=[handle, 0]),
         )
@@ -211,7 +210,6 @@ def test(jp, q, bus, conn, stream):
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
     video_path = e.args[0]
-    video_path_suffix = video_path[len(tp_path_prefix):]
     stream_handler2 = make_channel_proxy(conn, video_path, 'Media.StreamHandler')
 
     stream_handler2.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
@@ -224,7 +222,7 @@ def test(jp, q, bus, conn, stream):
     jt.content_accept(e.query, 'video')
 
     q.expect('dbus-signal', signal='SetStreamSending', args=[True],
-        path=video_path_suffix)
+        path=video_path)
 
     call_states = chan.CallState.GetCallStates()
     assert call_states == { handle: 0 } or call_states == {}, call_states
@@ -239,9 +237,9 @@ def test(jp, q, bus, conn, stream):
     q.expect_many(
         EventPattern('stream-iq', iq_type='result', iq_id=node[2]['id']),
         EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
-            path=audio_path_suffix),
+            path=audio_path),
         EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
-            path=video_path_suffix),
+            path=video_path),
         EventPattern('dbus-signal', signal='CallStateChanged',
             args=[handle, cs.CALL_STATE_HELD]),
         )
@@ -261,7 +259,7 @@ def test(jp, q, bus, conn, stream):
 
     forbidden = [
         EventPattern('dbus-signal', signal='SetStreamSending', args=[True],
-            path=audio_path_suffix),
+            path=audio_path),
         EventPattern('dbus-signal', signal='CallStateChanged',
             args=[ handle, 0 ]),
             ]

@@ -5,8 +5,7 @@ Test the Hold API.
 from gabbletest import make_result_iq, sync_stream
 from servicetest import (
     assertEquals, wrap_channel,
-    make_channel_proxy, call_async, EventPattern, sync_dbus, tp_path_prefix,
-    )
+    make_channel_proxy, call_async, EventPattern, sync_dbus)
 
 import constants as cs
 
@@ -39,13 +38,11 @@ def mutable_stream_tests(jp, jt, q, bus, conn, stream, chan, handle):
             jt.get_remote_transports_dbus())
     audio_stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    path_suffix = audio_stream_path[len(tp_path_prefix):]
-
     q.expect_many(
         EventPattern('dbus-signal', signal='SetStreamHeld', args=[True],
-            path=path_suffix),
+            path=audio_stream_path),
         EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
-            path=path_suffix),
+            path=audio_stream_path),
         )
 
     assertEquals(cs.HS_HELD, chan.Hold.GetHoldState()[0])
@@ -78,13 +75,11 @@ def mutable_stream_tests(jp, jt, q, bus, conn, stream, chan, handle):
             jt.get_remote_transports_dbus())
     video_stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
 
-    path_suffix = video_stream_path[len(tp_path_prefix):]
-
     q.expect_many(
         EventPattern('dbus-signal', signal='SetStreamHeld', args=[True],
-            path=path_suffix),
+            path=video_stream_path),
         EventPattern('dbus-signal', signal='SetStreamSending', args=[False],
-            path=path_suffix),
+            path=video_stream_path),
         )
 
     assertEquals(cs.HS_HELD, chan.Hold.GetHoldState()[0])

@@ -6,9 +6,7 @@ import dbus
 
 from gabbletest import make_result_iq
 from servicetest import (
-    make_channel_proxy, unwrap, tp_path_prefix, EventPattern,
-    assertEquals, assertLength
-    )
+    make_channel_proxy, unwrap, EventPattern, assertEquals, assertLength)
 from jingletest2 import JingleTest2, test_all_dialects
 import constants as cs
 
@@ -178,7 +176,7 @@ def test(jp, q, bus, conn, stream):
 
     # 'Nuff said
     jt.terminate()
-    q.expect('dbus-signal', signal='Closed', path=path[len(tp_path_prefix):])
+    q.expect('dbus-signal', signal='Closed', path=path)
 
 if __name__ == '__main__':
     test_all_dialects(test)

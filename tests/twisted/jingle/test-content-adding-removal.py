@@ -7,9 +7,7 @@ closes the session.
 
 from gabbletest import make_result_iq, sync_stream
 from servicetest import (
-    wrap_channel, make_channel_proxy, tp_path_prefix, assertEquals,
-    EventPattern,
-    )
+    wrap_channel, make_channel_proxy, assertEquals, EventPattern)
 from jingletest2 import (
     JingleTest2, test_dialects, JingleProtocol031, JingleProtocol015,
     )
@@ -141,9 +139,7 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
             predicate=jp.action_predicate('session-terminate')),
         # Gabble shouldn't wait for the peer to ack the terminate before
         # considering the call finished.
-        EventPattern('dbus-signal', signal='Closed',
-            path=path[len(tp_path_prefix):]),
-        )
+        EventPattern('dbus-signal', signal='Closed', path=path))
 
     # Only now does the peer ack the content-remove. This serves as a
     # regression test for contents outliving the session; if the content didn't

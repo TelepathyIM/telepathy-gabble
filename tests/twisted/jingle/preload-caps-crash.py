@@ -8,9 +8,7 @@ import dbus
 
 from gabbletest import make_result_iq, exec_test, sync_stream
 from servicetest import (
-    make_channel_proxy, unwrap, tp_path_prefix, EventPattern,
-    assertEquals, assertLength
-    )
+    make_channel_proxy, unwrap, EventPattern, assertEquals, assertLength)
 from jingletest2 import JingleTest2, GtalkProtocol03
 import constants as cs
 import ns

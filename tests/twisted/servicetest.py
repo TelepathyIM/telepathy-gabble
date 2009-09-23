@@ -47,6 +47,9 @@ class EventPattern:
             del properties['predicate']
         self.properties = properties
 
+    def __repr__(self):
+        return 'EventPattern(%r, %r)' % (self.type, self.properties)
+
     def match(self, event):
         if event.type != self.type:
             return False
@@ -137,12 +140,20 @@ class BaseEventQueue:
         ret = [None] * len(patterns)
 
         while None in ret:
-            event = self.wait()
+            try:
+                event = self.wait()
+            except TimeoutError:
+                self.log('timeout')
+                self.log('still expecting:')
+                for i, pattern in enumerate(patterns):
+                    if ret[i] is None:
+                        self.log(' - %r' % pattern)
+                raise
             self.log_event(event)
             self._check_forbidden(event)
 
             for i, pattern in enumerate(patterns):
-                if pattern.match(event):
+                if ret[i] is None and pattern.match(event):
                     self.log('handled')
                     self.log('')
                     ret[i] = event
@@ -222,6 +233,16 @@ class EventQueueTest(unittest.TestCase):
         assert bar.type == 'bar'
         assert foo.type == 'foo'
 
+    def test_expect_many2(self):
+        # Test that events are only matched against patterns that haven't yet
+        # been matched. This tests a regression.
+        queue = TestEventQueue([Event('foo', x=1), Event('foo', x=2)])
+        foo1, foo2 = queue.expect_many(
+            EventPattern('foo'),
+            EventPattern('foo'))
+        assert foo1.type == 'foo' and foo1.x == 1
+        assert foo2.type == 'foo' and foo2.x == 2
+
     def test_timeout(self):
         queue = TestEventQueue([])
         self.assertRaises(TimeoutError, queue.expect, 'foo')
@@ -248,7 +269,10 @@ def unwrap(x):
     if isinstance(x, dict):
         return dict([(unwrap(k), unwrap(v)) for k, v in x.iteritems()])
 
-    for t in [unicode, str, long, int, float, bool]:
+    if isinstance(x, dbus.Boolean):
+        return bool(x)
+
+    for t in [unicode, str, long, int, float]:
         if isinstance(x, t):
             return t(x)
 
@@ -337,7 +361,7 @@ def make_connection(bus, event_func, name, proto, params):
         lambda *args, **kw:
             event_func(
                 Event('dbus-signal',
-                    path=unwrap(kw['path'])[len(tp_path_prefix):],
+                    path=unwrap(kw['path']),
                     signal=kw['member'], args=map(unwrap, args),
                     interface=kw['interface'])),
         None,       # signal name

@@ -88,6 +88,7 @@ static void gabble_request_pipeline_get_property (GObject *object,
     guint property_id, GValue *value, GParamSpec *pspec);
 static void gabble_request_pipeline_dispose (GObject *object);
 static void gabble_request_pipeline_finalize (GObject *object);
+static void gabble_request_pipeline_go (GabbleRequestPipeline *pipeline);
 
 static void
 gabble_request_pipeline_class_init (GabbleRequestPipelineClass *cls)
@@ -363,7 +364,7 @@ send_next_request (GabbleRequestPipeline *pipeline)
     }
 }
 
-void
+static void
 gabble_request_pipeline_go (GabbleRequestPipeline *pipeline)
 {
   GabbleRequestPipelinePrivate *priv =

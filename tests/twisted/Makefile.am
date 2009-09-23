@@ -100,6 +100,7 @@ TWISTED_TESTS = \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
 	jingle/incoming-basics.py \
+	jingle/incoming-call-stream-error.py \
 	jingle/initial-audio-video.py \
 	jingle/misuse.py \
 	jingle/stun-server.py \

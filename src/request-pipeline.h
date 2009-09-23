@@ -81,7 +81,6 @@ GabbleRequestPipelineItem *gabble_request_pipeline_enqueue
     (GabbleRequestPipeline *pipeline, LmMessage *msg, guint timeout,
      GabbleRequestPipelineCb callback, gpointer user_data);
 void gabble_request_pipeline_item_cancel (GabbleRequestPipelineItem *req);
-void gabble_request_pipeline_go (GabbleRequestPipeline *pipeline);
 
 G_END_DECLS
 

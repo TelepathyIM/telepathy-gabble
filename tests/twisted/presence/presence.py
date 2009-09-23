@@ -37,8 +37,8 @@ def test(q, bus, conn, stream):
     status.addContent('At the pub')
     stream.send(presence)
 
-    event = q.expect('dbus-signal', signal='PresencesChanged')
-    assert event.args[0] == { amy_handle: (3, 'away', 'At the pub') }
+    event = q.expect('dbus-signal', signal='PresencesChanged',
+        args=[{amy_handle: (3, 'away', 'At the pub')}])
 
     presence = domish.Element((None, 'presence'))
     presence['from'] = 'amy@foo.com'
@@ -48,8 +48,8 @@ def test(q, bus, conn, stream):
     status.addContent('I may have been drinking')
     stream.send(presence)
 
-    event = q.expect('dbus-signal', signal='PresencesChanged')
-    assert event.args[0] == { amy_handle: (2, 'chat', 'I may have been drinking') }
+    event = q.expect('dbus-signal', signal='PresencesChanged',
+        args=[{amy_handle: (2, 'chat', 'I may have been drinking')}])
 
 if __name__ == '__main__':
     exec_test(test)

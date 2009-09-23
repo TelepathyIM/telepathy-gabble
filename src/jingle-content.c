@@ -619,6 +619,12 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
 
   priv->state = JINGLE_CONTENT_STATE_ACKNOWLEDGED;
   g_object_notify ((GObject *) c, "state");
+
+  if (trans_node != NULL)
+    {
+      gabble_jingle_transport_iface_parse_candidates (priv->transport,
+        trans_node, NULL);
+    }
 }
 
 void

@@ -87,9 +87,40 @@ class JingleProtocol:
         "Creates a <transport> element for Google P2P transport"
         return ('transport', ns.GOOGLE_P2P, {}, [])
 
-    def TransportIceUdp(self):
-        "Creates a <transport> element for ICE-UDP transport"
-        return ('transport', ns.JINGLE_TRANSPORT_ICEUDP, {}, [])
+    def TransportIceUdp(self, remote_transports=[]):
+        """
+        Creates a <transport> element for ICE-UDP transport.
+        If remote_transports is present, and of the form
+        [(host, port, proto, subtype, profile, pref, transtype, user, pwd)]
+        (basically a list of Media_Stream_Handler_Transport without the
+        component number) then it will be converted to xml and added.
+        """
+        candidates = []
+        attrs = {}
+        for (host, port, proto, subtype, profile, pref, transtype, user, pwd
+                ) in remote_transports:
+            if "ufrag" not in attrs:
+                attrs = {"ufrag": user, "pwd": pwd}
+            else:
+                assert (user == attrs["ufrag"] and pwd == attrs["pwd"]
+                    ), "user and pwd should be the same across all candidates."
+
+            node = ("candidate", None, {
+                # ICE-CORE says it can be arbitrary string, even though XEP
+                # gives an int as an example.
+                "foundation": "fake",
+                "ip": host,
+                "port": str(port),
+                "protocol": ["udp", "tcp"][proto],
+                # Gabble multiplies by 65536 so we should too.
+                "priority": str(int(pref * 65536)),
+                "type":  ["host", "srflx", "srflx"][transtype],
+                "network": "0",
+                "generation": "0",# Increment this yourself if you care.
+                "component": "1", # 1 is rtp, 2 is rtcp
+                }, []) #NOTE: subtype and profile are unused
+            candidates.append(node)
+        return ('transport', ns.JINGLE_TRANSPORT_ICEUDP, attrs, candidates)
 
     def Presence(self, frm, to, caps):
         "Creates <presence> stanza with specified capabilities"
@@ -621,6 +652,7 @@ class JingleTest2:
                     pref, transtype, user, pwd)
                 in enumerate(self.remote_transports) ],
             signature='(usuussduss)')
+
 
 def test_dialects(f, dialects):
     for dialect in dialects:

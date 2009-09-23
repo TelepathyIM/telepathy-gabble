@@ -92,7 +92,8 @@ class FileTransferTest(object):
         disco_event, presence_event = self.q.expect_many(
             EventPattern('stream-iq', iq_type='get',
                 query_ns='http://jabber.org/protocol/disco#info', to=self.contact_full_jid),
-            EventPattern('dbus-signal', signal='PresencesChanged'))
+            EventPattern('dbus-signal', signal='PresencesChanged', args=[
+                {self.handle: (cs.PRESENCE_AVAILABLE, u'available', u'')}]))
 
         assert disco_event.query['node'] == \
             'http://example.com/ISupportFT#1.0'
@@ -101,9 +102,6 @@ class FileTransferTest(object):
         feature = query.addElement('feature')
         feature['var'] = ns.FILE_TRANSFER
         self.stream.send(result)
-
-        h = presence_event.args[0].keys()[0]
-        assert h == self.handle
 
         sync_stream(self.q, self.stream)
 

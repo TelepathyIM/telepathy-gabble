@@ -255,20 +255,32 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       id = lm_message_node_get_attribute (node, "foundation");
       if (id == NULL)
-        continue;
+        {
+          DEBUG ("candidate doesn't contain foundation");
+          continue;
+        }
 
       address = lm_message_node_get_attribute (node, "ip");
       if (address == NULL)
-        continue;
+        {
+          DEBUG ("candidate doesn't contain ip");
+          continue;
+        }
 
       str = lm_message_node_get_attribute (node, "port");
       if (str == NULL)
-        continue;
+        {
+          DEBUG ("candidate doesn't contain port");
+          continue;
+        }
       port = atoi (str);
 
       str = lm_message_node_get_attribute (node, "protocol");
       if (str == NULL)
-        continue;
+        {
+          DEBUG ("candidate doesn't contain protocol");
+          continue;
+        }
 
       if (!tp_strdiff (str, "udp"))
         {
@@ -283,12 +295,18 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       str = lm_message_node_get_attribute (node, "priority");
       if (str == NULL)
-        continue;
-      pref = g_ascii_strtod (str, NULL);
+        {
+          DEBUG ("candidate doesn't contain priority");
+          continue;
+        }
+      pref = g_ascii_strtod (str, NULL) / 65536.0;
 
       str = lm_message_node_get_attribute (node, "type");
       if (str == NULL)
-        continue;
+        {
+          DEBUG ("candidate doesn't contain type");
+          continue;
+        }
 
       if (!tp_strdiff (str, "host"))
         {
@@ -314,25 +332,40 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       user = lm_message_node_get_attribute (transport_node, "ufrag");
       if (user == NULL)
-        continue;
+        {
+          DEBUG ("transport doesn't contain ufrag");
+          continue;
+        }
 
       pass = lm_message_node_get_attribute (transport_node, "pwd");
       if (pass == NULL)
-        continue;
+        {
+          DEBUG ("transport doesn't contain pwd");
+          continue;
+        }
 
       str = lm_message_node_get_attribute (node, "network");
       if (str == NULL)
-        continue;
+        {
+          DEBUG ("candidate doesn't contain network");
+          continue;
+        }
       net = atoi (str);
 
       str = lm_message_node_get_attribute (node, "generation");
       if (str == NULL)
-        continue;
+        {
+          DEBUG ("candidate doesn't contain generation");
+          continue;
+        }
       gen = atoi (str);
 
       str = lm_message_node_get_attribute (node, "component");
       if (str == NULL)
-        continue;
+        {
+          DEBUG ("candidate doesn't contain component");
+          continue;
+        }
       component = atoi (str);
 
       c = jingle_candidate_new (proto, ctype, id, component,

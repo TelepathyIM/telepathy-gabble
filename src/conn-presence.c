@@ -139,7 +139,7 @@ construct_contact_statuses_cb (GObject *obj,
 
 
 /**
- * emit_presence_update:
+ * conn_presence_emit_presence_update:
  * @self: A #GabbleConnection
  * @contact_handles: A zero-terminated array of #TpHandle for
  *                    the contacts to emit presence for
@@ -147,9 +147,10 @@ construct_contact_statuses_cb (GObject *obj,
  * Emits the Telepathy PresenceUpdate signal with the current
  * stored presence information for the given contact.
  */
-static void
-emit_presence_update (GabbleConnection *self,
-                      const GArray *contact_handles)
+void
+conn_presence_emit_presence_update (
+    GabbleConnection *self,
+    const GArray *contact_handles)
 {
   GHashTable *contact_statuses;
 
@@ -162,7 +163,8 @@ emit_presence_update (GabbleConnection *self,
 
 /**
  * emit_one_presence_update:
- * Convenience function for calling emit_presence_update with one handle.
+ * Convenience function for calling conn_presence_emit_presence_update with
+ * one handle.
  */
 
 static void
@@ -172,7 +174,7 @@ emit_one_presence_update (GabbleConnection *self,
   GArray *handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
 
   g_array_insert_val (handles, 0, handle);
-  emit_presence_update (self, handles);
+  conn_presence_emit_presence_update (self, handles);
   g_array_free (handles, TRUE);
 }
 
@@ -275,7 +277,7 @@ connection_presences_updated_cb (
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  emit_presence_update (conn, handles);
+  conn_presence_emit_presence_update (conn, handles);
 }
 
 

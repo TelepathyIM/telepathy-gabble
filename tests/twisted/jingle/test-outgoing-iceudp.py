@@ -76,6 +76,7 @@ def worker(jp, q, bus, conn, stream):
 
     stream.send(jp.xml(jp.ResultIq('test@localhost', e.stanza, [])))
 
+    # Make sure that it doesn't send a duplicate of our one ICE candidate here.
     ti_event = [
         EventPattern('stream-iq',
             predicate=jp.action_predicate('transport-info'))
@@ -84,16 +85,62 @@ def worker(jp, q, bus, conn, stream):
     sync_stream(q, stream)
     q.unforbid_events(ti_event)
 
+    # XEP-0166 6.4 Negotiation: "The allowable negotiations include:
+    # Exchanging particular transport candidates via the transport-info action."
+    candidate = (
+        "192.168.0.69", # host
+        668, # port
+        0, # protocol = TP_MEDIA_STREAM_BASE_PROTO_UDP
+        "RTP", # protocol subtype
+        "AVP", # profile
+        1.0, # preference
+        0, # transport type = TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+        "username",
+        "password" )
+    transport = jp.TransportIceUdp([candidate])
+
+    node = jp.SetIq(jt2.peer, jt2.jid, [
+        jp.Jingle(jt2.sid, jt2.peer, 'transport-info', [
+            jp.Content('stream1', 'initiator', 'both', [
+                transport]) ]) ])
+    stream.send(jp.xml(node))
+
+    candidate_e, result_e =  q.expect_many(
+        EventPattern('dbus-signal',  signal='AddRemoteCandidate'),
+        EventPattern('stream-iq', iq_type='result'))
+
+    fake_, (returned_candidate,) = candidate_e.args
+    assertEquals(candidate, returned_candidate[1:])
+
+    candidate = (
+        "192.168.0.69", # host
+        670, # port
+        0, # protocol = TP_MEDIA_STREAM_BASE_PROTO_UDP
+        "RTP", # protocol subtype
+        "AVP", # profile
+        1.0, # preference
+        0, # transport type = TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+        "username",
+        "password" )
+    transport = jp.TransportIceUdp([candidate])
+
+    # It is also valid to send transports in the accept.
+    # This is what pidgin does.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'session-accept', [
             jp.Content('stream1', 'initiator', 'both', [
                 jp.Description('audio', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportIceUdp() ]) ]) ])
+                transport ]) ]) ])
     stream.send(jp.xml(node))
 
-    q.expect('stream-iq', iq_type='result')
+    candidate_e, result_e = q.expect_many(
+        EventPattern('dbus-signal',  signal='AddRemoteCandidate'),
+        EventPattern('stream-iq', iq_type='result'))
+
+    fake_, (returned_candidate,) = candidate_e.args
+    assertEquals(candidate, returned_candidate[1:])
 
     chan.Close()
     e = q.expect('stream-iq',

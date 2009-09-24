@@ -1829,7 +1829,7 @@ closed_cb (GObject *source,
       DEBUG ("close failed: %s", error->message);
 
       if (g_error_matches (error, WOCKY_PORTER_ERROR,
-            WOCKY_PORTER_ERROR_FORCE_CLOSING))
+            WOCKY_PORTER_ERROR_FORCIBLY_CLOSED))
         {
           /* Close operation has been aborted because a force_close operation
            * has been started. tp_base_connection_finish_shutdown will be

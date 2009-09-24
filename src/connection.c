@@ -3437,3 +3437,9 @@ gabble_connection_set_disco_reply_timeout (guint timeout)
 {
   disco_reply_timeout = timeout;
 }
+
+void
+gabble_connection_set_connect_timeout (guint timeout)
+{
+  connect_timeout = timeout;
+}

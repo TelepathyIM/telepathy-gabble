@@ -32,6 +32,9 @@ main (int argc,
 {
   gabble_init ();
 
+  /* needed for connect/timeout.py */
+  gabble_connection_set_connect_timeout (3);
+
   /* needed for test-disco-no-reply.py */
   gabble_connection_set_disco_reply_timeout (3);
 

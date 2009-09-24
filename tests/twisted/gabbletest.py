@@ -342,18 +342,21 @@ def make_stream(event_func, authenticator=None, protocol=None, port=4242, resour
     port = reactor.listenTCP(port, factory)
     return (stream, port)
 
-def disconnect_conn(q, conn, stream, expected=[]):
+def disconnect_conn(q, conn, stream, expected_before=[], expected_after=[]):
     call_async(q, conn, 'Disconnect')
 
-    tmp = expected + [
+    tmp = expected_before + [
         EventPattern('dbus-signal', signal='StatusChanged', args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-closed')]
 
-    events = q.expect_many(*tmp)
+    before_events = q.expect_many(*tmp)
 
     stream.sendFooter()
-    q.expect('dbus-return', method='Disconnect')
-    return events[:-2]
+
+    tmp = expected_after + [EventPattern('dbus-return', method='Disconnect')]
+    after_events = q.expect_many(*tmp)
+
+    return before_events[:-2], after_events[:-1]
 
 def exec_test_deferred(fun, params, protocol=None, timeout=None,
                         authenticator=None):

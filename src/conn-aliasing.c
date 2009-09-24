@@ -659,7 +659,7 @@ _grab_nickname (GabbleConnection *self,
 
 
 static void
-location_nick_node_changed (WockyPepService *pep,
+pep_nick_node_changed (WockyPepService *pep,
     WockyBareContact *contact,
     WockyXmppStanza *stanza,
     GabbleConnection *conn)
@@ -1042,7 +1042,7 @@ conn_aliasing_init (GabbleConnection *conn)
   conn->pep_nick = wocky_pep_service_new (NS_NICK, TRUE);
 
   g_signal_connect (conn->pep_nick, "changed",
-      G_CALLBACK (location_nick_node_changed), conn);
+      G_CALLBACK (pep_nick_node_changed), conn);
 }
 
 void

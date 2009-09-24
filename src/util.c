@@ -1000,3 +1000,13 @@ gabble_g_ptr_array_copy (GPtrArray *source)
 
   return ret;
 }
+
+WockyBareContact *
+ensure_bare_contact_from_jid (GabbleConnection *conn,
+    const gchar *jid)
+{
+  WockyContactFactory *contact_factory;
+
+  contact_factory = wocky_session_get_contact_factory (conn->session);
+  return wocky_contact_factory_ensure_bare_contact (contact_factory, jid);
+}

@@ -28,6 +28,7 @@
 #include <telepathy-glib/handle-repo.h>
 #include <telepathy-glib/util.h>
 #include <loudmouth/loudmouth.h>
+#include <wocky/wocky-bare-contact.h>
 
 #include "types.h"
 
@@ -96,5 +97,8 @@ const gchar * lm_message_node_get_attribute_with_namespace (LmMessageNode *node,
     const gchar *ns);
 
 GPtrArray *gabble_g_ptr_array_copy (GPtrArray *source);
+
+WockyBareContact * ensure_bare_contact_from_jid (GabbleConnection *conn,
+    const gchar *jid);
 
 #endif /* __GABBLE_UTIL_H__ */

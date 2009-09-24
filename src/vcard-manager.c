@@ -1049,10 +1049,12 @@ suspended_request_timeout_cb (gpointer data)
 {
   GabbleVCardManagerRequest *request = data;
 
-  /* Send the request again */
   g_assert (request->timer_id == 0);
   request->timer_id =
       g_timeout_add_seconds (request->timeout, timeout_request, request);
+
+  /* Send the request again */
+  request->entry->suspended_timer_id = 0;
   cache_entry_ensure_queued (request, request->timeout);
 
   return FALSE;
@@ -1099,6 +1101,8 @@ pipeline_reply_cb (GabbleConnection *conn,
           gabble_xmpp_error_from_node (error_node, &error_type) ==
           XMPP_ERROR_RESOURCE_CONSTRAINT && error_type == XMPP_ERROR_TYPE_WAIT)
         {
+          g_source_remove (request->timer_id);
+          request->timer_id = 0;
           entry->suspended_timer_id = g_timeout_add_seconds (
               request_wait_delay, suspended_request_timeout_cb, request);
           return;

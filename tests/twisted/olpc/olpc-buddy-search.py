@@ -5,7 +5,7 @@ test OLPC search buddy
 import dbus
 
 from servicetest import call_async, EventPattern
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, disconnect_conn
 
 from twisted.words.xish import xpath
 from twisted.words.protocols.jabber.client import IQ
@@ -430,6 +430,13 @@ def test(q, bus, conn, stream):
 
     assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Properties'] == dbus.Dictionary({'color': '#AABBCC,#001122'}, signature='sv')
     assert props['org.laptop.Telepathy.Channel.Type.BuddyView.Alias'] == 'jean'
+
+    # Make a request and disconnect before it's finished. D-Bus call should
+    # be terminated with an error
+    marc_handle = conn.RequestHandles(cs.HT_CONTACT, ['marc@foo.com'])[0]
+    call_async(q, buddy_info_iface, 'GetProperties', marc_handle)
+
+    disconnect_conn(q, conn, stream, [], [EventPattern('dbus-error', method='GetProperties')])
 
 if __name__ == '__main__':
     exec_test(test)

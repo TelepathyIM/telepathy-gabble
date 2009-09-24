@@ -112,7 +112,6 @@ get_cached_location_or_query (GabbleConnection *conn,
   GHashTable *location;
   const gchar *jid;
   TpHandleRepoIface *contact_repo;
-  WockyContactFactory *contact_factory;
   WockyBareContact *contact;
 
   contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
@@ -125,9 +124,7 @@ get_cached_location_or_query (GabbleConnection *conn,
       return location;
     }
 
-  contact_factory = wocky_session_get_contact_factory (conn->session);
-  contact = wocky_contact_factory_ensure_bare_contact (contact_factory,
-      jid);
+  contact = ensure_bare_contact_from_jid (conn, jid);
 
   /* Send a query */
   wocky_pep_service_get_async (conn->pep_location, contact, NULL, pep_reply_cb,

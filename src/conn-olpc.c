@@ -431,7 +431,6 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   const gchar *jid;
   GHashTable *properties;
   pubsub_query_ctx *ctx;
-  WockyContactFactory *contact_factory;
   WockyBareContact *contact;
 
   DEBUG ("called");
@@ -460,10 +459,7 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
     return;
 
   ctx = pubsub_query_ctx_new (conn, context);
-
-  contact_factory = wocky_session_get_contact_factory (conn->session);
-  contact = wocky_contact_factory_ensure_bare_contact (contact_factory,
-      jid);
+  contact = ensure_bare_contact_from_jid (conn, jid);
 
   wocky_pep_service_get_async (conn->pep_olpc_buddy_props, contact, NULL,
       get_properties_reply_cb, ctx);
@@ -928,12 +924,7 @@ check_activity_properties (GabbleConnection *conn,
 
   if (query_needed)
     {
-      WockyContactFactory *contact_factory;
-      WockyBareContact *contact;
-
-      contact_factory = wocky_session_get_contact_factory (conn->session);
-      contact = wocky_contact_factory_ensure_bare_contact (contact_factory,
-          from);
+      WockyBareContact *contact = ensure_bare_contact_from_jid (conn, from);
 
       wocky_pep_service_get_async (conn->pep_olpc_buddy_props, contact,
           NULL, get_activity_properties_reply_cb, conn);
@@ -1038,7 +1029,6 @@ olpc_buddy_info_get_activities (GabbleSvcOLPCBuddyInfo *iface,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   const gchar *jid;
   pubsub_query_ctx *ctx;
-  WockyContactFactory *contact_factory;
   WockyBareContact *contact;
 
   DEBUG ("called");
@@ -1054,9 +1044,7 @@ olpc_buddy_info_get_activities (GabbleSvcOLPCBuddyInfo *iface,
     return;
 
   ctx = pubsub_query_ctx_new (conn, context);
-
-  contact_factory = wocky_session_get_contact_factory (conn->session);
-  contact = wocky_contact_factory_ensure_bare_contact (contact_factory, jid);
+  contact = ensure_bare_contact_from_jid (conn, jid);
 
   wocky_pep_service_get_async (conn->pep_olpc_activities, contact, NULL,
       get_activities_reply_cb, ctx);
@@ -1496,7 +1484,6 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   const gchar *jid;
   GabbleOlpcActivity *activity;
   pubsub_query_ctx *ctx;
-  WockyContactFactory *contact_factory;
   WockyBareContact *contact;
 
   DEBUG ("called for contact#%u", handle);
@@ -1526,9 +1513,7 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
     DEBUG ("current activity not in cache, query PEP node");
 
   ctx = pubsub_query_ctx_new (conn, context);
-
-  contact_factory = wocky_session_get_contact_factory (conn->session);
-  contact = wocky_contact_factory_ensure_bare_contact (contact_factory, jid);
+  contact = ensure_bare_contact_from_jid (conn, jid);
 
   wocky_pep_service_get_async (conn->pep_olpc_current_act, contact,
       NULL, get_current_activity_reply_cb, ctx);

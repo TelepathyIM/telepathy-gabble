@@ -41,9 +41,9 @@
 #define VCARD_CACHE_ENTRY_TTL 60
 
 /* When the server reply with XMPP_ERROR_RESOURCE_CONSTRAINT, wait
- * REQUEST_WAIT_DELAY seconds before allowing a vCard request to be sent to
+ * request_wait_delay seconds before allowing a vCard request to be sent to
  * the same recipient */
-#define REQUEST_WAIT_DELAY (5 * 60)
+static guint request_wait_delay = 5 * 60;
 
 static const gchar *NO_ALIAS = "none";
 
@@ -152,7 +152,7 @@ struct _GabbleVCardCacheEntry
   GSList *pending_requests;
 
   /* When requests for this entry receive an error of type "wait", we suspend
-   * further requests and retry again after REQUEST_WAIT_DELAY seconds.
+   * further requests and retry again after request_wait_delay seconds.
    * 0 if not suspended.
    */
   guint suspended_timer_id;
@@ -1100,7 +1100,7 @@ pipeline_reply_cb (GabbleConnection *conn,
           XMPP_ERROR_RESOURCE_CONSTRAINT && error_type == XMPP_ERROR_TYPE_WAIT)
         {
           entry->suspended_timer_id = g_timeout_add_seconds (
-              REQUEST_WAIT_DELAY, suspended_request_timeout_cb, request);
+              request_wait_delay, suspended_request_timeout_cb, request);
           return;
         }
 
@@ -1478,4 +1478,11 @@ gabble_vcard_manager_has_cached_alias (GabbleVCardManager *self,
       gabble_vcard_manager_cache_quark ());
 
   return p != NULL;
+}
+
+/* For unit tests only */
+void
+gabble_vcard_manager_set_suspend_reply_timeout (guint timeout)
+{
+  request_wait_delay = timeout;
 }

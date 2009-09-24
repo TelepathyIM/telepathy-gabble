@@ -40,6 +40,11 @@
 #define DEFAULT_REQUEST_TIMEOUT 180
 #define VCARD_CACHE_ENTRY_TTL 60
 
+/* When the server reply with XMPP_ERROR_RESOURCE_CONSTRAINT, wait
+ * REQUEST_WAIT_DELAY seconds before allowing a vCard request to be sent to
+ * the same recipient */
+#define REQUEST_WAIT_DELAY (5 * 60)
+
 static const gchar *NO_ALIAS = "none";
 
 /* signal enum */
@@ -146,6 +151,12 @@ struct _GabbleVCardCacheEntry
   /* List of (GabbleVCardManagerRequest *) borrowed from priv->requests */
   GSList *pending_requests;
 
+  /* When requests for this entry receive an error of type "wait", we suspend
+   * further requests and retry again after REQUEST_WAIT_DELAY seconds.
+   * 0 if not suspended.
+   */
+  guint suspended_timer_id;
+
   /* VCard node for this entry (owned reference), or NULL if there's no node */
   LmMessageNode *vcard_node;
 
@@ -175,6 +186,8 @@ static void cache_entry_free (void *data);
 static gint cache_entry_compare (gconstpointer a, gconstpointer b);
 static void manager_patch_vcard (
     GabbleVCardManager *self, LmMessageNode *vcard_node);
+static void cache_entry_ensure_queued (GabbleVCardManagerRequest *request,
+    guint timeout);
 
 static void
 gabble_vcard_manager_init (GabbleVCardManager *obj)
@@ -399,6 +412,13 @@ cache_entry_attempt_to_free (GabbleVCardCacheEntry *entry)
   if (entry->pending_requests != NULL)
     {
       DEBUG ("Not freeing vCard cache entry %p: it has pending requests",
+          entry);
+      return;
+    }
+
+  if (entry->suspended_timer_id != 0)
+    {
+      DEBUG ("Not freeing vCard cache entry %p: it has suspended requests",
           entry);
       return;
     }
@@ -1024,6 +1044,20 @@ manager_patch_vcard (GabbleVCardManager *self,
     }
 }
 
+static gboolean
+suspended_request_timeout_cb (gpointer data)
+{
+  GabbleVCardManagerRequest *request = data;
+
+  /* Send the request again */
+  g_assert (request->timer_id == 0);
+  request->timer_id =
+      g_timeout_add_seconds (request->timeout, timeout_request, request);
+  cache_entry_ensure_queued (request, request->timeout);
+
+  return FALSE;
+}
+
 /* Called when a GET request in the pipeline has either succeeded or failed. */
 static void
 pipeline_reply_cb (GabbleConnection *conn,
@@ -1031,7 +1065,8 @@ pipeline_reply_cb (GabbleConnection *conn,
                    gpointer user_data,
                    GError *error)
 {
-  GabbleVCardCacheEntry *entry = user_data;
+  GabbleVCardManagerRequest *request = user_data;
+  GabbleVCardCacheEntry *entry = request->entry;
   GabbleVCardManager *self = GABBLE_VCARD_MANAGER (entry->manager);
   GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) conn;
@@ -1044,11 +1079,31 @@ pipeline_reply_cb (GabbleConnection *conn,
   g_assert (tp_handle_is_valid (contact_repo, entry->handle, NULL));
 
   g_assert (entry->pipeline_item != NULL);
+  g_assert (entry->suspended_timer_id == 0);
 
   entry->pipeline_item = NULL;
 
   if (error)
     {
+      /* First, handle the error "wait": suspend the request and replay it
+       * later */
+      LmMessageNode *error_node = NULL;
+      GabbleXmppErrorType error_type;
+
+      if (reply_msg != NULL)
+        {
+          error_node = lm_message_node_get_child (reply_msg->node, "error");
+        }
+
+      if (error_node != NULL &&
+          gabble_xmpp_error_from_node (error_node, &error_type) ==
+          XMPP_ERROR_RESOURCE_CONSTRAINT && error_type == XMPP_ERROR_TYPE_WAIT)
+        {
+          entry->suspended_timer_id = g_timeout_add_seconds (
+              REQUEST_WAIT_DELAY, suspended_request_timeout_cb, request);
+          return;
+        }
+
       /* If request for our own vCard failed, and we do have
        * pending edits to make, cancel those and return error
        * to the user */
@@ -1120,8 +1175,9 @@ notify_delete_request (gpointer data, GObject *obj)
 }
 
 static void
-cache_entry_ensure_queued (GabbleVCardCacheEntry *entry, guint timeout)
+cache_entry_ensure_queued (GabbleVCardManagerRequest *request, guint timeout)
 {
+  GabbleVCardCacheEntry *entry = request->entry;
   GabbleConnection *conn = entry->manager->priv->connection;
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
@@ -1130,6 +1186,10 @@ cache_entry_ensure_queued (GabbleVCardCacheEntry *entry, guint timeout)
   if (entry->pipeline_item)
     {
       DEBUG ("adding to cache entry %p with <iq> already pending", entry);
+    }
+  else if (entry->suspended_timer_id != 0)
+    {
+      DEBUG ("adding to cache entry %p with <iq> suspended", entry);
     }
   else
     {
@@ -1155,7 +1215,7 @@ cache_entry_ensure_queued (GabbleVCardCacheEntry *entry, guint timeout)
           NULL);
 
       entry->pipeline_item = gabble_request_pipeline_enqueue (
-          conn->req_pipeline, msg, timeout, pipeline_reply_cb, entry);
+          conn->req_pipeline, msg, timeout, pipeline_reply_cb, request);
 
       lm_message_unref (msg);
 
@@ -1207,7 +1267,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
 
   request->timer_id =
       g_timeout_add_seconds (timeout, timeout_request, request);
-  cache_entry_ensure_queued (request->entry, timeout);
+  cache_entry_ensure_queued (request, timeout);
   return request;
 }
 

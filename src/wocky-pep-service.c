@@ -296,6 +296,14 @@ wocky_pep_service_get_async (WockyPepService *self,
   GSimpleAsyncResult *result;
   const gchar *jid;
 
+  if (priv->porter == NULL)
+    {
+      g_simple_async_report_error_in_idle (G_OBJECT (self), callback,
+          user_data, WOCKY_PORTER_ERROR, WOCKY_PORTER_ERROR_NOT_STARTED,
+          "Service has not been started");
+      return;
+    }
+
   jid = wocky_bare_contact_get_jid (contact);
 
   msg = wocky_xmpp_stanza_build (

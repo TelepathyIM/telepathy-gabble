@@ -129,14 +129,12 @@ wocky_pep_service_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->handler_id != 0)
-    {
-      wocky_porter_unregister_handler (priv->porter, priv->handler_id);
-      priv->handler_id = 0;
-    }
-
   if (priv->porter != NULL)
-    g_object_unref (priv->porter);
+    {
+      g_assert (priv->handler_id != 0);
+      wocky_porter_unregister_handler (priv->porter, priv->handler_id);
+      g_object_unref (priv->porter);
+    }
 
   if (priv->contact_factory != NULL)
     g_object_unref (priv->contact_factory);

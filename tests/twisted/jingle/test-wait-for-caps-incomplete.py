@@ -46,11 +46,11 @@ def test(q, bus, conn, stream):
     call_async(q, media_iface, 'RequestStreams', handle,
         [cs.MEDIA_STREAM_TYPE_AUDIO])
 
-    event = disconnect_conn(q, conn, stream,
-        [EventPattern('dbus-error', method='RequestStreams')])[0]
+    before_events, after_events = disconnect_conn(q, conn, stream,
+        [EventPattern('dbus-error', method='RequestStreams')])
 
     # RequestStreams should now return NotAvailable
-    assert event.error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
+    assert before_events[0].error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
 
 if __name__ == '__main__':
     exec_test(test, timeout=10)

@@ -30,7 +30,7 @@
 #include <telepathy-glib/dbus-properties-mixin.h>
 
 #include <wocky/wocky-session.h>
-#include "wocky-pep-service.h"
+#include <wocky/wocky-pep-service.h>
 
 #include "capabilities.h"
 #include "error.h"

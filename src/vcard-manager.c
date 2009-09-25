@@ -416,12 +416,9 @@ cache_entry_attempt_to_free (GabbleVCardCacheEntry *entry)
       return;
     }
 
-  if (entry->suspended_timer_id != 0)
-    {
-      DEBUG ("Not freeing vCard cache entry %p: it has suspended requests",
-          entry);
-      return;
-    }
+  /* If there is a suspended request, it must be in entry-> pending_requests
+   */
+  g_assert (entry->suspended_timer_id == 0);
 
   if (entry->handle == base->self_handle)
     {

@@ -7,14 +7,13 @@ import base64
 import hashlib
 
 from twisted.words.xish import domish
-from servicetest import EventPattern, sync_dbus
+from servicetest import EventPattern, sync_dbus, assertEquals
 from gabbletest import (exec_test, acknowledge_iq, make_result_iq, 
     sync_stream, send_error_reply)
 import constants as cs
 import ns
 
-avatar_retrieved_event = EventPattern('dbus-signal',
-        signal='AvatarRetrieved')
+avatar_retrieved_event = EventPattern('dbus-signal', signal='AvatarRetrieved')
 avatar_request_event = EventPattern('stream-iq', query_ns='vcard-temp')
 
 def test_get_avatar(q, bus, conn, stream, contact, handle, in_cache=False):
@@ -33,10 +32,10 @@ def test_get_avatar(q, bus, conn, stream, contact, handle, in_cache=False):
         stream.send(iq)
 
     event = q.expect('dbus-signal', signal='AvatarRetrieved')
-    assert event.args[0] == handle
-    assert event.args[1] == hashlib.sha1('hello').hexdigest()
-    assert event.args[2] == 'hello'
-    assert event.args[3] == 'image/png'
+    assertEquals(handle, event.args[0])
+    assertEquals(hashlib.sha1('hello').hexdigest(), event.args[1])
+    assertEquals('hello', event.args[2])
+    assertEquals('image/png', event.args[3])
 
     if in_cache:
         sync_stream(q, stream)
@@ -108,10 +107,10 @@ def test(q, bus, conn, stream):
     stream.send(iq)
 
     event = q.expect('dbus-signal', signal='AvatarRetrieved')
-    assert event.args[0] == busy_handle
-    assert event.args[1] == hashlib.sha1('hello').hexdigest()
-    assert event.args[2] == 'hello'
-    assert event.args[3] == 'image/png'
+    assertEquals(busy_handle, event.args[0])
+    assertEquals(hashlib.sha1('hello').hexdigest(), event.args[1])
+    assertEquals('hello', event.args[2])
+    assertEquals('image/png', event.args[3])
 
 if __name__ == '__main__':
     exec_test(test)

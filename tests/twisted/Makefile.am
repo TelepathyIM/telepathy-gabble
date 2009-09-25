@@ -189,6 +189,7 @@ EXTRA_DIST = \
 	config.py \
 	constants.py \
 	gabbletest.py \
+	httptest.py \
 	servicetest.py \
 	jingle/jingletest.py \
 	jingle/jingletest2.py \

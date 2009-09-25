@@ -703,7 +703,7 @@ streaminit_parse_request (LmMessage *message,
       return FALSE;
     }
 
-  x = lm_message_node_get_child_with_namespace (feature, "x", NS_DATA);
+  x = lm_message_node_get_child_with_namespace (feature, "x", NS_X_DATA);
   if (x == NULL)
     {
       NODE_DEBUG (message->node, "got a SI request without a X data field");
@@ -798,7 +798,7 @@ gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
         '(', "feature", "",
           '@', "xmlns", NS_FEATURENEG,
           '(', "x", "",
-            '@', "xmlns", NS_DATA,
+            '@', "xmlns", NS_X_DATA,
             '@', "type", "form",
             '(', "field", "",
               '@', "var", "stream-method",
@@ -2053,7 +2053,7 @@ gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
         '(', "feature", "",
           '@', "xmlns", NS_FEATURENEG,
           '(', "x", "",
-            '@', "xmlns", NS_DATA,
+            '@', "xmlns", NS_X_DATA,
             '@', "type", "submit",
             '(', "field", "",
               '@', "var", "stream-method",

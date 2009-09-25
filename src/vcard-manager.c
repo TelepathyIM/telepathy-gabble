@@ -1046,10 +1046,6 @@ suspended_request_timeout_cb (gpointer data)
 {
   GabbleVCardManagerRequest *request = data;
 
-  g_assert (request->timer_id == 0);
-  request->timer_id =
-      g_timeout_add_seconds (request->timeout, timeout_request, request);
-
   /* Send the request again */
   request->entry->suspended_timer_id = 0;
   cache_entry_ensure_queued (request, request->timeout);
@@ -1185,6 +1181,8 @@ cache_entry_ensure_queued (GabbleVCardManagerRequest *request, guint timeout)
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
+  g_assert (request->timer_id == 0);
+
   if (entry->pipeline_item)
     {
       DEBUG ("adding to cache entry %p with <iq> already pending", entry);
@@ -1197,6 +1195,9 @@ cache_entry_ensure_queued (GabbleVCardManagerRequest *request, guint timeout)
     {
       const char *jid;
       LmMessage *msg;
+
+      request->timer_id =
+          g_timeout_add_seconds (request->timeout, timeout_request, request);
 
       if (entry->handle == base->self_handle)
         {
@@ -1267,8 +1268,6 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   request->entry->pending_requests = g_slist_prepend
       (request->entry->pending_requests, request);
 
-  request->timer_id =
-      g_timeout_add_seconds (timeout, timeout_request, request);
   cache_entry_ensure_queued (request, timeout);
   return request;
 }

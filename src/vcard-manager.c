@@ -1094,6 +1094,7 @@ pipeline_reply_cb (GabbleConnection *conn,
           error_node = lm_message_node_get_child (reply_msg->node, "error");
         }
 
+      /* FIXME: move this code into error.c */
       if (error_node != NULL &&
           gabble_xmpp_error_from_node (error_node, &error_type) ==
           XMPP_ERROR_RESOURCE_CONSTRAINT && error_type == XMPP_ERROR_TYPE_WAIT)

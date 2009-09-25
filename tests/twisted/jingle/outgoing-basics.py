@@ -140,10 +140,13 @@ def worker(jp, q, bus, conn, stream, variant):
             # but we should be allowed to add the peer.
             chan.Group.AddMembers([remote_handle], 'I love backwards compat')
 
+    base_flags = cs.GF_PROPERTIES | cs.GF_MESSAGE_REMOVE \
+               | cs.GF_MESSAGE_REJECT | cs.GF_MESSAGE_RESCIND
+
     if variant == REQUEST_ANONYMOUS_AND_ADD or variant == REQUEST_ANONYMOUS:
-        expected_flags = cs.GF_PROPERTIES | cs.GF_CAN_ADD
+        expected_flags = base_flags | cs.GF_CAN_ADD
     else:
-        expected_flags = cs.GF_PROPERTIES
+        expected_flags = base_flags
     assertEquals(expected_flags, group_props['GroupFlags'])
     assertEquals({}, group_props['HandleOwners'])
 

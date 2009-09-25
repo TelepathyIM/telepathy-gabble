@@ -182,7 +182,9 @@ gabble_media_channel_init (GabbleMediaChannel *self)
 static void session_state_changed_cb (GabbleJingleSession *session,
     GParamSpec *arg1, GabbleMediaChannel *channel);
 static void session_terminated_cb (GabbleJingleSession *session,
-    gboolean local_terminator, TpChannelGroupChangeReason reason,
+    gboolean local_terminator,
+    TpChannelGroupChangeReason reason,
+    const gchar *text,
     gpointer user_data);
 static void session_new_content_cb (GabbleJingleSession *session,
     GabbleJingleContent *c, gpointer user_data);
@@ -329,8 +331,15 @@ gabble_media_channel_constructor (GType type, guint n_props,
       TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
   tp_intset_destroy (set);
 
-  /* We implement the 0.17.6 properties correctly */
-  tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_PROPERTIES, 0);
+  /* We implement the 0.17.6 properties correctly, and can include a message
+   * when ending a call.
+   */
+  tp_group_mixin_change_flags (obj,
+      TP_CHANNEL_GROUP_FLAG_PROPERTIES |
+      TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE |
+      TP_CHANNEL_GROUP_FLAG_MESSAGE_REJECT |
+      TP_CHANNEL_GROUP_FLAG_MESSAGE_RESCIND,
+      0);
 
   /* Set up Google relay related properties */
   jf = priv->conn->jingle_factory;
@@ -921,7 +930,7 @@ gabble_media_channel_close (GabbleMediaChannel *self)
 
       if (priv->session != NULL)
         gabble_jingle_session_terminate (priv->session,
-            TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL);
+            TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
 
       tp_svc_channel_emit_closed (self);
     }
@@ -2238,7 +2247,8 @@ gabble_media_channel_remove_member (GObject *obj,
       /* Terminate can fail if the UI provides a reason that makes no sense,
        * like Invited.
        */
-      if (!gabble_jingle_session_terminate (priv->session, reason, error))
+      if (!gabble_jingle_session_terminate (priv->session, reason, message,
+              error))
         {
           g_object_unref (chan);
           return FALSE;
@@ -2271,6 +2281,7 @@ static void
 session_terminated_cb (GabbleJingleSession *session,
                        gboolean local_terminator,
                        TpChannelGroupChangeReason reason,
+                       const gchar *text,
                        gpointer user_data)
 {
   GabbleMediaChannel *channel = (GabbleMediaChannel *) user_data;
@@ -2300,7 +2311,7 @@ session_terminated_cb (GabbleJingleSession *session,
   tp_intset_add (set, peer);
 
   tp_group_mixin_change_members ((GObject *) channel,
-      "", NULL, set, NULL, NULL, terminator, reason);
+      text, NULL, set, NULL, NULL, terminator, reason);
 
   tp_intset_destroy (set);
 
@@ -2450,7 +2461,7 @@ stream_error_cb (GabbleMediaStream *stream,
        */
       DEBUG ("Terminating call in response to stream error");
       gabble_jingle_session_terminate (priv->session,
-          TP_CHANNEL_GROUP_CHANGE_REASON_ERROR, NULL);
+          TP_CHANNEL_GROUP_CHANGE_REASON_ERROR, message, NULL);
     }
 
   g_list_free (contents);

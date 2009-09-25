@@ -1,10 +1,34 @@
-telepathy-gabble 0.8.4 (UNRELEASED)
+telepathy-gabble 0.8.4 (2009-09-25)
 ===================================
+
+The “bourgeois traditional omelette form” release.
 
 Fixes:
 
 * When receiving a file, Gabble now closes the local socket once all the data
-  has been written.
+  has been written. (Guillaume)
+  
+* fd.o #24043: Doesn't parse candidates in a Jingle session-accept stanza
+  This fix lets us interoperate with Pidgin's Jingle implementation. (Sjoerd,
+  David)
+
+* fd.o #24023: Accepting initial streams for a call is racy. (Sjoerd, Daf)
+
+* fd.o #20629: DBus events in tests should contain full path. (Daf)
+
+* fd.o #22795: jingle/google-relay.py is secretly made of cheese. (Daf)
+
+* fd.o #23903: Gabble crashes in File Transfer. (Guillaume)
+
+* fd.o #23685: build Gibber with fno-strict-aliasing so asyncns.c builds with
+  new GCC. (Guillaume)
+
+* fd.o #20565: Contacts should be initially offline and not unknown. (Daf)
+
+* When members are removed from a call due to a stream error, always indicate
+  so. (Daf)
+
+* Fix corner cases in SetLocation()'s language handling.
 
 telepathy-gabble 0.8.3 (2009-09-10)
 ===================================

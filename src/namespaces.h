@@ -24,7 +24,6 @@
 #define NS_AMP                  "http://jabber.org/protocol/amp"
 #define NS_BYTESTREAMS          "http://jabber.org/protocol/bytestreams"
 #define NS_CAPS                 "http://jabber.org/protocol/caps"
-#define NS_DATA                 "jabber:x:data"
 #define NS_CHAT_STATES          "http://jabber.org/protocol/chatstates"
 #define NS_DISCO_INFO           "http://jabber.org/protocol/disco#info"
 #define NS_DISCO_ITEMS          "http://jabber.org/protocol/disco#items"

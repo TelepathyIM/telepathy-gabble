@@ -1095,6 +1095,9 @@ pipeline_reply_cb (GabbleConnection *conn,
           gabble_xmpp_error_from_node (error_node, &error_type) ==
           XMPP_ERROR_RESOURCE_CONSTRAINT && error_type == XMPP_ERROR_TYPE_WAIT)
         {
+          DEBUG ("Cannot get <%u>'s vCard now: the server returned a "
+                 "temporary error. Suspend the request.",
+                 entry->handle);
           g_source_remove (request->timer_id);
           request->timer_id = 0;
           entry->suspended_timer_id = g_timeout_add_seconds (

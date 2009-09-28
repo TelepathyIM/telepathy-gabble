@@ -126,6 +126,9 @@ GabbleVCardManagerEditRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
 
 void gabble_vcard_manager_remove_edit_request (GabbleVCardManagerEditRequest *);
 
+/* For unit tests only */
+void gabble_vcard_manager_set_suspend_reply_timeout (guint timeout);
+
 G_END_DECLS
 
 #endif

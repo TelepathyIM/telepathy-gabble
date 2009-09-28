@@ -186,7 +186,7 @@ static void cache_entry_free (void *data);
 static gint cache_entry_compare (gconstpointer a, gconstpointer b);
 static void manager_patch_vcard (
     GabbleVCardManager *self, LmMessageNode *vcard_node);
-static void cache_entry_ensure_queued (GabbleVCardManagerRequest *request,
+static void request_send (GabbleVCardManagerRequest *request,
     guint timeout);
 
 static void
@@ -1048,7 +1048,7 @@ suspended_request_timeout_cb (gpointer data)
 
   /* Send the request again */
   request->entry->suspended_timer_id = 0;
-  cache_entry_ensure_queued (request, request->timeout);
+  request_send (request, request->timeout);
 
   return FALSE;
 }
@@ -1181,7 +1181,7 @@ notify_delete_request (gpointer data, GObject *obj)
 }
 
 static void
-cache_entry_ensure_queued (GabbleVCardManagerRequest *request, guint timeout)
+request_send (GabbleVCardManagerRequest *request, guint timeout)
 {
   GabbleVCardCacheEntry *entry = request->entry;
   GabbleConnection *conn = entry->manager->priv->connection;
@@ -1276,7 +1276,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   request->entry->pending_requests = g_slist_prepend
       (request->entry->pending_requests, request);
 
-  cache_entry_ensure_queued (request, timeout);
+  request_send (request, timeout);
   return request;
 }
 

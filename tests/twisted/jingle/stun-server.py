@@ -106,13 +106,13 @@ def test(q, bus, conn, stream,
         # address then gabble should be able to resolv it as well
         try:
             expected_stun_server = \
-                socket.gethostbyaddr("stun.collabora.co.uk")[2][0]
+                socket.gethostbyname("stun.collabora.co.uk")
             expected_stun_port = 3478
         except:
             expected_stun_server = None
 
     if expected_stun_server is None:
-        assert sh_props['STUNServers'] == stun_address, sh_props['STUNServers']
+        assert sh_props['STUNServers'] == [], sh_props['STUNServers']
     else:
         assert sh_props['STUNServers'] == \
             [(expected_stun_server, expected_stun_port)], \

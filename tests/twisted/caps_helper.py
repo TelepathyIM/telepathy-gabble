@@ -4,7 +4,7 @@ import base64
 import dbus
 
 from twisted.words.xish import domish, xpath
-from gabbletest import make_result_iq
+from gabbletest import make_result_iq, make_presence
 from servicetest import EventPattern, assertEquals, assertContains, \
         assertDoesNotContain
 
@@ -233,6 +233,51 @@ def caps_contain(event, cap):
     if var is None:
         return False
     return var == cap
+
+def presence_and_disco(q, conn, stream, contact, disco,
+                       client, caps, features, dataforms={}, initial=True):
+    h = send_presence(q, conn, stream, contact, caps, initial=initial)
+
+    if disco:
+        stanza = expect_disco(q, contact, client, caps)
+        send_disco_reply(stream, stanza, features, dataforms)
+
+    return h
+
+def send_presence(q, conn, stream, contact, caps, initial=True):
+    h = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
+
+    if initial:
+        stream.send(make_presence(contact, status='hello'))
+
+        q.expect_many(
+            EventPattern('dbus-signal', signal='PresenceUpdate',
+                args=[{h:
+                   (0L, {u'available': {'message': 'hello'}})}]),
+            EventPattern('dbus-signal', signal='PresencesChanged',
+                args=[{h:
+                   (2, u'available', 'hello')}]))
+
+        # no special capabilities
+        assertEquals([(h, cs.CHANNEL_TYPE_TEXT, 3, 0)],
+            conn.Capabilities.GetCapabilities([h]))
+
+    # send updated presence with caps info
+    stream.send(make_presence(contact, status='hello', caps=caps))
+
+    return h
+
+def expect_disco(q, contact, client, caps):
+    # Gabble looks up our capabilities
+    event = q.expect('stream-iq', to=contact, query_ns=ns.DISCO_INFO)
+    assertEquals(client + '#' + caps['ver'], event.query['node'])
+
+    return event.stanza
+
+def send_disco_reply(stream, stanza, features, dataforms={}):
+    # send good reply
+    result = make_caps_disco_reply(stream, stanza, features, dataforms)
+    stream.send(result)
 
 if __name__ == '__main__':
     # example from XEP-0115

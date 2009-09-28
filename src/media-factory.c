@@ -731,9 +731,8 @@ _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
   TpChannelMediaCapabilities typeflags = 0;
   gboolean has_a_transport;
 
-  /* FIXME: shouldn't we support audio/video for people with any transport
-   * that we ourselves support, not just gtalk-p2p? */
-  has_a_transport = gabble_capability_set_has (caps, NS_GOOGLE_TRANSPORT_P2P);
+  has_a_transport = gabble_capability_set_has_one (caps,
+    gabble_capabilities_get_any_transport ());
 
   if (has_a_transport &&
       gabble_capability_set_has_one (caps,

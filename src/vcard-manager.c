@@ -1083,21 +1083,25 @@ pipeline_reply_cb (GabbleConnection *conn,
       /* First, handle the error "wait": suspend the request and replay it
        * later */
       LmMessageNode *error_node = NULL;
-      GabbleXmppErrorType error_type;
+      GabbleXmppErrorType error_type = XMPP_ERROR_UNDEFINED_CONDITION;
 
       if (reply_msg != NULL)
         {
           error_node = lm_message_node_get_child (reply_msg->node, "error");
+          if (error_node != NULL)
+            {
+              gabble_xmpp_error_from_node (error_node, &error_type);
+            }
         }
 
       /* FIXME: move this code into error.c */
-      if (error_node != NULL &&
-          gabble_xmpp_error_from_node (error_node, &error_type) ==
-          XMPP_ERROR_RESOURCE_CONSTRAINT && error_type == XMPP_ERROR_TYPE_WAIT)
+      if (error_node != NULL && error_type == XMPP_ERROR_TYPE_WAIT)
         {
-          DEBUG ("Cannot get <%u>'s vCard now: the server returned a "
-                 "temporary error. Suspend the request.",
-                 entry->handle);
+          DEBUG ("Cannot get <%u>'s vCard now: the server returned the "
+                 "temporary error '%s'. Suspend the request.",
+                 entry->handle,
+                 gabble_xmpp_error_string (
+                   gabble_xmpp_error_from_node (error_node, &error_type)));
           g_source_remove (request->timer_id);
           request->timer_id = 0;
           entry->suspended_timer_id = g_timeout_add_seconds (

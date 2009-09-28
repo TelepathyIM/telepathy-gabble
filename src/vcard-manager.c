@@ -1086,13 +1086,15 @@ pipeline_reply_cb (GabbleConnection *conn,
       GabbleXmppError xmpp_error = XMPP_ERROR_UNDEFINED_CONDITION;
       GabbleXmppErrorType error_type = XMPP_ERROR_UNDEFINED_CONDITION;
 
+      /* FIXME: add a helper in error.c to extract the type, error, and message
+       *        from an XMPP stanza.
+       */
       if (reply_msg != NULL)
         error_node = lm_message_node_get_child (reply_msg->node, "error");
 
       if (error_node != NULL)
         xmpp_error = gabble_xmpp_error_from_node (error_node, &error_type);
 
-      /* FIXME: move this code into error.c */
       if (error_type == XMPP_ERROR_TYPE_WAIT)
         {
           DEBUG ("Cannot get <%u>'s vCard now: the server returned the "

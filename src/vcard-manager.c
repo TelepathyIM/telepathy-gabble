@@ -1097,9 +1097,9 @@ pipeline_reply_cb (GabbleConnection *conn,
 
       if (error_type == XMPP_ERROR_TYPE_WAIT)
         {
-          DEBUG ("Cannot get <%u>'s vCard now: the server returned the "
-                 "temporary error '%s'. Suspend the request.",
-                 entry->handle, gabble_xmpp_error_string (xmpp_error));
+          DEBUG ("Retrieving %u's vCard returned a temporary <%s/> error; "
+              "trying againg in %u seconds", entry->handle,
+              gabble_xmpp_error_string (xmpp_error), request_wait_delay);
 
           g_source_remove (request->timer_id);
           request->timer_id = 0;

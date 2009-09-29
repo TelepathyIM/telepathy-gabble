@@ -9,6 +9,7 @@ TWISTED_TESTS = \
 	caps/from-bare-jid.py \
 	caps/hashed-caps.py \
 	caps/initial-caps.py \
+	caps/jingle-caps.py \
 	caps/receive-jingle.py \
 	caps/tube-caps.py \
 	muc/name-conflict.py \

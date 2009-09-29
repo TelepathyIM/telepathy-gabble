@@ -1,5 +1,3 @@
-include $(top_srcdir)/tools/shave.mk
-
 tools_dir = $(top_srcdir)/tools
 
 # htmldir is not defined by autoconf < 2.59c
@@ -21,10 +19,10 @@ CLEANFILES = \
     $(html_DATA)
 
 %.8: %.8.in Makefile
-	$(QUIET_GEN)sed -e 's,[@]libexecdir[@],@libexecdir@,' < $< > $@
+	$(AM_V_GEN)sed -e 's,[@]libexecdir[@],@libexecdir@,' < $< > $@
 
 $(html_DATA): %.html: %.xml $(tools_dir)/xep.xsl
-	$(QUIET_GEN)$(XSLTPROC) $(tools_dir)/xep.xsl $< > $@
+	$(AM_V_GEN)$(XSLTPROC) $(tools_dir)/xep.xsl $< > $@
 
 proto-xep-upload: $(html_DATA)
 	rsync -P $(html_DATA) people.collabora.co.uk:public_html/

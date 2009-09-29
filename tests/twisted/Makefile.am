@@ -181,8 +181,8 @@ check-twisted:
 	fi
 
 config.py: Makefile
-	echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\"" > config.py
-	if test -n ''$(ENABLE_DEBUG); then \
+	$(AM_V_GEN)echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\"" > config.py
+	@if test -n ''$(ENABLE_DEBUG); then \
 		echo "DEBUGGING = True" >> config.py; \
 	else \
 		echo "DEBUGGING = False" >> config.py; \

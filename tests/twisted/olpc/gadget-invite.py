@@ -17,13 +17,6 @@ import ns
 def join_channel(name, q, conn, stream):
     call_async(q, conn, 'RequestHandles', cs.HT_ROOM, [name])
 
-    # announce conference service
-    event = q.expect('stream-iq', to='conference.localhost', query_ns=ns.DISCO_INFO)
-    reply = make_result_iq(stream, event.stanza)
-    feature = reply.firstChildElement().addElement('feature')
-    feature['var'] = ns.MUC
-    stream.send(reply)
-
     event = q.expect('dbus-return', method='RequestHandles')
     handles = event.value[0]
 

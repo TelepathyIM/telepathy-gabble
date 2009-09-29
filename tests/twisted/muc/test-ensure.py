@@ -18,15 +18,6 @@ def test(q, bus, conn, stream):
     jids = ['chat@conf.localhost', 'chien@conf.localhost']
     call_async(q, conn, 'RequestHandles', 2, jids)
 
-    # Gabble is stupid and discos the alleged conf server twice.
-    for i in [0,1]:
-        event = q.expect('stream-iq', to='conf.localhost',
-            query_ns='http://jabber.org/protocol/disco#info')
-        result = make_result_iq(stream, event.stanza)
-        feature = result.firstChildElement().addElement('feature')
-        feature['var'] = 'http://jabber.org/protocol/muc'
-        stream.send(result)
-
     event = q.expect('dbus-return', method='RequestHandles')
     room_handles = event.value[0]
 

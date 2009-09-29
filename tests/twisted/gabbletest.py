@@ -61,12 +61,6 @@ def send_error_reply(stream, iq, error_stanza=None):
 
 def request_muc_handle(q, conn, stream, muc_jid):
     servicetest.call_async(q, conn, 'RequestHandles', 2, [muc_jid])
-    host = muc_jid.split('@')[1]
-    event = q.expect('stream-iq', to=host, query_ns=ns.DISCO_INFO)
-    result = make_result_iq(stream, event.stanza)
-    feature = result.firstChildElement().addElement('feature')
-    feature['var'] = ns.MUC
-    stream.send(result)
     event = q.expect('dbus-return', method='RequestHandles')
     return event.value[0][0]
 

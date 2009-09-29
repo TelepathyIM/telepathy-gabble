@@ -18,13 +18,6 @@ def get_muc_tubes_channel(q, bus, conn, stream, muc_jid, anonymous=True):
 
     call_async(q, conn, 'RequestHandles', cs.HT_ROOM, [muc_jid])
 
-    event = q.expect('stream-iq', to=muc_server,
-            query_ns='http://jabber.org/protocol/disco#info')
-    result = make_result_iq(stream, event.stanza)
-    feature = result.firstChildElement().addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/muc'
-    stream.send(result)
-
     event = q.expect('dbus-return', method='RequestHandles')
     handles = event.value[0]
     room_handle = handles[0]

@@ -23,13 +23,6 @@ def test(q, bus, conn, stream):
     # query
     call_async(q, conn, 'RequestHandles', 2, ['chat@conf.localhost'])
 
-    event = q.expect('stream-iq', to='conf.localhost',
-        query_ns='http://jabber.org/protocol/disco#info')
-    result = make_result_iq(stream, event.stanza)
-    feature = result.firstChildElement().addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/muc'
-    stream.send(result)
-
     event = q.expect('dbus-return', method='RequestHandles')
     room_handle = event.value[0][0]
 

@@ -3,7 +3,7 @@
 from sys import argv, stdout, stderr
 import xml.dom.minidom
 
-from libglibcodegen import NS_TP, camelcase_to_upper, get_docstring, \
+from libglibcodegen import NS_TP, get_docstring, \
         get_descendant_text, get_by_path
 
 class Generator(object):
@@ -27,8 +27,8 @@ class Generator(object):
             file.write(' version ' + get_descendant_text(version))
         file.write('\n\n')
         for copyright in get_by_path(self.spec, 'copyright'):
-            stdout.write(get_descendant_text(copyright))
-            stdout.write('\n')
+            file.write(get_descendant_text(copyright))
+            file.write('\n')
         file.write('\n')
         file.write(get_descendant_text(get_by_path(self.spec, 'license')))
         file.write(get_descendant_text(get_by_path(self.spec, 'docstring')))
@@ -47,7 +47,7 @@ class Generator(object):
         self.decls.write("""\
 /**
  * %(IFACE_DEFINE)s:
- * 
+ *
  * The interface name "%(name)s"
  */
 #define %(IFACE_DEFINE)s \\
@@ -59,7 +59,7 @@ class Generator(object):
         self.decls.write("""
 /**
  * %(IFACE_QUARK_DEFINE)s:
- * 
+ *
  * Expands to a call to a function that returns a quark for the interface \
 name "%(name)s"
  */

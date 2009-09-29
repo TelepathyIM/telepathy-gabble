@@ -239,6 +239,8 @@ void _gabble_connection_send_iq_error (GabbleConnection *conn,
     LmMessage *message, GabbleXmppError error, const gchar *errmsg);
 
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
+gchar *gabble_connection_get_canonical_room_name (GabbleConnection *conn,
+    const gchar *jid);
 gboolean _gabble_connection_signal_own_presence (GabbleConnection *,
     GError **);
 

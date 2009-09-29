@@ -3009,8 +3009,8 @@ _gabble_connection_find_conference_server (GabbleConnection *conn)
 }
 
 
-static gchar *
-_gabble_connection_get_canonical_room_name (GabbleConnection *conn,
+gchar *
+gabble_connection_get_canonical_room_name (GabbleConnection *conn,
                                            const gchar *name)
 {
   const gchar *server;
@@ -3113,7 +3113,7 @@ room_verify_batch_new (GabbleConnection *conn,
       batch->contexts[i].index = i;
       batch->contexts[i].batch = batch;
 
-      qualified_name = _gabble_connection_get_canonical_room_name (conn, name);
+      qualified_name = gabble_connection_get_canonical_room_name (conn, name);
 
       if (!qualified_name)
         {

@@ -2408,6 +2408,35 @@ static void gabble_connection_get_handle_contact_capabilities (
     GabbleConnection *self, TpHandle handle, GPtrArray *arr);
 static void gabble_free_enhanced_contact_capabilities (GPtrArray *caps);
 
+/**
+ * gabble_connection_build_contact_caps:
+ * @handle: a contact
+ * @caps: @handle's XMPP capabilities
+ * @arr: an array to fill with the channel classes corresponding to @caps.
+ */
+static void
+gabble_connection_build_contact_caps (
+    GabbleConnection *self,
+    TpHandle handle,
+    const GabbleCapabilitySet *caps,
+    GPtrArray *arr)
+{
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self);
+  TpChannelManagerIter iter;
+  TpChannelManager *manager;
+
+  tp_base_connection_channel_manager_iter_init (&iter, base_conn);
+
+  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
+    {
+      /* all channel managers must implement the capability interface */
+      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
+
+      gabble_caps_channel_manager_get_contact_capabilities (
+          GABBLE_CAPS_CHANNEL_MANAGER (manager), handle, caps, arr);
+    }
+}
+
 static void
 _emit_capabilities_changed (GabbleConnection *conn,
                             TpHandle handle,
@@ -2504,8 +2533,6 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (self);
   GabblePresence *p;
   GabbleCapabilitySet *caps;
-  TpChannelManagerIter iter;
-  TpChannelManager *manager;
 
   if (handle == base_conn->self_handle)
     p = self->self_presence;
@@ -2520,16 +2547,7 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
 
   caps = gabble_presence_dup_caps (p);
 
-  tp_base_connection_channel_manager_iter_init (&iter, base_conn);
-
-  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
-    {
-      /* all channel managers must implement the capability interface */
-      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
-
-      gabble_caps_channel_manager_get_contact_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (manager), handle, caps, arr);
-    }
+  gabble_connection_build_contact_caps (self, handle, caps, arr);
 
   gabble_capability_set_free (caps);
 }

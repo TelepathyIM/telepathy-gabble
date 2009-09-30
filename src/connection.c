@@ -2404,8 +2404,6 @@ ERROR:
  *                          D-BUS EXPORTED METHODS                          *
  ****************************************************************************/
 
-static void gabble_connection_get_handle_contact_capabilities (
-    GabbleConnection *self, TpHandle handle, GPtrArray *arr);
 static void gabble_free_enhanced_contact_capabilities (GPtrArray *caps);
 
 /**
@@ -2508,8 +2506,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
 
   caps_arr = g_ptr_array_new ();
 
-  gabble_connection_get_handle_contact_capabilities (conn, handle,
-      caps_arr);
+  gabble_connection_build_contact_caps (conn, handle, new_set, caps_arr);
 
   hash = g_hash_table_new (NULL, NULL);
   g_hash_table_insert (hash, GUINT_TO_POINTER (handle), caps_arr);

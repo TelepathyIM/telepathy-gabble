@@ -104,6 +104,9 @@ struct _GabblePresenceCachePrivate
    */
   GHashTable *location;
 
+  /* Are we resetting the image hash as per XEP-0153 section 4.4 */
+  gboolean avatar_reset_pending;
+
   gboolean dispose_has_run;
 };
 
@@ -640,6 +643,20 @@ _grab_nickname (GabblePresenceCache *cache,
 }
 
 static void
+self_vcard_request_cb (GabbleVCardManager *self,
+                       GabbleVCardManagerRequest *request,
+                       TpHandle handle,
+                       LmMessageNode *vcard,
+                       GError *error,
+                       gpointer user_data)
+{
+  GabblePresenceCache *cache = user_data;
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+
+  priv->avatar_reset_pending = FALSE;
+}
+
+static void
 _grab_avatar_sha1 (GabblePresenceCache *cache,
                    TpHandle handle,
                    const gchar *from,
@@ -692,25 +709,31 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
       g_free (presence->avatar_sha1);
       if (handle == base_conn->self_handle)
         {
-          /* according to XEP-0153 section 4.3-2. 3rd bullet:
-           * if we receive a photo from another resource, then we MUST
-           * immediately send a presence update with an empty update child
-           * element (no photo node), then re-download our own vCard;
-           * when that arrives, we may start setting the photo node in our
-           * presence again.
-           */
-          GError *error = NULL;
-          presence->avatar_sha1 = NULL;
-          if (!_gabble_connection_signal_own_presence (priv->conn, &error))
+          /* We don't want recursive image resetting */
+          if (!priv->avatar_reset_pending)
             {
-              DEBUG ("failed to send own presence: %s", error->message);
-              g_error_free (error);
-            }
+              /* according to XEP-0153 section 4.3-2. 3rd bullet:
+               * if we receive a photo from another resource, then we MUST
+               * immediately send a presence update with an empty update child
+               * element (no photo node), then re-download our own vCard;
+               * when that arrives, we may start setting the photo node in our
+               * presence again.
+               */
+              GError *error = NULL;
+              priv->avatar_reset_pending = TRUE;
+              presence->avatar_sha1 = NULL;
+              if (!_gabble_connection_signal_own_presence (priv->conn, &error))
+                {
+                  DEBUG ("failed to send own presence: %s", error->message);
+                  g_error_free (error);
+                }
 
-          gabble_vcard_manager_invalidate_cache (priv->conn->vcard_manager,
-              base_conn->self_handle);
-          gabble_vcard_manager_request (priv->conn->vcard_manager,
-              base_conn->self_handle, 0, NULL, NULL, NULL);
+              gabble_vcard_manager_invalidate_cache (priv->conn->vcard_manager,
+                  base_conn->self_handle);
+              gabble_vcard_manager_request (priv->conn->vcard_manager,
+                  base_conn->self_handle, 0, self_vcard_request_cb, cache,
+                  NULL);
+            }
         }
       else
         {

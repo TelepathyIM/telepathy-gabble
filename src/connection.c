@@ -2410,18 +2410,19 @@ static void gabble_free_enhanced_contact_capabilities (GPtrArray *caps);
  * gabble_connection_build_contact_caps:
  * @handle: a contact
  * @caps: @handle's XMPP capabilities
- * @arr: an array to fill with the channel classes corresponding to @caps.
+ *
+ * Returns: an array containing the channel classes corresponding to @caps.
  */
-static void
+static GPtrArray *
 gabble_connection_build_contact_caps (
     GabbleConnection *self,
     TpHandle handle,
-    const GabbleCapabilitySet *caps,
-    GPtrArray *arr)
+    const GabbleCapabilitySet *caps)
 {
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (self);
   TpChannelManagerIter iter;
   TpChannelManager *manager;
+  GPtrArray *ret = g_ptr_array_new ();
 
   tp_base_connection_channel_manager_iter_init (&iter, base_conn);
 
@@ -2431,8 +2432,10 @@ gabble_connection_build_contact_caps (
       g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
       gabble_caps_channel_manager_get_contact_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (manager), handle, caps, arr);
+          GABBLE_CAPS_CHANNEL_MANAGER (manager), handle, caps, ret);
     }
+
+  return ret;
 }
 
 static void
@@ -2503,10 +2506,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
   g_ptr_array_free (caps_arr, TRUE);
 
   /* o.f.T.C.ContactCapabilities */
-
-  caps_arr = g_ptr_array_new ();
-
-  gabble_connection_build_contact_caps (conn, handle, new_set, caps_arr);
+  caps_arr = gabble_connection_build_contact_caps (conn, handle, new_set);
 
   hash = g_hash_table_new (NULL, NULL);
   g_hash_table_insert (hash, GUINT_TO_POINTER (handle), caps_arr);
@@ -2519,17 +2519,20 @@ _emit_capabilities_changed (GabbleConnection *conn,
 }
 
 /**
- * gabble_connection_get_handle_contact_capabilities
+ * gabble_connection_get_handle_contact_capabilities:
  *
- * Add capabilities of handle to the given GPtrArray
+ * Returns: a set of channel classes representing @handle's capabilities, or
+ *          %NULL if unknown.
  */
-static void
-gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
-  TpHandle handle, GPtrArray *arr)
+static GPtrArray *
+gabble_connection_get_handle_contact_capabilities (
+    GabbleConnection *self,
+    TpHandle handle)
 {
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (self);
   GabblePresence *p;
   GabbleCapabilitySet *caps;
+  GPtrArray *arr;
 
   if (handle == base_conn->self_handle)
     p = self->self_presence;
@@ -2539,14 +2542,13 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
   if (p == NULL)
     {
       DEBUG ("don't know %u's presence; no caps for them.", handle);
-      return;
+      return NULL;
     }
 
   caps = gabble_presence_dup_caps (p);
-
-  gabble_connection_build_contact_caps (self, handle, caps, arr);
-
+  arr = gabble_connection_build_contact_caps (self, handle, caps);
   gabble_capability_set_free (caps);
+  return arr;
 }
 
 static void
@@ -2910,18 +2912,15 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
 {
   GabbleConnection *self = GABBLE_CONNECTION (obj);
   guint i;
-  GPtrArray *array = NULL;
 
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
+      GPtrArray *array;
 
-      if (array == NULL)
-        array = g_ptr_array_new ();
+      array = gabble_connection_get_handle_contact_capabilities (self, handle);
 
-      gabble_connection_get_handle_contact_capabilities (self, handle, array);
-
-      if (array->len > 0)
+      if (array != NULL)
         {
           GValue *val =  tp_g_value_slice_new (
             TP_ARRAY_TYPE_REQUESTABLE_CHANNEL_CLASS_LIST);
@@ -2931,13 +2930,8 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
               handle,
               TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES"/caps",
               val);
-
-          array = NULL;
         }
     }
-
-    if (array != NULL)
-      g_ptr_array_free (array, TRUE);
 }
 
 /**
@@ -3023,12 +3017,13 @@ gabble_connection_get_contact_capabilities (
 
   for (i = 0; i < handles->len; i++)
     {
-      GPtrArray *arr = g_ptr_array_new ();
+      GPtrArray *arr;
       TpHandle handle = g_array_index (handles, TpHandle, i);
 
-      gabble_connection_get_handle_contact_capabilities (self, handle, arr);
+      arr = gabble_connection_get_handle_contact_capabilities (self, handle);
 
-      g_hash_table_insert (ret, GUINT_TO_POINTER (handle), arr);
+      if (arr != NULL)
+        g_hash_table_insert (ret, GUINT_TO_POINTER (handle), arr);
     }
 
   tp_svc_connection_interface_contact_capabilities_return_from_get_contact_capabilities

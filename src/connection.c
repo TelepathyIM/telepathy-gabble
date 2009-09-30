@@ -2512,6 +2512,12 @@ gabble_connection_get_handle_contact_capabilities (GabbleConnection *self,
   else
     p = gabble_presence_cache_get (self->presence_cache, handle);
 
+  if (p == NULL)
+    {
+      DEBUG ("don't know %u's presence; no caps for them.", handle);
+      return;
+    }
+
   caps = gabble_presence_dup_caps (p);
 
   tp_base_connection_channel_manager_iter_init (&iter, base_conn);

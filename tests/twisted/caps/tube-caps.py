@@ -130,6 +130,14 @@ def receive_caps(q, conn, stream, contact, contact_handle, features,
 def test_tube_caps_from_contact(q, bus, conn, stream, contact):
     contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
 
+    # Check that we don't crash if we haven't seen any caps/presence for this
+    # contact yet.
+    caps = conn.ContactCapabilities.GetContactCapabilities([contact_handle])
+
+    # Since we don't know their caps, they should be omitted from the dict,
+    # rather than present with no caps.
+    assertEquals({}, caps)
+
     # send presence with no tube cap
     basic_caps = dbus.Dictionary({contact_handle:
             [(text_fixed_properties, text_allowed_properties)]})

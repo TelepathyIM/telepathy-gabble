@@ -498,6 +498,12 @@ disconnect_entry_foreach (gpointer handle, gpointer value, gpointer unused)
   GError err = { TP_ERRORS, TP_ERROR_DISCONNECTED, "Connection closed" };
   GabbleVCardCacheEntry *entry = value;
 
+  if (entry->suspended_timer_id)
+    {
+      g_source_remove (entry->suspended_timer_id);
+      entry->suspended_timer_id = 0;
+    }
+
   cache_entry_complete_requests (entry, &err);
 
   if (entry->pipeline_item)

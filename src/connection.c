@@ -2404,7 +2404,10 @@ ERROR:
  *                          D-BUS EXPORTED METHODS                          *
  ****************************************************************************/
 
-static void gabble_free_enhanced_contact_capabilities (GPtrArray *caps);
+static void gabble_free_rcc_list (GPtrArray *rccs)
+{
+  g_boxed_free (TP_ARRAY_TYPE_REQUESTABLE_CHANNEL_CLASS_LIST, rccs);
+}
 
 /**
  * gabble_connection_build_contact_caps:
@@ -2508,14 +2511,14 @@ _emit_capabilities_changed (GabbleConnection *conn,
   /* o.f.T.C.ContactCapabilities */
   caps_arr = gabble_connection_build_contact_caps (conn, handle, new_set);
 
-  hash = g_hash_table_new (NULL, NULL);
+  hash = g_hash_table_new_full (NULL, NULL, NULL,
+      (GDestroyNotify) gabble_free_rcc_list);
   g_hash_table_insert (hash, GUINT_TO_POINTER (handle), caps_arr);
 
   tp_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
       conn, hash);
 
   g_hash_table_destroy (hash);
-  gabble_free_enhanced_contact_capabilities (caps_arr);
 }
 
 /**
@@ -2549,19 +2552,6 @@ gabble_connection_get_handle_contact_capabilities (
   arr = gabble_connection_build_contact_caps (self, handle, caps);
   gabble_capability_set_free (caps);
   return arr;
-}
-
-static void
-gabble_free_enhanced_contact_capabilities (GPtrArray *caps)
-{
-  guint i;
-
-  for (i = 0; i < caps->len; i++)
-    {
-      g_value_array_free (g_ptr_array_index (caps, i));
-    }
-
-  g_ptr_array_free (caps, TRUE);
 }
 
 static void
@@ -3013,7 +3003,7 @@ gabble_connection_get_contact_capabilities (
     }
 
   ret = g_hash_table_new_full (NULL, NULL, NULL,
-      (GDestroyNotify) gabble_free_enhanced_contact_capabilities);
+      (GDestroyNotify) gabble_free_rcc_list);
 
   for (i = 0; i < handles->len; i++)
     {

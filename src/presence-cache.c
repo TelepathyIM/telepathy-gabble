@@ -662,8 +662,23 @@ self_avatar_resolve_conflict (GabblePresenceCache *cache)
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   GabblePresence *presence = priv->conn->self_presence;
+  GError *error = NULL;
 
-  /* We don't want recursive image resetting */
+  /* We don't want recursive image resetting
+   *
+   * FIXME: There is a race here: if the other resource sends us first the
+   * hash 'hash1', and then 'hash2' while the vCard request generated for
+   * 'hash1' is still pending, the current code doesn't send a new vCard
+   * request, although it should because Gabble cannot know whether the reply
+   * will be for hash1 or hash2. The good solution would be to store the
+   * received hash and each time the hash is different, cancel the previous
+   * vCard request and send a new one. However, this is tricky, so we don't
+   * implement it.
+   *
+   * This race is not so bad: the only bad consequence is if the other Jabber
+   * client changes the avatar twice quickly, we may get only the first one.
+   * The real contacts should still get the last avatar.
+   */
   if (priv->avatar_reset_pending)
     return;
 
@@ -674,7 +689,6 @@ self_avatar_resolve_conflict (GabblePresenceCache *cache)
    * when that arrives, we may start setting the photo node in our
    * presence again.
    */
-  GError *error = NULL;
   priv->avatar_reset_pending = TRUE;
   presence->avatar_sha1 = NULL;
   if (!_gabble_connection_signal_own_presence (priv->conn, &error))

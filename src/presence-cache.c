@@ -365,7 +365,7 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
+    g_cclosure_marshal_VOID__UINT_POINTER, G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_POINTER);
   signals[CAPABILITIES_DISCOVERED] = g_signal_new (
     "capabilities-discovered",
     G_TYPE_FROM_CLASS (klass),
@@ -652,8 +652,16 @@ self_vcard_request_cb (GabbleVCardManager *self,
 {
   GabblePresenceCache *cache = user_data;
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  gchar *sha1 = NULL;
 
   priv->avatar_reset_pending = FALSE;
+
+  if (vcard != NULL)
+    {
+      sha1 = vcard_get_avatar_sha1 (vcard);
+      g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle, sha1);
+      g_free (sha1);
+    }
 }
 
 static void
@@ -765,9 +773,8 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
       else
         {
           presence->avatar_sha1 = g_strdup (sha1);
+          g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle, sha1);
         }
-
-      g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle);
     }
 }
 

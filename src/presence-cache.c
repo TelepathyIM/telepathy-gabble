@@ -668,7 +668,10 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
   LmMessageNode *x_node, *photo_node;
   GabblePresence *presence;
 
-  presence = gabble_presence_cache_get (cache, handle);
+  if (handle == base_conn->self_handle)
+    presence = priv->conn->self_presence;
+  else
+    presence = gabble_presence_cache_get (cache, handle);
 
   if (NULL == presence)
     return;

@@ -739,7 +739,11 @@ timeout_request (gpointer data)
          request, request->callback);
 
   request->timer_id = 0;
-  complete_one_request (request, NULL, &err);
+
+  /* The pipeline machinery will call our callback with the error "canceled"
+   */
+  gabble_request_pipeline_item_cancel (request->entry->pipeline_item);
+
   return FALSE;
 }
 

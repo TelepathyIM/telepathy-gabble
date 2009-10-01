@@ -553,7 +553,7 @@ gabble_vcard_manager_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->finalize (object);
 }
 
-static gchar *
+gchar *
 vcard_get_avatar_sha1 (LmMessageNode *vcard)
 {
   gchar *sha1;

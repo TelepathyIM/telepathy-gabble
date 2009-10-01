@@ -14,7 +14,7 @@ def make_presence(jid, sha1sum):
     p = domish.Element((None, 'presence'))
     p['from'] = jid
     p['to'] = 'test@localhost/Resource'
-    x = p.addElement(('vcard-temp:x:update', 'x'))
+    x = p.addElement((ns.VCARD_TEMP_UPDATE, 'x'))
     x.addElement('photo', content=sha1sum)
     return p
 

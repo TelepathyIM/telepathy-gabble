@@ -506,7 +506,7 @@ def make_presence(_from, to='test@localhost', type=None, show=None,
 
     # <x xmlns="vcard-temp:x:update"><photo>4a1...</photo></x>
     if photo is not None:
-        x = presence.addElement(('vcard-temp:x:update', 'x'))
+        x = presence.addElement((ns.VCARD_TEMP_UPDATE, 'x'))
         if photo != "":
             x.addElement('photo').addContent(photo)
 

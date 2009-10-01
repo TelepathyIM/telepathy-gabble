@@ -415,20 +415,37 @@ gabble_normalize_room (TpHandleRepoIface *repo,
                        gpointer context,
                        GError **error)
 {
-  char *at = strchr (jid, '@');
-  char *slash = strchr (jid, '/');
+  GabbleConnection *conn = GABBLE_CONNECTION (context);
+  gchar *at, *slash, *qualified_name;
+
+  qualified_name = gabble_connection_get_canonical_room_name (conn, jid);
+
+  if (qualified_name == NULL)
+    {
+      INVALID_HANDLE (error,
+          "requested room handle %s does not specify a server, but we "
+          "have not discovered any local conference servers and no "
+          "fallback was provided", jid);
+      return NULL;
+    }
+
+  at = strchr (qualified_name, '@');
+  slash = strchr (qualified_name, '/');
 
   /* there'd better be an @ somewhere after the first character */
   if (at == NULL)
     {
       INVALID_HANDLE (error,
-          "invalid room JID %s: does not contain '@'", jid);
+          "invalid room JID %s: does not contain '@'", qualified_name);
+      g_free (qualified_name);
       return NULL;
     }
-  if (at == jid)
+  if (at == qualified_name)
     {
       INVALID_HANDLE (error,
-          "invalid room JID %s: room name before '@' may not be empty", jid);
+          "invalid room JID %s: room name before '@' may not be empty",
+          qualified_name);
+      g_free (qualified_name);
       return NULL;
     }
 
@@ -436,14 +453,13 @@ gabble_normalize_room (TpHandleRepoIface *repo,
   if (slash != NULL)
     {
       INVALID_HANDLE (error,
-          "invalid room JID %s: contains nickname part after '/' too", jid);
+          "invalid room JID %s: contains nickname part after '/' too",
+          qualified_name);
+      g_free (qualified_name);
       return NULL;
     }
 
-  /* the room and service parts are both case-insensitive, so lowercase
-   * them both; gabble_decode_jid is overkill here
-   */
-  return g_utf8_strdown (jid, -1);
+  return qualified_name;
 }
 
 gchar *

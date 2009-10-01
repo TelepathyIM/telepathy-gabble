@@ -10,11 +10,12 @@ from twisted.words.xish import domish
 from servicetest import call_async, EventPattern, sync_dbus
 from gabbletest import exec_test, acknowledge_iq, make_result_iq, sync_stream
 import constants as cs
+import ns
 
 def make_presence(jid, sha1sum):
     p = domish.Element((None, 'presence'))
     p['from'] = jid
-    x = p.addElement(('vcard-temp:x:update', 'x'))
+    x = p.addElement((ns.VCARD_TEMP_UPDATE, 'x'))
     x.addElement('photo', content=sha1sum)
     return p
 

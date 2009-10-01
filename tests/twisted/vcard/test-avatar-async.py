@@ -154,5 +154,9 @@ def test(q, bus, conn, stream):
     photo.addElement('BINVAL', content=base64.b64encode('\o/'))
     stream.send(iq)
 
+    event = q.expect('dbus-signal', signal='AvatarUpdated')
+    assertEquals(self_handle, event.args[0])
+    assertEquals(hashlib.sha1('\o/').hexdigest(), event.args[1])
+
 if __name__ == '__main__':
     exec_test(test)

@@ -507,7 +507,7 @@ def elem_iq(server, type, **kw):
     return iq
 
 def make_presence(_from, to='test@localhost', type=None, show=None,
-        status=None, caps=None):
+        status=None, caps=None, photo=None):
     presence = domish.Element((None, 'presence'))
     presence['from'] = _from
     presence['to'] = to
@@ -525,6 +525,12 @@ def make_presence(_from, to='test@localhost', type=None, show=None,
         cel = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
         for key,value in caps.items():
             cel[key] = value
+
+    # <x xmlns="vcard-temp:x:update"><photo>4a1...</photo></x>
+    if photo is not None:
+        x = presence.addElement(('vcard-temp:x:update', 'x'))
+        if photo != "":
+            x.addElement('photo').addContent(photo)
 
     return presence
 

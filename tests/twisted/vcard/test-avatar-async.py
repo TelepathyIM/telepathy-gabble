@@ -9,7 +9,7 @@ import hashlib
 from twisted.words.xish import domish
 from servicetest import EventPattern, sync_dbus, assertEquals
 from gabbletest import (exec_test, acknowledge_iq, make_result_iq, 
-    sync_stream, send_error_reply)
+    sync_stream, send_error_reply, make_presence)
 import constants as cs
 import ns
 
@@ -111,6 +111,48 @@ def test(q, bus, conn, stream):
     assertEquals(hashlib.sha1('hello').hexdigest(), event.args[1])
     assertEquals('hello', event.args[2])
     assertEquals('image/png', event.args[3])
+
+    # Test with our own avatar test@localhost/Resource2
+    self_handle = conn.GetSelfHandle()
+    presence_stanza = make_presence('test@localhost/Resource2',
+                                    to='test@localhost/Resource',
+                                    show='away', status='At the pub',
+                                    photo=hashlib.sha1(':-D').hexdigest())
+    stream.send(presence_stanza)
+    iq_event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
+        query_name='vCard')
+    iq = make_result_iq(stream, iq_event.stanza)
+    vcard = iq.firstChildElement()
+    photo = vcard.addElement('PHOTO')
+    photo.addElement('TYPE', content='image/png')
+    photo.addElement('BINVAL', content=base64.b64encode(':-D'))
+
+    # do not send the vCard reply now. First, send another presence.
+    q.forbid_events([avatar_request_event])
+    stream.send(presence_stanza)
+    sync_stream(q, stream)
+
+    # Now send the reply.
+    stream.send(iq)
+    # So Gabble has the right hash, and no need to ask the vCard again
+    stream.send(presence_stanza)
+    sync_stream(q, stream)
+    q.unforbid_events([avatar_request_event])
+
+    # But if the hash is different, the vCard is asked again
+    presence_stanza = make_presence('test@localhost/Resource2',
+                                    to='test@localhost/Resource',
+                                    show='away', status='At the pub',
+                                    photo=hashlib.sha1('\o/').hexdigest())
+    stream.send(presence_stanza)
+    iq_event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
+        query_name='vCard')
+    iq = make_result_iq(stream, iq_event.stanza)
+    vcard = iq.firstChildElement()
+    photo = vcard.addElement('PHOTO')
+    photo.addElement('TYPE', content='image/png')
+    photo.addElement('BINVAL', content=base64.b64encode('\o/'))
+    stream.send(iq)
 
 if __name__ == '__main__':
     exec_test(test)

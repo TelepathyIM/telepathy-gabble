@@ -1,3 +1,16 @@
+telepathy-gabble 0.8.5 (2009-10-02)
+===================================
+
+The “a page out of Remembrance of Things Past and a blowtorch with which
+to set it on fire” release.
+
+Fixes:
+
+* Don't re-fetch our own avatar in a loop when connecting to Google
+  Talk. This should fix #23684 once and for all. (Alban)
+
+* Fix a crash introduced by the vCard-related fixes in 0.8.4. (Alban)
+
 telepathy-gabble 0.8.4 (2009-09-25)
 ===================================
 

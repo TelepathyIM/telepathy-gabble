@@ -52,6 +52,7 @@ STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"
 STREAMS = "urn:ietf:params:xml:ns:xmpp-streams"
 TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
 VCARD_TEMP = 'vcard-temp'
+VCARD_TEMP_UPDATE = 'vcard-temp:x:update'
 X_DATA = 'jabber:x:data'
 XML = 'http://www.w3.org/XML/1998/namespace'
 X_OOB = 'jabber:x:oob'

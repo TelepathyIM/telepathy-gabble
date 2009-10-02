@@ -10,11 +10,12 @@ from twisted.words.xish import domish
 from servicetest import call_async, EventPattern, sync_dbus
 from gabbletest import exec_test, acknowledge_iq, make_result_iq, sync_stream
 import constants as cs
+import ns
 
 def make_presence(jid, sha1sum):
     p = domish.Element((None, 'presence'))
     p['from'] = jid
-    x = p.addElement(('vcard-temp:x:update', 'x'))
+    x = p.addElement((ns.VCARD_TEMP_UPDATE, 'x'))
     x.addElement('photo', content=sha1sum)
     return p
 
@@ -45,16 +46,13 @@ def test(q, bus, conn, stream):
     # A presence from myself on another resource
     stream.send(make_presence('test@localhost/resource1',
         'SHA1SUM-FOR-MYSELF-RES1'))
-    q.forbid_events([AvatarRetrieved_event])
-    stream_presence, avatar_update, stream_iq = q.expect_many(
+    q.forbid_events([AvatarRetrieved_event, AvatarUpdated_event])
+    stream_presence, stream_iq = q.expect_many(
         EventPattern('stream-presence'),
-        EventPattern('dbus-signal', signal='AvatarUpdated'),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'))
-    assert avatar_update.args[0] == 1, avatar_update.args
-    assert avatar_update.args[1] == "", avatar_update.args
     sync_dbus(bus, q, conn)
-    q.unforbid_events([AvatarRetrieved_event])
+    q.unforbid_events([AvatarRetrieved_event, AvatarUpdated_event])
 
     # If the server wrongly send a presence stanza with our resource,
     # AvatarUpdated must not be emitted

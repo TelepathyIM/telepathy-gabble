@@ -498,6 +498,12 @@ disconnect_entry_foreach (gpointer handle, gpointer value, gpointer unused)
   GError err = { TP_ERRORS, TP_ERROR_DISCONNECTED, "Connection closed" };
   GabbleVCardCacheEntry *entry = value;
 
+  if (entry->suspended_timer_id)
+    {
+      g_source_remove (entry->suspended_timer_id);
+      entry->suspended_timer_id = 0;
+    }
+
   cache_entry_complete_requests (entry, &err);
 
   if (entry->pipeline_item)
@@ -547,7 +553,7 @@ gabble_vcard_manager_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->finalize (object);
 }
 
-static gchar *
+gchar *
 vcard_get_avatar_sha1 (LmMessageNode *vcard)
 {
   gchar *sha1;
@@ -725,15 +731,17 @@ static gboolean
 timeout_request (gpointer data)
 {
   GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest *) data;
-  GError err = { GABBLE_VCARD_MANAGER_ERROR,
-      GABBLE_VCARD_MANAGER_ERROR_TIMEOUT, "Request timed out" };
 
   g_return_val_if_fail (data != NULL, FALSE);
   DEBUG ("Request %p timed out, notifying callback %p",
          request, request->callback);
 
   request->timer_id = 0;
-  complete_one_request (request, NULL, &err);
+
+  /* The pipeline machinery will call our callback with the error "canceled"
+   */
+  gabble_request_pipeline_item_cancel (request->entry->pipeline_item);
+
   return FALSE;
 }
 

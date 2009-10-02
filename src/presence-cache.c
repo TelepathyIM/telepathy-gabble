@@ -104,6 +104,9 @@ struct _GabblePresenceCachePrivate
    */
   GHashTable *location;
 
+  /* Are we resetting the image hash as per XEP-0153 section 4.4 */
+  gboolean avatar_reset_pending;
+
   gboolean dispose_has_run;
 };
 
@@ -362,7 +365,7 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
+    g_cclosure_marshal_VOID__UINT_POINTER, G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_POINTER);
   signals[CAPABILITIES_DISCOVERED] = g_signal_new (
     "capabilities-discovered",
     G_TYPE_FROM_CLASS (klass),
@@ -640,6 +643,82 @@ _grab_nickname (GabblePresenceCache *cache,
 }
 
 static void
+self_vcard_request_cb (GabbleVCardManager *self,
+                       GabbleVCardManagerRequest *request,
+                       TpHandle handle,
+                       LmMessageNode *vcard,
+                       GError *error,
+                       gpointer user_data)
+{
+  GabblePresenceCache *cache = user_data;
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  gchar *sha1 = NULL;
+
+  priv->avatar_reset_pending = FALSE;
+
+  if (vcard != NULL)
+    {
+      sha1 = vcard_get_avatar_sha1 (vcard);
+
+      /* FIXME: presence->avatar_sha1 is resetted in
+       * self_avatar_resolve_conflict() and the following signal set it in
+       * conn-avatars.c. Doing that in 2 different files is confusing.
+       */
+      g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle, sha1);
+
+      g_free (sha1);
+    }
+}
+
+static void
+self_avatar_resolve_conflict (GabblePresenceCache *cache)
+{
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
+  GabblePresence *presence = priv->conn->self_presence;
+  GError *error = NULL;
+
+  /* We don't want recursive image resetting
+   *
+   * FIXME: There is a race here: if the other resource sends us first the
+   * hash 'hash1', and then 'hash2' while the vCard request generated for
+   * 'hash1' is still pending, the current code doesn't send a new vCard
+   * request, although it should because Gabble cannot know whether the reply
+   * will be for hash1 or hash2. The good solution would be to store the
+   * received hash and each time the hash is different, cancel the previous
+   * vCard request and send a new one. However, this is tricky, so we don't
+   * implement it.
+   *
+   * This race is not so bad: the only bad consequence is if the other Jabber
+   * client changes the avatar twice quickly, we may get only the first one.
+   * The real contacts should still get the last avatar.
+   */
+  if (priv->avatar_reset_pending)
+    return;
+
+  /* according to XEP-0153 section 4.3-2. 3rd bullet:
+   * if we receive a photo from another resource, then we MUST
+   * immediately send a presence update with an empty update child
+   * element (no photo node), then re-download our own vCard;
+   * when that arrives, we may start setting the photo node in our
+   * presence again.
+   */
+  priv->avatar_reset_pending = TRUE;
+  presence->avatar_sha1 = NULL;
+  if (!_gabble_connection_signal_own_presence (priv->conn, &error))
+    {
+      DEBUG ("failed to send own presence: %s", error->message);
+      g_error_free (error);
+    }
+
+  gabble_vcard_manager_invalidate_cache (priv->conn->vcard_manager,
+      base_conn->self_handle);
+  gabble_vcard_manager_request (priv->conn->vcard_manager,
+      base_conn->self_handle, 0, self_vcard_request_cb, cache,
+      NULL);
+}
+
+static void
 _grab_avatar_sha1 (GabblePresenceCache *cache,
                    TpHandle handle,
                    const gchar *from,
@@ -651,7 +730,10 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
   LmMessageNode *x_node, *photo_node;
   GabblePresence *presence;
 
-  presence = gabble_presence_cache_get (cache, handle);
+  if (handle == base_conn->self_handle)
+    presence = priv->conn->self_presence;
+  else
+    presence = gabble_presence_cache_get (cache, handle);
 
   if (NULL == presence)
     return;
@@ -692,32 +774,14 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
       g_free (presence->avatar_sha1);
       if (handle == base_conn->self_handle)
         {
-          /* according to XEP-0153 section 4.3-2. 3rd bullet:
-           * if we receive a photo from another resource, then we MUST
-           * immediately send a presence update with an empty update child
-           * element (no photo node), then re-download our own vCard;
-           * when that arrives, we may start setting the photo node in our
-           * presence again.
-           */
-          GError *error = NULL;
-          presence->avatar_sha1 = NULL;
-          if (!_gabble_connection_signal_own_presence (priv->conn, &error))
-            {
-              DEBUG ("failed to send own presence: %s", error->message);
-              g_error_free (error);
-            }
-
-          gabble_vcard_manager_invalidate_cache (priv->conn->vcard_manager,
-              base_conn->self_handle);
-          gabble_vcard_manager_request (priv->conn->vcard_manager,
-              base_conn->self_handle, 0, NULL, NULL, NULL);
+          self_avatar_resolve_conflict (cache);
         }
       else
         {
           presence->avatar_sha1 = g_strdup (sha1);
+          gabble_vcard_manager_invalidate_cache (priv->conn->vcard_manager, handle);
+          g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle, sha1);
         }
-
-      g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle);
     }
 }
 

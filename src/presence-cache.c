@@ -774,7 +774,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
       g_free (presence->avatar_sha1);
       if (handle == base_conn->self_handle)
         {
-          self_avatar_resolve_conflict(cache);
+          self_avatar_resolve_conflict (cache);
         }
       else
         {

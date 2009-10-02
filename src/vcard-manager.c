@@ -731,8 +731,6 @@ static gboolean
 timeout_request (gpointer data)
 {
   GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest *) data;
-  GError err = { GABBLE_VCARD_MANAGER_ERROR,
-      GABBLE_VCARD_MANAGER_ERROR_TIMEOUT, "Request timed out" };
 
   g_return_val_if_fail (data != NULL, FALSE);
   DEBUG ("Request %p timed out, notifying callback %p",

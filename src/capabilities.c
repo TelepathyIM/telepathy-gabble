@@ -310,13 +310,36 @@ struct _GabbleCapabilitySet {
 void
 capabilities_fill_cache (GabblePresenceCache *cache)
 {
-  /* Cache this bundle from the Google Talk client as trusted. So Gabble will
-   * not send any discovery request for this bundle.
-   *
-   * XMPP does not require to cache this bundle but some old versions of
-   * Google Talk do not reply correctly to discovery requests. */
-  gabble_presence_cache_add_bundle_caps (cache,
-    "http://www.google.com/xmpp/client/caps#voice-v1", NS_GOOGLE_FEAT_VOICE);
+#define GOOGLE_BUNDLE(cap, features) \
+  gabble_presence_cache_add_bundle_caps (cache, \
+      "http://www.google.com/xmpp/client/caps#" cap, features); \
+  gabble_presence_cache_add_bundle_caps (cache, \
+      "http://talk.google.com/xmpp/client/caps#" cap, features);
+
+  /* Cache various bundle from the Google Talk clients as trusted.  Some old
+   * versions of Google Talk do not reply correctly to discovery requests.
+   * Plus, we know what Google's bundles mean, so it's a waste of time to disco
+   * them, particularly the ones for features we don't support. The desktop
+   * client doesn't currently have all of these, but it doesn't hurt to cache
+   * them anyway.
+   */
+  GOOGLE_BUNDLE ("voice-v1", NS_GOOGLE_FEAT_VOICE);
+  GOOGLE_BUNDLE ("video-v1", NS_GOOGLE_FEAT_VIDEO);
+
+  /* Not really sure what these ones are. */
+  GOOGLE_BUNDLE ("share-v1", NULL);
+  GOOGLE_BUNDLE ("sms-v1", NULL);
+
+  /* TODO: remove this when we fix fd.o#22768. */
+  GOOGLE_BUNDLE ("pmuc-v1", NULL);
+
+  /* The camera-v1 bundle seems to mean "I have a camera plugged in". Not
+   * having it doesn't seem to affect anything, and we have no way of exposing
+   * that information anyway.
+   */
+  GOOGLE_BUNDLE ("camera-v1", NULL);
+
+#undef GOOGLE_BUNDLE
 }
 
 const CapabilityConversionData capabilities_conversions[] =

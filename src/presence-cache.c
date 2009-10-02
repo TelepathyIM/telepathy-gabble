@@ -1689,7 +1689,9 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
     info->cap_set = gabble_capability_set_new ();
 
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
-  gabble_capability_set_add (info->cap_set, namespace);
+
+  if (namespace != NULL)
+    gabble_capability_set_add (info->cap_set, namespace);
 }
 
 void

@@ -651,7 +651,13 @@ self_vcard_request_cb (GabbleVCardManager *self,
   if (vcard != NULL)
     {
       sha1 = vcard_get_avatar_sha1 (vcard);
+
+      /* FIXME: presence->avatar_sha1 is resetted in
+       * self_avatar_resolve_conflict() and the following signal set it in
+       * conn-avatars.c. Doing that in 2 different files is confusing.
+       */
       g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle, sha1);
+
       g_free (sha1);
     }
 }

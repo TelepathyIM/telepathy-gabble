@@ -83,8 +83,6 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
-  gabble_vcard_manager_invalidate_cache (conn->vcard_manager, handle);
-
   if (handle == base->self_handle)
     update_own_avatar_sha1 (conn, sha1, NULL);
   else

@@ -779,6 +779,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
       else
         {
           presence->avatar_sha1 = g_strdup (sha1);
+          gabble_vcard_manager_invalidate_cache (priv->conn->vcard_manager, handle);
           g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle, sha1);
         }
     }

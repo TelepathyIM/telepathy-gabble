@@ -158,5 +158,14 @@ def test(q, bus, conn, stream):
     assertEquals(self_handle, event.args[0])
     assertEquals(hashlib.sha1('\o/').hexdigest(), event.args[1])
 
+    # Gabble must reply without asking the vCard to the server because the
+    # avatar must be in the cache
+    q.forbid_events([avatar_request_event])
+    data, mime = conn.Avatars.RequestAvatar(self_handle, byte_arrays=True)
+    assertEquals('\o/', data)
+    data, mime = conn.Avatars.RequestAvatar(handle, byte_arrays=True)
+    assertEquals('hello', data)
+    q.unforbid_events([avatar_request_event])
+
 if __name__ == '__main__':
     exec_test(test)

@@ -1785,6 +1785,37 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
 }
 
 void
+gabble_presence_cache_add_own_caps (
+    GabblePresenceCache *cache,
+    const gchar *ver,
+    GabblePresenceCapabilities caps,
+    GHashTable *contact_caps)
+{
+  gchar *uri = g_strdup_printf ("%s#%s", NS_GABBLE_CAPS, ver);
+  CapabilityInfo *info = capability_info_get (cache, uri);
+  GHashTable *copy = NULL;
+
+  DEBUG ("caching our own caps (%s)", uri);
+
+  /* If this node was already in the cache, either the entry's correct, or
+   * someone's poisoning us with a SHA-1 collision. Let's update the entry just
+   * in case.
+   */
+  info->caps_set = TRUE;
+  info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
+  info->caps = caps;
+  tp_intset_add (info->guys, cache->priv->conn->parent.self_handle);
+
+  if (contact_caps != NULL)
+    gabble_presence_cache_copy_cache_entry (&copy, contact_caps);
+
+  gabble_presence_cache_free_cache_entry (info->per_channel_manager_caps);
+  info->per_channel_manager_caps = copy;
+
+  g_free (uri);
+}
+
+void
 gabble_presence_cache_really_remove (
     GabblePresenceCache *cache,
     TpHandle handle)

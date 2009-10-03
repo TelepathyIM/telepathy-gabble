@@ -1542,6 +1542,10 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
     "ver",   caps_hash,
     NULL);
 
+  /* Ensure this set of capabilities is in the cache. */
+  gabble_presence_cache_add_own_caps (self->presence_cache, caps_hash,
+      presence->caps, presence->per_channel_manager_caps);
+
   /* XEP-0115 deprecates 'ext' feature bundles. But we still need
    * BUNDLE_VOICE_V1 it for backward-compatibility with Gabble 0.2 */
 

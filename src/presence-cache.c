@@ -1693,6 +1693,37 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
 }
 
 void
+gabble_presence_cache_add_own_caps (
+    GabblePresenceCache *cache,
+    const gchar *ver,
+    const GabbleCapabilitySet *cap_set)
+{
+  gchar *uri = g_strdup_printf ("%s#%s", NS_GABBLE_CAPS, ver);
+  CapabilityInfo *info = capability_info_get (cache, uri);
+
+  DEBUG ("caching our own caps (%s)", uri);
+
+  /* If this node was already in the cache, either the entry's correct, or
+   * someone's poisoning us with a SHA-1 collision. Let's update the entry just
+   * in case.
+   */
+  if (info->cap_set == NULL)
+    {
+      info->cap_set = gabble_capability_set_copy (cap_set);
+    }
+  else
+    {
+      gabble_capability_set_clear (info->cap_set);
+      gabble_capability_set_update (info->cap_set, cap_set);
+    }
+
+  info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
+  tp_intset_add (info->guys, cache->priv->conn->parent.self_handle);
+
+  g_free (uri);
+}
+
+void
 gabble_presence_cache_really_remove (
     GabblePresenceCache *cache,
     TpHandle handle)

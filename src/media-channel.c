@@ -2075,6 +2075,19 @@ contact_is_media_capable (GabbleMediaChannel *chan,
       conn, TP_HANDLE_TYPE_CONTACT);
   gboolean wait_ = FALSE;
 
+  presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
+
+  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE |
+    PRESENCE_CAP_JINGLE_RTP |
+    PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
+    PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
+
+  if (presence != NULL && (presence->caps & caps) != 0)
+    return TRUE;
+
+  /* Okay, they're not capable (yet). Let's figure out whether we should wait,
+   * and return an appropriate error.
+   */
   if (gabble_presence_cache_caps_pending (priv->conn->presence_cache, peer))
     {
       DEBUG ("caps are pending for peer %u", peer);
@@ -2089,30 +2102,16 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   if (wait != NULL)
     *wait = wait_;
 
-  caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE |
-    PRESENCE_CAP_JINGLE_RTP |
-    PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
-    PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
-
-  presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
-
   if (presence == NULL)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
-          "contact %d (%s) has no presence available", peer,
-          tp_handle_inspect (contact_handles, peer));
-      return FALSE;
-    }
+    g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
+        "contact %d (%s) has no presence available", peer,
+        tp_handle_inspect (contact_handles, peer));
+  else
+    g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+        "contact %d (%s) doesn't have sufficient media caps", peer,
+        tp_handle_inspect (contact_handles, peer));
 
-  if ((presence->caps & caps) == 0)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
-          "contact %d (%s) doesn't have sufficient media caps", peer,
-          tp_handle_inspect (contact_handles, peer));
-      return FALSE;
-    }
-
-  return TRUE;
+  return FALSE;
 }
 
 static gboolean

@@ -216,6 +216,15 @@ capabilities_fill_cache (GabblePresenceCache *cache)
   GOOGLE_BUNDLE ("camera-v1", 0);
 
 #undef GOOGLE_BUNDLE
+
+  /* We should also cache the ext='' bundles Gabble advertises: older Gabbles
+   * advertise these and don't support hashed caps, and we shouldn't need to
+   * disco them.
+   */
+  gabble_presence_cache_add_bundle_caps (cache,
+      NS_GABBLE_CAPS "#" BUNDLE_VOICE_V1, PRESENCE_CAP_GOOGLE_VOICE);
+  gabble_presence_cache_add_bundle_caps (cache,
+      NS_GABBLE_CAPS "#" BUNDLE_VIDEO_V1, PRESENCE_CAP_GOOGLE_VIDEO);
 }
 
 GabblePresenceCapabilities

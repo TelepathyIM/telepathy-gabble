@@ -1,6 +1,6 @@
 """
 Test that we cache our own capabilities, so that we don't disco other people
-with the same caps hash.
+with the same caps hash or ext='' bundles.
 """
 from twisted.words.xish import xpath
 
@@ -22,11 +22,18 @@ def test(q, bus, conn, stream):
              })
     stream.send(p)
 
-    uri = c['node'] + '#' + c['ver']
     q.forbid_events([
-        EventPattern('stream-iq', to=jid, query_ns=ns.DISCO_INFO,
-            query_node=uri)
+        EventPattern('stream-iq', to=jid, query_ns=ns.DISCO_INFO),
     ])
+    sync_stream(q, stream)
+
+    p = make_presence(jid,
+        caps={'node': c['node'],
+              'ver':  c['ver'],
+              # omitting hash='' so Gabble doesn't ignore ext=''
+              'ext':  'voice-v1 video-v1',
+            })
+    stream.send(p)
     sync_stream(q, stream)
 
 if __name__ == '__main__':

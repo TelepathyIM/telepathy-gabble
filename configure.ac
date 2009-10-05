@@ -186,6 +186,17 @@ AC_ARG_ENABLE(wocky-gtk-doc,
   AC_HELP_STRING([--enable-wocky-gtk-doc],[compile wocky with gtk-doc enabled]),
     enable_wocky_gtk_doc=$enableval, enable_wocky_gtk_doc=no )
 
+AC_ARG_WITH([wocky-tls],
+  AS_HELP_STRING([--with-wocky-tls],[tls library (gnutls, openssl, auto)]),
+  [],
+  [with_wocky_tls=auto])
+
+AS_CASE([$with_wocky_tls],
+  [gnutls], [with_wocky_tls=gnutls],
+  [openssl],[with_wocky_tls=openssl],
+  [auto],   [with_wocky_tls=auto],
+  [*],      [AC_MSG_ERROR(unknown ssl library "$with_wocky_tls")])
+
 confcmd="$origdir"/"$srcdir"/lib/ext/wocky/configure
 if test x$enable_wocky_gtk_doc != xno; then
   confcmd="$confcmd --enable-gtk-doc"
@@ -193,6 +204,7 @@ fi
 if test x$enable_silent_rules != xno; then
   confcmd="$confcmd --enable-silent-rules"
 fi
+confcmd="$confcmd --with-tls=$with_wocky_tls"
 cd "$ac_top_build_prefix"lib/ext/wocky && echo "running $confcmd" &&
   $confcmd ||
   AC_MSG_ERROR([Failed to configure embedded Wocky tree])

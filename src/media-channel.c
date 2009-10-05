@@ -547,6 +547,8 @@ gabble_media_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "Requested",
               TP_IFACE_CHANNEL, "Interfaces",
               TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, "ImmutableStreams",
+              TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, "InitialAudio",
+              TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, "InitialVideo",
               GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE, "InitialAudio",
               GABBLE_IFACE_CHANNEL_TYPE_STREAMED_MEDIA_FUTURE, "InitialVideo",
               NULL));
@@ -686,6 +688,8 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   };
   static TpDBusPropertiesMixinPropImpl streamed_media_props[] = {
       { "ImmutableStreams", "immutable-streams", NULL },
+      { "InitialAudio", "initial-audio", NULL },
+      { "InitialVideo", "initial-video", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl streamed_media_future_props[] = {

@@ -238,6 +238,12 @@ struct _CapabilityInfo
 
   TpIntSet *guys;
   guint trust;
+
+  /* TRUE if this cache entry is one of our own, so between caps and
+   * per_channel_manager_caps it holds the complete set of features for the
+   * node.
+   */
+  gboolean complete;
 };
 
 static CapabilityInfo *
@@ -1795,13 +1801,17 @@ gabble_presence_cache_add_own_caps (
   CapabilityInfo *info = capability_info_get (cache, uri);
   GHashTable *copy = NULL;
 
+  if (info->complete)
+    goto out;
+
   DEBUG ("caching our own caps (%s)", uri);
 
-  /* If this node was already in the cache, either the entry's correct, or
-   * someone's poisoning us with a SHA-1 collision. Let's update the entry just
-   * in case.
+  /* If this node was already in the cache but not labelled as complete, either
+   * the entry's correct, or someone's poisoning us with a SHA-1 collision.
+   * Let's update the entry just in case.
    */
   info->caps_set = TRUE;
+  info->complete = TRUE;
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
   info->caps = caps;
   tp_intset_add (info->guys, cache->priv->conn->parent.self_handle);
@@ -1812,7 +1822,52 @@ gabble_presence_cache_add_own_caps (
   gabble_presence_cache_free_cache_entry (info->per_channel_manager_caps);
   info->per_channel_manager_caps = copy;
 
+  /* FIXME: we should satisfy any waiters for this node now, but I think that
+   * can wait till 0.9.
+   */
+
+out:
   g_free (uri);
+}
+
+/**
+ * gabble_presence_cache_peek_own_caps:
+ * @cache: a presence cache
+ * @ver: a verification string or bundle name
+ * @caps: location at which to store caps for @ver
+ * @contact_caps: location at which to store contact caps for @ver
+ *
+ * If the capabilities corresponding to @ver have been added to the cache with
+ * gabble_presence_cache_add_own_caps(), sets @caps and @contact_caps and
+ * returns %TRUE; otherwise, returns %FALSE.
+ *
+ * Since the cache only records features Gabble understands (omitting unknown
+ * features, identities, and data forms), we can only serve up disco replies
+ * from the cache if we know we once advertised exactly this verification
+ * string ourselves.
+ *
+ * Returns: %TRUE if we know exactly what @ver means.
+ */
+gboolean
+gabble_presence_cache_peek_own_caps (
+    GabblePresenceCache *cache,
+    const gchar *ver,
+    GabblePresenceCapabilities *caps,
+    GHashTable **contact_caps)
+{
+  gchar *uri = g_strdup_printf ("%s#%s", NS_GABBLE_CAPS, ver);
+  CapabilityInfo *info = capability_info_get (cache, uri);
+  gboolean ret = FALSE;
+
+  if (info->complete)
+    {
+      *caps = info->caps;
+      *contact_caps = info->per_channel_manager_caps;
+      ret = TRUE;
+    }
+
+  g_free (uri);
+  return ret;
 }
 
 void

@@ -87,6 +87,11 @@ void gabble_presence_cache_add_own_caps (
     const gchar *ver,
     GabblePresenceCapabilities caps,
     GHashTable *contact_caps);
+gboolean gabble_presence_cache_peek_own_caps (
+    GabblePresenceCache *cache,
+    const gchar *ver,
+    GabblePresenceCapabilities *caps,
+    GHashTable **contact_caps);
 void gabble_presence_cache_really_remove (GabblePresenceCache *cache,
     TpHandle handle);
 

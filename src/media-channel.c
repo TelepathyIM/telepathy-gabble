@@ -2104,6 +2104,22 @@ contact_is_media_capable (GabbleMediaChannel *chan,
       conn, TP_HANDLE_TYPE_CONTACT);
   gboolean wait = FALSE;
 
+  presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
+
+  if (presence != NULL &&
+      (gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VOICE) ||
+       gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VIDEO) ||
+       gabble_presence_has_cap (presence, NS_JINGLE_RTP_AUDIO) ||
+       gabble_presence_has_cap (presence, NS_JINGLE_RTP_VIDEO) ||
+       gabble_presence_has_cap (presence, NS_JINGLE_DESCRIPTION_AUDIO) ||
+       gabble_presence_has_cap (presence, NS_JINGLE_DESCRIPTION_VIDEO)))
+    {
+      return TRUE;
+    }
+
+  /* Okay, they're not capable (yet). Let's figure out whether we should wait,
+   * and return an appropriate error.
+   */
   if (gabble_presence_cache_caps_pending (priv->conn->presence_cache, peer))
     {
       DEBUG ("caps are pending for peer %u", peer);
@@ -2118,32 +2134,16 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   if (wait_ret != NULL)
     *wait_ret = wait;
 
-  presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
-
   if (presence == NULL)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
-          "contact %d (%s) has no presence available", peer,
-          tp_handle_inspect (contact_handles, peer));
-      return FALSE;
-    }
-
-  if (gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VOICE) ||
-      gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VIDEO) ||
-      gabble_presence_has_cap (presence, NS_JINGLE_RTP_AUDIO) ||
-      gabble_presence_has_cap (presence, NS_JINGLE_RTP_VIDEO) ||
-      gabble_presence_has_cap (presence, NS_JINGLE_DESCRIPTION_AUDIO) ||
-      gabble_presence_has_cap (presence, NS_JINGLE_DESCRIPTION_VIDEO))
-    {
-      return TRUE;
-    }
+    g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
+        "contact %d (%s) has no presence available", peer,
+        tp_handle_inspect (contact_handles, peer));
   else
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
-          "contact %d (%s) doesn't have sufficient media caps", peer,
-          tp_handle_inspect (contact_handles, peer));
-      return FALSE;
-    }
+    g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+        "contact %d (%s) doesn't have sufficient media caps", peer,
+        tp_handle_inspect (contact_handles, peer));
+
+  return FALSE;
 }
 
 static gboolean

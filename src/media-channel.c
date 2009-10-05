@@ -2078,6 +2078,9 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
 
   caps = PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE |
+    PRESENCE_CAP_JINGLE015 |
+    PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
+    PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO |
     PRESENCE_CAP_JINGLE_RTP |
     PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
     PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;

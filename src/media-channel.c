@@ -2850,14 +2850,14 @@ TpChannelMediaCapabilities
 _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
 {
   TpChannelMediaCapabilities typeflags = 0;
-  TpChannelMediaCapabilities any_transport =
+  GabblePresenceCapabilities any_transport =
       PRESENCE_CAP_GOOGLE_TRANSPORT_P2P |
       PRESENCE_CAP_JINGLE_TRANSPORT_RAWUDP |
       PRESENCE_CAP_JINGLE_TRANSPORT_ICEUDP;
-  TpChannelMediaCapabilities jingle_audio =
+  GabblePresenceCapabilities jingle_audio =
       PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
       PRESENCE_CAP_JINGLE_RTP_AUDIO;
-  TpChannelMediaCapabilities jingle_video =
+  GabblePresenceCapabilities jingle_video =
       PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO |
       PRESENCE_CAP_JINGLE_RTP_VIDEO;
 

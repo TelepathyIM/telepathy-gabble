@@ -530,6 +530,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   GabbleIMChannelPrivate *priv;
   TpBaseConnection *base_conn;
   TpMessage *msg;
+  gchar *tmp;
 
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
   priv = chan->priv;
@@ -562,9 +563,6 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   if (timestamp != 0)
     tp_message_set_uint64 (msg, 0, "message-sent", timestamp);
 
-  if (id != NULL)
-    tp_message_set_string (msg, 0, "message-token", id);
-
   /* Body */
   tp_message_set_string (msg, 1, "content-type", "text/plain");
   tp_message_set_string (msg, 1, "content", text);
@@ -575,22 +573,18 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
           sender);
       tp_message_set_uint64 (msg, 0, "message-received", time (NULL));
 
-      /* Ensure that all incoming messages have an ID, either from the
-       * protocol or just a locally generated UUID */
-      if (id == NULL)
-        {
-          gchar *tmp = gabble_generate_id ();
-
-          tp_message_set_string (msg, 0, "message-token", tmp);
-          g_free (tmp);
-        }
+      /* We can't trust the id='' attribute set by the contact to be unique
+       * enough to be a message-token, so let's generate one locally.
+       */
+      tmp = gabble_generate_id ();
+      tp_message_set_string (msg, 0, "message-token", tmp);
+      g_free (tmp);
 
       tp_message_mixin_take_received (G_OBJECT (chan), msg);
     }
   else
     {
       TpMessage *delivery_report = tp_message_new (base_conn, 1, 1);
-      gchar *tmp;
 
       tp_message_set_uint32 (delivery_report, 0, "message-type",
           TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
@@ -614,6 +608,11 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
        * message must be us! */
       tp_message_set_handle (msg, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
           base_conn->self_handle);
+
+      /* Since this is a send error, we can trust the id on the message. */
+      if (id != NULL)
+        tp_message_set_string (msg, 0, "message-token", id);
+
       tp_message_take_message (delivery_report, 0, "delivery-echo", msg);
 
       tp_message_mixin_take_received (G_OBJECT (chan), delivery_report);

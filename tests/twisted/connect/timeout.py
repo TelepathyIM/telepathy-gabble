@@ -15,21 +15,21 @@ class NoStreamHeader(XmppAuthenticator):
         XmppAuthenticator.__init__(self, 'test', 'pass')
 
     def streamStarted(self, root=None):
-        return
+        pass
 
 class NoAuthInfoResult(XmppAuthenticator):
     def __init__(self):
         XmppAuthenticator.__init__(self, 'test', 'pass')
 
     def auth(self, auth):
-        return
+        pass
 
 class NoAuthResult(XmppAuthenticator):
     def __init__(self):
         XmppAuthenticator.__init__(self, 'test', 'pass')
 
     def bindIq(self, iq):
-        return
+        pass
 
 def test(q, bus, conn, stream):
     conn.Connect()

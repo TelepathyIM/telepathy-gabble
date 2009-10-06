@@ -2160,7 +2160,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessageNode *iq, *result_iq, *query, *result_query, *identity;
   const gchar *node, *suffix;
   const GabbleCapabilitySet *features;
-  gchar *caps_hash;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2206,26 +2205,32 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
   lm_message_node_set_attribute (identity, "type", "pc");
 
-  caps_hash = caps_hash_compute_from_self_presence (self);
-
+  if (node == NULL)
+    features = gabble_presence_peek_caps (self->self_presence);
   /* If node is not NULL, it can be either a caps bundle as defined in the
    * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
-   * 1.5. */
-  if (node == NULL || !tp_strdiff (suffix, caps_hash))
-    features = gabble_presence_peek_caps (self->self_presence);
-  else if (!tp_strdiff (suffix, BUNDLE_VOICE_V1))
-    features = gabble_capabilities_get_bundle_voice_v1 ();
-  else if (!tp_strdiff (suffix, BUNDLE_VIDEO_V1))
-    features = gabble_capabilities_get_bundle_video_v1 ();
+   * 1.5. Let's see if it's a verification string we've told the cache about.
+   */
   else
-    features = NULL;
+    features = gabble_presence_cache_peek_own_caps (self->presence_cache,
+        suffix);
 
   if (features == NULL)
     {
-      /* Return <item-not-found>. It is possible that the remote contact
-       * requested an old version (old hash) of our capabilities. In the
-       * meantime, it will have gotten a new hash, and query the new hash
-       * anyway. */
+      /* Otherwise, is it one of the caps bundles we advertise? These are not
+       * just shoved into the cache with gabble_presence_cache_add_own_caps()
+       * because capabilities_get_features() always includes a few bonus
+       * features...
+       */
+      if (!tp_strdiff (suffix, BUNDLE_VOICE_V1))
+        features = gabble_capabilities_get_bundle_voice_v1 ();
+
+      if (!tp_strdiff (suffix, BUNDLE_VIDEO_V1))
+        features = gabble_capabilities_get_bundle_video_v1 ();
+    }
+
+  if (features == NULL)
+    {
       _gabble_connection_send_iq_error (self, message,
           XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
@@ -2241,8 +2246,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
           DEBUG ("sending disco response failed");
         }
     }
-
-  g_free (caps_hash);
 
   lm_message_unref (result);
 

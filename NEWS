@@ -3,10 +3,11 @@ telepathy-gabble 0.9.2 (UNRELEASED)
 
 Fixes:
 
+* Honour errors that tell us to wait and try again when fetching vCards. This
+  was erroneously claimed to be in 0.9.1. (Alban)
+
 * Don't re-fetch our own avatar in a loop when connecting to Google
   Talk. This should fix #23684 once and for all. (Alban)
-
-* Fix a crash introduced by the vCard-related fixes in 0.9.1. (Alban)
 
 telepathy-gabble 0.9.1 (2009-09-25)
 ===================================

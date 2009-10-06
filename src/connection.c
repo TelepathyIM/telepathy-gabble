@@ -75,6 +75,7 @@
 #include "vcard-manager.h"
 
 static guint disco_reply_timeout = 5;
+static guint connect_timeout = 60;
 
 #define DEFAULT_RESOURCE_FORMAT "Telepathy.%x"
 
@@ -168,6 +169,8 @@ struct _GabbleConnectionPrivate
   TpConnectionStatusReason ssl_error;
 
   gboolean do_register;
+
+  guint connect_timeout_id;
 
   gboolean low_bandwidth;
 
@@ -864,6 +867,16 @@ _unref_lm_connection (gpointer data)
 }
 
 static void
+cancel_connect_timeout (GabbleConnection *conn)
+{
+  if (conn->priv->connect_timeout_id != 0)
+    {
+      g_source_remove (conn->priv->connect_timeout_id);
+      conn->priv->connect_timeout_id = 0;
+    }
+}
+
+static void
 gabble_connection_dispose (GObject *object)
 {
   GabbleConnection *self = GABBLE_CONNECTION (object);
@@ -879,6 +892,11 @@ gabble_connection_dispose (GObject *object)
 
   g_assert ((base->status == TP_CONNECTION_STATUS_DISCONNECTED) ||
             (base->status == TP_INTERNAL_CONNECTION_STATUS_NEW));
+
+  /* By the time we get here, this should have fired or been cancelled long
+   * ago. But just to be sure...
+   */
+  cancel_connect_timeout (self);
 
   g_object_unref (self->bytestream_factory);
   self->bytestream_factory = NULL;
@@ -1213,6 +1231,29 @@ static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
 static void connection_disconnected_cb (LmConnection *, LmDisconnectReason,
     gpointer);
 
+static gboolean
+connect_timeout_cb (gpointer data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (data);
+
+  DEBUG ("took too long to connect, giving up!");
+
+  conn->priv->connect_timeout_id = 0;
+
+  if (lm_connection_is_open (conn->lmconn))
+    {
+      lm_connection_close (conn->lmconn, NULL);
+    }
+  else
+    {
+      lm_connection_cancel_open (conn->lmconn);
+      tp_base_connection_change_status ((TpBaseConnection *) conn,
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+    }
+
+  return FALSE;
+}
 
 static gboolean
 do_connect (GabbleConnection *conn, GError **error)
@@ -1233,6 +1274,9 @@ do_connect (GabbleConnection *conn, GError **error)
 
       return FALSE;
     }
+
+  conn->priv->connect_timeout_id = g_timeout_add_seconds (
+      connect_timeout, connect_timeout_cb, conn);
 
   return TRUE;
 }
@@ -1450,6 +1494,8 @@ connection_disconnected_cb (LmConnection *lmconn,
 
   DEBUG ("called with reason %u", lm_reason);
 
+  cancel_connect_timeout (conn);
+
   /* if we were expecting this disconnection, we're done so can tell
    * the connection manager to unref us. otherwise it's a network error
    * or some other screw up we didn't expect, so we emit the status
@@ -1482,6 +1528,8 @@ connection_shut_down (TpBaseConnection *base)
   GabbleConnection *conn = GABBLE_CONNECTION (base);
 
   g_assert (GABBLE_IS_CONNECTION (conn));
+
+  cancel_connect_timeout (conn);
 
   /* If we're shutting down by user request, we don't want to be
    * unreffed until the LM connection actually closes; the event handler
@@ -2160,7 +2208,11 @@ connection_auth_cb (LmConnection *lmconn,
       tp_base_connection_change_status ((TpBaseConnection *) conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      return;
     }
+
+  /* Okay, now we can rely on the disco reply timeout. */
+  cancel_connect_timeout (conn);
 }
 
 /**
@@ -3384,4 +3436,10 @@ void
 gabble_connection_set_disco_reply_timeout (guint timeout)
 {
   disco_reply_timeout = timeout;
+}
+
+void
+gabble_connection_set_connect_timeout (guint timeout)
+{
+  connect_timeout = timeout;
 }

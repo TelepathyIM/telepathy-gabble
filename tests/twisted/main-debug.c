@@ -21,6 +21,7 @@
 
 #include "gabble.h"
 #include "connection.h"
+#include "vcard-manager.h"
 #include "jingle-factory.h"
 #include "jingle-session.h"
 
@@ -78,6 +79,8 @@ main (int argc,
   dbus_connection_set_exit_on_disconnect (connection, FALSE);
   /* needed for test-disco-no-reply.py */
   gabble_connection_set_disco_reply_timeout (3);
+  /* needed for test-avatar-async.py */
+  gabble_vcard_manager_set_suspend_reply_timeout (3);
 
   gibber_resolver_set_resolver (GABBLE_TYPE_RESOLVER_FAKE);
   gabble_jingle_factory_set_test_mode ();

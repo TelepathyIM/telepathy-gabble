@@ -88,6 +88,7 @@ static void gabble_request_pipeline_get_property (GObject *object,
     guint property_id, GValue *value, GParamSpec *pspec);
 static void gabble_request_pipeline_dispose (GObject *object);
 static void gabble_request_pipeline_finalize (GObject *object);
+static void gabble_request_pipeline_go (GabbleRequestPipeline *pipeline);
 
 static void
 gabble_request_pipeline_class_init (GabbleRequestPipelineClass *cls)
@@ -200,6 +201,10 @@ gabble_request_pipeline_item_cancel (GabbleRequestPipelineItem *item)
       "Request cancelled" };
   GabbleRequestPipelinePrivate *priv =
       GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
+
+  g_assert (item->timer_id != 0);
+  g_source_remove (item->timer_id);
+  item->timer_id = 0;
 
   (item->callback) (priv->connection, NULL, item->user_data, &cancelled);
 
@@ -363,7 +368,7 @@ send_next_request (GabbleRequestPipeline *pipeline)
     }
 }
 
-void
+static void
 gabble_request_pipeline_go (GabbleRequestPipeline *pipeline)
 {
   GabbleRequestPipelinePrivate *priv =

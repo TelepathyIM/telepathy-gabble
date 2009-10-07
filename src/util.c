@@ -416,7 +416,7 @@ gabble_normalize_room (TpHandleRepoIface *repo,
                        GError **error)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (context);
-  gchar *at, *slash, *qualified_name;
+  gchar *qualified_name, *resource;
 
   qualified_name = gabble_connection_get_canonical_room_name (conn, jid);
 
@@ -429,33 +429,19 @@ gabble_normalize_room (TpHandleRepoIface *repo,
       return NULL;
     }
 
-  at = strchr (qualified_name, '@');
-  slash = strchr (qualified_name, '/');
-
-  /* there'd better be an @ somewhere after the first character */
-  if (at == NULL)
+  if (!gabble_decode_jid (qualified_name, NULL, NULL, &resource))
     {
-      INVALID_HANDLE (error,
-          "invalid room JID %s: does not contain '@'", qualified_name);
-      g_free (qualified_name);
-      return NULL;
-    }
-  if (at == qualified_name)
-    {
-      INVALID_HANDLE (error,
-          "invalid room JID %s: room name before '@' may not be empty",
-          qualified_name);
-      g_free (qualified_name);
+      INVALID_HANDLE (error, "room JID %s is invalid", qualified_name);
       return NULL;
     }
 
-  /* room names can't contain the nick part */
-  if (slash != NULL)
+  if (resource != NULL)
     {
       INVALID_HANDLE (error,
           "invalid room JID %s: contains nickname part after '/' too",
           qualified_name);
       g_free (qualified_name);
+      g_free (resource);
       return NULL;
     }
 

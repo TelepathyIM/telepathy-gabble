@@ -18,6 +18,12 @@ def test(q, bus, conn, stream):
 
     jid = 'lol@great.big/omg'
 
+    # Gabble shouldn't send any disco requests to our contact during this test.
+    q.forbid_events([
+        EventPattern('stream-iq', to=jid, iq_type='get',
+            query_ns=ns.DISCO_INFO),
+    ])
+
     # Check that Gabble doesn't disco other clients with the same caps hash.
     p = make_presence(jid,
         caps={'node': c['node'],
@@ -25,11 +31,6 @@ def test(q, bus, conn, stream):
               'ver':  c['ver'],
              })
     stream.send(p)
-
-    q.forbid_events([
-        EventPattern('stream-iq', to=jid, iq_type='get',
-            query_ns=ns.DISCO_INFO),
-    ])
     sync_stream(q, stream)
 
     # Check that Gabble doesn't disco its own ext='' bundles (well, its own

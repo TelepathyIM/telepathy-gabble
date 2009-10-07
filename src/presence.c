@@ -166,6 +166,13 @@ gabble_presence_dup_caps (GabblePresence *presence)
   return gabble_capability_set_copy (presence->priv->cap_set);
 }
 
+const GabbleCapabilitySet *
+gabble_presence_peek_caps (GabblePresence *presence)
+{
+  g_return_val_if_fail (presence != NULL, NULL);
+  return presence->priv->cap_set;
+}
+
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,

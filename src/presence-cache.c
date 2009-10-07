@@ -941,7 +941,7 @@ set_caps_for (DiscoWaiter *waiter,
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, waiter->handle);
   GabbleCapabilitySet *old_cap_set;
-  GabbleCapabilitySet *new_cap_set;
+  const GabbleCapabilitySet *new_cap_set;
 
   if (presence == NULL)
     return;
@@ -954,12 +954,11 @@ set_caps_for (DiscoWaiter *waiter,
   gabble_presence_set_capabilities (presence, waiter->resource, cap_set,
       waiter->serial);
 
-  new_cap_set = gabble_presence_dup_caps (presence);
+  new_cap_set = gabble_presence_peek_caps (presence);
 
   emit_capabilities_update (cache, waiter->handle, old_cap_set, new_cap_set);
 
   gabble_capability_set_free (old_cap_set);
-  gabble_capability_set_free (new_cap_set);
 }
 
 static void
@@ -1278,7 +1277,8 @@ _process_caps (GabblePresenceCache *cache,
 
   if (presence)
     {
-      GabbleCapabilitySet *new_cap_set = gabble_presence_dup_caps (presence);
+      const GabbleCapabilitySet *new_cap_set =
+          gabble_presence_peek_caps (presence);
 
       if (DEBUGGING)
         {
@@ -1292,8 +1292,6 @@ _process_caps (GabblePresenceCache *cache,
         }
 
       emit_capabilities_update (cache, handle, old_cap_set, new_cap_set);
-
-      gabble_capability_set_free (new_cap_set);
     }
   else
     {
@@ -1579,7 +1577,8 @@ gabble_presence_cache_do_update (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *jid;
   GabblePresence *presence;
-  GabbleCapabilitySet *old_cap_set, *new_cap_set;
+  GabbleCapabilitySet *old_cap_set;
+  const GabbleCapabilitySet *new_cap_set;
   gboolean ret = FALSE;
 
   jid = tp_handle_inspect (contact_repo, handle);
@@ -1599,12 +1598,11 @@ gabble_presence_cache_do_update (
   ret = gabble_presence_update (presence, resource, presence_id,
       status_message, priority);
 
-  new_cap_set = gabble_presence_dup_caps (presence);
+  new_cap_set = gabble_presence_peek_caps (presence);
 
   emit_capabilities_update (cache, handle, old_cap_set, new_cap_set);
 
   gabble_capability_set_free (old_cap_set);
-  gabble_capability_set_free (new_cap_set);
 
   return ret;
 }

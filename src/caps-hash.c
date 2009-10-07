@@ -365,7 +365,7 @@ gchar *
 caps_hash_compute_from_self_presence (GabbleConnection *self)
 {
   GabblePresence *presence = self->self_presence;
-  GabbleCapabilitySet *cap_set;
+  const GabbleCapabilitySet *cap_set;
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = g_ptr_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();
@@ -376,10 +376,9 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
 
   /* Gabble does not use dataforms, let 'dataforms' be empty */
 
-  /* FIXME: somehow allow iteration over this without copying twice */
-  cap_set = gabble_presence_dup_caps (presence);
+  /* FIXME: allow iteration over the strings without copying */
+  cap_set = gabble_presence_peek_caps (presence);
   gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
-  gabble_capability_set_free (cap_set);
 
   str = caps_hash_compute (features, identities, dataforms);
 

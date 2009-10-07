@@ -2155,7 +2155,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query, *identity;
   const gchar *node, *suffix;
-  GabbleCapabilitySet *features;
+  const GabbleCapabilitySet *features;
   gchar *caps_hash;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
@@ -2207,15 +2207,12 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   /* If node is not NULL, it can be either a caps bundle as defined in the
    * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
    * 1.5. */
-  /* FIXME: We shouldn't have to copy the sets here */
   if (node == NULL || !tp_strdiff (suffix, caps_hash))
-    features = gabble_presence_dup_caps (self->self_presence);
+    features = gabble_presence_peek_caps (self->self_presence);
   else if (!tp_strdiff (suffix, BUNDLE_VOICE_V1))
-    features = gabble_capability_set_copy (
-        gabble_capabilities_get_bundle_voice_v1 ());
+    features = gabble_capabilities_get_bundle_voice_v1 ();
   else if (!tp_strdiff (suffix, BUNDLE_VIDEO_V1))
-    features = gabble_capability_set_copy (
-        gabble_capabilities_get_bundle_video_v1 ());
+    features = gabble_capabilities_get_bundle_video_v1 ();
   else
     features = NULL;
 
@@ -2239,8 +2236,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
         {
           DEBUG ("sending disco response failed");
         }
-
-      gabble_capability_set_free (features);
     }
 
   g_free (caps_hash);
@@ -2534,7 +2529,7 @@ gabble_connection_get_handle_contact_capabilities (
 {
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (self);
   GabblePresence *p;
-  GabbleCapabilitySet *caps;
+  const GabbleCapabilitySet *caps;
   GPtrArray *arr;
 
   if (handle == base_conn->self_handle)
@@ -2548,9 +2543,8 @@ gabble_connection_get_handle_contact_capabilities (
       return NULL;
     }
 
-  caps = gabble_presence_dup_caps (p);
+  caps = gabble_presence_peek_caps (p);
   arr = gabble_connection_build_contact_caps (self, handle, caps);
-  gabble_capability_set_free (caps);
   return arr;
 }
 
@@ -2809,7 +2803,7 @@ gabble_connection_get_handle_capabilities (GabbleConnection *self,
 
   if (NULL != pres)
     {
-      GabbleCapabilitySet *cap_set = gabble_presence_dup_caps (pres);
+      const GabbleCapabilitySet *cap_set = gabble_presence_peek_caps (pres);
 
       for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
         {
@@ -2835,8 +2829,6 @@ gabble_connection_get_handle_capabilities (GabbleConnection *self,
               g_ptr_array_add (arr, g_value_get_boxed (&monster));
             }
         }
-
-      gabble_capability_set_free (cap_set);
     }
 
   for (assumed = assumed_caps; NULL != *assumed; assumed++)

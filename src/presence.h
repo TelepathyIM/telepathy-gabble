@@ -85,6 +85,7 @@ void gabble_presence_set_capabilities (GabblePresence *presence,
 
 gboolean gabble_presence_has_cap (GabblePresence *presence, const gchar *ns);
 GabbleCapabilitySet *gabble_presence_dup_caps (GabblePresence *presence);
+const GabbleCapabilitySet *gabble_presence_peek_caps (GabblePresence *presence);
 
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
     GabbleCapabilitySetPredicate predicate, gconstpointer user_data);

@@ -11,6 +11,7 @@ TWISTED_TESTS = \
 	caps/initial-caps.py \
 	caps/jingle-caps.py \
 	caps/receive-jingle.py \
+	caps/trust-thyself.py \
 	caps/tube-caps.py \
 	muc/name-conflict.py \
 	muc/renamed.py \

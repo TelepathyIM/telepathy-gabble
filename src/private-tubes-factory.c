@@ -731,8 +731,18 @@ copy_caps_helper (gpointer key, gpointer value, gpointer user_data)
 {
   GHashTable *out = user_data;
   gchar *str = key;
+  Feature *feat = value;
+  Feature *copy = NULL;
 
-  g_hash_table_insert (out, g_strdup (str), NULL);
+  if (value != NULL)
+    {
+      copy = g_new0 (Feature, 1);
+      copy->feature_type = feat->feature_type;
+      copy->ns = g_strdup (feat->ns);
+      copy->caps = feat->caps;
+    }
+
+  g_hash_table_insert (out, g_strdup (str), copy);
 }
 
 static void

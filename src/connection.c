@@ -1590,6 +1590,10 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
     "ver",   caps_hash,
     NULL);
 
+  /* Ensure this set of capabilities is in the cache. */
+  gabble_presence_cache_add_own_caps (self->presence_cache, caps_hash,
+      presence->caps, presence->per_channel_manager_caps);
+
   /* XEP-0115 deprecates 'ext' feature bundles. But we still need
    * BUNDLE_VOICE_V1 it for backward-compatibility with Gabble 0.2 */
 
@@ -1709,6 +1713,29 @@ add_feature_node (LmMessageNode *result_query,
   lm_message_node_set_attribute (feature_node, "var", namespace);
 }
 
+static void
+reply_with_features (
+    GabbleConnection *self,
+    LmMessage *result,
+    LmMessageNode *result_query,
+    GSList *features)
+{
+  GSList *i;
+
+  for (i = features; NULL != i; i = i->next)
+    {
+      const Feature *feature = (const Feature *) i->data;
+
+      add_feature_node (result_query, feature->ns);
+    }
+
+  NODE_DEBUG (lm_message_get_node (result), "sending disco response");
+  _gabble_connection_send_or_complain (self, result,
+      "sending disco response failed");
+
+  g_slist_free (features);
+}
+
 /**
  * connection_iq_disco_cb
  *
@@ -1725,9 +1752,8 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query, *identity;
   const gchar *node, *suffix;
-  GSList *features;
-  GSList *i;
-  gchar *caps_hash;
+  GabblePresenceCapabilities caps;
+  GHashTable *contact_caps;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -1774,28 +1800,26 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
   lm_message_node_set_attribute (identity, "type", "pc");
 
-  features = capabilities_get_features (self->self_presence->caps,
-      self->self_presence->per_channel_manager_caps);
-
+  if (node == NULL)
+    {
+      reply_with_features (self, result, result_query,
+          capabilities_get_features (self->self_presence->caps,
+              self->self_presence->per_channel_manager_caps));
+    }
   /* If node is not NULL, it can be either a caps bundle as defined in the
    * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
-   * 1.5. */
-
-  caps_hash = caps_hash_compute_from_self_presence (self);
-
-  if (node == NULL || !tp_strdiff (suffix, caps_hash))
+   * 1.5. Let's see if it's a verification string we've told the cache about.
+   */
+  else if (gabble_presence_cache_peek_own_caps (self->presence_cache,
+            suffix, &caps, &contact_caps))
     {
-      for (i = features; NULL != i; i = i->next)
-        {
-          const Feature *feature = (const Feature *) i->data;
-
-          add_feature_node (result_query, feature->ns);
-        }
-
-      NODE_DEBUG (result_iq, "sending disco response");
-      _gabble_connection_send_or_complain (self, result,
-          "sending disco response failed");
+      reply_with_features (self, result, result_query,
+          capabilities_get_features (caps, contact_caps));
     }
+  /* Otherwise, is it one of the caps bundles we advertise? These are not just
+   * shoved into the cache with gabble_presence_cache_add_own_caps() because
+   * capabilities_get_features() always includes a few bonus features...
+   */
   else if (!tp_strdiff (suffix, BUNDLE_VOICE_V1))
     {
       add_feature_node (result_query, NS_GOOGLE_FEAT_VOICE);
@@ -1810,17 +1834,11 @@ connection_iq_disco_cb (LmMessageHandler *handler,
     }
   else
     {
-      /* Return <item-not-found>. It is possible that the remote contact
-       * requested an old version (old hash) of our capabilities. In the
-       * meantime, it will have gotten a new hash, and query the new hash
-       * anyway. */
       _gabble_connection_send_iq_error (self, message,
           XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
-  g_free (caps_hash);
 
   lm_message_unref (result);
-  g_slist_free (features);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

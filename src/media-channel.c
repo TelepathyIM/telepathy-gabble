@@ -110,6 +110,7 @@ enum
   PROP_CHANNEL_PROPERTIES,
   PROP_INITIAL_AUDIO,
   PROP_INITIAL_VIDEO,
+  PROP_IMMUTABLE_STREAMS,
   /* TP properties (see also below) */
   PROP_NAT_TRAVERSAL,
   PROP_STUN_SERVER,
@@ -413,6 +414,32 @@ gabble_media_channel_constructor (GType type, guint n_props,
         }
     }
 
+  /* If this is a Google session, let's set ImmutableStreams */
+  if (priv->session != NULL)
+    {
+      JingleDialect d = gabble_jingle_session_get_dialect (priv->session);
+
+      priv->immutable_streams = JINGLE_IS_GOOGLE_DIALECT (d);
+    }
+  /* If there's no session yet, but we know who the peer will be, and we have
+   * presence for them, we can set ImmutableStreams using the same algorithm as
+   * for old-style capabilities.  If we don't know who the peer will be, then
+   * the client is using an old calling convention and doesn't need to know
+   * this.
+   */
+  else if (priv->initial_peer != 0)
+    {
+      GabblePresence *presence = gabble_presence_cache_get (
+          priv->conn->presence_cache, priv->initial_peer);
+      TpChannelMediaCapabilities flags = 0;
+
+      if (presence != NULL)
+          _gabble_media_channel_caps_to_typeflags (presence->caps);
+
+      if (flags & TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS)
+        priv->immutable_streams = TRUE;
+    }
+
   return obj;
 }
 
@@ -519,6 +546,7 @@ gabble_media_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "Interfaces",
               TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, "InitialAudio",
               TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, "InitialVideo",
+              TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, "ImmutableStreams",
               NULL));
       break;
     case PROP_SESSION:
@@ -529,6 +557,9 @@ gabble_media_channel_get_property (GObject    *object,
       break;
     case PROP_INITIAL_VIDEO:
       g_value_set_boolean (value, priv->initial_video);
+      break;
+    case PROP_IMMUTABLE_STREAMS:
+      g_value_set_boolean (value, priv->immutable_streams);
       break;
     default:
       param_name = g_param_spec_get_name (pspec);
@@ -652,6 +683,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl streamed_media_props[] = {
+      { "ImmutableStreams", "immutable-streams", NULL },
       { "InitialAudio", "initial-audio", NULL },
       { "InitialVideo", "initial-video", NULL },
       { NULL }
@@ -803,6 +835,13 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       FALSE,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIAL_VIDEO,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("immutable-streams", "ImmutableStreams",
+      "Whether the set of streams on this channel are fixed once requested",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_IMMUTABLE_STREAMS,
       param_spec);
 
   tp_properties_mixin_class_init (object_class,

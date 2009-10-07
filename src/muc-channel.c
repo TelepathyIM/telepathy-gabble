@@ -1128,8 +1128,8 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  g_cclosure_marshal_VOID__UINT,
-                  G_TYPE_NONE, 1, G_TYPE_UINT);
+                  g_cclosure_marshal_VOID__POINTER,
+                  G_TYPE_NONE, 1, G_TYPE_POINTER);
 
   tp_properties_mixin_class_init (object_class,
                                       G_STRUCT_OFFSET (GabbleMucChannelClass,

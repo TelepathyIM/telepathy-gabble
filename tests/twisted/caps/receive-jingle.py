@@ -74,7 +74,8 @@ def test(q, bus, conn, stream):
 
     # we can now do audio and video calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3, 0, 3)]])
+        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3,
+            0, cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)]])
 
     caps = conn.Contacts.GetContactAttributes([2], [cs.CONN_IFACE_CAPS], False)
     assert caps.keys() == [2L]
@@ -91,16 +92,21 @@ def test(q, bus, conn, stream):
         })
     stream.send(presence)
 
-    # we can now do only audio calls
+    # we can now do only audio calls (and as a result have the ImmutableStreams
+    # cap)
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 3, 3, 1)]])
+        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 3,
+            cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO,
+            cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_IMMUTABLE_STREAMS)]])
 
     caps = conn.Contacts.GetContactAttributes([2], [cs.CONN_IFACE_CAPS], False)
     assert caps.keys() == [2L]
     assert icaps_attr in caps[2L]
     assert len(caps[2L][icaps_attr]) == 2
     assert basic_caps[0] in caps[2L][icaps_attr]
-    assert (2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 1) in caps[2L][icaps_attr]
+    assert (2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3,
+        cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_IMMUTABLE_STREAMS) \
+        in caps[2L][icaps_attr]
 
     # go offline
     presence = make_presence('bob@foo.com/Foo', type='unavailable')
@@ -108,7 +114,9 @@ def test(q, bus, conn, stream):
 
     # can't do audio calls any more
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 0, 1, 0)]])
+        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 0,
+            cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_IMMUTABLE_STREAMS,
+            0)]])
 
     # Contact went offline and the handle is now invalid
     assert conn.Contacts.GetContactAttributes(

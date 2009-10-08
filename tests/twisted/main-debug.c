@@ -40,6 +40,7 @@ main (int argc,
   gabble_connection_set_disco_reply_timeout (3);
   /* needed for test-avatar-async.py */
   gabble_vcard_manager_set_suspend_reply_timeout (3);
+  gabble_vcard_manager_set_default_request_timeout (3);
 
   gibber_resolver_set_resolver (GABBLE_TYPE_RESOLVER_FAKE);
   gabble_jingle_factory_set_test_mode ();

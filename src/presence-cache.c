@@ -775,15 +775,20 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
 
   sha1 = lm_message_node_get_value (photo_node);
 
+  /* "" means we know there is no avatar. NULL means we don't know what is the
+   * avatar. In this case, there is a <photo> node. */
+  if (sha1 == NULL)
+    sha1 = "";
+
   if (tp_strdiff (presence->avatar_sha1, sha1))
     {
-      g_free (presence->avatar_sha1);
       if (handle == base_conn->self_handle)
         {
           self_avatar_resolve_conflict (cache);
         }
       else
         {
+          g_free (presence->avatar_sha1);
           presence->avatar_sha1 = g_strdup (sha1);
           gabble_vcard_manager_invalidate_cache (priv->conn->vcard_manager, handle);
           g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle, sha1);

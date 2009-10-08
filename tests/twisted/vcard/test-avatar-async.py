@@ -184,11 +184,14 @@ def test(q, bus, conn, stream):
     assertEquals('hello', data)
     q.unforbid_events([avatar_request_event])
 
-    # if the server don't reply after the timeout and there is pending
-    # requests, Gabble must handle that correctly and not crash.
+    # First, ensure the pipeline is full
     contacts = ['random_user_%s@bigserver.com' % i for i in range(1, 100) ]
     handles = conn.RequestHandles(cs.HT_CONTACT, contacts)
     conn.Avatars.RequestAvatars(handles)
+    # Then, request yet another avatar. The request will time out before
+    # the IQ is sent, which used to trigger a crash in Gabble
+    # (LP#445847). So, we assert that the error is NotAvailable (rather
+    # than the error returned when the service crashes).
     try:
         conn.Avatars.RequestAvatar(handles[-1])
     except dbus.DBusException, e:

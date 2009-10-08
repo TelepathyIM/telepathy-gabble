@@ -202,9 +202,11 @@ gabble_request_pipeline_item_cancel (GabbleRequestPipelineItem *item)
   GabbleRequestPipelinePrivate *priv =
       GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
 
-  g_assert (item->timer_id != 0);
-  g_source_remove (item->timer_id);
-  item->timer_id = 0;
+  if (item->timer_id != 0)
+    {
+      g_source_remove (item->timer_id);
+      item->timer_id = 0;
+    }
 
   (item->callback) (priv->connection, NULL, item->user_data, &cancelled);
 

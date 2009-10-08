@@ -70,7 +70,7 @@ def test(q, bus, conn, stream):
     q.unforbid_events([avatar_request_event, avatar_retrieved_event])
 
     # Request on the first contact. Test the cache.
-    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
     test_get_avatar(q, bus, conn, stream, 'bob@foo.com', handle,
             in_cache=False)
     test_get_avatar(q, bus, conn, stream, 'bob@foo.com', handle,
@@ -78,7 +78,7 @@ def test(q, bus, conn, stream):
 
     # Request another vCard and get resource-constraint
     busy_contact = 'jean@busy-server.com'
-    busy_handle = conn.RequestHandles(1, [busy_contact])[0]
+    busy_handle = conn.RequestHandles(cs.HT_CONTACT, [busy_contact])[0]
     conn.Avatars.RequestAvatars([busy_handle])
 
     iq_event = q.expect('stream-iq', to=busy_contact, query_ns='vcard-temp',
@@ -101,7 +101,7 @@ def test(q, bus, conn, stream):
     
     # Request on a different contact, on another server
     # We should get the avatar
-    handle = conn.RequestHandles(1, ['bob2@foo.com'])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob2@foo.com'])[0]
     test_get_avatar(q, bus, conn, stream, 'bob2@foo.com', handle)
 
     # Try again the contact on the busy server.
@@ -187,7 +187,7 @@ def test(q, bus, conn, stream):
     # if the server don't reply after the timeout and there is pending
     # requests, Gabble must handle that correctly and not crash.
     contacts = ['random_user_%s@bigserver.com' % i for i in range(1, 100) ]
-    handles = [conn.RequestHandles(1, [contact])[0] for contact in contacts]
+    handles = conn.RequestHandles(cs.HT_CONTACT, contacts)
     conn.Avatars.RequestAvatars(handles)
     try:
         conn.Avatars.RequestAvatar(handles[-1])

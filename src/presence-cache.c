@@ -716,6 +716,7 @@ self_avatar_resolve_conflict (GabblePresenceCache *cache)
   DEBUG ("Reset our avatar, signal our presence without an avatar and request"
          " our own vCard.");
   priv->avatar_reset_pending = TRUE;
+  g_free (presence->avatar_sha1);
   presence->avatar_sha1 = NULL;
   if (!_gabble_connection_signal_own_presence (priv->conn, &error))
     {

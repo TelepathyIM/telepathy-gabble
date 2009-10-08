@@ -12,6 +12,7 @@ from gabbletest import (exec_test, acknowledge_iq, make_result_iq,
     sync_stream, send_error_reply, make_presence)
 import constants as cs
 import ns
+import dbus
 
 avatar_retrieved_event = EventPattern('dbus-signal', signal='AvatarRetrieved')
 avatar_request_event = EventPattern('stream-iq', query_ns='vcard-temp')
@@ -182,6 +183,18 @@ def test(q, bus, conn, stream):
     data, mime = conn.Avatars.RequestAvatar(handle, byte_arrays=True)
     assertEquals('hello', data)
     q.unforbid_events([avatar_request_event])
+
+    # if the server don't reply after the timeout and there is pending
+    # requests, Gabble must handle that correctly and not crash.
+    contacts = ['random_user_%s@bigserver.com' % i for i in range(1, 100) ]
+    handles = [conn.RequestHandles(1, [contact])[0] for contact in contacts]
+    conn.Avatars.RequestAvatars(handles)
+    try:
+        conn.Avatars.RequestAvatar(handles[-1])
+    except dbus.DBusException, e:
+        assertEquals(cs.NOT_AVAILABLE, e.get_dbus_name())
+    else:
+        assert False
 
 if __name__ == '__main__':
     exec_test(test)

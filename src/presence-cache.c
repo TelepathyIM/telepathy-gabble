@@ -660,6 +660,7 @@ self_vcard_request_cb (GabbleVCardManager *self,
 
       g_free (sha1);
     }
+  DEBUG ("End of avatar conflict resolution");
 }
 
 static void
@@ -686,7 +687,10 @@ self_avatar_resolve_conflict (GabblePresenceCache *cache)
    * The real contacts should still get the last avatar.
    */
   if (priv->avatar_reset_pending)
-    return;
+    {
+      DEBUG ("There is already an avatar conflict resolution pending.");
+      return;
+    }
 
   /* according to XEP-0153 section 4.3-2. 3rd bullet:
    * if we receive a photo from another resource, then we MUST
@@ -695,6 +699,8 @@ self_avatar_resolve_conflict (GabblePresenceCache *cache)
    * when that arrives, we may start setting the photo node in our
    * presence again.
    */
+  DEBUG ("Reset our avatar, signal our presence without an avatar and request"
+         " our own vCard.");
   priv->avatar_reset_pending = TRUE;
   presence->avatar_sha1 = NULL;
   if (!_gabble_connection_signal_own_presence (priv->conn, &error))
@@ -770,6 +776,8 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
     {
       if (handle == base_conn->self_handle)
         {
+          DEBUG ("Avatar conflict! Received hash '%s' and our cache is '%s'",
+            sha1, presence->avatar_sha1 == NULL ? "<NULL>" : presence->avatar_sha1);
           self_avatar_resolve_conflict (cache);
         }
       else

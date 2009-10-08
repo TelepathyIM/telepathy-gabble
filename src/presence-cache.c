@@ -778,7 +778,8 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
       if (handle == base_conn->self_handle)
         {
           DEBUG ("Avatar conflict! Received hash '%s' and our cache is '%s'",
-            sha1, presence->avatar_sha1 == NULL ? "<NULL>" : presence->avatar_sha1);
+            sha1, presence->avatar_sha1 == NULL ?
+              "<NULL>" : presence->avatar_sha1);
           self_avatar_resolve_conflict (cache);
         }
       else

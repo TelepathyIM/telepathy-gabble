@@ -37,7 +37,7 @@
 #include "request-pipeline.h"
 #include "util.h"
 
-#define DEFAULT_REQUEST_TIMEOUT 180
+static guint default_request_timeout = 180;
 #define VCARD_CACHE_ENTRY_TTL 60
 
 /* When the server reply with XMPP_ERROR_RESOURCE_CONSTRAINT, wait
@@ -1031,7 +1031,7 @@ manager_patch_vcard (GabbleVCardManager *self,
   priv->patched_vcard = lm_message_node_ref (patched_vcard);
 
   priv->edit_pipeline_item = gabble_request_pipeline_enqueue (
-      priv->connection->req_pipeline, msg, DEFAULT_REQUEST_TIMEOUT,
+      priv->connection->req_pipeline, msg, default_request_timeout,
       replace_reply_cb, self);
 
   lm_message_unref (msg);
@@ -1270,7 +1270,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   g_assert (entry->vcard_node == NULL);
 
   if (timeout == 0)
-    timeout = DEFAULT_REQUEST_TIMEOUT;
+    timeout = default_request_timeout;
 
   request = g_slice_new0 (GabbleVCardManagerRequest);
   DEBUG ("Created request %p to retrieve <%u>'s vCard", request, handle);
@@ -1505,4 +1505,10 @@ void
 gabble_vcard_manager_set_suspend_reply_timeout (guint timeout)
 {
   request_wait_delay = timeout;
+}
+
+void
+gabble_vcard_manager_set_default_request_timeout (guint timeout)
+{
+  default_request_timeout = timeout;
 }

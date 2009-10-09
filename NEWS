@@ -1,5 +1,40 @@
-telepathy-gabble 0.8.6 (UNRELEASED)
+telepathy-gabble 0.8.6 (2009-10-09)
 ===================================
+
+The “two eggs, half a cup of flour, four tons of beef, and a leek” release.
+
+Dependencies:
+
+• telepathy-glib 0.7.37 or later is now required.
+
+Enhancements:
+
+• The Immutable_Streams pseudo-capability and ImmutableStreams property for
+  Streamed Media channels, which indicate that video cannot be added after an
+  audio-only call has started, are now implemented (primarily for Google Video
+  Chat contacts).  UIs may use these flags to determine whether to show
+  separate “audio call” and “video call” options, or a single “call” option,
+  for example. (Will)
+
+• The undrafted InitialAudio and InitialVideo properties are now implemented
+  (with the DRAFT variants still present and functional for
+  backwards-compatibility). (Will)
+
+Fixes:
+
+• Don't repeatedly request our own vCard when we don't have an avatar, and fix
+  an assertion. fd.o#23684 (Alban)
+
+• The connection process now times out after a minute if the server stops
+  responding. Fixes fd.o#24135 (Will)
+
+• Don't wait for more capabilities if we already know a contact's callable.
+  (Will)
+
+• We now remember what our own current and past capabilities hashes mean, which
+  prevents us unnecessarily discoing other Gabbles, and works around an iChat
+  bug where returning <item-not-found/> for a disco request just makes it try
+  again and again. (Will)
 
 telepathy-gabble 0.8.5 (2009-10-02)
 ===================================

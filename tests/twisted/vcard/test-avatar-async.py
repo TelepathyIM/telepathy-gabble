@@ -12,6 +12,7 @@ from gabbletest import (exec_test, acknowledge_iq, make_result_iq,
     sync_stream, send_error_reply, make_presence)
 import constants as cs
 import ns
+import dbus
 
 avatar_retrieved_event = EventPattern('dbus-signal', signal='AvatarRetrieved')
 avatar_request_event = EventPattern('stream-iq', query_ns='vcard-temp')
@@ -49,10 +50,27 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'))
 
+    # When we start, there is no avatar
     acknowledge_iq(stream, iq_event.stanza)
+    self_handle = conn.GetSelfHandle()
+
+    # Another resource confirms we have no avatar. We don't request our vCard
+    # because we already know there is no avatar
+    presence_stanza = make_presence('test@localhost/noavatar',
+                                    to='test@localhost/Resource',
+                                    show='away', status='At the pub',
+                                    photo="")
+    q.forbid_events([avatar_request_event, avatar_retrieved_event])
+    # Gabble must resist temptation to send vCard requests even with several
+    # presence stanza sent!
+    stream.send(presence_stanza)
+    stream.send(presence_stanza)
+    sync_stream(q, stream) # Twice because the vCard request is done in
+    sync_stream(q, stream) # g_idle_add
+    q.unforbid_events([avatar_request_event, avatar_retrieved_event])
 
     # Request on the first contact. Test the cache.
-    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
     test_get_avatar(q, bus, conn, stream, 'bob@foo.com', handle,
             in_cache=False)
     test_get_avatar(q, bus, conn, stream, 'bob@foo.com', handle,
@@ -60,7 +78,7 @@ def test(q, bus, conn, stream):
 
     # Request another vCard and get resource-constraint
     busy_contact = 'jean@busy-server.com'
-    busy_handle = conn.RequestHandles(1, [busy_contact])[0]
+    busy_handle = conn.RequestHandles(cs.HT_CONTACT, [busy_contact])[0]
     conn.Avatars.RequestAvatars([busy_handle])
 
     iq_event = q.expect('stream-iq', to=busy_contact, query_ns='vcard-temp',
@@ -83,7 +101,7 @@ def test(q, bus, conn, stream):
     
     # Request on a different contact, on another server
     # We should get the avatar
-    handle = conn.RequestHandles(1, ['bob2@foo.com'])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob2@foo.com'])[0]
     test_get_avatar(q, bus, conn, stream, 'bob2@foo.com', handle)
 
     # Try again the contact on the busy server.
@@ -113,7 +131,6 @@ def test(q, bus, conn, stream):
     assertEquals('image/png', event.args[3])
 
     # Test with our own avatar test@localhost/Resource2
-    self_handle = conn.GetSelfHandle()
     presence_stanza = make_presence('test@localhost/Resource2',
                                     to='test@localhost/Resource',
                                     show='away', status='At the pub',
@@ -166,6 +183,21 @@ def test(q, bus, conn, stream):
     data, mime = conn.Avatars.RequestAvatar(handle, byte_arrays=True)
     assertEquals('hello', data)
     q.unforbid_events([avatar_request_event])
+
+    # First, ensure the pipeline is full
+    contacts = ['random_user_%s@bigserver.com' % i for i in range(1, 100) ]
+    handles = conn.RequestHandles(cs.HT_CONTACT, contacts)
+    conn.Avatars.RequestAvatars(handles)
+    # Then, request yet another avatar. The request will time out before
+    # the IQ is sent, which used to trigger a crash in Gabble
+    # (LP#445847). So, we assert that the error is NotAvailable (rather
+    # than the error returned when the service crashes).
+    try:
+        conn.Avatars.RequestAvatar(handles[-1])
+    except dbus.DBusException, e:
+        assertEquals(cs.NOT_AVAILABLE, e.get_dbus_name())
+    else:
+        assert False
 
 if __name__ == '__main__':
     exec_test(test)

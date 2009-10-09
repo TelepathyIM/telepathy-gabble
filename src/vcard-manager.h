@@ -130,6 +130,7 @@ gchar *vcard_get_avatar_sha1 (LmMessageNode *vcard);
 
 /* For unit tests only */
 void gabble_vcard_manager_set_suspend_reply_timeout (guint timeout);
+void gabble_vcard_manager_set_default_request_timeout (guint timeout);
 
 G_END_DECLS
 

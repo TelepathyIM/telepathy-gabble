@@ -51,6 +51,9 @@ update_own_avatar_sha1 (GabbleConnection *conn,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   GError *error = NULL;
 
+  /* sha1 can be "" if we know there is no avatar, but must not be NULL here */
+  g_assert (sha1 != NULL);
+
   if (!tp_strdiff (sha1, conn->self_presence->avatar_sha1))
     return TRUE;
 
@@ -83,6 +86,9 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
+  /* sha1 can be "" if we know there is no avatar, but must not be NULL here */
+  g_assert (sha1 != NULL);
+
   if (handle == base->self_handle)
     update_own_avatar_sha1 (conn, sha1, NULL);
   else
@@ -98,6 +104,9 @@ connection_got_self_initial_avatar_cb (GObject *obj,
                                        gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+
+  /* sha1 can be "" if we know there is no avatar, but must not be NULL here */
+  g_assert (sha1 != NULL);
 
   update_own_avatar_sha1 (conn, sha1, NULL);
 }

@@ -3,8 +3,9 @@ import socket
 import hashlib
 import time
 import datetime
+import os
 
-from servicetest import EventPattern
+from servicetest import EventPattern, assertEquals
 from gabbletest import exec_test, sync_stream, make_result_iq
 import ns
 from bytestream import create_from_si_offer, announce_socks5_proxy
@@ -51,6 +52,17 @@ class FileTransferTest(object):
         self.address_type = address_type
         self.access_control = access_control
         self.access_control_param = access_control_param
+
+    def check_platform_socket_types(self, sock_types):
+        assertEquals(sock_types.get(cs.SOCKET_ADDRESS_TYPE_IPV4),
+                [cs.SOCKET_ACCESS_CONTROL_LOCALHOST])
+        assertEquals(sock_types.get(cs.SOCKET_ADDRESS_TYPE_IPV6),
+                [cs.SOCKET_ACCESS_CONTROL_LOCALHOST])
+
+        if os.name == 'posix':
+            # true on at least Linux
+            assertEquals(sock_types.get(cs.SOCKET_ADDRESS_TYPE_UNIX),
+                    [cs.SOCKET_ACCESS_CONTROL_LOCALHOST])
 
     def connect(self):
         self.conn.Connect()
@@ -193,13 +205,10 @@ class ReceiveFileTest(FileTransferTest):
         assert props[cs.FT_CONTENT_HASH] == self.file.hash
         assert props[cs.FT_DESCRIPTION] == self.file.description
         assert props[cs.FT_DATE] == self.file.date
-        assert props[cs.FT_AVAILABLE_SOCKET_TYPES] == \
-            {cs.SOCKET_ADDRESS_TYPE_UNIX: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
-            cs.SOCKET_ADDRESS_TYPE_IPV4: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
-            cs.SOCKET_ADDRESS_TYPE_IPV6: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]}, \
-            props[cs.FT_AVAILABLE_SOCKET_TYPES]
         assert props[cs.FT_TRANSFERRED_BYTES] == 0
         assert props[cs.FT_INITIAL_OFFSET] == 0
+
+        self.check_platform_socket_types(props[cs.FT_AVAILABLE_SOCKET_TYPES])
 
         self.ft_path = path
 
@@ -342,13 +351,10 @@ class SendFileTest(FileTransferTest):
         assert props[cs.FT_CONTENT_HASH] == self.file.hash
         assert props[cs.FT_DESCRIPTION] == self.file.description
         assert props[cs.FT_DATE] == self.file.date
-        assert props[cs.FT_AVAILABLE_SOCKET_TYPES] == \
-            {cs.SOCKET_ADDRESS_TYPE_UNIX: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
-            cs.SOCKET_ADDRESS_TYPE_IPV4: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
-            cs.SOCKET_ADDRESS_TYPE_IPV6: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST]}, \
-            props[cs.FT_AVAILABLE_SOCKET_TYPES]
         assert props[cs.FT_TRANSFERRED_BYTES] == 0
         assert props[cs.FT_INITIAL_OFFSET] == 0
+
+        self.check_platform_socket_types(props[cs.FT_AVAILABLE_SOCKET_TYPES])
 
     def got_send_iq(self):
         iq_event = self.q.expect('stream-iq', to=self.contact_full_jid)
@@ -443,6 +449,18 @@ class SendFileTest(FileTransferTest):
             assert state == cs.FT_STATE_COMPLETED
             assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 
+def platform_impls():
+    impls = [
+        (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
+        (cs.SOCKET_ADDRESS_TYPE_IPV6, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
+    ]
+
+    if os.name == 'posix':
+        impls.append((cs.SOCKET_ADDRESS_TYPE_UNIX,
+            cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""))
+
+    return impls
+
 def exec_file_transfer_test(test_cls):
     for bytestream_cls  in [
             bytestream.BytestreamIBBMsg,
@@ -452,11 +470,7 @@ def exec_file_transfer_test(test_cls):
             bytestream.BytestreamSIFallbackS5WrongHash,
             bytestream.BytestreamS5BRelay,
             bytestream.BytestreamS5BRelayBugged]:
-        for addr_type, access_control, access_control_param in [
-                (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
-                (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
-                (cs.SOCKET_ADDRESS_TYPE_IPV6, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")]:
-
+        for addr_type, access_control, access_control_param in platform_impls():
             file = File()
             test = test_cls(bytestream_cls, file, addr_type, access_control, access_control_param)
             exec_test(test.test)

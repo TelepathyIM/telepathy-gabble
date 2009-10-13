@@ -24,10 +24,13 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <netdb.h>
+
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 #include <glib/gstdio.h>
 #include <loudmouth/loudmouth.h>

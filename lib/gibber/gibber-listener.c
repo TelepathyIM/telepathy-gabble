@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -25,9 +27,12 @@
 #include <sys/un.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
+
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 #include <glib.h>
 

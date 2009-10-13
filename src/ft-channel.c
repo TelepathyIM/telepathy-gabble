@@ -36,6 +36,7 @@
 
 #include <gibber/gibber-listener.h>
 #include <gibber/gibber-transport.h>
+#include <gibber/gibber-unix-transport.h>       /* just for the feature-test */
 
 #include "bytestream-factory.h"
 #include "connection.h"
@@ -460,6 +461,7 @@ gabble_file_transfer_channel_constructor (GType type,
   self->priv->available_socket_types = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) free_array);
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   /* Socket_Address_Type_Unix */
   socket_access = g_array_sized_new (FALSE, FALSE,
       sizeof (TpSocketAccessControl), 1);
@@ -467,6 +469,7 @@ gabble_file_transfer_channel_constructor (GType type,
   g_array_append_val (socket_access, access_control);
   g_hash_table_insert (self->priv->available_socket_types,
       GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX), socket_access);
+#endif
 
   /* Socket_Address_Type_IPv4 */
   socket_access = g_array_sized_new (FALSE, FALSE,
@@ -1583,6 +1586,7 @@ file_transfer_iface_init (gpointer g_iface,
 #undef IMPLEMENT
 }
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
 static gchar *
 get_local_unix_socket_path (GabbleFileTransferChannel *self)
 {
@@ -1608,6 +1612,7 @@ get_local_unix_socket_path (GabbleFileTransferChannel *self)
 
   return path;
 }
+#endif
 
 /*
  * Data is available from the channel so we can send it.
@@ -1745,6 +1750,7 @@ setup_local_socket (GabbleFileTransferChannel *self,
 
   /* Add this stage the address_type and access_control have been checked and
    * are supposed to be valid */
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   if (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       gchar *path;
@@ -1777,7 +1783,9 @@ setup_local_socket (GabbleFileTransferChannel *self,
       g_free (path);
       g_array_free (array, TRUE);
     }
-  else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+  else
+#endif
+  if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
     {
       int ret;
 

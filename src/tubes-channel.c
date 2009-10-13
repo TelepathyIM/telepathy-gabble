@@ -1426,7 +1426,7 @@ tube_msg_close (GabbleTubesChannel *self,
 
   close_node = lm_message_node_get_child_with_namespace (msg->node, "close",
       NS_TUBES);
-  g_assert (close != NULL);
+  g_assert (close_node != NULL);
 
   tmp = lm_message_node_get_attribute (close_node, "tube");
   if (tmp == NULL)

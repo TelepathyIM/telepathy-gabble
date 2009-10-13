@@ -187,6 +187,7 @@ listener_io_in_cb (GIOChannel *source,
   nfd = accept (fd, (struct sockaddr *) &addr, &addrlen);
   gibber_normalize_address (&addr);
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   if (addr.ss_family == AF_UNIX)
     {
       transport = GIBBER_FD_TRANSPORT (gibber_unix_transport_new_from_fd (nfd));
@@ -199,6 +200,7 @@ listener_io_in_cb (GIOChannel *source,
       port[0] = '\0';
     }
   else
+#endif
     {
       transport = g_object_new (GIBBER_TYPE_FD_TRANSPORT, NULL);
       gibber_fd_transport_set_fd (transport, nfd);
@@ -498,8 +500,10 @@ gibber_listener_listen_socket (GibberListener *listener,
   gchar *path, gboolean abstract, GError **error)
 {
   GibberListenerPrivate *priv = GIBBER_LISTENER_GET_PRIVATE (listener);
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   struct sockaddr_un addr;
   int ret;
+#endif
 
   if (priv->listening)
     {
@@ -508,6 +512,8 @@ gibber_listener_listen_socket (GibberListener *listener,
           "GibberListener is already listening");
       return FALSE;
     }
+
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
 
   if (abstract)
     return unimplemented (error);
@@ -526,6 +532,10 @@ gibber_listener_listen_socket (GibberListener *listener,
     }
 
   return ret;
+
+#else /* Unix transport not supported */
+  return unimplemented (error);
+#endif /* Unix transport not supported */
 }
 
 int

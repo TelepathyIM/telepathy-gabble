@@ -100,11 +100,11 @@ gabble_message_util_send_message (GObject *obj,
   gchar *id = NULL;
   guint n_parts;
 
-#define INVALID_ARGUMENT(msg, args...) \
+#define INVALID_ARGUMENT(msg, ...) \
   G_STMT_START { \
-    DEBUG (msg , ## args); \
+    DEBUG (msg , ## __VA_ARGS__); \
     g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, \
-        msg , ## args); \
+        msg , ## __VA_ARGS__); \
     goto despair_island; \
   } G_STMT_END
 

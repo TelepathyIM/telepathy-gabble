@@ -2379,6 +2379,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   TpHandle muc_self_handle;
   gboolean is_echo;
   gboolean is_error;
+  gchar *tmp;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -2428,17 +2429,12 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   if (timestamp != 0)
     tp_message_set_uint64 (message, 0, "message-sent", timestamp);
 
-  if (id != NULL)
-    tp_message_set_string (message, 0, "message-token", id);
-
   /* Body */
   tp_message_set_string (message, 1, "content-type", "text/plain");
   tp_message_set_string (message, 1, "content", text);
 
   if (is_error || is_echo)
     {
-      gchar *tmp;
-
       /* Error reports and echos of our own messages are represented as
        * delivery reports.
        */
@@ -2472,6 +2468,11 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       tp_message_set_handle (message, 0, "message-sender",
           TP_HANDLE_TYPE_CONTACT, muc_self_handle);
 
+      /* If we sent the message whose delivery has succeeded or failed, we
+       * trust the id='' attribute. */
+      if (id != NULL)
+        tp_message_set_string (message, 0, "message-token", id);
+
       tp_message_take_message (delivery_report, 0, "delivery-echo",
           message);
 
@@ -2487,13 +2488,12 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       if (timestamp != 0)
         tp_message_set_boolean (message, 0, "scrollback", TRUE);
 
-      if (id == NULL)
-        {
-          gchar *tmp = gabble_generate_id ();
-
-          tp_message_set_string (message, 0, "message-token", tmp);
-          g_free (tmp);
-        }
+      /* We can't trust the id='' attribute set by the contact to be unique
+       * enough to be a message-token, so let's generate one locally.
+       */
+      tmp = gabble_generate_id ();
+      tp_message_set_string (message, 0, "message-token", tmp);
+      g_free (tmp);
 
       tp_message_mixin_take_received (G_OBJECT (chan), message);
     }

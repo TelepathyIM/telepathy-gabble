@@ -8,7 +8,7 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import EventPattern, wrap_channel
+from servicetest import EventPattern, wrap_channel, assertNotEquals
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -16,10 +16,12 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
+    id = '1845a1a9-f7bc-4a2e-a885-633aadc81e1b'
+
     # <message type="chat"><body>hello</body</message>
     m = domish.Element((None, 'message'))
     m['from'] = 'foo@bar.com/Pidgin'
-    m['id'] = '1845a1a9-f7bc-4a2e-a885-633aadc81e1b'
+    m['id'] = id
     m['type'] = 'chat'
     m.addElement('body', content='hello')
     stream.send(m)
@@ -82,7 +84,11 @@ def test(q, bus, conn, stream):
     # the spec says that message-type "MAY be omitted for normal chat
     # messages."
     assert 'message-type' not in header or header['message-type'] == 0, header
-    assert header['message-token'] == '1845a1a9-f7bc-4a2e-a885-633aadc81e1b'
+
+    # This looks wrong, but is correct. We don't know if our contacts generate
+    # message id='' attributes which are unique enough for our requirements, so
+    # we should not use them as the message-token for incoming messages.
+    assertNotEquals(id, header['message-token'])
 
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == 'hello', body

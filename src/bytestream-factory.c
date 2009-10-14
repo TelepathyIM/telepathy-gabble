@@ -305,10 +305,17 @@ socks5_proxies_timeout_cb (gpointer data)
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (data);
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
+  TpBaseConnection *base = TP_BASE_CONNECTION (priv->conn);
 
   priv->socks5_proxies_timer = 0;
 
   /* query more proxies if needed */
+  if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
+    {
+      DEBUG ("we have been disconnected: don't try to find [more] proxies");
+      return FALSE;
+    }
+
   query_socks5_proxies (self);
 
   return FALSE;

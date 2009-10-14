@@ -1,3 +1,16 @@
+telepathy-gabble 0.8.7 (2009-10-14)
+===================================
+
+The "unpleasant grinding noise" release.
+
+Fixes:
+
+• Don't trust other people's <message/> IDs to be globally unique: in
+  particular, Google Talk uses simple incrementing integers (wjt)
+
+• Use the correct marshaller for the pre-presence signal, fixing a crash on
+  64-bit platforms (wjt)
+
 telepathy-gabble 0.8.6 (2009-10-09)
 ===================================
 

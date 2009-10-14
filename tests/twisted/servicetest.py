@@ -372,7 +372,7 @@ def make_connection(bus, event_func, name, proto, params):
                     interface=kw['interface'])),
         None,       # signal name
         None,       # interface
-        cm._named_service,
+        None,
         path_keyword='path',
         member_keyword='member',
         interface_keyword='interface',

@@ -1391,7 +1391,7 @@ remote_error_cb (WockyPorter *porter,
       DEBUG ("remote error: %s", msg);
     }
 
-  DEBUG ("Force closing of the connection");
+  DEBUG ("Force closing of the connection %p", self);
   priv->closing = TRUE;
   wocky_porter_force_close_async (priv->porter, NULL, force_close_cb,
       self);
@@ -1896,32 +1896,33 @@ connection_shut_down (TpBaseConnection *base)
   GabbleConnection *self = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = self->priv;
 
-  if (priv->closing)
-    return;
-
-  priv->closing = TRUE;
-
-  if (priv->porter != NULL)
+  if (!priv->closing)
     {
-      DEBUG ("connection still open; closing it");
+      priv->closing = TRUE;
 
-      /* We were connected and setup, disconnect now.. */
-      g_assert (priv->disconnect_timer == 0);
-      priv->disconnect_timer = g_timeout_add_seconds (DISCONNECT_TIMEOUT,
-          disconnect_timeout_cb, self);
+      if (priv->porter != NULL)
+        {
+          DEBUG ("connection may still be open; closing it: %p", base);
 
-      wocky_porter_close_async (priv->porter, NULL, closed_cb, self);
+          g_assert (priv->disconnect_timer == 0);
+          priv->disconnect_timer = g_timeout_add_seconds (DISCONNECT_TIMEOUT,
+              disconnect_timeout_cb, self);
+
+          wocky_porter_close_async (priv->porter, NULL, closed_cb, self);
+          return;
+        }
+      else if (priv->connector != NULL)
+        {
+          /* FIXME: cancel connecting if we are connecting, for now we wait *
+           * until the connection is finished and then drop it directly     *
+           * wocky connector does not support gcancellables yet             */
+          DEBUG ("wait for connector to finish before closing: %p", base);
+          return;
+        }
     }
-  else if (priv->connector != NULL)
-    {
-      /* FIXME: cancel connecting if we are connecting, for now we wait until
-       * the connection is finished and then drop it directly */
-      DEBUG ("connecting waiting for it to finish before closing");
-    }
-  else
-    {
-      tp_base_connection_finish_shutdown (base);
-    }
+
+  DEBUG ("neither porter nor connector is alive: clean up the base connection");
+  tp_base_connection_finish_shutdown (base);
 }
 
 

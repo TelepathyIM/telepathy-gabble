@@ -22,6 +22,9 @@ def test(q, bus, conn, stream):
     stream.transport.loseConnection()
 
     # Gabble disconnect and close its connection
+    q.expect('dbus-signal', signal='StatusChanged',
+             args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_NONE_SPECIFIED])
+
     q.expect('dbus-signal',
              signal='NameOwnerChanged',
              predicate=lambda e: cs.CONN + '.gabble.jabber' in str(e.args[0])

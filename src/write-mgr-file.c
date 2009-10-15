@@ -48,9 +48,10 @@ mgr_file_contents (const char *busname,
       for (row = protocol->parameters; row->name; row++)
         {
           gchar *param_name = g_strdup_printf ("param-%s", row->name);
-          gchar *param_value = g_strdup_printf ("%s%s%s", row->dtype,
+          gchar *param_value = g_strdup_printf ("%s%s%s%s", row->dtype,
               (row->flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED ? " required" : ""),
-              (row->flags & TP_CONN_MGR_PARAM_FLAG_REGISTER ? " register" : ""));
+              (row->flags & TP_CONN_MGR_PARAM_FLAG_REGISTER ? " register" : ""),
+              (row->flags & TP_CONN_MGR_PARAM_FLAG_SECRET ? " secret" : ""));
           g_key_file_set_string (f, section_name, param_name, param_value);
           g_free (param_value);
           g_free (param_name);

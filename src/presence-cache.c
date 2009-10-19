@@ -218,6 +218,12 @@ struct _CapabilityInfo
 
   TpIntSet *guys;
   guint trust;
+
+  /* TRUE if this cache entry is one of our own, so between caps and
+   * per_channel_manager_caps it holds the complete set of features for the
+   * node.
+   */
+  gboolean complete;
 };
 
 static CapabilityInfo *
@@ -956,7 +962,7 @@ set_caps_for (DiscoWaiter *waiter,
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, waiter->handle);
   GabbleCapabilitySet *old_cap_set;
-  GabbleCapabilitySet *new_cap_set;
+  const GabbleCapabilitySet *new_cap_set;
 
   if (presence == NULL)
     return;
@@ -969,12 +975,11 @@ set_caps_for (DiscoWaiter *waiter,
   gabble_presence_set_capabilities (presence, waiter->resource, cap_set,
       waiter->serial);
 
-  new_cap_set = gabble_presence_dup_caps (presence);
+  new_cap_set = gabble_presence_peek_caps (presence);
 
   emit_capabilities_update (cache, waiter->handle, old_cap_set, new_cap_set);
 
   gabble_capability_set_free (old_cap_set);
-  gabble_capability_set_free (new_cap_set);
 }
 
 static void
@@ -1293,7 +1298,8 @@ _process_caps (GabblePresenceCache *cache,
 
   if (presence)
     {
-      GabbleCapabilitySet *new_cap_set = gabble_presence_dup_caps (presence);
+      const GabbleCapabilitySet *new_cap_set =
+          gabble_presence_peek_caps (presence);
 
       if (DEBUGGING)
         {
@@ -1307,8 +1313,6 @@ _process_caps (GabblePresenceCache *cache,
         }
 
       emit_capabilities_update (cache, handle, old_cap_set, new_cap_set);
-
-      gabble_capability_set_free (new_cap_set);
     }
   else
     {
@@ -1594,7 +1598,8 @@ gabble_presence_cache_do_update (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *jid;
   GabblePresence *presence;
-  GabbleCapabilitySet *old_cap_set, *new_cap_set;
+  GabbleCapabilitySet *old_cap_set;
+  const GabbleCapabilitySet *new_cap_set;
   gboolean ret = FALSE;
 
   jid = tp_handle_inspect (contact_repo, handle);
@@ -1614,12 +1619,11 @@ gabble_presence_cache_do_update (
   ret = gabble_presence_update (presence, resource, presence_id,
       status_message, priority);
 
-  new_cap_set = gabble_presence_dup_caps (presence);
+  new_cap_set = gabble_presence_peek_caps (presence);
 
   emit_capabilities_update (cache, handle, old_cap_set, new_cap_set);
 
   gabble_capability_set_free (old_cap_set);
-  gabble_capability_set_free (new_cap_set);
 
   return ret;
 }
@@ -1704,7 +1708,84 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
     info->cap_set = gabble_capability_set_new ();
 
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
-  gabble_capability_set_add (info->cap_set, namespace);
+
+  if (namespace != NULL)
+    gabble_capability_set_add (info->cap_set, namespace);
+}
+
+void
+gabble_presence_cache_add_own_caps (
+    GabblePresenceCache *cache,
+    const gchar *ver,
+    const GabbleCapabilitySet *cap_set)
+{
+  gchar *uri = g_strdup_printf ("%s#%s", NS_GABBLE_CAPS, ver);
+  CapabilityInfo *info = capability_info_get (cache, uri);
+
+  if (info->complete)
+    goto out;
+
+  DEBUG ("caching our own caps (%s)", uri);
+
+  /* If this node was already in the cache but not labelled as complete, either
+   * the entry's correct, or someone's poisoning us with a SHA-1 collision.
+   * Let's update the entry just in case.
+   */
+  if (info->cap_set == NULL)
+    {
+      info->cap_set = gabble_capability_set_copy (cap_set);
+    }
+  else
+    {
+      gabble_capability_set_clear (info->cap_set);
+      gabble_capability_set_update (info->cap_set, cap_set);
+    }
+
+  info->complete = TRUE;
+  info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
+  tp_intset_add (info->guys, cache->priv->conn->parent.self_handle);
+
+  /* FIXME: we should satisfy any waiters for this node now. fd.o bug #24619. */
+
+out:
+  g_free (uri);
+}
+
+/**
+ * gabble_presence_cache_peek_own_caps:
+ * @cache: a presence cache
+ * @ver: a verification string or bundle name
+ *
+ * If the capabilities corresponding to @ver have been added to the cache with
+ * gabble_presence_cache_add_own_caps(), returns a set of those capabilities;
+ * otherwise, returns %NULL.
+ *
+ * Since the cache only records features Gabble understands (omitting unknown
+ * features, identities, and data forms), we can only serve up disco replies
+ * from the cache if we know we once advertised exactly this verification
+ * string ourselves.
+ *
+ * Returns: a set of capabilities, if we know exactly what @ver means.
+ */
+const GabbleCapabilitySet *
+gabble_presence_cache_peek_own_caps (
+    GabblePresenceCache *cache,
+    const gchar *ver)
+{
+  gchar *uri = g_strdup_printf ("%s#%s", NS_GABBLE_CAPS, ver);
+  CapabilityInfo *info = capability_info_get (cache, uri);
+
+  g_free (uri);
+
+  if (info->complete)
+    {
+      g_assert (info->cap_set != NULL);
+      return info->cap_set;
+    }
+  else
+    {
+      return NULL;
+    }
 }
 
 void

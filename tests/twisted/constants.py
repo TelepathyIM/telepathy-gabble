@@ -46,6 +46,7 @@ INTERFACES = CHANNEL + '.Interfaces'
 
 INITIAL_AUDIO = CHANNEL_TYPE_STREAMED_MEDIA + '.InitialAudio'
 INITIAL_VIDEO = CHANNEL_TYPE_STREAMED_MEDIA + '.InitialVideo'
+IMMUTABLE_STREAMS = CHANNEL_TYPE_STREAMED_MEDIA + '.ImmutableStreams'
 
 CONN = "org.freedesktop.Telepathy.Connection"
 CONN_IFACE_AVATARS = CONN + '.Interface.Avatars'

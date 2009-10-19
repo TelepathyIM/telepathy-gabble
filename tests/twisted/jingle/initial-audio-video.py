@@ -168,6 +168,12 @@ def incoming(jp, q, bus, conn, stream):
         assertEquals(a, props[cs.INITIAL_AUDIO])
         assertEquals(v, props[cs.INITIAL_VIDEO])
 
+        # FIXME: This doesn't check non-Google contacts that can only do one
+        # media type, as such contacts as simulated by JingleTest2 can always
+        # do both.
+        assertEquals(not jp.can_do_video() or not jp.can_do_video_only(),
+            props[cs.IMMUTABLE_STREAMS])
+
         chan = wrap_channel(bus.get_object(conn.bus_name, path),
             cs.CHANNEL_TYPE_STREAMED_MEDIA)
         chan.Close()

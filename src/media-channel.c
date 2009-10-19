@@ -2106,15 +2106,13 @@ contact_is_media_capable (GabbleMediaChannel *chan,
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
 
-  if (presence != NULL &&
-      (gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VOICE) ||
-       gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VIDEO) ||
-       gabble_presence_has_cap (presence, NS_JINGLE_RTP_AUDIO) ||
-       gabble_presence_has_cap (presence, NS_JINGLE_RTP_VIDEO) ||
-       gabble_presence_has_cap (presence, NS_JINGLE_DESCRIPTION_AUDIO) ||
-       gabble_presence_has_cap (presence, NS_JINGLE_DESCRIPTION_VIDEO)))
+  if (presence != NULL)
     {
-      return TRUE;
+      const GabbleCapabilitySet *caps = gabble_presence_peek_caps (presence);
+
+      if (gabble_capability_set_has_one (caps,
+            gabble_capabilities_get_any_audio_video ()))
+        return TRUE;
     }
 
   /* Okay, they're not capable (yet). Let's figure out whether we should wait,

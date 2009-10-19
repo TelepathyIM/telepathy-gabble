@@ -61,6 +61,7 @@ struct _GabbleMediaChannelPrivate
 
   gboolean initial_audio;
   gboolean initial_video;
+  gboolean immutable_streams;
 
   /* These are really booleans, but gboolean is signed. Thanks, GLib */
   unsigned ready:1;

@@ -1376,7 +1376,7 @@ remote_error_cb (WockyPorter *porter,
   if (domain == WOCKY_XMPP_STREAM_ERROR)
     {
       /* stream error */
-      DEBUG ("Received stream error (%u): %s\n", code, msg);
+      DEBUG ("Received stream error (%u): %s", code, msg);
 
       if (code == WOCKY_XMPP_STREAM_ERROR_CONFLICT)
         {
@@ -1896,29 +1896,29 @@ connection_shut_down (TpBaseConnection *base)
   GabbleConnection *self = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = self->priv;
 
-  if (!priv->closing)
+  if (priv->closing)
+    return;
+
+  priv->closing = TRUE;
+
+  if (priv->porter != NULL)
     {
-      priv->closing = TRUE;
+      DEBUG ("connection may still be open; closing it: %p", base);
 
-      if (priv->porter != NULL)
-        {
-          DEBUG ("connection may still be open; closing it: %p", base);
+      g_assert (priv->disconnect_timer == 0);
+      priv->disconnect_timer = g_timeout_add_seconds (DISCONNECT_TIMEOUT,
+          disconnect_timeout_cb, self);
 
-          g_assert (priv->disconnect_timer == 0);
-          priv->disconnect_timer = g_timeout_add_seconds (DISCONNECT_TIMEOUT,
-              disconnect_timeout_cb, self);
-
-          wocky_porter_close_async (priv->porter, NULL, closed_cb, self);
-          return;
-        }
-      else if (priv->connector != NULL)
-        {
-          /* FIXME: cancel connecting if we are connecting, for now we wait *
-           * until the connection is finished and then drop it directly     *
-           * wocky connector does not support gcancellables yet             */
-          DEBUG ("wait for connector to finish before closing: %p", base);
-          return;
-        }
+      wocky_porter_close_async (priv->porter, NULL, closed_cb, self);
+      return;
+    }
+  else if (priv->connector != NULL)
+    {
+      /* FIXME: cancel connecting if we are connecting, for now we wait *
+       * until the connection is finished and then drop it directly     *
+       * wocky connector does not support gcancellables yet             */
+      DEBUG ("wait for connector to finish before closing: %p", base);
+      return;
     }
 
   DEBUG ("neither porter nor connector is alive: clean up the base connection");

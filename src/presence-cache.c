@@ -1730,9 +1730,7 @@ gabble_presence_cache_add_own_caps (
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
   tp_intset_add (info->guys, cache->priv->conn->parent.self_handle);
 
-  /* FIXME: we should satisfy any waiters for this node now, but I think that
-   * can wait till 0.9.
-   */
+  /* FIXME: we should satisfy any waiters for this node now. fd.o bug #24619. */
 
 out:
   g_free (uri);

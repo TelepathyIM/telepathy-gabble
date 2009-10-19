@@ -436,7 +436,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
       TpChannelMediaCapabilities flags = 0;
 
       if (presence != NULL)
-          _gabble_media_channel_caps_to_typeflags (presence->caps);
+        flags = _gabble_media_channel_caps_to_typeflags (presence->caps);
 
       if (flags & TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS)
         priv->immutable_streams = TRUE;

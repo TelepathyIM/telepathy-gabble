@@ -281,6 +281,9 @@ def rccs(q, bus, conn, stream):
     assertContains(cs.TARGET_HANDLE, allowed)
     assertContains(cs.TARGET_ID, allowed)
 
+    assertContains (cs.INITIAL_VIDEO, allowed)
+    assertContains (cs.INITIAL_AUDIO, allowed)
+
 if __name__ == '__main__':
     exec_test(rccs)
     test_all_dialects(request_anonymous)

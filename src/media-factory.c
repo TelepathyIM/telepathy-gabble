@@ -896,6 +896,7 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     GabbleCapabilitySet *cap_set)
 {
   static GQuark q_gtalk_p2p = 0, q_ice_udp = 0, q_h264 = 0;
+  static GQuark qc_gtalk_p2p = 0, qc_ice_udp = 0, qc_h264 = 0;
   gboolean gtalk_p2p = FALSE, h264 = FALSE, audio = FALSE, video = FALSE,
            ice_udp = FALSE;
   guint i;
@@ -905,10 +906,16 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     {
       q_gtalk_p2p = g_quark_from_static_string (
           TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/gtalk-p2p");
+      qc_gtalk_p2p = g_quark_from_static_string (
+          GABBLE_IFACE_CHANNEL_TYPE_CALL "/gtalk-p2p");
       q_ice_udp = g_quark_from_static_string (
           TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/ice-udp");
+      qc_ice_udp = g_quark_from_static_string (
+          GABBLE_IFACE_CHANNEL_TYPE_CALL "/ice-udp");
       q_h264 = g_quark_from_static_string (
           TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/video/h264");
+      qc_h264 = g_quark_from_static_string (
+          GABBLE_IFACE_CHANNEL_TYPE_CALL "/video/h264");
     }
 
   if (cap_tokens != NULL)
@@ -918,22 +925,20 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
       for (token = cap_tokens; *token != NULL; token++)
         {
           GQuark quark = g_quark_try_string (*token);
+          struct {
+            GQuark quark;
+            gboolean *cap;
+          } q2cap[] = {
+              { q_gtalk_p2p, &gtalk_p2p }, { qc_gtalk_p2p, &gtalk_p2p },
+              { q_ice_udp, &ice_udp }, { qc_ice_udp, &ice_udp },
+              { q_h264, &h264 }, { qc_h264, &h264 },
+              { 0, NULL },
+          };
 
-          if (quark == 0)
+          for (i = 0; q2cap[i].quark != 0; i++)
             {
-              continue;
-            }
-          else if (quark == q_gtalk_p2p)
-            {
-              gtalk_p2p = TRUE;
-            }
-          else if (quark == q_ice_udp)
-            {
-              ice_udp = TRUE;
-            }
-          else if (quark == q_h264)
-            {
-              h264 = TRUE;
+              if (quark == q2cap[i].quark)
+                *(q2cap[i].cap) = TRUE;
             }
         }
     }
@@ -953,7 +958,10 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
 
       if (tp_strdiff (tp_asv_get_string (filter,
               TP_IFACE_CHANNEL ".ChannelType"),
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA)
+          && tp_strdiff (tp_asv_get_string (filter,
+              TP_IFACE_CHANNEL ".ChannelType"),
+            GABBLE_IFACE_CHANNEL_TYPE_CALL))
         {
           /* not interesting to this channel manager */
           continue;
@@ -971,11 +979,15 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
         }
 
       if (tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL))
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL)
+          || tp_asv_get_boolean (filter,
+            GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL))
         audio = TRUE;
 
       if (tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL))
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL)
+          || tp_asv_get_boolean (filter,
+            GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL))
         video = TRUE;
 
       /* If we've picked up all the capabilities we're ever going to, then

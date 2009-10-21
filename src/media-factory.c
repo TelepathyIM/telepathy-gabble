@@ -405,6 +405,14 @@ static const gchar * const both_allowed_immutable[] = {
     NULL
 };
 
+static const gchar * const call_channel_allowed_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    NULL
+};
+
 /* not advertised in foreach_channel_class - can only be requested with
  * RequestChannel, not with CreateChannel/EnsureChannel */
 static const gchar * const anon_channel_allowed_properties[] = {
@@ -412,7 +420,7 @@ static const gchar * const anon_channel_allowed_properties[] = {
 };
 
 static GHashTable *
-gabble_media_factory_channel_class (void)
+gabble_media_factory_streamed_media_channel_class (void)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) tp_g_value_slice_free);
@@ -429,14 +437,38 @@ gabble_media_factory_channel_class (void)
   return table;
 }
 
+static GHashTable *
+gabble_media_factory_call_channel_class (void)
+{
+  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) tp_g_value_slice_free);
+  GValue *value;
+
+  value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_CALL);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
+
+  value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
+
+  return table;
+}
+
 static void
 gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
     TpChannelManagerChannelClassFunc func,
     gpointer user_data)
 {
-  GHashTable *table = gabble_media_factory_channel_class ();
+  GHashTable *table = gabble_media_factory_streamed_media_channel_class ();
 
   func (manager, table, named_channel_allowed_properties, user_data);
+
+  g_hash_table_destroy (table);
+
+  table = gabble_media_factory_call_channel_class ();
+
+  func (manager, table, call_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -843,12 +875,14 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
         g_assert_not_reached ();
     }
 
+  /* Streamed Media channel */
   va = g_value_array_new (2);
   g_value_array_append (va, NULL);
   g_value_array_append (va, NULL);
   g_value_init (va->values + 0, TP_HASH_TYPE_CHANNEL_CLASS);
   g_value_init (va->values + 1, G_TYPE_STRV);
-  g_value_take_boxed (va->values + 0, gabble_media_factory_channel_class ());
+  g_value_take_boxed (va->values + 0,
+    gabble_media_factory_streamed_media_channel_class ());
   g_value_set_static_boxed (va->values + 1, allowed);
 
   g_ptr_array_add (arr, va);

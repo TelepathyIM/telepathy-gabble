@@ -1,0 +1,127 @@
+<?xml version="1.0" ?>
+<node name="/Call_Content_Interface_Media"
+  xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright>Copyright © 2009 Collabora Ltd.</tp:copyright>
+  <tp:copyright>Copyright © 2009 Nokia Corporation</tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+      modify it under the terms of the GNU Lesser General Public
+      License as published by the Free Software Foundation; either
+      version 2.1 of the License, or (at your option) any later version.</p>
+
+    <p>This library is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+      Lesser General Public License for more details.</p>
+
+    <p>You should have received a copy of the GNU Lesser General Public
+      License along with this library; if not, write to the Free Software
+      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+      02110-1301, USA.</p>
+  </tp:license>
+
+  <interface name="org.freedesktop.Telepathy.Call.Content.Interface.Media.Draft"
+      tp:causes-havoc="experimental">
+    <tp:added version="0.17.UNRELEASED">(as a draft)</tp:added>
+    <tp:requires interface="org.freedesktop.Telepathy.Call.Content"/>
+
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      Interface to use by a software implementation of media streaming.
+
+      FIXME: How should the streaming implementation know when it is its turn
+      to set the codecs.
+    </tp:docstring>
+
+    <tp:struct name="Codec" array-name="Codec_List">
+      <tp:member name="identifier" type="u">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          Numeric identifier for the code. This will be used as the PT in the
+          SDP or content description.
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member name="name" type="s">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          The name of the codec.
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member name="clockrate" type="u">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          The clockrate of the codec
+        </tp:docstring>
+      </tp:member>
+      <tp:member name="channels" type="u">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          Number of channels of the codec if applicable, otherwise 0
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member name="parameters" type="a{ss}">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          Extra parameters for this codec
+        </tp:docstring>
+      </tp:member>
+    </tp:struct>
+
+    <tp:mapping name = "Codec_Parameter_Map">
+      <tp:member name="identifier" type="u">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          Numeric identifier for the code. This will be used as the PT in the
+          SDP or content description.
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member name="parameters" type="a{ss}">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          Extra parameters for this codec
+        </tp:docstring>
+      </tp:member>
+    </tp:mapping>
+
+    <tp:mapping name="Contact_Codec_Map">
+      <tp:member name="Handle" type="u" tp:type="Contact_Handle">
+      </tp:member>
+      <tp:member name="Codecs" type="a(usuua{ss})" tp:type="Codec[]">
+      </tp:member>
+    </tp:mapping>
+
+    <signal name="CodecsChanged" tp:name-for-bindings="Codecs_Changed"
+        type="a{ua(usuua{ss}})au">
+      <arg name="UpdateCodecs" type="a{ua(usuua{ss})}"
+        tp:type="Contact_Codec_Map">
+      </arg>
+      <arg name="Removed" type="au" tp:type="Contact_Handle[]">
+      </arg>
+    </signal>
+
+    <method name="SetCodecs" tp:name-for-bindings="Set_Codecs">
+      <arg name="codecs" direction="in"
+        type="a(usuua{ss})" tp:type="Codec[]">
+      </arg>
+      <tp:docstring>
+        Set or update the local codec mapping
+      </tp:docstring>
+    </method>
+
+    <property name="ContactCodecMap" tp:name-for-bindings="Contact_Codec_Map"
+      type="a{ua(usuua{ss})}" tp:type="Contact_Codec_Map" access="read">
+    </property>
+
+    <signal name="NewCodecOffer" tp:name-for-bindings="New_Codec_Offer">
+      <arg name="Offer" type="o" />
+      <arg name="Codecs" type="a{ua(usuua{ss})}" tp:type="Contact_Codec_Map" />
+    </signal>
+
+    <property name="CodecOffer" tp:name-for-bindings="Codec_Offer"
+      type="o" access="read">
+      <tp:docstring>
+        If this object path is not "/" then refers to the current outstanding
+        <tp:dbus-ref
+          namespace="org.freedesktop.Telepathy.Call.Content"
+            >CodecOffer.Draft</tp:dbus-ref> object.
+      </tp:docstring>
+    </property>
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

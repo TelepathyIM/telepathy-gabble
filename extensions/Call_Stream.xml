@@ -1,0 +1,123 @@
+<?xml version="1.0" ?>
+<node name="/Call_Stream"
+  xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright>Copyright © 2009 Collabora Ltd.</tp:copyright>
+  <tp:copyright>Copyright © 2009 Nokia Corporation</tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+      modify it under the terms of the GNU Lesser General Public
+      License as published by the Free Software Foundation; either
+      version 2.1 of the License, or (at your option) any later version.</p>
+
+    <p>This library is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+      Lesser General Public License for more details.</p>
+
+    <p>You should have received a copy of the GNU Lesser General Public
+      License along with this library; if not, write to the Free Software
+      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+      02110-1301, USA.</p>
+  </tp:license>
+
+  <interface name="org.freedesktop.Telepathy.Call.Stream.Draft"
+      tp:causes-havoc="experimental">
+    <tp:added version="0.17.UNRELEASED">(as a draft)</tp:added>
+
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      One stream inside a content
+      FIXME, direction should be a mapping of contact -> (bool)sending ?
+    </tp:docstring>
+
+    <method name="SetSending" tp:name-for-bindings="Set_Sending">
+      <arg name="Send" tp:name-for-bindings="Send" type="b" direction="in">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>Set the stream to start or stop sending media</p>
+        </tp:docstring>
+      </arg>
+
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
+          <tp:docstring>
+          </tp:docstring>
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+
+    <method name="RequestReceiving" tp:name-for-bindings="RequestReceiving">
+      <tp:docstring>
+        Request the remote contact to stop or start sending on this stream.
+      </tp:docstring>
+      <arg name="Contact" tp:name-for-bindings="Contact"
+          type="u" direction="in">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>Contact from which sending is requested</p>
+        </tp:docstring>
+      </arg>
+
+      <arg name="Receive" tp:name-for-bindings="Receive"
+          type="b" direction="in">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>Request to start receiving media over this stream</p>
+        </tp:docstring>
+      </arg>
+
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
+          <tp:docstring>
+          </tp:docstring>
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+
+    <signal name="SendersChanged"
+        tp:name-for-bindings="Senders_Changed">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      </tp:docstring>
+
+      <arg name="Updates" type="a{uu}" tp:type="Contact_Sending_State_Map">
+        <tp:docstring>
+          A mapping from channel-specific handles to their updated sending
+          state.
+        </tp:docstring>
+      </arg>
+      <arg name="Removed" type="au" tp:type="Contact_Handle[]">
+        <tp:docstring>
+          The channel-specific handles that were removed from
+          the keys of the Senders property, as a result of the
+          contact leaving this stream
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <tp:enum name="SendingState" tp:name-for-bindings="Sending_State" type="u">
+      <tp:enumvalue suffix="PendingSend" value = "1">
+        <tp:docstring>
+          The contact has been asked to start sending Media.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Sending" value = "2">
+        <tp:docstring>
+          The contact is sending media.
+        </tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
+
+    <tp:mapping name="Contact_Sending_State_Map">
+      <tp:member name="Contact" type="u" tp:type="Contact_Handle">
+      </tp:member>
+      <tp:member name="Sending" type="u" tp:type="SendingState">
+         <tp:docstring>
+         </tp:docstring>
+      </tp:member>
+    </tp:mapping>
+
+    <property name="Senders" tp:name-for-bindings="Senders"
+        type="a{uu}" access="read" tp:type="Contact_Sending_State_Map">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p> A map from contacts to their sending state</p>
+      </tp:docstring>
+    </property>
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

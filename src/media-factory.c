@@ -385,11 +385,23 @@ static const gchar * const named_channel_allowed_properties[] = {
 
 static const gchar * const * both_allowed =
     named_channel_allowed_properties + 2;
-static const gchar * const * video_allowed =
-    named_channel_allowed_properties + 3;
 
 static const gchar * const audio_allowed[] = {
     TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".ImmutableStreams",
+    NULL
+};
+
+static const gchar * const video_allowed[] = {
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo",
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".ImmutableStreams",
+    NULL
+};
+
+static const gchar * const both_allowed_immutable[] = {
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo",
+    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".ImmutableStreams",
     NULL
 };
 
@@ -798,23 +810,37 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
   const gchar * const *allowed;
 
   typeflags &= (TP_CHANNEL_MEDIA_CAPABILITY_AUDIO |
-      TP_CHANNEL_MEDIA_CAPABILITY_VIDEO);
+      TP_CHANNEL_MEDIA_CAPABILITY_VIDEO |
+      TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS);
 
   switch (typeflags)
     {
     case 0:
       return;
 
-    case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO:
+    case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
+        | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
       allowed = audio_allowed;
       break;
 
-    case TP_CHANNEL_MEDIA_CAPABILITY_VIDEO:
+    case TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
+        | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
       allowed = video_allowed;
       break;
 
-    default: /* both */
+    case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
+        | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO: /* both */
       allowed = both_allowed;
+      break;
+
+    case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO /* both but immutable */
+        | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
+        | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
+      allowed = both_allowed_immutable;
+      break;
+
+    default:
+      g_assert_not_reached ();
     }
 
   va = g_value_array_new (2);

@@ -90,6 +90,7 @@ typedef gboolean (*GabbleCapabilitySetPredicate) (
 const GabbleCapabilitySet *gabble_capabilities_get_legacy (void);
 const GabbleCapabilitySet *gabble_capabilities_get_any_audio (void);
 const GabbleCapabilitySet *gabble_capabilities_get_any_video (void);
+const GabbleCapabilitySet *gabble_capabilities_get_any_audio_video (void);
 const GabbleCapabilitySet *gabble_capabilities_get_any_google_av (void);
 const GabbleCapabilitySet *gabble_capabilities_get_any_jingle_av (void);
 const GabbleCapabilitySet *gabble_capabilities_get_any_transport (void);

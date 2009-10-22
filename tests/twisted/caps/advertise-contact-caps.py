@@ -209,6 +209,36 @@ def run_test(q, bus, conn, stream,
             False)
     check_caps(namespaces, [ns.FILE_TRANSFER])
 
+def run_mixed_test (q, bus, conn, stream):
+    conn.Connect()
+
+    conn.ContactCapabilities.UpdateCapabilities([
+        (cs.CLIENT + '.SquareWheel', [
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+            cs.INITIAL_AUDIO: True},
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+            cs.INITIAL_VIDEO: True},
+        ], [
+            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/gtalk-p2p',
+            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/ice-udp',
+            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/video/h264',
+            ]),
+        (cs.CLIENT + '.FlyingCar', [
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
+            cs.CALL_INITIAL_AUDIO: True},
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
+            cs.CALL_INITIAL_VIDEO: True},
+        ], [
+            cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
+            cs.CHANNEL_TYPE_CALL + '/ice-udp',
+            cs.CHANNEL_TYPE_CALL + '/video/h264',
+            ]),
+        ])
+
+    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+            False)
+    check_caps(namespaces, JINGLE_CAPS)
+
 if __name__ == '__main__':
     exec_test(lambda q, b, c, s:
         run_test (q, b, c, s,
@@ -219,3 +249,5 @@ if __name__ == '__main__':
         run_test (q, b, c, s,
             cs.CHANNEL_TYPE_CALL, cs.CHANNEL_TYPE_CALL,
             cs.CALL_INITIAL_AUDIO, cs.CALL_INITIAL_VIDEO))
+
+    exec_test(run_mixed_test)

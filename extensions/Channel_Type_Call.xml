@@ -399,26 +399,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </tp:docstring>
     </property>
 
-    <property name="ImmutableContents" tp:name-for-bindings="Immutable_Contents"
+    <property name="MutableContents" tp:name-for-bindings="Mutable_Contents"
       type="b" access="read">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>If <tt>True</tt>, once contents have been requested for this channel
-          (either by setting <tp:member-ref>InitialAudio</tp:member-ref> or
-          <tp:member-ref>InitialVideo</tp:member-ref> when the channel is
-          requested, or by calling
-          <tp:member-ref>AddContent</tp:member-ref> on a channel with no
-          streams), a stream of a different content type cannot be added;
-          subsequent calls to <tp:member-ref>AddContent</tp:member-ref>
-          that attempt to do so will fail.</p>
+        <p>If <tt>True</tt>, a stream of a different content type can be added
+        after the Channel has been requested </p>
 
         <p>If this property is missing, clients SHOULD assume that it is false,
-          and thus that the channel's streams can be changed once the call has
-          started.</p>
+          and thus that the channel's streams cannot be changed once the call
+          has started.</p>
 
-        <p>If this property is present in the "allowed" set in all of the
-          Call entries in a contact's capabilities, then user
-          interfaces MAY choose to show a separate "call" option for each
-          class of call.</p>
+        <p>If this property isn't present in the "allowed" set in any of the
+          Call entries contact capabilities, then user interfaces MAY choose to
+          show a separate "call" option for each class of call.</p>
 
           <tp:rationale>
             <p>For example, once an audio-only Google Talk call has started,

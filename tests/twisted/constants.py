@@ -53,6 +53,7 @@ IMMUTABLE_STREAMS = CHANNEL_TYPE_STREAMED_MEDIA + '.ImmutableStreams'
 
 CALL_INITIAL_AUDIO = CHANNEL_TYPE_CALL + '.InitialAudio'
 CALL_INITIAL_VIDEO = CHANNEL_TYPE_CALL + '.InitialVideo'
+CALL_MUTABLE_CONTENTS = CHANNEL_TYPE_CALL + '.MutableContents'
 
 CONN = "org.freedesktop.Telepathy.Connection"
 CONN_IFACE_AVATARS = CONN + '.Interface.Avatars'

@@ -414,6 +414,29 @@ static const gchar * const call_channel_allowed_properties[] = {
     NULL
 };
 
+static const gchar * const call_audio_allowed[] = {
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    NULL
+};
+
+static const gchar * const call_video_allowed[] = {
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    NULL
+};
+
+static const gchar * const call_both_allowed[] = {
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".MutableContents",
+    NULL
+};
+
+static const gchar * const call_both_allowed_immutable[] = {
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    NULL
+};
+
 /* not advertised in foreach_channel_class - can only be requested with
  * RequestChannel, not with CreateChannel/EnsureChannel */
 static const gchar * const anon_channel_allowed_properties[] = {
@@ -854,23 +877,27 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
 
       case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
           | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
-        allowed = audio_allowed;
+        streamed_media_allowed = audio_allowed;
+        call_allowed = call_audio_allowed;
         break;
 
       case TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
           | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
-        allowed = video_allowed;
+        streamed_media_allowed = video_allowed;
+        call_allowed = call_video_allowed;
         break;
 
       case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
           | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO: /* both */
-        allowed = both_allowed;
+        streamed_media_allowed = both_allowed;
+        call_allowed = call_both_allowed;
         break;
 
       case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO /* both but immutable */
           | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
           | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
-        allowed = both_allowed_immutable;
+        streamed_media_allowed = both_allowed_immutable;
+        call_allowed = call_both_allowed_immutable;
         break;
 
       default:
@@ -885,7 +912,19 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
   g_value_init (va->values + 1, G_TYPE_STRV);
   g_value_take_boxed (va->values + 0,
     gabble_media_factory_streamed_media_channel_class ());
-  g_value_set_static_boxed (va->values + 1, allowed);
+  g_value_set_static_boxed (va->values + 1, streamed_media_allowed);
+
+  g_ptr_array_add (arr, va);
+
+  /* Call channel */
+  va = g_value_array_new (2);
+  g_value_array_append (va, NULL);
+  g_value_array_append (va, NULL);
+  g_value_init (va->values + 0, TP_HASH_TYPE_CHANNEL_CLASS);
+  g_value_init (va->values + 1, G_TYPE_STRV);
+  g_value_take_boxed (va->values + 0,
+    gabble_media_factory_call_channel_class ());
+  g_value_set_static_boxed (va->values + 1, call_allowed);
 
   g_ptr_array_add (arr, va);
 }

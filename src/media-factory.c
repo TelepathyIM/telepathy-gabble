@@ -410,6 +410,7 @@ static const gchar * const call_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetID",
     GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
     GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".MutableContents",
     NULL
 };
 
@@ -839,7 +840,8 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
   TpChannelMediaCapabilities typeflags =
     _gabble_media_factory_caps_to_typeflags (caps);
   GValueArray *va;
-  const gchar * const *allowed;
+  const gchar * const *streamed_media_allowed;
+  const gchar * const *call_allowed;
 
   typeflags &= (TP_CHANNEL_MEDIA_CAPABILITY_AUDIO |
       TP_CHANNEL_MEDIA_CAPABILITY_VIDEO |

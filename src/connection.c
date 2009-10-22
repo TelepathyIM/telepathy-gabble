@@ -368,21 +368,26 @@ gabble_connection_constructor (GType type,
 }
 
 static gchar *
-get_machine_id (void)
+dup_default_resource (void)
 {
   /* This is a once-per-process leak. */
-  static char *local_machine_id = NULL;
+  static gchar *default_resource = NULL;
 
-  if (G_UNLIKELY (local_machine_id == NULL))
+  if (G_UNLIKELY (default_resource == NULL))
     {
-      local_machine_id = dbus_get_local_machine_id ();
+      char *local_machine_id = dbus_get_local_machine_id ();
 
       if (local_machine_id == NULL)
         g_error ("Out of memory getting local machine ID");
+
+      default_resource = sha1_hex (local_machine_id, strlen (local_machine_id));
+      /* Let's keep the resource a maneagable length. */
+      default_resource[8] = '\0';
+
+      dbus_free (local_machine_id);
     }
 
-  /* 32 bytes of hex. The first 8 should be unique enough... */
-  return g_strndup (local_machine_id, 8);
+  return g_strdup (default_resource);
 }
 
 static void
@@ -398,7 +403,7 @@ gabble_connection_constructed (GObject *object)
 
   if (priv->resource == NULL)
     {
-      priv->resource = get_machine_id ();
+      priv->resource = dup_default_resource ();
       DEBUG ("defaulted resource to %s", priv->resource);
     }
 

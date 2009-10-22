@@ -1836,10 +1836,6 @@ update_permissions (GabbleMucChannel *chan)
       ROOM_PROP_PRIVATE, prop_flags_add, prop_flags_rem,
       changed_props_flags);
 
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
   if (priv->self_affil == AFFILIATION_OWNER)
     {
       /* request the configuration form purely to see if the description

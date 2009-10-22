@@ -815,32 +815,32 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
 
   switch (typeflags)
     {
-    case 0:
-      return;
+      case 0:
+        return;
 
-    case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
-        | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
-      allowed = audio_allowed;
-      break;
+      case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
+          | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
+        allowed = audio_allowed;
+        break;
 
-    case TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
-        | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
-      allowed = video_allowed;
-      break;
+      case TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
+          | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
+        allowed = video_allowed;
+        break;
 
-    case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
-        | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO: /* both */
-      allowed = both_allowed;
-      break;
+      case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
+          | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO: /* both */
+        allowed = both_allowed;
+        break;
 
-    case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO /* both but immutable */
-        | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
-        | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
-      allowed = both_allowed_immutable;
-      break;
+      case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO /* both but immutable */
+          | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
+          | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
+        allowed = both_allowed_immutable;
+        break;
 
-    default:
-      g_assert_not_reached ();
+      default:
+        g_assert_not_reached ();
     }
 
   va = g_value_array_new (2);

@@ -4,7 +4,7 @@ and/or video capable
 """
 
 from gabbletest import exec_test, make_presence, sync_stream
-from servicetest import assertContains
+from servicetest import assertContains, assertEquals, EventPattern
 import constants as cs
 import ns
 from caps_helper import presence_and_disco, compute_caps_hash
@@ -22,7 +22,6 @@ def test_caps(q, conn, stream, contact, features, audio, video, google=False):
 
     h = presence_and_disco(q, conn, stream, contact, True,
         client, caps, features)
-    event = q.expect('dbus-signal', signal='CapabilitiesChanged')
 
     cflags = 0
     if audio:
@@ -35,8 +34,40 @@ def test_caps(q, conn, stream, contact, features, audio, video, google=False):
     if cflags < (cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO) or google:
         cflags |= cs.MEDIA_CAP_IMMUTABLE_STREAMS
 
+    _, event = q.expect_many(
+            EventPattern('dbus-signal', signal='CapabilitiesChanged',
+                    args = [[ ( h,
+                        cs.CHANNEL_TYPE_STREAMED_MEDIA,
+                        0, # old generic
+                        3, # new generic (can create and receive these)
+                        0, # old specific
+                        cflags ) ]] # new specific
+                ),
+            EventPattern('dbus-signal', signal='ContactCapabilitiesChanged')
+        )
+
     assertContains((h, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, cflags),
         conn.Capabilities.GetCapabilities([h]))
+
+    # Check Contact capabilities for streamed media
+    assertEquals(len(event.args), 1)
+    assertEquals (event.args[0],
+        conn.ContactCapabilities.GetContactCapabilities([h]))
+
+    expected_media_caps = []
+    if audio:
+        expected_media_caps.append (cs.INITIAL_AUDIO)
+    if video:
+        expected_media_caps.append (cs.INITIAL_VIDEO)
+    if audio != video or google:
+        expected_media_caps.append (cs.IMMUTABLE_STREAMS)
+
+    [media_caps] =  [ c
+        for c in event.args[0][h]
+            if c[0][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA
+    ]
+
+    assertEquals (expected_media_caps, media_caps[1])
 
 def test_all_transports(q, conn, stream, contact, features, audio, video):
     for t in all_transports:

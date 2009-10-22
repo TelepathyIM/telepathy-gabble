@@ -4,12 +4,14 @@ Utility functions for tests that need to interact with MUCs.
 
 import dbus
 
-from servicetest import call_async, wrap_channel
+from servicetest import call_async, wrap_channel, EventPattern
 from gabbletest import make_muc_presence, request_muc_handle
 
 import constants as cs
+import ns
 
-def join_muc(q, bus, conn, stream, muc, request=None):
+def join_muc(q, bus, conn, stream, muc, request=None,
+        also_capture=[]):
     """
     Joins 'muc', returning the muc's handle, a proxy object for the channel,
     its path and its immutable properties just after the CreateChannel event
@@ -36,12 +38,14 @@ def join_muc(q, bus, conn, stream, muc, request=None):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', muc, 'test'))
 
-    event = q.expect('dbus-return', method='CreateChannel')
-    path, props = event.value
+    captured = q.expect_many(
+            EventPattern('dbus-return', method='CreateChannel'),
+            *also_capture)
+    path, props = captured[0].value
     chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
         ['Messages'])
 
-    return (muc_handle, chan, path, props)
+    return (muc_handle, chan, path, props) + tuple(captured[1:])
 
 def join_muc_and_check(q, bus, conn, stream, muc, request=None):
     """

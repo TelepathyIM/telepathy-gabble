@@ -279,7 +279,9 @@ initial_state_aggregator_free (InitialStateAggregator *isa)
 static void
 gabble_muc_channel_init (GabbleMucChannel *obj)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+  GabbleMucChannelPrivate *priv;
+
+  priv = obj->priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
   priv->initial_state_aggregator = g_slice_new0 (InitialStateAggregator);
   priv->initial_state_aggregator->owner_map = g_hash_table_new (g_direct_hash,

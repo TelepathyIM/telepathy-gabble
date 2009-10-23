@@ -20,6 +20,15 @@ OUR_SOURCES =                     \
   lm-connection.h
 
 libloudmouth_la_SOURCES = $(OUR_SOURCES) $(BUILT_SOURCES)
+libloudmouth_la_LIBADD = @WOCKY_LIBS@
+# filter out any -flags as we only need to include .a and .la files here:
+# this is necessary because: 
+# @@ substitutions are filtered out by automake when constructing *_DEPENDENCIES
+# *_LIBADD contains the link flags, dynamic libs and static libs we want
+# *_DEPENDENCIES _MUST NOT_ contain the link flags and dynamic libs 
+# *_DEPENDENCIES _SHOULD_ contain static libs so we rebuild when they change
+libloudmouth_la_DEPENDENCIES = \
+	$(filter-out -%, $(libloudmouth_la_LIBADD))
 
 # Coding style checks
 check_c_sources = \

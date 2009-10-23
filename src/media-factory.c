@@ -510,21 +510,21 @@ typedef enum
 typedef struct
 {
     GabbleMediaFactory *self;
-    GabbleMediaChannel *channel;
-    gpointer request_token;
+    TpExportableChannel *channel;
+    GSList *request_tokens;
 } MediaChannelRequest;
 
 
 static MediaChannelRequest *
 media_channel_request_new (GabbleMediaFactory *self,
-    GabbleMediaChannel *channel,
+    TpExportableChannel *channel,
     gpointer request_token)
 {
   MediaChannelRequest *mcr = g_slice_new0 (MediaChannelRequest);
 
   mcr->self = self;
   mcr->channel = channel;
-  mcr->request_token = request_token;
+  mcr->request_tokens = g_slist_prepend (mcr->request_tokens, request_token);
 
   return mcr;
 }
@@ -532,6 +532,7 @@ media_channel_request_new (GabbleMediaFactory *self,
 static void
 media_channel_request_free (MediaChannelRequest *mcr)
 {
+  g_slist_free (mcr->request_tokens);
   g_slice_free (MediaChannelRequest, mcr);
 }
 
@@ -539,12 +540,8 @@ static void
 media_channel_request_succeeded_cb (MediaChannelRequest *mcr,
     GPtrArray *streams)
 {
-  GSList *request_tokens;
-
-  request_tokens = g_slist_prepend (NULL, mcr->request_token);
   tp_channel_manager_emit_new_channel (mcr->self,
-      TP_EXPORTABLE_CHANNEL (mcr->channel), request_tokens);
-  g_slist_free (request_tokens);
+      mcr->channel, mcr->request_tokens);
 
   media_channel_request_free (mcr);
 }
@@ -553,7 +550,10 @@ static void
 media_channel_request_failed_cb (MediaChannelRequest *mcr,
     GError *error)
 {
-  tp_channel_manager_emit_request_failed (mcr->self, mcr->request_token,
+  GSList *l;
+
+  for (l = mcr->request_tokens; l != NULL; l = g_slist_next (l))
+    tp_channel_manager_emit_request_failed (mcr->self, l->data,
       error->domain, error->code, error->message);
 
   media_channel_request_free (mcr);
@@ -689,7 +689,8 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
   gabble_media_channel_request_initial_streams (channel,
       (GFunc) media_channel_request_succeeded_cb,
       (GFunc) media_channel_request_failed_cb,
-      media_channel_request_new (self, channel, request_token));
+      media_channel_request_new (self,
+        TP_EXPORTABLE_CHANNEL (channel), request_token));
 
   return TRUE;
 

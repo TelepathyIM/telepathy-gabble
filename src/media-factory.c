@@ -69,7 +69,7 @@ struct _GabbleMediaFactoryPrivate
   GabbleConnection *conn;
   gulong status_changed_id;
 
-  GPtrArray *channels;
+  GList *media_channels;
   guint channel_index;
 
   gboolean dispose_has_run;
@@ -83,7 +83,6 @@ gabble_media_factory_init (GabbleMediaFactory *fac)
 
   fac->priv = priv;
 
-  priv->channels = g_ptr_array_sized_new (1);
   priv->channel_index = 0;
 
   priv->conn = NULL;
@@ -107,8 +106,7 @@ gabble_media_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   gabble_media_factory_close_all (fac);
-  g_assert (priv->channels->len == 0);
-  g_ptr_array_free (priv->channels, TRUE);
+  g_assert (priv->media_channels == NULL);
 
   if (G_OBJECT_CLASS (gabble_media_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_factory_parent_class)->dispose (object);
@@ -197,7 +195,7 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
   DEBUG ("removing media channel %p with ref count %d",
       chan, G_OBJECT (chan)->ref_count);
 
-  g_ptr_array_remove (priv->channels, chan);
+  priv->media_channels = g_list_remove (priv->media_channels, chan);
   g_object_unref (chan);
 }
 
@@ -242,7 +240,7 @@ new_media_channel (GabbleMediaFactory *fac,
 
   g_signal_connect (chan, "closed", (GCallback) media_channel_closed_cb, fac);
 
-  g_ptr_array_add (priv->channels, chan);
+  priv->media_channels = g_list_prepend (priv->media_channels, chan);
 
   g_free (object_path);
 
@@ -253,18 +251,13 @@ static void
 gabble_media_factory_close_all (GabbleMediaFactory *fac)
 {
   GabbleMediaFactoryPrivate *priv = fac->priv;
-  GPtrArray *tmp = gabble_g_ptr_array_copy (priv->channels);
-  guint i;
 
   DEBUG ("closing channels");
 
-  for (i = 0; i < tmp->len; i++)
-    {
-      GabbleMediaChannel *chan = g_ptr_array_index (tmp, i);
-
-      DEBUG ("closing %p", chan);
-      gabble_media_channel_close (chan);
-    }
+  /* Close will cause the channel to be removed from the list indirectly..*/
+  while (priv->media_channels != NULL)
+    gabble_media_channel_close (
+      GABBLE_MEDIA_CHANNEL (priv->media_channels->data));
 
   if (priv->status_changed_id != 0)
     {
@@ -355,15 +348,10 @@ gabble_media_factory_foreach_channel (TpChannelManager *manager,
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (manager);
   GabbleMediaFactoryPrivate *priv = fac->priv;
-  guint i;
+  GList *l;
 
-  for (i = 0; i < priv->channels->len; i++)
-    {
-      TpExportableChannel *channel = TP_EXPORTABLE_CHANNEL (
-          g_ptr_array_index (priv->channels, i));
-
-      foreach (channel, user_data);
-    }
+  for (l = priv->media_channels; l != NULL; l = g_list_next (l))
+    foreach (TP_EXPORTABLE_CHANNEL (l->data), user_data);
 }
 
 
@@ -656,12 +644,12 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
 
       if (method == METHOD_ENSURE)
         {
-          guint i;
+          GList *l;
           TpHandle peer = 0;
 
-          for (i = 0; i < priv->channels->len; i++)
+          for (l = priv->media_channels; l != NULL; l = g_list_next (l))
             {
-              channel = g_ptr_array_index (priv->channels, i);
+              channel = GABBLE_MEDIA_CHANNEL (l->data);
               g_object_get (channel, "peer", &peer, NULL);
 
               if (peer == handle)

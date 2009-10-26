@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <gio/gio.h>
+
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/exportable-channel.h>
@@ -44,9 +46,11 @@
 
 static void channel_iface_init (gpointer, gpointer);
 static void call_iface_init (gpointer, gpointer);
+static void async_initable_iface_init (GAsyncInitableIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
   G_TYPE_OBJECT,
+  G_IMPLEMENT_INTERFACE (G_TYPE_ASYNC_INITABLE, async_initable_iface_init);
   G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
   G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_CALL,
         call_iface_init);
@@ -541,4 +545,36 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 call_iface_init (gpointer g_iface, gpointer iface_data)
 {
+}
+
+static void
+call_channel_init_async (GAsyncInitable *initable,
+  int priority,
+  GCancellable *cancellable,
+  GAsyncReadyCallback callback,
+  gpointer user_data)
+{
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (initable);
+  GabbleCallChannelPrivate *priv = self->priv;
+  GSimpleAsyncResult *result;
+
+  result = g_simple_async_result_new (G_OBJECT (self),
+    callback, user_data, NULL);
+
+  if (priv->session != NULL)
+    {
+      /* Already done the setup */
+      g_simple_async_result_complete_in_idle (result);
+      g_object_unref (result);
+      return;
+    }
+
+  g_simple_async_result_complete_in_idle (result);
+  g_object_unref (result);
+}
+
+static void
+async_initable_iface_init (GAsyncInitableIface *iface)
+{
+  iface->init_async = call_channel_init_async;
 }

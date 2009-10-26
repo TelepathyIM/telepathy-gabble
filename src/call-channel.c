@@ -35,6 +35,7 @@
 
 #include <extensions/extensions.h>
 
+#include "util.h"
 #include "call-channel.h"
 
 #include "connection.h"
@@ -47,6 +48,8 @@
 static void channel_iface_init (gpointer, gpointer);
 static void call_iface_init (gpointer, gpointer);
 static void async_initable_iface_init (GAsyncInitableIface *iface);
+
+static void call_channel_setup (GabbleCallChannel *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
   G_TYPE_OBJECT,
@@ -105,8 +108,14 @@ struct _GabbleCallChannelPrivate
   gboolean initial_audio;
   gboolean initial_video;
   gboolean mutable_contents;
+  gboolean registered;
+  gboolean requested;
 
   gboolean dispose_has_run;
+
+  GList *contents;
+
+  gchar *transport_ns;
 };
 
 static GObject *
@@ -117,7 +126,6 @@ gabble_call_channel_constructor (GType type,
   GObject *obj;
   GabbleCallChannelPrivate *priv;
   TpBaseConnection *conn;
-  DBusGConnection *bus;
   TpHandleRepoIface *contact_handles;
 
   obj = G_OBJECT_CLASS (gabble_call_channel_parent_class)->
@@ -128,10 +136,7 @@ gabble_call_channel_constructor (GType type,
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
-  /* register object on the bus */
-  bus = tp_get_bus ();
-  DEBUG ("Registering %s", priv->object_path);
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  priv->requested = (priv->session == NULL);
 
   if (priv->session != NULL)
       priv->creator = priv->session->peer;
@@ -206,7 +211,7 @@ gabble_call_channel_get_property (GObject    *object,
         }
        break;
      case PROP_REQUESTED:
-       g_value_set_boolean (value, (priv->creator == base_conn->self_handle));
+       g_value_set_boolean (value, priv->requested);
        break;
      case PROP_INTERFACES:
        g_value_set_boxed (value, gabble_call_channel_interfaces);
@@ -448,8 +453,56 @@ gabble_call_channel_finalize (GObject *object)
 
   /* free any data held directly by the object here */
   g_free (self->priv->object_path);
+  g_free (self->priv->transport_ns);
 
   G_OBJECT_CLASS (gabble_call_channel_parent_class)->finalize (object);
+}
+
+static void
+call_channel_add_content (GabbleCallChannel *self,
+    const gchar *name,
+    JingleMediaType type,
+    GabbleCallContentDisposition disposition)
+{
+  GabbleCallChannelPrivate *priv = self->priv;
+  const gchar *content_ns;
+  GabbleJingleContent *c;
+
+  content_ns = jingle_pick_best_content_type (priv->conn, priv->target,
+    gabble_jingle_session_get_peer_resource (priv->session),
+    type);
+
+  DEBUG ("Creating new jingle content with ns %s : %s",
+    content_ns, priv->transport_ns);
+
+  c = gabble_jingle_session_add_content (priv->session,
+      type, content_ns, priv->transport_ns);
+
+  /* FIXME add this to a CallContent */
+}
+
+static void
+call_channel_setup (GabbleCallChannel *self)
+{
+  GabbleCallChannelPrivate *priv = self->priv;
+  DBusGConnection *bus;
+
+  /* register object on the bus */
+  bus = tp_get_bus ();
+  DEBUG ("Registering %s", priv->object_path);
+  dbus_g_connection_register_g_object (bus, priv->object_path,
+    G_OBJECT (self));
+
+  priv->registered = TRUE;
+
+  /* Setup the session and the initial contents */
+  if (priv->initial_audio)
+    call_channel_add_content (self, "Audio", JINGLE_MEDIA_TYPE_AUDIO,
+      GABBLE_CALLCONTENTDISPOSITION_INITIAL);
+
+  if (priv->initial_video)
+    call_channel_add_content (self, "Video", JINGLE_MEDIA_TYPE_VIDEO,
+      GABBLE_CALLCONTENTDISPOSITION_INITIAL);
 }
 
 void
@@ -561,14 +614,37 @@ call_channel_init_async (GAsyncInitable *initable,
   result = g_simple_async_result_new (G_OBJECT (self),
     callback, user_data, NULL);
 
-  if (priv->session != NULL)
+  if (priv->registered)
+    goto out;
+
+  if (priv->session == NULL)
     {
-      /* Already done the setup */
-      g_simple_async_result_complete_in_idle (result);
-      g_object_unref (result);
-      return;
+      const gchar *resource;
+      JingleDialect dialect;
+      const gchar *transport;
+
+      /* FIXME might need to wait on capabilities, also don't need transport
+       * and dialect already */
+      resource = jingle_pick_best_resource (priv->conn,
+        priv->target, priv->initial_audio, priv->initial_video,
+        &transport, &dialect);
+
+      if (resource == NULL)
+        {
+          g_simple_async_result_set_error (result, TP_ERRORS,
+            TP_ERROR_NOT_CAPABLE,
+            "member does not have the desired audio/video capabilities");
+          goto out;
+        }
+
+      priv->transport_ns = g_strdup (transport);
+      priv->session = gabble_jingle_factory_create_session (
+        priv->conn->jingle_factory, priv->target, resource, FALSE);
     }
 
+  call_channel_setup (self);
+
+out:
   g_simple_async_result_complete_in_idle (result);
   g_object_unref (result);
 }

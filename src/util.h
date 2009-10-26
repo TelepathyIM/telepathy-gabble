@@ -30,6 +30,9 @@
 #include <loudmouth/loudmouth.h>
 #include <wocky/wocky-bare-contact.h>
 
+#include "jingle-factory.h"
+#include "jingle-content.h"
+
 #include "types.h"
 
 typedef GSList * NodeIter;
@@ -100,5 +103,13 @@ GPtrArray *gabble_g_ptr_array_copy (GPtrArray *source);
 
 WockyBareContact * ensure_bare_contact_from_jid (GabbleConnection *conn,
     const gchar *jid);
+
+const gchar * jingle_pick_best_resource (GabbleConnection *conn,
+    TpHandle peer,
+    gboolean want_audio,
+    gboolean want_video,
+    const char **transport_ns,
+    JingleDialect *dialect);
+
 
 #endif /* __GABBLE_UTIL_H__ */

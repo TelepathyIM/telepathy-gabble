@@ -1162,3 +1162,39 @@ FINALLY:
   gabble_capability_set_free (caps);
   return resource;
 }
+
+#define TWICE(x) x, x
+
+const gchar *
+jingle_pick_best_content_type (GabbleConnection *conn,
+  TpHandle peer,
+  const gchar *resource,
+  JingleMediaType type)
+{
+  GabblePresence *presence;
+  const GabbleFeatureFallback content_types[] = {
+      /* if $thing is supported, then use it */
+        { TRUE, TWICE (NS_JINGLE_RTP) },
+        { type == JINGLE_MEDIA_TYPE_VIDEO,
+            TWICE (NS_JINGLE_DESCRIPTION_VIDEO) },
+        { type == JINGLE_MEDIA_TYPE_AUDIO,
+            TWICE (NS_JINGLE_DESCRIPTION_AUDIO) },
+      /* odd Google ones: if $thing is supported, use $other_thing */
+        { type == JINGLE_MEDIA_TYPE_AUDIO,
+          NS_GOOGLE_FEAT_VOICE, NS_GOOGLE_SESSION_PHONE },
+        { type == JINGLE_MEDIA_TYPE_VIDEO,
+          NS_GOOGLE_FEAT_VIDEO, NS_GOOGLE_SESSION_VIDEO },
+        { FALSE, NULL, NULL }
+  };
+
+  presence = gabble_presence_cache_get (conn->presence_cache, peer);
+
+  if (presence == NULL)
+    {
+      DEBUG ("contact %d has no presence available", peer);
+      return NULL;
+    }
+
+  return gabble_presence_resource_pick_best_feature (presence, resource,
+      content_types, gabble_capability_set_predicate_has);
+}

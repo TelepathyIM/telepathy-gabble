@@ -1374,41 +1374,6 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
     }
 }
 
-#define TWICE(x) x, x
-
-static const gchar *
-_pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
-  const gchar *resource, JingleMediaType type)
-{
-  GabbleMediaChannelPrivate *priv = chan->priv;
-  GabblePresence *presence;
-  const GabbleFeatureFallback content_types[] = {
-      /* if $thing is supported, then use it */
-        { TRUE, TWICE (NS_JINGLE_RTP) },
-        { type == JINGLE_MEDIA_TYPE_VIDEO, TWICE (NS_JINGLE_DESCRIPTION_VIDEO) },
-        { type == JINGLE_MEDIA_TYPE_AUDIO, TWICE (NS_JINGLE_DESCRIPTION_AUDIO) },
-      /* odd Google ones: if $thing is supported, use $other_thing */
-        { type == JINGLE_MEDIA_TYPE_AUDIO,
-          NS_GOOGLE_FEAT_VOICE, NS_GOOGLE_SESSION_PHONE },
-        { type == JINGLE_MEDIA_TYPE_VIDEO,
-          NS_GOOGLE_FEAT_VIDEO, NS_GOOGLE_SESSION_VIDEO },
-        { FALSE, NULL, NULL }
-  };
-
-  presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
-
-  if (presence == NULL)
-    {
-      DEBUG ("contact %d has no presence available", peer);
-      return NULL;
-    }
-
-  return gabble_presence_resource_pick_best_feature (presence, resource,
-      content_types, gabble_capability_set_predicate_has);
-
-  return NULL;
-}
-
 typedef struct {
     /* number of streams requested == number of content objects */
     guint len;
@@ -1580,7 +1545,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
 
       /* check if the resource supports it; FIXME - we assume only
        * one channel type (video or audio) will be added later */
-      if (NULL == _pick_best_content_type (chan, peer, peer_resource,
+      if (NULL == jingle_pick_best_content_type (priv->conn, peer,
+          peer_resource,
           want_audio ? JINGLE_MEDIA_TYPE_AUDIO : JINGLE_MEDIA_TYPE_VIDEO))
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -1655,7 +1621,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
       GabbleJingleContent *c;
       const gchar *content_ns;
 
-      content_ns = _pick_best_content_type (chan, peer, peer_resource,
+      content_ns = jingle_pick_best_content_type (priv->conn, peer,
+          peer_resource,
           media_type == TP_MEDIA_STREAM_TYPE_AUDIO ?
             JINGLE_MEDIA_TYPE_AUDIO : JINGLE_MEDIA_TYPE_VIDEO);
 

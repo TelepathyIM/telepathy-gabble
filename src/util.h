@@ -111,5 +111,9 @@ const gchar * jingle_pick_best_resource (GabbleConnection *conn,
     const char **transport_ns,
     JingleDialect *dialect);
 
+const gchar *jingle_pick_best_content_type (GabbleConnection *conn,
+    TpHandle peer,
+    const gchar *resource,
+    JingleMediaType type);
 
 #endif /* __GABBLE_UTIL_H__ */

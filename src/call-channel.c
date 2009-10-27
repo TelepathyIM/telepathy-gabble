@@ -32,11 +32,13 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-properties-interface.h>
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/gtypes.h>
 
 #include <extensions/extensions.h>
 
 #include "util.h"
 #include "call-channel.h"
+#include "call-content.h"
 
 #include "connection.h"
 #include "jingle-session.h"
@@ -87,6 +89,7 @@ enum
   PROP_INITIAL_AUDIO,
   PROP_INITIAL_VIDEO,
   PROP_MUTABLE_CONTENTS,
+  PROP_CONTENTS,
 
   PROP_SESSION,
   LAST_PROPERTY
@@ -247,6 +250,22 @@ gabble_call_channel_get_property (GObject    *object,
       case PROP_MUTABLE_CONTENTS:
         g_value_set_boolean (value, priv->mutable_contents);
         break;
+      case PROP_CONTENTS:
+        {
+          GPtrArray *arr = g_ptr_array_sized_new (2);
+          GList *l;
+
+          for (l = priv->contents; l != NULL; l = g_list_next (l))
+            {
+              GabbleCallContent *c = GABBLE_CALL_CONTENT (l->data);
+              g_ptr_array_add (arr,
+                (gpointer) gabble_call_content_get_object_path (c));
+            }
+
+          g_value_set_boxed (value, arr);
+          g_ptr_array_free (arr, TRUE);
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -320,6 +339,7 @@ gabble_call_channel_class_init (
       { "MutableContents", "mutable-contents", NULL },
       { "InitialAudio", "initial-audio", NULL },
       { "InitialVideo", "initial-video", NULL },
+      { "Contents", "contents", NULL },
       { NULL }
   };
 
@@ -426,6 +446,13 @@ gabble_call_channel_class_init (
   g_object_class_install_property (object_class, PROP_MUTABLE_CONTENTS,
       param_spec);
 
+  param_spec = g_param_spec_boxed ("contents", "Contents",
+      "The contents of the channel",
+      TP_ARRAY_TYPE_OBJECT_PATH_LIST,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CONTENTS,
+      param_spec);
+
   gabble_call_channel_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleCallChannelClass, dbus_props_class));
@@ -435,11 +462,22 @@ void
 gabble_call_channel_dispose (GObject *object)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (object);
+  GabbleCallChannelPrivate *priv = self->priv;
+  GList *l;
 
-  if (self->priv->dispose_has_run)
+  if (priv->dispose_has_run)
     return;
 
   self->priv->dispose_has_run = TRUE;
+
+  for (l = priv->contents; l != NULL; l = g_list_next (l))
+    {
+      g_object_unref (l->data);
+    }
+
+  g_list_free (priv->contents);
+  priv->contents = NULL;
+
 
   /* release any references held by the object here */
   if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose)
@@ -467,6 +505,8 @@ call_channel_add_content (GabbleCallChannel *self,
   GabbleCallChannelPrivate *priv = self->priv;
   const gchar *content_ns;
   GabbleJingleContent *c;
+  GabbleCallContent *content;
+  gchar *object_path;
 
   content_ns = jingle_pick_best_content_type (priv->conn, priv->target,
     gabble_jingle_session_get_peer_resource (priv->session),
@@ -478,8 +518,18 @@ call_channel_add_content (GabbleCallChannel *self,
   c = gabble_jingle_session_add_content (priv->session,
       type, content_ns, priv->transport_ns);
 
-  /* FIXME add this to a CallContent */
+  object_path = g_strdup_printf ("%s/Content%p", priv->object_path, c);
+
+  content = g_object_new (GABBLE_TYPE_CALL_CONTENT,
+    "object-path", object_path,
+    "jingle-content", c,
+    NULL);
+
+  g_free (object_path);
+
+  priv->contents = g_list_prepend (priv->contents, content);
 }
+
 
 static void
 call_channel_setup (GabbleCallChannel *self)

@@ -252,21 +252,18 @@ add_listener (GibberListener *self, int family, int type, int protocol,
   fd = socket (family, type, protocol);
   if (fd == -1)
     {
-      DEBUG ("socket failed: %s", g_strerror (errno));
-      g_set_error (error, GIBBER_LISTENER_ERROR,
-          errno == EAFNOSUPPORT ? GIBBER_LISTENER_ERROR_FAMILY_NOT_SUPPORTED :
-            GIBBER_LISTENER_ERROR_FAILED,
-          "%s", g_strerror (errno));
+      gibber_socket_set_error (error, "socket failed", GIBBER_LISTENER_ERROR,
+          gibber_socket_errno_is_eafnosupport () ?
+            GIBBER_LISTENER_ERROR_FAMILY_NOT_SUPPORTED :
+            GIBBER_LISTENER_ERROR_FAILED);
       goto error;
     }
 
   ret = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof (int));
   if (ret == -1)
     {
-      DEBUG ("setsockopt failed: %s", g_strerror (errno));
-      g_set_error (error, GIBBER_LISTENER_ERROR,
-          GIBBER_LISTENER_ERROR_FAILED,
-          "%s", g_strerror (errno));
+      gibber_socket_set_error (error, "setsockopt failed",
+          GIBBER_LISTENER_ERROR, GIBBER_LISTENER_ERROR_FAILED);
       goto error;
     }
 
@@ -276,10 +273,8 @@ add_listener (GibberListener *self, int family, int type, int protocol,
       ret = setsockopt (fd, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof (int));
       if (ret == -1)
         {
-          DEBUG ("setsockopt failed: %s", g_strerror (errno));
-          g_set_error (error, GIBBER_LISTENER_ERROR,
-             GIBBER_LISTENER_ERROR_FAILED,
-             "%s", g_strerror (errno));
+          gibber_socket_set_error (error, "setsockopt failed",
+              GIBBER_LISTENER_ERROR, GIBBER_LISTENER_ERROR_FAILED);
           goto error;
         }
     }
@@ -288,34 +283,30 @@ add_listener (GibberListener *self, int family, int type, int protocol,
   ret = bind (fd, address, addrlen);
   if (ret  < 0)
     {
-      DEBUG ("bind failed: %s", g_strerror (errno));
-      g_set_error (error, GIBBER_LISTENER_ERROR,
-          errno == EADDRINUSE ?
+      gibber_socket_set_error (error, "bind failed",
+          GIBBER_LISTENER_ERROR,
+          gibber_socket_errno_is_eaddrinuse () ?
           GIBBER_LISTENER_ERROR_ADDRESS_IN_USE :
-          GIBBER_LISTENER_ERROR_FAILED,
-          "%s", g_strerror (errno));
+          GIBBER_LISTENER_ERROR_FAILED);
       goto error;
     }
 
   ret = listen (fd, BACKLOG);
   if (ret == -1)
     {
-      DEBUG ("listen failed: %s", g_strerror (errno));
-      g_set_error (error, GIBBER_LISTENER_ERROR,
-          errno == EADDRINUSE ?
+      gibber_socket_set_error (error, "listen failed",
+          GIBBER_LISTENER_ERROR,
+          gibber_socket_errno_is_eaddrinuse () ?
           GIBBER_LISTENER_ERROR_ADDRESS_IN_USE :
-          GIBBER_LISTENER_ERROR_FAILED,
-          "%s", g_strerror (errno));
+          GIBBER_LISTENER_ERROR_FAILED);
       goto error;
     }
 
   ret = getsockname (fd, &baddress.addr, &baddrlen);
   if (ret == -1)
     {
-      DEBUG ("getsockname failed: %s", g_strerror (errno));
-      g_set_error (error, GIBBER_LISTENER_ERROR,
-          GIBBER_LISTENER_ERROR_FAILED,
-          "%s", g_strerror (errno));
+      gibber_socket_set_error (error, "getsockname failed",
+          GIBBER_LISTENER_ERROR, GIBBER_LISTENER_ERROR_FAILED);
       goto error;
     }
 

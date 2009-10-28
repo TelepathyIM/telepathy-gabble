@@ -34,3 +34,13 @@ gibber_connect_errno_requires_retry (void)
   return (errno == EINPROGRESS || errno == EALREADY);
 #endif
 }
+
+GIOChannel *
+gibber_io_channel_new_from_socket (gint sockfd)
+{
+#ifdef G_OS_WIN32
+  return g_io_channel_win32_new_socket (sockfd);
+#else
+  return g_io_channel_unix_new (sockfd);
+#endif
+}

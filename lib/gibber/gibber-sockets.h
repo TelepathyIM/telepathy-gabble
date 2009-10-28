@@ -34,6 +34,8 @@ G_BEGIN_DECLS
 
 gboolean gibber_connect_errno_requires_retry (void);
 
+GIOChannel *gibber_io_channel_new_from_socket (gint sockfd);
+
 G_END_DECLS
 
 #endif

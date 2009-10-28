@@ -1631,6 +1631,19 @@ socks5_init_error:
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+#ifdef G_OS_WIN32
+
+static GSList *
+get_local_interfaces_ips (void)
+{
+  /* FIXME: fd.o#24775: please implement this using ioctlsocket() and
+   * SIO_GET_INTERFACE_LIST, if you care about doing SOCKS5 bytestreams on
+   * Windows */
+  return NULL;
+}
+
+#else
+
 /* get_local_interfaces_ips original code from Farsight 2 (function
  * fs_interfaces_get_local_ips in /gst-libs/gst/farsight/fs-interfaces.c).
  *   Copyright (C) 2006 Youness Alaoui <kakaroto@kakaroto.homelinux.net>
@@ -1780,6 +1793,8 @@ get_local_interfaces_ips (void)
 }
 
 #endif /* ! HAVE_GETIFADDRS */
+
+#endif /* ! G_OS_WIN32 */
 
 static void
 new_connection_cb (GibberListener *listener,

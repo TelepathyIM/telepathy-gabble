@@ -206,7 +206,7 @@ listener_io_in_cb (GIOChannel *source,
 #endif
     {
       transport = g_object_new (GIBBER_TYPE_FD_TRANSPORT, NULL);
-      gibber_fd_transport_set_fd (transport, nfd);
+      gibber_fd_transport_set_fd (transport, nfd, TRUE);
 
       ret = getnameinfo ((struct sockaddr *) &addr, addrlen,
           host, NI_MAXHOST, port, NI_MAXSERV,

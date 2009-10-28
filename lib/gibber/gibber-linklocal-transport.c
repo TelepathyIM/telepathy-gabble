@@ -121,7 +121,7 @@ gibber_ll_transport_open_fd (GibberLLTransport *transport, int fd)
 
   gibber_transport_set_state (GIBBER_TRANSPORT (transport),
       GIBBER_TRANSPORT_CONNECTING);
-  gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (transport), fd);
+  gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (transport), fd, TRUE);
 }
 
 gboolean
@@ -168,7 +168,7 @@ gibber_ll_transport_open_sockaddr (GibberLLTransport *transport,
       goto failed;
     }
 
-  gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (transport), fd);
+  gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (transport), fd, TRUE);
   return TRUE;
 
 failed:

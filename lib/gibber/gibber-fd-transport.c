@@ -422,15 +422,28 @@ gibber_fd_transport_read (GibberFdTransport *transport,
 
 
 void
-gibber_fd_transport_set_fd (GibberFdTransport *self, int fd)
+gibber_fd_transport_set_fd (GibberFdTransport *self, int fd,
+    gboolean is_socket)
 {
   GibberFdTransportPrivate *priv = GIBBER_FD_TRANSPORT_GET_PRIVATE (self);
 
   g_assert (self->fd == -1 && fd >= 0);
 
   self->fd = fd;
-  fcntl (fd, F_SETFL, O_NONBLOCK);
-  priv->channel = g_io_channel_unix_new (fd);
+
+  if (is_socket)
+    {
+      gibber_socket_set_nonblocking (fd);
+      priv->channel = gibber_io_channel_new_from_socket (fd);
+    }
+  else
+    {
+#ifndef G_OS_WIN32
+      fcntl (fd, F_SETFL, O_NONBLOCK);
+#endif
+      priv->channel = g_io_channel_unix_new (fd);
+    }
+
   g_io_channel_set_close_on_unref (priv->channel, TRUE);
   g_io_channel_set_encoding (priv->channel, NULL, NULL);
   g_io_channel_set_buffered (priv->channel, FALSE);

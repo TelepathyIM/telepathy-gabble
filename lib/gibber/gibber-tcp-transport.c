@@ -176,7 +176,7 @@ try_to_connect (GibberTCPTransport *self)
       DEBUG ("connect succeeded");
 
       clean_all_connect_attempts (self);
-      gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (self), fd);
+      gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (self), fd, TRUE);
       return FALSE;
     }
 

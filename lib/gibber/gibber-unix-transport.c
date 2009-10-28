@@ -177,7 +177,7 @@ gibber_unix_transport_connect (GibberUnixTransport *transport,
     }
   DEBUG ("Connected to socket");
 
-  gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (transport), fd);
+  gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (transport), fd, TRUE);
 
   return TRUE;
 
@@ -196,7 +196,7 @@ gibber_unix_transport_new_from_fd (int fd)
   GibberUnixTransport *transport;
 
   transport = gibber_unix_transport_new ();
-  gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (transport), fd);
+  gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (transport), fd, TRUE);
   return transport;
 }
 

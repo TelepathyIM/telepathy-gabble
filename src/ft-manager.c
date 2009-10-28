@@ -583,6 +583,8 @@ gabble_ft_manager_new (GabbleConnection *connection)
       NULL);
 }
 
+#ifdef G_OS_UNIX
+/* We assume that all Unixes have mkdtemp */
 const gchar *
 gabble_ft_manager_get_tmp_dir (GabbleFtManager *self)
 {
@@ -597,6 +599,7 @@ gabble_ft_manager_get_tmp_dir (GabbleFtManager *self)
 
   return self->priv->tmp_dir;
 }
+#endif
 
 static void
 add_file_transfer_channel_class (GPtrArray *arr)

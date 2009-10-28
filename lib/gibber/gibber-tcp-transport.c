@@ -24,13 +24,13 @@
 #include <stdlib.h>
 
 #include <errno.h>
-#include <fcntl.h>
 #include <string.h>
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif
 
+#include "gibber-sockets.h"
 #include "gibber-tcp-transport.h"
 
 #define DEBUG_FLAG DEBUG_NET

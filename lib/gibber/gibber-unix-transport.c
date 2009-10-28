@@ -26,6 +26,8 @@
 
 #ifdef G_OS_UNIX
 
+/* If you claim to be Unix but you don't have these headers, you may have
+ * already lost. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

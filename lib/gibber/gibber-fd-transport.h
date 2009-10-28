@@ -23,10 +23,7 @@
 
 #include <glib-object.h>
 
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-
+#include "gibber-sockets.h"
 #include "gibber-transport.h"
 
 typedef enum {

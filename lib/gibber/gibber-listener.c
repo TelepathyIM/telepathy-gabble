@@ -23,12 +23,10 @@
 #include <string.h>
 #include <time.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <netdb.h>
-#include <netinet/in.h>
 #include <errno.h>
 #include <stdio.h>
+
+#include "gibber-sockets.h"
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>

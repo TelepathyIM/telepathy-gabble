@@ -1,5 +1,6 @@
 /*
- * gibber-sockets.h - meta-header for assorted semi-portable socket code
+ * gibber-sockets.c - basic portability wrappers for BSD/Winsock differences
+ *
  * Copyright (C) 2009 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -18,22 +19,18 @@
  */
 
 #include <config.h>
+#include "gibber-sockets.h"
 
-#ifndef GIBBER_SOCKETS_H
-#define GIBBER_SOCKETS_H
+#include <errno.h>
 
-#include <glib.h>
-
+gboolean
+gibber_connect_errno_requires_retry (void)
+{
 #ifdef G_OS_WIN32
-#   include "gibber-sockets-win32.h"
+  int err = WSAGetLastError ();
+
+  return (err == WSAEINPROGRESS || err == WSAEALREADY);
 #else
-#   include "gibber-sockets-unix.h"
+  return (errno == EINPROGRESS || errno == EALREADY);
 #endif
-
-G_BEGIN_DECLS
-
-gboolean gibber_connect_errno_requires_retry (void);
-
-G_END_DECLS
-
-#endif
+}

@@ -22,6 +22,7 @@ OUR_SOURCES =                     \
   gibber-listener.h               \
   gibber-linklocal-transport.c    \
   gibber-linklocal-transport.h    \
+  gibber-sockets.c                \
   gibber-sockets.h                \
   gibber-sockets-unix.h           \
   gibber-sockets-win32.h          \

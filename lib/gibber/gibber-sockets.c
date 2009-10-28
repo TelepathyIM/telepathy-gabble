@@ -23,6 +23,9 @@
 
 #include <errno.h>
 
+#define DEBUG_FLAG DEBUG_NET
+#include "gibber-debug.h"
+
 gboolean
 gibber_connect_errno_requires_retry (void)
 {
@@ -33,6 +36,57 @@ gibber_connect_errno_requires_retry (void)
 #else
   return (errno == EINPROGRESS || errno == EALREADY);
 #endif
+}
+
+static gint
+gibber_socket_errno (void)
+{
+#ifdef G_OS_WIN32
+  return WSAGetLastError ();
+#else
+  return errno;
+#endif
+}
+
+static const gchar *
+gibber_socket_strerror (void)
+{
+#ifdef G_OS_WIN32
+  return "[no strerror() in winsock :-(]";
+#else
+  return g_strerror (errno);
+#endif
+}
+
+gboolean
+gibber_socket_errno_is_eafnosupport (void)
+{
+#ifdef G_OS_WIN32
+  return (WSAGetLastError () == WSAEAFNOSUPPORT);
+#else
+  return (errno == EAFNOSUPPORT);
+#endif
+}
+
+gboolean
+gibber_socket_errno_is_eaddrinuse (void)
+{
+#ifdef G_OS_WIN32
+  return (WSAGetLastError () == WSAEADDRINUSE);
+#else
+  return (errno == EADDRINUSE);
+#endif
+}
+
+void
+gibber_socket_set_error (GError **error, const gchar *context,
+    GQuark domain, gint code)
+{
+  gint err = gibber_socket_errno ();
+  const gchar *str = gibber_socket_strerror ();
+
+  DEBUG ("%s: #%d %s", context, err, str);
+  g_set_error (error, domain, code, "%s: #%d %s", context, err, str);
 }
 
 GIOChannel *

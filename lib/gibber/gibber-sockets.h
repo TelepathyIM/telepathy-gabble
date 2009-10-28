@@ -33,6 +33,10 @@
 G_BEGIN_DECLS
 
 gboolean gibber_connect_errno_requires_retry (void);
+gboolean gibber_socket_errno_is_eafnosupport (void);
+gboolean gibber_socket_errno_is_eaddrinuse (void);
+void gibber_socket_set_error (GError **error, const gchar *context,
+    GQuark domain, gint code);
 
 GIOChannel *gibber_io_channel_new_from_socket (gint sockfd);
 

@@ -8,7 +8,11 @@
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+
+#ifdef HAVE_FCNTL_H
+# include <fcntl.h>
+#endif
+
 #include <errno.h>
 
 #include <glib/gstdio.h>

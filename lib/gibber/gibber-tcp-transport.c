@@ -232,8 +232,8 @@ new_connect_attempt (GibberTCPTransport *self)
       goto failed;
     }
 
-  fcntl (fd, F_SETFL, O_NONBLOCK);
-  priv->channel = g_io_channel_unix_new (fd);
+  gibber_socket_set_nonblocking (fd);
+  priv->channel = gibber_io_channel_new_from_socket (fd);
   g_io_channel_set_close_on_unref (priv->channel, FALSE);
   g_io_channel_set_encoding (priv->channel, NULL, NULL);
   g_io_channel_set_buffered (priv->channel, FALSE);

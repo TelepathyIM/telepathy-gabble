@@ -339,7 +339,7 @@ add_listener (GibberListener *self, int family, int type, int protocol,
 
   l = g_slice_new (Listener);
 
-  l->listener = g_io_channel_unix_new (fd);
+  l->listener = gibber_io_channel_new_from_socket (fd);
   g_io_channel_set_close_on_unref (l->listener, TRUE);
   l->io_watch_in = g_io_add_watch (l->listener, G_IO_IN,
       listener_io_in_cb, self);

@@ -36,6 +36,8 @@ gboolean gibber_connect_errno_requires_retry (void);
 
 GIOChannel *gibber_io_channel_new_from_socket (gint sockfd);
 
+void gibber_socket_set_nonblocking (gint sockfd);
+
 G_END_DECLS
 
 #endif

@@ -44,3 +44,15 @@ gibber_io_channel_new_from_socket (gint sockfd)
   return g_io_channel_unix_new (sockfd);
 #endif
 }
+
+void
+gibber_socket_set_nonblocking (gint sockfd)
+{
+#ifdef G_OS_WIN32
+  u_long please_dont_block = 1;
+
+  ioctlsocket (sockfd, FIONBIO, &please_dont_block);
+#else
+  fcntl (sockfd, F_SETFL, O_NONBLOCK);
+#endif
+}

@@ -38,7 +38,7 @@
 # include <unistd.h>
 #endif
 
-#ifdef HAVE_GETIFADDRS
+#ifdef HAVE_IFADDRS_H
  #include <ifaddrs.h>
 #endif
 

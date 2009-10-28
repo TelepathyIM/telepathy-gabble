@@ -21,16 +21,19 @@
 #include "config.h"
 #include "bytestream-socks5.h"
 
-#include <arpa/inet.h>
+#include <gibber/gibber-sockets.h>
+
 #include <errno.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <net/if.h>
-#include <netinet/in.h>
+
+/* on Darwin, net/if.h requires sys/sockets.h, which is included by
+ * gibber-sockets.h; so this must come after that header */
+#ifdef HAVE_NET_IF_H
+# include <net/if.h>
+#endif
+
 #include <string.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <sys/types.h>
+
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif

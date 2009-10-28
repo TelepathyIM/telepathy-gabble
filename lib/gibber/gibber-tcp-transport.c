@@ -228,7 +228,8 @@ new_connect_attempt (GibberTCPTransport *self)
 
   if (fd < 0)
     {
-      DEBUG("socket failed: %s", strerror (errno));
+      DEBUG("socket failed: #%d %s", gibber_socket_errno (),
+          gibber_socket_strerror ());
       goto failed;
     }
 

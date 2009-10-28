@@ -37,6 +37,8 @@ gboolean gibber_socket_errno_is_eafnosupport (void);
 gboolean gibber_socket_errno_is_eaddrinuse (void);
 void gibber_socket_set_error (GError **error, const gchar *context,
     GQuark domain, gint code);
+gint gibber_socket_errno (void);
+const gchar *gibber_socket_strerror (void);
 
 GIOChannel *gibber_io_channel_new_from_socket (gint sockfd);
 

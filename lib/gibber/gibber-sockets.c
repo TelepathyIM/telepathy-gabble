@@ -38,7 +38,7 @@ gibber_connect_errno_requires_retry (void)
 #endif
 }
 
-static gint
+gint
 gibber_socket_errno (void)
 {
 #ifdef G_OS_WIN32
@@ -48,7 +48,7 @@ gibber_socket_errno (void)
 #endif
 }
 
-static const gchar *
+const gchar *
 gibber_socket_strerror (void)
 {
 #ifdef G_OS_WIN32

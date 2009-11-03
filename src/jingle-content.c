@@ -742,6 +742,9 @@ gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
 
   DEBUG ("called");
 
+  if (li == NULL)
+    return;
+
   gabble_jingle_transport_iface_new_local_candidates (priv->transport, li);
 
   if (!priv->have_local_candidates)

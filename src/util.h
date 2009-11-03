@@ -116,4 +116,8 @@ const gchar *jingle_pick_best_content_type (GabbleConnection *conn,
     const gchar *resource,
     JingleMediaType type);
 
+GValueArray *gabble_value_array_build (gsize length,
+  GType type,
+  ...);
+
 #endif /* __GABBLE_UTIL_H__ */

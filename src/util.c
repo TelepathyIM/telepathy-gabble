@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <gobject/gvaluecollector.h>
+
 #include <wocky/wocky-utils.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
 
@@ -1198,3 +1200,40 @@ jingle_pick_best_content_type (GabbleConnection *conn,
   return gabble_presence_resource_pick_best_feature (presence, resource,
       content_types, gabble_capability_set_predicate_has);
 }
+
+GValueArray *
+gabble_value_array_build (gsize length,
+  GType type,
+  ...)
+{
+  GValueArray *arr;
+  GType t;
+  va_list var_args;
+  char *error = NULL;
+
+  arr = g_value_array_new (length);
+
+  va_start (var_args, type);
+
+  for (t = type; t != G_TYPE_INVALID; t = va_arg (var_args, GType))
+    {
+      GValue *v = arr->values + arr->n_values;
+      g_value_array_append (arr, NULL);
+
+      g_value_init (v, t);
+
+      G_VALUE_COLLECT (v, var_args, 0, &error);
+
+      if (error != NULL)
+        {
+          g_critical ("%s", error);
+          g_free (error);
+
+          g_value_array_free (arr);
+          return NULL;
+        }
+    }
+
+  return arr;
+}
+

@@ -942,6 +942,14 @@ gabble_jingle_content_get_remote_candidates (GabbleJingleContent *c)
   return gabble_jingle_transport_iface_get_remote_candidates (priv->transport);
 }
 
+GList *
+gabble_jingle_content_get_local_candidates (GabbleJingleContent *c)
+{
+  GabbleJingleContentPrivate *priv = c->priv;
+
+  return gabble_jingle_transport_iface_get_local_candidates (priv->transport);
+}
+
 gboolean
 gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders)

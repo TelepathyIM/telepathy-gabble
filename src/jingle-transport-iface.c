@@ -125,6 +125,17 @@ gabble_jingle_transport_iface_get_remote_candidates (
   return virtual_method (self);
 }
 
+GList *
+gabble_jingle_transport_iface_get_local_candidates (
+    GabbleJingleTransportIface *self)
+{
+  GList * (*virtual_method)(GabbleJingleTransportIface *) =
+    GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self)->get_local_candidates;
+
+  g_assert (virtual_method != NULL);
+  return virtual_method (self);
+}
+
 JingleTransportType
 gabble_jingle_transport_iface_get_transport_type (GabbleJingleTransportIface *self)
 {

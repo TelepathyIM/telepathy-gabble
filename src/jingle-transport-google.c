@@ -565,6 +565,16 @@ send_candidates (GabbleJingleTransportIface *obj, gboolean all)
 }
 
 static GList *
+get_local_candidates (GabbleJingleTransportIface *iface)
+{
+  GabbleJingleTransportGoogle *transport =
+    GABBLE_JINGLE_TRANSPORT_GOOGLE (iface);
+  GabbleJingleTransportGooglePrivate *priv = transport->priv;
+
+  return priv->local_candidates;
+}
+
+static GList *
 get_remote_candidates (GabbleJingleTransportIface *iface)
 {
   GabbleJingleTransportGoogle *transport =
@@ -594,6 +604,7 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   klass->send_candidates = send_candidates;
 
   klass->get_remote_candidates = get_remote_candidates;
+  klass->get_local_candidates = get_local_candidates;
   klass->get_transport_type = get_transport_type;
 }
 

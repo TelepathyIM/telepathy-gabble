@@ -521,6 +521,7 @@ call_channel_add_content (GabbleCallChannel *self,
   object_path = g_strdup_printf ("%s/Content%p", priv->object_path, c);
 
   content = g_object_new (GABBLE_TYPE_CALL_CONTENT,
+    "connection", priv->conn,
     "object-path", object_path,
     "jingle-content", c,
     NULL);

@@ -22,13 +22,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/svc-properties-interface.h>
 #include <telepathy-glib/base-connection.h>
+
 #include <extensions/extensions.h>
 
 #include "call-content.h"
 #include "jingle-content.h"
+#include "connection.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -52,6 +55,7 @@ enum
 {
   PROP_OBJECT_PATH = 1,
   PROP_JINGLE_CONTENT,
+  PROP_CONNECTION,
 };
 
 #if 0
@@ -69,6 +73,8 @@ static guint signals[LAST_SIGNAL] = {0};
 /* private structure */
 struct _GabbleCallContentPrivate
 {
+  GabbleConnection *conn;
+
   gchar *object_path;
   GabbleJingleContent *content;
 
@@ -104,6 +110,9 @@ gabble_call_content_get_property (GObject    *object,
       case PROP_JINGLE_CONTENT:
         g_value_set_object (value, priv->content);
         break;
+      case PROP_CONNECTION:
+        g_value_set_object (value, priv->conn);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -127,6 +136,9 @@ gabble_call_content_set_property (GObject *object,
         break;
       case PROP_JINGLE_CONTENT:
         priv->content = g_value_dup_object (value);
+        break;
+      case PROP_CONNECTION:
+        priv->conn = g_value_get_object (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -193,6 +205,12 @@ gabble_call_content_class_init (
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_JINGLE_CONTENT,
       param_spec);
+
+  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
+      "Gabble connection object that owns this media channel object.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 }
 
 void

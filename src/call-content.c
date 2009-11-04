@@ -61,6 +61,7 @@ enum
   PROP_JINGLE_CONTENT,
   PROP_CONNECTION,
 
+  PROP_CONTACT_CODEC_MAP,
   PROP_STREAMS,
 
 };
@@ -135,6 +136,44 @@ gabble_call_content_get_property (GObject    *object,
 
           g_value_set_boxed (value, arr);
           g_ptr_array_free (arr, TRUE);
+          break;
+        }
+      case PROP_CONTACT_CODEC_MAP:
+        {
+          GList *codecs;
+          GHashTable *map;
+          GPtrArray *arr;
+          GList *l;
+
+          codecs = gabble_jingle_media_rtp_get_local_codecs (
+            GABBLE_JINGLE_MEDIA_RTP (priv->content));
+
+          arr = g_ptr_array_sized_new (g_list_length (codecs));
+
+          for (l = codecs; l != NULL; l = g_list_next (l))
+            {
+              GValueArray *v;
+              JingleCodec *c = l->data;
+
+              v = gabble_value_array_build (5,
+                G_TYPE_UINT, (guint) c->id,
+                G_TYPE_STRING, c->name,
+                G_TYPE_UINT, c->clockrate,
+                G_TYPE_UINT, c->channels,
+                DBUS_TYPE_G_STRING_STRING_HASHTABLE, c->params,
+                G_TYPE_INVALID);
+
+              g_ptr_array_add (arr, v);
+            }
+
+          map = g_hash_table_new (g_direct_hash, g_direct_equal);
+          g_hash_table_insert (map,
+            GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
+            arr);
+
+          g_value_set_boxed (value, map);
+
+          g_hash_table_unref (map);
           break;
         }
       default:
@@ -217,12 +256,21 @@ gabble_call_content_class_init (
     { "Streams", "streams", NULL },
     { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl content_media_props[] = {
+    { "ContactCodecMap", "contact-codec-map", NULL },
+    { NULL }
+  };
 
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { GABBLE_IFACE_CALL_CONTENT,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         content_props,
+      },
+      { GABBLE_IFACE_CALL_CONTENT_INTERFACE_MEDIA,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        content_media_props,
       },
       { NULL }
   };
@@ -271,6 +319,13 @@ gabble_call_content_class_init (
   g_object_class_install_property (object_class, PROP_STREAMS,
       param_spec);
 
+  param_spec = g_param_spec_boxed ("contact-codec-map", "ContactCodecMap",
+      "The map of contacts to codecs",
+      GABBLE_HASH_TYPE_CONTACT_CODEC_MAP,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CONTACT_CODEC_MAP,
+      param_spec);
+
   gabble_call_content_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleCallContentClass, dbus_props_class));
@@ -308,6 +363,41 @@ gabble_call_content_finalize (GObject *object)
 }
 
 static void
+gabble_call_content_set_codecs (GabbleSvcCallContentInterfaceMedia *iface,
+    const GPtrArray *codecs,
+    DBusGMethodInvocation *context)
+{
+  GabbleCallContent *self = GABBLE_CALL_CONTENT (iface);
+  GabbleCallContentPrivate *priv = self->priv;
+  GList *l = NULL;
+  guint i;
+
+  for (i = 0; i < codecs->len ; i++)
+    {
+      JingleCodec *c;
+      GValueArray *va;
+
+      va = g_ptr_array_index (codecs, i);
+
+      c = jingle_media_rtp_codec_new (
+        g_value_get_uint (va->values + 0),
+        g_value_dup_string (va->values + 1),
+        g_value_get_uint (va->values + 2),
+        g_value_get_uint (va->values + 3),
+        g_value_dup_boxed (va->values + 4));
+
+        l = g_list_append (l, c);
+    }
+
+
+  /* FIXME react properly on errors */
+  jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content),
+    l, TRUE, NULL);
+
+  gabble_svc_call_content_interface_media_return_from_set_codecs (context);
+}
+
+static void
 call_content_iface_init (gpointer g_iface, gpointer iface_data)
 {
 }
@@ -315,6 +405,13 @@ call_content_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 call_content_media_iface_init (gpointer g_iface, gpointer iface_data)
 {
+  GabbleSvcCallContentInterfaceMediaClass *klass =
+    (GabbleSvcCallContentInterfaceMediaClass *) g_iface;
+
+#define IMPLEMENT(x) gabble_svc_call_content_interface_media_implement_##x (\
+    klass, gabble_call_content_##x)
+  IMPLEMENT(set_codecs);
+#undef IMPLEMENT
 }
 
 const gchar *

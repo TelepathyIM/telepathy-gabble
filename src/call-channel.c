@@ -690,6 +690,8 @@ call_channel_init_async (GAsyncInitable *initable,
       priv->transport_ns = g_strdup (transport);
       priv->session = gabble_jingle_factory_create_session (
         priv->conn->jingle_factory, priv->target, resource, FALSE);
+
+      g_object_set (priv->session, "dialect", dialect, NULL);
     }
 
   call_channel_setup (self);

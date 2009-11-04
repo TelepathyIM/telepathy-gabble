@@ -47,15 +47,18 @@ GType gabble_call_channel_get_type (void);
 #define GABBLE_TYPE_CALL_CHANNEL \
   (gabble_call_channel_get_type ())
 #define GABBLE_CALL_CHANNEL(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST ((obj), GABBLE_TYPE_CALL_CHANNEL, GabbleCallChannel))
+  (G_TYPE_CHECK_INSTANCE_CAST ((obj), \
+   GABBLE_TYPE_CALL_CHANNEL, GabbleCallChannel))
 #define GABBLE_CALL_CHANNEL_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_CALL_CHANNEL, GabbleCallChannelClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), \
+   GABBLE_TYPE_CALL_CHANNEL, GabbleCallChannelClass))
 #define GABBLE_IS_CALL_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_CALL_CHANNEL))
 #define GABBLE_IS_CALL_CHANNEL_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_CALL_CHANNEL))
 #define GABBLE_CALL_CHANNEL_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CALL_CHANNEL, GabbleCallChannelClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), \
+   GABBLE_TYPE_CALL_CHANNEL, GabbleCallChannelClass))
 
 void gabble_call_channel_close (GabbleCallChannel *self);
 

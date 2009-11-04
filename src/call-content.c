@@ -26,12 +26,16 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/svc-properties-interface.h>
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/gtypes.h>
 
 #include <extensions/extensions.h>
 
 #include "call-content.h"
+#include "call-stream.h"
 #include "jingle-content.h"
+#include "jingle-media-rtp.h"
 #include "connection.h"
+#include "util.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -56,6 +60,9 @@ enum
   PROP_OBJECT_PATH = 1,
   PROP_JINGLE_CONTENT,
   PROP_CONNECTION,
+
+  PROP_STREAMS,
+
 };
 
 #if 0
@@ -78,6 +85,7 @@ struct _GabbleCallContentPrivate
   gchar *object_path;
   GabbleJingleContent *content;
 
+  GList *streams;
   gboolean dispose_has_run;
 };
 
@@ -113,6 +121,22 @@ gabble_call_content_get_property (GObject    *object,
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
         break;
+      case PROP_STREAMS:
+        {
+          GPtrArray *arr = g_ptr_array_sized_new (2);
+          GList *l;
+
+          for (l = priv->streams; l != NULL; l = g_list_next (l))
+            {
+              GabbleCallStream *s = GABBLE_CALL_STREAM (l->data);
+              g_ptr_array_add (arr,
+                (gpointer) gabble_call_stream_get_object_path (s));
+            }
+
+          g_value_set_boxed (value, arr);
+          g_ptr_array_free (arr, TRUE);
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -165,6 +189,21 @@ gabble_call_content_constructor (GType type,
   DEBUG ("Registering %s", priv->object_path);
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
+  if (priv->content != NULL)
+    {
+      GabbleCallStream *stream;
+      gchar *path;
+
+      path = g_strdup_printf ("%s/Stream%p", priv->object_path, priv->content);
+      stream = g_object_new (GABBLE_TYPE_CALL_STREAM,
+        "object-path", path,
+        "jingle-content", priv->content,
+        NULL);
+      g_free (path);
+
+      priv->streams = g_list_prepend (priv->streams, stream);
+    }
+
   return obj;
 }
 
@@ -174,6 +213,19 @@ gabble_call_content_class_init (
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_content_class);
   GParamSpec *param_spec;
+  static TpDBusPropertiesMixinPropImpl content_props[] = {
+    { "Streams", "streams", NULL },
+    { NULL }
+  };
+
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+      { GABBLE_IFACE_CALL_CONTENT,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        content_props,
+      },
+      { NULL }
+  };
 
   g_type_class_add_private (gabble_call_content_class,
     sizeof (GabbleCallContentPrivate));
@@ -211,6 +263,17 @@ gabble_call_content_class_init (
       GABBLE_TYPE_CONNECTION,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  param_spec = g_param_spec_boxed ("streams", "Stream",
+      "The streams of this content",
+      TP_ARRAY_TYPE_OBJECT_PATH_LIST,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_STREAMS,
+      param_spec);
+
+  gabble_call_content_class->dbus_props_class.interfaces = prop_interfaces;
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleCallContentClass, dbus_props_class));
 }
 
 void

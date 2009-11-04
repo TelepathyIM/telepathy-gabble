@@ -644,6 +644,23 @@ class JingleTest2:
     def get_video_codecs_dbus(self):
         return self.dbusify_codecs(self.video_codecs)
 
+    def dbusify_call_codecs(self, codecs):
+        dbussed_codecs = [ (id, name, rate, 0, {} )
+                            for (name, id, rate) in codecs ]
+        return dbus.Array(dbussed_codecs, signature='(usuua{ss})')
+
+    def dbusify_call_odecs_with_params(self, codecs):
+        dbussed_codecs = [ (id, name, rate, 0, params)
+                            for (name, id, rate, params) in codecs ]
+        return dbus.Array(dbussed_codecs, signature='(usuua{ss})')
+
+    def get_call_audio_codecs_dbus(self):
+        return self.dbusify_call_codecs(self.audio_codecs)
+
+    def get_call_video_codecs_dbus(self):
+        return self.dbusify_call_codecs(self.video_codecs)
+
+
     def get_remote_transports_dbus(self):
         return dbus.Array([
             (dbus.UInt32(1 + i), host, port, proto, subtype,
@@ -652,6 +669,21 @@ class JingleTest2:
                     pref, transtype, user, pwd)
                 in enumerate(self.remote_transports) ],
             signature='(usuussduss)')
+
+    def get_call_remote_transports_dbus(self):
+        return dbus.Array([
+            (1 , host, port,
+                { "Type": transtype,
+                  "Foundation": str(dbus.UInt32(1 + i)),
+                  "Protocol": 0, #UDP
+                  "Priority": i,
+                  "Username": user,
+                  "Password": pwd }
+                     )
+                for i, (host, port, proto, subtype, profile,
+                    pref, transtype, user, pwd)
+                in enumerate(self.remote_transports) ],
+            signature='(usqa{sv})')
 
 
 def test_dialects(f, dialects):

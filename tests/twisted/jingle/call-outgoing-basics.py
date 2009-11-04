@@ -53,5 +53,42 @@ def run_test(jp, q, bus, conn, stream):
     assertEquals(True, emitted_props[cs.CALL_INITIAL_AUDIO])
     assertEquals(False, emitted_props[cs.CALL_INITIAL_VIDEO])
 
+    chan = bus.get_object (conn.bus_name, ret.value[0])
+
+    properties = chan.GetAll(cs.CHANNEL_TYPE_CALL,
+        dbus_interface=dbus.PROPERTIES_IFACE)
+
+    # Only an audio content
+    assertEquals (1, len(properties["Contents"]))
+
+    content = bus.get_object (conn.bus_name, properties["Contents"][0])
+
+    content_properties = content.GetAll (cs.CALL_CONTENT,
+        dbus_interface=dbus.PROPERTIES_IFACE)
+
+    # Has one stream
+    assertEquals (1, len(content_properties["Streams"]))
+
+    stream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
+
+    # Setup codecs
+    codecs = jt2.get_call_audio_codecs_dbus()
+    content.SetCodecs(codecs, dbus_interface=cs.CALL_CONTENT_IFACE_MEDIA)
+
+    current_codecs = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
+                "ContactCodecMap", dbus_interface=dbus.PROPERTIES_IFACE)
+
+    assertEquals (codecs,  current_codecs[self_handle])
+
+    # Add candidates
+    candidates = jt2.get_call_remote_transports_dbus ()
+    stream.AddCandidates (candidates,
+        dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
+
+    local_candidates = stream.Get(cs.CALL_STREAM_IFACE_MEDIA,
+                "LocalCandidates", dbus_interface=dbus.PROPERTIES_IFACE)
+
+    assertEquals (candidates,  local_candidates)
+
 if __name__ == '__main__':
     test_all_dialects(run_test)

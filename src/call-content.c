@@ -44,6 +44,8 @@
 static void call_content_iface_init (gpointer, gpointer);
 static void call_content_media_iface_init (gpointer, gpointer);
 
+static GPtrArray *call_content_codec_list_to_array (GList *codecs);
+
 G_DEFINE_TYPE_WITH_CODE(GabbleCallContent, gabble_call_content,
   G_TYPE_OBJECT,
    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
@@ -143,30 +145,15 @@ gabble_call_content_get_property (GObject    *object,
           GList *codecs;
           GHashTable *map;
           GPtrArray *arr;
-          GList *l;
 
           codecs = gabble_jingle_media_rtp_get_local_codecs (
             GABBLE_JINGLE_MEDIA_RTP (priv->content));
 
-          arr = g_ptr_array_sized_new (g_list_length (codecs));
+          arr = call_content_codec_list_to_array (codecs);
 
-          for (l = codecs; l != NULL; l = g_list_next (l))
-            {
-              GValueArray *v;
-              JingleCodec *c = l->data;
+          map = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+            NULL, (GDestroyNotify) g_ptr_array_unref);
 
-              v = gabble_value_array_build (5,
-                G_TYPE_UINT, (guint) c->id,
-                G_TYPE_STRING, c->name,
-                G_TYPE_UINT, c->clockrate,
-                G_TYPE_UINT, c->channels,
-                DBUS_TYPE_G_STRING_STRING_HASHTABLE, c->params,
-                G_TYPE_INVALID);
-
-              g_ptr_array_add (arr, v);
-            }
-
-          map = g_hash_table_new (g_direct_hash, g_direct_equal);
           g_hash_table_insert (map,
             GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
             arr);
@@ -413,4 +400,31 @@ const gchar *
 gabble_call_content_get_object_path (GabbleCallContent *content)
 {
   return content->priv->object_path;
+}
+
+static GPtrArray *
+call_content_codec_list_to_array (GList *codecs)
+{
+  GPtrArray *arr;
+  GList *l;
+
+  arr = g_ptr_array_sized_new (g_list_length (codecs));
+
+  for (l = codecs; l != NULL; l = g_list_next (l))
+    {
+      GValueArray *v;
+      JingleCodec *c = l->data;
+
+      v = gabble_value_array_build (5,
+        G_TYPE_UINT, (guint) c->id,
+        G_TYPE_STRING, c->name,
+        G_TYPE_UINT, c->clockrate,
+        G_TYPE_UINT, c->channels,
+        DBUS_TYPE_G_STRING_STRING_HASHTABLE, c->params,
+        G_TYPE_INVALID);
+
+        g_ptr_array_add (arr, v);
+    }
+
+  return arr;
 }

@@ -209,17 +209,11 @@ gabble_call_content_set_property (GObject *object,
     }
 }
 
-static GObject *
-gabble_call_content_constructor (GType type,
-    guint n_props,
-    GObjectConstructParam *props)
+static void
+gabble_call_content_constructed (GObject *obj)
 {
-  GObject *obj;
   GabbleCallContentPrivate *priv;
   DBusGConnection *bus;
-
-  obj = G_OBJECT_CLASS (gabble_call_content_parent_class)->
-           constructor (type, n_props, props);
 
   priv = GABBLE_CALL_CONTENT (obj)->priv;
 
@@ -243,7 +237,8 @@ gabble_call_content_constructor (GType type,
       priv->streams = g_list_prepend (priv->streams, stream);
     }
 
-  return obj;
+  if (G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed != NULL)
+    G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed (obj);
 }
 
 static void
@@ -278,7 +273,7 @@ gabble_call_content_class_init (
   g_type_class_add_private (gabble_call_content_class,
     sizeof (GabbleCallContentPrivate));
 
-  object_class->constructor = gabble_call_content_constructor;
+  object_class->constructed = gabble_call_content_constructed;
 
   object_class->get_property = gabble_call_content_get_property;
   object_class->set_property = gabble_call_content_set_property;

@@ -59,6 +59,9 @@ CALL_CONTENT = 'org.freedesktop.Telepathy.Call.Content.Draft'
 CALL_CONTENT_IFACE_MEDIA = \
     'org.freedesktop.Telepathy.Call.Content.Interface.Media.Draft'
 
+CALL_CONTENT_CODECOFFER = \
+    'org.freedesktop.Telepathy.Call.Content.CodecOffer.Draft'
+
 CALL_STREAM = 'org.freedesktop.Telepathy.Call.Stream.Draft'
 CALL_STREAM_IFACE_MEDIA = \
     'org.freedesktop.Telepathy.Call.Stream.Interface.Media.Draft'

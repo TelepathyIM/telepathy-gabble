@@ -90,5 +90,29 @@ def run_test(jp, q, bus, conn, stream):
 
     assertEquals (candidates,  local_candidates)
 
+    session_initiate = q.expect('stream-iq',
+        predicate=jp.action_predicate('session-initiate'))
+
+    jt2.parse_session_initiate(session_initiate.query)
+
+    jt2.accept()
+
+    o = q.expect ('dbus-signal', signal='NewCodecOffer')
+
+    [path, codecs ] = o.args
+    offer = bus.get_object (conn.bus_name, path)
+    ocodecs = offer.Get (cs.CALL_CONTENT_CODECOFFER,
+        "RemoteContactCodecMap", dbus_interface=dbus.PROPERTIES_IFACE)
+
+    assertEquals (codecs, ocodecs)
+
+    codecs = jt2.get_call_audio_codecs_dbus()
+    offer.Accept (codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
+
+    o = q.expect ('dbus-signal', signal='CodecsChanged')
+
+    update, _ = o.args
+    assertEquals ({ self_handle: codecs, remote_handle: codecs}  , update)
+
 if __name__ == '__main__':
     test_all_dialects(run_test)

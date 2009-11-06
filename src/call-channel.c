@@ -524,6 +524,7 @@ call_channel_add_content (GabbleCallChannel *self,
     "connection", priv->conn,
     "object-path", object_path,
     "jingle-content", c,
+    "target-handle", priv->target,
     NULL);
 
   g_free (object_path);

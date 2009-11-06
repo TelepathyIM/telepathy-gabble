@@ -45,6 +45,7 @@ static void call_content_iface_init (gpointer, gpointer);
 static void call_content_media_iface_init (gpointer, gpointer);
 
 static GPtrArray *call_content_codec_list_to_array (GList *codecs);
+static GHashTable *call_content_generate_codec_map (GabbleCallContent *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallContent, gabble_call_content,
   G_TYPE_OBJECT,
@@ -60,12 +61,12 @@ G_DEFINE_TYPE_WITH_CODE(GabbleCallContent, gabble_call_content,
 enum
 {
   PROP_OBJECT_PATH = 1,
-  PROP_JINGLE_CONTENT,
   PROP_CONNECTION,
+  PROP_JINGLE_CONTENT,
+  PROP_TARGET_HANDLE,
 
   PROP_CONTACT_CODEC_MAP,
   PROP_STREAMS,
-
 };
 
 #if 0
@@ -86,6 +87,7 @@ struct _GabbleCallContentPrivate
   GabbleConnection *conn;
 
   gchar *object_path;
+  TpHandle target;
   GabbleJingleContent *content;
 
   GList *streams;
@@ -121,6 +123,9 @@ gabble_call_content_get_property (GObject    *object,
       case PROP_JINGLE_CONTENT:
         g_value_set_object (value, priv->content);
         break;
+      case PROP_TARGET_HANDLE:
+        g_value_set_uint (value, priv->target);
+        break;
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
         break;
@@ -142,24 +147,10 @@ gabble_call_content_get_property (GObject    *object,
         }
       case PROP_CONTACT_CODEC_MAP:
         {
-          GList *codecs;
           GHashTable *map;
-          GPtrArray *arr;
 
-          codecs = gabble_jingle_media_rtp_get_local_codecs (
-            GABBLE_JINGLE_MEDIA_RTP (priv->content));
-
-          arr = call_content_codec_list_to_array (codecs);
-
-          map = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-            NULL, (GDestroyNotify) g_ptr_array_unref);
-
-          g_hash_table_insert (map,
-            GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
-            arr);
-
+          map = call_content_generate_codec_map (content);
           g_value_set_boxed (value, map);
-
           g_hash_table_unref (map);
           break;
         }
@@ -186,6 +177,9 @@ gabble_call_content_set_property (GObject *object,
         break;
       case PROP_JINGLE_CONTENT:
         priv->content = g_value_dup_object (value);
+        break;
+      case PROP_TARGET_HANDLE:
+        priv->target = g_value_get_uint (value);
         break;
       case PROP_CONNECTION:
         priv->conn = g_value_get_object (value);
@@ -286,6 +280,16 @@ gabble_call_content_class_init (
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_JINGLE_CONTENT,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("target-handle", "Target Handle",
+      "Target handle of the call channel",
+      0, G_MAXUINT, 0,
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_TARGET_HANDLE,
       param_spec);
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
@@ -427,4 +431,39 @@ call_content_codec_list_to_array (GList *codecs)
     }
 
   return arr;
+}
+
+static GHashTable *
+call_content_generate_codec_map (GabbleCallContent *self)
+{
+  GabbleCallContentPrivate *priv = self->priv;
+  GList *codecs;
+  GHashTable *map;
+  GPtrArray *arr;
+
+  map = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+    NULL, (GDestroyNotify) g_ptr_array_unref);
+
+  /* Local codecs */
+  codecs = gabble_jingle_media_rtp_get_local_codecs (
+     GABBLE_JINGLE_MEDIA_RTP (priv->content));
+
+  if (codecs != NULL)
+    {
+      arr = call_content_codec_list_to_array (codecs);
+      g_hash_table_insert (map,
+        GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
+        arr);
+    }
+
+  codecs = gabble_jingle_media_rtp_get_remote_codecs (
+     GABBLE_JINGLE_MEDIA_RTP (priv->content));
+
+  if (codecs != NULL)
+    {
+      arr = call_content_codec_list_to_array (codecs);
+      g_hash_table_insert (map, GUINT_TO_POINTER (priv->target), arr);
+    }
+
+  return map;
 }

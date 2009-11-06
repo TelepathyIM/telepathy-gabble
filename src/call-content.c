@@ -31,6 +31,7 @@
 #include <extensions/extensions.h>
 
 #include "call-content.h"
+#include "call-content-codecoffer.h"
 #include "call-stream.h"
 #include "jingle-content.h"
 #include "jingle-media-rtp.h"
@@ -43,6 +44,8 @@
 
 static void call_content_iface_init (gpointer, gpointer);
 static void call_content_media_iface_init (gpointer, gpointer);
+static void call_content_remote_codecs_cb (
+  GabbleJingleMediaRtp *media, GList *codecs, gpointer user_data);
 
 static GPtrArray *call_content_codec_list_to_array (GList *codecs);
 static GHashTable *call_content_generate_codec_map (GabbleCallContent *self);
@@ -89,6 +92,9 @@ struct _GabbleCallContentPrivate
   gchar *object_path;
   TpHandle target;
   GabbleJingleContent *content;
+
+  GabbleCallContentCodecoffer *offer;
+  gint offers;
 
   GList *streams;
   gboolean dispose_has_run;
@@ -216,6 +222,10 @@ gabble_call_content_constructed (GObject *obj)
       g_free (path);
 
       priv->streams = g_list_prepend (priv->streams, stream);
+
+      gabble_signal_connect_weak (priv->content, "remote-codecs",
+        G_CALLBACK (call_content_remote_codecs_cb),
+        obj);
     }
 
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed != NULL)
@@ -466,4 +476,69 @@ call_content_generate_codec_map (GabbleCallContent *self)
     }
 
   return map;
+}
+
+static void
+codec_offer_finished_cb (GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
+  GabbleCallContentPrivate *priv = self->priv;
+  GError *error = NULL;
+  GPtrArray *local_codecs;
+  GHashTable *codec_map;
+  GArray *empty;
+
+  local_codecs = gabble_call_content_codecoffer_offer_finish (
+    GABBLE_CALL_CONTENT_CODECOFFER (source), result, &error);
+
+  if (error != NULL)
+    goto out;
+
+  codec_map = call_content_generate_codec_map (self);
+  empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+
+  gabble_svc_call_content_interface_media_emit_codecs_changed (self,
+    codec_map, empty);
+
+  g_hash_table_unref (codec_map);
+  g_array_free (empty, TRUE);
+
+out:
+  g_object_unref (priv->offer);
+  priv->offer = NULL;
+}
+
+static void
+call_content_remote_codecs_cb (GabbleJingleMediaRtp *media,
+    GList *codecs,
+    gpointer user_data)
+{
+  GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
+  GabbleCallContentPrivate *priv = self->priv;
+  GHashTable *map;
+  GPtrArray *arr;
+  gchar *path;
+
+  map = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+    NULL, (GDestroyNotify) g_ptr_array_unref);
+
+  arr = call_content_codec_list_to_array (codecs);
+  g_hash_table_insert (map, GUINT_TO_POINTER (priv->target), arr);
+
+  /* FIXME: Support switching offers */
+  g_assert (priv->offer == NULL);
+  path = g_strdup_printf ("%s/Offer%d",
+    priv->object_path, priv->offers++);
+
+  priv->offer = gabble_call_content_codecoffer_new (path, map);
+  gabble_call_content_codecoffer_offer (priv->offer, NULL,
+    codec_offer_finished_cb, self);
+
+  gabble_svc_call_content_interface_media_emit_new_codec_offer (
+    self, path, map);
+
+  g_hash_table_unref (map);
+  g_free (path);
 }

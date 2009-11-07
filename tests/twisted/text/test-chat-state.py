@@ -13,7 +13,7 @@ import ns
 
 def check_state_notification(elem, name):
     assertEquals('message', elem.name)
-    assertEquals('normal', elem['type'])
+    assertEquals('chat', elem['type'])
 
     children = list(elem.elements())
     assert len(children) == 1, elem.toXml()

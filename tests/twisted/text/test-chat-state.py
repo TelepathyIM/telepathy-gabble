@@ -6,7 +6,7 @@ channels.
 
 from twisted.words.xish import domish
 
-from servicetest import call_async, assertEquals, wrap_channel, EventPattern
+from servicetest import assertEquals, wrap_channel, EventPattern
 from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 import constants as cs
 import ns
@@ -22,6 +22,19 @@ def check_state_notification(elem, name):
     assert notification.name == name, notification.toXml()
     assert notification.uri == ns.CHAT_STATES, notification.toXml()
 
+def make_message(jid, body=None, state=None):
+    m = domish.Element((None, 'message'))
+    m['from'] = jid
+    m['type'] = 'chat'
+
+    if state is not None:
+        m.addElement((ns.CHAT_STATES, state))
+
+    if body is not None:
+        m.addElement('body', content=body)
+
+    return m
+
 def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged',
@@ -30,6 +43,7 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
 
     jid = 'foo@bar.com'
+    full_jid = 'foo@bar.com/Foo'
     foo_handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
 
     path = conn.Requests.CreateChannel(
@@ -40,21 +54,21 @@ def test(q, bus, conn, stream):
     chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
         ['ChatState', 'Destroyable'])
 
-    presence = make_presence('foo@bar.com/Foo', status='hello',
+    presence = make_presence(full_jid, status='hello',
         caps={
             'node': 'http://telepathy.freedesktop.org/homeopathy',
             'ver' : '0.1',
         })
     stream.send(presence)
 
-    version_event = q.expect('stream-iq', to='foo@bar.com/Foo',
-        query_ns='http://jabber.org/protocol/disco#info',
+    version_event = q.expect('stream-iq', to=full_jid,
+        query_ns=ns.DISCO_INFO,
         query_node='http://telepathy.freedesktop.org/homeopathy#0.1')
 
     result = make_result_iq(stream, version_event.stanza)
     query = result.firstChildElement()
     feature = query.addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/chatstates'
+    feature['var'] = ns.CHAT_STATES
     stream.send(result)
 
     sync_stream(q, stream)
@@ -62,11 +76,7 @@ def test(q, bus, conn, stream):
     # Receiving chat states:
 
     # Composing...
-    m = domish.Element((None, 'message'))
-    m['from'] = 'foo@bar.com/Foo'
-    m['type'] = 'chat'
-    m.addElement((ns.CHAT_STATES, 'composing'))
-    stream.send(m)
+    stream.send(make_message(full_jid, state='composing'))
 
     changed = q.expect('dbus-signal', signal='ChatStateChanged')
     handle, state = changed.args
@@ -74,13 +84,7 @@ def test(q, bus, conn, stream):
     assertEquals(cs.CHAT_STATE_COMPOSING, state)
 
     # Message!
-
-    m = domish.Element((None, 'message'))
-    m['from'] = 'foo@bar.com/Foo'
-    m['type'] = 'chat'
-    m.addElement((ns.CHAT_STATES, 'active'))
-    m.addElement('body', content='hello')
-    stream.send(m)
+    stream.send(make_message(full_jid, body='hello', state='active'))
 
     changed = q.expect('dbus-signal', signal='ChatStateChanged')
     handle, state = changed.args
@@ -90,19 +94,18 @@ def test(q, bus, conn, stream):
     # Sending chat states:
 
     # Composing...
-    call_async(q, chan.ChatState, 'SetChatState', cs.CHAT_STATE_COMPOSING)
+    chan.ChatState.SetChatState(cs.CHAT_STATE_COMPOSING)
 
     stream_message = q.expect('stream-message')
     check_state_notification(stream_message.stanza, 'composing')
 
     # XEP 0085:
     #   every content message SHOULD contain an <active/> notification.
-    call_async(q, chan.Text, 'Send', 0, 'hi.')
+    chan.Text.Send(0, 'hi.')
 
     stream_message = q.expect('stream-message')
     elem = stream_message.stanza
-    assert elem.name == 'message'
-    assert elem['type'] == 'chat', elem['type']
+    assertEquals('chat', elem['type'])
 
     def is_body(e):
         if e.name == 'body':
@@ -157,6 +160,7 @@ def test(q, bus, conn, stream):
     # notification, since we haven't sent any notifications on that channel.
     chan.Close()
     sync_stream(q, stream)
+    q.unforbid_events(es)
 
 if __name__ == '__main__':
     exec_test(test)

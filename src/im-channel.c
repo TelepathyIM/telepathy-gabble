@@ -394,18 +394,27 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   tp_message_mixin_init_dbus_properties (object_class);
 }
 
-static void
-emit_closed_and_send_gone (GabbleIMChannel *self)
+static gboolean
+chat_states_supported (GabbleIMChannel *self)
 {
   GabbleIMChannelPrivate *priv = self->priv;
   GabblePresence *presence;
 
+  presence = gabble_presence_cache_get (priv->conn->presence_cache,
+      priv->handle);
+
+  return (presence != NULL &&
+      gabble_presence_has_cap (presence, NS_CHAT_STATES));
+}
+
+static void
+emit_closed_and_send_gone (GabbleIMChannel *self)
+{
+  GabbleIMChannelPrivate *priv = self->priv;
+
   if (priv->send_gone)
     {
-      presence = gabble_presence_cache_get (priv->conn->presence_cache,
-          priv->handle);
-
-      if (presence && gabble_presence_has_cap (presence, NS_CHAT_STATES))
+      if (chat_states_supported (self))
         gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
             LM_MESSAGE_SUB_TYPE_NORMAL, TP_CHANNEL_CHAT_STATE_GONE,
             priv->peer_jid, NULL);
@@ -487,16 +496,12 @@ _gabble_im_channel_send_message (GObject *object,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
   GabbleIMChannelPrivate *priv;
-  GabblePresence *presence;
   gint state = -1;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = self->priv;
 
-  presence = gabble_presence_cache_get (priv->conn->presence_cache,
-      priv->handle);
-
-  if (presence && gabble_presence_has_cap (presence, NS_CHAT_STATES))
+  if (chat_states_supported (self))
     {
       state = TP_CHANNEL_CHAT_STATE_ACTIVE;
       priv->send_gone = TRUE;
@@ -790,53 +795,47 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   GabbleIMChannelPrivate *priv;
-  GabblePresence *presence;
   GError *error = NULL;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = self->priv;
 
-  presence = gabble_presence_cache_get (priv->conn->presence_cache,
-      priv->handle);
-
-  if (presence && gabble_presence_has_cap (presence, NS_CHAT_STATES))
+  if (state >= NUM_TP_CHANNEL_CHAT_STATES)
     {
-      if (state >= NUM_TP_CHANNEL_CHAT_STATES)
-        {
-          DEBUG ("invalid state %u", state);
-
-          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "invalid state: %u", state);
-        }
-
-      if (state == TP_CHANNEL_CHAT_STATE_GONE)
-        {
-          /* We cannot explicitly set the Gone state */
-          DEBUG ("you may not explicitly set the Gone state");
-
-          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "you may not explicitly set the Gone state");
-        }
-      else if (gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
-          LM_MESSAGE_SUB_TYPE_NORMAL, state, priv->peer_jid, &error))
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "invalid state: %u", state);
+    }
+  else if (state == TP_CHANNEL_CHAT_STATE_GONE)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "you may not explicitly set the Gone state");
+    }
+  /* Only send anything to the peer if we actually know they support chat
+   * states.
+   */
+  else if (chat_states_supported (self))
+    {
+      if (gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
+              LM_MESSAGE_SUB_TYPE_NORMAL, state, priv->peer_jid, &error))
         {
           priv->send_gone = TRUE;
+
+          /* Send the ChatStateChanged signal for the local user */
+          tp_svc_channel_interface_chat_state_emit_chat_state_changed (iface,
+              priv->conn->parent.self_handle, state);
         }
-
-      if (error != NULL)
-        {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-
-          return;
-        }
-
-      /* Send the ChatStateChanged signal for the local user */
-      tp_svc_channel_interface_chat_state_emit_chat_state_changed (iface,
-          priv->conn->parent.self_handle, state);
     }
 
-  tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
+  if (error != NULL)
+    {
+      DEBUG ("%s", error->message);
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+  else
+    {
+      tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
+    }
 }
 
 static void

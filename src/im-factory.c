@@ -283,12 +283,12 @@ im_factory_message_cb (LmMessageHandler *handler,
          from, handle, msgtype, body);
     }
 
-  if (state != -1 && send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
-    _gabble_im_channel_state_receive (chan, state);
-
   if (body != NULL)
     _gabble_im_channel_receive (chan, msgtype, handle, from, stamp, id, body,
-        send_error, delivery_status);
+        send_error, delivery_status, state);
+  else if (state != -1 && send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
+    _gabble_im_channel_state_receive (chan, (TpChannelChatState) state);
+
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

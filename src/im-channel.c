@@ -94,6 +94,12 @@ enum
 
 /* private structure */
 
+typedef enum {
+  CHAT_STATES_UNKNOWN,
+  CHAT_STATES_SUPPORTED,
+  CHAT_STATES_NOT_SUPPORTED
+} ChatStateSupport;
+
 struct _GabbleIMChannelPrivate
 {
   GabbleConnection *conn;
@@ -103,6 +109,7 @@ struct _GabbleIMChannelPrivate
 
   gchar *peer_jid;
   gboolean send_nick;
+  ChatStateSupport chat_states_supported;
 
   /* FALSE unless at least one chat state notification has been sent; <gone/>
    * will only be sent when the channel closes if this is TRUE. This prevents
@@ -170,6 +177,8 @@ gabble_im_channel_constructor (GType type, guint n_props,
     priv->send_nick = FALSE;
   else
     priv->send_nick = TRUE;
+
+  priv->chat_states_supported = CHAT_STATES_UNKNOWN;
 
   tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, message_mixin),
       conn);
@@ -394,7 +403,8 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
 }
 
 static gboolean
-chat_states_supported (GabbleIMChannel *self)
+chat_states_supported (GabbleIMChannel *self,
+                       gboolean include_unknown)
 {
   GabbleIMChannelPrivate *priv = self->priv;
   GabblePresence *presence;
@@ -402,7 +412,21 @@ chat_states_supported (GabbleIMChannel *self)
   presence = gabble_presence_cache_get (priv->conn->presence_cache,
       priv->handle);
 
-  return (presence != NULL && (presence->caps & PRESENCE_CAP_CHAT_STATES));
+  if (presence != NULL && (presence->caps & PRESENCE_CAP_CHAT_STATES))
+    return TRUE;
+
+  switch (priv->chat_states_supported)
+    {
+      case CHAT_STATES_UNKNOWN:
+        return include_unknown;
+      case CHAT_STATES_SUPPORTED:
+        return TRUE;
+      case CHAT_STATES_NOT_SUPPORTED:
+        return FALSE;
+      default:
+        g_assert_not_reached ();
+        return FALSE;
+    }
 }
 
 static void
@@ -412,7 +436,7 @@ emit_closed_and_send_gone (GabbleIMChannel *self)
 
   if (priv->send_gone)
     {
-      if (chat_states_supported (self))
+      if (chat_states_supported (self, FALSE))
         gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
             LM_MESSAGE_SUB_TYPE_CHAT, TP_CHANNEL_CHAT_STATE_GONE,
             priv->peer_jid, NULL);
@@ -499,7 +523,7 @@ _gabble_im_channel_send_message (GObject *object,
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = self->priv;
 
-  if (chat_states_supported (self))
+  if (chat_states_supported (self, TRUE))
     {
       state = TP_CHANNEL_CHAT_STATE_ACTIVE;
       priv->send_gone = TRUE;
@@ -515,7 +539,6 @@ _gabble_im_channel_send_message (GObject *object,
     priv->send_nick = FALSE;
 }
 
-
 /**
  * _gabble_im_channel_receive
  *
@@ -529,7 +552,8 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
                             const gchar *id,
                             const char *text,
                             TpChannelTextSendError send_error,
-                            TpDeliveryStatus delivery_status)
+                            TpDeliveryStatus delivery_status,
+                            gint state)
 {
   GabbleIMChannelPrivate *priv;
   TpBaseConnection *base_conn;
@@ -548,6 +572,19 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
           g_free (priv->peer_jid);
           priv->peer_jid = g_strdup (from);
         }
+
+      if (state == -1)
+        {
+          priv->chat_states_supported = CHAT_STATES_NOT_SUPPORTED;
+        }
+      else
+        {
+          priv->chat_states_supported = CHAT_STATES_SUPPORTED;
+
+          tp_svc_channel_interface_chat_state_emit_chat_state_changed (
+              (TpSvcChannelInterfaceChatState *) chan,
+              priv->handle, (TpChannelChatState) state);
+        }
     }
   else
     {
@@ -556,6 +593,8 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
 
       if (slash != NULL)
         *slash = '\0';
+
+      priv->chat_states_supported = CHAT_STATES_UNKNOWN;
     }
 
   msg = tp_message_new (base_conn, 2, 2);
@@ -632,13 +671,15 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
 
 void
 _gabble_im_channel_state_receive (GabbleIMChannel *chan,
-                                  guint state)
+                                  TpChannelChatState state)
 {
   GabbleIMChannelPrivate *priv;
 
   g_assert (state < NUM_TP_CHANNEL_CHAT_STATES);
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
   priv = chan->priv;
+
+  priv->chat_states_supported = CHAT_STATES_SUPPORTED;
 
   tp_svc_channel_interface_chat_state_emit_chat_state_changed (
       (TpSvcChannelInterfaceChatState *) chan,
@@ -811,7 +852,7 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
   /* Only send anything to the peer if we actually know they support chat
    * states.
    */
-  else if (chat_states_supported (self))
+  else if (chat_states_supported (self, FALSE))
     {
       if (gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
               LM_MESSAGE_SUB_TYPE_CHAT, state, priv->peer_jid, &error))

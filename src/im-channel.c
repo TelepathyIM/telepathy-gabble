@@ -416,7 +416,7 @@ emit_closed_and_send_gone (GabbleIMChannel *self)
     {
       if (chat_states_supported (self))
         gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
-            LM_MESSAGE_SUB_TYPE_NORMAL, TP_CHANNEL_CHAT_STATE_GONE,
+            LM_MESSAGE_SUB_TYPE_CHAT, TP_CHANNEL_CHAT_STATE_GONE,
             priv->peer_jid, NULL);
 
       priv->send_gone = FALSE;
@@ -816,7 +816,7 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
   else if (chat_states_supported (self))
     {
       if (gabble_message_util_send_chat_state (G_OBJECT (self), priv->conn,
-              LM_MESSAGE_SUB_TYPE_NORMAL, state, priv->peer_jid, &error))
+              LM_MESSAGE_SUB_TYPE_CHAT, state, priv->peer_jid, &error))
         {
           priv->send_gone = TRUE;
 

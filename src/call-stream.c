@@ -115,37 +115,10 @@ gabble_call_stream_get_property (GObject    *object,
           GPtrArray *arr;
           GList *candidates =
             gabble_jingle_content_get_local_candidates (priv->content);
-          GList *c;
 
-          arr = g_ptr_array_sized_new (g_list_length (candidates));
-
-          for (c = candidates; c != NULL; c = g_list_next (c))
-            {
-              JingleCandidate *cand = (JingleCandidate *) c->data;
-              GValueArray *a;
-              GHashTable *info;
-
-              info = tp_asv_new (
-                "Protocol", G_TYPE_UINT, cand->protocol,
-                "Type", G_TYPE_UINT, cand->type,
-                "Foundation", G_TYPE_STRING, cand->id,
-                "Priority", G_TYPE_UINT,
-                  (guint) cand->preference * 65536,
-                "Username", G_TYPE_STRING, cand->username,
-                "Password", G_TYPE_STRING, cand->password,
-                NULL);
-
-              a = gabble_value_array_build (4,
-                G_TYPE_UINT, cand->component,
-                G_TYPE_STRING, cand->address,
-                G_TYPE_UINT, cand->port,
-                GABBLE_HASH_TYPE_CANDIDATE_INFO, info,
-                G_TYPE_INVALID);
-
-              g_ptr_array_add (arr, a);
-            }
-
+          arr = gabble_call_candidates_to_array (candidates);
           g_value_set_boxed (value, arr);
+          g_ptr_array_unref (arr);
           break;
         }
 

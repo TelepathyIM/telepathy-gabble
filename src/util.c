@@ -31,6 +31,9 @@
 
 #include <wocky/wocky-utils.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
+#include <telepathy-glib/dbus.h>
+
+#include <extensions/extensions.h>
 
 #ifdef HAVE_UUID
 # include <uuid.h>
@@ -1237,3 +1240,39 @@ gabble_value_array_build (gsize length,
   return arr;
 }
 
+GPtrArray *
+gabble_call_candidates_to_array (GList *candidates)
+{
+  GPtrArray *arr;
+  GList *c;
+
+  arr = g_ptr_array_sized_new (g_list_length (candidates));
+
+  for (c = candidates; c != NULL; c = g_list_next (c))
+    {
+        JingleCandidate *cand = (JingleCandidate *) c->data;
+        GValueArray *a;
+        GHashTable *info;
+
+        info = tp_asv_new (
+          "Protocol", G_TYPE_UINT, cand->protocol,
+          "Type", G_TYPE_UINT, cand->type,
+          "Foundation", G_TYPE_STRING, cand->id,
+          "Priority", G_TYPE_UINT,
+            (guint) cand->preference * 65536,
+          "Username", G_TYPE_STRING, cand->username,
+          "Password", G_TYPE_STRING, cand->password,
+          NULL);
+
+         a = gabble_value_array_build (4,
+            G_TYPE_UINT, cand->component,
+            G_TYPE_STRING, cand->address,
+            G_TYPE_UINT, cand->port,
+            GABBLE_HASH_TYPE_CANDIDATE_INFO, info,
+            G_TYPE_INVALID);
+
+        g_ptr_array_add (arr, a);
+  }
+
+  return arr;
+}

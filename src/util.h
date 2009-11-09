@@ -120,4 +120,6 @@ GValueArray *gabble_value_array_build (gsize length,
   GType type,
   ...);
 
+GPtrArray *gabble_call_candidates_to_array (GList *candidates);
+
 #endif /* __GABBLE_UTIL_H__ */

@@ -66,6 +66,8 @@ CALL_STREAM = 'org.freedesktop.Telepathy.Call.Stream.Draft'
 CALL_STREAM_IFACE_MEDIA = \
     'org.freedesktop.Telepathy.Call.Stream.Interface.Media.Draft'
 
+CALL_STREAM_ENDPOINT = 'org.freedesktop.Telepathy.Call.Stream.Endpoint.Draft'
+
 
 CONN = "org.freedesktop.Telepathy.Connection"
 CONN_IFACE_AVATARS = CONN + '.Interface.Avatars'

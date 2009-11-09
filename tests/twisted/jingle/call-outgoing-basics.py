@@ -93,6 +93,12 @@ def run_test(jp, q, bus, conn, stream):
                 "Endpoints", dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals (1, len (endpoints))
 
+    endpoint = bus.get_object (conn.bus_name, endpoints[0])
+    candidates = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
+        "RemoteCandidates",  dbus_interface=dbus.PROPERTIES_IFACE)
+
+    assertEquals ([], candidates)
+
     session_initiate = q.expect('stream-iq',
         predicate=jp.action_predicate('session-initiate'))
 

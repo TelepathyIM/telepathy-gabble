@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <util.h>
 
 
 #include <telepathy-glib/dbus.h>
@@ -34,6 +35,11 @@
 #include "debug.h"
 
 static void call_stream_endpoint_iface_init (gpointer, gpointer);
+
+static void call_stream_endpoint_new_candidates_cb (
+    GabbleJingleContent *content,
+    GList *candidates,
+    gpointer user_data);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallStreamEndpoint,
   gabble_call_stream_endpoint,
@@ -49,6 +55,7 @@ enum
 {
   PROP_OBJECT_PATH = 1,
   PROP_JINGLE_CONTENT,
+  PROP_REMOTE_CANDIDATES,
 };
 
 struct _GabbleCallStreamEndpointPrivate
@@ -89,6 +96,17 @@ gabble_call_stream_endpoint_get_property (GObject    *object,
       case PROP_JINGLE_CONTENT:
         g_value_set_object (value, priv->content);
         break;
+      case PROP_REMOTE_CANDIDATES:
+        {
+          GPtrArray *arr;
+          GList *candidates =
+            gabble_jingle_content_get_remote_candidates (priv->content);
+
+          arr = gabble_call_candidates_to_array (candidates);
+          g_value_set_boxed (value, arr);
+          g_ptr_array_unref (arr);
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -132,6 +150,9 @@ gabble_call_stream_endpoint_constructed (GObject *obj)
   DEBUG ("Registering %s", priv->object_path);
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
+  gabble_signal_connect_weak (priv->content, "new-candidates",
+    G_CALLBACK (call_stream_endpoint_new_candidates_cb), obj);
+
   if (G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->constructed
       != NULL)
     G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->constructed (
@@ -145,6 +166,18 @@ gabble_call_stream_endpoint_class_init (
   GObjectClass *object_class =
       G_OBJECT_CLASS (gabble_call_stream_endpoint_class);
   GParamSpec *param_spec;
+  static TpDBusPropertiesMixinPropImpl endpoint_props[] = {
+    { "RemoteCandidates", "remote-candidates", NULL },
+    { NULL }
+  };
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+      { GABBLE_IFACE_CALL_STREAM_ENDPOINT,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        endpoint_props,
+      },
+      { NULL }
+  };
 
   g_type_class_add_private (gabble_call_stream_endpoint_class,
       sizeof (GabbleCallStreamEndpointPrivate));
@@ -175,6 +208,19 @@ gabble_call_stream_endpoint_class_init (
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_JINGLE_CONTENT,
       param_spec);
+
+  param_spec = g_param_spec_boxed ("remote-candidates",
+      "RemoteCandidates",
+      "The remote candidates of this endpoint",
+      GABBLE_ARRAY_TYPE_CANDIDATE_LIST,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_REMOTE_CANDIDATES,
+      param_spec);
+
+  gabble_call_stream_endpoint_class->dbus_props_class.interfaces =
+      prop_interfaces;
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleCallStreamEndpointClass, dbus_props_class));
 }
 
 void
@@ -212,6 +258,22 @@ gabble_call_stream_endpoint_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->finalize (object);
 }
 
+static void
+call_stream_endpoint_new_candidates_cb (GabbleJingleContent *content,
+    GList *candidates,
+    gpointer user_data)
+{
+  GabbleCallStreamEndpoint *self = GABBLE_CALL_STREAM_ENDPOINT (user_data);
+  GPtrArray *arr;
+
+  if (candidates == NULL)
+    return;
+
+  arr = gabble_call_candidates_to_array (candidates);
+  gabble_svc_call_stream_endpoint_emit_remote_candidates_added (self,
+    arr);
+  g_ptr_array_unref (arr);
+}
 
 static void
 call_stream_endpoint_iface_init (gpointer iface, gpointer data)

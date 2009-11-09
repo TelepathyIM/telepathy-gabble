@@ -1,7 +1,17 @@
-telepathy-gabble 0.8.8 (UNRELEASED)
+telepathy-gabble 0.8.8 (2009-11-09)
 ===================================
 
-…
+The “Juice, toast, milk: an unholy trinity of cruel denial” release.
+
+Fixes:
+
+• The StreamedMedia.ImmutableStreams property on channels may now take
+  values other than False. (wjt)
+
+• The default resource is now unique to the machine Gabble is running
+  on, rather than being randomly generated for each connection. Fixes
+  fd.o#23630: “Per-connection resource randomization increases the
+  window in which you lose messages”. (wjt)
 
 telepathy-gabble 0.8.7 (2009-10-14)
 ===================================

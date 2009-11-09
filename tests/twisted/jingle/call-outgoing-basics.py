@@ -69,7 +69,7 @@ def run_test(jp, q, bus, conn, stream):
     # Has one stream
     assertEquals (1, len(content_properties["Streams"]))
 
-    stream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
+    cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
 
     # Setup codecs
     codecs = jt2.get_call_audio_codecs_dbus()
@@ -82,14 +82,14 @@ def run_test(jp, q, bus, conn, stream):
 
     # Add candidates
     candidates = jt2.get_call_remote_transports_dbus ()
-    stream.AddCandidates (candidates,
+    cstream.AddCandidates (candidates,
         dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
 
-    local_candidates = stream.Get(cs.CALL_STREAM_IFACE_MEDIA,
+    local_candidates = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA,
                 "LocalCandidates", dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals (candidates,  local_candidates)
 
-    endpoints = stream.Get(cs.CALL_STREAM_IFACE_MEDIA,
+    endpoints = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA,
                 "Endpoints", dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals (1, len (endpoints))
 

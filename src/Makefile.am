@@ -33,6 +33,8 @@ libgabble_convenience_la_SOURCES = \
     call-channel.c \
     call-stream.h \
     call-stream.c \
+    call-stream-endpoint.h \
+    call-stream-endpoint.c \
     capabilities.h \
     capabilities.c \
     caps-hash.h \

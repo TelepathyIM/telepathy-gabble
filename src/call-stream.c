@@ -25,9 +25,11 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/svc-properties-interface.h>
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/gtypes.h>
 #include <extensions/extensions.h>
 
 #include "call-stream.h"
+#include "call-stream-endpoint.h"
 #include "jingle-content.h"
 #include "util.h"
 
@@ -54,6 +56,8 @@ enum
   PROP_OBJECT_PATH = 1,
   PROP_JINGLE_CONTENT,
   PROP_LOCAL_CANDIDATES,
+
+  PROP_ENDPOINTS
 };
 
 #if 0
@@ -74,6 +78,7 @@ struct _GabbleCallStreamPrivate
 
   gchar *object_path;
   GabbleJingleContent *content;
+  GList *endpoints;
 };
 
 static void
@@ -143,6 +148,24 @@ gabble_call_stream_get_property (GObject    *object,
           g_value_set_boxed (value, arr);
           break;
         }
+
+      case PROP_ENDPOINTS:
+        {
+          GPtrArray *arr = g_ptr_array_sized_new (1);
+          GList *l;
+
+          for (l = priv->endpoints; l != NULL; l = g_list_next (l))
+            {
+              GabbleCallStreamEndpoint *e =
+                GABBLE_CALL_STREAM_ENDPOINT (l->data);
+              g_ptr_array_add (arr,
+                (gpointer) gabble_call_stream_endpoint_get_object_path (e));
+            }
+
+          g_value_set_boxed (value, arr);
+          g_ptr_array_free (arr, TRUE);
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -178,6 +201,8 @@ gabble_call_stream_constructed (GObject *obj)
 {
   GabbleCallStreamPrivate *priv;
   DBusGConnection *bus;
+  GabbleCallStreamEndpoint *endpoint;
+  gchar *path;
 
   priv = GABBLE_CALL_STREAM (obj)->priv;
 
@@ -185,6 +210,12 @@ gabble_call_stream_constructed (GObject *obj)
   bus = tp_get_bus ();
   DEBUG ("Registering %s", priv->object_path);
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+
+  /* Currently we'll only have one endpoint we know right away */
+  path = g_strdup_printf ("%s/Endpoint", priv->object_path);
+  endpoint = gabble_call_stream_endpoint_new (path, priv->content);
+  priv->endpoints = g_list_append (priv->endpoints, endpoint);
+  g_free (path);
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);
@@ -200,6 +231,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   };
   static TpDBusPropertiesMixinPropImpl stream_media_props[] = {
     { "LocalCandidates", "local-candidates", NULL },
+    { "Endpoints", "endpoints", NULL },
     { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
@@ -251,6 +283,13 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       GABBLE_ARRAY_TYPE_CANDIDATE_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_LOCAL_CANDIDATES,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("endpoints", "Endpoints",
+      "The endpoints of this content",
+      TP_ARRAY_TYPE_OBJECT_PATH_LIST,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ENDPOINTS,
       param_spec);
 
   gabble_call_stream_class->dbus_props_class.interfaces = prop_interfaces;

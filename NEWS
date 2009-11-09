@@ -5,6 +5,11 @@ Highlights:
 
 Fixes:
 
+• The default resource is now unique to the machine Gabble is running
+  on, rather than being randomly generated for each connection. Fixes
+  fd.o#23630: “Per-connection resource randomization increases the
+  window in which you lose messages”. (wjt)
+
 telepathy-gabble 0.9.2 (2009-10-27)
 ===================================
 

@@ -87,8 +87,11 @@ def run_test(jp, q, bus, conn, stream):
 
     local_candidates = stream.Get(cs.CALL_STREAM_IFACE_MEDIA,
                 "LocalCandidates", dbus_interface=dbus.PROPERTIES_IFACE)
-
     assertEquals (candidates,  local_candidates)
+
+    endpoints = stream.Get(cs.CALL_STREAM_IFACE_MEDIA,
+                "Endpoints", dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (1, len (endpoints))
 
     session_initiate = q.expect('stream-iq',
         predicate=jp.action_predicate('session-initiate'))

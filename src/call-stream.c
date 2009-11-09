@@ -173,17 +173,11 @@ gabble_call_stream_set_property (GObject *object,
     }
 }
 
-static GObject *
-gabble_call_stream_constructor (GType type,
-    guint n_props,
-    GObjectConstructParam *props)
+static void
+gabble_call_stream_constructed (GObject *obj)
 {
-  GObject *obj;
   GabbleCallStreamPrivate *priv;
   DBusGConnection *bus;
-
-  obj = G_OBJECT_CLASS (gabble_call_stream_parent_class)->
-           constructor (type, n_props, props);
 
   priv = GABBLE_CALL_STREAM (obj)->priv;
 
@@ -192,7 +186,8 @@ gabble_call_stream_constructor (GType type,
   DEBUG ("Registering %s", priv->object_path);
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  return obj;
+  if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
+    G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);
 }
 
 static void
@@ -229,7 +224,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 
   object_class->dispose = gabble_call_stream_dispose;
   object_class->finalize = gabble_call_stream_finalize;
-  object_class->constructor = gabble_call_stream_constructor;
+  object_class->constructed = gabble_call_stream_constructed;
 
   param_spec = g_param_spec_string ("object-path", "D-Bus object path",
       "The D-Bus object path used for this "

@@ -77,8 +77,6 @@
 static guint disco_reply_timeout = 5;
 static guint connect_timeout = 60;
 
-#define DEFAULT_RESOURCE_FORMAT "Telepathy.%x"
-
 static void conn_service_iface_init (gpointer, gpointer);
 static void capabilities_service_iface_init (gpointer, gpointer);
 static void gabble_conn_contact_caps_iface_init (gpointer, gpointer);
@@ -322,6 +320,29 @@ gabble_connection_constructor (GType type,
   return (GObject *) self;
 }
 
+static gchar *
+dup_default_resource (void)
+{
+  /* This is a once-per-process leak. */
+  static gchar *default_resource = NULL;
+
+  if (G_UNLIKELY (default_resource == NULL))
+    {
+      char *local_machine_id = dbus_get_local_machine_id ();
+
+      if (local_machine_id == NULL)
+        g_error ("Out of memory getting local machine ID");
+
+      default_resource = sha1_hex (local_machine_id, strlen (local_machine_id));
+      /* Let's keep the resource a maneagable length. */
+      default_resource[8] = '\0';
+
+      dbus_free (local_machine_id);
+    }
+
+  return g_strdup (default_resource);
+}
+
 static void
 gabble_connection_constructed (GObject *object)
 {
@@ -335,8 +356,7 @@ gabble_connection_constructed (GObject *object)
 
   if (priv->resource == NULL)
     {
-      priv->resource = g_strdup_printf (DEFAULT_RESOURCE_FORMAT,
-          g_random_int ());
+      priv->resource = dup_default_resource ();
       DEBUG ("defaulted resource to %s", priv->resource);
     }
 

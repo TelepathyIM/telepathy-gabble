@@ -168,12 +168,12 @@ noinst_LTLIBRARIES = libgabble-convenience.la
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
 	    @HANDLE_LEAK_DEBUG_CFLAGS@ @TP_GLIB_CFLAGS@ \
-	    @SOUP_CFLAGS@ @UUID_CFLAGS@ \
+	    @SOUP_CFLAGS@ @UUID_CFLAGS@ @GMODULE_CFLAGS@ \
 	    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
 	    -DG_LOG_DOMAIN=\"gabble\"
 
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @WOCKY_LIBS@ @TP_GLIB_LIBS@ \
-	    @SOUP_LIBS@ @UUID_LIBS@
+	    @SOUP_LIBS@ @UUID_LIBS@ @GMODULE_LIBS@
 
 # build gibber first
 all: gibber

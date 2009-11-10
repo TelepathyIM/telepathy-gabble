@@ -38,6 +38,7 @@ static GDebugKey keys[] = {
   { "file-transfer", GABBLE_DEBUG_FT },
   { "search",        GABBLE_DEBUG_SEARCH },
   { "base-channel",  GABBLE_DEBUG_BASE_CHANNEL },
+  { "plugins",       GABBLE_DEBUG_PLUGINS },
   { 0, },
 };
 

@@ -127,6 +127,9 @@ struct _GabbleMediaFactoryPrivate
   GList *pending_call_channels;
   guint channel_index;
 
+  /* Whether or not we should use call channels for incoming calls */
+  gboolean use_call_channels;
+
   gboolean dispose_has_run;
 };
 
@@ -429,12 +432,22 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
 }
 
 static void
-new_jingle_session_cb (GabbleJingleFactory *jf, GabbleJingleSession *sess, gpointer data)
+new_jingle_session_cb (GabbleJingleFactory *jf,
+    GabbleJingleSession *sess,
+    gpointer data)
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (data);
 
-  if (gabble_jingle_session_get_content_type (sess) ==
+  if (gabble_jingle_session_get_content_type (sess) !=
       GABBLE_TYPE_JINGLE_MEDIA_RTP)
+    return;
+
+
+  if (self->priv->use_call_channels)
+    {
+      new_call_channel (self, sess, sess->peer, FALSE, FALSE, NULL);
+    }
+  else
     {
       GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer,
           FALSE, FALSE, FALSE);
@@ -1008,6 +1021,14 @@ _gabble_media_factory_typeflags_to_caps (TpChannelMediaCapabilities flags,
 }
 
 static void
+gabble_media_factory_reset_caps (GabbleCapsChannelManager *manager)
+{
+  GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
+
+  self->priv->use_call_channels = FALSE;
+}
+
+static void
 gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
     TpHandle handle,
     const GabbleCapabilitySet *caps,
@@ -1089,6 +1110,7 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     const gchar * const *cap_tokens,
     GabbleCapabilitySet *cap_set)
 {
+  GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
   static GQuark q_gtalk_p2p = 0, q_ice_udp = 0, q_h264 = 0;
   static GQuark qc_gtalk_p2p = 0, qc_ice_udp = 0, qc_h264 = 0;
   gboolean gtalk_p2p = FALSE, h264 = FALSE, audio = FALSE, video = FALSE,
@@ -1161,6 +1183,15 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
           continue;
         }
 
+      /* If there is a handler that can support Call channels, use those for
+       * incoming channels */
+      if (!tp_strdiff (tp_asv_get_string (filter,
+            TP_IFACE_CHANNEL ".ChannelType"),
+            GABBLE_IFACE_CHANNEL_TYPE_CALL))
+        {
+          self->priv->use_call_channels = TRUE;
+        }
+
       if (tp_asv_lookup (filter, TP_IFACE_CHANNEL ".TargetHandleType")
           != NULL &&
           tp_asv_get_uint32 (filter, TP_IFACE_CHANNEL ".TargetHandleType",
@@ -1200,6 +1231,7 @@ caps_channel_manager_iface_init (gpointer g_iface,
 {
   GabbleCapsChannelManagerIface *iface = g_iface;
 
+  iface->reset_caps = gabble_media_factory_reset_caps;
   iface->get_contact_caps = gabble_media_factory_get_contact_caps;
   iface->represent_client = gabble_media_factory_represent_client;
 }

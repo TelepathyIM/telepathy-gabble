@@ -33,6 +33,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleRegister GabbleRegister;
 typedef struct _GabbleRegisterClass GabbleRegisterClass;
+typedef struct _GabbleRegisterPrivate GabbleRegisterPrivate;
 
 GType gabble_register_get_type (void);
 
@@ -57,6 +58,7 @@ struct _GabbleRegisterClass {
 
 struct _GabbleRegister {
     GObject parent;
+    GabbleRegisterPrivate *priv;
 };
 
 GabbleRegister *gabble_register_new (GabbleConnection *conn);

@@ -55,9 +55,11 @@ enum
 {
   PROP_OBJECT_PATH = 1,
   PROP_JINGLE_CONTENT,
-  PROP_LOCAL_CANDIDATES,
 
-  PROP_ENDPOINTS
+  /* Media interface properties */
+  PROP_LOCAL_CANDIDATES,
+  PROP_ENDPOINTS,
+  PROP_TRANSPORT,
 };
 
 #if 0
@@ -139,6 +141,35 @@ gabble_call_stream_get_property (GObject    *object,
           g_ptr_array_free (arr, TRUE);
           break;
         }
+      case PROP_TRANSPORT:
+        {
+          JingleTransportType transport;
+          guint i;
+          guint tptransport = G_MAXUINT;
+          guint transport_mapping[][2] = {
+              { JINGLE_TRANSPORT_GOOGLE_P2P,
+                GABBLE_STREAM_TRANSPORT_TYPE_GTALK_P2P },
+              { JINGLE_TRANSPORT_RAW_UDP,
+                GABBLE_STREAM_TRANSPORT_TYPE_RAW_UDP },
+              { JINGLE_TRANSPORT_ICE_UDP,
+                 GABBLE_STREAM_TRANSPORT_TYPE_ICE },
+          };
+
+          transport = gabble_jingle_content_get_transport_type (priv->content);
+
+          for (i = 0; i < G_N_ELEMENTS (transport_mapping); i++)
+            {
+              if (transport_mapping[i][0] == transport)
+                {
+                  tptransport = transport_mapping[i][1];
+                  break;
+                }
+            }
+          g_assert (tptransport < G_MAXUINT);
+          g_value_set_uint (value, tptransport);
+
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -203,6 +234,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
     { NULL }
   };
   static TpDBusPropertiesMixinPropImpl stream_media_props[] = {
+    { "Transport", "transport", NULL },
     { "LocalCandidates", "local-candidates", NULL },
     { "Endpoints", "endpoints", NULL },
     { NULL }
@@ -263,6 +295,13 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       TP_ARRAY_TYPE_OBJECT_PATH_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ENDPOINTS,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("transport", "Transport",
+      "The transport of this stream",
+      0, G_MAXUINT, 0,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_TRANSPORT,
       param_spec);
 
   gabble_call_stream_class->dbus_props_class.interfaces = prop_interfaces;

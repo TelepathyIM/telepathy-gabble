@@ -71,6 +71,10 @@ CALL_STREAM_ENDPOINT = 'org.freedesktop.Telepathy.Call.Stream.Endpoint.Draft'
 CALL_MEDIA_TYPE_AUDIO = 1
 CALL_MEDIA_TYPE_VIDEO = 2
 
+CALL_STREAM_TRANSPORT_RAW_UDP = 0
+CALL_STREAM_TRANSPORT_ICE = 1
+CALL_STREAM_TRANSPORT_GOOGLE = 2
+
 
 CONN = "org.freedesktop.Telepathy.Connection"
 CONN_IFACE_AVATARS = CONN + '.Interface.Avatars'

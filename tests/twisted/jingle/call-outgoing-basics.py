@@ -96,6 +96,12 @@ def run_test(jp, q, bus, conn, stream):
                 "Endpoints", dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals (1, len (endpoints))
 
+    # There doesn't seem to be a good way to get the transport type from the
+    # JP used, for now assume we prefer gtalk p2p and always pick that..
+    transport = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA,
+                "Transport", dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (cs.CALL_STREAM_TRANSPORT_GOOGLE, transport)
+
     endpoint = bus.get_object (conn.bus_name, endpoints[0])
     candidates = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
         "RemoteCandidates",  dbus_interface=dbus.PROPERTIES_IFACE)

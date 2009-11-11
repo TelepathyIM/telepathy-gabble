@@ -71,6 +71,9 @@ def run_test(jp, q, bus, conn, stream):
 
     cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
 
+    # Media type should audio
+    assertEquals (cs.CALL_MEDIA_TYPE_AUDIO, content_properties["Type"])
+
     # Setup codecs
     codecs = jt2.get_call_audio_codecs_dbus()
     content.SetCodecs(codecs, dbus_interface=cs.CALL_CONTENT_IFACE_MEDIA)

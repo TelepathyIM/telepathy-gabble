@@ -69,6 +69,7 @@ enum
   PROP_TARGET_HANDLE,
 
   PROP_CONTACT_CODEC_MAP,
+  PROP_MEDIA_TYPE,
   PROP_STREAMS,
 };
 
@@ -135,6 +136,13 @@ gabble_call_content_get_property (GObject    *object,
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
         break;
+      case PROP_MEDIA_TYPE:
+        {
+          JingleMediaType mtype;
+          g_object_get (priv->content, "media-type", &mtype, NULL);
+          g_value_set_uint (value, mtype);
+          break;
+        }
       case PROP_STREAMS:
         {
           GPtrArray *arr = g_ptr_array_sized_new (2);
@@ -239,6 +247,7 @@ gabble_call_content_class_init (
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_content_class);
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl content_props[] = {
+    { "Type", "media-type", NULL },
     { "Streams", "streams", NULL },
     { NULL }
   };
@@ -307,6 +316,13 @@ gabble_call_content_class_init (
       GABBLE_TYPE_CONNECTION,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  param_spec = g_param_spec_uint ("media-type", "Media Type",
+      "The media type of this channel",
+      0, G_MAXUINT, 0,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_MEDIA_TYPE,
+      param_spec);
 
   param_spec = g_param_spec_boxed ("streams", "Stream",
       "The streams of this content",

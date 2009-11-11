@@ -70,19 +70,19 @@
     </method>
 
     <property name="StreamState" tp:name-for-bindings="Stream_State"
-      type="u" tp:type="Media_Stream_Type"
+      type="u" tp:type="Media_Stream_State"
       access="read">
     </property>
 
     <signal name="StreamStateChanged"
         tp:name-for-bindings="Stream_State_Changed">
       <arg name="state"
-      type="u" tp:type="Media_Stream_Type"/>
+      type="u" tp:type="Media_Stream_State"/>
     </signal>
 
     <method name="SetStreamState"
         tp:name-for-bindings="Set_Stream_State">
-      <arg name="state" type="u" tp:type="Media_Stream_Type"
+      <arg name="state" type="u" tp:type="Media_Stream_State"
         direction="in" />
     </method>
 

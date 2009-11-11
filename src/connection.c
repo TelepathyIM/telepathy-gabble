@@ -2730,6 +2730,17 @@ gabble_connection_update_capabilities (
    * advertising spurious caps in initial presence */
   gabble_capability_set_clear (self->priv->bonus_caps);
 
+  tp_base_connection_channel_manager_iter_init (&iter, base);
+
+  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
+    {
+      /* all channel managers must implement the capability interface */
+      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
+
+      gabble_caps_channel_manager_reset_capabilities (
+          GABBLE_CAPS_CHANNEL_MANAGER (manager));
+    }
+
   DEBUG ("enter");
 
   for (i = 0; i < clients->len; i++)

@@ -29,6 +29,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleMucFactory GabbleMucFactory;
 typedef struct _GabbleMucFactoryClass GabbleMucFactoryClass;
+typedef struct _GabbleMucFactoryPrivate GabbleMucFactoryPrivate;
 
 struct _GabbleMucFactoryClass {
   GObjectClass parent_class;
@@ -36,6 +37,7 @@ struct _GabbleMucFactoryClass {
 
 struct _GabbleMucFactory {
   GObject parent;
+  GabbleMucFactoryPrivate *priv;
 };
 
 GType gabble_muc_factory_get_type (void);

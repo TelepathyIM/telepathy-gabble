@@ -62,7 +62,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleMucFactoryPrivate GabbleMucFactoryPrivate;
 struct _GabbleMucFactoryPrivate
 {
   GabbleConnection *conn;
@@ -104,6 +103,8 @@ static void
 gabble_muc_factory_init (GabbleMucFactory *fac)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+
+  fac->priv = priv;
 
   priv->text_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_object_unref);

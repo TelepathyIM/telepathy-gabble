@@ -60,7 +60,6 @@ enum
 G_DEFINE_TYPE(GabbleRegister, gabble_register, G_TYPE_OBJECT);
 
 /* private structure */
-typedef struct _GabbleRegisterPrivate GabbleRegisterPrivate;
 struct _GabbleRegisterPrivate
 {
   GabbleConnection *conn;
@@ -75,6 +74,8 @@ struct _GabbleRegisterPrivate
 static void
 gabble_register_init (GabbleRegister *obj)
 {
+  obj->priv = G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_REGISTER,
+      GabbleRegisterPrivate);
 }
 
 static void gabble_register_set_property (GObject *object, guint property_id,

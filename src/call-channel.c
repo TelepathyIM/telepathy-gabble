@@ -121,18 +121,12 @@ struct _GabbleCallChannelPrivate
   gchar *transport_ns;
 };
 
-static GObject *
-gabble_call_channel_constructor (GType type,
-    guint n_props,
-    GObjectConstructParam *props)
+static void
+gabble_call_channel_constructed (GObject *obj)
 {
-  GObject *obj;
   GabbleCallChannelPrivate *priv;
   TpBaseConnection *conn;
   TpHandleRepoIface *contact_handles;
-
-  obj = G_OBJECT_CLASS (gabble_call_channel_parent_class)->
-           constructor (type, n_props, props);
 
   priv = GABBLE_CALL_CHANNEL (obj)->priv;
   conn = (TpBaseConnection *) priv->conn;
@@ -151,7 +145,8 @@ gabble_call_channel_constructor (GType type,
   g_assert (priv->creator != 0);
   tp_handle_ref (contact_handles, priv->creator);
 
-  return obj;
+  if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->constructed != NULL)
+    G_OBJECT_CLASS (gabble_call_channel_parent_class)->constructed (obj);
 }
 
 static void
@@ -360,7 +355,7 @@ gabble_call_channel_class_init (
   g_type_class_add_private (gabble_call_channel_class,
       sizeof (GabbleCallChannelPrivate));
 
-  object_class->constructor = gabble_call_channel_constructor;
+  object_class->constructed = gabble_call_channel_constructed;
 
   object_class->get_property = gabble_call_channel_get_property;
   object_class->set_property = gabble_call_channel_set_property;

@@ -17,6 +17,7 @@ TWISTED_TESTS = \
 	muc/renamed.py \
 	muc/roomlist.py \
 	muc/send-error.py \
+	muc/subject.py \
 	muc/test-ensure.py \
 	muc/test-muc-alias.py \
 	muc/test-muc-invitation.py \

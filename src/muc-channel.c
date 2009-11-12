@@ -198,17 +198,32 @@ enum
 };
 
 const TpPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
+    /* Part of the room definition: modifiable by owners only */
       { "anonymous",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "invite-only",       G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "invite-restricted", G_TYPE_BOOLEAN },  /* impl: WRITE */
       { "moderated",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "name",              G_TYPE_STRING },   /* impl: READ, WRITE */
+
+    /* Part of the room definition: might be modifiable by the owner, or
+     * not at all */
       { "description",       G_TYPE_STRING },   /* impl: READ, WRITE */
+
+    /* Part of the room definition: modifiable by owners only */
       { "password",          G_TYPE_STRING },   /* impl: WRITE */
       { "password-required", G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "persistent",        G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "private",           G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
+
+    /* fd.o#13157: currently assumed to be modifiable by everyone in the
+     * room (role >= VISITOR). When that bug is fixed, it will be: */
+    /* Modifiable via special <message/>s, if the user's role is high enough;
+     * "high enough" is defined by the muc#roominfo_changesubject and
+     * muc#roomconfig_changesubject settings. */
       { "subject",           G_TYPE_STRING },   /* impl: READ, WRITE */
+
+    /* Special: implicitly set to "myself" and "now", respectively, by
+     * changing subject. */
       { "subject-contact",   G_TYPE_UINT },     /* impl: READ */
       { "subject-timestamp", G_TYPE_UINT },     /* impl: READ */
 };
@@ -279,7 +294,9 @@ initial_state_aggregator_free (InitialStateAggregator *isa)
 static void
 gabble_muc_channel_init (GabbleMucChannel *obj)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+  GabbleMucChannelPrivate *priv;
+
+  priv = obj->priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
   priv->initial_state_aggregator = g_slice_new0 (InitialStateAggregator);
   priv->initial_state_aggregator->owner_map = g_hash_table_new (g_direct_hash,
@@ -1786,7 +1803,9 @@ update_permissions (GabbleMucChannel *chan)
       ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
       changed_props_flags);
 
-  /* Room definition */
+  /* The room properties below are part of the "room definition", so are
+   * defined by the XEP to be editable only by owners. */
+
   if (priv->self_affil == AFFILIATION_OWNER)
     {
       prop_flags_add = TP_PROPERTY_FLAG_WRITE;
@@ -1832,10 +1851,6 @@ update_permissions (GabbleMucChannel *chan)
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_PRIVATE, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
       changed_props_flags);
 
   if (priv->self_affil == AFFILIATION_OWNER)

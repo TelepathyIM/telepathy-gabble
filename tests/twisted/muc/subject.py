@@ -39,6 +39,12 @@ counter = 0
 
 def test_subject(q, bus, conn, stream, change_subject, send_first,
         moderator):
+    # FIXME: fd.o#21152: using many different rooms here because the join_muc()
+    # utility function (via request_muc_handle()) only copes with requesting
+    # the handle for the first time, due to having to expect the disco#info
+    # query to the server and reply to it. Fixing fd.o#21152 will remove the
+    # distinction between the first and nth time, at which point we can just
+    # join the same room repeatedly.
     global counter
     room = 'test%d@conf.localhost' % counter
     counter += 1

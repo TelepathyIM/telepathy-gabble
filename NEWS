@@ -1,7 +1,11 @@
 telepathy-gabble 0.8.9 (UNRELEASED)
 ===================================
 
-...
+Fixes:
+
+• Always assume that MUC servers will let us change the subject, mitigating
+  fd.o #13157; previously we assumed they would only let moderators change
+  the subject. (smcv)
 
 telepathy-gabble 0.8.8 (2009-11-09)
 ===================================

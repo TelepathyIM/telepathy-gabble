@@ -10,6 +10,10 @@ Fixes:
   fd.o#23630: “Per-connection resource randomization increases the
   window in which you lose messages”. (wjt)
 
+• Always assume that MUC servers will let us change the subject, mitigating
+  fd.o #13157; previously we assumed they would only let moderators change
+  the subject. (smcv)
+
 telepathy-gabble 0.9.2 (2009-10-27)
 ===================================
 

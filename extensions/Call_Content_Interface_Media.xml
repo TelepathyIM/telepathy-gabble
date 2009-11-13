@@ -86,6 +86,22 @@
       </tp:member>
     </tp:mapping>
 
+    <tp:struct name="Codec_Offering">
+      <tp:member name="CodecOffer" type="o">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          The object path to the
+            <tp:dbus-ref namespace="org.freedesktop.Telepathy.Call.Content"
+              >CodecOffer.Draft</tp:dbus-ref>
+        </tp:docstring>
+      </tp:member>
+      <tp:member name="CodecMap" type="a{ua(usuua{ss})}"
+          tp:type="Contact_Codec_Map">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          The CodecMap of this offer.
+        </tp:docstring>
+      </tp:member>
+    </tp:struct>
+
     <signal name="CodecsChanged" tp:name-for-bindings="Codecs_Changed"
         type="a{ua(usuua{ss}})au">
       <arg name="UpdateCodecs" type="a{ua(usuua{ss})}"
@@ -114,12 +130,14 @@
     </signal>
 
     <property name="CodecOffer" tp:name-for-bindings="Codec_Offer"
-      type="o" access="read">
+      type="(oa{ua(usuua{ss})})" tp:type="Codec_Offering" access="read">
       <tp:docstring>
-        If this object path is not "/" then refers to the current outstanding
+        The object path to the current
         <tp:dbus-ref
           namespace="org.freedesktop.Telepathy.Call.Content"
-            >CodecOffer.Draft</tp:dbus-ref> object.
+            >CodecOffer.Draft</tp:dbus-ref> object and the
+          Codec map associated with it.
+        If the object path is "/" then there isn't an outstanding CodecOffer
       </tp:docstring>
     </property>
   </interface>

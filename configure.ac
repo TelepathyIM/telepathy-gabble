@@ -111,6 +111,18 @@ AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
+AC_ARG_ENABLE(plugins,
+  AC_HELP_STRING([--enable-plugins],
+                 [enable experimental plugin support]),
+    [enable_plugins=$enableval], [enable_plugins=no])
+
+if test x$enable_plugins = xyes; then
+  AC_DEFINE(ENABLE_PLUGINS, [], [Enable plugins])
+fi
+
+AM_CONDITIONAL(ENABLE_PLUGINS, test x$enable_plugins = xyes)
+AC_SUBST(ENABLE_PLUGINS)
+
 dnl Check for Glib
 PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16, gobject-2.0 >= 2.16, gthread-2.0 >= 2.16])
 

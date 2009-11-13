@@ -104,6 +104,8 @@ libgabble_convenience_la_SOURCES = \
     olpc-view.c \
     plugin-loader.h \
     plugin-loader.c \
+    plugin.h \
+    plugin.c \
     presence.h \
     presence.c \
     presence-cache.h \

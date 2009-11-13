@@ -947,12 +947,9 @@ gabble_disco_service_find (GabbleDisco *disco,
       if (type != NULL && tp_strdiff (type, item->type))
         continue;
 
-      if (feature != NULL)
-        {
-          gpointer k, v;
-          if (!g_hash_table_lookup_extended (item->features, feature, &k, &v))
-            continue;
-        }
+      if (feature != NULL &&
+          !g_hash_table_lookup_extended (item->features, feature, NULL, NULL))
+        continue;
 
       return item;
     }

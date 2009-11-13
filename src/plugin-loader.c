@@ -25,6 +25,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PLUGINS
 #include "debug.h"
+#include "plugin.h"
 
 #ifdef ENABLE_PLUGINS
 void
@@ -72,7 +73,44 @@ gabble_plugin_loader_load (void)
         }
       else
         {
-          g_module_close (m);
+          gpointer func;
+
+          if (!g_module_symbol (m, "gabble_plugin_create", &func))
+            {
+              DEBUG ("%s", g_module_error ());
+
+              g_module_close (m);
+            }
+          else
+            {
+              GabblePluginCreateImpl create = func;
+              GabblePlugin *plugin;
+
+              /* We're about to try to instantiate an object. This installs the
+               * class with the type system, so we should ensure that this
+               * plug-in is never accidentally unloaded.
+               */
+              g_module_make_resident (m);
+
+              /* Here goes nothing... */
+              plugin = create ();
+
+              if (plugin == NULL)
+                {
+                  g_warning ("gabble_plugin_create () failed for %s", path);
+                }
+              else
+                {
+                  gchar *sidecars = g_strjoinv (", ",
+                      (gchar **) gabble_plugin_get_sidecar_interfaces (plugin));
+
+                  DEBUG ("loaded '%s' (%s), implementing these sidecars: %s",
+                      gabble_plugin_get_name (plugin), path, sidecars);
+
+                  g_free (sidecars);
+                  g_object_unref (plugin);
+                }
+            }
         }
 
       g_free (path);

@@ -21,15 +21,26 @@
 #include "plugin-loader.h"
 
 #include <glib.h>
-#include <gmodule.h>
+
+#ifdef ENABLE_PLUGINS
+# include <gmodule.h>
+#endif
 
 #define DEBUG_FLAG GABBLE_DEBUG_PLUGINS
 #include "debug.h"
 #include "plugin.h"
 
+G_DEFINE_TYPE(GabblePluginLoader,
+    gabble_plugin_loader,
+    G_TYPE_OBJECT)
+
+struct _GabblePluginLoaderPrivate {
+    guint unused;
+};
+
 #ifdef ENABLE_PLUGINS
-void
-gabble_plugin_loader_load (void)
+static void
+gabble_plugin_loader_probe (GabblePluginLoader *self)
 {
   GError *error = NULL;
   GDir *d;
@@ -118,13 +129,66 @@ gabble_plugin_loader_load (void)
 
   g_dir_close (d);
 }
+#endif
 
-#else /* ! ENABLE_PLUGINS */
-
-void
-gabble_plugin_loader_load (void)
+static void
+gabble_plugin_loader_init (GabblePluginLoader *self)
 {
-  DEBUG ("built without plugin support");
+  GabblePluginLoaderPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_PLUGIN_LOADER, GabblePluginLoaderPrivate);
+
+  self->priv = priv;
 }
 
+static GObject *
+gabble_plugin_loader_constructor (
+    GType type,
+    guint n_props,
+    GObjectConstructParam *props)
+{
+  static GObject *singleton = NULL;
+
+  if (singleton == NULL)
+    {
+      /* We keep a ref in here to ensure the loader never dies. */
+      singleton = G_OBJECT_CLASS (gabble_plugin_loader_parent_class)->
+          constructor (type, n_props, props);
+    }
+
+  return g_object_ref (singleton);
+}
+
+static void
+gabble_plugin_loader_constructed (GObject *object)
+{
+  GabblePluginLoader *self = GABBLE_PLUGIN_LOADER (object);
+  void (*chain_up) (GObject *) =
+      G_OBJECT_CLASS (gabble_plugin_loader_parent_class)->constructed;
+
+  if (chain_up != NULL)
+    chain_up (object);
+
+#ifdef ENABLE_PLUGINS
+  gabble_plugin_loader_probe (self);
+#else
+  DEBUG ("built without plugin support, not actually loading anything");
+  (void) self; /* silence unused variable warning. */
 #endif
+}
+
+static void
+gabble_plugin_loader_class_init (GabblePluginLoaderClass *klass)
+{
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+  g_type_class_add_private (klass, sizeof (GabblePluginLoaderPrivate));
+
+  object_class->constructor = gabble_plugin_loader_constructor;
+  object_class->constructed = gabble_plugin_loader_constructed;
+}
+
+GabblePluginLoader *
+gabble_plugin_loader_dup ()
+{
+  return g_object_new (GABBLE_TYPE_PLUGIN_LOADER, NULL);
+}

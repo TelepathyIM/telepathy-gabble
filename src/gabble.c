@@ -141,7 +141,7 @@ gabble_main (int argc,
     tp_debug_set_persistent (TRUE);
 #endif
 
-  gabble_plugin_loader_load ();
+  gabble_plugin_loader_dup ();
 
   out = tp_run_connection_manager ("telepathy-gabble", VERSION,
       construct_cm, argc, argv);

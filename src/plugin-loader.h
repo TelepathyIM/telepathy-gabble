@@ -20,6 +20,41 @@
 #ifndef __PLUGIN_LOADER_H__
 #define __PLUGIN_LOADER_H__
 
-void gabble_plugin_loader_load (void);
+#include <glib-object.h>
+
+typedef struct _GabblePluginLoader GabblePluginLoader;
+typedef struct _GabblePluginLoaderClass GabblePluginLoaderClass;
+typedef struct _GabblePluginLoaderPrivate GabblePluginLoaderPrivate;
+
+struct _GabblePluginLoaderClass {
+    GObjectClass parent_class;
+};
+
+struct _GabblePluginLoader {
+    GObject parent;
+
+    GabblePluginLoaderPrivate *priv;
+};
+
+GType gabble_plugin_loader_get_type (void);
+
+/* TYPE MACROS */
+#define GABBLE_TYPE_PLUGIN_LOADER \
+  (gabble_plugin_loader_get_type ())
+#define GABBLE_PLUGIN_LOADER(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_PLUGIN_LOADER, \
+                              GabblePluginLoader))
+#define GABBLE_PLUGIN_LOADER_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_PLUGIN_LOADER, \
+                           GabblePluginLoaderClass))
+#define GABBLE_IS_PLUGIN_LOADER(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_PLUGIN_LOADER))
+#define GABBLE_IS_PLUGIN_LOADER_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_PLUGIN_LOADER))
+#define GABBLE_PLUGIN_LOADER_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_PLUGIN_LOADER, \
+                              GabblePluginLoaderClass))
+
+GabblePluginLoader *gabble_plugin_loader_dup (void);
 
 #endif /* #ifndef __PLUGIN_LOADER_H__ */

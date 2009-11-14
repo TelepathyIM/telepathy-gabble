@@ -128,6 +128,8 @@ libgabble_convenience_la_SOURCES = \
     search-channel.c \
     search-manager.h \
     search-manager.c \
+    sidecar.h \
+    sidecar.c \
     tube-iface.h \
     tube-iface.c \
     tubes-channel.h \

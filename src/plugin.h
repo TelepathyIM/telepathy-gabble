@@ -24,6 +24,8 @@
 
 #include <gio/gio.h>
 
+#include "sidecar.h"
+
 #define GABBLE_TYPE_PLUGIN (gabble_plugin_get_type ())
 #define GABBLE_PLUGIN(obj) \
     (G_TYPE_CHECK_INSTANCE_CAST ((obj), GABBLE_TYPE_PLUGIN, GabblePlugin))
@@ -35,6 +37,12 @@
 
 typedef struct _GabblePlugin GabblePlugin;
 typedef struct _GabblePluginInterface GabblePluginInterface;
+
+typedef void (*GabblePluginCreateSidecarImpl) (
+    GabblePlugin *plugin,
+    const gchar *sidecar_interface,
+    GAsyncReadyCallback callback,
+    gpointer user_data);
 
 struct _GabblePluginInterface {
     GTypeInterface parent;
@@ -49,6 +57,11 @@ struct _GabblePluginInterface {
      * implemented by this plugin.
      */
     const gchar * const *sidecar_interfaces;
+
+    /**
+     * An implementation of gabble_plugin_create_sidecar().
+     */
+    GabblePluginCreateSidecarImpl create_sidecar;
 };
 
 GType gabble_plugin_get_type (void);
@@ -57,6 +70,21 @@ const gchar *gabble_plugin_get_name (
     GabblePlugin *plugin);
 const gchar * const *gabble_plugin_get_sidecar_interfaces (
     GabblePlugin *plugin);
+
+gboolean gabble_plugin_implements_sidecar (
+    GabblePlugin *plugin,
+    const gchar *sidecar_interface);
+
+void gabble_plugin_create_sidecar (
+    GabblePlugin *plugin,
+    const gchar *sidecar_interface,
+    GAsyncReadyCallback callback,
+    gpointer user_data);
+
+GabbleSidecar *gabble_plugin_create_sidecar_finish (
+    GabblePlugin *plugin,
+    GAsyncResult *result,
+    GError **error);
 
 /**
  * gabble_plugin_create:

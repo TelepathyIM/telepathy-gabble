@@ -35,7 +35,7 @@ G_DEFINE_TYPE(GabblePluginLoader,
     G_TYPE_OBJECT)
 
 struct _GabblePluginLoaderPrivate {
-    guint unused;
+    GPtrArray *plugins;
 };
 
 #ifdef ENABLE_PLUGINS
@@ -119,7 +119,8 @@ gabble_plugin_loader_probe (GabblePluginLoader *self)
                       gabble_plugin_get_name (plugin), path, sidecars);
 
                   g_free (sidecars);
-                  g_object_unref (plugin);
+
+                  g_ptr_array_add (self->priv->plugins, plugin);
                 }
             }
         }
@@ -138,6 +139,7 @@ gabble_plugin_loader_init (GabblePluginLoader *self)
       GABBLE_TYPE_PLUGIN_LOADER, GabblePluginLoaderPrivate);
 
   self->priv = priv;
+  priv->plugins = g_ptr_array_new_with_free_func (g_object_unref);
 }
 
 static GObject *
@@ -177,6 +179,20 @@ gabble_plugin_loader_constructed (GObject *object)
 }
 
 static void
+gabble_plugin_loader_finalize (GObject *object)
+{
+  GabblePluginLoader *self = GABBLE_PLUGIN_LOADER (object);
+  void (*chain_up) (GObject *) =
+      G_OBJECT_CLASS (gabble_plugin_loader_parent_class)->finalize;
+
+  g_ptr_array_free (self->priv->plugins, TRUE);
+  self->priv->plugins = NULL;
+
+  if (chain_up != NULL)
+    chain_up (object);
+}
+
+static void
 gabble_plugin_loader_class_init (GabblePluginLoaderClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -185,6 +201,7 @@ gabble_plugin_loader_class_init (GabblePluginLoaderClass *klass)
 
   object_class->constructor = gabble_plugin_loader_constructor;
   object_class->constructed = gabble_plugin_loader_constructed;
+  object_class->finalize = gabble_plugin_loader_finalize;
 }
 
 GabblePluginLoader *

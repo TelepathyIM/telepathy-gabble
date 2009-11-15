@@ -22,6 +22,10 @@
 
 #include <glib-object.h>
 
+#include <gio/gio.h>
+
+#include "sidecar.h"
+
 typedef struct _GabblePluginLoader GabblePluginLoader;
 typedef struct _GabblePluginLoaderClass GabblePluginLoaderClass;
 typedef struct _GabblePluginLoaderPrivate GabblePluginLoaderPrivate;
@@ -56,5 +60,16 @@ GType gabble_plugin_loader_get_type (void);
                               GabblePluginLoaderClass))
 
 GabblePluginLoader *gabble_plugin_loader_dup (void);
+
+void gabble_plugin_loader_create_sidecar (
+    GabblePluginLoader *self,
+    const gchar *sidecar_interface,
+    GAsyncReadyCallback callback,
+    gpointer user_data);
+
+GabbleSidecar *gabble_plugin_loader_create_sidecar_finish (
+    GabblePluginLoader *self,
+    GAsyncResult *result,
+    GError **error);
 
 #endif /* #ifndef __PLUGIN_LOADER_H__ */

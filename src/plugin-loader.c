@@ -26,6 +26,8 @@
 # include <gmodule.h>
 #endif
 
+#include <telepathy-glib/errors.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_PLUGINS
 #include "debug.h"
 #include "plugin.h"
@@ -211,4 +213,82 @@ GabblePluginLoader *
 gabble_plugin_loader_dup ()
 {
   return g_object_new (GABBLE_TYPE_PLUGIN_LOADER, NULL);
+}
+
+static void
+create_sidecar_cb (
+    GObject *plugin_obj,
+    GAsyncResult *nested_result,
+    gpointer user_data)
+{
+  GSimpleAsyncResult *result = user_data;
+  GabbleSidecar *sidecar;
+  GError *error = NULL;
+
+  sidecar = gabble_plugin_create_sidecar_finish (GABBLE_PLUGIN (plugin_obj),
+      nested_result, &error);
+
+  if (sidecar == NULL)
+    {
+      g_simple_async_result_set_from_error (result, error);
+      g_clear_error (&error);
+    }
+  else
+    {
+      g_simple_async_result_set_op_res_gpointer (result, sidecar,
+          g_object_unref);
+    }
+
+  g_simple_async_result_complete (result);
+  g_object_unref (result);
+}
+
+void
+gabble_plugin_loader_create_sidecar (
+    GabblePluginLoader *self,
+    const gchar *sidecar_interface,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabblePluginLoaderPrivate *priv = self->priv;
+  guint i;
+
+  for (i = 0; i < priv->plugins->len; i++)
+    {
+      GabblePlugin *p = g_ptr_array_index (priv->plugins, i);
+
+      if (gabble_plugin_implements_sidecar (p, sidecar_interface))
+        {
+          GSimpleAsyncResult *res = g_simple_async_result_new (G_OBJECT (self),
+              callback, user_data, gabble_plugin_loader_create_sidecar);
+
+          gabble_plugin_create_sidecar (p, sidecar_interface, create_sidecar_cb,
+              res);
+          return;
+        }
+    }
+
+  g_simple_async_report_error_in_idle (G_OBJECT (self), callback, user_data,
+      TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "No plugin implements sidecar '%s'",
+      sidecar_interface);
+}
+
+GabbleSidecar *
+gabble_plugin_loader_create_sidecar_finish (
+    GabblePluginLoader *self,
+    GAsyncResult *result,
+    GError **error)
+{
+  GabbleSidecar *sidecar;
+
+  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
+          error))
+    return NULL;
+
+  g_return_val_if_fail (g_simple_async_result_is_valid (result,
+    G_OBJECT (self), gabble_plugin_loader_create_sidecar), NULL);
+
+  sidecar = GABBLE_SIDECAR (g_simple_async_result_get_op_res_gpointer (
+      G_SIMPLE_ASYNC_RESULT (result)));
+  return g_object_ref (sidecar);
 }

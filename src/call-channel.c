@@ -52,6 +52,8 @@ static void call_iface_init (gpointer, gpointer);
 static void async_initable_iface_init (GAsyncInitableIface *iface);
 
 static void call_channel_setup (GabbleCallChannel *self);
+static void call_channel_add_content (GabbleCallChannel *self,
+  GabbleJingleContent *c);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
   G_TYPE_OBJECT,
@@ -124,11 +126,11 @@ struct _GabbleCallChannelPrivate
 static void
 gabble_call_channel_constructed (GObject *obj)
 {
-  GabbleCallChannelPrivate *priv;
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (obj);
+  GabbleCallChannelPrivate *priv = self->priv;
   TpBaseConnection *conn;
   TpHandleRepoIface *contact_handles;
 
-  priv = GABBLE_CALL_CHANNEL (obj)->priv;
   conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -144,6 +146,32 @@ gabble_call_channel_constructed (GObject *obj)
    * priv->creator is the InitiatorHandle) */
   g_assert (priv->creator != 0);
   tp_handle_ref (contact_handles, priv->creator);
+
+  if (priv->session != NULL)
+    {
+      GList *contents, *l;
+      contents = gabble_jingle_session_get_contents (priv->session);
+
+      for (l = contents; l != NULL; l = g_list_next (l))
+        {
+          GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (l->data);
+          JingleMediaType mtype;
+
+          call_channel_add_content (self, content);
+          g_object_get (content, "media-type", &mtype, NULL);
+          switch (mtype)
+            {
+              case JINGLE_MEDIA_TYPE_AUDIO:
+                priv->initial_audio = TRUE;
+                break;
+              case JINGLE_MEDIA_TYPE_VIDEO:
+                priv->initial_video = TRUE;
+                break;
+              default:
+                break;
+            }
+        }
+    }
 
   if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_channel_parent_class)->constructed (obj);
@@ -493,25 +521,11 @@ gabble_call_channel_finalize (GObject *object)
 
 static void
 call_channel_add_content (GabbleCallChannel *self,
-    const gchar *name,
-    JingleMediaType type,
-    GabbleCallContentDisposition disposition)
+  GabbleJingleContent *c)
 {
   GabbleCallChannelPrivate *priv = self->priv;
-  const gchar *content_ns;
-  GabbleJingleContent *c;
-  GabbleCallContent *content;
   gchar *object_path;
-
-  content_ns = jingle_pick_best_content_type (priv->conn, priv->target,
-    gabble_jingle_session_get_peer_resource (priv->session),
-    type);
-
-  DEBUG ("Creating new jingle content with ns %s : %s",
-    content_ns, priv->transport_ns);
-
-  c = gabble_jingle_session_add_content (priv->session,
-      type, content_ns, priv->transport_ns);
+  GabbleCallContent *content;
 
   object_path = g_strdup_printf ("%s/Content%p", priv->object_path, c);
 
@@ -525,6 +539,29 @@ call_channel_add_content (GabbleCallChannel *self,
   g_free (object_path);
 
   priv->contents = g_list_prepend (priv->contents, content);
+}
+
+static void
+call_channel_create_content (GabbleCallChannel *self,
+    const gchar *name,
+    JingleMediaType type,
+    GabbleCallContentDisposition disposition)
+{
+  GabbleCallChannelPrivate *priv = self->priv;
+  const gchar *content_ns;
+  GabbleJingleContent *c;
+
+  content_ns = jingle_pick_best_content_type (priv->conn, priv->target,
+    gabble_jingle_session_get_peer_resource (priv->session),
+    type);
+
+  DEBUG ("Creating new jingle content with ns %s : %s",
+    content_ns, priv->transport_ns);
+
+  c = gabble_jingle_session_add_content (priv->session,
+      type, content_ns, priv->transport_ns);
+
+  call_channel_add_content (self, c);
 }
 
 
@@ -541,15 +578,6 @@ call_channel_setup (GabbleCallChannel *self)
     G_OBJECT (self));
 
   priv->registered = TRUE;
-
-  /* Setup the session and the initial contents */
-  if (priv->initial_audio)
-    call_channel_add_content (self, "Audio", JINGLE_MEDIA_TYPE_AUDIO,
-      GABBLE_CALLCONTENTDISPOSITION_INITIAL);
-
-  if (priv->initial_video)
-    call_channel_add_content (self, "Video", JINGLE_MEDIA_TYPE_VIDEO,
-      GABBLE_CALLCONTENTDISPOSITION_INITIAL);
 }
 
 void
@@ -689,6 +717,15 @@ call_channel_init_async (GAsyncInitable *initable,
         priv->conn->jingle_factory, priv->target, resource, FALSE);
 
       g_object_set (priv->session, "dialect", dialect, NULL);
+
+      /* Setup the session and the initial contents */
+      if (priv->initial_audio)
+        call_channel_create_content (self, "Audio", JINGLE_MEDIA_TYPE_AUDIO,
+          GABBLE_CALLCONTENTDISPOSITION_INITIAL);
+
+      if (priv->initial_video)
+        call_channel_create_content (self, "Video", JINGLE_MEDIA_TYPE_VIDEO,
+          GABBLE_CALLCONTENTDISPOSITION_INITIAL);
     }
 
   call_channel_setup (self);

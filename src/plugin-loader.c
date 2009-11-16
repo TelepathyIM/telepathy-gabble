@@ -40,6 +40,64 @@ struct _GabblePluginLoaderPrivate {
 
 #ifdef ENABLE_PLUGINS
 static void
+plugin_loader_try_to_load (
+    GabblePluginLoader *self,
+    const gchar *path)
+{
+  GModule *m = g_module_open (path, G_MODULE_BIND_LOCAL);
+  gpointer func;
+  GabblePluginCreateImpl create;
+  GabblePlugin *plugin;
+
+  if (m == NULL)
+    {
+      const gchar *e = g_module_error ();
+
+      /* the errors often seem to be prefixed by the filename */
+      if (g_str_has_prefix (e, path))
+        DEBUG ("%s", e);
+      else
+        DEBUG ("%s: %s", path, e);
+
+      return;
+    }
+
+  if (!g_module_symbol (m, "gabble_plugin_create", &func))
+    {
+      DEBUG ("%s", g_module_error ());
+      g_module_close (m);
+      return;
+    }
+
+  /* We're about to try to instantiate an object. This installs the
+   * class with the type system, so we should ensure that this
+   * plug-in is never accidentally unloaded.
+   */
+  g_module_make_resident (m);
+
+  /* Here goes nothing... */
+  create = func;
+  plugin = create ();
+
+  if (plugin == NULL)
+    {
+      g_warning ("gabble_plugin_create () failed for %s", path);
+    }
+  else
+    {
+      gchar *sidecars = g_strjoinv (", ",
+          (gchar **) gabble_plugin_get_sidecar_interfaces (plugin));
+
+      DEBUG ("loaded '%s' (%s), implementing these sidecars: %s",
+          gabble_plugin_get_name (plugin), path, sidecars);
+
+      g_free (sidecars);
+
+      g_ptr_array_add (self->priv->plugins, plugin);
+    }
+}
+
+static void
 gabble_plugin_loader_probe (GabblePluginLoader *self)
 {
   GError *error = NULL;
@@ -63,68 +121,13 @@ gabble_plugin_loader_probe (GabblePluginLoader *self)
 
   while ((file = g_dir_read_name (d)) != NULL)
     {
-      GModule *m;
       gchar *path;
 
       if (!g_str_has_suffix (file, G_MODULE_SUFFIX))
         continue;
 
       path = g_build_filename (PLUGIN_DIR, file, NULL);
-      m = g_module_open (path, G_MODULE_BIND_LOCAL);
-
-      if (m == NULL)
-        {
-          const gchar *e = g_module_error ();
-
-          /* the errors often seem to be prefixed by the filename */
-          if (g_str_has_prefix (e, path))
-            DEBUG ("%s", e);
-          else
-            DEBUG ("%s: %s", path, e);
-        }
-      else
-        {
-          gpointer func;
-
-          if (!g_module_symbol (m, "gabble_plugin_create", &func))
-            {
-              DEBUG ("%s", g_module_error ());
-
-              g_module_close (m);
-            }
-          else
-            {
-              GabblePluginCreateImpl create = func;
-              GabblePlugin *plugin;
-
-              /* We're about to try to instantiate an object. This installs the
-               * class with the type system, so we should ensure that this
-               * plug-in is never accidentally unloaded.
-               */
-              g_module_make_resident (m);
-
-              /* Here goes nothing... */
-              plugin = create ();
-
-              if (plugin == NULL)
-                {
-                  g_warning ("gabble_plugin_create () failed for %s", path);
-                }
-              else
-                {
-                  gchar *sidecars = g_strjoinv (", ",
-                      (gchar **) gabble_plugin_get_sidecar_interfaces (plugin));
-
-                  DEBUG ("loaded '%s' (%s), implementing these sidecars: %s",
-                      gabble_plugin_get_name (plugin), path, sidecars);
-
-                  g_free (sidecars);
-
-                  g_ptr_array_add (self->priv->plugins, plugin);
-                }
-            }
-        }
-
+      plugin_loader_try_to_load (self, path);
       g_free (path);
     }
 

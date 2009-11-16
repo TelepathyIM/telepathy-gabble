@@ -103,6 +103,7 @@ static void
 gabble_plugin_loader_probe (GabblePluginLoader *self)
 {
   GError *error = NULL;
+  const gchar *directory_name = g_getenv ("GABBLE_PLUGIN_DIR");
   GDir *d;
   const gchar *file;
 
@@ -112,7 +113,11 @@ gabble_plugin_loader_probe (GabblePluginLoader *self)
       return;
     }
 
-  d = g_dir_open (PLUGIN_DIR, 0, &error);
+  if (directory_name == NULL)
+    directory_name = PLUGIN_DIR;
+
+  DEBUG ("probing %s", directory_name);
+  d = g_dir_open (directory_name, 0, &error);
 
   if (d == NULL)
     {
@@ -128,7 +133,7 @@ gabble_plugin_loader_probe (GabblePluginLoader *self)
       if (!g_str_has_suffix (file, G_MODULE_SUFFIX))
         continue;
 
-      path = g_build_filename (PLUGIN_DIR, file, NULL);
+      path = g_build_filename (directory_name, file, NULL);
       plugin_loader_try_to_load (self, path);
       g_free (path);
     }

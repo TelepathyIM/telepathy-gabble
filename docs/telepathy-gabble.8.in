@@ -35,6 +35,10 @@ May be set to "all" for full debug output from the Wocky XMPP library used
 by Gabble, or various undocumented options (which may change from release to
 release) to filter the output. For general Gabble debugging, "net" is
 recommended.
+.TP
+\fBGABBLE_PLUGIN_DIR\fR=\fIdirectory\fR
+If set, and Gabble was compiled with plugin support, plugins will be loaded
+from \fIdirectory\fR rather than from the default directory.
 .SH SEE ALSO
 .IR http://telepathy.freedesktop.org/ ,
 .IR http://telepathy.freedesktop.org/wiki/CategoryGabble ,

@@ -41,6 +41,8 @@ libgabble_convenience_la_SOURCES = \
     conn-olpc.c \
     conn-presence.h \
     conn-presence.c \
+    conn-sidecars.h \
+    conn-sidecars.c \
     connection.h \
     connection.c \
     connection-manager.h \

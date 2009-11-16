@@ -44,6 +44,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 
 <xi:include href="Channel_Type_Contact_Search.xml"/>
 <xi:include href="Connection_Interface_Contact_Info.xml"/>
+<xi:include href="Connection_Future.xml"/>
 
 <tp:generic-types>
   <tp:external-type name="Contact_Handle" type="u"
@@ -92,6 +93,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 
   <!-- use types from Connection_Interface_Contact_Capabilities -->
   <tp:external-type name="Requestable_Channel_Class" type="(a{sv}as)"
+    from="Telepathy specification"/>
+
+  <tp:external-type name="Connection_Status" type="u"
     from="Telepathy specification"/>
 
 </tp:generic-types>

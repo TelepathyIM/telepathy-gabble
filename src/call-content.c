@@ -517,6 +517,9 @@ call_content_generate_codec_map (GabbleCallContent *self)
   GHashTable *map;
   GPtrArray *arr;
 
+  /* FIXME this map is always remote + local, irrespective of whether it has
+   * been accepted or not */
+
   map = g_hash_table_new_full (g_direct_hash, g_direct_equal,
     NULL, (GDestroyNotify) g_ptr_array_unref);
 

@@ -671,8 +671,28 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 }
 
 static void
+gabble_call_channel_accept (GabbleSvcChannelTypeCall *iface,
+        DBusGMethodInvocation *context)
+{
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (iface);
+
+  DEBUG ("Client accepted the call");
+
+  gabble_jingle_session_accept (self->priv->session);
+
+  gabble_svc_channel_type_call_return_from_accept (context);
+}
+
+static void
 call_iface_init (gpointer g_iface, gpointer iface_data)
 {
+  GabbleSvcChannelTypeCallClass *klass =
+    (GabbleSvcChannelTypeCallClass *) g_iface;
+
+#define IMPLEMENT(x) gabble_svc_channel_type_call_implement_##x (\
+    klass, gabble_call_channel_##x)
+    IMPLEMENT(accept);
+#undef IMPLEMENT
 }
 
 static void

@@ -276,8 +276,28 @@ call_stream_endpoint_new_candidates_cb (GabbleJingleContent *content,
 }
 
 static void
+call_stream_endpoint_set_stream_state (GabbleSvcCallStreamEndpoint *iface,
+    TpMediaStreamState state,
+    DBusGMethodInvocation *context)
+{
+  GabbleCallStreamEndpoint *self = GABBLE_CALL_STREAM_ENDPOINT (iface);
+
+  gabble_jingle_content_set_transport_state (self->priv->content,
+    state);
+
+  gabble_svc_call_stream_endpoint_return_from_set_stream_state (context);
+}
+
+static void
 call_stream_endpoint_iface_init (gpointer iface, gpointer data)
 {
+  GabbleSvcCallStreamEndpointClass *klass =
+    (GabbleSvcCallStreamEndpointClass *) iface;
+
+  #define IMPLEMENT(x) gabble_svc_call_stream_endpoint_implement_##x (\
+      klass, call_stream_endpoint_##x)
+      IMPLEMENT(set_stream_state);
+  #undef IMPLEMENT
 }
 
 GabbleCallStreamEndpoint *

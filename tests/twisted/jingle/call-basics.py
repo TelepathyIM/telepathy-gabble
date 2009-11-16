@@ -138,6 +138,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
     candidates = jt2.get_call_remote_transports_dbus ()
     cstream.AddCandidates (candidates,
         dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
+    cstream.CandidatesPrepared (dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
 
     local_candidates = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA,
                 "LocalCandidates", dbus_interface=dbus.PROPERTIES_IFACE)

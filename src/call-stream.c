@@ -395,6 +395,15 @@ gabble_call_stream_add_candidates (GabbleSvcCallStreamInterfaceMedia *iface,
 }
 
 static void
+gabble_call_stream_candidates_prepared (
+    GabbleSvcCallStreamInterfaceMedia *iface,
+    DBusGMethodInvocation *context)
+{
+  gabble_svc_call_stream_interface_media_return_from_candidates_prepared (
+    context);
+}
+
+static void
 call_stream_iface_init (gpointer g_iface, gpointer iface_data)
 {
 }
@@ -408,6 +417,7 @@ call_stream_media_iface_init (gpointer g_iface, gpointer iface_data)
 #define IMPLEMENT(x) gabble_svc_call_stream_interface_media_implement_##x (\
     klass, gabble_call_stream_##x)
   IMPLEMENT(add_candidates);
+  IMPLEMENT(candidates_prepared);
 #undef IMPLEMENT
 }
 

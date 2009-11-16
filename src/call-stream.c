@@ -30,6 +30,7 @@
 
 #include "call-stream.h"
 #include "call-stream-endpoint.h"
+#include "connection.h"
 #include "jingle-content.h"
 #include "util.h"
 
@@ -60,6 +61,7 @@ enum
   PROP_LOCAL_CANDIDATES,
   PROP_ENDPOINTS,
   PROP_TRANSPORT,
+  PROP_STUN_SERVERS,
 };
 
 #if 0
@@ -170,6 +172,40 @@ gabble_call_stream_get_property (GObject    *object,
 
           break;
         }
+      case PROP_STUN_SERVERS:
+        {
+          GPtrArray *arr;
+          GabbleConnection *connection;
+          gchar *stun_server;
+          guint stun_port;
+
+          arr = g_ptr_array_sized_new (1);
+
+          g_object_get (priv->content,
+              "connection", &connection,
+              NULL);
+
+          /* maybe one day we'll support multiple STUN servers */
+          if (gabble_jingle_factory_get_stun_server (
+                connection->jingle_factory, &stun_server, &stun_port))
+            {
+              GValueArray *va = g_value_array_new (2);
+
+              g_value_array_append (va, NULL);
+              g_value_array_append (va, NULL);
+              g_value_init (va->values + 0, G_TYPE_STRING);
+              g_value_init (va->values + 1, G_TYPE_UINT);
+              g_value_take_string (va->values + 0, stun_server);
+              g_value_set_uint (va->values + 1, stun_port);
+              g_ptr_array_add (arr, va);
+            }
+
+          g_object_unref (connection);
+
+          g_value_set_boxed (value, arr);
+          g_ptr_array_unref (arr);
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -236,6 +272,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   static TpDBusPropertiesMixinPropImpl stream_media_props[] = {
     { "Transport", "transport", NULL },
     { "LocalCandidates", "local-candidates", NULL },
+    { "STUNServers", "stun-servers", NULL },
     { "Endpoints", "endpoints", NULL },
     { NULL }
   };
@@ -302,6 +339,13 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       0, G_MAXUINT, 0,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_TRANSPORT,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("stun-servers", "STUNServers",
+      "List of STUN servers",
+      GABBLE_ARRAY_TYPE_SOCKET_ADDRESS_IP_LIST,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_STUN_SERVERS,
       param_spec);
 
   gabble_call_stream_class->dbus_props_class.interfaces = prop_interfaces;

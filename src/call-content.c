@@ -238,10 +238,9 @@ gabble_call_content_set_property (GObject *object,
 static void
 gabble_call_content_constructed (GObject *obj)
 {
-  GabbleCallContentPrivate *priv;
+  GabbleCallContent *self = GABBLE_CALL_CONTENT (obj);
+  GabbleCallContentPrivate *priv = self->priv;
   DBusGConnection *bus;
-
-  priv = GABBLE_CALL_CONTENT (obj)->priv;
 
   /* register object on the bus */
   bus = tp_get_bus ();
@@ -261,6 +260,12 @@ gabble_call_content_constructed (GObject *obj)
       g_free (path);
 
       priv->streams = g_list_prepend (priv->streams, stream);
+
+      if (gabble_jingle_media_rtp_get_remote_codecs (
+          GABBLE_JINGLE_MEDIA_RTP (priv->content)) != NULL)
+        {
+          call_content_new_offer (self);
+        }
 
       gabble_signal_connect_weak (priv->content, "remote-codecs",
         G_CALLBACK (call_content_remote_codecs_cb),
@@ -566,15 +571,16 @@ out:
 }
 
 static void
-call_content_remote_codecs_cb (GabbleJingleMediaRtp *media,
-    GList *codecs,
-    gpointer user_data)
+call_content_new_offer (GabbleCallContent *self)
 {
-  GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
   GabbleCallContentPrivate *priv = self->priv;
+  GList *codecs;
   GHashTable *map;
   GPtrArray *arr;
   gchar *path;
+
+  codecs = gabble_jingle_media_rtp_get_remote_codecs (
+     GABBLE_JINGLE_MEDIA_RTP (priv->content));
 
   map = g_hash_table_new_full (g_direct_hash, g_direct_equal,
     NULL, (GDestroyNotify) g_ptr_array_unref);
@@ -596,4 +602,12 @@ call_content_remote_codecs_cb (GabbleJingleMediaRtp *media,
 
   g_hash_table_unref (map);
   g_free (path);
+}
+
+static void
+call_content_remote_codecs_cb (GabbleJingleMediaRtp *media,
+    GList *codecs,
+    gpointer user_data)
+{
+  call_content_new_offer (GABBLE_CALL_CONTENT (user_data));
 }

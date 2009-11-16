@@ -419,11 +419,9 @@ gabble_call_content_finalize (GObject *object)
 }
 
 static void
-gabble_call_content_set_codecs (GabbleSvcCallContentInterfaceMedia *iface,
-    const GPtrArray *codecs,
-    DBusGMethodInvocation *context)
+call_content_set_local_codecs (GabbleCallContent *self,
+    const GPtrArray *codecs)
 {
-  GabbleCallContent *self = GABBLE_CALL_CONTENT (iface);
   GabbleCallContentPrivate *priv = self->priv;
   GList *l = NULL;
   guint i;
@@ -450,6 +448,14 @@ gabble_call_content_set_codecs (GabbleSvcCallContentInterfaceMedia *iface,
   jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content),
     l, TRUE, NULL);
 
+}
+
+static void
+gabble_call_content_set_codecs (GabbleSvcCallContentInterfaceMedia *iface,
+    const GPtrArray *codecs,
+    DBusGMethodInvocation *context)
+{
+  call_content_set_local_codecs (GABBLE_CALL_CONTENT (iface), codecs);
   gabble_svc_call_content_interface_media_return_from_set_codecs (context);
 }
 
@@ -555,6 +561,8 @@ codec_offer_finished_cb (GObject *source,
 
   if (error != NULL)
     goto out;
+
+  call_content_set_local_codecs (self, local_codecs);
 
   codec_map = call_content_generate_codec_map (self);
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));

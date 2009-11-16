@@ -46,6 +46,7 @@ static void call_content_iface_init (gpointer, gpointer);
 static void call_content_media_iface_init (gpointer, gpointer);
 static void call_content_remote_codecs_cb (
   GabbleJingleMediaRtp *media, GList *codecs, gpointer user_data);
+static void call_content_new_offer (GabbleCallContent *self);
 
 static GPtrArray *call_content_codec_list_to_array (GList *codecs);
 static GHashTable *call_content_generate_codec_map (GabbleCallContent *self);
@@ -71,6 +72,7 @@ enum
   PROP_CONTACT_CODEC_MAP,
   PROP_MEDIA_TYPE,
   PROP_STREAMS,
+  PROP_CODEC_OFFER,
 };
 
 #if 0
@@ -168,6 +170,35 @@ gabble_call_content_get_property (GObject    *object,
           g_hash_table_unref (map);
           break;
         }
+      case PROP_CODEC_OFFER:
+        {
+          GValueArray *arr;
+          gchar *path;
+          GHashTable *map;
+
+          if (priv->offer == NULL)
+            {
+              path = g_strdup ("/");
+              map = g_hash_table_new (NULL, NULL);
+            }
+          else
+            {
+              g_object_get (priv->offer,
+                "object-path", &path,
+                "remote-contact-codec-map", &map,
+                NULL);
+            }
+
+          arr = gabble_value_array_build (2,
+            DBUS_TYPE_G_OBJECT_PATH, path,
+            GABBLE_HASH_TYPE_CONTACT_CODEC_MAP, map,
+            G_TYPE_INVALID);
+
+          g_value_take_boxed (value, arr);
+          g_free (path);
+          g_boxed_free (GABBLE_HASH_TYPE_CONTACT_CODEC_MAP, map);
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -253,6 +284,7 @@ gabble_call_content_class_init (
   };
   static TpDBusPropertiesMixinPropImpl content_media_props[] = {
     { "ContactCodecMap", "contact-codec-map", NULL },
+    { "CodecOffer", "codec-offer", NULL },
     { NULL }
   };
 
@@ -336,6 +368,13 @@ gabble_call_content_class_init (
       GABBLE_HASH_TYPE_CONTACT_CODEC_MAP,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONTACT_CODEC_MAP,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("codec-offer", "CodecOffer",
+      "The current codec offer if any",
+      GABBLE_STRUCT_TYPE_CODEC_OFFERING,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CODEC_OFFER,
       param_spec);
 
   gabble_call_content_class->dbus_props_class.interfaces = prop_interfaces;

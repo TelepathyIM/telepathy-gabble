@@ -224,6 +224,8 @@ telepathy_gabble_debug_LDADD = \
     $(top_builddir)/lib/gibber/libgibber.la \
     $(ALL_LIBS)
 
+telepathy_gabble_debug_LDFLAGS = -export-dynamic
+
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
     @TP_GLIB_CFLAGS@ \
     -I $(top_srcdir)/src -I $(top_builddir)/src \

@@ -167,6 +167,8 @@ check-local: check-coding-style
 
 telepathy_gabble_LDADD = libgabble-convenience.la
 
+telepathy_gabble_LDFLAGS = -export-dynamic
+
 noinst_LTLIBRARIES = libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \

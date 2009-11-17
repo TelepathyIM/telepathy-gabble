@@ -62,6 +62,7 @@ enum
   PROP_ENDPOINTS,
   PROP_TRANSPORT,
   PROP_STUN_SERVERS,
+  PROP_RELAY_INFO,
 };
 
 #if 0
@@ -83,6 +84,7 @@ struct _GabbleCallStreamPrivate
   gchar *object_path;
   GabbleJingleContent *content;
   GList *endpoints;
+  GPtrArray *relay_info;
 };
 
 static void
@@ -204,6 +206,19 @@ gabble_call_stream_get_property (GObject    *object,
           g_ptr_array_unref (arr);
           break;
         }
+      case PROP_RELAY_INFO:
+        {
+          if (priv->relay_info == NULL)
+            {
+              GPtrArray *relay_info = g_ptr_array_sized_new (0);
+              g_value_set_boxed (value, relay_info);
+              g_ptr_array_free (relay_info, TRUE);
+            }
+          else
+            g_value_set_boxed (value, priv->relay_info);
+
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -271,6 +286,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
     { "Transport", "transport", NULL },
     { "LocalCandidates", "local-candidates", NULL },
     { "STUNServers", "stun-servers", NULL },
+    { "RelayInfo", "relay-info", NULL },
     { "Endpoints", "endpoints", NULL },
     { NULL }
   };
@@ -346,6 +362,13 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   g_object_class_install_property (object_class, PROP_STUN_SERVERS,
       param_spec);
 
+  param_spec = g_param_spec_boxed ("relay-info", "RelayInfo",
+      "List of relay information",
+      TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_RELAY_INFO,
+      param_spec);
+
   gabble_call_stream_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleCallStreamClass, dbus_props_class));
@@ -381,6 +404,9 @@ gabble_call_stream_finalize (GObject *object)
 
   /* free any data held directly by the object here */
   g_free (priv->object_path);
+
+  if (priv->relay_info != NULL)
+    g_boxed_free (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, priv->relay_info);
 
   G_OBJECT_CLASS (gabble_call_stream_parent_class)->finalize (object);
 }

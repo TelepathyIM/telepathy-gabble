@@ -29,8 +29,9 @@ to the file; otherwise, any existing file will be replaced.
 \fBGABBLE_DEBUG\fR=\fItype\fR
 May be set to "all" for full debug output, or various undocumented options
 (which may change from release to release) to filter the output.
-\fBLM_DEBUG\fR=\fItype\fR
-May be set to "all" for full debug output from the Loudmouth XMPP library used
+.TP
+\fBWOCKY_DEBUG\fR=\fItype\fR
+May be set to "all" for full debug output from the Wocky XMPP library used
 by Gabble, or various undocumented options (which may change from release to
 release) to filter the output. For general Gabble debugging, "net" is
 recommended.

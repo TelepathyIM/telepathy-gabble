@@ -458,16 +458,36 @@ gabble_call_stream_add_candidates (GabbleSvcCallStreamInterfaceMedia *iface,
       GValueArray *va;
       JingleCandidate *c;
       GHashTable *info;
+      guint fstype, type;
 
       va = g_ptr_array_index (candidates, i);
 
       info = g_value_get_boxed (va->values + 3);
 
+      fstype = tp_asv_get_uint32 (info, "Type", NULL);
+
+      switch (fstype)
+        {
+        case 0: /* FS_CANDIDATE_TYPE_HOST */
+          type = JINGLE_CANDIDATE_TYPE_LOCAL;
+          break;
+        case 1: /* FS_CANDIDATE_TYPE_SRFLX */
+        case 2: /* FS_CANDIDATE_TYPE_PRFLX */
+          type = JINGLE_CANDIDATE_TYPE_STUN;
+          break;
+        case 3: /* FS_CANDIDATE_TYPE_RELAY */
+          type = JINGLE_CANDIDATE_TYPE_RELAY;
+          break;
+        case 4: /* FS_CANDIDATE_TYPE_MULTICAST */
+        default:
+          g_assert_not_reached ();
+        }
+
       c = jingle_candidate_new (
         /* transport protocol */
         tp_asv_get_uint32 (info, "Protocol", NULL),
         /* Candidate type */
-        tp_asv_get_uint32 (info, "Type", NULL),
+        type,
         /* id/foundation */
         tp_asv_get_string (info, "Foundation"),
         /* component */

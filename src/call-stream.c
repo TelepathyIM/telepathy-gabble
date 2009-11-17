@@ -250,12 +250,23 @@ gabble_call_stream_set_property (GObject *object,
 }
 
 static void
+google_relay_session_cb (GPtrArray *relays,
+                         gpointer user_data)
+{
+  GabbleCallStreamPrivate *priv = GABBLE_CALL_STREAM (user_data)->priv;
+
+  priv->relay_info =
+      g_boxed_copy (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, relays);
+}
+
+static void
 gabble_call_stream_constructed (GObject *obj)
 {
   GabbleCallStreamPrivate *priv;
   DBusGConnection *bus;
   GabbleCallStreamEndpoint *endpoint;
   gchar *path;
+  guint transport;
 
   priv = GABBLE_CALL_STREAM (obj)->priv;
 
@@ -269,6 +280,27 @@ gabble_call_stream_constructed (GObject *obj)
   endpoint = gabble_call_stream_endpoint_new (path, priv->content);
   priv->endpoints = g_list_append (priv->endpoints, endpoint);
   g_free (path);
+
+  g_object_get (obj, "transport", &transport, NULL);
+
+  if (transport == GABBLE_STREAM_TRANSPORT_TYPE_GTALK_P2P)
+    {
+      GabbleConnection *connection;
+
+      g_object_get (priv->content,
+          "connection", &connection,
+          NULL);
+
+      DEBUG ("Attempting to create Google relay session");
+
+      /* See if our server is Google, and if it is, ask them for a relay.
+       * We ask for enough relays for 2 components (RTP and RTCP) since we
+       * don't yet know whether there will be RTCP. */
+      gabble_jingle_factory_create_google_relay_session (
+          connection->jingle_factory, 2, google_relay_session_cb, obj);
+
+      g_object_unref (connection);
+    }
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);

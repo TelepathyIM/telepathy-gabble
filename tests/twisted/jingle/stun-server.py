@@ -6,7 +6,10 @@ import dbus
 import socket
 
 from gabbletest import exec_test, make_result_iq, sync_stream, GoogleXmlStream
-from servicetest import make_channel_proxy, EventPattern
+from servicetest import (
+    make_channel_proxy, EventPattern,
+    assertEquals, assertLength, assertNotEquals
+    )
 import jingletest
 import constants as cs
 
@@ -211,35 +214,35 @@ def test(q, bus, conn, stream,
     # Exercise channel properties
     channel_props = call_chan.GetAll(
         cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props['TargetHandle'] == remote_handle
-    assert channel_props['TargetHandleType'] == 1
-    assert channel_props['TargetID'] == 'foo@bar.com'
-    assert channel_props['Requested'] == False
-    assert channel_props['InitiatorID'] == 'foo@bar.com'
-    assert channel_props['InitiatorHandle'] == remote_handle
+    assertEquals(channel_props['TargetHandle'], remote_handle)
+    assertEquals(channel_props['TargetHandleType'], 1)
+    assertEquals(channel_props['TargetID'], 'foo@bar.com')
+    assertEquals(channel_props['Requested'], False)
+    assertEquals(channel_props['InitiatorID'], 'foo@bar.com')
+    assertEquals(channel_props['InitiatorHandle'], remote_handle)
 
     # Get the call's Content object
     channel_props = call_chan.Get(cs.CHANNEL_TYPE_CALL, 'Contents',
         dbus_interface=dbus.PROPERTIES_IFACE)
-    assert len(channel_props) == 1
+    assertLength(1, channel_props)
     assert len(channel_props[0]) > 0
-    assert channel_props[0] != '/'
+    assertNotEquals(channel_props[0], '/')
 
     # Get the call's Stream object
     call_content = make_channel_proxy(conn,
         channel_props[0], 'Call.Content.Draft')
     content_props = call_content.Get(cs.CALL_CONTENT, 'Streams',
         dbus_interface=dbus.PROPERTIES_IFACE)
-    assert len(content_props) == 1
+    assertLength(1, content_props)
     assert len(content_props[0]) > 0
-    assert content_props[0] != '/'
+    assertNotEquals(content_props[0], '/')
 
     # Test the call's Stream's properties
     call_stream = make_channel_proxy(conn,
         content_props[0], 'Call.Stream.Interface.Media.Draft')
     stream_props = call_stream.GetAll(cs.CALL_STREAM_IFACE_MEDIA,
         dbus_interface=dbus.PROPERTIES_IFACE)
-    assert stream_props['Transport'] == 2 # GTALK_P2P
+    assertEquals(stream_props['Transport'], 2) # GTALK_P2P
 
     if expected_stun_server == None:
         # If there is no stun server set then gabble should fallback on the

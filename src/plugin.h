@@ -21,8 +21,10 @@
 #define __PLUGIN_H__
 
 #include <glib-object.h>
-
 #include <gio/gio.h>
+
+#include <telepathy-glib/base-connection.h>
+#include <wocky/wocky-session.h>
 
 #include "sidecar.h"
 
@@ -41,6 +43,8 @@ typedef struct _GabblePluginInterface GabblePluginInterface;
 typedef void (*GabblePluginCreateSidecarImpl) (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
+    TpBaseConnection *connection,
+    WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data);
 
@@ -78,6 +82,8 @@ gboolean gabble_plugin_implements_sidecar (
 void gabble_plugin_create_sidecar (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
+    TpBaseConnection *connection,
+    WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data);
 

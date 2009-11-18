@@ -256,8 +256,8 @@ gabble_connection_ensure_sidecar (
   loader = gabble_plugin_loader_dup ();
   g_hash_table_insert (conn->pending_sidecars, g_strdup (sidecar_iface),
       g_list_prepend (NULL, context));
-  gabble_plugin_loader_create_sidecar (loader, sidecar_iface,
-      create_sidecar_cb, grr_new (conn, sidecar_iface));
+  gabble_plugin_loader_create_sidecar (loader, sidecar_iface, base_conn,
+      conn->session, create_sidecar_cb, grr_new (conn, sidecar_iface));
   g_object_unref (loader);
 }
 

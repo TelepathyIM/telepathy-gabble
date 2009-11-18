@@ -21,8 +21,10 @@
 #define __PLUGIN_LOADER_H__
 
 #include <glib-object.h>
-
 #include <gio/gio.h>
+
+#include <telepathy-glib/base-connection.h>
+#include <wocky/wocky-session.h>
 
 #include "sidecar.h"
 
@@ -64,6 +66,8 @@ GabblePluginLoader *gabble_plugin_loader_dup (void);
 void gabble_plugin_loader_create_sidecar (
     GabblePluginLoader *self,
     const gchar *sidecar_interface,
+    TpBaseConnection *connection,
+    WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data);
 

@@ -87,6 +87,8 @@ void
 gabble_plugin_create_sidecar (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
+    TpBaseConnection *connection,
+    WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
@@ -103,7 +105,8 @@ gabble_plugin_create_sidecar (
         "'%s' is buggy: it claims to implement %s, but does not implement "
         "create_sidecar", iface->name, sidecar_interface);
   else
-    iface->create_sidecar (plugin, sidecar_interface, callback, user_data);
+    iface->create_sidecar (plugin, sidecar_interface, connection, session,
+        callback, user_data);
 }
 
 GabbleSidecar *

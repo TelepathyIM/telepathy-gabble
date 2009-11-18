@@ -26,9 +26,7 @@ def test_stun_server(stun_server_prop,
     assertEquals ([(expected_stun_server, expected_stun_port)],
         stun_server_prop)
 
-def test(q, bus, conn, stream,
-         expected_stun_server=None, expected_stun_port=None, google=False,
-         expected_relays=[]):
+def init_test(q, conn, stream, google=False):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
     # If we need to override remote caps, feats, codecs or caps,
@@ -71,6 +69,14 @@ def test(q, bus, conn, stream,
     sync_stream(q, stream)
 
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+
+    return jt, remote_handle
+
+def test_streamed_media(q, bus, conn, stream,
+         expected_stun_server=None, expected_stun_port=None, google=False,
+         expected_relays=[]):
+    # Initialize the test values
+    jt, remote_handle = init_test(q, conn, stream, google)
 
     # Remote end calls us
     jt.incoming_call()
@@ -182,7 +188,12 @@ def test(q, bus, conn, stream,
             EventPattern('dbus-signal', signal='Closed'),
             )
 
-    # Test the new call API
+def test_call(q, bus, conn, stream,
+         expected_stun_server=None, expected_stun_port=None, google=False,
+         expected_relays=[]):
+    # Initialize the test values
+    jt, remote_handle = init_test(q, conn, stream, google)
+
     # Advertise that we can do new style calls
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + ".CallHandler", [
@@ -242,22 +253,44 @@ def test(q, bus, conn, stream,
             expected_stun_server, expected_stun_port)
 
 if __name__ == '__main__':
-    exec_test(lambda q, b, c, s: test(q, b, c, s,
+    # StreamedMedia tests
+    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
         google=False))
-    exec_test(lambda q, b, c, s: test(q, b, c, s,
+    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
         google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
         protocol=GoogleXmlStream)
-    exec_test(lambda q, b, c, s: test(q, b, c, s,
+    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
         google=True, expected_stun_server='5.4.3.2', expected_stun_port=54321),
         protocol=GoogleXmlStream,
         params={'stun-server': 'resolves-to-5.4.3.2',
             'stun-port': dbus.UInt16(54321)})
-    exec_test(lambda q, b, c, s: test(q, b, c, s,
+    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
         google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
         protocol=GoogleXmlStream,
         params={'fallback-stun-server': 'resolves-to-5.4.3.2',
             'fallback-stun-port': dbus.UInt16(54321)})
-    exec_test(lambda q, b, c, s: test(q, b, c, s,
+    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
+        google=False, expected_stun_server='5.4.3.2', expected_stun_port=54321),
+        params={'fallback-stun-server': 'resolves-to-5.4.3.2',
+            'fallback-stun-port': dbus.UInt16(54321)})
+
+    # Call tests
+    exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+        google=False))
+    exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+        google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
+        protocol=GoogleXmlStream)
+    exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+        google=True, expected_stun_server='5.4.3.2', expected_stun_port=54321),
+        protocol=GoogleXmlStream,
+        params={'stun-server': 'resolves-to-5.4.3.2',
+            'stun-port': dbus.UInt16(54321)})
+    exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+        google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
+        protocol=GoogleXmlStream,
+        params={'fallback-stun-server': 'resolves-to-5.4.3.2',
+            'fallback-stun-port': dbus.UInt16(54321)})
+    exec_test(lambda q, b, c, s: test_call(q, b, c, s,
         google=False, expected_stun_server='5.4.3.2', expected_stun_port=54321),
         params={'fallback-stun-server': 'resolves-to-5.4.3.2',
             'fallback-stun-port': dbus.UInt16(54321)})

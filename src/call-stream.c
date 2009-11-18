@@ -189,14 +189,12 @@ gabble_call_stream_get_property (GObject    *object,
           if (gabble_jingle_factory_get_stun_server (
                 connection->jingle_factory, &stun_server, &stun_port))
             {
-              GValueArray *va = g_value_array_new (2);
+              GValueArray *va = gabble_value_array_build (2,
+                  G_TYPE_STRING, stun_server,
+                  G_TYPE_UINT, stun_port,
+                  G_TYPE_INVALID);
 
-              g_value_array_append (va, NULL);
-              g_value_array_append (va, NULL);
-              g_value_init (va->values + 0, G_TYPE_STRING);
-              g_value_init (va->values + 1, G_TYPE_UINT);
-              g_value_take_string (va->values + 0, stun_server);
-              g_value_set_uint (va->values + 1, stun_port);
+              g_free (stun_server);
               g_ptr_array_add (arr, va);
             }
 

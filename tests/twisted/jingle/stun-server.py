@@ -185,6 +185,81 @@ def test(q, bus, conn, stream,
             EventPattern('dbus-signal', signal='Closed'),
             )
 
+    # Test the new call API
+    # Advertise that we can do new style calls
+    conn.ContactCapabilities.UpdateCapabilities([
+        (cs.CLIENT + ".CallHandler", [
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
+                cs.CALL_INITIAL_AUDIO: True},
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
+                cs.CALL_INITIAL_VIDEO: True},
+            ], [
+                cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
+                cs.CHANNEL_TYPE_CALL + '/ice-udp',
+                cs.CHANNEL_TYPE_CALL + '/video/h264',
+            ]),
+        ])
+
+    # Remote end calls us
+    jt.incoming_call()
+
+    e = q.expect('dbus-signal', signal='NewChannels')
+    assert e.args[0][0][0]
+
+    call_chan = make_channel_proxy(conn, e.args[0][0][0], 'Channel')
+
+    # Exercise channel properties
+    channel_props = call_chan.GetAll(
+        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
+    assert channel_props['TargetHandle'] == remote_handle
+    assert channel_props['TargetHandleType'] == 1
+    assert channel_props['TargetID'] == 'foo@bar.com'
+    assert channel_props['Requested'] == False
+    assert channel_props['InitiatorID'] == 'foo@bar.com'
+    assert channel_props['InitiatorHandle'] == remote_handle
+
+    # Get the call's Content object
+    channel_props = call_chan.Get(cs.CHANNEL_TYPE_CALL, 'Contents',
+        dbus_interface=dbus.PROPERTIES_IFACE)
+    assert len(channel_props) == 1
+    assert len(channel_props[0]) > 0
+    assert channel_props[0] != '/'
+
+    # Get the call's Stream object
+    call_content = make_channel_proxy(conn,
+        channel_props[0], 'Call.Content.Draft')
+    content_props = call_content.Get(cs.CALL_CONTENT, 'Streams',
+        dbus_interface=dbus.PROPERTIES_IFACE)
+    assert len(content_props) == 1
+    assert len(content_props[0]) > 0
+    assert content_props[0] != '/'
+
+    # Test the call's Stream's properties
+    call_stream = make_channel_proxy(conn,
+        content_props[0], 'Call.Stream.Interface.Media.Draft')
+    stream_props = call_stream.GetAll(cs.CALL_STREAM_IFACE_MEDIA,
+        dbus_interface=dbus.PROPERTIES_IFACE)
+    assert stream_props['Transport'] == 2 # GTALK_P2P
+
+    if expected_stun_server == None:
+        # If there is no stun server set then gabble should fallback on the
+        # default fallback stunserver (stun.collabora.co.uk)
+        # This test assumes that if python can resolve the stun servers
+        # address then gabble should be able to resolve it as well
+        try:
+            expected_stun_server = \
+                socket.gethostbyname("stun.collabora.co.uk")
+            expected_stun_port = 3478
+        except:
+            expected_stun_server = None
+
+    if expected_stun_server is None:
+        assert stream_props['STUNServers'] == [], stream_props['STUNServers']
+    else:
+        assert stream_props['STUNServers'] == \
+            [(expected_stun_server, expected_stun_port)], \
+            stream_props['STUNServers']
+
 if __name__ == '__main__':
     exec_test(lambda q, b, c, s: test(q, b, c, s,
         google=False, expected_stun_server=None, expected_stun_port=None))

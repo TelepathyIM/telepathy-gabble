@@ -480,7 +480,8 @@ gabble_call_stream_add_candidates (GabbleSvcCallStreamInterfaceMedia *iface,
           break;
         case 4: /* FS_CANDIDATE_TYPE_MULTICAST */
         default:
-          g_assert_not_reached ();
+          DEBUG ("Unhandled candidate type %d", fstype);
+          continue;
         }
 
       c = jingle_candidate_new (

@@ -199,7 +199,6 @@ gabble_connection_ensure_sidecar (
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (conn);
   GabbleSidecar *sidecar;
   gpointer key, value;
-  GabblePluginLoader *loader;
   GError *error = NULL;
 
   if (base_conn->status == TP_CONNECTION_STATUS_DISCONNECTED)
@@ -252,13 +251,23 @@ gabble_connection_ensure_sidecar (
       return;
     }
 
-  DEBUG ("requesting %s from the plugin loader", sidecar_iface);
-  loader = gabble_plugin_loader_dup ();
+  DEBUG ("enqueuing first request for %s", sidecar_iface);
   g_hash_table_insert (conn->pending_sidecars, g_strdup (sidecar_iface),
       g_list_prepend (NULL, context));
-  gabble_plugin_loader_create_sidecar (loader, sidecar_iface, base_conn,
-      conn->session, create_sidecar_cb, grr_new (conn, sidecar_iface));
-  g_object_unref (loader);
+
+  if (base_conn->status == TP_CONNECTION_STATUS_CONNECTED)
+    {
+      GabblePluginLoader *loader = gabble_plugin_loader_dup ();
+
+      DEBUG ("requesting %s from the plugin loader", sidecar_iface);
+      gabble_plugin_loader_create_sidecar (loader, sidecar_iface, base_conn,
+          conn->session, create_sidecar_cb, grr_new (conn, sidecar_iface));
+      g_object_unref (loader);
+    }
+  else
+    {
+      DEBUG ("not yet connected; waiting.");
+    }
 }
 
 static void
@@ -272,33 +281,53 @@ sidecars_conn_status_changed_cb (
   GHashTableIter iter;
   gpointer key, value;
 
-  if (status != TP_CONNECTION_STATUS_DISCONNECTED)
-    return;
-
-  g_hash_table_iter_init (&iter, conn->sidecars);
-
-  while (g_hash_table_iter_next (&iter, NULL, &value))
+  if (status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
-      DEBUG ("removing %s from the bus", gabble_sidecar_get_interface (value));
-      dbus_g_connection_unregister_g_object (bus, G_OBJECT (value));
+      g_hash_table_iter_init (&iter, conn->sidecars);
+
+      while (g_hash_table_iter_next (&iter, NULL, &value))
+        {
+          DEBUG ("removing %s from the bus", gabble_sidecar_get_interface (value));
+          dbus_g_connection_unregister_g_object (bus, G_OBJECT (value));
+        }
+
+      g_hash_table_iter_init (&iter, conn->pending_sidecars);
+
+      while (g_hash_table_iter_next (&iter, &key, &value))
+        {
+          const gchar *sidecar_iface = key;
+          GList *contexts = value;
+          GError *error = g_error_new (TP_ERRORS, TP_ERROR_CANCELLED,
+              "Disconnected before %s could be created", sidecar_iface);
+
+          DEBUG ("failing all %u requests for %s", g_list_length (contexts),
+              sidecar_iface);
+          g_list_foreach (contexts, (GFunc) dbus_g_method_return_error, error);
+          g_error_free (error);
+        }
+
+      g_hash_table_remove_all (conn->sidecars);
+      g_hash_table_remove_all (conn->pending_sidecars);
     }
-
-  g_hash_table_iter_init (&iter, conn->pending_sidecars);
-
-  while (g_hash_table_iter_next (&iter, &key, &value))
+  else if (status == TP_CONNECTION_STATUS_CONNECTED)
     {
-      const gchar *sidecar_iface = key;
-      GList *contexts = value;
+      TpBaseConnection *base_conn = TP_BASE_CONNECTION (conn);
+      GabblePluginLoader *loader = gabble_plugin_loader_dup ();
 
-      GError *error = g_error_new (TP_ERRORS, TP_ERROR_CANCELLED,
-          "Disconnected before %s could be created", sidecar_iface);
+      DEBUG ("connected; requesting sidecars from plugins");
+      g_hash_table_iter_init (&iter, conn->pending_sidecars);
 
-      g_list_foreach (contexts, (GFunc) dbus_g_method_return_error, error);
-      g_error_free (error);
+      while (g_hash_table_iter_next (&iter, &key, NULL))
+        {
+          const gchar *sidecar_iface = key;
+
+          DEBUG ("requesting %s from the plugin loader", sidecar_iface);
+          gabble_plugin_loader_create_sidecar (loader, sidecar_iface, base_conn,
+              conn->session, create_sidecar_cb, grr_new (conn, sidecar_iface));
+        }
+
+      g_object_unref (loader);
     }
-
-  g_hash_table_remove_all (conn->sidecars);
-  g_hash_table_remove_all (conn->pending_sidecars);
 }
 
 void

@@ -132,12 +132,6 @@
       <arg name="password" type="s" />
     </signal>
 
-    <signal name="STUNServersAdded"
-        tp:name-for-bindings="STUN_Servers_Added">
-      <arg name="servers"
-      type="a(sq)" tp:type="Socket_Address_IP[]"/>
-    </signal>
-
     <property name="STUNServers" tp:name-for-bindings="STUN_Servers"
       type="a(sq)" tp:type="Socket_Address_IP[]" access="read">
       <tp:docstring>
@@ -154,11 +148,6 @@
         </tp:rationale>
       </tp:docstring>
     </property>
-
-    <signal name="RelayInfoAdded" tp:name-for-bindings="Relay_Info_Added">
-      <arg name="relay_info"
-        type="aa{sv}" tp:type="String_Variant_Map[]"/>
-    </signal>
 
     <property name="RelayInfo" type="aa{sv}" access="read"
       tp:type="String_Variant_Map[]" tp:name-for-bindings="Relay_Info">
@@ -230,6 +219,25 @@
           otherwise, the meaning of RelayInfo is undefined.</p>
 
         <p>If relaying is not possible for this stream, the list is empty.</p>
+      </tp:docstring>
+    </property>
+
+    <signal name="ServerInfoRetrieved"
+      tp:name-for-bindings="Server_Info_Retrieved">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p> Signals that the initial information about STUN and Relay servers
+            has been retrieived.
+        </p>
+      </tp:docstring>
+    </signal>
+
+    <property name="RetrievedServerInfo" type="b"
+        tp:name-for-bindings="Retrieved_Server_Info" access="read">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>True if the initial information about STUN servers and Relay servers
+           has been retrieved. Change notification via the ServerInfoRetrieved
+           signal.
+        </p>
       </tp:docstring>
     </property>
 

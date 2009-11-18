@@ -8,10 +8,23 @@ import socket
 from gabbletest import exec_test, make_result_iq, sync_stream, GoogleXmlStream
 from servicetest import (
     make_channel_proxy, EventPattern,
-    assertEquals, assertLength, assertNotEquals
+    assertEquals, assertLength, assertNotEquals, assertEquals
     )
 import jingletest
 import constants as cs
+
+def test_stun_server(stun_server_prop,
+        expected_stun_server=None, expected_stun_port=None):
+    if expected_stun_server == None:
+        # If there is no stun server set then gabble should fallback on the
+        # default fallback stunserver (stun.collabora.co.uk)
+        # This test uses the test-resolver which is set to
+        # have 'stun.collabora.co.uk' resolve to '6.7.8.9'
+        expected_stun_server = '6.7.8.9'
+        expected_stun_port = 3478
+
+    assertEquals ([(expected_stun_server, expected_stun_port)],
+        stun_server_prop)
 
 def test(q, bus, conn, stream,
          expected_stun_server=None, expected_stun_port=None, google=False,
@@ -102,20 +115,8 @@ def test(q, bus, conn, stream,
     assert sh_props['NATTraversal'] == 'gtalk-p2p'
     assert sh_props['CreatedLocally'] == False
 
-    if expected_stun_server == None:
-        # If there is no stun server set then gabble should fallback on the
-        # default fallback stunserver (stun.collabora.co.uk)
-        # This test uses the test-resolver which is set to
-        # have 'stun.collabora.co.uk' resolve to '6.7.8.9'
-        expected_stun_server = '6.7.8.9'
-        expected_stun_port = 3478
-
-    if expected_stun_server is None:
-        assert sh_props['STUNServers'] == [], sh_props['STUNServers']
-    else:
-        assert sh_props['STUNServers'] == \
-            [(expected_stun_server, expected_stun_port)], \
-            sh_props['STUNServers']
+    test_stun_server(sh_props['STUNServers'],
+            expected_stun_server, expected_stun_port)
 
     assert sh_props['RelayInfo'] == expected_relays
 
@@ -144,15 +145,8 @@ def test(q, bus, conn, stream,
     assert 'gtalk-p2p-relay-token' in tp_props
     assert tp_props['gtalk-p2p-relay-token']['sig'] == 's'
 
-    if expected_stun_server is None:
-        assert tp_props['stun-server']['flags'] == 0, tp_props['stun-server']['flags']
-    else:
-        assert tp_props['stun-server']['flags'] == cs.PROPERTY_FLAG_READ
-
-    if expected_stun_port is None:
-        assert tp_props['stun-port']['flags'] == 0
-    else:
-        assert tp_props['stun-port']['flags'] == cs.PROPERTY_FLAG_READ
+    assert tp_props['stun-server']['flags'] == cs.PROPERTY_FLAG_READ
+    assert tp_props['stun-port']['flags'] == cs.PROPERTY_FLAG_READ
 
     if google:
         assert tp_props['gtalk-p2p-relay-token']['flags'] == cs.PROPERTY_FLAG_READ
@@ -244,28 +238,12 @@ def test(q, bus, conn, stream,
         dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals(stream_props['Transport'], 2) # GTALK_P2P
 
-    if expected_stun_server == None:
-        # If there is no stun server set then gabble should fallback on the
-        # default fallback stunserver (stun.collabora.co.uk)
-        # This test assumes that if python can resolve the stun servers
-        # address then gabble should be able to resolve it as well
-        try:
-            expected_stun_server = \
-                socket.gethostbyname("stun.collabora.co.uk")
-            expected_stun_port = 3478
-        except:
-            expected_stun_server = None
-
-    if expected_stun_server is None:
-        assert stream_props['STUNServers'] == [], stream_props['STUNServers']
-    else:
-        assert stream_props['STUNServers'] == \
-            [(expected_stun_server, expected_stun_port)], \
-            stream_props['STUNServers']
+    test_stun_server(stream_props['STUNServers'],
+            expected_stun_server, expected_stun_port)
 
 if __name__ == '__main__':
     exec_test(lambda q, b, c, s: test(q, b, c, s,
-        google=False, expected_stun_server=None, expected_stun_port=None))
+        google=False))
     exec_test(lambda q, b, c, s: test(q, b, c, s,
         google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
         protocol=GoogleXmlStream)

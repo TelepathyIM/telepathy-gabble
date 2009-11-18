@@ -278,6 +278,17 @@ gabble_call_stream_set_property (GObject *object,
 }
 
 static void
+maybe_emit_server_info_retrieved (GabbleCallStream *self)
+{
+  gboolean retrieved;
+
+  g_object_get (G_OBJECT (self), "retrieved-server-info", &retrieved, NULL);
+
+  if (retrieved)
+    gabble_svc_call_stream_interface_media_emit_server_info_retrieved (self);
+}
+
+static void
 google_relay_session_cb (GPtrArray *relays,
                          gpointer user_data)
 {
@@ -285,6 +296,8 @@ google_relay_session_cb (GPtrArray *relays,
 
   priv->relay_info =
       g_boxed_copy (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, relays);
+
+  maybe_emit_server_info_retrieved (user_data);
 }
 
 static void

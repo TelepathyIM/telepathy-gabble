@@ -211,6 +211,10 @@ def test_call(q, bus, conn, stream,
     # Remote end calls us
     jt.incoming_call()
 
+    e = q.expect('dbus-signal', signal='ServerInfoRetrieved')
+    assertLength(0, e.args)
+    assertEquals(e.interface, cs.CALL_STREAM_IFACE_MEDIA)
+
     e = q.expect('dbus-signal', signal='NewChannels')
     assert e.args[0][0][0]
 

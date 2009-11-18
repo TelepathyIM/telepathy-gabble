@@ -63,6 +63,7 @@ enum
   PROP_TRANSPORT,
   PROP_STUN_SERVERS,
   PROP_RELAY_INFO,
+  PROP_RETRIEVED_SERVER_INFO,
 };
 
 #if 0
@@ -219,6 +220,33 @@ gabble_call_stream_get_property (GObject    *object,
 
           break;
         }
+      case PROP_RETRIEVED_SERVER_INFO:
+        {
+          GabbleConnection *connection;
+          gboolean ret = TRUE;
+
+          g_object_get (priv->content,
+              "connection", &connection,
+              NULL);
+
+          if (!gabble_jingle_factory_get_stun_server (
+                connection->jingle_factory, NULL, NULL))
+            ret = FALSE;
+          else
+            {
+              guint transport;
+
+              g_object_get (object, "transport", &transport, NULL);
+
+              if (transport == GABBLE_STREAM_TRANSPORT_TYPE_GTALK_P2P &&
+                  priv->relay_info == NULL)
+                ret = FALSE;
+            }
+
+          g_object_unref (connection);
+          g_value_set_boolean (value, ret);
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -319,6 +347,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
     { "LocalCandidates", "local-candidates", NULL },
     { "STUNServers", "stun-servers", NULL },
     { "RelayInfo", "relay-info", NULL },
+    { "RetrievedServerInfo", "retrieved-server-info", NULL },
     { "Endpoints", "endpoints", NULL },
     { NULL }
   };
@@ -399,6 +428,15 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_RELAY_INFO,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("retrieved-server-info",
+      "RetrievedServerInfo",
+      "True if the server information about STUN and "
+      "relay servers has been retrieved",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_RETRIEVED_SERVER_INFO,
       param_spec);
 
   gabble_call_stream_class->dbus_props_class.interfaces = prop_interfaces;

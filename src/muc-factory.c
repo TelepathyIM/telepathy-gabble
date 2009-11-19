@@ -637,20 +637,12 @@ process_muc_invite (GabbleMucFactory *fac,
   x_node = lm_message_node_get_child_with_namespace (message->node, "x",
       NS_MUC_USER);
 
-  /* LM doesn't chain up to its parent's namespaces. boo hoo */
-  if (x_node == NULL)
-    x_node = lm_message_node_get_child (message->node, "x");
-
   if (x_node == NULL)
     return FALSE;
 
   /* and an invitation? */
   invite_node = lm_message_node_get_child_with_namespace (x_node, "invite",
       NS_MUC_USER);
-
-  /* LM doesn't chain up to its parent's namespaces. boo hoo */
-  if (invite_node == NULL)
-    invite_node = lm_message_node_get_child (x_node, "invite");
 
   if (invite_node == NULL)
     return FALSE;
@@ -986,10 +978,6 @@ muc_factory_presence_cb (LmMessageHandler *handler,
 
           item_node = lm_message_node_get_child_with_namespace (x_node,
               "item", NS_MUC_USER);
-
-          /* LM doesn't chain up to its parent's namespaces. boo hoo */
-          if (item_node == NULL)
-            item_node = lm_message_node_get_child (x_node, "item");
 
           if (item_node == NULL)
             {

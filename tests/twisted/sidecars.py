@@ -2,8 +2,10 @@
 Test Gabble's implementation of sidecars, using the test plugin.
 """
 
-from servicetest import call_async, EventPattern, assertEquals, assertContains
-from gabbletest import exec_test
+from servicetest import (
+    sync_dbus, call_async, EventPattern, assertEquals, assertContains,
+    )
+from gabbletest import exec_test, send_error_reply, acknowledge_iq, sync_stream
 import constants as cs
 
 TEST_PLUGIN_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Test"
@@ -45,6 +47,32 @@ def test(q, bus, conn, stream):
     # wasn't there, for instance).
     call_async(q, conn.Future, 'EnsureSidecar', TEST_PLUGIN_IFACE + ".Buggy")
     q.expect('dbus-error', name=cs.NOT_IMPLEMENTED)
+
+    # This sidecar sends a stanza, and waits for a reply, before being created.
+    pattern = EventPattern('stream-iq', to='sidecar.example.com',
+        query_ns='http://example.com/sidecar')
+    call_async(q, conn.Future, 'EnsureSidecar', TEST_PLUGIN_IFACE + ".IQ")
+    e = q.expect_many(pattern)[0]
+
+    sync_dbus(bus, q, conn)
+
+    # If the server says no, EnsureSidecar should fail.
+    send_error_reply(stream, e.stanza)
+    q.expect('dbus-error', method='EnsureSidecar', name=cs.NOT_AVAILABLE)
+
+    # Let's try again. The plugin should get a chance to ping the server again.
+    call_async(q, conn.Future, 'EnsureSidecar', TEST_PLUGIN_IFACE + ".IQ")
+    e = q.expect_many(pattern)[0]
+
+    # The server said yes, so we should get a sidecar back!
+    acknowledge_iq(stream, e.stanza)
+    q.expect('dbus-return', method='EnsureSidecar')
+
+    # If we ask again once the plugin has been created, it should return at
+    # once without any more network traffic.
+    q.forbid_events([pattern])
+    conn.Future.EnsureSidecar(TEST_PLUGIN_IFACE + ".IQ")
+    sync_stream(q, stream)
 
     # TODO: test ensuring a sidecar that waits for something from the network,
     # disconnecting while it's waiting, and ensuring that nothing breaks

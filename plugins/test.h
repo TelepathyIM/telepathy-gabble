@@ -1,5 +1,8 @@
 #include <glib-object.h>
 
+#include <gio/gio.h>
+#include <wocky/wocky-session.h>
+
 /* Plugin */
 typedef struct _TestPluginClass TestPluginClass;
 typedef struct _TestPlugin TestPlugin;
@@ -87,3 +90,34 @@ GType test_sidecar_props_get_type (void);
 #define TEST_SIDECAR_PROPS_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), TEST_TYPE_SIDECAR_PROPS, \
                               TestSidecarPropsClass))
+
+/* Sidecar which sends an IQ and waits for a reply before being ready. */
+typedef struct _TestSidecarIQClass TestSidecarIQClass;
+typedef struct _TestSidecarIQ TestSidecarIQ;
+
+struct _TestSidecarIQClass {
+    GObjectClass parent;
+};
+
+struct _TestSidecarIQ {
+    GObject parent;
+    GSimpleAsyncResult *result;
+    WockySession *session;
+};
+
+GType test_sidecar_iq_get_type (void);
+
+#define TEST_TYPE_SIDECAR_IQ \
+  (test_sidecar_iq_get_type ())
+#define TEST_SIDECAR_IQ(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), TEST_TYPE_SIDECAR_IQ, TestSidecarIQ))
+#define TEST_SIDECAR_IQ_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), TEST_TYPE_SIDECAR_IQ, \
+                           TestSidecarIQClass))
+#define TEST_IS_SIDECAR_IQ(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), TEST_TYPE_SIDECAR_IQ))
+#define TEST_IS_SIDECAR_IQ_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), TEST_TYPE_SIDECAR_IQ))
+#define TEST_SIDECAR_IQ_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), TEST_TYPE_SIDECAR_IQ, \
+                              TestSidecarIQClass))

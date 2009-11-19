@@ -86,6 +86,8 @@ struct _GabbleCallStreamPrivate
   GabbleJingleContent *content;
   GList *endpoints;
   GPtrArray *relay_info;
+
+  gboolean got_relay_info;
 };
 
 static void
@@ -297,7 +299,11 @@ google_relay_session_cb (GPtrArray *relays,
   priv->relay_info =
       g_boxed_copy (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, relays);
 
-  maybe_emit_server_info_retrieved (user_data);
+  if (!priv->got_relay_info)
+    {
+      priv->got_relay_info = TRUE;
+      maybe_emit_server_info_retrieved (user_data);
+    }
 }
 
 static void
@@ -342,6 +348,8 @@ gabble_call_stream_constructed (GObject *obj)
 
       g_object_unref (connection);
     }
+  else
+    priv->got_relay_info = TRUE;
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);

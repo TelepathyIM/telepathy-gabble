@@ -219,19 +219,19 @@ def test_call(q, bus, conn, stream,
     # Exercise channel properties
     channel_props = call_chan.GetAll(
         cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
-    assertEquals(channel_props['TargetHandle'], remote_handle)
-    assertEquals(channel_props['TargetHandleType'], 1)
-    assertEquals(channel_props['TargetID'], 'foo@bar.com')
-    assertEquals(channel_props['Requested'], False)
-    assertEquals(channel_props['InitiatorID'], 'foo@bar.com')
-    assertEquals(channel_props['InitiatorHandle'], remote_handle)
+    assertEquals(remote_handle, channel_props['TargetHandle'])
+    assertEquals(1, channel_props['TargetHandleType'])
+    assertEquals('foo@bar.com', channel_props['TargetID'])
+    assertEquals(False, channel_props['Requested'])
+    assertEquals('foo@bar.com', channel_props['InitiatorID'])
+    assertEquals(remote_handle, channel_props['InitiatorHandle'])
 
     # Get the call's Content object
     channel_props = call_chan.Get(cs.CHANNEL_TYPE_CALL, 'Contents',
         dbus_interface=dbus.PROPERTIES_IFACE)
     assertLength(1, channel_props)
     assert len(channel_props[0]) > 0
-    assertNotEquals(channel_props[0], '/')
+    assertNotEquals('/', channel_props[0])
 
     # Get the call's Stream object
     call_content = make_channel_proxy(conn,
@@ -240,14 +240,14 @@ def test_call(q, bus, conn, stream,
         dbus_interface=dbus.PROPERTIES_IFACE)
     assertLength(1, content_props)
     assert len(content_props[0]) > 0
-    assertNotEquals(content_props[0], '/')
+    assertNotEquals('/', content_props[0])
 
     # Test the call's Stream's properties
     call_stream = make_channel_proxy(conn,
         content_props[0], 'Call.Stream.Interface.Media.Draft')
     stream_props = call_stream.GetAll(cs.CALL_STREAM_IFACE_MEDIA,
         dbus_interface=dbus.PROPERTIES_IFACE)
-    assertEquals(stream_props['Transport'], cs.CALL_STREAM_TRANSPORT_GOOGLE)
+    assertEquals(cs.CALL_STREAM_TRANSPORT_GOOGLE, stream_props['Transport'])
 
     test_stun_server(stream_props['STUNServers'],
             expected_stun_server, expected_stun_port)

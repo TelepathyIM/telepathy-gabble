@@ -224,29 +224,7 @@ gabble_call_stream_get_property (GObject    *object,
         }
       case PROP_RETRIEVED_SERVER_INFO:
         {
-          GabbleConnection *connection;
-          gboolean ret = TRUE;
-
-          g_object_get (priv->content,
-              "connection", &connection,
-              NULL);
-
-          if (!gabble_jingle_factory_get_stun_server (
-                connection->jingle_factory, NULL, NULL))
-            ret = FALSE;
-          else
-            {
-              guint transport;
-
-              g_object_get (object, "transport", &transport, NULL);
-
-              if (transport == GABBLE_STREAM_TRANSPORT_TYPE_GTALK_P2P &&
-                  priv->relay_info == NULL)
-                ret = FALSE;
-            }
-
-          g_object_unref (connection);
-          g_value_set_boolean (value, ret);
+          g_value_set_boolean (value, priv->got_relay_info);
           break;
         }
       default:

@@ -282,11 +282,7 @@ gabble_call_stream_set_property (GObject *object,
 static void
 maybe_emit_server_info_retrieved (GabbleCallStream *self)
 {
-  gboolean retrieved;
-
-  g_object_get (G_OBJECT (self), "retrieved-server-info", &retrieved, NULL);
-
-  if (retrieved)
+  if (GABBLE_CALL_STREAM (self)->priv->got_relay_info)
     gabble_svc_call_stream_interface_media_emit_server_info_retrieved (self);
 }
 

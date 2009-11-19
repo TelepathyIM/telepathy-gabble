@@ -415,18 +415,28 @@ gabble_normalize_room (TpHandleRepoIface *repo,
                        gpointer context,
                        GError **error)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (context);
+  GabbleConnection *conn;
   gchar *qualified_name, *resource;
 
-  qualified_name = gabble_connection_get_canonical_room_name (conn, jid);
-
-  if (qualified_name == NULL)
+  /* Only look up the canonical room name if we got a GabbleConnection.
+   * This should only happen in the test-handles test. */
+  if (context != NULL)
     {
-      INVALID_HANDLE (error,
-          "requested room handle %s does not specify a server, but we "
-          "have not discovered any local conference servers and no "
-          "fallback was provided", jid);
-      return NULL;
+      conn = GABBLE_CONNECTION (context);
+      qualified_name = gabble_connection_get_canonical_room_name (conn, jid);
+
+      if (qualified_name == NULL)
+        {
+          INVALID_HANDLE (error,
+              "requested room handle %s does not specify a server, but we "
+              "have not discovered any local conference servers and no "
+              "fallback was provided", jid);
+          return NULL;
+        }
+    }
+  else
+    {
+      qualified_name = g_strdup (jid);
     }
 
   if (!gabble_decode_jid (qualified_name, NULL, NULL, &resource))

@@ -191,13 +191,14 @@ find_namespace_of_prefix (LmMessageNode *node,
   return node_ns;
 }
 
-const gchar *
-lm_message_node_get_namespace (LmMessageNode *node)
+static const gchar *
+get_node_namespace (LmMessageNode *node,
+    gboolean check_prefix)
 {
   const gchar *node_ns = NULL;
   gchar *x = strchr (node->name, ':');
 
-  if (x != NULL)
+  if (check_prefix && x != NULL)
     {
       gchar *prefix = g_strndup (node->name, (x - node->name));
 
@@ -207,9 +208,22 @@ lm_message_node_get_namespace (LmMessageNode *node)
   else
     {
       node_ns = lm_message_node_get_attribute (node, "xmlns");
+
+      /* Chain up to the parent to get its namespace, as child nodes have the
+       * same namespace as their parent, if not explicitly set otherwise.
+       * However, make sure we don't check the parent's prefix as that doesn't
+       * get inherited by children. */
+      if (node_ns == NULL && node->parent != NULL)
+        node_ns = get_node_namespace (node->parent, FALSE);
     }
 
   return node_ns;
+}
+
+const gchar *
+lm_message_node_get_namespace (LmMessageNode *node)
+{
+  return get_node_namespace (node, TRUE);
 }
 
 const gchar *

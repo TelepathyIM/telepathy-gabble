@@ -204,6 +204,9 @@ fi
 if test x$enable_silent_rules != xno; then
   confcmd="$confcmd --enable-silent-rules"
 fi
+if test x$werror == xno; then
+  confcmd="$confcmd --disable-Werror"
+fi
 confcmd="$confcmd --with-tls=$with_wocky_tls"
 cd "$ac_top_build_prefix"lib/ext/wocky && echo "running $confcmd" &&
   $confcmd ||

@@ -36,8 +36,6 @@ struct _GabbleConnectionManagerClass {
 
 struct _GabbleConnectionManager {
     TpBaseConnectionManager parent;
-
-    GabbleConnectionManagerPrivate *priv;
 };
 
 GType gabble_connection_manager_get_type (void);

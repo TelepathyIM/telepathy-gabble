@@ -2239,15 +2239,19 @@ connection_iq_disco_cb (LmMessageHandler *handler,
         features = gabble_capabilities_get_bundle_video_v1 ();
     }
 
-  if (features == NULL)
+  if (features == NULL && tp_strdiff (suffix, BUNDLE_PMUC_V1))
     {
       _gabble_connection_send_iq_error (self, message,
           XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
   else
     {
-      gabble_capability_set_foreach (features, add_feature_node,
-          result_query);
+      /* Send an empty reply for a pmuc-v1 disco, matching Google's behaviour. */
+      if (features != NULL)
+        {
+          gabble_capability_set_foreach (features, add_feature_node,
+              result_query);
+        }
 
       NODE_DEBUG (result_iq, "sending disco response");
 

@@ -323,7 +323,9 @@ gabble_call_stream_constructed (GObject *obj)
       g_object_unref (connection);
     }
   else
-    priv->got_relay_info = TRUE;
+    {
+      priv->got_relay_info = TRUE;
+    }
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);

@@ -260,7 +260,7 @@ gabble_call_stream_set_property (GObject *object,
 static void
 maybe_emit_server_info_retrieved (GabbleCallStream *self)
 {
-  if (GABBLE_CALL_STREAM (self)->priv->got_relay_info)
+  if (self->priv->got_relay_info)
     gabble_svc_call_stream_interface_media_emit_server_info_retrieved (self);
 }
 

@@ -1844,6 +1844,11 @@ connection_iq_disco_cb (LmMessageHandler *handler,
       _gabble_connection_send_or_complain (self, result,
           "sending disco response failed");
     }
+  else if (!tp_strdiff (suffix, BUNDLE_PMUC_V1))
+    {
+      _gabble_connection_send_or_complain (self, result,
+          "sending disco response failed");
+    }
   else
     {
       _gabble_connection_send_iq_error (self, message,

@@ -56,6 +56,7 @@ enum
   PROP_OBJECT_PATH = 1,
   PROP_JINGLE_CONTENT,
   PROP_REMOTE_CANDIDATES,
+  PROP_STREAM_STATE,
 };
 
 struct _GabbleCallStreamEndpointPrivate
@@ -64,6 +65,7 @@ struct _GabbleCallStreamEndpointPrivate
 
   gchar *object_path;
   GabbleJingleContent *content;
+  guint stream_state;
 };
 
 static void
@@ -107,6 +109,9 @@ gabble_call_stream_endpoint_get_property (GObject    *object,
           g_ptr_array_unref (arr);
           break;
         }
+      case PROP_STREAM_STATE:
+        g_value_set_uint (value, priv->stream_state);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -168,6 +173,7 @@ gabble_call_stream_endpoint_class_init (
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl endpoint_props[] = {
     { "RemoteCandidates", "remote-candidates", NULL },
+    { "StreamState", "stream-state", NULL },
     { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
@@ -215,6 +221,16 @@ gabble_call_stream_endpoint_class_init (
       GABBLE_ARRAY_TYPE_CANDIDATE_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_CANDIDATES,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("stream-state", "StreamState",
+      "The stream state of this endpoint.",
+      0, G_MAXUINT32,
+      TP_MEDIA_STREAM_STATE_DISCONNECTED,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STREAM_STATE,
       param_spec);
 
   gabble_call_stream_endpoint_class->dbus_props_class.interfaces =
@@ -281,6 +297,8 @@ call_stream_endpoint_set_stream_state (GabbleSvcCallStreamEndpoint *iface,
     DBusGMethodInvocation *context)
 {
   GabbleCallStreamEndpoint *self = GABBLE_CALL_STREAM_ENDPOINT (iface);
+
+  self->priv->stream_state = state;
 
   gabble_jingle_content_set_transport_state (self->priv->content,
     state);

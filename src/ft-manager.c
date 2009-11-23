@@ -641,6 +641,10 @@ add_file_transfer_channel_class (GPtrArray *arr,
   g_ptr_array_add (arr, g_value_get_boxed (&monster));
 }
 
+/* The channel-manager-specific representation of capabilities for this manager
+ * is: NULL = no file transfer, non-NULL = file transfer. We use the manager
+ * itself as a convenient non-NULL pointer. */
+
 static void
 gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
                                     GabbleConnection *conn,
@@ -667,8 +671,7 @@ gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
  if (presence->per_channel_manager_caps == NULL)
    return;
 
- if (!GPOINTER_TO_INT (g_hash_table_lookup (presence->per_channel_manager_caps,
-         manager)))
+ if (g_hash_table_lookup (presence->per_channel_manager_caps, manager) == NULL)
    return;
 
   /* FT is supported */
@@ -684,7 +687,7 @@ gabble_ft_manager_get_feature_list (
   static const Feature ft = { FEATURE_OPTIONAL, NS_FILE_TRANSFER,
       PRESENCE_CAP_SI_FILE_TRANSFER };
 
-  if (GPOINTER_TO_INT (specific_caps))
+  if (specific_caps != NULL)
     {
       *features = g_slist_prepend (*features, (gpointer) &ft);
     }
@@ -710,10 +713,10 @@ gabble_ft_manager_parse_caps (GabbleCapsChannelManager *manager,
         continue;
 
       if (!tp_strdiff (var, NS_FILE_TRANSFER))
-        return GINT_TO_POINTER (TRUE);
+        return manager;   /* any non-NULL pointer would do */
     }
 
-  return GINT_TO_POINTER (FALSE);
+  return NULL;
 }
 
 static void
@@ -738,9 +741,9 @@ gabble_ft_manager_update_caps (GabbleCapsChannelManager *manager,
     gpointer specific_caps_out G_GNUC_UNUSED,
     gpointer specific_caps_in G_GNUC_UNUSED)
 {
-  /* FIXME: can't be done! We'd need to turn our channel-specific caps into a
-   * real pointer. However, the only call to update_capabilities happens to
-   * work, because GPOINTER_TO_INT (FALSE) happens to be NULL. */
+  /* We don't need to do anything. If @out is NULL, we won't be called, and
+   * @in will be copied instead; if @out is non-NULL, it means FT is supported,
+   * so it doesn't matter what @in was. */
 }
 
 static void

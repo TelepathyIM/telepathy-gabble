@@ -29,6 +29,7 @@
 #include <glib/gstdio.h>
 
 #include "caps-channel-manager.h"
+#include "capabilities.h"
 #include "connection.h"
 #include "ft-manager.h"
 #include "error.h"
@@ -653,12 +654,13 @@ gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
 
   if (handle == base->self_handle)
     {
-      /* We support file transfer */
-      add_file_transfer_channel_class (arr, handle);
-      return;
+      presence = conn->self_presence;
+    }
+  else
+    {
+      presence = gabble_presence_cache_get (conn->presence_cache, handle);
     }
 
- presence = gabble_presence_cache_get (conn->presence_cache, handle);
  if (presence == NULL)
    return;
 
@@ -671,6 +673,21 @@ gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
 
   /* FT is supported */
   add_file_transfer_channel_class (arr, handle);
+}
+
+static void
+gabble_ft_manager_get_feature_list (
+    GabbleCapsChannelManager *manager,
+    gpointer specific_caps,
+    GSList **features)
+{
+  static const Feature ft = { FEATURE_OPTIONAL, NS_FILE_TRANSFER,
+      PRESENCE_CAP_SI_FILE_TRANSFER };
+
+  if (GPOINTER_TO_INT (specific_caps))
+    {
+      *features = g_slist_prepend (*features, (gpointer) &ft);
+    }
 }
 
 static gpointer
@@ -717,13 +734,67 @@ gabble_ft_manager_caps_diff (GabbleCapsChannelManager *manager,
 }
 
 static void
+gabble_ft_manager_update_caps (GabbleCapsChannelManager *manager,
+    gpointer specific_caps_out G_GNUC_UNUSED,
+    gpointer specific_caps_in G_GNUC_UNUSED)
+{
+  /* FIXME: can't be done! We'd need to turn our channel-specific caps into a
+   * real pointer. However, the only call to update_capabilities happens to
+   * work, because GPOINTER_TO_INT (FALSE) happens to be NULL. */
+}
+
+static void
+gabble_ft_manager_add_cap (GabbleCapsChannelManager *manager,
+    GabbleConnection *conn,
+    TpHandle handle,
+    GHashTable *channel_class)
+{
+  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
+  GabblePresence *presence;
+
+  if (tp_strdiff (tp_asv_get_string (channel_class,
+          TP_IFACE_CHANNEL ".ChannelType"),
+        TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER))
+    return;
+
+  if (tp_asv_get_uint32 (channel_class, TP_IFACE_CHANNEL ".TargetHandleType",
+        NULL) != TP_HANDLE_TYPE_CONTACT)
+    {
+      return;
+    }
+
+  if (handle == base->self_handle)
+    {
+      presence = conn->self_presence;
+    }
+  else
+    {
+      /* FIXME: why would this ever be needed for others' presences? */
+      presence = gabble_presence_cache_get (conn->presence_cache, handle);
+    }
+
+  g_assert (presence != NULL);
+
+  if (presence->per_channel_manager_caps == NULL)
+    presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
+
+  /* it doesn't matter whether we already had this capability - this either
+   * changes it from FALSE to TRUE, or from TRUE to TRUE */
+  g_hash_table_insert (presence->per_channel_manager_caps,
+      manager, GINT_TO_POINTER (TRUE));
+}
+
+static void
 caps_channel_manager_iface_init (gpointer g_iface,
                                  gpointer iface_data)
 {
   GabbleCapsChannelManagerIface *iface = g_iface;
 
   iface->get_contact_caps = gabble_ft_manager_get_contact_caps;
+  iface->get_feature_list = gabble_ft_manager_get_feature_list;
   iface->parse_caps = gabble_ft_manager_parse_caps;
   iface->copy_caps = gabble_ft_manager_copy_caps;
   iface->caps_diff = gabble_ft_manager_caps_diff;
+  iface->update_caps = gabble_ft_manager_update_caps;
+  iface->add_cap = gabble_ft_manager_add_cap;
 }

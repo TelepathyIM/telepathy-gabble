@@ -35,7 +35,8 @@ def run_test(q, bus, conn, stream):
     # test/twisted/capabilities/draft-1.py in MC 5.1 - MC doesn't know
     # how to map Client capabilities into the old Capabilities interface.
     add = [(cs.CHANNEL_TYPE_STREAMED_MEDIA, 2L**32-1),
-            (cs.CHANNEL_TYPE_STREAM_TUBE, 2L**32-1)]
+            (cs.CHANNEL_TYPE_STREAM_TUBE, 2L**32-1),
+            (cs.CHANNEL_TYPE_FILE_TRANSFER, 2L**32-1)]
     remove = []
     caps = conn.Capabilities.AdvertiseCapabilities(add, remove)
     (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
@@ -51,14 +52,20 @@ def run_test(q, bus, conn, stream):
             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
             cs.STREAM_TUBE_SERVICE: 'x-abiword' },
         { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA },
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
+            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT },
         ])
     (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
             False)
-    check_caps(namespaces, JINGLE_CAPS + [ns.TUBES + '/stream#x-abiword'])
+    check_caps(namespaces, JINGLE_CAPS + [
+        ns.FILE_TRANSFER,
+        ns.TUBES + '/stream#x-abiword',
+        ])
 
     # Remove all our caps again
     add = []
     remove = [cs.CHANNEL_TYPE_STREAMED_MEDIA,
+            cs.CHANNEL_TYPE_FILE_TRANSFER,
             cs.CHANNEL_TYPE_STREAM_TUBE]
     caps = conn.Capabilities.AdvertiseCapabilities(add, remove)
     (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,

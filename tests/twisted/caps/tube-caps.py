@@ -235,7 +235,7 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
         [(text_fixed_properties, text_allowed_properties),
          (stream_tube_fixed_properties, stream_tube_allowed_properties),
          (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-         (ft_fixed_properties, ft_allowed_properties)]})
+         ]})
     daap_caps = dbus.Dictionary({self_handle:
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),

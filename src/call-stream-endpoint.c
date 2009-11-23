@@ -303,6 +303,7 @@ call_stream_endpoint_set_stream_state (GabbleSvcCallStreamEndpoint *iface,
   gabble_jingle_content_set_transport_state (self->priv->content,
     state);
 
+  gabble_svc_call_stream_endpoint_emit_stream_state_changed (self, state);
   gabble_svc_call_stream_endpoint_return_from_set_stream_state (context);
 }
 

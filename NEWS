@@ -24,6 +24,13 @@ Fixes:
   chatrooms. This enables us to be invited to private MUCs by the Google
   client, but doesn't currently support creating them. (jonny)
 
+• fd.o #24558: correctly flag the password parameter as secret (smcv)
+
+• Use TpDebugSender for debug output, instead of reimplementing it (jonny)
+
+• Allow sending chat state to contacts whose capabilities we don't know,
+  such as invisible Google Talk users (wjt)
+
 telepathy-gabble 0.9.2 (2009-10-27)
 ===================================
 

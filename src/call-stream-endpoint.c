@@ -57,6 +57,7 @@ enum
   PROP_JINGLE_CONTENT,
   PROP_REMOTE_CANDIDATES,
   PROP_STREAM_STATE,
+  PROP_TRANSPORT,
 };
 
 struct _GabbleCallStreamEndpointPrivate
@@ -112,6 +113,30 @@ gabble_call_stream_endpoint_get_property (GObject    *object,
       case PROP_STREAM_STATE:
         g_value_set_uint (value, priv->stream_state);
         break;
+      case PROP_TRANSPORT:
+        {
+          GabbleStreamTransportType type = 0;
+
+          switch (gabble_jingle_content_get_transport_type (priv->content))
+            {
+            case JINGLE_TRANSPORT_GOOGLE_P2P:
+                type = GABBLE_STREAM_TRANSPORT_TYPE_GTALK_P2P;
+                break;
+            case JINGLE_TRANSPORT_RAW_UDP:
+                type = GABBLE_STREAM_TRANSPORT_TYPE_RAW_UDP;
+                break;
+            case JINGLE_TRANSPORT_ICE_UDP:
+                type = GABBLE_STREAM_TRANSPORT_TYPE_ICE;
+                break;
+            case JINGLE_TRANSPORT_UNKNOWN:
+            default:
+                g_assert ("Unknown transport type");
+                break;
+            }
+
+          g_value_set_uint (value, type);
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -174,6 +199,7 @@ gabble_call_stream_endpoint_class_init (
   static TpDBusPropertiesMixinPropImpl endpoint_props[] = {
     { "RemoteCandidates", "remote-candidates", NULL },
     { "StreamState", "stream-state", NULL },
+    { "Transport", "transport", NULL },
     { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
@@ -232,6 +258,13 @@ gabble_call_stream_endpoint_class_init (
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STREAM_STATE,
       param_spec);
+
+  param_spec = g_param_spec_uint ("transport",
+      "Transport",
+      "The transport type for the content of this endpoint.",
+      0, NUM_GABBLE_STREAM_TRANSPORT_TYPES, 0,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_TRANSPORT, param_spec);
 
   gabble_call_stream_endpoint_class->dbus_props_class.interfaces =
       prop_interfaces;

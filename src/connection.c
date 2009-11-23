@@ -1846,6 +1846,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
     }
   else if (!tp_strdiff (suffix, BUNDLE_PMUC_V1))
     {
+      /* Send an empty reply, matching Google's behaviour. */
       _gabble_connection_send_or_complain (self, result,
           "sending disco response failed");
     }

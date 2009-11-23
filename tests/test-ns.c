@@ -1,7 +1,7 @@
 #include "src/util.h"
 
 static gboolean
-one (void)
+test_inherited_ns (void)
 {
   LmMessageNode *baz;
   LmMessage *stanza;
@@ -23,7 +23,7 @@ one (void)
 }
 
 static gboolean
-two (void)
+test_uninherited_ns (void)
 {
   LmMessageNode *foo, *baz;
   LmMessage *stanza;
@@ -52,8 +52,8 @@ main (void)
 {
   g_type_init ();
 
-  g_assert (one ());
-  g_assert (two ());
+  g_assert (test_inherited_ns ());
+  g_assert (test_uninherited_ns ());
 
   return 0;
 }

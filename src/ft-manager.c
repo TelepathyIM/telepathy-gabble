@@ -744,12 +744,10 @@ gabble_ft_manager_update_caps (GabbleCapsChannelManager *manager,
 }
 
 static void
-gabble_ft_manager_add_cap (GabbleCapsChannelManager *manager,
+gabble_ft_manager_add_self_capability (GabbleCapsChannelManager *manager,
     GabbleConnection *conn,
-    TpHandle handle,
     GHashTable *channel_class)
 {
-  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
   GabblePresence *presence;
 
   if (tp_strdiff (tp_asv_get_string (channel_class,
@@ -763,16 +761,7 @@ gabble_ft_manager_add_cap (GabbleCapsChannelManager *manager,
       return;
     }
 
-  if (handle == base->self_handle)
-    {
-      presence = conn->self_presence;
-    }
-  else
-    {
-      /* FIXME: why would this ever be needed for others' presences? */
-      presence = gabble_presence_cache_get (conn->presence_cache, handle);
-    }
-
+  presence = conn->self_presence;
   g_assert (presence != NULL);
 
   if (presence->per_channel_manager_caps == NULL)
@@ -796,5 +785,5 @@ caps_channel_manager_iface_init (gpointer g_iface,
   iface->copy_caps = gabble_ft_manager_copy_caps;
   iface->caps_diff = gabble_ft_manager_caps_diff;
   iface->update_caps = gabble_ft_manager_update_caps;
-  iface->add_cap = gabble_ft_manager_add_cap;
+  iface->add_self_capability = gabble_ft_manager_add_self_capability;
 }

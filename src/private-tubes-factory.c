@@ -845,12 +845,11 @@ gabble_private_tubes_factory_caps_diff (
 }
 
 static void
-gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
-                                      GabbleConnection *conn,
-                                      TpHandle handle,
-                                      GHashTable *cap)
+gabble_private_tubes_factory_add_self_capability (
+    GabbleCapsChannelManager *manager,
+    GabbleConnection *conn,
+    GHashTable *cap)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
   GabblePresence *presence;
   TubesCapabilities *caps;
   const gchar *channel_type;
@@ -868,11 +867,7 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
         TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
     return;
 
-  if (handle == base->self_handle)
-    presence = conn->self_presence;
-  else
-    presence = gabble_presence_cache_get (conn->presence_cache, handle);
-
+  presence = conn->self_presence;
   g_assert (presence != NULL);
 
   if (presence->per_channel_manager_caps == NULL)
@@ -888,9 +883,8 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
           g_free, gabble_private_tubes_factory_free_feat);
       g_hash_table_insert (presence->per_channel_manager_caps, manager, caps);
 
-      if (handle == base->self_handle)
-        /* We always support generic tubes caps */
-        caps->tubes_supported = TRUE;
+      /* We always support generic tubes caps */
+      caps->tubes_supported = TRUE;
     }
 
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
@@ -1399,5 +1393,5 @@ caps_channel_manager_iface_init (gpointer g_iface,
   iface->copy_caps = gabble_private_tubes_factory_copy_caps;
   iface->update_caps = gabble_private_tubes_factory_update_caps;
   iface->caps_diff = gabble_private_tubes_factory_caps_diff;
-  iface->add_cap = gabble_private_tubes_factory_add_cap;
+  iface->add_self_capability = gabble_private_tubes_factory_add_self_capability;
 }

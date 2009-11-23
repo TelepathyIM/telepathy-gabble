@@ -155,6 +155,11 @@ def run_test(jp, q, bus, conn, stream, incoming):
     assertEquals (cs.CALL_STREAM_TRANSPORT_GOOGLE, transport)
 
     endpoint = bus.get_object (conn.bus_name, endpoints[0])
+
+    transport = endpoint.Get(cs.CALL_STREAM_ENDPOINT,
+                "Transport", dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (cs.CALL_STREAM_TRANSPORT_GOOGLE, transport)
+
     candidates = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
         "RemoteCandidates",  dbus_interface=dbus.PROPERTIES_IFACE)
 

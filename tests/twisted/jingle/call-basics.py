@@ -160,9 +160,20 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     assertEquals ([], candidates)
 
+    state = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
+        "StreamState",  dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (cs.MEDIA_STREAM_STATE_DISCONNECTED, state)
+
     if incoming:
         endpoint.SetStreamState (cs.MEDIA_STREAM_STATE_CONNECTED,
             dbus_interface=cs.CALL_STREAM_ENDPOINT)
+
+        q.expect('dbus-signal', signal='StreamStateChanged',
+            interface=cs.CALL_STREAM_ENDPOINT)
+
+        state = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
+            "StreamState",  dbus_interface=dbus.PROPERTIES_IFACE)
+        assertEquals (cs.MEDIA_STREAM_STATE_CONNECTED, state)
 
         chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
         q.expect('stream-iq', predicate=jp.action_predicate('session-accept'))

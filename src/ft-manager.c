@@ -601,15 +601,12 @@ gabble_ft_manager_get_tmp_dir (GabbleFtManager *self)
 }
 
 static void
-add_file_transfer_channel_class (GPtrArray *arr,
-                                 TpHandle handle)
+add_file_transfer_channel_class (GPtrArray *arr)
 {
   GValue monster = {0, };
   GHashTable *fixed_properties;
   GValue *channel_type_value;
   GValue *target_handle_type_value;
-
-  g_assert (handle != 0);
 
   g_value_init (&monster, TP_STRUCT_TYPE_REQUESTABLE_CHANNEL_CLASS);
   g_value_take_boxed (&monster,
@@ -643,12 +640,12 @@ add_file_transfer_channel_class (GPtrArray *arr,
 static void
 gabble_ft_manager_get_contact_caps (
     GabbleCapsChannelManager *manager G_GNUC_UNUSED,
-    TpHandle handle,
+    TpHandle handle G_GNUC_UNUSED,
     const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
   if (gabble_capability_set_has (caps, NS_FILE_TRANSFER))
-    add_file_transfer_channel_class (arr, handle);
+    add_file_transfer_channel_class (arr);
 }
 
 static void

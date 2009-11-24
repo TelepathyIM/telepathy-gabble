@@ -98,27 +98,6 @@ def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, cli
     assert caps_via_contacts_iface == caps[contact_handle], \
                                     caps_via_contacts_iface
 
-
-def test_ft_caps_to_contact(q, bus, conn, stream):
-    basic_caps = dbus.Dictionary({1:
-        [(text_fixed_properties, text_allowed_properties),
-         (stream_tube_fixed_properties, stream_tube_allowed_properties),
-         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-         (ft_fixed_properties, ft_allowed_properties)]})
-
-    conn_caps_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACT_CAPS)
-    conn_contacts_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACTS)
-
-    # Check our own caps
-    caps = conn_caps_iface.GetContactCapabilities([1])
-    assertEquals(basic_caps, caps)
-
-    # check the Contacts interface give the same caps
-    caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
-            [1], [cs.CONN_IFACE_CONTACT_CAPS], False) \
-            [1][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
-    assertEquals(caps[1], caps_via_contacts_iface)
-
 def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged',
@@ -129,7 +108,8 @@ def test(q, bus, conn, stream):
     test_ft_caps_from_contact(q, bus, conn, stream, 'bilbo1@foo.com/Foo',
         2L, client)
 
-    test_ft_caps_to_contact(q, bus, conn, stream)
+    # our own capabilities, formerly tested here, are now in
+    # tests/twisted/caps/advertise-contact-capabilities.py
 
 if __name__ == '__main__':
     exec_test(test)

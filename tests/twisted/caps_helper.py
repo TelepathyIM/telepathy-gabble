@@ -43,9 +43,10 @@ JINGLE_CAPS = [
 VARIABLE_CAPS = (
     JINGLE_CAPS +
     [
+    ns.FILE_TRANSFER,
+
     # FIXME: currently we always advertise these, but in future we should
     # only advertise them if >= 1 client supports them:
-    # ns.FILE_TRANSFER,
     # ns.TUBES,
 
     # there is an unlimited set of these; only the ones actually relevant to

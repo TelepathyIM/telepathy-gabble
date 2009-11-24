@@ -641,19 +641,46 @@ add_file_transfer_channel_class (GPtrArray *arr,
 }
 
 static void
-gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
+gabble_ft_manager_get_contact_caps (
+    GabbleCapsChannelManager *manager G_GNUC_UNUSED,
     TpHandle handle,
     const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
-  GabbleFtManager *self = GABBLE_FT_MANAGER (manager);
-
-  g_assert (handle != 0);
-
-  /* We always support file transfer */
-  if (handle == self->priv->connection->parent.self_handle ||
-      gabble_capability_set_has (caps, NS_FILE_TRANSFER))
+  if (gabble_capability_set_has (caps, NS_FILE_TRANSFER))
     add_file_transfer_channel_class (arr, handle);
+}
+
+static void
+gabble_ft_manager_represent_client (
+    GabbleCapsChannelManager *manager G_GNUC_UNUSED,
+    const gchar *client_name,
+    const GPtrArray *filters,
+    const gchar * const *cap_tokens G_GNUC_UNUSED,
+    GabbleCapabilitySet *cap_set)
+{
+  guint i;
+
+  for (i = 0; i < filters->len; i++)
+    {
+      GHashTable *channel_class = g_ptr_array_index (filters, i);
+
+      if (tp_strdiff (tp_asv_get_string (channel_class,
+              TP_IFACE_CHANNEL ".ChannelType"),
+            TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER))
+        continue;
+
+      if (tp_asv_get_uint32 (channel_class,
+            TP_IFACE_CHANNEL ".TargetHandleType", NULL)
+          != TP_HANDLE_TYPE_CONTACT)
+        continue;
+
+      DEBUG ("client %s supports file transfer", client_name);
+      gabble_capability_set_add (cap_set, NS_FILE_TRANSFER);
+      /* there's no point in looking at the subsequent filters if we've
+       * already added the FT capability */
+      break;
+    }
 }
 
 static void
@@ -663,4 +690,5 @@ caps_channel_manager_iface_init (gpointer g_iface,
   GabbleCapsChannelManagerIface *iface = g_iface;
 
   iface->get_contact_caps = gabble_ft_manager_get_contact_caps;
+  iface->represent_client = gabble_ft_manager_represent_client;
 }

@@ -86,6 +86,7 @@ main (void)
   /* test string with embedded NULL */
   tmp1 = base64_decode ("Zm9vAGJhcg==");
   tmp2 = g_string_new_len ("foo\0bar", 7);
+  g_assert (tmp1);
   g_assert (g_string_equal (tmp1, tmp2));
   g_string_free (tmp1, TRUE);
   g_string_free (tmp2, TRUE);

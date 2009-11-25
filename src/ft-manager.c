@@ -545,8 +545,6 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
     {
       GTimeVal val;
 
-      g_time_val_from_iso8601 (date_str, &val);
-
       /* FIXME: this assume the timezone is always UTC */
       if (g_time_val_from_iso8601 (date_str, &val))
         date = val.tv_sec;

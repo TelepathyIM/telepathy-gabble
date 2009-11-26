@@ -739,12 +739,13 @@ gabble_ft_manager_caps_diff (GabbleCapsChannelManager *manager,
 
 static void
 gabble_ft_manager_update_caps (GabbleCapsChannelManager *manager,
-    gpointer specific_caps_out G_GNUC_UNUSED,
+    gpointer specific_caps_out,
     gpointer specific_caps_in G_GNUC_UNUSED)
 {
   /* We don't need to do anything. If @out is NULL, we won't be called, and
    * @in will be copied instead; if @out is non-NULL, it means FT is supported,
    * so it doesn't matter what @in was. */
+  g_return_if_fail (specific_caps_out != NULL);
 }
 
 static void

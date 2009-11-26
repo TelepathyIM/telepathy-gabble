@@ -63,16 +63,21 @@ def offer_dbus_tube(q, bus, conn, stream):
     # Offer a private D-Bus tube just to check if the proxy is present in the
     # SOCKS5 offer
 
-    path, props = conn.Requests.CreateChannel({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
+    call_async(q, conn.Requests, 'CreateChannel', {
+        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
         cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
         cs.TARGET_ID: 'alice@localhost',
         cs.DBUS_TUBE_SERVICE_NAME: 'com.example.TestCase'})
 
     # Proxy queries are send when creating the channel
-    e1, e2 = q.expect_many(*proxy_query_events)
+    return_event, e1, e2 = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        proxy_query_events[0], proxy_query_events[1])
 
     send_socks5_reply(stream, e1.stanza)
     send_socks5_reply(stream, e2.stanza)
+
+    path, props = return_event.value
 
     tube_chan = bus.get_object(conn.bus_name, path)
     dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)

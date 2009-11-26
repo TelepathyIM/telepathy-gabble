@@ -54,7 +54,6 @@ G_BEGIN_DECLS
       "proxy.fsinf.at", "proxy.jabber.minus273.org",\
       "proxy.jabber.planetteamspeak.com", "proxy.jabber.tf-network.de",\
       "proxy.jabjab.de", "proxy.jabster.pl",\
-      "proxy.schokokeks.org",\
       "proxy.ubuntu-jabber.de", "proxy.ubuntu-jabber.net",\
       "proxy65.unstable.nl", "proxy.verdammung.org", "proxy.vke.ru",\
       "proxy.vodka-pomme.net", "proxy.jabbernet.eu",\

@@ -176,13 +176,17 @@ check-twisted:
 		exit 1;\
 	fi
 
+if ENABLE_DEBUG
+DEBUGGING_PYBOOL = True
+else
+DEBUGGING_PYBOOL = False
+endif
+
 config.py: Makefile
-	echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\"" > config.py
-	if test -n ''$(ENABLE_DEBUG); then \
-		echo "DEBUGGING = True" >> config.py; \
-	else \
-		echo "DEBUGGING = False" >> config.py; \
-	fi
+	$(QUIET_GEN) { \
+		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
+		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
+	} > $@
 
 BUILT_SOURCES = config.py
 

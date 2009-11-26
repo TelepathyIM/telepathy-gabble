@@ -99,6 +99,7 @@ AC_ARG_ENABLE(coding-style-checks,
 if test x$enable_debug = xyes; then
   AC_DEFINE(ENABLE_DEBUG, [], [Enable debug code])
 fi
+AM_CONDITIONAL([ENABLE_DEBUG], [test "x$enable_debug" = xyes])
 
 if test x$enable_handle_leak_debug = xyes; then
   AC_DEFINE(ENABLE_HANDLE_LEAK_DEBUG, [], [Enable handle leak debug code])

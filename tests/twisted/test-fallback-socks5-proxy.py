@@ -1,7 +1,7 @@
 import dbus
 import socket
 from gabbletest import exec_test, elem, elem_iq, sync_stream, make_presence
-from servicetest import EventPattern
+from servicetest import EventPattern, call_async
 from caps_helper import make_caps_disco_reply
 
 from twisted.words.xish import xpath
@@ -33,7 +33,7 @@ def connect_and_announce_alice(q, bus, conn, stream):
     disco_event = q.expect('stream-iq', to='alice@localhost/Test',
         query_ns=ns.DISCO_INFO)
 
-    stream.send(make_caps_disco_reply(stream, disco_event.stanza, [ns.TUBES]))
+    stream.send(make_caps_disco_reply(stream, disco_event.stanza, [ns.TUBES, ns.FILE_TRANSFER]))
     sync_stream(q, stream)
 
     q.unforbid_events(proxy_query_events)
@@ -141,7 +141,40 @@ def accept_stream_tube(q, bus, conn, stream):
     e = q.expect('stream-iq', to='alice@localhost/Test')
     check_socks5_stanza(e.stanza)
 
+def send_file(q, bus, conn, stream):
+    connect_and_announce_alice(q, bus, conn, stream)
+
+    # Send a file; proxy queries are send when creating the FT channel
+
+    call_async(q, conn.Requests, 'CreateChannel', {
+        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
+        cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+        cs.TARGET_ID: 'alice@localhost',
+        cs.FT_FILENAME: 'test.txt',
+        cs.FT_CONTENT_TYPE: 'text/plain',
+        cs.FT_SIZE: 10})
+
+    return_event, e1, e2 = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        proxy_query_events[0], proxy_query_events[1])
+
+    send_socks5_reply(stream, e1.stanza)
+    send_socks5_reply(stream, e2.stanza)
+
+    e = q.expect('stream-iq', to='alice@localhost/Test')
+
+    bytestream, profile = create_from_si_offer(stream, q, BytestreamS5B, e.stanza,
+        'test@localhost/Resource')
+
+    # Alice accepts the FT
+    result, si = bytestream.create_si_reply(e.stanza)
+    stream.send(result)
+
+    e = q.expect('stream-iq', to='alice@localhost/Test')
+    check_socks5_stanza(e.stanza)
+
 if __name__ == '__main__':
     params = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']}
     exec_test(offer_dbus_tube, params=params)
     exec_test(accept_stream_tube, params=params)
+    exec_test(send_file, params=params)

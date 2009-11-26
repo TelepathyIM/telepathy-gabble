@@ -4,8 +4,10 @@ EXTRA_DIST = \
     all.xml \
     Channel_Bundle.xml \
     Channel_Future.xml \
+    Connection_Future.xml \
     Connection_Interface_Contact_Info.xml \
     Channel_Type_Contact_Search.xml \
+    Gabble_Plugin_Test.xml \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \
     OLPC_Gadget.xml \

@@ -158,16 +158,20 @@ gabble_plugin_loader_constructor (
     guint n_props,
     GObjectConstructParam *props)
 {
-  static GObject *singleton = NULL;
+  static gpointer singleton = NULL;
 
   if (singleton == NULL)
     {
-      /* We keep a ref in here to ensure the loader never dies. */
       singleton = G_OBJECT_CLASS (gabble_plugin_loader_parent_class)->
           constructor (type, n_props, props);
-    }
+      g_object_add_weak_pointer (G_OBJECT (singleton), &singleton);
 
-  return g_object_ref (singleton);
+      return singleton;
+    }
+  else
+    {
+      return g_object_ref (singleton);
+    }
 }
 
 static void

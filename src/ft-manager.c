@@ -642,8 +642,9 @@ add_file_transfer_channel_class (GPtrArray *arr,
 }
 
 /* The channel-manager-specific representation of capabilities for this manager
- * is: NULL = no file transfer, non-NULL = file transfer. We use the manager
- * itself as a convenient non-NULL pointer. */
+ * is: NULL = no file transfer, non-NULL = file transfer.
+ */
+#define SOME_NON_NULL_POINTER (((char *) NULL) + 1)
 
 static void
 gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
@@ -713,7 +714,7 @@ gabble_ft_manager_parse_caps (GabbleCapsChannelManager *manager,
         continue;
 
       if (!tp_strdiff (var, NS_FILE_TRANSFER))
-        return manager;   /* any non-NULL pointer would do */
+        return SOME_NON_NULL_POINTER;
     }
 
   return NULL;
@@ -773,7 +774,7 @@ gabble_ft_manager_add_self_capability (GabbleCapsChannelManager *manager,
   /* it doesn't matter whether we already had this capability - this either
    * changes it from FALSE to TRUE, or from TRUE to TRUE */
   g_hash_table_insert (presence->per_channel_manager_caps,
-      manager, GINT_TO_POINTER (TRUE));
+      manager, SOME_NON_NULL_POINTER);
 }
 
 static void

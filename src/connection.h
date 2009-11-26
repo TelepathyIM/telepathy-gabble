@@ -55,7 +55,7 @@ G_BEGIN_DECLS
       "proxy.downtempo.de",\
       "proxy.im.flosoft.biz",\
       "proxy.jabber.bluendo.com", "proxy.jabber.dk", "proxy.jabber.freenet.de",\
-      "proxy.fsinf.at", "proxy.jabber.minus273.org",\
+      "proxy.jabber.minus273.org",\
       "proxy.jabber.planetteamspeak.com", "proxy.jabber.tf-network.de",\
       "proxy.jabjab.de", "proxy.jabster.pl",\
       "proxy.ubuntu-jabber.de", "proxy.ubuntu-jabber.net",\

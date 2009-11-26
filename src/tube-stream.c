@@ -1516,6 +1516,10 @@ gabble_tube_stream_constructor (GType type,
   else
     {
       priv->state = TP_TUBE_CHANNEL_STATE_LOCAL_PENDING;
+
+      /* We'll need SOCKS5 proxies if the tube is accepted */
+      gabble_bytestream_factory_query_socks5_proxies (
+          priv->conn->bytestream_factory);
     }
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)

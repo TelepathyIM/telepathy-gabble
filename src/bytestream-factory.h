@@ -109,6 +109,9 @@ gchar *gabble_bytestream_factory_generate_stream_id (void);
 GSList *gabble_bytestream_factory_get_socks5_proxies (
     GabbleBytestreamFactory *self);
 
+void gabble_bytestream_factory_query_socks5_proxies (
+    GabbleBytestreamFactory *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __BYTESTREAM_FACTORY_H__ */

@@ -190,10 +190,17 @@ else
 DEBUGGING_PYBOOL = False
 endif
 
+if ENABLE_PLUGINS
+PLUGINS_ENABLED_PYBOOL = True
+else
+PLUGINS_ENABLED_PYBOOL = False
+endif
+
 config.py: Makefile
 	$(AM_V_GEN) { \
 		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
 		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
+		echo "PLUGINS_ENABLED = $(PLUGINS_ENABLED_PYBOOL)"; \
 	} > $@
 
 BUILT_SOURCES = config.py

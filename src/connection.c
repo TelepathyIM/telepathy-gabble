@@ -2709,9 +2709,8 @@ gabble_connection_set_self_capabilities (
           /* all channel managers must implement the capability interface */
           g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
-          gabble_caps_channel_manager_add_capability (
-              GABBLE_CAPS_CHANNEL_MANAGER (manager), self,
-              base->self_handle, cap_to_add);
+          gabble_caps_channel_manager_add_self_capability (
+              GABBLE_CAPS_CHANNEL_MANAGER (manager), self, cap_to_add);
         }
     }
 

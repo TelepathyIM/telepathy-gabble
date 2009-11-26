@@ -29,6 +29,7 @@
 #include <glib/gstdio.h>
 
 #include "caps-channel-manager.h"
+#include "capabilities.h"
 #include "connection.h"
 #include "ft-manager.h"
 #include "error.h"
@@ -638,6 +639,11 @@ add_file_transfer_channel_class (GPtrArray *arr,
   g_ptr_array_add (arr, g_value_get_boxed (&monster));
 }
 
+/* The channel-manager-specific representation of capabilities for this manager
+ * is: NULL = no file transfer, non-NULL = file transfer.
+ */
+#define SOME_NON_NULL_POINTER (((char *) NULL) + 1)
+
 static void
 gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
                                     GabbleConnection *conn,
@@ -651,24 +657,39 @@ gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
 
   if (handle == base->self_handle)
     {
-      /* We support file transfer */
-      add_file_transfer_channel_class (arr, handle);
-      return;
+      presence = conn->self_presence;
+    }
+  else
+    {
+      presence = gabble_presence_cache_get (conn->presence_cache, handle);
     }
 
- presence = gabble_presence_cache_get (conn->presence_cache, handle);
  if (presence == NULL)
    return;
 
  if (presence->per_channel_manager_caps == NULL)
    return;
 
- if (!GPOINTER_TO_INT (g_hash_table_lookup (presence->per_channel_manager_caps,
-         manager)))
+ if (g_hash_table_lookup (presence->per_channel_manager_caps, manager) == NULL)
    return;
 
   /* FT is supported */
   add_file_transfer_channel_class (arr, handle);
+}
+
+static void
+gabble_ft_manager_get_feature_list (
+    GabbleCapsChannelManager *manager,
+    gpointer specific_caps,
+    GSList **features)
+{
+  static const Feature ft = { FEATURE_OPTIONAL, NS_FILE_TRANSFER,
+      PRESENCE_CAP_SI_FILE_TRANSFER };
+
+  if (specific_caps != NULL)
+    {
+      *features = g_slist_prepend (*features, (gpointer) &ft);
+    }
 }
 
 static gpointer
@@ -691,10 +712,10 @@ gabble_ft_manager_parse_caps (GabbleCapsChannelManager *manager,
         continue;
 
       if (!tp_strdiff (var, NS_FILE_TRANSFER))
-        return GINT_TO_POINTER (TRUE);
+        return SOME_NON_NULL_POINTER;
     }
 
-  return GINT_TO_POINTER (FALSE);
+  return NULL;
 }
 
 static void
@@ -715,13 +736,57 @@ gabble_ft_manager_caps_diff (GabbleCapsChannelManager *manager,
 }
 
 static void
+gabble_ft_manager_update_caps (GabbleCapsChannelManager *manager,
+    gpointer specific_caps_out,
+    gpointer specific_caps_in G_GNUC_UNUSED)
+{
+  /* We don't need to do anything. If @out is NULL, we won't be called, and
+   * @in will be copied instead; if @out is non-NULL, it means FT is supported,
+   * so it doesn't matter what @in was. */
+  g_return_if_fail (specific_caps_out != NULL);
+}
+
+static void
+gabble_ft_manager_add_self_capability (GabbleCapsChannelManager *manager,
+    GabbleConnection *conn,
+    GHashTable *channel_class)
+{
+  GabblePresence *presence;
+
+  if (tp_strdiff (tp_asv_get_string (channel_class,
+          TP_IFACE_CHANNEL ".ChannelType"),
+        TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER))
+    return;
+
+  if (tp_asv_get_uint32 (channel_class, TP_IFACE_CHANNEL ".TargetHandleType",
+        NULL) != TP_HANDLE_TYPE_CONTACT)
+    {
+      return;
+    }
+
+  presence = conn->self_presence;
+  g_assert (presence != NULL);
+
+  if (presence->per_channel_manager_caps == NULL)
+    presence->per_channel_manager_caps = g_hash_table_new (NULL, NULL);
+
+  /* it doesn't matter whether we already had this capability - this either
+   * changes it from FALSE to TRUE, or from TRUE to TRUE */
+  g_hash_table_insert (presence->per_channel_manager_caps,
+      manager, SOME_NON_NULL_POINTER);
+}
+
+static void
 caps_channel_manager_iface_init (gpointer g_iface,
                                  gpointer iface_data)
 {
   GabbleCapsChannelManagerIface *iface = g_iface;
 
   iface->get_contact_caps = gabble_ft_manager_get_contact_caps;
+  iface->get_feature_list = gabble_ft_manager_get_feature_list;
   iface->parse_caps = gabble_ft_manager_parse_caps;
   iface->copy_caps = gabble_ft_manager_copy_caps;
   iface->caps_diff = gabble_ft_manager_caps_diff;
+  iface->update_caps = gabble_ft_manager_update_caps;
+  iface->add_self_capability = gabble_ft_manager_add_self_capability;
 }

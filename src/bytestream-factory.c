@@ -375,13 +375,16 @@ gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
 
   if (nb_proxies_found >= NB_MIN_SOCKS5_PROXIES)
     {
-      DEBUG ("we already have discovered enough proxies (%u)",
+      DEBUG ("we already have discovered enough proxies (%u); "
+          "request just one to refresh our cache",
           nb_proxies_found);
-      return;
+      nb_proxies_needed = 1;
     }
-
-  nb_proxies_needed = NB_MIN_SOCKS5_PROXIES - nb_proxies_found;
-  DEBUG ("Need %u more proxies", nb_proxies_needed);
+  else
+    {
+      nb_proxies_needed = NB_MIN_SOCKS5_PROXIES - nb_proxies_found;
+      DEBUG ("Need %u more proxies", nb_proxies_needed);
+    }
 
   for (i = 0; i < nb_proxies_needed &&
       priv->socks5_potential_proxies != NULL; i++)

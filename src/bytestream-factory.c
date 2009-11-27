@@ -48,6 +48,7 @@ G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
 
 /* The number of proxy we'll try to have at a minimum in the cache. */
 #define NB_MIN_SOCKS5_PROXIES 3
+#define FALLBACK_PROXY_CACHE_SIZE 5
 #define SOCKS5_PROXY_TIMEOUT 10
 
 /* properties */
@@ -265,6 +266,20 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
       DEBUG ("Add %s SOCKS5 proxy: %s %s:%s",
           fallback ? "fallback": "discovered",
           proxy->jid, proxy->host, proxy->port);
+
+      if (fallback && g_slist_length (*list) >= FALLBACK_PROXY_CACHE_SIZE)
+        {
+          GSList *last;
+          GabbleSocks5Proxy *oldest;
+
+          last = g_slist_last (*list);
+          oldest = last->data;
+
+          DEBUG ("Proxy cache is full, remove the oldest entry (%s)",
+              oldest->jid);
+
+          *list = g_slist_delete_link (*list, last);
+        }
     }
 
   *list = g_slist_prepend (*list, proxy);

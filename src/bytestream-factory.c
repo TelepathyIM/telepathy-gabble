@@ -239,6 +239,7 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
   GSList **list;
+  GSList *found;
 
   if (fallback)
     {
@@ -249,18 +250,24 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
       list = &priv->socks5_proxies;;
     }
 
-  if (g_slist_find_custom (*list, proxy, cmp_proxy) != NULL)
+  found = g_slist_find_custom (*list, proxy, cmp_proxy);
+  if (found != NULL)
     {
-      DEBUG ("%s SOCKS5 proxy (%s %s:%s) is already known; ignoring",
+      DEBUG ("%s SOCKS5 proxy (%s %s:%s) is already known; "
+          "move it to the head of the list",
           fallback ? "Fallback": "Discovered",
           proxy->jid, proxy->host, proxy->port);
-      return;
+
+      *list = g_slist_delete_link (*list, found);
+    }
+  else
+    {
+      DEBUG ("Add %s SOCKS5 proxy: %s %s:%s",
+          fallback ? "fallback": "discovered",
+          proxy->jid, proxy->host, proxy->port);
     }
 
   *list = g_slist_prepend (*list, proxy);
-
-  DEBUG ("Add %s SOCKS5 proxy: %s %s:%s", fallback ? "fallback": "discovered",
-      proxy->jid, proxy->host, proxy->port);
 }
 
 static LmHandlerResult

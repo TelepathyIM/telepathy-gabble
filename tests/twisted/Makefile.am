@@ -200,7 +200,6 @@ BUILT_SOURCES = config.py
 EXTRA_DIST = \
 	$(TWISTED_TESTS) \
 	bytestream.py \
-	config.py \
 	constants.py \
 	gabbletest.py \
 	httptest.py \

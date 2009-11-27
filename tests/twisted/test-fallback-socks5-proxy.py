@@ -1,7 +1,7 @@
 import dbus
 import socket
 from gabbletest import exec_test, elem, elem_iq, sync_stream, make_presence
-from servicetest import EventPattern, call_async
+from servicetest import EventPattern, call_async, assertEquals
 from caps_helper import make_caps_disco_reply
 
 from twisted.words.xish import xpath
@@ -52,14 +52,30 @@ def send_socks5_reply(stream, iq, jid=None, host=None, port=None):
 
     stream.send(reply)
 
-def check_socks5_stanza(stanza):
-    tmp = proxy_port.copy()
-    nodes = xpath.queryForNodes('/iq/query/streamhost', stanza)
-    for node in nodes:
-        if node['jid'] in tmp:
-            assert node['host'] == '127.0.0.1'
-            assert node['port'] == tmp.pop(node['jid'])
-    assert tmp == {}
+def wait_si_and_return_proxies(q, stream):
+    e = q.expect('stream-iq', to='alice@localhost/Test')
+
+    bytestream, profile = create_from_si_offer(stream, q, BytestreamS5B, e.stanza,
+        'test@localhost/Resource')
+
+    # Alice accepts the SI
+    result, si = bytestream.create_si_reply(e.stanza)
+    stream.send(result)
+
+    e = q.expect('stream-iq', to='alice@localhost/Test')
+
+    proxies = []
+    for node in xpath.queryForNodes('/iq/query/streamhost', e.stanza):
+        if node['jid'] == 'test@localhost/Resource':
+            # skip our own stream hosts
+            continue
+
+        proxies.append((node['jid'], node['host'], node['port']))
+
+    return proxies
+
+def check_proxies(expected, proxies):
+    assertEquals(set(expected), set(proxies))
 
 def offer_dbus_tube(q, bus, conn, stream):
     connect_and_announce_alice(q, bus, conn, stream)
@@ -88,18 +104,10 @@ def offer_dbus_tube(q, bus, conn, stream):
 
     dbus_tube_iface.Offer({}, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)
 
-    e = q.expect('stream-iq', to='alice@localhost/Test')
+    proxies = wait_si_and_return_proxies(q, stream)
 
-    bytestream, profile = create_from_si_offer(stream, q, BytestreamS5B, e.stanza,
-        'test@localhost/Resource')
-
-    # Alice accepts the tube
-    result, si = bytestream.create_si_reply(e.stanza)
-    si.addElement((ns.TUBES, 'tube'))
-    stream.send(result)
-
-    e = q.expect('stream-iq', to='alice@localhost/Test')
-    check_socks5_stanza(e.stanza)
+    check_proxies([('fallback2-proxy.localhost', '127.0.0.1', '6789'),
+        ('fallback1-proxy.localhost', '127.0.0.1', '12345')], proxies)
 
 def accept_stream_tube(q, bus, conn, stream):
     connect_and_announce_alice(q, bus, conn, stream)
@@ -138,17 +146,10 @@ def accept_stream_tube(q, bus, conn, stream):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(address)
 
-    e = q.expect('stream-iq', to='alice@localhost/Test')
+    proxies = wait_si_and_return_proxies(q, stream)
 
-    bytestream, profile = create_from_si_offer(stream, q, BytestreamS5B, e.stanza,
-        'test@localhost/Resource')
-
-    # Alice accepts the connection
-    result, si = bytestream.create_si_reply(e.stanza)
-    stream.send(result)
-
-    e = q.expect('stream-iq', to='alice@localhost/Test')
-    check_socks5_stanza(e.stanza)
+    check_proxies([('fallback2-proxy.localhost', '127.0.0.1', '6789'),
+        ('fallback1-proxy.localhost', '127.0.0.1', '12345')], proxies)
 
 def send_file(q, bus, conn, stream):
     connect_and_announce_alice(q, bus, conn, stream)
@@ -170,17 +171,10 @@ def send_file(q, bus, conn, stream):
     send_socks5_reply(stream, e1.stanza)
     send_socks5_reply(stream, e2.stanza)
 
-    e = q.expect('stream-iq', to='alice@localhost/Test')
+    proxies = wait_si_and_return_proxies(q, stream)
 
-    bytestream, profile = create_from_si_offer(stream, q, BytestreamS5B, e.stanza,
-        'test@localhost/Resource')
-
-    # Alice accepts the FT
-    result, si = bytestream.create_si_reply(e.stanza)
-    stream.send(result)
-
-    e = q.expect('stream-iq', to='alice@localhost/Test')
-    check_socks5_stanza(e.stanza)
+    check_proxies([('fallback2-proxy.localhost', '127.0.0.1', '6789'),
+        ('fallback1-proxy.localhost', '127.0.0.1', '12345')], proxies)
 
 def double_server(q, bus, conn, stream):
     # For some reason the 2 proxies are actually the same. Check that we don't
@@ -204,26 +198,9 @@ def double_server(q, bus, conn, stream):
     # send the same reply for the second stanza
     send_socks5_reply(stream, e2.stanza, 'fallback1-proxy.localhost', '127.0.0.1', '12345')
 
-    e = q.expect('stream-iq', to='alice@localhost/Test')
-
-    bytestream, profile = create_from_si_offer(stream, q, BytestreamS5B, e.stanza,
-        'test@localhost/Resource')
-
-    # Alice accepts the FT
-    result, si = bytestream.create_si_reply(e.stanza)
-    stream.send(result)
-
-    e = q.expect('stream-iq', to='alice@localhost/Test')
-
+    proxies = wait_si_and_return_proxies(q, stream)
     # check that the proxy has been set only once
-    tmp = proxy_port.copy()
-    tmp.pop('fallback2-proxy.localhost')
-    nodes = xpath.queryForNodes('/iq/query/streamhost', e.stanza)
-    for node in nodes:
-        if node['jid'] == 'fallback1-proxy.localhost':
-            assert node['host'] == '127.0.0.1'
-            assert node['port'] == tmp.pop(node['jid'])
-    assert tmp == {}
+    check_proxies([('fallback1-proxy.localhost', '127.0.0.1', '12345')], proxies)
 
 if __name__ == '__main__':
     params = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']}

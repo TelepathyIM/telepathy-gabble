@@ -178,8 +178,56 @@ def send_file(q, bus, conn, stream):
     e = q.expect('stream-iq', to='alice@localhost/Test')
     check_socks5_stanza(e.stanza)
 
+def double_server(q, bus, conn, stream):
+    # For some reason the 2 proxies are actually the same. Check that we don't
+    # set them twice in the SOCKS5 init stanza
+    connect_and_announce_alice(q, bus, conn, stream)
+
+    call_async(q, conn.Requests, 'CreateChannel', {
+        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
+        cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+        cs.TARGET_ID: 'alice@localhost',
+        cs.FT_FILENAME: 'test.txt',
+        cs.FT_CONTENT_TYPE: 'text/plain',
+        cs.FT_SIZE: 10})
+
+    return_event, e1, e2 = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        proxy_query_events[0], proxy_query_events[1])
+
+    send_socks5_reply(stream, e1.stanza)
+
+    # send the same reply for the second stanza
+    reply = elem_iq(stream, 'result', id=e2.stanza['id'], from_='fallback2-proxy.localhost')(
+        elem(ns.BYTESTREAMS, 'query')(
+            elem('streamhost', jid='fallback1-proxy.localhost', host='127.0.0.1', port='12345')()))
+
+    stream.send(reply)
+
+    e = q.expect('stream-iq', to='alice@localhost/Test')
+
+    bytestream, profile = create_from_si_offer(stream, q, BytestreamS5B, e.stanza,
+        'test@localhost/Resource')
+
+    # Alice accepts the FT
+    result, si = bytestream.create_si_reply(e.stanza)
+    stream.send(result)
+
+    e = q.expect('stream-iq', to='alice@localhost/Test')
+
+    # check that the proxy has been set only once
+    tmp = proxy_port.copy()
+    tmp.pop('fallback2-proxy.localhost')
+    nodes = xpath.queryForNodes('/iq/query/streamhost', e.stanza)
+    for node in nodes:
+        if node['jid'] == 'fallback1-proxy.localhost':
+            assert node['host'] == '127.0.0.1'
+            assert node['port'] == tmp.pop(node['jid'])
+    assert tmp == {}
+
 if __name__ == '__main__':
     params = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']}
     exec_test(offer_dbus_tube, params=params)
     exec_test(accept_stream_tube, params=params)
     exec_test(send_file, params=params)
+    exec_test(double_server, params=params)

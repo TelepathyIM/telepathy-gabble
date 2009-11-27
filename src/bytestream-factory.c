@@ -210,6 +210,30 @@ gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
       bytestream_id_equal, bytestream_id_free, g_object_unref);
 }
 
+static void
+add_proxy_to_list (GabbleBytestreamFactory *self,
+    GabbleSocks5Proxy *proxy,
+    gboolean fallback)
+{
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+  GSList **list;
+
+  if (fallback)
+    {
+      list = &priv->socks5_fallback_proxies;
+    }
+  else
+    {
+      list = &priv->socks5_proxies;;
+    }
+
+  *list = g_slist_prepend (*list, proxy);
+
+  DEBUG ("Add %s SOCKS5 proxy: %s %s:%s", fallback ? "fallback": "discovered",
+      proxy->jid, proxy->host, proxy->port);
+}
+
 static LmHandlerResult
 socks5_proxy_query_reply_cb (GabbleConnection *conn,
                              LmMessage *sent_msg,
@@ -218,8 +242,6 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
                              gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (obj);
-  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
-      self);
   LmMessageNode *query, *streamhost;
   const gchar *jid, *host, *port;
   GabbleSocks5Proxy *proxy;
@@ -246,17 +268,7 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
 
   proxy = gabble_socks5_proxy_new (jid, host, port);
 
-  if (fallback)
-    {
-      DEBUG ("Add fallback SOCKS5 proxy: %s %s:%s", jid, host, port);
-      priv->socks5_fallback_proxies = g_slist_prepend (
-          priv->socks5_fallback_proxies, proxy);
-    }
-  else
-    {
-      DEBUG ("Discovered SOCKS5 proxy: %s %s:%s", jid, host, port);
-      priv->socks5_proxies = g_slist_prepend (priv->socks5_proxies, proxy);
-    }
+  add_proxy_to_list (self , proxy, fallback);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

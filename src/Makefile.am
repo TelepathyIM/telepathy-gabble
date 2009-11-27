@@ -106,7 +106,7 @@ libgabble_convenience_la_SOURCES = \
     olpc-view.c \
     plugin-loader.h \
     plugin-loader.c \
-    plugin.h \
+    $(top_srcdir)/gabble/plugin.h \
     plugin.c \
     presence.h \
     presence.c \
@@ -130,7 +130,7 @@ libgabble_convenience_la_SOURCES = \
     search-channel.c \
     search-manager.h \
     search-manager.c \
-    sidecar.h \
+    $(top_srcdir)/gabble/sidecar.h \
     sidecar.c \
     tube-iface.h \
     tube-iface.c \
@@ -180,6 +180,7 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @HANDLE_LEAK_DEBUG_CFLAGS@ @TP_GLIB_CFLAGS@ \
 	    @SOUP_CFLAGS@ @UUID_CFLAGS@ @GMODULE_CFLAGS@ \
 	    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
+	    -I $(top_srcdir)/gabble \
 	    -DG_LOG_DOMAIN=\"gabble\" \
 	    -DPLUGIN_DIR=\"$(libdir)/telepathy/gabble-0\"
 

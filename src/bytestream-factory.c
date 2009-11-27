@@ -46,7 +46,8 @@
 G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
     G_TYPE_OBJECT);
 
-#define NB_SOCKS5_PROXIES_USED 5
+/* The number of proxy we'll try to have at a minimum in the cache. */
+#define NB_MIN_SOCKS5_PROXIES 3
 #define SOCKS5_PROXY_TIMEOUT 10
 
 /* properties */
@@ -364,14 +365,14 @@ gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
   nb_proxies_found = g_slist_length (priv->socks5_proxies) +
     g_slist_length (priv->socks5_fallback_proxies);
 
-  if (nb_proxies_found >= NB_SOCKS5_PROXIES_USED)
+  if (nb_proxies_found >= NB_MIN_SOCKS5_PROXIES)
     {
       DEBUG ("we already have discovered enough proxies (%u)",
           nb_proxies_found);
       return;
     }
 
-  nb_proxies_needed = NB_SOCKS5_PROXIES_USED - nb_proxies_found;
+  nb_proxies_needed = NB_MIN_SOCKS5_PROXIES - nb_proxies_found;
   DEBUG ("Need %u more proxies", nb_proxies_needed);
 
   for (i = 0; i < nb_proxies_needed &&

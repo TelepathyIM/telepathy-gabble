@@ -38,13 +38,17 @@ def connect_and_announce_alice(q, bus, conn, stream):
 
     q.unforbid_events(proxy_query_events)
 
-def send_socks5_reply(stream, iq):
-    jid = iq['to']
-    port = proxy_port[jid]
+def send_socks5_reply(stream, iq, jid=None, host=None, port=None):
+    if jid is None:
+        jid = iq['to']
+    if port is None:
+        port = proxy_port[jid]
+    if host is None:
+        host = '127.0.0.1'
 
-    reply = elem_iq(stream, 'result', id=iq['id'], from_=jid)(
+    reply = elem_iq(stream, 'result', id=iq['id'], from_=iq['to'])(
         elem(ns.BYTESTREAMS, 'query')(
-            elem('streamhost', jid=jid, host='127.0.0.1', port=port)()))
+            elem('streamhost', jid=jid, host=host, port=port)()))
 
     stream.send(reply)
 
@@ -198,11 +202,7 @@ def double_server(q, bus, conn, stream):
     send_socks5_reply(stream, e1.stanza)
 
     # send the same reply for the second stanza
-    reply = elem_iq(stream, 'result', id=e2.stanza['id'], from_='fallback2-proxy.localhost')(
-        elem(ns.BYTESTREAMS, 'query')(
-            elem('streamhost', jid='fallback1-proxy.localhost', host='127.0.0.1', port='12345')()))
-
-    stream.send(reply)
+    send_socks5_reply(stream, e2.stanza, 'fallback1-proxy.localhost', '127.0.0.1', '12345')
 
     e = q.expect('stream-iq', to='alice@localhost/Test')
 

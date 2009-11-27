@@ -210,6 +210,26 @@ gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
       bytestream_id_equal, bytestream_id_free, g_object_unref);
 }
 
+static gint
+cmp_proxy (gconstpointer a,
+    gconstpointer b)
+{
+  GabbleSocks5Proxy *proxy_a = (GabbleSocks5Proxy *) a;
+  GabbleSocks5Proxy *proxy_b = (GabbleSocks5Proxy *) b;
+  gint result;
+
+  result = strcmp (proxy_a->jid, proxy_b->jid);
+  if (result != 0)
+    return result;
+
+  result = strcmp (proxy_a->host, proxy_b->host);
+  if (result != 0)
+    return result;
+
+  result = strcmp (proxy_a->port, proxy_b->port);
+  return result;
+}
+
 static void
 add_proxy_to_list (GabbleBytestreamFactory *self,
     GabbleSocks5Proxy *proxy,
@@ -226,6 +246,14 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
   else
     {
       list = &priv->socks5_proxies;;
+    }
+
+  if (g_slist_find_custom (*list, proxy, cmp_proxy) != NULL)
+    {
+      DEBUG ("%s SOCKS5 proxy (%s %s:%s) is already known; ignoring",
+          fallback ? "Fallback": "Discovered",
+          proxy->jid, proxy->host, proxy->port);
+      return;
     }
 
   *list = g_slist_prepend (*list, proxy);

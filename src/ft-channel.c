@@ -1352,9 +1352,6 @@ data_received_cb (GabbleBytestreamIface *stream,
       return;
     }
 
-  DEBUG ("received %"G_GSIZE_FORMAT" bytes from bytestream. Writing to socket",
-      data->len);
-
   transferred_chunk (self, (guint64) data->len);
 
   if (self->priv->transferred_bytes + self->priv->initial_offset >=
@@ -1375,7 +1372,6 @@ data_received_cb (GabbleBytestreamIface *stream,
   if (!gibber_transport_buffer_is_empty (self->priv->transport))
     {
       /* We don't want to send more data while the buffer isn't empty */
-      DEBUG ("file transfer buffer isn't empty. Block the bytestream");
       gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
     }
 }
@@ -1614,9 +1610,6 @@ transport_handler (GibberTransport *transport,
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
 
-  DEBUG ("Data available, writing a %"G_GSIZE_FORMAT" bytes chunk",
-      data->length);
-
   if (!gabble_bytestream_iface_send (self->priv->bytestream, data->length,
         (const gchar *) data->data))
     {
@@ -1698,7 +1691,6 @@ transport_buffer_empty_cb (GibberTransport *transport,
                            GabbleFileTransferChannel *self)
 {
   /* Buffer is empty so we can unblock the buffer if it was blocked */
-  DEBUG ("file transfer buffer is empty. Unblock the bytestream");
   gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
 
   if (self->priv->state > TP_FILE_TRANSFER_STATE_OPEN)

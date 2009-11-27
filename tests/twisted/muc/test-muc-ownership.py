@@ -23,28 +23,23 @@ def test(q, bus, conn, stream):
     # query
     call_async(q, conn, 'RequestHandles', 2, ['chat@conf.localhost'])
 
-    event = q.expect('stream-iq', to='conf.localhost',
-        query_ns='http://jabber.org/protocol/disco#info')
-    result = make_result_iq(stream, event.stanza)
-    feature = result.firstChildElement().addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/muc'
-    stream.send(result)
-
     event = q.expect('dbus-return', method='RequestHandles')
     room_handle = event.value[0][0]
 
     call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,
         room_handle, True)
 
-    gfc, _, _ = q.expect_many(
-        EventPattern('dbus-signal', signal='GroupFlagsChanged'),
+    gfc, _, _, _ = q.expect_many(
+        # Initial group flags
+        EventPattern('dbus-signal', signal='GroupFlagsChanged',
+            predicate=lambda e: e.args[0] != 0),
         EventPattern('dbus-signal', signal='MembersChanged',
             args=[u'', [], [], [], [2], 0, 0]),
+        # Removing CAN_ADD
+        EventPattern('dbus-signal', signal='GroupFlagsChanged',
+          args = [0, cs.GF_CAN_ADD], predicate=lambda e: e.args[0] == 0),
         EventPattern('stream-presence', to='chat@conf.localhost/test'))
     assert gfc.args[1] == 0
-
-    event = q.expect('dbus-signal', signal='GroupFlagsChanged')
-    assert event.args == [0, 1]
 
     # Send presence for anonymous other member of room.
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))

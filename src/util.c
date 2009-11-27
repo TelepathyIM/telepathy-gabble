@@ -415,35 +415,47 @@ gabble_normalize_room (TpHandleRepoIface *repo,
                        gpointer context,
                        GError **error)
 {
-  char *at = strchr (jid, '@');
-  char *slash = strchr (jid, '/');
+  GabbleConnection *conn;
+  gchar *qualified_name, *resource;
 
-  /* there'd better be an @ somewhere after the first character */
-  if (at == NULL)
+  /* Only look up the canonical room name if we got a GabbleConnection.
+   * This should only happen in the test-handles test. */
+  if (context != NULL)
     {
-      INVALID_HANDLE (error,
-          "invalid room JID %s: does not contain '@'", jid);
+      conn = GABBLE_CONNECTION (context);
+      qualified_name = gabble_connection_get_canonical_room_name (conn, jid);
+
+      if (qualified_name == NULL)
+        {
+          INVALID_HANDLE (error,
+              "requested room handle %s does not specify a server, but we "
+              "have not discovered any local conference servers and no "
+              "fallback was provided", jid);
+          return NULL;
+        }
+    }
+  else
+    {
+      qualified_name = g_strdup (jid);
+    }
+
+  if (!gabble_decode_jid (qualified_name, NULL, NULL, &resource))
+    {
+      INVALID_HANDLE (error, "room JID %s is invalid", qualified_name);
       return NULL;
     }
-  if (at == jid)
+
+  if (resource != NULL)
     {
       INVALID_HANDLE (error,
-          "invalid room JID %s: room name before '@' may not be empty", jid);
+          "invalid room JID %s: contains nickname part after '/' too",
+          qualified_name);
+      g_free (qualified_name);
+      g_free (resource);
       return NULL;
     }
 
-  /* room names can't contain the nick part */
-  if (slash != NULL)
-    {
-      INVALID_HANDLE (error,
-          "invalid room JID %s: contains nickname part after '/' too", jid);
-      return NULL;
-    }
-
-  /* the room and service parts are both case-insensitive, so lowercase
-   * them both; gabble_decode_jid is overkill here
-   */
-  return g_utf8_strdown (jid, -1);
+  return qualified_name;
 }
 
 gchar *

@@ -188,5 +188,24 @@ def run_test(q, bus, conn, stream):
                 ns.JINGLE_015, ns.JINGLE_RTP_VIDEO,
                 ns.JINGLE_RTP, ns.JINGLE_015_VIDEO])
 
+    # Remove KCall to simplify subsequent checks
+    conn.ContactCapabilities.UpdateCapabilities([
+        (cs.CLIENT + '.KCall', [], []),
+        ])
+    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+            False)
+    check_caps(namespaces, [])
+
+    # Support file transfer
+    conn.ContactCapabilities.UpdateCapabilities([
+        (cs.CLIENT + '.FileReceiver', [{
+            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
+            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+            }], []),
+        ])
+    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+            False)
+    check_caps(namespaces, [ns.FILE_TRANSFER])
+
 if __name__ == '__main__':
     exec_test(run_test)

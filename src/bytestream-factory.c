@@ -297,8 +297,6 @@ disco_item_found_cb (GabbleDisco *disco,
   send_proxy_query (self, item->jid, FALSE);
 }
 
-static void query_socks5_proxies (GabbleBytestreamFactory *self);
-
 static gboolean
 socks5_proxies_timeout_cb (gpointer data)
 {
@@ -316,13 +314,14 @@ socks5_proxies_timeout_cb (gpointer data)
       return FALSE;
     }
 
-  query_socks5_proxies (self);
+  gabble_bytestream_factory_query_socks5_proxies (self);
 
   return FALSE;
 }
 
-static void
-query_socks5_proxies (GabbleBytestreamFactory *self)
+/* ask to the factory to try to find more proxies if needed */
+void
+gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
 {
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
@@ -421,8 +420,6 @@ conn_status_changed_cb (GabbleConnection *conn,
       /* randomize the list to not always use the same proxies */
       priv->socks5_potential_proxies = randomize_g_slist (
               priv->socks5_potential_proxies);
-
-      query_socks5_proxies (self);
 
       g_strfreev (jids);
     }

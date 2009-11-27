@@ -14,6 +14,23 @@ Fixes:
   fd.o #13157; previously we assumed they would only let moderators change
   the subject. (smcv)
 
+• fd.o #21152: allow joining chatrooms on servers that don't respond to disco
+  queries, like talk.google.com (jonny)
+
+• fd.o #22456: append fallback conference server if the room name has no @,
+  rather than just failing (if using the Requests API) (jonny)
+
+• fd.o #22768 (partial): reassure talk.google.com that we can be invited to
+  chatrooms. This enables us to be invited to private MUCs by the Google
+  client, but doesn't currently support creating them. (jonny)
+
+• fd.o #24558: correctly flag the password parameter as secret (smcv)
+
+• Use TpDebugSender for debug output, instead of reimplementing it (jonny)
+
+• Allow sending chat state to contacts whose capabilities we don't know,
+  such as invisible Google Talk users (wjt)
+
 telepathy-gabble 0.9.2 (2009-10-27)
 ===================================
 

@@ -955,6 +955,14 @@ gabble_tube_dbus_constructor (GType type,
       priv->reassembly_bytes_needed = 0;
 
       g_assert (priv->muc == NULL);
+
+      if (priv->requested)
+        {
+          /* We created this outgoing 1-1 D-Bus tube and so will need SOCKS5
+           * proxies when we'll offer it. */
+          gabble_bytestream_factory_query_socks5_proxies (
+              priv->conn->bytestream_factory);
+        }
     }
 
   /* Tube needs to be offered if we initiated AND requested it. Being

@@ -55,10 +55,9 @@ G_BEGIN_DECLS
       "proxy.downtempo.de",\
       "proxy.im.flosoft.biz",\
       "proxy.jabber.bluendo.com", "proxy.jabber.dk", "proxy.jabber.freenet.de",\
-      "proxy.fsinf.at", "proxy.jabber.minus273.org",\
+      "proxy.jabber.minus273.org",\
       "proxy.jabber.planetteamspeak.com", "proxy.jabber.tf-network.de",\
       "proxy.jabjab.de", "proxy.jabster.pl",\
-      "proxy.schokokeks.org",\
       "proxy.ubuntu-jabber.de", "proxy.ubuntu-jabber.net",\
       "proxy65.unstable.nl", "proxy.verdammung.org", "proxy.vke.ru",\
       "proxy.vodka-pomme.net", "proxy.jabbernet.eu",\
@@ -253,6 +252,8 @@ void _gabble_connection_send_iq_error (GabbleConnection *conn,
     LmMessage *message, GabbleXmppError error, const gchar *errmsg);
 
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
+gchar *gabble_connection_get_canonical_room_name (GabbleConnection *conn,
+    const gchar *jid);
 gboolean _gabble_connection_signal_own_presence (GabbleConnection *,
     GError **);
 

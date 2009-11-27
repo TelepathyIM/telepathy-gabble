@@ -40,7 +40,6 @@
 #include <telepathy-glib/handle-repo-dynamic.h>
 #include <telepathy-glib/handle-repo-static.h>
 #include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/svc-generic.h>
 
 #include "extensions/extensions.h"
@@ -81,7 +80,6 @@ static guint disco_reply_timeout = 5;
 
 #define DISCONNECT_TIMEOUT 5
 
-static void conn_service_iface_init (gpointer, gpointer);
 static void capabilities_service_iface_init (gpointer, gpointer);
 static void gabble_conn_contact_caps_iface_init (gpointer, gpointer);
 static void conn_capabilities_fill_contact_attributes (GObject *obj,
@@ -92,8 +90,6 @@ static void conn_contact_capabilities_fill_contact_attributes (GObject *obj,
 G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
     gabble_connection,
     TP_TYPE_BASE_CONNECTION,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION,
-      conn_service_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_ALIASING,
       conn_aliasing_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS,
@@ -665,7 +661,7 @@ _gabble_connection_create_handle_repos (TpBaseConnection *conn,
           gabble_normalize_contact, GUINT_TO_POINTER (GABBLE_JID_ANY));
   repos[TP_HANDLE_TYPE_ROOM] =
       tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_ROOM, gabble_normalize_room,
-          NULL);
+          conn);
   repos[TP_HANDLE_TYPE_GROUP] =
       tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_GROUP, NULL, NULL);
   repos[TP_HANDLE_TYPE_LIST] =
@@ -1970,6 +1966,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   gboolean ret;
   gchar *caps_hash;
   gboolean voice_v1, video_v1;
+  GString *ext = g_string_new ("");
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)
     {
@@ -1995,27 +1992,19 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   /* XEP-0115 deprecates 'ext' feature bundles. But we still need
    * BUNDLE_VOICE_V1 it for backward-compatibility with Gabble 0.2 */
 
+  g_string_append (ext, BUNDLE_PMUC_V1);
+
   voice_v1 = gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VOICE);
   video_v1 = gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VIDEO);
 
-  if (voice_v1 || video_v1)
-    {
-      GString *ext = g_string_new ("");
+  if (voice_v1)
+    g_string_append (ext, " " BUNDLE_VOICE_V1);
 
-      if (voice_v1)
-        g_string_append (ext, BUNDLE_VOICE_V1);
+  if (video_v1)
+    g_string_append (ext, " " BUNDLE_VIDEO_V1);
 
-      if (video_v1)
-        {
-          if (ext->len > 0)
-            g_string_append_c (ext, ' ');
-          g_string_append (ext, BUNDLE_VIDEO_V1);
-        }
-
-      lm_message_node_set_attribute (node, "ext", ext->str);
-
-      g_string_free (ext, TRUE);
-    }
+  lm_message_node_set_attribute (node, "ext", ext->str);
+  g_string_free (ext, TRUE);
 
   ret = _gabble_connection_send (self, message, error);
 
@@ -2256,15 +2245,19 @@ connection_iq_disco_cb (LmMessageHandler *handler,
         features = gabble_capabilities_get_bundle_video_v1 ();
     }
 
-  if (features == NULL)
+  if (features == NULL && tp_strdiff (suffix, BUNDLE_PMUC_V1))
     {
       _gabble_connection_send_iq_error (self, message,
           XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
   else
     {
-      gabble_capability_set_foreach (features, add_feature_node,
-          result_query);
+      /* Send an empty reply for a pmuc-v1 disco, matching Google's behaviour. */
+      if (features != NULL)
+        {
+          gabble_capability_set_foreach (features, add_feature_node,
+              result_query);
+        }
 
       NODE_DEBUG (result_iq, "sending disco response");
 
@@ -3074,8 +3067,8 @@ _gabble_connection_find_conference_server (GabbleConnection *conn)
 }
 
 
-static gchar *
-_gabble_connection_get_canonical_room_name (GabbleConnection *conn,
+gchar *
+gabble_connection_get_canonical_room_name (GabbleConnection *conn,
                                            const gchar *name)
 {
   const gchar *server;
@@ -3091,355 +3084,6 @@ _gabble_connection_get_canonical_room_name (GabbleConnection *conn,
     return NULL;
 
   return gabble_encode_jid (name, server, NULL);
-}
-
-
-typedef struct _RoomVerifyContext RoomVerifyContext;
-
-typedef struct {
-    GabbleConnection *conn;
-    DBusGMethodInvocation *invocation;
-    gboolean errored;
-    guint count;
-    GArray *handles;
-    RoomVerifyContext *contexts;
-} RoomVerifyBatch;
-
-struct _RoomVerifyContext {
-    gchar *jid;
-    guint index;
-    RoomVerifyBatch *batch;
-    GabbleDiscoRequest *request;
-};
-
-static void
-room_verify_batch_free (RoomVerifyBatch *batch)
-{
-  TpBaseConnection *base = (TpBaseConnection *) (batch->conn);
-  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_ROOM);
-  guint i;
-
-  tp_handles_unref (room_handles, batch->handles);
-  g_array_free (batch->handles, TRUE);
-  for (i = 0; i < batch->count; i++)
-    {
-      g_free (batch->contexts[i].jid);
-    }
-  g_free (batch->contexts);
-  g_slice_free (RoomVerifyBatch, batch);
-}
-
-/* Frees the error and the batch. */
-static void
-room_verify_batch_raise_error (RoomVerifyBatch *batch,
-                               GError *error)
-{
-  guint i;
-
-  dbus_g_method_return_error (batch->invocation, error);
-  g_error_free (error);
-  batch->errored = TRUE;
-  for (i = 0; i < batch->count; i++)
-    {
-      if (batch->contexts[i].request)
-        {
-          gabble_disco_cancel_request (batch->conn->disco,
-                                      batch->contexts[i].request);
-        }
-    }
-  room_verify_batch_free (batch);
-}
-
-static RoomVerifyBatch *
-room_verify_batch_new (GabbleConnection *conn,
-                       DBusGMethodInvocation *invocation,
-                       guint count,
-                       const gchar **jids)
-{
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_ROOM);
-  RoomVerifyBatch *batch = g_slice_new (RoomVerifyBatch);
-  guint i;
-
-  batch->errored = FALSE;
-  batch->conn = conn;
-  batch->invocation = invocation;
-  batch->count = count;
-  batch->handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), count);
-  batch->contexts = g_new0(RoomVerifyContext, count);
-  for (i = 0; i < count; i++)
-    {
-      const gchar *name = jids[i];
-      gchar *qualified_name;
-      TpHandle handle;
-
-      batch->contexts[i].index = i;
-      batch->contexts[i].batch = batch;
-
-      qualified_name = _gabble_connection_get_canonical_room_name (conn, name);
-
-      if (!qualified_name)
-        {
-          GError *error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              "requested room handle %s does not specify a server, but we "
-              "have not discovered any local conference servers and no "
-              "fallback was provided", name);
-          DEBUG ("%s", error->message);
-          room_verify_batch_raise_error (batch, error);
-          return NULL;
-        }
-
-      batch->contexts[i].jid = qualified_name;
-
-      /* has the handle been verified before? */
-      handle = tp_handle_lookup (room_handles, qualified_name, NULL, NULL);
-      if (handle)
-        tp_handle_ref (room_handles, handle);
-      g_array_append_val (batch->handles, handle);
-    }
-
-  return batch;
-}
-
-/* If all handles in the array have been disco'd or got from cache,
-free the batch and return TRUE. Else return FALSE. */
-static gboolean
-room_verify_batch_try_return (RoomVerifyBatch *batch)
-{
-  guint i;
-  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
-      (TpBaseConnection *) batch->conn, TP_HANDLE_TYPE_ROOM);
-  gchar *sender;
-  GError *error = NULL;
-
-  for (i = 0; i < batch->count; i++)
-    {
-      if (!g_array_index (batch->handles, TpHandle, i))
-        {
-          /* we're not ready yet */
-          return FALSE;
-        }
-    }
-
-  sender = dbus_g_method_get_sender (batch->invocation);
-  if (!tp_handles_client_hold (room_handles, sender, batch->handles, &error))
-    {
-      g_assert (error != NULL);
-    }
-  g_free (sender);
-
-  if (error == NULL)
-    {
-      tp_svc_connection_return_from_request_handles (batch->invocation,
-          batch->handles);
-    }
-  else
-    {
-      dbus_g_method_return_error (batch->invocation, error);
-      g_error_free (error);
-    }
-
-  room_verify_batch_free (batch);
-  return TRUE;
-}
-
-static void
-room_jid_disco_cb (GabbleDisco *disco,
-                   GabbleDiscoRequest *request,
-                   const gchar *jid,
-                   const gchar *node,
-                   LmMessageNode *query_result,
-                   GError *error,
-                   gpointer user_data)
-{
-  RoomVerifyContext *rvctx = user_data;
-  RoomVerifyBatch *batch = rvctx->batch;
-  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
-      (TpBaseConnection *) batch->conn, TP_HANDLE_TYPE_ROOM);
-  gboolean found = FALSE;
-  TpHandle handle;
-  NodeIter i;
-
-  /* stop the request getting cancelled after it's already finished */
-  rvctx->request = NULL;
-
-  /* if an error is being handled already, quietly go away */
-  if (batch->errored)
-    {
-      return;
-    }
-
-  if (error != NULL)
-    {
-      DEBUG ("disco reply error %s", error->message);
-
-      /* disco will free the old error, _raise_error will free the new one */
-      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-        "can't retrieve room info: %s", error->message);
-
-      room_verify_batch_raise_error (batch, error);
-
-      return;
-    }
-
-  for (i = node_iter (query_result); i; i = node_iter_next (i))
-    {
-      LmMessageNode *lm_node = node_iter_data (i);
-      const gchar *var;
-
-      if (tp_strdiff (lm_node->name, "feature"))
-        continue;
-
-      var = lm_message_node_get_attribute (lm_node, "var");
-
-      /* for servers who consider schema compliance to be an optional bonus */
-      if (var == NULL)
-        var = lm_message_node_get_attribute (lm_node, "type");
-
-      if (!tp_strdiff (var, NS_MUC))
-        {
-          found = TRUE;
-          break;
-        }
-    }
-
-  if (!found)
-    {
-      DEBUG ("no MUC support for service name in jid %s", rvctx->jid);
-
-      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "specified server doesn't support MUC");
-
-      room_verify_batch_raise_error (batch, error);
-
-      return;
-    }
-
-  /* this refs the handle, so we're putting a ref in batch->handles */
-  handle = tp_handle_ensure (room_handles, rvctx->jid, NULL, &error);
-  if (handle == 0)
-    {
-      room_verify_batch_raise_error (batch, error);
-      return;
-    }
-
-  DEBUG ("disco reported MUC support for service name in jid %s", rvctx->jid);
-  g_array_index (batch->handles, TpHandle, rvctx->index) = handle;
-
-  /* if this was the last callback to be run, send off the result */
-  room_verify_batch_try_return (batch);
-}
-
-/**
- * room_jid_verify:
- *
- * Utility function that verifies that the service name of
- * the specified jid exists and reports MUC support.
- */
-static gboolean
-room_jid_verify (RoomVerifyBatch *batch,
-                 guint i,
-                 DBusGMethodInvocation *context)
-{
-  gchar *room, *service;
-  gboolean ret;
-  GError *error = NULL;
-
-  room = service = NULL;
-
-  if (!gabble_decode_jid (batch->contexts[i].jid, &room, &service, NULL) ||
-      room == NULL)
-    {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "unable to get room name and service from JID %s",
-          batch->contexts[i].jid);
-      ret = FALSE;
-      goto out;
-    }
-
-  ret = (gabble_disco_request (batch->conn->disco, GABBLE_DISCO_TYPE_INFO,
-                               service, NULL, room_jid_disco_cb,
-                               batch->contexts + i,
-                               G_OBJECT (batch->conn), &error) != NULL);
-
-out:
-  if (!ret)
-    {
-      room_verify_batch_raise_error (batch, error);
-    }
-
-  g_free (room);
-  g_free (service);
-
-  return ret;
-}
-
-
-/**
- * gabble_connection_request_handles
- *
- * Implements D-Bus method RequestHandles
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @context: The D-Bus invocation context to use to return values
- *           or throw an error.
- */
-static void
-gabble_connection_request_handles (TpSvcConnection *iface,
-                                   guint handle_type,
-                                   const gchar **names,
-                                   DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *) self;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  if (handle_type == TP_HANDLE_TYPE_ROOM)
-    {
-      RoomVerifyBatch *batch = NULL;
-      guint count = 0, i;
-      const gchar **cur_name;
-
-      for (cur_name = names; *cur_name != NULL; cur_name++)
-        {
-          count++;
-        }
-
-      batch = room_verify_batch_new (self, context, count, names);
-      if (!batch)
-        {
-          /* an error occurred while setting up the batch, and we returned
-          error to dbus */
-          return;
-        }
-
-      /* have all the handles been verified already? If so, nothing to do */
-      if (room_verify_batch_try_return (batch))
-        {
-          return;
-        }
-
-      for (i = 0; i < count; i++)
-        {
-          if (!room_jid_verify (batch, i, context))
-            {
-              return;
-            }
-        }
-
-      /* we've set the verification process going - the callback will handle
-      returning or raising error */
-      return;
-    }
-
-  /* else it's either an invalid type, or a type we can verify immediately -
-   * in either case, let the superclass do it */
-  tp_base_connection_dbus_request_handles (iface, handle_type, names, context);
 }
 
 void
@@ -3475,19 +3119,6 @@ gabble_connection_send_presence (GabbleConnection *conn,
   lm_message_unref (message);
 
   return result;
-}
-
-/* We reimplement RequestHandles to be able to do async validation on
- * room handles */
-static void
-conn_service_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpSvcConnectionClass *klass = (TpSvcConnectionClass *) g_iface;
-
-#define IMPLEMENT(x) tp_svc_connection_implement_##x (klass, \
-    gabble_connection_##x)
-  IMPLEMENT(request_handles);
-#undef IMPLEMENT
 }
 
 static void

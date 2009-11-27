@@ -494,6 +494,13 @@ gabble_file_transfer_channel_constructor (GType type,
        tp_handle_inspect (contact_repo, self->priv->initiator),
        self->priv->filename, self->priv->size);
 
+  if (self->priv->initiator == base_conn->self_handle)
+    {
+      /* Outgoing FT , we'll need SOCK5 proxies when we'll offer the file */
+      gabble_bytestream_factory_query_socks5_proxies (
+          self->priv->connection->bytestream_factory);
+    }
+
   return obj;
 }
 

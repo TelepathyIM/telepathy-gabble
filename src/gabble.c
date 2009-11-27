@@ -144,6 +144,7 @@ gabble_main (int argc,
       construct_cm, argc, argv);
 
 #ifdef ENABLE_DEBUG
+  g_log_set_default_handler (g_log_default_handler, NULL);
   g_object_unref (debug_sender);
 #endif
 

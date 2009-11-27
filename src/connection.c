@@ -54,6 +54,7 @@
 #include "conn-avatars.h"
 #include "conn-location.h"
 #include "conn-presence.h"
+#include "conn-sidecars.h"
 #include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
@@ -114,6 +115,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       gabble_conn_contact_caps_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_GADGET,
       olpc_gadget_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_FUTURE,
+      conn_future_iface_init);
     )
 
 /* properties */
@@ -325,6 +328,7 @@ gabble_connection_constructor (GType type,
   conn_presence_init (self);
   conn_olpc_activity_properties_init (self);
   conn_location_init (self);
+  conn_sidecars_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
@@ -1038,6 +1042,8 @@ gabble_connection_dispose (GObject *object)
       g_object_unref (self->pep_olpc_act_props);
       self->pep_olpc_act_props = NULL;
     }
+
+  conn_sidecars_dispose (self);
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);

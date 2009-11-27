@@ -199,6 +199,13 @@ struct _GabbleConnection {
     WockyPepService *pep_olpc_current_act;
     WockyPepService *pep_olpc_act_props;
 
+    /* Sidecars */
+    /* gchar *interface → GabbleSidecar */
+    GHashTable *sidecars;
+
+    /* gchar *interface → GList<DBusGMethodInvocation> */
+    GHashTable *pending_sidecars;
+
     GabbleConnectionPrivate *priv;
 };
 

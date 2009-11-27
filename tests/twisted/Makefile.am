@@ -148,8 +148,9 @@ TWISTED_TESTS = \
 	test-fallback-socks5-proxy.py \
 	test-register.py \
 	test-set-status-idempotence.py \
-        test-location.py \
-	pubsub.py
+	test-location.py \
+	pubsub.py \
+	sidecars.py
 
 TESTS =
 
@@ -189,10 +190,17 @@ else
 DEBUGGING_PYBOOL = False
 endif
 
+if ENABLE_PLUGINS
+PLUGINS_ENABLED_PYBOOL = True
+else
+PLUGINS_ENABLED_PYBOOL = False
+endif
+
 config.py: Makefile
 	$(AM_V_GEN) { \
 		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
 		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
+		echo "PLUGINS_ENABLED = $(PLUGINS_ENABLED_PYBOOL)"; \
 	} > $@
 
 BUILT_SOURCES = config.py
@@ -226,6 +234,8 @@ telepathy_gabble_debug_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la \
     $(top_builddir)/lib/gibber/libgibber.la \
     $(ALL_LIBS)
+
+telepathy_gabble_debug_LDFLAGS = -export-dynamic
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
     @TP_GLIB_CFLAGS@ \

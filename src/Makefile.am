@@ -41,6 +41,8 @@ libgabble_convenience_la_SOURCES = \
     conn-olpc.c \
     conn-presence.h \
     conn-presence.c \
+    conn-sidecars.h \
+    conn-sidecars.c \
     connection.h \
     connection.c \
     connection-manager.h \
@@ -102,6 +104,10 @@ libgabble_convenience_la_SOURCES = \
     olpc-gadget-manager.c \
     olpc-view.h \
     olpc-view.c \
+    plugin-loader.h \
+    plugin-loader.c \
+    plugin.h \
+    plugin.c \
     presence.h \
     presence.c \
     presence-cache.h \
@@ -124,6 +130,8 @@ libgabble_convenience_la_SOURCES = \
     search-channel.c \
     search-manager.h \
     search-manager.c \
+    sidecar.h \
+    sidecar.c \
     tube-iface.h \
     tube-iface.c \
     tubes-channel.h \
@@ -163,17 +171,20 @@ check-local: check-coding-style
 
 telepathy_gabble_LDADD = libgabble-convenience.la
 
+telepathy_gabble_LDFLAGS = -export-dynamic
+
 noinst_LTLIBRARIES = libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
 	    @HANDLE_LEAK_DEBUG_CFLAGS@ @TP_GLIB_CFLAGS@ \
-	    @SOUP_CFLAGS@ @UUID_CFLAGS@ \
+	    @SOUP_CFLAGS@ @UUID_CFLAGS@ @GMODULE_CFLAGS@ \
 	    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
-	    -DG_LOG_DOMAIN=\"gabble\"
+	    -DG_LOG_DOMAIN=\"gabble\" \
+	    -DPLUGIN_DIR=\"$(libdir)/telepathy/gabble-0\"
 
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @WOCKY_LIBS@ @TP_GLIB_LIBS@ \
-	    @SOUP_LIBS@ @UUID_LIBS@
+	    @SOUP_LIBS@ @UUID_LIBS@ @GMODULE_LIBS@
 
 # build gibber first
 all: gibber

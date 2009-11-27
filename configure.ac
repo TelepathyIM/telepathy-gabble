@@ -121,6 +121,23 @@ AC_SUBST(GLIB_LIBS)
 GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
 
+AC_ARG_ENABLE(plugins,
+  AC_HELP_STRING([--enable-plugins],
+                 [enable experimental plugin support]),
+    [enable_plugins=$enableval], [enable_plugins=no])
+
+if test x$enable_plugins = xyes; then
+  AC_DEFINE(ENABLE_PLUGINS, [], [Enable plugins])
+  dnl If we want plugins, we need gmodule
+  PKG_CHECK_MODULES(GMODULE, [gmodule-2.0])
+fi
+
+AC_SUBST(GMODULE_CFLAGS)
+AC_SUBST(GMODULE_LIBS)
+
+AM_CONDITIONAL(ENABLE_PLUGINS, test x$enable_plugins = xyes)
+AC_SUBST(ENABLE_PLUGINS)
+
 dnl Check for D-Bus
 # dbus-glib 0.78 fixed the bug #17329. It is needed for the contact
 # capabilities interface.
@@ -250,5 +267,6 @@ AC_OUTPUT( Makefile \
            lib/Makefile \
            lib/ext/Makefile \
            lib/gibber/Makefile \
-           lib/loudmouth/Makefile
+           lib/loudmouth/Makefile \
+           plugins/Makefile
 )

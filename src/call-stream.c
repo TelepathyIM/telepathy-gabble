@@ -547,6 +547,9 @@ gabble_call_stream_add_candidates (GabbleSvcCallStreamInterfaceMedia *iface,
 
   gabble_jingle_content_add_candidates (priv->content, l);
 
+  gabble_svc_call_stream_interface_media_emit_local_candidates_added (self,
+      candidates);
+
   gabble_svc_call_stream_interface_media_return_from_add_candidates (context);
 }
 

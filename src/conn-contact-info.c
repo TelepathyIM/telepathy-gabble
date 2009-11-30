@@ -339,7 +339,6 @@ gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
   GError *error = NULL;
   guint i;
-  GValue contact_info_map = { 0, };
   GHashTable *ret;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (TP_BASE_CONNECTION (iface),
@@ -352,10 +351,7 @@ gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       return;
     }
 
-  g_value_init (&contact_info_map, GABBLE_HASH_TYPE_CONTACT_INFO_MAP);
-  g_value_take_boxed (&contact_info_map, dbus_g_type_specialized_construct (
-      GABBLE_HASH_TYPE_CONTACT_INFO_MAP));
-  ret = g_value_get_boxed (&contact_info_map);
+  ret = dbus_g_type_specialized_construct (GABBLE_HASH_TYPE_CONTACT_INFO_MAP);
 
   for (i = 0; i < contacts->len; i++)
     {
@@ -397,6 +393,8 @@ gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
   gabble_svc_connection_interface_contact_info_return_from_get_contact_info (
       context, ret);
+
+  g_boxed_free (GABBLE_HASH_TYPE_CONTACT_INFO_MAP, ret);
 }
 
 static void

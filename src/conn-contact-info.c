@@ -253,7 +253,7 @@ _parse_vcard (LmMessageNode *vcard_node,
           _create_contact_field_extended (contact_info, node,
               NULL, elements);
         }
-      else if (strcmp (node->name, "ORG") == 0)
+      else if (strcmp (node->name, "KEY") == 0)
         {
           const gchar * const types[] = { "TYPE", NULL };
           const gchar * const elements[] = { "CRED", NULL };

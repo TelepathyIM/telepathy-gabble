@@ -173,13 +173,13 @@ _parse_vcard (LmMessageNode *vcard_node,
 
           if (strchr (node_value, ','))
             {
-              guint j;
               gchar **nicknames = g_strsplit (node_value, ",", -1);
+              gchar **p;
 
-              for (j = 0; nicknames[j]; ++j)
+              for (p = nicknames; *p != NULL; ++p)
                 {
                   const gchar * const field_values[2] = {
-                      nicknames[j],
+                      *p,
                       NULL
                   };
 

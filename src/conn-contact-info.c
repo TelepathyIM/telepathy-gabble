@@ -36,7 +36,7 @@
 #include "debug.h"
 #include "util.h"
 
-static GValue supported_fields = { 0, };
+static GPtrArray *supported_fields = NULL;
 
 static void
 _insert_contact_field (GPtrArray *contact_info,
@@ -509,15 +509,15 @@ _vcard_updated (GObject *object,
 }
 
 void
+conn_contact_info_class_init (GabbleConnectionClass *klass)
+{
+  supported_fields = dbus_g_type_specialized_construct (
+          GABBLE_ARRAY_TYPE_FIELD_SPECS);
+}
+
+void
 conn_contact_info_init (GabbleConnection *conn)
 {
-  if (G_VALUE_HOLDS (&supported_fields, GABBLE_ARRAY_TYPE_FIELD_SPECS))
-    {
-      g_value_init (&supported_fields, GABBLE_ARRAY_TYPE_FIELD_SPECS);
-      g_value_take_boxed (&supported_fields, dbus_g_type_specialized_construct (
-          GABBLE_ARRAY_TYPE_FIELD_SPECS));
-    }
-
   g_signal_connect (conn->vcard_manager, "vcard-update",
       G_CALLBACK (_vcard_updated), conn);
 }
@@ -555,7 +555,7 @@ conn_contact_info_properties_getter (GObject *object,
       "SupportedFields");
 
   if (name == q_supported_fields)
-    g_value_set_static_boxed (value, g_value_get_boxed (&supported_fields));
+    g_value_set_static_boxed (value, supported_fields);
   else
     g_value_set_uint (value, GPOINTER_TO_UINT (getter_data));
 }

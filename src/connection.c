@@ -929,6 +929,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   conn_presence_class_init (gabble_connection_class);
 
+  conn_contact_info_class_init (gabble_connection_class);
 }
 
 static void

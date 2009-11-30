@@ -536,8 +536,7 @@ conn_contact_info_iface_init (gpointer g_iface, gpointer iface_data)
 }
 
 static TpDBusPropertiesMixinPropImpl props[] = {
-      { "ContactInfoFlags", GUINT_TO_POINTER (
-              GABBLE_CONTACT_INFO_FLAG_CAN_SET | GABBLE_CONTACT_INFO_FLAG_PUSH),
+      { "ContactInfoFlags", GUINT_TO_POINTER (GABBLE_CONTACT_INFO_FLAG_CAN_SET),
         NULL },
       { "SupportedFields", NULL, NULL },
       { NULL }

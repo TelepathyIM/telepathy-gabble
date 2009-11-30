@@ -290,13 +290,6 @@ _emit_contact_info_changed (GabbleSvcConnectionInterfaceContactInfo *iface,
   g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
 }
 
-/* All references are borrowed */
-typedef struct {
-  TpHandle handle;
-  GabbleConnection *conn;
-  GabbleSvcConnectionInterfaceContactInfo *iface;
-} RequestVCardContext;
-
 static void
 _request_vcards_cb (GabbleVCardManager *manager,
                     GabbleVCardManagerRequest *request,
@@ -305,18 +298,18 @@ _request_vcards_cb (GabbleVCardManager *manager,
                     GError *vcard_error,
                     gpointer user_data)
 {
-  RequestVCardContext *ctx = user_data;
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleSvcConnectionInterfaceContactInfo *iface =
+      (GabbleSvcConnectionInterfaceContactInfo *) conn;
 
-  g_assert (g_hash_table_lookup (ctx->conn->vcard_requests,
-      GUINT_TO_POINTER (ctx->handle)));
+  g_assert (g_hash_table_lookup (conn->vcard_requests,
+      GUINT_TO_POINTER (handle)));
 
-  g_hash_table_remove (ctx->conn->vcard_requests,
-      GUINT_TO_POINTER (ctx->handle));
+  g_hash_table_remove (conn->vcard_requests,
+      GUINT_TO_POINTER (handle));
 
   if (vcard_error == NULL)
-    _emit_contact_info_changed (ctx->iface, handle, vcard_node);
-
-  g_slice_free (RequestVCardContext, ctx);
+    _emit_contact_info_changed (iface, handle, vcard_node);
 }
 
 /**
@@ -380,17 +373,13 @@ gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
           if (g_hash_table_lookup (self->vcard_requests,
                                    GUINT_TO_POINTER (contact)) == NULL)
             {
-              RequestVCardContext *ctx = g_slice_new (RequestVCardContext);
+              GabbleVCardManagerRequest *request;
 
-              ctx->conn = self;
-              ctx->iface = iface;
-              ctx->handle = contact;
+              request = gabble_vcard_manager_request (self->vcard_manager,
+                contact, 0, _request_vcards_cb, self, NULL);
 
               g_hash_table_insert (self->vcard_requests,
-                  GUINT_TO_POINTER (contact), ctx);
-
-              gabble_vcard_manager_request (self->vcard_manager,
-                contact, 0, _request_vcards_cb, ctx, NULL);
+                  GUINT_TO_POINTER (contact), request);
             }
         }
     }

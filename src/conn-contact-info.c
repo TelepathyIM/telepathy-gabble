@@ -391,6 +391,36 @@ gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 }
 
 static void
+_return_from_request_contact_info (LmMessageNode *vcard_node,
+                                   GError *vcard_error,
+                                   DBusGMethodInvocation *context)
+{
+  GError *error = NULL;
+  GPtrArray *contact_info;
+
+  if (NULL == vcard_node)
+    {
+      GError tp_error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          vcard_error->message };
+
+      dbus_g_method_return_error (context, &tp_error);
+      return;
+    }
+
+  if ((contact_info = _parse_vcard (vcard_node, &error)) == NULL)
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  gabble_svc_connection_interface_contact_info_return_from_request_contact_info (
+      context, contact_info);
+
+  g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
+}
+
+static void
 _request_vcard_cb (GabbleVCardManager *self,
                    GabbleVCardManagerRequest *request,
                    TpHandle handle,
@@ -399,37 +429,8 @@ _request_vcard_cb (GabbleVCardManager *self,
                    gpointer user_data)
 {
   DBusGMethodInvocation *context = (DBusGMethodInvocation *) user_data;
-  GabbleConnection *conn;
-  TpBaseConnection *base;
-  GError *error = NULL;
-  GPtrArray *contact_info;
 
-  g_object_get (self, "connection", &conn, NULL);
-  base = TP_BASE_CONNECTION (conn);
-
-  if (NULL == vcard_node)
-    {
-      GError tp_error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          vcard_error->message };
-
-      dbus_g_method_return_error (context, &tp_error);
-      goto out;
-    }
-
-  if ((contact_info = _parse_vcard (vcard_node, &error)) == NULL)
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      goto out;
-    }
-
-  gabble_svc_connection_interface_contact_info_return_from_request_contact_info (
-      context, contact_info);
-
-  g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
-
-out:
-  g_object_unref (conn);
+  _return_from_request_contact_info (vcard_node, vcard_error, context);
 }
 
 /**
@@ -464,15 +465,10 @@ gabble_connection_request_contact_info (GabbleSvcConnectionInterfaceContactInfo 
 
   if (gabble_vcard_manager_get_cached (self->vcard_manager,
                                        contact, &vcard_node))
-    {
-      _request_vcard_cb (self->vcard_manager, NULL, contact, vcard_node, NULL,
-          context);
-    }
+    _return_from_request_contact_info (vcard_node, NULL, context);
   else
-    {
-      gabble_vcard_manager_request (self->vcard_manager, contact, 0,
-          _request_vcard_cb, context, NULL);
-    }
+    gabble_vcard_manager_request (self->vcard_manager, contact, 0,
+        _request_vcard_cb, context, NULL);
 }
 
 /**

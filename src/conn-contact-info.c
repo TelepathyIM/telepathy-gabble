@@ -41,8 +41,8 @@ static GValue supported_fields = { 0, };
 static void
 _insert_contact_field (GPtrArray *contact_info,
                        const gchar *field_name,
-                       gchar **field_params,
-                       gchar **field_values)
+                       const gchar * const *field_params,
+                       const gchar * const *field_values)
 {
    GValue contact_info_field = { 0, };
    gchar *field_name_down = g_ascii_strdown (field_name, -1);
@@ -58,8 +58,6 @@ _insert_contact_field (GPtrArray *contact_info,
        G_MAXUINT);
 
    g_free (field_name_down);
-   g_strfreev (field_params);
-   g_strfreev (field_values);
 
    g_ptr_array_add (contact_info, g_value_get_boxed (&contact_info_field));
 }
@@ -124,7 +122,11 @@ _create_contact_field_extended (GPtrArray *contact_info,
     }
 
   _insert_contact_field (contact_info, node->name,
-      field_params, field_values);
+      (const gchar * const *) field_params,
+      (const gchar * const *) field_values);
+
+  g_strfreev (field_params);
+  g_strfreev (field_values);
 }
 
 static GPtrArray *
@@ -157,12 +159,12 @@ _parse_vcard (LmMessageNode *vcard_node,
           strcmp (node->name, "URL") == 0 ||
           strcmp (node->name, "DESC") == 0)
         {
-          gchar **field_values;
+          const gchar * const field_values[2] = {
+              lm_message_node_get_value (node),
+              NULL
+          };
 
-          field_values = g_new0 (gchar *, 2);
-          field_values[0] = g_strdup (lm_message_node_get_value (node));
-          _insert_contact_field (contact_info, node->name,
-              NULL, field_values);
+          _insert_contact_field (contact_info, node->name, NULL, field_values);
         }
      else if (strcmp (node->name, "N") == 0)
        {
@@ -174,7 +176,6 @@ _parse_vcard (LmMessageNode *vcard_node,
        }
       else if (strcmp (node->name, "NICKNAME") == 0)
         {
-          gchar **field_values;
           const gchar *node_value = lm_message_node_get_value (node);
 
           if (strchr (node_value, ','))
@@ -184,20 +185,24 @@ _parse_vcard (LmMessageNode *vcard_node,
 
               for (j = 0; nicknames[j]; ++j)
                 {
-                  field_values = g_new0 (gchar *, 2);
-                  field_values[0] = nicknames[j];
+                  const gchar * const field_values[2] = {
+                      nicknames[j],
+                      NULL
+                  };
+
                   _insert_contact_field (contact_info, node->name,
                      NULL, field_values);
                 }
 
-              /* use g_free here as _insert_contact_field will free all data
-               * inside the array */
-              g_free (nicknames);
+              g_strfreev (nicknames);
             }
           else
             {
-              field_values = g_new0 (gchar *, 2);
-              field_values[0] = g_strdup (node_value);
+              const gchar * const field_values[2] = {
+                  node_value,
+                  NULL
+              };
+
               _insert_contact_field (contact_info, node->name,
                   NULL, field_values);
             }

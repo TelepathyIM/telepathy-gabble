@@ -165,6 +165,10 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     assertEquals ([], candidates)
 
+    selected_candidate = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
+        "SelectedCandidate",  dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals ((0, '', 0, {}), selected_candidate)
+
     state = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
         "StreamState",  dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals (cs.MEDIA_STREAM_STATE_DISCONNECTED, state)

@@ -56,6 +56,7 @@ enum
   PROP_OBJECT_PATH = 1,
   PROP_JINGLE_CONTENT,
   PROP_REMOTE_CANDIDATES,
+  PROP_SELECTED_CANDIDATE,
   PROP_STREAM_STATE,
   PROP_TRANSPORT,
 };
@@ -66,6 +67,7 @@ struct _GabbleCallStreamEndpointPrivate
 
   gchar *object_path;
   GabbleJingleContent *content;
+  GValueArray *selected_candidate;
   guint stream_state;
 };
 
@@ -110,6 +112,24 @@ gabble_call_stream_endpoint_get_property (GObject    *object,
           g_ptr_array_unref (arr);
           break;
         }
+      case PROP_SELECTED_CANDIDATE:
+          if (priv->selected_candidate == NULL)
+            {
+              GValueArray *va = gabble_value_array_build (4,
+                  G_TYPE_UINT, 0,
+                  G_TYPE_STRING, "",
+                  G_TYPE_UINT, 0,
+                  GABBLE_HASH_TYPE_CANDIDATE_INFO,
+                      g_hash_table_new (g_str_hash, g_str_equal),
+                  G_TYPE_INVALID);
+              g_value_set_boxed (value, va);
+              g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE, va);
+            }
+          else
+            {
+              g_value_set_boxed (value, priv->selected_candidate);
+            }
+        break;
       case PROP_STREAM_STATE:
         g_value_set_uint (value, priv->stream_state);
         break;
@@ -197,6 +217,7 @@ gabble_call_stream_endpoint_class_init (
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl endpoint_props[] = {
     { "RemoteCandidates", "remote-candidates", NULL },
+    { "SelectedCandidate", "selected-candidate", NULL },
     { "StreamState", "stream-state", NULL },
     { "Transport", "transport", NULL },
     { NULL }
@@ -246,6 +267,14 @@ gabble_call_stream_endpoint_class_init (
       GABBLE_ARRAY_TYPE_CANDIDATE_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_CANDIDATES,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("selected-candidate",
+      "SelectedCandidate",
+      "The candidate selected for this endpoint",
+      GABBLE_STRUCT_TYPE_CANDIDATE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SELECTED_CANDIDATE,
       param_spec);
 
   param_spec = g_param_spec_uint ("stream-state", "StreamState",

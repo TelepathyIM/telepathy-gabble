@@ -65,15 +65,12 @@ _insert_contact_field (GPtrArray *contact_info,
 static void
 _create_contact_field_extended (GPtrArray *contact_info,
                                 LmMessageNode *node,
-                                const gchar **supported_types,
-                                const gchar **mandatory_fields)
+                                const gchar * const *supported_types,
+                                const gchar * const *mandatory_fields)
 {
   guint i;
   LmMessageNode *child_node;
-  GSList *types = NULL;
-  guint types_count = 0;
-  gchar *type;
-  gchar **field_params = NULL;
+  GPtrArray *field_params = NULL;
   gchar **field_values = NULL;
   guint supported_types_size = 0;
   guint mandatory_fields_size = 0;
@@ -81,52 +78,48 @@ _create_contact_field_extended (GPtrArray *contact_info,
   if (supported_types)
     supported_types_size = g_strv_length ((gchar **) supported_types);
 
+  field_params = g_ptr_array_new ();
+
   /* we can simply omit a type if not found */
   for (i = 0; i < supported_types_size; ++i)
     {
+       gchar *tmp;
+
        child_node = lm_message_node_get_child (node, supported_types[i]);
        if (child_node == NULL)
          continue;
 
-       types = g_slist_prepend (types, child_node->name);
-       ++types_count;
+       tmp = g_ascii_strdown (child_node->name, -1);
+       g_ptr_array_add (field_params, g_strdup_printf ("type=%s", tmp));
+       g_free (tmp);
     }
 
-  if (types_count > 0)
-    {
-      GSList *walk;
+  g_ptr_array_add (field_params, NULL);
 
-      i = 0;
-      field_params = g_new0 (gchar *, types_count + 1);
-      for (walk = types; walk != NULL; walk = walk->next)
+  if (mandatory_fields)
+    {
+      mandatory_fields_size = g_strv_length ((gchar **) mandatory_fields);
+
+      /* the mandatory field values need to be ordered properly */
+      field_values = g_new0 (gchar *, mandatory_fields_size + 1);
+      for (i = 0; i < mandatory_fields_size; ++i)
         {
-          type = g_ascii_strdown ((const gchar *) walk->data, -1);
-          field_params[i++] = g_strconcat ("type=", type, NULL);
-          g_free (type);
+           child_node = lm_message_node_get_child (node, mandatory_fields[i]);
+           if (child_node != NULL)
+             field_values[i] = (gchar *) lm_message_node_get_value (child_node);
+           else
+             field_values[i] = (gchar *) "";
         }
     }
 
-  if (mandatory_fields)
-    mandatory_fields_size = g_strv_length ((gchar **) mandatory_fields);
-
-  /* the mandatory field values need to be ordered properly */
-  field_values = g_new0 (gchar *, mandatory_fields_size + 1);
-  for (i = 0; i < mandatory_fields_size; ++i)
-    {
-       child_node = lm_message_node_get_child (node, mandatory_fields[i]);
-       if (child_node != NULL)
-         field_values[i] = g_strdup (
-             lm_message_node_get_value (child_node));
-       else
-         field_values[i] = g_strdup ("");
-    }
-
   _insert_contact_field (contact_info, node->name,
-      (const gchar * const *) field_params,
+      (const gchar * const *) field_params->pdata,
       (const gchar * const *) field_values);
 
-  g_strfreev (field_params);
-  g_strfreev (field_values);
+  /* We allocated the strings in params, so need to free them */
+  g_strfreev ((gchar **) g_ptr_array_free (field_params, FALSE));
+  /* But we borrowed the ones in values, so just free the box */
+  g_free (field_values);
 }
 
 static GPtrArray *
@@ -168,7 +161,7 @@ _parse_vcard (LmMessageNode *vcard_node,
         }
      else if (strcmp (node->name, "N") == 0)
        {
-          const gchar *elements[] = { "FAMILY", "GIVEN", "MIDDLE",
+          const gchar * const elements[] = { "FAMILY", "GIVEN", "MIDDLE",
               "PREFIX", "SUFFIX", NULL };
 
           _create_contact_field_extended (contact_info, node,
@@ -209,9 +202,9 @@ _parse_vcard (LmMessageNode *vcard_node,
         }
       else if (strcmp (node->name, "ADR") == 0)
         {
-          const gchar *types[] = { "HOME", "WORK", "POSTAL",
+          const gchar * const types[] = { "HOME", "WORK", "POSTAL",
               "PARCEL", "DOM", "INTL", "PREF", NULL };
-          const gchar *elements[] = { "POBOX", "EXTADD", "STREET",
+          const gchar * const elements[] = { "POBOX", "EXTADD", "STREET",
               "LOCALITY", "REGION", "PCODE", "CTRY", NULL };
 
           _create_contact_field_extended (contact_info, node,
@@ -219,35 +212,35 @@ _parse_vcard (LmMessageNode *vcard_node,
         }
       else if (strcmp (node->name, "LABEL") == 0)
         {
-          const gchar *types[] = { "HOME", "WORK", "POSTAL",
+          const gchar * const types[] = { "HOME", "WORK", "POSTAL",
               "PARCEL", "DOM", "INTL", "PREF", NULL };
-          const gchar *elements[] = { "LINE", NULL };
+          const gchar * const elements[] = { "LINE", NULL };
 
           _create_contact_field_extended (contact_info, node,
               types, elements);
         }
       else if (strcmp (node->name, "TEL") == 0)
         {
-          const gchar *types[] = { "HOME", "WORK", "VOICE",
+          const gchar * const types[] = { "HOME", "WORK", "VOICE",
               "FAX", "PAGER", "MSG", "CELL", "VIDEO", "BBS", "MODEM", "ISDN",
               "PCS", "PREF", NULL };
-          const gchar *elements[] = { "NUMBER", NULL };
+          const gchar * const elements[] = { "NUMBER", NULL };
 
           _create_contact_field_extended (contact_info, node,
               types, elements);
         }
       else if (strcmp (node->name, "EMAIL") == 0)
         {
-          const gchar *types[] = { "HOME", "WORK", "INTERNET",
+          const gchar * const types[] = { "HOME", "WORK", "INTERNET",
               "PREF", "X400", NULL };
-          const gchar *elements[] = { "USERID", NULL };
+          const gchar * const elements[] = { "USERID", NULL };
 
           _create_contact_field_extended (contact_info, node,
               types, elements);
         }
       else if (strcmp (node->name, "GEO") == 0)
         {
-          const gchar *elements[] = { "LAT", "LON", NULL };
+          const gchar * const elements[] = { "LAT", "LON", NULL };
 
           _create_contact_field_extended (contact_info, node,
               NULL, elements);
@@ -255,15 +248,15 @@ _parse_vcard (LmMessageNode *vcard_node,
       else if (strcmp (node->name, "ORG") == 0)
         {
           // TODO accept more than one ORGUNIT
-          const gchar *elements[] = { "ORGNAME", "ORGUNIT", NULL };
+          const gchar * const elements[] = { "ORGNAME", "ORGUNIT", NULL };
 
           _create_contact_field_extended (contact_info, node,
               NULL, elements);
         }
       else if (strcmp (node->name, "ORG") == 0)
         {
-          const gchar *types[] = { "TYPE", NULL };
-          const gchar *elements[] = { "CRED", NULL };
+          const gchar * const types[] = { "TYPE", NULL };
+          const gchar * const elements[] = { "CRED", NULL };
 
           _create_contact_field_extended (contact_info, node,
               types, elements);

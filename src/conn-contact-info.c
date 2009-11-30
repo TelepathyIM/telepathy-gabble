@@ -366,7 +366,11 @@ gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
           /* TODO what now? we have the cached vcard but it cannot be parsed,
            * skipping */
           if ((contact_info = _parse_vcard (vcard_node, NULL)) == NULL)
-            continue;
+            {
+              DEBUG ("contact %d vcard is cached but cannot be parsed, "
+                     "skipping.", contact);
+              continue;
+            }
 
           g_hash_table_insert (ret, GUINT_TO_POINTER (contact),
               contact_info);

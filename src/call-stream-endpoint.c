@@ -378,6 +378,21 @@ call_stream_endpoint_set_stream_state (GabbleSvcCallStreamEndpoint *iface,
 }
 
 static void
+call_stream_endpoint_set_selected_candidate (
+    GabbleSvcCallStreamEndpoint *iface,
+    const GValueArray *candidate,
+    DBusGMethodInvocation *context)
+{
+  GabbleCallStreamEndpoint *self = GABBLE_CALL_STREAM_ENDPOINT (iface);
+
+  self->priv->selected_candidate =
+      g_boxed_copy (GABBLE_STRUCT_TYPE_CANDIDATE, candidate);
+
+  gabble_svc_call_stream_endpoint_emit_candidate_selected (self, candidate);
+  gabble_svc_call_stream_endpoint_return_from_set_selected_candidate (context);
+}
+
+static void
 call_stream_endpoint_iface_init (gpointer iface, gpointer data)
 {
   GabbleSvcCallStreamEndpointClass *klass =
@@ -386,6 +401,7 @@ call_stream_endpoint_iface_init (gpointer iface, gpointer data)
   #define IMPLEMENT(x) gabble_svc_call_stream_endpoint_implement_##x (\
       klass, call_stream_endpoint_##x)
       IMPLEMENT(set_stream_state);
+      IMPLEMENT(set_selected_candidate);
   #undef IMPLEMENT
 }
 

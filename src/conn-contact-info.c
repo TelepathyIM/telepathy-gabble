@@ -280,21 +280,17 @@ _emit_contact_info_changed (GabbleSvcConnectionInterfaceContactInfo *iface,
                             TpHandle contact,
                             LmMessageNode *vcard_node)
 {
-  GValue contact_info = { 0, };
+  GPtrArray *contact_info = dbus_g_type_specialized_construct (
+      GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
 
-  g_value_init (&contact_info, GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
-  g_value_take_boxed (&contact_info,
-      dbus_g_type_specialized_construct (
-          GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST));
-
-  if (!_parse_vcard (vcard_node, g_value_get_boxed (&contact_info), NULL))
+  if (!_parse_vcard (vcard_node, contact_info, NULL))
     goto out;
 
   gabble_svc_connection_interface_contact_info_emit_contact_info_changed (iface,
-      contact, g_value_get_boxed (&contact_info));
+      contact, contact_info);
 
 out:
-  g_value_unset (&contact_info);
+  g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
 }
 
 /* All references are borrowed */
@@ -372,24 +368,21 @@ gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       if (gabble_vcard_manager_get_cached (self->vcard_manager,
                                            contact, &vcard_node))
         {
-          GValue contact_info = { 0, };
-
-          g_value_init (&contact_info,
+          GPtrArray *contact_info = dbus_g_type_specialized_construct (
               GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
-          g_value_take_boxed (&contact_info, dbus_g_type_specialized_construct (
-              GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST));
 
           /* TODO what now? we have the cached vcard but it cannot be parsed,
            * skipping */
-          if (!_parse_vcard (vcard_node, g_value_get_boxed (&contact_info),
+          if (!_parse_vcard (vcard_node, contact_info,
                              NULL))
             {
-              g_value_unset (&contact_info);
+              g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST,
+                  contact_info);
               continue;
             }
 
           g_hash_table_insert (ret, GUINT_TO_POINTER (contact),
-              g_value_get_boxed (&contact_info));
+              contact_info);
         }
       else
         {
@@ -427,7 +420,7 @@ _request_vcard_cb (GabbleVCardManager *self,
   GabbleConnection *conn;
   TpBaseConnection *base;
   GError *error = NULL;
-  GValue contact_info = { 0, };
+  GPtrArray *contact_info;
 
   g_object_get (self, "connection", &conn, NULL);
   base = TP_BASE_CONNECTION (conn);
@@ -441,12 +434,10 @@ _request_vcard_cb (GabbleVCardManager *self,
       goto out;
     }
 
-  g_value_init (&contact_info, GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
-  g_value_take_boxed (&contact_info,
-      dbus_g_type_specialized_construct (
-          GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST));
+  contact_info = dbus_g_type_specialized_construct (
+      GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
 
-  if (!_parse_vcard (vcard_node, g_value_get_boxed (&contact_info), &error))
+  if (!_parse_vcard (vcard_node, contact_info, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -454,10 +445,10 @@ _request_vcard_cb (GabbleVCardManager *self,
     }
 
   gabble_svc_connection_interface_contact_info_return_from_request_contact_info (
-      context, g_value_get_boxed (&contact_info));
+      context, contact_info);
 
 parse_fail:
-  g_value_unset (&contact_info);
+  g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
 
 out:
   g_object_unref (conn);

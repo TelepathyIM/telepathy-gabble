@@ -51,6 +51,7 @@ static const gchar *NO_ALIAS = "none";
 enum
 {
     NICKNAME_UPDATE,
+    VCARD_UPDATE,
     GOT_SELF_INITIAL_AVATAR,
     LAST_SIGNAL
 };
@@ -244,6 +245,11 @@ gabble_vcard_manager_class_init (GabbleVCardManagerClass *cls)
   /* signal definitions */
 
   signals[NICKNAME_UPDATE] = g_signal_new ("nickname-update",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, NULL, NULL, g_cclosure_marshal_VOID__UINT,
+        G_TYPE_NONE, 1, G_TYPE_UINT);
+
+  signals[VCARD_UPDATE] = g_signal_new ("vcard-update",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, g_cclosure_marshal_VOID__UINT,
         G_TYPE_NONE, 1, G_TYPE_UINT);
@@ -847,6 +853,8 @@ observe_vcard (GabbleConnection *conn,
 
   if ((old_alias != NULL) || (alias != NULL))
       g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE], 0, handle);
+
+  g_signal_emit (G_OBJECT (manager), signals[VCARD_UPDATE], 0, handle);
 }
 
 /* Called when a pre-set get request failed, or when a set request succeeded

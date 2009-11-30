@@ -185,6 +185,9 @@ struct _GabbleConnection {
     /* outstanding avatar requests */
     GHashTable *avatar_requests;
 
+    /* outstanding vcard requests */
+    GHashTable *vcard_requests;
+
     /* jingle factory */
     GabbleJingleFactory *jingle_factory;
 

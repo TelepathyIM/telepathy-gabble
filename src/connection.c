@@ -52,6 +52,7 @@
 #include "caps-hash.h"
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
+#include "conn-contact-info.h"
 #include "conn-location.h"
 #include "conn-presence.h"
 #include "conn-olpc.h"
@@ -93,6 +94,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_aliasing_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS,
       conn_avatars_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_INFO,
+      conn_contact_info_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CAPABILITIES,
       capabilities_service_iface_init);
     G_IMPLEMENT_INTERFACE(TP_TYPE_SVC_DBUS_PROPERTIES,
@@ -322,6 +325,7 @@ gabble_connection_constructor (GType type,
 
   conn_aliasing_init (self);
   conn_avatars_init (self);
+  conn_contact_info_init (self);
   conn_presence_init (self);
   conn_olpc_activity_properties_init (self);
   conn_location_init (self);
@@ -337,6 +341,7 @@ gabble_connection_constructor (GType type,
   self->bytestream_factory = gabble_bytestream_factory_new (self);
 
   self->avatar_requests = g_hash_table_new (NULL, NULL);
+  self->vcard_requests = g_hash_table_new (NULL, NULL);
 
   if (priv->fallback_socks5_proxies == NULL)
     {
@@ -684,6 +689,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+      GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
       TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
       TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
       GABBLE_IFACE_OLPC_GADGET,
@@ -715,10 +721,16 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           NULL,
           NULL,
         },
+        { GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
+          conn_contact_info_properties_getter,
+          NULL,
+          NULL,
+        },
         { NULL }
   };
 
   prop_interfaces[2].props = conn_avatars_properties;
+  prop_interfaces[3].props = conn_contact_info_properties;
 
   DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
 
@@ -967,6 +979,7 @@ gabble_connection_dispose (GObject *object)
   conn_olpc_activity_properties_dispose (self);
 
   g_hash_table_destroy (self->avatar_requests);
+  g_hash_table_destroy (self->vcard_requests);
 
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);

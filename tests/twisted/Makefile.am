@@ -1,6 +1,7 @@
 TWISTED_TESTS = \
-	avatar-requirements.py \
 	caps_helper.py \
+	servicetest.py \
+	avatar-requirements.py \
 	caps/advertise-contact-caps.py \
 	caps/advertise-legacy.py \
 	caps/caps-cache.py \
@@ -214,7 +215,6 @@ EXTRA_DIST = \
 	constants.py \
 	gabbletest.py \
 	httptest.py \
-	servicetest.py \
 	jingle/jingletest.py \
 	jingle/jingletest2.py \
 	mucutil.py \

@@ -55,6 +55,7 @@ CONN_IFACE_AVATARS = CONN + '.Interface.Avatars'
 CONN_IFACE_CAPS = CONN + '.Interface.Capabilities'
 CONN_IFACE_CONTACTS = CONN + '.Interface.Contacts'
 CONN_IFACE_CONTACT_CAPS = CONN + '.Interface.ContactCapabilities'
+CONN_IFACE_CONTACT_INFO = CONN + ".Interface.ContactInfo.DRAFT"
 CONN_IFACE_SIMPLE_PRESENCE = CONN + '.Interface.SimplePresence'
 CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
 CONN_IFACE_LOCATION = CONN + '.Interface.Location'

@@ -337,6 +337,7 @@ def wrap_connection(conn):
               'Presence', 'SimplePresence', 'Requests']] +
         [('Peer', 'org.freedesktop.DBus.Peer'),
          ('ContactCapabilities', cs.CONN_IFACE_CONTACT_CAPS),
+         ('ContactInfo', cs.CONN_IFACE_CONTACT_INFO),
          ('Location', cs.CONN_IFACE_LOCATION),
         ]))
 

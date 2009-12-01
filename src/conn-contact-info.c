@@ -247,7 +247,7 @@ _parse_vcard (LmMessageNode *vcard_node,
         }
       else if (strcmp (node->name, "ORG") == 0)
         {
-          // TODO accept more than one ORGUNIT
+          /* TODO accept more than one ORGUNIT */
           const gchar * const elements[] = { "ORGNAME", "ORGUNIT", NULL };
 
           _create_contact_field_extended (contact_info, node,

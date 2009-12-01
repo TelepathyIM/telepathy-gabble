@@ -1063,8 +1063,16 @@ manager_patch_vcard (GabbleVCardManager *self,
 
   if (priv->replace_vcard)
     {
+      LmMessageNode *node;
+
       patched_vcard = lm_message_node_add_child (msg->node, "vCard", "");
       lm_message_node_set_attribute (patched_vcard, "xmlns", "vcard-temp");
+
+      /* let's special case PHOTO here, as we don't parse PHOTO in contact-info,
+       * so replacing the PHOTO here wouldn't be correct */
+      node = lm_message_node_get_child (vcard_node, "PHOTO");
+      if (node)
+        vcard_copy (patched_vcard, node);
     }
   else
     patched_vcard = vcard_copy (msg->node, vcard_node);

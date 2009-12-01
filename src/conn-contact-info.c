@@ -735,6 +735,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       edit_info->accept_multiple = FALSE;
       edits = g_slist_append (edits, edit_info);
 
+      g_ptr_array_add (nicknames, NULL);
       g_strfreev ((gchar **) g_ptr_array_free (nicknames, FALSE));
     }
 

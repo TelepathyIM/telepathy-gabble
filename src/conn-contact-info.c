@@ -471,6 +471,91 @@ gabble_connection_request_contact_info (GabbleSvcConnectionInterfaceContactInfo 
         _request_vcard_cb, context, NULL);
 }
 
+static GSList *
+_insert_edit_info (GSList *edits,
+                   const gchar * const field_name,
+                   const gchar * const * field_params,
+                   const gchar * const * field_values,
+                   const gchar * const * elements,
+                   gboolean accept_multiple)
+{
+  GabbleVCardManagerEditInfo *edit_info =
+      g_new0 (GabbleVCardManagerEditInfo, 1);
+  const gchar * const * p;
+  guint i;
+  guint n_field_values = g_strv_length ((gchar **) field_values);
+  guint n_elements = g_strv_length ((gchar **) elements);
+
+  if (n_field_values != n_elements)
+    {
+      DEBUG ("Trying to edit %s field with wrong arguments", field_name);
+      return edits;
+    }
+
+  edit_info->element_name = g_ascii_strup (field_name, -1);
+  edit_info->to_edit = g_hash_table_new (g_str_hash, g_str_equal);
+  for (p = field_params; *p != NULL; ++p)
+    {
+      // params should be in the format type=foo
+      gchar *delim = strchr(*p, '=');
+      if (!delim)
+        continue;
+
+      g_hash_table_insert (edit_info->to_edit,
+          g_ascii_strup(delim + 1, -1),
+          NULL);
+    }
+
+  for (i = 0; i < n_elements; ++i)
+    g_hash_table_insert (edit_info->to_edit, g_strdup (elements[i]),
+        g_strdup (field_values[i]));
+
+  edit_info->accept_multiple = accept_multiple;
+
+  return g_slist_append (edits, edit_info);
+}
+
+static void
+_set_contact_info_cb (GabbleVCardManager *vcard_manager,
+                      GabbleVCardManagerEditRequest *request,
+                      LmMessageNode *vcard_node,
+                      GError *vcard_error,
+                      gpointer user_data)
+{
+  DBusGMethodInvocation *context = user_data;
+
+  if (NULL == vcard_node)
+    {
+      GError tp_error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          vcard_error->message };
+
+      if (vcard_error->domain == GABBLE_XMPP_ERROR)
+        if (vcard_error->code == XMPP_ERROR_BAD_REQUEST ||
+            vcard_error->code == XMPP_ERROR_NOT_ACCEPTABLE)
+          tp_error.code = TP_ERROR_INVALID_ARGUMENT;
+
+      dbus_g_method_return_error (context, &tp_error);
+    }
+  else
+    {
+      GabbleConnection *conn;
+      GError *error = NULL;
+
+      g_object_get (vcard_manager, "connection", &conn, NULL);
+
+      if (_gabble_connection_signal_own_presence (conn, &error))
+        gabble_svc_connection_interface_contact_info_return_from_set_contact_info (
+            context);
+      else
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+        }
+
+      g_object_unref (conn);
+    }
+}
+
 /**
  * gabble_connection_set_contact_info
  *
@@ -487,10 +572,176 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
+  GSList *edits = NULL;
+  GPtrArray *nicknames = NULL;
+  guint i;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
-  // TODO
+  for (i = 0; i < contact_info->len; i++)
+    {
+      GValue contact_info_field = { 0, };
+      gchar *field_name = NULL;
+      gchar **field_params = NULL;
+      gchar **field_values = NULL;
+      guint n_field_values = 0;
+
+      g_value_init (&contact_info_field, GABBLE_STRUCT_TYPE_CONTACT_INFO_FIELD);
+      g_value_set_static_boxed (&contact_info_field,
+          g_ptr_array_index (contact_info, i));
+
+      dbus_g_type_struct_get (&contact_info_field,
+          0, &field_name,
+          1, &field_params,
+          2, &field_values,
+          G_MAXUINT);
+
+      if (field_values)
+        n_field_values = g_strv_length (field_values);
+
+      if (strcmp (field_name, "fn") == 0 ||
+          strcmp (field_name, "bday") == 0 ||
+          strcmp (field_name, "jabberid") == 0 ||
+          strcmp (field_name, "mailer") == 0 ||
+          strcmp (field_name, "tz") == 0 ||
+          strcmp (field_name, "title") == 0 ||
+          strcmp (field_name, "role") == 0 ||
+          strcmp (field_name, "note") == 0 ||
+          strcmp (field_name, "prodid") == 0 ||
+          strcmp (field_name, "rev") == 0 ||
+          strcmp (field_name, "sort-string") == 0 ||
+          strcmp (field_name, "uid") == 0 ||
+          strcmp (field_name, "url") == 0 ||
+          strcmp (field_name, "desc") == 0)
+       {
+          GabbleVCardManagerEditInfo *edit_info =
+              g_new0 (GabbleVCardManagerEditInfo, 1);
+
+          if (n_field_values != 1)
+            {
+              DEBUG ("Trying to edit %s field with wrong arguments",
+                  field_name);
+              continue;
+            }
+
+          edit_info->element_name = g_ascii_strup (field_name, -1);
+          edit_info->element_value = g_strdup (field_values[0]);
+          edit_info->accept_multiple = FALSE;
+          edits = g_slist_append (edits, edit_info);
+       }
+     else if (strcmp (field_name, "n") == 0)
+       {
+          const gchar * const elements[] = { "FAMILY", "GIVEN", "MIDDLE",
+              "PREFIX", "SUFFIX", NULL };
+
+          edits = _insert_edit_info (edits, field_name,
+              (const gchar * const *) field_params,
+              (const gchar * const *) field_values, elements,
+              FALSE);
+        }
+      else if (strcmp (field_name, "nickname") == 0)
+        {
+          if (n_field_values != 1)
+            {
+              DEBUG ("Trying to edit %s field with wrong arguments",
+                  field_name);
+              continue;
+            }
+
+          if (!nicknames)
+            nicknames = g_ptr_array_new ();
+          g_ptr_array_add (nicknames, g_strdup (field_values[0]));
+        }
+      else if (strcmp (field_name, "adr") == 0)
+        {
+          const gchar * const elements[] = { "POBOX", "EXTADD", "STREET",
+              "LOCALITY", "REGION", "PCODE", "CTRY", NULL };
+
+          edits = _insert_edit_info (edits, field_name,
+              (const gchar * const *) field_params,
+              (const gchar * const *) field_values, elements,
+              TRUE);
+        }
+      else if (strcmp (field_name, "label") == 0)
+        {
+          const gchar * const elements[] = { "LINE", NULL };
+
+          edits = _insert_edit_info (edits, field_name,
+              (const gchar * const *) field_params,
+              (const gchar * const *) field_values, elements,
+              TRUE);
+        }
+      else if (strcmp (field_name, "tel") == 0)
+        {
+          const gchar * const elements[] = { "NUMBER", NULL };
+
+          edits = _insert_edit_info (edits, field_name,
+              (const gchar * const *) field_params,
+              (const gchar * const *) field_values, elements,
+              TRUE);
+        }
+      else if (strcmp (field_name, "email") == 0)
+        {
+          const gchar * const elements[] = { "USERID", NULL };
+
+          edits = _insert_edit_info (edits, field_name,
+              (const gchar * const *) field_params,
+              (const gchar * const *) field_values, elements,
+              TRUE);
+        }
+      else if (strcmp (field_name, "geo") == 0)
+        {
+          const gchar * const elements[] = { "LAT", "LON", NULL };
+
+          edits = _insert_edit_info (edits, field_name,
+              (const gchar * const *) field_params,
+              (const gchar * const *) field_values, elements,
+              FALSE);
+        }
+      else if (strcmp (field_name, "org") == 0)
+        {
+          const gchar * const elements[] = { "ORGNAME", "ORGUNIT", NULL };
+
+          edits = _insert_edit_info (edits, field_name,
+              (const gchar * const *) field_params,
+              (const gchar * const *) field_values, elements,
+              TRUE);
+        }
+      else if (strcmp (field_name, "key") == 0)
+        {
+          const gchar * const elements[] = { "CRED", NULL };
+
+          edits = _insert_edit_info (edits, field_name,
+              (const gchar * const *) field_params,
+              (const gchar * const *) field_values, elements,
+              TRUE);
+        }
+
+      g_free (field_name);
+      g_strfreev (field_params);
+      g_strfreev (field_values);
+    }
+
+  if (nicknames)
+    {
+      GabbleVCardManagerEditInfo *edit_info =
+          g_new0 (GabbleVCardManagerEditInfo, 1);
+
+      edit_info->element_name = g_strdup ("NICKNAME");
+      edit_info->element_value = g_strdup (g_ptr_array_index (nicknames, 0));
+      for (i = 1; i < nicknames->len; ++i)
+        edit_info->element_value = g_strconcat (edit_info->element_value,
+            ",", g_ptr_array_index (nicknames, i), NULL);
+      edit_info->accept_multiple = FALSE;
+      edits = g_slist_append (edits, edit_info);
+
+      g_strfreev ((gchar **) g_ptr_array_free (nicknames, FALSE));
+    }
+
+  if (edits)
+    gabble_vcard_manager_edit_extended (self->vcard_manager, 0,
+        _set_contact_info_cb, context,
+        G_OBJECT (self), edits, TRUE);
 }
 
 static void

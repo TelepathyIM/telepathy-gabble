@@ -92,7 +92,12 @@ struct _GabbleVCardManagerPrivate
 
   /* Contains all the vCard fields that should be changed, using field
    * names as keys. (Maps gchar* -> gchar *). */
-  GHashTable *edits;
+  GSList *edits;
+
+  /* Used by ContactInfo.SetContactInfo in order to replace the current vcard.
+   * This is needed cause there is no way to know which fields to update when
+   * there are multiple fields with the same name. */
+  gboolean replace_vcard;
 
   /* Contains RequestPipelineItem for our SET vCard request, or NULL if we
    * don't have SET request in the pipeline already. At most one SET request
@@ -499,6 +504,31 @@ complete_one_request (GabbleVCardManagerRequest *request,
 }
 
 static void
+delete_edit_info_to_edit_foreach (gpointer key,
+                                  gpointer value,
+                                  gpointer user_data)
+{
+  g_free (key);
+  g_free (value);
+}
+
+static void
+delete_edit_info_foreach (gpointer data, gpointer user_data)
+{
+  GabbleVCardManagerEditInfo *info = data;
+
+  g_free (info->element_name);
+  g_free (info->element_value);
+  if (info->to_edit)
+    {
+      g_hash_table_foreach (info->to_edit, delete_edit_info_to_edit_foreach,
+          NULL);
+      g_hash_table_destroy (info->to_edit);
+    }
+  g_free (info);
+}
+
+static void
 disconnect_entry_foreach (gpointer handle, gpointer value, gpointer unused)
 {
   GError err = { TP_ERRORS, TP_ERROR_DISCONNECTED, "Connection closed" };
@@ -531,8 +561,10 @@ gabble_vcard_manager_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
   DEBUG ("%p", object);
 
-  if (priv->edits != NULL)
-      g_hash_table_destroy (priv->edits);
+  if (priv->edits != NULL) {
+      g_slist_foreach (priv->edits, delete_edit_info_foreach, NULL);
+      g_slist_free (priv->edits);
+  }
   priv->edits = NULL;
 
   if (priv->cache_timer)
@@ -662,11 +694,10 @@ status_changed_cb (GObject *object,
         }
       else
         {
-          if (priv->edits == NULL)
-              priv->edits = g_hash_table_new_full (g_str_hash, g_str_equal,
-                  g_free, g_free);
-
-          g_hash_table_insert (priv->edits, g_strdup ("NICKNAME"), alias);
+          GabbleVCardManagerEditInfo *info = g_new0 (GabbleVCardManagerEditInfo, 1);
+          info->element_name = g_strdup ("NICKNAME");
+          info->element_value = alias;
+          priv->edits = g_slist_append (priv->edits, info);
         }
 
       /* FIXME: we happen to know that synchronous errors can't happen */
@@ -928,7 +959,8 @@ replace_reply_cb (GabbleConnection *conn,
       if (priv->edits != NULL)
         {
           /* All the requests for these edits have just been cancelled. */
-          g_hash_table_destroy (priv->edits);
+          g_slist_foreach (priv->edits, delete_edit_info_foreach, NULL);
+          g_slist_free (priv->edits);
           priv->edits = NULL;
         }
     }
@@ -941,49 +973,50 @@ replace_reply_cb (GabbleConnection *conn,
 }
 
 static void
-patch_vcard_foreach (gpointer k, gpointer v, gpointer user_data)
+patch_vcard_node_foreach (gpointer k, gpointer v, gpointer user_data)
 {
   gchar *key = k;
   gchar *value = v;
+  LmMessageNode *node = user_data;
+  LmMessageNode *child_node;
+
+  child_node = lm_message_node_get_child (node, key);
+  if (child_node)
+    lm_message_node_set_value (child_node, value);
+  else
+    lm_message_node_add_child (node, key, value);
+}
+
+static void
+patch_vcard_foreach (gpointer data, gpointer user_data)
+{
+  GabbleVCardManagerEditInfo *info = data;
   LmMessageNode *vcard_node = user_data;
   LmMessageNode *node;
 
-  /* For PHOTO the value is special-cased to be "image/jpeg base64base64" */
-  if (!tp_strdiff (key, "PHOTO"))
+  node = lm_message_node_get_child (vcard_node, info->element_name);
+  if (info->to_del)
     {
-      node = lm_message_node_get_child (vcard_node, "PHOTO");
-      if (node != NULL)
+      while (node)
         {
-          lm_message_node_unlink (node, vcard_node);
-          lm_message_node_unref (node);
+          if (node)
+            {
+              lm_message_node_unlink (node, vcard_node);
+              lm_message_node_unref (node);
+            }
+          node = lm_message_node_get_child (vcard_node, info->element_name);
         }
-
-      node = lm_message_node_add_child (vcard_node, "PHOTO", "");
-      if (value != NULL)
-        {
-          gchar **tokens = g_strsplit (value, " ", 2);
-
-          DEBUG ("Setting PHOTO of type %s, BINVAL length %ld starting %.30s",
-              tokens[0], (long) strlen (tokens[1]), tokens[1]);
-          lm_message_node_add_child (node, "TYPE", tokens[0]);
-          lm_message_node_add_child (node, "BINVAL", tokens[1]);
-
-          g_strfreev (tokens);
-        }
+      return;
     }
+
+  if (node && !info->accept_multiple)
+    lm_message_node_set_value (node, info->element_value);
   else
-    {
-      node = lm_message_node_get_child (vcard_node, key);
+    node = lm_message_node_add_child (vcard_node,
+        info->element_name, info->element_value);
 
-      if (node)
-        {
-          lm_message_node_set_value (node, value);
-        }
-      else
-        {
-          lm_message_node_add_child (vcard_node, key, value);
-        }
-    }
+  if (info->to_edit)
+    g_hash_table_foreach (info->to_edit, patch_vcard_node_foreach, node);
 }
 
 /* Loudmouth hates me. The feelings are mutual.
@@ -1028,10 +1061,16 @@ manager_patch_vcard (GabbleVCardManager *self,
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_SET);
 
-  patched_vcard = vcard_copy (msg->node, vcard_node);
+  if (priv->replace_vcard)
+    {
+      patched_vcard = lm_message_node_add_child (msg->node, "vCard", "");
+      lm_message_node_set_attribute (patched_vcard, "xmlns", "vcard-temp");
+    }
+  else
+    patched_vcard = vcard_copy (msg->node, vcard_node);
 
   /* Apply any unsent edits to the patched vCard */
-  g_hash_table_foreach (priv->edits, patch_vcard_foreach, patched_vcard);
+  g_slist_foreach (priv->edits, patch_vcard_foreach, patched_vcard);
 
   /* We'll save the patched vcard, and if the server says
    * we're ok, put it into the cache. But we want to leave the
@@ -1045,8 +1084,10 @@ manager_patch_vcard (GabbleVCardManager *self,
   lm_message_unref (msg);
 
   /* We've applied those, forget about them */
-  g_hash_table_destroy (priv->edits);
+  g_slist_foreach (priv->edits, delete_edit_info_foreach, NULL);
+  g_slist_free (priv->edits);
   priv->edits = NULL;
+  priv->replace_vcard = FALSE;
 
   /* Current edit requests are in the pipeline, remember it so we
    * know which ones we may complete when the SET returns */
@@ -1132,7 +1173,8 @@ pipeline_reply_cb (GabbleConnection *conn,
       if (entry->handle == base->self_handle && priv->edits != NULL)
         {
           /* We won't have a chance to apply those, might as well forget them */
-          g_hash_table_destroy (priv->edits);
+          g_slist_foreach (priv->edits, delete_edit_info_foreach, NULL);
+          g_slist_free (priv->edits);
           priv->edits = NULL;
 
           replace_reply_cb (conn, reply_msg, self, error);
@@ -1310,6 +1352,41 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
 {
   va_list ap;
   size_t i;
+  GSList *edits = NULL;
+
+  va_start (ap, n_pairs);
+  for (i = 0; i < n_pairs; i++)
+    {
+      GabbleVCardManagerEditInfo *info = g_new0 (GabbleVCardManagerEditInfo, 1);
+      info->element_name = g_strdup (va_arg (ap, const gchar *));
+      info->element_value = g_strdup (va_arg (ap, const gchar *));
+
+      if (info->element_value)
+        {
+          DEBUG ("%s => value of length %ld starting %.30s", info->element_name,
+              (long) strlen (info->element_value), info->element_value);
+        }
+      else
+        {
+          DEBUG ("%s => null value", info->element_name);
+        }
+      edits = g_slist_append (edits, info);
+    }
+  va_end (ap);
+
+  return gabble_vcard_manager_edit_extended (self, timeout, callback,
+      user_data, object, edits, FALSE);
+}
+
+GabbleVCardManagerEditRequest *
+gabble_vcard_manager_edit_extended (GabbleVCardManager *self,
+                                    guint timeout,
+                                    GabbleVCardManagerEditCb callback,
+                                    gpointer user_data,
+                                    GObject *object,
+                                    GSList *edits,
+                                    gboolean replace_vcard)
+{
   GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) priv->connection;
   GabbleVCardManagerEditRequest *req;
@@ -1329,27 +1406,10 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
           NULL, NULL);
     }
 
-  if (priv->edits == NULL)
-      priv->edits = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-
-  va_start (ap, n_pairs);
-  for (i = 0; i < n_pairs; i++)
-    {
-      gchar *key = g_strdup (va_arg (ap, const gchar *));
-      gchar *value = g_strdup (va_arg (ap, const gchar *));
-
-      if (value)
-        {
-          DEBUG ("%s => value of length %ld starting %.30s", key,
-              (long) strlen (value), value);
-        }
-      else
-        {
-          DEBUG ("%s => null value", key);
-        }
-      g_hash_table_insert (priv->edits, key, value);
-    }
-  va_end (ap);
+  priv->edits = g_slist_concat (priv->edits, edits);
+  /* set it to true and let manager_patch_vcard set it to FALSE when finished */
+  if (replace_vcard)
+    priv->replace_vcard = TRUE;
 
   req = g_slice_new (GabbleVCardManagerEditRequest);
   req->manager = self;

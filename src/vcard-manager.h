@@ -33,6 +33,7 @@ typedef struct _GabbleVCardManagerPrivate GabbleVCardManagerPrivate;
 typedef struct _GabbleVCardManagerClass GabbleVCardManagerClass;
 typedef struct _GabbleVCardManagerRequest GabbleVCardManagerRequest;
 typedef struct _GabbleVCardManagerEditRequest GabbleVCardManagerEditRequest;
+typedef struct _GabbleVCardManagerEditInfo GabbleVCardManagerEditInfo;
 
 /**
  * GabbleVCardManagerError:
@@ -76,6 +77,26 @@ struct _GabbleVCardManagerClass {
 struct _GabbleVCardManager {
     GObject parent;
     GabbleVCardManagerPrivate *priv;
+};
+
+struct _GabbleVCardManagerEditInfo {
+    /* name of element to edit */
+    gchar *element_name;
+
+    /* value of element to edit or NULL if no value should be used */
+    gchar *element_value;
+
+    /* list of elements (hash gchar/gchar) to edit/add */
+    GHashTable *to_edit;
+
+    /* whether multiple instances of elements with the same name of this element
+     * are allowed. If FALSE the first element with this name will be
+     * updated. */
+    gboolean accept_multiple;
+
+    /* whether all instances of elements with the same name of this element
+     * should be removed */
+    gboolean to_del;
 };
 
 typedef void (*GabbleVCardManagerCb)(GabbleVCardManager *self,
@@ -122,7 +143,13 @@ GabbleVCardManagerEditRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
                                                           GObject *object,
                                                           size_t n_pairs,
                                                           ...);
-
+GabbleVCardManagerEditRequest *gabble_vcard_manager_edit_extended (GabbleVCardManager *,
+                                                                   guint timeout,
+                                                                   GabbleVCardManagerEditCb,
+                                                                   gpointer user_data,
+                                                                   GObject *object,
+                                                                   GSList *edits,
+                                                                   gboolean replace_vcard);
 
 void gabble_vcard_manager_remove_edit_request (GabbleVCardManagerEditRequest *);
 

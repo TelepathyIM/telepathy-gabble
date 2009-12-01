@@ -819,11 +819,16 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
+  GabbleVCardManagerEditInfo *edit_info;
+  GSList *edits = NULL;
   struct _set_avatar_ctx *ctx;
-  gchar *value = NULL;
   gchar *base64;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
+  edit_info = g_new0 (GabbleVCardManagerEditInfo, 1);
+  edit_info->element_name = g_strdup ("PHOTO");
+  edits = g_slist_append (edits, edit_info);
 
   ctx = g_new0 (struct _set_avatar_ctx, 1);
   ctx->conn = self;
@@ -832,16 +837,21 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
     {
       ctx->avatar = g_string_new_len (avatar->data, avatar->len);
       base64 = base64_encode (avatar->len, avatar->data, TRUE);
-      value = g_strdup_printf ("%s %s", mime_type, base64);
-      g_free (base64);
+
+      edit_info->to_edit = g_hash_table_new (g_str_hash, g_str_equal);
+
+      g_hash_table_insert (edit_info->to_edit, g_strdup ("TYPE"),
+          g_strdup (mime_type));
+      g_hash_table_insert (edit_info->to_edit, g_strdup ("BINVAL"), base64);
     }
+  else
+    edit_info->to_del = TRUE;
 
   DEBUG ("called");
 
-  gabble_vcard_manager_edit (self->vcard_manager, 0,
+  gabble_vcard_manager_edit_extended (self->vcard_manager, 0,
       _set_avatar_cb2, ctx, (GObject *) self,
-      1, "PHOTO", value);
-  g_free (value);
+      edits, FALSE);
 }
 
 

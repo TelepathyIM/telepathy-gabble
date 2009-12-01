@@ -95,6 +95,7 @@ TWISTED_TESTS = \
 	vcard/test-contact-info.py \
 	vcard/test-save-alias-to-vcard.py \
 	vcard/test-set-alias.py \
+	vcard/test-set-contact-info.py \
 	vcard/test-vcard-cache.py \
 	vcard/test-vcard-race.py \
 	vcard/update-get-failed.py \

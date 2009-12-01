@@ -1406,10 +1406,16 @@ gabble_vcard_manager_edit_extended (GabbleVCardManager *self,
           NULL, NULL);
     }
 
-  priv->edits = g_slist_concat (priv->edits, edits);
   /* set it to true and let manager_patch_vcard set it to FALSE when finished */
   if (replace_vcard)
-    priv->replace_vcard = TRUE;
+    {
+      priv->replace_vcard = TRUE;
+      g_slist_foreach (priv->edits, delete_edit_info_foreach, NULL);
+      g_slist_free (priv->edits);
+      priv->edits = edits;
+    }
+  else
+    priv->edits = g_slist_concat (priv->edits, edits);
 
   req = g_slice_new (GabbleVCardManagerEditRequest);
   req->manager = self;

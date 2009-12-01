@@ -92,6 +92,7 @@ TWISTED_TESTS = \
 	vcard/test-avatar-retrieved.py \
 	vcard/test-avatar-tokens.py \
         vcard/test-avatar-multiple-resources.py \
+	vcard/test-contact-info.py \
 	vcard/test-save-alias-to-vcard.py \
 	vcard/test-set-alias.py \
 	vcard/test-vcard-cache.py \

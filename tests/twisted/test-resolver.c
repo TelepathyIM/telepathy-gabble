@@ -113,7 +113,7 @@ lookup_service_async (GResolver *resolver,
     g_simple_async_result_set_error (res, G_RESOLVER_ERROR,
         G_RESOLVER_ERROR_NOT_FOUND, "No fake SRV record registered");
 
-  g_simple_async_result_complete (res);
+  g_simple_async_result_complete_in_idle (res);
   g_object_unref (res);
 }
 

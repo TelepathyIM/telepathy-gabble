@@ -94,6 +94,8 @@ main (int argc,
       "resolves-to-1.2.3.4", "1.2.3.4");
   test_resolver_add_A (TEST_RESOLVER (kludged),
       "localhost", "127.0.0.1");
+  test_resolver_add_A (TEST_RESOLVER (kludged),
+      "stun.collabora.co.uk", "6.7.8.9");
 
   gabble_jingle_factory_set_test_mode ();
 

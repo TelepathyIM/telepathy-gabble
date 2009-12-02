@@ -92,6 +92,8 @@ main (int argc,
       "resolves-to-5.4.3.2", "5.4.3.2");
   test_resolver_add_A (TEST_RESOLVER (kludged),
       "resolves-to-1.2.3.4", "1.2.3.4");
+  test_resolver_add_A (TEST_RESOLVER (kludged),
+      "localhost", "127.0.0.1");
 
   gabble_jingle_factory_set_test_mode ();
 

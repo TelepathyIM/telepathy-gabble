@@ -123,9 +123,10 @@ lookup_service_async (GResolver *resolver,
 
   if (addr == NULL)
     {
-      GResolver *real = G_RESOLVER (tr->real_resolver);
-      addr = G_RESOLVER_GET_CLASS (real)->
-        lookup_service (real, rr, cancellable, &error);
+      g_set_error (&error,
+        G_RESOLVER_ERROR,
+        G_RESOLVER_ERROR_NOT_FOUND,
+        "No fake SRV record registered");
     }
 #ifdef DEBUG_FAKEDNS
   else
@@ -178,8 +179,10 @@ lookup_by_name_async (GResolver *resolver,
 
   if (addr == NULL)
     {
-      GResolver *real = G_RESOLVER (tr->real_resolver);
-      addr = g_resolver_lookup_by_name (real, hostname, cancellable, &error);
+      g_set_error (&error,
+        G_RESOLVER_ERROR,
+        G_RESOLVER_ERROR_NOT_FOUND,
+        "No fake hostname record registered");
     }
 #ifdef DEBUG_FAKEDNS
   else

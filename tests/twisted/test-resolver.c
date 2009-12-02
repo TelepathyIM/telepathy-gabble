@@ -71,7 +71,7 @@ find_fake_services (TestResolver *tr, const char *name)
   for (fake = tr->fake_SRV; fake != NULL; fake = g_list_next (fake))
     {
       fake_serv *entry = fake->data;
-      if (entry && !g_strcmp0 (entry->key, name))
+      if (entry != NULL && !g_strcmp0 (entry->key, name))
           rval = g_list_append (rval, g_srv_target_copy (entry->srv));
     }
   return rval;
@@ -86,7 +86,7 @@ find_fake_hosts (TestResolver *tr, const char *name)
   for (fake = tr->fake_A; fake != NULL; fake = g_list_next (fake))
     {
       fake_host *entry = fake->data;
-      if (entry && !g_strcmp0 (entry->key, name))
+      if (entry != NULL && !g_strcmp0 (entry->key, name))
         rval =
           g_list_append (rval, g_inet_address_new_from_string (entry->addr));
     }

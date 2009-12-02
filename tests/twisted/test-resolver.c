@@ -68,7 +68,7 @@ find_fake_services (TestResolver *tr, const char *name)
   GList *fake = NULL;
   GList *rval = NULL;
 
-  for (fake = tr->fake_SRV; fake; fake = fake->next)
+  for (fake = tr->fake_SRV; fake != NULL; fake = g_list_next (fake))
     {
       fake_serv *entry = fake->data;
       if (entry && !g_strcmp0 (entry->key, name))
@@ -83,7 +83,7 @@ find_fake_hosts (TestResolver *tr, const char *name)
   GList *fake = NULL;
   GList *rval = NULL;
 
-  for (fake = tr->fake_A; fake; fake = fake->next)
+  for (fake = tr->fake_A; fake != NULL; fake = g_list_next (fake))
     {
       fake_host *entry = fake->data;
       if (entry && !g_strcmp0 (entry->key, name))
@@ -204,7 +204,7 @@ test_resolver_reset (TestResolver *tr)
 {
   GList *fake = NULL;
 
-  for (fake = tr->fake_A; fake; fake = fake->next)
+  for (fake = tr->fake_A; fake != NULL; fake = g_list_next (fake))
     {
       fake_host *entry = fake->data;
       g_free (entry->key);
@@ -214,7 +214,7 @@ test_resolver_reset (TestResolver *tr)
   g_list_free (tr->fake_A);
   tr->fake_A = NULL;
 
-  for (fake = tr->fake_SRV; fake; fake = fake->next)
+  for (fake = tr->fake_SRV; fake != NULL; fake = g_list_next (fake))
     {
       fake_serv *entry = fake->data;
       g_free (entry->key);

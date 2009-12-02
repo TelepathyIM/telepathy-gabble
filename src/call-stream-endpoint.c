@@ -130,8 +130,7 @@ gabble_call_stream_endpoint_get_property (GObject    *object,
                 break;
             case JINGLE_TRANSPORT_UNKNOWN:
             default:
-                g_assert ("Unknown transport type");
-                break;
+                g_assert_not_reached ();
             }
 
           g_value_set_uint (value, type);

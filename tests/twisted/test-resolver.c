@@ -38,8 +38,17 @@
 
 #include "test-resolver.h"
 
-typedef struct _fake_host { char *key; char *addr; } fake_host;
-typedef struct _fake_serv { char *key; GSrvTarget *srv; } fake_serv;
+typedef struct _fake_host
+{
+  char *key;
+  char *addr;
+} fake_host;
+
+typedef struct _fake_serv
+{
+  char *key;
+  GSrvTarget *srv;
+} fake_serv;
 
 G_DEFINE_TYPE (TestResolver, test_resolver, G_TYPE_RESOLVER);
 

@@ -76,6 +76,8 @@ GabblePresenceCapabilities capabilities_get_initial_caps (void);
 
 GabblePresenceCapabilities capabilities_parse (LmMessageNode *query_result);
 
+GabblePresenceCapabilities capabilities_from_ns (const gchar *ns);
+
 typedef GabblePresenceCapabilities (*TypeFlagsToCapsFunc) (guint typeflags);
 typedef guint (*CapsToTypeFlagsFunc) (GabblePresenceCapabilities caps);
 

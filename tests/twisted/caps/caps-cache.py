@@ -14,7 +14,7 @@ from caps_helper import (
     compute_caps_hash, fake_client_dataforms, presence_and_disco,
     send_presence, expect_disco, send_disco_reply)
 
-client = 'http://telepathy.freedesktop.org/fake-client'
+client = 'http://telepathy.freedesktop.org/fake-client/caps-cache'
 features = [
     ns.JINGLE_015,
     ns.JINGLE_015_AUDIO,

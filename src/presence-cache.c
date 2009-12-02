@@ -40,6 +40,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include "capabilities.h"
+#include "caps-cache.h"
 #include "caps-channel-manager.h"
 #include "caps-hash.h"
 #include "debug.h"
@@ -1233,6 +1234,13 @@ _caps_disco_cb (GabbleDisco *disco,
 
   if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
     {
+      GabbleCapsCache *caps_cache;
+
+      /* Update external cache. */
+      caps_cache = gabble_caps_cache_dup_shared ();
+      gabble_caps_cache_insert (caps_cache, node, uris);
+      g_object_unref (caps_cache);
+
       /* We trust this caps node. Serve all its waiters. */
       for (i = waiters; NULL != i; i = i->next)
         {
@@ -1306,28 +1314,52 @@ _process_caps_uri (GabblePresenceCache *cache,
                    guint serial)
 {
   CapabilityInfo *info;
+  gboolean caps_in_cache = FALSE;
+  GabblePresenceCapabilities cached_caps = 0;
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
+  GabbleCapsCache *caps_cache;
+  gchar **uris, **i;
 
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   info = capability_info_get (cache, uri);
 
-  if (info->trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST
-      || tp_intset_is_member (info->guys, handle))
+  caps_cache = gabble_caps_cache_dup_shared ();
+  uris = gabble_caps_cache_lookup (caps_cache, uri);
+  g_object_unref (caps_cache);
+
+  if (uris != NULL)
+    {
+      caps_in_cache = TRUE;
+
+      for (i = uris; *i; i++)
+        {
+          cached_caps |= capabilities_from_ns (*i);
+        }
+
+      g_strfreev (uris);
+    }
+
+  if (caps_in_cache ||
+      info->trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST ||
+      tp_intset_is_member (info->guys, handle))
     {
       /* we already have enough trust for this node; apply the cached value to
        * the (handle, resource) */
 
       GabblePresence *presence = gabble_presence_cache_get (cache, handle);
+      GabblePresenceCapabilities caps =
+          caps_in_cache ? cached_caps : info->caps;
+
       DEBUG ("enough trust for URI %s, setting caps for %u (%s) to %u",
-          uri, handle, from, info->caps);
+          uri, handle, from, caps);
 
       if (presence)
         {
           gabble_presence_set_capabilities (presence, resource,
-              info->caps, info->per_channel_manager_caps, serial);
+              caps, info->per_channel_manager_caps, serial);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
         }
       else

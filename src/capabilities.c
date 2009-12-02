@@ -192,6 +192,22 @@ capabilities_parse (LmMessageNode *query_result)
   return ret;
 }
 
+GabblePresenceCapabilities
+capabilities_from_ns (const gchar *ns)
+{
+  const Feature *i;
+
+  for (i = self_advertised_features; i->ns != NULL; i++)
+    {
+      if (0 == strcmp (ns, i->ns))
+        {
+          return i->caps;
+        }
+    }
+
+  return 0;
+}
+
 void
 capabilities_fill_cache (GabblePresenceCache *cache)
 {

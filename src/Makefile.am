@@ -27,6 +27,8 @@ libgabble_convenience_la_SOURCES = \
     bytestream-socks5.c \
     capabilities.h \
     capabilities.c \
+    caps-cache.h \
+    caps-cache.c \
     caps-hash.h \
     caps-hash.c \
     caps-channel-manager.h \

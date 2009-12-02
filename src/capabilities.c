@@ -51,7 +51,16 @@ static const Feature self_advertised_features[] =
   { FEATURE_FIXED, NS_IBB, PRESENCE_CAP_IBB},
   { FEATURE_FIXED, NS_TUBES, PRESENCE_CAP_SI_TUBES},
   { FEATURE_FIXED, NS_BYTESTREAMS, PRESENCE_CAP_BYTESTREAMS},
+
+#ifdef ENABLE_ASSUMED_FT_CAP
+  /* For backwards compatibility, the default behaviour of the stable
+   * branch is to say that we can receive file transfers, even if no
+   * client seems to be able to. Disable with
+   * ./configure --disable-assumed-ft-cap */
+  { FEATURE_FIXED, NS_FILE_TRANSFER, PRESENCE_CAP_SI_FILE_TRANSFER},
+#else
   { FEATURE_OPTIONAL, NS_FILE_TRANSFER, PRESENCE_CAP_SI_FILE_TRANSFER},
+#endif
 
   { FEATURE_BUNDLE_COMPAT, NS_GOOGLE_FEAT_VOICE, PRESENCE_CAP_GOOGLE_VOICE},
   { FEATURE_OPTIONAL, NS_GOOGLE_FEAT_VIDEO, PRESENCE_CAP_GOOGLE_VIDEO },

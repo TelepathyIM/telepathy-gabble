@@ -182,10 +182,17 @@ else
 DEBUGGING_PYBOOL = False
 endif
 
+if ENABLE_ASSUMED_FT_CAP
+ENABLE_ASSUMED_FT_CAP_PYBOOL = True
+else
+ENABLE_ASSUMED_FT_CAP_PYBOOL = False
+endif
+
 config.py: Makefile
 	$(QUIET_GEN) { \
 		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
 		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
+		echo "ENABLE_ASSUMED_FT_CAP = $(ENABLE_ASSUMED_FT_CAP_PYBOOL)"; \
 	} > $@
 
 BUILT_SOURCES = config.py

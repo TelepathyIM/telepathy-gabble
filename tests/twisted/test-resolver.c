@@ -122,11 +122,12 @@ lookup_service_finish (GResolver *resolver,
                        GAsyncResult *result,
                        GError **error)
 {
-  GList *res = NULL;
   GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
-  g_simple_async_result_propagate_error (simple, error);
-  res = g_simple_async_result_get_op_res_gpointer (simple);
-  return res;
+
+  if (g_simple_async_result_propagate_error (simple, error))
+    return NULL;
+
+  return g_simple_async_result_get_op_res_gpointer (simple);
 }
 
 static void
@@ -157,11 +158,12 @@ lookup_by_name_finish (GResolver *resolver,
     GAsyncResult *result,
     GError **error)
 {
-  GList *res = NULL;
   GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
-  g_simple_async_result_propagate_error (simple, error);
-  res = g_simple_async_result_get_op_res_gpointer (simple);
-  return res;
+
+  if (g_simple_async_result_propagate_error (simple, error))
+    return NULL;
+
+  return g_simple_async_result_get_op_res_gpointer (simple);
 }
 
 

@@ -22,10 +22,8 @@
  * make a dummy resolver we can insert duff records in on the fly */
 
 /* examples:
- * GResolver *original;
  * GResolver *kludged;
- * original = g_resolver_get_default ();
- * kludged = g_object_new (TEST_TYPE_RESOLVER, "real-resolver", original, NULL);
+ * kludged = g_object_new (TEST_TYPE_RESOLVER, NULL);
  * g_resolver_set_default (kludged);
  * test_resolver_add_SRV (TEST_RESOLVER (kludged),
  *     "xmpp-client", "tcp", "jabber.earth.li", "localhost", 1337);
@@ -39,11 +37,6 @@
 #include <arpa/inet.h>
 
 #include "test-resolver.h"
-
-enum
-{
-  PROP_REAL_RESOLVER = 1,
-};
 
 typedef struct _fake_host { char *key; char *addr; } fake_host;
 typedef struct _fake_serv { char *key; GSrvTarget *srv; } fake_serv;
@@ -195,60 +188,10 @@ test_resolver_init (TestResolver *tr)
 }
 
 static void
-test_resolver_set_property (GObject *object,
-    guint propid,
-    const GValue *value,
-    GParamSpec *pspec)
-{
-  TestResolver *resolver = TEST_RESOLVER (object);
-
-  switch (propid)
-    {
-    case PROP_REAL_RESOLVER:
-      if (resolver->real_resolver != NULL)
-        g_object_unref (resolver->real_resolver);
-      resolver->real_resolver = g_value_dup_object (value);
-      break;
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, propid, pspec);
-      break;
-    }
-}
-
-static void
-test_resolver_get_property (GObject *object,
-    guint propid,
-    GValue *value,
-    GParamSpec *pspec)
-{
-  TestResolver *resolver = TEST_RESOLVER (object);
-
-  switch (propid)
-    {
-    case PROP_REAL_RESOLVER:
-      g_value_set_object (value, resolver->real_resolver);
-      break;
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, propid, pspec);
-      break;
-    }
-}
-
-static void
 test_resolver_class_init (TestResolverClass *klass)
 {
   GResolverClass *resolver_class = G_RESOLVER_CLASS (klass);
-  GObjectClass *object_class = G_OBJECT_CLASS (klass);
-  GParamSpec *spec;
 
-  object_class->set_property = test_resolver_set_property;
-  object_class->get_property = test_resolver_get_property;
-
-  spec = g_param_spec_object ("real-resolver", "real-resolver",
-      "The real resolver to use when we don't have a kludge entry",
-      G_TYPE_RESOLVER,
-      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT);
-  g_object_class_install_property (object_class, PROP_REAL_RESOLVER, spec);
   resolver_class->lookup_by_name_async     = lookup_by_name_async;
   resolver_class->lookup_by_name_finish    = lookup_by_name_finish;
   resolver_class->lookup_service_async     = lookup_service_async;

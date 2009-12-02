@@ -55,7 +55,7 @@ main (int argc,
   GError *error = NULL;
   DBusConnection *connection;
   int ret = 1;
-  GResolver *original, *kludged;
+  GResolver *kludged;
 
   gabble_init ();
 
@@ -84,8 +84,7 @@ main (int argc,
   
   /* hook up the fake DNS resolver that lets us divert A and SRV queries *
    * into our local cache before asking the real DNS                     */
-  original = g_resolver_get_default ();
-  kludged = g_object_new (TEST_TYPE_RESOLVER, "real-resolver", original, NULL);
+  kludged = g_object_new (TEST_TYPE_RESOLVER, NULL);
   g_resolver_set_default (kludged);
 
   test_resolver_add_A (TEST_RESOLVER (kludged),

@@ -59,15 +59,7 @@ _service_rrname (const char *service,
                  const char *protocol,
                  const char *domain)
 {
-  gchar *rrname, *ascii_domain = NULL;
-
-  if (g_hostname_is_non_ascii (domain))
-    domain = ascii_domain = g_hostname_to_ascii (domain);
-
-  rrname = g_strdup_printf ("_%s._%s.%s", service, protocol, domain);
-
-  g_free (ascii_domain);
-  return rrname;
+  return g_strdup_printf ("_%s._%s.%s", service, protocol, domain);
 }
 
 static GList *

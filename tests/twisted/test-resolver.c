@@ -101,26 +101,18 @@ lookup_service_async (GResolver *resolver,
     GAsyncReadyCallback  cb,
     gpointer data)
 {
-  GError *error = NULL;
   TestResolver *tr = TEST_RESOLVER (resolver);
   GList *addr = find_fake_services (tr, rr);
   GObject *source = G_OBJECT (resolver);
-  GSimpleAsyncResult *res = NULL;
-
-  if (addr == NULL)
-    {
-      g_set_error (&error,
-        G_RESOLVER_ERROR,
-        G_RESOLVER_ERROR_NOT_FOUND,
-        "No fake SRV record registered");
-    }
+  GSimpleAsyncResult *res =
+      g_simple_async_result_new (source, cb, data, lookup_service_async);
 
   if (addr != NULL)
-      res = g_simple_async_result_new (source, cb, data, lookup_service_async);
+    g_simple_async_result_set_op_res_gpointer (res, addr, NULL);
   else
-      res = g_simple_async_result_new_from_error (source, cb, data, error);
+    g_simple_async_result_set_error (res, G_RESOLVER_ERROR,
+        G_RESOLVER_ERROR_NOT_FOUND, "No fake SRV record registered");
 
-  g_simple_async_result_set_op_res_gpointer (res, addr, NULL);
   g_simple_async_result_complete (res);
   g_object_unref (res);
 }

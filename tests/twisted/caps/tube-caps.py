@@ -199,6 +199,14 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact):
          ns.TUBES + '/stream#daap',
         ], daap_xiangqi_caps, expect_disco=False)
 
+def filter_tube_caps(caps):
+    return [x
+            for x in caps
+            if x[0].get(cs.CHANNEL + '.ChannelType') in (
+                cs.CHANNEL_TYPE_STREAM_TUBE,
+                cs.CHANNEL_TYPE_DBUS_TUBE,
+                )
+            ]
 
 def advertise_caps(q, conn, stream, filters, expected_features, unexpected_features,
                    expected_caps):
@@ -218,61 +226,56 @@ def advertise_caps(q, conn, stream, filters, expected_features, unexpected_featu
     for var in unexpected_features:
         assertDoesNotContain(var, namespaces)
 
-    # Check our own caps
+    # Check our own caps, ignoring non-Tube caps
     caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
+    caps[self_handle] = filter_tube_caps(caps[self_handle])
     assertSameElements(expected_caps, caps)
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
             [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
             [self_handle][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
+    caps_via_contacts_iface = filter_tube_caps(caps_via_contacts_iface)
     assertSameElements(caps[self_handle], caps_via_contacts_iface)
 
 def test_tube_caps_to_contact(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
 
     basic_caps = dbus.Dictionary({self_handle:
-        [(text_fixed_properties, text_allowed_properties),
-         (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        [(stream_tube_fixed_properties, stream_tube_allowed_properties),
          (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
          ]})
     daap_caps = dbus.Dictionary({self_handle:
-        [(text_fixed_properties, text_allowed_properties),
-        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        [(stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-        (daap_fixed_properties, specialized_tube_allowed_properties),
-        (ft_fixed_properties, ft_allowed_properties)]})
+        (daap_fixed_properties, specialized_tube_allowed_properties)]})
     xiangqi_caps = dbus.Dictionary({self_handle:
-        [(text_fixed_properties, text_allowed_properties),
-        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        [(stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-        (xiangqi_fixed_properties, specialized_tube_allowed_properties),
-        (ft_fixed_properties, ft_allowed_properties)]})
+        (xiangqi_fixed_properties, specialized_tube_allowed_properties)]})
     daap_xiangqi_caps = dbus.Dictionary({self_handle:
-        [(text_fixed_properties, text_allowed_properties),
-        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        [(stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, specialized_tube_allowed_properties),
-        (xiangqi_fixed_properties, specialized_tube_allowed_properties),
-        (ft_fixed_properties, ft_allowed_properties)]})
+        (xiangqi_fixed_properties, specialized_tube_allowed_properties)]})
     all_tubes_caps = dbus.Dictionary({self_handle:
-        [(text_fixed_properties, text_allowed_properties),
-        (stream_tube_fixed_properties, stream_tube_allowed_properties),
+        [(stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
         (daap_fixed_properties, specialized_tube_allowed_properties),
         (http_fixed_properties, specialized_tube_allowed_properties),
         (xiangqi_fixed_properties, specialized_tube_allowed_properties),
-        (go_fixed_properties, specialized_tube_allowed_properties),
-        (ft_fixed_properties, ft_allowed_properties)]})
+        (go_fixed_properties, specialized_tube_allowed_properties)]})
 
-    # Check our own caps
+    # Check our own caps, after removing non-tube capabilities
     caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
+    caps[self_handle] = filter_tube_caps(caps[self_handle])
     assertEquals(basic_caps, caps)
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
             [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
             [self_handle][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
+    caps_via_contacts_iface = filter_tube_caps(caps_via_contacts_iface)
     assertEquals(caps[self_handle], caps_via_contacts_iface)
 
     # Advertise nothing
@@ -281,12 +284,14 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
     # Check our own caps
     caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
     assertLength(1, caps)
+    caps[self_handle] = filter_tube_caps(caps[self_handle])
     assertEquals(basic_caps, caps)
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
             [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
             [self_handle][cs.CONN_IFACE_CONTACT_CAPS + '/caps']
+    caps_via_contacts_iface = filter_tube_caps(caps_via_contacts_iface)
     assertEquals(caps[self_handle], caps_via_contacts_iface)
 
     sync_stream(q, stream)

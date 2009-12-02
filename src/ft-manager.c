@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
+
 #define _BSD_SOURCE
 #define _XOPEN_SOURCE /* glibc2 needs this */
 #include <time.h>
@@ -657,7 +659,16 @@ gabble_ft_manager_get_contact_caps (GabbleCapsChannelManager *manager,
 
   if (handle == base->self_handle)
     {
+#ifdef ENABLE_ASSUMED_FT_CAP
+      /* For backwards compatibility, the default behaviour of the stable
+       * branch is to say that we can receive file transfers, even if no
+       * client seems to be able to. Disable with
+       * ./configure --disable-assumed-ft-cap */
+      add_file_transfer_channel_class (arr, handle);
+      return;
+#else
       presence = conn->self_presence;
+#endif
     }
   else
     {

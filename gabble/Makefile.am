@@ -2,14 +2,14 @@ if ENABLE_PLUGINS
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = telepathy-gabble.pc
 
-gabbleincludedir = $(includedir)/telepathy-1.0/gabble
+gabbleincludedir = $(includedir)/telepathy-gabble-0/gabble
 gabbleinclude_HEADERS = \
     plugin.h \
     sidecar.h
 
-# We install these headers under gabble's so that an actual separate Wocky
+# We install these headers alongside gabble's so that an actual separate Wocky
 # installation won't clash with them.
-wockyincludedir = $(gabbleincludedir)/wocky
+wockyincludedir = $(includedir)/telepathy-gabble-0/wocky
 wockyinclude_HEADERS = \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-types.h                  \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky.h                        \

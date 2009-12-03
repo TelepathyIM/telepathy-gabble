@@ -2,6 +2,9 @@ prefix=
 exec_prefix=
 abs_top_srcdir=@abs_top_srcdir@
 abs_top_builddir=@abs_top_builddir@
+libdir=@libdir@
+
+plugindir=${libdir}/telepathy/gabble-0
 
 Name: Telepathy-Gabble
 Description: XMPP backend for the Telepathy framework

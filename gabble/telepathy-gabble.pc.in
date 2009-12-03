@@ -3,6 +3,8 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
+plugindir=${libdir}/telepathy/gabble-0
+
 Name: Telepathy-Gabble
 Description: XMPP backend for the Telepathy framework
 Version: @VERSION@

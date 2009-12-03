@@ -8,7 +8,7 @@
 
 #include "extensions/extensions.h"
 
-#include "plugin.h"
+#include <gabble/plugin.h>
 
 #define DEBUG(msg, ...) \
   g_debug ("%s: " msg, G_STRFUNC, ##__VA_ARGS__)

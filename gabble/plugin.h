@@ -26,7 +26,7 @@
 #include <telepathy-glib/base-connection.h>
 #include <wocky/wocky-session.h>
 
-#include "sidecar.h"
+#include <gabble/sidecar.h>
 
 #define GABBLE_TYPE_PLUGIN (gabble_plugin_get_type ())
 #define GABBLE_PLUGIN(obj) \

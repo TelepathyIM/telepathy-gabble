@@ -332,8 +332,7 @@ call_stream_endpoint_set_stream_state (GabbleSvcCallStreamEndpoint *iface,
 
   if (state >= NUM_TP_MEDIA_STREAM_STATES)
     {
-      GError *error;
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError *error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Stream state is out of the valid range.");
       dbus_g_method_return_error (context, error);
       g_error_free (error);

@@ -186,9 +186,7 @@ stun_server_resolved_cb (GObject *resolver,
       DEBUG ("Failed to resolve STUN server %s:%u: %s",
           data->stun_server, data->stun_port, e->message);
       g_error_free (e);
-      pending_stun_server_free (data);
-      g_object_unref (resolver);
-      return;
+      goto out;
     }
 
   stun_server = g_inet_address_to_string (entries->data);
@@ -196,6 +194,12 @@ stun_server_resolved_cb (GObject *resolver,
 
   DEBUG ("Resolved STUN server %s:%u to %s:%u", data->stun_server,
       data->stun_port, stun_server, data->stun_port);
+
+  if (self == NULL)
+    {
+      g_free (stun_server);
+      goto out;
+    }
 
   if (data->fallback)
     {
@@ -210,6 +214,7 @@ stun_server_resolved_cb (GObject *resolver,
       self->priv->stun_port = data->stun_port;
     }
 
+out:
   pending_stun_server_free (data);
   g_object_unref (resolver);
 }

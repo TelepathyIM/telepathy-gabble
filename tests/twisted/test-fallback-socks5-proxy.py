@@ -1,7 +1,7 @@
 import dbus
 import socket
 from gabbletest import exec_test, elem, elem_iq, sync_stream, make_presence, send_error_reply,\
-    make_result_iq
+    make_result_iq, sync_stream
 from servicetest import EventPattern, call_async, assertEquals, assertLength, assertDoesNotContain
 from caps_helper import make_caps_disco_reply
 
@@ -296,15 +296,23 @@ def proxy_error(q, bus, conn, stream):
         EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS),
         EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS))
 
-    # The 2 first queries are successfull
-    send_socks5_reply(stream, e1.stanza)
-    send_socks5_reply(stream, e2.stanza)
+    # Return errors for all the requests; the bugged proxies shouldn't be queried again
+    q.forbid_events([EventPattern('stream-iq', to=e1.stanza['to'],
+        iq_type='get', query_ns=ns.BYTESTREAMS)])
+    send_error_reply(stream, e1.stanza)
 
-    # The last one returns an error
+    # the fourth proxy is queried
+    q.expect('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS)
+
+    q.forbid_events([EventPattern('stream-iq', to=e2.stanza['to'],
+        iq_type='get', query_ns=ns.BYTESTREAMS)])
+    send_error_reply(stream, e2.stanza)
+    sync_stream(q, stream)
+
+    q.forbid_events([EventPattern('stream-iq', to=e3.stanza['to'],
+        iq_type='get', query_ns=ns.BYTESTREAMS)])
     send_error_reply(stream, e3.stanza)
-
-    # another proxy is queried
-    q.expect('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS),
+    sync_stream(q, stream)
 
 def proxies_telepathy_im(q, bus, conn, stream):
     # Test if proxies.telepathy.im is properly used when no fallback proxies
@@ -343,6 +351,9 @@ if __name__ == '__main__':
         'fallback3-proxy.localhost', 'fallback4-proxy.localhost', 'fallback5-proxy.localhost',
         'fallback6-proxy.localhost']}
     exec_test(cache_full, params=params6)
-    exec_test(proxy_error, params=params6)
+
+    params4 = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost',
+        'fallback3-proxy.localhost', 'fallback4-proxy.localhost']}
+    exec_test(proxy_error, params=params4)
 
     exec_test(proxies_telepathy_im, params={})

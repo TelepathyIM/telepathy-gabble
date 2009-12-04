@@ -302,10 +302,18 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
                              gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (obj);
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
   LmMessageNode *query, *streamhost;
+  const gchar *from;
   const gchar *jid, *host, *port;
   GabbleSocks5Proxy *proxy;
   gboolean fallback = GPOINTER_TO_INT (user_data);
+  GSList *found = NULL;
+
+  from = lm_message_node_get_attribute (reply_msg->node, "from");
+  if (from == NULL)
+    goto fail;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     goto fail;
@@ -333,6 +341,22 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
 fail:
+  if (fallback && from != NULL)
+    {
+      /* Remove the bugged proxy so we won't query it anymore */
+      found = g_slist_find_custom (priv->socks5_potential_proxies,
+          from, (GCompareFunc) strcmp);
+
+      if (found != NULL)
+        {
+          DEBUG ("remove proxy %s", from);
+          g_free (found->data);
+
+          priv->socks5_potential_proxies = g_slist_delete_link (
+              priv->socks5_potential_proxies, found);
+        }
+    }
+
   /* Try to get another proxy as this one failed */
   query_proxies (self, 1);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

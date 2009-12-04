@@ -541,7 +541,7 @@ class JingleTest2:
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
 
-    def generate_contents(self):
+    def generate_contents(self, transports=[]):
         assert len(self.audio_names + self.video_names) > 0
 
         jp = self.jp
@@ -554,25 +554,33 @@ class JingleTest2:
             assert jp.can_do_video()
             assert self.audio_names
 
+            if transports == []:
+                payload = [jp.PayloadType(name, str(rate), str(id)) for
+                        (name, id, rate) in self.video_codecs ] + \
+                    [ jp.PayloadType(name, str(rate), str(id),
+                        {}, type = "audio" ) for (name, id, rate, )
+                            in self.audio_codecs ]
+            else:
+                payload = []
+
             contents.append(
                 jp.Content('stream0', 'initiator', 'both', [
-                    jp.Description('video', [
-                        jp.PayloadType(name, str(rate), str(id)) for
-                            (name, id, rate) in self.video_codecs ] +
-                        [ jp.PayloadType(name, str(rate), str(id),
-                            {}, type = "audio" ) for (name, id, rate, )
-                                in self.audio_codecs ],
-                        ),
-                    jp.TransportGoogleP2P() ])
+                    jp.Description('video', payload),
+                    jp.TransportGoogleP2P(transports) ])
              )
         else:
             def mk_content(name, media, codecs):
+                if transports == []:
+                    payload = [
+                        jp.PayloadType(payload_name, str(rate), str(id)) for
+                        (payload_name, id, rate) in codecs ]
+                else:
+                    payload = []
+
                 contents.append(
                     jp.Content(name, 'initiator', 'both', [
-                        jp.Description(media, [
-                            jp.PayloadType(name, str(rate), str(id)) for
-                            (name, id, rate) in codecs ]),
-                    jp.TransportGoogleP2P() ])
+                        jp.Description(media, payload),
+                    jp.TransportGoogleP2P(transports) ])
                 )
 
             for name in self.audio_names:

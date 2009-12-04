@@ -431,7 +431,10 @@ proxies_disco_cb (GabbleDisco *disco,
   priv->proxies_list_expired = FALSE;
 
   if (error != NULL)
-    return;
+    {
+      DEBUG ("disco failed: %s", error->message);
+      return;
+    }
 
   for (i = node_iter (query_result); i; i = node_iter_next (i))
     {

@@ -239,8 +239,14 @@ class GtalkProtocol03(JingleProtocol):
     # Gtalk has only one content, and <content> node is implicit
     def Content(self, name, creator, senders, children):
         # Normally <content> has <description> and <transport>, but we only
-        # use <description>
+        # use <description> unless <transport> has candidates.
         assert len(children) == 2
+        assert children[1] != None
+        assert children[1][3] != None
+
+        # if <transport> has children return those children (candidates)
+        if len(children[1][3]) > 0:
+            return children[1][3][0]
         return children[0]
 
     def Description(self, type, children):

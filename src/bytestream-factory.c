@@ -368,35 +368,13 @@ socks5_proxies_timeout_cb (gpointer data)
   return FALSE;
 }
 
-/* ask to the factory to try to find more proxies if needed */
-void
-gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
+static void
+query_proxies (GabbleBytestreamFactory *self,
+    guint nb_proxies_needed)
 {
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
-  guint nb_proxies_found;
-  guint nb_proxies_needed;
   guint i;
-
-  if (priv->socks5_potential_proxies == NULL)
-    /* No potential proxies, we can't do anything */
-    return;
-
-  nb_proxies_found = g_slist_length (priv->socks5_proxies) +
-    g_slist_length (priv->socks5_fallback_proxies);
-
-  if (nb_proxies_found >= NB_MIN_SOCKS5_PROXIES)
-    {
-      DEBUG ("we already have discovered enough proxies (%u); "
-          "request just one to refresh our cache",
-          nb_proxies_found);
-      nb_proxies_needed = 1;
-    }
-  else
-    {
-      nb_proxies_needed = NB_MIN_SOCKS5_PROXIES - nb_proxies_found;
-      DEBUG ("Need %u more proxies", nb_proxies_needed);
-    }
 
   for (i = 0; i < nb_proxies_needed; i++)
     {
@@ -433,6 +411,38 @@ gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
       priv->socks5_proxies_timer = g_timeout_add_seconds (SOCKS5_PROXY_TIMEOUT,
           socks5_proxies_timeout_cb, self);
     }
+}
+
+/* ask to the factory to try to find more proxies if needed */
+void
+gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
+{
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+  guint nb_proxies_found;
+  guint nb_proxies_needed;
+
+  if (priv->socks5_potential_proxies == NULL)
+    /* No potential proxies, we can't do anything */
+    return;
+
+  nb_proxies_found = g_slist_length (priv->socks5_proxies) +
+    g_slist_length (priv->socks5_fallback_proxies);
+
+  if (nb_proxies_found >= NB_MIN_SOCKS5_PROXIES)
+    {
+      DEBUG ("we already have discovered enough proxies (%u); "
+          "request just one to refresh our cache",
+          nb_proxies_found);
+      nb_proxies_needed = 1;
+    }
+  else
+    {
+      nb_proxies_needed = NB_MIN_SOCKS5_PROXIES - nb_proxies_found;
+      DEBUG ("Need %u more proxies", nb_proxies_needed);
+    }
+
+  query_proxies (self, nb_proxies_needed);
 }
 
 static GSList *

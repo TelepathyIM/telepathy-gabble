@@ -2170,10 +2170,6 @@ gabble_bytestream_factory_get_socks5_proxies (GabbleBytestreamFactory *self)
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
 
-  /* randomize fallback proxies to avoid to use always the same one */
-  priv->socks5_fallback_proxies = randomize_g_slist (
-      priv->socks5_fallback_proxies);
-
   return g_slist_concat (g_slist_copy (priv->socks5_proxies),
       g_slist_copy (priv->socks5_fallback_proxies));
 }

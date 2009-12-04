@@ -259,6 +259,18 @@ def run_test(jp, q, bus, conn, stream, incoming):
         assertEquals (jt2.get_call_remote_transports_dbus(),
             remote_candidates.args[0])
 
+    endpoint.SetSelectedCandidate (jt2.get_call_remote_transports_dbus()[0],
+        dbus_interface=cs.CALL_STREAM_ENDPOINT)
+
+    selected_candidate = q.expect ('dbus-signal',
+        signal='CandidateSelected', interface=cs.CALL_STREAM_ENDPOINT)
+    assertEquals (jt2.get_call_remote_transports_dbus(),
+        selected_candidate.args)
+
+    selected_candidate = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
+        "SelectedCandidate",  dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (jt2.get_call_remote_transports_dbus()[0], selected_candidate)
+
     endpoint.SetStreamState (cs.MEDIA_STREAM_STATE_CONNECTED,
         dbus_interface=cs.CALL_STREAM_ENDPOINT)
 

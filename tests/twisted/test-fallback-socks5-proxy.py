@@ -1,7 +1,7 @@
 import dbus
 import socket
 from gabbletest import exec_test, elem, elem_iq, sync_stream, make_presence
-from servicetest import EventPattern, call_async, assertEquals
+from servicetest import EventPattern, call_async, assertEquals, assertLength, assertDoesNotContain
 from caps_helper import make_caps_disco_reply
 
 from twisted.words.xish import xpath
@@ -14,7 +14,9 @@ proxy_query_events = [
     EventPattern('stream-iq', to='fallback1-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS),
     EventPattern('stream-iq', to='fallback2-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS)]
 
-proxy_port = {'fallback1-proxy.localhost': '12345', 'fallback2-proxy.localhost': '6789'}
+proxy_port = {'fallback1-proxy.localhost': '12345', 'fallback2-proxy.localhost': '6789',
+    'fallback3-proxy.localhost': '3333', 'fallback4-proxy.localhost': '4444',
+    'fallback5-proxy.localhost': '5555', 'fallback6-proxy.localhost': '6666',}
 
 def connect_and_announce_alice(q, bus, conn, stream):
     q.forbid_events(proxy_query_events)
@@ -198,9 +200,86 @@ def double_server(q, bus, conn, stream):
     # check that the proxy has been set only once
     check_proxies([('fallback1-proxy.localhost', '127.0.0.1', '6789')], proxies)
 
+def cache_full(q, bus, conn, stream):
+    # Test how Gabble manages the proxy cache once it's full
+    connect_and_announce_alice(q, bus, conn, stream)
+
+    send_file_to_alice(q, conn)
+
+    # 3 proxies are queried (NB_MIN_SOCKS5_PROXIES)
+    return_event, e1, e2, e3 = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS),
+        EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS),
+        EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS))
+
+    send_socks5_reply(stream, e1.stanza)
+    send_socks5_reply(stream, e2.stanza)
+    send_socks5_reply(stream, e3.stanza)
+
+    proxies = wait_si_and_return_proxies(q, stream)
+    assertLength(3, set(proxies))
+
+    oldest_proxy = proxies[2]
+
+    # send another file, one more proxy is queried
+    send_file_to_alice(q, conn)
+
+    return_event, e1, = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS))
+
+    send_socks5_reply(stream, e1.stanza)
+
+    proxies = wait_si_and_return_proxies(q, stream)
+    assertLength(4, set(proxies))
+
+    # the new proxy is the head of the list
+    assertEquals(e1.stanza['to'], proxies[0][0])
+
+    # send another file, one more proxy is queried
+    send_file_to_alice(q, conn)
+
+    return_event, e1, = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS))
+
+    send_socks5_reply(stream, e1.stanza)
+
+    proxies = wait_si_and_return_proxies(q, stream)
+    assertLength(5, set(proxies))
+
+    # the new proxy is the head of the list
+    assertEquals(e1.stanza['to'], proxies[0][0])
+
+    # send another file, one more proxy is queried
+    send_file_to_alice(q, conn)
+
+    return_event, e1, = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS))
+
+    send_socks5_reply(stream, e1.stanza)
+
+    proxies = wait_si_and_return_proxies(q, stream)
+    # we reached the max size of the cache (FALLBACK_PROXY_CACHE_SIZE) so the
+    # oldest proxy has been removed
+    assertLength(5, set(proxies))
+
+    # the new proxy is the head of the list
+    assertEquals(e1.stanza['to'], proxies[0][0])
+
+    # the oldest proxy has been removed
+    assertDoesNotContain(oldest_proxy, proxies)
+
 if __name__ == '__main__':
     params = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']}
     exec_test(offer_dbus_tube, params=params)
     exec_test(accept_stream_tube, params=params)
     exec_test(send_file, params=params)
     exec_test(double_server, params=params)
+
+    params6 = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost',
+        'fallback3-proxy.localhost', 'fallback4-proxy.localhost', 'fallback5-proxy.localhost',
+        'fallback6-proxy.localhost']}
+    exec_test(cache_full, params=params6)

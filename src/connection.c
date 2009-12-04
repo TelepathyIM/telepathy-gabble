@@ -55,6 +55,7 @@
 #include "conn-location.h"
 #include "conn-presence.h"
 #include "conn-sidecars.h"
+#include "conn-mail-notif.h"
 #include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
@@ -95,7 +96,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_avatars_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CAPABILITIES,
       capabilities_service_iface_init);
-    G_IMPLEMENT_INTERFACE(TP_TYPE_SVC_DBUS_PROPERTIES,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
        tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACTS,
       tp_contacts_mixin_iface_init);
@@ -118,6 +119,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       olpc_gadget_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_FUTURE,
       conn_future_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+      conn_mail_notif_iface_init);
     )
 
 /* properties */
@@ -2544,6 +2547,8 @@ connection_disco_cb (GabbleDisco *disco,
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE;
               else if (0 == strcmp (var, NS_PRIVACY))
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRIVACY;
+              else if (0 == strcmp (var, NS_GOOGLE_MAIL_NOTIFY))
+                conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY;
             }
         }
 

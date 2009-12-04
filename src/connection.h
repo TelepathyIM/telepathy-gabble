@@ -74,6 +74,7 @@ typedef enum
   GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE = 1 << 2,
   GABBLE_CONNECTION_FEATURES_PRIVACY = 1 << 3,
   GABBLE_CONNECTION_FEATURES_PEP = 1 << 4,
+  GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY = 1 << 5,
 } GabbleConnectionFeatures;
 
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;

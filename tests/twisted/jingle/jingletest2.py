@@ -83,9 +83,31 @@ class JingleProtocol:
         "Creates a <parameter> element"
         return ('parameter', None, {'name': name, 'value': value}, [])
 
-    def TransportGoogleP2P(self):
-        "Creates a <transport> element for Google P2P transport"
-        return ('transport', ns.GOOGLE_P2P, {}, [])
+    def TransportGoogleP2P(self, remote_transports=[]):
+        """
+        Creates a <transport> element for Google P2P transport.
+        If remote_transports is present, and of the form
+        [(host, port, proto, subtype, profile, pref, transtype, user, pwd)]
+        (basically a list of Media_Stream_Handler_Transport without the
+        component number) then it will be converted to xml and added.
+        """
+        candidates = []
+        for i, (host, port, proto, subtype, profile, pref, transtype, user, pwd
+                ) in enumerate(remote_transports):
+            candidates.append(("candidate", None, {
+                "name": "rtp",
+                "address": host,
+                "port": str(port),
+                "protocol": ["udp", "tcp"][proto],
+                "preference": str(pref),
+                "type":  ["local", "stun", "relay"][transtype],
+                "network": "0",
+                "generation": "0",# Increment this yourself if you care.
+                "component": "1", # 1 is rtp, 2 is rtcp
+                "username": user,
+                "password": pwd,
+                }, [])) #NOTE: subtype and profile are unused
+        return ('transport', ns.GOOGLE_P2P, {}, candidates)
 
     def TransportIceUdp(self, remote_transports=[]):
         """

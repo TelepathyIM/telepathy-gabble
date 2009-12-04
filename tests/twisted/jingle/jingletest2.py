@@ -714,9 +714,9 @@ class JingleTest2:
         return dbus.Array([
             (1 , host, port,
                 { "Type": transtype,
-                  "Foundation": str(dbus.UInt32(1 + i)),
+                  "Foundation": "",
                   "Protocol": proto,
-                  "Priority": i,
+                  "Priority": int((1+i) * 65536),
                   "Username": user,
                   "Password": pwd }
              ) for i, (host, port, proto, subtype, profile,

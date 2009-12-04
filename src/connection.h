@@ -42,15 +42,8 @@ G_BEGIN_DECLS
 #define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT           443
 #define GABBLE_PARAMS_DEFAULT_STUN_PORT                  3478
 #define GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER       "stun.collabora.co.uk"
-/* List of public SOCKS5 proxies:
- * http://coccinella.im/servers/servers_by_proxy_bytestreams.html */
-#define GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES             \
-    { NULL }
+#define GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES             { NULL }
 
-/* These proxies appeared to be the same as proxy.jabbernet.eu
-    "proxy.jabberchat.eu", "proxy.shady.nl", "proxy.nedbsd.be",\
-    "proxy.nedbsd.eu", "proxy.nedbsd.nl", "proxy.4business.nl"\
-*/
 
 /* order must match array of statuses in conn-presence.c */
 /* in increasing order of presence */

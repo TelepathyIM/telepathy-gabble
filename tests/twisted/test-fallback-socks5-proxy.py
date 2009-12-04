@@ -175,6 +175,9 @@ def send_file(q, bus, conn, stream):
     send_socks5_reply(stream, e1.stanza)
     send_socks5_reply(stream, e2.stanza)
 
+    # ensure that the same proxy is not queried more than once
+    q.forbid_events(proxy_query_events)
+
     proxies = wait_si_and_return_proxies(q, stream)
 
     check_proxies([('fallback2-proxy.localhost', '127.0.0.1', '6789'),

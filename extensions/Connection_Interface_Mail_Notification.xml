@@ -1,0 +1,406 @@
+<?xml version="1.0" ?>
+<node name="/Connection_Interface_Mail_Notification"
+  xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
+  >
+  <tp:copyright> Copyright (C) 2007 Collabora Limited </tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.</p>
+
+<p>This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.</p>
+
+<p>You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</p>
+  </tp:license>
+  <interface
+    name="org.freedesktop.Telepathy.Connection.Interface.MailNotification.DRAFT"
+    tp:causes-havoc="experimental">
+    <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
+
+    <tp:flags name="Mail_Notification_Flags" value-prefix="Mail_Notification" type="u" >
+      <tp:flag suffix="Has_Prop_UnreadMailCount" value="1">
+        <tp:docstring>
+          The protocol provide up-to-date information about the number of 
+          unread e-mails (or e-mails thread) in the user's mailbox. The
+          connection manager will update this value by emitting the
+          <tp:member-ref>UnreadMailsAdded</tp:member-ref> and
+          <tp:member-ref>UnreadMailsRemoved</tp:member-ref> signals.
+        </tp:docstring>
+      </tp:flag>
+      <tp:flag suffix="Has_Prop_UnreadMails" value="2">
+        <tp:docstring>
+          The protocol provide an up-to-date details' list about currently
+          unread e-mails. The connection manager must also provide the 
+          <tp:member-ref>UnreadMailCount</tp:member-ref>
+          property. Connection managers that support this feature must not emit 
+          <tp:member-ref>MailsReceived</tp:member-ref> signal.
+          The connection manager will update this value by emitting the
+          <tp:member-ref>UnreadMailsAdded</tp:member-ref> and
+          <tp:member-ref>UnreadMailsRemoved</tp:member-ref> signals.
+        </tp:docstring>
+      </tp:flag>
+      <tp:flag suffix="Has_Signal_MailsReceived" value="4">
+        <tp:docstring>
+        This connection manager emits <tp:member-ref>MailsReceived</tp:member-ref>
+        signal which provide details about newly arrived e-mails but does not 
+        maintain their read status afterward. It must only emit this signal if
+        they have real-time information about e-mails or threads but would not
+        be unable to remove them from the <tp:member-ref>UnreadMails</tp:member-ref> 
+        array because unread to read status is not reported.
+        </tp:docstring>
+      </tp:flag>
+      <tp:docstring>
+        Flags representing capabilities that may be provided by a connection 
+        manager. Those value can be used as bitfield. Some flags may depend 
+        or conflict with others.
+      </tp:docstring>
+    </tp:flags>
+
+    <tp:enum name="HTTP_Method" type="u"> 
+      <tp:enumvalue suffix="Get" value="0">
+        <tp:docstring>
+          Use GET method when opening the URL.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Post" value="1">
+        <tp:docstring>
+          Use POST method when opening the URL.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:docstring>
+        HTTP Method.
+      </tp:docstring>
+    </tp:enum>
+
+    <tp:enum name="Mail_Type" type="u"> 
+      <tp:enumvalue suffix="single" value="0">
+        <tp:docstring>
+          The e-mail is represented as a single reply by only
+          one sender.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="thread" value="1">
+        <tp:docstring>
+          The e-mail refer to a thread where multiple person may
+          have replied.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:docstring>
+        E-mail representation type.
+      </tp:docstring>
+    </tp:enum>
+
+    <tp:simple-type name="Mail" type="a{sv}" array-name="Mail_List">
+      <tp:docstring>
+        E-mail representation has been reduced to hash table with possible keys (of type strings) 
+        listed above. All keys are optional except the "id" key that must be provided by every 
+        protocol that support unread mail listing. Without this key, it would not be impossible to 
+        unlist the e-mails that are no longer marked as unread.
+        <tp:rationale>
+          The hash map will allow extending the protocol without any ABI 
+          changes. Only the documentation will need to be updated.
+        </tp:rationale>
+      
+        <dl>
+          <dt>u:id</dt>
+          <dd>A unique ID for this e-mail</dd>
+
+          <dt>u:type (see <tp:type>Mail_Type</tp:type>)</dt>
+          <dd>
+            Type of e-mail. This can be set to "single", which means e-mails 
+            are represented separately, or "thread", when information is described
+            by the protocol as thread. Note that threads may have multiple unread senders.
+          </dd>
+
+          <dt>s:url</dt>
+          <dd>This URL should allow client to load this precise message.</dd>
+
+          <dt>u:method (see <tp:type>HTTP_Method</tp:type>)</dt>
+          <dd>
+            The HTTP method to use when opening URL. If unset, GET
+            is assumed.
+          </dd>
+
+          <dt>a(ss):post-data</dt>
+          <dd>
+            When method is POST, this data must be sent along with the POST request. 
+            It is a list of key/value pair with string for both keys and values.
+          </dd>
+
+          <dt>a(ss):senders</dt>
+          <dd>
+            An array of sender display name and e-mail address pair. Note that 
+            only e-mails thread may have multiple senders.
+          </dd>
+
+          <dt>a(ss):to-addresses</dt>
+          <dd>
+            An array of display name and e-mail address pair of
+            the recipients.
+          </dd>
+
+          <dt>a(ss):cc-addresses</dt>
+          <dd>
+            An array of display name and e-mail address pair of the carbon
+            copy recipients.
+          </dd>
+
+          <dt>s:subject</dt>
+          <dd>The subject of the message.</dd>
+
+          <dt>u:sent-timestamp</dt>
+          <dd>A UNIX timestamp of when the message has been sent.</dd>
+
+          <dt>u:received-timestamp</dt>
+          <dd>A UNIX timestamp of when the message has been received.</dd>
+
+          <dt>b:has-attachments</dt>
+          <dd>A boolean of whether this message has attachments.</dd>
+
+          <dt>s:content-type</dt>
+          <dd>
+            MIME type of the message contents. Plain text should be
+            assumed if unset.
+          </dd>
+
+          <dt>s:snippet</dt>
+          <dd>
+            A small part of the message body (content-type should
+            be set if this message is HTML encoded).
+          </dd>
+
+          <dt>s:body</dt>
+          <dd>
+            The body of the message (content-type should
+            be set if this message is HTML encoded).
+          </dd>
+
+          <dt>s:folder</dt>
+          <dd>
+            The name of the folder containing this e-mails. 
+            If unset, inbox will be assumed.
+          </dd>
+        </dl>
+      </tp:docstring>
+    </tp:simple-type>
+   
+    <property name="Capabilities" type="u" access="read"
+      tp:type="Mail_Notification_Flags" tp:name-for-bindings="Capabilities">
+      <tp:docstring>
+        Integer representing the bitwise-OR of supported features for e-mails 
+        notification on this server.
+        <tp:rational>
+          This property explicitly state the behavior and availability
+          of the other properties and signals within this interface. A
+          connection manager that cannot at least set one of the flag
+          in the <tp:type>Mail_Notification_Flags</tp:type>
+          should not provide this interface.
+        </tp:rational>
+      </tp:docstring>
+    </property>
+
+    <property name="UnreadMailCount" type="u" access="read"
+      tp:name-for-bindings="Unread_Mail_Count">
+      <tp:docstring>
+        The number of unread messages in the inbox.
+      </tp:docstring>
+    </property>
+
+    <property name="InboxURL" type="s" tp:name-for-bindings="Inbox_URL"
+      access="read">
+      <tp:docstring>
+          URL of the inbox.
+      </tp:docstring>
+    </property>
+
+    <property name="Method" type="u" tp:type="HTTP_Method" 
+      tp:name-for-bindings="Method" access="read">
+      <tp:docstring>
+          HTTP Method to use along with <tp:member-ref>InboxURL</tp:member-ref>.
+      </tp:docstring>
+    </property>
+
+    <property name="PostData" type="a(ss)" tp:name-for-bindings="Post_Data"
+      access="read">
+      <tp:docstring>
+        Array of key/value pairs of the POST data to send when opening the
+        <tp:member-ref>InboxURL</tp:member-ref>. This should be ignored if 
+        <tp:member-ref>Method</tp:member-ref> is not "POST".
+      </tp:docstring>
+    </property>
+
+    <property name="UnreadMails" type="aa{sv}" tp:type="Mail[]"
+      tp:name-for-bindings="Unread_Mails" access="read">
+      <tp:docstring>
+        A array of unread <tp:type>Mail</tp:type>s.
+      </tp:docstring>
+    </property>
+
+    <signal name="MailsReceived" tp:name-for-bindings="Mails_Received">
+      <arg name="mails" type="aa{sv}" tp:type="Mail[]">
+        <tp:docstring>
+          An array of <tp:type>Mail</tp:type>s. Those e-mails do not have a unique "ID".
+        </tp:docstring>
+      </arg>
+
+      <tp:docstring>
+        Emitted when new e-mails messages arrive to the inbox associated with
+        this connection. This signal is used for protocol that are not able
+        to maintained <tp:member-ref>UnreadMails</tp:member-ref> list but
+        receives real-time notification about newly arrived e-mails.
+      </tp:docstring>
+    </signal>
+
+    <signal name="UnreadMailsAdded"
+      tp:name-for-bindings="Unread_Mails_Added">
+      <arg name="count" type="u">
+        <tp:docstring>
+          Number of unread messages in the inbox (the new value of
+          <tp:member-ref>UnreadMailCount</tp:member-ref>).
+        </tp:docstring>
+      </arg>
+      <arg name="mails" type="aa{sv}" tp:type="Mail[]">
+        <tp:docstring>
+          A list of <tp:type>Mail</tp:type> that are being added to
+          <tp:member-ref>UnreadMails</tp:member-ref>. This list will be
+          empty if the protocol does not support listing unread e-mails
+          or threads.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <signal name="UnreadMailsRemoved"
+      tp:name-for-bindings="Unread_Mails_Removed">
+      <arg name="count" type="u">
+        <tp:docstring>
+          Number of unread messages in the inbox (the new value of
+          <tp:member-ref>UnreadMailCount</tp:member-ref>).
+        </tp:docstring>
+      </arg>
+        <arg name="mails" type="a(u)">
+        <tp:docstring>
+          A list of e-mails ID that are being removed from
+          <tp:member-ref>UnreadMails</tp:member-ref>. This list will be
+          empty if the protocol does not support listing unread e-mails
+          or threads.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <signal name="InboxURLChanged"
+      tp:name-for-bindings="Inbox_URL_Changed">
+      <arg name="url" type="s">
+        <tp:docstring>
+          URL of the inbox (the new value of
+          <tp:member-ref>InboxURL</tp:member-ref>).
+        </tp:docstring>
+      </arg>
+      <arg name="method" type="u">
+        <tp:docstring>
+          HTTP Method for opening inbox URL (the new value of
+          <tp:member-ref>Method</tp:member-ref>).
+        </tp:docstring>
+      </arg>
+      <arg name="post_data" type="a(ss)">
+        <tp:docstring>
+          Array of name-value pair structs of the POST data to use when opening
+          the inbox, if any (the new value of
+          <tp:member-ref>PostData</tp:member-ref>).
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Emitted when the unread message status for the user's inbox changes or
+        the value has been initially received from the IM server.
+        <tp:rationale>
+          To minimize overhead of e-mail notification, some protocol may not
+          try to get any information about unread e-mails before a first client
+          call Subscribe. There might be a delay between the call to Subscribe 
+          and the time the connection manager get the URL. In this case, 
+          emitting InboxURLChanged signal is required to tell the client 
+          that this information is now available. The empty string will be used
+          when URL is not available. Also some protocol may rely on session ID
+          as authentication. Session IDs are often updated and this signal
+          should serve that purpose.
+        </tp:rationale>
+      </tp:docstring>
+    </signal>
+
+    <method name="Subscribe"
+        tp:name-for-bindings="Subscribe">
+      <tp:docstring>
+        This method subscribes a client to the notification interface. This
+        should be called if a client wants to get notified of incoming
+        e-mails. Before anyone subscribes to the interface, the connection
+        manager should try to minimized memory usage and network traffic as
+        much as possible. The Control Manager must detect client disconnection
+        (e.g. in case of crash) and free resources that are no longer required.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.PermissionDenied"/>
+      </tp:possible-errors>
+    </method>
+
+    <method name="Unsubscribe"
+        tp:name-for-bindings="Unsubscribe">
+      <tp:docstring>
+        This method unsubscribes a client from the notification interface. This
+        should called if a client no longer wants tot get notified of incoming
+        e-mails. When all the client has been Unsubscribed, the connection manager
+        should free all non-required information and reduce network traffic. It must
+        be possible to call Subscribe later.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.PermissionDenied"/>
+      </tp:possible-errors>
+    </method>
+
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      <p>An interface to support receiving notifications about a e-mail
+        account associated with this connection. It is intended that the
+        connection manager has the means to provide necessary
+        information (URL, method, POST data) so that the client is 
+        able to open the user's inbox and possibly individual messages without 
+        having to re-authenticate. To use this interface, a client must first
+        subscribe using the <tp:member-ref>Subscribe</tp:member-ref> method.</p>
+
+      <p>When unread e-mails arrive into the inbox, the
+        <tp:member-ref>UnreadMailsAdded</tp:member-ref> signal
+        will be emitted with the new value of
+        <tp:member-ref>UnreadMailCount</tp:member-ref> and when
+        available the detailed list of new e-mails. When some e-mails are
+        no longer unread, the
+        <tp:member-ref>UnreadMailsRemoved</tp:member-ref> signal
+        will be emitted with the new values of
+        <tp:member-ref>UnreadMailCount</tp:member-ref> and when
+        available the list of removed e-mail unique IDs. If any
+        information about how to open the inbox is changed, the
+        <tp:member-ref>InboxURLChanged</tp:member-ref> signal will be
+        emitted with the new value of
+        <tp:member-ref>InboxURL</tp:member-ref>,
+        <tp:member-ref>Method</tp:member-ref> and
+        <tp:member-ref>PostData</tp:member-ref>.
+      </p>
+      <p>
+        Some protocol may not be able to provide a list of unread e-mails
+        but may provide some information about the messages received. On
+        such protocols, the <tp:member-ref>MailsReceived</tp:member-ref>
+        signal will also be emitted, with information about the e-mails.
+        The protocol does not keep track of any of this information.
+      </p>
+    </tp:docstring>
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->
+

@@ -51,6 +51,8 @@ G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
 #define FALLBACK_PROXY_CACHE_SIZE 5
 #define SOCKS5_PROXY_TIMEOUT 10
 
+#define TELEPATHY_PROXIES_SERVICE "proxies.telepathy.im"
+
 /* properties */
 enum
 {
@@ -194,6 +196,8 @@ bytestream_factory_iq_socks5_cb (LmMessageHandler *handler,
 
 static void query_proxies (GabbleBytestreamFactory *self,
     guint nb_proxies_needed);
+
+static GSList * randomize_g_slist (GSList *list);
 
 static void
 gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
@@ -397,6 +401,66 @@ query_proxies (GabbleBytestreamFactory *self,
     }
 }
 
+static void
+proxies_disco_cb (GabbleDisco *disco,
+    GabbleDiscoRequest *request,
+    const gchar *j,
+    const gchar *n,
+    LmMessageNode *query_result,
+    GError *error,
+    gpointer user_data)
+{
+  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+  NodeIter i;
+
+  if (error != NULL)
+    return;
+
+  for (i = node_iter (query_result); i; i = node_iter_next (i))
+    {
+      LmMessageNode *node = node_iter_data (i);
+      const gchar *jid;
+
+      if (tp_strdiff (node->name, "item"))
+        continue;
+
+      jid = lm_message_node_get_attribute (node, "jid");
+      if (jid == NULL)
+        continue;
+
+      DEBUG ("Discovered proxy %s", jid);
+
+      priv->socks5_potential_proxies = g_slist_prepend (
+          priv->socks5_potential_proxies, g_strdup (jid));
+    }
+
+  if (priv->socks5_potential_proxies == NULL)
+    return;
+
+  /* randomize the list to not always use the same proxies */
+  priv->socks5_potential_proxies = randomize_g_slist (
+      priv->socks5_potential_proxies);
+  priv->next_query = priv->socks5_potential_proxies;
+
+  gabble_bytestream_factory_query_socks5_proxies (self);
+}
+
+/* Query TELEPATHY_PROXIES_SERVICE to get a list of proxies */
+static void
+get_proxies_list (GabbleBytestreamFactory *self)
+{
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
+      self);
+
+  DEBUG ("Ask %s for proxies", TELEPATHY_PROXIES_SERVICE);
+
+  gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_ITEMS,
+      TELEPATHY_PROXIES_SERVICE, NULL, proxies_disco_cb, self, G_OBJECT (self),
+      NULL);
+}
+
 /* ask to the factory to try to find more proxies if needed */
 void
 gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
@@ -407,8 +471,10 @@ gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
   guint nb_proxies_needed;
 
   if (priv->socks5_potential_proxies == NULL)
-    /* No potential proxies, we can't do anything */
-    return;
+    {
+      get_proxies_list (self);
+      return;
+    }
 
   nb_proxies_found = g_slist_length (priv->socks5_proxies) +
     g_slist_length (priv->socks5_fallback_proxies);

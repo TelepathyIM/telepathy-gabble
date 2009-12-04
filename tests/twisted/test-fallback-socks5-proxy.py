@@ -1,6 +1,7 @@
 import dbus
 import socket
-from gabbletest import exec_test, elem, elem_iq, sync_stream, make_presence, send_error_reply
+from gabbletest import exec_test, elem, elem_iq, sync_stream, make_presence, send_error_reply,\
+    make_result_iq
 from servicetest import EventPattern, call_async, assertEquals, assertLength, assertDoesNotContain
 from caps_helper import make_caps_disco_reply
 
@@ -305,6 +306,32 @@ def proxy_error(q, bus, conn, stream):
     # another proxy is queried
     q.expect('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS),
 
+def proxies_telepathy_im(q, bus, conn, stream):
+    # Test if proxies.telepathy.im is properly used when no fallback proxies
+    # are passed to Gabble
+    connect_and_announce_alice(q, bus, conn, stream)
+
+    send_file_to_alice(q, conn)
+
+    # Gabble asks for a proxy list to our server
+    return_event, e, = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('stream-iq', to='proxies.telepathy.im', iq_type='get', query_ns=ns.DISCO_ITEMS))
+
+    # reply with 2 servers
+    reply = make_result_iq(stream, e.stanza)
+    query = xpath.queryForNodes('/iq/query', reply)[0]
+    item = query.addElement((None, 'item'))
+    item['jid'] = 'proxy1.localhost'
+    item = query.addElement((None, 'item'))
+    item['jid'] = 'proxy2.localhost'
+    stream.send(reply)
+
+    # These servers are queried
+    e1, e2 = q.expect_many(
+        EventPattern('stream-iq', to='proxy1.localhost', iq_type='get', query_ns=ns.BYTESTREAMS),
+        EventPattern('stream-iq', to='proxy2.localhost', iq_type='get', query_ns=ns.BYTESTREAMS))
+
 if __name__ == '__main__':
     params = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']}
     exec_test(offer_dbus_tube, params=params)
@@ -317,3 +344,5 @@ if __name__ == '__main__':
         'fallback6-proxy.localhost']}
     exec_test(cache_full, params=params6)
     exec_test(proxy_error, params=params6)
+
+    exec_test(proxies_telepathy_im, params={})

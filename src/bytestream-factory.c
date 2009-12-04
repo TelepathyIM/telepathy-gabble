@@ -168,6 +168,9 @@ struct _GabbleBytestreamFactoryPrivate
   GSList *socks5_fallback_proxies;
   /* List of SOCKS5's jids that have not been queried yet */
   GSList *socks5_potential_proxies;
+  /* Next proxy on socks5_potential_proxies that we'll query */
+  GSList *next_query;
+
   guint socks5_proxies_timer;
 
   gboolean dispose_has_run;
@@ -383,6 +386,10 @@ gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
   guint nb_proxies_needed;
   guint i;
 
+  if (priv->socks5_potential_proxies == NULL)
+    /* No potential proxies, we can't do anything */
+    return;
+
   nb_proxies_found = g_slist_length (priv->socks5_proxies) +
     g_slist_length (priv->socks5_fallback_proxies);
 
@@ -399,17 +406,20 @@ gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
       DEBUG ("Need %u more proxies", nb_proxies_needed);
     }
 
-  for (i = 0; i < nb_proxies_needed &&
-      priv->socks5_potential_proxies != NULL; i++)
+  for (i = 0; i < nb_proxies_needed; i++)
     {
       gchar *jid;
 
-      jid = priv->socks5_potential_proxies->data;
+      if (priv->next_query == NULL)
+        {
+          /* recycle the proxies list */
+          priv->next_query = priv->socks5_potential_proxies;
+        }
+
+      jid = priv->next_query->data;
       send_proxy_query (self, jid, TRUE);
 
-      g_free (jid);
-      priv->socks5_potential_proxies = g_slist_delete_link (
-          priv->socks5_potential_proxies, priv->socks5_potential_proxies);
+      priv->next_query = g_slist_next (priv->next_query);
     }
 
   if (priv->socks5_potential_proxies != NULL && priv->socks5_proxies_timer == 0)
@@ -477,6 +487,8 @@ conn_status_changed_cb (GabbleConnection *conn,
       /* randomize the list to not always use the same proxies */
       priv->socks5_potential_proxies = randomize_g_slist (
               priv->socks5_potential_proxies);
+
+      priv->next_query = priv->socks5_potential_proxies;
 
       g_strfreev (jids);
     }

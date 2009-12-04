@@ -171,8 +171,6 @@ struct _GabbleBytestreamFactoryPrivate
   /* Next proxy on socks5_potential_proxies that we'll query */
   GSList *next_query;
 
-  guint socks5_proxies_timer;
-
   gboolean dispose_has_run;
 };
 
@@ -193,6 +191,9 @@ bytestream_factory_iq_ibb_cb (LmMessageHandler *handler, LmConnection *lmconn,
 static LmHandlerResult
 bytestream_factory_iq_socks5_cb (LmMessageHandler *handler,
     LmConnection *lmconn, LmMessage *message, gpointer user_data);
+
+static void query_proxies (GabbleBytestreamFactory *self,
+    guint nb_proxies_needed);
 
 static void
 gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
@@ -293,16 +294,16 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
   gboolean fallback = GPOINTER_TO_INT (user_data);
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    goto fail;
 
   query = lm_message_node_get_child_with_namespace (reply_msg->node, "query",
       NS_BYTESTREAMS);
   if (query == NULL)
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    goto fail;
 
   streamhost = lm_message_node_get_child (query, "streamhost");
   if (streamhost == NULL)
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    goto fail;
 
   jid = lm_message_node_get_attribute (streamhost, "jid");
   host = lm_message_node_get_attribute (streamhost, "host");
@@ -315,6 +316,11 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
 
   add_proxy_to_list (self , proxy, fallback);
 
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+fail:
+  /* Try to get another proxy as this one failed */
+  query_proxies (self, 1);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -354,28 +360,6 @@ disco_item_found_cb (GabbleDisco *disco,
   send_proxy_query (self, item->jid, FALSE);
 }
 
-static gboolean
-socks5_proxies_timeout_cb (gpointer data)
-{
-  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (data);
-  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
-      self);
-  TpBaseConnection *base = TP_BASE_CONNECTION (priv->conn);
-
-  priv->socks5_proxies_timer = 0;
-
-  /* query more proxies if needed */
-  if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
-    {
-      DEBUG ("we have been disconnected: don't try to find [more] proxies");
-      return FALSE;
-    }
-
-  gabble_bytestream_factory_query_socks5_proxies (self);
-
-  return FALSE;
-}
-
 static void
 query_proxies (GabbleBytestreamFactory *self,
     guint nb_proxies_needed)
@@ -402,7 +386,7 @@ query_proxies (GabbleBytestreamFactory *self,
                * the size of the cache. Furthermore, if we have, say, one
                * proxy we don't want to flood it with useless requests. */
               DEBUG ("Can't recycle proxies list");
-              break;
+              return;
             }
         }
 
@@ -410,14 +394,6 @@ query_proxies (GabbleBytestreamFactory *self,
       send_proxy_query (self, jid, TRUE);
 
       priv->next_query = g_slist_next (priv->next_query);
-    }
-
-  if (priv->socks5_potential_proxies != NULL && priv->socks5_proxies_timer == 0)
-    {
-      /* More proxies are available. Set a timer so we'll query then later if
-       * needed */
-      priv->socks5_proxies_timer = g_timeout_add_seconds (SOCKS5_PROXY_TIMEOUT,
-          socks5_proxies_timeout_cb, self);
     }
 }
 
@@ -620,9 +596,6 @@ gabble_bytestream_factory_dispose (GObject *object)
   g_slist_foreach (priv->socks5_potential_proxies, (GFunc) g_free, NULL);
   g_slist_free (priv->socks5_potential_proxies);
   priv->socks5_potential_proxies = NULL;
-
-  if (priv->socks5_proxies_timer != 0)
-    g_source_remove (priv->socks5_proxies_timer);
 
   if (G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose (object);

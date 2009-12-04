@@ -272,6 +272,14 @@ def cache_full(q, bus, conn, stream):
     # the oldest proxy has been removed
     assertDoesNotContain(oldest_proxy, proxies)
 
+     #send another file. We already queried all the proxies so the list is recycled
+    send_file_to_alice(q, conn)
+
+    # the oldest proxy is re-requested first
+    return_event, e1, = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('stream-iq', to=oldest_proxy[0], iq_type='get', query_ns=ns.BYTESTREAMS))
+
 if __name__ == '__main__':
     params = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']}
     exec_test(offer_dbus_tube, params=params)

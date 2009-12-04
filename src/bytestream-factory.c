@@ -55,7 +55,7 @@ G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
 /* The life time (in seconds) of the proxies list discovered using
  * TELEPATHY_PROXIES_SERVICE */
 /* 6 hours */
-#define PROXIES_LIST_TIMER 6 * 60 * 60
+#define PROXIES_LIST_LIFE_TIME 6 * 60 * 60
 
 /* properties */
 enum
@@ -177,10 +177,8 @@ struct _GabbleBytestreamFactoryPrivate
   /* Next proxy on socks5_potential_proxies that we'll query */
   GSList *next_query;
 
-  guint proxies_list_timer;
-  /* If TRUE the proxies list received from TELEPATHY_PROXIES_SERVICE has
-   * expired and so we'll request a new one next time we'll need proxies */
-  gboolean proxies_list_expired;
+  /* Time stamp of the proxies list received from TELEPATHY_PROXIES_SERVICE */
+  GTimeVal proxies_list_stamp;
 
   gboolean dispose_has_run;
 };
@@ -227,6 +225,8 @@ gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
 
   priv->multiple_bytestreams = g_hash_table_new_full (bytestream_id_hash,
       bytestream_id_equal, bytestream_id_free, g_object_unref);
+
+  memset (&priv->proxies_list_stamp, 0, sizeof (GTimeVal));
 }
 
 static gint
@@ -400,19 +400,6 @@ query_proxies (GabbleBytestreamFactory *self,
     }
 }
 
-static gboolean
-proxies_list_timer_cb (gpointer data)
-{
-  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (data);
-  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
-      self);
-
-  DEBUG ("proxies list expired");
-  priv->proxies_list_timer = 0;
-  priv->proxies_list_expired = TRUE;
-  return FALSE;
-}
-
 static void
 proxies_disco_cb (GabbleDisco *disco,
     GabbleDiscoRequest *request,
@@ -428,7 +415,6 @@ proxies_disco_cb (GabbleDisco *disco,
   NodeIter i;
   GSList *new_list = NULL;
 
-  priv->proxies_list_expired = FALSE;
 
   if (error != NULL)
     {
@@ -453,6 +439,8 @@ proxies_disco_cb (GabbleDisco *disco,
       new_list = g_slist_prepend (new_list, g_strdup (jid));
     }
 
+  g_get_current_time (&priv->proxies_list_stamp);
+
   if (new_list == NULL)
     return;
 
@@ -465,12 +453,6 @@ proxies_disco_cb (GabbleDisco *disco,
   priv->next_query = priv->socks5_potential_proxies;
 
   gabble_bytestream_factory_query_socks5_proxies (self);
-
-  if (priv->proxies_list_timer != 0)
-    g_source_remove (priv->proxies_list_timer);
-
-  priv->proxies_list_timer = g_timeout_add_seconds (PROXIES_LIST_TIMER,
-      proxies_list_timer_cb, self);
 }
 
 /* Query TELEPATHY_PROXIES_SERVICE to get a list of proxies */
@@ -495,14 +477,17 @@ gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
       self);
   guint nb_proxies_found;
   guint nb_proxies_needed;
+  GTimeVal now;
 
   if (priv->socks5_potential_proxies == NULL)
     {
+      DEBUG ("No proxies list; request one");
       get_proxies_list (self);
       return;
     }
 
-  if (priv->proxies_list_expired)
+  g_get_current_time (&now);
+  if (now.tv_sec - priv->proxies_list_stamp.tv_sec > PROXIES_LIST_LIFE_TIME)
     {
       DEBUG ("Proxies list has expired; request a new one");
       get_proxies_list (self);
@@ -694,10 +679,6 @@ gabble_bytestream_factory_dispose (GObject *object)
   g_slist_foreach (priv->socks5_potential_proxies, (GFunc) g_free, NULL);
   g_slist_free (priv->socks5_potential_proxies);
   priv->socks5_potential_proxies = NULL;
-
-  if (priv->proxies_list_timer != 0)
-    g_source_remove (priv->proxies_list_timer);
-  priv->proxies_list_timer = 0;
 
   if (G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_bytestream_factory_parent_class)->dispose (object);

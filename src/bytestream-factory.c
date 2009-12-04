@@ -256,7 +256,7 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
     }
   else
     {
-      list = &priv->socks5_proxies;;
+      list = &priv->socks5_proxies;
     }
 
   found = g_slist_find_custom (*list, proxy, cmp_proxy);

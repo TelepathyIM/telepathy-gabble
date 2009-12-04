@@ -151,11 +151,7 @@ def accept_stream_tube(q, bus, conn, stream):
     check_proxies([('fallback2-proxy.localhost', '127.0.0.1', '6789'),
         ('fallback1-proxy.localhost', '127.0.0.1', '12345')], proxies)
 
-def send_file(q, bus, conn, stream):
-    connect_and_announce_alice(q, bus, conn, stream)
-
-    # Send a file; proxy queries are send when creating the FT channel
-
+def send_file_to_alice(q, conn):
     call_async(q, conn.Requests, 'CreateChannel', {
         cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
         cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
@@ -163,6 +159,12 @@ def send_file(q, bus, conn, stream):
         cs.FT_FILENAME: 'test.txt',
         cs.FT_CONTENT_TYPE: 'text/plain',
         cs.FT_SIZE: 10})
+
+def send_file(q, bus, conn, stream):
+    connect_and_announce_alice(q, bus, conn, stream)
+
+    # Send a file; proxy queries are send when creating the FT channel
+    send_file_to_alice(q, conn)
 
     return_event, e1, e2 = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
@@ -181,13 +183,7 @@ def double_server(q, bus, conn, stream):
     # set them twice in the SOCKS5 init stanza
     connect_and_announce_alice(q, bus, conn, stream)
 
-    call_async(q, conn.Requests, 'CreateChannel', {
-        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
-        cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-        cs.TARGET_ID: 'alice@localhost',
-        cs.FT_FILENAME: 'test.txt',
-        cs.FT_CONTENT_TYPE: 'text/plain',
-        cs.FT_SIZE: 10})
+    send_file_to_alice(q, conn)
 
     return_event, e1, e2 = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),

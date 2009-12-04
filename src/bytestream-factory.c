@@ -437,6 +437,7 @@ proxies_disco_cb (GabbleDisco *disco,
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
   NodeIter i;
+  GSList *new_list = NULL;
 
   priv->proxies_list_expired = FALSE;
 
@@ -457,16 +458,18 @@ proxies_disco_cb (GabbleDisco *disco,
 
       DEBUG ("Discovered proxy %s", jid);
 
-      priv->socks5_potential_proxies = g_slist_prepend (
-          priv->socks5_potential_proxies, g_strdup (jid));
+      new_list = g_slist_prepend (new_list, g_strdup (jid));
     }
 
-  if (priv->socks5_potential_proxies == NULL)
+  if (new_list == NULL)
     return;
 
+  /* replace the old list by the new one */
+  g_slist_foreach (priv->socks5_potential_proxies, (GFunc) g_free, NULL);
+  g_slist_free (priv->socks5_potential_proxies);
+
   /* randomize the list to not always use the same proxies */
-  priv->socks5_potential_proxies = randomize_g_slist (
-      priv->socks5_potential_proxies);
+  priv->socks5_potential_proxies = randomize_g_slist (new_list);
   priv->next_query = priv->socks5_potential_proxies;
 
   gabble_bytestream_factory_query_socks5_proxies (self);

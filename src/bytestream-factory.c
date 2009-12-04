@@ -439,7 +439,6 @@ proxies_disco_cb (GabbleDisco *disco,
   NodeIter i;
   GSList *new_list = NULL;
 
-
   if (error != NULL)
     {
       DEBUG ("disco failed: %s", error->message);

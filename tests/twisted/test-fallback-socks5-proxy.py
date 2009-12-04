@@ -1,6 +1,6 @@
 import dbus
 import socket
-from gabbletest import exec_test, elem, elem_iq, sync_stream, make_presence
+from gabbletest import exec_test, elem, elem_iq, sync_stream, make_presence, send_error_reply
 from servicetest import EventPattern, call_async, assertEquals, assertLength, assertDoesNotContain
 from caps_helper import make_caps_disco_reply
 
@@ -283,6 +283,28 @@ def cache_full(q, bus, conn, stream):
         EventPattern('dbus-return', method='CreateChannel'),
         EventPattern('stream-iq', to=oldest_proxy[0], iq_type='get', query_ns=ns.BYTESTREAMS))
 
+def proxy_error(q, bus, conn, stream):
+    # Test if another proxy is queried if a query failed
+    connect_and_announce_alice(q, bus, conn, stream)
+
+    send_file_to_alice(q, conn)
+
+    return_event, e1, e2, e3 = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS),
+        EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS),
+        EventPattern('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS))
+
+    # The 2 first queries are successfull
+    send_socks5_reply(stream, e1.stanza)
+    send_socks5_reply(stream, e2.stanza)
+
+    # The last one returns an error
+    send_error_reply(stream, e3.stanza)
+
+    # another proxy is queried
+    q.expect('stream-iq', iq_type='get', query_ns=ns.BYTESTREAMS),
+
 if __name__ == '__main__':
     params = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']}
     exec_test(offer_dbus_tube, params=params)
@@ -294,3 +316,4 @@ if __name__ == '__main__':
         'fallback3-proxy.localhost', 'fallback4-proxy.localhost', 'fallback5-proxy.localhost',
         'fallback6-proxy.localhost']}
     exec_test(cache_full, params=params6)
+    exec_test(proxy_error, params=params6)

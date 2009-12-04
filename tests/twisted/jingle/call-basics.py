@@ -204,8 +204,17 @@ def run_test(jp, q, bus, conn, stream, incoming):
     cstream.AddCandidates (candidates,
         dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
 
-    signal = q.expect ('dbus-signal', signal='LocalCandidatesAdded')
-    assertEquals (candidates, signal.args[0])
+    expected = [ EventPattern('dbus-signal', signal='LocalCandidatesAdded') ]
+
+    if not incoming:
+        expected.append (EventPattern('stream-iq',
+            predicate=jp.action_predicate('session-initiate')))
+
+    ret = q.expect_many (*expected)
+    assertEquals (candidates, ret[0].args[0])
+
+    if not incoming:
+        jt2.parse_session_initiate(ret[1].query)
 
     cstream.CandidatesPrepared (dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
 
@@ -256,11 +265,6 @@ def run_test(jp, q, bus, conn, stream, incoming):
         chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
         q.expect('stream-iq', predicate=jp.action_predicate('session-accept'))
     else:
-        session_initiate = q.expect('stream-iq',
-            predicate=jp.action_predicate('session-initiate'))
-
-        jt2.parse_session_initiate(session_initiate.query)
-
         if jp.is_modern_jingle():
             # The other person's client starts ringing, and tells us so!
             node = jp.SetIq(jt2.peer, jt2.jid, [

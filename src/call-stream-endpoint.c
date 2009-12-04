@@ -385,6 +385,10 @@ call_stream_endpoint_set_selected_candidate (
 {
   GabbleCallStreamEndpoint *self = GABBLE_CALL_STREAM_ENDPOINT (iface);
 
+  if (self->priv->selected_candidate != NULL)
+    g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE,
+        self->priv->selected_candidate);
+
   self->priv->selected_candidate =
       g_boxed_copy (GABBLE_STRUCT_TYPE_CANDIDATE, candidate);
 

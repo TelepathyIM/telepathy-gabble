@@ -343,7 +343,7 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
 fail:
   if (fallback && from != NULL)
     {
-      /* Remove the bugged proxy so we won't query it anymore */
+      /* Remove the buggy proxy so we won't query it anymore */
       found = g_slist_find_custom (priv->socks5_potential_proxies,
           from, (GCompareFunc) strcmp);
 

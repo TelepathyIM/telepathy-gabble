@@ -251,6 +251,14 @@ def run_test(jp, q, bus, conn, stream, incoming):
         "StreamState",  dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals (cs.MEDIA_STREAM_STATE_DISCONNECTED, state)
 
+    if incoming or jp.dialect != 'gtalk-v0.4':
+        jt2.remote_candidates()
+
+        remote_candidates = q.expect ('dbus-signal',
+            signal='RemoteCandidatesAdded', interface=cs.CALL_STREAM_ENDPOINT)
+        assertEquals (jt2.get_call_remote_transports_dbus(),
+            remote_candidates.args[0])
+
     endpoint.SetStreamState (cs.MEDIA_STREAM_STATE_CONNECTED,
         dbus_interface=cs.CALL_STREAM_ENDPOINT)
 

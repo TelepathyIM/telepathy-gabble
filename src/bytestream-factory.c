@@ -412,8 +412,20 @@ gabble_bytestream_factory_query_socks5_proxies (GabbleBytestreamFactory *self)
 
       if (priv->next_query == NULL)
         {
-          /* recycle the proxies list */
-          priv->next_query = priv->socks5_potential_proxies;
+          if (g_slist_length (priv->socks5_potential_proxies) >
+                FALLBACK_PROXY_CACHE_SIZE)
+            {
+              /* recycle the proxies list */
+              priv->next_query = priv->socks5_potential_proxies;
+            }
+          else
+            {
+              /* There is no point to recycle the list as we'll never exceed
+               * the size of the cache. Furthermore, if we have, say, one
+               * proxy we don't want to flood it with useless requests. */
+              DEBUG ("Can't recycle proxies list");
+              break;
+            }
         }
 
       jid = priv->next_query->data;

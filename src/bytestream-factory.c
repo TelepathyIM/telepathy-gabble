@@ -287,6 +287,7 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
               oldest->jid);
 
           *list = g_slist_delete_link (*list, last);
+          gabble_socks5_proxy_free (oldest);
         }
     }
 

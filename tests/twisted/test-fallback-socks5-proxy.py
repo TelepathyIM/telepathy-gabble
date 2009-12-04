@@ -195,12 +195,12 @@ def double_server(q, bus, conn, stream):
 
     send_socks5_reply(stream, e1.stanza)
 
-    # send the same reply for the second stanza
-    send_socks5_reply(stream, e2.stanza, 'fallback1-proxy.localhost', '127.0.0.1', '12345')
+    # send the same reply for the second stanza with with a different port
+    send_socks5_reply(stream, e2.stanza, 'fallback1-proxy.localhost', '127.0.0.1', '6789')
 
     proxies = wait_si_and_return_proxies(q, stream)
     # check that the proxy has been set only once
-    check_proxies([('fallback1-proxy.localhost', '127.0.0.1', '12345')], proxies)
+    check_proxies([('fallback1-proxy.localhost', '127.0.0.1', '6789')], proxies)
 
 if __name__ == '__main__':
     params = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']}

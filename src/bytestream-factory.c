@@ -218,18 +218,9 @@ cmp_proxy (gconstpointer a,
 {
   GabbleSocks5Proxy *proxy_a = (GabbleSocks5Proxy *) a;
   GabbleSocks5Proxy *proxy_b = (GabbleSocks5Proxy *) b;
-  gint result;
 
-  result = strcmp (proxy_a->jid, proxy_b->jid);
-  if (result != 0)
-    return result;
-
-  result = strcmp (proxy_a->host, proxy_b->host);
-  if (result != 0)
-    return result;
-
-  result = strcmp (proxy_a->port, proxy_b->port);
-  return result;
+  /* Streamhost are identified by their jid */
+  return strcmp (proxy_a->jid, proxy_b->jid);
 }
 
 static void

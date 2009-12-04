@@ -660,6 +660,14 @@ class JingleTest2:
             jp.Jingle(self.sid, self.peer, 'session-terminate', body) ])
         self.stream.send(jp.xml(iq))
 
+    def remote_candidates(self):
+        jp = self.jp
+
+        contents = self.generate_contents(self.remote_transports)
+        node = jp.SetIq(self.peer, self.jid,
+            [ jp.Jingle(self.sid, self.peer, 'transport-info', contents) ])
+        self.stream.send(jp.xml(node))
+
     def dbusify_codecs(self, codecs):
         dbussed_codecs = [ (id, name, 0, rate, 0, {} )
                             for (name, id, rate) in codecs ]

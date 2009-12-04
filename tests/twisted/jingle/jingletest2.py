@@ -262,10 +262,6 @@ class GtalkProtocol03(JingleProtocol):
         action = self._action_map(action)
         return q is not None and q.name == 'session' and q['type'] == action
 
-    # Content will never pick up transport, so this can return invalid value
-    def TransportGoogleP2P(self):
-        return None
-
     def _extract_session_id(self, query):
         return query['id']
 

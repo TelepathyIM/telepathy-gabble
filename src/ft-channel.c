@@ -1637,17 +1637,7 @@ bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
                              gboolean blocked,
                              GabbleFileTransferChannel *self)
 {
-  if (blocked)
-    {
-      DEBUG ("bytestream blocked, stop to read data from FT socket");
-    }
-  else
-    {
-      DEBUG ("bytestream unblocked, restart to read data from FT socket");
-    }
-
   gibber_transport_block_receiving (self->priv->transport, blocked);
-
 }
 
 static void

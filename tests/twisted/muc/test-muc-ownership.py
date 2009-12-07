@@ -10,7 +10,10 @@ when presence is received that includes the MUC JID's owner JID.
 import dbus
 
 from gabbletest import make_result_iq, exec_test, make_muc_presence
-from servicetest import call_async, EventPattern
+from servicetest import (
+    call_async, EventPattern, assertEquals, assertFlagsSet, assertFlagsUnset,
+    wrap_channel,
+    )
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -19,6 +22,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
+    self_handle = conn.GetSelfHandle()
     room_handle = conn.RequestHandles(cs.HT_ROOM, ['chat@conf.localhost'])[0]
 
     call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,
@@ -56,40 +60,50 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='GroupFlagsChanged')
     # Since we received MUC presence that contains an owner JID, the
     # OWNERS_NOT_AVAILABLE flag should be removed.
-    assert event.args == [0, 1024]
+    assert event.args == [0, cs.GF_HANDLE_OWNERS_NOT_AVAILABLE]
 
-    event = q.expect('dbus-signal', signal='HandleOwnersChanged',
-        args=[{2: 1, 3: 0, 4: 0, 5: 6, 7: 8}, []])
+    event = q.expect('dbus-signal', signal='HandleOwnersChanged')
+    owners = event.args[0]
 
-    event = q.expect('dbus-signal', signal='MembersChanged',
-        args=[u'', [2, 3, 4, 5, 7], [], [], [], 0, 0])
-    assert conn.InspectHandles(1, [2]) == ['chat@conf.localhost/test']
-    assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
-    assert conn.InspectHandles(1, [4]) == ['chat@conf.localhost/brian']
-    assert conn.InspectHandles(1, [5]) == ['chat@conf.localhost/che']
-    assert conn.InspectHandles(1, [6]) == ['che@foo.com']
-    assert conn.InspectHandles(1, [7]) == ['chat@conf.localhost/chris']
-    assert conn.InspectHandles(1, [8]) == ['chris@foo.com']
+    event = q.expect('dbus-signal', signal='MembersChanged')
+    added = event.args[1]
+
+    [test, bob, brian, che, che_owner, chris, chris_owner] = \
+        conn.RequestHandles(cs.HT_CONTACT,
+            [ 'chat@conf.localhost/test', 'chat@conf.localhost/bob',
+              'chat@conf.localhost/brian', 'chat@conf.localhost/che',
+              'che@foo.com', 'chat@conf.localhost/chris', 'chris@foo.com',
+            ])
+    expected_members = sorted([test, bob, brian, che, chris])
+    expected_owners = { test: self_handle,
+                        bob: 0,
+                        brian: 0,
+                        che: che_owner,
+                        chris: chris_owner
+                      }
+    assertEquals(expected_members, sorted(added))
+    assertEquals(expected_owners, owners)
 
     event = q.expect('dbus-return', method='RequestChannel')
 
-    bus = dbus.SessionBus()
-    chan = bus.get_object(conn.bus_name, event.value[0])
-    group = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
-    props = dbus.Interface(chan, dbus.PROPERTIES_IFACE)
+    chan = wrap_channel(bus.get_object(conn.bus_name, event.value[0]), 'Text')
 
     # Exercise GetHandleOwners
-    assert group.GetHandleOwners([5, 7]) == [6, 8]
+    assertEquals([che_owner, chris_owner],
+        chan.Group.GetHandleOwners([che, chris]))
 
     # Exercise D-Bus properties
-    all = props.GetAll(cs.CHANNEL_IFACE_GROUP)
+    all = chan.Properties.GetAll(cs.CHANNEL_IFACE_GROUP)
 
     assert all[u'LocalPendingMembers'] == [], all
-    assert all[u'Members'] == [2, 3, 4, 5, 7], all
+    assert sorted(all[u'Members']) == expected_members, all
     assert all[u'RemotePendingMembers'] == [], all
-    assert all[u'SelfHandle'] == 2, all
-    assert all[u'HandleOwners'] == { 2: 1, 3: 0, 4: 0, 5: 6, 7: 8 }, all
-    assert (all[u'GroupFlags'] & 2048) == 2048, all.get('GroupFlags')
+    assert all[u'SelfHandle'] == test, all
+    assert all[u'HandleOwners'] == expected_owners, all
+
+    flags = all[u'GroupFlags']
+    assertFlagsSet(cs.GF_PROPERTIES | cs.GF_CHANNEL_SPECIFIC_HANDLES, flags)
+    assertFlagsUnset(cs.GF_HANDLE_OWNERS_NOT_AVAILABLE, flags)
 
 if __name__ == '__main__':
     exec_test(test)

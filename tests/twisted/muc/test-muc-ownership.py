@@ -19,12 +19,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-    # Need to call this asynchronously as it involves Gabble sending us a
-    # query
-    call_async(q, conn, 'RequestHandles', 2, ['chat@conf.localhost'])
-
-    event = q.expect('dbus-return', method='RequestHandles')
-    room_handle = event.value[0][0]
+    room_handle = conn.RequestHandles(cs.HT_ROOM, ['chat@conf.localhost'])[0]
 
     call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,
         room_handle, True)

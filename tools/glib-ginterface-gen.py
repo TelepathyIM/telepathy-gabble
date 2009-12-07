@@ -27,7 +27,7 @@ import os.path
 import xml.dom.minidom
 
 from libglibcodegen import Signature, type_to_gtype, cmp_by_name, \
-        camelcase_to_lower, NS_TP, dbus_gutils_wincaps_to_uscore, \
+        NS_TP, dbus_gutils_wincaps_to_uscore, \
         signal_to_marshal_name, method_to_glue_marshal_name
 
 
@@ -66,6 +66,7 @@ class Generator(object):
         self.prefix_ = prefix.lower()
         self.PREFIX_ = prefix.upper()
 
+        self.basename = basename
         self.signal_marshal_prefix = signal_marshal_prefix
         self.headers = headers
         self.end_headers = end_headers
@@ -170,7 +171,42 @@ class Generator(object):
         self.h(' * %s%sClass:' % (self.Prefix, node_name_mixed))
         self.h(' *')
         self.h(' * The class of %s%s.' % (self.Prefix, node_name_mixed))
+
+        if methods:
+            self.h(' *')
+            self.h(' * In a full implementation of this interface (i.e. all')
+            self.h(' * methods implemented), the interface initialization')
+            self.h(' * function used in G_IMPLEMENT_INTERFACE() would')
+            self.h(' * typically look like this:')
+            self.h(' *')
+            self.h(' * <programlisting>')
+            self.h(' * static void')
+            self.h(' * implement_%s (gpointer klass,' % self.node_name_lc)
+            self.h(' *     gpointer unused G_GNUC_UNUSED)')
+            self.h(' * {')
+            # "#" is special to gtkdoc under some circumstances; it appears
+            # that escaping "##" as "#<!---->#" or "&#35;&#35;" doesn't work,
+            # but adding an extra hash symbol does. Thanks, gtkdoc :-(
+            self.h(' * #define IMPLEMENT(x) %s%s_implement_###x (\\'
+                   % (self.prefix_, self.node_name_lc))
+            self.h(' *   klass, my_object_###x)')
+
+            for method in methods:
+                class_member_name = method.getAttribute('tp:name-for-bindings')
+                class_member_name = class_member_name.lower()
+                self.h(' *   IMPLEMENT (%s);' % class_member_name)
+
+            self.h(' * #undef IMPLEMENT')
+            self.h(' * }')
+            self.h(' * </programlisting>')
+        else:
+            self.h(' * This interface has no D-Bus methods, so an')
+            self.h(' * implementation can typically pass %NULL to')
+            self.h(' * G_IMPLEMENT_INTERFACE() as the interface')
+            self.h(' * initialization function.')
+
         self.h(' */')
+
         self.h('typedef struct _%s%sClass %s%sClass;'
                % (self.Prefix, node_name_mixed, self.Prefix, node_name_mixed))
         self.h('')
@@ -207,48 +243,56 @@ class Generator(object):
         self.b('%s%s_base_init_once (gpointer klass G_GNUC_UNUSED)'
                % (self.prefix_, node_name_lc))
         self.b('{')
-        self.b('  static TpDBusPropertiesMixinPropInfo properties[%d] = {'
-               % (len(properties) + 1))
 
-        for m in properties:
-            access = m.getAttribute('access')
-            assert access in ('read', 'write', 'readwrite')
+        if properties:
+            self.b('  static TpDBusPropertiesMixinPropInfo properties[%d] = {'
+                   % (len(properties) + 1))
 
-            if access == 'read':
-                flags = 'TP_DBUS_PROPERTIES_MIXIN_FLAG_READ'
-            elif access == 'write':
-                flags = 'TP_DBUS_PROPERTIES_MIXIN_FLAG_WRITE'
-            else:
-                flags = ('TP_DBUS_PROPERTIES_MIXIN_FLAG_READ | '
-                         'TP_DBUS_PROPERTIES_MIXIN_FLAG_WRITE')
+            for m in properties:
+                access = m.getAttribute('access')
+                assert access in ('read', 'write', 'readwrite')
 
-            self.b('      { 0, %s, "%s", 0, NULL, NULL }, /* %s */'
-                   % (flags, m.getAttribute('type'), m.getAttribute('name')))
+                if access == 'read':
+                    flags = 'TP_DBUS_PROPERTIES_MIXIN_FLAG_READ'
+                elif access == 'write':
+                    flags = 'TP_DBUS_PROPERTIES_MIXIN_FLAG_WRITE'
+                else:
+                    flags = ('TP_DBUS_PROPERTIES_MIXIN_FLAG_READ | '
+                             'TP_DBUS_PROPERTIES_MIXIN_FLAG_WRITE')
 
-        self.b('      { 0, 0, NULL, 0, NULL, NULL }')
-        self.b('  };')
-        self.b('  static TpDBusPropertiesMixinIfaceInfo interface =')
-        self.b('      { 0, properties, NULL, NULL };')
-        self.b('')
-        self.b('  interface.dbus_interface = g_quark_from_static_string '
-               '("%s");' % self.iface_name)
+                self.b('      { 0, %s, "%s", 0, NULL, NULL }, /* %s */'
+                       % (flags, m.getAttribute('type'), m.getAttribute('name')))
 
-        for i, m in enumerate(properties):
-            self.b('  properties[%d].name = g_quark_from_static_string ("%s");'
-                   % (i, m.getAttribute('name')))
-            self.b('  properties[%d].type = %s;'
-                   % (i, type_to_gtype(m.getAttribute('type'))[1]))
+            self.b('      { 0, 0, NULL, 0, NULL, NULL }')
+            self.b('  };')
+            self.b('  static TpDBusPropertiesMixinIfaceInfo interface =')
+            self.b('      { 0, properties, NULL, NULL };')
+            self.b('')
 
-        self.b('  tp_svc_interface_set_dbus_properties_info (%s, &interface);'
-               % self.current_gtype)
 
-        self.b('')
-        for s in base_init_code:
-            self.b(s)
         self.b('  dbus_g_object_type_install_info (%s%s_get_type (),'
                % (self.prefix_, node_name_lc))
         self.b('      &_%s%s_object_info);'
                % (self.prefix_, node_name_lc))
+        self.b('')
+
+        if properties:
+            self.b('  interface.dbus_interface = g_quark_from_static_string '
+                   '("%s");' % self.iface_name)
+
+            for i, m in enumerate(properties):
+                self.b('  properties[%d].name = g_quark_from_static_string ("%s");'
+                       % (i, m.getAttribute('name')))
+                self.b('  properties[%d].type = %s;'
+                           % (i, type_to_gtype(m.getAttribute('type'))[1]))
+
+            self.b('  tp_svc_interface_set_dbus_properties_info (%s, &interface);'
+                   % self.current_gtype)
+
+            self.b('')
+
+        for s in base_init_code:
+            self.b(s)
         self.b('}')
 
         self.b('static void')
@@ -275,6 +319,10 @@ class Generator(object):
 
         for method, offset in zip(methods, offsets):
             self.do_method_glue(method, offset)
+
+        if len(methods) == 0:
+            # empty arrays are a gcc extension, so put in a dummy member
+            self.b("  { NULL, NULL, 0 }")
 
         self.b('};')
         self.b('')
@@ -335,7 +383,11 @@ class Generator(object):
         return ''.join(info) + '\0', offsets
 
     def do_method_glue(self, method, offset):
-        lc_name = camelcase_to_lower(method.getAttribute('name'))
+        lc_name = method.getAttribute('tp:name-for-bindings')
+        if method.getAttribute('name') != lc_name.replace('_', ''):
+            raise AssertionError('Method %s tp:name-for-bindings (%s) does '
+                    'not match' % (method.getAttribute('name'), lc_name))
+        lc_name = lc_name.lower()
 
         marshaller = method_to_glue_marshal_name(method,
                 self.signal_marshal_prefix)
@@ -357,7 +409,13 @@ class Generator(object):
 
     def get_method_impl_names(self, method):
         dbus_method_name = method.getAttribute('name')
-        class_member_name = camelcase_to_lower(dbus_method_name)
+
+        class_member_name = method.getAttribute('tp:name-for-bindings')
+        if dbus_method_name != class_member_name.replace('_', ''):
+            raise AssertionError('Method %s tp:name-for-bindings (%s) does '
+                    'not match' % (dbus_method_name, class_member_name))
+        class_member_name = class_member_name.lower()
+
         stub_name = (self.prefix_ + self.node_name_lc + '_' +
                      class_member_name)
         return (stub_name + '_impl', class_member_name)
@@ -372,7 +430,12 @@ class Generator(object):
         # DoStuff
         dbus_method_name = method.getAttribute('name')
         # do_stuff
-        class_member_name = camelcase_to_lower(dbus_method_name)
+        class_member_name = method.getAttribute('tp:name-for-bindings')
+        if dbus_method_name != class_member_name.replace('_', ''):
+            raise AssertionError('Method %s tp:name-for-bindings (%s) does '
+                    'not match' % (dbus_method_name, class_member_name))
+        class_member_name = class_member_name.lower()
+
         # void tp_svc_thing_do_stuff (TpSvcThing *, const char *, guint,
         #   DBusGMethodInvocation *);
         stub_name = (self.prefix_ + self.node_name_lc + '_' +
@@ -533,8 +596,15 @@ class Generator(object):
         #    const char *arg0, guint arg1);
 
         dbus_name = signal.getAttribute('name')
+
+        ugly_name = signal.getAttribute('tp:name-for-bindings')
+        if dbus_name != ugly_name.replace('_', ''):
+            raise AssertionError('Signal %s tp:name-for-bindings (%s) does '
+                    'not match' % (dbus_name, ugly_name))
+
         stub_name = (self.prefix_ + self.node_name_lc + '_emit_' +
-                     camelcase_to_lower(dbus_name))
+                     ugly_name.lower())
+
         const_name = self.get_signal_const_entry(signal)
 
         # Gather arguments
@@ -616,22 +686,32 @@ class Generator(object):
 
         return in_base_init
 
+    def have_properties(self, nodes):
+        for node in nodes:
+            interface =  node.getElementsByTagName('interface')[0]
+            if interface.getElementsByTagName('property'):
+                return True
+        return False
+
     def __call__(self):
+        nodes = self.dom.getElementsByTagName('node')
+        nodes.sort(cmp_by_name)
+
         self.h('#include <glib-object.h>')
         self.h('#include <dbus/dbus-glib.h>')
-        self.h('#include <telepathy-glib/dbus-properties-mixin.h>')
+
+        if self.have_properties(nodes):
+            self.h('#include <telepathy-glib/dbus-properties-mixin.h>')
+
         self.h('')
         self.h('G_BEGIN_DECLS')
         self.h('')
 
-        self.b('#include "%s.h"' % basename)
+        self.b('#include "%s.h"' % self.basename)
         self.b('')
         for header in self.headers:
             self.b('#include %s' % header)
         self.b('')
-
-        nodes = self.dom.getElementsByTagName('node')
-        nodes.sort(cmp_by_name)
 
         for node in nodes:
             self.do_node(node)
@@ -645,8 +725,8 @@ class Generator(object):
 
         self.h('')
         self.b('')
-        open(basename + '.h', 'w').write('\n'.join(self.__header))
-        open(basename + '.c', 'w').write('\n'.join(self.__body))
+        open(self.basename + '.h', 'w').write('\n'.join(self.__header))
+        open(self.basename + '.c', 'w').write('\n'.join(self.__body))
 
 
 def cmdline_error():

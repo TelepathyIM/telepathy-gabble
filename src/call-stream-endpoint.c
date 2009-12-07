@@ -332,6 +332,8 @@ gabble_call_stream_endpoint_finalize (GObject *object)
   /* free any data held directly by the object here */
   g_free (priv->object_path);
 
+  g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE, priv->selected_candidate);
+
   G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->finalize (object);
 }
 

@@ -36,6 +36,7 @@
  */
 #define BUNDLE_VOICE_V1         "voice-v1"
 #define BUNDLE_VIDEO_V1         "video-v1"
+#define BUNDLE_PMUC_V1          "pmuc-v1"
 
 typedef struct _Feature Feature;
 
@@ -58,8 +59,6 @@ struct _Feature
  */
 GSList *capabilities_get_features (GabblePresenceCapabilities caps,
     GHashTable *per_channel_manager_caps);
-
-#define BUNDLE_PMUC_V1          "pmuc-v1"
 
 /*
  * capabilities_fill_cache

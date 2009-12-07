@@ -101,9 +101,9 @@ def test(q, bus, conn, stream,
 
     if expected_stun_server == None:
         # If there is no stun server set then gabble should fallback on the
-        # default fallback stunserver (stun.collabora.co.uk)
+        # default fallback stunserver (stun.telepathy.im)
         # This test uses the test-resolver which is set to
-        # have 'stun.collabora.co.uk' resolve to '6.7.8.9'
+        # have 'stun.telepathy.im' resolve to '6.7.8.9'
         expected_stun_server = '6.7.8.9'
         expected_stun_port = 3478
 

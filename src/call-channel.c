@@ -741,11 +741,11 @@ call_channel_init_async (GAsyncInitable *initable,
       /* Setup the session and the initial contents */
       if (priv->initial_audio)
         call_channel_create_content (self, "Audio", JINGLE_MEDIA_TYPE_AUDIO,
-          GABBLE_CALLCONTENTDISPOSITION_INITIAL);
+          GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
 
       if (priv->initial_video)
         call_channel_create_content (self, "Video", JINGLE_MEDIA_TYPE_VIDEO,
-          GABBLE_CALLCONTENTDISPOSITION_INITIAL);
+          GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
     }
 
   call_channel_setup (self);

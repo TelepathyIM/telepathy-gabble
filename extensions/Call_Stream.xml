@@ -20,9 +20,9 @@
       02110-1301, USA.</p>
   </tp:license>
 
-  <interface name="org.freedesktop.Telepathy.Call.Stream.Draft"
+  <interface name="org.freedesktop.Telepathy.Call.Stream.DRAFT"
       tp:causes-havoc="experimental">
-    <tp:added version="0.17.UNRELEASED">(as a draft)</tp:added>
+    <tp:added version="0.19.0">(draft 1)</tp:added>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       One stream inside a content
@@ -30,41 +30,50 @@
     </tp:docstring>
 
     <method name="SetSending" tp:name-for-bindings="Set_Sending">
-      <arg name="Send" tp:name-for-bindings="Send" type="b" direction="in">
+      <p>Set the stream to start or stop sending media from the local
+        user to other contacts.</p>
+
+      <arg name="Send" type="b" direction="in">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          <p>Set the stream to start or stop sending media</p>
+          <p>If true, the local user's sending state should change
+            to Sending, if it isn't already.</p>
+
+          <p>If false, the local user's sending state should change to None,
+            if it isn't already.</p>
         </tp:docstring>
       </arg>
 
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
           <tp:docstring>
+            [FIXME: when?]
           </tp:docstring>
         </tp:error>
       </tp:possible-errors>
     </method>
 
-    <method name="RequestReceiving" tp:name-for-bindings="RequestReceiving">
+    <method name="RequestReceiving" tp:name-for-bindings="Request_Receiving">
       <tp:docstring>
-        Request the remote contact to stop or start sending on this stream.
+        Request that a remote contact stops or starts sending on this stream.
       </tp:docstring>
-      <arg name="Contact" tp:name-for-bindings="Contact"
-          type="u" direction="in">
+
+      <arg name="Contact" type="u" tp:type="Contact_Handle" direction="in">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           <p>Contact from which sending is requested</p>
         </tp:docstring>
       </arg>
 
-      <arg name="Receive" tp:name-for-bindings="Receive"
-          type="b" direction="in">
+      <arg name="Receive" type="b" direction="in">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          <p>Request to start receiving media over this stream</p>
+          <p>If true, request that the given contact starts to send media.
+            If false, request that the given contact stops sending media.</p>
         </tp:docstring>
       </arg>
 
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
           <tp:docstring>
+            [FIXME: when?]
           </tp:docstring>
         </tp:error>
       </tp:possible-errors>
@@ -73,12 +82,14 @@
     <signal name="SendersChanged"
         tp:name-for-bindings="Senders_Changed">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        Emitted when <tp:member-ref>Senders</tp:member-ref> changes.
       </tp:docstring>
 
       <arg name="Updates" type="a{uu}" tp:type="Contact_Sending_State_Map">
         <tp:docstring>
           A mapping from channel-specific handles to their updated sending
-          state.
+          state, whose keys include at least the senders who were added,
+          and the senders whose states changed.
         </tp:docstring>
       </arg>
       <arg name="Removed" type="au" tp:type="Contact_Handle[]">
@@ -90,13 +101,24 @@
       </arg>
     </signal>
 
-    <tp:enum name="SendingState" tp:name-for-bindings="Sending_State" type="u">
-      <tp:enumvalue suffix="PendingSend" value = "1">
+    <tp:enum name="Sending_State" type="u">
+      <tp:docstring>
+        Tristate indicating whether a contact is sending media.
+      </tp:docstring>
+
+      <tp:enumvalue suffix="None" value="0">
         <tp:docstring>
-          The contact has been asked to start sending Media.
+          The contact is not sending media and has not been asked to do so.
         </tp:docstring>
       </tp:enumvalue>
-      <tp:enumvalue suffix="Sending" value = "2">
+
+      <tp:enumvalue suffix="Pending_Send" value="1">
+        <tp:docstring>
+          The contact has been asked to start sending media.
+        </tp:docstring>
+      </tp:enumvalue>
+
+      <tp:enumvalue suffix="Sending" value="2">
         <tp:docstring>
           The contact is sending media.
         </tp:docstring>
@@ -104,9 +126,12 @@
     </tp:enum>
 
     <tp:mapping name="Contact_Sending_State_Map">
+      <tp:docstring>
+        A map from contacts to their sending state.
+      </tp:docstring>
       <tp:member name="Contact" type="u" tp:type="Contact_Handle">
       </tp:member>
-      <tp:member name="Sending" type="u" tp:type="SendingState">
+      <tp:member name="Sending" type="u" tp:type="Sending_State">
          <tp:docstring>
          </tp:docstring>
       </tp:member>
@@ -115,7 +140,24 @@
     <property name="Senders" tp:name-for-bindings="Senders"
         type="a{uu}" access="read" tp:type="Contact_Sending_State_Map">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p> A map from contacts to their sending state</p>
+        <p>A map from contacts to their sending state.</p>
+
+        <p>The local user's handle in this map (the <tp:dbus-ref
+            namespace="org.freedesktop.Telepathy.Channel.Interface"
+            >Group.SelfHandle</tp:dbus-ref> if the channel implements
+          Group, or the <tp:dbus-ref
+            namespace="org.freedesktop.Telepathy"
+            >Connection.SelfHandle</tp:dbus-ref> otherwise) indicates
+          whether the local user is sending media. Media sent on this stream
+          should be assumed to be received, directly or indirectly, by every
+          other contact in the Senders mapping. Sending_State_Pending_Send
+          indicates that another contact has asked the local user to send
+          media.</p>
+
+        <p>Other contacts' handles in this map indicate whether they are
+          sending media to the contacts in this stream.
+          Sending_State_Pending_Send indicates contacts who are not sending but
+          have been asked to do so.</p>
       </tp:docstring>
     </property>
   </interface>

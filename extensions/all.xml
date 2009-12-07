@@ -155,6 +155,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       <tp:docstring>The TCP or UDP port number.</tp:docstring>
     </tp:member>
   </tp:struct>
+
+  <tp:enum name="Media_Stream_State" type="u">
+    <tp:enumvalue suffix="Disconnected" value="0">
+      <tp:docstring>The stream is disconnected.</tp:docstring>
+    </tp:enumvalue>
+    <tp:enumvalue suffix="Connecting" value="1">
+      <tp:docstring>The stream is trying to connect.</tp:docstring>
+    </tp:enumvalue>
+    <tp:enumvalue suffix="Connected" value="2">
+      <tp:docstring>The stream is connected.</tp:docstring>
+    </tp:enumvalue>
+  </tp:enum>
+
+  <tp:simple-type name="Handle" type="u" array-name="Handle_List">
+    <tp:docstring>An unsigned 32-bit integer representing a
+      handle</tp:docstring>
+  </tp:simple-type>
 </tp:generic-types>
 
 </tp:spec>

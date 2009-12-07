@@ -22,7 +22,7 @@ CHANNEL_IFACE_MESSAGES = CHANNEL + ".Interface.Messages"
 CHANNEL_IFACE_PASSWORD = CHANNEL + ".Interface.Password"
 CHANNEL_IFACE_TUBE = CHANNEL + ".Interface.Tube"
 
-CHANNEL_TYPE_CALL = CHANNEL + ".Type.Call.Draft"
+CHANNEL_TYPE_CALL = CHANNEL + ".Type.Call.DRAFT"
 CHANNEL_TYPE_CONTACT_LIST = CHANNEL + ".Type.ContactList"
 CHANNEL_TYPE_CONTACT_SEARCH = CHANNEL + ".Type.ContactSearch.DRAFT2"
 CHANNEL_TYPE_TEXT = CHANNEL + ".Type.Text"
@@ -55,18 +55,18 @@ CALL_INITIAL_AUDIO = CHANNEL_TYPE_CALL + '.InitialAudio'
 CALL_INITIAL_VIDEO = CHANNEL_TYPE_CALL + '.InitialVideo'
 CALL_MUTABLE_CONTENTS = CHANNEL_TYPE_CALL + '.MutableContents'
 
-CALL_CONTENT = 'org.freedesktop.Telepathy.Call.Content.Draft'
+CALL_CONTENT = 'org.freedesktop.Telepathy.Call.Content.DRAFT'
 CALL_CONTENT_IFACE_MEDIA = \
-    'org.freedesktop.Telepathy.Call.Content.Interface.Media.Draft'
+    'org.freedesktop.Telepathy.Call.Content.Interface.Media.DRAFT'
 
 CALL_CONTENT_CODECOFFER = \
-    'org.freedesktop.Telepathy.Call.Content.CodecOffer.Draft'
+    'org.freedesktop.Telepathy.Call.Content.CodecOffer.DRAFT'
 
-CALL_STREAM = 'org.freedesktop.Telepathy.Call.Stream.Draft'
+CALL_STREAM = 'org.freedesktop.Telepathy.Call.Stream.DRAFT'
 CALL_STREAM_IFACE_MEDIA = \
-    'org.freedesktop.Telepathy.Call.Stream.Interface.Media.Draft'
+    'org.freedesktop.Telepathy.Call.Stream.Interface.Media.DRAFT'
 
-CALL_STREAM_ENDPOINT = 'org.freedesktop.Telepathy.Call.Stream.Endpoint.Draft'
+CALL_STREAM_ENDPOINT = 'org.freedesktop.Telepathy.Call.Stream.Endpoint.DRAFT'
 
 CALL_MEDIA_TYPE_AUDIO = 1
 CALL_MEDIA_TYPE_VIDEO = 2

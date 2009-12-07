@@ -106,15 +106,15 @@ if test x$enable_handle_leak_debug = xyes; then
   HANDLE_LEAK_DEBUG_CFLAGS="-rdynamic"
 fi
 
-enable_assumed_ft_cap=yes
 AC_ARG_ENABLE([assumed-ft-cap],
   AC_HELP_STRING([--disable-assumed-ft-cap],
     [do not assume that we have a client capable of receiving file transfers]),
-    [enable_assumed_ft_cap="$enableval"], [])
-if test "x$enable_assumed_ft_cap" = xyes; then
+    [assumed_ft_cap="$enableval"],
+    [assumed_ft_cap=yes])
+if test "x$assumed_ft_cap" = xyes; then
   AC_DEFINE(ENABLE_ASSUMED_FT_CAP, [], [--enable-assumed-ft-cap])
 fi
-AM_CONDITIONAL([ENABLE_ASSUMED_FT_CAP], [test "x$enable_assumed_ft_cap" = xyes])
+AM_CONDITIONAL([ENABLE_ASSUMED_FT_CAP], [test "x$assumed_ft_cap" = xyes])
 
 AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 

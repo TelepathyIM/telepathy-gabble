@@ -23,9 +23,11 @@ Fixes:
 
 • The password param is now flagged as secret. (fd.o #24558, smcv)
 
-• MUCs are no longer discoed in RequestHandles. This was unnecessary, and meant
-  we couldn't join Google Talk's MUCs (since their server doesn't respond to
-  the discos). (fd.o#21152, jonnylamb)
+• MUC servers are no longer sent a service discovery request the first time you
+  request a handle for a room on that server. This was unnecessary—we can just
+  try to join it, and if it fails it fails—and meant we couldn't join Google
+  Talk's MUCs (since their server doesn't respond to the discos). (fd.o#21152,
+  jonnylamb)
 
 • If the TargetID in a MUC request has no server, canonicalize it. Previously
   this was only done in RequestHandles() calls. (fd.o#22456, jonnylamb)

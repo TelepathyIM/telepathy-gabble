@@ -237,7 +237,7 @@ take_stun_server (GabbleJingleFactory *self,
   DEBUG ("Resolving %s STUN server %s:%u",
       fallback ? "fallback" : "primary", stun_server, stun_port);
   data->factory = self;
-  g_object_add_weak_pointer (G_OBJECT (self), (gpointer*)&data->factory);
+  g_object_add_weak_pointer (G_OBJECT (self), (gpointer *) &data->factory);
   data->stun_server = stun_server;
   data->stun_port = stun_port;
   data->fallback = fallback;

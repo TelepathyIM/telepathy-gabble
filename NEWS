@@ -1,11 +1,43 @@
 telepathy-gabble 0.8.9 (UNRELEASED)
 ===================================
 
+Enhancements:
+
+• Gabble now advertises a 'pmuc-v1' capability bundle, telling the Google Mail
+  client that we support being invited to MUCs. (fd.o#22768, jonnylamb)
+
+• Rather than hard-coding a list of SOCKS5 proxy servers to use if the user's
+  own XMPP server does not provide one, Gabble now falls back to a list of
+  proxy servers returned by discoing the newly-set-up proxies.telepathy.im.
+  (fd.o#25304, cassidy)
+
+Changes:
+
+• The fallback STUN server is now stun.telepathy.im.
+
 Fixes:
 
 • Always assume that MUC servers will let us change the subject, mitigating
   fd.o #13157; previously we assumed they would only let moderators change
   the subject. (smcv)
+
+• The password param is now flagged as secret. (fd.o #24558, smcv)
+
+• MUCs are no longer discoed in RequestHandles. This was unnecessary, and meant
+  we couldn't join Google Talk's MUCs (since their server doesn't respond to
+  the discos). (fd.o#21152, jonnylamb)
+
+• If the TargetID in a MUC request has no server, canonicalize it. Previously
+  this was only done in RequestHandles() calls. (fd.o#22456, jonnylamb)
+
+• If built with --disable-assumed-ft-cap, Gabble does not advertise support for
+  file transfers unless a handler is available. This is opt-in for
+  backwards-compatibility reasons; distros should only turn this flag on if
+  they're sure the FT capability is turned on when it should be by Mission
+  Control. (fd.o#25243, smcv)
+
+• Only disco SOCKS5 proxies when they're needed for a file transfer or tube.
+  (fd.o#21151, cassidy)
 
 telepathy-gabble 0.8.8 (2009-11-09)
 ===================================

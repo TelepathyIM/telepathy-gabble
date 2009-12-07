@@ -1000,6 +1000,27 @@ vcard_copy (LmMessageNode *parent, LmMessageNode *src)
     return new;
 }
 
+static gboolean
+check_vcard_changed (gpointer k, gpointer v, gpointer user_data)
+{
+  const gchar *key = k;
+  const gchar *value = v;
+  LmMessageNode *vcard_node = user_data;
+  LmMessageNode *node;
+
+  node = lm_message_node_get_child (vcard_node, key);
+  if (node != NULL)
+    {
+      const gchar *node_value = lm_message_node_get_value (node);
+
+      if (!tp_strdiff (node_value, value))
+        return FALSE;
+    }
+
+  DEBUG ("vcard node %s changed, vcard needs update", key);
+  return TRUE;
+}
+
 static void
 manager_patch_vcard (GabbleVCardManager *self,
                      LmMessageNode *vcard_node)
@@ -1014,6 +1035,12 @@ manager_patch_vcard (GabbleVCardManager *self,
    */
   if (priv->edits == NULL || priv->edit_pipeline_item != NULL)
       return;
+
+  if (g_hash_table_find (priv->edits, check_vcard_changed, vcard_node) == NULL)
+    {
+      DEBUG ("nothing changed, not updating vcard");
+      goto out;
+    }
 
   DEBUG("patching vcard");
 
@@ -1036,6 +1063,7 @@ manager_patch_vcard (GabbleVCardManager *self,
 
   lm_message_unref (msg);
 
+out:
   /* We've applied those, forget about them */
   g_hash_table_destroy (priv->edits);
   priv->edits = NULL;

@@ -466,6 +466,20 @@ def assertLength(length, value):
         raise AssertionError("expected: length %d, got length %d:\n%s" % (
             length, len(value), pretty(value)))
 
+def assertFlagsSet(flags, value):
+    masked = value & flags
+    if masked != flags:
+        raise AssertionError(
+            "expected flags %u, of which only %u are set in %u" % (
+            flags, masked, value))
+
+def assertFlagsUnset(flags, value):
+    masked = value & flags
+    if masked != 0:
+        raise AssertionError(
+            "expected none of flags %u, but %u are set in %u" % (
+            flags, masked, value))
+
 def install_colourer():
     def red(s):
         return '\x1b[31m%s\x1b[0m' % s

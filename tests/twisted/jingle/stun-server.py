@@ -101,12 +101,12 @@ def test(q, bus, conn, stream,
 
     if expected_stun_server == None:
         # If there is no stun server set then gabble should fallback on the
-        # default fallback stunserver (stun.collabora.co.uk)
+        # default fallback stunserver (stun.telepathy.im)
         # This test assumes that if python can resolve the stun servers
         # address then gabble should be able to resolv it as well
         try:
             expected_stun_server = \
-                socket.gethostbyname("stun.collabora.co.uk")
+                socket.gethostbyname("stun.telepathy.im")
             expected_stun_port = 3478
         except:
             expected_stun_server = None

@@ -64,7 +64,7 @@ loudmouth-signals-marshal.list: $(OUR_SOURCES) Makefile.am
 
 AM_CFLAGS = $(ERROR_CFLAGS) $(GCOV_CFLAGS) @GLIB_CFLAGS@ @WOCKY_CFLAGS@
 
-AM_LDFLAGS = $(GCOV_LIBS) @GLIB_LIBS@ @RESOLV_LIBS@ @WOCKY_LIBS@
+AM_LDFLAGS = $(GCOV_LIBS) @GLIB_LIBS@ @WOCKY_LIBS@
 
 # rules for making the glib enum objects
 %-enumtypes.h: %.h Makefile.in

@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   <interface name="org.laptop.Telepathy.ActivityProperties">
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
 
-    <method name="SetProperties">
+    <method name="SetProperties" tp:name-for-bindings="Set_Properties">
       <arg direction="in" name="room" type="u">
         <tp:docstring>
           An integer handle representing the room of the activity
@@ -41,7 +41,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <method name="GetProperties">
+    <method name="GetProperties" tp:name-for-bindings="Get_Properties">
       <arg direction="in" name="room" type="u">
         <tp:docstring>
           An integer handle for the activity's room to request his properties for
@@ -61,7 +61,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <signal name="ActivityPropertiesChanged">
+    <signal name="ActivityPropertiesChanged"
+      tp:name-for-bindings="Activity_Properties_Changed">
       <arg name="room" type="u">
         <tp:docstring>
           An integer handle representing the room of the activity

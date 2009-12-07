@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     <tp:requires interface="org.laptop.Telepathy.BuddyInfo"/>
     <tp:requires interface="org.laptop.Telepathy.ActivityProperties"/>
 
-    <method name="Publish">
+    <method name="Publish" tp:name-for-bindings="Publish">
       <arg direction="in" name="publish" type="b">
          <tp:docstring>
           A boolean indicating if we want to publish your informations to Gadget.
@@ -35,7 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <signal name="GadgetDiscovered">
+    <signal name="GadgetDiscovered" tp:name-for-bindings="Gadget_Discovered">
       <tp:docstring>
         Signal emitted when CM discovers the Gadget component.
       </tp:docstring>

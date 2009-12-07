@@ -108,11 +108,10 @@ const GabbleCapabilitySet *gabble_capabilities_get_olpc_notify (void);
  */
 #define BUNDLE_VOICE_V1         "voice-v1"
 #define BUNDLE_VIDEO_V1         "video-v1"
+#define BUNDLE_PMUC_V1          "pmuc-v1"
 
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_voice_v1 (void);
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
-
-#define BUNDLE_PMUC_V1          "pmuc-v1"
 
 /*
  * capabilities_fill_cache

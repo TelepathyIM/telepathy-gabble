@@ -227,12 +227,11 @@ noinst_PROGRAMS = \
 
 telepathy_gabble_debug_SOURCES = \
     main-debug.c \
-    resolver-fake.c \
-    resolver-fake.h
+    test-resolver.c \
+    test-resolver.h
 
 telepathy_gabble_debug_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la \
-    $(top_builddir)/lib/gibber/libgibber.la \
     $(ALL_LIBS)
 
 telepathy_gabble_debug_LDFLAGS = -export-dynamic

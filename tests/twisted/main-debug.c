@@ -30,9 +30,7 @@
 #include <telepathy-glib/dbus.h>
 #include <wocky/wocky.h>
 
-#include <lib/gibber/gibber-resolver.h>
-
-#include "resolver-fake.h"
+#include "test-resolver.h"
 
 static DBusHandlerResult
 dbus_filter_function (DBusConnection *connection,
@@ -57,6 +55,7 @@ main (int argc,
   GError *error = NULL;
   DBusConnection *connection;
   int ret = 1;
+  GResolver *kludged;
 
   gabble_init ();
 
@@ -82,8 +81,21 @@ main (int argc,
   /* needed for test-avatar-async.py */
   gabble_vcard_manager_set_suspend_reply_timeout (3);
   gabble_vcard_manager_set_default_request_timeout (3);
+  
+  /* hook up the fake DNS resolver that lets us divert A and SRV queries *
+   * into our local cache before asking the real DNS                     */
+  kludged = g_object_new (TEST_TYPE_RESOLVER, NULL);
+  g_resolver_set_default (kludged);
 
-  gibber_resolver_set_resolver (GABBLE_TYPE_RESOLVER_FAKE);
+  test_resolver_add_A (TEST_RESOLVER (kludged),
+      "resolves-to-5.4.3.2", "5.4.3.2");
+  test_resolver_add_A (TEST_RESOLVER (kludged),
+      "resolves-to-1.2.3.4", "1.2.3.4");
+  test_resolver_add_A (TEST_RESOLVER (kludged),
+      "localhost", "127.0.0.1");
+  test_resolver_add_A (TEST_RESOLVER (kludged),
+      "stun.collabora.co.uk", "6.7.8.9");
+
   gabble_jingle_factory_set_test_mode ();
 
   ret = gabble_main (argc, argv);

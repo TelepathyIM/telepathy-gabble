@@ -25,7 +25,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <lib/gibber/gibber-resolver.h>
 #include <loudmouth/loudmouth.h>
 #include <libsoup/soup.h>
 
@@ -74,7 +73,6 @@ struct _GabbleJingleFactoryPrivate
 
   /* instances of SESSION_MAP_KEY_FORMAT => GabbleJingleSession. */
   GHashTable *sessions;
-  GibberResolver *resolver;
   SoupSession *soup;
 
   gchar *stun_server;
@@ -140,14 +138,15 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
-  priv->resolver = gibber_resolver_get_resolver ();
   priv->relay_http_port = 80;
 }
 
 typedef struct {
+    GabbleJingleFactory *factory;
     gchar *stun_server;
     guint16 stun_port;
     gboolean fallback;
+    GCancellable *cancellable;
 } PendingStunServer;
 
 static void
@@ -155,50 +154,52 @@ pending_stun_server_free (gpointer p)
 {
   PendingStunServer *data = p;
 
+  if (data->factory != NULL)
+    g_object_remove_weak_pointer (G_OBJECT (data->factory),
+        (gpointer)&data->factory);
+
+  g_object_unref (data->cancellable);
   g_free (data->stun_server);
   g_slice_free (PendingStunServer, p);
 }
 
 static void
-stun_server_resolved_cb (GibberResolver *resolver,
-                         GList *entries,
-                         GError *error,
-                         gpointer user_data,
-                         GObject *object)
+stun_server_resolved_cb (GObject *resolver,
+                         GAsyncResult *result,
+                         gpointer user_data)
 {
-  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (object);
   PendingStunServer *data = user_data;
-  GibberResolverAddrInfo *info;
+  GabbleJingleFactory *self = data->factory;
   GError *e = NULL;
   gchar *stun_server;
+  GList *entries;
 
-  if (error != NULL)
-    {
-      DEBUG ("Failed to resolve STUN server %s:%u: %s",
-          data->stun_server, data->stun_port, error->message);
-      return;
-    }
+  if (self != NULL)
+      g_object_weak_unref (G_OBJECT (self),
+          (GWeakNotify)g_cancellable_cancel, data->cancellable);
+
+  entries = g_resolver_lookup_by_name_finish (
+      G_RESOLVER (resolver), result, &e);
 
   if (entries == NULL)
     {
-      DEBUG ("No results for STUN server %s:%u",
-          data->stun_server, data->stun_port);
-      return;
-    }
-
-  info = entries->data;
-
-  if (!gibber_resolver_sockaddr_to_str ((struct sockaddr *) &(info->sockaddr),
-        info->sockaddr_len, &stun_server, NULL, &e))
-    {
-      DEBUG ("Couldn't convert resolved address of %s to string: %s",
-          data->stun_server, e->message);
+      DEBUG ("Failed to resolve STUN server %s:%u: %s",
+          data->stun_server, data->stun_port, e->message);
       g_error_free (e);
-      return;
+      goto out;
     }
+
+  stun_server = g_inet_address_to_string (entries->data);
+  g_resolver_free_addresses (entries);
 
   DEBUG ("Resolved STUN server %s:%u to %s:%u", data->stun_server,
       data->stun_port, stun_server, data->stun_port);
+
+  if (self == NULL)
+    {
+      g_free (stun_server);
+      goto out;
+    }
 
   if (data->fallback)
     {
@@ -212,6 +213,10 @@ stun_server_resolved_cb (GibberResolver *resolver,
       self->priv->stun_server = stun_server;
       self->priv->stun_port = data->stun_port;
     }
+
+out:
+  pending_stun_server_free (data);
+  g_object_unref (resolver);
 }
 
 static void
@@ -220,21 +225,29 @@ take_stun_server (GabbleJingleFactory *self,
                   guint16 stun_port,
                   gboolean fallback)
 {
-  PendingStunServer *data = g_slice_new0 (PendingStunServer);
+  GResolver *resolver;
+  PendingStunServer *data;
 
   if (stun_server == NULL)
     return;
 
+  resolver = g_resolver_get_default ();
+  data = g_slice_new0 (PendingStunServer);
+
   DEBUG ("Resolving %s STUN server %s:%u",
       fallback ? "fallback" : "primary", stun_server, stun_port);
+  data->factory = self;
+  g_object_add_weak_pointer (G_OBJECT (self), (gpointer*)&data->factory);
   data->stun_server = stun_server;
   data->stun_port = stun_port;
   data->fallback = fallback;
 
-  gibber_resolver_addrinfo (self->priv->resolver, stun_server, NULL,
-      AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0,
-      stun_server_resolved_cb, data, pending_stun_server_free,
-      G_OBJECT (self));
+  data->cancellable = g_cancellable_new ();
+  g_object_weak_ref (G_OBJECT (self), (GWeakNotify)g_cancellable_cancel,
+      data->cancellable);
+
+  g_resolver_lookup_by_name_async (resolver, stun_server,
+      data->cancellable, stun_server_resolved_cb, data);
 }
 
 

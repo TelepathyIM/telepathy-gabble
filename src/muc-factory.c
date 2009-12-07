@@ -642,7 +642,8 @@ process_muc_invite (GabbleMucFactory *fac,
     return FALSE;
 
   /* and an invitation? */
-  invite_node = lm_message_node_get_child (x_node, "invite");
+  invite_node = lm_message_node_get_child_with_namespace (x_node, "invite",
+      NS_MUC_USER);
 
   if (invite_node == NULL)
     return FALSE;
@@ -976,7 +977,9 @@ muc_factory_presence_cb (LmMessageHandler *handler,
               return LM_HANDLER_RESULT_REMOVE_MESSAGE;
             }
 
-          item_node = lm_message_node_get_child (x_node, "item");
+          item_node = lm_message_node_get_child_with_namespace (x_node,
+              "item", NS_MUC_USER);
+
           if (item_node == NULL)
             {
               DEBUG ("node missing 'item' child, ignoring");

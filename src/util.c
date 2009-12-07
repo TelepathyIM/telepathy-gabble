@@ -191,13 +191,14 @@ find_namespace_of_prefix (LmMessageNode *node,
   return node_ns;
 }
 
-const gchar *
-lm_message_node_get_namespace (LmMessageNode *node)
+static const gchar *
+get_node_namespace (LmMessageNode *node,
+    gboolean check_prefix)
 {
   const gchar *node_ns = NULL;
   gchar *x = strchr (node->name, ':');
 
-  if (x != NULL)
+  if (check_prefix && x != NULL)
     {
       gchar *prefix = g_strndup (node->name, (x - node->name));
 
@@ -207,9 +208,22 @@ lm_message_node_get_namespace (LmMessageNode *node)
   else
     {
       node_ns = lm_message_node_get_attribute (node, "xmlns");
+
+      /* Chain up to the parent to get its namespace, as child nodes have the
+       * same namespace as their parent, if not explicitly set otherwise.
+       * However, make sure we don't check the parent's prefix as that doesn't
+       * get inherited by children. */
+      if (node_ns == NULL && node->parent != NULL)
+        node_ns = get_node_namespace (node->parent, FALSE);
     }
 
   return node_ns;
+}
+
+const gchar *
+lm_message_node_get_namespace (LmMessageNode *node)
+{
+  return get_node_namespace (node, TRUE);
 }
 
 const gchar *
@@ -587,35 +601,47 @@ gabble_normalize_room (TpHandleRepoIface *repo,
                        gpointer context,
                        GError **error)
 {
-  char *at = strchr (jid, '@');
-  char *slash = strchr (jid, '/');
+  GabbleConnection *conn;
+  gchar *qualified_name, *resource;
 
-  /* there'd better be an @ somewhere after the first character */
-  if (at == NULL)
+  /* Only look up the canonical room name if we got a GabbleConnection.
+   * This should only happen in the test-handles test. */
+  if (context != NULL)
     {
-      INVALID_HANDLE (error,
-          "invalid room JID %s: does not contain '@'", jid);
+      conn = GABBLE_CONNECTION (context);
+      qualified_name = gabble_connection_get_canonical_room_name (conn, jid);
+
+      if (qualified_name == NULL)
+        {
+          INVALID_HANDLE (error,
+              "requested room handle %s does not specify a server, but we "
+              "have not discovered any local conference servers and no "
+              "fallback was provided", jid);
+          return NULL;
+        }
+    }
+  else
+    {
+      qualified_name = g_strdup (jid);
+    }
+
+  if (!gabble_decode_jid (qualified_name, NULL, NULL, &resource))
+    {
+      INVALID_HANDLE (error, "room JID %s is invalid", qualified_name);
       return NULL;
     }
-  if (at == jid)
+
+  if (resource != NULL)
     {
       INVALID_HANDLE (error,
-          "invalid room JID %s: room name before '@' may not be empty", jid);
+          "invalid room JID %s: contains nickname part after '/' too",
+          qualified_name);
+      g_free (qualified_name);
+      g_free (resource);
       return NULL;
     }
 
-  /* room names can't contain the nick part */
-  if (slash != NULL)
-    {
-      INVALID_HANDLE (error,
-          "invalid room JID %s: contains nickname part after '/' too", jid);
-      return NULL;
-    }
-
-  /* the room and service parts are both case-insensitive, so lowercase
-   * them both; gabble_decode_jid is overkill here
-   */
-  return g_utf8_strdown (jid, -1);
+  return qualified_name;
 }
 
 gchar *

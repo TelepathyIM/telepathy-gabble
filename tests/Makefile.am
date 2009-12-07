@@ -11,7 +11,8 @@ noinst_PROGRAMS = \
 	test-handles \
 	test-jid-decode \
 	test-parse-message \
-	test-presence
+	test-presence \
+	test-ns
 
 LDADD = $(top_builddir)/src/libgabble-convenience.la
 
@@ -42,7 +43,8 @@ check_c_sources = \
 	test-presence.c \
 	test-jid-decode.c \
 	test-handles.c \
-	test-parse-message.c
+	test-parse-message.c \
+	test-ns
 
 include $(top_srcdir)/tools/check-coding-style.mk
 check-local: check-coding-style

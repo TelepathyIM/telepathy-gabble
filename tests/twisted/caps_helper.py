@@ -5,8 +5,10 @@ import dbus
 
 from twisted.words.xish import domish, xpath
 from gabbletest import make_result_iq, make_presence
-from servicetest import EventPattern, assertEquals, assertContains, \
-        assertDoesNotContain
+from servicetest import (
+    EventPattern,
+    assertEquals, assertContains, assertDoesNotContain, assertLength,
+    )
 
 from config import PACKAGE_STRING, ENABLE_ASSUMED_FT_CAP
 import ns
@@ -190,7 +192,7 @@ def receive_presence_and_ask_caps(q, stream, expect_dbus=True):
                 EventPattern('stream-presence'),
                 EventPattern('dbus-signal', signal='ContactCapabilitiesChanged')
             )
-        assert len(event_dbus.args) == 1
+        assertLength(1, event_dbus.args)
         signaled_caps = event_dbus.args[0]
     else:
         presence = q.expect('stream-presence')
@@ -201,11 +203,11 @@ def receive_presence_and_ask_caps(q, stream, expect_dbus=True):
 def disco_caps(q, stream, presence):
     c_nodes = xpath.queryForNodes('/presence/c', presence.stanza)
     assert c_nodes is not None
-    assert len(c_nodes) == 1
+    assertLength(1, c_nodes)
     hash = c_nodes[0].attributes['hash']
     ver = c_nodes[0].attributes['ver']
     node = c_nodes[0].attributes['node']
-    assert hash == 'sha-1'
+    assertEquals('sha-1', hash)
 
     # ask caps
     request = """
@@ -227,7 +229,8 @@ def disco_caps(q, stream, presence):
         features.append(feature['var'])
 
     # Check if the hash matches the announced capabilities
-    assert ver == compute_caps_hash(['client/pc//%s' % PACKAGE_STRING], features, {})
+    assertEquals(compute_caps_hash(['client/pc//%s' % PACKAGE_STRING], features, {}),
+        ver)
 
     return (event, features)
 
@@ -291,11 +294,13 @@ def send_disco_reply(stream, stanza, features, dataforms={}):
 
 if __name__ == '__main__':
     # example from XEP-0115
-    assert compute_caps_hash(['client/pc//Exodus 0.9.1'],
-        ["http://jabber.org/protocol/disco#info",
-        "http://jabber.org/protocol/disco#items",
-        "http://jabber.org/protocol/muc", "http://jabber.org/protocol/caps"],
-        {}) == 'QgayPKawpkPSDYmwT/WM94uAlu0='
+    assertEquals('QgayPKawpkPSDYmwT/WM94uAlu0=',
+        compute_caps_hash(['client/pc//Exodus 0.9.1'],
+            ["http://jabber.org/protocol/disco#info",
+             "http://jabber.org/protocol/disco#items",
+             "http://jabber.org/protocol/muc",
+             "http://jabber.org/protocol/caps"],
+            {}))
 
     # another example from XEP-0115
     identities = [u'client/pc/en/Psi 0.11', u'client/pc/el/Ψ 0.11']

@@ -541,7 +541,7 @@ class JingleTest2:
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
 
-    def generate_contents(self, transports=[]):
+    def generate_contents(self, add_payloads=True, transports=[]):
         assert len(self.audio_names + self.video_names) > 0
 
         jp = self.jp
@@ -554,7 +554,7 @@ class JingleTest2:
             assert jp.can_do_video()
             assert self.audio_names
 
-            if transports == []:
+            if add_payloads:
                 payload = [jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in self.video_codecs ] + \
                     [ jp.PayloadType(name, str(rate), str(id),
@@ -570,7 +570,7 @@ class JingleTest2:
              )
         else:
             def mk_content(name, media, codecs):
-                if transports == []:
+                if add_payloads:
                     payload = [
                         jp.PayloadType(payload_name, str(rate), str(id)) for
                         (payload_name, id, rate) in codecs ]
@@ -663,7 +663,7 @@ class JingleTest2:
     def remote_candidates(self):
         jp = self.jp
 
-        contents = self.generate_contents(self.remote_transports)
+        contents = self.generate_contents(transports=self.remote_transports)
         node = jp.SetIq(self.peer, self.jid,
             [ jp.Jingle(self.sid, self.peer, 'transport-info', contents) ])
         self.stream.send(jp.xml(node))

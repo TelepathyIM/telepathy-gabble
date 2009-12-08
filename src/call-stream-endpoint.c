@@ -455,11 +455,11 @@ call_stream_endpoint_set_selected_candidate (
   if (self->priv->selected_candidate != NULL &&
       self->priv->selected_candidate->n_values >= 4)
     {
-      GValue *value = g_value_array_get_nth (
-          self->priv->selected_candidate, 3);
-      GHashTable *info = g_value_get_boxed (value);
+      GHashTable *info;
       const gchar *username, *password;
 
+      value = g_value_array_get_nth (self->priv->selected_candidate, 3);
+      info = g_value_get_boxed (value);
       username = tp_asv_get_string (info, "Username");
       password = tp_asv_get_string (info, "Password");
 

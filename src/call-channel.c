@@ -94,6 +94,11 @@ enum
   PROP_HARDWARE_STREAMING,
   PROP_CONTENTS,
 
+  PROP_CALL_STATE,
+  PROP_CALL_FLAGS,
+  PROP_CALL_STATE_DETAILS,
+  PROP_CALL_STATE_REASON,
+
   PROP_SESSION,
   LAST_PROPERTY
 };
@@ -293,6 +298,31 @@ gabble_call_channel_get_property (GObject    *object,
       case PROP_HARDWARE_STREAMING:
         g_value_set_boolean (value, FALSE);
         break;
+      case PROP_CALL_STATE:
+        g_value_set_uint (value, 0);
+        break;
+      case PROP_CALL_FLAGS:
+        g_value_set_uint (value, 0);
+        break;
+      case PROP_CALL_STATE_DETAILS:
+        {
+          GHashTable *asv = tp_asv_new (NULL, NULL);
+          g_value_take_boxed (value, asv);
+          break;
+        }
+      case PROP_CALL_STATE_REASON:
+        {
+          GValueArray *arr;
+
+          arr = gabble_value_array_build (3,
+            G_TYPE_UINT, 0,
+            G_TYPE_UINT, 0,
+            G_TYPE_STRING, "",
+            G_TYPE_INVALID);
+
+          g_value_take_boxed (value, arr);
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -368,6 +398,10 @@ gabble_call_channel_class_init (
       { "InitialVideo", "initial-video", NULL },
       { "Contents", "contents", NULL },
       { "HardwareStreaming", "hardware-streaming", NULL },
+      { "CallState", "call-state", NULL },
+      { "CallFlags", "call-flags", NULL },
+      { "CallStateReason",  "call-state-reason", NULL },
+      { "CallStateDetails", "call-state-details", NULL },
       { NULL }
   };
 
@@ -485,6 +519,35 @@ gabble_call_channel_class_init (
       FALSE,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_HARDWARE_STREAMING,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("call-state", "CallState",
+      "The status of the call",
+      GABBLE_CALL_STATE_UNKNOWN,
+      NUM_GABBLE_CALL_STATES,
+      GABBLE_CALL_STATE_UNKNOWN,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CALL_STATE, param_spec);
+
+  param_spec = g_param_spec_uint ("call-flags", "CallFlags",
+      "Flags representing the status of the call",
+      0, G_MAXUINT, 0,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CALL_FLAGS,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("call-state-reason", "CallStateReason",
+      "The reason why the call is in the current state",
+      GABBLE_STRUCT_TYPE_CALL_STATE_REASON,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CALL_STATE_REASON,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("call-state-details", "CallStateDetails",
+      "The reason why the call is in the current state",
+      TP_HASH_TYPE_QUALIFIED_PROPERTY_VALUE_MAP,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CALL_STATE_DETAILS,
       param_spec);
 
   gabble_call_channel_class->dbus_props_class.interfaces = prop_interfaces;

@@ -105,6 +105,11 @@ def run_test(jp, q, bus, conn, stream, incoming):
     properties = chan.GetAll(cs.CHANNEL_TYPE_CALL,
         dbus_interface=dbus.PROPERTIES_IFACE)
 
+    assertEquals (sorted([ "Contents",
+        "CallState", "CallFlags", "CallStateReason", "CallStateDetails",
+        "HardwareStreaming", "InitialAudio", "InitialVideo",
+        "MutableContents" ]), sorted(properties.keys()))
+
     # No Hardware Streaming for you
     assertEquals (False, properties["HardwareStreaming"])
 

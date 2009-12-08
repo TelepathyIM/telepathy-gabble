@@ -386,6 +386,41 @@ call_stream_endpoint_set_selected_candidate (
     DBusGMethodInvocation *context)
 {
   GabbleCallStreamEndpoint *self = GABBLE_CALL_STREAM_ENDPOINT (iface);
+  GValueArray *va = (GValueArray*)candidate;
+  GValue *value;
+  GError *error;
+
+  if (candidate->n_values != 4)
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "A candidate should have 4 values, got %d", candidate->n_values);
+      goto error;
+    }
+
+  value = g_value_array_get_nth (va, 0);
+  if (g_value_get_uint (value) > 2)
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Invalid component id: %d", g_value_get_uint (value));
+      goto error;
+    }
+
+  value = g_value_array_get_nth (va, 1);
+  if (g_value_get_string (value) == NULL ||
+      g_value_get_string (value)[0] == 0)
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Invalid IP address: %s", g_value_get_string (value));
+      goto error;
+    }
+
+  value = g_value_array_get_nth (va, 2);
+  if (g_value_get_uint (value) > 65535)
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Invalid port: %d", g_value_get_uint (value));
+      goto error;
+    }
 
   if (self->priv->selected_candidate != NULL)
     g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE,
@@ -396,6 +431,11 @@ call_stream_endpoint_set_selected_candidate (
 
   gabble_svc_call_stream_endpoint_emit_candidate_selected (self, candidate);
   gabble_svc_call_stream_endpoint_return_from_set_selected_candidate (context);
+  return;
+
+error:
+  dbus_g_method_return_error (context, error);
+  g_error_free (error);
 }
 
 static void

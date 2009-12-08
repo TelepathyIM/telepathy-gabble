@@ -8,6 +8,7 @@ import os
 import hashlib
 import sys
 import random
+import re
 import traceback
 
 import ns
@@ -300,8 +301,11 @@ class GoogleXmlStream(BaseXmlStream):
             self.send(iq)
 
 def make_connection(bus, event_func, params=None):
+    # Gabble accepts a resource in 'account', but the value of 'resource'
+    # overrides it if there is one.
+    account = 'test@localhost/%s' % re.sub(r'.*tests/twisted/', '', sys.argv[0])
     default_params = {
-        'account': 'test@localhost/Resource',
+        'account': account,
         'password': 'pass',
         'resource': 'Resource',
         'server': 'localhost',

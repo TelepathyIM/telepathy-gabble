@@ -356,8 +356,7 @@ gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
         {
           GPtrArray *contact_info;
 
-          /* TODO what now? we have the cached vcard but it cannot be parsed,
-           * skipping */
+          /* we have the cached vcard but it cannot be parsed, skipping */
           if ((contact_info = _parse_vcard (vcard_node, NULL)) == NULL)
             {
               DEBUG ("contact %d vcard is cached but cannot be parsed, "

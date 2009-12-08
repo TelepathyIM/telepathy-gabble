@@ -1,4 +1,4 @@
-
+#!/usr/bin/python
 """
 Strip varying data (PIDs, pointer values) from Gabble logs to make them
 easier to compare.

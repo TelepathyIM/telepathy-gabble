@@ -670,6 +670,14 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 }
 
 static void
+gabble_call_channel_ringing (GabbleSvcChannelTypeCall *iface,
+    DBusGMethodInvocation *context)
+{
+  DEBUG ("Client is ringing");
+  gabble_svc_channel_type_call_return_from_ringing (context);
+}
+
+static void
 gabble_call_channel_accept (GabbleSvcChannelTypeCall *iface,
         DBusGMethodInvocation *context)
 {
@@ -690,6 +698,7 @@ call_iface_init (gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) gabble_svc_channel_type_call_implement_##x (\
     klass, gabble_call_channel_##x)
+  IMPLEMENT(ringing);
   IMPLEMENT(accept);
 #undef IMPLEMENT
 }

@@ -124,6 +124,8 @@ def run_test(jp, q, bus, conn, stream, incoming):
     # Setup codecs
     codecs = jt2.get_call_audio_codecs_dbus()
     if incoming:
+        # Act as if we're ringing
+        chan.Ringing (dbus_interface=cs.CHANNEL_TYPE_CALL)
         # We should have a codec offer
         check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
             content, codecs)

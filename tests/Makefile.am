@@ -44,7 +44,7 @@ check_c_sources = \
 	test-jid-decode.c \
 	test-handles.c \
 	test-parse-message.c \
-	test-ns
+	test-ns.c
 
 include $(top_srcdir)/tools/check-coding-style.mk
 check-local: check-coding-style

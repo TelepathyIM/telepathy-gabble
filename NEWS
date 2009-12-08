@@ -3,6 +3,13 @@ telepathy-gabble 0.9.3 (UNRELEASED)
 
 Highlights:
 
+Enhancements:
+
+• Rather than hard-coding a list of SOCKS5 proxy servers to use if the user's
+  own XMPP server does not provide one, Gabble now falls back to a list of
+  proxy servers returned by discoing the newly-set-up proxies.telepathy.im.
+  (fd.o#25304, cassidy)
+
 Fixes:
 
 • The default resource is now unique to the machine Gabble is running
@@ -30,6 +37,12 @@ Fixes:
 
 • Allow sending chat state to contacts whose capabilities we don't know,
   such as invisible Google Talk users (wjt)
+
+• Only disco SOCKS5 proxies when they're needed for a file transfer or tube.
+  (fd.o#21151, cassidy)
+
+• Do not advertise support for file transfers unless a handler is available.
+  (fd.o#25243, smcv)
 
 telepathy-gabble 0.9.2 (2009-10-27)
 ===================================

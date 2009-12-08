@@ -105,6 +105,9 @@ def run_test(jp, q, bus, conn, stream, incoming):
     properties = chan.GetAll(cs.CHANNEL_TYPE_CALL,
         dbus_interface=dbus.PROPERTIES_IFACE)
 
+    # No Hardware Streaming for you
+    assertEquals (False, properties["HardwareStreaming"])
+
     # Only an audio content
     assertLength (1, properties["Contents"])
 
@@ -120,6 +123,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     # Media type should audio
     assertEquals (cs.CALL_MEDIA_TYPE_AUDIO, content_properties["Type"])
+
 
     # Setup codecs
     codecs = jt2.get_call_audio_codecs_dbus()

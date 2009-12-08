@@ -91,6 +91,7 @@ enum
   PROP_INITIAL_AUDIO,
   PROP_INITIAL_VIDEO,
   PROP_MUTABLE_CONTENTS,
+  PROP_HARDWARE_STREAMING,
   PROP_CONTENTS,
 
   PROP_SESSION,
@@ -289,6 +290,9 @@ gabble_call_channel_get_property (GObject    *object,
           g_ptr_array_free (arr, TRUE);
           break;
         }
+      case PROP_HARDWARE_STREAMING:
+        g_value_set_boolean (value, FALSE);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -363,6 +367,7 @@ gabble_call_channel_class_init (
       { "InitialAudio", "initial-audio", NULL },
       { "InitialVideo", "initial-video", NULL },
       { "Contents", "contents", NULL },
+      { "HardwareStreaming", "hardware-streaming", NULL },
       { NULL }
   };
 
@@ -473,6 +478,13 @@ gabble_call_channel_class_init (
       TP_ARRAY_TYPE_OBJECT_PATH_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONTENTS,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("hardware-streaming", "HardwareStreaming",
+      "True if all the streaming is done by hardware",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_HARDWARE_STREAMING,
       param_spec);
 
   gabble_call_channel_class->dbus_props_class.interfaces = prop_interfaces;

@@ -10,6 +10,7 @@ noinst_PROGRAMS = \
 	test-gabble-idle-weak \
 	test-handles \
 	test-jid-decode \
+	test-mail-notif \
 	test-parse-message \
 	test-presence \
 	test-tp-error-from-wocky
@@ -49,6 +50,7 @@ check_c_sources = \
 	test-jid-decode.c \
 	test-handles.c \
 	test-parse-message.c \
+   test-mail-notif.c \
 	tp-error-from-wocky.c
 
 test_tp_error_from_wocky_SOURCES = tp-error-from-wocky.c

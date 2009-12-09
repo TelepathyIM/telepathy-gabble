@@ -1000,19 +1000,12 @@ vcard_copy (LmMessageNode *parent, LmMessageNode *src)
     return new;
 }
 
-typedef struct {
-  GabbleConnection *connection;
-  LmMessageNode *vcard_node;
-} CheckVCardContext;
-
 static gboolean
-check_vcard_changed (gpointer k, gpointer v, gpointer user_data)
+vcard_node_changed (GabbleConnection *conn,
+                    const gchar *key,
+                    const gchar *value,
+                    LmMessageNode *vcard_node)
 {
-  const gchar *key = k;
-  const gchar *value = v;
-  CheckVCardContext *check_vcard_ctx = user_data;
-  GabbleConnection *conn = check_vcard_ctx->connection;
-  LmMessageNode *vcard_node = check_vcard_ctx->vcard_node;
   LmMessageNode *node;
 
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER &&
@@ -1043,7 +1036,9 @@ manager_patch_vcard (GabbleVCardManager *self,
   LmMessage *msg;
   LmMessageNode *patched_vcard;
   GList *li;
-  CheckVCardContext *check_vcard_ctx;
+  GHashTableIter iter;
+  gpointer key, value;
+  gboolean vcard_changed = FALSE;
 
   /* Bail out if we don't have outstanding edits to make, or if we already
    * have a set request in progress.
@@ -1051,10 +1046,17 @@ manager_patch_vcard (GabbleVCardManager *self,
   if (priv->edits == NULL || priv->edit_pipeline_item != NULL)
       return;
 
-  check_vcard_ctx = g_new (CheckVCardContext, 1);
-  check_vcard_ctx->connection = priv->connection;
-  check_vcard_ctx->vcard_node = vcard_node;
-  if (g_hash_table_find (priv->edits, check_vcard_changed, check_vcard_ctx) == NULL)
+  g_hash_table_iter_init (&iter, priv->edits);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      if (vcard_node_changed (priv->connection, key, value, vcard_node))
+        {
+          vcard_changed = TRUE;
+          break;
+        }
+    }
+
+  if (!vcard_changed)
     {
       DEBUG ("nothing changed, not updating vcard");
       goto out;
@@ -1082,8 +1084,6 @@ manager_patch_vcard (GabbleVCardManager *self,
   lm_message_unref (msg);
 
 out:
-  g_free (check_vcard_ctx);
-
   /* We've applied those, forget about them */
   g_hash_table_destroy (priv->edits);
   priv->edits = NULL;

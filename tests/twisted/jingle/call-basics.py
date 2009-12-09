@@ -14,6 +14,18 @@ from servicetest import (
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
+def check_state (q, chan, state, wait = False):
+    if wait:
+        q.expect('dbus-signal', signal='CallStateChanged',
+            interface = cs.CHANNEL_TYPE_CALL,
+            predicate = lambda e: e.args[0] == state)
+
+    properties = chan.GetAll(cs.CHANNEL_TYPE_CALL,
+            dbus_interface=dbus.PROPERTIES_IFACE)
+
+    assertEquals (state,
+        properties["CallState"])
+
 def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
         content, codecs, offer_path = None):
 
@@ -105,6 +117,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
     properties = chan.GetAll(cs.CHANNEL_TYPE_CALL,
         dbus_interface=dbus.PROPERTIES_IFACE)
 
+    # Check if all the properties are there
     assertEquals (sorted([ "Contents",
         "CallState", "CallFlags", "CallStateReason", "CallStateDetails",
         "HardwareStreaming", "InitialAudio", "InitialVideo",
@@ -129,6 +142,13 @@ def run_test(jp, q, bus, conn, stream, incoming):
     # Media type should audio
     assertEquals (cs.CALL_MEDIA_TYPE_AUDIO, content_properties["Type"])
 
+    # Check if the channel is in the right pending state
+    if not incoming:
+        check_state (q, chan, cs.CALL_STATE_PENDING_INITIATOR)
+        chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
+
+    check_state (q, chan, cs.CALL_STATE_PENDING_RECEIVER,
+        wait = not incoming)
 
     # Setup codecs
     codecs = jt2.get_call_audio_codecs_dbus()
@@ -216,6 +236,12 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
         check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
             content, codecs, path)
+
+    check_state (q, chan, cs.CALL_STATE_ACCEPTED)
+
+    jt2.terminate()
+
+    check_state (q, chan, cs.CALL_STATE_ENDED, wait = True)
 
 if __name__ == '__main__':
     test_all_dialects(lambda jp, q, bus, conn, stream:

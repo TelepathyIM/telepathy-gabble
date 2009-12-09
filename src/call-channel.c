@@ -55,6 +55,9 @@ static void call_channel_setup (GabbleCallChannel *self);
 static void call_channel_add_content (GabbleCallChannel *self,
   GabbleJingleContent *c);
 
+static void call_session_state_changed_cb (GabbleJingleSession *session,
+  GParamSpec *param, GabbleCallChannel *self);
+
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
   G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (G_TYPE_ASYNC_INITABLE, async_initable_iface_init);
@@ -163,6 +166,9 @@ gabble_call_channel_constructed (GObject *obj)
       GList *contents, *l;
       contents = gabble_jingle_session_get_contents (priv->session);
 
+      gabble_signal_connect_weak (priv->session, "notify::state",
+        G_CALLBACK (call_session_state_changed_cb), obj);
+
       for (l = contents; l != NULL; l = g_list_next (l))
         {
           GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (l->data);
@@ -183,6 +189,11 @@ gabble_call_channel_constructed (GObject *obj)
             }
         }
     }
+
+  if (priv->requested)
+    priv->state = GABBLE_CALL_STATE_PENDING_INITIATOR;
+  else
+    priv->state = GABBLE_CALL_STATE_PENDING_RECEIVER;
 
   if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_channel_parent_class)->constructed (obj);
@@ -602,6 +613,41 @@ gabble_call_channel_finalize (GObject *object)
 }
 
 static void
+emit_call_state_changed (GabbleCallChannel *self)
+{
+  GabbleCallChannelPrivate *priv = self->priv;
+
+  gabble_svc_channel_type_call_emit_call_state_changed (self, priv->state,
+    priv->flags, priv->reason, priv->details);
+}
+
+static void
+call_session_state_changed_cb (GabbleJingleSession *session,
+  GParamSpec *param,
+  GabbleCallChannel *self)
+{
+  GabbleCallChannelPrivate *priv = self->priv;
+  JingleSessionState state;
+
+  g_object_get (session, "state", &state, NULL);
+
+  if (state == JS_STATE_ACTIVE && priv->state != GABBLE_CALL_STATE_ACCEPTED)
+    {
+      priv->state = GABBLE_CALL_STATE_ACCEPTED;
+      emit_call_state_changed (self);
+
+      return;
+    }
+
+  if (state == JS_STATE_ENDED && priv->state < GABBLE_CALL_STATE_ENDED)
+    {
+      priv->state = GABBLE_CALL_STATE_ENDED;
+      emit_call_state_changed (self);
+      return;
+    }
+}
+
+static void
 call_channel_add_content (GabbleCallChannel *self,
   GabbleJingleContent *c)
 {
@@ -765,8 +811,23 @@ gabble_call_channel_accept (GabbleSvcChannelTypeCall *iface,
         DBusGMethodInvocation *context)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (iface);
+  GabbleCallChannelPrivate *priv = self->priv;
 
   DEBUG ("Client accepted the call");
+
+  if (priv->requested)
+    {
+      if (priv->state == GABBLE_CALL_STATE_PENDING_INITIATOR)
+        {
+          priv->state = GABBLE_CALL_STATE_PENDING_RECEIVER;
+          emit_call_state_changed (self);
+        }
+    }
+  else if (priv->state < GABBLE_CALL_STATE_ACCEPTED)
+    {
+      priv->state = GABBLE_CALL_STATE_ACCEPTED;
+      emit_call_state_changed (self);
+    }
 
   gabble_jingle_session_accept (self->priv->session);
 
@@ -826,6 +887,9 @@ call_channel_init_async (GAsyncInitable *initable,
       priv->transport_ns = g_strdup (transport);
       priv->session = gabble_jingle_factory_create_session (
         priv->conn->jingle_factory, priv->target, resource, FALSE);
+
+      gabble_signal_connect_weak (priv->session, "notify::state",
+        G_CALLBACK (call_session_state_changed_cb), G_OBJECT (self));
 
       g_object_set (priv->session, "dialect", dialect, NULL);
 

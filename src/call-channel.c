@@ -127,6 +127,11 @@ struct _GabbleCallChannelPrivate
   GList *contents;
 
   gchar *transport_ns;
+
+  GabbleCallState state;
+  guint flags;
+  GHashTable *details;
+  GValueArray *reason;
 };
 
 static void
@@ -190,6 +195,15 @@ gabble_call_channel_init (GabbleCallChannel *self)
       GABBLE_TYPE_CALL_CHANNEL, GabbleCallChannelPrivate);
 
   self->priv = priv;
+
+  priv->reason = gabble_value_array_build (3,
+    G_TYPE_UINT, 0,
+    G_TYPE_UINT, 0,
+    G_TYPE_STRING, "",
+    G_TYPE_INVALID);
+
+  priv->details = tp_asv_new (NULL, NULL);
+
 }
 
 static void gabble_call_channel_dispose (GObject *object);
@@ -299,30 +313,17 @@ gabble_call_channel_get_property (GObject    *object,
         g_value_set_boolean (value, FALSE);
         break;
       case PROP_CALL_STATE:
-        g_value_set_uint (value, 0);
+        g_value_set_uint (value, priv->state);
         break;
       case PROP_CALL_FLAGS:
-        g_value_set_uint (value, 0);
+        g_value_set_uint (value, priv->flags);
         break;
       case PROP_CALL_STATE_DETAILS:
-        {
-          GHashTable *asv = tp_asv_new (NULL, NULL);
-          g_value_take_boxed (value, asv);
-          break;
-        }
+        g_value_set_boxed (value, priv->details);
+        break;
       case PROP_CALL_STATE_REASON:
-        {
-          GValueArray *arr;
-
-          arr = gabble_value_array_build (3,
-            G_TYPE_UINT, 0,
-            G_TYPE_UINT, 0,
-            G_TYPE_STRING, "",
-            G_TYPE_INVALID);
-
-          g_value_take_boxed (value, arr);
-          break;
-        }
+        g_value_set_boxed (value, priv->reason);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -575,6 +576,13 @@ gabble_call_channel_dispose (GObject *object)
   g_list_free (priv->contents);
   priv->contents = NULL;
 
+  if (priv->details != NULL)
+    g_hash_table_unref (priv->details);
+  priv->details = NULL;
+
+  if (priv->reason != NULL)
+    g_value_array_free (priv->reason);
+  priv->reason = NULL;
 
   /* release any references held by the object here */
   if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose)

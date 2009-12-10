@@ -1322,34 +1322,25 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
 }
 
 GabbleVCardManagerEditRequest *
-gabble_vcard_manager_edit (GabbleVCardManager *self,
-                           guint timeout,
-                           GabbleVCardManagerEditCb callback,
-                           gpointer user_data,
-                           GObject *object,
-                           size_t n_pairs,
-                           ...)
+gabble_vcard_manager_edit_one (GabbleVCardManager *self,
+                               guint timeout,
+                               GabbleVCardManagerEditCb callback,
+                               gpointer user_data,
+                               GObject *object,
+                               const gchar *element_name,
+                               const gchar *element_value)
 {
-  va_list ap;
-  size_t i;
   GSList *edits = NULL;
+  GabbleVCardManagerEditInfo *info;
 
-  va_start (ap, n_pairs);
-  for (i = 0; i < n_pairs; i++)
-    {
-      GabbleVCardManagerEditInfo *info = gabble_vcard_manager_edit_info_new (
-          va_arg (ap, const gchar *),
-          va_arg (ap, const gchar *),
-          FALSE, FALSE, NULL);
-
-      if (info->element_value)
-        DEBUG ("%s => value of length %ld starting %.30s", info->element_name,
-            (long) strlen (info->element_value), info->element_value);
-      else
-        DEBUG ("%s => null value", info->element_name);
-      edits = g_slist_append (edits, info);
-    }
-  va_end (ap);
+  info = gabble_vcard_manager_edit_info_new (
+      element_name, element_value, FALSE, FALSE, NULL);
+  if (info->element_value)
+    DEBUG ("%s => value of length %ld starting %.30s", info->element_name,
+        (long) strlen (info->element_value), info->element_value);
+  else
+    DEBUG ("%s => null value", info->element_name);
+  edits = g_slist_append (edits, info);
 
   return gabble_vcard_manager_edit_extended (self, timeout, callback,
       user_data, object, edits, FALSE);

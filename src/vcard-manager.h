@@ -136,13 +136,13 @@ typedef void (*GabbleVCardManagerEditCb)(GabbleVCardManager *self,
                                          GError *error,
                                          gpointer user_data);
 
-GabbleVCardManagerEditRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
-                                                          guint timeout,
-                                                          GabbleVCardManagerEditCb,
-                                                          gpointer user_data,
-                                                          GObject *object,
-                                                          size_t n_pairs,
-                                                          ...);
+GabbleVCardManagerEditRequest *gabble_vcard_manager_edit_one (GabbleVCardManager *,
+                                                              guint timeout,
+                                                              GabbleVCardManagerEditCb,
+                                                              gpointer user_data,
+                                                              GObject *object,
+                                                              const gchar *element_name,
+                                                              const gchar *element_value);
 GabbleVCardManagerEditRequest *gabble_vcard_manager_edit_extended (GabbleVCardManager *,
                                                                    guint timeout,
                                                                    GabbleVCardManagerEditCb,

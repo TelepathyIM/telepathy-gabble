@@ -835,6 +835,29 @@ gabble_call_channel_accept (GabbleSvcChannelTypeCall *iface,
 }
 
 static void
+gabble_call_channel_hangup (GabbleSvcChannelTypeCall *iface,
+  guint reason,
+  const gchar *detailed_reason,
+  const gchar *message,
+  DBusGMethodInvocation *context)
+{
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (iface);
+  GabbleCallChannelPrivate *priv = self->priv;
+  GError *error = NULL;
+
+  if (!gabble_jingle_session_terminate (priv->session,
+      TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+      message, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  gabble_svc_channel_type_call_return_from_hangup (context);
+}
+
+static void
 call_iface_init (gpointer g_iface, gpointer iface_data)
 {
   GabbleSvcChannelTypeCallClass *klass =
@@ -844,6 +867,7 @@ call_iface_init (gpointer g_iface, gpointer iface_data)
     klass, gabble_call_channel_##x)
   IMPLEMENT(ringing);
   IMPLEMENT(accept);
+  IMPLEMENT(hangup);
 #undef IMPLEMENT
 }
 

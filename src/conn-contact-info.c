@@ -173,13 +173,34 @@ _parse_vcard (LmMessageNode *vcard_node,
 
           if (strchr (node_value, ','))
             {
-              gchar **nicknames = g_strsplit (node_value, ",", -1);
-              gchar **p;
+              GPtrArray *nicknames = g_ptr_array_new ();
+              const gchar *start, *p, *prev = NULL;
+              guint j;
 
-              for (p = nicknames; *p != NULL; ++p)
+              start = p = node_value;
+              while (*p != '\0')
+                {
+                  if (*p == ',' && (!prev || *prev != '\\'))
+                    {
+                      if ((p - start) != 0)
+                        g_ptr_array_add (nicknames,
+                            g_strndup (start, (p - start)));
+
+                      start = (p + 1);
+                    }
+
+                  prev = p;
+                  ++p;
+                }
+
+              if (start != p)
+                g_ptr_array_add (nicknames,
+                    g_strndup (start, (p - start + 1)));
+
+              for (j = 0; j < nicknames->len; ++j)
                 {
                   const gchar * const field_values[2] = {
-                      *p,
+                      g_ptr_array_index (nicknames, j),
                       NULL
                   };
 
@@ -187,7 +208,8 @@ _parse_vcard (LmMessageNode *vcard_node,
                      NULL, field_values);
                 }
 
-              g_strfreev (nicknames);
+              g_ptr_array_add (nicknames, NULL);
+              g_strfreev ((gchar **) g_ptr_array_free (nicknames, FALSE));
             }
           else
             {

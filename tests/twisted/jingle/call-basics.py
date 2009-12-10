@@ -239,7 +239,11 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     check_state (q, chan, cs.CALL_STATE_ACCEPTED)
 
-    jt2.terminate()
+    if incoming:
+        jt2.terminate()
+    else:
+        chan.Hangup (0, "", "",
+            dbus_interface=cs.CHANNEL_TYPE_CALL)
 
     check_state (q, chan, cs.CALL_STATE_ENDED, wait = True)
 

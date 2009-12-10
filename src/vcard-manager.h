@@ -159,6 +159,13 @@ gchar *vcard_get_avatar_sha1 (LmMessageNode *vcard);
 void gabble_vcard_manager_set_suspend_reply_timeout (guint timeout);
 void gabble_vcard_manager_set_default_request_timeout (guint timeout);
 
+GabbleVCardManagerEditInfo *gabble_vcard_manager_edit_info_new (const gchar *element_name,
+                                                                const gchar *element_value,
+                                                                gboolean accept_multiple,
+                                                                gboolean to_del,
+                                                                ...);
+void gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info);
+
 G_END_DECLS
 
 #endif

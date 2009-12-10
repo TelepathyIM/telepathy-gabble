@@ -1594,3 +1594,48 @@ gabble_vcard_manager_set_default_request_timeout (guint timeout)
 {
   default_request_timeout = timeout;
 }
+
+GabbleVCardManagerEditInfo *
+gabble_vcard_manager_edit_info_new (const gchar *element_name,
+                                    const gchar *element_value,
+                                    gboolean accept_multiple,
+                                    gboolean to_del,
+                                    ...)
+{
+  GabbleVCardManagerEditInfo *info;
+  va_list ap;
+  const gchar *key;
+  const gchar *value;
+
+  info = g_slice_new (GabbleVCardManagerEditInfo);
+  info->element_name = g_strdup (element_name);
+  info->element_value = g_strdup (element_value);
+  info->accept_multiple = accept_multiple;
+  info->to_del = to_del;
+  info->to_edit = NULL;
+
+  va_start (ap, to_del);
+  while ((key = va_arg (ap, const gchar *))) {
+      value = va_arg (ap, const gchar *);
+
+      if (!info->to_edit)
+        info->to_edit = g_hash_table_new_full (g_str_hash, g_str_equal,
+            g_free, g_free);
+
+      g_hash_table_insert (info->to_edit, g_strdup (key),
+          g_strdup (value));
+  }
+  va_end (ap);
+
+  return info;
+}
+
+void
+gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info)
+{
+  g_free (info->element_name);
+  g_free (info->element_value);
+  if (info->to_edit)
+    g_hash_table_destroy (info->to_edit);
+  g_slice_free (GabbleVCardManagerEditInfo, info);
+}

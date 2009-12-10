@@ -143,13 +143,13 @@ GabbleVCardManagerEditRequest *gabble_vcard_manager_edit_one (GabbleVCardManager
                                                               GObject *object,
                                                               const gchar *element_name,
                                                               const gchar *element_value);
-GabbleVCardManagerEditRequest *gabble_vcard_manager_edit_extended (GabbleVCardManager *,
-                                                                   guint timeout,
-                                                                   GabbleVCardManagerEditCb,
-                                                                   gpointer user_data,
-                                                                   GObject *object,
-                                                                   GSList *edits,
-                                                                   gboolean replace_vcard);
+GabbleVCardManagerEditRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
+                                                          guint timeout,
+                                                          GabbleVCardManagerEditCb,
+                                                          gpointer user_data,
+                                                          GObject *object,
+                                                          GSList *edits,
+                                                          gboolean replace_vcard);
 
 void gabble_vcard_manager_remove_edit_request (GabbleVCardManagerEditRequest *);
 

@@ -1342,18 +1342,18 @@ gabble_vcard_manager_edit_one (GabbleVCardManager *self,
     DEBUG ("%s => null value", info->element_name);
   edits = g_slist_append (edits, info);
 
-  return gabble_vcard_manager_edit_extended (self, timeout, callback,
+  return gabble_vcard_manager_edit (self, timeout, callback,
       user_data, object, edits, FALSE);
 }
 
 GabbleVCardManagerEditRequest *
-gabble_vcard_manager_edit_extended (GabbleVCardManager *self,
-                                    guint timeout,
-                                    GabbleVCardManagerEditCb callback,
-                                    gpointer user_data,
-                                    GObject *object,
-                                    GSList *edits,
-                                    gboolean replace_vcard)
+gabble_vcard_manager_edit (GabbleVCardManager *self,
+                           guint timeout,
+                           GabbleVCardManagerEditCb callback,
+                           gpointer user_data,
+                           GObject *object,
+                           GSList *edits,
+                           gboolean replace_vcard)
 {
   GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) priv->connection;

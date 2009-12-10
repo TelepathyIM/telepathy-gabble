@@ -741,7 +741,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
     }
 
   if (edits)
-    gabble_vcard_manager_edit_extended (self->vcard_manager, 0,
+    gabble_vcard_manager_edit (self->vcard_manager, 0,
         _set_contact_info_cb, context,
         G_OBJECT (self), edits, TRUE);
 }

@@ -37,6 +37,18 @@ def test(q, bus, conn, stream):
     acknowledge_iq(stream, vcard_set_event.stanza)
     q.expect('dbus-return', method='SetAvatar')
 
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+               [(u'fn', [], [u'Bob']),
+                (u'n', [], [u'', u'Bob', u'', u'', u'']),
+                (u'nickname', [], [u'bob'])])
+    sync_dbus(bus, q, conn)
+    acknowledge_iq(stream, vcard_set_event.stanza)
+
+    vcard_set_event = q.expect('stream-iq', iq_type='set',
+        query_ns=ns.VCARD_TEMP, query_name='vCard')
+    acknowledge_iq(stream, vcard_set_event.stanza)
+    q.expect('dbus-return', method='SetContactInfo')
+
     # And then crashes.
     sync_stream(q, stream)
 

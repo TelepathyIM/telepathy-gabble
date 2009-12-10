@@ -538,23 +538,8 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
       dbus_g_method_return_error (context, &tp_error);
     }
   else
-    {
-      GabbleConnection *conn;
-      GError *error = NULL;
-
-      g_object_get (vcard_manager, "connection", &conn, NULL);
-
-      if (_gabble_connection_signal_own_presence (conn, &error))
-        gabble_svc_connection_interface_contact_info_return_from_set_contact_info (
-            context);
-      else
-        {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-        }
-
-      g_object_unref (conn);
-    }
+    gabble_svc_connection_interface_contact_info_return_from_set_contact_info (
+        context);
 }
 
 /**

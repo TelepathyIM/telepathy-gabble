@@ -967,13 +967,10 @@ patch_vcard_foreach (gpointer data, gpointer user_data)
   node = lm_message_node_get_child (vcard_node, info->element_name);
   if (info->to_del)
     {
-      while (node)
+      while (node != NULL)
         {
-          if (node)
-            {
-              lm_message_node_unlink (node, vcard_node);
-              lm_message_node_unref (node);
-            }
+          lm_message_node_unlink (node, vcard_node);
+          lm_message_node_unref (node);
           node = lm_message_node_get_child (vcard_node, info->element_name);
         }
       return;

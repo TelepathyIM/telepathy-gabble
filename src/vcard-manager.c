@@ -1346,6 +1346,12 @@ gabble_vcard_manager_edit_one (GabbleVCardManager *self,
       user_data, object, edits, FALSE);
 }
 
+/* Add a pending request to edit the vCard. When it finishes, call the given
+ * callback. The callback may be NULL.
+ *
+ * The method takes over the ownership of the callers reference to \a edits and
+ * its contents.
+ */
 GabbleVCardManagerEditRequest *
 gabble_vcard_manager_edit (GabbleVCardManager *self,
                            guint timeout,

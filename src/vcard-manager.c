@@ -504,31 +504,6 @@ complete_one_request (GabbleVCardManagerRequest *request,
 }
 
 static void
-delete_edit_info_to_edit_foreach (gpointer key,
-                                  gpointer value,
-                                  gpointer user_data)
-{
-  g_free (key);
-  g_free (value);
-}
-
-static void
-delete_edit_info_foreach (gpointer data, gpointer user_data)
-{
-  GabbleVCardManagerEditInfo *info = data;
-
-  g_free (info->element_name);
-  g_free (info->element_value);
-  if (info->to_edit)
-    {
-      g_hash_table_foreach (info->to_edit, delete_edit_info_to_edit_foreach,
-          NULL);
-      g_hash_table_destroy (info->to_edit);
-    }
-  g_free (info);
-}
-
-static void
 disconnect_entry_foreach (gpointer handle, gpointer value, gpointer unused)
 {
   GError err = { TP_ERRORS, TP_ERROR_DISCONNECTED, "Connection closed" };
@@ -562,7 +537,8 @@ gabble_vcard_manager_dispose (GObject *object)
   DEBUG ("%p", object);
 
   if (priv->edits != NULL) {
-      g_slist_foreach (priv->edits, delete_edit_info_foreach, NULL);
+      g_slist_foreach (priv->edits, (GFunc) gabble_vcard_manager_edit_info_free,
+          NULL);
       g_slist_free (priv->edits);
   }
   priv->edits = NULL;
@@ -686,19 +662,12 @@ status_changed_cb (GObject *object,
       alias_src = _gabble_connection_get_cached_alias (conn,
                                                        base->self_handle,
                                                        &alias);
-      if (alias_src < GABBLE_CONNECTION_ALIAS_FROM_VCARD)
-        {
-          /* this alias isn't reliable enough to want to patch it in */
-          g_free (alias);
-          alias = NULL;
-        }
-      else
-        {
-          GabbleVCardManagerEditInfo *info = g_new0 (GabbleVCardManagerEditInfo, 1);
-          info->element_name = g_strdup ("NICKNAME");
-          info->element_value = alias;
-          priv->edits = g_slist_append (priv->edits, info);
-        }
+      if (alias_src >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+        priv->edits = g_slist_append (priv->edits,
+            gabble_vcard_manager_edit_info_new ("NICKNAME", alias,
+                FALSE, FALSE, NULL));
+
+      g_free (alias);
 
       /* FIXME: we happen to know that synchronous errors can't happen */
       gabble_vcard_manager_request (self, base->self_handle, 0,
@@ -959,7 +928,8 @@ replace_reply_cb (GabbleConnection *conn,
       if (priv->edits != NULL)
         {
           /* All the requests for these edits have just been cancelled. */
-          g_slist_foreach (priv->edits, delete_edit_info_foreach, NULL);
+          g_slist_foreach (priv->edits,
+              (GFunc) gabble_vcard_manager_edit_info_free, NULL);
           g_slist_free (priv->edits);
           priv->edits = NULL;
         }
@@ -1092,7 +1062,8 @@ manager_patch_vcard (GabbleVCardManager *self,
   lm_message_unref (msg);
 
   /* We've applied those, forget about them */
-  g_slist_foreach (priv->edits, delete_edit_info_foreach, NULL);
+  g_slist_foreach (priv->edits, (GFunc) gabble_vcard_manager_edit_info_free,
+      NULL);
   g_slist_free (priv->edits);
   priv->edits = NULL;
   priv->replace_vcard = FALSE;
@@ -1181,7 +1152,8 @@ pipeline_reply_cb (GabbleConnection *conn,
       if (entry->handle == base->self_handle && priv->edits != NULL)
         {
           /* We won't have a chance to apply those, might as well forget them */
-          g_slist_foreach (priv->edits, delete_edit_info_foreach, NULL);
+          g_slist_foreach (priv->edits,
+              (GFunc) gabble_vcard_manager_edit_info_free, NULL);
           g_slist_free (priv->edits);
           priv->edits = NULL;
 
@@ -1365,19 +1337,16 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   va_start (ap, n_pairs);
   for (i = 0; i < n_pairs; i++)
     {
-      GabbleVCardManagerEditInfo *info = g_new0 (GabbleVCardManagerEditInfo, 1);
-      info->element_name = g_strdup (va_arg (ap, const gchar *));
-      info->element_value = g_strdup (va_arg (ap, const gchar *));
+      GabbleVCardManagerEditInfo *info = gabble_vcard_manager_edit_info_new (
+          va_arg (ap, const gchar *),
+          va_arg (ap, const gchar *),
+          FALSE, FALSE, NULL);
 
       if (info->element_value)
-        {
-          DEBUG ("%s => value of length %ld starting %.30s", info->element_name,
-              (long) strlen (info->element_value), info->element_value);
-        }
+        DEBUG ("%s => value of length %ld starting %.30s", info->element_name,
+            (long) strlen (info->element_value), info->element_value);
       else
-        {
-          DEBUG ("%s => null value", info->element_name);
-        }
+        DEBUG ("%s => null value", info->element_name);
       edits = g_slist_append (edits, info);
     }
   va_end (ap);
@@ -1418,7 +1387,8 @@ gabble_vcard_manager_edit_extended (GabbleVCardManager *self,
   if (replace_vcard)
     {
       priv->replace_vcard = TRUE;
-      g_slist_foreach (priv->edits, delete_edit_info_foreach, NULL);
+      g_slist_foreach (priv->edits, (GFunc) gabble_vcard_manager_edit_info_free,
+          NULL);
       g_slist_free (priv->edits);
       priv->edits = edits;
     }

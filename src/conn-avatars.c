@@ -826,10 +826,6 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
-  edit_info = g_new0 (GabbleVCardManagerEditInfo, 1);
-  edit_info->element_name = g_strdup ("PHOTO");
-  edits = g_slist_append (edits, edit_info);
-
   ctx = g_new0 (struct _set_avatar_ctx, 1);
   ctx->conn = self;
   ctx->invocation = context;
@@ -838,14 +834,17 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
       ctx->avatar = g_string_new_len (avatar->data, avatar->len);
       base64 = base64_encode (avatar->len, avatar->data, TRUE);
 
-      edit_info->to_edit = g_hash_table_new (g_str_hash, g_str_equal);
+      edit_info = gabble_vcard_manager_edit_info_new ("PHOTO",
+          NULL, FALSE, FALSE, "TYPE", mime_type, "BINVAL", base64,
+          NULL);
 
-      g_hash_table_insert (edit_info->to_edit, g_strdup ("TYPE"),
-          g_strdup (mime_type));
-      g_hash_table_insert (edit_info->to_edit, g_strdup ("BINVAL"), base64);
+      g_free (base64);
     }
   else
-    edit_info->to_del = TRUE;
+    edit_info = gabble_vcard_manager_edit_info_new ("PHOTO",
+        NULL, FALSE, TRUE, NULL);
+
+  edits = g_slist_append (edits, edit_info);
 
   DEBUG ("called");
 

@@ -355,6 +355,9 @@ gabble_call_stream_endpoint_finalize (GObject *object)
   g_free (priv->object_path);
 
   g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE, priv->selected_candidate);
+  g_boxed_free (dbus_g_type_get_struct ("GValueArray",
+                G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID),
+                self->priv->remote_credentials);
 
   G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->finalize (object);
 }

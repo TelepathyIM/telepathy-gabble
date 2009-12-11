@@ -3,6 +3,8 @@ Test basic outgoing and incoming call handling
 """
 
 import dbus
+from dbus.exceptions import DBusException
+
 from twisted.words.xish import xpath
 
 from gabbletest import exec_test
@@ -136,6 +138,15 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     # Has one stream
     assertLength (1, content_properties["Streams"])
+    assertEquals (cs.CALL_DISPOSITION_INITIAL,
+        content_properties["Disposition"])
+
+    if incoming:
+        assertEquals (remote_handle, content_properties["Creator"])
+    else:
+        assertEquals (self_handle, content_properties["Creator"])
+
+    assertContains ("Name", content_properties.keys())
 
     cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
 
@@ -240,9 +251,16 @@ def run_test(jp, q, bus, conn, stream, incoming):
     check_state (q, chan, cs.CALL_STATE_ACCEPTED)
 
     try:
-        path = chan.AddContent ("Video", cs.CALL_MEDIA_TYPE_AUDIO,
+        path = chan.AddContent ("Webcam", cs.CALL_MEDIA_TYPE_AUDIO,
             dbus_interface=cs.CHANNEL_TYPE_CALL)
-    except Exception, e:
+        content = bus.get_object (conn.bus_name, path)
+        content_properties = content.GetAll (cs.CALL_CONTENT,
+            dbus_interface=dbus.PROPERTIES_IFACE)
+
+        assertEquals (0, content_properties["Disposition"])
+        assertEquals (self_handle, content_properties["Creator"])
+        assertContains ("Webcam", content_properties["Name"])
+    except DBusException, e:
         assert not jp.can_do_video()
         assertEquals (cs.NOT_AVAILABLE, e.get_dbus_name ())
 

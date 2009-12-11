@@ -2028,7 +2028,7 @@ streaminit_reply_cb (GabbleConnection *conn,
   if (!data->object_alive)
     {
       DEBUG ("Object which requested the bytestream was disposed. Ignoring");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      goto END;
     }
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)

@@ -846,8 +846,9 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
 
       g_signal_emit_by_name (self, "connection-error");
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-      return;
     }
+
+  lm_message_unref (iq);
 }
 
 /* Process the received data and returns the number of bytes that have been
@@ -1102,6 +1103,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             DEBUG ("Reject connection to prevent spoofing");
             socks5_close_transport (self);
             socks5_error (self);
+            g_free (domain);
             return string->len;
           }
 

@@ -1909,6 +1909,7 @@ gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
         }
     }
 
+  g_list_free (uris);
   return FALSE;
 }
 

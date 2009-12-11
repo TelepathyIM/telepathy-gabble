@@ -536,7 +536,11 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   if (disposition == NULL)
       disposition = "session";
 
-  priv->disposition = g_strdup (disposition);
+  if (tp_strdiff (disposition, priv->disposition))
+    {
+      g_free (priv->disposition);
+      priv->disposition = g_strdup (disposition);
+    }
 
   DEBUG ("content creating new transport type %s", g_type_name (transport_type));
 

@@ -272,6 +272,8 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
           priv->status_changed_id);
       priv->status_changed_id = 0;
     }
+
+  g_ptr_array_free (tmp, TRUE);
 }
 
 static void
@@ -302,6 +304,7 @@ new_jingle_session_cb (GabbleJingleFactory *jf, GabbleJingleSession *sess, gpoin
           else if (!tp_strdiff (ns, NS_JINGLE_TRANSPORT_RAWUDP))
               g_object_set (chan, "nat-traversal", "none", NULL);
 
+          g_free (ns);
           g_list_free (cs);
         }
 

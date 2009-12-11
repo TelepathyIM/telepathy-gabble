@@ -557,7 +557,7 @@ gabble_connection_set_property (GObject      *object,
     case PROP_RESOURCE:
       if (tp_strdiff (priv->resource, g_value_get_string (value)))
         {
-          gchar *old_resource = g_strdup (priv->resource);
+          gchar *old_resource = priv->resource;
           gchar *new_resource = g_value_dup_string (value);
 
           priv->resource = new_resource;
@@ -1065,6 +1065,7 @@ gabble_connection_finalize (GObject *object)
 
   g_free (priv->https_proxy_server);
   g_free (priv->stun_server);
+  g_free (priv->fallback_stun_server);
   g_free (priv->fallback_conference_server);
   g_strfreev (priv->fallback_socks5_proxies);
 
@@ -2701,6 +2702,9 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 
   tp_svc_connection_interface_capabilities_return_from_advertise_capabilities (
       context, ret);
+
+out:
+  g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
   g_ptr_array_free (ret, TRUE);
 }
 

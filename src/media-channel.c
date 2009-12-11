@@ -895,6 +895,9 @@ gabble_media_channel_dispose (GObject *object)
       g_assert (d->content == NULL);
     }
 
+  g_list_free (priv->stream_creation_datas);
+  priv->stream_creation_datas = NULL;
+
   if (priv->delayed_request_streams != NULL)
     {
       g_ptr_array_foreach (priv->delayed_request_streams,

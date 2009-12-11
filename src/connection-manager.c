@@ -242,6 +242,7 @@ free_params (void *p)
   g_free (params->https_proxy_server);
   g_free (params->fallback_conference_server);
   g_free (params->stun_server);
+  g_free (params->fallback_stun_server);
   g_free (params->alias);
   g_strfreev (params->fallback_socks5_proxies);
 

@@ -52,7 +52,7 @@ static void call_iface_init (gpointer, gpointer);
 static void async_initable_iface_init (GAsyncInitableIface *iface);
 
 static void call_channel_setup (GabbleCallChannel *self);
-static void call_channel_add_content (GabbleCallChannel *self,
+static const char *call_channel_add_content (GabbleCallChannel *self,
   GabbleJingleContent *c);
 
 static void call_session_state_changed_cb (GabbleJingleSession *session,
@@ -647,7 +647,7 @@ call_session_state_changed_cb (GabbleJingleSession *session,
     }
 }
 
-static void
+static const gchar *
 call_channel_add_content (GabbleCallChannel *self,
   GabbleJingleContent *c)
 {
@@ -667,13 +667,16 @@ call_channel_add_content (GabbleCallChannel *self,
   g_free (object_path);
 
   priv->contents = g_list_prepend (priv->contents, content);
+
+  return gabble_call_content_get_object_path (content);
 }
 
-static void
+static const gchar *
 call_channel_create_content (GabbleCallChannel *self,
     const gchar *name,
     JingleMediaType type,
-    GabbleCallContentDisposition disposition)
+    GabbleCallContentDisposition disposition,
+    GError **error)
 {
   GabbleCallChannelPrivate *priv = self->priv;
   const gchar *content_ns;
@@ -683,13 +686,22 @@ call_channel_create_content (GabbleCallChannel *self,
     gabble_jingle_session_get_peer_resource (priv->session),
     type);
 
+  if (content_ns == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "Content type %d not available for this resource", type);
+      return NULL;
+    }
+
   DEBUG ("Creating new jingle content with ns %s : %s",
     content_ns, priv->transport_ns);
 
   c = gabble_jingle_session_add_content (priv->session,
       type, content_ns, priv->transport_ns);
 
-  call_channel_add_content (self, c);
+  g_assert (c != NULL);
+
+  return call_channel_add_content (self, c);
 }
 
 
@@ -920,11 +932,11 @@ call_channel_init_async (GAsyncInitable *initable,
       /* Setup the session and the initial contents */
       if (priv->initial_audio)
         call_channel_create_content (self, "Audio", JINGLE_MEDIA_TYPE_AUDIO,
-          GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+          GABBLE_CALL_CONTENT_DISPOSITION_INITIAL, NULL);
 
       if (priv->initial_video)
         call_channel_create_content (self, "Video", JINGLE_MEDIA_TYPE_VIDEO,
-          GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+          GABBLE_CALL_CONTENT_DISPOSITION_INITIAL, NULL);
     }
 
   call_channel_setup (self);

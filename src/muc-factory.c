@@ -39,6 +39,7 @@
 #include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
+#include "im-channel.h"
 #include "message-util.h"
 #include "muc-channel.h"
 #include "namespaces.h"
@@ -1134,7 +1135,51 @@ handle_conference_channel (GabbleMucFactory *self,
                            TpHandle          handle,
                            GError          **error)
 {
+  GabbleMucFactoryPrivate *priv = self->priv;
+  DBusGConnection *bus = tp_get_bus ();
+  TpIntSet *handles = tp_intset_new ();
+  GPtrArray *initial_channels;
+
   g_print ("!!! handle_conference_channel\n");
+  tp_asv_dump (request_properties);
+
+  /* look at the list of initial channels, build a set of handles to invite */
+  initial_channels = tp_asv_get_boxed (request_properties,
+      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
+      TP_ARRAY_TYPE_OBJECT_PATH_LIST);
+  if (initial_channels != NULL)
+    {
+      guint i;
+
+      for (i = 0; i < initial_channels->len; i++)
+        {
+          const char *object_path = g_ptr_array_index (initial_channels, i);
+          GObject *object;
+          GabbleIMChannel *channel;
+
+          object = dbus_g_connection_lookup_g_object (bus, object_path);
+
+          /* FIXME: work with MUC channels in the future? */
+          if (!GABBLE_IS_IM_CHANNEL (object))
+            {
+              g_warning ("Channel %s is not an ImChannel, ignoring",
+                  object_path);
+              continue;
+            }
+          channel = GABBLE_IM_CHANNEL (object);
+
+          if (gabble_im_channel_local_get_connection (channel) != priv->conn)
+            {
+              g_warning ("Channel %s is from a different Connection, ignoring",
+                  object_path);
+              continue;
+            }
+
+          tp_intset_add (handles, gabble_im_channel_local_get_handle (channel));
+        }
+    }
+
+  tp_intset_destroy (handles);
 
   g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
       "Conference channels not implemented yet");

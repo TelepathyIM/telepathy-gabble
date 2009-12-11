@@ -1127,6 +1127,22 @@ ensure_tubes_channel (GabbleMucFactory *self,
 }
 
 static gboolean
+handle_conference_channel (GabbleMucFactory *self,
+                           gpointer          request_token,
+                           GHashTable       *request_properties,
+                           gboolean          require_new,
+                           TpHandle          handle,
+                           GError          **error)
+{
+  g_print ("!!! handle_conference_channel\n");
+
+  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      "Conference channels not implemented yet");
+
+  return FALSE;
+}
+
+static gboolean
 handle_text_channel_request (GabbleMucFactory *self,
                             gpointer request_token,
                             GHashTable *request_properties,
@@ -1366,15 +1382,25 @@ gabble_muc_factory_request (GabbleMucFactory *self,
                             gboolean require_new)
 {
   GError *error = NULL;
+  TpHandleType handle_type;
   TpHandle handle;
+  gboolean conference;
   const gchar *channel_type;
 
-  if (tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_ROOM)
-    return FALSE;
-
+  handle_type = tp_asv_get_uint32 (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandleType", NULL);
   channel_type = tp_asv_get_string (request_properties,
       TP_IFACE_CHANNEL ".ChannelType");
+
+  /* Conference channels can be anonymous (HandleTypeNone) */
+  conference = (handle_type == TP_HANDLE_TYPE_NONE &&
+      !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
+      g_hash_table_lookup (request_properties,
+        GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels") != NULL);
+
+  /* the channel must either be a room, or a new conference */
+  if (handle_type != TP_HANDLE_TYPE_ROOM && !conference)
+    return FALSE;
 
    if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
        tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
@@ -1385,9 +1411,15 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   /* validity already checked by TpBaseConnection */
   handle = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
-  g_assert (handle != 0);
+  g_assert (conference || handle != 0);
 
-  if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT))
+  if (conference)
+    {
+      if (handle_conference_channel (self, request_token,
+          request_properties, require_new, handle, &error))
+        return TRUE;
+    }
+  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT))
     {
       if (handle_text_channel_request (self, request_token,
           request_properties, require_new, handle, &error))

@@ -875,6 +875,47 @@ gabble_call_channel_hangup (GabbleSvcChannelTypeCall *iface,
 }
 
 static void
+gabble_call_channel_add_content (GabbleSvcChannelTypeCall *iface,
+  const gchar *name,
+  TpMediaStreamType mtype,
+  DBusGMethodInvocation *context)
+{
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (iface);
+  JingleMediaType type = JINGLE_MEDIA_TYPE_NONE;
+  const char *path;
+  GError *error = NULL;
+
+  if (mtype == TP_MEDIA_STREAM_TYPE_AUDIO)
+    type = JINGLE_MEDIA_TYPE_AUDIO;
+  else if (mtype == TP_MEDIA_STREAM_TYPE_VIDEO)
+    type = JINGLE_MEDIA_TYPE_VIDEO;
+  else
+    goto unicorns;
+
+  path = call_channel_create_content (self, name, type,
+    GABBLE_CALL_CONTENT_DISPOSITION_NONE, &error);
+
+  if (path == NULL)
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  gabble_svc_channel_type_call_emit_content_added (self, path, type);
+
+  gabble_svc_channel_type_call_return_from_add_content (context, path);
+  return;
+
+unicorns:
+  {
+    GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Unknown content type" };
+    dbus_g_method_return_error (context, &e);
+  }
+}
+
+
+static void
 call_iface_init (gpointer g_iface, gpointer iface_data)
 {
   GabbleSvcChannelTypeCallClass *klass =
@@ -885,6 +926,7 @@ call_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(ringing);
   IMPLEMENT(accept);
   IMPLEMENT(hangup);
+  IMPLEMENT(add_content);
 #undef IMPLEMENT
 }
 

@@ -101,7 +101,7 @@ def worker(jp, q, bus, conn, stream):
 
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'transport-info', [
-            jp.Content('stream1', 'initiator', 'both', [
+            jp.Content('Audio', 'initiator', 'both', [
                 transport]) ]) ])
     stream.send(jp.xml(node))
 
@@ -128,7 +128,7 @@ def worker(jp, q, bus, conn, stream):
     # This is what pidgin does.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'session-accept', [
-            jp.Content('stream1', 'initiator', 'both', [
+            jp.Content('Audio', 'initiator', 'both', [
                 jp.Description('audio', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),

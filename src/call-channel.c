@@ -713,7 +713,7 @@ call_channel_create_content (GabbleCallChannel *self,
     content_ns, priv->transport_ns);
 
   c = gabble_jingle_session_add_content (priv->session,
-      type, content_ns, priv->transport_ns);
+      type, name, content_ns, priv->transport_ns);
 
   g_assert (c != NULL);
 

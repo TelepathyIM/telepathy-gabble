@@ -190,11 +190,11 @@ class JingleTest:
 
         iq, jingle = self._jingle_stanza('session-accept')
 
-        jingle.addChild(self.create_content_node('stream1', 'audio',
+        jingle.addChild(self.create_content_node('Audio', 'audio',
             self.audio_codecs))
 
         if with_video:
-            jingle.addChild(self.create_content_node('stream2', 'video',
+            jingle.addChild(self.create_content_node('Video', 'video',
                 self.video_codecs))
 
         self.stream.send(iq.toXml())

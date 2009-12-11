@@ -254,7 +254,7 @@ def test(jp, q, bus, conn, stream):
     node = jp.SetIq(jt.peer, jt.jid, [
         jp.Jingle(jt.sid, jt.jid, 'session-info', [
             ('mute', ns.JINGLE_RTP_INFO_1,
-             {'name': 'stream1', 'creator': 'initiator'}, []) ]) ])
+             {'name': 'Audio', 'creator': 'initiator'}, []) ]) ])
     stream.send(jp.xml(node))
 
     forbidden = [

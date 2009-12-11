@@ -174,6 +174,11 @@ gabble_call_channel_constructed (GObject *obj)
           GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (l->data);
           JingleMediaType mtype;
 
+          if (priv->transport_ns == NULL)
+            g_object_get (content, "transport-ns",
+              &priv->transport_ns,
+              NULL);
+
           call_channel_add_content (self, content);
           g_object_get (content, "media-type", &mtype, NULL);
           switch (mtype)

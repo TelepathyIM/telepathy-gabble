@@ -239,6 +239,13 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     check_state (q, chan, cs.CALL_STATE_ACCEPTED)
 
+    try:
+        path = chan.AddContent ("Video", cs.CALL_MEDIA_TYPE_AUDIO,
+            dbus_interface=cs.CHANNEL_TYPE_CALL)
+    except Exception, e:
+        assert not jp.can_do_video()
+        assertEquals (cs.NOT_AVAILABLE, e.get_dbus_name ())
+
     if incoming:
         jt2.terminate()
     else:

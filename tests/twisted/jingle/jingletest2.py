@@ -237,17 +237,16 @@ class GtalkProtocol03(JingleProtocol):
         return p
 
     # Gtalk has only one content, and <content> node is implicit
-    def Content(self, name, creator, senders, children):
+    def Content(self, name, creator, senders, description=None, transport=None):
         # Normally <content> has <description> and <transport>, but we only
         # use <description> unless <transport> has candidates.
-        assert len(children) == 2
-        assert children[1] != None
-        assert children[1][3] != None
+        assert description != None
+        assert transport != None
 
         # if <transport> has children return those children (candidates)
-        if len(children[1][3]) > 0:
-            return children[1][3][0]
-        return children[0]
+        if len(transport[3]) > 0:
+            return transport[3][0]
+        return description
 
     def Description(self, type, children):
         if type == 'audio':
@@ -326,8 +325,9 @@ class GtalkProtocol04(JingleProtocol):
             { 'type': action, 'initiator': initiator, 'id': sid }, children)
 
     # hacky: parent Jingle node should just pick up our children
-    def Content(self, name, creator, senders, children):
-        return ('dummy-content', None, {}, children)
+    def Content(self, name, creator, senders, description=None, transport=None):
+        return ('dummy-content', None, {},
+            [node for node in [description, transport] if node != None])
 
     def Description(self, type, children):
         return ('description', ns.GOOGLE_SESSION_PHONE, {}, children)
@@ -358,11 +358,12 @@ class JingleProtocol015(JingleProtocol):
             { 'action': action, 'initiator': initiator, 'sid': sid }, children)
 
     # Note: senders weren't mandatory in this dialect
-    def Content(self, name, creator, senders, children):
+    def Content(self, name, creator, senders, description=None, transport=None):
         attribs = { 'name': name, 'creator': creator }
         if senders:
             attribs['senders'] = senders
-        return ('content', None, attribs, children)
+        return ('content', None, attribs,
+            [node for node in [description, transport] if node != None])
 
     def Description(self, type, children):
         if type == 'audio':
@@ -414,11 +415,12 @@ class JingleProtocol031(JingleProtocol):
         return ('jingle', ns.JINGLE,
             { 'action': action, 'initiator': initiator, 'sid': sid }, children)
 
-    def Content(self, name, creator, senders, children):
+    def Content(self, name, creator, senders, description=None, transport=None):
         if not senders:
             senders = 'both'
         return ('content', None,
-            { 'name': name, 'creator': creator, 'senders': senders }, children)
+            { 'name': name, 'creator': creator, 'senders': senders },
+            [node for node in [description, transport] if node != None])
 
     def Description(self, type, children):
         return ('description', ns.JINGLE_RTP, { 'media': type }, children)
@@ -564,9 +566,9 @@ class JingleTest2:
                 payload = []
 
             contents.append(
-                jp.Content('stream0', 'initiator', 'both', [
+                jp.Content('stream0', 'initiator', 'both',
                     jp.Description('video', payload),
-                    jp.TransportGoogleP2P(transports) ])
+                    jp.TransportGoogleP2P(transports))
              )
         else:
             def mk_content(name, media, codecs):
@@ -578,9 +580,9 @@ class JingleTest2:
                     payload = []
 
                 contents.append(
-                    jp.Content(name, 'initiator', 'both', [
+                    jp.Content(name, 'initiator', 'both',
                         jp.Description(media, payload),
-                    jp.TransportGoogleP2P(transports) ])
+                    jp.TransportGoogleP2P(transports))
                 )
 
             for name in self.audio_names:
@@ -637,11 +639,11 @@ class JingleTest2:
         # Remote end finally accepts
         node = jp.SetIq(self.peer, self.jid, [
             jp.Jingle(self.sid, self.peer, 'content-accept', [
-                jp.Content(c['name'], c['creator'], c['senders'], [
+                jp.Content(c['name'], c['creator'], c['senders'],
                     jp.Description(media, [
                         jp.PayloadType(name, str(rate), str(id)) for
                             (name, id, rate) in codecs ]),
-                jp.TransportGoogleP2P() ]) ]) ])
+                jp.TransportGoogleP2P()) ]) ])
         self.stream.send(jp.xml(node))
 
     def terminate(self, reason=None, text=""):

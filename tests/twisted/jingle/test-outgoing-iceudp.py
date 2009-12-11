@@ -101,8 +101,8 @@ def worker(jp, q, bus, conn, stream):
 
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'transport-info', [
-            jp.Content('Audio', 'initiator', 'both', [
-                transport]) ]) ])
+            jp.Content('Audio', 'initiator', 'both',
+                transport = transport) ]) ])
     stream.send(jp.xml(node))
 
     candidate_e, result_e =  q.expect_many(
@@ -128,11 +128,11 @@ def worker(jp, q, bus, conn, stream):
     # This is what pidgin does.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'session-accept', [
-            jp.Content('Audio', 'initiator', 'both', [
+            jp.Content('Audio', 'initiator', 'both',
                 jp.Description('audio', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),
-                transport ]) ]) ])
+                transport) ]) ])
     stream.send(jp.xml(node))
 
     candidate_e, result_e = q.expect_many(

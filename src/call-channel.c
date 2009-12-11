@@ -53,7 +53,7 @@ static void async_initable_iface_init (GAsyncInitableIface *iface);
 
 static void call_channel_setup (GabbleCallChannel *self);
 static const char *call_channel_add_content (GabbleCallChannel *self,
-  GabbleJingleContent *c);
+  GabbleJingleContent *c, GabbleCallContentDisposition disposition);
 
 static void call_session_state_changed_cb (GabbleJingleSession *session,
   GParamSpec *param, GabbleCallChannel *self);
@@ -179,7 +179,9 @@ gabble_call_channel_constructed (GObject *obj)
               &priv->transport_ns,
               NULL);
 
-          call_channel_add_content (self, content);
+          call_channel_add_content (self, content,
+            GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+
           g_object_get (content, "media-type", &mtype, NULL);
           switch (mtype)
             {
@@ -654,19 +656,28 @@ call_session_state_changed_cb (GabbleJingleSession *session,
 
 static const gchar *
 call_channel_add_content (GabbleCallChannel *self,
-  GabbleJingleContent *c)
+  GabbleJingleContent *c,
+  GabbleCallContentDisposition disposition)
 {
   GabbleCallChannelPrivate *priv = self->priv;
   gchar *object_path;
   GabbleCallContent *content;
+  TpHandle creator;
 
   object_path = g_strdup_printf ("%s/Content%p", priv->object_path, c);
+
+  if (gabble_jingle_content_is_created_by_us (c))
+    creator = ((TpBaseConnection *) priv->conn)->self_handle;
+  else
+    creator = priv->session->peer;
 
   content = g_object_new (GABBLE_TYPE_CALL_CONTENT,
     "connection", priv->conn,
     "object-path", object_path,
     "jingle-content", c,
     "target-handle", priv->target,
+    "disposition", disposition,
+    "creator", creator,
     NULL);
 
   g_free (object_path);
@@ -706,7 +717,7 @@ call_channel_create_content (GabbleCallChannel *self,
 
   g_assert (c != NULL);
 
-  return call_channel_add_content (self, c);
+  return call_channel_add_content (self, c, disposition);
 }
 
 

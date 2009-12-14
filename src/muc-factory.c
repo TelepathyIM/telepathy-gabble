@@ -1132,21 +1132,41 @@ handle_conference_channel (GabbleMucFactory *self,
                            gpointer          request_token,
                            GHashTable       *request_properties,
                            gboolean          require_new,
-                           TpHandle          handle,
                            GError          **error)
 {
   GabbleMucFactoryPrivate *priv = self->priv;
   DBusGConnection *bus = tp_get_bus ();
-  TpIntSet *handles = tp_intset_new ();
+  TpHandleSet *handles;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
+      TP_BASE_CONNECTION (priv->conn), TP_HANDLE_TYPE_CONTACT);
+
   GPtrArray *initial_channels;
+  GArray *initial_handles;
+  char **initial_ids;
 
   g_print ("!!! handle_conference_channel\n");
   tp_asv_dump (request_properties);
 
-  /* look at the list of initial channels, build a set of handles to invite */
   initial_channels = tp_asv_get_boxed (request_properties,
       GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
       TP_ARRAY_TYPE_OBJECT_PATH_LIST);
+  initial_handles = tp_asv_get_boxed (request_properties,
+      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles",
+      DBUS_TYPE_G_UINT_ARRAY);
+  initial_ids = tp_asv_get_boxed (request_properties,
+      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
+      G_TYPE_STRV);
+
+  if (initial_handles != NULL && initial_ids != NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "InitialInviteeHandles and InitialInviteeIDs must not both be given");
+      return TRUE;
+    }
+
+  handles = tp_handle_set_new (contact_handles);
+
+  /* look at the list of initial channels, build a set of handles to invite */
   if (initial_channels != NULL)
     {
       guint i;
@@ -1175,11 +1195,70 @@ handle_conference_channel (GabbleMucFactory *self,
               continue;
             }
 
-          tp_intset_add (handles, gabble_im_channel_local_get_handle (channel));
+          tp_handle_set_add (handles,
+              gabble_im_channel_local_get_handle (channel));
         }
     }
 
-  tp_intset_destroy (handles);
+  /* look at the list of initial handles, add these to the handles set */
+  if (initial_handles != NULL)
+    {
+      guint i;
+
+      for (i = 0; i < initial_handles->len; i++)
+        {
+          TpHandle handle = g_array_index (initial_handles, TpHandle, i);
+
+          if (tp_handle_inspect (contact_handles, handle) == NULL)
+            {
+              g_warning ("Bad Handle %u, ignoring", handle);
+              continue;
+            }
+
+          tp_handle_set_add (handles, handle);
+        }
+    }
+
+  /* look at the list of initial ids, add these to the handles set */
+  if (initial_ids != NULL)
+    {
+      char **ptr;
+
+      for (ptr = initial_ids; *ptr != NULL; ptr++)
+        {
+          char *id = *ptr;
+          TpHandle handle = tp_handle_ensure (contact_handles, id, NULL, NULL);
+
+          if (handle == 0)
+            {
+              g_warning ("Bad ID '%s', ignoring", id);
+              continue;
+            }
+
+          tp_handle_set_add (handles, handle);
+          tp_handle_unref (contact_handles, handle);
+        }
+    }
+
+  /* FIXME: include Self Handle ? */
+
+    {
+      GArray *array = tp_handle_set_to_array (handles);
+      guint i;
+
+      g_print ("Initial invitees:\n");
+      for (i = 0; i < array->len; i++)
+        {
+          TpHandle handle = g_array_index (array, TpHandle, i);
+          const char *id = tp_handle_inspect (contact_handles, handle);
+
+          g_print (" - %u: %s\n", handle, id);
+        }
+
+      g_array_free (array, TRUE);
+    }
+
+  tp_handle_set_destroy (handles);
 
   g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
       "Conference channels not implemented yet");
@@ -1461,7 +1540,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   if (conference)
     {
       if (handle_conference_channel (self, request_token,
-          request_properties, require_new, handle, &error))
+          request_properties, require_new, &error))
         return TRUE;
     }
   else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT))

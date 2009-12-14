@@ -401,7 +401,7 @@ call_stream_update_sender_states (GabbleCallStream *self)
   JingleContentState state;
   GabbleSendingState local_state = 0;
   GabbleSendingState remote_state = 0;
-  gboolean updated = FALSE;
+  GHashTable *updates = g_hash_table_new (g_direct_hash, g_direct_equal);
 
   g_object_get (priv->content, "state", &state, NULL);
   created_by_us = gabble_jingle_content_is_created_by_us (priv->content);
@@ -422,21 +422,33 @@ call_stream_update_sender_states (GabbleCallStream *self)
         remote_state = GABBLE_SENDING_STATE_SENDING;
     }
 
-  updated = call_stream_sender_update_state (self,
-        TP_BASE_CONNECTION (priv->conn)->self_handle, local_state);
+  if (call_stream_sender_update_state (self,
+        TP_BASE_CONNECTION (priv->conn)->self_handle, local_state))
+    {
+      g_hash_table_insert (updates,
+        GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
+        GUINT_TO_POINTER (local_state));
+    }
 
-  updated = call_stream_sender_update_state (self,
-        priv->content->session->peer, remote_state) || updated;
+  if (call_stream_sender_update_state (self,
+        priv->content->session->peer, remote_state))
+    {
+      g_hash_table_insert (updates,
+        GUINT_TO_POINTER (priv->content->session->peer),
+        GUINT_TO_POINTER (remote_state));
+    }
 
-  if (updated)
+  if (g_hash_table_size (updates) > 0)
     {
       GArray *empty = g_array_new (FALSE, TRUE, sizeof (TpHandle));
 
       gabble_svc_call_stream_emit_senders_changed (self,
-        priv->senders,
+        updates,
         empty);
       g_array_unref (empty);
     }
+
+  g_hash_table_unref (updates);
 }
 
 

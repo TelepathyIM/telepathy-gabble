@@ -15,6 +15,7 @@ from servicetest import (
     )
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
+import ns
 
 def check_state (q, chan, state, wait = False):
     if wait:
@@ -120,10 +121,14 @@ def run_test(jp, q, bus, conn, stream, incoming):
         dbus_interface=dbus.PROPERTIES_IFACE)
 
     # Check if all the properties are there
-    assertEquals (sorted([ "Contents",
+    assertEquals (sorted([ "Contents", "CallMembers",
         "CallState", "CallFlags", "CallStateReason", "CallStateDetails",
         "HardwareStreaming", "InitialAudio", "InitialVideo",
         "MutableContents" ]), sorted(properties.keys()))
+
+    # Remote member is the target
+    assertEquals ([remote_handle], properties["CallMembers"].keys())
+    assertEquals (0, properties["CallMembers"][remote_handle])
 
     # No Hardware Streaming for you
     assertEquals (False, properties["HardwareStreaming"])
@@ -255,6 +260,16 @@ def run_test(jp, q, bus, conn, stream, incoming):
             predicate=jp.action_predicate('session-initiate'))
 
         jt2.parse_session_initiate(session_initiate.query)
+
+        if jp.is_modern_jingle():
+            # The other person's client starts ringing, and tells us so!
+            node = jp.SetIq(jt2.peer, jt2.jid, [
+                jp.Jingle(jt2.sid, jt2.jid, 'session-info', [
+                    ('ringing', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+            stream.send(jp.xml(node))
+
+            q.expect ('dbus-signal', signal="CallMembersChanged",
+                args = [{ remote_handle: cs.CALL_MEMBER_FLAG_RINGING }, []])
 
         jt2.accept()
 

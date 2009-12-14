@@ -102,6 +102,8 @@ enum
   PROP_CALL_STATE_DETAILS,
   PROP_CALL_STATE_REASON,
 
+  PROP_CALL_MEMBERS,
+
   PROP_SESSION,
   LAST_PROPERTY
 };
@@ -134,6 +136,8 @@ struct _GabbleCallChannelPrivate
   guint flags;
   GHashTable *details;
   GValueArray *reason;
+
+  GHashTable *members;
 };
 
 static void
@@ -154,6 +158,10 @@ gabble_call_channel_constructed (GObject *obj)
       priv->creator = priv->session->peer;
   else
       priv->creator = conn->self_handle;
+
+  g_hash_table_insert (priv->members,
+    GUINT_TO_POINTER (priv->target),
+    GUINT_TO_POINTER (0));
 
   /* automatically add creator to channel, but also ref them again (because
    * priv->creator is the InitiatorHandle) */
@@ -221,6 +229,7 @@ gabble_call_channel_init (GabbleCallChannel *self)
 
   priv->details = tp_asv_new (NULL, NULL);
 
+  priv->members = g_hash_table_new (g_direct_hash, g_direct_equal);
 }
 
 static void gabble_call_channel_dispose (GObject *object);
@@ -342,6 +351,9 @@ gabble_call_channel_get_property (GObject    *object,
       case PROP_CALL_STATE_REASON:
         g_value_set_boxed (value, priv->reason);
         break;
+      case PROP_CALL_MEMBERS:
+        g_value_set_boxed (value, priv->members);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -412,6 +424,7 @@ gabble_call_channel_class_init (
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl call_props[] = {
+      { "CallMembers", "call-members", NULL },
       { "MutableContents", "mutable-contents", NULL },
       { "InitialAudio", "initial-audio", NULL },
       { "InitialVideo", "initial-video", NULL },
@@ -569,6 +582,13 @@ gabble_call_channel_class_init (
   g_object_class_install_property (object_class, PROP_CALL_STATE_DETAILS,
       param_spec);
 
+  param_spec = g_param_spec_boxed ("call-members", "CallMembers",
+      "The members",
+      GABBLE_HASH_TYPE_CALL_MEMBER_MAP,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CALL_MEMBERS,
+      param_spec);
+
   gabble_call_channel_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleCallChannelClass, dbus_props_class));
@@ -615,6 +635,8 @@ gabble_call_channel_finalize (GObject *object)
   /* free any data held directly by the object here */
   g_free (self->priv->object_path);
   g_free (self->priv->transport_ns);
+
+  g_hash_table_unref (self->priv->members);
 
   G_OBJECT_CLASS (gabble_call_channel_parent_class)->finalize (object);
 }
@@ -941,6 +963,37 @@ call_iface_init (gpointer g_iface, gpointer iface_data)
 #undef IMPLEMENT
 }
 
+
+static void
+remote_state_changed_cb (GabbleJingleSession *session, gpointer user_data)
+{
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (user_data);
+  GabbleCallChannelPrivate *priv = self->priv;
+  GabbleCallMemberFlags oldflags, newflags = 0;
+  GArray *empty;
+
+  if (gabble_jingle_session_get_remote_ringing (priv->session))
+    newflags |= GABBLE_CALL_MEMBER_FLAG_RINGING;
+
+  if (gabble_jingle_session_get_remote_hold (priv->session))
+    newflags |= GABBLE_CALL_MEMBER_FLAG_HELD;
+
+  oldflags = GPOINTER_TO_UINT (g_hash_table_lookup (priv->members,
+    GUINT_TO_POINTER (priv->target)));
+
+  if (oldflags == newflags)
+    return;
+
+  g_hash_table_insert (priv->members, GUINT_TO_POINTER (priv->target),
+    GUINT_TO_POINTER (newflags));
+
+  empty = g_array_new (TRUE, TRUE, sizeof (TpHandle));
+  gabble_svc_channel_type_call_emit_call_members_changed (self,
+    priv->members, empty);
+  g_array_unref (empty);
+}
+
+
 static void
 call_channel_init_async (GAsyncInitable *initable,
   int priority,
@@ -998,6 +1051,9 @@ call_channel_init_async (GAsyncInitable *initable,
     }
 
   call_channel_setup (self);
+
+  gabble_signal_connect_weak (priv->session, "remote-state-changed",
+    G_CALLBACK (remote_state_changed_cb), G_OBJECT (self));
 
 out:
   g_simple_async_result_complete_in_idle (result);

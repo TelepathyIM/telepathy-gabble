@@ -1118,3 +1118,40 @@ gabble_jingle_content_receiving (GabbleJingleContent *self)
 {
   return jingle_content_has_direction (self, FALSE);
 }
+
+void
+gabble_jingle_content_set_sending (GabbleJingleContent *self,
+  gboolean send)
+{
+  GabbleJingleContentPrivate *priv = self->priv;
+  JingleContentSenders senders;
+  gboolean initiated_by_us;
+
+  if (send == jingle_content_has_direction (self, TRUE))
+    return;
+
+  g_object_get (self->session, "local-initiator",
+    &initiated_by_us, NULL);
+
+  if (send)
+    {
+      if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
+        senders = (initiated_by_us ? JINGLE_CONTENT_SENDERS_INITIATOR :
+          JINGLE_CONTENT_SENDERS_RESPONDER);
+      else
+        senders = JINGLE_CONTENT_SENDERS_BOTH;
+    }
+  else
+    {
+      if (priv->senders == JINGLE_CONTENT_SENDERS_BOTH)
+        senders = (initiated_by_us ? JINGLE_CONTENT_SENDERS_RESPONDER :
+          JINGLE_CONTENT_SENDERS_INITIATOR);
+      else
+        senders = JINGLE_CONTENT_SENDERS_NONE;
+    }
+
+  if (senders == JINGLE_CONTENT_SENDERS_NONE)
+    gabble_jingle_content_remove (self, TRUE);
+  else
+    gabble_jingle_content_change_direction (self, senders);
+}

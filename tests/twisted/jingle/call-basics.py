@@ -275,6 +275,33 @@ def run_test(jp, q, bus, conn, stream, incoming):
                     remote_handle: cs.CALL_SENDING_STATE_SENDING },
                   stream_props["Senders"])
 
+    # Turn sending off and on again
+    cstream.SetSending (False,
+        dbus_interface = cs.CALL_STREAM)
+
+    q.expect ('dbus-signal', signal='SendersChanged',
+        interface = cs.CALL_STREAM,
+        args = [{ self_handle: cs.CALL_SENDING_STATE_NONE }, []])
+
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+    assertEquals ({ self_handle : cs.CALL_SENDING_STATE_NONE,
+                    remote_handle: cs.CALL_SENDING_STATE_SENDING },
+                  stream_props["Senders"])
+
+    cstream.SetSending (True,
+        dbus_interface = cs.CALL_STREAM)
+
+    q.expect ('dbus-signal', signal='SendersChanged',
+        interface = cs.CALL_STREAM,
+        args = [{ self_handle: cs.CALL_SENDING_STATE_SENDING }, []])
+
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+    assertEquals ({ self_handle : cs.CALL_SENDING_STATE_SENDING,
+                    remote_handle: cs.CALL_SENDING_STATE_SENDING },
+                  stream_props["Senders"])
+
     try:
         path = chan.AddContent ("Webcam", cs.CALL_MEDIA_TYPE_AUDIO,
             dbus_interface=cs.CHANNEL_TYPE_CALL)

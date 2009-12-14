@@ -1177,7 +1177,8 @@ handle_conference_channel (GabbleMucFactory *self,
         {
           const char *object_path = g_ptr_array_index (initial_channels, i);
           GObject *object;
-          GabbleIMChannel *channel;
+          TpHandle handle;
+          GabbleConnection *connection;
 
           object = dbus_g_connection_lookup_g_object (bus, object_path);
 
@@ -1188,17 +1189,21 @@ handle_conference_channel (GabbleMucFactory *self,
                   object_path);
               continue;
             }
-          channel = GABBLE_IM_CHANNEL (object);
 
-          if (gabble_im_channel_local_get_connection (channel) != priv->conn)
+          g_object_get (object,
+              "connection", &connection,
+              "handle", &handle,
+              NULL);
+          g_object_unref (connection); /* drop the ref immediately */
+
+          if (connection != priv->conn)
             {
               g_warning ("Channel %s is from a different Connection, ignoring",
                   object_path);
               continue;
             }
 
-          tp_handle_set_add (handles,
-              gabble_im_channel_local_get_handle (channel));
+          tp_handle_set_add (handles, handle);
         }
     }
 

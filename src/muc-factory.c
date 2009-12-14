@@ -1137,15 +1137,17 @@ handle_conference_channel (GabbleMucFactory *self,
   GabbleMucFactoryPrivate *priv = self->priv;
   DBusGConnection *bus = tp_get_bus ();
   TpHandleSet *handles;
+  TpHandle room;
+  GabbleMucChannel *text_chan;
+
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       TP_BASE_CONNECTION (priv->conn), TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
+      TP_BASE_CONNECTION (priv->conn), TP_HANDLE_TYPE_ROOM);
 
   GPtrArray *initial_channels;
   GArray *initial_handles;
   char **initial_ids;
-
-  g_print ("!!! handle_conference_channel\n");
-  tp_asv_dump (request_properties);
 
   initial_channels = tp_asv_get_boxed (request_properties,
       GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
@@ -1161,7 +1163,7 @@ handle_conference_channel (GabbleMucFactory *self,
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "InitialInviteeHandles and InitialInviteeIDs must not both be given");
-      return TRUE;
+      return FALSE;
     }
 
   handles = tp_handle_set_new (contact_handles);
@@ -1240,6 +1242,52 @@ handle_conference_channel (GabbleMucFactory *self,
         }
     }
 
+  /* FIXME: do we require google server PMUC jid?
+   * There's no super obvious way to tell.. you can't invite GMail users to
+   * a non-Google MUC (it just doesn't work), and if your own account is on a
+   * Google server, you may as well use a Google PMUC. If one of your initial
+   * contacts is using GMail, you should also use a Google PMUC */
+  if (TRUE)
+    {
+      char *uuid, *id;
+
+      /* N.B. gabble_generate_id() requires libuuid to generate valid UUIDs
+       * for Google PMUCs */
+      uuid = gabble_generate_id ();
+      id = g_strdup_printf ("private-chat-%s@groupchat.google.com", uuid);
+
+      room = tp_handle_ensure (room_handles, id, NULL, error);
+      if (room == 0)
+        {
+          return FALSE;
+        }
+
+      g_free (uuid);
+      g_free (id);
+    }
+
+  if (ensure_muc_channel (self, priv, room, &text_chan, TRUE))
+    {
+      if (require_new)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "That channel has already been created (or requested)");
+          return FALSE;
+        }
+      else
+        {
+          tp_channel_manager_emit_request_already_satisfied (self,
+              request_token, TP_EXPORTABLE_CHANNEL (text_chan));
+        }
+    }
+  else
+    {
+      gabble_muc_factory_associate_request (self, text_chan,
+          request_token);
+    }
+
+  tp_handle_unref (room_handles, room);
+
   /* FIXME: include Self Handle ? */
 
     {
@@ -1260,10 +1308,7 @@ handle_conference_channel (GabbleMucFactory *self,
 
   tp_handle_set_destroy (handles);
 
-  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-      "Conference channels not implemented yet");
-
-  return FALSE;
+  return TRUE;
 }
 
 static gboolean

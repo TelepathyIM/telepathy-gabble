@@ -3020,6 +3020,7 @@ gboolean
 gabble_muc_channel_send_invite (GabbleMucChannel *self,
                                 const gchar *jid,
                                 const gchar *message,
+                                gboolean continue_,
                                 GError **error)
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
@@ -3038,9 +3039,14 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
 
   lm_message_node_set_attribute (invite_node, "to", jid);
 
-  if (*message != '\0')
+  if (message != NULL && *message != '\0')
     {
       lm_message_node_add_child (invite_node, "reason", message);
+    }
+
+  if (continue_)
+    {
+      lm_message_node_add_child (invite_node, "continue", NULL);
     }
 
   DEBUG ("sending MUC invitation for room %s to contact %s with reason "
@@ -3132,7 +3138,7 @@ gabble_muc_channel_add_member (GObject *obj,
 
   jid = tp_handle_inspect (TP_GROUP_MIXIN (self)->handle_repo, handle);
 
-  return gabble_muc_channel_send_invite (self, jid, message, error);
+  return gabble_muc_channel_send_invite (self, jid, message, FALSE, error);
 }
 
 static LmHandlerResult

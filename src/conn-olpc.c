@@ -1859,7 +1859,7 @@ invite_gadget (GabbleConnection *conn,
 
   DEBUG ("Activity becomes public. Invite gadget to it");
   return gabble_muc_channel_send_invite (muc, conn->olpc_gadget_activity,
-      "Share activity", NULL);
+      "Share activity", FALSE, NULL);
 }
 
 static void

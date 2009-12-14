@@ -1137,8 +1137,11 @@ handle_conference_channel (GabbleMucFactory *self,
   GabbleMucFactoryPrivate *priv = self->priv;
   DBusGConnection *bus = tp_get_bus ();
   TpHandleSet *handles;
+  TpIntSet *continue_handles;
   TpHandle room;
   GabbleMucChannel *text_chan;
+  guint i;
+  gboolean v = TRUE;
 
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       TP_BASE_CONNECTION (priv->conn), TP_HANDLE_TYPE_CONTACT);
@@ -1146,8 +1149,10 @@ handle_conference_channel (GabbleMucFactory *self,
       TP_BASE_CONNECTION (priv->conn), TP_HANDLE_TYPE_ROOM);
 
   GPtrArray *initial_channels;
-  GArray *initial_handles;
-  char **initial_ids;
+  GHashTable *final_channels; /* used as a set: (char *) -> NULL */
+  GArray *initial_handles, *final_handles;
+  char **initial_ids, **final_ids;
+  const char *invite_msg;
 
   initial_channels = tp_asv_get_boxed (request_properties,
       GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
@@ -1158,6 +1163,8 @@ handle_conference_channel (GabbleMucFactory *self,
   initial_ids = tp_asv_get_boxed (request_properties,
       GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
       G_TYPE_STRV);
+  invite_msg = tp_asv_get_string (request_properties,
+      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage");
 
   if (initial_handles != NULL && initial_ids != NULL)
     {
@@ -1167,12 +1174,12 @@ handle_conference_channel (GabbleMucFactory *self,
     }
 
   handles = tp_handle_set_new (contact_handles);
+  continue_handles = tp_intset_new ();
+  final_channels = g_hash_table_new (g_str_hash, g_str_equal);
 
   /* look at the list of initial channels, build a set of handles to invite */
   if (initial_channels != NULL)
     {
-      guint i;
-
       for (i = 0; i < initial_channels->len; i++)
         {
           const char *object_path = g_ptr_array_index (initial_channels, i);
@@ -1182,7 +1189,6 @@ handle_conference_channel (GabbleMucFactory *self,
 
           object = dbus_g_connection_lookup_g_object (bus, object_path);
 
-          /* FIXME: work with MUC channels in the future? */
           if (!GABBLE_IS_IM_CHANNEL (object))
             {
               g_warning ("Channel %s is not an ImChannel, ignoring",
@@ -1204,14 +1210,14 @@ handle_conference_channel (GabbleMucFactory *self,
             }
 
           tp_handle_set_add (handles, handle);
+          tp_intset_add (continue_handles, handle);
+          g_hash_table_insert (final_channels, (char *) object_path, NULL);
         }
     }
 
   /* look at the list of initial handles, add these to the handles set */
   if (initial_handles != NULL)
     {
-      guint i;
-
       for (i = 0; i < initial_handles->len; i++)
         {
           TpHandle handle = g_array_index (initial_handles, TpHandle, i);
@@ -1247,6 +1253,19 @@ handle_conference_channel (GabbleMucFactory *self,
         }
     }
 
+  /* build new InitialInviteeHandles and InitialInviteeIDs */
+  /* FIXME: include Self Handle to comply with spec ? */
+  final_handles = tp_handle_set_to_array (handles);
+  final_ids = g_new0 (char *, final_handles->len + 1);
+
+  for (i = 0; i < final_handles->len; i++)
+    {
+      TpHandle handle = g_array_index (final_handles, TpHandle, i);
+      const char *id = tp_handle_inspect (contact_handles, handle);
+
+      final_ids[i] = (char *) id;
+    }
+
   /* FIXME: do we require google server PMUC jid?
    * There's no super obvious way to tell.. you can't invite GMail users to
    * a non-Google MUC (it just doesn't work), and if your own account is on a
@@ -1262,13 +1281,15 @@ handle_conference_channel (GabbleMucFactory *self,
       id = g_strdup_printf ("private-chat-%s@groupchat.google.com", uuid);
 
       room = tp_handle_ensure (room_handles, id, NULL, error);
-      if (room == 0)
-        {
-          return FALSE;
-        }
 
       g_free (uuid);
       g_free (id);
+
+      if (room == 0)
+        {
+          v = FALSE;
+          goto out;
+        }
     }
 
   /* FIXME: MUC channel needs to expose Conference interface */
@@ -1278,7 +1299,8 @@ handle_conference_channel (GabbleMucFactory *self,
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "That channel has already been created (or requested)");
-          return FALSE;
+          v = FALSE;
+          goto out;
         }
       else
         {
@@ -1294,41 +1316,41 @@ handle_conference_channel (GabbleMucFactory *self,
 
   tp_handle_unref (room_handles, room);
 
-  /* FIXME: include Self Handle to comply with spec ? */
-
+  /* invite all of the invitees to this new MUC */
+  /* members included in an InitialChannel will want the <continue/> node set */
+  for (i = 0; i < final_handles->len; i++)
     {
-      GArray *array = tp_handle_set_to_array (handles);
-      const char *msg = tp_asv_get_string (request_properties,
-          GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage");
-      guint i;
+      TpHandle handle = g_array_index (final_handles, TpHandle, i);
+      char *id = final_ids[i];
 
-      if (msg == NULL)
+      GError *error2 = NULL;
+      gboolean continue_;
+
+      continue_ = tp_intset_is_member (continue_handles, handle);
+
+      /* N.B. contrary to what Google's own spec implies, an invite message
+       * will not be handled correctly by the GMail client. We're going to
+       * have to strip it out of invites to GMail clients */
+      gabble_muc_channel_send_invite (text_chan, id, invite_msg,
+          continue_, &error2);
+      if (error2 != NULL)
         {
-          /* FIXME: translate? */
-          msg = "Please join our conversation";
+          g_warning ("%s", error2->message);
+          g_error_free (error2);
+          continue;
         }
-
-      for (i = 0; i < array->len; i++)
-        {
-          TpHandle handle = g_array_index (array, TpHandle, i);
-          const char *id = tp_handle_inspect (contact_handles, handle);
-          GError *error2 = NULL;
-
-          gabble_muc_channel_send_invite (text_chan, id, msg, &error2);
-          if (error2 != NULL)
-            {
-              g_warning ("%s", error2->message);
-              g_error_free (error2);
-              continue;
-            }
-        }
-
-      g_array_free (array, TRUE);
     }
 
-  tp_handle_set_destroy (handles);
+out:
 
-  return TRUE;
+  g_hash_table_destroy (final_channels);
+  g_array_free (final_handles, TRUE);
+  g_strfreev (final_ids);
+
+  tp_handle_set_destroy (handles);
+  tp_intset_destroy (continue_handles);
+
+  return v;
 }
 
 static gboolean

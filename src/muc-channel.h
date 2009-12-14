@@ -105,7 +105,7 @@ gboolean gabble_muc_channel_send_presence (GabbleMucChannel *chan,
     GError **error);
 
 gboolean gabble_muc_channel_send_invite (GabbleMucChannel *self,
-    const gchar *jid, const gchar *message, GError **error);
+    const gchar *jid, const gchar *message, gboolean continue_, GError **error);
 
 GabbleTubesChannel *
 gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,

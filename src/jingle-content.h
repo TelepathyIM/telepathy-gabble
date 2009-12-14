@@ -138,5 +138,8 @@ const gchar *gabble_jingle_content_get_transport_ns (GabbleJingleContent *self);
 
 void gabble_jingle_content_maybe_send_description (GabbleJingleContent *self);
 
+gboolean gabble_jingle_content_sending (GabbleJingleContent *self);
+gboolean gabble_jingle_content_receiving (GabbleJingleContent *self);
+
 #endif /* __JINGLE_CONTENT_H__ */
 

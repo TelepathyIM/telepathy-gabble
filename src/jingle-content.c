@@ -1081,3 +1081,40 @@ gabble_jingle_content_get_transport_type (GabbleJingleContent *c)
 {
   return gabble_jingle_transport_iface_get_transport_type (c->priv->transport);
 }
+
+static gboolean
+jingle_content_has_direction (GabbleJingleContent *self,
+  gboolean sending)
+{
+  GabbleJingleContentPrivate *priv = self->priv;
+  gboolean initiated_by_us;
+
+  g_object_get (self->session, "local-initiator",
+    &initiated_by_us, NULL);
+
+  switch (priv->senders)
+    {
+      case JINGLE_CONTENT_SENDERS_BOTH:
+        return TRUE;
+      case JINGLE_CONTENT_SENDERS_NONE:
+        return FALSE;
+      case JINGLE_CONTENT_SENDERS_INITIATOR:
+        return sending ? initiated_by_us : !initiated_by_us;
+      case JINGLE_CONTENT_SENDERS_RESPONDER:
+        return sending ? !initiated_by_us : initiated_by_us;
+    }
+
+  return FALSE;
+}
+
+gboolean
+gabble_jingle_content_sending (GabbleJingleContent *self)
+{
+  return jingle_content_has_direction (self, TRUE);
+}
+
+gboolean
+gabble_jingle_content_receiving (GabbleJingleContent *self)
+{
+  return jingle_content_has_direction (self, FALSE);
+}

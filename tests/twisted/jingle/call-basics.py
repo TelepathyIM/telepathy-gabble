@@ -150,6 +150,24 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
 
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+
+    assertContains (self_handle, stream_props["Senders"].keys())
+    assertContains (remote_handle, stream_props["Senders"].keys())
+
+    if incoming:
+        assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
+            stream_props["Senders"][self_handle])
+        assertEquals (cs.CALL_SENDING_STATE_SENDING,
+            stream_props["Senders"][remote_handle])
+    else:
+        assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
+            stream_props["Senders"][remote_handle])
+        assertEquals (cs.CALL_SENDING_STATE_SENDING,
+            stream_props["Senders"][self_handle])
+
+
     # Media type should audio
     assertEquals (cs.CALL_MEDIA_TYPE_AUDIO, content_properties["Type"])
 

@@ -34,6 +34,7 @@
 #include "call-content-codecoffer.h"
 #include "call-stream.h"
 #include "jingle-content.h"
+#include "jingle-session.h"
 #include "jingle-media-rtp.h"
 #include "connection.h"
 #include "util.h"
@@ -283,6 +284,7 @@ gabble_call_content_constructed (GObject *obj)
       path = g_strdup_printf ("%s/Stream%p", priv->object_path, priv->content);
       stream = g_object_new (GABBLE_TYPE_CALL_STREAM,
         "object-path", path,
+        "connection", priv->conn,
         "jingle-content", priv->content,
         NULL);
       g_free (path);

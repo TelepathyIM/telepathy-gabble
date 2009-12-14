@@ -56,6 +56,7 @@ enum
 {
   PROP_OBJECT_PATH = 1,
   PROP_JINGLE_CONTENT,
+  PROP_CONNECTION,
 
   /* Media interface properties */
   PROP_LOCAL_CANDIDATES,
@@ -83,6 +84,7 @@ struct _GabbleCallStreamPrivate
   gboolean dispose_has_run;
 
   gchar *object_path;
+  GabbleConnection *conn;
   GabbleJingleContent *content;
   GList *endpoints;
   GPtrArray *relay_info;
@@ -113,6 +115,9 @@ gabble_call_stream_get_property (GObject    *object,
 
   switch (property_id)
     {
+      case PROP_CONNECTION:
+        g_value_set_object (value, priv->conn);
+        break;
       case PROP_OBJECT_PATH:
         g_value_set_string (value, priv->object_path);
         break;
@@ -244,6 +249,10 @@ gabble_call_stream_set_property (GObject *object,
 
   switch (property_id)
     {
+      case PROP_CONNECTION:
+        priv->conn = g_value_get_object (value);
+        g_assert (priv->conn != NULL);
+        break;
       case PROP_OBJECT_PATH:
         g_free (priv->object_path);
         priv->object_path = g_value_dup_string (value);
@@ -379,6 +388,12 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
 
+  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
+      "Gabble connection object that owns this call content",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
   param_spec = g_param_spec_object ("jingle-content", "Jingle Content",
       "The Jingle Content related to this content object",
       GABBLE_TYPE_JINGLE_CONTENT,
@@ -450,6 +465,11 @@ gabble_call_stream_dispose (GObject *object)
     g_object_unref (priv->content);
 
   priv->content = NULL;
+
+  if (priv->conn != NULL)
+    g_object_unref (priv->conn);
+
+  priv->conn = NULL;
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->dispose (object);

@@ -336,21 +336,13 @@ gabble_call_stream_constructed (GObject *obj)
 
   if (transport == JINGLE_TRANSPORT_GOOGLE_P2P)
     {
-      GabbleConnection *connection;
-
-      g_object_get (priv->content,
-          "connection", &connection,
-          NULL);
-
       DEBUG ("Attempting to create Google relay session");
 
       /* See if our server is Google, and if it is, ask them for a relay.
        * We ask for enough relays for 2 components (RTP and RTCP) since we
        * don't yet know whether there will be RTCP. */
       gabble_jingle_factory_create_google_relay_session (
-          connection->jingle_factory, 2, google_relay_session_cb, obj);
-
-      g_object_unref (connection);
+          priv->conn->jingle_factory, 2, google_relay_session_cb, obj);
     }
   else
     {

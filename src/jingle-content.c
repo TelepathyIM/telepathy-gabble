@@ -962,13 +962,17 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
   LmMessageNode *sess_node;
   JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
 
+  if (senders == priv->senders)
+    return TRUE;
+
+  priv->senders = senders;
+  g_object_notify (G_OBJECT (c), "senders");
+
   if (JINGLE_IS_GOOGLE_DIALECT (dialect))
     {
       DEBUG ("ignoring direction change request for GTalk stream");
       return FALSE;
     }
-
-  priv->senders = senders;
 
   msg = gabble_jingle_session_new_message (c->session,
       JINGLE_ACTION_CONTENT_MODIFY, &sess_node);

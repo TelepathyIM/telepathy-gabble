@@ -806,27 +806,6 @@ gabble_im_channel_get_handle (TpSvcChannel *iface,
       priv->handle);
 }
 
-TpHandle
-gabble_im_channel_local_get_handle (GabbleIMChannel *self)
-{
-  GabbleIMChannelPrivate *priv;
-
-  g_assert (GABBLE_IS_IM_CHANNEL (self)); /* ?? */
-  priv = self->priv;
-
-  return priv->handle;
-}
-
-GabbleConnection *
-gabble_im_channel_local_get_connection (GabbleIMChannel *self)
-{
-  GabbleIMChannelPrivate *priv;
-
-  g_assert (GABBLE_IS_IM_CHANNEL (self)); /* ?? */
-  priv = self->priv;
-
-  return priv->conn;
-}
 
 /**
  * gabble_im_channel_get_interfaces

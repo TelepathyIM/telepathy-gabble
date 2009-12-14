@@ -27,8 +27,6 @@
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/message-mixin.h>
 
-#include "connection.h"
-
 G_BEGIN_DECLS
 
 typedef struct _GabbleIMChannel GabbleIMChannel;
@@ -79,9 +77,6 @@ void _gabble_im_channel_receive (GabbleIMChannel *chan,
     gint state);
 void _gabble_im_channel_state_receive (GabbleIMChannel *chan,
     TpChannelChatState state);
-
-TpHandle gabble_im_channel_local_get_handle (GabbleIMChannel *chan);
-GabbleConnection *gabble_im_channel_local_get_connection (GabbleIMChannel *self);
 
 G_END_DECLS
 

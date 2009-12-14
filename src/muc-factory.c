@@ -1266,6 +1266,7 @@ handle_conference_channel (GabbleMucFactory *self,
       g_free (id);
     }
 
+  /* FIXME: MUC channel needs to expose Conference interface */
   if (ensure_muc_channel (self, priv, room, &text_chan, TRUE))
     {
       if (require_new)
@@ -1288,19 +1289,33 @@ handle_conference_channel (GabbleMucFactory *self,
 
   tp_handle_unref (room_handles, room);
 
-  /* FIXME: include Self Handle ? */
+  /* FIXME: include Self Handle to comply with spec ? */
 
     {
       GArray *array = tp_handle_set_to_array (handles);
+      const char *msg = tp_asv_get_string (request_properties,
+          GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage");
       guint i;
 
-      g_print ("Initial invitees:\n");
+      if (msg == NULL)
+        {
+          /* FIXME: translate? */
+          msg = "Please join our conversation";
+        }
+
       for (i = 0; i < array->len; i++)
         {
           TpHandle handle = g_array_index (array, TpHandle, i);
           const char *id = tp_handle_inspect (contact_handles, handle);
+          GError *error2 = NULL;
 
-          g_print (" - %u: %s\n", handle, id);
+          gabble_muc_channel_send_invite (text_chan, id, msg, &error2);
+          if (error2 != NULL)
+            {
+              g_warning ("%s", error2->message);
+              g_error_free (error2);
+              continue;
+            }
         }
 
       g_array_free (array, TRUE);

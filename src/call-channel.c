@@ -121,7 +121,6 @@ struct _GabbleCallChannelPrivate
 
   gboolean initial_audio;
   gboolean initial_video;
-  gboolean mutable_contents;
   gboolean registered;
   gboolean requested;
 
@@ -309,7 +308,8 @@ gabble_call_channel_get_property (GObject    *object,
         g_value_set_boolean (value, priv->initial_video);
         break;
       case PROP_MUTABLE_CONTENTS:
-        g_value_set_boolean (value, priv->mutable_contents);
+        g_value_set_boolean (value,
+           gabble_jingle_session_can_modify_contents (priv->session));
         break;
       case PROP_CONTENTS:
         {

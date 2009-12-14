@@ -307,7 +307,7 @@ gabble_call_stream_constructed (GObject *obj)
   DBusGConnection *bus;
   GabbleCallStreamEndpoint *endpoint;
   gchar *path;
-  guint transport;
+  JingleTransportType transport;
 
   priv = GABBLE_CALL_STREAM (obj)->priv;
 
@@ -322,9 +322,9 @@ gabble_call_stream_constructed (GObject *obj)
   priv->endpoints = g_list_append (priv->endpoints, endpoint);
   g_free (path);
 
-  g_object_get (obj, "transport", &transport, NULL);
+  transport = gabble_jingle_content_get_transport_type (priv->content);
 
-  if (transport == GABBLE_STREAM_TRANSPORT_TYPE_GTALK_P2P)
+  if (transport == JINGLE_TRANSPORT_GOOGLE_P2P)
     {
       GabbleConnection *connection;
 

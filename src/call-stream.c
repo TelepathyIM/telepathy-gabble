@@ -301,6 +301,16 @@ google_relay_session_cb (GPtrArray *relays,
 }
 
 static void
+session_state_changed_cb (GabbleJingleContent *content,
+    GParamSpec *spec,
+    gpointer user_data)
+{
+  GabbleCallStream *self = GABBLE_CALL_STREAM (user_data);
+
+  call_stream_update_sender_states (self);
+}
+
+static void
 gabble_call_stream_constructed (GObject *obj)
 {
   GabbleCallStreamPrivate *priv;
@@ -348,6 +358,8 @@ gabble_call_stream_constructed (GObject *obj)
     }
 
   call_stream_update_sender_states (GABBLE_CALL_STREAM (obj));
+  gabble_signal_connect_weak (priv->content, "notify::state",
+    G_CALLBACK (session_state_changed_cb), obj);
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);

@@ -928,6 +928,11 @@ gabble_muc_channel_get_property (GObject    *object,
               TP_IFACE_CHANNEL, "InitiatorID",
               TP_IFACE_CHANNEL, "Requested",
               TP_IFACE_CHANNEL, "Interfaces",
+              GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialChannels",
+              GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeHandles",
+              GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeIDs",
+              GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InvitationMessage",
+              GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "SupportsNonMerges",
               NULL));
       break;
     case PROP_SELF_JID:

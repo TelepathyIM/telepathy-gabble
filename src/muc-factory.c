@@ -418,18 +418,36 @@ new_muc_channel (GabbleMucFactory *fac,
                  gboolean invited,
                  TpHandle inviter,
                  const gchar *message,
-                 gboolean requested)
+                 gboolean requested,
+                 GHashTable *initial_channels,
+                 GArray *initial_handles,
+                 char **initial_ids)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   GabbleMucChannel *chan;
   char *object_path;
+  GPtrArray *initial_channels_array = NULL;
 
   g_assert (g_hash_table_lookup (priv->text_channels,
         GUINT_TO_POINTER (handle)) == NULL);
 
   object_path = g_strdup_printf ("%s/MucChannel%u",
       conn->object_path, handle);
+
+  if (initial_channels != NULL)
+    {
+      GHashTableIter iter;
+      gpointer key;
+
+      initial_channels_array = g_ptr_array_sized_new (
+          g_hash_table_size (initial_channels));
+      g_hash_table_iter_init (&iter, initial_channels);
+      while (g_hash_table_iter_next (&iter, &key, NULL))
+        {
+          g_ptr_array_add (initial_channels_array, key);
+        }
+    }
 
   DEBUG ("creating new chan, object path %s", object_path);
 
@@ -441,6 +459,9 @@ new_muc_channel (GabbleMucFactory *fac,
        "initiator-handle", invited ? inviter : conn->self_handle,
        "invitation-message", message,
        "requested", requested,
+       "initial-channels", initial_channels_array,
+       "initial-invitee-handles", initial_handles,
+       "initial-invitee-ids", initial_ids,
        NULL);
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
@@ -449,6 +470,10 @@ new_muc_channel (GabbleMucFactory *fac,
   g_hash_table_insert (priv->text_channels, GUINT_TO_POINTER (handle), chan);
 
   g_free (object_path);
+  if (initial_channels_array != NULL)
+    {
+      g_ptr_array_free (initial_channels_array, TRUE);
+    }
 
   if (_gabble_muc_channel_is_ready (chan))
     muc_ready_cb (chan, fac);
@@ -486,7 +511,8 @@ do_invite (GabbleMucFactory *fac,
   if (g_hash_table_lookup (priv->text_channels,
         GUINT_TO_POINTER (room_handle)) == NULL)
     {
-      new_muc_channel (fac, room_handle, TRUE, inviter_handle, reason, FALSE);
+      new_muc_channel (fac, room_handle, TRUE, inviter_handle, reason, FALSE,
+          NULL, NULL, NULL);
     }
   else
     {
@@ -978,7 +1004,10 @@ ensure_muc_channel (GabbleMucFactory *fac,
                     GabbleMucFactoryPrivate *priv,
                     TpHandle handle,
                     GabbleMucChannel **ret,
-                    gboolean requested)
+                    gboolean requested,
+                    GHashTable *initial_channels,
+                    GArray *initial_handles,
+                    char **initial_ids)
 {
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
 
@@ -987,7 +1016,7 @@ ensure_muc_channel (GabbleMucFactory *fac,
   if (*ret == NULL)
     {
       *ret = new_muc_channel (fac, handle, FALSE, base_conn->self_handle, NULL,
-          requested);
+          requested, initial_channels, initial_handles, initial_ids);
       return FALSE;
     }
 
@@ -1116,7 +1145,8 @@ ensure_tubes_channel (GabbleMucFactory *self,
   TpHandle initiator = base_conn->self_handle;
   gboolean result;
 
-  result = ensure_muc_channel (self, priv, handle, &text_chan, FALSE);
+  result = ensure_muc_channel (self, priv, handle, &text_chan, FALSE,
+      NULL, NULL, NULL);
 
   /* this refs the tube channel object */
   *tubes_chan = gabble_muc_channel_open_tube (text_chan, initiator, requested);
@@ -1293,7 +1323,8 @@ handle_conference_channel (GabbleMucFactory *self,
     }
 
   /* FIXME: MUC channel needs to expose Conference interface */
-  if (ensure_muc_channel (self, priv, room, &text_chan, TRUE))
+  if (ensure_muc_channel (self, priv, room, &text_chan, TRUE,
+        final_channels, final_handles, final_ids))
     {
       if (require_new)
         {
@@ -1369,7 +1400,8 @@ handle_text_channel_request (GabbleMucFactory *self,
           error))
     return FALSE;
 
-  if (ensure_muc_channel (self, priv, handle, &text_chan, TRUE))
+  if (ensure_muc_channel (self, priv, handle, &text_chan, TRUE,
+        NULL, NULL, NULL))
     {
       if (require_new)
         {

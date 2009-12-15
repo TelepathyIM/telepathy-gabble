@@ -37,6 +37,8 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 
+#include <extensions/extensions.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 #include "connection.h"
 #include "conn-aliasing.h"
@@ -79,6 +81,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init)
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
     )
 
 static void gabble_muc_channel_send (GObject *obj, TpMessage *message,
@@ -90,6 +93,7 @@ static const gchar *gabble_muc_channel_interfaces[] = {
     TP_IFACE_PROPERTIES_INTERFACE,
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
     TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
+    GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE,
     NULL
 };
 
@@ -128,6 +132,10 @@ enum
   PROP_SELF_JID,
   PROP_WOCKY_MUC,
   PROP_TUBE,
+  PROP_INITIAL_CHANNELS,
+  PROP_INITIAL_INVITEE_HANDLES,
+  PROP_INITIAL_INVITEE_IDS,
+  PROP_SUPPORTS_NON_MERGES,
   LAST_PROPERTY
 };
 
@@ -257,6 +265,10 @@ struct _GabbleMucChannelPrivate
 
   WockyMuc *wmuc;
   GabbleTubesChannel *tube;
+
+  GPtrArray *initial_channels;
+  GArray *initial_handles;
+  char **initial_ids;
 };
 
 #define GABBLE_MUC_CHANNEL_GET_PRIVATE(o) \
@@ -923,6 +935,17 @@ gabble_muc_channel_get_property (GObject    *object,
       break;
     case PROP_TUBE:
       g_value_set_object (value, priv->tube);
+    case PROP_INITIAL_CHANNELS:
+      g_value_set_boxed (value, priv->initial_channels);
+      break;
+    case PROP_INITIAL_INVITEE_HANDLES:
+      g_value_set_boxed (value, priv->initial_handles);
+      break;
+    case PROP_INITIAL_INVITEE_IDS:
+      g_value_set_boxed (value, priv->initial_ids);
+      break;
+    case PROP_SUPPORTS_NON_MERGES:
+      g_value_set_boolean (value, TRUE); /* always supports non-merges */
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -982,6 +1005,15 @@ gabble_muc_channel_set_property (GObject     *object,
     case PROP_REQUESTED:
       priv->requested = g_value_get_boolean (value);
       break;
+    case PROP_INITIAL_CHANNELS:
+      priv->initial_channels = g_value_dup_boxed (value);
+      break;
+    case PROP_INITIAL_INVITEE_HANDLES:
+      priv->initial_handles = g_value_dup_boxed (value);
+      break;
+    case PROP_INITIAL_INVITEE_IDS:
+      priv->initial_ids = g_value_dup_boxed (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -1011,11 +1043,26 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       { "InitiatorID", "initiator-id", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl conference_props[] = {
+      { "Channels", "initial-channels", NULL, },
+      { "InitialChannels", "initial-channels", NULL },
+      { "InitialInviteeHandles", "initial-invitee-handles", NULL },
+      { "InitialInviteeIDs", "initial-invitee-ids", NULL },
+      { "InvitationMessage", "invitation-message", NULL },
+      { "SupportsNonMerges", "supports-non-merges", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
+      },
+      {
+        GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        conference_props,
       },
       { NULL }
   };
@@ -1119,6 +1166,36 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       "The backend (Wocky) MUC instance",
       WOCKY_TYPE_MUC, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_WOCKY_MUC, param_spec);
+
+  param_spec = g_param_spec_boxed ("initial-channels", "Initial Channels",
+      "The initial channels offered with this Conference",
+      TP_ARRAY_TYPE_OBJECT_PATH_LIST,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE);
+  g_object_class_install_property (object_class, PROP_INITIAL_CHANNELS,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("initial-invitee-handles",
+      "Initial Invitee Handles",
+      "The handles of the Conference's initial invitees",
+      DBUS_TYPE_G_UINT_ARRAY,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE);
+  g_object_class_install_property (object_class, PROP_INITIAL_INVITEE_HANDLES,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("initial-invitee-ids",
+      "Initial Invitee IDs",
+      "The identifiers of the Conference's initial invitees",
+      G_TYPE_STRV,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE);
+  g_object_class_install_property (object_class, PROP_INITIAL_INVITEE_IDS,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("supports-non-merges",
+      "Supports Non Merges",
+      "If true, this Conference can be created from less than two Channels",
+      TRUE, G_PARAM_READABLE);
+  g_object_class_install_property (object_class, PROP_SUPPORTS_NON_MERGES,
+      param_spec);
 
   signals[READY] =
     g_signal_new ("ready",
@@ -1253,6 +1330,24 @@ gabble_muc_channel_finalize (GObject *object)
     }
 
   g_free (priv->password);
+
+  if (priv->initial_channels)
+    {
+      g_boxed_free (TP_ARRAY_TYPE_OBJECT_PATH_LIST, priv->initial_channels);
+      priv->initial_channels = NULL;
+    }
+
+  if (priv->initial_handles)
+    {
+      g_boxed_free (DBUS_TYPE_G_UINT_ARRAY, priv->initial_handles);
+      priv->initial_handles = NULL;
+    }
+
+  if (priv->initial_ids)
+    {
+      g_boxed_free (G_TYPE_STRV, priv->initial_ids);
+      priv->initial_ids = NULL;
+    }
 
   tp_properties_mixin_finalize (object);
 

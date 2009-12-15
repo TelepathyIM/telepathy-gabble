@@ -1,3 +1,10 @@
+telepathy-gabble 0.8.10 (UNRELEASED)
+====================================
+
+Fixes:
+
+• Do not re-publish our own vCard if nothing's changed (fd.o#25341, andrunko)
+
 telepathy-gabble 0.8.9 (2009-12-07)
 ===================================
 

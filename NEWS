@@ -44,6 +44,8 @@ Fixes:
 • Do not advertise support for file transfers unless a handler is available.
   (fd.o#25243, smcv)
 
+• Do not re-publish our own vCard if nothing's changed (fd.o#25341, andrunko)
+
 telepathy-gabble 0.9.2 (2009-10-27)
 ===================================
 

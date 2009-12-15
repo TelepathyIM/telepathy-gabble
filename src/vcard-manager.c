@@ -1000,6 +1000,34 @@ vcard_copy (LmMessageNode *parent, LmMessageNode *src)
     return new;
 }
 
+static gboolean
+vcard_node_changed (GabbleConnection *conn,
+                    const gchar *key,
+                    const gchar *value,
+                    LmMessageNode *vcard_node)
+{
+  LmMessageNode *node;
+
+  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER &&
+      strcmp (key, "N") != 0 && strcmp (key, "FN") != 0 &&
+      strcmp (key, "PHOTO") != 0)
+    {
+      return FALSE;
+    }
+
+  node = lm_message_node_get_child (vcard_node, key);
+  if (node != NULL)
+    {
+      const gchar *node_value = lm_message_node_get_value (node);
+
+      if (!tp_strdiff (node_value, value))
+        return FALSE;
+    }
+
+  DEBUG ("vcard node %s changed, vcard needs update", key);
+  return TRUE;
+}
+
 static void
 manager_patch_vcard (GabbleVCardManager *self,
                      LmMessageNode *vcard_node)
@@ -1008,12 +1036,31 @@ manager_patch_vcard (GabbleVCardManager *self,
   LmMessage *msg;
   LmMessageNode *patched_vcard;
   GList *li;
+  GHashTableIter iter;
+  gpointer key, value;
+  gboolean vcard_changed = FALSE;
 
   /* Bail out if we don't have outstanding edits to make, or if we already
    * have a set request in progress.
    */
   if (priv->edits == NULL || priv->edit_pipeline_item != NULL)
       return;
+
+  g_hash_table_iter_init (&iter, priv->edits);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      if (vcard_node_changed (priv->connection, key, value, vcard_node))
+        {
+          vcard_changed = TRUE;
+          break;
+        }
+    }
+
+  if (!vcard_changed)
+    {
+      DEBUG ("nothing changed, not updating vcard");
+      goto out;
+    }
 
   DEBUG("patching vcard");
 
@@ -1036,6 +1083,7 @@ manager_patch_vcard (GabbleVCardManager *self,
 
   lm_message_unref (msg);
 
+out:
   /* We've applied those, forget about them */
   g_hash_table_destroy (priv->edits);
   priv->edits = NULL;

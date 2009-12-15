@@ -940,6 +940,10 @@ gabble_muc_channel_get_property (GObject    *object,
       break;
     case PROP_TUBE:
       g_value_set_object (value, priv->tube);
+      break;
+    case PROP_INVITATION_MESSAGE:
+      g_value_set_string (value, "");
+      break;
     case PROP_INITIAL_CHANNELS:
       g_value_set_boxed (value, priv->initial_channels);
       break;
@@ -1151,7 +1155,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       "The message we were sent when invited; NULL if not invited or if "
       "already processed",
       NULL,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INVITATION_MESSAGE,
       param_spec);
 
@@ -1175,7 +1179,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   param_spec = g_param_spec_boxed ("initial-channels", "Initial Channels",
       "The initial channels offered with this Conference",
       TP_ARRAY_TYPE_OBJECT_PATH_LIST,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIAL_CHANNELS,
       param_spec);
 
@@ -1183,7 +1187,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       "Initial Invitee Handles",
       "The handles of the Conference's initial invitees",
       DBUS_TYPE_G_UINT_ARRAY,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIAL_INVITEE_HANDLES,
       param_spec);
 
@@ -1191,14 +1195,14 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       "Initial Invitee IDs",
       "The identifiers of the Conference's initial invitees",
       G_TYPE_STRV,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIAL_INVITEE_IDS,
       param_spec);
 
   param_spec = g_param_spec_boolean ("supports-non-merges",
       "Supports Non Merges",
       "If true, this Conference can be created from less than two Channels",
-      TRUE, G_PARAM_READABLE);
+      TRUE, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SUPPORTS_NON_MERGES,
       param_spec);
 

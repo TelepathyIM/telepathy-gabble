@@ -435,13 +435,12 @@ new_muc_channel (GabbleMucFactory *fac,
   object_path = g_strdup_printf ("%s/MucChannel%u",
       conn->object_path, handle);
 
+  initial_channels_array = g_ptr_array_new ();
   if (initial_channels != NULL)
     {
       GHashTableIter iter;
       gpointer key;
 
-      initial_channels_array = g_ptr_array_sized_new (
-          g_hash_table_size (initial_channels));
       g_hash_table_iter_init (&iter, initial_channels);
       while (g_hash_table_iter_next (&iter, &key, NULL))
         {
@@ -470,10 +469,7 @@ new_muc_channel (GabbleMucFactory *fac,
   g_hash_table_insert (priv->text_channels, GUINT_TO_POINTER (handle), chan);
 
   g_free (object_path);
-  if (initial_channels_array != NULL)
-    {
-      g_ptr_array_free (initial_channels_array, TRUE);
-    }
+  g_ptr_array_free (initial_channels_array, TRUE);
 
   if (_gabble_muc_channel_is_ready (chan))
     muc_ready_cb (chan, fac);

@@ -11,9 +11,8 @@ from gabbletest import exec_test, make_presence, sync_stream
 import constants as cs
 import ns
 from caps_helper import (
-    compute_caps_hash, make_caps_disco_reply, fake_client_dataforms,
-    presence_and_disco, send_presence, expect_disco, send_disco_reply
-    )
+    compute_caps_hash, fake_client_dataforms, presence_and_disco,
+    send_presence, expect_disco, send_disco_reply)
 
 client = 'http://telepathy.freedesktop.org/fake-client'
 features = [

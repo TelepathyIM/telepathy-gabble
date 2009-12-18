@@ -50,6 +50,8 @@ static void
 gabble_connection_manager_finalize (GObject *object)
 {
   gabble_debug_free ();
+
+  G_OBJECT_CLASS (gabble_connection_manager_parent_class)->finalize (object);
 }
 
 static void

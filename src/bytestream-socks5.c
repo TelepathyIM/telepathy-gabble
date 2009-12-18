@@ -1816,6 +1816,13 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       return FALSE;
     }
 
+  ips = get_local_interfaces_ips ();
+  if (ips == NULL)
+    {
+      DEBUG ("Can't get IP addresses");
+      return FALSE;
+    }
+
   g_assert (priv->listener == NULL);
   priv->listener = gibber_listener_new ();
 
@@ -1838,13 +1845,6 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
         '@', "sid", priv->stream_id,
         '@', "mode", "tcp",
       ')', NULL);
-
-  ips = get_local_interfaces_ips ();
-  if (ips == NULL)
-    {
-      DEBUG ("Can't get IP addresses");
-      return FALSE;
-    }
 
   for (ip = ips; ip != NULL; ip = g_slist_next (ip))
     {

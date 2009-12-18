@@ -13,7 +13,7 @@ import tubetestutil as t
 from twisted.words.xish import xpath
 import ns
 from bytestream import create_from_si_offer, announce_socks5_proxy
-from caps_helper import make_caps_disco_reply
+from caps_helper import send_disco_reply
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
@@ -305,7 +305,7 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
         )
 
     # reply to disco query
-    stream.send(make_caps_disco_reply(stream, disco_event.stanza, [ns.TUBES]))
+    send_disco_reply(stream, disco_event.stanza, [ns.TUBES])
 
     sync_stream(q, stream)
 

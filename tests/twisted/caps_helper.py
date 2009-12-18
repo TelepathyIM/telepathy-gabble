@@ -293,9 +293,7 @@ def expect_disco(q, contact, client, caps):
     return event.stanza
 
 def send_disco_reply(stream, stanza, features, dataforms={}):
-    # send good reply
-    result = make_caps_disco_reply(stream, stanza, features, dataforms)
-    stream.send(result)
+    stream.send(make_caps_disco_reply(stream, stanza, features, dataforms))
 
 if __name__ == '__main__':
     # example from XEP-0115

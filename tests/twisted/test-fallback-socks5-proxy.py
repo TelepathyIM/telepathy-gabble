@@ -1,15 +1,21 @@
-import dbus
-import socket
-from gabbletest import exec_test, elem, elem_iq, sync_stream, make_presence, send_error_reply,\
-    make_result_iq, sync_stream
-from servicetest import EventPattern, call_async, assertEquals, assertLength, assertDoesNotContain
-from caps_helper import make_caps_disco_reply
 
-from twisted.words.xish import xpath
+import socket
+
+from gabbletest import (
+    exec_test, elem, elem_iq, sync_stream, make_presence, send_error_reply,
+    make_result_iq, sync_stream)
+from servicetest import (
+    EventPattern, call_async, assertEquals, assertLength,
+    assertDoesNotContain)
+from caps_helper import send_disco_reply
+from bytestream import create_from_si_offer, BytestreamS5B
 
 import ns
 import constants as cs
-from bytestream import create_from_si_offer, BytestreamS5B
+
+from twisted.words.xish import xpath
+
+import dbus
 
 proxy_query_events = [
     EventPattern('stream-iq', to='fallback1-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS),
@@ -36,7 +42,7 @@ def connect_and_announce_alice(q, bus, conn, stream):
     disco_event = q.expect('stream-iq', to='alice@localhost/Test',
         query_ns=ns.DISCO_INFO)
 
-    stream.send(make_caps_disco_reply(stream, disco_event.stanza, [ns.TUBES, ns.FILE_TRANSFER]))
+    send_disco_reply(stream, disco_event.stanza, [ns.TUBES, ns.FILE_TRANSFER])
     sync_stream(q, stream)
 
     q.unforbid_events(proxy_query_events)

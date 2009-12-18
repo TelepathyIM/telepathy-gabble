@@ -853,7 +853,7 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
 
 /* Process the received data and returns the number of bytes that have been
  * used */
-static gsize
+static gssize
 socks5_handle_received_data (GabbleBytestreamSocks5 *self,
                              GString *string)
 {
@@ -882,7 +882,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             DEBUG ("Authentication failed");
 
             socks5_error (self);
-            return string->len;
+            return -1;
           }
 
         /* We have been authorized, let's send a CONNECT command */
@@ -945,7 +945,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             DEBUG ("Connection refused");
 
             socks5_error (self);
-            return string->len;
+            return -1;
           }
 
         if (string->str[3] == SOCKS5_ATYP_DOMAIN)
@@ -966,7 +966,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             DEBUG ("Wrong domain");
 
             socks5_error (self);
-            return string->len;
+            return -1;
           }
 
         if ((guint8) string->len < SOCKS5_MIN_LENGTH + addr_len)
@@ -984,7 +984,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             DEBUG ("Connection refused");
 
             socks5_error (self);
-            return string->len;
+            return -1;
           }
 
         if (priv->socks5_state == SOCKS5_STATE_TARGET_CONNECT_REQUESTED)
@@ -1029,7 +1029,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             DEBUG ("Authentication failed");
 
             socks5_error (self);
-            return string->len;
+            return -1;
           }
 
         /* The auth request string is SOCKS5_VERSION + # of methods + methods */
@@ -1059,7 +1059,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         socks5_error (self);
 
-        return auth_len;
+        return -1;
 
       case SOCKS5_STATE_INITIATOR_AWAITING_COMMAND:
         /* The client has been authorized and we are waiting for a command,
@@ -1092,7 +1092,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             DEBUG ("Invalid SOCKS5 connect message");
 
             socks5_error (self);
-            return string->len;
+            return -1;
           }
 
         domain = compute_domain (priv->stream_id, priv->self_full_jid,
@@ -1104,7 +1104,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
             socks5_close_transport (self);
             socks5_error (self);
             g_free (domain);
-            return string->len;
+            return -1;
           }
 
         msg[0] = SOCKS5_VERSION;
@@ -1187,7 +1187,7 @@ transport_handler (GibberTransport *transport,
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (user_data);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  gsize used_bytes;
+  gssize used_bytes;
 
   g_assert (priv->read_buffer != NULL);
   g_string_append_len (priv->read_buffer, (const gchar *) data->data,

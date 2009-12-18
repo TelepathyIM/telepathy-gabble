@@ -2121,18 +2121,17 @@ streaminit_reply_cb (GabbleConnection *conn,
 END:
   if (!success && bytestream != NULL)
     {
-      /* Initiation failed. We remove the stream */
       remove_bytestream (self, bytestream);
       bytestream = NULL;
     }
 
   /* user callback */
-  data->func (bytestream, (const gchar*) data->stream_id, reply_msg,
-      data->object, data->user_data);
+  if (data->object_alive)
+    data->func (bytestream, (const gchar*) data->stream_id, reply_msg,
+        data->object, data->user_data);
 
   if (peer_resource != NULL)
     g_free (peer_resource);
-
 
   if (peer_handle != 0)
     tp_handle_unref (contact_repo, peer_handle);

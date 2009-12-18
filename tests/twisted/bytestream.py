@@ -596,9 +596,13 @@ class BytestreamIBB(Bytestream):
         Bytestream.__init__(self, stream, q, sid, initiator, target, initiated)
 
         self.seq = 0
+        self.checked = False
 
     def get_ns(self):
         return ns.IBB
+
+    def check_si_reply(self, iq):
+        self.checked = True
 
     def open_bytestream(self, expected_before=[], expected_after=[]):
         # open IBB bytestream
@@ -609,9 +613,11 @@ class BytestreamIBB(Bytestream):
         open['sid'] = self.stream_id
         # set a ridiculously small block size to stress test IBB buffering
         open['block-size'] = '1'
-        self.stream.send(iq)
+
+        assert self.checked
 
         events_before = self.q.expect_many(*expected_before)
+        self.stream.send(iq)
         events_after = self.q.expect_many(*expected_after)
 
         return events_before, events_after
@@ -841,6 +847,9 @@ class BytestreamSIFallbackS5CannotConnect(BytestreamSIFallback):
         # Gabble now tries IBB
         self.ibb.wait_bytestream_open()
 
+    def check_si_reply (self, iq):
+        self.ibb.check_si_reply (iq)
+
 class BytestreamSIFallbackS5WrongHash(BytestreamSIFallback):
     """Try to use SOCKS5 and fallback to IBB because target sent the wrong hash
     as domain in the CONNECT command."""
@@ -868,3 +877,6 @@ class BytestreamSIFallbackS5WrongHash(BytestreamSIFallback):
 
         # Gabble now tries IBB
         self.ibb.wait_bytestream_open()
+
+    def check_si_reply (self, iq):
+        self.ibb.check_si_reply (iq)

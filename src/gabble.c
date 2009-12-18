@@ -155,5 +155,7 @@ gabble_main (int argc,
   g_object_unref (debug_sender);
 #endif
 
+  wocky_deinit ();
+
   return out;
 }

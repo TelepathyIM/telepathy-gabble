@@ -168,13 +168,15 @@ iq_reply_cb (GObject *source,
     {
       g_debug ("send_iq_async failed: %s", error->message);
       g_error_free (error);
-      return;
+      goto out;
     }
 
   handler->function (handler, handler->connection, reply,
       handler->user_data);
 
   g_object_unref (reply);
+
+out:
   lm_message_handler_unref (handler);
 }
 

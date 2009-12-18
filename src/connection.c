@@ -2703,7 +2703,6 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   tp_svc_connection_interface_capabilities_return_from_advertise_capabilities (
       context, ret);
 
-out:
   g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
   g_ptr_array_free (ret, TRUE);
 }

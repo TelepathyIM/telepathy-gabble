@@ -471,10 +471,14 @@ void
 gabble_capability_set_update (GabbleCapabilitySet *target,
     const GabbleCapabilitySet *source)
 {
+  TpIntSet *ret;
   g_return_if_fail (target != NULL);
   g_return_if_fail (source != NULL);
 
-  tp_handle_set_update (target->handles, tp_handle_set_peek (source->handles));
+  ret = tp_handle_set_update (target->handles,
+    tp_handle_set_peek (source->handles));
+
+  tp_intset_destroy (ret);
 }
 
 typedef struct {

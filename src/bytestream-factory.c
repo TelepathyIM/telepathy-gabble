@@ -1297,6 +1297,7 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
   LmMessageNode *open_node;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   const gchar *tmp;
+  guint state;
 
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return FALSE;
@@ -1329,6 +1330,17 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
     {
       /* We don't accept streams not previously announced using SI */
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, NULL);
+      return TRUE;
+    }
+
+  g_object_get (bytestream, "state", &state, NULL);
+
+  if (state != GABBLE_BYTESTREAM_STATE_ACCEPTED)
+    {
+      /* We don't accept streams not previously accepted using SI */
+      DEBUG ("unaccepted stream: <%s> from <%s>", bsid.stream, bsid.jid);
       _gabble_connection_send_iq_error (priv->conn, msg,
           XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;

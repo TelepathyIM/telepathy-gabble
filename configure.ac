@@ -171,42 +171,11 @@ AC_MSG_RESULT([$TEST_PYTHON])
 AC_SUBST(TEST_PYTHON)
 AM_CONDITIONAL([WANT_TWISTED_TESTS], test false != "$TEST_PYTHON")
 
-# Always build Wocky with GTK doc support as we need it when doing "make check"
 # We have to run Wocky's configure *before* looking for it with PKG_CHECK_MODULES so wocky-uninstalled.pc has been generated
-echo "== Configuring embedded Wocky instance =="
-AS_MKDIR_P(["$ac_top_build_prefix"lib/ext/wocky])
-origdir=`pwd`
 
-AC_ARG_ENABLE(wocky-gtk-doc,
-  AC_HELP_STRING([--enable-wocky-gtk-doc],[compile wocky with gtk-doc enabled]),
-    enable_wocky_gtk_doc=$enableval, enable_wocky_gtk_doc=no )
-
-AC_ARG_WITH([wocky-tls],
-  AS_HELP_STRING([--with-wocky-tls],[tls library (gnutls, openssl, auto)]),
-  [],
-  [with_wocky_tls=auto])
-
-AS_CASE([$with_wocky_tls],
-  [gnutls], [with_wocky_tls=gnutls],
-  [openssl],[with_wocky_tls=openssl],
-  [auto],   [with_wocky_tls=auto],
-  [*],      [AC_MSG_ERROR(unknown ssl library "$with_wocky_tls")])
-
-confcmd="$origdir"/"$srcdir"/lib/ext/wocky/configure
-if test x$enable_wocky_gtk_doc != xno; then
-  confcmd="$confcmd --enable-gtk-doc"
-fi
-if test x$enable_silent_rules != xno; then
-  confcmd="$confcmd --enable-silent-rules"
-fi
-if test x$werror == xno; then
-  confcmd="$confcmd --disable-Werror"
-fi
-confcmd="$confcmd --with-tls=$with_wocky_tls"
-cd "$ac_top_build_prefix"lib/ext/wocky && echo "running $confcmd" &&
-  $confcmd ||
-  AC_MSG_ERROR([Failed to configure embedded Wocky tree])
-cd "$origdir"
+prev_top_build_prefix=$ac_top_build_prefix
+AX_CONFIG_DIR([lib/ext/wocky])
+ac_top_build_prefix=$prev_top_build_prefix
 
 dnl Check for Wocky
 # re-enable once Wocky has been released as a lib

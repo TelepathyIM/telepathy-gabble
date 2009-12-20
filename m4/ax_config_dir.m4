@@ -11,7 +11,9 @@ dnl code based on a simplification of _AC_OUTPUT_SUBDIRS in
 dnl /usr/share/autoconf/autoconf/status.m4 which implements part of 
 dnl AC_CONFIG_SUBDIRS
 
-AC_DEFUN([AX_CONFIG_DIR], [
+AC_DEFUN([AX_CONFIG_DIR],
+[m4_append([_AC_LIST_SUBDIRS], [$1], [])]
+[
   # Remove --cache-file and --srcdir arguments so they do not pile up.
   ax_sub_configure_args=
   ax_prev=

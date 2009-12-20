@@ -15,6 +15,7 @@ if test -n "$GABBLE_TEST_VALGRIND"; then
         GABBLE_WRAPPER="$GABBLE_WRAPPER --gen-suppressions=all"
         GABBLE_WRAPPER="$GABBLE_WRAPPER --child-silent-after-fork=yes"
         GABBLE_WRAPPER="$GABBLE_WRAPPER --suppressions=@abs_top_srcdir@/tests/suppressions/tp-glib.supp"
+        GABBLE_WRAPPER="$GABBLE_WRAPPER --suppressions=@abs_top_srcdir@/tests/suppressions/gabble.supp"
 elif test -n "$GABBLE_TEST_REFDBG"; then
         if test -z "$REFDBG_OPTIONS" ; then
                 export REFDBG_OPTIONS="btnum=10"

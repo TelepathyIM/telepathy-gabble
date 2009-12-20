@@ -21,12 +21,12 @@ CLEANFILES = *.pyc *.pyo
 all: $(EXTRA_DIST)
 
 libglibcodegen.py: libtpcodegen.py
-	test -e $@
+	test -e $<
 	$(AM_V_GEN)touch $@
 
 glib-ginterface-gen.py glib-gtypes-generator.py glib-interfaces-gen.py \
 glib-signals-marshal-gen.py c-constants-gen.py: %: libglibcodegen.py
-	test -e $@
+	test -e $<
 	$(AM_V_GEN)touch $@
 
 maintainer-update-from-xmpp.org:

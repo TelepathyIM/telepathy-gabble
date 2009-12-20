@@ -12,6 +12,7 @@ dnl /usr/share/autoconf/autoconf/status.m4 which implements part of
 dnl AC_CONFIG_SUBDIRS
 
 AC_DEFUN([AX_CONFIG_DIR],
+[AC_REQUIRE([AC_DISABLE_OPTION_CHECKING])]
 [m4_append([_AC_LIST_SUBDIRS], [$1], [])]
 [
   # Remove --cache-file and --srcdir arguments so they do not pile up.

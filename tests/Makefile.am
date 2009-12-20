@@ -1,7 +1,7 @@
 if WANT_TWISTED_TESTS
 CHECKTWISTED = twisted
 endif
-SUBDIRS = $(CHECKTWISTED)
+SUBDIRS = $(CHECKTWISTED) suppressions
 
 noinst_PROGRAMS = \
 	test-base64 \

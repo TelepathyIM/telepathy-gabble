@@ -239,6 +239,7 @@ AC_OUTPUT( Makefile \
            data/Makefile \
            tests/Makefile \
            tools/Makefile \
+           tests/suppressions/Makefile \
            tests/twisted/Makefile \
            tests/twisted/tools/Makefile \
            lib/Makefile \

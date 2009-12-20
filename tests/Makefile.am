@@ -24,7 +24,7 @@ TESTS = $(noinst_PROGRAMS)
 
 TESTS_ENVIRONMENT = G_DEBUG=fatal-warnings,fatal-criticals
 
-check-valgrind:
+check-valgrind: $(TESTS)
 	G_SLICE=always-malloc \
 	G_DEBUG=gc-friendly \
 	$(MAKE) \
@@ -32,6 +32,10 @@ check-valgrind:
 		libtool --mode=execute valgrind \
 			--leak-check=full \
 			--show-reachable=no \
+			--gen-suppressions=all \
+			--num-callers=20 \
+			--suppressions=@abs_top_srcdir@/tests/suppressions/gabble.supp \
+			--suppressions=@abs_top_srcdir@/tests/suppressions/tp-glib.supp \
 			--error-exitcode=1" \
 		check-TESTS
 

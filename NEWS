@@ -1,16 +1,27 @@
-telepathy-gabble 0.9.3 (UNRELEASED)
+telepathy-gabble 0.9.3 (2009-12-21)
 ===================================
 
+The ``TRANSPORT CHAOS threat level: PANDEMONIUM'' release
+
 Highlights:
+ • Various updates to the OpenSSL backend causing it not to stall when
+   reading multiple ssl records at the same time
 
 Enhancements:
+
+• Gabble now advertises a 'pmuc-v1' capability bundle, telling the Google Mail
+  client that we support being invited to MUCs. (fd.o#22768, jonnylamb)
 
 • Rather than hard-coding a list of SOCKS5 proxy servers to use if the user's
   own XMPP server does not provide one, Gabble now falls back to a list of
   proxy servers returned by discoing the newly-set-up proxies.telepathy.im.
   (fd.o#25304, cassidy)
 
+• Various leaks fixed as pointed out by valgrind (daf, sjoerd)
+
 Fixes:
+
+• Do not re-publish our own vCard if nothing's changed (fd.o#25341, andrunko)
 
 • The default resource is now unique to the machine Gabble is running
   on, rather than being randomly generated for each connection. Fixes

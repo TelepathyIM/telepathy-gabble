@@ -375,7 +375,7 @@ store_unread_mails (GabbleConnection *conn, WockyXmppNode *mailbox)
 }
 
 static void
-get_unread_mails (GObject *source_object, GAsyncResult *res, gpointer user_data)
+query_unread_mails_cb (GObject *source_object, GAsyncResult *res, gpointer user_data)
 {
   GError *error = NULL;
   gchar *result_str;
@@ -422,7 +422,7 @@ update_unread_mails (GabbleConnection *conn)
       WOCKY_NODE_XMLNS, NS_GOOGLE_MAIL_NOTIFY,
       WOCKY_NODE_END,
       WOCKY_STANZA_END);
-  wocky_porter_send_iq_async (porter, query, NULL, get_unread_mails, conn);
+  wocky_porter_send_iq_async (porter, query, NULL, query_unread_mails_cb, conn);
   g_object_unref (query);
 }
 
@@ -529,6 +529,22 @@ conn_mail_notif_iface_init (gpointer g_iface, gpointer iface_data)
 #undef IMPLEMENT
 }
 
+static GPtrArray*
+get_unread_mails (GabbleConnection *conn)
+{
+  GPtrArray *mails = g_ptr_array_new ();
+  GHashTableIter iter;
+  gpointer value;
+  g_hash_table_iter_init (&iter, conn->unread_mails);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    {
+      GHashTable *mail = value;
+      g_ptr_array_add (mails, mail);
+    }
+
+  return mails;
+}
+
 void
 conn_mail_notif_properties_getter (GObject *object,
                                 GQuark interface,
@@ -563,9 +579,13 @@ conn_mail_notif_properties_getter (GObject *object,
   else if (name == prop_quarks[PROP_METHOD])
     g_value_set_uint (value, GABBLE_HTTP_METHOD_GET);
   else if (name == prop_quarks[PROP_POST_DATA])
-    g_value_set_static_boxed (value, &empty_array); /* TODO */
+    g_value_set_static_boxed (value, &empty_array);
   else if (name == prop_quarks[PROP_UNREAD_MAILS])
-    g_value_set_boxed (value, &empty_array); /* TODO */
+    {
+      GPtrArray *mails = get_unread_mails(conn);
+      g_value_set_boxed (value, mails);
+      g_ptr_array_free (mails, TRUE);
+    }
   else
     g_assert (!"Unkown mail notification property, please file a bug.");
 }

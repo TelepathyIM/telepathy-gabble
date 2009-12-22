@@ -193,6 +193,8 @@ struct _GabbleConnection {
     TpDBusDaemon *daemon;
     gint mail_subscribers_count;
     GData *mail_subscribers;
+    gchar *inbox_url;
+    GHashTable *unread_mails;
  
     GabbleConnectionPrivate *priv;
 };

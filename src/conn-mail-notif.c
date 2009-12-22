@@ -78,7 +78,13 @@ unsubscribe (GabbleConnection *conn, const gchar *name)
   if (conn->mail_subscribers_count == 0)
     {
       DEBUG ("Last sender unsubscribed, cleaning up!");
-      /* TODO Clean Mails data */
+      g_free (conn->inbox_url);
+      conn->inbox_url = NULL;
+      if (conn->unread_mails)
+        {
+          g_hash_table_unref (conn->unread_mails);
+          conn->unread_mails = NULL;
+        }
     }
 }
 
@@ -158,6 +164,8 @@ conn_mail_notif_init (GabbleConnection *conn)
 
   conn->mail_subscribers_count = 0;
   conn->mail_subscribers = NULL;
+  conn->inbox_url = NULL;
+  conn->unread_mails = NULL;
 }
 
 static void
@@ -182,6 +190,12 @@ conn_mail_notif_dispose (GabbleConnection *conn)
       g_object_unref (conn->daemon);
       conn->daemon = NULL;
     }
+
+  g_free (conn->inbox_url);
+  conn->inbox_url = NULL;
+  if (conn->unread_mails)
+    g_hash_table_unref (conn->unread_mails);
+  conn->unread_mails = NULL;
 }
 
 
@@ -205,6 +219,7 @@ conn_mail_notif_properties_getter (GObject *object,
                                 gpointer getter_data)
 {
   static GQuark prop_quarks[NUM_OF_PROP] = {0};
+  GabbleConnection *conn = GABBLE_CONNECTION (object);
 
   if (G_UNLIKELY (prop_quarks[0] == 0))
     {
@@ -223,15 +238,16 @@ conn_mail_notif_properties_getter (GObject *object,
         GABBLE_MAIL_NOTIFICATION_HAS_PROP_UNREADMAILCOUNT
         | GABBLE_MAIL_NOTIFICATION_HAS_PROP_UNREADMAILS);
   else if (name == prop_quarks[PROP_UNREAD_MAIL_COUNT])
-    g_value_set_uint (value, 0);
+    g_value_set_uint (value,
+        conn->unread_mails ? g_hash_table_size (conn->unread_mails) : 0);
   else if (name == prop_quarks[PROP_INBOX_URL])
-    g_value_set_string (value, "");
+    g_value_set_string (value, conn->inbox_url ?: "");
   else if (name == prop_quarks[PROP_METHOD])
     g_value_set_uint (value, GABBLE_HTTP_METHOD_GET);
   else if (name == prop_quarks[PROP_POST_DATA])
-    g_value_set_static_boxed (value, &empty_array);
+    g_value_set_static_boxed (value, &empty_array); /* TODO */
   else if (name == prop_quarks[PROP_UNREAD_MAILS])
-    g_value_set_boxed (value, &empty_array);
+    g_value_set_boxed (value, &empty_array); /* TODO */
   else
     g_assert (!"Unkown mail notification property, please file a bug.");
 }

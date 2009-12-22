@@ -29,8 +29,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           The protocol provide up-to-date information about the number of 
           unread e-mails (or e-mails thread) in the user's mailbox. The
           connection manager will update this value by emitting the
-          <tp:member-ref>UnreadMailsAdded</tp:member-ref> and
-          <tp:member-ref>UnreadMailsRemoved</tp:member-ref> signals.
+          <tp:member-ref>UnreadMailsChanged</tp:member-ref> signal.
         </tp:docstring>
       </tp:flag>
       <tp:flag suffix="Has_Prop_UnreadMails" value="2">
@@ -41,8 +40,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           property. Connection managers that support this feature must not emit 
           <tp:member-ref>MailsReceived</tp:member-ref> signal.
           The connection manager will update this value by emitting the
-          <tp:member-ref>UnreadMailsAdded</tp:member-ref> and
-          <tp:member-ref>UnreadMailsRemoved</tp:member-ref> signals.
+          <tp:member-ref>UnreadMailsChanged</tp:member-ref> signals.
         </tp:docstring>
       </tp:flag>
       <tp:flag suffix="Has_Signal_MailsReceived" value="4">
@@ -78,6 +76,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </tp:enum>
 
+    <tp:struct name="HTTP_Post_Data" array-name="HTTP_Post_Data_List">
+      <tp:docstring>
+        A pair (key, value) representing POST Data.
+      </tp:docstring>
+      <tp:member type="s" name="key"/>
+      <tp:member type="s" name="value"/>
+    </tp:struct>
+
+    <tp:struct name="Mail_Address" array-name="Mail_Address_List">
+      <tp:docstring>
+        A pair (name, address) representing an e-mail address.
+      </tp:docstring>
+      <tp:member type="s" name="name"/>
+      <tp:member type="s" name="address"/>
+    </tp:struct>
+
     <tp:enum name="Mail_Type" type="u"> 
       <tp:enumvalue suffix="single" value="0">
         <tp:docstring>
@@ -107,86 +121,89 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           changes. Only the documentation will need to be updated.
         </tp:rationale>
       
-        <dl>
-          <dt>u:id</dt>
-          <dd>A unique ID for this e-mail</dd>
+        <div class="indent">
+        <h3>Keys</h3>
+        <ul>
+          <li>id &#8212; x</li>
+          <div class="docstring">A unique ID for this e-mail</div>
 
-          <dt>u:type (see <tp:type>Mail_Type</tp:type>)</dt>
-          <dd>
+          <li>type &#8212; u (<tp:type>Mail_Type</tp:type>)</li>
+          <div class="docstring">
             Type of e-mail. This can be set to "single", which means e-mails 
             are represented separately, or "thread", when information is described
             by the protocol as thread. Note that threads may have multiple unread senders.
-          </dd>
+          </div>
 
-          <dt>s:url</dt>
-          <dd>This URL should allow client to load this precise message.</dd>
+          <li>url &#8212; s</li>
+          <div class="docstring">This URL should allow client to load this precise message.</div>
 
-          <dt>u:method (see <tp:type>HTTP_Method</tp:type>)</dt>
-          <dd>
+          <li>method &#8212; u (<tp:type>HTTP_Method</tp:type>)</li>
+          <div class="docstring">
             The HTTP method to use when opening URL. If unset, GET
             is assumed.
-          </dd>
+          </div>
 
-          <dt>a(ss):post-data</dt>
-          <dd>
+          <li>post-data &#8212; a(ss) (<tp:type>HTTP_Post_Data</tp:type>[])</li>
+          <div class="docstring">
             When method is POST, this data must be sent along with the POST request. 
             It is a list of key/value pair with string for both keys and values.
-          </dd>
+          </div>
 
-          <dt>a(ss):senders</dt>
-          <dd>
+          <li>senders &#8212; a(ss) (<tp:type>Mail_Address</tp:type>)</li>
+          <div class="docstring">
             An array of sender display name and e-mail address pair. Note that 
             only e-mails thread may have multiple senders.
-          </dd>
+          </div>
 
-          <dt>a(ss):to-addresses</dt>
-          <dd>
+          <li>to-addresses &#8212; a(ss) (<tp:type>Mail_Address</tp:type>)</li>
+          <div class="docstring">
             An array of display name and e-mail address pair of
             the recipients.
-          </dd>
+          </div>
 
-          <dt>a(ss):cc-addresses</dt>
-          <dd>
+          <li>cc-addresses &#8212; a(ss) (<tp:type>Mail_Address</tp:type>)</li>
+          <div class="docstring">
             An array of display name and e-mail address pair of the carbon
             copy recipients.
-          </dd>
+          </div>
 
-          <dt>s:subject</dt>
-          <dd>The subject of the message.</dd>
+          <li>subject &#8212; s</li>
+          <div class="docstring">The subject of the message.</div>
 
-          <dt>u:sent-timestamp</dt>
-          <dd>A UNIX timestamp of when the message has been sent.</dd>
+          <li>sent-timestamp &#8212; u</li>
+          <div class="docstring">A UNIX timestamp of when the message has been sent (in seconds).</div>
 
-          <dt>u:received-timestamp</dt>
-          <dd>A UNIX timestamp of when the message has been received.</dd>
+          <li>received-timestamp &#8212; u</li>
+          <div class="docstring">A UNIX timestamp of when the message has been received (in seconds).</div>
 
-          <dt>b:has-attachments</dt>
-          <dd>A boolean of whether this message has attachments.</dd>
+          <li>has-attachments &#8212; b</li>
+          <div class="docstring">A boolean of whether this message has attachments.</div>
 
-          <dt>s:content-type</dt>
-          <dd>
+          <li>content-type &#8212; s</li>
+          <div class="docstring">
             MIME type of the message contents. Plain text should be
             assumed if unset.
-          </dd>
+          </div>
 
-          <dt>s:snippet</dt>
-          <dd>
+          <li>snippet &#8212; s</li>
+          <div class="docstring">
             A small part of the message body (content-type should
             be set if this message is HTML encoded).
-          </dd>
+          </div>
 
-          <dt>s:body</dt>
-          <dd>
+          <li>body &#8212; s</li>
+          <div class="docstring">
             The body of the message (content-type should
             be set if this message is HTML encoded).
-          </dd>
+          </div>
 
-          <dt>s:folder</dt>
-          <dd>
+          <li>folder &#8212; s</li>
+          <div class="docstring">
             The name of the folder containing this e-mails. 
             If unset, inbox will be assumed.
-          </dd>
-        </dl>
+          </div>
+        </ul>
+        </div>
       </tp:docstring>
     </tp:simple-type>
    
@@ -226,8 +243,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </property>
 
-    <property name="PostData" type="a(ss)" tp:name-for-bindings="Post_Data"
-      access="read">
+    <property name="PostData" type="a(ss)" tp:type="HTTP_Post_Data[]"
+    tp:name-for-bindings="Post_Data" access="read">
       <tp:docstring>
         Array of key/value pairs of the POST data to send when opening the
         <tp:member-ref>InboxURL</tp:member-ref>. This should be ignored if 
@@ -257,33 +274,28 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </signal>
 
-    <signal name="UnreadMailsAdded"
-      tp:name-for-bindings="Unread_Mails_Added">
+    <signal name="UnreadMailsChanged"
+      tp:name-for-bindings="Unread_Mails_Changed">
       <arg name="count" type="u">
         <tp:docstring>
           Number of unread messages in the inbox (the new value of
           <tp:member-ref>UnreadMailCount</tp:member-ref>).
         </tp:docstring>
       </arg>
-      <arg name="mails" type="aa{sv}" tp:type="Mail[]">
+      <arg name="mails_added" type="aa{sv}" tp:type="Mail[]">
         <tp:docstring>
-          A list of <tp:type>Mail</tp:type> that are being added to
+          A list of <tp:type>Mail</tp:type> that are being added or updated in
           <tp:member-ref>UnreadMails</tp:member-ref>. This list will be
           empty if the protocol does not support listing unread e-mails
           or threads.
+          <tp:rationale>
+            Mails may be updated when the URL information (url and POST Data) 
+            have changed, or senders were added or removed from an e-mails 
+            thread (see <tp:type>Mail_Type</tp:type>).
+          </tp:rationale>
         </tp:docstring>
       </arg>
-    </signal>
-
-    <signal name="UnreadMailsRemoved"
-      tp:name-for-bindings="Unread_Mails_Removed">
-      <arg name="count" type="u">
-        <tp:docstring>
-          Number of unread messages in the inbox (the new value of
-          <tp:member-ref>UnreadMailCount</tp:member-ref>).
-        </tp:docstring>
-      </arg>
-        <arg name="mails" type="a(u)">
+      <arg name="mails_removed" type="ax">
         <tp:docstring>
           A list of e-mails ID that are being removed from
           <tp:member-ref>UnreadMails</tp:member-ref>. This list will be
@@ -307,7 +319,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           <tp:member-ref>Method</tp:member-ref>).
         </tp:docstring>
       </arg>
-      <arg name="post_data" type="a(ss)">
+      <arg name="post_data" type="a(ss)" tp:type="HTTP_Post_Data[]">
         <tp:docstring>
           Array of name-value pair structs of the POST data to use when opening
           the inbox, if any (the new value of
@@ -375,17 +387,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         having to re-authenticate. To use this interface, a client must first
         subscribe using the <tp:member-ref>Subscribe</tp:member-ref> method.</p>
 
-      <p>When unread e-mails arrive into the inbox, the
-        <tp:member-ref>UnreadMailsAdded</tp:member-ref> signal
+      <p>When unread e-mails arrive into the into or unread e-mails are marked 
+        read or deleted the
+        <tp:member-ref>UnreadMailsChanged</tp:member-ref> signal
         will be emitted with the new value of
-        <tp:member-ref>UnreadMailCount</tp:member-ref> and when
-        available the detailed list of new e-mails. When some e-mails are
-        no longer unread, the
-        <tp:member-ref>UnreadMailsRemoved</tp:member-ref> signal
-        will be emitted with the new values of
-        <tp:member-ref>UnreadMailCount</tp:member-ref> and when
-        available the list of removed e-mail unique IDs. If any
-        information about how to open the inbox is changed, the
+        <tp:member-ref>UnreadMailCount</tp:member-ref>, an array
+        of new or modified mails and the list of removed e-mail unique IDs. 
+        If any information about how to open the inbox is changed, the
         <tp:member-ref>InboxURLChanged</tp:member-ref> signal will be
         emitted with the new value of
         <tp:member-ref>InboxURL</tp:member-ref>,

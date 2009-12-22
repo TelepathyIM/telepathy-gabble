@@ -336,6 +336,7 @@ gabble_connection_constructor (GType type,
   conn_olpc_activity_properties_init (self);
   conn_location_init (self);
   conn_sidecars_init (self);
+  conn_mail_notif_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
@@ -727,6 +728,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { "DecloakAutomatically", TWICE ("decloak-automatically") },
         { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl mail_notif_props[] = {
+        { "Capabilities", NULL, NULL },
+        { "UnreadMailCount", NULL, NULL },
+        { "InboxURL", NULL, NULL },
+        { "Method", NULL, NULL },
+        { "PostData", NULL, NULL },
+        { "UnreadMails", NULL, NULL },
+        { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
         { GABBLE_IFACE_OLPC_GADGET,
           conn_olpc_gadget_properties_getter,
@@ -747,6 +757,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           tp_dbus_properties_mixin_getter_gobject_properties,
           tp_dbus_properties_mixin_setter_gobject_properties,
           decloak_props,
+        },
+        { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+          conn_mail_notif_properties_getter,
+          NULL,
+          mail_notif_props,
         },
         { NULL }
   };
@@ -1008,6 +1023,8 @@ gabble_connection_dispose (GObject *object)
   conn_olpc_activity_properties_dispose (self);
 
   g_hash_table_destroy (self->avatar_requests);
+
+  conn_mail_notif_dispose (self);
 
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
@@ -2560,6 +2577,14 @@ connection_disco_cb (GabbleDisco *disco,
       const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
           GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
           NULL };
+
+      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
+    }
+
+  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
+    {
+       const gchar *ifaces[] = 
+         { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }

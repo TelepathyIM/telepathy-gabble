@@ -26,10 +26,11 @@
 
 G_BEGIN_DECLS
 
-void conn_mail_notif_class_init (GabbleConnectionClass *klass);
 void conn_mail_notif_init (GabbleConnection *conn);
-void conn_mail_notif_finalize (GabbleConnection *conn);
+void conn_mail_notif_dispose (GabbleConnection *conn);
 void conn_mail_notif_iface_init (gpointer g_iface, gpointer iface_data);
+void conn_mail_notif_properties_getter (GObject *object, GQuark interface,
+    GQuark name, GValue *value, gpointer getter_data);
 
 G_END_DECLS
 

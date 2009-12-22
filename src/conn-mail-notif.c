@@ -26,6 +26,8 @@
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
 #include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/dbus.h>
+#include <dbus/dbus-glib-lowlevel.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MAIL_NOTIF
 
@@ -45,31 +47,141 @@ enum
 
 static GPtrArray empty_array = { 0 };
 
+static void unsubscribe (GabbleConnection *conn, const gchar *name);
+
 static void
-gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification *self,
-    DBusGMethodInvocation *context)
+sender_name_owner_changed (TpDBusDaemon *dbus_daemon,
+                           const gchar *name,
+                           const gchar *new_owner,
+                           gpointer user_data)
 {
-  /* TODO */
+  GabbleConnection *conn = user_data;
+
+  if (new_owner == NULL || new_owner[0] == '\0')
+    {
+      DEBUG ("Sender removed: %s", name);
+      unsubscribe (conn, name);
+    }
 }
 
 static void
-gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotification *self,
+unsubscribe (GabbleConnection *conn, const gchar *name)
+{
+  tp_dbus_daemon_cancel_name_owner_watch (conn->daemon, name,
+      sender_name_owner_changed, conn);
+
+  g_return_if_fail (conn->mail_subscribers_count > 0);
+
+  conn->mail_subscribers_count -= 1;
+  g_datalist_remove_data (&conn->mail_subscribers, name);
+
+  if (conn->mail_subscribers_count == 0)
+    {
+      DEBUG ("Last sender unsubscribed, cleaning up!");
+      /* TODO Clean Mails data */
+    }
+}
+
+static void
+gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification *iface,
     DBusGMethodInvocation *context)
 {
-  /* TODO */
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  const gchar *sender = dbus_g_method_get_sender (context);
+
+  DEBUG ("Subscribe called by: %s", sender);
+
+  if (!(conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
+      || !conn->daemon)
+    {
+      tp_dbus_g_method_return_not_implemented (context);
+      return;
+    }
+
+  if (g_datalist_get_data (&conn->mail_subscribers, sender))
+    {
+      DEBUG ("Sender '%s' is already subscribed!", sender);
+      goto done;
+    }
+
+  conn->mail_subscribers_count += 1;
+  g_datalist_set_data (&conn->mail_subscribers, sender, conn);
+
+  /* TODO Get Mails Data */
+  
+  tp_dbus_daemon_watch_name_owner (conn->daemon,
+      dbus_g_method_get_sender (context),
+      sender_name_owner_changed, conn, NULL);
+
+done:
+  gabble_svc_connection_interface_mail_notification_return_from_subscribe (context);
+}
+
+static void
+gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotification *iface,
+    DBusGMethodInvocation *context)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  const gchar *sender =  dbus_g_method_get_sender (context);
+
+  DEBUG ("Unsubscribe called by: %s", sender);
+
+  if (!(conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
+      || !conn->daemon)
+    {
+      tp_dbus_g_method_return_not_implemented (context);
+      return;
+    }
+
+  if (!g_datalist_get_data (&conn->mail_subscribers, sender))
+    {
+      DEBUG ("Sender '%s' is not subscribed!", sender);
+      goto done;
+    }
+
+  unsubscribe (conn, sender);
+
+done:
+  gabble_svc_connection_interface_mail_notification_return_from_unsubscribe (context);
 }
 
 void
 conn_mail_notif_init (GabbleConnection *conn)
 {
-  /* TODO */
+  GError *error = NULL;
+  conn->daemon = tp_dbus_daemon_dup (&error);
+  if (!conn->daemon)
+    {
+      DEBUG ("Failed to connect to dbus daemon: %s", error->message);
+      g_error_free (error);
+    }
+
+  conn->mail_subscribers_count = 0;
+  conn->mail_subscribers = NULL;
 }
 
+static void
+foreach_cancel_watch (GQuark key_id,
+    gpointer handle_set,
+    gpointer user_data)
+{
+  GabbleConnection *conn = user_data;
+
+  tp_dbus_daemon_cancel_name_owner_watch (conn->daemon,
+      g_quark_to_string (key_id), sender_name_owner_changed, conn);
+}
 
 void
 conn_mail_notif_dispose (GabbleConnection *conn)
 {
-  /* TODO */
+  if (conn->daemon)
+    {
+      conn->mail_subscribers_count = 0;
+      g_datalist_clear (&conn->mail_subscribers);
+      g_datalist_foreach (&conn->mail_subscribers, foreach_cancel_watch, conn);
+      g_object_unref (conn->daemon);
+      conn->daemon = NULL;
+    }
 }
 
 

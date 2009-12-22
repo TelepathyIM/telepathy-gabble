@@ -28,6 +28,7 @@
 #include <telepathy-glib/contacts-mixin.h>
 #include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
+#include <telepathy-glib/dbus.h>
 
 #include <wocky/wocky-session.h>
 #include <wocky/wocky-pep-service.h>
@@ -188,6 +189,11 @@ struct _GabbleConnection {
     /* gchar *interface → GList<DBusGMethodInvocation> */
     GHashTable *pending_sidecars;
 
+    /* Mail Notification */
+    TpDBusDaemon *daemon;
+    gint mail_subscribers_count;
+    GData *mail_subscribers;
+ 
     GabbleConnectionPrivate *priv;
 };
 

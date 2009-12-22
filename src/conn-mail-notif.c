@@ -162,6 +162,102 @@ done:
   gabble_svc_connection_interface_mail_notification_return_from_unsubscribe (context);
 }
 
+static void
+handle_url (GHashTable *mail, guint64 tid, const gchar *base_url)
+{
+  /* The URL in result is broken. The th=<tid> parameter should be in hexadecimal 
+   * but it's set in decimal. We could try and fix the string, but the URL does
+   * not point exactly where we expect it to point. Let's craft a different
+   * URL that do a better job.*/
+
+  /* TODO Make sure we don't have to authenticate again */
+
+  GString *url = g_string_new (base_url);
+  g_string_append_printf (url, "/#inbox/%" G_GINT64_MODIFIER "x", tid);
+  
+  tp_asv_set_string (mail, "url", url->str);
+  tp_asv_set_uint32 (mail, "method", GABBLE_HTTP_METHOD_GET);
+
+  g_string_free (url, TRUE);
+}
+
+static gboolean
+sender_each (WockyXmppNode *node, gpointer user_data)
+{
+  GPtrArray *senders = user_data;
+
+  if (!tp_strdiff ("1", wocky_xmpp_node_get_attribute (node, "unread")))
+    {
+      GType addr_type = GABBLE_STRUCT_TYPE_MAIL_ADDRESS;
+      GValue sender = {0};
+
+      g_value_init (&sender, addr_type);
+      g_value_set_static_boxed (&sender, 
+          dbus_g_type_specialized_construct (addr_type));
+
+      dbus_g_type_struct_set (&sender,
+          0, wocky_xmpp_node_get_attribute (node, "name") ?: "",
+          1, wocky_xmpp_node_get_attribute (node, "address") ?: "",
+          G_MAXUINT);
+
+      g_ptr_array_add (senders, g_value_get_boxed(&sender));
+      g_value_unset (&sender);
+    }
+  return TRUE;
+}
+
+static void
+handle_senders (WockyXmppNode *parent_node, GHashTable *mail, gboolean *dirty)
+{
+  WockyXmppNode *node;
+
+  node = wocky_xmpp_node_get_child (parent_node, "senders");
+  if (node)
+    {
+      GType addr_list_type = GABBLE_ARRAY_TYPE_MAIL_ADDRESS_LIST;
+      GPtrArray *senders, *old_senders;
+
+      senders = g_ptr_array_new ();
+      wocky_xmpp_node_each_child (node, sender_each, senders);
+
+      old_senders = tp_asv_get_boxed (mail, "senders", addr_list_type);
+      if (!old_senders || senders->len != old_senders->len)
+            *dirty = TRUE;
+
+      tp_asv_take_boxed (mail, "senders", addr_list_type, senders);
+    }
+}
+
+static void
+handle_subject (WockyXmppNode *parent_node, GHashTable *mail, gboolean *dirty)
+{
+  WockyXmppNode *node;
+  node = wocky_xmpp_node_get_child (parent_node, "subject");
+  if (node)
+    {
+      if (tp_strdiff (node->content, tp_asv_get_string (mail, "subject")))
+        {
+          *dirty = TRUE;
+          tp_asv_set_string (mail, "subject", node->content);
+        }
+    }
+}
+
+static void
+handle_snippet (WockyXmppNode *parent_node, GHashTable *mail, gboolean *dirty)
+{
+  WockyXmppNode *node;
+  node = wocky_xmpp_node_get_child (parent_node, "snippet");
+  if (node)
+    {
+      if (tp_strdiff (node->content, tp_asv_get_string (mail, "snippet")))
+        {
+          *dirty = TRUE;
+          tp_asv_set_string (mail, "snippet", node->content);
+        }
+    }
+}
+
 static gboolean
 mail_thread_info_each (WockyXmppNode *node, gpointer user_data)
 {
@@ -209,7 +305,10 @@ mail_thread_info_each (WockyXmppNode *node, gpointer user_data)
           tp_asv_set_uint32 (mail, "received-timestamp", date);
         }
 
-      /* TODO Handle URL, senders, subject and snippet */
+      handle_url (mail, *tid, data->conn->inbox_url);
+      handle_senders (node, mail, &dirty);
+      handle_subject (node, mail, &dirty);
+      handle_snippet (node, mail, &dirty);
 
       g_hash_table_insert (data->unread_mails, tid, mail);
       if (dirty)

@@ -19,6 +19,7 @@
 
 #include "config.h"
 #include "conn-mail-notif.h"
+#include "namespaces.h"
 
 #include <string.h>
 
@@ -48,6 +49,7 @@ enum
 static GPtrArray empty_array = { 0 };
 
 static void unsubscribe (GabbleConnection *conn, const gchar *name);
+static void update_unread_mails (GabbleConnection *conn);
 
 static void
 sender_name_owner_changed (TpDBusDaemon *dbus_daemon,
@@ -114,7 +116,7 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
   g_datalist_set_data (&conn->mail_subscribers, sender, conn);
 
   /* TODO Get Mails Data */
-  
+
   tp_dbus_daemon_watch_name_owner (conn->daemon,
       dbus_g_method_get_sender (context),
       sender_name_owner_changed, conn, NULL);
@@ -151,6 +153,87 @@ done:
   gabble_svc_connection_interface_mail_notification_return_from_unsubscribe (context);
 }
 
+static void
+get_unread_mails (GObject *source_object, GAsyncResult *res, gpointer user_data)
+{
+  GError *error = NULL;
+  gchar *result_str;
+  WockyXmppNode *node;
+  WockyPorter *porter = WOCKY_PORTER (source_object);
+  WockyXmppStanza *reply = wocky_porter_send_iq_finish (porter, res, &error);
+
+  if (error)
+    {
+      DEBUG ("Failed retreive unread emails information: %s", error->message);
+      g_error_free (error);
+      goto end;
+    }
+  
+  DEBUG ("Got unread mail details");
+
+  result_str = wocky_xmpp_node_to_string (reply->node);
+  DEBUG("%s", result_str);
+  g_free (result_str);
+  
+  node = wocky_xmpp_node_get_child (reply->node, "mailbox");
+  /* TODO Store unread mails */
+
+end:
+  if (reply)
+    g_object_unref (reply);
+}
+
+static void
+update_unread_mails (GabbleConnection *conn)
+{
+  WockyXmppStanza *query;
+  WockyPorter *porter = wocky_session_get_porter (conn->session);
+
+  DEBUG ("Updating unread mails information");
+
+  query = wocky_xmpp_stanza_build ( WOCKY_STANZA_TYPE_IQ,
+      WOCKY_STANZA_SUB_TYPE_GET, NULL, NULL,
+      WOCKY_NODE, "query",
+      WOCKY_NODE_XMLNS, NS_GOOGLE_MAIL_NOTIFY,
+      WOCKY_NODE_END,
+      WOCKY_STANZA_END);
+  wocky_porter_send_iq_async (porter, query, NULL, get_unread_mails, conn);
+  g_object_unref (query);
+}
+
+static gboolean
+new_mail_handler (WockyPorter *porter, WockyXmppStanza *stanza, 
+    gpointer user_data)
+{
+  GabbleConnection *conn = user_data;
+  if (conn->mail_subscribers_count > 0)
+    {
+      DEBUG ("Got Google <new-mail> notification");
+      update_unread_mails (conn);
+    }
+  return TRUE;
+}
+
+static void
+connection_status_changed (GabbleConnection *conn, TpConnectionStatus status,
+    TpConnectionStatusReason reason, gpointer user_data)
+{
+  if (status == TP_CONNECTION_STATUS_CONNECTED
+      && conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
+    {
+      DEBUG ("Connected, registering Google 'new-mail' notification");
+      conn->new_mail_handler_id =
+        wocky_porter_register_handler (wocky_session_get_porter (conn->session),
+            WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+            NULL, WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+            new_mail_handler, conn,
+            WOCKY_NODE, "new-mail",
+              WOCKY_NODE_XMLNS, NS_GOOGLE_MAIL_NOTIFY,
+              WOCKY_NODE_END,
+              WOCKY_STANZA_END);
+    }
+}
+
 void
 conn_mail_notif_init (GabbleConnection *conn)
 {
@@ -166,6 +249,9 @@ conn_mail_notif_init (GabbleConnection *conn)
   conn->mail_subscribers = NULL;
   conn->inbox_url = NULL;
   conn->unread_mails = NULL;
+
+  g_signal_connect (conn, "status-changed",
+      G_CALLBACK (connection_status_changed), conn);
 }
 
 static void
@@ -196,6 +282,13 @@ conn_mail_notif_dispose (GabbleConnection *conn)
   if (conn->unread_mails)
     g_hash_table_unref (conn->unread_mails);
   conn->unread_mails = NULL;
+
+  if (conn->new_mail_handler_id)
+    {
+      WockyPorter *porter = wocky_session_get_porter (conn->session);
+      wocky_porter_unregister_handler (porter, conn->new_mail_handler_id);
+      conn->new_mail_handler_id = 0;
+    }
 }
 
 

@@ -35,9 +35,7 @@
 
 #include <extensions/extensions.h>
 
-#ifdef HAVE_UUID
-# include <uuid.h>
-#endif
+#include <uuid.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_JID
 
@@ -84,7 +82,6 @@ sha1_bin (const gchar *bytes,
 gchar *
 gabble_generate_id (void)
 {
-#ifdef HAVE_UUID
   /* generate random UUIDs */
   uuid_t uu;
   gchar *str;
@@ -93,15 +90,6 @@ gabble_generate_id (void)
   uuid_generate_random (uu);
   uuid_unparse_lower (uu, str);
   return str;
-#else
-  /* generate from the time, a counter, and a random integer */
-  static gulong last = 0;
-  GTimeVal tv;
-
-  g_get_current_time (&tv);
-  return g_strdup_printf ("%lx.%lx/%lx/%x", tv.tv_sec, tv.tv_usec,
-      last++, g_random_int ());
-#endif
 }
 
 static void

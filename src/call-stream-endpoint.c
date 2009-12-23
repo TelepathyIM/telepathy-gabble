@@ -278,8 +278,7 @@ gabble_call_stream_endpoint_class_init (
   param_spec = g_param_spec_boxed ("remote-credentials",
       "RemoteCredentials",
       "The remote credentials of this endpoint",
-      dbus_g_type_get_struct ("GValueArray",
-          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID),
+      GABBLE_STRUCT_TYPE_STREAM_CREDENTIALS,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_CREDENTIALS,
       param_spec);
@@ -348,9 +347,8 @@ gabble_call_stream_endpoint_finalize (GObject *object)
   g_free (priv->object_path);
 
   g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE, priv->selected_candidate);
-  g_boxed_free (dbus_g_type_get_struct ("GValueArray",
-                G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID),
-                self->priv->remote_credentials);
+  g_boxed_free (GABBLE_STRUCT_TYPE_STREAM_CREDENTIALS,
+      priv->remote_credentials);
 
   G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->finalize (object);
 }
@@ -463,8 +461,7 @@ call_stream_endpoint_set_selected_candidate (
           (password != NULL && password[0] != 0))
         {
           if (self->priv->remote_credentials != NULL)
-            g_boxed_free (dbus_g_type_get_struct ("GValueArray",
-                G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID),
+            g_boxed_free (GABBLE_STRUCT_TYPE_STREAM_CREDENTIALS,
                 self->priv->remote_credentials);
 
           self->priv->remote_credentials = gabble_value_array_build (2,

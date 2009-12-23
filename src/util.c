@@ -1168,8 +1168,6 @@ FINALLY:
   return resource;
 }
 
-#define TWICE(x) x, x
-
 const gchar *
 jingle_pick_best_content_type (GabbleConnection *conn,
   TpHandle peer,

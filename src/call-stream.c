@@ -457,8 +457,6 @@ gabble_call_stream_dispose (GObject *object)
 
   priv->content = NULL;
 
-  /* release any references held by the object here */
-
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->dispose (object);
 }

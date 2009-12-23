@@ -690,7 +690,7 @@ call_iface_init (gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) gabble_svc_channel_type_call_implement_##x (\
     klass, gabble_call_channel_##x)
-    IMPLEMENT(accept);
+  IMPLEMENT(accept);
 #undef IMPLEMENT
 }
 

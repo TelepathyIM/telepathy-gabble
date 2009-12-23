@@ -649,7 +649,7 @@ class JingleTest2:
                             for (name, id, rate) in codecs ]
         return dbus.Array(dbussed_codecs, signature='(usuua{ss})')
 
-    def dbusify_call_odecs_with_params(self, codecs):
+    def dbusify_call_codecs_with_params(self, codecs):
         dbussed_codecs = [ (id, name, rate, 0, params)
                             for (name, id, rate, params) in codecs ]
         return dbus.Array(dbussed_codecs, signature='(usuua{ss})')

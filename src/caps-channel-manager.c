@@ -71,7 +71,7 @@ gabble_caps_channel_manager_reset_capabilities (
     {
       method (caps_manager);
     }
-  /* ... else assume there is no need to rest the  caps */
+  /* ... else assume there is no need to reset the caps */
 }
 
 void

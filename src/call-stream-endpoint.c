@@ -45,9 +45,9 @@ G_DEFINE_TYPE_WITH_CODE(GabbleCallStreamEndpoint,
   gabble_call_stream_endpoint,
   G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_STREAM_ENDPOINT,
-        call_stream_endpoint_iface_init);
+      call_stream_endpoint_iface_init);
    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-    tp_dbus_properties_mixin_iface_init);
+      tp_dbus_properties_mixin_iface_init);
 );
 
 /* properties */
@@ -309,8 +309,6 @@ gabble_call_stream_endpoint_dispose (GObject *object)
 
   priv->content = NULL;
 
-  /* release any references held by the object here */
-
   if (G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->dispose (
         object);
@@ -436,11 +434,11 @@ call_stream_endpoint_iface_init (gpointer iface, gpointer data)
   GabbleSvcCallStreamEndpointClass *klass =
     (GabbleSvcCallStreamEndpointClass *) iface;
 
-  #define IMPLEMENT(x) gabble_svc_call_stream_endpoint_implement_##x (\
-      klass, call_stream_endpoint_##x)
-      IMPLEMENT(set_stream_state);
-      IMPLEMENT(set_selected_candidate);
-  #undef IMPLEMENT
+#define IMPLEMENT(x) gabble_svc_call_stream_endpoint_implement_##x (\
+    klass, call_stream_endpoint_##x)
+  IMPLEMENT(set_stream_state);
+  IMPLEMENT(set_selected_candidate);
+#undef IMPLEMENT
 }
 
 GabbleCallStreamEndpoint *

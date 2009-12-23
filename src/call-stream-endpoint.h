@@ -22,7 +22,6 @@
 #define __GABBLE_CALL_STREAM_ENDPOINT_H__
 
 #include <glib-object.h>
-#include <gio/gio.h>
 
 #include <telepathy-glib/dbus-properties-mixin.h>
 #include "jingle-content.h"

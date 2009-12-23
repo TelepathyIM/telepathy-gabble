@@ -75,18 +75,6 @@ enum
   PROP_CODEC_OFFER,
 };
 
-#if 0
-/* signal enum */
-enum
-{
-    STREAM_ADDED,
-    STREAM_REMOVED,
-    LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
-#endif
-
 /* private structure */
 struct _GabbleCallContentPrivate
 {
@@ -154,7 +142,7 @@ gabble_call_content_get_property (GObject    *object,
             {
               GabbleCallStream *s = GABBLE_CALL_STREAM (l->data);
               g_ptr_array_add (arr,
-                (gpointer) gabble_call_stream_get_object_path (s));
+                  (gpointer) gabble_call_stream_get_object_path (s));
             }
 
           g_value_set_boxed (value, arr);
@@ -308,7 +296,7 @@ gabble_call_content_class_init (
   };
 
   g_type_class_add_private (gabble_call_content_class,
-    sizeof (GabbleCallContentPrivate));
+      sizeof (GabbleCallContentPrivate));
 
   object_class->constructed = gabble_call_content_constructed;
 

@@ -50,16 +50,6 @@ enum
   PROP_REMOTE_CONTACT_CODEC_MAP,
 };
 
-#if 0
-/* signal enum */
-enum
-{
-    LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
-#endif
-
 /* private structure */
 struct _GabbleCallContentCodecofferPrivate
 {

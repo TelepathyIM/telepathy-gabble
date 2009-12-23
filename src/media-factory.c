@@ -413,15 +413,12 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
   /* Close will cause the channel to be removed from the list indirectly..*/
   while (priv->media_channels != NULL)
     gabble_media_channel_close (
-      GABBLE_MEDIA_CHANNEL (priv->media_channels->data));
+        GABBLE_MEDIA_CHANNEL (priv->media_channels->data));
 
   /* Close will cause the channel to be removed from the list indirectly..*/
   while (priv->call_channels != NULL)
     gabble_call_channel_close (
-      GABBLE_CALL_CHANNEL (priv->call_channels->data));
-
-  g_list_free (priv->call_channels);
-  priv->call_channels = NULL;
+        GABBLE_CALL_CHANNEL (priv->call_channels->data));
 
   if (priv->status_changed_id != 0)
     {

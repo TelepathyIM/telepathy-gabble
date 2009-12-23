@@ -445,35 +445,6 @@ call_stream_endpoint_set_selected_candidate (
       g_boxed_copy (GABBLE_STRUCT_TYPE_CANDIDATE, candidate);
 
   gabble_svc_call_stream_endpoint_emit_candidate_selected (self, candidate);
-
-  if (self->priv->selected_candidate != NULL &&
-      self->priv->selected_candidate->n_values >= 4)
-    {
-      GHashTable *info;
-      const gchar *username, *password;
-
-      value = g_value_array_get_nth (self->priv->selected_candidate, 3);
-      info = g_value_get_boxed (value);
-      username = tp_asv_get_string (info, "Username");
-      password = tp_asv_get_string (info, "Password");
-
-      if ((username != NULL && username[0] != 0) ||
-          (password != NULL && password[0] != 0))
-        {
-          if (self->priv->remote_credentials != NULL)
-            g_boxed_free (GABBLE_STRUCT_TYPE_STREAM_CREDENTIALS,
-                self->priv->remote_credentials);
-
-          self->priv->remote_credentials = gabble_value_array_build (2,
-              G_TYPE_STRING, g_strdup (username),
-              G_TYPE_STRING, g_strdup (password),
-              G_TYPE_INVALID);
-
-          gabble_svc_call_stream_endpoint_emit_remote_credentials_set (self,
-              username, password);
-        }
-    }
-
   gabble_svc_call_stream_endpoint_return_from_set_selected_candidate (context);
   return;
 

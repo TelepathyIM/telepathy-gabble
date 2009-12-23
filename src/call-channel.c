@@ -604,7 +604,7 @@ gabble_call_channel_close (GabbleCallChannel *self)
  */
 static void
 gabble_call_channel_close_async (TpSvcChannel *iface,
-                                  DBusGMethodInvocation *context)
+    DBusGMethodInvocation *context)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (iface);
 

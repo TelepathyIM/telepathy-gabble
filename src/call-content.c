@@ -205,8 +205,8 @@ gabble_call_content_set_property (GObject *object,
   switch (property_id)
     {
       case PROP_OBJECT_PATH:
-        g_free (priv->object_path);
         priv->object_path = g_value_dup_string (value);
+        g_assert (priv->object_path != NULL);
         break;
       case PROP_JINGLE_CONTENT:
         priv->content = g_value_dup_object (value);

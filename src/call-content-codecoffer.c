@@ -114,8 +114,8 @@ gabble_call_content_codecoffer_set_property (GObject *object,
   switch (property_id)
     {
       case PROP_OBJECT_PATH:
-        g_free (priv->object_path);
         priv->object_path = g_value_dup_string (value);
+        g_assert (priv->object_path != NULL);
         break;
       case PROP_REMOTE_CONTACT_CODEC_MAP:
         priv->codec_map = g_value_dup_boxed (value);

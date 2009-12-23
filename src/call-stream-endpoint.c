@@ -89,6 +89,11 @@ gabble_call_stream_endpoint_init (GabbleCallStreamEndpoint *self)
       GABBLE_HASH_TYPE_CANDIDATE_INFO,
           g_hash_table_new (g_str_hash, g_str_equal),
       G_TYPE_INVALID);
+
+  priv->remote_credentials = gabble_value_array_build (2,
+      G_TYPE_STRING, "",
+      G_TYPE_STRING, "",
+      G_TYPE_INVALID);
 }
 
 static void gabble_call_stream_endpoint_dispose (GObject *object);
@@ -124,19 +129,7 @@ gabble_call_stream_endpoint_get_property (GObject    *object,
         }
       case PROP_REMOTE_CREDENTIALS:
         {
-          if (priv->remote_credentials == NULL)
-            {
-              GValueArray *va = gabble_value_array_build (2,
-                  G_TYPE_STRING, "",
-                  G_TYPE_STRING, "",
-                  G_TYPE_INVALID);
-              g_value_set_boxed (value, va);
-              g_boxed_free (G_TYPE_VALUE_ARRAY, va);
-            }
-          else
-            {
-              g_value_set_boxed (value, priv->remote_credentials);
-            }
+          g_value_set_boxed (value, priv->remote_credentials);
           break;
         }
       case PROP_SELECTED_CANDIDATE:

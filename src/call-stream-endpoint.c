@@ -79,6 +79,14 @@ gabble_call_stream_endpoint_init (GabbleCallStreamEndpoint *self)
       GabbleCallStreamEndpointPrivate);
 
   self->priv = priv;
+
+  priv->selected_candidate = gabble_value_array_build (4,
+      G_TYPE_UINT, 0,
+      G_TYPE_STRING, "",
+      G_TYPE_UINT, 0,
+      GABBLE_HASH_TYPE_CANDIDATE_INFO,
+          g_hash_table_new (g_str_hash, g_str_equal),
+      G_TYPE_INVALID);
 }
 
 static void gabble_call_stream_endpoint_dispose (GObject *object);
@@ -113,22 +121,7 @@ gabble_call_stream_endpoint_get_property (GObject    *object,
           break;
         }
       case PROP_SELECTED_CANDIDATE:
-          if (priv->selected_candidate == NULL)
-            {
-              GValueArray *va = gabble_value_array_build (4,
-                  G_TYPE_UINT, 0,
-                  G_TYPE_STRING, "",
-                  G_TYPE_UINT, 0,
-                  GABBLE_HASH_TYPE_CANDIDATE_INFO,
-                      g_hash_table_new (g_str_hash, g_str_equal),
-                  G_TYPE_INVALID);
-              g_value_set_boxed (value, va);
-              g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE, va);
-            }
-          else
-            {
-              g_value_set_boxed (value, priv->selected_candidate);
-            }
+        g_value_set_boxed (value, priv->selected_candidate);
         break;
       case PROP_STREAM_STATE:
         g_value_set_uint (value, priv->stream_state);
@@ -422,9 +415,8 @@ call_stream_endpoint_set_selected_candidate (
       goto error;
     }
 
-  if (self->priv->selected_candidate != NULL)
-    g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE,
-        self->priv->selected_candidate);
+  g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE,
+      self->priv->selected_candidate);
 
   self->priv->selected_candidate =
       g_boxed_copy (GABBLE_STRUCT_TYPE_CANDIDATE, candidate);

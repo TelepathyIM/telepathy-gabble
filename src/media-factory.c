@@ -610,17 +610,14 @@ static const gchar * const anon_channel_allowed_properties[] = {
 static GHashTable *
 gabble_media_factory_streamed_media_channel_class (void)
 {
-  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) tp_g_value_slice_free);
-  GValue *value;
+  GHashTable *table = tp_asv_new (
+      TP_IFACE_CHANNEL ".TargetHandleType", G_TYPE_UINT,
+          TP_HANDLE_TYPE_CONTACT,
+      NULL);
 
-  value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
-
-  value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
+  tp_asv_set_static_string (table,
+      TP_IFACE_CHANNEL ".ChannelType",
+      TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
 
   return table;
 }
@@ -628,17 +625,14 @@ gabble_media_factory_streamed_media_channel_class (void)
 static GHashTable *
 gabble_media_factory_call_channel_class (void)
 {
-  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) tp_g_value_slice_free);
-  GValue *value;
+  GHashTable *table = tp_asv_new (
+      TP_IFACE_CHANNEL ".TargetHandleType", G_TYPE_UINT,
+          TP_HANDLE_TYPE_CONTACT,
+      NULL);
 
-  value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_CALL);
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
-
-  value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
+  tp_asv_set_static_string (table,
+      TP_IFACE_CHANNEL ".ChannelType",
+      GABBLE_IFACE_CHANNEL_TYPE_CALL);
 
   return table;
 }

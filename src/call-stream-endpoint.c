@@ -379,9 +379,9 @@ call_stream_endpoint_set_selected_candidate (
     DBusGMethodInvocation *context)
 {
   GabbleCallStreamEndpoint *self = GABBLE_CALL_STREAM_ENDPOINT (iface);
-  GValueArray *va = (GValueArray*)candidate;
+  GValueArray *va = (GValueArray *) candidate;
   GValue *value;
-  GError *error;
+  GError *error = NULL;
 
   if (candidate->n_values != 4)
     {

@@ -235,39 +235,39 @@ gabble_call_channel_get_property (GObject    *object,
 
           g_value_set_string (value, tp_handle_inspect (repo, priv->creator));
         }
-       break;
-     case PROP_REQUESTED:
-       g_value_set_boolean (value, priv->requested);
-       break;
-     case PROP_INTERFACES:
-       g_value_set_boxed (value, gabble_call_channel_interfaces);
-       break;
-     case PROP_CHANNEL_DESTROYED:
-       g_value_set_boolean (value, priv->closed);
-       break;
-     case PROP_CHANNEL_PROPERTIES:
-       g_value_take_boxed (value,
-           tp_dbus_properties_mixin_make_properties_hash (object,
-               TP_IFACE_CHANNEL, "TargetHandle",
-               TP_IFACE_CHANNEL, "TargetHandleType",
-               TP_IFACE_CHANNEL, "ChannelType",
-               TP_IFACE_CHANNEL, "TargetID",
-               TP_IFACE_CHANNEL, "InitiatorHandle",
-               TP_IFACE_CHANNEL, "InitiatorID",
-               TP_IFACE_CHANNEL, "Requested",
-               TP_IFACE_CHANNEL, "Interfaces",
-               GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialAudio",
-               GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialVideo",
-               GABBLE_IFACE_CHANNEL_TYPE_CALL, "MutableContents",
-               NULL));
-       break;
-     case PROP_SESSION:
-       g_value_set_object (value, priv->session);
-       break;
-     case PROP_INITIAL_AUDIO:
-       g_value_set_boolean (value, priv->initial_audio);
-       break;
-     case PROP_INITIAL_VIDEO:
+        break;
+      case PROP_REQUESTED:
+        g_value_set_boolean (value, priv->requested);
+        break;
+      case PROP_INTERFACES:
+        g_value_set_boxed (value, gabble_call_channel_interfaces);
+        break;
+      case PROP_CHANNEL_DESTROYED:
+        g_value_set_boolean (value, priv->closed);
+        break;
+      case PROP_CHANNEL_PROPERTIES:
+        g_value_take_boxed (value,
+            tp_dbus_properties_mixin_make_properties_hash (object,
+                TP_IFACE_CHANNEL, "TargetHandle",
+                TP_IFACE_CHANNEL, "TargetHandleType",
+                TP_IFACE_CHANNEL, "ChannelType",
+                TP_IFACE_CHANNEL, "TargetID",
+                TP_IFACE_CHANNEL, "InitiatorHandle",
+                TP_IFACE_CHANNEL, "InitiatorID",
+                TP_IFACE_CHANNEL, "Requested",
+                TP_IFACE_CHANNEL, "Interfaces",
+                GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialAudio",
+                GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialVideo",
+                GABBLE_IFACE_CHANNEL_TYPE_CALL, "MutableContents",
+                NULL));
+        break;
+      case PROP_SESSION:
+        g_value_set_object (value, priv->session);
+        break;
+      case PROP_INITIAL_AUDIO:
+        g_value_set_boolean (value, priv->initial_audio);
+        break;
+      case PROP_INITIAL_VIDEO:
         g_value_set_boolean (value, priv->initial_video);
         break;
       case PROP_MUTABLE_CONTENTS:

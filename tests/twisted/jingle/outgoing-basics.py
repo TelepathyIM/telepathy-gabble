@@ -269,7 +269,7 @@ def rccs(q, bus, conn, stream):
     rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS,
         'RequestableChannelClasses')
 
-    # Test Channel.Type.Call.StreamedMedia
+    # Test Channel.Type.StreamedMedia
     media_classes = [ rcc for rcc in rccs
         if rcc[0][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA ]
 

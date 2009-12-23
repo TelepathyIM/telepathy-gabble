@@ -237,7 +237,8 @@ class GtalkProtocol03(JingleProtocol):
         return p
 
     # Gtalk has only one content, and <content> node is implicit
-    def Content(self, name, creator, senders, description=None, transport=None):
+    def Content(self, name, creator, senders=None,
+            description=None, transport=None):
         # Normally <content> has <description> and <transport>, but we only
         # use <description> unless <transport> has candidates.
         assert description != None
@@ -325,7 +326,8 @@ class GtalkProtocol04(JingleProtocol):
             { 'type': action, 'initiator': initiator, 'id': sid }, children)
 
     # hacky: parent Jingle node should just pick up our children
-    def Content(self, name, creator, senders, description=None, transport=None):
+    def Content(self, name, creator, senders=None,
+            description=None, transport=None):
         return ('dummy-content', None, {},
             [node for node in [description, transport] if node != None])
 
@@ -358,7 +360,8 @@ class JingleProtocol015(JingleProtocol):
             { 'action': action, 'initiator': initiator, 'sid': sid }, children)
 
     # Note: senders weren't mandatory in this dialect
-    def Content(self, name, creator, senders, description=None, transport=None):
+    def Content(self, name, creator, senders = None,
+            description=None, transport=None):
         attribs = { 'name': name, 'creator': creator }
         if senders:
             attribs['senders'] = senders
@@ -415,7 +418,8 @@ class JingleProtocol031(JingleProtocol):
         return ('jingle', ns.JINGLE,
             { 'action': action, 'initiator': initiator, 'sid': sid }, children)
 
-    def Content(self, name, creator, senders, description=None, transport=None):
+    def Content(self, name, creator, senders=None,
+            description=None, transport=None):
         if not senders:
             senders = 'both'
         return ('content', None,

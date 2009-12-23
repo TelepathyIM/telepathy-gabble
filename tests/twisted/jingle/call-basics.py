@@ -252,7 +252,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
     assertEquals (cs.MEDIA_STREAM_STATE_DISCONNECTED, state)
 
     if incoming or jp.dialect != 'gtalk-v0.4':
-        jt2.remote_candidates()
+        jt2.remote_candidates(jt2.audio_names[0], "initiator")
 
         remote_candidates = q.expect ('dbus-signal',
             signal='RemoteCandidatesAdded', interface=cs.CALL_STREAM_ENDPOINT)

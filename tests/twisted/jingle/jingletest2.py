@@ -236,18 +236,20 @@ class GtalkProtocol03(JingleProtocol):
 
         return p
 
-    # Gtalk has only one content, and <content> node is implicit
+    # Gtalk has only one content, and <content> node is implicit. Also it
+    # never mixes payloads and transport information. It's up to the call of
+    # this function to ensure it nevel calls it with both mixed
     def Content(self, name, creator, senders=None,
             description=None, transport=None):
         # Normally <content> has <description> and <transport>, but we only
         # use <description> unless <transport> has candidates.
-        assert description != None
-        assert transport != None
+        assert description == None or len(transport[3]) == 0
 
         # if <transport> has children return those children (candidates)
-        if len(transport[3]) > 0:
+        if description != None:
+            return description
+        else:
             return transport[3][0]
-        return description
 
     def Description(self, type, children):
         if type == 'audio':
@@ -319,7 +321,9 @@ class GtalkProtocol04(JingleProtocol):
     def Jingle(self, sid, initiator, action, children):
         # ignore Content and go straight for its children
         if len(children) == 1 and children[0][0] == 'dummy-content':
-            children = [ children[0][3][0], children[0][3][1] ]
+            # Either have just a transport or a description + transport
+            # without candidates
+            children = children[0][3]
 
         action = self._action_map(action)
         return ('session', ns.GOOGLE_SESSION,
@@ -666,12 +670,15 @@ class JingleTest2:
             jp.Jingle(self.sid, self.peer, 'session-terminate', body) ])
         self.stream.send(jp.xml(iq))
 
-    def remote_candidates(self):
+    def remote_candidates(self, name, creator):
         jp = self.jp
 
-        contents = self.generate_contents(transports=self.remote_transports)
         node = jp.SetIq(self.peer, self.jid,
-            [ jp.Jingle(self.sid, self.peer, 'transport-info', contents) ])
+            [ jp.Jingle(self.sid, self.peer, 'transport-info',
+                [ jp.Content(name, creator,
+                    transport=jp.TransportGoogleP2P (self.remote_transports))
+                ] )
+            ])
         self.stream.send(jp.xml(node))
 
     def dbusify_codecs(self, codecs):

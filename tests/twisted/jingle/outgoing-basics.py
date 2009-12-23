@@ -279,9 +279,6 @@ def rccs(q, bus, conn, stream):
 
     assertEquals(cs.HT_CONTACT, fixed[cs.TARGET_HANDLE_TYPE])
 
-    assertContains(cs.TARGET_HANDLE, allowed)
-    assertContains(cs.TARGET_ID, allowed)
-
     expected_allowed = [
         cs.TARGET_ID, cs.TARGET_HANDLE,
         cs.INITIAL_VIDEO, cs.INITIAL_AUDIO

@@ -191,8 +191,7 @@ struct _GabbleConnection {
 
     /* Mail Notification */
     TpDBusDaemon *daemon;
-    gint mail_subscribers_count;
-    GData *mail_subscribers;
+    GHashTable *mail_subscribers;
     gchar *inbox_url;
     GHashTable *unread_mails;
     guint new_mail_handler_id;

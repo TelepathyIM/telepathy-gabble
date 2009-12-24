@@ -80,12 +80,11 @@ unsubscribe (GabbleConnection *conn, const gchar *name)
   tp_dbus_daemon_cancel_name_owner_watch (conn->daemon, name,
       sender_name_owner_changed, conn);
 
-  g_return_if_fail (conn->mail_subscribers_count > 0);
+  g_return_if_fail (g_hash_table_size (conn->mail_subscribers) > 0);
 
-  conn->mail_subscribers_count -= 1;
-  g_datalist_remove_data (&conn->mail_subscribers, name);
+  g_hash_table_remove (conn->mail_subscribers, name);
 
-  if (conn->mail_subscribers_count == 0)
+  if (g_hash_table_size (conn->mail_subscribers) == 0)
     {
       DEBUG ("Last sender unsubscribed, cleaning up!");
       g_free (conn->inbox_url);
@@ -103,7 +102,7 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  const gchar *sender = dbus_g_method_get_sender (context);
+  gchar *sender = dbus_g_method_get_sender (context);
 
   DEBUG ("Subscribe called by: %s", sender);
 
@@ -111,23 +110,22 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
       || !conn->daemon)
     {
       tp_dbus_g_method_return_not_implemented (context);
+      g_free (sender);
       return;
     }
 
-  if (g_datalist_get_data (&conn->mail_subscribers, sender))
+  if (g_hash_table_lookup_extended (conn->mail_subscribers, sender, NULL, NULL))
     {
       DEBUG ("Sender '%s' is already subscribed!", sender);
       goto done;
     }
 
-  conn->mail_subscribers_count += 1;
-  g_datalist_set_data (&conn->mail_subscribers, sender, conn);
+  g_hash_table_insert (conn->mail_subscribers, sender, NULL);
 
-  if (conn->mail_subscribers_count == 1)
+  if (g_hash_table_size (conn->mail_subscribers) == 1)
     update_unread_mails(conn);
 
-  tp_dbus_daemon_watch_name_owner (conn->daemon,
-      dbus_g_method_get_sender (context),
+  tp_dbus_daemon_watch_name_owner (conn->daemon, sender,
       sender_name_owner_changed, conn, NULL);
 
 done:
@@ -139,7 +137,7 @@ gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotificati
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  const gchar *sender =  dbus_g_method_get_sender (context);
+  gchar *sender =  dbus_g_method_get_sender (context);
 
   DEBUG ("Unsubscribe called by: %s", sender);
 
@@ -147,10 +145,12 @@ gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotificati
       || !conn->daemon)
     {
       tp_dbus_g_method_return_not_implemented (context);
+      g_free (sender);
       return;
     }
 
-  if (!g_datalist_get_data (&conn->mail_subscribers, sender))
+  if (!g_hash_table_lookup_extended (conn->mail_subscribers, sender, 
+                                    NULL, NULL))
     {
       DEBUG ("Sender '%s' is not subscribed!", sender);
       goto done;
@@ -159,6 +159,7 @@ gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotificati
   unsubscribe (conn, sender);
 
 done:
+  g_free (sender);
   gabble_svc_connection_interface_mail_notification_return_from_unsubscribe (context);
 }
 
@@ -431,7 +432,7 @@ new_mail_handler (WockyPorter *porter, WockyXmppStanza *stanza,
     gpointer user_data)
 {
   GabbleConnection *conn = user_data;
-  if (conn->mail_subscribers_count > 0)
+  if (g_hash_table_size(conn->mail_subscribers) > 0)
     {
       DEBUG ("Got Google <new-mail> notification");
       update_unread_mails (conn);
@@ -470,8 +471,8 @@ conn_mail_notif_init (GabbleConnection *conn)
       g_error_free (error);
     }
 
-  conn->mail_subscribers_count = 0;
-  conn->mail_subscribers = NULL;
+  conn->mail_subscribers = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                  g_free, NULL);
   conn->inbox_url = NULL;
   conn->unread_mails = NULL;
 
@@ -479,15 +480,18 @@ conn_mail_notif_init (GabbleConnection *conn)
       G_CALLBACK (connection_status_changed), conn);
 }
 
-static void
-foreach_cancel_watch (GQuark key_id,
-    gpointer handle_set,
+static gboolean
+foreach_cancel_watch (gpointer key,
+    gpointer value,
     gpointer user_data)
 {
   GabbleConnection *conn = user_data;
+  const gchar *sender_name = user_data;
 
   tp_dbus_daemon_cancel_name_owner_watch (conn->daemon,
-      g_quark_to_string (key_id), sender_name_owner_changed, conn);
+      sender_name, sender_name_owner_changed, conn);
+
+  return TRUE;
 }
 
 void
@@ -495,9 +499,10 @@ conn_mail_notif_dispose (GabbleConnection *conn)
 {
   if (conn->daemon)
     {
-      conn->mail_subscribers_count = 0;
-      g_datalist_clear (&conn->mail_subscribers);
-      g_datalist_foreach (&conn->mail_subscribers, foreach_cancel_watch, conn);
+      g_hash_table_foreach_remove (conn->mail_subscribers, 
+          foreach_cancel_watch, conn);
+      g_hash_table_unref (conn->mail_subscribers);
+      conn->mail_subscribers = NULL;
       g_object_unref (conn->daemon);
       conn->daemon = NULL;
     }

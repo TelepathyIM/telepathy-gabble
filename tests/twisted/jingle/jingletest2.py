@@ -675,12 +675,11 @@ class JingleTest2:
             (1 , host, port,
                 { "Type": transtype,
                   "Foundation": str(dbus.UInt32(1 + i)),
-                  "Protocol": 0, #UDP
+                  "Protocol": proto,
                   "Priority": i,
                   "Username": user,
                   "Password": pwd }
-                     )
-                for i, (host, port, proto, subtype, profile,
+             ) for i, (host, port, proto, subtype, profile,
                     pref, transtype, user, pwd)
                 in enumerate(self.remote_transports) ],
             signature='(usqa{sv})')

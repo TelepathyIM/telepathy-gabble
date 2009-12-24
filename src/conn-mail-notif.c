@@ -70,7 +70,7 @@ sender_name_owner_changed (TpDBusDaemon *dbus_daemon,
                            const gchar *new_owner,
                            gpointer user_data)
 {
-  GabbleConnection *conn = user_data;
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
   if (CHECK_STR_EMPTY (new_owner))
     {
@@ -435,7 +435,7 @@ query_unread_mails_cb (GObject *source_object,
   node = wocky_xmpp_node_get_child (reply->node, "mailbox");
   if (node)
     {
-      GabbleConnection *conn = user_data;
+      GabbleConnection *conn = GABBLE_CONNECTION (user_data);
       store_unread_mails (conn, node);
     }
 
@@ -469,7 +469,7 @@ new_mail_handler (WockyPorter *porter,
     WockyXmppStanza *stanza,
     gpointer user_data)
 {
-  GabbleConnection *conn = user_data;
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
   if (g_hash_table_size(conn->mail_subscribers) > 0)
     {
@@ -531,8 +531,8 @@ foreach_cancel_watch (gpointer key,
     gpointer value,
     gpointer user_data)
 {
-  GabbleConnection *conn = user_data;
-  const gchar *sender_name = user_data;
+  const gchar *sender_name = key;
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
   tp_dbus_daemon_cancel_name_owner_watch (conn->daemon,
       sender_name, sender_name_owner_changed, conn);

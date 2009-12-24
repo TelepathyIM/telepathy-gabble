@@ -125,6 +125,7 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
   if (g_hash_table_lookup_extended (conn->mail_subscribers, sender, NULL, NULL))
     {
       DEBUG ("Sender '%s' is already subscribed!", sender);
+      g_free (sender);
       goto done;
     }
 

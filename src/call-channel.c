@@ -614,15 +614,6 @@ gabble_call_channel_dispose (GObject *object)
   g_list_free (priv->contents);
   priv->contents = NULL;
 
-  if (priv->details != NULL)
-    g_hash_table_unref (priv->details);
-  priv->details = NULL;
-
-  if (priv->reason != NULL)
-    g_value_array_free (priv->reason);
-  priv->reason = NULL;
-
-  /* release any references held by the object here */
   if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose (object);
 }
@@ -631,8 +622,10 @@ void
 gabble_call_channel_finalize (GObject *object)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (object);
+  GabbleCallChannelPrivate *priv = self->priv;
 
-  /* free any data held directly by the object here */
+  g_hash_table_unref (priv->details);
+  g_value_array_free (priv->reason);
   g_free (self->priv->object_path);
   g_free (self->priv->transport_ns);
 

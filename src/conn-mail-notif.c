@@ -167,6 +167,7 @@ done:
 static void
 handle_url (GHashTable *mail, guint64 tid, const gchar *base_url)
 {
+  gchar *url;
   /* The URL in result is broken. The th=<tid> parameter should be in hexadecimal 
    * but it's set in decimal. We could try and fix the string, but the URL does
    * not point exactly where we expect it to point. Let's craft a different
@@ -174,13 +175,10 @@ handle_url (GHashTable *mail, guint64 tid, const gchar *base_url)
 
   /* TODO Make sure we don't have to authenticate again */
 
-  GString *url = g_string_new (base_url);
-  g_string_append_printf (url, "/#inbox/%" G_GINT64_MODIFIER "x", tid);
+  url = g_strdup_printf ("%s/#inbox/%" G_GINT64_MODIFIER "x", base_url, tid);
   
-  tp_asv_set_string (mail, "url", url->str);
+  tp_asv_take_string (mail, "url", url);
   tp_asv_set_uint32 (mail, "method", GABBLE_HTTP_METHOD_GET);
-
-  g_string_free (url, TRUE);
 }
 
 static gboolean

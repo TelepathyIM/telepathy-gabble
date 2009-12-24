@@ -92,7 +92,6 @@ struct _GabbleCallContentPrivate
   GabbleCallContentCodecoffer *offer;
   gint offers;
 
-  gchar *name;
   GabbleCallContentDisposition disposition;
   TpHandle creator;
 
@@ -392,7 +391,7 @@ gabble_call_content_class_init (
       param_spec);
 
   param_spec = g_param_spec_uint ("creator", "Creator",
-      "The creator content",
+      "The creator of this content",
       0, G_MAXUINT, 0,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CREATOR,
@@ -458,7 +457,6 @@ gabble_call_content_finalize (GObject *object)
 
   /* free any data held directly by the object here */
   g_free (priv->object_path);
-  g_free (priv->name);
 
   G_OBJECT_CLASS (gabble_call_content_parent_class)->finalize (object);
 }

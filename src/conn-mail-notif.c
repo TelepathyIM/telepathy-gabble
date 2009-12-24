@@ -129,6 +129,7 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
       goto done;
     }
 
+  /* Gives sender ownership to mail_subscribers hash table */
   g_hash_table_insert (conn->mail_subscribers, sender, NULL);
 
   if (g_hash_table_size (conn->mail_subscribers) == 1)
@@ -340,6 +341,7 @@ mail_thread_info_each (WockyXmppNode *node,
       handle_subject (node, mail, &dirty);
       handle_snippet (node, mail, &dirty);
 
+      /* gives tid ownership to unread_mails hash table */
       g_hash_table_insert (data->unread_mails, tid, mail);
       if (dirty)
         g_ptr_array_add (data->mails_added, mail);

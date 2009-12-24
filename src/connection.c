@@ -3317,7 +3317,7 @@ gabble_connection_send_presence (GabbleConnection *conn,
   if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
     lm_message_node_add_own_nick (message->node, conn);
 
-  if (status != NULL && status[0] != '\0')
+  if (!CHECK_STR_EMPTY(status))
     lm_message_node_add_child (message->node, "status", status);
 
   result = _gabble_connection_send (conn, message, error);

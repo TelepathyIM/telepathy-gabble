@@ -2038,7 +2038,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
 
           lm_message_node_add_child (r, reason_elt, NULL);
 
-          if (text != NULL && *text != '\0')
+          if (!CHECK_STR_EMPTY(text))
             lm_message_node_add_child (r, "text", text);
         }
 

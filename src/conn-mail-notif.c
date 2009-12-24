@@ -34,6 +34,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "util.h"
 
 enum
 {
@@ -67,7 +68,7 @@ sender_name_owner_changed (TpDBusDaemon *dbus_daemon,
 {
   GabbleConnection *conn = user_data;
 
-  if (new_owner == NULL || new_owner[0] == '\0')
+  if (CHECK_STR_EMPTY (new_owner))
     {
       DEBUG ("Sender removed: %s", name);
       unsubscribe (conn, name);

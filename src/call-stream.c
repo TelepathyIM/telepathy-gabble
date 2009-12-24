@@ -509,7 +509,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       param_spec);
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that owns this call content",
+      "Gabble connection object that owns this call stream",
       GABBLE_TYPE_CONNECTION,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
@@ -704,7 +704,6 @@ gabble_call_stream_set_sending (GabbleSvcCallStream *iface,
   GabbleCallStream *self = GABBLE_CALL_STREAM (iface);
   GabbleCallStreamPrivate *priv = self->priv;
 
-  DEBUG ("Badgers: %d\n", sending);
   gabble_jingle_content_set_sending (priv->content, sending);
 
   gabble_svc_call_stream_return_from_set_sending (context);

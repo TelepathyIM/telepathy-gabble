@@ -321,7 +321,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
                   stream_props["Senders"])
 
     try:
-        path = chan.AddContent ("Webcam", cs.CALL_MEDIA_TYPE_AUDIO,
+        path = chan.AddContent ("Webcam", cs.CALL_MEDIA_TYPE_VIDEO,
             dbus_interface=cs.CHANNEL_TYPE_CALL)
         content = bus.get_object (conn.bus_name, path)
         content_properties = content.GetAll (cs.CALL_CONTENT,

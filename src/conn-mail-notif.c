@@ -36,6 +36,7 @@
 #include "debug.h"
 #include "util.h"
 
+
 enum
 {
   PROP_CAPABILITIES,
@@ -55,10 +56,13 @@ struct MailsHelperData
   GPtrArray *mails_added;
 };
 
+
 static GPtrArray empty_array = { 0 };
+
 
 static void unsubscribe (GabbleConnection *conn, const gchar *name);
 static void update_unread_mails (GabbleConnection *conn);
+
 
 static void
 sender_name_owner_changed (TpDBusDaemon *dbus_daemon,
@@ -75,8 +79,10 @@ sender_name_owner_changed (TpDBusDaemon *dbus_daemon,
     }
 }
 
+
 static void
-unsubscribe (GabbleConnection *conn, const gchar *name)
+unsubscribe (GabbleConnection *conn,
+    const gchar *name)
 {
   tp_dbus_daemon_cancel_name_owner_watch (conn->daemon, name,
       sender_name_owner_changed, conn);
@@ -97,6 +103,7 @@ unsubscribe (GabbleConnection *conn, const gchar *name)
         }
     }
 }
+
 
 static void
 gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification *iface,
@@ -133,6 +140,7 @@ done:
   gabble_svc_connection_interface_mail_notification_return_from_subscribe (context);
 }
 
+
 static void
 gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotification *iface,
     DBusGMethodInvocation *context)
@@ -150,7 +158,7 @@ gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotificati
       return;
     }
 
-  if (!g_hash_table_lookup_extended (conn->mail_subscribers, sender, 
+  if (!g_hash_table_lookup_extended (conn->mail_subscribers, sender,
                                     NULL, NULL))
     {
       DEBUG ("Sender '%s' is not subscribed!", sender);
@@ -164,11 +172,15 @@ done:
   gabble_svc_connection_interface_mail_notification_return_from_unsubscribe (context);
 }
 
+
 static void
-handle_url (GHashTable *mail, guint64 tid, const gchar *base_url)
+handle_url (GHashTable *mail,
+    guint64 tid,
+    const gchar *base_url)
 {
   gchar *url;
-  /* The URL in result is broken. The th=<tid> parameter should be in hexadecimal 
+
+  /* The URL in result is broken. The th=<tid> parameter should be in hexadecimal
    * but it's set in decimal. We could try and fix the string, but the URL does
    * not point exactly where we expect it to point. Let's craft a different
    * URL that do a better job.*/
@@ -176,13 +188,15 @@ handle_url (GHashTable *mail, guint64 tid, const gchar *base_url)
   /* TODO Make sure we don't have to authenticate again */
 
   url = g_strdup_printf ("%s/#inbox/%" G_GINT64_MODIFIER "x", base_url, tid);
-  
+
   tp_asv_take_string (mail, "url", url);
   tp_asv_set_uint32 (mail, "method", GABBLE_HTTP_METHOD_GET);
 }
 
+
 static gboolean
-sender_each (WockyXmppNode *node, gpointer user_data)
+sender_each (WockyXmppNode *node,
+    gpointer user_data)
 {
   GPtrArray *senders = user_data;
 
@@ -192,7 +206,7 @@ sender_each (WockyXmppNode *node, gpointer user_data)
       GValue sender = {0};
 
       g_value_init (&sender, addr_type);
-      g_value_set_static_boxed (&sender, 
+      g_value_set_static_boxed (&sender,
           dbus_g_type_specialized_construct (addr_type));
 
       dbus_g_type_struct_set (&sender,
@@ -206,8 +220,11 @@ sender_each (WockyXmppNode *node, gpointer user_data)
   return TRUE;
 }
 
+
 static void
-handle_senders (WockyXmppNode *parent_node, GHashTable *mail, gboolean *dirty)
+handle_senders (WockyXmppNode *parent_node,
+    GHashTable *mail,
+    gboolean *dirty)
 {
   WockyXmppNode *node;
 
@@ -228,10 +245,14 @@ handle_senders (WockyXmppNode *parent_node, GHashTable *mail, gboolean *dirty)
     }
 }
 
+
 static void
-handle_subject (WockyXmppNode *parent_node, GHashTable *mail, gboolean *dirty)
+handle_subject (WockyXmppNode *parent_node,
+    GHashTable *mail,
+    gboolean *dirty)
 {
   WockyXmppNode *node;
+
   node = wocky_xmpp_node_get_child (parent_node, "subject");
   if (node)
     {
@@ -243,10 +264,14 @@ handle_subject (WockyXmppNode *parent_node, GHashTable *mail, gboolean *dirty)
     }
 }
 
+
 static void
-handle_snippet (WockyXmppNode *parent_node, GHashTable *mail, gboolean *dirty)
+handle_snippet (WockyXmppNode *parent_node,
+    GHashTable *mail,
+    gboolean *dirty)
 {
   WockyXmppNode *node;
+
   node = wocky_xmpp_node_get_child (parent_node, "snippet");
   if (node)
     {
@@ -258,8 +283,10 @@ handle_snippet (WockyXmppNode *parent_node, GHashTable *mail, gboolean *dirty)
     }
 }
 
+
 static gboolean
-mail_thread_info_each (WockyXmppNode *node, gpointer user_data)
+mail_thread_info_each (WockyXmppNode *node,
+    gpointer user_data)
 {
   struct MailsHelperData *data = user_data;
 
@@ -299,9 +326,11 @@ mail_thread_info_each (WockyXmppNode *node, gpointer user_data)
       if (val_str)
         {
           guint date;
+
           date = (guint)(g_ascii_strtoull (val_str, NULL, 0) / 1000l);
           if (date != tp_asv_get_uint32 (mail, "received-timestamp", NULL))
             dirty = TRUE;
+
           tp_asv_set_uint32 (mail, "received-timestamp", date);
         }
 
@@ -318,14 +347,16 @@ mail_thread_info_each (WockyXmppNode *node, gpointer user_data)
   return TRUE;
 }
 
+
 static void
-store_unread_mails (GabbleConnection *conn, WockyXmppNode *mailbox)
+store_unread_mails (GabbleConnection *conn,
+    WockyXmppNode *mailbox)
 {
   GHashTableIter iter;
   GArray *mails_removed;
   struct MailsHelperData data;
   const gchar *url;
-  
+
   data.unread_mails = g_hash_table_new_full (g_int64_hash,
                                              g_int64_equal,
                                              g_free,
@@ -347,20 +378,22 @@ store_unread_mails (GabbleConnection *conn, WockyXmppNode *mailbox)
 
   /* Store new mails */
   wocky_xmpp_node_each_child (mailbox, mail_thread_info_each, &data);
-  
+
   /* Generate the list of removed thread IDs */
   if (data.old_mails)
     {
       gpointer key;
+
       mails_removed = g_array_sized_new (TRUE, TRUE,
           sizeof (guint64), g_hash_table_size (data.old_mails));
 
       g_hash_table_iter_init (&iter, data.old_mails);
-      while (g_hash_table_iter_next (&iter, &key, NULL)) 
+      while (g_hash_table_iter_next (&iter, &key, NULL))
         {
           guint64 tid = *((guint64*)key);
           g_array_append_val (mails_removed, tid);
         }
+
       g_hash_table_unref (data.old_mails);
     }
   else
@@ -374,8 +407,11 @@ store_unread_mails (GabbleConnection *conn, WockyXmppNode *mailbox)
   g_array_free (mails_removed, TRUE);
 }
 
+
 static void
-query_unread_mails_cb (GObject *source_object, GAsyncResult *res, gpointer user_data)
+query_unread_mails_cb (GObject *source_object,
+    GAsyncResult *res,
+    gpointer user_data)
 {
   GError *error = NULL;
   gchar *result_str;
@@ -389,13 +425,13 @@ query_unread_mails_cb (GObject *source_object, GAsyncResult *res, gpointer user_
       g_error_free (error);
       goto end;
     }
-  
+
   DEBUG ("Got unread mail details");
 
   result_str = wocky_xmpp_node_to_string (reply->node);
-  DEBUG("%s", result_str);
+  DEBUG ("%s", result_str);
   g_free (result_str);
-  
+
   node = wocky_xmpp_node_get_child (reply->node, "mailbox");
   if (node)
     {
@@ -408,6 +444,7 @@ end:
     g_object_unref (reply);
 }
 
+
 static void
 update_unread_mails (GabbleConnection *conn)
 {
@@ -416,7 +453,7 @@ update_unread_mails (GabbleConnection *conn)
 
   DEBUG ("Updating unread mails information");
 
-  query = wocky_xmpp_stanza_build ( WOCKY_STANZA_TYPE_IQ,
+  query = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_GET, NULL, NULL,
       WOCKY_NODE, "query",
       WOCKY_NODE_XMLNS, NS_GOOGLE_MAIL_NOTIFY,
@@ -426,11 +463,14 @@ update_unread_mails (GabbleConnection *conn)
   g_object_unref (query);
 }
 
+
 static gboolean
-new_mail_handler (WockyPorter *porter, WockyXmppStanza *stanza, 
+new_mail_handler (WockyPorter *porter,
+    WockyXmppStanza *stanza,
     gpointer user_data)
 {
   GabbleConnection *conn = user_data;
+
   if (g_hash_table_size(conn->mail_subscribers) > 0)
     {
       DEBUG ("Got Google <new-mail> notification");
@@ -439,14 +479,18 @@ new_mail_handler (WockyPorter *porter, WockyXmppStanza *stanza,
   return TRUE;
 }
 
+
 static void
-connection_status_changed (GabbleConnection *conn, TpConnectionStatus status,
-    TpConnectionStatusReason reason, gpointer user_data)
+connection_status_changed (GabbleConnection *conn,
+    TpConnectionStatus status,
+    TpConnectionStatusReason reason,
+    gpointer user_data)
 {
   if (status == TP_CONNECTION_STATUS_CONNECTED
       && conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
     {
       DEBUG ("Connected, registering Google 'new-mail' notification");
+
       conn->new_mail_handler_id =
         wocky_porter_register_handler (wocky_session_get_porter (conn->session),
             WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
@@ -459,11 +503,13 @@ connection_status_changed (GabbleConnection *conn, TpConnectionStatus status,
     }
 }
 
+
 void
 conn_mail_notif_init (GabbleConnection *conn)
 {
   GError *error = NULL;
   conn->daemon = tp_dbus_daemon_dup (&error);
+
   if (!conn->daemon)
     {
       DEBUG ("Failed to connect to dbus daemon: %s", error->message);
@@ -479,6 +525,7 @@ conn_mail_notif_init (GabbleConnection *conn)
       G_CALLBACK (connection_status_changed), conn);
 }
 
+
 static gboolean
 foreach_cancel_watch (gpointer key,
     gpointer value,
@@ -493,12 +540,13 @@ foreach_cancel_watch (gpointer key,
   return TRUE;
 }
 
+
 void
 conn_mail_notif_dispose (GabbleConnection *conn)
 {
   if (conn->daemon)
     {
-      g_hash_table_foreach_remove (conn->mail_subscribers, 
+      g_hash_table_foreach_remove (conn->mail_subscribers,
           foreach_cancel_watch, conn);
       g_hash_table_unref (conn->mail_subscribers);
       conn->mail_subscribers = NULL;
@@ -522,7 +570,8 @@ conn_mail_notif_dispose (GabbleConnection *conn)
 
 
 void
-conn_mail_notif_iface_init (gpointer g_iface, gpointer iface_data)
+conn_mail_notif_iface_init (gpointer g_iface,
+    gpointer iface_data)
 {
   GabbleSvcConnectionInterfaceMailNotificationClass *klass = g_iface;
 
@@ -533,12 +582,14 @@ conn_mail_notif_iface_init (gpointer g_iface, gpointer iface_data)
 #undef IMPLEMENT
 }
 
-static GPtrArray*
+
+static GPtrArray *
 get_unread_mails (GabbleConnection *conn)
 {
   GPtrArray *mails = g_ptr_array_new ();
   GHashTableIter iter;
   gpointer value;
+
   g_hash_table_iter_init (&iter, conn->unread_mails);
   while (g_hash_table_iter_next (&iter, NULL, &value))
     {
@@ -548,6 +599,7 @@ get_unread_mails (GabbleConnection *conn)
 
   return mails;
 }
+
 
 void
 conn_mail_notif_properties_getter (GObject *object,

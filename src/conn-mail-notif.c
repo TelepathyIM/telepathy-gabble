@@ -17,6 +17,15 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/* This is implementation of Gmail Notification protocol as documented at
+ * http://code.google.com/intl/fr/apis/talk/jep_extensions/gmail.html
+ * This is the only protocol supported at the moment. To add new protocol,
+ * one would have to split the google specific parts wich are the
+ * update_unread_mails() function and the new-mail signal on google xml
+ * namespace. The data structure and suscription mechanism shall remain across
+ * protocols.
+ */
+
 #include "config.h"
 #include "conn-mail-notif.h"
 #include "namespaces.h"
@@ -139,7 +148,8 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
       sender_name_owner_changed, conn, NULL);
 
 done:
-  gabble_svc_connection_interface_mail_notification_return_from_subscribe (context);
+  gabble_svc_connection_interface_mail_notification_return_from_subscribe (
+      context);
 }
 
 
@@ -182,10 +192,10 @@ handle_url (GHashTable *mail,
 {
   gchar *url;
 
-  /* The URL in result is broken. The th=<tid> parameter should be in hexadecimal
-   * but it's set in decimal. We could try and fix the string, but the URL does
-   * not point exactly where we expect it to point. Let's craft a different
-   * URL that do a better job.*/
+  /* The URL in result is broken. The th=<tid> parameter should be in
+   * hexadecimal but it's set in decimal. We could try and fix the string,
+   * but the URL does not point exactly where we expect it to point. Let's
+   * craft a different URL that do a better job.*/
 
   /* TODO Make sure we don't have to authenticate again */
 
@@ -360,10 +370,8 @@ store_unread_mails (GabbleConnection *conn,
   struct MailsHelperData data;
   const gchar *url;
 
-  data.unread_mails = g_hash_table_new_full (g_int64_hash,
-                                             g_int64_equal,
-                                             g_free,
-                                             (GDestroyNotify)g_hash_table_unref);
+  data.unread_mails = g_hash_table_new_full (g_int64_hash, g_int64_equal,
+      g_free, (GDestroyNotify) g_hash_table_unref);
   data.conn = conn;
   data.old_mails = conn->unread_mails;
   conn->unread_mails = data.unread_mails;
@@ -372,7 +380,7 @@ store_unread_mails (GabbleConnection *conn,
   url = wocky_xmpp_node_get_attribute (mailbox, "url");
   if (url && tp_strdiff (url, conn->inbox_url))
     {
-      /* FIXME figure-out how to use POST data to garantee authentication */
+      /* FIXME figure-out how to use POST data to guarantee authentication */
       g_free (conn->inbox_url);
       conn->inbox_url = g_strdup (url);
       gabble_svc_connection_interface_mail_notification_emit_inbox_url_changed (
@@ -511,8 +519,8 @@ void
 conn_mail_notif_init (GabbleConnection *conn)
 {
   GError *error = NULL;
-  conn->daemon = tp_dbus_daemon_dup (&error);
 
+  conn->daemon = tp_dbus_daemon_dup (&error);
   if (!conn->daemon)
     {
       DEBUG ("Failed to connect to dbus daemon: %s", error->message);
@@ -606,10 +614,10 @@ get_unread_mails (GabbleConnection *conn)
 
 void
 conn_mail_notif_properties_getter (GObject *object,
-                                GQuark interface,
-                                GQuark name,
-                                GValue *value,
-                                gpointer getter_data)
+    GQuark interface,
+    GQuark name,
+    GValue *value,
+    gpointer getter_data)
 {
   static GQuark prop_quarks[NUM_OF_PROP] = {0};
   GabbleConnection *conn = GABBLE_CONNECTION (object);
@@ -646,5 +654,5 @@ conn_mail_notif_properties_getter (GObject *object,
       g_ptr_array_free (mails, TRUE);
     }
   else
-    g_assert (!"Unkown mail notification property, please file a bug.");
+    g_assert (!"Unknown mail notification property, please file a bug.");
 }

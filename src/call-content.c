@@ -130,7 +130,17 @@ gabble_call_content_get_property (GObject    *object,
         {
           JingleMediaType mtype;
           g_object_get (priv->content, "media-type", &mtype, NULL);
-          g_value_set_uint (value, mtype);
+          switch (mtype)
+            {
+              case JINGLE_MEDIA_TYPE_AUDIO:
+                g_value_set_uint (value, TP_MEDIA_STREAM_TYPE_AUDIO);
+                break;
+              case JINGLE_MEDIA_TYPE_VIDEO:
+                g_value_set_uint (value, TP_MEDIA_STREAM_TYPE_VIDEO);
+                break;
+              default:
+                g_assert_not_reached ();
+            }
           break;
         }
       case PROP_STREAMS:

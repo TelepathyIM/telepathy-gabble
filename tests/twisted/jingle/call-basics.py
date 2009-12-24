@@ -145,7 +145,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
     cstream.CandidatesPrepared (dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
 
     local_candidates = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA,
-                "LocalCandidates", dbus_interface=dbus.PROPERTIES_IFACE)
+        "LocalCandidates", dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals (candidates,  local_candidates)
 
     endpoints = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA,

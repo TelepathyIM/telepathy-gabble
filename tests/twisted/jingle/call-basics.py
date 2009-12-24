@@ -286,9 +286,12 @@ def run_test(jp, q, bus, conn, stream, incoming):
     # All Direction should be both now
     stream_props = cstream.GetAll (cs.CALL_STREAM,
         dbus_interface = dbus.PROPERTIES_IFACE)
-    assertEquals ({ self_handle : cs.CALL_SENDING_STATE_SENDING,
-                    remote_handle: cs.CALL_SENDING_STATE_SENDING },
-                  stream_props["Senders"])
+    assertEquals (
+        {
+            self_handle : cs.CALL_SENDING_STATE_SENDING,
+            remote_handle: cs.CALL_SENDING_STATE_SENDING
+        },
+        stream_props["Senders"])
 
     # Turn sending off and on again
     cstream.SetSending (False,

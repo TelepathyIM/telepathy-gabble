@@ -2124,7 +2124,7 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess,
   gchar *cname = NULL;
 
   if (name == NULL || *name == '\0')
-     name = (mtype == JINGLE_MEDIA_TYPE_AUDIO ?  "Audio" : "Video");
+    name = (mtype == JINGLE_MEDIA_TYPE_AUDIO ?  "Audio" : "Video");
 
   cname = g_strdup (name);
 

@@ -40,8 +40,8 @@ def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
 
     o = q.expect ('dbus-signal', signal='CodecsChanged')
 
-    update, _ = o.args
-    assertEquals ({ self_handle: codecs, remote_handle: codecs}  , update)
+    assertEquals ([{ self_handle: codecs, remote_handle: codecs}, []],
+        o.args)
 
 def run_test(jp, q, bus, conn, stream, incoming):
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')

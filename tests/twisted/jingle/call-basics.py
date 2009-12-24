@@ -106,7 +106,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         dbus_interface=dbus.PROPERTIES_IFACE)
 
     # Only an audio content
-    assertEquals (1, len(properties["Contents"]))
+    assertLength (1, properties["Contents"])
 
     content = bus.get_object (conn.bus_name, properties["Contents"][0])
 
@@ -114,7 +114,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         dbus_interface=dbus.PROPERTIES_IFACE)
 
     # Has one stream
-    assertEquals (1, len(content_properties["Streams"]))
+    assertLength (1, content_properties["Streams"])
 
     cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
 
@@ -149,8 +149,8 @@ def run_test(jp, q, bus, conn, stream, incoming):
     assertEquals (candidates,  local_candidates)
 
     endpoints = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA,
-                "Endpoints", dbus_interface=dbus.PROPERTIES_IFACE)
-    assertEquals (1, len (endpoints))
+        "Endpoints", dbus_interface=dbus.PROPERTIES_IFACE)
+    assertLength (1, endpoints)
 
     # There doesn't seem to be a good way to get the transport type from the
     # JP used, for now assume we prefer gtalk p2p and always pick that..

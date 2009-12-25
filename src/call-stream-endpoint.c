@@ -56,6 +56,7 @@ enum
   PROP_OBJECT_PATH = 1,
   PROP_JINGLE_CONTENT,
   PROP_REMOTE_CANDIDATES,
+  PROP_REMOTE_CREDENTIALS,
   PROP_SELECTED_CANDIDATE,
   PROP_STREAM_STATE,
   PROP_TRANSPORT,
@@ -67,6 +68,7 @@ struct _GabbleCallStreamEndpointPrivate
 
   gchar *object_path;
   GabbleJingleContent *content;
+  GValueArray *remote_credentials;
   GValueArray *selected_candidate;
   guint stream_state;
 };
@@ -86,6 +88,11 @@ gabble_call_stream_endpoint_init (GabbleCallStreamEndpoint *self)
       G_TYPE_UINT, 0,
       GABBLE_HASH_TYPE_CANDIDATE_INFO,
           g_hash_table_new (g_str_hash, g_str_equal),
+      G_TYPE_INVALID);
+
+  priv->remote_credentials = gabble_value_array_build (2,
+      G_TYPE_STRING, "",
+      G_TYPE_STRING, "",
       G_TYPE_INVALID);
 }
 
@@ -118,6 +125,11 @@ gabble_call_stream_endpoint_get_property (GObject    *object,
           arr = gabble_call_candidates_to_array (candidates);
           g_value_set_boxed (value, arr);
           g_ptr_array_unref (arr);
+          break;
+        }
+      case PROP_REMOTE_CREDENTIALS:
+        {
+          g_value_set_boxed (value, priv->remote_credentials);
           break;
         }
       case PROP_SELECTED_CANDIDATE:
@@ -210,6 +222,7 @@ gabble_call_stream_endpoint_class_init (
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl endpoint_props[] = {
     { "RemoteCandidates", "remote-candidates", NULL },
+    { "RemoteCredentials", "remote-credentials", NULL },
     { "SelectedCandidate", "selected-candidate", NULL },
     { "StreamState", "stream-state", NULL },
     { "Transport", "transport", NULL },
@@ -254,6 +267,14 @@ gabble_call_stream_endpoint_class_init (
       GABBLE_ARRAY_TYPE_CANDIDATE_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_CANDIDATES,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("remote-credentials",
+      "RemoteCredentials",
+      "The remote credentials of this endpoint",
+      GABBLE_STRUCT_TYPE_STREAM_CREDENTIALS,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_REMOTE_CREDENTIALS,
       param_spec);
 
   param_spec = g_param_spec_boxed ("selected-candidate",
@@ -316,6 +337,8 @@ gabble_call_stream_endpoint_finalize (GObject *object)
   g_free (priv->object_path);
 
   g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE, priv->selected_candidate);
+  g_boxed_free (GABBLE_STRUCT_TYPE_STREAM_CREDENTIALS,
+      priv->remote_credentials);
 
   G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->finalize (object);
 }

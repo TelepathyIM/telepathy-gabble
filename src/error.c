@@ -311,8 +311,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
 };
 
 
-static GabbleXmppErrorType
-error_type_to_enum (const gchar *error_type)
+GabbleXmppErrorType
+gabble_xmpp_error_type_to_enum (const gchar *error_type)
 {
   if (!tp_strdiff (error_type, "cancel"))
     return XMPP_ERROR_TYPE_CANCEL;
@@ -355,8 +355,8 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node,
   if (node_iter (error_node))
     {
       if (type_out != NULL)
-        *type_out = error_type_to_enum (lm_message_node_get_attribute (
-            error_node, "type"));
+        *type_out = gabble_xmpp_error_type_to_enum (
+            lm_message_node_get_attribute (error_node, "type"));
 
       /* we loop backwards because the most specific errors are the larger
        * numbers; the >= 0 test is OK because i is signed */
@@ -393,7 +393,7 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node,
               if (cur_code == error_code)
                 {
                   if (type_out != NULL)
-                    *type_out = error_type_to_enum (spec->type);
+                    *type_out = gabble_xmpp_error_type_to_enum (spec->type);
 
                   return i;
                 }

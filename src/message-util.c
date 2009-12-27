@@ -225,6 +225,40 @@ gabble_message_util_send_chat_state (GObject *obj,
   return result;
 }
 
+TpChannelTextSendError
+gabble_tp_send_error_from_wocky_xmpp_error (WockyXmppError err)
+{
+  switch (err)
+    {
+      /* Note: Google replies with <service-unavailable/> if you send a
+       * message to someone you're not subscribed to. But
+       * http://xmpp.org/rfcs/rfc3921.html#rules explicitly says that means
+       * the user is offline and doesn't have offline storage. I think Google
+       * should be returning <forbidden/> or <not-authorized/>. --wjt
+       */
+      case WOCKY_XMPP_ERROR_SERVICE_UNAVAILABLE:
+      case WOCKY_XMPP_ERROR_RECIPIENT_UNAVAILABLE:
+        return TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;
+
+      case WOCKY_XMPP_ERROR_ITEM_NOT_FOUND:
+      case WOCKY_XMPP_ERROR_JID_MALFORMED:
+      case WOCKY_XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
+        return TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
+
+      case WOCKY_XMPP_ERROR_FORBIDDEN:
+      case WOCKY_XMPP_ERROR_NOT_AUTHORIZED:
+        return TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
+
+      case WOCKY_XMPP_ERROR_RESOURCE_CONSTRAINT:
+        return TP_CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
+
+      case WOCKY_XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
+        return TP_CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
+
+      default:
+        return TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
+    }
+}
 
 static TpChannelTextSendError
 _tp_send_error_from_error_node (LmMessageNode *error_node,

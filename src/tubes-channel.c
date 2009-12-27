@@ -807,7 +807,7 @@ contact_left_muc (GabbleTubesChannel *self,
 void
 gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                                        TpHandle contact,
-                                       LmMessage *presence)
+                                       LmMessageNode *pnode)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   LmMessageNode *tubes_node;
@@ -825,14 +825,14 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 
   /* We are interested by this presence only if it contains tube information
    * or indicates someone left the muc */
-  presence_type = lm_message_node_get_attribute (presence->node, "type");
+  presence_type = lm_message_node_get_attribute (pnode, "type");
   if (!tp_strdiff (presence_type, "unavailable"))
     {
       contact_left_muc (self, contact);
       return;
     }
 
-  tubes_node = lm_message_node_get_child_with_namespace (presence->node,
+  tubes_node = lm_message_node_get_child_with_namespace (pnode,
       "tubes", NS_TUBES);
 
   if (tubes_node == NULL)

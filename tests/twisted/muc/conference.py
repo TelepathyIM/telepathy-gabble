@@ -20,7 +20,7 @@ def test(q, bus, conn, stream):
     test_create_pmuc(q, conn, stream)
     test_create_pmuc_with_invitee(q, conn, stream)
 
-def test_create_pmuc(q, conn, stream, extra_props=None):
+def create_pmuc(q, conn, stream, extra_props=None):
     """
     Request a PMUC just for ourselves.
     """
@@ -47,19 +47,49 @@ def test_create_pmuc(q, conn, stream, extra_props=None):
     r = q.expect('dbus-return', method='CreateChannel')
 
     assert len(r.value) == 2
-    path, props = r.value
+    path, out_props = r.value
 
-    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
-    assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
-    assert props[cs.TARGET_ID] == pmuc_name
+    assert out_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
+    assert out_props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
+    assert out_props[cs.TARGET_ID] == pmuc_name
 
-    assert CONFERENCE in props[cs.INTERFACES]
-    assert props[CONFERENCE + '.InitialChannels'] == []
+    assert CONFERENCE in out_props[cs.INTERFACES]
+    assert out_props[CONFERENCE + '.InitialChannels'] == \
+            props[CONFERENCE + '.InitialChannels']
+    assert out_props[CONFERENCE + '.SupportsNonMerges'] == True
+
+    return pmuc_name, path, out_props
+
+def test_create_pmuc(q, conn, stream):
+
+    pmuc_name, path, props = create_pmuc(q, conn, stream)
+
     assert props[CONFERENCE + '.InitialInviteeIDs'] == []
     assert props[CONFERENCE + '.InitialInviteeHandles'] == []
-    assert props[CONFERENCE + '.SupportsNonMerges'] == True
 
-    return pmuc_name, path
+def test_create_pmuc_with_invitee(q, conn, stream):
+
+    # Open an initial 1-to-1 connection
+    props = {
+        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+        cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+        cs.TARGET_ID: 'bob@localhost',
+    }
+
+    call_async(q, conn.Requests, 'EnsureChannel', props)
+    r = q.expect('dbus-return', method='EnsureChannel')
+
+    assert len(r.value) == 3
+    yours, path, props = r.value
+
+    pmuc_name, path, props = create_pmuc(q, conn, stream, {
+        CONFERENCE + '.InitialChannels': dbus.Array([path], signature='o'),
+    })
+
+    # FIXME: check for stream-message containing invite for Bob
+
+    assert props[CONFERENCE + '.InitialInviteeIDs'] == \
+            ['bob@localhost']
 
 if __name__ == '__main__':
     exec_test(test)

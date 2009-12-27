@@ -68,11 +68,8 @@ struct _GabbleMucFactoryPrivate
   gulong status_changed_id;
 
   LmMessageHandler *message_cb;
-  LmMessageHandler *presence_cb;
   /* GUINT_TO_POINTER(room_handle) => (GabbleMucChannel *) */
   GHashTable *text_channels;
-  /* GUINT_TO_POINTER(room_handle) => (GabbleTubesChannel *) */
-  GHashTable *tubes_channels;
   /* Tubes channels which will be considered ready when the corresponding
    * text channel is created.
    * Borrowed GabbleMucChannel => borrowed GabbleTubesChannel */
@@ -108,8 +105,6 @@ gabble_muc_factory_init (GabbleMucFactory *fac)
 
   priv->text_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_object_unref);
-  priv->tubes_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, g_object_unref);
   priv->text_needed_for_tubes = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, NULL);
   priv->tubes_needed_for_tube = g_hash_table_new_full (g_direct_hash,
@@ -122,7 +117,6 @@ gabble_muc_factory_init (GabbleMucFactory *fac)
       g_direct_equal, NULL, NULL);
 
   priv->message_cb = NULL;
-  priv->presence_cb = NULL;
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
@@ -156,7 +150,6 @@ gabble_muc_factory_dispose (GObject *object)
 
   gabble_muc_factory_close_all (fac);
   g_assert (priv->text_channels == NULL);
-  g_assert (priv->tubes_channels == NULL);
   g_assert (priv->text_needed_for_tubes == NULL);
   g_assert (priv->tubes_needed_for_tube == NULL);
   g_assert (priv->queued_requests == NULL);
@@ -251,48 +244,11 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
 
       DEBUG ("removing MUC channel with handle %d", room_handle);
 
-      if (priv->tubes_channels != NULL)
-        {
-          GabbleTubesChannel *tubes;
+      gabble_muc_channel_close_tube (chan);
 
-          tubes = g_hash_table_lookup (priv->tubes_channels,
-              GUINT_TO_POINTER (room_handle));
-          if (tubes != NULL)
-            gabble_tubes_channel_close (tubes);
-        }
-
-      g_hash_table_remove (priv->text_channels,
-          GUINT_TO_POINTER (room_handle));
+      g_hash_table_remove (priv->text_channels, GUINT_TO_POINTER (room_handle));
     }
 }
-
-/**
- * tubes_channel_closed_cb:
- *
- * Signal callback for when a tubes channel is closed. Removes the references
- * that MucFactory holds to them.
- */
-static void
-tubes_channel_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
-{
-  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  TpHandle room_handle;
-
-  tp_channel_manager_emit_channel_closed_for_object (fac,
-      TP_EXPORTABLE_CHANNEL (chan));
-
-  if (priv->tubes_channels != NULL)
-    {
-      g_object_get (chan, "handle", &room_handle, NULL);
-
-      DEBUG ("removing MUC tubes channel with handle %d", room_handle);
-
-      g_hash_table_remove (priv->tubes_channels,
-          GUINT_TO_POINTER (room_handle));
-    }
-}
-
 
 static void
 muc_ready_cb (GabbleMucChannel *text_chan,
@@ -478,49 +434,7 @@ new_muc_channel (GabbleMucFactory *fac,
   return chan;
 }
 
-/**
- * new_tubes_channel:
- *
- * Creates the GabbleTubesChannel object with the given parameters.
- */
-static GabbleTubesChannel *
-new_tubes_channel (GabbleMucFactory *fac,
-                   TpHandle room,
-                   GabbleMucChannel *muc,
-                   TpHandle initiator,
-                   gboolean requested)
-{
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  GabbleTubesChannel *chan;
-  char *object_path;
-
-  g_assert (g_hash_table_lookup (priv->tubes_channels,
-        GUINT_TO_POINTER (room)) == NULL);
-
-  object_path = g_strdup_printf ("%s/MucTubesChannel%u",
-      conn->object_path, room);
-
-  DEBUG ("creating new tubes chan, object path %s", object_path);
-
-  chan = g_object_new (GABBLE_TYPE_TUBES_CHANNEL,
-      "connection", priv->conn,
-      "object-path", object_path,
-      "handle", room,
-      "handle-type", TP_HANDLE_TYPE_ROOM,
-      "muc", muc,
-      "initiator-handle", initiator,
-      "requested", requested,
-      NULL);
-
-  g_signal_connect (chan, "closed", (GCallback) tubes_channel_closed_cb, fac);
-
-  g_hash_table_insert (priv->tubes_channels, GUINT_TO_POINTER (room), chan);
-
-  g_free (object_path);
-
-  return chan;
-}
+// tubes_channel_closed_cb
 
 static void
 do_invite (GabbleMucFactory *fac,
@@ -785,24 +699,13 @@ muc_factory_message_cb (LmMessageHandler *handler,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_ROOM);
 
-  const gchar *from, *body, *subject, *id;
+  const gchar *from, *body, *id;
   time_t stamp;
   TpChannelTextMessageType msgtype;
-  TpHandleRepoIface *handle_source;
-  TpHandleType handle_type;
-  TpHandle room_handle, handle;
-  GabbleMucChannel *chan;
   gint state;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
-  gchar *room;
-  LmMessageNode *subj_node;
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
         &msgtype, &id, &body, &state, &send_error, &delivery_status))
@@ -822,235 +725,11 @@ muc_factory_message_cb (LmMessageHandler *handler,
   if (process_obsolete_invite (fac, message, from, body, send_error))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  /* check if a room with the jid exists */
-  room = gabble_remove_resource (from);
-  room_handle = tp_handle_lookup (room_repo, room, NULL, NULL);
-  g_free (room);
-
-  /* the message is nothing to do with MUC, do nothing */
-  if (room_handle == 0)
-    {
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  /* find the MUC channel */
-  chan = g_hash_table_lookup (priv->text_channels,
-      GUINT_TO_POINTER (room_handle));
-
-  if (chan == NULL)
-    {
-      NODE_DEBUG (message->node, "ignoring MUC message from known "
-          "handle with no corresponding channel");
-
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  /* get the handle of the sender, which is either the room
-   * itself or one of its members */
-  if (strchr (from, '/') == NULL)
-    {
-      handle_source = room_repo;
-      handle_type = TP_HANDLE_TYPE_ROOM;
-      handle = room_handle;
-      tp_handle_ref (room_repo, handle);
-    }
-  else
-    {
-      handle_source = contact_repo;
-      handle_type = TP_HANDLE_TYPE_CONTACT;
-      handle = tp_handle_ensure (contact_repo, from,
-          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
-
-      if (handle == 0)
-        {
-          NODE_DEBUG (message->node, "MUC message from invalid JID; ignoring");
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-
-      /* anything other than a type="groupchat" is from the person directly and
-       * simply relayed by the MUC, so should be left to the normal handlers */
-      if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GROUPCHAT)
-        {
-          tp_handle_unref (contact_repo, handle);
-
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-    }
-
-  if (body != NULL)
-    _gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
-        id, body, message, send_error, delivery_status);
-
-  if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
-    {
-      if (state != -1 && handle_type == TP_HANDLE_TYPE_CONTACT)
-        _gabble_muc_channel_state_receive (chan, state, handle);
-
-      subj_node = lm_message_node_get_child (message->node, "subject");
-      if (subj_node != NULL)
-        {
-          subject = lm_message_node_get_value (subj_node);
-          _gabble_muc_channel_handle_subject (chan, msgtype, handle_type, handle,
-              stamp, subject, message);
-        }
-    }
-
-  tp_handle_unref (handle_source, handle);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
-
-/**
- * connection_presence_muc_cb:
- * @handler: #LmMessageHandler for this message
- * @connection: #LmConnection that originated the message
- * @message: the presence message
- * @user_data: callback data
- *
- * Called by loudmouth when we get an incoming <presence>.
- */
-static LmHandlerResult
-muc_factory_presence_cb (LmMessageHandler *handler,
-                            LmConnection *lmconn,
-                            LmMessage *msg,
-                            gpointer user_data)
-{
-  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
-  const char *from;
-  LmMessageSubType sub_type;
-  GabbleMucChannel *muc_chan = NULL;
-  LmMessageNode *x_node;
-  TpHandle room_handle;
-
-  g_assert (lmconn == priv->conn->lmconn);
-
-  from = lm_message_node_get_attribute (msg->node, "from");
-
-  if (from == NULL)
-    {
-      NODE_DEBUG (msg->node,
-          "presence stanza without from attribute, ignoring");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  sub_type = lm_message_get_sub_type (msg);
-
-  room_handle = gabble_get_room_handle_from_jid (room_repo, from);
-  if (room_handle != 0)
-    muc_chan = g_hash_table_lookup (priv->text_channels,
-        GUINT_TO_POINTER (room_handle));
-
-  /* is it an error and for a MUC? */
-  if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR
-      && muc_chan != NULL)
-    {
-      _gabble_muc_channel_presence_error (muc_chan, from, msg->node);
-
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  x_node = lm_message_node_get_child_with_namespace (msg->node, "x",
-      NS_MUC_USER);
-
-  /* is it a MUC member presence? */
-  if (x_node != NULL)
-    {
-      if (muc_chan != NULL)
-        {
-          TpHandle handle;
-          LmMessageNode *item_node;
-          const gchar *owner_jid;
-
-          handle = tp_handle_ensure (contact_repo, from,
-              GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
-          if (handle == 0)
-            {
-              NODE_DEBUG (msg->node,
-                  "discarding MUC presence from malformed jid");
-              return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-            }
-
-          item_node = lm_message_node_get_child (x_node, "item");
-          if (item_node == NULL)
-            {
-              DEBUG ("node missing 'item' child, ignoring");
-              return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-            }
-
-          owner_jid = lm_message_node_get_attribute (item_node, "jid");
-          /* We drop OLPC Gadget's inspector presence as activities
-           * doesn't have to see it as a member of the room and the
-           * presence cache should ignore it as well. */
-          if (owner_jid != NULL &&
-              !tp_strdiff (owner_jid, priv->conn->olpc_gadget_activity))
-            {
-              return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-            }
-
-          _gabble_muc_channel_member_presence_updated (muc_chan, handle,
-              msg, x_node, item_node);
-          tp_handle_unref (contact_repo, handle);
-        }
-      else
-        {
-          NODE_DEBUG (msg->node, "discarding unexpected MUC member presence");
-
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-    }
-
-  /* is it presence from an in-MUC JID containing tubes info? */
-
-  if (muc_chan != NULL)
-    {
-      TpHandle handle;
-      GabbleTubesChannel *tubes_chan;
-
-      tubes_chan = g_hash_table_lookup (priv->tubes_channels,
-          GUINT_TO_POINTER (room_handle));
-      if (tubes_chan == NULL)
-        {
-          LmMessageNode *tubes_node;
-
-          tubes_node = lm_message_node_get_child_with_namespace (
-              msg->node, "tubes", NS_TUBES);
-
-          if (tubes_node == NULL)
-            /* presence doesn't contain tubes information, no need
-             * to create a tubes channel */
-            return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-          /* MUC Tubes channels (as opposed to the individual tubes) don't
-           * have a well-defined initiator (they're a consensus) so use 0 */
-          tubes_chan = new_tubes_channel (fac, room_handle, muc_chan,
-              0, FALSE);
-          tp_channel_manager_emit_new_channel (fac,
-              TP_EXPORTABLE_CHANNEL (tubes_chan), NULL);
-        }
-
-      handle = tp_handle_ensure (contact_repo, from,
-          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
-      if (handle == 0)
-        {
-          NODE_DEBUG (msg->node,
-              "discarding Tubes presence from malformed jid");
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-
-      gabble_tubes_channel_presence_updated (tubes_chan, handle,
-          msg);
-      tp_handle_unref (contact_repo, handle);
-    }
-
+  /* we used to check if a room with the jid exists, instead at this  *
+   * point we stop caring: actual MUC messages are handled internally *
+   * by the wocky muc implementation                                  */
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
-
 
 void
 gabble_muc_factory_broadcast_presence (GabbleMucFactory *self)
@@ -1067,7 +746,6 @@ gabble_muc_factory_broadcast_presence (GabbleMucFactory *self)
       gabble_muc_channel_send_presence (GABBLE_MUC_CHANNEL (channel), NULL);
     }
 }
-
 
 static void
 gabble_muc_factory_associate_request (GabbleMucFactory *self,
@@ -1153,27 +831,14 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
       g_hash_table_destroy (tmp);
     }
 
-  if (priv->tubes_channels != NULL)
-    {
-      GHashTable *tmp = priv->tubes_channels;
-      priv->tubes_channels = NULL;
-      g_hash_table_destroy (tmp);
-    }
-
   if (priv->message_cb != NULL)
     {
       DEBUG ("removing callbacks");
-      g_assert (priv->presence_cb != NULL);
 
       lm_connection_unregister_message_handler (priv->conn->lmconn,
           priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
       lm_message_handler_unref (priv->message_cb);
       priv->message_cb = NULL;
-
-      lm_connection_unregister_message_handler (priv->conn->lmconn,
-          priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE);
-      lm_message_handler_unref (priv->presence_cb);
-      priv->presence_cb = NULL;
     }
 }
 
@@ -1191,20 +856,12 @@ connection_status_changed_cb (GabbleConnection *conn,
     case TP_CONNECTION_STATUS_CONNECTING:
       DEBUG ("adding callbacks");
       g_assert (priv->message_cb == NULL);
-      g_assert (priv->presence_cb == NULL);
 
       priv->message_cb = lm_message_handler_new (muc_factory_message_cb,
           self, NULL);
       lm_connection_register_message_handler (priv->conn->lmconn,
           priv->message_cb, LM_MESSAGE_TYPE_MESSAGE,
           LM_HANDLER_PRIORITY_NORMAL);
-
-      priv->presence_cb = lm_message_handler_new (
-          muc_factory_presence_cb, self, NULL);
-      lm_connection_register_message_handler (priv->conn->lmconn,
-          priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE,
-          LM_HANDLER_PRIORITY_NORMAL);
-
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
@@ -1241,8 +898,20 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 {
   struct _ForeachData *data = (struct _ForeachData *) user_data;
   TpExportableChannel *channel = TP_EXPORTABLE_CHANNEL (value);
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (value);
+  GabbleTubesChannel *tube = NULL;
 
   data->foreach (channel, data->user_data);
+
+  g_object_get (gmuc, "tube", &tube, NULL);
+
+  if (tube != NULL)
+    {
+      channel = TP_EXPORTABLE_CHANNEL (tube);
+      data->foreach (channel, data->user_data);
+      gabble_tubes_channel_foreach (tube, data->foreach, data->user_data);
+      g_object_unref (tube);
+    }
 }
 
 static void
@@ -1253,27 +922,11 @@ gabble_muc_factory_foreach_channel (TpChannelManager *manager,
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (manager);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   struct _ForeachData data;
-  GHashTableIter iter;
-  gpointer value;
 
   data.user_data = user_data;
   data.foreach = foreach;
 
   g_hash_table_foreach (priv->text_channels, _foreach_slave, &data);
-
-  g_hash_table_iter_init (&iter, priv->tubes_channels);
-  while (g_hash_table_iter_next (&iter, NULL, &value))
-  {
-    TpExportableChannel *chan = TP_EXPORTABLE_CHANNEL (value);
-
-    /* Add channels of type Channel.Type.Tubes */
-    foreach (chan, user_data);
-
-    /* Add channels of type Channel.Type.{Stream|DBus}Tube which live in the
-     * GabbleTubesChannel object */
-    gabble_tubes_channel_foreach (GABBLE_TUBES_CHANNEL (chan), foreach,
-        user_data);
-  }
 }
 
 
@@ -1320,13 +973,16 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
-  GabbleTubesChannel *chan;
+  GabbleMucChannel *gmuc = NULL;
+  GabbleTubesChannel *tube = NULL;
 
   g_return_if_fail (tp_handle_is_valid (room_repo, room_handle, NULL));
 
-  chan = g_hash_table_lookup (priv->tubes_channels,
+  gmuc = g_hash_table_lookup (priv->text_channels,
       GUINT_TO_POINTER (room_handle));
-  if (chan == NULL)
+  g_object_get (gmuc, "tube", &tube, NULL);
+
+  if (tube == NULL)
     {
       GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "No tubes channel available for this MUC" };
@@ -1336,7 +992,8 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
       return;
     }
 
-  gabble_tubes_channel_bytestream_offered (chan, bytestream, msg);
+  gabble_tubes_channel_bytestream_offered (tube, bytestream, msg);
+  g_object_unref (tube);
 }
 
 GabbleMucChannel *
@@ -1421,17 +1078,18 @@ ensure_tubes_channel (GabbleMucFactory *self,
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   GabbleMucChannel *text_chan;
+  TpHandle initiator = base_conn->self_handle;
   gboolean result;
 
   result = ensure_muc_channel (self, priv, handle, &text_chan, FALSE);
 
-  *tubes_chan = new_tubes_channel (self, handle, text_chan,
-      base_conn->self_handle, requested);
+  /* this refs the tube channel object */
+  *tubes_chan = gabble_muc_channel_open_tube (text_chan, initiator, requested);
 
   if (!result)
-    {
-      g_hash_table_insert (priv->text_needed_for_tubes, text_chan, *tubes_chan);
-    }
+    g_hash_table_insert (priv->text_needed_for_tubes, text_chan, *tubes_chan);
+
+  g_object_unref (tubes_chan);
 
   return result;
 }
@@ -1485,7 +1143,8 @@ handle_tubes_channel_request (GabbleMucFactory *self,
                               GError **error)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
-  GabbleTubesChannel *tubes_chan;
+  GabbleTubesChannel *tube = NULL;
+  GabbleMucChannel *gmuc = NULL;
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
           muc_tubes_channel_fixed_properties,
@@ -1493,10 +1152,12 @@ handle_tubes_channel_request (GabbleMucFactory *self,
           error))
     return FALSE;
 
-  tubes_chan = g_hash_table_lookup (priv->tubes_channels,
-      GUINT_TO_POINTER (handle));
+  gmuc = g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
 
-  if (tubes_chan != NULL)
+  if (gmuc != NULL)
+    g_object_get (gmuc, "tube", &tube, NULL);
+
+  if (tube != NULL)
     {
       if (require_new)
         {
@@ -1507,22 +1168,21 @@ handle_tubes_channel_request (GabbleMucFactory *self,
       else
         {
           tp_channel_manager_emit_request_already_satisfied (self,
-              request_token, TP_EXPORTABLE_CHANNEL (tubes_chan));
+              request_token, TP_EXPORTABLE_CHANNEL (tube));
         }
     }
-  else if (ensure_tubes_channel (self, handle, &tubes_chan, TRUE))
+  else if (ensure_tubes_channel (self, handle, &tube, TRUE))
     {
       GSList *list = NULL;
 
       list = g_slist_prepend (list, request_token);
       tp_channel_manager_emit_new_channel (self,
-          TP_EXPORTABLE_CHANNEL (tubes_chan), list);
+          TP_EXPORTABLE_CHANNEL (tube), list);
       g_slist_free (list);
     }
   else
     {
-      gabble_muc_factory_associate_request (self, tubes_chan,
-          request_token);
+      gabble_muc_factory_associate_request (self, tube, request_token);
     }
 
   return TRUE;
@@ -1540,29 +1200,29 @@ handle_tube_channel_request (GabbleMucFactory *self,
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   gboolean can_announce_now = TRUE;
   gboolean tubes_channel_created = FALSE;
-  GabbleTubesChannel *tubes_chan;
+  GabbleTubesChannel *tube;
+  GabbleMucChannel * gmuc;
   GabbleTubeIface *new_channel;
 
-  tubes_chan = g_hash_table_lookup (priv->tubes_channels,
-      GUINT_TO_POINTER (handle));
-  if (tubes_chan == NULL)
+  gmuc = g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
+  g_object_get (gmuc, "tube", &tube, NULL);
+
+  if (tube == NULL)
     {
       /* Need to create a tubes channel */
-      if (!ensure_tubes_channel (self, handle, &tubes_chan, FALSE))
+      if (!ensure_tubes_channel (self, handle, &tube, FALSE))
       {
         /* We have to wait the tubes channel before announcing */
         can_announce_now = FALSE;
-
-        gabble_muc_factory_associate_request (self, tubes_chan,
-            request_token);
+        gabble_muc_factory_associate_request (self, tube, request_token);
       }
 
       tubes_channel_created = TRUE;
     }
 
-  g_assert (tubes_chan != NULL);
+  g_assert (tube != NULL);
 
-  new_channel = gabble_tubes_channel_tube_request (tubes_chan,
+  new_channel = gabble_tubes_channel_tube_request (tube,
       request_token, request_properties, TRUE);
   g_assert (new_channel != NULL);
 
@@ -1575,7 +1235,7 @@ handle_tube_channel_request (GabbleMucFactory *self,
         NULL, NULL);
 
       if (tubes_channel_created)
-        g_hash_table_insert (channels, tubes_chan, NULL);
+        g_hash_table_insert (channels, tube, NULL);
 
       request_tokens = g_slist_prepend (NULL, request_token);
 
@@ -1589,11 +1249,11 @@ handle_tube_channel_request (GabbleMucFactory *self,
     {
       GSList *l;
 
-      l = g_hash_table_lookup (priv->tubes_needed_for_tube, tubes_chan);
-      g_hash_table_steal (priv->tubes_needed_for_tube, tubes_chan);
+      l = g_hash_table_lookup (priv->tubes_needed_for_tube, tube);
+      g_hash_table_steal (priv->tubes_needed_for_tube, tube);
 
       l = g_slist_prepend (l, new_channel);
-      g_hash_table_insert (priv->tubes_needed_for_tube, tubes_chan, l);
+      g_hash_table_insert (priv->tubes_needed_for_tube, tube, l);
     }
 
   return TRUE;

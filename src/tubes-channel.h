@@ -29,10 +29,10 @@
 #include "bytestream-iface.h"
 #include "muc-channel.h"
 #include "tube-iface.h"
+#include "types.h"
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleTubesChannel GabbleTubesChannel;
 typedef struct _GabbleTubesChannelPrivate GabbleTubesChannelPrivate;
 typedef struct _GabbleTubesChannelClass GabbleTubesChannelClass;
 

@@ -1153,6 +1153,26 @@ gabble_connection_get_full_jid (GabbleConnection *conn)
 }
 
 /**
+ * gabble_connection_get_porter:
+ *
+ * Returns: the #WockyPorter instance driving this connection.
+ */
+
+WockyPorter *gabble_connection_get_porter (GabbleConnection *conn)
+{
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = conn->priv;
+
+  if (priv->porter != NULL)
+    return g_object_ref (priv->porter);
+
+  return NULL;
+}
+
+/**
  * _gabble_connection_send
  *
  * Send an LmMessage and trap network errors appropriately.

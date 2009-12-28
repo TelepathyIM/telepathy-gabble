@@ -3,6 +3,8 @@ Test basic outgoing and incoming call handling
 """
 
 import dbus
+from dbus.exceptions import DBusException
+
 from twisted.words.xish import xpath
 
 from gabbletest import exec_test
@@ -13,6 +15,19 @@ from servicetest import (
     )
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
+import ns
+
+def check_state (q, chan, state, wait = False):
+    if wait:
+        q.expect('dbus-signal', signal='CallStateChanged',
+            interface = cs.CHANNEL_TYPE_CALL,
+            predicate = lambda e: e.args[0] == state)
+
+    properties = chan.GetAll(cs.CHANNEL_TYPE_CALL,
+            dbus_interface=dbus.PROPERTIES_IFACE)
+
+    assertEquals (state,
+        properties["CallState"])
 
 def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
         content, codecs, offer_path = None):
@@ -105,6 +120,19 @@ def run_test(jp, q, bus, conn, stream, incoming):
     properties = chan.GetAll(cs.CHANNEL_TYPE_CALL,
         dbus_interface=dbus.PROPERTIES_IFACE)
 
+    # Check if all the properties are there
+    assertEquals (sorted([ "Contents", "CallMembers",
+        "CallState", "CallFlags", "CallStateReason", "CallStateDetails",
+        "HardwareStreaming", "InitialAudio", "InitialVideo",
+        "MutableContents" ]), sorted(properties.keys()))
+
+    # Remote member is the target
+    assertEquals ([remote_handle], properties["CallMembers"].keys())
+    assertEquals (0, properties["CallMembers"][remote_handle])
+
+    # No Hardware Streaming for you
+    assertEquals (False, properties["HardwareStreaming"])
+
     # Only an audio content
     assertLength (1, properties["Contents"])
 
@@ -115,15 +143,52 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     # Has one stream
     assertLength (1, content_properties["Streams"])
+    assertEquals (cs.CALL_DISPOSITION_INITIAL,
+        content_properties["Disposition"])
+
+    if incoming:
+        assertEquals (remote_handle, content_properties["Creator"])
+    else:
+        assertEquals (self_handle, content_properties["Creator"])
+
+    assertContains ("Name", content_properties.keys())
 
     cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
+
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+
+    assertContains (self_handle, stream_props["Senders"].keys())
+    assertContains (remote_handle, stream_props["Senders"].keys())
+
+    if incoming:
+        assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
+            stream_props["Senders"][self_handle])
+        assertEquals (cs.CALL_SENDING_STATE_SENDING,
+            stream_props["Senders"][remote_handle])
+    else:
+        assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
+            stream_props["Senders"][remote_handle])
+        assertEquals (cs.CALL_SENDING_STATE_SENDING,
+            stream_props["Senders"][self_handle])
+
 
     # Media type should audio
     assertEquals (cs.CALL_MEDIA_TYPE_AUDIO, content_properties["Type"])
 
+    # Check if the channel is in the right pending state
+    if not incoming:
+        check_state (q, chan, cs.CALL_STATE_PENDING_INITIATOR)
+        chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
+
+    check_state (q, chan, cs.CALL_STATE_PENDING_RECEIVER,
+        wait = not incoming)
+
     # Setup codecs
     codecs = jt2.get_call_audio_codecs_dbus()
     if incoming:
+        # Act as if we're ringing
+        chan.Ringing (dbus_interface=cs.CHANNEL_TYPE_CALL)
         # We should have a codec offer
         check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
             content, codecs)
@@ -196,6 +261,16 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
         jt2.parse_session_initiate(session_initiate.query)
 
+        if jp.is_modern_jingle():
+            # The other person's client starts ringing, and tells us so!
+            node = jp.SetIq(jt2.peer, jt2.jid, [
+                jp.Jingle(jt2.sid, jt2.jid, 'session-info', [
+                    ('ringing', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
+            stream.send(jp.xml(node))
+
+            q.expect ('dbus-signal', signal="CallMembersChanged",
+                args = [{ remote_handle: cs.CALL_MEMBER_FLAG_RINGING }, []])
+
         jt2.accept()
 
         o = q.expect ('dbus-signal', signal='NewCodecOffer')
@@ -205,6 +280,68 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
         check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
             content, codecs, path)
+
+    check_state (q, chan, cs.CALL_STATE_ACCEPTED)
+
+    # All Direction should be both now
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+    assertEquals (
+        {
+            self_handle : cs.CALL_SENDING_STATE_SENDING,
+            remote_handle: cs.CALL_SENDING_STATE_SENDING
+        },
+        stream_props["Senders"])
+
+    # Turn sending off and on again
+    cstream.SetSending (False,
+        dbus_interface = cs.CALL_STREAM)
+
+    q.expect ('dbus-signal', signal='SendersChanged',
+        interface = cs.CALL_STREAM,
+        args = [{ self_handle: cs.CALL_SENDING_STATE_NONE }, []])
+
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+    assertEquals ({ self_handle : cs.CALL_SENDING_STATE_NONE,
+                    remote_handle: cs.CALL_SENDING_STATE_SENDING },
+                  stream_props["Senders"])
+
+    cstream.SetSending (True,
+        dbus_interface = cs.CALL_STREAM)
+
+    q.expect ('dbus-signal', signal='SendersChanged',
+        interface = cs.CALL_STREAM,
+        args = [{ self_handle: cs.CALL_SENDING_STATE_SENDING }, []])
+
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+    assertEquals ({ self_handle : cs.CALL_SENDING_STATE_SENDING,
+                    remote_handle: cs.CALL_SENDING_STATE_SENDING },
+                  stream_props["Senders"])
+
+    try:
+        path = chan.AddContent ("Webcam", cs.CALL_MEDIA_TYPE_VIDEO,
+            dbus_interface=cs.CHANNEL_TYPE_CALL)
+        content = bus.get_object (conn.bus_name, path)
+        content_properties = content.GetAll (cs.CALL_CONTENT,
+            dbus_interface=dbus.PROPERTIES_IFACE)
+
+        assertEquals (cs.CALL_DISPOSITION_NONE,
+            content_properties["Disposition"])
+        assertEquals (self_handle, content_properties["Creator"])
+        assertContains ("Webcam", content_properties["Name"])
+    except DBusException, e:
+        assert not jp.can_do_video()
+        assertEquals (cs.NOT_AVAILABLE, e.get_dbus_name ())
+
+    if incoming:
+        jt2.terminate()
+    else:
+        chan.Hangup (0, "", "",
+            dbus_interface=cs.CHANNEL_TYPE_CALL)
+
+    check_state (q, chan, cs.CALL_STATE_ENDED, wait = True)
 
 if __name__ == '__main__':
     test_all_dialects(lambda jp, q, bus, conn, stream:

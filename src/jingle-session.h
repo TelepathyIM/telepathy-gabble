@@ -102,8 +102,11 @@ void gabble_jingle_session_remove_content (GabbleJingleSession *sess,
     GabbleJingleContent *c);
 
 GabbleJingleContent *
-gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mtype,
-    const gchar *content_ns, const gchar *transport_ns);
+gabble_jingle_session_add_content (GabbleJingleSession *sess,
+    JingleMediaType mtype,
+    const char *name,
+    const gchar *content_ns,
+    const gchar *transport_ns);
 
 GType gabble_jingle_session_get_content_type (GabbleJingleSession *);
 GList *gabble_jingle_session_get_contents (GabbleJingleSession *sess);

@@ -34,6 +34,7 @@
 #include "call-content-codecoffer.h"
 #include "call-stream.h"
 #include "jingle-content.h"
+#include "jingle-session.h"
 #include "jingle-media-rtp.h"
 #include "connection.h"
 #include "util.h"
@@ -69,6 +70,10 @@ enum
   PROP_JINGLE_CONTENT,
   PROP_TARGET_HANDLE,
 
+  PROP_NAME,
+  PROP_CREATOR,
+  PROP_DISPOSITION,
+
   PROP_CONTACT_CODEC_MAP,
   PROP_MEDIA_TYPE,
   PROP_STREAMS,
@@ -86,6 +91,9 @@ struct _GabbleCallContentPrivate
 
   GabbleCallContentCodecoffer *offer;
   gint offers;
+
+  GabbleCallContentDisposition disposition;
+  TpHandle creator;
 
   GList *streams;
   gboolean dispose_has_run;
@@ -159,6 +167,22 @@ gabble_call_content_get_property (GObject    *object,
           g_ptr_array_free (arr, TRUE);
           break;
         }
+      case PROP_NAME:
+        {
+          gchar *name;
+          g_object_get (priv->content, "name", &name, NULL);
+          if (name != NULL)
+            g_value_take_string (value, name);
+          else
+            g_value_set_static_string (value, "");
+          break;
+        }
+      case PROP_CREATOR:
+        g_value_set_uint (value, priv->creator);
+        break;
+      case PROP_DISPOSITION:
+        g_value_set_uint (value, priv->disposition);
+        break;
       case PROP_CONTACT_CODEC_MAP:
         {
           GHashTable *map;
@@ -227,6 +251,12 @@ gabble_call_content_set_property (GObject *object,
       case PROP_CONNECTION:
         priv->conn = g_value_get_object (value);
         break;
+      case PROP_CREATOR:
+        priv->creator = g_value_get_uint (value);
+        break;
+      case PROP_DISPOSITION:
+        priv->disposition = g_value_get_uint (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -253,6 +283,7 @@ gabble_call_content_constructed (GObject *obj)
       path = g_strdup_printf ("%s/Stream%p", priv->object_path, priv->content);
       stream = g_object_new (GABBLE_TYPE_CALL_STREAM,
         "object-path", path,
+        "connection", priv->conn,
         "jingle-content", priv->content,
         NULL);
       g_free (path);
@@ -281,7 +312,10 @@ gabble_call_content_class_init (
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_content_class);
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl content_props[] = {
+    { "Name", "name", NULL },
     { "Type", "media-type", NULL },
+    { "Creator", "creator", NULL },
+    { "Disposition", "disposition", NULL },
     { "Streams", "streams", NULL },
     { NULL }
   };
@@ -343,11 +377,31 @@ gabble_call_content_class_init (
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
+  param_spec = g_param_spec_string ("name", "Name",
+      "The name of this content if any",
+      "",
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_NAME, param_spec);
+
   param_spec = g_param_spec_uint ("media-type", "Media Type",
-      "The media type of this channel",
+      "The media type of this content",
       0, G_MAXUINT, 0,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("creator", "Creator",
+      "The creator of this content",
+      0, G_MAXUINT, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CREATOR,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("disposition", "Disposition",
+      "The disposition of this content",
+      0, G_MAXUINT, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_DISPOSITION,
       param_spec);
 
   param_spec = g_param_spec_boxed ("streams", "Stream",

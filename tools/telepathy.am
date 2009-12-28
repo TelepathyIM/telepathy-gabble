@@ -6,6 +6,18 @@ dist-hook:
 		git log --date=iso $(CHANGELOG_RANGE) > ${distdir}/ChangeLog; \
 	fi
 
+distcheck-hook:
+	@case @VERSION@ in \
+		*.*.*.*) ;; \
+		*) \
+			if grep -r UNRELEASED $(CHECK_FOR_UNRELEASED); \
+			then \
+				echo "^^^ This is meant to be a release, but some files say UNRELEASED" >&2; \
+				exit 2; \
+			fi \
+			;; \
+	esac
+
 maintainer-upload-release: _maintainer-upload-release
 
 _maintainer-upload-release-check:

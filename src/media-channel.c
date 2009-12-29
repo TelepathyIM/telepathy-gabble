@@ -1828,6 +1828,10 @@ media_channel_request_streams (GabbleMediaChannel *self,
   priv->pending_stream_requests = g_list_prepend (priv->pending_stream_requests,
       psr);
   g_ptr_array_free (contents, TRUE);
+
+  /* signal acceptance */
+  gabble_jingle_session_accept (priv->session);
+
   return;
 
 error:

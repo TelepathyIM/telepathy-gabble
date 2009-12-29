@@ -238,14 +238,13 @@ class GtalkProtocol03(JingleProtocol):
 
     # Gtalk has only one content, and <content> node is implicit. Also it
     # never mixes payloads and transport information. It's up to the call of
-    # this function to ensure it nevel calls it with both mixed
+    # this function to ensure it never calls it with both mixed
     def Content(self, name, creator, senders=None,
             description=None, transport=None):
         # Normally <content> has <description> and <transport>, but we only
         # use <description> unless <transport> has candidates.
         assert description == None or len(transport[3]) == 0
 
-        # if <transport> has children return those children (candidates)
         if description != None:
             return description
         else:

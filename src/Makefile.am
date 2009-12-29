@@ -25,6 +25,16 @@ libgabble_convenience_la_SOURCES = \
     bytestream-multiple.c \
     bytestream-socks5.h \
     bytestream-socks5.c \
+    call-content.h \
+    call-content.c \
+    call-content-codecoffer.h \
+    call-content-codecoffer.c \
+    call-channel.h \
+    call-channel.c \
+    call-stream.h \
+    call-stream.c \
+    call-stream-endpoint.h \
+    call-stream-endpoint.c \
     capabilities.h \
     capabilities.c \
     caps-hash.h \

@@ -269,6 +269,7 @@ def rccs(q, bus, conn, stream):
     rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS,
         'RequestableChannelClasses')
 
+    # Test Channel.Type.StreamedMedia
     media_classes = [ rcc for rcc in rccs
         if rcc[0][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA ]
 
@@ -278,8 +279,33 @@ def rccs(q, bus, conn, stream):
 
     assertEquals(cs.HT_CONTACT, fixed[cs.TARGET_HANDLE_TYPE])
 
-    assertContains(cs.TARGET_HANDLE, allowed)
-    assertContains(cs.TARGET_ID, allowed)
+    expected_allowed = [
+        cs.TARGET_ID, cs.TARGET_HANDLE,
+        cs.INITIAL_VIDEO, cs.INITIAL_AUDIO
+    ]
+
+    allowed.sort()
+    expected_allowed.sort()
+    assertEquals(expected_allowed, allowed)
+
+    # Test Channel.Type.Call
+    media_classes = [ rcc for rcc in rccs
+        if rcc[0][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CALL ]
+    assertLength(1, media_classes)
+
+    fixed, allowed = media_classes[0]
+
+    assertEquals(cs.HT_CONTACT, fixed[cs.TARGET_HANDLE_TYPE])
+
+    expected_allowed = [
+        cs.TARGET_ID, cs.TARGET_HANDLE,
+        cs.CALL_INITIAL_VIDEO, cs.CALL_INITIAL_AUDIO,
+        cs.CALL_MUTABLE_CONTENTS
+    ]
+
+    allowed.sort()
+    expected_allowed.sort()
+    assertEquals(expected_allowed, allowed)
 
 if __name__ == '__main__':
     exec_test(rccs)

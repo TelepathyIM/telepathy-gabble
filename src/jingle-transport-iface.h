@@ -51,6 +51,7 @@ struct _GabbleJingleTransportIfaceClass {
   gboolean (*can_accept) (GabbleJingleTransportIface *);
 
   GList * (*get_remote_candidates) (GabbleJingleTransportIface *);
+  GList * (*get_local_candidates) (GabbleJingleTransportIface *);
   JingleTransportType (*get_transport_type) (void);
 };
 
@@ -83,6 +84,7 @@ gboolean gabble_jingle_transport_iface_can_accept (
     GabbleJingleTransportIface *self);
 
 GList *gabble_jingle_transport_iface_get_remote_candidates (GabbleJingleTransportIface *);
+GList *gabble_jingle_transport_iface_get_local_candidates (GabbleJingleTransportIface *);
 JingleTransportType gabble_jingle_transport_iface_get_transport_type (GabbleJingleTransportIface *);
 
 GabbleJingleTransportIface *gabble_jingle_transport_iface_new (

@@ -17,6 +17,15 @@ all_transports = [
     ns.GOOGLE_P2P
 ]
 
+def check_contact_caps (caps, channel_type, expected_media_caps):
+
+    [media_caps] =  [ c
+        for c in caps
+            if c[0][cs.CHANNEL_TYPE] == channel_type
+    ]
+
+    assertEquals (expected_media_caps, media_caps[1])
+
 def test_caps(q, conn, stream, contact, features, audio, video, google=False):
     caps['ver'] = compute_caps_hash ([], features, {})
 
@@ -24,15 +33,25 @@ def test_caps(q, conn, stream, contact, features, audio, video, google=False):
         client, caps, features)
 
     cflags = 0
+    stream_expected_media_caps = []
+    call_expected_media_caps = []
+
     if audio:
       cflags |= cs.MEDIA_CAP_AUDIO
+      stream_expected_media_caps.append (cs.INITIAL_AUDIO)
+      call_expected_media_caps.append (cs.CALL_INITIAL_AUDIO)
     if video:
       cflags |= cs.MEDIA_CAP_VIDEO
+      stream_expected_media_caps.append (cs.INITIAL_VIDEO)
+      call_expected_media_caps.append (cs.CALL_INITIAL_VIDEO)
 
     # If the contact can only do one of audio or video, or uses a Google
     # client, they'll have the ImmutableStreams cap.
     if cflags < (cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO) or google:
         cflags |= cs.MEDIA_CAP_IMMUTABLE_STREAMS
+        stream_expected_media_caps.append(cs.IMMUTABLE_STREAMS)
+    else:
+        call_expected_media_caps.append(cs.CALL_MUTABLE_CONTENTS)
 
     _, event = q.expect_many(
             EventPattern('dbus-signal', signal='CapabilitiesChanged',
@@ -54,20 +73,11 @@ def test_caps(q, conn, stream, contact, features, audio, video, google=False):
     assertEquals (event.args[0],
         conn.ContactCapabilities.GetContactCapabilities([h]))
 
-    expected_media_caps = []
-    if audio:
-        expected_media_caps.append (cs.INITIAL_AUDIO)
-    if video:
-        expected_media_caps.append (cs.INITIAL_VIDEO)
-    if audio != video or google:
-        expected_media_caps.append (cs.IMMUTABLE_STREAMS)
+    check_contact_caps (event.args[0][h],
+        cs.CHANNEL_TYPE_STREAMED_MEDIA, stream_expected_media_caps)
 
-    [media_caps] =  [ c
-        for c in event.args[0][h]
-            if c[0][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA
-    ]
-
-    assertEquals (expected_media_caps, media_caps[1])
+    check_contact_caps (event.args[0][h],
+        cs.CHANNEL_TYPE_CALL, call_expected_media_caps)
 
 def test_all_transports(q, conn, stream, contact, features, audio, video):
     for t in all_transports:

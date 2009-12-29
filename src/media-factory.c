@@ -43,9 +43,62 @@
 #include "jingle-media-rtp.h"
 #include "jingle-session.h"
 
+#include "call-channel.h"
 #include "media-channel.h"
 #include "namespaces.h"
 #include "util.h"
+
+typedef struct
+{
+    GabbleMediaFactory *self;
+    TpExportableChannel *channel;
+    GSList *request_tokens;
+} MediaChannelRequest;
+
+static MediaChannelRequest *
+media_channel_request_new (GabbleMediaFactory *self,
+    TpExportableChannel *channel,
+    gpointer request_token)
+{
+  MediaChannelRequest *mcr = g_slice_new0 (MediaChannelRequest);
+
+  mcr->self = self;
+  mcr->channel = channel;
+  if (request_token != NULL)
+    mcr->request_tokens = g_slist_prepend (mcr->request_tokens, request_token);
+
+  return mcr;
+}
+
+static void
+media_channel_request_free (MediaChannelRequest *mcr)
+{
+  g_slist_free (mcr->request_tokens);
+  g_slice_free (MediaChannelRequest, mcr);
+}
+
+static void
+media_channel_request_succeeded_cb (MediaChannelRequest *mcr,
+    GPtrArray *streams)
+{
+  tp_channel_manager_emit_new_channel (mcr->self,
+      mcr->channel, mcr->request_tokens);
+
+  media_channel_request_free (mcr);
+}
+
+static void
+media_channel_request_failed_cb (MediaChannelRequest *mcr,
+    GError *error)
+{
+  GSList *l;
+
+  for (l = mcr->request_tokens; l != NULL; l = g_slist_next (l))
+    tp_channel_manager_emit_request_failed (mcr->self, l->data,
+      error->domain, error->code, error->message);
+
+  media_channel_request_free (mcr);
+}
 
 static void channel_manager_iface_init (gpointer, gpointer);
 static void caps_channel_manager_iface_init (gpointer, gpointer);
@@ -69,8 +122,13 @@ struct _GabbleMediaFactoryPrivate
   GabbleConnection *conn;
   gulong status_changed_id;
 
-  GPtrArray *channels;
+  GList *media_channels;
+  GList *call_channels;
+  GList *pending_call_channels;
   guint channel_index;
+
+  /* Whether or not we should use call channels for incoming calls */
+  gboolean use_call_channels;
 
   gboolean dispose_has_run;
 };
@@ -83,7 +141,6 @@ gabble_media_factory_init (GabbleMediaFactory *fac)
 
   fac->priv = priv;
 
-  priv->channels = g_ptr_array_sized_new (1);
   priv->channel_index = 0;
 
   priv->conn = NULL;
@@ -107,8 +164,8 @@ gabble_media_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   gabble_media_factory_close_all (fac);
-  g_assert (priv->channels->len == 0);
-  g_ptr_array_free (priv->channels, TRUE);
+  g_assert (priv->media_channels == NULL);
+  g_assert (priv->call_channels == NULL);
 
   if (G_OBJECT_CLASS (gabble_media_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_factory_parent_class)->dispose (object);
@@ -197,7 +254,7 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
   DEBUG ("removing media channel %p with ref count %d",
       chan, G_OBJECT (chan)->ref_count);
 
-  g_ptr_array_remove (priv->channels, chan);
+  priv->media_channels = g_list_remove (priv->media_channels, chan);
   g_object_unref (chan);
 }
 
@@ -242,7 +299,7 @@ new_media_channel (GabbleMediaFactory *fac,
 
   g_signal_connect (chan, "closed", (GCallback) media_channel_closed_cb, fac);
 
-  g_ptr_array_add (priv->channels, chan);
+  priv->media_channels = g_list_prepend (priv->media_channels, chan);
 
   g_free (object_path);
 
@@ -250,21 +307,118 @@ new_media_channel (GabbleMediaFactory *fac,
 }
 
 static void
+call_channel_closed_cb (GabbleCallChannel *chan, gpointer user_data)
+{
+  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
+  GabbleMediaFactoryPrivate *priv = fac->priv;
+
+  tp_channel_manager_emit_channel_closed_for_object (fac,
+      TP_EXPORTABLE_CHANNEL (chan));
+
+  DEBUG ("removing media channel %p with ref count %d",
+      chan, G_OBJECT (chan)->ref_count);
+
+  priv->call_channels = g_list_remove (priv->call_channels, chan);
+  g_object_unref (chan);
+}
+
+static void
+call_channel_initialized (GObject *source,
+  GAsyncResult *res,
+  gpointer user_data)
+{
+  MediaChannelRequest *mcr = user_data;
+  GabbleMediaFactoryPrivate *priv = mcr->self->priv;
+  GError *error = NULL;
+
+  priv->pending_call_channels =
+    g_list_remove (priv->pending_call_channels, mcr);
+
+  if (g_async_initable_init_finish (G_ASYNC_INITABLE (source),
+      res, &error))
+    {
+      priv->call_channels = g_list_prepend (priv->call_channels,
+        mcr->channel);
+
+      tp_channel_manager_emit_new_channel (mcr->self,
+        mcr->channel, mcr->request_tokens);
+
+      g_signal_connect (mcr->channel, "closed",
+        G_CALLBACK (call_channel_closed_cb), mcr->self);
+    }
+  else
+    {
+      GSList *l;
+      for (l = mcr->request_tokens; l != NULL; l = g_slist_next (l))
+        tp_channel_manager_emit_request_failed (mcr->self, l->data,
+          error->domain, error->code, error->message);
+    }
+
+  media_channel_request_free (mcr);
+}
+
+/**
+ * new_call_channel
+ *
+ * Creates and triggers initialisation of a new empty GabbleCallChannel.
+ */
+static void
+new_call_channel (GabbleMediaFactory *self,
+  GabbleJingleSession *sess,
+  TpHandle peer,
+  gboolean initial_audio,
+  gboolean initial_video,
+  gpointer request_token)
+{
+  GabbleCallChannel *channel;
+  MediaChannelRequest *mcr;
+  gchar *object_path;
+  TpBaseConnection *conn = TP_BASE_CONNECTION (self->priv->conn);
+
+  object_path = g_strdup_printf ("%s/CallChannel%u",
+    conn->object_path, self->priv->channel_index);
+  self->priv->channel_index++;
+
+  channel = g_object_new (GABBLE_TYPE_CALL_CHANNEL,
+    "connection", conn,
+    "object-path", object_path,
+    "session", sess,
+    "handle", peer,
+    "initial-audio", initial_audio,
+    "initial-video", initial_video,
+    NULL);
+
+  g_free (object_path);
+
+  mcr = media_channel_request_new (self,
+    TP_EXPORTABLE_CHANNEL (channel), request_token);
+
+  g_async_initable_init_async (G_ASYNC_INITABLE (channel),
+    G_PRIORITY_DEFAULT,
+    NULL, /* FIXME support cancelling the channel creation */
+    call_channel_initialized,
+    mcr);
+
+  self->priv->pending_call_channels
+    = g_list_prepend (self->priv->pending_call_channels, channel);
+}
+
+static void
 gabble_media_factory_close_all (GabbleMediaFactory *fac)
 {
   GabbleMediaFactoryPrivate *priv = fac->priv;
-  GPtrArray *tmp = gabble_g_ptr_array_copy (priv->channels);
-  guint i;
 
   DEBUG ("closing channels");
 
-  for (i = 0; i < tmp->len; i++)
-    {
-      GabbleMediaChannel *chan = g_ptr_array_index (tmp, i);
+  /* Close will cause the channel to be removed from the list indirectly..*/
+  while (priv->media_channels != NULL)
+    gabble_media_channel_close (
+        GABBLE_MEDIA_CHANNEL (priv->media_channels->data));
 
-      DEBUG ("closing %p", chan);
-      gabble_media_channel_close (chan);
-    }
+  /* Close will cause the channel to be removed from the list indirectly..*/
+  while (priv->call_channels != NULL)
+    gabble_call_channel_close (
+        GABBLE_CALL_CHANNEL (priv->call_channels->data));
 
   if (priv->status_changed_id != 0)
     {
@@ -272,17 +426,25 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
           priv->status_changed_id);
       priv->status_changed_id = 0;
     }
-
-  g_ptr_array_free (tmp, TRUE);
 }
 
 static void
-new_jingle_session_cb (GabbleJingleFactory *jf, GabbleJingleSession *sess, gpointer data)
+new_jingle_session_cb (GabbleJingleFactory *jf,
+    GabbleJingleSession *sess,
+    gpointer data)
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (data);
 
-  if (gabble_jingle_session_get_content_type (sess) ==
+  if (gabble_jingle_session_get_content_type (sess) !=
       GABBLE_TYPE_JINGLE_MEDIA_RTP)
+    return;
+
+
+  if (self->priv->use_call_channels)
+    {
+      new_call_channel (self, sess, sess->peer, FALSE, FALSE, NULL);
+    }
+  else
     {
       GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer,
           FALSE, FALSE, FALSE);
@@ -358,17 +520,14 @@ gabble_media_factory_foreach_channel (TpChannelManager *manager,
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (manager);
   GabbleMediaFactoryPrivate *priv = fac->priv;
-  guint i;
+  GList *l;
 
-  for (i = 0; i < priv->channels->len; i++)
-    {
-      TpExportableChannel *channel = TP_EXPORTABLE_CHANNEL (
-          g_ptr_array_index (priv->channels, i));
+  for (l = priv->media_channels; l != NULL; l = g_list_next (l))
+    foreach (TP_EXPORTABLE_CHANNEL (l->data), user_data);
 
-      foreach (channel, user_data);
-    }
+  for (l = priv->call_channels; l != NULL; l = g_list_next (l))
+    foreach (TP_EXPORTABLE_CHANNEL (l->data), user_data);
 }
-
 
 static const gchar * const media_channel_fixed_properties[] = {
     TP_IFACE_CHANNEL ".ChannelType",
@@ -408,6 +567,38 @@ static const gchar * const both_allowed_immutable[] = {
     NULL
 };
 
+static const gchar * const call_channel_allowed_properties[] = {
+    TP_IFACE_CHANNEL ".TargetHandle",
+    TP_IFACE_CHANNEL ".TargetID",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".MutableContents",
+    NULL
+};
+
+static const gchar * const call_audio_allowed[] = {
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    NULL
+};
+
+static const gchar * const call_video_allowed[] = {
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    NULL
+};
+
+static const gchar * const call_both_allowed[] = {
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".MutableContents",
+    NULL
+};
+
+static const gchar * const call_both_allowed_immutable[] = {
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    NULL
+};
+
 /* not advertised in foreach_channel_class - can only be requested with
  * RequestChannel, not with CreateChannel/EnsureChannel */
 static const gchar * const anon_channel_allowed_properties[] = {
@@ -415,19 +606,31 @@ static const gchar * const anon_channel_allowed_properties[] = {
 };
 
 static GHashTable *
-gabble_media_factory_channel_class (void)
+gabble_media_factory_streamed_media_channel_class (void)
 {
-  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) tp_g_value_slice_free);
-  GValue *value;
+  GHashTable *table = tp_asv_new (
+      TP_IFACE_CHANNEL ".TargetHandleType", G_TYPE_UINT,
+          TP_HANDLE_TYPE_CONTACT,
+      NULL);
 
-  value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
+  tp_asv_set_static_string (table,
+      TP_IFACE_CHANNEL ".ChannelType",
+      TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
 
-  value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
+  return table;
+}
+
+static GHashTable *
+gabble_media_factory_call_channel_class (void)
+{
+  GHashTable *table = tp_asv_new (
+      TP_IFACE_CHANNEL ".TargetHandleType", G_TYPE_UINT,
+          TP_HANDLE_TYPE_CONTACT,
+      NULL);
+
+  tp_asv_set_static_string (table,
+      TP_IFACE_CHANNEL ".ChannelType",
+      GABBLE_IFACE_CHANNEL_TYPE_CALL);
 
   return table;
 }
@@ -437,9 +640,15 @@ gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
     TpChannelManagerChannelClassFunc func,
     gpointer user_data)
 {
-  GHashTable *table = gabble_media_factory_channel_class ();
+  GHashTable *table = gabble_media_factory_streamed_media_channel_class ();
 
   func (manager, table, named_channel_allowed_properties, user_data);
+
+  g_hash_table_destroy (table);
+
+  table = gabble_media_factory_call_channel_class ();
+
+  func (manager, table, call_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -451,59 +660,6 @@ typedef enum
   METHOD_CREATE,
   METHOD_ENSURE,
 } RequestMethod;
-
-
-typedef struct
-{
-    GabbleMediaFactory *self;
-    GabbleMediaChannel *channel;
-    gpointer request_token;
-} MediaChannelRequest;
-
-
-static MediaChannelRequest *
-media_channel_request_new (GabbleMediaFactory *self,
-    GabbleMediaChannel *channel,
-    gpointer request_token)
-{
-  MediaChannelRequest *mcr = g_slice_new0 (MediaChannelRequest);
-
-  mcr->self = self;
-  mcr->channel = channel;
-  mcr->request_token = request_token;
-
-  return mcr;
-}
-
-static void
-media_channel_request_free (MediaChannelRequest *mcr)
-{
-  g_slice_free (MediaChannelRequest, mcr);
-}
-
-static void
-media_channel_request_succeeded_cb (MediaChannelRequest *mcr,
-    GPtrArray *streams)
-{
-  GSList *request_tokens;
-
-  request_tokens = g_slist_prepend (NULL, mcr->request_token);
-  tp_channel_manager_emit_new_channel (mcr->self,
-      TP_EXPORTABLE_CHANNEL (mcr->channel), request_tokens);
-  g_slist_free (request_tokens);
-
-  media_channel_request_free (mcr);
-}
-
-static void
-media_channel_request_failed_cb (MediaChannelRequest *mcr,
-    GError *error)
-{
-  tp_channel_manager_emit_request_failed (mcr->self, mcr->request_token,
-      error->domain, error->code, error->message);
-
-  media_channel_request_free (mcr);
-}
 
 static gboolean
 gabble_media_factory_requestotron (TpChannelManager *manager,
@@ -603,12 +759,12 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
 
       if (method == METHOD_ENSURE)
         {
-          guint i;
+          GList *l;
           TpHandle peer = 0;
 
-          for (i = 0; i < priv->channels->len; i++)
+          for (l = priv->media_channels; l != NULL; l = g_list_next (l))
             {
-              channel = g_ptr_array_index (priv->channels, i);
+              channel = GABBLE_MEDIA_CHANNEL (l->data);
               g_object_get (channel, "peer", &peer, NULL);
 
               if (peer == handle)
@@ -635,7 +791,8 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
   gabble_media_channel_request_initial_streams (channel,
       (GFunc) media_channel_request_succeeded_cb,
       (GFunc) media_channel_request_failed_cb,
-      media_channel_request_new (self, channel, request_token));
+      media_channel_request_new (self,
+        TP_EXPORTABLE_CHANNEL (channel), request_token));
 
   return TRUE;
 
@@ -646,6 +803,54 @@ error:
   return TRUE;
 }
 
+static gboolean
+gabble_media_factory_create_call (TpChannelManager *manager,
+    gpointer request_token,
+    GHashTable *request_properties)
+{
+  GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
+  TpHandle target;
+  TpBaseConnection *conn;
+  GError *error = NULL;
+  gboolean initial_audio, initial_video;
+
+  conn = (TpBaseConnection *) self->priv->conn;
+
+  DEBUG ("Creating a new call channel");
+
+  if (tp_asv_get_uint32 (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
+    return FALSE;
+
+  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+              media_channel_fixed_properties, call_channel_allowed_properties,
+              &error))
+        goto error;
+
+  target  = tp_asv_get_uint32 (request_properties,
+      TP_IFACE_CHANNEL ".TargetHandle", NULL);
+
+  initial_audio = tp_asv_get_boolean (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL);
+  initial_video = tp_asv_get_boolean (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL);
+
+  /* FIXME need to check if there is at least one of InitialAudio/InitialVideo
+   * FIXME creating the channel should check and wait for the capabilities
+   * FIXME need to cope with disconnecting while channels are setting up
+   */
+
+  new_call_channel (self, NULL, target, initial_audio, initial_video,
+    request_token);
+
+  return TRUE;
+
+error:
+  tp_channel_manager_emit_request_failed (self, request_token,
+      error->domain, error->code, error->message);
+  g_error_free (error);
+  return TRUE;
+}
 
 static gboolean
 gabble_media_factory_request_channel (TpChannelManager *manager,
@@ -662,7 +867,13 @@ gabble_media_factory_create_channel (TpChannelManager *manager,
                                      gpointer request_token,
                                      GHashTable *request_properties)
 {
-  return gabble_media_factory_requestotron (manager, request_token,
+  if (!tp_strdiff (tp_asv_get_string (request_properties,
+          TP_IFACE_CHANNEL ".ChannelType"),
+        GABBLE_IFACE_CHANNEL_TYPE_CALL))
+    return gabble_media_factory_create_call (manager, request_token,
+      request_properties);
+  else
+    return gabble_media_factory_requestotron (manager, request_token,
       request_properties, METHOD_CREATE);
 }
 
@@ -802,6 +1013,14 @@ _gabble_media_factory_typeflags_to_caps (TpChannelMediaCapabilities flags,
 }
 
 static void
+gabble_media_factory_reset_caps (GabbleCapsChannelManager *manager)
+{
+  GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
+
+  self->priv->use_call_channels = FALSE;
+}
+
+static void
 gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
     TpHandle handle,
     const GabbleCapabilitySet *caps,
@@ -810,7 +1029,8 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
   TpChannelMediaCapabilities typeflags =
     _gabble_media_factory_caps_to_typeflags (caps);
   GValueArray *va;
-  const gchar * const *allowed;
+  const gchar * const *streamed_media_allowed;
+  const gchar * const *call_allowed;
 
   typeflags &= (TP_CHANNEL_MEDIA_CAPABILITY_AUDIO |
       TP_CHANNEL_MEDIA_CAPABILITY_VIDEO |
@@ -823,36 +1043,54 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
 
       case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
           | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
-        allowed = audio_allowed;
+        streamed_media_allowed = audio_allowed;
+        call_allowed = call_audio_allowed;
         break;
 
       case TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
           | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
-        allowed = video_allowed;
+        streamed_media_allowed = video_allowed;
+        call_allowed = call_video_allowed;
         break;
 
       case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
           | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO: /* both */
-        allowed = both_allowed;
+        streamed_media_allowed = both_allowed;
+        call_allowed = call_both_allowed;
         break;
 
       case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO /* both but immutable */
           | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
           | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
-        allowed = both_allowed_immutable;
+        streamed_media_allowed = both_allowed_immutable;
+        call_allowed = call_both_allowed_immutable;
         break;
 
       default:
         g_assert_not_reached ();
     }
 
+  /* Streamed Media channel */
   va = g_value_array_new (2);
   g_value_array_append (va, NULL);
   g_value_array_append (va, NULL);
   g_value_init (va->values + 0, TP_HASH_TYPE_CHANNEL_CLASS);
   g_value_init (va->values + 1, G_TYPE_STRV);
-  g_value_take_boxed (va->values + 0, gabble_media_factory_channel_class ());
-  g_value_set_static_boxed (va->values + 1, allowed);
+  g_value_take_boxed (va->values + 0,
+    gabble_media_factory_streamed_media_channel_class ());
+  g_value_set_static_boxed (va->values + 1, streamed_media_allowed);
+
+  g_ptr_array_add (arr, va);
+
+  /* Call channel */
+  va = g_value_array_new (2);
+  g_value_array_append (va, NULL);
+  g_value_array_append (va, NULL);
+  g_value_init (va->values + 0, TP_HASH_TYPE_CHANNEL_CLASS);
+  g_value_init (va->values + 1, G_TYPE_STRV);
+  g_value_take_boxed (va->values + 0,
+    gabble_media_factory_call_channel_class ());
+  g_value_set_static_boxed (va->values + 1, call_allowed);
 
   g_ptr_array_add (arr, va);
 }
@@ -864,7 +1102,9 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     const gchar * const *cap_tokens,
     GabbleCapabilitySet *cap_set)
 {
+  GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
   static GQuark q_gtalk_p2p = 0, q_ice_udp = 0, q_h264 = 0;
+  static GQuark qc_gtalk_p2p = 0, qc_ice_udp = 0, qc_h264 = 0;
   gboolean gtalk_p2p = FALSE, h264 = FALSE, audio = FALSE, video = FALSE,
            ice_udp = FALSE;
   guint i;
@@ -874,10 +1114,16 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     {
       q_gtalk_p2p = g_quark_from_static_string (
           TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/gtalk-p2p");
+      qc_gtalk_p2p = g_quark_from_static_string (
+          GABBLE_IFACE_CHANNEL_TYPE_CALL "/gtalk-p2p");
       q_ice_udp = g_quark_from_static_string (
           TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/ice-udp");
+      qc_ice_udp = g_quark_from_static_string (
+          GABBLE_IFACE_CHANNEL_TYPE_CALL "/ice-udp");
       q_h264 = g_quark_from_static_string (
           TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/video/h264");
+      qc_h264 = g_quark_from_static_string (
+          GABBLE_IFACE_CHANNEL_TYPE_CALL "/video/h264");
     }
 
   if (cap_tokens != NULL)
@@ -887,22 +1133,20 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
       for (token = cap_tokens; *token != NULL; token++)
         {
           GQuark quark = g_quark_try_string (*token);
+          struct {
+            GQuark quark;
+            gboolean *cap;
+          } q2cap[] = {
+              { q_gtalk_p2p, &gtalk_p2p }, { qc_gtalk_p2p, &gtalk_p2p },
+              { q_ice_udp, &ice_udp }, { qc_ice_udp, &ice_udp },
+              { q_h264, &h264 }, { qc_h264, &h264 },
+              { 0, NULL },
+          };
 
-          if (quark == 0)
+          for (i = 0; q2cap[i].quark != 0; i++)
             {
-              continue;
-            }
-          else if (quark == q_gtalk_p2p)
-            {
-              gtalk_p2p = TRUE;
-            }
-          else if (quark == q_ice_udp)
-            {
-              ice_udp = TRUE;
-            }
-          else if (quark == q_h264)
-            {
-              h264 = TRUE;
+              if (quark == q2cap[i].quark)
+                *(q2cap[i].cap) = TRUE;
             }
         }
     }
@@ -922,10 +1166,22 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
 
       if (tp_strdiff (tp_asv_get_string (filter,
               TP_IFACE_CHANNEL ".ChannelType"),
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA)
+          && tp_strdiff (tp_asv_get_string (filter,
+              TP_IFACE_CHANNEL ".ChannelType"),
+            GABBLE_IFACE_CHANNEL_TYPE_CALL))
         {
           /* not interesting to this channel manager */
           continue;
+        }
+
+      /* If there is a handler that can support Call channels, use those for
+       * incoming channels */
+      if (!tp_strdiff (tp_asv_get_string (filter,
+            TP_IFACE_CHANNEL ".ChannelType"),
+            GABBLE_IFACE_CHANNEL_TYPE_CALL))
+        {
+          self->priv->use_call_channels = TRUE;
         }
 
       if (tp_asv_lookup (filter, TP_IFACE_CHANNEL ".TargetHandleType")
@@ -940,11 +1196,15 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
         }
 
       if (tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL))
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL)
+          || tp_asv_get_boolean (filter,
+            GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL))
         audio = TRUE;
 
       if (tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL))
+            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL)
+          || tp_asv_get_boolean (filter,
+            GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL))
         video = TRUE;
 
       /* If we've picked up all the capabilities we're ever going to, then
@@ -963,6 +1223,7 @@ caps_channel_manager_iface_init (gpointer g_iface,
 {
   GabbleCapsChannelManagerIface *iface = g_iface;
 
+  iface->reset_caps = gabble_media_factory_reset_caps;
   iface->get_contact_caps = gabble_media_factory_get_contact_caps;
   iface->represent_client = gabble_media_factory_represent_client;
 }

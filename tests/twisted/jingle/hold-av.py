@@ -55,11 +55,11 @@ def mutable_stream_tests(jp, jt, q, bus, conn, stream, chan, handle):
 
     node = jp.SetIq(jt.peer, jt.jid, [
         jp.Jingle(jt.sid, jt.peer, 'content-add', [
-            jp.Content('videostream', 'initiator', 'both', [
+            jp.Content('videostream', 'initiator', 'both',
                 jp.Description('video', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt.video_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
+            jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')

@@ -23,11 +23,11 @@ def test(q, bus, conn, stream):
     # Remote end calls us
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'session-initiate', [
-            jp.Content('audiostream', 'initiator', 'both', [
+            jp.Content('audiostream', 'initiator', 'both',
                 jp.Description('audio', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
+            jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
     nc = q.expect('dbus-signal', signal='NewChannel')
@@ -108,11 +108,11 @@ def test(q, bus, conn, stream):
     # Foo would like to gaze upon our beautiful complexion
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
-            jp.Content('videostream', 'initiator', 'both', [
+            jp.Content('videostream', 'initiator', 'both',
                 jp.Description('video', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.video_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
+            jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
     added, nsh = q.expect_many(

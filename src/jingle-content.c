@@ -746,6 +746,9 @@ gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
 
   DEBUG ("called");
 
+  if (li == NULL)
+    return;
+
   gabble_jingle_transport_iface_new_local_candidates (priv->transport, li);
 
   if (!priv->have_local_candidates)
@@ -946,6 +949,14 @@ gabble_jingle_content_get_remote_candidates (GabbleJingleContent *c)
   return gabble_jingle_transport_iface_get_remote_candidates (priv->transport);
 }
 
+GList *
+gabble_jingle_content_get_local_candidates (GabbleJingleContent *c)
+{
+  GabbleJingleContentPrivate *priv = c->priv;
+
+  return gabble_jingle_transport_iface_get_local_candidates (priv->transport);
+}
+
 gboolean
 gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders)
@@ -955,13 +966,17 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
   LmMessageNode *sess_node;
   JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
 
+  if (senders == priv->senders)
+    return TRUE;
+
+  priv->senders = senders;
+  g_object_notify (G_OBJECT (c), "senders");
+
   if (JINGLE_IS_GOOGLE_DIALECT (dialect))
     {
       DEBUG ("ignoring direction change request for GTalk stream");
       return FALSE;
     }
-
-  priv->senders = senders;
 
   msg = gabble_jingle_session_new_message (c->session,
       JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
@@ -1073,4 +1088,78 @@ JingleTransportType
 gabble_jingle_content_get_transport_type (GabbleJingleContent *c)
 {
   return gabble_jingle_transport_iface_get_transport_type (c->priv->transport);
+}
+
+static gboolean
+jingle_content_has_direction (GabbleJingleContent *self,
+  gboolean sending)
+{
+  GabbleJingleContentPrivate *priv = self->priv;
+  gboolean initiated_by_us;
+
+  g_object_get (self->session, "local-initiator",
+    &initiated_by_us, NULL);
+
+  switch (priv->senders)
+    {
+      case JINGLE_CONTENT_SENDERS_BOTH:
+        return TRUE;
+      case JINGLE_CONTENT_SENDERS_NONE:
+        return FALSE;
+      case JINGLE_CONTENT_SENDERS_INITIATOR:
+        return sending ? initiated_by_us : !initiated_by_us;
+      case JINGLE_CONTENT_SENDERS_RESPONDER:
+        return sending ? !initiated_by_us : initiated_by_us;
+    }
+
+  return FALSE;
+}
+
+gboolean
+gabble_jingle_content_sending (GabbleJingleContent *self)
+{
+  return jingle_content_has_direction (self, TRUE);
+}
+
+gboolean
+gabble_jingle_content_receiving (GabbleJingleContent *self)
+{
+  return jingle_content_has_direction (self, FALSE);
+}
+
+void
+gabble_jingle_content_set_sending (GabbleJingleContent *self,
+  gboolean send)
+{
+  GabbleJingleContentPrivate *priv = self->priv;
+  JingleContentSenders senders;
+  gboolean initiated_by_us;
+
+  if (send == jingle_content_has_direction (self, TRUE))
+    return;
+
+  g_object_get (self->session, "local-initiator",
+    &initiated_by_us, NULL);
+
+  if (send)
+    {
+      if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
+        senders = (initiated_by_us ? JINGLE_CONTENT_SENDERS_INITIATOR :
+          JINGLE_CONTENT_SENDERS_RESPONDER);
+      else
+        senders = JINGLE_CONTENT_SENDERS_BOTH;
+    }
+  else
+    {
+      if (priv->senders == JINGLE_CONTENT_SENDERS_BOTH)
+        senders = (initiated_by_us ? JINGLE_CONTENT_SENDERS_RESPONDER :
+          JINGLE_CONTENT_SENDERS_INITIATOR);
+      else
+        senders = JINGLE_CONTENT_SENDERS_NONE;
+    }
+
+  if (senders == JINGLE_CONTENT_SENDERS_NONE)
+    gabble_jingle_content_remove (self, TRUE);
+  else
+    gabble_jingle_content_change_direction (self, senders);
 }

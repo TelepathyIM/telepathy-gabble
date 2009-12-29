@@ -101,6 +101,7 @@ TWISTED_TESTS = \
 	vcard/update-rejected.py \
 	jingle/accept-extra-stream.py \
 	jingle/call-state.py \
+	jingle/call-basics.py \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \

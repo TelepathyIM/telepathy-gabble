@@ -1377,176 +1377,6 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
     }
 }
 
-#define TWICE(x) x, x
-
-static const gchar *
-_pick_best_content_type (GabbleMediaChannel *chan, TpHandle peer,
-  const gchar *resource, JingleMediaType type)
-{
-  GabbleMediaChannelPrivate *priv = chan->priv;
-  GabblePresence *presence;
-  const GabbleFeatureFallback content_types[] = {
-      /* if $thing is supported, then use it */
-        { TRUE, TWICE (NS_JINGLE_RTP) },
-        { type == JINGLE_MEDIA_TYPE_VIDEO, TWICE (NS_JINGLE_DESCRIPTION_VIDEO) },
-        { type == JINGLE_MEDIA_TYPE_AUDIO, TWICE (NS_JINGLE_DESCRIPTION_AUDIO) },
-      /* odd Google ones: if $thing is supported, use $other_thing */
-        { type == JINGLE_MEDIA_TYPE_AUDIO,
-          NS_GOOGLE_FEAT_VOICE, NS_GOOGLE_SESSION_PHONE },
-        { type == JINGLE_MEDIA_TYPE_VIDEO,
-          NS_GOOGLE_FEAT_VIDEO, NS_GOOGLE_SESSION_VIDEO },
-        { FALSE, NULL, NULL }
-  };
-
-  presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
-
-  if (presence == NULL)
-    {
-      DEBUG ("contact %d has no presence available", peer);
-      return NULL;
-    }
-
-  return gabble_presence_resource_pick_best_feature (presence, resource,
-      content_types, gabble_capability_set_predicate_has);
-
-  return NULL;
-}
-
-static const gchar *
-_pick_best_resource (GabbleMediaChannel *chan,
-  TpHandle peer, gboolean want_audio, gboolean want_video,
-  const char **transport_ns, JingleDialect *dialect)
-{
-  /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
-   * available). */
-  static const GabbleFeatureFallback transports[] = {
-        { TRUE, TWICE (NS_GOOGLE_TRANSPORT_P2P) },
-        { TRUE, TWICE (NS_JINGLE_TRANSPORT_ICEUDP) },
-        { TRUE, TWICE (NS_JINGLE_TRANSPORT_RAWUDP) },
-        { FALSE, NULL, NULL }
-  };
-  GabbleMediaChannelPrivate *priv = chan->priv;
-  GabblePresence *presence;
-  GabbleCapabilitySet *caps;
-  const gchar *resource = NULL;
-
-  presence = gabble_presence_cache_get (priv->conn->presence_cache, peer);
-
-  if (presence == NULL)
-    {
-      DEBUG ("contact %d has no presence available", peer);
-      return NULL;
-    }
-
-  *dialect = JINGLE_DIALECT_ERROR;
-  *transport_ns = NULL;
-
-  g_return_val_if_fail (want_audio || want_video, NULL);
-
-  /* from here on, goto FINALLY to free this, instead of returning early */
-  caps = gabble_capability_set_new ();
-
-  /* Try newest Jingle standard */
-  gabble_capability_set_add (caps, NS_JINGLE_RTP);
-
-  if (want_audio)
-    gabble_capability_set_add (caps, NS_JINGLE_RTP_AUDIO);
-  if (want_video)
-    gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
-
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
-
-  if (resource != NULL)
-    {
-      *dialect = JINGLE_DIALECT_V032;
-      goto CHOOSE_TRANSPORT;
-    }
-
-  /* Else try older Jingle draft */
-  gabble_capability_set_clear (caps);
-
-  if (want_audio)
-    gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_AUDIO);
-  if (want_video)
-    gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
-
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
-
-  if (resource != NULL)
-    {
-      *dialect = JINGLE_DIALECT_V015;
-      goto CHOOSE_TRANSPORT;
-    }
-
-  /* The Google dialects can't do video alone. */
-  if (!want_audio)
-    {
-      DEBUG ("No resource which supports video alone available");
-      goto FINALLY;
-    }
-
-  /* Okay, let's try GTalk 0.3, possibly with video. */
-  gabble_capability_set_clear (caps);
-  gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
-
-  if (want_video)
-    gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
-
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
-
-  if (resource != NULL)
-    {
-      *dialect = JINGLE_DIALECT_GTALK3;
-      goto CHOOSE_TRANSPORT;
-    }
-
-  if (want_video)
-    {
-      DEBUG ("No resource which supports audio+video available");
-      goto FINALLY;
-    }
-
-  /* Maybe GTalk 0.4 will save us all... ? */
-  gabble_capability_set_clear (caps);
-  gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
-  gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
-
-  if (resource != NULL)
-    {
-      *dialect = JINGLE_DIALECT_GTALK4;
-      goto CHOOSE_TRANSPORT;
-    }
-
-  /* Nope, nothing we can do. */
-  goto FINALLY;
-
-CHOOSE_TRANSPORT:
-
-
-  if (*dialect == JINGLE_DIALECT_GTALK4 || *dialect == JINGLE_DIALECT_GTALK3)
-    {
-      /* the GTalk dialects only support google p2p as transport protocol. */
-      *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
-    }
-  else
-    {
-      *transport_ns = gabble_presence_resource_pick_best_feature (presence,
-        resource, transports, gabble_capability_set_predicate_has);
-    }
-
-  if (*transport_ns == NULL)
-    resource = NULL;
-
-FINALLY:
-  gabble_capability_set_free (caps);
-  return resource;
-}
-
 typedef struct {
     /* number of streams requested == number of content objects */
     guint len;
@@ -1718,7 +1548,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
 
       /* check if the resource supports it; FIXME - we assume only
        * one channel type (video or audio) will be added later */
-      if (NULL == _pick_best_content_type (chan, peer, peer_resource,
+      if (NULL == jingle_pick_best_content_type (priv->conn, peer,
+          peer_resource,
           want_audio ? JINGLE_MEDIA_TYPE_AUDIO : JINGLE_MEDIA_TYPE_VIDEO))
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -1745,8 +1576,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
 
       g_assert (priv->streams->len == 0);
 
-      peer_resource = _pick_best_resource (chan, peer, want_audio, want_video,
-          &transport_ns, &dialect);
+      peer_resource = jingle_pick_best_resource (priv->conn, peer,
+          want_audio, want_video, &transport_ns, &dialect);
 
       if (peer_resource == NULL)
         {
@@ -1793,7 +1624,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
       GabbleJingleContent *c;
       const gchar *content_ns;
 
-      content_ns = _pick_best_content_type (chan, peer, peer_resource,
+      content_ns = jingle_pick_best_content_type (priv->conn, peer,
+          peer_resource,
           media_type == TP_MEDIA_STREAM_TYPE_AUDIO ?
             JINGLE_MEDIA_TYPE_AUDIO : JINGLE_MEDIA_TYPE_VIDEO);
 
@@ -1807,7 +1639,7 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
       c = gabble_jingle_session_add_content (priv->session,
           media_type == TP_MEDIA_STREAM_TYPE_AUDIO ?
             JINGLE_MEDIA_TYPE_AUDIO : JINGLE_MEDIA_TYPE_VIDEO,
-            content_ns, transport_ns);
+            NULL, content_ns, transport_ns);
 
       /* The stream is created in "new-content" callback, and appended to
        * priv->streams. This is now guaranteed to happen asynchronously (adding

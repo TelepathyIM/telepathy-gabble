@@ -120,6 +120,7 @@ void gabble_jingle_content_set_transport_state (GabbleJingleContent *content,
     JingleTransportState state);
 void gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer);
 GList *gabble_jingle_content_get_remote_candidates (GabbleJingleContent *c);
+GList *gabble_jingle_content_get_local_candidates (GabbleJingleContent *c);
 gboolean gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders);
 void gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self,
@@ -136,6 +137,12 @@ JingleTransportType gabble_jingle_content_get_transport_type (GabbleJingleConten
 const gchar *gabble_jingle_content_get_transport_ns (GabbleJingleContent *self);
 
 void gabble_jingle_content_maybe_send_description (GabbleJingleContent *self);
+
+gboolean gabble_jingle_content_sending (GabbleJingleContent *self);
+gboolean gabble_jingle_content_receiving (GabbleJingleContent *self);
+
+void gabble_jingle_content_set_sending (GabbleJingleContent *self,
+  gboolean send);
 
 #endif /* __JINGLE_CONTENT_H__ */
 

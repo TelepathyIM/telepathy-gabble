@@ -25,7 +25,9 @@ def noop_presence_update(q, stream):
 JINGLE_CAPS_EXCEPT_GVIDEO = [n for n in JINGLE_CAPS
     if n != ns.GOOGLE_FEAT_VIDEO]
 
-def run_test(q, bus, conn, stream):
+def run_test(q, bus, conn, stream,
+        media_channel_type, media_interface,
+        initial_audio, initial_video):
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + '.AbiWord', [
         { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
@@ -57,15 +59,15 @@ def run_test(q, bus, conn, stream):
             cs.STREAM_TUBE_SERVICE: 'x-abiword' },
         ], []),
         (cs.CLIENT + '.KCall', [
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA },
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            cs.INITIAL_AUDIO: True},
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            cs.INITIAL_VIDEO: True},
+        { cs.CHANNEL_TYPE: media_channel_type },
+        { cs.CHANNEL_TYPE: media_channel_type,
+            initial_audio: True},
+        { cs.CHANNEL_TYPE: media_channel_type,
+            initial_video: True},
         ], [
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/gtalk-p2p',
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/ice-udp',
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/video/h264',
+            media_interface + '/gtalk-p2p',
+            media_interface + '/ice-udp',
+            media_interface + '/video/h264',
             ]),
         ])
     (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
@@ -75,14 +77,14 @@ def run_test(q, bus, conn, stream):
     # Removing our H264 codec removes our ability to do Google Video
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + '.KCall', [
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA },
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            cs.INITIAL_AUDIO: True},
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            cs.INITIAL_VIDEO: True},
+        { cs.CHANNEL_TYPE: media_channel_type },
+        { cs.CHANNEL_TYPE: media_channel_type,
+            initial_audio: True},
+        { cs.CHANNEL_TYPE: media_channel_type,
+            initial_video: True},
         ], [
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/gtalk-p2p',
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/ice-udp',
+            media_interface + '/gtalk-p2p',
+            media_interface + '/ice-udp',
             ]),
         ])
     (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
@@ -117,9 +119,9 @@ def run_test(q, bus, conn, stream):
             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
             cs.STREAM_TUBE_SERVICE: 'x-abiword' },
         ], [
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/gtalk-p2p',
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/ice-udp',
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/video/h264',
+            media_interface + '/gtalk-p2p',
+            media_interface + '/ice-udp',
+            media_interface + '/video/h264',
             ]),
         ])
     (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
@@ -141,10 +143,10 @@ def run_test(q, bus, conn, stream):
     # enabled whenever we can do audio or video.)
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + '.KCall', [
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA },
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            cs.INITIAL_AUDIO: True},
-        ], [cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/gtalk-p2p']),
+        { cs.CHANNEL_TYPE: media_channel_type },
+        { cs.CHANNEL_TYPE: media_channel_type,
+            initial_audio: True},
+        ], [media_interface + '/gtalk-p2p']),
         ])
     (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
             False)
@@ -157,9 +159,9 @@ def run_test(q, bus, conn, stream):
     # Google clients cannot do.
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + '.KCall', [
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA },
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            cs.INITIAL_AUDIO: True},
+        { cs.CHANNEL_TYPE: media_channel_type },
+        { cs.CHANNEL_TYPE: media_channel_type,
+            initial_audio: True},
         ], [])
         ])
     (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
@@ -173,12 +175,12 @@ def run_test(q, bus, conn, stream):
     # Google clients cannot interop with us.
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + '.KCall', [
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA },
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            cs.INITIAL_VIDEO: True},
+        { cs.CHANNEL_TYPE: media_channel_type },
+        { cs.CHANNEL_TYPE: media_channel_type,
+            initial_video: True},
         ], [
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/ice-udp',
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/video/theora',
+            media_interface + '/ice-udp',
+            media_interface + '/video/theora',
             ]),
         ])
     (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
@@ -207,5 +209,45 @@ def run_test(q, bus, conn, stream):
             False)
     check_caps(namespaces, [ns.FILE_TRANSFER])
 
+def run_mixed_test (q, bus, conn, stream):
+    conn.Connect()
+
+    conn.ContactCapabilities.UpdateCapabilities([
+        (cs.CLIENT + '.SquareWheel', [
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+            cs.INITIAL_AUDIO: True},
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+            cs.INITIAL_VIDEO: True},
+        ], [
+            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/gtalk-p2p',
+            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/ice-udp',
+            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/video/h264',
+            ]),
+        (cs.CLIENT + '.FlyingCar', [
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
+            cs.CALL_INITIAL_AUDIO: True},
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
+            cs.CALL_INITIAL_VIDEO: True},
+        ], [
+            cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
+            cs.CHANNEL_TYPE_CALL + '/ice-udp',
+            cs.CHANNEL_TYPE_CALL + '/video/h264',
+            ]),
+        ])
+
+    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+            False)
+    check_caps(namespaces, JINGLE_CAPS)
+
 if __name__ == '__main__':
-    exec_test(run_test)
+    exec_test(lambda q, b, c, s:
+        run_test (q, b, c, s,
+            cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.CHANNEL_IFACE_MEDIA_SIGNALLING,
+            cs.INITIAL_AUDIO, cs.INITIAL_VIDEO))
+
+    exec_test(lambda q, b, c, s:
+        run_test (q, b, c, s,
+            cs.CHANNEL_TYPE_CALL, cs.CHANNEL_TYPE_CALL,
+            cs.CALL_INITIAL_AUDIO, cs.CALL_INITIAL_VIDEO))
+
+    exec_test(run_mixed_test)

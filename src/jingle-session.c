@@ -759,7 +759,8 @@ create_content (GabbleJingleSession *sess, GType content_type,
   GabbleJingleContent *c;
   GHashTable *contents;
 
-  DEBUG ("session creating new content type, conn == %p, jf == %p", priv->conn, priv->conn->jingle_factory);
+  DEBUG ("session creating new content name %s, type %d, conn %p, jf %p",
+    name, type, priv->conn, priv->conn->jingle_factory);
 
   /* FIXME: media-type is introduced by GabbleJingleMediaRTP, not by the
    * superclass, so this call is unsafe in the general case */
@@ -2108,24 +2109,31 @@ gabble_jingle_session_remove_content (GabbleJingleSession *sess,
 }
 
 GabbleJingleContent *
-gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mtype,
-    const gchar *content_ns, const gchar *transport_ns)
+gabble_jingle_session_add_content (GabbleJingleSession *sess,
+    JingleMediaType mtype,
+    const gchar *name,
+    const gchar *content_ns,
+    const gchar *transport_ns)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c;
   GType content_type;
-  gchar *name = NULL;
   GHashTable *contents = priv->local_initiator ? priv->initiator_contents
       : priv->responder_contents;
   guint id = g_hash_table_size (contents) + 1;
+  gchar *cname = NULL;
 
-  do
+  if (name == NULL || *name == '\0')
+    name = (mtype == JINGLE_MEDIA_TYPE_AUDIO ?  "Audio" : "Video");
+
+  cname = g_strdup (name);
+
+  while (g_hash_table_lookup (priv->initiator_contents, cname) != NULL
+      || g_hash_table_lookup (priv->responder_contents, cname) != NULL)
     {
-      g_free (name);
-      name = g_strdup_printf ("stream%d", id++);
+      g_free (cname);
+      cname = g_strdup_printf ("%s_%d", name, id++);
     }
-  while (g_hash_table_lookup (priv->initiator_contents, name) != NULL
-      && g_hash_table_lookup (priv->responder_contents, name) != NULL);
 
   content_type = gabble_jingle_factory_lookup_content_type (
       priv->conn->jingle_factory, content_ns);
@@ -2133,12 +2141,12 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
   g_assert (content_type != 0);
 
   c = create_content (sess, content_type, mtype,
-      content_ns, transport_ns, name, NULL, NULL);
+      content_ns, transport_ns, cname, NULL, NULL);
 
   /* The new content better have ended up in the set we thought it would... */
-  g_assert (g_hash_table_lookup (contents, name) != NULL);
+  g_assert (g_hash_table_lookup (contents, cname) != NULL);
 
-  g_free (name);
+  g_free (cname);
 
   return c;
 }

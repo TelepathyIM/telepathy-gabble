@@ -537,6 +537,16 @@ get_remote_candidates (GabbleJingleTransportIface *iface)
   return priv->remote_candidates;
 }
 
+static GList *
+get_local_candidates (GabbleJingleTransportIface *iface)
+{
+  GabbleJingleTransportIceUdp *transport =
+    GABBLE_JINGLE_TRANSPORT_ICEUDP (iface);
+  GabbleJingleTransportIceUdpPrivate *priv = transport->priv;
+
+  return priv->local_candidates;
+}
+
 static JingleTransportType
 get_transport_type (void)
 {
@@ -555,6 +565,7 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   klass->send_candidates = send_candidates;
 
   klass->get_remote_candidates = get_remote_candidates;
+  klass->get_local_candidates = get_local_candidates;
   klass->get_transport_type = get_transport_type;
 }
 

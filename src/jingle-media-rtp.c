@@ -943,3 +943,9 @@ gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self)
 {
   return self->priv->remote_codecs;
 }
+
+GList *
+gabble_jingle_media_rtp_get_local_codecs (GabbleJingleMediaRtp *self)
+{
+  return self->priv->local_codecs;
+}

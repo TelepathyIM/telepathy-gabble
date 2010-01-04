@@ -3612,20 +3612,21 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self,
                                   GError **error)
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyXmppStanza *stanza;
   gboolean result;
 
   /* do nothing if we havn't actually joined yet */
   if (priv->state < MUC_STATE_INITIATED)
     return TRUE;
 
-  msg = (LmMessage *) wocky_muc_create_presence (priv->wmuc,
+  stanza = wocky_muc_create_presence (priv->wmuc,
       WOCKY_STANZA_SUB_TYPE_NONE, NULL, NULL);
+  gabble_presence_add_status_and_vcard (priv->conn->self_presence, stanza);
 
-  g_signal_emit (self, signals[PRE_PRESENCE], 0, msg);
-  result = _gabble_connection_send (priv->conn, msg, error);
+  g_signal_emit (self, signals[PRE_PRESENCE], 0, (LmMessage *) stanza);
+  result = _gabble_connection_send (priv->conn, (LmMessage *) stanza, error);
 
-  lm_message_unref (msg);
+  g_object_unref (stanza);
   return result;
 }
 

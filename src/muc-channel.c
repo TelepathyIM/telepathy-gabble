@@ -2222,12 +2222,11 @@ roster_presence (gpointer key, gpointer val, gpointer data)
  * the final (ie our own) presence in the roster: (note that if our nick was *
  * changed by the MUC we will already have received a SIG_NICK_CHANGE:       */
 static void
-handle_join (GObject *source,
+handle_join (WockyMuc *muc,
     WockyXmppStanza *stanza,
     GHashTable *code,
     gpointer data)
 {
-  WockyMuc *wmuc = WOCKY_MUC (source);
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
   TpHandleRepoIface *contact_repo =
@@ -2236,12 +2235,9 @@ handle_join (GObject *source,
   TpHandleSet *members = tp_handle_set_new (contact_repo);
   TpHandleSet *owners = tp_handle_set_new (contact_repo);
   GHashTable *omap = g_hash_table_new (g_direct_hash, g_direct_equal);
-  GHashTable *member_jids = wocky_muc_members (wmuc);
-  const gchar *me = wocky_muc_jid (wmuc);
-  const gchar *me2 = wocky_muc_user (wmuc);
+  GHashTable *member_jids = wocky_muc_members (muc);
+  const gchar *me = wocky_muc_jid (muc);
   TpHandle myself = tp_handle_ensure (contact_repo, me,
-      GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
-  TpHandle userid = tp_handle_ensure (contact_repo, me2,
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
   struct _roster_foreach blob = { gmuc, contact_repo, members, owners, omap };
@@ -2249,12 +2245,12 @@ handle_join (GObject *source,
   g_hash_table_foreach (member_jids, roster_presence, &blob);
 
   g_hash_table_insert (omap,
-      GUINT_TO_POINTER (userid),
-      GUINT_TO_POINTER (myself));
+      GUINT_TO_POINTER (myself),
+      GUINT_TO_POINTER (((TpBaseConnection *) priv->conn)->self_handle));
 
   tp_handle_set_add (members, myself);
-  tp_group_mixin_add_handle_owners (source, omap);
-  tp_group_mixin_change_members (source, "",
+  tp_group_mixin_add_handle_owners (G_OBJECT (gmuc), omap);
+  tp_group_mixin_change_members (G_OBJECT (gmuc), "",
       tp_handle_set_peek (members), NULL, NULL, NULL, 0, 0);
 
   /* accept the config of the room if it was created for us: */
@@ -2294,7 +2290,6 @@ handle_join (GObject *source,
 
  out:
   tp_handle_unref (contact_repo, myself);
-  tp_handle_unref (contact_repo, userid);
   tp_handle_set_destroy (members);
   tp_handle_set_destroy (owners);
   g_hash_table_unref (omap);

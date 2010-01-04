@@ -13,6 +13,7 @@ TWISTED_TESTS = \
 	caps/receive-jingle.py \
 	caps/trust-thyself.py \
 	caps/tube-caps.py \
+	gateways.py \
 	muc/name-conflict.py \
 	muc/renamed.py \
 	muc/roomlist.py \

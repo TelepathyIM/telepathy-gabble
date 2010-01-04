@@ -275,6 +275,10 @@ static TpHandle create_room_identity (GabbleMucChannel *)
 
 /*  signatures for presence handlers */
 
+static void handle_fill_presence (WockyMuc *muc,
+    WockyXmppStanza *stanza,
+    gpointer user_data);
+
 static void handle_renamed (GObject *source,
     WockyXmppStanza *stanza,
     GHashTable *code,
@@ -415,6 +419,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
     g_signal_connect (wmuc, "parted",      (GCallback) handle_parted,   self);
     g_signal_connect (wmuc, "left",        (GCallback) handle_left,     self);
     g_signal_connect (wmuc, "error",       (GCallback) handle_error,    self);
+
+    g_signal_connect (wmuc, "fill-presence", G_CALLBACK (handle_fill_presence),
+        self);
 
     /* message handler(s) (just one needed so far) */
     g_signal_connect (wmuc, "message",      (GCallback) handle_message, self);
@@ -2134,6 +2141,19 @@ handle_perms (GObject *source,
   handle_tube_presence (gmuc, myself, stanza);
 }
 
+static void
+handle_fill_presence (WockyMuc *muc,
+    WockyXmppStanza *stanza,
+    gpointer user_data)
+{
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+
+  gabble_presence_add_status_and_vcard (priv->conn->self_presence, stanza);
+
+  g_signal_emit (self, signals[PRE_PRESENCE], 0, (LmMessage *) stanza);
+}
+
 /* connect to wocky-muc:SIG_NICK_CHANGE, which we will receive when the *
  * MUC informs us our nick has been changed for some reason             */
 static void
@@ -3621,9 +3641,6 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self,
 
   stanza = wocky_muc_create_presence (priv->wmuc,
       WOCKY_STANZA_SUB_TYPE_NONE, NULL, NULL);
-  gabble_presence_add_status_and_vcard (priv->conn->self_presence, stanza);
-
-  g_signal_emit (self, signals[PRE_PRESENCE], 0, (LmMessage *) stanza);
   result = _gabble_connection_send (priv->conn, (LmMessage *) stanza, error);
 
   g_object_unref (stanza);

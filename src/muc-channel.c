@@ -2211,7 +2211,7 @@ roster_presence (gpointer key, gpointer val, gpointer data)
   /* notify whomever that an identifiable contact joined the MUC  */
   if (owner != 0)
     {
-      tp_group_mixin_change_flags (G_OBJECT (data), 0,
+      tp_group_mixin_change_flags (G_OBJECT (blob->gmuc), 0,
           TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
       g_signal_emit (gmuc, signals[CONTACT_JOIN], 0, owner);
       tp_handle_unref (contact_repo, owner);

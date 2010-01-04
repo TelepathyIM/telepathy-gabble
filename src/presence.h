@@ -96,6 +96,9 @@ gboolean gabble_presence_resource_has_caps (GabblePresence *presence,
 
 LmMessage *gabble_presence_as_message (GabblePresence *presence,
     const gchar *to);
+void gabble_presence_add_status_and_vcard (GabblePresence *presence,
+  WockyXmppStanza *stanza);
+
 gchar *gabble_presence_dump (GabblePresence *presence);
 
 gboolean gabble_presence_added_to_view (GabblePresence *presence);

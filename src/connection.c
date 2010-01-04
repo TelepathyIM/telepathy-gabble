@@ -59,7 +59,6 @@
 #include "debug.h"
 #include "disco.h"
 #include "media-channel.h"
-#include "register.h"
 #include "im-factory.h"
 #include "jingle-factory.h"
 #include "media-factory.h"

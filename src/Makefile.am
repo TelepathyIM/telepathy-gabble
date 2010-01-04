@@ -124,8 +124,6 @@ libgabble_convenience_la_SOURCES = \
     presence-cache.c \
     private-tubes-factory.h \
     private-tubes-factory.c \
-    register.c \
-    register.h \
     request-pipeline.h \
     request-pipeline.c \
     roster.h \

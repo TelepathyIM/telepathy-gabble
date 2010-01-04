@@ -10,7 +10,7 @@ from twisted.words.xish import domish
 from gabbletest import (
     exec_test, make_muc_presence, request_muc_handle, sync_stream
     )
-from servicetest import call_async, unwrap, sync_dbus
+from servicetest import call_async, unwrap, sync_dbus, assertEquals
 from constants import (
     HT_CONTACT, HT_ROOM,
     CONN_IFACE_REQUESTS, CHANNEL_TYPE_TEXT, CHANNEL_IFACE_GROUP,
@@ -114,10 +114,9 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     # Check that test_'s handle owner is us, and that test (if it's there) has
     # no owner.
     handle_owners = group_props['HandleOwners']
-    assert handle_owners[t_] == self_handle, \
-        (handle_owners, t_, handle_owners[t_], self_handle)
+    assertEquals (self_handle,  handle_owners[t_])
     if not transient_conflict:
-        assert handle_owners[t] == 0, (handle_owners, t)
+        assertEquals (0, handle_owners[t])
 
     # test that closing the channel results in an unavailable message to the
     # right jid

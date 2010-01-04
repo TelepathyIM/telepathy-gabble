@@ -286,7 +286,7 @@ static void handle_error (GObject *source,
     const gchar *message,
     gpointer data);
 
-static void handle_join (GObject *source,
+static void handle_join (WockyMuc *muc,
     WockyXmppStanza *stanza,
     GHashTable *code,
     gpointer data);
@@ -1476,6 +1476,7 @@ handle_nick_conflict (GabbleMucChannel *chan,
    * and remote pending members appropriately.
    */
   g_string_append_c (priv->self_jid, '_');
+  g_object_set (priv->wmuc, "jid", priv->self_jid->str, NULL);
   self_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 

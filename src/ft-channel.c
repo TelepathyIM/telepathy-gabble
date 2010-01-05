@@ -844,7 +844,7 @@ gabble_file_transfer_channel_finalize (GObject *object)
 }
 
 static void
-close_bytestrean_and_transport (GabbleFileTransferChannel *self)
+close_bytestream_and_transport (GabbleFileTransferChannel *self)
 {
   if (self->priv->bytestream != NULL)
     {
@@ -880,7 +880,7 @@ gabble_file_transfer_channel_close (TpSvcChannel *iface,
           TP_FILE_TRANSFER_STATE_CANCELLED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED);
 
-      close_bytestrean_and_transport (self);
+      close_bytestream_and_transport (self);
     }
 
   gabble_file_transfer_channel_do_close (GABBLE_FILE_TRANSFER_CHANNEL (iface));
@@ -1625,7 +1625,7 @@ transport_handler (GibberTransport *transport,
         (const gchar *) data->data))
     {
       DEBUG ("Sending failed. Closing the bytestream");
-      close_bytestrean_and_transport (self);
+      close_bytestream_and_transport (self);
       return;
     }
 
@@ -1683,7 +1683,7 @@ transport_disconnected_cb (GibberTransport *transport,
 
   if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED)
     {
-      close_bytestrean_and_transport (self);
+      close_bytestream_and_transport (self);
 
       gabble_file_transfer_channel_set_state (
           TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),

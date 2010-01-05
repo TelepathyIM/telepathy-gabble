@@ -737,12 +737,13 @@ ensure_session (GabbleJingleFactory *self,
 
   if (resource == NULL || *resource == '\0')
     {
-      g_set_error (error, GABBLE_XMPP_ERROR,
-          XMPP_ERROR_BAD_REQUEST, "IQ sender '%s' has no resource", from);
-      return NULL;
+      /* if we're called by a SIP gateway, it might be using a bare JID */
+      resource = "";
     }
-
-  resource++;
+  else
+    {
+      resource++;
+    }
 
   peer = tp_handle_ensure (contact_repo, from, NULL, error);
 
@@ -881,7 +882,7 @@ create_session (GabbleJingleFactory *fac,
   /* Takes ownership of key */
   g_hash_table_insert (priv->sessions, key, sess);
 
-  DEBUG ("new session (%u, %s, %s) @ %p", peer, peer_resource, sid_, sess);
+  DEBUG ("new session (%u, '%s', %s) @ %p", peer, peer_resource, sid_, sess);
 
   g_free (sid_);
 

@@ -648,6 +648,7 @@ gabble_presence_resource_pick_best_feature (GabblePresence *presence,
 
   g_return_val_if_fail (presence != NULL, NULL);
   g_return_val_if_fail (resource != NULL, NULL);
+  g_return_val_if_fail (resource[0] != '\0', NULL);
   g_return_val_if_fail (predicate != NULL, NULL);
   g_return_val_if_fail (table != NULL, NULL);
 

@@ -635,9 +635,14 @@ conn_mail_notif_properties_getter (GObject *object,
   DEBUG ("MailNotification get property %s", g_quark_to_string (name));
 
   if (name == prop_quarks[PROP_CAPABILITIES])
-    g_value_set_uint (value,
-        GABBLE_MAIL_NOTIFICATION_HAS_PROP_UNREADMAILCOUNT
-        | GABBLE_MAIL_NOTIFICATION_HAS_PROP_UNREADMAILS);
+    {
+      if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
+        g_value_set_uint (value,
+            GABBLE_MAIL_NOTIFICATION_HAS_PROP_UNREADMAILCOUNT
+            | GABBLE_MAIL_NOTIFICATION_HAS_PROP_UNREADMAILS);
+      else
+        g_value_set_uint (value, 0);
+    }
   else if (name == prop_quarks[PROP_UNREAD_MAIL_COUNT])
     g_value_set_uint (value,
         conn->unread_mails ? g_hash_table_size (conn->unread_mails) : 0);

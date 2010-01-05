@@ -112,6 +112,7 @@ gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
     TpHandle initiator,
     gboolean requested);
 
+void gabble_muc_channel_teardown (GabbleMucChannel *gmuc);
 void gabble_muc_channel_close_tube (GabbleMucChannel *gmuc);
 
 

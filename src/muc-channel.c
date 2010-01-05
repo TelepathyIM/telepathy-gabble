@@ -1419,6 +1419,8 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   TpIntSet *set;
   GArray *handles;
 
+  DEBUG ("Closing");
+
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
@@ -3687,6 +3689,12 @@ gabble_muc_channel_close_tube (GabbleMucChannel *gmuc)
       gabble_tubes_channel_close (tube);
       g_object_unref (tube);
     }
+}
+
+void
+gabble_muc_channel_teardown (GabbleMucChannel *gmuc)
+{
+  close_channel (gmuc, NULL, FALSE, 0, 0);
 }
 
 static void

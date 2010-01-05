@@ -853,7 +853,15 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
   if (priv->text_channels != NULL)
     {
       GHashTable *tmp = priv->text_channels;
+      GHashTableIter iter;
+      gpointer chan;
+
       priv->text_channels = NULL;
+
+      g_hash_table_iter_init (&iter, tmp);
+      while (g_hash_table_iter_next (&iter, NULL, &chan))
+        gabble_muc_channel_teardown (GABBLE_MUC_CHANNEL (chan));
+
       g_hash_table_destroy (tmp);
     }
 

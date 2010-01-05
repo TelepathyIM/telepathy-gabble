@@ -1031,6 +1031,26 @@ ensure_bare_contact_from_jid (GabbleConnection *conn,
 
 #define TWICE(x) x, x
 
+static const gchar *
+jingle_pick_resource_or_bare_jid (GabblePresence *presence,
+    GabbleCapabilitySet *caps)
+{
+  if (gabble_presence_has_resources (presence))
+    {
+      return gabble_presence_pick_resource_by_caps (presence,
+          gabble_capability_set_predicate_at_least, caps);
+    }
+  else if (gabble_capability_set_at_least (
+        gabble_presence_peek_caps (presence), caps))
+    {
+      return "";
+    }
+  else
+    {
+      return NULL;
+    }
+}
+
 const gchar *
 jingle_pick_best_resource (GabbleConnection *conn,
     TpHandle peer,
@@ -1075,8 +1095,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
   if (want_video)
     gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
+  resource = jingle_pick_resource_or_bare_jid (presence, caps);
 
   if (resource != NULL)
     {
@@ -1092,8 +1111,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
   if (want_video)
     gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
+  resource = jingle_pick_resource_or_bare_jid (presence, caps);
 
   if (resource != NULL)
     {
@@ -1115,8 +1133,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
   if (want_video)
     gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
+  resource = jingle_pick_resource_or_bare_jid (presence, caps);
 
   if (resource != NULL)
     {
@@ -1134,8 +1151,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
   gabble_capability_set_clear (caps);
   gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
   gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
+  resource = jingle_pick_resource_or_bare_jid (presence, caps);
 
   if (resource != NULL)
     {
@@ -1153,6 +1169,11 @@ CHOOSE_TRANSPORT:
     {
       /* the GTalk dialects only support google p2p as transport protocol. */
       *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
+    }
+  else if (resource[0] == '\0')
+    {
+      *transport_ns = gabble_presence_pick_best_feature (presence, transports,
+          gabble_capability_set_predicate_has);
     }
   else
     {

@@ -1190,6 +1190,8 @@ jingle_pick_best_content_type (GabbleConnection *conn,
         { FALSE, NULL, NULL }
   };
 
+  g_return_val_if_fail (resource != NULL, NULL);
+
   presence = gabble_presence_cache_get (conn->presence_cache, peer);
 
   if (presence == NULL)
@@ -1198,8 +1200,16 @@ jingle_pick_best_content_type (GabbleConnection *conn,
       return NULL;
     }
 
-  return gabble_presence_resource_pick_best_feature (presence, resource,
-      content_types, gabble_capability_set_predicate_has);
+  if (resource[0] == '\0')
+    {
+      return gabble_presence_pick_best_feature (presence, content_types,
+          gabble_capability_set_predicate_has);
+    }
+  else
+    {
+      return gabble_presence_resource_pick_best_feature (presence, resource,
+          content_types, gabble_capability_set_predicate_has);
+    }
 }
 
 GValueArray *

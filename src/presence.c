@@ -173,6 +173,12 @@ gabble_presence_peek_caps (GabblePresence *presence)
   return presence->priv->cap_set;
 }
 
+gboolean
+gabble_presence_has_resources (GabblePresence *self)
+{
+  return (self->priv->resources != NULL);
+}
+
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,

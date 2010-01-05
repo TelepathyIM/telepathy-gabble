@@ -601,11 +601,14 @@ get_unread_mails (GabbleConnection *conn)
   GHashTableIter iter;
   gpointer value;
 
-  g_hash_table_iter_init (&iter, conn->unread_mails);
-  while (g_hash_table_iter_next (&iter, NULL, &value))
+  if (conn->unread_mails)
     {
-      GHashTable *mail = value;
-      g_ptr_array_add (mails, mail);
+      g_hash_table_iter_init (&iter, conn->unread_mails);
+      while (g_hash_table_iter_next (&iter, NULL, &value))
+        {
+          GHashTable *mail = value;
+          g_ptr_array_add (mails, mail);
+        }
     }
 
   return mails;

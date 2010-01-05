@@ -1538,6 +1538,11 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
     {
       peer_resource = gabble_jingle_session_get_peer_resource (priv->session);
 
+      if (peer_resource[0] != '\0')
+        DEBUG ("existing call, using peer resource %s", peer_resource);
+      else
+        DEBUG ("existing call, using bare JID");
+
       /* is a google call... we have no other option */
       if (!gabble_jingle_session_can_modify_contents (priv->session))
         {

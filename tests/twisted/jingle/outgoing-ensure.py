@@ -57,7 +57,7 @@ def test(q, bus, conn, stream):
     assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA, emitted_props[cs.CHANNEL_TYPE])
     assertEquals(cs.HT_CONTACT, emitted_props[cs.TARGET_HANDLE_TYPE])
     assertEquals(handle, emitted_props[cs.TARGET_HANDLE])
-    assertEquals('foo@bar.com', emitted_props[cs.TARGET_ID])
+    assertEquals(jt.peer_bare_jid, emitted_props[cs.TARGET_ID])
     assert emitted_props[cs.REQUESTED]
     assertEquals(self_handle, emitted_props[cs.INITIATOR_HANDLE])
     assertEquals('test@localhost', emitted_props[cs.INITIATOR_ID])

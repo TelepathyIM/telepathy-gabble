@@ -43,7 +43,7 @@ def worker(jp, q, bus, conn, stream, variant):
     jt2.prepare()
 
     self_handle = conn.GetSelfHandle()
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    remote_handle = conn.RequestHandles(1, [jt2.peer])[0]
 
     if variant == REQUEST_NONYMOUS:
         path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
@@ -81,7 +81,7 @@ def worker(jp, q, bus, conn, stream, variant):
     if variant == REQUEST_NONYMOUS or variant == CREATE:
         assertEquals(remote_handle, emitted_props[cs.TARGET_HANDLE])
         assertEquals(cs.HT_CONTACT, emitted_props[cs.TARGET_HANDLE_TYPE])
-        assertEquals('foo@bar.com', emitted_props[cs.TARGET_ID])
+        assertEquals(jt2.peer_bare_jid, emitted_props[cs.TARGET_ID])
     else:
         assertEquals(0, emitted_props[cs.TARGET_HANDLE])
         assertEquals(cs.HT_NONE, emitted_props[cs.TARGET_HANDLE_TYPE])
@@ -103,7 +103,7 @@ def worker(jp, q, bus, conn, stream, variant):
     if variant == REQUEST_NONYMOUS or variant == CREATE:
         assertEquals(remote_handle, channel_props['TargetHandle'])
         assertEquals(cs.HT_CONTACT, channel_props['TargetHandleType'])
-        assertEquals('foo@bar.com', channel_props['TargetID'])
+        assertEquals(jt2.peer_bare_jid, channel_props['TargetID'])
         assertEquals((cs.HT_CONTACT, remote_handle), chan.GetHandle())
     else:
         assertEquals(0, channel_props['TargetHandle'])

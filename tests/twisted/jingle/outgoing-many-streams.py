@@ -39,7 +39,7 @@ def test(q, bus, conn, stream):
 
     # Gabble doesn't trust it, so makes a disco
     event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to='foo@bar.com/Foo')
+             to=jt.remote_jid)
 
     jt.send_remote_disco_reply(event.stanza)
 
@@ -79,7 +79,7 @@ def test(q, bus, conn, stream):
     assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA
     assert emitted_props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
     assert emitted_props[cs.TARGET_HANDLE] == handle
-    assert emitted_props[cs.TARGET_ID] == 'foo@bar.com', emitted_props
+    assert emitted_props[cs.TARGET_ID] == jt.remote_bare_jid, emitted_props
     assert emitted_props[cs.REQUESTED] == True
     assert emitted_props[cs.INITIATOR_HANDLE] == self_handle
     assert emitted_props[cs.INITIATOR_ID]  == 'test@localhost'
@@ -105,7 +105,7 @@ def test(q, bus, conn, stream):
               cs.TP_AWKWARD_PROPERTIES, cs.CHANNEL_IFACE_HOLD]:
         assert i in interfaces, (i, interfaces)
 
-    assert channel_props['TargetID'] == 'foo@bar.com', channel_props
+    assert channel_props['TargetID'] == jt.remote_bare_jid, channel_props
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'
     assert channel_props['InitiatorHandle'] == self_handle

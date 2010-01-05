@@ -18,7 +18,7 @@ def test(q, bus, conn, stream):
     jt2.prepare()
 
     self_handle = conn.GetSelfHandle()
-    remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, [jt2.peer])[0]
 
     # Remote end calls us
     node = jp.SetIq(jt2.peer, jt2.jid, [
@@ -74,7 +74,7 @@ def test(q, bus, conn, stream):
 
     # peer gets the transport
     e = q.expect('stream-iq', predicate=jp.action_predicate('transport-info'))
-    assertEquals(remote_jid, e.query['initiator'])
+    assertEquals(jt2.peer, e.query['initiator'])
 
     stream.send(make_result_iq(stream, e.stanza))
 
@@ -149,7 +149,7 @@ def test(q, bus, conn, stream):
         # It's not entirely clear that this *needs* to fire here...
         EventPattern('dbus-signal', signal='SetStreamSending', args=[False]),
         )
-    assertEquals(remote_jid, ti.query['initiator'])
+    assertEquals(jt2.peer, ti.query['initiator'])
 
     stream.send(make_result_iq(stream, e.stanza))
 

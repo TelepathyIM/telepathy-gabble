@@ -114,6 +114,11 @@ gconstpointer gabble_presence_resource_pick_best_feature (
     const GabbleFeatureFallback *table,
     GabbleCapabilitySetPredicate predicate);
 
+gconstpointer
+gabble_presence_pick_best_feature (GabblePresence *presence,
+    const GabbleFeatureFallback *table,
+    GabbleCapabilitySetPredicate predicate);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_H__ */

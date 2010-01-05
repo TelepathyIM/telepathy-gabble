@@ -666,3 +666,26 @@ gabble_presence_resource_pick_best_feature (GabblePresence *presence,
 
   return NULL;
 }
+
+gconstpointer
+gabble_presence_pick_best_feature (GabblePresence *presence,
+    const GabbleFeatureFallback *table,
+    GabbleCapabilitySetPredicate predicate)
+{
+  const GabbleFeatureFallback *row;
+
+  g_return_val_if_fail (presence != NULL, NULL);
+  g_return_val_if_fail (predicate != NULL, NULL);
+  g_return_val_if_fail (table != NULL, NULL);
+
+  for (row = table; row->result != NULL; row++)
+    {
+      if (row->considered && predicate (presence->priv->cap_set,
+            row->check_data))
+        {
+          return row->result;
+        }
+    }
+
+  return NULL;
+}

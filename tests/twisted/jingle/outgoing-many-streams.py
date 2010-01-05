@@ -15,10 +15,6 @@ import gabbletest
 import constants as cs
 
 def test(q, bus, conn, stream):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
-
-    # If we need to override remote caps, feats, codecs or caps,
-    # this is a good time to do it
 
     # Connecting
     conn.Connect()
@@ -31,6 +27,12 @@ def test(q, bus, conn, stream):
         args=[{1L: (0L, {u'available': {}})}])
     q.expect('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
+    worker(q, bus, conn, stream, 'foo@bar.com/Foo')
+    worker(q, bus, conn, stream, 'foo@sip.bar.com')
+
+def worker(q, bus, conn, stream, peer):
+    jt = jingletest.JingleTest(stream, 'test@localhost', peer)
 
     self_handle = conn.GetSelfHandle()
 

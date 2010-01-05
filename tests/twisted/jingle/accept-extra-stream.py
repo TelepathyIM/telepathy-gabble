@@ -12,7 +12,12 @@ import constants as cs
 from jingletest2 import JingleProtocol031, JingleTest2
 
 def test(q, bus, conn, stream):
-    remote_jid = 'foo@bar.com/Foo'
+    worker(q, bus, conn, stream, remote_jid='foo@bar.com/Foo')
+
+def test_bare_jid(q, bus, conn, stream):
+    worker(q, bus, conn, stream, remote_jid='foo@sip.bar.com')
+
+def worker(q, bus, conn, stream, remote_jid):
     jp = JingleProtocol031()
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
     jt2.prepare()
@@ -183,3 +188,4 @@ def test(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(test)
+    exec_test(test_bare_jid)

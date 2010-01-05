@@ -1,6 +1,9 @@
 """
 Test making outgoing calls using EnsureChannel, and retrieving existing calls
 using EnsureChannel.
+
+This also exercises calls to a contact on a SIP gateway, who has no resource,
+only a bare JID.
 """
 
 from gabbletest import exec_test
@@ -15,7 +18,7 @@ from jingletest2 import JingleProtocol031, JingleTest2
 
 def test(q, bus, conn, stream):
     jt = JingleTest2(JingleProtocol031(), conn, q, stream, 'test@localhost',
-        'foo@bar.com/Foo')
+        'foo@sip.bar.com')
     jt.prepare()
 
     self_handle = conn.GetSelfHandle()

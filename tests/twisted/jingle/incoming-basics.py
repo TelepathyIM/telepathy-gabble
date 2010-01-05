@@ -12,8 +12,8 @@ import constants as cs
 
 from twisted.words.xish import xpath
 
-def test(jp, q, bus, conn, stream):
-    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
+def test(jp, q, bus, conn, stream, peer='foo@bar.com/Foo'):
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', peer)
     jt.prepare()
 
     self_handle = conn.GetSelfHandle()
@@ -180,3 +180,5 @@ def test(jp, q, bus, conn, stream):
 
 if __name__ == '__main__':
     test_all_dialects(test)
+    test_all_dialects(lambda jp, q, bus, conn, stream:
+            test(jp, q, bus, conn, stream, 'foo@sip.bar.com'))

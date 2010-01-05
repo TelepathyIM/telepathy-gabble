@@ -26,20 +26,21 @@ REQUEST_ANONYMOUS_AND_ADD = 2 # RequestChannel(HandleTypeNone, 0);
 REQUEST_NONYMOUS = 3 # RequestChannel(HandleTypeContact, h);
                      # RequestStreams(h, ...)
 
-def create(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, CREATE)
+def create(jp, q, bus, conn, stream, peer='foo@bar.com/Res'):
+    worker(jp, q, bus, conn, stream, CREATE, peer)
 
-def request_anonymous(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS)
+def request_anonymous(jp, q, bus, conn, stream, peer='foo@bar.com/Res'):
+    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS, peer)
 
-def request_anonymous_and_add(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS_AND_ADD)
+def request_anonymous_and_add(jp, q, bus, conn, stream,
+        peer='foo@bar.com/Res'):
+    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS_AND_ADD, peer)
 
-def request_nonymous(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, REQUEST_NONYMOUS)
+def request_nonymous(jp, q, bus, conn, stream, peer='foo@bar.com/Res'):
+    worker(jp, q, bus, conn, stream, REQUEST_NONYMOUS, peer)
 
-def worker(jp, q, bus, conn, stream, variant):
-    jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
+def worker(jp, q, bus, conn, stream, variant, peer):
+    jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', peer)
     jt2.prepare()
 
     self_handle = conn.GetSelfHandle()
@@ -52,7 +53,7 @@ def worker(jp, q, bus, conn, stream, variant):
         path = conn.Requests.CreateChannel({
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-            cs.TARGET_HANDLE: handle,
+            cs.TARGET_HANDLE: remote_handle,
             })[0]
     else:
         path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
@@ -309,6 +310,15 @@ def rccs(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(rccs)
+    test_all_dialects(create)
     test_all_dialects(request_anonymous)
     test_all_dialects(request_anonymous_and_add)
     test_all_dialects(request_nonymous)
+    test_all_dialects(lambda j, q, b, c, s:
+            create(j, q, b, c, s, peer='foo@gw.bar.com'))
+    test_all_dialects(lambda j, q, b, c, s:
+            request_anonymous(j, q, b, c, s, peer='foo@gw.bar.com'))
+    test_all_dialects(lambda j, q, b, c, s:
+            request_anonymous_and_add(j, q, b, c, s, peer='foo@gw.bar.com'))
+    test_all_dialects(lambda j, q, b, c, s:
+            request_nonymous(j, q, b, c, s, peer='foo@gw.bar.com'))

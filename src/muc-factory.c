@@ -383,6 +383,31 @@ muc_join_error_cb (GabbleMucChannel *chan,
     }
 }
 
+static void
+muc_channel_tube_closed_cb (GabbleTubesChannel *chan,
+    gpointer user_data)
+{
+  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
+
+  tp_channel_manager_emit_channel_closed_for_object (fac,
+      TP_EXPORTABLE_CHANNEL (chan));
+}
+
+
+static void
+muc_channel_new_tube (GabbleMucChannel *channel,
+    GabbleTubesChannel *tube,
+    gpointer user_data)
+{
+  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
+
+  tp_channel_manager_emit_new_channel (fac,
+      TP_EXPORTABLE_CHANNEL (tube), NULL);
+
+  g_signal_connect (tube, "closed",
+    G_CALLBACK (muc_channel_tube_closed_cb), fac);
+}
+
 /**
  * new_muc_channel
  */
@@ -418,6 +443,7 @@ new_muc_channel (GabbleMucFactory *fac,
        NULL);
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
+  g_signal_connect (chan, "new-tube", (GCallback) muc_channel_new_tube, fac);
 
   g_hash_table_insert (priv->text_channels, GUINT_TO_POINTER (handle), chan);
 

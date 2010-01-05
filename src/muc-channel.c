@@ -101,6 +101,7 @@ enum
     PRE_INVITE,
     CONTACT_JOIN,
     PRE_PRESENCE,
+    NEW_TUBE,
     LAST_SIGNAL
 };
 
@@ -1167,6 +1168,14 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   g_cclosure_marshal_VOID__POINTER,
                   G_TYPE_NONE, 1, G_TYPE_POINTER);
 
+  signals[NEW_TUBE] = g_signal_new ("new-tube",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__OBJECT,
+                  G_TYPE_NONE, 1, GABBLE_TYPE_TUBES_CHANNEL);
+
   tp_properties_mixin_class_init (object_class,
                                       G_STRUCT_OFFSET (GabbleMucChannelClass,
                                         properties_class),
@@ -1418,6 +1427,8 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
     return;
 
   priv->closed = TRUE;
+
+  gabble_muc_channel_close_tube (chan);
 
   /* Remove us from member list */
   set = tp_intset_new ();
@@ -1892,9 +1903,6 @@ tube_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
   TpHandle room;
 
-  tp_channel_manager_emit_channel_closed_for_object (gmuc,
-      TP_EXPORTABLE_CHANNEL (chan));
-
   if (priv->tube != NULL)
     {
       priv->tube = NULL;
@@ -1932,8 +1940,7 @@ new_tube (GabbleMucChannel *gmuc,
 
   g_signal_connect (priv->tube, "closed", (GCallback) tube_closed_cb, gmuc);
 
-  tp_channel_manager_emit_new_channel (gmuc,
-      TP_EXPORTABLE_CHANNEL (priv->tube), NULL);
+  g_signal_emit (gmuc, signals[NEW_TUBE], 0 , priv->tube);
 
   g_free (object_path);
 

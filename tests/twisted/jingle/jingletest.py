@@ -15,6 +15,7 @@ class JingleTest:
         self.stream = stream
         self.local_jid = local_jid
         self.remote_jid = remote_jid
+        self.remote_bare_jid = remote_jid.split('/', 1)[0]
         self.session_id = 'sess' + str(int(random.random() * 10000))
         self.google_mode = False
 

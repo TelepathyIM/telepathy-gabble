@@ -1381,6 +1381,9 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
   if (child_node)
     status_message = lm_message_node_get_value (child_node);
 
+  if (child_node)
+    status_message = lm_message_node_get_value (child_node);
+
   child_node = lm_message_node_get_child (presence_node, "priority");
 
   if (child_node)
@@ -1389,6 +1392,25 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
 
       if (prio != NULL)
         priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
+    }
+
+  child_node = wocky_xmpp_node_get_child_ns (presence_node, "decloak",
+      NS_DECLOAK);
+
+  if (child_node != NULL)
+    {
+      gboolean decloak;
+
+      /* this is a request to de-cloak, i.e. leak a minimal version of our
+       * presence to the peer */
+      g_object_get (priv->conn,
+          "disclose-presence", &decloak,
+          NULL);
+
+      DEBUG ("Considering whether to decloak, conclusion=%d", decloak);
+
+      if (decloak)
+        gabble_connection_send_capabilities (priv->conn, from, NULL);
     }
 
   switch (lm_message_get_sub_type (message))

@@ -143,6 +143,7 @@ enum
     PROP_ALIAS,
     PROP_FALLBACK_SOCKS5_PROXIES,
     PROP_KEEPALIVE_INTERVAL,
+    PROP_DISCLOSE_PRESENCE,
 
     LAST_PROPERTY
 };
@@ -186,6 +187,8 @@ struct _GabbleConnectionPrivate
   gchar *fallback_conference_server;
 
   GStrv fallback_socks5_proxies;
+
+  gboolean disclose_presence;
 
   /* authentication properties */
   gchar *stream_server;
@@ -506,6 +509,11 @@ gabble_connection_get_property (GObject    *object,
     case PROP_KEEPALIVE_INTERVAL:
       g_value_set_uint (value, priv->keepalive_interval);
       break;
+
+    case PROP_DISCLOSE_PRESENCE:
+      g_value_set_boolean (value, priv->disclose_presence);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -615,6 +623,11 @@ gabble_connection_set_property (GObject      *object,
     case PROP_KEEPALIVE_INTERVAL:
       priv->keepalive_interval = g_value_get_uint (value);
       break;
+
+    case PROP_DISCLOSE_PRESENCE:
+      priv->disclose_presence = g_value_get_boolean (value);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -910,6 +923,14 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           "Seconds between keepalive packets, or 0 to disable",
           0, G_MAXUINT, 30,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_DISCLOSE_PRESENCE,
+      g_param_spec_boolean (
+          "disclose-presence", "Disclose presence",
+          "Leak presence and capabilities when requested",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   gabble_connection_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,

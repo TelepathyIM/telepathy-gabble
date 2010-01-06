@@ -2127,6 +2127,34 @@ _gabble_connection_signal_own_presence (GabbleConnection *self,
   return ret;
 }
 
+gboolean
+gabble_connection_request_decloak (GabbleConnection *self,
+    const gchar *to,
+    const gchar *reason,
+    GError **error)
+{
+  GabblePresence *presence = self->self_presence;
+  LmMessage *message = gabble_presence_as_message (presence, to);
+  LmMessageNode *decloak;
+  gboolean ret;
+
+  gabble_connection_fill_in_caps (self, message);
+
+  decloak = lm_message_node_add_child (lm_message_get_node (message),
+      "decloak", NULL);
+  lm_message_node_set_attribute (decloak, "xmlns", NS_DECLOAK);
+
+  if (reason != NULL && *reason != '\0')
+    {
+      lm_message_node_set_attribute (decloak, "reason", reason);
+    }
+
+  ret = _gabble_connection_send (self, message, error);
+  lm_message_unref (message);
+
+  return ret;
+}
+
 static gboolean
 gabble_connection_refresh_capabilities (GabbleConnection *self,
     GabbleCapabilitySet **old_out)

@@ -253,6 +253,9 @@ gboolean gabble_connection_visible_to (GabbleConnection *self,
 gboolean gabble_connection_send_capabilities (GabbleConnection *self,
     const gchar *recipient, GError **error);
 
+gboolean gabble_connection_request_decloak (GabbleConnection *self,
+    const gchar *to, const gchar *reason, GError **error);
+
 /* extern only for the benefit of the unit tests */
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,
     TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);

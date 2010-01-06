@@ -238,7 +238,7 @@ const char *_gabble_connection_find_conference_server (GabbleConnection *);
 gchar *gabble_connection_get_canonical_room_name (GabbleConnection *conn,
     const gchar *jid);
 gboolean _gabble_connection_signal_own_presence (GabbleConnection *,
-    GError **);
+    const gchar *to, GError **);
 
 void gabble_connection_ensure_capabilities (GabbleConnection *self,
     const GabbleCapabilitySet *ensured);

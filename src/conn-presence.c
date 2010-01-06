@@ -254,7 +254,7 @@ set_own_status_cb (GObject *obj,
       if (base->status == TP_CONNECTION_STATUS_CONNECTED)
         {
           emit_one_presence_update (conn, base->self_handle);
-          retval = _gabble_connection_signal_own_presence (conn, error);
+          retval = _gabble_connection_signal_own_presence (conn, NULL, error);
         }
       else
         {

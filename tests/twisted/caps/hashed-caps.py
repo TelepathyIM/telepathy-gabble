@@ -80,7 +80,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         client + '#' + '0.1'
 
     # send good reply
-    send_disco_reply(stream, event.stanza, jingle_av_features)
+    send_disco_reply(stream, event.stanza, [], jingle_av_features)
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
@@ -103,7 +103,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         client + '#' + caps['ver']
 
     # send bogus reply
-    send_disco_reply(stream, event.stanza,
+    send_disco_reply(stream, event.stanza, [],
         ['http://jabber.org/protocol/bogus-feature'])
 
     # don't receive any D-Bus signal
@@ -164,7 +164,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # send good reply
     send_disco_reply(
-        stream, event.stanza, jingle_av_features, fake_client_dataforms)
+        stream, event.stanza, [], jingle_av_features, fake_client_dataforms)
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
@@ -227,7 +227,8 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     sync_dbus(bus, q, conn)
     assert caps_changed_flag == False
 
-    result = make_caps_disco_reply(stream, event.stanza, jingle_av_features)
+    result = make_caps_disco_reply(
+        stream, event.stanza, [], jingle_av_features)
 
     if broken_hash:
         # make the hash break!
@@ -250,7 +251,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
         assert caps_changed_flag == False
 
         # send good reply
-        send_disco_reply(stream, event.stanza, jingle_av_features)
+        send_disco_reply(stream, event.stanza, [], jingle_av_features)
 
     # we can now do audio calls with both contacts
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',

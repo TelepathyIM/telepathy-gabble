@@ -43,7 +43,7 @@ def test(q, bus, conn, stream):
     assertEquals(client + '#' + caps['ver'], query_node.attributes['node'])
 
     # The bare jid replies
-    send_disco_reply(stream, event.stanza, features, {})
+    send_disco_reply(stream, event.stanza, [], features)
 
     # Gabble lets us know their caps have changed. (Gabble used to ignore the
     # reply.)
@@ -95,10 +95,10 @@ def test(q, bus, conn, stream):
     # The bare jid replies! Getting a disco reply from a bare JID when we've
     # got presence from resources used to crash Gabble, but now it just ignores
     # it.
-    send_disco_reply(stream, disco2.stanza, features, {})
+    send_disco_reply(stream, disco2.stanza, [], features)
 
     # Now the resourceful JID replies:
-    send_disco_reply(stream, disco3.stanza, features_, {})
+    send_disco_reply(stream, disco3.stanza, [], features_)
 
     # Gabble should announce that the contact has acquired some caps.
     e = q.expect('dbus-signal', signal='CapabilitiesChanged')

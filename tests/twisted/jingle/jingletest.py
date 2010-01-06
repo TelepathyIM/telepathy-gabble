@@ -109,7 +109,7 @@ class JingleTest:
 
 
     def send_remote_disco_reply(self, stanza):
-        send_disco_reply(self.stream, stanza, self.remote_feats)
+        send_disco_reply(self.stream, stanza, [], self.remote_feats)
 
     def incoming_call(self, codec_parameters=None):
         self.direction = 'incoming'

@@ -154,9 +154,16 @@ def compute_caps_hash(identities, features, dataforms):
     m.update(S.encode('utf-8'))
     return base64.b64encode(m.digest())
 
-def make_caps_disco_reply(stream, req, features, dataforms={}):
+def make_caps_disco_reply(stream, req, identities, features, dataforms={}):
     iq = make_result_iq(stream, req)
     query = iq.firstChildElement()
+
+    for identity in identities:
+        category, type_, lang, name = identity.split('/')
+        el = query.addElement('identity')
+        el['category'] = category
+        el['type'] = type_
+        el['name'] = name
 
     for f in features:
         el = domish.Element((None, 'feature'))
@@ -249,7 +256,7 @@ def presence_and_disco(q, conn, stream, contact, disco,
 
     if disco:
         stanza = expect_disco(q, contact, client, caps)
-        send_disco_reply(stream, stanza, features, dataforms)
+        send_disco_reply(stream, stanza, [], features, dataforms)
 
     return h
 
@@ -283,8 +290,9 @@ def expect_disco(q, contact, client, caps):
 
     return event.stanza
 
-def send_disco_reply(stream, stanza, features, dataforms={}):
-    stream.send(make_caps_disco_reply(stream, stanza, features, dataforms))
+def send_disco_reply(stream, stanza, identities, features, dataforms={}):
+    stream.send(
+        make_caps_disco_reply(stream, stanza, identities, features, dataforms))
 
 if __name__ == '__main__':
     # example from XEP-0115

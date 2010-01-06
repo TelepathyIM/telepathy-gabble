@@ -42,7 +42,8 @@ def connect_and_announce_alice(q, bus, conn, stream):
     disco_event = q.expect('stream-iq', to='alice@localhost/Test',
         query_ns=ns.DISCO_INFO)
 
-    send_disco_reply(stream, disco_event.stanza, [ns.TUBES, ns.FILE_TRANSFER])
+    send_disco_reply(
+        stream, disco_event.stanza, [], [ns.TUBES, ns.FILE_TRANSFER])
     sync_stream(q, stream)
 
     q.unforbid_events(proxy_query_events)

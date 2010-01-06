@@ -305,7 +305,7 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
         )
 
     # reply to disco query
-    send_disco_reply(stream, disco_event.stanza, [ns.TUBES])
+    send_disco_reply(stream, disco_event.stanza, [], [ns.TUBES])
 
     sync_stream(q, stream)
 

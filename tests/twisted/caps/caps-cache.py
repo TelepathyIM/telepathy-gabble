@@ -78,7 +78,7 @@ def test(q, bus, conn, stream):
     # Jens' first client replies. We don't expect any caps changes here, and
     # this shouldn't count as a second point towards the five we need to trust
     # this caps node.
-    send_disco_reply(stream, j_stanza, features)
+    send_disco_reply(stream, j_stanza, [], features)
     check_caps (conn, j)
 
     update_contact_caps (q, conn, stream, 'bob5@foo.com/Foo', caps)

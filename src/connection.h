@@ -247,6 +247,9 @@ gboolean gabble_connection_send_presence (GabbleConnection *conn,
     LmMessageSubType sub_type, const gchar *contact, const gchar *status,
     GError **error);
 
+gboolean gabble_connection_visible_to (GabbleConnection *self,
+    TpHandle recipient);
+
 gboolean gabble_connection_send_capabilities (GabbleConnection *self,
     const gchar *recipient, GError **error);
 

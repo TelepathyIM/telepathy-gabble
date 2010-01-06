@@ -1967,7 +1967,7 @@ connection_shut_down (TpBaseConnection *base)
   tp_base_connection_finish_shutdown (base);
 }
 
-static gboolean
+gboolean
 gabble_connection_visible_to (GabbleConnection *self,
     TpHandle recipient)
 {

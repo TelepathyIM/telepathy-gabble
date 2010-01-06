@@ -104,12 +104,13 @@ GPtrArray *gabble_g_ptr_array_copy (GPtrArray *source);
 WockyBareContact * ensure_bare_contact_from_jid (GabbleConnection *conn,
     const gchar *jid);
 
-const gchar * jingle_pick_best_resource (GabbleConnection *conn,
+gboolean jingle_pick_best_resource (GabbleConnection *conn,
     TpHandle peer,
     gboolean want_audio,
     gboolean want_video,
     const char **transport_ns,
-    JingleDialect *dialect);
+    JingleDialect *dialect,
+    const gchar **resource_out);
 
 const gchar *jingle_pick_best_content_type (GabbleConnection *conn,
     TpHandle peer,

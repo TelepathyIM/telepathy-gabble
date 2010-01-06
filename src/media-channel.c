@@ -150,7 +150,7 @@ typedef struct {
 struct _delayed_request_streams_ctx {
   GabbleMediaChannel *chan;
   gulong caps_disco_id;
-  guint timeout_id;
+  gulong unsure_period_ended_id;
   guint contact_handle;
   GArray *types;
   GFunc succeeded_cb;
@@ -1663,8 +1663,9 @@ destroy_request (struct _delayed_request_streams_ctx *ctx,
 {
   GabbleMediaChannelPrivate *priv = ctx->chan->priv;
 
-  if (ctx->timeout_id)
-    g_source_remove (ctx->timeout_id);
+  if (ctx->unsure_period_ended_id)
+    g_signal_handler_disconnect (priv->conn->presence_cache,
+        ctx->unsure_period_ended_id);
 
   if (ctx->caps_disco_id)
     g_signal_handler_disconnect (priv->conn->presence_cache,
@@ -1705,7 +1706,6 @@ repeat_request (struct _delayed_request_streams_ctx *ctx)
   media_channel_request_streams (ctx->chan, ctx->contact_handle, ctx->types,
       ctx->succeeded_cb, ctx->failed_cb, ctx->context);
 
-  ctx->timeout_id = 0;
   ctx->context = NULL;
   destroy_and_remove_request (ctx);
   return FALSE;
@@ -1753,13 +1753,14 @@ delay_stream_request (GabbleMediaChannel *chan,
       ctx->caps_disco_id = g_signal_connect (priv->conn->presence_cache,
           "capabilities-discovered", G_CALLBACK (capabilities_discovered_cb),
           ctx);
-      ctx->timeout_id = 0;
+      ctx->unsure_period_ended_id = 0;
     }
   else
     {
+      ctx->unsure_period_ended_id = g_signal_connect_swapped (
+          priv->conn->presence_cache, "unsure-period-ended",
+          G_CALLBACK (repeat_request), ctx);
       ctx->caps_disco_id = 0;
-      ctx->timeout_id = g_timeout_add_seconds (5,
-          (GSourceFunc) repeat_request, ctx);
     }
 
   g_ptr_array_add (priv->delayed_request_streams, ctx);

@@ -509,7 +509,7 @@ class JingleTest2:
         self.stream = stream
         self.sid = 'sess' + str(int(random.random() * 10000))
 
-    def prepare(self, send_presence=True):
+    def prepare(self, send_presence=True, send_roster=True):
         # If we need to override remote caps, feats, codecs or caps,
         # we should do it prior to calling this method.
 
@@ -520,7 +520,7 @@ class JingleTest2:
         # status connected, vCard query
         # If we don't catch the vCard query here, it can trip us up later:
         # http://bugs.freedesktop.org/show_bug.cgi?id=19161
-        self.q.expect_many(
+        events = self.q.expect_many(
                 EventPattern('dbus-signal', signal='StatusChanged',
                     args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED]),
                 EventPattern('stream-authenticated'),
@@ -530,7 +530,24 @@ class JingleTest2:
                     args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
                 EventPattern('stream-iq', to=None, query_ns='vcard-temp',
                     query_name='vCard'),
+                EventPattern('stream-iq', query_ns=ns.ROSTER),
                 )
+
+        # some Jingle tests care about our roster relationship to the peer
+        if send_roster:
+            roster = events[-1]
+
+            roster.stanza['type'] = 'result'
+            item = roster.query.addElement('item')
+            item['jid'] = 'publish@foo.com'
+            item['subscription'] = 'from'
+            item = roster.query.addElement('item')
+            item['jid'] = 'subscribe@foo.com'
+            item['subscription'] = 'to'
+            item = roster.query.addElement('item')
+            item['jid'] = 'publish-subscribe@foo.com'
+            item['subscription'] = 'both'
+            self.stream.send(roster.stanza)
 
         if send_presence:
             self.send_presence_and_caps()

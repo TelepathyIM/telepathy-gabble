@@ -585,10 +585,6 @@ gabble_call_stream_dispose (GObject *object)
     g_object_unref (priv->content);
 
   priv->content = NULL;
-
-  if (priv->conn != NULL)
-    g_object_unref (priv->conn);
-
   priv->conn = NULL;
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->dispose)

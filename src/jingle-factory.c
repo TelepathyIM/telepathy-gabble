@@ -32,6 +32,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "jingle-share.h"
 #include "jingle-media-rtp.h"
 #include "jingle-session.h"
 #include "jingle-transport-google.h"
@@ -558,6 +559,7 @@ gabble_jingle_factory_constructor (GType type,
   gabble_signal_connect_weak (priv->conn, "status-changed",
       (GCallback) connection_status_changed_cb, G_OBJECT (self));
 
+  jingle_share_register (self);
   jingle_media_rtp_register (self);
   jingle_transport_google_register (self);
   jingle_transport_rawudp_register (self);

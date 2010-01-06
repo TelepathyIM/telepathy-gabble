@@ -1968,31 +1968,15 @@ connection_shut_down (TpBaseConnection *base)
 }
 
 
-/**
- * _gabble_connection_signal_own_presence:
- * @self: A #GabbleConnection
- * @error: pointer in which to return a GError in case of failure.
- *
- * Signal the user's stored presence to the jabber server
- *
- * Retuns: FALSE if an error occurred
- */
-gboolean
-_gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
+static void
+gabble_connection_fill_in_caps (GabbleConnection *self,
+    LmMessage *presence_message)
 {
   GabblePresence *presence = self->self_presence;
-  LmMessage *message = gabble_presence_as_message (presence, NULL);
-  LmMessageNode *node = lm_message_get_node (message);
-  gboolean ret;
+  LmMessageNode *node = lm_message_get_node (presence_message);
   gchar *caps_hash;
   gboolean voice_v1, video_v1;
   GString *ext = g_string_new ("");
-
-  if (presence->status == GABBLE_PRESENCE_HIDDEN)
-    {
-      if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0)
-        lm_message_node_set_attribute (node, "type", "invisible");
-    }
 
   /* XEP-0115 version 1.5 uses a verification string in the 'ver' attribute */
   caps_hash = caps_hash_compute_from_self_presence (self);
@@ -2025,10 +2009,36 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
 
   lm_message_node_set_attribute (node, "ext", ext->str);
   g_string_free (ext, TRUE);
+  g_free (caps_hash);
+}
+
+/**
+ * _gabble_connection_signal_own_presence:
+ * @self: A #GabbleConnection
+ * @error: pointer in which to return a GError in case of failure.
+ *
+ * Signal the user's stored presence to the jabber server
+ *
+ * Retuns: FALSE if an error occurred
+ */
+gboolean
+_gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
+{
+  GabblePresence *presence = self->self_presence;
+  LmMessage *message = gabble_presence_as_message (presence, NULL);
+  gboolean ret;
+
+  if (presence->status == GABBLE_PRESENCE_HIDDEN)
+    {
+      if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0)
+        lm_message_node_set_attribute (lm_message_get_node (message),
+            "type", "invisible");
+    }
+
+  gabble_connection_fill_in_caps (self, message);
 
   ret = _gabble_connection_send (self, message, error);
 
-  g_free (caps_hash);
   lm_message_unref (message);
 
   if (!self->priv->closing)

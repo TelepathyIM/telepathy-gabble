@@ -31,7 +31,8 @@ def worker(jp, q, bus, conn, stream):
     stream.send(jp.xml(node))
 
     nc, e = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannel',
+            predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args),
         EventPattern('dbus-signal', signal='NewSessionHandler'),
         )
     path = nc.args[0]

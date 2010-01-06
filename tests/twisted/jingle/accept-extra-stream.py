@@ -35,7 +35,8 @@ def worker(q, bus, conn, stream, remote_jid):
             jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
-    nc = q.expect('dbus-signal', signal='NewChannel')
+    nc = q.expect('dbus-signal', signal='NewChannel',
+            predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args)
     path, ct, ht, h, sh = nc.args
     assert ct == cs.CHANNEL_TYPE_STREAMED_MEDIA, ct
     assert ht == cs.HT_CONTACT, ht

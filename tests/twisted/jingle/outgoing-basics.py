@@ -60,8 +60,11 @@ def worker(jp, q, bus, conn, stream, variant, peer):
             cs.HT_NONE, 0, True)
 
     old_sig, new_sig = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel',
+            predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args),
+        EventPattern('dbus-signal', signal='NewChannels',
+            predicate=lambda e:
+                cs.CHANNEL_TYPE_CONTACT_LIST not in e.args[0][0][1].values()),
         )
 
     if variant == REQUEST_NONYMOUS or variant == CREATE:

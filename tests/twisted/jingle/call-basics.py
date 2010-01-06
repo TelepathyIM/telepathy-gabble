@@ -90,7 +90,9 @@ def run_test(jp, q, bus, conn, stream, incoming):
               cs.CALL_INITIAL_AUDIO: True,
             })
 
-    signal = q.expect('dbus-signal', signal='NewChannels')
+    signal = q.expect('dbus-signal', signal='NewChannels',
+            predicate=lambda e:
+                cs.CHANNEL_TYPE_CONTACT_LIST not in e.args[0][0][1].values())
 
     assertLength(1, signal.args)
     assertLength(1, signal.args[0])       # one channel

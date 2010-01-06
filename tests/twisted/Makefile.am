@@ -36,6 +36,7 @@ TWISTED_TESTS = \
 	olpc/gadget-publish.py \
 	olpc/gadget-restarted.py \
 	olpc/view-presence.py \
+	presence/decloak.py \
 	presence/initial-contact-presence.py \
 	presence/initial-presence.py \
 	presence/presence.py \

@@ -435,6 +435,7 @@ gabble_call_content_dispose (GObject *object)
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (object);
   GabbleCallContentPrivate *priv = self->priv;
+  GList *l;
 
   if (priv->dispose_has_run)
     return;
@@ -442,6 +443,14 @@ gabble_call_content_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   /* release any references held by the object here */
+  for (l = priv->streams; l != NULL; l = g_list_next (l))
+    {
+      g_object_unref (l->data);
+    }
+
+  g_list_free (priv->streams);
+  priv->streams = NULL;
+
   g_object_unref (priv->content);
   priv->content = NULL;
 

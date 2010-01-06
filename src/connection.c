@@ -1967,6 +1967,21 @@ connection_shut_down (TpBaseConnection *base)
   tp_base_connection_finish_shutdown (base);
 }
 
+static gboolean
+gabble_connection_visible_to (GabbleConnection *self,
+    TpHandle recipient)
+{
+  if (self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
+    return FALSE;
+
+  if ((gabble_roster_handle_get_subscription (self->roster, recipient)
+      & GABBLE_ROSTER_SUBSCRIPTION_FROM) == 0)
+    return FALSE;
+
+  /* FIXME: other reasons they might not be able to see our presence? */
+
+  return TRUE;
+}
 
 static void
 gabble_connection_fill_in_caps (GabbleConnection *self,
@@ -2010,6 +2025,40 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
   lm_message_node_set_attribute (node, "ext", ext->str);
   g_string_free (ext, TRUE);
   g_free (caps_hash);
+}
+
+gboolean
+gabble_connection_send_capabilities (GabbleConnection *self,
+    const gchar *recipient,
+    GError **error)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self, TP_HANDLE_TYPE_CONTACT);
+  LmMessage *message;
+  gboolean ret;
+  TpHandle handle;
+
+  /* if we don't have a handle allocated for the recipient, they clearly aren't
+   * getting our presence... */
+  handle = tp_handle_lookup (contact_repo, recipient, NULL, NULL);
+
+  if (handle != 0 && gabble_connection_visible_to (self, handle))
+    {
+      /* nothing to do, they should already have had our presence */
+      return TRUE;
+    }
+
+  /* We deliberately don't include anything except the caps here */
+  message = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_PRESENCE,
+      LM_MESSAGE_SUB_TYPE_AVAILABLE);
+
+  gabble_connection_fill_in_caps (self, message);
+
+  ret = _gabble_connection_send (self, message, error);
+
+  lm_message_unref (message);
+
+  return ret;
 }
 
 /**

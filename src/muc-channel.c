@@ -1212,6 +1212,11 @@ gabble_muc_channel_dispose (GObject *object)
   clear_join_timer (self);
   clear_poll_timer (self);
 
+  if (priv->wmuc != NULL)
+    g_object_unref (priv->wmuc);
+
+  priv->wmuc = NULL;
+
   if (!priv->closed)
     {
       priv->closed = TRUE;

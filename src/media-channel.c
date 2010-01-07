@@ -1720,8 +1720,9 @@ capabilities_discovered_cb (GabblePresenceCache *cache,
   if (ctx->contact_handle != handle)
     return;
 
-  /* If there are more cache caps pending for this contact, wait for them. */
-  if (gabble_presence_cache_caps_pending (cache, handle))
+  /* If we're still unsure about this contact (most likely because there are
+   * more cache caps pending), wait for them. */
+  if (gabble_presence_cache_is_unsure (cache, handle))
     return;
 
   repeat_request (ctx);
@@ -1962,14 +1963,9 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   /* Okay, they're not capable (yet). Let's figure out whether we should wait,
    * and return an appropriate error.
    */
-  if (gabble_presence_cache_caps_pending (priv->conn->presence_cache, peer))
+  if (gabble_presence_cache_is_unsure (priv->conn->presence_cache, peer))
     {
-      DEBUG ("caps are pending for peer %u", peer);
-      wait = TRUE;
-    }
-  else if (gabble_presence_cache_is_unsure (priv->conn->presence_cache))
-    {
-      DEBUG ("presence cache is still unsure (interested in handle %u)", peer);
+      DEBUG ("presence cache is still unsure about handle %u", peer);
       wait = TRUE;
     }
 

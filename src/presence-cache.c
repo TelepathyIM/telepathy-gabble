@@ -1977,12 +1977,31 @@ gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
   return FALSE;
 }
 
+/* Return whether we're "unsure" about the capabilities of @handle.
+ * Currently, this means either of:
+ *
+ * - we've connected within the last UNSURE_PERIOD seconds and haven't
+ *   received presence for @handle yet
+ * - we know what @handle's caps hash/bundles are, but we're still
+ *   performing service discovery to find out what they mean
+ */
 gboolean
-gabble_presence_cache_is_unsure (GabblePresenceCache *cache)
+gabble_presence_cache_is_unsure (GabblePresenceCache *cache,
+    TpHandle handle)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
 
-  return (priv->unsure_id != 0);
+  /* we might not have had any presence at all - if we're still in the
+   * "unsure period", assume we might get initial presence soon */
+  if (priv->unsure_id != 0 &&
+      gabble_presence_cache_get (cache, handle) == NULL)
+    return TRUE;
+
+  /* if we don't know what the caps mean, we're unsure */
+  if (gabble_presence_cache_caps_pending (cache, handle))
+    return TRUE;
+
+  return FALSE;
 }
 
 void

@@ -1123,8 +1123,6 @@ ensure_tubes_channel (GabbleMucFactory *self,
   if (!result)
     g_hash_table_insert (priv->text_needed_for_tubes, text_chan, *tubes_chan);
 
-  g_object_unref (tubes_chan);
-
   return result;
 }
 
@@ -1219,6 +1217,8 @@ handle_tubes_channel_request (GabbleMucFactory *self,
       gabble_muc_factory_associate_request (self, tube, request_token);
     }
 
+  g_object_unref (tube);
+
   return TRUE;
 }
 
@@ -1234,12 +1234,14 @@ handle_tube_channel_request (GabbleMucFactory *self,
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   gboolean can_announce_now = TRUE;
   gboolean tubes_channel_created = FALSE;
-  GabbleTubesChannel *tube;
+  GabbleTubesChannel *tube = NULL;
   GabbleMucChannel * gmuc;
   GabbleTubeIface *new_channel;
 
   gmuc = g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
-  g_object_get (gmuc, "tube", &tube, NULL);
+
+  if (gmuc != NULL)
+    g_object_get (gmuc, "tube", &tube, NULL);
 
   if (tube == NULL)
     {
@@ -1289,6 +1291,8 @@ handle_tube_channel_request (GabbleMucFactory *self,
       l = g_slist_prepend (l, new_channel);
       g_hash_table_insert (priv->tubes_needed_for_tube, tube, l);
     }
+
+  g_object_unref (tube);
 
   return TRUE;
 }

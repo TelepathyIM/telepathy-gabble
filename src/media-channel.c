@@ -1734,8 +1734,7 @@ delay_stream_request (GabbleMediaChannel *chan,
                       const GArray *types,
                       GFunc succeeded_cb,
                       GFunc failed_cb,
-                      gpointer context,
-                      gboolean disco_in_progress)
+                      gpointer context)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   struct _delayed_request_streams_ctx *ctx =
@@ -1749,20 +1748,12 @@ delay_stream_request (GabbleMediaChannel *chan,
   ctx->types = g_array_sized_new (FALSE, FALSE, sizeof (guint), types->len);
   g_array_append_vals (ctx->types, types->data, types->len);
 
-  if (disco_in_progress)
-    {
-      ctx->caps_disco_id = g_signal_connect (priv->conn->presence_cache,
-          "capabilities-discovered", G_CALLBACK (capabilities_discovered_cb),
-          ctx);
-      ctx->unsure_period_ended_id = 0;
-    }
-  else
-    {
-      ctx->unsure_period_ended_id = g_signal_connect_swapped (
-          priv->conn->presence_cache, "unsure-period-ended",
-          G_CALLBACK (repeat_request), ctx);
-      ctx->caps_disco_id = 0;
-    }
+  ctx->caps_disco_id = g_signal_connect (priv->conn->presence_cache,
+      "capabilities-discovered", G_CALLBACK (capabilities_discovered_cb),
+      ctx);
+  ctx->unsure_period_ended_id = g_signal_connect_swapped (
+      priv->conn->presence_cache, "unsure-period-ended",
+      G_CALLBACK (repeat_request), ctx);
 
   g_ptr_array_add (priv->delayed_request_streams, ctx);
 }
@@ -1800,7 +1791,7 @@ media_channel_request_streams (GabbleMediaChannel *self,
         {
           DEBUG ("Delaying RequestStreams until we get all caps from contact");
           delay_stream_request (self, contact_handle, types,
-              succeeded_cb, failed_cb, context, TRUE);
+              succeeded_cb, failed_cb, context);
           g_error_free (error);
           return;
         }

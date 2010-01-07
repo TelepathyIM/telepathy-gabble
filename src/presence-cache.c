@@ -491,26 +491,15 @@ gabble_presence_cache_set_property (GObject     *object,
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (object);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   TpHandleRepoIface *contact_repo;
-  TpHandleSet *new_presence_handles;
 
   switch (property_id) {
     case PROP_CONNECTION:
+      g_assert (priv->conn == NULL);              /* construct-only */
+      g_assert (priv->presence_handles == NULL);  /* construct-only */
       priv->conn = g_value_get_object (value);
       contact_repo = tp_base_connection_get_handles (
           (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-      new_presence_handles = tp_handle_set_new (contact_repo);
-
-      if (priv->presence_handles)
-        {
-          const TpIntSet *add;
-          TpIntSet *tmp;
-          add = tp_handle_set_peek (priv->presence_handles);
-          tmp = tp_handle_set_update (new_presence_handles, add);
-          tp_handle_set_destroy (priv->presence_handles);
-          tp_intset_destroy (tmp);
-        }
-      priv->presence_handles = new_presence_handles;
+      priv->presence_handles = tp_handle_set_new (contact_repo);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

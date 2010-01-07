@@ -106,6 +106,9 @@ void gabble_presence_cache_contacts_removed_from_olpc_view (
 gboolean gabble_presence_cache_is_unsure (GabblePresenceCache *cache,
     TpHandle handle);
 
+gboolean gabble_presence_cache_request_decloaking (GabblePresenceCache *self,
+    TpHandle handle, const gchar *reason);
+
 void gabble_presence_cache_update_location (GabblePresenceCache *cache,
     TpHandle handle, GHashTable *location);
 GHashTable* gabble_presence_cache_get_location (GabblePresenceCache *cache,

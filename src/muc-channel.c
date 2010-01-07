@@ -2231,6 +2231,8 @@ update_roster_presence (GabbleMucChannel *gmuc,
       g_signal_emit (gmuc, signals[CONTACT_JOIN], 0, owner);
       tp_handle_unref (contact_repo, owner);
     }
+
+  handle_tube_presence (gmuc, handle, member->presence_stanza);
 }
 
 /* connect to wocky_muc SIG_JOINED which we should receive when we receive   *

@@ -1948,7 +1948,7 @@ gabble_presence_cache_contacts_removed_from_olpc_view (
   g_array_free (changed, TRUE);
 }
 
-gboolean
+static gboolean
 gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
                                     TpHandle handle)
 {

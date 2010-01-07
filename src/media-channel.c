@@ -1959,6 +1959,15 @@ contact_is_media_capable (GabbleMediaChannel *chan,
       DEBUG ("presence cache is still unsure about handle %u", peer);
       wait = TRUE;
     }
+  else if (!priv->tried_decloaking &&
+      gabble_presence_cache_request_decloaking (priv->conn->presence_cache,
+        peer, "media"))
+    {
+      /* only ask to decloak at most once per call */
+      priv->tried_decloaking = TRUE;
+      DEBUG ("asked handle %u to decloak, let's see what they do", peer);
+      wait = TRUE;
+    }
 
   if (wait_ret != NULL)
     *wait_ret = wait;

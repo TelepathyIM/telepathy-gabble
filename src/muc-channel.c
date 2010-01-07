@@ -1415,15 +1415,12 @@ static void
 close_channel (GabbleMucChannel *chan, const gchar *reason,
                gboolean inform_muc, TpHandle actor, guint reason_code)
 {
-  GabbleMucChannelPrivate *priv;
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
   TpIntSet *set;
   GArray *handles;
 
   DEBUG ("Closing");
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
   if (priv->closed)
     return;
@@ -2197,25 +2194,14 @@ handle_renamed (GObject *source,
   tp_handle_unref (contact_repo, myself);
 }
 
-struct _roster_foreach
-{
-  GabbleMucChannel *gmuc;
-  TpHandleRepoIface *contact_repo;
-  TpHandleSet *members;
-  TpHandleSet *owners;
-  GHashTable  *omap;
-};
-
 static void
-roster_presence (gpointer key, gpointer val, gpointer data)
+update_roster_presence (GabbleMucChannel *gmuc,
+    WockyMucMember *member,
+    TpHandleRepoIface *contact_repo,
+    TpHandleSet *members,
+    TpHandleSet *owners,
+    GHashTable *omap)
 {
-  const WockyMucMember *member = val;
-  struct _roster_foreach *blob = data;
-  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (blob->gmuc);
-  TpHandleSet *members = blob->members;
-  TpHandleSet *owners = blob->owners;
-  GHashTable *omap = blob->omap;
-  TpHandleRepoIface *contact_repo = blob->contact_repo;
   TpHandle owner = 0;
   TpHandle handle = tp_handle_ensure (contact_repo, member->from,
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
@@ -2240,7 +2226,7 @@ roster_presence (gpointer key, gpointer val, gpointer data)
   /* notify whomever that an identifiable contact joined the MUC  */
   if (owner != 0)
     {
-      tp_group_mixin_change_flags (G_OBJECT (blob->gmuc), 0,
+      tp_group_mixin_change_flags (G_OBJECT (gmuc), 0,
           TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
       g_signal_emit (gmuc, signals[CONTACT_JOIN], 0, owner);
       tp_handle_unref (contact_repo, owner);
@@ -2268,10 +2254,14 @@ handle_join (WockyMuc *muc,
   const gchar *me = wocky_muc_jid (muc);
   TpHandle myself = tp_handle_ensure (contact_repo, me,
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+  GHashTableIter iter;
+  WockyMucMember *member;
 
-  struct _roster_foreach blob = { gmuc, contact_repo, members, owners, omap };
+  g_hash_table_iter_init (&iter, member_jids);
 
-  g_hash_table_foreach (member_jids, roster_presence, &blob);
+  while (g_hash_table_iter_next (&iter, NULL, (gpointer *)&member))
+    update_roster_presence (gmuc, member, contact_repo,
+      members, owners, omap);
 
   g_hash_table_insert (omap,
       GUINT_TO_POINTER (myself),
@@ -3671,7 +3661,6 @@ gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
 
   return NULL;
 }
-
 
 void
 gabble_muc_channel_close_tube (GabbleMucChannel *gmuc)

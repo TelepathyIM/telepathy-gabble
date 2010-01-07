@@ -360,7 +360,9 @@ def test(q, bus, conn, stream, access_control):
     text_chan.Close()
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
-        EventPattern('dbus-signal', signal='ChannelClosed'))
+        EventPattern('dbus-signal', signal='ChannelClosed'),
+        EventPattern('stream-presence', presence_type='unavailable')
+        )
 
     # rejoin the room
     call_async(q, conn.Requests, 'CreateChannel',

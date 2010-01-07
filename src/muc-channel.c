@@ -2151,8 +2151,21 @@ handle_fill_presence (WockyMuc *muc,
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle self_handle;
 
+  self_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
+      GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
   gabble_presence_add_status_and_vcard (priv->conn->self_presence, stanza);
+
+  /* Sync the presence we send over the wire with what is in our presence cache
+   */
+  gabble_presence_cache_update (priv->conn->presence_cache, self_handle,
+      NULL,
+      priv->conn->self_presence->status,
+      priv->conn->self_presence->status_message,
+      0);
 
   g_signal_emit (self, signals[PRE_PRESENCE], 0, (LmMessage *) stanza);
 }
@@ -2199,6 +2212,7 @@ update_roster_presence (GabbleMucChannel *gmuc,
     TpHandleSet *owners,
     GHashTable *omap)
 {
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
   TpHandle owner = 0;
   TpHandle handle = tp_handle_ensure (contact_repo, member->from,
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
@@ -2212,6 +2226,9 @@ update_roster_presence (GabbleMucChannel *gmuc,
       else
         tp_handle_set_add (owners, owner);
     }
+
+  gabble_presence_parse_presence_message (priv->conn->presence_cache,
+      handle, member->from, (LmMessage *) member->presence_stanza);
 
   tp_handle_set_add (members, handle);
   g_hash_table_insert (omap,
@@ -2357,6 +2374,9 @@ handle_presence (GObject *source,
               TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
         }
     }
+
+  gabble_presence_parse_presence_message (priv->conn->presence_cache,
+    handle, who->from, (LmMessage *) who->presence_stanza);
 
   /* add the member in quesion */
   tp_handle_set_add (handles, handle);

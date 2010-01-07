@@ -922,10 +922,7 @@ gabble_muc_channel_get_property (GObject    *object,
       g_value_set_string (value, priv->self_jid->str);
       break;
     case PROP_TUBE:
-      if (priv->tube)
-        g_value_set_object (value, priv->tube);
-      else
-        g_value_set_pointer (value, NULL);
+      g_value_set_object (value, priv->tube);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

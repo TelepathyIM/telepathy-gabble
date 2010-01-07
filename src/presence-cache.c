@@ -1995,12 +1995,24 @@ gabble_presence_cache_is_unsure (GabblePresenceCache *cache,
    * "unsure period", assume we might get initial presence soon */
   if (priv->unsure_id != 0 &&
       gabble_presence_cache_get (cache, handle) == NULL)
-    return TRUE;
+    {
+      DEBUG ("No presence for %u yet, still waiting for possible initial "
+          "presence burst", handle);
+      return TRUE;
+    }
+
+  /* FIXME: if we've had the roster, we can be sure that people who're
+   * not in it won't be sending us an initial presence, so ideally the
+   * above should be roster-aware? */
 
   /* if we don't know what the caps mean, we're unsure */
   if (gabble_presence_cache_caps_pending (cache, handle))
-    return TRUE;
+    {
+      DEBUG ("Still working out what %u's caps hash means", handle);
+      return TRUE;
+    }
 
+  DEBUG ("No, I'm sure about %u by now", handle);
   return FALSE;
 }
 

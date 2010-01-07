@@ -91,6 +91,12 @@ const GabbleCapabilitySet *gabble_presence_cache_peek_own_caps (
 void gabble_presence_cache_really_remove (GabblePresenceCache *cache,
     TpHandle handle);
 
+LmHandlerResult
+gabble_presence_parse_presence_message (GabblePresenceCache *cache,
+    TpHandle handle,
+    const gchar *from,
+    LmMessage *message);
+
 void gabble_presence_cache_contacts_added_to_olpc_view (
     GabblePresenceCache *cache, TpHandleSet *handles);
 

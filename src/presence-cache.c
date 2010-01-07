@@ -1325,8 +1325,8 @@ _process_caps (GabblePresenceCache *cache,
   g_slist_free (uris);
 }
 
-static LmHandlerResult
-_parse_presence_message (GabblePresenceCache *cache,
+LmHandlerResult
+gabble_presence_parse_presence_message (GabblePresenceCache *cache,
                          TpHandle handle,
                          const gchar *from,
                          LmMessage *message)
@@ -1507,7 +1507,8 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
   switch (lm_message_get_type (message))
     {
     case LM_MESSAGE_TYPE_PRESENCE:
-      ret = _parse_presence_message (cache, handle, from, message);
+      ret = gabble_presence_parse_presence_message (cache, handle,
+        from, message);
       break;
     case LM_MESSAGE_TYPE_MESSAGE:
       ret = _parse_message_message (cache, handle, from, message);

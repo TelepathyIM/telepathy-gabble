@@ -411,6 +411,9 @@ gabble_presence_cache_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   priv = GABBLE_PRESENCE_CACHE_PRIV (GABBLE_PRESENCE_CACHE (obj));
 
+  g_assert (priv->conn != NULL);
+  g_assert (priv->presence_handles != NULL);
+
   priv->status_changed_cb = g_signal_connect (priv->conn, "status-changed",
       G_CALLBACK (gabble_presence_cache_status_changed_cb), obj);
 

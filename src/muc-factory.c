@@ -1235,7 +1235,7 @@ handle_text_channel_request (GabbleMucFactory *self,
 
           if (!GABBLE_IS_IM_CHANNEL (object))
             {
-              g_warning ("Channel %s is not an ImChannel, ignoring",
+              DEBUG ("Channel %s is not an ImChannel, ignoring",
                   object_path);
               continue;
             }
@@ -1248,7 +1248,7 @@ handle_text_channel_request (GabbleMucFactory *self,
 
           if (connection != priv->conn)
             {
-              g_warning ("Channel %s is from a different Connection, ignoring",
+              DEBUG ("Channel %s is from a different Connection, ignoring",
                   object_path);
               continue;
             }
@@ -1268,7 +1268,7 @@ handle_text_channel_request (GabbleMucFactory *self,
 
           if (tp_handle_inspect (contact_handles, handle) == NULL)
             {
-              g_warning ("Bad Handle %u, ignoring", handle);
+              DEBUG ("Bad Handle %u, ignoring", handle);
               continue;
             }
 
@@ -1288,7 +1288,7 @@ handle_text_channel_request (GabbleMucFactory *self,
 
           if (handle == 0)
             {
-              g_warning ("Bad ID '%s', ignoring", id);
+              DEBUG ("Bad ID '%s', ignoring", id);
               continue;
             }
 
@@ -1398,7 +1398,7 @@ handle_text_channel_request (GabbleMucFactory *self,
           continue_, &error2);
       if (error2 != NULL)
         {
-          g_warning ("%s", error2->message);
+          DEBUG ("%s", error2->message);
           g_error_free (error2);
           continue;
         }

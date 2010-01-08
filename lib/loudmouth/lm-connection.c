@@ -68,6 +68,9 @@ lm_connection_register_message_handler (LmConnection *connection,
       return;
     }
 
+  /* Genuine Loudmouth lets you register the same handler once per message
+   * type, but this compatibility shim only lets you register each
+   * LmMessageHandler once. */
   g_assert (handler->handler_id == 0);
   g_assert (handler->connection == NULL);
 

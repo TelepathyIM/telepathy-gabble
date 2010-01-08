@@ -45,19 +45,6 @@ typedef struct
   LmHandlerPriority priority;
 } delayed_handler;
 
-static gint
-find_handler (gconstpointer a,
-    gconstpointer b)
-{
-  delayed_handler *delayed = (delayed_handler *) a;
-  LmMessageHandler *handler = (LmMessageHandler *) b;
-
-  if (delayed->handler == handler)
-    return 0;
-
-  return 1;
-}
-
 void
 lm_connection_register_message_handler (LmConnection *connection,
     LmMessageHandler *handler,
@@ -69,13 +56,7 @@ lm_connection_register_message_handler (LmConnection *connection,
       /* Loudmouth lets you register handlers before the connection is
        * connected. We can't do currently do that with Wocky so we store the
        * handler and will register it once lm_connection_set_porter is called.*/
-      GSList *found;
       delayed_handler *delayed;
-
-      found = g_slist_find_custom (connection->delayed_handlers, handler,
-          find_handler);
-      if (found != NULL)
-        return;
 
       delayed = g_slice_new (delayed_handler);
       delayed->handler = handler;

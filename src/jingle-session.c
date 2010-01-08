@@ -349,7 +349,6 @@ gabble_jingle_session_constructed (GObject *object)
 
   g_assert (priv->conn != NULL);
   g_assert (self->peer != 0);
-  g_assert (priv->peer_resource != NULL);
   g_assert (priv->sid != NULL);
 
   tp_handle_ref (contact_repo, self->peer);
@@ -360,8 +359,16 @@ gabble_jingle_session_constructed (GObject *object)
    * should be two variants: one taking handle + resource, and another taking a
    * full JID; the other fields could be filled in here.
    */
-  priv->peer_jid = g_strdup_printf ("%s/%s",
-      tp_handle_inspect (contact_repo, self->peer), priv->peer_resource);
+  if (priv->peer_resource == NULL)
+    {
+      priv->peer_jid = g_strdup (tp_handle_inspect (contact_repo, self->peer));
+    }
+  else
+    {
+      priv->peer_jid = g_strdup_printf ("%s/%s",
+          tp_handle_inspect (contact_repo, self->peer),
+          priv->peer_resource);
+    }
 
   if (priv->local_initiator)
     priv->initiator = gabble_connection_get_full_jid (priv->conn);
@@ -426,7 +433,8 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
   g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
   param_spec = g_param_spec_string ("peer-resource", "Session peer's resource",
-      "The resource of the contact with whom this session communicates.",
+      "The resource of the contact with whom this session communicates, "
+      "or NULL if communicating with a bare JID",
       NULL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
@@ -631,6 +639,7 @@ lookup_content (GabbleJingleSession *sess,
           priv->conn->presence_cache, sess->peer);
 
       if (creator == NULL && presence != NULL &&
+          priv->peer_resource != NULL &&
           gabble_presence_resource_has_caps (presence, priv->peer_resource,
               gabble_capability_set_predicate_has,
               QUIRK_OMITS_CONTENT_CREATORS))

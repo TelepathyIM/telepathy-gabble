@@ -12,12 +12,12 @@ import constants as cs
 
 from twisted.words.xish import xpath
 
-def test(jp, q, bus, conn, stream):
-    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
+def test(jp, q, bus, conn, stream, peer='foo@bar.com/Foo'):
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', peer)
     jt.prepare()
 
     self_handle = conn.GetSelfHandle()
-    remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, [jt.peer])[0]
 
     # Remote end calls us
     jt.incoming_call()
@@ -79,14 +79,14 @@ def test(jp, q, bus, conn, stream):
     # Exercise channel properties
     channel_props = media_chan.GetAll(
         cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props['TargetHandle'] == remote_handle
-    assert channel_props['TargetHandleType'] == cs.HT_CONTACT
-    assert media_chan.GetHandle(dbus_interface=cs.CHANNEL) == (cs.HT_CONTACT,
-            remote_handle)
-    assert channel_props['TargetID'] == 'foo@bar.com'
-    assert channel_props['InitiatorID'] == 'foo@bar.com'
-    assert channel_props['InitiatorHandle'] == remote_handle
-    assert channel_props['Requested'] == False
+    assertEquals(remote_handle, channel_props['TargetHandle'])
+    assertEquals(cs.HT_CONTACT, channel_props['TargetHandleType'])
+    assertEquals((cs.HT_CONTACT, remote_handle),
+            media_chan.GetHandle(dbus_interface=cs.CHANNEL))
+    assertEquals(jt.peer_bare_jid, channel_props['TargetID'])
+    assertEquals(jt.peer_bare_jid, channel_props['InitiatorID'])
+    assertEquals(remote_handle, channel_props['InitiatorHandle'])
+    assertEquals(False, channel_props['Requested'])
 
     group_props = media_chan.GetAll(
         cs.CHANNEL_IFACE_GROUP, dbus_interface=dbus.PROPERTIES_IFACE)
@@ -134,7 +134,7 @@ def test(jp, q, bus, conn, stream):
 
     # peer gets the transport
     e = q.expect('stream-iq', predicate=jp.action_predicate('transport-info'))
-    assertEquals('foo@bar.com/Foo', e.query['initiator'])
+    assertEquals(jt.peer, e.query['initiator'])
 
     if jp.dialect in ['jingle-v0.15', 'jingle-v0.31']:
         content = xpath.queryForNodes('/iq/jingle/content', e.stanza)[0]
@@ -180,3 +180,5 @@ def test(jp, q, bus, conn, stream):
 
 if __name__ == '__main__':
     test_all_dialects(test)
+    test_all_dialects(lambda jp, q, bus, conn, stream:
+            test(jp, q, bus, conn, stream, 'foo@sip.bar.com'))

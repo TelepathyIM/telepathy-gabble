@@ -12,13 +12,18 @@ import constants as cs
 from jingletest2 import JingleProtocol031, JingleTest2
 
 def test(q, bus, conn, stream):
-    remote_jid = 'foo@bar.com/Foo'
+    worker(q, bus, conn, stream, remote_jid='foo@bar.com/Foo')
+
+def test_bare_jid(q, bus, conn, stream):
+    worker(q, bus, conn, stream, remote_jid='foo@sip.bar.com')
+
+def worker(q, bus, conn, stream, remote_jid):
     jp = JingleProtocol031()
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
     jt2.prepare()
 
     self_handle = conn.GetSelfHandle()
-    remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
+    remote_handle = conn.RequestHandles(cs.HT_CONTACT, [jt2.peer])[0]
 
     # Remote end calls us
     node = jp.SetIq(jt2.peer, jt2.jid, [
@@ -74,7 +79,7 @@ def test(q, bus, conn, stream):
 
     # peer gets the transport
     e = q.expect('stream-iq', predicate=jp.action_predicate('transport-info'))
-    assertEquals(remote_jid, e.query['initiator'])
+    assertEquals(jt2.peer, e.query['initiator'])
 
     stream.send(make_result_iq(stream, e.stanza))
 
@@ -149,7 +154,7 @@ def test(q, bus, conn, stream):
         # It's not entirely clear that this *needs* to fire here...
         EventPattern('dbus-signal', signal='SetStreamSending', args=[False]),
         )
-    assertEquals(remote_jid, ti.query['initiator'])
+    assertEquals(jt2.peer, ti.query['initiator'])
 
     stream.send(make_result_iq(stream, e.stanza))
 
@@ -183,3 +188,4 @@ def test(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(test)
+    exec_test(test_bare_jid)

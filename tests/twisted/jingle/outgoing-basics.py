@@ -26,24 +26,25 @@ REQUEST_ANONYMOUS_AND_ADD = 2 # RequestChannel(HandleTypeNone, 0);
 REQUEST_NONYMOUS = 3 # RequestChannel(HandleTypeContact, h);
                      # RequestStreams(h, ...)
 
-def create(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, CREATE)
+def create(jp, q, bus, conn, stream, peer='foo@bar.com/Res'):
+    worker(jp, q, bus, conn, stream, CREATE, peer)
 
-def request_anonymous(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS)
+def request_anonymous(jp, q, bus, conn, stream, peer='foo@bar.com/Res'):
+    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS, peer)
 
-def request_anonymous_and_add(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS_AND_ADD)
+def request_anonymous_and_add(jp, q, bus, conn, stream,
+        peer='foo@bar.com/Res'):
+    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS_AND_ADD, peer)
 
-def request_nonymous(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, REQUEST_NONYMOUS)
+def request_nonymous(jp, q, bus, conn, stream, peer='foo@bar.com/Res'):
+    worker(jp, q, bus, conn, stream, REQUEST_NONYMOUS, peer)
 
-def worker(jp, q, bus, conn, stream, variant):
-    jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
+def worker(jp, q, bus, conn, stream, variant, peer):
+    jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', peer)
     jt2.prepare()
 
     self_handle = conn.GetSelfHandle()
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    remote_handle = conn.RequestHandles(1, [jt2.peer])[0]
 
     if variant == REQUEST_NONYMOUS:
         path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
@@ -52,7 +53,7 @@ def worker(jp, q, bus, conn, stream, variant):
         path = conn.Requests.CreateChannel({
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-            cs.TARGET_HANDLE: handle,
+            cs.TARGET_HANDLE: remote_handle,
             })[0]
     else:
         path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
@@ -81,7 +82,7 @@ def worker(jp, q, bus, conn, stream, variant):
     if variant == REQUEST_NONYMOUS or variant == CREATE:
         assertEquals(remote_handle, emitted_props[cs.TARGET_HANDLE])
         assertEquals(cs.HT_CONTACT, emitted_props[cs.TARGET_HANDLE_TYPE])
-        assertEquals('foo@bar.com', emitted_props[cs.TARGET_ID])
+        assertEquals(jt2.peer_bare_jid, emitted_props[cs.TARGET_ID])
     else:
         assertEquals(0, emitted_props[cs.TARGET_HANDLE])
         assertEquals(cs.HT_NONE, emitted_props[cs.TARGET_HANDLE_TYPE])
@@ -103,7 +104,7 @@ def worker(jp, q, bus, conn, stream, variant):
     if variant == REQUEST_NONYMOUS or variant == CREATE:
         assertEquals(remote_handle, channel_props['TargetHandle'])
         assertEquals(cs.HT_CONTACT, channel_props['TargetHandleType'])
-        assertEquals('foo@bar.com', channel_props['TargetID'])
+        assertEquals(jt2.peer_bare_jid, channel_props['TargetID'])
         assertEquals((cs.HT_CONTACT, remote_handle), chan.GetHandle())
     else:
         assertEquals(0, channel_props['TargetHandle'])
@@ -309,6 +310,15 @@ def rccs(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(rccs)
+    test_all_dialects(create)
     test_all_dialects(request_anonymous)
     test_all_dialects(request_anonymous_and_add)
     test_all_dialects(request_nonymous)
+    test_all_dialects(lambda j, q, b, c, s:
+            create(j, q, b, c, s, peer='foo@gw.bar.com'))
+    test_all_dialects(lambda j, q, b, c, s:
+            request_anonymous(j, q, b, c, s, peer='foo@gw.bar.com'))
+    test_all_dialects(lambda j, q, b, c, s:
+            request_anonymous_and_add(j, q, b, c, s, peer='foo@gw.bar.com'))
+    test_all_dialects(lambda j, q, b, c, s:
+            request_nonymous(j, q, b, c, s, peer='foo@gw.bar.com'))

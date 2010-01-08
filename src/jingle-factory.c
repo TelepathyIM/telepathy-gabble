@@ -58,11 +58,6 @@ enum
   LAST_PROPERTY
 };
 
-/* The 'session' map is keyed by:
- * "<peer's handle>\n<peer's resource>\n<session id>"
- */
-#define SESSION_MAP_KEY_FORMAT "%u\n%s\n%s"
-
 struct _GabbleJingleFactoryPrivate
 {
   GabbleConnection *conn;
@@ -684,12 +679,21 @@ connection_status_changed_cb (GabbleConnection *conn,
     }
 }
 
+/* The 'session' map is keyed by:
+ * "<peer's handle>\n<peer's resource>\n<session id>"
+ * or for bare JIDs
+ * "<peer's handle>\n\001\n<session id>"
+ * (\001 is not a valid character in a resource, as per resourceprep).
+ */
+#define SESSION_MAP_KEY_FORMAT "%u\n%s\n%s"
+
 static gchar *
 make_session_map_key (TpHandle peer,
     const gchar *resource,
     const gchar *sid)
 {
-  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, peer, resource, sid);
+  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, peer,
+      resource == NULL ? "\001" : resource, sid);
 }
 
 static gchar *
@@ -737,12 +741,13 @@ ensure_session (GabbleJingleFactory *self,
 
   if (resource == NULL || *resource == '\0')
     {
-      g_set_error (error, GABBLE_XMPP_ERROR,
-          XMPP_ERROR_BAD_REQUEST, "IQ sender '%s' has no resource", from);
-      return NULL;
+      /* if we're called by a SIP gateway, it might be using a bare JID */
+      resource = NULL;
     }
-
-  resource++;
+  else
+    {
+      resource++;
+    }
 
   peer = tp_handle_ensure (contact_repo, from, NULL, error);
 
@@ -852,9 +857,9 @@ create_session (GabbleJingleFactory *fac,
   GabbleJingleSession *sess;
   gboolean local_initiator;
   gchar *sid_, *key;
+  const gchar *resource_sep;
 
   g_assert (peer != 0);
-  g_assert (peer_resource != NULL);
 
   if (sid != NULL)
     {
@@ -881,7 +886,14 @@ create_session (GabbleJingleFactory *fac,
   /* Takes ownership of key */
   g_hash_table_insert (priv->sessions, key, sess);
 
-  DEBUG ("new session (%u, %s, %s) @ %p", peer, peer_resource, sid_, sess);
+  if (peer_resource == NULL)
+    resource_sep = "'";
+  else
+    resource_sep = "";
+
+  DEBUG ("new session (%u, %s%s%s, %s) @ %p", peer, resource_sep,
+      peer_resource == NULL ? "(no resource)" : peer_resource, resource_sep,
+      sid_, sess);
 
   g_free (sid_);
 

@@ -505,6 +505,7 @@ class JingleTest2:
         self.q = q
         self.jid = jid
         self.peer = peer
+        self.peer_bare_jid = peer.split('/', 1)[0]
         self.stream = stream
         self.sid = 'sess' + str(int(random.random() * 10000))
 

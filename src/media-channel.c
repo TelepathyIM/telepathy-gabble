@@ -1538,6 +1538,11 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
     {
       peer_resource = gabble_jingle_session_get_peer_resource (priv->session);
 
+      if (peer_resource[0] != '\0')
+        DEBUG ("existing call, using peer resource %s", peer_resource);
+      else
+        DEBUG ("existing call, using bare JID");
+
       /* is a google call... we have no other option */
       if (!gabble_jingle_session_can_modify_contents (priv->session))
         {
@@ -1576,10 +1581,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
 
       g_assert (priv->streams->len == 0);
 
-      peer_resource = jingle_pick_best_resource (priv->conn, peer,
-          want_audio, want_video, &transport_ns, &dialect);
-
-      if (peer_resource == NULL)
+      if (!jingle_pick_best_resource (priv->conn, peer,
+          want_audio, want_video, &transport_ns, &dialect, &peer_resource))
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
               "member does not have the desired audio/video capabilities");
@@ -1587,7 +1590,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
         }
 
       DEBUG ("Picking resource '%s' (transport: %s, dialect: %u)",
-          peer_resource, transport_ns, dialect);
+          peer_resource == NULL ? "(null)" : peer_resource,
+          transport_ns, dialect);
 
       create_session (chan, peer, peer_resource);
 

@@ -712,10 +712,17 @@ call_channel_create_content (GabbleCallChannel *self,
   GabbleCallChannelPrivate *priv = self->priv;
   const gchar *content_ns;
   GabbleJingleContent *c;
+  const gchar *peer_resource;
+
+  peer_resource = gabble_jingle_session_get_peer_resource (priv->session);
+
+  if (peer_resource != NULL)
+    DEBUG ("existing call, using peer resource %s", peer_resource);
+  else
+    DEBUG ("existing call, using bare JID");
 
   content_ns = jingle_pick_best_content_type (priv->conn, priv->target,
-    gabble_jingle_session_get_peer_resource (priv->session),
-    type);
+    peer_resource, type);
 
   if (content_ns == NULL)
     {
@@ -1012,11 +1019,9 @@ call_channel_init_async (GAsyncInitable *initable,
 
       /* FIXME might need to wait on capabilities, also don't need transport
        * and dialect already */
-      resource = jingle_pick_best_resource (priv->conn,
+      if (!jingle_pick_best_resource (priv->conn,
         priv->target, priv->initial_audio, priv->initial_video,
-        &transport, &dialect);
-
-      if (resource == NULL)
+        &transport, &dialect, &resource))
         {
           g_simple_async_result_set_error (result, TP_ERRORS,
             TP_ERROR_NOT_CAPABLE,

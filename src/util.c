@@ -1031,13 +1031,44 @@ ensure_bare_contact_from_jid (GabbleConnection *conn,
 
 #define TWICE(x) x, x
 
-const gchar *
+static gboolean
+jingle_pick_resource_or_bare_jid (GabblePresence *presence,
+    GabbleCapabilitySet *caps, const gchar **resource)
+{
+  const gchar *ret;
+
+  if (gabble_presence_has_resources (presence))
+    {
+      ret = gabble_presence_pick_resource_by_caps (presence,
+          gabble_capability_set_predicate_at_least, caps);
+
+      if (resource != NULL)
+        *resource = ret;
+
+      return (ret != NULL);
+    }
+  else if (gabble_capability_set_at_least (
+        gabble_presence_peek_caps (presence), caps))
+    {
+      if (resource != NULL)
+        *resource = NULL;
+
+      return TRUE;
+    }
+  else
+    {
+      return FALSE;
+    }
+}
+
+gboolean
 jingle_pick_best_resource (GabbleConnection *conn,
     TpHandle peer,
     gboolean want_audio,
     gboolean want_video,
     const char **transport_ns,
-    JingleDialect *dialect)
+    JingleDialect *dialect,
+    const gchar **resource_out)
 {
   /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
    * available). */
@@ -1050,19 +1081,20 @@ jingle_pick_best_resource (GabbleConnection *conn,
   GabblePresence *presence;
   GabbleCapabilitySet *caps;
   const gchar *resource = NULL;
+  gboolean success = FALSE;
 
   presence = gabble_presence_cache_get (conn->presence_cache, peer);
 
   if (presence == NULL)
     {
       DEBUG ("contact %d has no presence available", peer);
-      return NULL;
+      return FALSE;
     }
 
   *dialect = JINGLE_DIALECT_ERROR;
   *transport_ns = NULL;
 
-  g_return_val_if_fail (want_audio || want_video, NULL);
+  g_return_val_if_fail (want_audio || want_video, FALSE);
 
   /* from here on, goto FINALLY to free this, instead of returning early */
   caps = gabble_capability_set_new ();
@@ -1075,10 +1107,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
   if (want_video)
     gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
-
-  if (resource != NULL)
+  if (jingle_pick_resource_or_bare_jid (presence, caps, &resource))
     {
       *dialect = JINGLE_DIALECT_V032;
       goto CHOOSE_TRANSPORT;
@@ -1092,10 +1121,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
   if (want_video)
     gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
-
-  if (resource != NULL)
+  if (jingle_pick_resource_or_bare_jid (presence, caps, &resource))
     {
       *dialect = JINGLE_DIALECT_V015;
       goto CHOOSE_TRANSPORT;
@@ -1115,10 +1141,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
   if (want_video)
     gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
 
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
-
-  if (resource != NULL)
+  if (jingle_pick_resource_or_bare_jid (presence, caps, &resource))
     {
       *dialect = JINGLE_DIALECT_GTALK3;
       goto CHOOSE_TRANSPORT;
@@ -1134,10 +1157,8 @@ jingle_pick_best_resource (GabbleConnection *conn,
   gabble_capability_set_clear (caps);
   gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VOICE);
   gabble_capability_set_add (caps, NS_GOOGLE_TRANSPORT_P2P);
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      gabble_capability_set_predicate_at_least, caps);
 
-  if (resource != NULL)
+  if (jingle_pick_resource_or_bare_jid (presence, caps, &resource))
     {
       *dialect = JINGLE_DIALECT_GTALK4;
       goto CHOOSE_TRANSPORT;
@@ -1148,11 +1169,20 @@ jingle_pick_best_resource (GabbleConnection *conn,
 
 CHOOSE_TRANSPORT:
 
+  if (resource_out != NULL)
+    *resource_out = resource;
+
+  success = TRUE;
 
   if (*dialect == JINGLE_DIALECT_GTALK4 || *dialect == JINGLE_DIALECT_GTALK3)
     {
       /* the GTalk dialects only support google p2p as transport protocol. */
       *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
+    }
+  else if (resource == NULL)
+    {
+      *transport_ns = gabble_presence_pick_best_feature (presence, transports,
+          gabble_capability_set_predicate_has);
     }
   else
     {
@@ -1161,11 +1191,11 @@ CHOOSE_TRANSPORT:
     }
 
   if (*transport_ns == NULL)
-    resource = NULL;
+    success = FALSE;
 
 FINALLY:
   gabble_capability_set_free (caps);
-  return resource;
+  return success;
 }
 
 const gchar *
@@ -1198,8 +1228,16 @@ jingle_pick_best_content_type (GabbleConnection *conn,
       return NULL;
     }
 
-  return gabble_presence_resource_pick_best_feature (presence, resource,
-      content_types, gabble_capability_set_predicate_has);
+  if (resource == NULL)
+    {
+      return gabble_presence_pick_best_feature (presence, content_types,
+          gabble_capability_set_predicate_has);
+    }
+  else
+    {
+      return gabble_presence_resource_pick_best_feature (presence, resource,
+          content_types, gabble_capability_set_predicate_has);
+    }
 }
 
 GValueArray *

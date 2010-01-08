@@ -173,6 +173,12 @@ gabble_presence_peek_caps (GabblePresence *presence)
   return presence->priv->cap_set;
 }
 
+gboolean
+gabble_presence_has_resources (GabblePresence *self)
+{
+  return (self->priv->resources != NULL);
+}
+
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,
@@ -669,6 +675,29 @@ gabble_presence_resource_pick_best_feature (GabblePresence *presence,
   for (row = table; row->result != NULL; row++)
     {
       if (row->considered && predicate (res->cap_set, row->check_data))
+        {
+          return row->result;
+        }
+    }
+
+  return NULL;
+}
+
+gconstpointer
+gabble_presence_pick_best_feature (GabblePresence *presence,
+    const GabbleFeatureFallback *table,
+    GabbleCapabilitySetPredicate predicate)
+{
+  const GabbleFeatureFallback *row;
+
+  g_return_val_if_fail (presence != NULL, NULL);
+  g_return_val_if_fail (predicate != NULL, NULL);
+  g_return_val_if_fail (table != NULL, NULL);
+
+  for (row = table; row->result != NULL; row++)
+    {
+      if (row->considered && predicate (presence->priv->cap_set,
+            row->check_data))
         {
           return row->result;
         }

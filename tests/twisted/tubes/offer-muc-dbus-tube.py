@@ -301,7 +301,7 @@ def test(q, bus, conn, stream, access_control):
 
     def bob_in_tube():
         presence = elem('presence', from_='chat2@conf.localhost/bob', to='chat2@conf.localhost')(
-            elem('x', xmlns=ns.MUC),
+            elem('x', xmlns=ns.MUC_USER),
             elem('tubes', xmlns=ns.TUBES)(
                 elem('tube', type='dbus', initiator='chat2@conf.localhost/test',
                     service='com.example.TestCase', id=str(dbus_tube_id))(
@@ -337,7 +337,7 @@ def test(q, bus, conn, stream, access_control):
 
     # Bob leave the tube
     presence = elem('presence', from_='chat2@conf.localhost/bob', to='chat2@conf.localhost')(
-        elem('x', xmlns=ns.MUC),
+        elem('x', xmlns=ns.MUC_USER),
         elem('tubes', xmlns=ns.TUBES))
     stream.send(presence)
 
@@ -360,7 +360,9 @@ def test(q, bus, conn, stream, access_control):
     text_chan.Close()
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
-        EventPattern('dbus-signal', signal='ChannelClosed'))
+        EventPattern('dbus-signal', signal='ChannelClosed'),
+        EventPattern('stream-presence', presence_type='unavailable')
+        )
 
     # rejoin the room
     call_async(q, conn.Requests, 'CreateChannel',

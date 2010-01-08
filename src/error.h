@@ -92,4 +92,6 @@ const gchar *gabble_xmpp_error_string (GabbleXmppError error);
 const gchar *gabble_xmpp_error_description (GabbleXmppError error);
 GError *gabble_message_get_xmpp_error (LmMessage *msg);
 
+GabbleXmppErrorType gabble_xmpp_error_type_to_enum (const gchar *error_type);
+
 #endif /* __GABBLE_ERROR_H__ */

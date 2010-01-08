@@ -25,6 +25,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <wocky/wocky-muc.h>
+#include <wocky/wocky-xmpp-error.h>
+
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/debug-ansi.h>
@@ -98,6 +101,7 @@ enum
     PRE_INVITE,
     CONTACT_JOIN,
     PRE_PRESENCE,
+    NEW_TUBE,
     LAST_SIGNAL
 };
 
@@ -122,6 +126,8 @@ enum
   PROP_CHANNEL_DESTROYED,
   PROP_CHANNEL_PROPERTIES,
   PROP_SELF_JID,
+  PROP_WOCKY_MUC,
+  PROP_TUBE,
   LAST_PROPERTY
 };
 
@@ -158,22 +164,6 @@ typedef enum {
 
     INVALID_AFFILIATION,
 } GabbleMucAffiliation;
-
-static const gchar *muc_roles[NUM_ROLES] =
-{
-  "none",
-  "visitor",
-  "participant",
-  "moderator",
-};
-
-static const gchar *muc_affiliations[NUM_AFFILIATIONS] =
-{
-  "none",
-  "member",
-  "admin",
-  "owner",
-};
 
 /* room properties */
 enum
@@ -229,13 +219,6 @@ const TpPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
 };
 
 /* private structures */
-
-typedef struct {
-    TpHandleSet *members;
-    TpHandleSet *owners;
-    GHashTable *owner_map;
-} InitialStateAggregator;
-
 struct _GabbleMucChannelPrivate
 {
   GabbleConnection *conn;
@@ -272,35 +255,17 @@ struct _GabbleMucChannelPrivate
 
   gchar *invitation_message;
 
-  /* Aggregate all presences when joining the chatroom */
-  InitialStateAggregator *initial_state_aggregator;
+  WockyMuc *wmuc;
+  GabbleTubesChannel *tube;
 };
 
 #define GABBLE_MUC_CHANNEL_GET_PRIVATE(o) \
   (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_CHANNEL, \
                                 GabbleMucChannelPrivate))
 
-
-static void
-initial_state_aggregator_free (InitialStateAggregator *isa)
-{
-  g_hash_table_destroy (isa->owner_map);
-  tp_handle_set_destroy (isa->members);
-  tp_handle_set_destroy (isa->owners);
-  g_slice_free (InitialStateAggregator, isa);
-}
-
-
 static void
 gabble_muc_channel_init (GabbleMucChannel *obj)
 {
-  GabbleMucChannelPrivate *priv;
-
-  priv = obj->priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-
-  priv->initial_state_aggregator = g_slice_new0 (InitialStateAggregator);
-  priv->initial_state_aggregator->owner_map = g_hash_table_new (g_direct_hash,
-      g_direct_equal);
 }
 
 
@@ -308,6 +273,81 @@ static TpHandle create_room_identity (GabbleMucChannel *)
   G_GNUC_WARN_UNUSED_RESULT;
 
 #define NUM_SUPPORTED_MESSAGE_TYPES 3
+
+/*  signatures for presence handlers */
+
+static void handle_fill_presence (WockyMuc *muc,
+    WockyXmppStanza *stanza,
+    gpointer user_data);
+
+static void handle_renamed (GObject *source,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    gpointer data);
+
+static void handle_error (GObject *source,
+    WockyXmppStanza *stanza,
+    WockyXmppError errnum,
+    const gchar *message,
+    gpointer data);
+
+static void handle_join (WockyMuc *muc,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    gpointer data);
+
+static void handle_parted (GObject *source,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    const gchar *actor_jid,
+    const gchar *why,
+    const gchar *msg,
+    gpointer data);
+
+static void handle_left (GObject *source,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    WockyMucMember *who,
+    const gchar *actor_jid,
+    const gchar *why,
+    const gchar *msg,
+    gpointer data);
+
+static void handle_presence (GObject *source,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    WockyMucMember *who,
+    gpointer data);
+
+static void handle_perms (GObject *source,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    const gchar *actor,
+    const gchar *why,
+    gpointer data);
+
+/* signatures for message handlers */
+static void handle_message (GObject *source,
+    WockyXmppStanza *stanza,
+    WockyMucMsgType type,
+    const gchar *xmpp_id,
+    time_t stamp,
+    WockyMucMember *who,
+    const gchar *text,
+    const gchar *subject,
+    WockyMucMsgState state,
+    gpointer data);
+
+static void handle_errmsg (GObject *source,
+    WockyXmppStanza *stanza,
+    WockyMucMsgType type,
+    const gchar *xmpp_id,
+    time_t stamp,
+    WockyMucMember *who,
+    const gchar *text,
+    WockyXmppError error,
+    const gchar *etype,
+    gpointer data);
 
 static GObject *
 gabble_muc_channel_constructor (GType type, guint n_props,
@@ -337,6 +377,8 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   conn = (TpBaseConnection *) priv->conn;
 
+  priv->tube = NULL;
+
   room_handles = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_ROOM);
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -355,13 +397,42 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   /* this causes us to have one ref to the self handle which is unreffed
    * at the end of this function */
 
-  priv->initial_state_aggregator->members = tp_handle_set_new (
-      contact_handles);
-  priv->initial_state_aggregator->owners = tp_handle_set_new (contact_handles);
-
   /* initialize our own role and affiliation */
   priv->self_role = ROLE_NONE;
   priv->self_affil = AFFILIATION_NONE;
+
+  /* initialise the wocky muc object */
+  {
+    WockyPorter *porter = gabble_connection_get_porter (priv->conn);
+    const gchar *room_jid = tp_handle_inspect (contact_handles, self_handle);
+    gchar *user_jid = gabble_connection_get_full_jid (priv->conn);
+    WockyMuc *wmuc = g_object_new (WOCKY_TYPE_MUC,
+        "porter", porter,
+        "jid", room_jid,  /* room@service.name/nick */
+        "user", user_jid, /* user@doma.in/resource  */
+        NULL);
+
+    /* various presence handlers */
+    g_signal_connect (wmuc, "nick-change", (GCallback) handle_renamed,  self);
+    g_signal_connect (wmuc, "presence",    (GCallback) handle_presence, self);
+    g_signal_connect (wmuc, "joined",      (GCallback) handle_join,     self);
+    g_signal_connect (wmuc, "permissions", (GCallback) handle_perms,    self);
+    g_signal_connect (wmuc, "parted",      (GCallback) handle_parted,   self);
+    g_signal_connect (wmuc, "left",        (GCallback) handle_left,     self);
+    g_signal_connect (wmuc, "error",       (GCallback) handle_error,    self);
+
+    g_signal_connect (wmuc, "fill-presence", G_CALLBACK (handle_fill_presence),
+        self);
+
+    /* message handler(s) (just one needed so far) */
+    g_signal_connect (wmuc, "message",      (GCallback) handle_message, self);
+    g_signal_connect (wmuc, "message-error",(GCallback) handle_errmsg,  self);
+
+    priv->wmuc = wmuc;
+
+    g_free (user_jid);
+    g_object_unref (porter);
+  }
 
   /* register object on the bus */
   bus = tp_get_bus ();
@@ -431,8 +502,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       g_assert (priv->invitation_message == NULL);
 
       g_array_append_val (members, self_handle);
-      tp_group_mixin_add_members (obj, members,
-          "", &error);
+      tp_group_mixin_add_members (obj, members, "", &error);
       g_assert (error == NULL);
       g_array_free (members, TRUE);
     }
@@ -731,105 +801,39 @@ create_room_identity (GabbleMucChannel *chan)
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 }
 
-static LmMessage *
-create_presence_message (GabbleMucChannel *self,
-                         LmMessageSubType sub_type,
-                         LmMessageNode **x_node)
-{
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
-  LmMessage *msg;
-  LmMessageNode *node;
-
-  /* only take the connection-wide presence if the MUC protocol doesn't rely on
-   * a particular subtype (eg, leaving the room requires type='unavailable') */
-  if (sub_type == LM_MESSAGE_SUB_TYPE_NOT_SET)
-    {
-      /* note that this message doesn't contain capabilities, but that's OK as
-       * most IQ-based protocols won't work in a MUC anyway */
-      msg = gabble_presence_as_message (priv->conn->self_presence,
-          priv->self_jid->str);
-    }
-  else
-    {
-      msg = lm_message_new_with_sub_type (priv->self_jid->str,
-          LM_MESSAGE_TYPE_PRESENCE, sub_type);
-    }
-
-  node = lm_message_node_add_child (msg->node, "x", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_MUC);
-
-  if (x_node != NULL)
-    *x_node = node;
-
-  return msg;
-}
-
 static gboolean
-send_join_request (GabbleMucChannel *channel,
+send_join_request (GabbleMucChannel *gmuc,
                    const gchar *password,
                    GError **error)
 {
-  GabbleMucChannelPrivate *priv;
-  LmMessage *msg;
-  LmMessageNode *x_node;
-  gboolean ret;
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
+  g_object_set (priv->wmuc, "password", password, NULL);
+  wocky_muc_join (priv->wmuc, NULL);
 
-  /* build the message */
-  msg = create_presence_message (channel, LM_MESSAGE_SUB_TYPE_NOT_SET,
-      &x_node);
-
-  g_free (priv->password);
-
-  if (password != NULL)
-    {
-      priv->password = g_strdup (password);
-      lm_message_node_add_child (x_node, "password", password);
-    }
-
-  g_signal_emit (channel, signals[PRE_PRESENCE], 0, msg);
-
-  /* send it */
-  ret = _gabble_connection_send (priv->conn, msg, error);
-  if (!ret)
-    {
-      DEBUG ("_gabble_connection_send failed");
-    }
-  else
-    {
-      DEBUG ("join request sent");
-    }
-
-  lm_message_unref (msg);
-
-  return ret;
+  /* this used to be a meaningful success/failure return, but the two-stage  *
+   * async op involved means we don't have any way of detecting failure here */
+  return TRUE;
 }
 
 static gboolean
-send_leave_message (GabbleMucChannel *channel,
+send_leave_message (GabbleMucChannel *gmuc,
                     const gchar *reason)
 {
-  GabbleMucChannelPrivate *priv;
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
   LmMessage *msg;
   GError *error = NULL;
   gboolean ret;
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
-
   /* build the message */
-  msg = create_presence_message (channel, LM_MESSAGE_SUB_TYPE_UNAVAILABLE,
-      NULL);
+  msg = (LmMessage *) wocky_muc_create_presence (priv->wmuc,
+      WOCKY_STANZA_SUB_TYPE_UNAVAILABLE, reason, NULL);
 
-  if (reason != NULL)
-    {
-      lm_message_node_add_child (msg->node, "status", reason);
-    }
-
-  g_signal_emit (channel, signals[PRE_PRESENCE], 0, msg);
+  g_signal_emit (gmuc, signals[PRE_PRESENCE], 0, msg);
 
   /* send it */
   ret = _gabble_connection_send (priv->conn, msg, &error);
+
   if (!ret)
     {
       DEBUG ("_gabble_connection_send failed");
@@ -916,6 +920,9 @@ gabble_muc_channel_get_property (GObject    *object,
       break;
     case PROP_SELF_JID:
       g_value_set_string (value, priv->self_jid->str);
+      break;
+    case PROP_TUBE:
+      g_value_set_object (value, priv->tube);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1103,6 +1110,16 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   g_object_class_install_property (object_class, PROP_SELF_JID,
       param_spec);
 
+  param_spec = g_param_spec_object ("tube", "Tube Channel",
+      "The GabbleTubesChannel associated with this MUC (if any)",
+      GABBLE_TYPE_TUBES_CHANNEL, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_TUBE, param_spec);
+
+  param_spec = g_param_spec_object ("wocky-muc", "Wocky MUC Object",
+      "The backend (Wocky) MUC instance",
+      WOCKY_TYPE_MUC, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_WOCKY_MUC, param_spec);
+
   signals[READY] =
     g_signal_new ("ready",
                   G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
@@ -1148,6 +1165,14 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   g_cclosure_marshal_VOID__POINTER,
                   G_TYPE_NONE, 1, G_TYPE_POINTER);
 
+  signals[NEW_TUBE] = g_signal_new ("new-tube",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__OBJECT,
+                  G_TYPE_NONE, 1, GABBLE_TYPE_TUBES_CHANNEL);
+
   tp_properties_mixin_class_init (object_class,
                                       G_STRUCT_OFFSET (GabbleMucChannelClass,
                                         properties_class),
@@ -1187,6 +1212,11 @@ gabble_muc_channel_dispose (GObject *object)
   clear_join_timer (self);
   clear_poll_timer (self);
 
+  if (priv->wmuc != NULL)
+    g_object_unref (priv->wmuc);
+
+  priv->wmuc = NULL;
+
   if (!priv->closed)
     {
       priv->closed = TRUE;
@@ -1208,12 +1238,6 @@ gabble_muc_channel_finalize (GObject *object)
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
 
   DEBUG ("called");
-
-  if (priv->initial_state_aggregator != NULL)
-    {
-      initial_state_aggregator_free (priv->initial_state_aggregator);
-      priv->initial_state_aggregator = NULL;
-    }
 
   /* free any data held directly by the object here */
   tp_handle_unref (room_handles, priv->handle);
@@ -1393,18 +1417,19 @@ static void
 close_channel (GabbleMucChannel *chan, const gchar *reason,
                gboolean inform_muc, TpHandle actor, guint reason_code)
 {
-  GabbleMucChannelPrivate *priv;
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
   TpIntSet *set;
   GArray *handles;
 
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  DEBUG ("Closing");
 
   if (priv->closed)
     return;
 
   priv->closed = TRUE;
+
+  gabble_muc_channel_close_tube (chan);
 
   /* Remove us from member list */
   set = tp_intset_new ();
@@ -1470,6 +1495,7 @@ handle_nick_conflict (GabbleMucChannel *chan,
    * and remote pending members appropriately.
    */
   g_string_append_c (priv->self_jid, '_');
+  g_object_set (priv->wmuc, "jid", priv->self_jid->str, NULL);
   self_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
@@ -1488,151 +1514,6 @@ handle_nick_conflict (GabbleMucChannel *chan,
 
   priv->nick_retry_count++;
   return send_join_request (chan, priv->password, tp_error);
-}
-
-/**
- * _gabble_muc_channel_presence_error
- */
-void
-_gabble_muc_channel_presence_error (GabbleMucChannel *chan,
-                                    const gchar *jid,
-                                    LmMessageNode *pres_node)
-{
-  GabbleMucChannelPrivate *priv;
-  LmMessageNode *error_node;
-  GabbleXmppError error;
-  TpHandle actor = 0;
-  guint reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  if (strcmp (jid, priv->self_jid->str) != 0)
-    {
-      DEBUG ("presence error from other jids than self not handled");
-      return;
-    }
-
-  error_node = lm_message_node_get_child (pres_node, "error");
-  if (error_node == NULL)
-    {
-      DEBUG ("missing required node 'error'");
-      return;
-    }
-
-  error = gabble_xmpp_error_from_node (error_node, NULL);
-
-  if (priv->state >= MUC_STATE_JOINED)
-    {
-      DEBUG ("presence error while already member of the channel "
-          "-- NYI");
-      return;
-    }
-
-  /* We're not a member, find out why the join request failed
-   * and act accordingly. */
-  if (error == XMPP_ERROR_NOT_AUTHORIZED)
-    {
-      /* channel can sit requiring a password indefinitely */
-      clear_join_timer (chan);
-
-      /* Password already provided and incorrect? */
-      if (priv->state == MUC_STATE_AUTH)
-        {
-          provide_password_return_if_pending (chan, FALSE);
-
-          return;
-        }
-
-      DEBUG ("password required to join, changing password flags");
-
-      change_password_flags (chan, TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
-
-      g_object_set (chan, "state", MUC_STATE_AUTH, NULL);
-    }
-  else
-    {
-      GError *tp_error /* doesn't need initializing */;
-
-      switch (error) {
-        case XMPP_ERROR_FORBIDDEN:
-          tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_BANNED,
-                                  "banned from room");
-          reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
-          break;
-        case XMPP_ERROR_SERVICE_UNAVAILABLE:
-          tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_FULL,
-                                  "room is full");
-          break;
-        case XMPP_ERROR_REGISTRATION_REQUIRED:
-          tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_INVITE_ONLY,
-                                  "room is invite only");
-          break;
-        case XMPP_ERROR_CONFLICT:
-          if (handle_nick_conflict (chan, &tp_error))
-            return;
-
-          break;
-        default:
-          tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              "%s", gabble_xmpp_error_description (error));
-          break;
-      }
-
-      g_signal_emit (chan, signals[JOIN_ERROR], 0, tp_error);
-
-      close_channel (chan, tp_error->message, FALSE, actor, reason_code);
-
-      g_error_free (tp_error);
-    }
-}
-
-static GabbleMucRole
-get_role_from_string (const gchar *role)
-{
-  guint i;
-
-  if (role == NULL)
-    {
-      return ROLE_VISITOR;
-    }
-
-  for (i = 0; i < NUM_ROLES; i++)
-    {
-      if (strcmp (role, muc_roles[i]) == 0)
-        {
-          return i;
-        }
-    }
-
-  DEBUG ("unknown role '%s' -- defaulting to ROLE_VISITOR", role);
-
-  return ROLE_VISITOR;
-}
-
-static GabbleMucAffiliation
-get_affiliation_from_string (const gchar *affil)
-{
-  guint i;
-
-  if (affil == NULL)
-    {
-      return AFFILIATION_NONE;
-    }
-
-  for (i = 0; i < NUM_AFFILIATIONS; i++)
-    {
-      if (strcmp (affil, muc_affiliations[i]) == 0)
-        {
-          return i;
-        }
-    }
-
-  DEBUG ("unknown affiliation '%s' -- defaulting to "
-             "AFFILIATION_NONE", affil);
-
-  return AFFILIATION_NONE;
 }
 
 static LmHandlerResult
@@ -1896,358 +1777,785 @@ update_permissions (GabbleMucChannel *chan)
   tp_intset_destroy (changed_props_flags);
 }
 
-static void
-handle_unavailable_presence_update (GabbleMucChannel *chan,
-                                    TpHandleRepoIface *contact_handles,
-                                    TpHandle handle,
-                                    TpIntSet *handle_singleton,
-                                    LmMessageNode *item_node,
-                                    const gchar *status_code)
+
+
+/* ************************************************************************* */
+/* wocky MUC implementation */
+static GabbleMucRole
+get_role_from_backend (WockyMucRole role)
 {
-  TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
-  LmMessageNode *reason_node, *actor_node;
-  const gchar *reason = "", *actor_jid = "";
-  TpHandle actor = 0;
-  TpChannelGroupChangeReason reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
-
-  actor_node = lm_message_node_get_child (item_node, "actor");
-  if (actor_node != NULL)
+  switch (role)
     {
-      actor_jid = lm_message_node_get_attribute (actor_node, "jid");
-      if (actor_jid != NULL)
-        {
-          actor = tp_handle_ensure (contact_handles, actor_jid, NULL,
-              NULL);
-          if (actor == 0)
-            {
-              DEBUG ("ignoring invalid actor JID %s", actor_jid);
-            }
-        }
+      case WOCKY_MUC_ROLE_NONE:
+        return ROLE_NONE;
+      case WOCKY_MUC_ROLE_VISITOR:
+        return ROLE_VISITOR;
+      case WOCKY_MUC_ROLE_PARTICIPANT:
+        return ROLE_PARTICIPANT;
+      case WOCKY_MUC_ROLE_MODERATOR:
+        return ROLE_MODERATOR;
+      default:
+        DEBUG ("unknown role '%d' -- defaulting to ROLE_VISITOR", role);
+        return ROLE_VISITOR;
+    }
+}
+
+static GabbleMucAffiliation
+get_aff_from_backend (WockyMucAffiliation aff)
+{
+  switch (aff)
+    {
+      case WOCKY_MUC_AFFILIATION_OUTCAST:
+      case WOCKY_MUC_AFFILIATION_NONE:
+        return AFFILIATION_NONE;
+      case WOCKY_MUC_AFFILIATION_MEMBER:
+        return AFFILIATION_MEMBER;
+      case WOCKY_MUC_AFFILIATION_ADMIN:
+        return AFFILIATION_ADMIN;
+      case WOCKY_MUC_AFFILIATION_OWNER:
+        return AFFILIATION_OWNER;
+      default:
+        DEBUG ("unknown affiliation %d -- defaulting to AFFILIATION_NONE", aff);
+        return AFFILIATION_NONE;
+    }
+}
+
+/* connect to wocky-muc:SIG_PRESENCE_ERROR */
+static void
+handle_error (GObject *source,
+    WockyXmppStanza *stanza,
+    WockyXmppError errnum,
+    const gchar *message,
+    gpointer data)
+{
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (gmuc));
+
+  if (priv->state >= MUC_STATE_JOINED)
+    {
+      DEBUG ("presence error while already member of the channel -- NYI");
+      return;
     }
 
-  /* Possible reasons we could have been removed from the room:
-   * 301 banned
-   * 307 kicked
-   * 321 "because of an affiliation change" - no reason_code
-   * 322 room has become members-only and we're not a member - no
-   *    reason_code
-   * 332 system (server) is being shut down - no reason code
-   */
-  if (status_code)
+  if (errnum == WOCKY_XMPP_ERROR_NOT_AUTHORIZED)
     {
-      if (strcmp (status_code, "301") == 0)
-        {
-          reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
-        }
-      else if (strcmp (status_code, "307") == 0)
-        {
-          reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
-        }
-    }
+      /* channel can sit requiring a password indefinitely */
+      clear_join_timer (gmuc);
 
-  reason_node = lm_message_node_get_child (item_node, "reason");
-  if (reason_node != NULL)
-    {
-      reason = lm_message_node_get_value (reason_node);
-    }
+      /* Password already provided and incorrect? */
+      if (priv->state == MUC_STATE_AUTH)
+        {
+          provide_password_return_if_pending (gmuc, FALSE);
+          return;
+        }
 
-  if (handle != mixin->self_handle)
-    {
-      tp_group_mixin_change_members ((GObject *) chan, reason,
-                                         NULL, handle_singleton, NULL, NULL,
-                                         actor, reason_code);
+      DEBUG ("password required to join, changing password flags");
+      change_password_flags (gmuc, TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
+      g_object_set (gmuc, "state", MUC_STATE_AUTH, NULL);
     }
   else
     {
-      close_channel (chan, reason, FALSE, actor, reason_code);
+      GError *tp_error /* doesn't need initializing */;
+
+      // FIXME, the wocky enum is identical to the gabble enum, but
+      // don't rely on this:
+      switch ((GabbleXmppError) errnum)
+        {
+          case XMPP_ERROR_FORBIDDEN:
+            tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_BANNED,
+                "banned from room");
+            reason = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
+            break;
+          case XMPP_ERROR_SERVICE_UNAVAILABLE:
+            tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_FULL,
+                "room is full");
+            break;
+
+          case XMPP_ERROR_REGISTRATION_REQUIRED:
+            tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_INVITE_ONLY,
+                "room is invite only");
+            break;
+
+          case XMPP_ERROR_CONFLICT:
+            if (handle_nick_conflict (gmuc, &tp_error))
+              return;
+            break;
+
+          default:
+            tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+                "%s", gabble_xmpp_error_description (errnum));
+            break;
+        }
+
+      g_signal_emit (gmuc, signals[JOIN_ERROR], 0, tp_error);
+
+      close_channel (gmuc, tp_error->message, FALSE, 0, reason);
+      g_error_free (tp_error);
     }
-
-  if (actor)
-    tp_handle_unref (contact_handles, actor);
-}
-
-static gboolean
-renamed_by_server (LmMessageNode *x_node)
-{
-  gboolean is_self = FALSE;
-  gboolean renamed = FALSE;
-  NodeIter i;
-
-  for (i = node_iter (x_node); i; i = node_iter_next (i))
-    {
-      LmMessageNode *child = node_iter_data (i);
-      const gchar *code;
-
-      if (strcmp (child->name, "status") != 0)
-        continue;
-
-      code = lm_message_node_get_attribute (child, "code");
-
-      if (!tp_strdiff (code, "110"))
-        is_self = TRUE;
-      else if (!tp_strdiff (code, "210"))
-        renamed = TRUE;
-    }
-
-  return (is_self && renamed);
 }
 
 static void
-handle_member_added (GabbleMucChannel *chan,
-                     GabbleMucChannelPrivate *priv,
-                     TpGroupMixin *mixin,
-                     TpHandleRepoIface *contact_handles,
-                     TpHandle handle,
-                     TpIntSet *handle_singleton,
-                     LmMessageNode *x_node,
-                     LmMessageNode *item_node)
+tube_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
 {
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpHandle room;
+
+  if (priv->tube != NULL)
+    {
+      priv->tube = NULL;
+      g_object_get (chan, "handle", &room, NULL);
+      DEBUG ("removing MUC tubes channel with handle %d", room);
+      g_object_unref (chan);
+    }
+}
+
+static GabbleTubesChannel *
+new_tube (GabbleMucChannel *gmuc,
+    TpHandle initiator,
+    gboolean requested)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  const gchar *owner_jid = lm_message_node_get_attribute (item_node, "jid");
-  TpHandle owner_handle = 0;
-  TpIntSet *old_self_handle_singleton = NULL;
+  char *object_path;
 
-  if (owner_jid != NULL)
+  g_assert (priv->tube == NULL);
+
+  object_path = g_strdup_printf ("%s/MucTubesChannel%u",
+      conn->object_path, priv->handle);
+
+  DEBUG ("creating new tubes chan, object path %s", object_path);
+
+  priv->tube = g_object_new (GABBLE_TYPE_TUBES_CHANNEL,
+      "connection", priv->conn,
+      "object-path", object_path,
+      "handle", priv->handle,
+      "handle-type", TP_HANDLE_TYPE_ROOM,
+      "muc", gmuc,
+      "initiator-handle", initiator,
+      "requested", requested,
+      NULL);
+
+  g_signal_connect (priv->tube, "closed", (GCallback) tube_closed_cb, gmuc);
+
+  g_signal_emit (gmuc, signals[NEW_TUBE], 0 , priv->tube);
+
+  g_free (object_path);
+
+  return priv->tube;
+}
+
+/* ************************************************************************* */
+/* presence related signal handlers                                          */
+
+/* not actually a signal handler, but used by them:                        *
+ * creates a tube if none exists, and then prods the presence handler      *
+ * in the gabble tubes implementation to do whatever else needs to be done */
+static void
+handle_tube_presence (GabbleMucChannel *gmuc,
+    TpHandle from,
+    WockyXmppStanza *stanza)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  WockyXmppNode *node = stanza->node;
+
+  if (from == 0)
+    return;
+
+  if (priv->tube == NULL)
     {
-      owner_handle = tp_handle_ensure (contact_handles, owner_jid,
-          GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
+      WockyXmppNode *tubes;
+      tubes = wocky_xmpp_node_get_child_ns (node, "tubes", NS_TUBES);
 
-      if (owner_handle == 0)
-        DEBUG ("Invalid owner handle '%s', treating as no owner", owner_jid);
+      /* presence doesn't contain tubes information, no need
+       * to create a tubes channel */
+      if (tubes == NULL)
+        return;
+
+      /* MUC Tubes channels (as opposed to the individual tubes) don't
+       * have a well-defined initiator (they're a consensus) so use 0 */
+      priv->tube = new_tube (gmuc, 0, FALSE);
     }
 
-  if (renamed_by_server (x_node))
-    {
-      old_self_handle_singleton = tp_intset_new ();
-      tp_intset_add (old_self_handle_singleton, mixin->self_handle);
+  gabble_tubes_channel_presence_updated (priv->tube, from, node);
+}
 
-      tp_group_mixin_change_self_handle ((GObject *) chan, handle);
+
+/* connect to wocky-muc:SIG_PARTED, which we will receive when the MUC tells *
+ * us that we have left the channel                                          */
+static void
+handle_parted (GObject *source,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    const gchar *actor_jid,
+    const gchar *why,
+    const gchar *msg,
+    gpointer data)
+{
+  WockyMuc *wmuc = WOCKY_MUC (source);
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+  TpHandleRepoIface *contact_repo =
+    tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
+        TP_HANDLE_TYPE_CONTACT);
+  TpIntSet *handles = NULL;
+  TpHandle member = 0;
+  TpHandle actor = 0;
+  int x = 0;
+  static const gpointer banned = GUINT_TO_POINTER (WOCKY_MUC_CODE_BANNED);
+  static const gpointer const kicked[] =
+    { GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED),
+      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_AFFILIATION),
+      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_ROOM_PRIVATISED),
+      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_SHUTDOWN),
+      NULL };
+  const char *jid = wocky_muc_jid (wmuc);
+
+  member = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+
+  if (member == 0)
+    {
+      DEBUG ("bizarre: ignoring our own malformed MUC JID '%s'", jid);
+      return;
     }
 
-  if (handle == mixin->self_handle &&
-      owner_handle != conn->self_handle)
+  handles = tp_intset_new ();
+  tp_intset_add (handles, member);
+
+  if (actor_jid != NULL)
     {
-      /* In XEP-0045-compliant MUCs, if we get presence for the jid we asked
-       * for (or for another jid, with status 110 and 210) then we know it's
-       * us. There can't be another user in the MUC with the nick we asked for:
-       * the service MUST reject us with code 409/"conflict" in this case. So,
-       * if someone in the room has the nick we want, it's us.
-       *
-       * If the MUC service fails to comply with this requirement, we get
-       * hopelessly confused. Given that the service isn't required to label
-       * our own presence as 110 ("this is you") and there's no way to label a
-       * presence for the jid we asked for as "not you" it's not possible for a
-       * client not to get hopelessly confused if the service is broken. So
-       * this is the best we can do.
-       */
-      DEBUG ("Overriding ownership of channel-specific handle %u "
-          "from %u to %u because I know it's mine",
-          mixin->self_handle, owner_handle, conn->self_handle);
-
-      if (owner_handle != 0)
-        tp_handle_unref (contact_handles, owner_handle);
-
-      tp_handle_ref (contact_handles, conn->self_handle);
-      owner_handle = conn->self_handle;
+      actor = tp_handle_ensure (contact_repo, actor_jid, NULL, NULL);
+      if (actor == 0)
+        DEBUG ("ignoring invalid actor JID %s", actor_jid);
     }
 
-  if (priv->initial_state_aggregator == NULL)
-    {
-      /* we've already had the initial batch of presence stanzas */
-      tp_group_mixin_add_handle_owner ((GObject *) chan, handle,
-          owner_handle);
-      tp_group_mixin_change_members ((GObject *) chan, "",
-          handle_singleton, NULL, NULL, NULL, 0, 0);
-    }
+  if (g_hash_table_lookup (code, banned) != NULL)
+    reason = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
   else
+    for (x = 0; kicked[x] != NULL; x++)
+      {
+        if (g_hash_table_lookup (code, kicked[x]) != NULL)
+          reason = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
+      }
+
+  /* handle_tube_presence creates tubes if need be, so bypass it here: */
+  if (priv->tube != NULL)
+    gabble_tubes_channel_presence_updated (priv->tube, member, stanza->node);
+
+  close_channel (gmuc, why, FALSE, actor, reason);
+
+  if (actor != 0)
+    tp_handle_unref (contact_repo, actor);
+  tp_intset_destroy (handles);
+  tp_handle_unref (contact_repo, member);
+}
+
+
+/* connect to wocky-muc:SIG_LEFT, which we will receive when the MUC informs *
+ * us someone [else] has left the channel                                    */
+static void
+handle_left (GObject *source,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    WockyMucMember *who,
+    const gchar *actor_jid,
+    const gchar *why,
+    const gchar *msg,
+    gpointer data)
+{
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+  TpHandleRepoIface *contact_repo =
+    tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
+        TP_HANDLE_TYPE_CONTACT);
+  TpIntSet *handles = NULL;
+  TpHandle member = 0;
+  TpHandle actor = 0;
+  int x = 0;
+  static const gpointer banned = GUINT_TO_POINTER (WOCKY_MUC_CODE_BANNED);
+  static const gpointer const kicked[] =
+    { GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED),
+      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_AFFILIATION),
+      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_ROOM_PRIVATISED),
+      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_SHUTDOWN),
+      NULL };
+
+  member = tp_handle_ensure (contact_repo, who->from, NULL, NULL);
+
+  if (member == 0)
     {
-      /* aggregate this presence */
-      tp_handle_set_add (priv->initial_state_aggregator->members,
-          handle);
+      DEBUG ("ignoring malformed MUC JID '%s'", who->from);
+      return;
+    }
 
-      g_hash_table_insert (priv->initial_state_aggregator->owner_map,
-          GUINT_TO_POINTER (handle), GUINT_TO_POINTER (owner_handle));
+  handles = tp_intset_new ();
+  tp_intset_add (handles, member);
 
-      if (owner_handle != 0)
-        tp_handle_set_add (priv->initial_state_aggregator->owners,
-            owner_handle);
+  if (actor_jid != NULL)
+    {
+      actor = tp_handle_ensure (contact_repo, actor_jid, NULL, NULL);
+      if (actor == 0)
+        DEBUG ("ignoring invalid actor JID %s", actor_jid);
+    }
 
-      /* Do not emit one signal per presence. Instead, get all
-       * presences, and add them in priv->initial_state_aggregator.
-       * When we get the last presence, emit the signal. The last
-       * presence is ourselves. */
-      if (handle == mixin->self_handle)
+  if (g_hash_table_lookup (code, banned) != NULL)
+    reason = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
+  else
+    for (x = 0; kicked[x] != NULL; x++)
+      {
+        if (g_hash_table_lookup (code, kicked[x]) != NULL)
+          reason = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
+      }
+
+  /* handle_tube_presence creates tubes if need be, so bypass it here: */
+  if (priv->tube != NULL)
+    gabble_tubes_channel_presence_updated (priv->tube, member, stanza->node);
+
+  tp_group_mixin_change_members (data, why, NULL, handles, NULL, NULL,
+      actor, reason);
+
+  if (actor != 0)
+    tp_handle_unref (contact_repo, actor);
+  tp_intset_destroy (handles);
+  tp_handle_unref (contact_repo, member);
+}
+
+/* connect to wocky-muc:SIG_PERM_CHANGE, which we will receive when the *
+ * MUC informs us our role/affiliation has been altered                 */
+static void
+handle_perms (GObject *source,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    const gchar *actor,
+    const gchar *why,
+    gpointer data)
+{
+  WockyMuc *wmuc = WOCKY_MUC (source);
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpHandle myself = TP_GROUP_MIXIN (gmuc)->self_handle;
+
+  priv->self_role = get_role_from_backend (wocky_muc_role (wmuc));
+  priv->self_affil = get_aff_from_backend (wocky_muc_affiliation (wmuc));
+
+  room_properties_update (gmuc);
+  update_permissions (gmuc);
+
+  handle_tube_presence (gmuc, myself, stanza);
+}
+
+static void
+handle_fill_presence (WockyMuc *muc,
+    WockyXmppStanza *stanza,
+    gpointer user_data)
+{
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle self_handle;
+
+  self_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
+      GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+  gabble_presence_add_status_and_vcard (priv->conn->self_presence, stanza);
+
+  /* Sync the presence we send over the wire with what is in our presence cache
+   */
+  gabble_presence_cache_update (priv->conn->presence_cache, self_handle,
+      NULL,
+      priv->conn->self_presence->status,
+      priv->conn->self_presence->status_message,
+      0);
+
+  g_signal_emit (self, signals[PRE_PRESENCE], 0, (LmMessage *) stanza);
+}
+
+/* connect to wocky-muc:SIG_NICK_CHANGE, which we will receive when the *
+ * MUC informs us our nick has been changed for some reason             */
+static void
+handle_renamed (GObject *source,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    gpointer data)
+{
+  WockyMuc *wmuc = WOCKY_MUC (source);
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpHandleRepoIface *contact_repo =
+    tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
+        TP_HANDLE_TYPE_CONTACT);
+  TpIntSet *old_self = tp_intset_new ();
+  const gchar *me = wocky_muc_jid (wmuc);
+  const gchar *me2 = wocky_muc_user (wmuc);
+  TpHandle myself = tp_handle_ensure (contact_repo, me,
+      GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+  TpHandle userid = tp_handle_ensure (contact_repo, me2,
+      GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+
+  tp_intset_add (old_self, TP_GROUP_MIXIN (gmuc)->self_handle);
+  tp_group_mixin_change_self_handle (data, myself);
+  tp_group_mixin_add_handle_owner (data, myself, userid);
+  tp_group_mixin_change_members (data, "", NULL, old_self, NULL, NULL, 0, 0);
+
+  handle_tube_presence (gmuc, myself, stanza);
+
+  tp_intset_destroy (old_self);
+  tp_handle_unref (contact_repo, userid);
+  tp_handle_unref (contact_repo, myself);
+}
+
+static void
+update_roster_presence (GabbleMucChannel *gmuc,
+    WockyMucMember *member,
+    TpHandleRepoIface *contact_repo,
+    TpHandleSet *members,
+    TpHandleSet *owners,
+    GHashTable *omap)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpHandle owner = 0;
+  TpHandle handle = tp_handle_ensure (contact_repo, member->from,
+      GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+
+  if (member->jid != NULL)
+    {
+      owner = tp_handle_ensure (contact_repo, member->jid,
+          GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
+      if (owner == 0)
+        DEBUG ("Invalid owner handle '%s', treating as no owner", member->jid);
+      else
+        tp_handle_set_add (owners, owner);
+    }
+
+  gabble_presence_parse_presence_message (priv->conn->presence_cache,
+      handle, member->from, (LmMessage *) member->presence_stanza);
+
+  tp_handle_set_add (members, handle);
+  g_hash_table_insert (omap,
+      GUINT_TO_POINTER (handle),
+      GUINT_TO_POINTER (owner));
+
+  tp_handle_unref (contact_repo, handle);
+  /* make a note of the fact that owner JIDs are visible to us    */
+  /* notify whomever that an identifiable contact joined the MUC  */
+  if (owner != 0)
+    {
+      tp_group_mixin_change_flags (G_OBJECT (gmuc), 0,
+          TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
+      g_signal_emit (gmuc, signals[CONTACT_JOIN], 0, owner);
+      tp_handle_unref (contact_repo, owner);
+    }
+
+  handle_tube_presence (gmuc, handle, member->presence_stanza);
+}
+
+/* connect to wocky_muc SIG_JOINED which we should receive when we receive   *
+ * the final (ie our own) presence in the roster: (note that if our nick was *
+ * changed by the MUC we will already have received a SIG_NICK_CHANGE:       */
+static void
+handle_join (WockyMuc *muc,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    gpointer data)
+{
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpHandleRepoIface *contact_repo =
+    tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
+        TP_HANDLE_TYPE_CONTACT);
+  TpHandleSet *members = tp_handle_set_new (contact_repo);
+  TpHandleSet *owners = tp_handle_set_new (contact_repo);
+  GHashTable *omap = g_hash_table_new (g_direct_hash, g_direct_equal);
+  GHashTable *member_jids = wocky_muc_members (muc);
+  const gchar *me = wocky_muc_jid (muc);
+  TpHandle myself = tp_handle_ensure (contact_repo, me,
+      GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+  GHashTableIter iter;
+  WockyMucMember *member;
+
+  g_hash_table_iter_init (&iter, member_jids);
+
+  while (g_hash_table_iter_next (&iter, NULL, (gpointer *)&member))
+    update_roster_presence (gmuc, member, contact_repo,
+      members, owners, omap);
+
+  g_hash_table_insert (omap,
+      GUINT_TO_POINTER (myself),
+      GUINT_TO_POINTER (((TpBaseConnection *) priv->conn)->self_handle));
+
+  tp_handle_set_add (members, myself);
+  tp_group_mixin_add_handle_owners (G_OBJECT (gmuc), omap);
+  tp_group_mixin_change_members (G_OBJECT (gmuc), "",
+      tp_handle_set_peek (members), NULL, NULL, NULL, 0, 0);
+
+  /* accept the config of the room if it was created for us: */
+  if (g_hash_table_lookup (code, (gpointer) WOCKY_MUC_CODE_NEW_ROOM))
+    {
+      GError *error = NULL;
+      gboolean sent = FALSE;
+      WockyXmppStanza *accept = wocky_xmpp_stanza_build (
+          WOCKY_STANZA_TYPE_IQ,
+          WOCKY_STANZA_SUB_TYPE_SET,
+            WOCKY_NODE, "query", WOCKY_NODE_XMLNS, WOCKY_NS_MUC_OWN,
+              WOCKY_NODE, "x", WOCKY_NODE_XMLNS, WOCKY_XMPP_NS_DATA,
+                WOCKY_NODE_ATTRIBUTE, "type", "submit",
+              WOCKY_NODE_END,
+            WOCKY_NODE_END,
+          WOCKY_STANZA_END);
+
+      sent = _gabble_connection_send_with_reply (priv->conn, accept,
+          room_created_submit_reply_cb, data, NULL, &error);
+
+      g_object_unref (accept);
+
+      if (!sent)
         {
-          /* Add all handle owners in a single operation */
-          tp_group_mixin_add_handle_owners ((GObject *) chan,
-              priv->initial_state_aggregator->owner_map);
+          DEBUG ("failed to send submit message: %s", error->message);
+          g_error_free (error);
 
-          /* Change all presences in a single operation */
-          tp_group_mixin_change_members ((GObject *) chan, "",
-              tp_handle_set_peek (
-                  priv->initial_state_aggregator->members),
-              old_self_handle_singleton, NULL, NULL, 0, 0);
+          g_object_unref (accept);
+          close_channel (gmuc, NULL, TRUE, 0,
+              TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
-          initial_state_aggregator_free (
-              priv->initial_state_aggregator);
-          priv->initial_state_aggregator = NULL;
-          g_object_set (chan, "state", MUC_STATE_JOINED, NULL);
+          goto out;
         }
     }
 
-  if (owner_handle != 0)
+  g_object_set (gmuc, "state", MUC_STATE_JOINED, NULL);
+
+ out:
+  tp_handle_unref (contact_repo, myself);
+  tp_handle_set_destroy (members);
+  tp_handle_set_destroy (owners);
+  g_hash_table_unref (omap);
+  g_hash_table_unref (member_jids);
+}
+
+/* connect to wocky-muc:SIG_PRESENCE, which is fired for presences that are *
+ * NOT our own after the initial roster has been received:                  */
+static void
+handle_presence (GObject *source,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    WockyMucMember *who,
+    gpointer data)
+{
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpHandleRepoIface *contact_repo =
+    tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
+        TP_HANDLE_TYPE_CONTACT);
+  TpHandle owner = 0;
+  TpHandle handle = tp_handle_ensure (contact_repo, who->from,
+      GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+  TpHandleSet *handles = tp_handle_set_new (contact_repo);
+
+  /* is the 'real' jid field of the presence set? If so, use it: */
+  if (who->jid != NULL)
     {
-      if (handle != mixin->self_handle)
+      /* ******************************************************* */
+      /* OLPC Hack:                                              *
+       * We drop OLPC Gadget's inspector presence as activities  *
+       * doesn't have to see it as a member of the room and the  *
+       * presence cache should ignore it as well.                */
+      if (!tp_strdiff (who->jid, priv->conn->olpc_gadget_activity))
+        goto out;
+      /* ******************************************************* */
+
+      owner = tp_handle_ensure (contact_repo, who->jid,
+          GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
+      if (owner == 0)
         {
-          /* If at least one other handle in the channel has an owner,
-           * the HANDLE_OWNERS_NOT_AVAILABLE flag should be removed.
-           */
-          tp_group_mixin_change_flags ((GObject *) chan, 0,
+          DEBUG ("Invalid owner handle '%s' ignored", who->jid);
+        }
+      else /* note that JIDs are known to us in this MUC */
+        {
+          tp_group_mixin_change_flags (G_OBJECT (data), 0,
               TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
         }
-
-      g_signal_emit (chan, signals[CONTACT_JOIN], 0, owner_handle);
-
-      tp_handle_unref (contact_handles, owner_handle);
     }
 
-  if (old_self_handle_singleton != NULL)
-    tp_intset_destroy (old_self_handle_singleton);
+  gabble_presence_parse_presence_message (priv->conn->presence_cache,
+    handle, who->from, (LmMessage *) who->presence_stanza);
+
+  /* add the member in quesion */
+  tp_handle_set_add (handles, handle);
+  tp_group_mixin_change_members (data, "", tp_handle_set_peek (handles),
+      NULL, NULL, NULL, 0, 0);
+
+  /* record the owner (0 for no owner) */
+  tp_group_mixin_add_handle_owner (data, handle, owner);
+
+  handle_tube_presence (gmuc, handle, stanza);
+
+  /* zap the handle refs we created */
+ out:
+  tp_handle_unref (contact_repo, handle);
+  if (owner != 0)
+    tp_handle_unref (contact_repo, owner);
+  tp_handle_set_destroy (handles);
+}
+
+/* ************************************************************************ */
+/* message signal handlers */
+
+static void
+handle_message (GObject *source,
+    WockyXmppStanza *stanza,
+    WockyMucMsgType type,
+    const gchar *xmpp_id,
+    time_t stamp,
+    WockyMucMember *who,
+    const gchar *text,
+    const gchar *subject,
+    WockyMucMsgState state,
+    gpointer data)
+{
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  gboolean from_member = (who != NULL);
+
+  TpChannelTextMessageType msg_type;
+  TpHandleRepoIface *repo;
+  TpHandleType handle_type;
+  TpHandle from;
+
+  if (from_member)
+    {
+      handle_type = TP_HANDLE_TYPE_CONTACT;
+      repo = tp_base_connection_get_handles (conn, handle_type);
+      from = tp_handle_ensure (repo, who->from,
+          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+
+      if (from == 0)
+        {
+          DEBUG ("Message from MUC member with no handle, discarding.");
+          return;
+        }
+    }
+  else /* directly from MUC itself */
+    {
+      handle_type = TP_HANDLE_TYPE_ROOM;
+      repo = tp_base_connection_get_handles (conn, handle_type);
+      from = priv->handle;
+      tp_handle_ref (repo, from);
+    }
+
+  switch (type)
+    {
+      case WOCKY_MUC_MSG_NORMAL:
+        msg_type = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
+        break;
+      case WOCKY_MUC_MSG_ACTION:
+        msg_type = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
+        break;
+      default:
+        msg_type = TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE;
+    }
+
+  if (text != NULL)
+    _gabble_muc_channel_receive (gmuc,
+        msg_type, handle_type, from, stamp, xmpp_id, text, stanza,
+        GABBLE_TEXT_CHANNEL_SEND_NO_ERROR, TP_DELIVERY_STATUS_DELIVERED);
+
+  if (from_member && state != WOCKY_MUC_MSG_STATE_NONE)
+    {
+      gint tp_msg_state;
+      switch (state)
+        {
+          case WOCKY_MUC_MSG_STATE_ACTIVE:
+            tp_msg_state = TP_CHANNEL_CHAT_STATE_ACTIVE;
+            break;
+          case WOCKY_MUC_MSG_STATE_TYPING:
+            tp_msg_state = TP_CHANNEL_CHAT_STATE_COMPOSING;
+            break;
+          case WOCKY_MUC_MSG_STATE_INACTIVE:
+            tp_msg_state = TP_CHANNEL_CHAT_STATE_INACTIVE;
+            break;
+          case WOCKY_MUC_MSG_STATE_PAUSED:
+            tp_msg_state = TP_CHANNEL_CHAT_STATE_PAUSED;
+            break;
+          case WOCKY_MUC_MSG_STATE_GONE:
+            tp_msg_state = TP_CHANNEL_CHAT_STATE_GONE;
+          default:
+            tp_msg_state = TP_CHANNEL_CHAT_STATE_ACTIVE;
+        }
+      _gabble_muc_channel_state_receive (gmuc, tp_msg_state, from);
+    }
+
+  if (subject != NULL)
+    _gabble_muc_channel_handle_subject (gmuc, msg_type, handle_type, from,
+        stamp, subject, stanza);
+
+  tp_handle_unref (repo, from);
 }
 
 static void
-handle_presence_update (GabbleMucChannel *chan,
-                        TpHandleRepoIface *contact_handles,
-                        TpHandle handle,
-                        TpIntSet *handle_singleton,
-                        LmMessageNode *x_node,
-                        LmMessageNode *item_node,
-                        const gchar *status_code)
+handle_errmsg (GObject *source,
+    WockyXmppStanza *stanza,
+    WockyMucMsgType type,
+    const gchar *xmpp_id,
+    time_t stamp,
+    WockyMucMember *who,
+    const gchar *text,
+    WockyXmppError error,
+    const gchar *etype,
+    gpointer data)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  gboolean from_member = (who != NULL);
+  GabbleXmppErrorType status = XMPP_ERROR_TYPE_UNDEFINED;
+  TpChannelTextSendError tp_err = TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
+  TpDeliveryStatus ds = TP_DELIVERY_STATUS_DELIVERED;
+  TpHandleRepoIface *repo = NULL;
+  TpHandleType handle_type;
+  TpHandle from = 0;
 
-  if (!tp_handle_set_is_member (mixin->members, handle))
-    handle_member_added (chan, priv, mixin, contact_handles, handle,
-        handle_singleton, x_node, item_node);
-
-  if (handle == mixin->self_handle)
+  if (from_member)
     {
-      const gchar *role, *affil;
-      GabbleMucRole new_role;
-      GabbleMucAffiliation new_affil;
+      handle_type = TP_HANDLE_TYPE_CONTACT;
+      repo = tp_base_connection_get_handles (conn, handle_type);
+      from = tp_handle_ensure (repo, who->from,
+          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
-      /* accept newly-created room settings before we send anything
-       * below which queryies them. */
-      if (status_code && strcmp (status_code, "201") == 0)
+      if (from == 0)
         {
-          LmMessage *msg;
-          LmMessageNode *node;
-          GError *error = NULL;
-
-          msg = lm_message_new_with_sub_type (priv->jid,
-              LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_SET);
-
-          node = lm_message_node_add_child (msg->node, "query", NULL);
-          lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
-
-          node = lm_message_node_add_child (node, "x", NULL);
-          lm_message_node_set_attributes (node,
-                                          "xmlns", NS_X_DATA,
-                                          "type", "submit",
-                                          NULL);
-
-          if (!_gabble_connection_send_with_reply (priv->conn, msg,
-                room_created_submit_reply_cb, G_OBJECT (chan), NULL,
-                &error))
-            {
-              DEBUG ("failed to send submit message: %s",
-                  error->message);
-              g_error_free (error);
-
-              lm_message_unref (msg);
-              close_channel (chan, NULL, TRUE, 0,
-                  TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
-              return;
-            }
-
-          lm_message_unref (msg);
-        }
-
-      /* Update room properties */
-      room_properties_update (chan);
-
-      /* update permissions after requesting new properties so that if we
-       * become an owner, we get our configuration form reply after the
-       * discovery reply, so we know whether there is a description
-       * property before we try and decide whether we can write to it. */
-      role = lm_message_node_get_attribute (item_node, "role");
-      affil = lm_message_node_get_attribute (item_node, "affiliation");
-      new_role = get_role_from_string (role);
-      new_affil = get_affiliation_from_string (affil);
-
-      if (new_role != priv->self_role || new_affil != priv->self_affil)
-        {
-          priv->self_role = new_role;
-          priv->self_affil = new_affil;
-
-          update_permissions (chan);
+          DEBUG ("Message from MUC member with no handle, discarding.");
+          return;
         }
     }
-}
+  else /* directly from MUC itself */
+    {
+      handle_type = TP_HANDLE_TYPE_ROOM;
+      repo = tp_base_connection_get_handles (conn, handle_type);
+      from = priv->handle;
+      tp_handle_ref (repo, from);
+    }
 
-/**
- * _gabble_muc_channel_member_presence_updated:
- *
- * Handles <presence> stanzas with type='unavailable' or other non-'error'
- * types, updating channel members and/or closing the channel as appropriate.
- * (<presence type='error'> is handled by _gabble_muc_channel_presence_error.)
- */
-void
-_gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
-                                             TpHandle handle,
-                                             LmMessage *message,
-                                             LmMessageNode *x_node,
-                                             LmMessageNode *item_node)
-{
-  GabbleMucChannelPrivate *priv;
-  TpBaseConnection *conn;
-  TpIntSet *handle_singleton;
-  LmMessageNode *status_node;
-  const gchar *status_code = NULL;
-  TpHandleRepoIface *contact_handles;
+  tp_err = gabble_tp_send_error_from_wocky_xmpp_error (error);
+  status = gabble_xmpp_error_type_to_enum (etype);
 
-  DEBUG ("called");
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-  g_assert (handle != 0);
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  conn = (TpBaseConnection *) priv->conn;
-  contact_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
-
-  status_node = lm_message_node_get_child (x_node, "status");
-
-  if (status_node != NULL)
-    status_code = lm_message_node_get_attribute (status_node, "code");
-
-  /* update channel members according to presence */
-  handle_singleton = tp_intset_new ();
-  tp_intset_add (handle_singleton, handle);
-
-  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_UNAVAILABLE)
-    handle_unavailable_presence_update (chan, contact_handles, handle,
-        handle_singleton, item_node, status_code);
+  if (status == XMPP_ERROR_TYPE_WAIT)
+    ds = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
   else
-    handle_presence_update (chan, contact_handles, handle, handle_singleton,
-        x_node, item_node, status_code);
+    ds = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;
 
-  tp_intset_destroy (handle_singleton);
+  if (text != NULL)
+    _gabble_muc_channel_receive (gmuc, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
+        handle_type, from, stamp, xmpp_id, text, stanza, tp_err, ds);
+
+  tp_handle_unref (repo, from);
 }
 
-
+/* ************************************************************************* */
 /**
  * _gabble_muc_channel_handle_subject: handle room subject updates
  */
@@ -3347,19 +3655,59 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self,
                                   GError **error)
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyXmppStanza *stanza;
   gboolean result;
 
   /* do nothing if we havn't actually joined yet */
   if (priv->state < MUC_STATE_INITIATED)
     return TRUE;
 
-  msg = create_presence_message (self, LM_MESSAGE_SUB_TYPE_NOT_SET, NULL);
-  g_signal_emit (self, signals[PRE_PRESENCE], 0, msg);
-  result = _gabble_connection_send (priv->conn, msg, error);
+  stanza = wocky_muc_create_presence (priv->wmuc,
+      WOCKY_STANZA_SUB_TYPE_NONE, NULL, NULL);
+  result = _gabble_connection_send (priv->conn, (LmMessage *) stanza, error);
 
-  lm_message_unref (msg);
+  g_object_unref (stanza);
   return result;
+}
+
+GabbleTubesChannel *
+gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
+    TpHandle initiator,
+    gboolean requested)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+
+  if (priv->tube == NULL)
+    priv->tube = new_tube (gmuc, initiator, requested);
+
+  if (priv->tube != NULL)
+    return g_object_ref (priv->tube);
+
+  return NULL;
+}
+
+void
+gabble_muc_channel_close_tube (GabbleMucChannel *gmuc)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+
+  if (priv->tube != NULL)
+    {
+      TpHandle room;
+      GabbleTubesChannel *tube = priv->tube;
+
+      priv->tube = NULL;
+      g_object_get (tube, "handle", &room, NULL);
+      DEBUG ("removing MUC tubes channel with handle %d", room);
+      gabble_tubes_channel_close (tube);
+      g_object_unref (tube);
+    }
+}
+
+void
+gabble_muc_channel_teardown (GabbleMucChannel *gmuc)
+{
+  close_channel (gmuc, NULL, FALSE, 0, 0);
 }
 
 static void

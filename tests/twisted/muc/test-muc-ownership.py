@@ -57,10 +57,10 @@ def test(q, bus, conn, stream):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost', 'test'))
 
-    event = q.expect('dbus-signal', signal='GroupFlagsChanged')
     # Since we received MUC presence that contains an owner JID, the
     # OWNERS_NOT_AVAILABLE flag should be removed.
-    assert event.args == [0, cs.GF_HANDLE_OWNERS_NOT_AVAILABLE]
+    event = q.expect('dbus-signal', signal='GroupFlagsChanged',
+        args = [0, cs.GF_HANDLE_OWNERS_NOT_AVAILABLE ])
 
     event = q.expect('dbus-signal', signal='HandleOwnersChanged')
     owners = event.args[0]

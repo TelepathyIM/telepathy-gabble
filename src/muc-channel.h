@@ -31,6 +31,7 @@
 #include <telepathy-glib/properties-mixin.h>
 
 #include "types.h"
+#include "tubes-channel.h"
 
 G_BEGIN_DECLS
 
@@ -105,6 +106,15 @@ gboolean gabble_muc_channel_send_presence (GabbleMucChannel *chan,
 
 gboolean gabble_muc_channel_send_invite (GabbleMucChannel *self,
     const gchar *jid, const gchar *message, GError **error);
+
+GabbleTubesChannel *
+gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
+    TpHandle initiator,
+    gboolean requested);
+
+void gabble_muc_channel_teardown (GabbleMucChannel *gmuc);
+void gabble_muc_channel_close_tube (GabbleMucChannel *gmuc);
+
 
 G_END_DECLS
 

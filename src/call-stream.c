@@ -575,20 +575,25 @@ gabble_call_stream_dispose (GObject *object)
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (object);
   GabbleCallStreamPrivate *priv = self->priv;
+  GList *l;
 
   if (priv->dispose_has_run)
     return;
 
   priv->dispose_has_run = TRUE;
 
+  for (l = priv->endpoints; l != NULL; l = g_list_next (l))
+    {
+      g_object_unref (l->data);
+    }
+
+  g_list_free (priv->endpoints);
+  priv->endpoints = NULL;
+
   if (priv->content != NULL)
     g_object_unref (priv->content);
 
   priv->content = NULL;
-
-  if (priv->conn != NULL)
-    g_object_unref (priv->conn);
-
   priv->conn = NULL;
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->dispose)

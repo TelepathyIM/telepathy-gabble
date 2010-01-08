@@ -24,21 +24,6 @@ def check_properties_empty (conn, capabilities = 0):
             dbus_interface=cs.PROPERTIES_IFACE)
     assert mail_count == 0
 
-    inbox_url = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'InboxURL', 
-            dbus_interface=cs.PROPERTIES_IFACE)
-    assert inbox_url == ''
-
-    http_method = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'Method', 
-            dbus_interface=cs.PROPERTIES_IFACE)
-    assert http_method == 0
-
-    post_data = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'PostData', 
-            dbus_interface=cs.PROPERTIES_IFACE)
-    assert len(post_data) == 0
-
     unread_mails = conn.Get(
             cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMails',
             dbus_interface=cs.PROPERTIES_IFACE)
@@ -51,27 +36,27 @@ def test_google_featured(q, bus, conn, stream):
     inbox_url = 'http://mail.google.com/mail'
 
     # E-mail thread 1 data
-    # tid and date are 64bit unsigned integer, lets use the biggest possible value
-    thread1_id = pow(2,64) - 1L
+    thread1_id = "1"
+    # date are 32bit unsigned integer, lets use the biggest possible value
     thread1_date = (pow(2,32) - 1) * 1000L
-    thread1_url = 'http://mail.google.com/mail/#inbox/%x' % thread1_id
+    thread1_url = 'http://mail.google.com/mail/#inbox/%x' % long(thread1_id)
     thread1_senders = [('John Smith', 'john@smith.com'), 
                        ('Denis Tremblay', 'denis@trempblay.qc.ca')]
     thread1_subject = "subject1"
     thread1_snippet = "body1"
 
     # Email thread 2 data
-    thread2_id = 2L
+    thread2_id = "2"
     thread2_date = 1234L
-    thread2_url = 'http://mail.google.com/mail/#inbox/%x' % +thread2_id
+    thread2_url = 'http://mail.google.com/mail/#inbox/%x' % long(thread2_id)
     thread2_senders = [('Sam Gratte', 'sam@gratte.edu'),]
     thread2_subject = "subject2"
     thread2_snippet = "body2"
 
     # Email thread 3 data
-    thread3_id = 3L
+    thread3_id = "3"
     thread3_date = 1235L
-    thread3_url = 'http://mail.google.com/mail/#inbox/%x' % +thread2_id
+    thread3_url = 'http://mail.google.com/mail/#inbox/%x' % long(thread2_id)
     thread3_senders = [('Le Chat', 'le@chat.fr'),]
     thread3_subject = "subject2"
     thread3_snippet = "body2"
@@ -95,7 +80,7 @@ def test_google_featured(q, bus, conn, stream):
     
     # Set e-mail thread 1
     mail = mailbox.addElement('mail-thread-info')
-    mail['tid'] = str(thread1_id)
+    mail['tid'] = thread1_id
     mail['date'] = str(thread1_date)
     senders = mail.addElement('senders')
     for t1_sender in thread1_senders:
@@ -106,10 +91,9 @@ def test_google_featured(q, bus, conn, stream):
     mail.addElement('subject', content=thread1_subject)
     mail.addElement('snippet', content=thread1_snippet)
 
-
     # Set e-mail thread 2
     mail = mailbox.addElement('mail-thread-info')
-    mail['tid'] = str(thread2_id)
+    mail['tid'] = thread2_id
     mail['date'] = str(thread2_date)
     senders = mail.addElement('senders')
     for t2_sender in thread2_senders:
@@ -125,20 +109,14 @@ def test_google_featured(q, bus, conn, stream):
 
     stream.send(result)
 
-    # We expect the InboxURLChanged to happen before the UnreadMailsChanged
-    # since we need this information. Also, Gabble should not have queried
-    # this information already since we are first subscriber.
-    event = q.expect('dbus-signal', signal='InboxURLChanged')
-    
-    stored_url = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'InboxURL', 
-            dbus_interface=cs.PROPERTIES_IFACE)
-
-    assert event.args[0] == inbox_url
-    assert stored_url == inbox_url
-
     # Then we expect UnreadMailsChanged with all the mail information.
     event = q.expect('dbus-signal', signal="UnreadMailsChanged")
+
+    # Check that inbox URL is correct
+    stored_url = conn.MailNotification.RequestInboxURL()
+    assert stored_url[0] == inbox_url
+    assert stored_url[1] == 0 # HTTP GET
+    assert len(stored_url[2]) == 0
 
     # UnreadMailsChanged (u: count, aa{sv}: mails_added, ax: mails_removed)
     unread_count = event.args[0]
@@ -172,7 +150,6 @@ def test_google_featured(q, bus, conn, stream):
 
     # Validate added e-mails with original data.
     assert mail1 != None
-    assert mail1['url'] == thread1_url
     # While date is in millisecond, the received timestamp is in seconds thus
     # we need to divided by 1000
     assert mail1['received-timestamp'] == thread1_date / 1000
@@ -181,7 +158,6 @@ def test_google_featured(q, bus, conn, stream):
     assert mail1['senders'] == thread1_senders
 
     assert mail2 != None
-    assert mail2['url'] == thread2_url
     assert mail2['received-timestamp'] == thread2_date / 1000
     assert mail2['subject'] == thread2_subject
     assert mail2['snippet'] == thread2_snippet
@@ -200,14 +176,12 @@ def test_google_featured(q, bus, conn, stream):
     
     # Validate stored e-mails with original data
     assert stored_mail1 != None
-    assert stored_mail1['url'] == thread1_url
     assert stored_mail1['received-timestamp'] == thread1_date / 1000
     assert stored_mail1['subject'] == thread1_subject
     assert stored_mail1['snippet'] == thread1_snippet
     assert stored_mail1['senders'] == thread1_senders
 
     assert stored_mail2 != None
-    assert stored_mail2['url'] == thread2_url
     assert stored_mail2['received-timestamp'] == thread2_date / 1000
     assert stored_mail2['subject'] == thread2_subject
     assert stored_mail2['snippet'] == thread2_snippet
@@ -262,7 +236,6 @@ def test_google_featured(q, bus, conn, stream):
 
     stream.send(result)
 
-    q.expect('dbus-signal', signal='InboxURLChanged')
     event = q.expect('dbus-signal', signal='UnreadMailsChanged')
     unread_count = event.args[0]
     mails_added = event.args[1]
@@ -276,6 +249,10 @@ def test_google_featured(q, bus, conn, stream):
     assert mails_added[0]['id'] != mails_added[1]['id']
     assert len(mails_removed) == 1
     assert mails_removed[0] == thread2_id
+
+    # Check the we can get an URL for a specific mail
+    mail_url = conn.MailNotification.RequestMailURL(thread1_id,
+            mails_added[0]['url_data']);
     
     # Unsubscribe and check that all data has been dropped
     conn.MailNotification.Unsubscribe()
@@ -292,7 +269,6 @@ def test_no_google_featured(q, bus, conn, stream):
     # signals.
     forbidden = [EventPattern('dbus-signal', signal='MailsReceived'),
                  EventPattern('dbus-signal', signal='UnreadMailsChanged'),
-                 EventPattern('dbus-signal', signal='InboxURLChanged'),
                  EventPattern('stream-iq', query_ns=ns.GOOGLE_MAIL_NOTIFY)]
     q.forbid_events(forbidden)
 
@@ -313,6 +289,16 @@ def test_no_google_featured(q, bus, conn, stream):
 
     try:
         conn.MailNotification.Unsubscribe()
+    except dbus.DBusException, e:
+        assert e.get_dbus_name() == not_implemented
+
+    try:
+        conn.MailNotification.RequestInboxURL()
+    except dbus.DBusException, e:
+        assert e.get_dbus_name() == not_implemented
+
+    try:
+        conn.MailNotification.RequestMailURL("1", "http://test.com/mail")
     except dbus.DBusException, e:
         assert e.get_dbus_name() == not_implemented
 

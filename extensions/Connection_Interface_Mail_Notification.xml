@@ -110,6 +110,30 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </tp:enum>
 
+    <tp:struct name="Mail_URL">
+      <tp:docstring>
+        Structure that contains required information to open Web base e-mail 
+        UI without need for re-authentication.
+      </tp:docstring>
+      <tp:member type="s" name="url">
+        <tp:docstring>
+          URL of the inbox folder or mail Web viewer.
+        </tp:docstring>
+      </tp:member>
+      <tp:member type="u" name="method" tp:type="HTTP_Method">
+        <tp:docstring>
+          HTTP Method for opening URL.
+        </tp:docstring>
+      </tp:member>
+      <tp:member type="a(ss)" name="post_data" tp:type="HTTP_Post_Data[]">
+        <tp:docstring>
+          Array of name-value pair structs of the POST data to use when opening
+          the URL. Because of the nature of the POST data, this information may
+          not be shared between clients.
+        </tp:docstring>
+      </tp:member>
+    </tp:struct>
+
     <tp:simple-type name="Mail" type="a{sv}" array-name="Mail_List">
       <tp:docstring>
         E-mail representation has been reduced to hash table with possible keys (of type strings) 
@@ -124,7 +148,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         <div class="indent">
         <h3>Keys</h3>
         <ul>
-          <li>id &#8212; x</li>
+          <li>id &#8212; s</li>
           <div class="docstring">A unique ID for this e-mail</div>
 
           <li>type &#8212; u (<tp:type>Mail_Type</tp:type>)</li>
@@ -134,19 +158,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
             by the protocol as thread. Note that threads may have multiple unread senders.
           </div>
 
-          <li>url &#8212; s</li>
-          <div class="docstring">This URL should allow client to load this precise message.</div>
-
-          <li>method &#8212; u (<tp:type>HTTP_Method</tp:type>)</li>
-          <div class="docstring">
-            The HTTP method to use when opening URL. If unset, GET
-            is assumed.
-          </div>
-
-          <li>post-data &#8212; a(ss) (<tp:type>HTTP_Post_Data</tp:type>[])</li>
-          <div class="docstring">
-            When method is POST, this data must be sent along with the POST request. 
-            It is a list of key/value pair with string for both keys and values.
+          <li>url_data &#8212; s</li>
+          <div class="docstring">An opaque string used to build URL when
+            calling <tp:member-ref>RequestMailURL</tp:member-ref>.
           </div>
 
           <li>senders &#8212; a(ss) (<tp:type>Mail_Address</tp:type>)</li>
@@ -229,29 +243,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </property>
 
-    <property name="InboxURL" type="s" tp:name-for-bindings="Inbox_URL"
-      access="read">
-      <tp:docstring>
-          URL of the inbox.
-      </tp:docstring>
-    </property>
-
-    <property name="Method" type="u" tp:type="HTTP_Method" 
-      tp:name-for-bindings="Method" access="read">
-      <tp:docstring>
-          HTTP Method to use along with <tp:member-ref>InboxURL</tp:member-ref>.
-      </tp:docstring>
-    </property>
-
-    <property name="PostData" type="a(ss)" tp:type="HTTP_Post_Data[]"
-    tp:name-for-bindings="Post_Data" access="read">
-      <tp:docstring>
-        Array of key/value pairs of the POST data to send when opening the
-        <tp:member-ref>InboxURL</tp:member-ref>. This should be ignored if 
-        <tp:member-ref>Method</tp:member-ref> is not "POST".
-      </tp:docstring>
-    </property>
-
     <property name="UnreadMails" type="aa{sv}" tp:type="Mail[]"
       tp:name-for-bindings="Unread_Mails" access="read">
       <tp:docstring>
@@ -295,7 +286,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           </tp:rationale>
         </tp:docstring>
       </arg>
-      <arg name="mails_removed" type="ax">
+      <arg name="mails_removed" type="as">
         <tp:docstring>
           A list of e-mails ID that are being removed from
           <tp:member-ref>UnreadMails</tp:member-ref>. This list will be
@@ -303,43 +294,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           or threads.
         </tp:docstring>
       </arg>
-    </signal>
-
-    <signal name="InboxURLChanged"
-      tp:name-for-bindings="Inbox_URL_Changed">
-      <arg name="url" type="s">
-        <tp:docstring>
-          URL of the inbox (the new value of
-          <tp:member-ref>InboxURL</tp:member-ref>).
-        </tp:docstring>
-      </arg>
-      <arg name="method" type="u">
-        <tp:docstring>
-          HTTP Method for opening inbox URL (the new value of
-          <tp:member-ref>Method</tp:member-ref>).
-        </tp:docstring>
-      </arg>
-      <arg name="post_data" type="a(ss)" tp:type="HTTP_Post_Data[]">
-        <tp:docstring>
-          Array of name-value pair structs of the POST data to use when opening
-          the inbox, if any (the new value of
-          <tp:member-ref>PostData</tp:member-ref>).
-        </tp:docstring>
-      </arg>
       <tp:docstring>
-        Emitted when the unread message status for the user's inbox changes or
-        the value has been initially received from the IM server.
-        <tp:rationale>
-          To minimize overhead of e-mail notification, some protocol may not
-          try to get any information about unread e-mails before a first client
-          call Subscribe. There might be a delay between the call to Subscribe 
-          and the time the connection manager get the URL. In this case, 
-          emitting InboxURLChanged signal is required to tell the client 
-          that this information is now available. The empty string will be used
-          when URL is not available. Also some protocol may rely on session ID
-          as authentication. Session IDs are often updated and this signal
-          should serve that purpose.
-        </tp:rationale>
+        Emitted when <tp:member-ref>UnreadMails</tp:member-ref> or 
+        <tp:member-ref>UnreadMailCount</tp:member-ref> have changed.
       </tp:docstring>
     </signal>
 
@@ -378,6 +335,54 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:possible-errors>
     </method>
 
+    <method name="RequestInboxURL"
+      tp:name-for-bindings="Request_Inbox_URL">
+      <arg direction="out" name="url" type="(sua(ss))" tp:type="Mail_URL" >
+        <tp:docstring>
+          A struture that contains URL and any additional data to open Web
+          mail client without re-authentication.
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        This method create and return a URL and optionnal POST data that allow
+        openning the Inbox folder of your Web mail account. This URL may 
+        contains token with short life time. Thus, a client should not reuse it
+        and request a new URL whenever it is needed.
+        <tp:rationale>
+          We are not using properties here because the tokens may not be shared
+          between clients and that network may be required to obtain the
+          information that leads to authentication free Web access.
+        </tp:rationale>
+      </tp:docstring>
+    </method>
+
+    <method name="RequestMailURL"
+      tp:name-for-bindings="Request_Mail_URL">
+      <arg direction="in" name="id" type="s">
+        <tp:docstring>
+          The mail ID as found in <tp:type>Mail</tp:type> structure.
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="url_data" type="s">
+        <tp:docstring>
+          An opaque string that contains information required by CM to build
+          a correct URL for opening Web mail client without re-authentication.
+          This token is part of <tp:type>Mail</tp:type> structure.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" name="url" type="(sua(ss))" tp:type="Mail_URL" >
+        <tp:docstring>
+          A struture that contains URL and any additional data to open Web
+          mail client without re-authentication.
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        This method create and return a URL and optionnal POST data that allow
+        openning specific mail of your Web mail account. Refer to 
+        <tp:member-ref>RequestInboxURL</tp:member-ref>.
+      </tp:docstring>
+    </method>
+
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An interface to support receiving notifications about a e-mail
         account associated with this connection. It is intended that the
@@ -393,12 +398,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         will be emitted with the new value of
         <tp:member-ref>UnreadMailCount</tp:member-ref>, an array
         of new or modified mails and the list of removed e-mail unique IDs. 
-        If any information about how to open the inbox is changed, the
-        <tp:member-ref>InboxURLChanged</tp:member-ref> signal will be
-        emitted with the new value of
-        <tp:member-ref>InboxURL</tp:member-ref>,
-        <tp:member-ref>Method</tp:member-ref> and
-        <tp:member-ref>PostData</tp:member-ref>.
+        To open the web base mail client for the inbox folder or a specific
+        mail client must call <tp:member-ref>RequestInboxURL</tp:member-ref>
+        or <tp:member-ref>RequestMailURL</tp:member-ref>. Those methods
+        will do proper actions to retreive the information and provide
+        authentication free URL to the requested Web client interface.
       </p>
       <p>
         Some protocol may not be able to provide a list of unread e-mails

@@ -227,7 +227,8 @@ def test_call(q, bus, conn, stream,
     assertLength(0, e.args)
     assertEquals(e.interface, cs.CALL_STREAM_IFACE_MEDIA)
 
-    e = q.expect('dbus-signal', signal='NewChannels')
+    e = q.expect('dbus-signal', signal='NewChannels',
+        predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args)
     assert e.args[0][0][0]
 
     call_chan = make_channel_proxy(conn, e.args[0][0][0], 'Channel')

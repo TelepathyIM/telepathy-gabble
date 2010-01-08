@@ -158,7 +158,9 @@ def incoming(jp, q, bus, conn, stream):
             continue
 
         jt.incoming_call(audio=a, video=v)
-        e = q.expect('dbus-signal', signal='NewChannels')
+        e = q.expect('dbus-signal', signal='NewChannels',
+            predicate=lambda e:
+                cs.CHANNEL_TYPE_CONTACT_LIST not in e.args[0][0][1].values())
         chans = e.args[0]
         assertLength(1, chans)
 

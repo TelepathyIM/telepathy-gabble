@@ -42,7 +42,8 @@ def test(jp, q, bus, conn, stream, peer='foo@bar.com/Foo'):
         ta_event = []
 
     nc, e = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannel',
+            predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args),
         EventPattern('dbus-signal', signal='NewSessionHandler'),
         *(ringing_event + ta_event)
         )[0:2]

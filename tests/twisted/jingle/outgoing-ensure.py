@@ -33,8 +33,11 @@ def test(q, bus, conn, stream):
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='EnsureChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel',
+            predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args),
+        EventPattern('dbus-signal', signal='NewChannels',
+            predicate=lambda e:
+                cs.CHANNEL_TYPE_CONTACT_LIST not in e.args[0][0][1].values()),
         )
 
     yours, path, props = ret.value
@@ -95,8 +98,11 @@ def test(q, bus, conn, stream):
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel',
+            predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args),
+        EventPattern('dbus-signal', signal='NewChannels',
+            predicate=lambda e:
+                cs.CHANNEL_TYPE_CONTACT_LIST not in e.args[0][0][1].values()),
         )
 
     path = ret.value[0]

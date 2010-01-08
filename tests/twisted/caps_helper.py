@@ -137,6 +137,11 @@ def compute_caps_hash(identities, features, dataforms):
     components = []
 
     for identity in sorted(identities):
+        if len(identity.split('/')) != 4:
+            raise ValueError(
+                "expecting identities of the form " +
+                "'category/type/lang/client': got " + repr(identity))
+
         components.append(identity)
 
     for feature in sorted(features):

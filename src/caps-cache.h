@@ -57,7 +57,7 @@ gabble_caps_cache_insert (
     GabbleCapabilitySet *set);
 
 GabbleCapsCache *
-gabble_caps_cache_new (void);
+gabble_caps_cache_new (const gchar *path);
 
 GabbleCapsCache *
 gabble_caps_cache_dup_shared (void);

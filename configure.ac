@@ -165,6 +165,11 @@ AC_CHECK_FUNC(res_query, ,
 
 AC_SUBST(RESOLV_LIBS)
 
+PKG_CHECK_MODULES(SQLITE, [sqlite3])
+
+AC_SUBST(SQLITE_CFLAGS)
+AC_SUBST(SQLITE_LIBS)
+
 dnl Check for code generation tools
 XSLTPROC=
 AC_CHECK_PROGS([XSLTPROC], [xsltproc])

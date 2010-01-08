@@ -3,6 +3,7 @@
 cd "@abs_top_builddir@/tests/twisted/tools"
 
 export GABBLE_DEBUG=all LM_DEBUG=net GIBBER_DEBUG=all
+export GABBLE_CAPS_CACHE=:memory: GABBLE_CAPS_CACHE_SIZE=50
 ulimit -c unlimited
 exec >> gabble-testing.log 2>&1
 

@@ -1016,9 +1016,11 @@ gabble_muc_channel_set_property (GObject     *object,
       break;
     case PROP_INITIAL_CHANNELS:
       priv->initial_channels = g_value_dup_boxed (value);
+      g_assert (priv->initial_channels != NULL);
       break;
     case PROP_INITIAL_INVITEE_HANDLES:
       priv->initial_handles = g_value_dup_boxed (value);
+      g_assert (priv->initial_handles != NULL);
       break;
     case PROP_INITIAL_INVITEE_IDS:
       priv->initial_ids = g_value_dup_boxed (value);

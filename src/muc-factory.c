@@ -448,6 +448,11 @@ new_muc_channel (GabbleMucFactory *fac,
         }
     }
 
+  if (initial_handles != NULL)
+    g_array_ref (initial_handles);
+  else
+    initial_handles = g_array_new (FALSE, TRUE, sizeof (TpHandle));
+
   DEBUG ("creating new chan, object path %s", object_path);
 
   chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
@@ -470,6 +475,7 @@ new_muc_channel (GabbleMucFactory *fac,
 
   g_free (object_path);
   g_ptr_array_free (initial_channels_array, TRUE);
+  g_array_unref (initial_handles);
 
   if (_gabble_muc_channel_is_ready (chan))
     muc_ready_cb (chan, fac);

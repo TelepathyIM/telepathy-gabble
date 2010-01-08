@@ -52,7 +52,7 @@
 
 /* Time period from the cache creation in which we're unsure whether we
  * got initial presence from all the contacts. */
-#define UNSURE_PERIOD (5 * G_USEC_PER_SEC)
+#define UNSURE_PERIOD 5
 
 G_DEFINE_TYPE (GabblePresenceCache, gabble_presence_cache, G_TYPE_OBJECT);
 
@@ -72,6 +72,7 @@ enum
   AVATAR_UPDATE,
   CAPABILITIES_DISCOVERED,
   LOCATION_UPDATED,
+  UNSURE_PERIOD_ENDED,
   LAST_SIGNAL
 };
 
@@ -94,7 +95,7 @@ struct _GabblePresenceCachePrivate
   GHashTable *disco_pending;
   guint caps_serial;
 
-  GTimeVal creation_time;
+  guint unsure_id;
 
   /* The cached contacts' location.
    * The key is the contact's TpHandle.
@@ -373,6 +374,7 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     NULL, NULL,
     g_cclosure_marshal_VOID__UINT, G_TYPE_NONE,
     1, G_TYPE_UINT);
+
   signals[LOCATION_UPDATED] = g_signal_new (
     "location-update",
     G_TYPE_FROM_CLASS (klass),
@@ -380,6 +382,26 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     0,
     NULL, NULL,
     g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
+
+  signals[UNSURE_PERIOD_ENDED] = g_signal_new (
+    "unsure-period-ended",
+    G_TYPE_FROM_CLASS (klass),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    g_cclosure_marshal_VOID__VOID, G_TYPE_NONE,
+    0);
+}
+
+static gboolean
+gabble_presence_cache_end_unsure_period (gpointer data)
+{
+  GabblePresenceCache *self = data;
+
+  DEBUG ("%p", data);
+  self->priv->unsure_id = 0;
+  g_signal_emit (self, signals[UNSURE_PERIOD_ENDED], 0);
+  return FALSE;
 }
 
 static void
@@ -415,10 +437,13 @@ gabble_presence_cache_constructor (GType type, guint n_props,
   g_assert (priv->conn != NULL);
   g_assert (priv->presence_handles != NULL);
 
+  /* After waiting UNSURE_PERIOD seconds for initial presences to trickle in,
+   * the "unsure period" ends. */
+  priv->unsure_id = g_timeout_add_seconds (UNSURE_PERIOD,
+      gabble_presence_cache_end_unsure_period, obj);
+
   priv->status_changed_cb = g_signal_connect (priv->conn, "status-changed",
       G_CALLBACK (gabble_presence_cache_status_changed_cb), obj);
-
-  g_get_current_time (&priv->creation_time);
 
   return obj;
 }
@@ -435,6 +460,12 @@ gabble_presence_cache_dispose (GObject *object)
   DEBUG ("dispose called");
 
   priv->dispose_has_run = TRUE;
+
+  if (priv->unsure_id != 0)
+    {
+      g_source_remove (priv->unsure_id);
+      priv->unsure_id = 0;
+    }
 
   g_assert (priv->lm_message_cb == NULL);
   g_assert (priv->lm_presence_cb == NULL);
@@ -1949,17 +1980,9 @@ gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
 gboolean
 gabble_presence_cache_is_unsure (GabblePresenceCache *cache)
 {
-  gulong diff;
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  GTimeVal now;
 
-  g_get_current_time (&now);
-  diff = (now.tv_sec - priv->creation_time.tv_sec) * G_USEC_PER_SEC +
-      (now.tv_usec - priv->creation_time.tv_usec);
-
-  DEBUG ("Diff: %lu", diff);
-
-  return (diff < UNSURE_PERIOD);
+  return (priv->unsure_id != 0);
 }
 
 void

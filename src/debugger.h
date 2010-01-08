@@ -77,6 +77,9 @@ GabbleDebugger *
 gabble_debugger_get_singleton (void);
 
 void
+gabble_debugger_free_singleton (void);
+
+void
 gabble_debugger_add_message (GabbleDebugger *self,
     GTimeVal *timestamp,
     const gchar *domain,

@@ -30,6 +30,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "debugger.h"
 
 G_DEFINE_TYPE(GabbleConnectionManager,
     gabble_connection_manager,
@@ -50,6 +51,7 @@ static void
 gabble_connection_manager_finalize (GObject *object)
 {
   gabble_debug_free ();
+  gabble_debugger_free_singleton ();
 }
 
 static void

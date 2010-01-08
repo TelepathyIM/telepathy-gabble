@@ -1409,7 +1409,7 @@ out:
 
   g_hash_table_destroy (final_channels);
   g_array_free (final_handles, TRUE);
-  g_strfreev (final_ids);
+  g_free (final_ids);
 
   tp_handle_set_destroy (handles);
   tp_intset_destroy (continue_handles);

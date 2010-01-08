@@ -85,6 +85,7 @@ struct _GabblePresenceCachePrivate
 
   gulong status_changed_cb;
   LmMessageHandler *lm_message_cb;
+  LmMessageHandler *lm_presence_cb;
 
   GHashTable *presence;
   TpHandleSet *presence_handles;
@@ -436,6 +437,7 @@ gabble_presence_cache_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   g_assert (priv->lm_message_cb == NULL);
+  g_assert (priv->lm_presence_cb == NULL);
 
   g_signal_handler_disconnect (priv->conn, priv->status_changed_cb);
 
@@ -525,11 +527,18 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
     {
     case TP_CONNECTION_STATUS_CONNECTING:
       g_assert (priv->lm_message_cb == NULL);
+      g_assert (priv->lm_presence_cb == NULL);
 
+      /* these are separate despite having the same callback and user_data,
+       * because the Wocky fake-Loudmouth compat layer only lets you register
+       * each handler once */
       priv->lm_message_cb = lm_message_handler_new (
           gabble_presence_cache_lm_message_cb, cache, NULL);
+      priv->lm_presence_cb = lm_message_handler_new (
+          gabble_presence_cache_lm_message_cb, cache, NULL);
+
       lm_connection_register_message_handler (priv->conn->lmconn,
-                                              priv->lm_message_cb,
+                                              priv->lm_presence_cb,
                                               LM_MESSAGE_TYPE_PRESENCE,
                                               LM_HANDLER_PRIORITY_LAST);
       lm_connection_register_message_handler (priv->conn->lmconn,
@@ -537,21 +546,30 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
                                               LM_MESSAGE_TYPE_MESSAGE,
                                               LM_HANDLER_PRIORITY_FIRST);
       break;
+
     case TP_CONNECTION_STATUS_CONNECTED:
       break;
+
     case TP_CONNECTION_STATUS_DISCONNECTED:
       if (priv->lm_message_cb != NULL)
         {
-          lm_connection_unregister_message_handler (conn->lmconn,
-                                                    priv->lm_message_cb,
-                                                    LM_MESSAGE_TYPE_PRESENCE);
           lm_connection_unregister_message_handler (conn->lmconn,
                                                     priv->lm_message_cb,
                                                     LM_MESSAGE_TYPE_MESSAGE);
           lm_message_handler_unref (priv->lm_message_cb);
           priv->lm_message_cb = NULL;
         }
+
+      if (priv->lm_presence_cb != NULL)
+        {
+          lm_connection_unregister_message_handler (conn->lmconn,
+                                                    priv->lm_presence_cb,
+                                                    LM_MESSAGE_TYPE_PRESENCE);
+          lm_message_handler_unref (priv->lm_presence_cb);
+          priv->lm_presence_cb = NULL;
+        }
       break;
+
     default:
       g_assert_not_reached ();
     }

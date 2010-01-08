@@ -1180,7 +1180,7 @@ handle_text_channel_request (GabbleMucFactory *self,
   TpHandleSet *handles;
   TpIntSet *continue_handles;
   guint i;
-  gboolean v = TRUE;
+  gboolean ret = TRUE;
 
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       TP_BASE_CONNECTION (priv->conn), TP_HANDLE_TYPE_CONTACT);
@@ -1331,7 +1331,7 @@ handle_text_channel_request (GabbleMucFactory *self,
 
       if (room == 0)
         {
-          v = FALSE;
+          ret = FALSE;
           goto out;
         }
     }
@@ -1350,7 +1350,7 @@ handle_text_channel_request (GabbleMucFactory *self,
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "That channel has already been created (or requested)");
-          v = FALSE;
+          ret = FALSE;
         }
       else
         {
@@ -1361,13 +1361,13 @@ handle_text_channel_request (GabbleMucFactory *self,
               g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
                   "Cannot set InitialChannels, InitialInviteeHandles or "
                   "InitialInviteIDs for existing channel");
-              v = FALSE;
+              ret = FALSE;
             }
           else
             {
               tp_channel_manager_emit_request_already_satisfied (self,
                   request_token, TP_EXPORTABLE_CHANNEL (text_chan));
-              v = TRUE;
+              ret = TRUE;
             }
         }
 
@@ -1405,7 +1405,8 @@ handle_text_channel_request (GabbleMucFactory *self,
     }
 
 out:
-  if (room != 0) tp_handle_unref (room_handles, room);
+  if (room != 0)
+    tp_handle_unref (room_handles, room);
 
   g_hash_table_destroy (final_channels);
   g_array_free (final_handles, TRUE);
@@ -1414,7 +1415,7 @@ out:
   tp_handle_set_destroy (handles);
   tp_intset_destroy (continue_handles);
 
-  return v;
+  return ret;
 }
 
 static gboolean

@@ -2051,13 +2051,21 @@ gabble_presence_cache_is_unsure (GabblePresenceCache *cache,
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
 
   /* we might not have had any presence at all - if we're still in the
-   * "unsure period", assume we might get initial presence soon */
-  if (priv->unsure_id != 0 &&
-      gabble_presence_cache_get (cache, handle) == NULL)
+   * "unsure period", assume we might get initial presence soon.
+   *
+   * Presences with keep_unavailable are the result of caching someone's
+   * nick from <message> stanzas, so they don't count as real presence - if
+   * someone sends us a <message>, their presence might still follow. */
+  if (priv->unsure_id != 0)
     {
-      DEBUG ("No presence for %u yet, still waiting for possible initial "
-          "presence burst", handle);
-      return TRUE;
+      GabblePresence *presence = gabble_presence_cache_get (cache, handle);
+
+      if (presence == NULL || presence->keep_unavailable)
+        {
+          DEBUG ("No presence for %u yet, still waiting for possible initial "
+              "presence burst", handle);
+          return TRUE;
+        }
     }
 
   /* FIXME: if we've had the roster, we can be sure that people who're

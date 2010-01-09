@@ -1342,19 +1342,19 @@ gabble_muc_channel_finalize (GObject *object)
 
   g_free (priv->password);
 
-  if (priv->initial_channels)
+  if (priv->initial_channels != NULL)
     {
       g_boxed_free (TP_ARRAY_TYPE_OBJECT_PATH_LIST, priv->initial_channels);
       priv->initial_channels = NULL;
     }
 
-  if (priv->initial_handles)
+  if (priv->initial_handles != NULL)
     {
       g_boxed_free (DBUS_TYPE_G_UINT_ARRAY, priv->initial_handles);
       priv->initial_handles = NULL;
     }
 
-  if (priv->initial_ids)
+  if (priv->initial_ids != NULL)
     {
       g_boxed_free (G_TYPE_STRV, priv->initial_ids);
       priv->initial_ids = NULL;

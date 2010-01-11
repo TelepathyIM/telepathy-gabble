@@ -35,6 +35,8 @@ void conn_presence_emit_presence_update (
     GabbleConnection *, const GArray *contact_handles);
 
 void conn_decloak_iface_init (gpointer g_iface, gpointer iface_data);
+void conn_decloak_emit_requested (GabbleConnection *conn,
+    TpHandle contact, const gchar *reason, gboolean decloaked);
 
 G_END_DECLS
 

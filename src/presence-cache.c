@@ -42,6 +42,7 @@
 #include "capabilities.h"
 #include "caps-channel-manager.h"
 #include "caps-hash.h"
+#include "conn-presence.h"
 #include "debug.h"
 #include "disco.h"
 #include "gabble-signals-marshal.h"
@@ -1490,6 +1491,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
   if (child_node != NULL)
     {
       gboolean decloak;
+      const gchar *reason;
 
       /* this is a request to de-cloak, i.e. leak a minimal version of our
        * presence to the peer */
@@ -1497,7 +1499,15 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
           "decloak-automatically", &decloak,
           NULL);
 
-      DEBUG ("Considering whether to decloak, conclusion=%d", decloak);
+      reason = lm_message_node_get_attribute (child_node, "reason");
+
+      if (reason == NULL)
+        reason = "";
+
+      DEBUG ("Considering whether to decloak, reason='%s', conclusion=%d",
+          reason, decloak);
+
+      conn_decloak_emit_requested (priv->conn, handle, reason, decloak);
 
       if (decloak)
         gabble_connection_send_capabilities (priv->conn, from, NULL);

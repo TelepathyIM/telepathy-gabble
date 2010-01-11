@@ -373,6 +373,16 @@ conn_presence_send_directed_presence (
 }
 
 void
+conn_decloak_emit_requested (GabbleConnection *conn,
+    TpHandle contact,
+    const gchar *reason,
+    gboolean decloaked)
+{
+  gabble_svc_connection_interface_gabble_decloak_emit_decloak_requested (conn,
+      contact, reason, decloaked);
+}
+
+void
 conn_decloak_iface_init (gpointer g_iface,
     gpointer iface_data)
 {

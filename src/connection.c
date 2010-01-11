@@ -145,7 +145,7 @@ enum
     PROP_ALIAS,
     PROP_FALLBACK_SOCKS5_PROXIES,
     PROP_KEEPALIVE_INTERVAL,
-    PROP_DISCLOSE_PRESENCE,
+    PROP_DECLOAK_AUTOMATICALLY,
 
     LAST_PROPERTY
 };
@@ -190,7 +190,7 @@ struct _GabbleConnectionPrivate
 
   GStrv fallback_socks5_proxies;
 
-  gboolean disclose_presence;
+  gboolean decloak_automatically;
 
   /* authentication properties */
   gchar *stream_server;
@@ -512,8 +512,8 @@ gabble_connection_get_property (GObject    *object,
       g_value_set_uint (value, priv->keepalive_interval);
       break;
 
-    case PROP_DISCLOSE_PRESENCE:
-      g_value_set_boolean (value, priv->disclose_presence);
+    case PROP_DECLOAK_AUTOMATICALLY:
+      g_value_set_boolean (value, priv->decloak_automatically);
       break;
 
     default:
@@ -626,8 +626,8 @@ gabble_connection_set_property (GObject      *object,
       priv->keepalive_interval = g_value_get_uint (value);
       break;
 
-    case PROP_DISCLOSE_PRESENCE:
-      priv->disclose_presence = g_value_get_boolean (value);
+    case PROP_DECLOAK_AUTOMATICALLY:
+      priv->decloak_automatically = g_value_get_boolean (value);
       break;
 
     default:
@@ -690,6 +690,8 @@ base_connected_cb (TpBaseConnection *base_conn)
   gabble_connection_connected_olpc (conn);
 }
 
+#define TWICE(x) (x), (x)
+
 static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
@@ -718,6 +720,10 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { "LocationAccessControl", NULL, NULL },
         { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl decloak_props[] = {
+        { "DecloakAutomatically", TWICE ("decloak-automatically") },
+        { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
         { GABBLE_IFACE_OLPC_GADGET,
           conn_olpc_gadget_properties_getter,
@@ -733,6 +739,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           conn_avatars_properties_getter,
           NULL,
           NULL,
+        },
+        { GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
+          tp_dbus_properties_mixin_getter_gobject_properties,
+          tp_dbus_properties_mixin_setter_gobject_properties,
+          decloak_props,
         },
         { NULL }
   };
@@ -928,9 +939,9 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (
-      object_class, PROP_DISCLOSE_PRESENCE,
+      object_class, PROP_DECLOAK_AUTOMATICALLY,
       g_param_spec_boolean (
-          "disclose-presence", "Disclose presence",
+          "decloak-automatically", "Decloak automatically?",
           "Leak presence and capabilities when requested",
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));

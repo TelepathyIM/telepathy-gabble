@@ -47,4 +47,4 @@ def test(q, bus, conn, stream, should_decloak=False):
 if __name__ == '__main__':
     exec_test(test)
     exec_test(lambda q, b, c, s: test(q, b, c, s, should_decloak=True),
-        params={'disclose-presence': True})
+        params={cs.CONN_IFACE_GABBLE_DECLOAK + '.DecloakAutomatically': True})

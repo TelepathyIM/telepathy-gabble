@@ -1494,7 +1494,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
       /* this is a request to de-cloak, i.e. leak a minimal version of our
        * presence to the peer */
       g_object_get (priv->conn,
-          "disclose-presence", &decloak,
+          "decloak-automatically", &decloak,
           NULL);
 
       DEBUG ("Considering whether to decloak, conclusion=%d", decloak);

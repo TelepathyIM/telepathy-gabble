@@ -31,6 +31,8 @@
 #include "connection.h"
 #include "debug.h"
 
+#include "extensions/extensions.h"
+
 G_DEFINE_TYPE(GabbleConnectionManager,
     gabble_connection_manager,
     TP_TYPE_BASE_CONNECTION_MANAGER)
@@ -93,7 +95,7 @@ struct _GabbleParams {
   gchar *alias;
   GStrv fallback_socks5_proxies;
   guint keepalive_interval;
-  gboolean disclose_presence;
+  gboolean decloak_automatically;
 };
 
 enum {
@@ -118,7 +120,7 @@ enum {
     JABBER_PARAM_ALIAS,
     JABBER_PARAM_FALLBACK_SOCKS5_PROXIES,
     JABBER_PARAM_KEEPALIVE_INTERVAL,
-    JABBER_PARAM_DISCLOSE_PRESENCE,
+    JABBER_PARAM_DECLOAK_AUTOMATICALLY,
 
     LAST_JABBER_PARAM
 };
@@ -225,9 +227,10 @@ static TpCMParamSpec jabber_params[] = {
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GUINT_TO_POINTER (30),
     G_STRUCT_OFFSET (GabbleParams, keepalive_interval), NULL, NULL },
 
-  { "disclose-presence", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+  { GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
+    DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER (FALSE),
-    G_STRUCT_OFFSET (GabbleParams, disclose_presence), NULL, NULL },
+    G_STRUCT_OFFSET (GabbleParams, decloak_automatically), NULL, NULL },
 
   { NULL, NULL, 0, 0, NULL, 0 }
 };
@@ -346,8 +349,8 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
       JABBER_PARAM_FALLBACK_SOCKS5_PROXIES, params->fallback_socks5_proxies);
   SET_PROPERTY_IF_PARAM_SET ("keepalive-interval",
       JABBER_PARAM_KEEPALIVE_INTERVAL, params->keepalive_interval);
-  SET_PROPERTY_IF_PARAM_SET ("disclose-presence",
-      JABBER_PARAM_DISCLOSE_PRESENCE, params->disclose_presence);
+  SET_PROPERTY_IF_PARAM_SET ("decloak-automatically",
+      JABBER_PARAM_DECLOAK_AUTOMATICALLY, params->decloak_automatically);
 
 out:
   return (TpBaseConnection *) conn;

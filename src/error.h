@@ -21,6 +21,8 @@
 #ifndef __GABBLE_ERROR_H__
 #define __GABBLE_ERROR_H__
 
+#include <gabble/gabble.h>
+
 #include <glib.h>
 #include <loudmouth/loudmouth.h>
 

@@ -1,4 +1,4 @@
-/* gabble/gabble.h — API for telepathy-gabble plugins
+/* error.h — error API available to telepathy-gabble plugins (and internals)
  *
  * Copyright © 2010 Collabora Ltd.
  *
@@ -17,17 +17,11 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef GABBLE_PLUGINS_GABBLE_H
-#define GABBLE_PLUGINS_GABBLE_H
-
-#define IN_GABBLE_PLUGINS_GABBLE_H
-
-#include <glib-object.h>
-
-#include <gabble/error.h>
-#include <gabble/plugin.h>
-#include <gabble/sidecar.h>
-
-#undef IN_GABBLE_PLUGINS_GABBLE_H
-
+#ifndef IN_GABBLE_PLUGINS_GABBLE_H
+#error Use #include <gabble/gabble.h> instead of <gabble/error.h>
 #endif
+
+#include <wocky/wocky-xmpp-error.h>
+
+void gabble_set_tp_error_from_wocky (const GError *wocky_error,
+    GError **error);

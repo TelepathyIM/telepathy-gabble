@@ -27,6 +27,9 @@
 #include "namespaces.h"
 #include "util.h"
 
+#include "wocky/wocky-xmpp-error.h"
+#include "wocky/wocky-xmpp-error-enumtypes.h"
+
 #define MAX_LEGACY_ERRORS 3
 
 typedef struct {
@@ -512,4 +515,140 @@ gabble_message_get_xmpp_error (LmMessage *msg)
 
   /* no error */
   return NULL;
+}
+
+static TpError
+map_wocky_xmpp_error (const GError *error)
+{
+  g_return_val_if_fail (error->domain == WOCKY_XMPP_ERROR,
+      TP_ERROR_NOT_AVAILABLE);
+
+  switch (error->code)
+    {
+    case WOCKY_XMPP_ERROR_REDIRECT:
+    case WOCKY_XMPP_ERROR_GONE:
+      /* FIXME: wild guess at the right error */
+      return TP_ERROR_DOES_NOT_EXIST;
+
+    case WOCKY_XMPP_ERROR_BAD_REQUEST:
+    case WOCKY_XMPP_ERROR_UNEXPECTED_REQUEST:
+      /* FIXME: internal problem in Gabble, probably */
+      return TP_ERROR_NOT_AVAILABLE;
+
+    case WOCKY_XMPP_ERROR_JID_MALFORMED:
+      return TP_ERROR_INVALID_HANDLE;
+
+    case WOCKY_XMPP_ERROR_NOT_AUTHORIZED:
+    case WOCKY_XMPP_ERROR_PAYMENT_REQUIRED:
+    case WOCKY_XMPP_ERROR_FORBIDDEN:
+      /* FIXME: the closest we've got for these, I think? */
+      return TP_ERROR_PERMISSION_DENIED;
+
+    case WOCKY_XMPP_ERROR_ITEM_NOT_FOUND:
+      return TP_ERROR_DOES_NOT_EXIST;
+
+    case WOCKY_XMPP_ERROR_RECIPIENT_UNAVAILABLE:
+      return TP_ERROR_OFFLINE;
+
+    case WOCKY_XMPP_ERROR_REMOTE_SERVER_NOT_FOUND:
+      /* FIXME: or NetworkError? */
+      return TP_ERROR_DOES_NOT_EXIST;
+
+    case WOCKY_XMPP_ERROR_NOT_ALLOWED:
+    case WOCKY_XMPP_ERROR_NOT_ACCEPTABLE:
+    case WOCKY_XMPP_ERROR_REGISTRATION_REQUIRED:
+    case WOCKY_XMPP_ERROR_SUBSCRIPTION_REQUIRED:
+      /* FIXME: the closest we've got for all these, I think? */
+      return TP_ERROR_PERMISSION_DENIED;
+
+    case WOCKY_XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
+      return TP_ERROR_NETWORK_ERROR;
+
+    case WOCKY_XMPP_ERROR_CONFLICT:
+      /* this is the best we can do in general - callers should
+       * special-case <conflict/> according to their domain knowledge,
+       * to turn it into RegistrationExists, ConnectionReplaced, etc. */
+      return TP_ERROR_NOT_AVAILABLE;
+
+    case WOCKY_XMPP_ERROR_INTERNAL_SERVER_ERROR:
+      /* FIXME: best we can do right now */
+      return TP_ERROR_NOT_AVAILABLE;
+
+    case WOCKY_XMPP_ERROR_RESOURCE_CONSTRAINT:
+      /* FIXME: Telepathy's ServiceBusy means the server, but the remote
+       * client can also raise <resource-constraint/> */
+      return TP_ERROR_SERVICE_BUSY;
+
+    case WOCKY_XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
+    case WOCKY_XMPP_ERROR_SERVICE_UNAVAILABLE:
+      return TP_ERROR_NOT_AVAILABLE;
+
+    case WOCKY_XMPP_ERROR_JINGLE_OUT_OF_ORDER:
+    case WOCKY_XMPP_ERROR_JINGLE_UNKNOWN_SESSION:
+    case WOCKY_XMPP_ERROR_JINGLE_UNSUPPORTED_CONTENT:
+    case WOCKY_XMPP_ERROR_JINGLE_UNSUPPORTED_TRANSPORT:
+    case WOCKY_XMPP_ERROR_SI_NO_VALID_STREAMS:
+    case WOCKY_XMPP_ERROR_SI_BAD_PROFILE:
+      /* FIXME: in practice these map to abrupt session termination, rather
+       * than a specific D-Bus error */
+      return TP_ERROR_NOT_AVAILABLE;
+
+    case WOCKY_XMPP_ERROR_UNDEFINED_CONDITION:
+    default:
+      return TP_ERROR_NOT_AVAILABLE;
+    }
+}
+
+static const gchar *
+get_error_prefix (GEnumClass *klass,
+    gint code,
+    const gchar *fallback)
+{
+  GEnumValue *value;
+
+  if (klass == NULL)
+    return fallback;
+
+  value = g_enum_get_value (klass, code);
+
+  if (value == NULL || value->value_name == NULL)
+    return fallback;
+
+  return value->value_name;
+}
+
+void
+gabble_set_tp_error_from_wocky (const GError *wocky_error,
+    GError **error)
+{
+  GEnumClass *klass;
+  const gchar *name;
+
+  if (wocky_error->domain == WOCKY_XMPP_ERROR)
+    {
+      klass = g_type_class_ref (WOCKY_TYPE_XMPP_ERROR);
+      name = get_error_prefix (klass, wocky_error->code,
+          "unknown WockyXmppError code");
+      g_set_error (error, TP_ERRORS, map_wocky_xmpp_error (wocky_error),
+          "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
+      g_type_class_unref (klass);
+    }
+  else if (wocky_error->domain == G_IO_ERROR)
+    {
+      klass = g_type_class_ref (G_TYPE_IO_ERROR_ENUM);
+      name = get_error_prefix (klass, wocky_error->code,
+          "unknown GIOError code");
+      /* FIXME: is it safe to assume that every GIOError we encounter from
+       * Wocky is a NetworkError? */
+      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
+      g_type_class_unref (klass);
+    }
+  else
+    {
+      /* best we can do... */
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "%s (#%d): %s", g_quark_to_string (wocky_error->domain),
+          wocky_error->code, wocky_error->message);
+    }
 }

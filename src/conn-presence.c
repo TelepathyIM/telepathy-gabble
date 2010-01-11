@@ -367,9 +367,37 @@ conn_presence_send_directed_presence (
     DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (conn);
+  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar *jid = tp_handle_inspect (contact_handles, contact);
+  gboolean ok;
+  GError *error = NULL;
 
-  (void) self;
-  tp_dbus_g_method_return_not_implemented (context);
+  g_return_if_fail (jid != NULL);
+
+  /* We don't strictly respect @full - we'll always send full presence to
+   * people we think ought to be receiving it anyway, because if we didn't,
+   * you could confuse them by sending directed presence that was less
+   * informative than the broadcast presence they already saw. */
+  if (full || gabble_connection_visible_to (self, contact))
+    {
+      ok = _gabble_connection_signal_own_presence (self, jid, &error);
+    }
+  else
+    {
+      ok = gabble_connection_send_capabilities (self, jid, &error);
+    }
+
+  if (ok)
+    {
+      gabble_svc_connection_interface_gabble_decloak_return_from_send_directed_presence (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 void

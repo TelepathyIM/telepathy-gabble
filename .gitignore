@@ -78,6 +78,7 @@ cscope.out
 /tests/test-jid-decode
 /tests/test-parse-message
 /tests/test-presence
+/tests/test-tp-error-from-wocky
 /tests/twisted/config.py
 /tests/twisted/telepathy-gabble-debug
 /tests/twisted/tools/core.*

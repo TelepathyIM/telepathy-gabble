@@ -1,0 +1,75 @@
+<?xml version="1.0" ?>
+<node name="/Gabble_Plugin_Gateways"
+  xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright>Copyright © 2010 Collabora Ltd.</tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+      modify it under the terms of the GNU Lesser General Public
+      License as published by the Free Software Foundation; either
+      version 2.1 of the License, or (at your option) any later version.</p>
+
+    <p>This library is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+      Lesser General Public License for more details.</p>
+
+    <p>You should have received a copy of the GNU Lesser General Public
+      License along with this library; if not, write to the Free Software
+      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
+      USA.</p>
+  </tp:license>
+
+  <interface name="org.freedesktop.Telepathy.Gabble.Plugin.Gateways">
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      <p>A sidecar interface to register with XEP-0100 gateways.</p>
+    </tp:docstring>
+
+    <method name="Register" tp:name-for-bindings="Register">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Register with a gateway, as per XEP-0100 §4.1. This method
+          does not allow for all the parameters that gateways can potentially
+          have, and indeed doesn't even allow the required or allowed
+          parameters to be discovered, but it should work in practice for
+          nearly all gateways to other IM protocols.</p>
+
+        <tp:rationale>
+          <p>Username and password are enough information to sign in to
+            many IM protocols, and this method has a high "return on
+            investment" in terms of being easy to implement and easy to
+            write UI for.</p>
+        </tp:rationale>
+      </tp:docstring>
+
+      <arg direction="in" type="s" name="Gateway">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>The gateway (XMPP component) with which to register, e.g.
+            "sip-transport.example.com".</p>
+        </tp:docstring>
+      </arg>
+
+      <arg direction="in" type="s" name="Username">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>The username with which to register, in whatever format is
+            required by the specified gateway; for instance, this might be
+            a number, the username part of a SIP URI, a complete SIP URI,
+            etc.</p>
+        </tp:docstring>
+      </arg>
+
+      <arg direction="in" type="s" name="Password">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>The password with which to register.</p>
+        </tp:docstring>
+      </arg>
+
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.PermissionDenied"/>
+      </tp:possible-errors>
+    </method>
+
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

@@ -103,6 +103,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       tp_presence_mixin_simple_presence_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       conn_presence_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_GABBLE_DECLOAK,
+      conn_decloak_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION,
       location_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY_INFO,
@@ -705,6 +707,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       GABBLE_IFACE_OLPC_GADGET,
       TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
       TP_IFACE_CONNECTION_INTERFACE_LOCATION,
+      GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
       NULL };
   static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
         { "GadgetAvailable", NULL, NULL },

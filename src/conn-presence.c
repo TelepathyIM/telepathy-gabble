@@ -23,12 +23,15 @@
 
 #include <string.h>
 
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
+
+#include "extensions/extensions.h"    /* for Decloak */
 
 #include "connection.h"
 #include "debug.h"
@@ -354,4 +357,28 @@ void
 conn_presence_iface_init (gpointer g_iface, gpointer iface_data)
 {
   tp_presence_mixin_iface_init (g_iface, iface_data);
+}
+
+static void
+conn_presence_send_directed_presence (
+    GabbleSvcConnectionInterfaceGabbleDecloak *conn,
+    guint contact,
+    gboolean full,
+    DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (conn);
+
+  (void) self;
+  tp_dbus_g_method_return_not_implemented (context);
+}
+
+void
+conn_decloak_iface_init (gpointer g_iface,
+    gpointer iface_data)
+{
+#define IMPLEMENT(x) \
+  gabble_svc_connection_interface_gabble_decloak_implement_##x (\
+  g_iface, conn_presence_##x)
+  IMPLEMENT (send_directed_presence);
+#undef IMPLEMENT
 }

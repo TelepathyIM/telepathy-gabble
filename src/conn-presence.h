@@ -34,6 +34,8 @@ void conn_presence_iface_init (gpointer g_iface, gpointer iface_data);
 void conn_presence_emit_presence_update (
     GabbleConnection *, const GArray *contact_handles);
 
+void conn_decloak_iface_init (gpointer g_iface, gpointer iface_data);
+
 G_END_DECLS
 
 #endif /* __CONN_PRESENCE_H__ */

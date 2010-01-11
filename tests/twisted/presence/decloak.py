@@ -42,6 +42,8 @@ def worker(q, bus, conn, stream, should_decloak):
     events = [
             EventPattern('dbus-signal', signal='PresencesChanged',
                 args=[{amy_handle: (cs.PRESENCE_AVAILABLE, 'available', '')}]),
+            EventPattern('dbus-signal', signal='DecloakRequested',
+                args=[amy_handle, 'media', should_decloak]),
             ]
     forbidden = []
 

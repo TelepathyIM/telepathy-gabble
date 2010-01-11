@@ -418,7 +418,7 @@ class Generator(object):
 
         stub_name = (self.prefix_ + self.node_name_lc + '_' +
                      class_member_name)
-        return (stub_name + '_impl', class_member_name)
+        return (stub_name + '_impl', class_member_name + '_cb')
 
     def do_method(self, method):
         assert self.node_name_mixed is not None
@@ -506,7 +506,7 @@ class Generator(object):
             self.b('    %s%s,' % (ctype, name))
         self.b('    DBusGMethodInvocation *context)')
         self.b('{')
-        self.b('  %s impl = (%s%s_GET_CLASS (self)->%s);'
+        self.b('  %s impl = (%s%s_GET_CLASS (self)->%s_cb);'
           % (impl_name, self.PREFIX_, self.node_name_uc, class_member_name))
         self.b('')
         self.b('  if (impl != NULL)')
@@ -550,7 +550,7 @@ class Generator(object):
                % (self.prefix_, self.node_name_lc, class_member_name,
                   self.Prefix, self.node_name_mixed, impl_name))
         self.b('{')
-        self.b('  klass->%s = impl;' % class_member_name)
+        self.b('  klass->%s_cb = impl;' % class_member_name)
         self.b('}')
         self.b('')
 

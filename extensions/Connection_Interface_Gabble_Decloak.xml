@@ -1,0 +1,112 @@
+<?xml version="1.0" ?>
+<node name="/Connection_Interface_Gabble_Decloak" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright>Copyright © 2010 Collabora Ltd.</tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+      modify it under the terms of the GNU Lesser General Public
+      License as published by the Free Software Foundation; either
+      version 2.1 of the License, or (at your option) any later version.</p>
+
+    <p>This library is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+      Lesser General Public License for more details.</p>
+
+    <p>You should have received a copy of the GNU Lesser General Public
+      License along with this library; if not, write to the Free Software
+      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
+      USA.</p>
+  </tp:license>
+
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.Gabble.Decloak"
+    tp:causes-havoc="experimental">
+    <tp:added version="Gabble 0.9.UNRELEASED">(Gabble-specific)</tp:added>
+    <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
+
+    <tp:docstring>
+      A simple D-Bus API for Gabble's 'decloak' proto-XEP. See that document
+      for details.
+    </tp:docstring>
+
+    <property name="DecloakAutomatically"
+      tp:name-for-bindings="Decloak_Automatically"
+      type="b" access="readwrite">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>If true, the connection manager will automatically disclose the
+          local user's capabilities (and hence the fact that they are online,
+          but no further presence information) on request from any remote XMPP
+          user.</p>
+
+        <tp:rationale>
+          <p>This is necessary to allow incoming calls from arbitrary
+            users.</p>
+        </tp:rationale>
+
+        <p>This property SHOULD also be available as a connection manager
+          parameter, with the DBus_Property flag. The default SHOULD be false
+          since this constitutes a deliberate presence leak.</p>
+      </tp:docstring>
+    </property>
+
+    <signal name="DecloakRequested" tp:name-for-bindings="Decloak_Requested">
+      <tp:docstring>
+        Emitted when a remote contact asks for the local user's capabilities
+        and basic presence to be disclosed.
+      </tp:docstring>
+
+      <arg name="Contact" type="u" tp:type="Contact_Handle">
+        <tp:docstring>
+          The contact asking for presence disclosure
+        </tp:docstring>
+      </arg>
+
+      <arg name="Reason" type="s">
+        <tp:docstring>
+          A code indicating the reason that decloaking is requested, or the
+          empty string if no reason code was given. As per the proto-XEP,
+          well-known values are 'media' (remote contact wants to call local
+          user), 'text' (remote contact wants to establish a text messaging
+          session, perhaps end-to-end encrypted), and 'file' (remote contact
+          wants to send the local user a file).
+        </tp:docstring>
+      </arg>
+
+      <arg name="Decloaked" type="b">
+        <tp:docstring>
+          If true, the connection manager automatically disclosed the local user's
+          capabilities and basic presence in response to the request, and this
+          signal is merely for information. If false, presence was not
+          automatically disclosed; a user interface MAY respond by calling
+          <tp:member-ref>SendDirectedPresence</tp:member-ref>.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <method name="SendDirectedPresence"
+      tp:name-for-bindings="Send_Directed_Presence">
+      <tp:docstring>
+        Send directed presence to a contact. This MAY be called at any time,
+        but will typically be used as a response to
+        <tp:member-ref>DecloakRequested</tp:member-ref>
+      </tp:docstring>
+
+      <arg direction="in" name="Contact" type="u" tp:type="Contact_Handle">
+        <tp:docstring>
+          The contact to send directed presence to.
+        </tp:docstring>
+      </arg>
+
+      <arg direction="in" name="Full" type="b">
+        <tp:docstring>
+          If true, full presence (status, message, avatar hash etc.) will be
+          directed to the specified contact. If false, only capabilities and
+          the fact that the user is online at all will be directed to the
+          specified contact (the local user will appear to that contact as
+          being in 'available' status).
+        </tp:docstring>
+      </arg>
+    </method>
+
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

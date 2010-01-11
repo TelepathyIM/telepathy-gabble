@@ -277,6 +277,11 @@ finally:
               break;
             }
         }
+      else
+        {
+          /* generic fallback */
+          gabble_set_tp_error_from_wocky (error, &tp_error);
+        }
 
       dbus_g_method_return_error (context, tp_error);
       g_error_free (error);

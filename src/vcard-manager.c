@@ -1109,6 +1109,13 @@ suspended_request_timeout_cb (gpointer data)
   return FALSE;
 }
 
+static gboolean
+is_item_not_found (const GError *error)
+{
+  return (error->domain == GABBLE_XMPP_ERROR &&
+      error->code == XMPP_ERROR_ITEM_NOT_FOUND);
+}
+
 /* Called when a GET request in the pipeline has either succeeded or failed. */
 static void
 pipeline_reply_cb (GabbleConnection *conn,
@@ -1134,7 +1141,11 @@ pipeline_reply_cb (GabbleConnection *conn,
 
   entry->pipeline_item = NULL;
 
-  if (error)
+  /* XEP-0054 says that the server MUST return <item-not-found/> if you have no
+   * vCard set, so we should treat that case identically to the server
+   * returning success but with no <vCard/> node.
+   */
+  if (error != NULL && !is_item_not_found (error))
     {
       /* First, handle the error "wait": suspend the request and replay it
        * later */

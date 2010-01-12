@@ -139,9 +139,7 @@ AM_CONDITIONAL(ENABLE_PLUGINS, test x$enable_plugins = xyes)
 AC_SUBST(ENABLE_PLUGINS)
 
 dnl Check for D-Bus
-# dbus-glib 0.78 fixed the bug #17329. It is needed for the contact
-# capabilities interface.
-PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.78])
+PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.82])
 
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)

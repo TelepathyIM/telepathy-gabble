@@ -1013,9 +1013,36 @@ find_matching_waiter (GSList *waiters,
   return NULL;
 }
 
+static gchar **
+extract_capability_namespaces (LmMessageNode *query_result)
+{
+  GPtrArray *uris = g_ptr_array_new ();
+  NodeIter i;
+
+  for (i = node_iter (query_result); i; i = node_iter_next (i))
+    {
+      LmMessageNode *child = node_iter_data (i);
+      const gchar *var;
+
+      if (0 != strcmp (child->name, "feature"))
+        continue;
+
+      var = lm_message_node_get_attribute (child, "var");
+
+      if (NULL == var)
+        continue;
+
+      g_ptr_array_add (uris, g_strdup (var));
+    }
+
+  g_ptr_array_add (uris, NULL);
+  return (gchar **) g_ptr_array_free (uris, FALSE);
+}
+
 static GHashTable *
-parse_contact_caps (TpBaseConnection *base_conn,
-    LmMessageNode *query_result)
+parse_contact_caps (
+    TpBaseConnection *base_conn,
+    gchar **uris)
 {
   GHashTable *per_channel_manager_caps = g_hash_table_new (NULL, NULL);
   TpChannelManagerIter iter;
@@ -1031,7 +1058,7 @@ parse_contact_caps (TpBaseConnection *base_conn,
       g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
       factory_caps = gabble_caps_channel_manager_parse_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result);
+          GABBLE_CAPS_CHANNEL_MANAGER (manager), uris);
 
       if (factory_caps != NULL)
         g_hash_table_insert (per_channel_manager_caps,
@@ -1120,6 +1147,7 @@ _caps_disco_cb (GabbleDisco *disco,
   TpBaseConnection *base_conn;
   gchar *resource;
   gboolean jid_is_valid;
+  gchar **uris = NULL;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -1165,7 +1193,8 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
   caps = capabilities_parse (query_result);
-  per_channel_manager_caps = parse_contact_caps (base_conn, query_result);
+  uris = extract_capability_namespaces (query_result);
+  per_channel_manager_caps = parse_contact_caps (base_conn, uris);
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
    * uses another hash algorithm, don't check the hash and fallback to the old
@@ -1260,6 +1289,8 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
 OUT:
+  g_strfreev (uris);
+
   if (handle)
     tp_handle_unref (contact_repo, handle);
 }

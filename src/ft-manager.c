@@ -705,24 +705,13 @@ gabble_ft_manager_get_feature_list (
 
 static gpointer
 gabble_ft_manager_parse_caps (GabbleCapsChannelManager *manager,
-                              LmMessageNode *query_result)
+                              gchar **uris)
 {
-  NodeIter i;
+  gchar **i;
 
-  for (i = node_iter (query_result); i; i = node_iter_next (i))
+  for (i = uris; *i; i++)
     {
-      LmMessageNode *child = node_iter_data (i);
-      const gchar *var;
-
-      if (0 != strcmp (child->name, "feature"))
-        continue;
-
-      var = lm_message_node_get_attribute (child, "var");
-
-      if (NULL == var)
-        continue;
-
-      if (!tp_strdiff (var, NS_FILE_TRANSFER))
+      if (!tp_strdiff (*i, NS_FILE_TRANSFER))
         return SOME_NON_NULL_POINTER;
     }
 

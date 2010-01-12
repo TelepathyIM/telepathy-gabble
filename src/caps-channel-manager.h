@@ -68,7 +68,7 @@ typedef void (*GabbleCapsChannelManagerGetFeatureListFunc) (
     GSList **features);
 
 typedef gpointer (*GabbleCapsChannelManagerParseCapsFunc) (
-    GabbleCapsChannelManager *manager, LmMessageNode *children);
+    GabbleCapsChannelManager *manager, gchar **uris);
 
 typedef void (*GabbleCapsChannelManagerFreeCapsFunc) (
     GabbleCapsChannelManager *manager, gpointer specific_caps);
@@ -95,7 +95,7 @@ void gabble_caps_channel_manager_get_feature_list (
     GSList **features);
 
 gpointer gabble_caps_channel_manager_parse_capabilities (
-    GabbleCapsChannelManager *manager, LmMessageNode *query_result);
+    GabbleCapsChannelManager *caps_manager, gchar **uris);
 
 void gabble_caps_channel_manager_free_capabilities (GabbleCapsChannelManager *manager,
     gpointer specific_caps);

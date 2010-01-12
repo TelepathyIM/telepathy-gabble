@@ -1834,6 +1834,12 @@ _gabble_connection_connect (TpBaseConnection *base,
       DEBUG ("letting SRV lookup decide server and port");
     }
 
+  if (!conn->priv->require_encryption && !conn->priv->ignore_ssl_errors)
+    {
+      DEBUG ("require-encryption is False; flipping ignore_ssl_errors to True");
+      conn->priv->ignore_ssl_errors = TRUE;
+    }
+
   g_object_set (priv->connector,
       "ignore-ssl-errors", priv->ignore_ssl_errors,
       "old-ssl", priv->old_ssl,

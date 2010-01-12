@@ -88,6 +88,15 @@ gabble_caps_cache_dup_shared (void)
   return shared_cache;
 }
 
+void
+gabble_caps_cache_free_shared (void)
+{
+  if (shared_cache != NULL)
+    {
+      g_object_unref (shared_cache);
+    }
+}
+
 gchar **
 gabble_caps_cache_lookup (GabbleCapsCache *self, const gchar *node)
 {

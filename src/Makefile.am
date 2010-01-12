@@ -31,6 +31,8 @@ libgabble_convenience_la_SOURCES = \
     call-content-codecoffer.c \
     call-channel.h \
     call-channel.c \
+    base-call-channel.h \
+    base-call-channel.c \
     call-stream.h \
     call-stream.c \
     call-stream-endpoint.h \

@@ -417,8 +417,8 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
 
   /* Close will cause the channel to be removed from the list indirectly..*/
   while (priv->call_channels != NULL)
-    gabble_call_channel_close (
-        GABBLE_CALL_CHANNEL (priv->call_channels->data));
+    gabble_base_call_channel_close (
+        GABBLE_BASE_CALL_CHANNEL (priv->call_channels->data));
 
   if (priv->status_changed_id != 0)
     {

@@ -62,6 +62,9 @@ gabble_caps_cache_new (void);
 GabbleCapsCache *
 gabble_caps_cache_dup_shared (void);
 
+void
+gabble_caps_cache_free_shared (void);
+
 G_END_DECLS
 
 #endif /* defined __GABBLE_CAPS_CACHE_H */

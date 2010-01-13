@@ -8,7 +8,10 @@ from twisted.words.xish import domish, xpath
 from servicetest import (
     sync_dbus, call_async, EventPattern, assertEquals, assertContains,
     )
-from gabbletest import exec_test, send_error_reply, acknowledge_iq, sync_stream
+from gabbletest import (
+    exec_test, send_error_reply, acknowledge_iq, sync_stream,
+    make_presence,
+    )
 import constants as cs
 import ns
 from config import PLUGINS_ENABLED
@@ -27,7 +30,12 @@ def test_success(q, gateways_iface, stream):
     assertEquals('1970', xpath.queryForString('/query/username', e.query))
     assertEquals('s3kr1t', xpath.queryForString('/query/password', e.query))
     acknowledge_iq(stream, e.stanza)
-    q.expect('dbus-return', method='Register')
+    q.expect_many(
+            EventPattern('dbus-return', method='Register'),
+            EventPattern('stream-presence', presence_type='subscribe',
+                to='talkd.example.com'),
+            )
+    stream.send(make_presence('talkd.example.com', type='subscribed'))
 
 def test_conflict(q, gateways_iface, stream):
     call_async(q, gateways_iface, 'Register',

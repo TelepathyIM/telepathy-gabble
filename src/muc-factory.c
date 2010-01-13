@@ -1210,13 +1210,6 @@ handle_text_channel_request (GabbleMucFactory *self,
   invite_msg = tp_asv_get_string (request_properties,
       GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage");
 
-  if (initial_handles != NULL && initial_ids != NULL)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "InitialInviteeHandles and InitialInviteeIDs must not both be given");
-      return FALSE;
-    }
-
   handles = tp_handle_set_new (contact_handles);
   continue_handles = tp_intset_new ();
   final_channels = g_hash_table_new (g_str_hash, g_str_equal);

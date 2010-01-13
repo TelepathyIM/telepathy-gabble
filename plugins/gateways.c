@@ -255,12 +255,37 @@ static void sidecar_iface_init (
   iface->get_immutable_properties = NULL;
 }
 
+typedef struct
+{
+  DBusGMethodInvocation *context;
+  gchar *gateway;
+} PendingRegistration;
+
+static PendingRegistration *
+pending_registration_new (DBusGMethodInvocation *context,
+    const gchar *gateway)
+{
+  PendingRegistration *pr = g_slice_new (PendingRegistration);
+
+  pr->context = context;
+  pr->gateway = g_strdup (gateway);
+  return pr;
+}
+
+static void
+pending_registration_free (PendingRegistration *pr)
+{
+  g_assert (pr->context == NULL);
+  g_free (pr->gateway);
+  g_slice_free (PendingRegistration, pr);
+}
+
 static void
 register_cb (GObject *porter,
     GAsyncResult *result,
     gpointer user_data)
 {
-  DBusGMethodInvocation *context = user_data;
+  PendingRegistration *pr = user_data;
   WockyXmppStanza *reply;
   GError *error = NULL;
 
@@ -298,9 +323,10 @@ register_cb (GObject *porter,
           gabble_set_tp_error_from_wocky (error, &tp_error);
         }
 
-      DEBUG ("Failed to register: %s", tp_error->message);
-      dbus_g_method_return_error (context, tp_error);
-
+      DEBUG ("Failed to register with '%s': %s", pr->gateway,
+          tp_error->message);
+      dbus_g_method_return_error (pr->context, tp_error);
+      pr->context = NULL;
       g_error_free (error);
       g_error_free (tp_error);
     }
@@ -311,6 +337,8 @@ register_cb (GObject *porter,
 
   if (reply != NULL)
     g_object_unref (reply);
+
+  pending_registration_free (pr);
 }
 
 static void
@@ -359,7 +387,8 @@ gateways_register (
         WOCKY_NODE_END,
       WOCKY_STANZA_END);
 
-  wocky_porter_send_iq_async (porter, stanza, NULL, register_cb, context);
+  wocky_porter_send_iq_async (porter, stanza, NULL, register_cb,
+      pending_registration_new (context, gateway));
 
   g_object_unref (stanza);
 }

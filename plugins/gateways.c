@@ -21,12 +21,15 @@
 
 #include "config.h"
 
+#include <string.h>
+
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/util.h>
 #include <telepathy-glib/errors.h>
 
 #include <wocky/wocky-namespaces.h>
 #include <wocky/wocky-xmpp-error.h>
+#include <wocky/wocky-utils.h>
 
 #include "extensions/extensions.h"
 
@@ -352,6 +355,29 @@ gateways_register (
   GabbleGatewaySidecar *self = GABBLE_GATEWAY_SIDECAR (sidecar);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);
   WockyXmppStanza *stanza;
+  gchar *normalized_gateway;
+  GError *error = NULL;
+
+  if (strchr (gateway, '@') != NULL)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Gateway names cannot contain '@': %s", gateway);
+      goto error;
+    }
+
+  if (strchr (gateway, '/') != NULL)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Gateway names cannot contain '/': %s", gateway);
+      goto error;
+    }
+
+  if (!wocky_decode_jid (gateway, NULL, &normalized_gateway, NULL))
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Invalid gateway name: %s", gateway);
+      goto error;
+    }
 
   DEBUG ("Trying to register on '%s' as '%s'", gateway, username);
 
@@ -376,7 +402,7 @@ gateways_register (
 
   stanza = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_SET,
-      NULL, gateway,
+      NULL, normalized_gateway,
         WOCKY_NODE, "query", WOCKY_NODE_XMLNS, WOCKY_XEP77_NS_REGISTER,
           WOCKY_NODE, "username",
             WOCKY_NODE_TEXT, username,
@@ -388,9 +414,16 @@ gateways_register (
       WOCKY_STANZA_END);
 
   wocky_porter_send_iq_async (porter, stanza, NULL, register_cb,
-      pending_registration_new (context, gateway));
+      pending_registration_new (context, normalized_gateway));
 
   g_object_unref (stanza);
+  g_free (normalized_gateway);
+  return;
+
+error:
+  DEBUG ("%s", error->message);
+  dbus_g_method_return_error (context, error);
+  g_error_free (error);
 }
 
 static void

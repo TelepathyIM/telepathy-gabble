@@ -33,6 +33,8 @@
 #define QUIRK_PREFIX "\x07"
 /* Gabble 0.7.x with 16 <= x < 29 omits @creator on <content/> */
 #define QUIRK_OMITS_CONTENT_CREATORS "\x07omits-content-creators"
+/* The Google Webmail client doesn't support some features */
+#define QUIRK_GOOGLE_WEBMAIL_CLIENT "\x07google-webmail-client"
 
 /**
  * GabbleCapabilitySet:

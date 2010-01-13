@@ -850,6 +850,35 @@ _parse_cap_bundles (
   return uris;
 }
 
+static void
+_parse_node (GabblePresence *presence,
+    LmMessageNode *lm_node,
+    const gchar *resource,
+    guint serial)
+{
+  LmMessageNode *cap_node;
+  const gchar *node;
+
+  cap_node = lm_message_node_get_child_with_namespace (lm_node, "c", NS_CAPS);
+
+  if (NULL == cap_node)
+    return;
+
+  node = lm_message_node_get_attribute (cap_node, "node");
+
+  if (!tp_strdiff (node, "http://mail.google.com/xmpp/client/caps"))
+    {
+      GabbleCapabilitySet *cap_set = gabble_capability_set_new ();
+
+      DEBUG ("Client is Google Web Client");
+
+      gabble_capability_set_add (cap_set, QUIRK_GOOGLE_WEBMAIL_CLIENT);
+      gabble_presence_set_capabilities (presence, resource, cap_set, serial);
+      gabble_capability_set_free (cap_set);
+    }
+}
+
+
 static void _caps_disco_cb (GabbleDisco *disco,
     GabbleDiscoRequest *request,
     const gchar *jid,
@@ -1286,6 +1315,8 @@ _process_caps (GabblePresenceCache *cache,
   if (presence)
     {
       old_cap_set = gabble_presence_dup_caps (presence);
+
+      _parse_node (presence, lm_node, resource, serial);
     }
 
   for (i = uris; NULL != i; i = i->next)

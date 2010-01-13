@@ -152,6 +152,9 @@ struct _GabbleGatewaySidecarPrivate
 {
   WockySession *session;
   TpBaseConnection *connection;
+  guint subscribe_id;
+  guint subscribed_id;
+  GHashTable *gateways;
 };
 
 static void sidecar_iface_init (
@@ -174,6 +177,8 @@ gabble_gateway_sidecar_init (GabbleGatewaySidecar *self)
 {
   self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GABBLE_TYPE_GATEWAY_SIDECAR,
       GabbleGatewaySidecarPrivate);
+  self->priv->gateways = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, NULL);
 }
 
 static void
@@ -217,12 +222,107 @@ gabble_gateway_sidecar_dispose (GObject *object)
 
   if (self->priv->session != NULL)
     {
+      WockyPorter *porter = wocky_session_get_porter (self->priv->session);
+
+      wocky_porter_unregister_handler (porter, self->priv->subscribe_id);
+      wocky_porter_unregister_handler (porter, self->priv->subscribed_id);
       g_object_unref (self->priv->session);
       self->priv->session = NULL;
     }
 
   if (chain_up != NULL)
     chain_up (object);
+}
+
+static gboolean
+presence_cb (WockyPorter *porter,
+    WockyXmppStanza *stanza,
+    gpointer user_data)
+{
+  GabbleGatewaySidecar *self = GABBLE_GATEWAY_SIDECAR (user_data);
+  const gchar *from;
+  gchar *normalized = NULL;
+  gboolean ret = FALSE;
+  WockyStanzaSubType subtype;
+
+  wocky_xmpp_stanza_get_type_info (stanza, NULL, &subtype);
+
+  switch (subtype)
+    {
+    case WOCKY_STANZA_SUB_TYPE_SUBSCRIBED:
+      /* Someone has allowed us to subscribe to them */
+      break;
+
+    case WOCKY_STANZA_SUB_TYPE_SUBSCRIBE:
+      /* Someone wants to subscribe to us */
+      break;
+
+    default:
+      g_return_val_if_reached (FALSE);
+    }
+
+  from = wocky_xmpp_node_get_attribute (stanza->node, "from");
+
+  if (from == NULL || strchr (from, '@') != NULL || strchr (from, '/') != NULL)
+    goto finally;
+
+  normalized = wocky_normalise_jid (from);
+
+  if (g_hash_table_lookup (self->priv->gateways, normalized) == NULL)
+    goto finally;
+
+  if (subtype == WOCKY_STANZA_SUB_TYPE_SUBSCRIBE)
+    {
+      WockyXmppStanza *reply;
+
+      /* It's a gateway we've registered with during this session, and they
+       * want to subscribe to us. OK, let them. */
+      DEBUG ("Allowing gateway '%s' to subscribe to us", normalized);
+      reply = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_PRESENCE,
+          WOCKY_STANZA_SUB_TYPE_SUBSCRIBED, NULL, normalized,
+          WOCKY_STANZA_END);
+      wocky_porter_send (porter, reply);
+      g_object_unref (reply);
+    }
+  else
+    {
+      /* It's a gateway we've registered with during this session, letting us
+       * know that yes, we may subscribe to them. Good. */
+      DEBUG ("Gateway '%s' allowed us to subscribe to it", normalized);
+      /* Eventually, we'll return success from the D-Bus method call here. */
+    }
+
+  ret = TRUE;
+
+finally:
+  g_free (normalized);
+  return ret;
+}
+
+static void
+gabble_gateway_sidecar_constructed (GObject *object)
+{
+  void (*chain_up) (GObject *) =
+    G_OBJECT_CLASS (gabble_gateway_sidecar_parent_class)->constructed;
+  GabbleGatewaySidecar *self = GABBLE_GATEWAY_SIDECAR (object);
+  WockyPorter *porter;
+
+  if (chain_up != NULL)
+    chain_up (object);
+
+  g_assert (self->priv->session != NULL);
+  g_assert (self->priv->connection != NULL);
+
+  porter = wocky_session_get_porter (self->priv->session);
+
+  self->priv->subscribe_id = wocky_porter_register_handler (porter,
+      WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_SUBSCRIBE, NULL,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX, presence_cb, self,
+      WOCKY_STANZA_END);
+  self->priv->subscribed_id = wocky_porter_register_handler (porter,
+      WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_SUBSCRIBED, NULL,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX, presence_cb, self,
+      WOCKY_STANZA_END);
 }
 
 static void
@@ -232,6 +332,7 @@ gabble_gateway_sidecar_class_init (GabbleGatewaySidecarClass *klass)
 
   object_class->set_property = gabble_gateway_sidecar_set_property;
   object_class->dispose = gabble_gateway_sidecar_dispose;
+  object_class->constructed = gabble_gateway_sidecar_constructed;
 
   g_type_class_add_private (klass, sizeof (GabbleGatewaySidecarPrivate));
 
@@ -283,16 +384,19 @@ pending_registration_free (PendingRegistration *pr)
   g_slice_free (PendingRegistration, pr);
 }
 
+#define NON_NULL (((int *) NULL) + 1)
+
 static void
-register_cb (GObject *porter,
+register_cb (GObject *source,
     GAsyncResult *result,
     gpointer user_data)
 {
+  WockyPorter *porter = WOCKY_PORTER (source);
   PendingRegistration *pr = user_data;
   WockyXmppStanza *reply;
   GError *error = NULL;
 
-  reply = wocky_porter_send_iq_finish (WOCKY_PORTER (porter), result, &error);
+  reply = wocky_porter_send_iq_finish (porter, result, &error);
 
   if (reply == NULL ||
       wocky_xmpp_stanza_extract_errors (reply, NULL, &error, NULL, NULL))
@@ -335,7 +439,20 @@ register_cb (GObject *porter,
     }
   else
     {
-      gabble_svc_gabble_plugin_gateways_return_from_register (context);
+      WockyXmppStanza *request;
+
+      DEBUG ("Registered with '%s', exchanging presence...", pr->gateway);
+
+      /* attempt to subscribe to the gateway's presence (FIXME: is this
+       * harmless if we're already subscribed to it?) */
+      request = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_PRESENCE,
+          WOCKY_STANZA_SUB_TYPE_SUBSCRIBE, NULL, pr->gateway,
+          WOCKY_STANZA_END);
+      wocky_porter_send (porter, request);
+      g_object_unref (request);
+
+      gabble_svc_gabble_plugin_gateways_return_from_register (pr->context);
+      pr->context = NULL;
     }
 
   if (reply != NULL)
@@ -381,6 +498,9 @@ gateways_register (
 
   DEBUG ("Trying to register on '%s' as '%s'", gateway, username);
 
+  /* steals ownership of normalized_gateway */
+  g_hash_table_replace (self->priv->gateways, normalized_gateway, NON_NULL);
+
   /* This is a *really* minimal implementation. We're meant to ask the gateway
    * what parameters it supports (a XEP-0077 pseudo-form or a XEP-0004 data
    * form), then fill in the blanks to actually make a request.
@@ -417,7 +537,6 @@ gateways_register (
       pending_registration_new (context, normalized_gateway));
 
   g_object_unref (stanza);
-  g_free (normalized_gateway);
   return;
 
 error:

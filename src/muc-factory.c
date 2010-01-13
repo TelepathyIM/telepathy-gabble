@@ -1310,19 +1310,38 @@ handle_text_channel_request (GabbleMucFactory *self,
       final_ids[i] = (char *) id;
     }
 
-  /* FIXME: do we require google server PMUC jid?
-   * There's no super obvious way to tell.. you can't invite GMail users to
-   * a non-Google MUC (it just doesn't work), and if your own account is on a
-   * Google server, you may as well use a Google PMUC. If one of your initial
-   * contacts is using GMail, you should also use a Google PMUC */
   if (room == 0)
     {
-      char *uuid, *id;
+      char *uuid, *id, *server = "";
+
+      /* There's no super obvious way to tell.. you can't invite GMail users to
+       * a non-Google MUC (it just doesn't work), and if your own account is on
+       * a Google server, you may as well use a Google PMUC. If one of your
+       * initial contacts is using GMail, you should also use a Google PMUC */
+      for (i = 0; i < final_handles->len; i++)
+        {
+          TpHandle handle = g_array_index (final_handles, TpHandle, i);
+          GabblePresence *presence;
+
+          presence = gabble_presence_cache_get (priv->conn->presence_cache,
+              handle);
+
+          if (presence != NULL &&
+              gabble_presence_has_cap (presence, QUIRK_GOOGLE_WEBMAIL_CLIENT))
+            {
+              DEBUG ("Initial invitee includes Google Webmail client");
+
+              server = "@groupchat.google.com";
+              break;
+            }
+        }
 
       /* N.B. gabble_generate_id() requires libuuid to generate valid UUIDs
        * for Google PMUCs */
       uuid = gabble_generate_id ();
-      id = g_strdup_printf ("private-chat-%s@groupchat.google.com", uuid);
+      id = g_strdup_printf ("private-chat-%s%s", uuid, server);
+
+      DEBUG ("Creating PMUC '%s'", id);
 
       room = tp_handle_ensure (room_handles, id, NULL, error);
 

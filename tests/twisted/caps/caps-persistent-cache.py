@@ -17,7 +17,13 @@ features = [
     ns.JINGLE_015_AUDIO,
     ns.JINGLE_015_VIDEO,
     ns.GOOGLE_P2P,
+    ns.TUBES + '/dbus#com.example.Xiangqi',
     ]
+xiangqi_tube_cap = (
+    {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
+      cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+      cs.DBUS_TUBE_SERVICE_NAME: u'com.example.Xiangqi'},
+    [cs.TARGET_HANDLE, cs.TARGET_ID])
 
 def connect(q, conn):
     conn.Connect()
@@ -43,6 +49,9 @@ def capabilities_changed(q, contact_handle):
         0, 3, 0, cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)
     e = q.expect('dbus-signal', signal='CapabilitiesChanged')
     assertContains(streamed_media_caps, e.args[0])
+    e = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
+    assertContains(contact_handle, e.args[0])
+    assertContains(xiangqi_tube_cap, e.args[0][contact_handle])
 
 def test1(q, bus, conn, stream):
     connect(q, conn)

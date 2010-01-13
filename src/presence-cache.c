@@ -1316,6 +1316,7 @@ _process_caps_uri (GabblePresenceCache *cache,
   CapabilityInfo *info;
   gboolean caps_in_cache = FALSE;
   GabblePresenceCapabilities cached_caps = 0;
+  GHashTable *cached_pcm_caps = NULL;
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
   GabbleCapsCache *caps_cache;
@@ -1339,6 +1340,8 @@ _process_caps_uri (GabblePresenceCache *cache,
           cached_caps |= capabilities_from_ns (*i);
         }
 
+      cached_pcm_caps =
+          parse_contact_caps ((TpBaseConnection *) priv->conn, uris);
       g_strfreev (uris);
     }
 
@@ -1352,14 +1355,16 @@ _process_caps_uri (GabblePresenceCache *cache,
       GabblePresence *presence = gabble_presence_cache_get (cache, handle);
       GabblePresenceCapabilities caps =
           caps_in_cache ? cached_caps : info->caps;
+      GHashTable *per_channel_manager_caps =
+          caps_in_cache ? cached_pcm_caps : info->per_channel_manager_caps;
 
       DEBUG ("enough trust for URI %s, setting caps for %u (%s) to %u",
           uri, handle, from, caps);
 
       if (presence)
         {
-          gabble_presence_set_capabilities (presence, resource,
-              caps, info->per_channel_manager_caps, serial);
+          gabble_presence_set_capabilities (
+              presence, resource, caps, per_channel_manager_caps, serial);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
         }
       else

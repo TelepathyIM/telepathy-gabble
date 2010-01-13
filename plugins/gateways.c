@@ -185,6 +185,8 @@ gabble_gateway_sidecar_set_property (
 static void
 gabble_gateway_sidecar_dispose (GObject *object)
 {
+  void (*chain_up) (GObject *) =
+    G_OBJECT_CLASS (gabble_gateway_sidecar_parent_class)->dispose;
   GabbleGatewaySidecar *self = GABBLE_GATEWAY_SIDECAR (object);
 
   if (self->priv->connection != NULL)
@@ -198,6 +200,9 @@ gabble_gateway_sidecar_dispose (GObject *object)
       g_object_unref (self->priv->session);
       self->priv->session = NULL;
     }
+
+  if (chain_up != NULL)
+    chain_up (object);
 }
 
 static void

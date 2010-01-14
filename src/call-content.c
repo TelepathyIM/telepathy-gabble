@@ -534,6 +534,35 @@ gabble_call_content_get_object_path (GabbleCallContent *content)
   return content->priv->object_path;
 }
 
+static void
+call_content_accept_stream (gpointer data, gpointer user_data)
+{
+  GabbleCallStream *stream = GABBLE_CALL_STREAM (data);
+  GHashTable *senders;
+  gpointer state_p;
+  gboolean exists;
+
+  g_object_get (G_OBJECT (stream), "senders", &senders, NULL);
+  exists = g_hash_table_lookup_extended (senders, user_data, NULL, &state_p);
+
+  if (!exists || GPOINTER_TO_UINT (state_p) ==
+      GABBLE_SENDING_STATE_PENDING_SEND)
+    gabble_call_stream_set_sending (stream, TRUE);
+}
+
+void
+gabble_call_content_accept (GabbleCallContent *content)
+{
+  GabbleCallContentPrivate *priv = content->priv;
+  guint self_handle = TP_BASE_CONNECTION (priv->conn)->self_handle;
+
+  if (priv->disposition == GABBLE_CALL_CONTENT_DISPOSITION_INITIAL)
+    {
+      g_list_foreach (priv->streams, call_content_accept_stream,
+          GUINT_TO_POINTER (self_handle));
+    }
+}
+
 static GPtrArray *
 call_content_codec_list_to_array (GList *codecs)
 {

@@ -58,6 +58,8 @@ struct _GabbleCallContentCodecofferPrivate
   gchar *object_path;
   GHashTable *codec_map;
   GSimpleAsyncResult *result;
+  GCancellable *cancellable;
+  guint handler_id;
 };
 
 #define GABBLE_CALL_CONTENT_CODECOFFER_GET_PRIVATE(o) \
@@ -192,6 +194,23 @@ gabble_call_content_codecoffer_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  if (priv->result != NULL)
+    {
+      if (priv->cancellable != NULL)
+        {
+          g_cancellable_disconnect (priv->cancellable, priv->handler_id);
+          g_object_unref (priv->cancellable);
+          priv->cancellable = NULL;
+          priv->handler_id = 0;
+        }
+
+      g_simple_async_result_set_error (priv->result,
+          G_IO_ERROR, G_IO_ERROR_CANCELLED, "Codec offer disposed");
+      g_simple_async_result_complete_in_idle (priv->result);
+      g_object_unref (priv->result);
+      priv->result = NULL;
+    }
+
   if (priv->codec_map != NULL)
     {
       /* dbus-glib :( */
@@ -227,6 +246,13 @@ gabble_call_content_codec_offer_accept (GabbleSvcCallContentCodecOffer *iface,
   GabbleCallContentCodecofferPrivate *priv = self->priv;
   DBusGConnection *bus = tp_get_bus ();
 
+  if (priv->cancellable != NULL)
+    {
+      g_cancellable_disconnect (priv->cancellable, priv->handler_id);
+      g_object_unref (priv->cancellable);
+      priv->cancellable = NULL;
+      priv->handler_id = 0;
+    }
 
   g_simple_async_result_set_op_res_gpointer (priv->result,
     (gpointer) codecs, NULL);
@@ -261,6 +287,21 @@ gabble_call_content_codecoffer_new (const gchar *object_path,
     NULL);
 }
 
+static void
+cancelled_cb (GCancellable *cancellable, gpointer user_data)
+{
+  GabbleCallContentCodecoffer *offer = user_data;
+  GabbleCallContentCodecofferPrivate *priv = offer->priv;
+
+  g_simple_async_result_set_error (priv->result,
+      G_IO_ERROR, G_IO_ERROR_CANCELLED, "Offer cancelled");
+  g_simple_async_result_complete_in_idle (priv->result);
+  g_object_unref (priv->result);
+  priv->result = NULL;
+  priv->cancellable = NULL;
+  priv->handler_id = 0;
+}
+
 void
 gabble_call_content_codecoffer_offer (GabbleCallContentCodecoffer *offer,
   GCancellable *cancellable,
@@ -282,6 +323,13 @@ gabble_call_content_codecoffer_offer (GabbleCallContentCodecoffer *offer,
   DEBUG ("Registering %s", priv->object_path);
   dbus_g_connection_register_g_object (bus, priv->object_path,
     G_OBJECT (offer));
+
+  if (cancellable != NULL)
+    {
+      priv->cancellable = cancellable;
+      priv->handler_id = g_cancellable_connect (
+          cancellable, G_CALLBACK (cancelled_cb), offer, NULL);
+    }
 
   return;
 

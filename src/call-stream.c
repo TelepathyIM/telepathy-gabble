@@ -408,7 +408,9 @@ call_stream_update_sender_states (GabbleCallStream *self)
 
   if (gabble_jingle_content_sending (priv->content))
     {
-      if (state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
+      if (state == JINGLE_CONTENT_STATE_EMPTY && created_by_us)
+        local_state = GABBLE_SENDING_STATE_SENDING;
+      else if (created_by_us || state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
         {
           gpointer state_p;
           gboolean exists;

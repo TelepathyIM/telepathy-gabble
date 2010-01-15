@@ -90,6 +90,7 @@ struct _GabbleCallContentPrivate
   GabbleJingleContent *content;
 
   GabbleCallContentCodecoffer *offer;
+  GCancellable *offer_cancellable;
   gint offers;
 
   GabbleCallContentDisposition disposition;
@@ -629,8 +630,13 @@ codec_offer_finished_cb (GObject *source,
   g_array_free (empty, TRUE);
 
 out:
-  g_object_unref (priv->offer);
-  priv->offer = NULL;
+  if (priv->offer == GABBLE_CALL_CONTENT_CODECOFFER (source))
+    {
+      priv->offer = NULL;
+      priv->offer_cancellable = NULL;
+    }
+
+  g_object_unref (source);
 }
 
 static void
@@ -651,13 +657,15 @@ call_content_new_offer (GabbleCallContent *self)
   arr = call_content_codec_list_to_array (codecs);
   g_hash_table_insert (map, GUINT_TO_POINTER (priv->target), arr);
 
-  /* FIXME: Support switching offers */
-  g_assert (priv->offer == NULL);
+  if (priv->offer != NULL)
+    g_cancellable_cancel (priv->offer_cancellable);
+
   path = g_strdup_printf ("%s/Offer%d",
     priv->object_path, priv->offers++);
 
   priv->offer = gabble_call_content_codecoffer_new (path, map);
-  gabble_call_content_codecoffer_offer (priv->offer, NULL,
+  priv->offer_cancellable = g_cancellable_new ();
+  gabble_call_content_codecoffer_offer (priv->offer, priv->offer_cancellable,
     codec_offer_finished_cb, self);
 
   gabble_svc_call_content_interface_media_emit_new_codec_offer (

@@ -2797,7 +2797,7 @@ gabble_connection_update_capabilities (
               cap_tokens, cap_set);
         }
 
-      if (gabble_capability_set_is_empty (cap_set))
+      if (gabble_capability_set_size (cap_set) == 0)
         {
           DEBUG ("client %s has no interesting capabilities", client_name);
           gabble_capability_set_free (cap_set);

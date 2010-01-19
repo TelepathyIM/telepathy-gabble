@@ -266,6 +266,33 @@ gabble_call_content_codec_offer_accept (GabbleSvcCallContentCodecOffer *iface,
 }
 
 static void
+gabble_call_content_codec_offer_reject (GabbleSvcCallContentCodecOffer *iface,
+    DBusGMethodInvocation *context)
+{
+  GabbleCallContentCodecoffer *self = GABBLE_CALL_CONTENT_CODECOFFER (iface);
+  GabbleCallContentCodecofferPrivate *priv = self->priv;
+  DBusGConnection *bus = tp_get_bus ();
+
+  if (priv->cancellable != NULL)
+    {
+      g_cancellable_disconnect (priv->cancellable, priv->handler_id);
+      g_object_unref (priv->cancellable);
+      priv->cancellable = NULL;
+      priv->handler_id = 0;
+    }
+
+  g_simple_async_result_set_error (priv->result,
+      G_IO_ERROR, G_IO_ERROR_FAILED, "Codec offer was rejected");
+  g_simple_async_result_complete (priv->result);
+  g_object_unref (priv->result);
+  priv->result = NULL;
+
+  gabble_svc_call_content_codec_offer_return_from_reject (context);
+
+  dbus_g_connection_unregister_g_object (bus, G_OBJECT (self));
+}
+
+static void
 call_content_codecoffer_iface_init (gpointer iface, gpointer data)
 {
   GabbleSvcCallContentCodecOfferClass *klass =
@@ -274,6 +301,7 @@ call_content_codecoffer_iface_init (gpointer iface, gpointer data)
 #define IMPLEMENT(x) gabble_svc_call_content_codec_offer_implement_##x (\
     klass, gabble_call_content_codec_offer_##x)
   IMPLEMENT(accept);
+  IMPLEMENT(reject);
 #undef IMPLEMENT
 }
 

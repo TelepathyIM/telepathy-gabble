@@ -872,16 +872,32 @@ gabble_call_channel_accept (GabbleSvcChannelTypeCall *iface,
           priv->state = GABBLE_CALL_STATE_PENDING_RECEIVER;
           emit_call_state_changed (self);
         }
+      else
+        {
+          goto err;
+        }
     }
   else if (priv->state < GABBLE_CALL_STATE_ACCEPTED)
     {
       priv->state = GABBLE_CALL_STATE_ACCEPTED;
       emit_call_state_changed (self);
     }
+  else
+    {
+      goto err;
+    }
 
   gabble_jingle_session_accept (self->priv->session);
 
   gabble_svc_channel_type_call_return_from_accept (context);
+  return;
+
+err:
+  {
+    GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "Invalid state for Accept" };
+    dbus_g_method_return_error (context, &e);
+  }
 }
 
 static void

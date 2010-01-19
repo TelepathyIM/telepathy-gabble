@@ -98,11 +98,10 @@ def test(jp, q, bus, conn, stream):
     codecs = jt2.get_call_audio_codecs_dbus()
     check_offer(bus, conn, content)
 
-    # Reject isn't implemented yet
-    #update_codecs(jt2)
-    #signal = q.expect('dbus-signal', signal='NewCodecOffer')
-    #check_offer(bus, conn, content)
-    #reject_offer(q, bus, conn, content, codecs)
+    update_codecs(jt2)
+    signal = q.expect('dbus-signal', signal='NewCodecOffer')
+    check_offer(bus, conn, content)
+    reject_offer(q, bus, conn, content, codecs)
 
     update_codecs(jt2)
     signal = q.expect('dbus-signal', signal='NewCodecOffer')

@@ -191,6 +191,10 @@ def run_test(jp, q, bus, conn, stream, incoming):
     if incoming:
         # Act as if we're ringing
         chan.Ringing (dbus_interface=cs.CHANNEL_TYPE_CALL)
+        signal = q.expect('dbus-signal', signal='CallStateChanged')
+        assertEquals(cs.CALL_STATE_RINGING,
+            signal.args[1] & cs.CALL_STATE_RINGING)
+
         # We should have a codec offer
         check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
             content, codecs)
@@ -285,7 +289,12 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     if incoming:
         chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
-        q.expect('stream-iq', predicate=jp.action_predicate('session-accept'))
+        ret = q.expect_many (
+            EventPattern('dbus-signal', signal='CallStateChanged'),
+            EventPattern('stream-iq',
+                predicate=jp.action_predicate('session-accept')),
+            )
+        assertEquals(0, ret[0].args[1] & cs.CALL_STATE_RINGING)
     else:
         if jp.is_modern_jingle():
             # The other person's client starts ringing, and tells us so!

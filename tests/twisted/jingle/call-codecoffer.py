@@ -110,5 +110,32 @@ def test(jp, q, bus, conn, stream):
     accept_offer(q, bus, conn, self_handle, remote_handle,
         content, codecs)
 
+    update_codecs(jt2)
+    signal = q.expect('dbus-signal', signal='NewCodecOffer')
+    check_offer(bus, conn, content)
+
+    [path, codecmap] = content.Get (cs.CALL_CONTENT_IFACE_MEDIA,
+                "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
+
+    chan.Close(dbus_interface=cs.CHANNEL)
+    signal = q.expect('dbus-signal', signal='ChannelClosed')
+
+    try:
+        offer = bus.get_object (conn.bus_name, path)
+        ret = offer.GetAll (cs.CALL_CONTENT_CODECOFFER,
+            dbus_interface=dbus.PROPERTIES_IFACE)
+    except Exception, e:
+        pass
+    else:
+        assert False, 'Offer still exists'
+
+    try:
+        ret = conn.GetAll (cs.CONN, dbus_interface=dbus.PROPERTIES_IFACE)
+    except Exception, e:
+        print 'Gabble probably crashed'
+        raise e
+    else:
+        assertLength (1, ret)
+
 if __name__ == '__main__':
     test_dialects(test, [JingleProtocol031])

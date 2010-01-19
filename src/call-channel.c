@@ -639,6 +639,9 @@ emit_call_state_changed (GabbleCallChannel *self)
 {
   GabbleCallChannelPrivate *priv = self->priv;
 
+  if (priv->state != GABBLE_CALL_STATE_PENDING_RECEIVER)
+    priv->flags &= ~GABBLE_CALL_FLAG_LOCALLY_RINGING;
+
   gabble_svc_channel_type_call_emit_call_state_changed (self, priv->state,
     priv->flags, priv->reason, priv->details);
 }
@@ -852,8 +855,32 @@ static void
 gabble_call_channel_ringing (GabbleSvcChannelTypeCall *iface,
     DBusGMethodInvocation *context)
 {
-  DEBUG ("Client is ringing");
-  gabble_svc_channel_type_call_return_from_ringing (context);
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (iface);
+  GabbleCallChannelPrivate *priv = self->priv;
+
+  if (priv->requested)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Call was requested. Ringing doesn't make sense." };
+      dbus_g_method_return_error (context, &e);
+    }
+  else if (priv->state != GABBLE_CALL_STATE_PENDING_RECEIVER)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Call is not in the right state for Ringing." };
+      dbus_g_method_return_error (context, &e);
+    }
+  else
+    {
+      if ((priv->flags & GABBLE_CALL_FLAG_LOCALLY_RINGING) == 0)
+        {
+          DEBUG ("Client is ringing");
+          priv->flags |= GABBLE_CALL_FLAG_LOCALLY_RINGING;
+          emit_call_state_changed (self);
+        }
+
+      gabble_svc_channel_type_call_return_from_ringing (context);
+    }
 }
 
 static void

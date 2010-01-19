@@ -835,8 +835,15 @@ gabble_media_factory_create_call (TpChannelManager *manager,
   initial_video = tp_asv_get_boolean (request_properties,
       GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL);
 
-  /* FIXME need to check if there is at least one of InitialAudio/InitialVideo
-   * FIXME creating the channel should check and wait for the capabilities
+  if (!initial_audio && !initial_video)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Call channel must contain at least "
+          "one InitialAudio or InitialVideo");
+      goto error;
+    }
+
+  /* FIXME creating the channel should check and wait for the capabilities
    * FIXME need to cope with disconnecting while channels are setting up
    */
 

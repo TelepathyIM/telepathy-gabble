@@ -806,7 +806,8 @@ error:
 static gboolean
 gabble_media_factory_create_call (TpChannelManager *manager,
     gpointer request_token,
-    GHashTable *request_properties)
+    GHashTable *request_properties,
+    RequestMethod method)
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
   TpHandle target;
@@ -829,6 +830,28 @@ gabble_media_factory_create_call (TpChannelManager *manager,
 
   target  = tp_asv_get_uint32 (request_properties,
       TP_IFACE_CHANNEL ".TargetHandle", NULL);
+
+  if (method == METHOD_ENSURE)
+    {
+      GList *l;
+      TpHandle peer = 0;
+
+      for (l = self->priv->call_channels; l != NULL; l = g_list_next (l))
+        {
+          GabbleCallChannel *channel = GABBLE_CALL_CHANNEL (l->data);
+          g_object_get (channel, "peer", &peer, NULL);
+
+          if (peer == target)
+            {
+              /* Per the spec, we ignore InitialAudio and InitialVideo when
+               * looking for an existing channel.
+               */
+              tp_channel_manager_emit_request_already_satisfied (self,
+                  request_token, TP_EXPORTABLE_CHANNEL (channel));
+              return TRUE;
+            }
+        }
+    }
 
   initial_audio = tp_asv_get_boolean (request_properties,
       GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL);
@@ -871,7 +894,7 @@ gabble_media_factory_create_channel (TpChannelManager *manager,
           TP_IFACE_CHANNEL ".ChannelType"),
         GABBLE_IFACE_CHANNEL_TYPE_CALL))
     return gabble_media_factory_create_call (manager, request_token,
-      request_properties);
+      request_properties, METHOD_CREATE);
   else
     return gabble_media_factory_requestotron (manager, request_token,
       request_properties, METHOD_CREATE);
@@ -883,8 +906,14 @@ gabble_media_factory_ensure_channel (TpChannelManager *manager,
                                      gpointer request_token,
                                      GHashTable *request_properties)
 {
-  return gabble_media_factory_requestotron (manager, request_token,
-      request_properties, METHOD_ENSURE);
+  if (!tp_strdiff (tp_asv_get_string (request_properties,
+          TP_IFACE_CHANNEL ".ChannelType"),
+        GABBLE_IFACE_CHANNEL_TYPE_CALL))
+    return gabble_media_factory_create_call (manager, request_token,
+        request_properties, METHOD_ENSURE);
+  else
+    return gabble_media_factory_requestotron (manager, request_token,
+        request_properties, METHOD_ENSURE);
 }
 
 

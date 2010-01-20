@@ -194,23 +194,6 @@ gabble_call_content_codecoffer_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->result != NULL)
-    {
-      if (priv->cancellable != NULL)
-        {
-          g_cancellable_disconnect (priv->cancellable, priv->handler_id);
-          g_object_unref (priv->cancellable);
-          priv->cancellable = NULL;
-          priv->handler_id = 0;
-        }
-
-      g_simple_async_result_set_error (priv->result,
-          G_IO_ERROR, G_IO_ERROR_CANCELLED, "Codec offer disposed");
-      g_simple_async_result_complete_in_idle (priv->result);
-      g_object_unref (priv->result);
-      priv->result = NULL;
-    }
-
   if (priv->codec_map != NULL)
     {
       /* dbus-glib :( */

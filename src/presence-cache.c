@@ -40,6 +40,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include "capabilities.h"
+#include "caps-cache.h"
 #include "caps-channel-manager.h"
 #include "caps-hash.h"
 #include "debug.h"
@@ -1013,9 +1014,36 @@ find_matching_waiter (GSList *waiters,
   return NULL;
 }
 
+static gchar **
+extract_capability_namespaces (LmMessageNode *query_result)
+{
+  GPtrArray *uris = g_ptr_array_new ();
+  NodeIter i;
+
+  for (i = node_iter (query_result); i; i = node_iter_next (i))
+    {
+      LmMessageNode *child = node_iter_data (i);
+      const gchar *var;
+
+      if (0 != strcmp (child->name, "feature"))
+        continue;
+
+      var = lm_message_node_get_attribute (child, "var");
+
+      if (NULL == var)
+        continue;
+
+      g_ptr_array_add (uris, g_strdup (var));
+    }
+
+  g_ptr_array_add (uris, NULL);
+  return (gchar **) g_ptr_array_free (uris, FALSE);
+}
+
 static GHashTable *
-parse_contact_caps (TpBaseConnection *base_conn,
-    LmMessageNode *query_result)
+parse_contact_caps (
+    TpBaseConnection *base_conn,
+    gchar **uris)
 {
   GHashTable *per_channel_manager_caps = g_hash_table_new (NULL, NULL);
   TpChannelManagerIter iter;
@@ -1031,7 +1059,7 @@ parse_contact_caps (TpBaseConnection *base_conn,
       g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
 
       factory_caps = gabble_caps_channel_manager_parse_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (manager), query_result);
+          GABBLE_CAPS_CHANNEL_MANAGER (manager), uris);
 
       if (factory_caps != NULL)
         g_hash_table_insert (per_channel_manager_caps,
@@ -1120,6 +1148,7 @@ _caps_disco_cb (GabbleDisco *disco,
   TpBaseConnection *base_conn;
   gchar *resource;
   gboolean jid_is_valid;
+  gchar **uris = NULL;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -1165,7 +1194,8 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
   caps = capabilities_parse (query_result);
-  per_channel_manager_caps = parse_contact_caps (base_conn, query_result);
+  uris = extract_capability_namespaces (query_result);
+  per_channel_manager_caps = parse_contact_caps (base_conn, uris);
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
    * uses another hash algorithm, don't check the hash and fallback to the old
@@ -1204,6 +1234,13 @@ _caps_disco_cb (GabbleDisco *disco,
 
   if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
     {
+      GabbleCapsCache *caps_cache;
+
+      /* Update external cache. */
+      caps_cache = gabble_caps_cache_dup_shared ();
+      gabble_caps_cache_insert (caps_cache, node, uris);
+      g_object_unref (caps_cache);
+
       /* We trust this caps node. Serve all its waiters. */
       for (i = waiters; NULL != i; i = i->next)
         {
@@ -1260,6 +1297,8 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
 OUT:
+  g_strfreev (uris);
+
   if (handle)
     tp_handle_unref (contact_repo, handle);
 }
@@ -1275,28 +1314,57 @@ _process_caps_uri (GabblePresenceCache *cache,
                    guint serial)
 {
   CapabilityInfo *info;
+  gboolean caps_in_cache = FALSE;
+  GabblePresenceCapabilities cached_caps = 0;
+  GHashTable *cached_pcm_caps = NULL;
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
+  GabbleCapsCache *caps_cache;
+  gchar **uris, **i;
 
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   info = capability_info_get (cache, uri);
 
-  if (info->trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST
-      || tp_intset_is_member (info->guys, handle))
+  caps_cache = gabble_caps_cache_dup_shared ();
+  uris = gabble_caps_cache_lookup (caps_cache, uri);
+  g_object_unref (caps_cache);
+
+  if (uris != NULL)
+    {
+      caps_in_cache = TRUE;
+
+      for (i = uris; *i; i++)
+        {
+          cached_caps |= capabilities_from_ns (*i);
+        }
+
+      cached_pcm_caps =
+          parse_contact_caps ((TpBaseConnection *) priv->conn, uris);
+      g_strfreev (uris);
+    }
+
+  if (caps_in_cache ||
+      info->trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST ||
+      tp_intset_is_member (info->guys, handle))
     {
       /* we already have enough trust for this node; apply the cached value to
        * the (handle, resource) */
 
       GabblePresence *presence = gabble_presence_cache_get (cache, handle);
+      GabblePresenceCapabilities caps =
+          caps_in_cache ? cached_caps : info->caps;
+      GHashTable *per_channel_manager_caps =
+          caps_in_cache ? cached_pcm_caps : info->per_channel_manager_caps;
+
       DEBUG ("enough trust for URI %s, setting caps for %u (%s) to %u",
-          uri, handle, from, info->caps);
+          uri, handle, from, caps);
 
       if (presence)
         {
-          gabble_presence_set_capabilities (presence, resource,
-              info->caps, info->per_channel_manager_caps, serial);
+          gabble_presence_set_capabilities (
+              presence, resource, caps, per_channel_manager_caps, serial);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
         }
       else

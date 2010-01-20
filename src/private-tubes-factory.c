@@ -661,10 +661,10 @@ gabble_private_tubes_factory_free_feat (gpointer data)
 static gpointer
 gabble_private_tubes_factory_parse_caps (
     GabbleCapsChannelManager *manager,
-    LmMessageNode *query_result)
+    gchar **uris)
 {
   TubesCapabilities *caps;
-  NodeIter i;
+  gchar **i;
 
   caps = g_new0 (TubesCapabilities, 1);
   caps->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -672,41 +672,32 @@ gabble_private_tubes_factory_parse_caps (
   caps->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, gabble_private_tubes_factory_free_feat);
 
-  for (i = node_iter (query_result); i; i = node_iter_next (i))
+  for (i = uris; *i; i++)
     {
-      LmMessageNode *child = node_iter_data (i);
-      const gchar *var;
+      const gchar *uri = *i;
 
-      if (0 != strcmp (child->name, "feature"))
-        continue;
-
-      var = lm_message_node_get_attribute (child, "var");
-
-      if (NULL == var)
-        continue;
-
-      if (!g_str_has_prefix (var, NS_TUBES))
+      if (!g_str_has_prefix (uri, NS_TUBES))
         continue;
 
       /* tubes generic cap or service specific */
       caps->tubes_supported = TRUE;
 
-      if (g_str_has_prefix (var, NS_TUBES "/"))
+      if (g_str_has_prefix (uri, NS_TUBES "/"))
         {
           /* http://telepathy.freedesktop.org/xmpp/tubes/$type#$service */
-          var += strlen (NS_TUBES "/");
-          if (g_str_has_prefix (var, "stream#"))
+          uri += strlen (NS_TUBES "/");
+          if (g_str_has_prefix (uri, "stream#"))
             {
               gchar *service;
-              var += strlen ("stream#");
-              service = g_strdup (var);
+              uri += strlen ("stream#");
+              service = g_strdup (uri);
               g_hash_table_insert (caps->stream_tube_caps, service, NULL);
             }
-          else if (g_str_has_prefix (var, "dbus#"))
+          else if (g_str_has_prefix (uri, "dbus#"))
             {
               gchar *service;
-              var += strlen ("dbus#");
-              service = g_strdup (var);
+              uri += strlen ("dbus#");
+              service = g_strdup (uri);
               g_hash_table_insert (caps->dbus_tube_caps, service, NULL);
             }
         }

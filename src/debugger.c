@@ -244,6 +244,16 @@ gabble_debugger_get_singleton (void)
 }
 
 void
+gabble_debugger_free_singleton (void)
+{
+  if (singleton != NULL)
+    {
+      g_object_unref (singleton);
+      singleton = NULL;
+    }
+}
+
+void
 gabble_debugger_add_message (GabbleDebugger *self,
     GTimeVal *timestamp,
     const gchar *domain,

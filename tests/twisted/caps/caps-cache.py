@@ -11,11 +11,10 @@ from gabbletest import exec_test, make_presence, sync_stream
 import constants as cs
 import ns
 from caps_helper import (
-    compute_caps_hash, make_caps_disco_reply, fake_client_dataforms,
-    presence_and_disco, send_presence, expect_disco, send_disco_reply
-    )
+    compute_caps_hash, fake_client_dataforms, presence_and_disco,
+    send_presence, expect_disco, send_disco_reply)
 
-client = 'http://telepathy.freedesktop.org/fake-client'
+client = 'http://telepathy.freedesktop.org/fake-client/caps-cache'
 features = [
     ns.JINGLE_015,
     ns.JINGLE_015_AUDIO,
@@ -79,7 +78,7 @@ def test(q, bus, conn, stream):
     # Jens' first client replies. We don't expect any caps changes here, and
     # this shouldn't count as a second point towards the five we need to trust
     # this caps node.
-    send_disco_reply(stream, j_stanza, features)
+    send_disco_reply(stream, j_stanza, [], features)
     check_caps (conn, j)
 
     update_contact_caps (q, conn, stream, 'bob5@foo.com/Foo', caps)

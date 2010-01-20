@@ -8,7 +8,7 @@ from servicetest import (
     assertEquals, assertContains, assertDoesNotContain, EventPattern,
     )
 from gabbletest import make_presence, exec_test
-from caps_helper import compute_caps_hash, make_caps_disco_reply
+from caps_helper import compute_caps_hash, send_disco_reply
 import constants as cs
 import ns
 
@@ -43,8 +43,7 @@ def test(q, bus, conn, stream):
     assertEquals(client + '#' + caps['ver'], query_node.attributes['node'])
 
     # The bare jid replies
-    result = make_caps_disco_reply(stream, event.stanza, features, {})
-    stream.send(result)
+    send_disco_reply(stream, event.stanza, [], features)
 
     # Gabble lets us know their caps have changed. (Gabble used to ignore the
     # reply.)
@@ -96,12 +95,10 @@ def test(q, bus, conn, stream):
     # The bare jid replies! Getting a disco reply from a bare JID when we've
     # got presence from resources used to crash Gabble, but now it just ignores
     # it.
-    result = make_caps_disco_reply(stream, disco2.stanza, features, {})
-    stream.send(result)
+    send_disco_reply(stream, disco2.stanza, [], features)
 
     # Now the resourceful JID replies:
-    result = make_caps_disco_reply(stream, disco3.stanza, features_, {})
-    stream.send(result)
+    send_disco_reply(stream, disco3.stanza, [], features_)
 
     # Gabble should announce that the contact has acquired some caps.
     e = q.expect('dbus-signal', signal='CapabilitiesChanged')

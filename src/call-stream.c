@@ -401,10 +401,15 @@ call_stream_update_sender_states (GabbleCallStream *self)
   JingleContentState state;
   GabbleSendingState local_state = 0;
   GabbleSendingState remote_state = 0;
-  GHashTable *updates = g_hash_table_new (g_direct_hash, g_direct_equal);
+  GHashTable *updates;
 
   g_object_get (priv->content, "state", &state, NULL);
+
+  if (state == JINGLE_CONTENT_STATE_REMOVING)
+    return;
+
   created_by_us = gabble_jingle_content_is_created_by_us (priv->content);
+  updates = g_hash_table_new (g_direct_hash, g_direct_equal);
 
   if (gabble_jingle_content_sending (priv->content))
     {

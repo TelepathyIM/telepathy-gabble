@@ -901,6 +901,8 @@ gabble_call_channel_accept (GabbleSvcChannelTypeCall *iface,
         }
       else
         {
+          DEBUG ("Invalid state for Accept: Channel requested and "
+              "state == %d", priv->state);
           goto err;
         }
     }
@@ -911,6 +913,7 @@ gabble_call_channel_accept (GabbleSvcChannelTypeCall *iface,
     }
   else
     {
+      DEBUG ("Invalid state for Accept: state == %d", priv->state);
       goto err;
     }
 

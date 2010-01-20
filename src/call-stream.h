@@ -59,6 +59,7 @@ GType gabble_call_stream_get_type (void);
 
 const gchar *gabble_call_stream_get_object_path (GabbleCallStream *stream);
 void gabble_call_stream_set_sending (GabbleCallStream *self, gboolean sending);
+guint gabble_call_stream_get_local_sending_state (GabbleCallStream *self);
 
 G_END_DECLS
 

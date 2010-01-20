@@ -802,3 +802,20 @@ gabble_call_stream_get_object_path (GabbleCallStream *stream)
 {
   return stream->priv->object_path;
 }
+
+guint
+gabble_call_stream_get_local_sending_state (GabbleCallStream *self)
+{
+  GabbleCallStreamPrivate *priv = self->priv;
+  guint self_handle = TP_BASE_CONNECTION (priv->conn)->self_handle;
+  gpointer state_p;
+  gboolean exists;
+
+  exists = g_hash_table_lookup_extended (priv->senders,
+      GUINT_TO_POINTER (self_handle), NULL, &state_p);
+
+  if (exists)
+    return GPOINTER_TO_UINT (state_p);
+  else
+    return GABBLE_SENDING_STATE_NONE;
+}

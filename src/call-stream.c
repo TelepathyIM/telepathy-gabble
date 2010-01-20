@@ -755,8 +755,7 @@ gabble_call_stream_set_sending (GabbleCallStream *self,
         empty);
       g_array_unref (empty);
 
-      if ((sending == TRUE) == (exists == FALSE ||
-          state_p == GABBLE_SENDING_STATE_NONE))
+      if (sending == (!exists || state_p == GABBLE_SENDING_STATE_NONE))
         gabble_jingle_content_set_sending (priv->content, sending);
     }
 }

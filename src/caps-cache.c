@@ -136,7 +136,7 @@ get_path (void)
           ret = g_build_path (G_DIR_SEPARATOR_S,
               g_get_user_cache_dir (), "telepathy", "gabble", "caps-cache.db",
               NULL);
-          dir = free_dir = g_path_get_dirname (path);
+          dir = free_dir = g_path_get_dirname (ret);
         }
     }
 

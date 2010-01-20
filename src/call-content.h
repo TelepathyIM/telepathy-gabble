@@ -61,6 +61,7 @@ GType gabble_call_content_get_type (void);
     GABBLE_TYPE_CALL_CONTENT, GabbleCallContentClass))
 
 const gchar *gabble_call_content_get_object_path (GabbleCallContent *content);
+void gabble_call_content_deinit (GabbleCallContent *content);
 
 G_END_DECLS
 

@@ -98,6 +98,7 @@ struct _GabbleCallContentPrivate
 
   GList *streams;
   gboolean dispose_has_run;
+  gboolean deinit_has_run;
 };
 
 static void
@@ -443,7 +444,8 @@ gabble_call_content_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* release any references held by the object here */
+  g_assert (priv->offer == NULL);
+
   for (l = priv->streams; l != NULL; l = g_list_next (l))
     {
       g_object_unref (l->data);
@@ -533,6 +535,19 @@ const gchar *
 gabble_call_content_get_object_path (GabbleCallContent *content)
 {
   return content->priv->object_path;
+}
+
+void
+gabble_call_content_deinit (GabbleCallContent *content)
+{
+  GabbleCallContentPrivate *priv = content->priv;
+
+  priv->deinit_has_run = TRUE;
+
+  if (priv->offer_cancellable != NULL)
+    g_cancellable_cancel (priv->offer_cancellable);
+  else
+    g_object_unref (content);
 }
 
 static GPtrArray *
@@ -637,6 +652,9 @@ out:
     }
 
   g_object_unref (source);
+
+  if (priv->deinit_has_run)
+    g_object_unref (self);
 }
 
 static void

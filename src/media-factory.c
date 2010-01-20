@@ -839,7 +839,7 @@ gabble_media_factory_create_call (TpChannelManager *manager,
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Call channel must contain at least "
-          "one InitialAudio or InitialVideo");
+          "one of InitialAudio or InitialVideo");
       goto error;
     }
 

@@ -6,6 +6,8 @@ libdir=@libdir@
 
 plugindir=${libdir}/telepathy/gabble-0
 
+gabblepath=@abs_top_builddir@/src/telepathy-gabble # For plugins' tests
+
 Name: Telepathy-Gabble
 Description: XMPP backend for the Telepathy framework
 Version: @VERSION@

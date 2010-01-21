@@ -2,8 +2,10 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
+libexecdir=@libexecdir@
 
 plugindir=${libdir}/telepathy/gabble-0
+gabblepath=${libexecdir}/telepathy-gabble # For plugins' tests
 
 Name: Telepathy-Gabble
 Description: XMPP backend for the Telepathy framework

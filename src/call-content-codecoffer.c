@@ -303,6 +303,9 @@ cancelled_cb (GCancellable *cancellable, gpointer user_data)
 {
   GabbleCallContentCodecoffer *offer = user_data;
   GabbleCallContentCodecofferPrivate *priv = offer->priv;
+  DBusGConnection *bus = tp_get_bus ();
+
+  dbus_g_connection_unregister_g_object (bus, G_OBJECT (offer));
 
   g_simple_async_result_set_error (priv->result,
       G_IO_ERROR, G_IO_ERROR_CANCELLED, "Offer cancelled");

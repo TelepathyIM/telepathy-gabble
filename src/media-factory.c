@@ -851,6 +851,23 @@ gabble_media_factory_create_call (TpChannelManager *manager,
               return TRUE;
             }
         }
+
+      for (l = self->priv->pending_call_channels;
+          l != NULL; l = g_list_next (l))
+        {
+          MediaChannelRequest *mcr = (MediaChannelRequest *) l->data;
+          g_object_get (mcr->channel, "peer", &peer, NULL);
+
+          if (peer == target)
+            {
+              /* Per the spec, we ignore InitialAudio and InitialVideo when
+               * looking for an existing channel.
+               */
+              mcr->request_tokens = g_slist_prepend (mcr->request_tokens,
+                  request_token);
+              return TRUE;
+            }
+        }
     }
 
   initial_audio = tp_asv_get_boolean (request_properties,

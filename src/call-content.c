@@ -92,6 +92,7 @@ struct _GabbleCallContentPrivate
   GabbleCallContentCodecoffer *offer;
   GCancellable *offer_cancellable;
   gint offers;
+  guint offer_count;
 
   GabbleCallContentDisposition disposition;
   TpHandle creator;
@@ -537,6 +538,20 @@ gabble_call_content_get_object_path (GabbleCallContent *content)
   return content->priv->object_path;
 }
 
+static gboolean
+maybe_finish_deinit (GabbleCallContent *self)
+{
+  GabbleCallContentPrivate *priv = self->priv;
+
+  g_assert (priv->deinit_has_run);
+
+  if (priv->offer_count > 0)
+    return FALSE;
+
+  g_object_unref (self);
+  return TRUE;
+}
+
 void
 gabble_call_content_deinit (GabbleCallContent *content)
 {
@@ -561,7 +576,7 @@ gabble_call_content_deinit (GabbleCallContent *content)
   if (priv->offer_cancellable != NULL)
     g_cancellable_cancel (priv->offer_cancellable);
   else
-    g_object_unref (content);
+    maybe_finish_deinit (content);
 }
 
 static GPtrArray *
@@ -664,12 +679,13 @@ out:
     {
       priv->offer = NULL;
       priv->offer_cancellable = NULL;
-
-      if (priv->deinit_has_run)
-        g_object_unref (self);
     }
 
+  --priv->offer_count;
   g_object_unref (source);
+
+  if (priv->deinit_has_run)
+    maybe_finish_deinit (self);
 }
 
 static void
@@ -698,6 +714,7 @@ call_content_new_offer (GabbleCallContent *self)
 
   priv->offer = gabble_call_content_codecoffer_new (path, map);
   priv->offer_cancellable = g_cancellable_new ();
+  ++priv->offer_count;
   gabble_call_content_codecoffer_offer (priv->offer, priv->offer_cancellable,
     codec_offer_finished_cb, self);
 

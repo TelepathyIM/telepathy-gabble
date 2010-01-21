@@ -66,11 +66,19 @@ struct _GabblePluginInterface {
      * An implementation of gabble_plugin_create_sidecar().
      */
     GabblePluginCreateSidecarImpl create_sidecar;
+
+    /**
+     * The plugin's version, conventionally a "."-separated sequence of
+     * numbers.
+     */
+    const gchar *version;
 };
 
 GType gabble_plugin_get_type (void);
 
 const gchar *gabble_plugin_get_name (
+    GabblePlugin *plugin);
+const gchar *gabble_plugin_get_version (
     GabblePlugin *plugin);
 const gchar * const *gabble_plugin_get_sidecar_interfaces (
     GabblePlugin *plugin);

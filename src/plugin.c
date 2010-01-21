@@ -55,6 +55,14 @@ gabble_plugin_get_name (GabblePlugin *plugin)
   return iface->name;
 }
 
+const gchar *
+gabble_plugin_get_version (GabblePlugin *plugin)
+{
+  GabblePluginInterface *iface = GABBLE_PLUGIN_GET_INTERFACE (plugin);
+
+  return iface->version;
+}
+
 const gchar * const *
 gabble_plugin_get_sidecar_interfaces (GabblePlugin *plugin)
 {

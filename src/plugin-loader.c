@@ -89,9 +89,13 @@ plugin_loader_try_to_load (
     {
       gchar *sidecars = g_strjoinv (", ",
           (gchar **) gabble_plugin_get_sidecar_interfaces (plugin));
+      const gchar *version = gabble_plugin_get_version (plugin);
 
-      DEBUG ("loaded '%s' (%s), implementing these sidecars: %s",
-          gabble_plugin_get_name (plugin), path, sidecars);
+      if (version == NULL)
+        version = "(unspecified)";
+
+      DEBUG ("loaded '%s' version %s (%s), implementing these sidecars: %s",
+          gabble_plugin_get_name (plugin), version, path, sidecars);
 
       g_free (sidecars);
 

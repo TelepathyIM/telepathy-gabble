@@ -485,7 +485,6 @@ group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
   GabbleJingleTransportGooglePrivate *priv = transport->priv;
   GList *rtp_candidates = NULL;
   GList *rtcp_candidates = NULL;
-  JingleDialect dialect;
   JingleMediaType media;
   GList *li;
 
@@ -501,10 +500,9 @@ group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
         DEBUG ("Ignoring unknown component %d", c->component);
     }
 
-  dialect = gabble_jingle_session_get_dialect (priv->content->session);
   g_object_get (priv->content, "media-type", &media, NULL);
 
-  if (media == JINGLE_MEDIA_TYPE_VIDEO && JINGLE_IS_GOOGLE_DIALECT (dialect))
+  if (media == JINGLE_MEDIA_TYPE_VIDEO)
     {
       transmit_candidates (transport, "video_rtp", rtp_candidates);
       transmit_candidates (transport, "video_rtcp", rtcp_candidates);

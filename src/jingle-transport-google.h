@@ -61,5 +61,8 @@ struct _GabbleJingleTransportGoogle {
 
 void jingle_transport_google_register (GabbleJingleFactory *factory);
 
+void jingle_transport_google_set_component_name (
+    GabbleJingleTransportGoogle *transport, gchar *name, gint component_id);
+
 #endif /* __JINGLE_TRANSPORT_GOOGLE_H__ */
 

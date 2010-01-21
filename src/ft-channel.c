@@ -43,6 +43,9 @@
 #include <gibber/gibber-transport.h>
 #include <gibber/gibber-unix-transport.h>       /* just for the feature-test */
 
+#include "jingle-factory.h"
+#include "jingle-session.h"
+#include "jingle-share.h"
 #include "bytestream-factory.h"
 #include "connection.h"
 #include "ft-channel.h"
@@ -110,7 +113,6 @@ enum
   PROP_RESUME_SUPPORTED,
 
   PROP_CONNECTION,
-  PROP_BYTESTREAM,
   LAST_PROPERTY
 };
 
@@ -128,6 +130,8 @@ struct _GabbleFileTransferChannelPrivate {
   TpHandle initiator;
   gboolean remote_accepted;
   gboolean resume_supported;
+
+  GabbleJingleSession *jingle;
 
   GabbleBytestreamIface *bytestream;
   GibberListener *listener;
@@ -147,8 +151,6 @@ struct _GabbleFileTransferChannelPrivate {
   guint64 date;
 };
 
-static void set_bytestream (GabbleFileTransferChannel *self,
-    GabbleBytestreamIface *bytestream);
 
 static void
 gabble_file_transfer_channel_do_close (GabbleFileTransferChannel *self)
@@ -295,9 +297,6 @@ gabble_file_transfer_channel_get_property (GObject *object,
                 TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
                 NULL));
         break;
-      case PROP_BYTESTREAM:
-        g_value_set_object (value, self->priv->bytestream);
-        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -369,10 +368,6 @@ gabble_file_transfer_channel_set_property (GObject *object,
         break;
       case PROP_INITIAL_OFFSET:
         self->priv->initial_offset = g_value_get_uint64 (value);
-        break;
-      case PROP_BYTESTREAM:
-        set_bytestream (self,
-            GABBLE_BYTESTREAM_IFACE (g_value_get_object (value)));
         break;
       case PROP_RESUME_SUPPORTED:
         self->priv->resume_supported = g_value_get_boolean (value);
@@ -499,13 +494,6 @@ gabble_file_transfer_channel_constructor (GType type,
        tp_handle_inspect (contact_repo, self->priv->handle),
        tp_handle_inspect (contact_repo, self->priv->initiator),
        self->priv->filename, self->priv->size);
-
-  if (self->priv->initiator == base_conn->self_handle)
-    {
-      /* Outgoing FT , we'll need SOCK5 proxies when we'll offer the file */
-      gabble_bytestream_factory_query_socks5_proxies (
-          self->priv->connection->bytestream_factory);
-    }
 
   return obj;
 }
@@ -741,15 +729,6 @@ gabble_file_transfer_channel_class_init (
   g_object_class_install_property (object_class, PROP_DATE,
       param_spec);
 
-  param_spec = g_param_spec_object (
-      "bytestream",
-      "Object implementing the GabbleBytestreamIface interface",
-      "Bytestream object used to send the file",
-      G_TYPE_OBJECT,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_BYTESTREAM,
-      param_spec);
-
   param_spec = g_param_spec_boolean (
       "resume-supported",
       "resume is supported",
@@ -787,6 +766,12 @@ gabble_file_transfer_channel_dispose (GObject *object)
     {
       g_source_remove (self->priv->progress_timer);
       self->priv->progress_timer = 0;
+    }
+
+  if (self->priv->jingle != NULL)
+    {
+      g_object_unref (self->priv->jingle);
+      self->priv->jingle = NULL;
     }
 
   if (self->priv->bytestream != NULL)
@@ -889,6 +874,7 @@ gabble_file_transfer_channel_close (TpSvcChannel *iface,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED);
 
       close_bytestream_and_transport (self);
+      /*TODO: close jingle session*/
     }
 
   gabble_file_transfer_channel_do_close (GABBLE_FILE_TRANSFER_CHANNEL (iface));
@@ -1078,12 +1064,16 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 static void bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
                                          gboolean blocked,
                                          GabbleFileTransferChannel *self);
-static void
-set_bytestream (GabbleFileTransferChannel *self,
-                GabbleBytestreamIface *bytestream)
+gboolean
+gabble_file_transfer_channel_set_bytestream (GabbleFileTransferChannel *self,
+                                             GabbleBytestreamIface *bytestream)
+
 {
   if (bytestream == NULL)
-    return;
+    return FALSE;
+
+  if (self->priv->bytestream || self->priv->jingle)
+    return FALSE;
 
   self->priv->bytestream = g_object_ref (bytestream);
 
@@ -1091,6 +1081,63 @@ set_bytestream (GabbleFileTransferChannel *self,
       G_CALLBACK (bytestream_state_changed_cb), G_OBJECT (self));
   gabble_signal_connect_weak (self->priv->bytestream, "write-blocked",
       G_CALLBACK (bytestream_write_blocked_cb), G_OBJECT (self));
+
+  return TRUE;
+}
+
+gboolean
+gabble_file_transfer_channel_set_jingle_session (
+    GabbleFileTransferChannel *self, GabbleJingleSession *session)
+{
+  GList *candidates = NULL;
+  GList *cs;
+
+  if (session == NULL)
+    return FALSE;
+
+  if (self->priv->bytestream || self->priv->jingle)
+    return FALSE;
+
+  self->priv->jingle = g_object_ref (session);
+
+
+  /* TODO: remove this dummy candidate */
+  cs = gabble_jingle_session_get_contents (session);
+
+  if (cs != NULL)
+    {
+      JingleCandidate *cand;
+      GabbleJingleShare *c = GABBLE_JINGLE_SHARE (cs->data);
+      cand = jingle_candidate_new (
+          /* protocol */
+          JINGLE_TRANSPORT_PROTOCOL_UDP,
+          /* candidate type */
+          JINGLE_CANDIDATE_TYPE_LOCAL,
+          /* id */
+          "1",
+          /* component */
+          1,
+          /* address */
+          "192.168.1.105",
+          /* port */
+          1234,
+          /* generation */
+          0,
+          /* preference */
+          1.0,
+          /* username */
+          "abcde",
+          /* password */
+          "fgh",
+          /* network */
+          0);
+
+      candidates = g_list_prepend (candidates, cand);
+      gabble_jingle_content_add_candidates (GABBLE_JINGLE_CONTENT (c),
+          candidates);
+    }
+  /* TODO: listen to stuff */
+  return TRUE;
 }
 
 static void
@@ -1135,71 +1182,29 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   DEBUG ("receiver accepted file offer (offset: %" G_GUINT64_FORMAT ")",
       self->priv->initial_offset);
 
-  set_bytestream (self, bytestream);
+  gabble_file_transfer_channel_set_bytestream (self, bytestream);
 
   self->priv->remote_accepted = TRUE;
 }
 
-gboolean
-gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
-                                         GError **error)
+static gboolean
+offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
+                  const gchar *resource, GError **error)
 {
-  GabblePresence *presence;
   gboolean result;
   LmMessage *msg;
-  TpHandleRepoIface *contact_repo, *room_repo;
   LmMessageNode *si_node, *file_node;
-  const gchar *jid;
-  gchar *full_jid, *stream_id, *size_str;
+  gchar *stream_id, *size_str, *full_jid;
 
-  g_assert (!CHECK_STR_EMPTY (self->priv->filename));
-  g_assert (self->priv->size != GABBLE_UNDEFINED_FILE_SIZE);
-  g_assert (self->priv->bytestream == NULL);
-
-  presence = gabble_presence_cache_get (self->priv->connection->presence_cache,
-      self->priv->handle);
-  if (presence == NULL)
-    {
-      DEBUG ("can't find contact's presence");
-      g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
-          "can't find contact's presence");
-      return FALSE;
-    }
-
-  contact_repo = tp_base_connection_get_handles (
-     (TpBaseConnection *) self->priv->connection, TP_HANDLE_TYPE_CONTACT);
-  room_repo = tp_base_connection_get_handles (
-     (TpBaseConnection *) self->priv->connection, TP_HANDLE_TYPE_ROOM);
-
-  jid = tp_handle_inspect (contact_repo, self->priv->handle);
-
-  if (gabble_get_room_handle_from_jid (room_repo, jid) == 0)
-    {
-      /* Not a MUC jid, need to get a resource */
-      const gchar *resource;
-
-      /* FIXME: should we check for SI, bytestreams and/or IBB too?
-       * http://bugs.freedesktop.org/show_bug.cgi?id=23777 */
-      resource = gabble_presence_pick_resource_by_caps (presence,
-          gabble_capability_set_predicate_has, NS_FILE_TRANSFER);
-
-      if (resource == NULL)
-        {
-          DEBUG ("contact doesn't have file transfer capabilities");
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
-              "contact doesn't have file transfer capabilities");
-          return FALSE;
-        }
-
-      full_jid = g_strdup_printf ("%s/%s", jid, resource);
-    }
+  if (resource)
+    full_jid = g_strdup_printf ("%s/%s", jid, resource);
   else
-    {
-      /* MUC jid, we already have the full jid */
-      full_jid = g_strdup (jid);
-    }
+    full_jid = g_strdup (jid);
 
-  DEBUG ("Offering file transfer to %s", full_jid);
+  /* Outgoing FT , we'll need SOCK5 proxies */
+  gabble_bytestream_factory_query_socks5_proxies (
+      self->priv->connection->bytestream_factory);
+
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
 
@@ -1247,8 +1252,113 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
 
   lm_message_unref (msg);
   g_free (stream_id);
-  g_free (full_jid);
   g_free (size_str);
+  g_free (full_jid);
+
+  return result;
+}
+
+
+static gboolean
+offer_jingle (GabbleFileTransferChannel *self, const gchar *jid,
+              const gchar *resource, GError **error)
+{
+  /*TODO: listen to notify::state, new-content and terminated signals */
+
+  GabbleJingleSession *jingle;
+
+  jingle = gabble_jingle_factory_create_session (
+      self->priv->connection->jingle_factory,
+      self->priv->handle, resource, FALSE);
+  g_object_set (jingle, "dialect", JINGLE_DIALECT_GTALK4, NULL);
+
+  gabble_jingle_session_add_content (jingle,
+      JINGLE_MEDIA_TYPE_FILE, "share", NS_GOOGLE_SESSION_SHARE,
+      NS_GOOGLE_TRANSPORT_P2P);
+
+  gabble_file_transfer_channel_set_jingle_session (self, jingle);
+  gabble_jingle_session_accept (self->priv->jingle);
+
+  return TRUE;
+}
+
+gboolean
+gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
+                                         GError **error)
+{
+  GabblePresence *presence;
+  gboolean result;
+  TpHandleRepoIface *contact_repo, *room_repo;
+  const gchar *jid;
+  gboolean si = FALSE;
+  const gchar *resource = NULL;
+
+  g_assert (!CHECK_STR_EMPTY (self->priv->filename));
+  g_assert (self->priv->size != GABBLE_UNDEFINED_FILE_SIZE);
+  g_assert (self->priv->bytestream == NULL && self->priv->jingle == NULL);
+
+  presence = gabble_presence_cache_get (self->priv->connection->presence_cache,
+      self->priv->handle);
+  if (presence == NULL)
+    {
+      DEBUG ("can't find contact's presence");
+      g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
+          "can't find contact's presence");
+
+      return FALSE;
+    }
+
+  contact_repo = tp_base_connection_get_handles (
+     (TpBaseConnection *) self->priv->connection, TP_HANDLE_TYPE_CONTACT);
+  room_repo = tp_base_connection_get_handles (
+     (TpBaseConnection *) self->priv->connection, TP_HANDLE_TYPE_ROOM);
+
+  jid = tp_handle_inspect (contact_repo, self->priv->handle);
+
+  if (gabble_get_room_handle_from_jid (room_repo, jid) == 0)
+    {
+      /* Not a MUC jid, need to get a resource */
+
+      /* FIXME: should we check for SI, bytestreams and/or IBB too?
+       * http://bugs.freedesktop.org/show_bug.cgi?id=23777 */
+      resource = gabble_presence_pick_resource_by_caps (presence,
+          gabble_capability_set_predicate_has, NS_FILE_TRANSFER);
+
+      if (resource == NULL)
+        {
+          resource = gabble_presence_pick_resource_by_caps (presence,
+              gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_SHARE);
+          if (resource == NULL)
+            {
+              DEBUG ("contact doesn't have file transfer capabilities");
+              if (error != NULL)
+                g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+                    "contact doesn't have file transfer capabilities");
+
+              return FALSE;
+            }
+          else
+            {
+              si = FALSE;
+            }
+        }
+      else
+      {
+        si = TRUE;
+      }
+    }
+  else
+    {
+      /* MUC jid, we already have the full jid */
+    }
+
+  DEBUG ("Offering file transfer to %s%s%s", jid,
+      resource? "/":"", resource? resource:"");
+
+  if (si)
+    result = offer_bytestream (self, jid, resource, error);
+  else
+    result = offer_jingle (self, jid, resource, error);
 
   return result;
 }
@@ -1485,17 +1595,23 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
       self->priv->initial_offset = 0;
     }
 
-  g_assert (self->priv->bytestream != NULL);
-  gabble_signal_connect_weak (self->priv->bytestream, "data-received",
-      G_CALLBACK (data_received_cb), G_OBJECT (self));
+  if (self->priv->bytestream) {
+    gabble_signal_connect_weak (self->priv->bytestream, "data-received",
+        G_CALLBACK (data_received_cb), G_OBJECT (self));
 
 
-  /* Block the bytestream while the user is not connected to the socket */
-  gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
+    /* Block the bytestream while the user is not connected to the socket */
+    gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
 
-  /* channel state will change to open once the bytestream is open */
-  gabble_bytestream_iface_accept (self->priv->bytestream, augment_si_reply,
-      self);
+    /* channel state will change to open once the bytestream is open */
+    gabble_bytestream_iface_accept (self->priv->bytestream, augment_si_reply,
+        self);
+  } else if (self->priv->jingle) {
+    /*TODO: complete */
+    gabble_jingle_session_accept (self->priv->jingle);
+  } else {
+    g_assert_not_reached ();
+  }
 }
 
 /**
@@ -1631,6 +1747,7 @@ transport_handler (GibberTransport *transport,
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
 
+  /* TODO: handle transport for jingle too */
   if (!gabble_bytestream_iface_send (self->priv->bytestream, data->length,
         (const gchar *) data->data))
     {
@@ -1681,6 +1798,7 @@ static void
 file_transfer_receive (GabbleFileTransferChannel *self)
 {
   /* Client is connected, we can now receive data. Unblock the bytestream */
+  /* TODO: do something for jingle */
   g_assert (self->priv->bytestream != NULL);
   gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
 }
@@ -1693,6 +1811,7 @@ transport_disconnected_cb (GibberTransport *transport,
 
   if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED)
     {
+      /* TODO: do something for jingle */
       close_bytestream_and_transport (self);
 
       gabble_file_transfer_channel_set_state (
@@ -1707,6 +1826,7 @@ transport_buffer_empty_cb (GibberTransport *transport,
                            GabbleFileTransferChannel *self)
 {
   /* Buffer is empty so we can unblock the buffer if it was blocked */
+  /* TODO: do something for jingle */
   gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
 
   if (self->priv->state > TP_FILE_TRANSFER_STATE_OPEN)
@@ -1875,7 +1995,6 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
                                   const gchar *description,
                                   guint64 date,
                                   guint64 initial_offset,
-                                  GabbleBytestreamIface *bytestream,
                                   gboolean resume_supported)
 
 {
@@ -1892,7 +2011,6 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
       "description", description,
       "date", date,
       "initial-offset", initial_offset,
-      "bytestream", bytestream,
       "resume-supported", resume_supported,
       NULL);
 }

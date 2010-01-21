@@ -28,6 +28,8 @@
 #include <string.h>
 #include <glib/gstdio.h>
 
+#include "jingle-session.h"
+#include "jingle-share.h"
 #include "caps-channel-manager.h"
 #include "connection.h"
 #include "ft-manager.h"
@@ -80,6 +82,7 @@ struct _GabbleFtManagerPrivate
   GList *channels;
   /* path of the temporary directory used to store UNIX sockets */
   gchar *tmp_dir;
+  gulong status_changed_id;
 };
 
 static void
@@ -93,8 +96,13 @@ gabble_ft_manager_init (GabbleFtManager *obj)
   obj->priv->channels = NULL;
 }
 
+static void gabble_ft_manager_constructed (GObject *object);
 static void gabble_ft_manager_dispose (GObject *object);
 static void gabble_ft_manager_finalize (GObject *object);
+static void connection_status_changed_cb (GabbleConnection *conn,
+                                          guint status,
+                                          guint reason,
+                                          GabbleFtManager *self);
 
 static void
 gabble_ft_manager_get_property (GObject *object,
@@ -143,6 +151,7 @@ gabble_ft_manager_class_init (GabbleFtManagerClass *gabble_ft_manager_class)
   g_type_class_add_private (gabble_ft_manager_class,
                             sizeof (GabbleFtManagerPrivate));
 
+  object_class->constructed = gabble_ft_manager_constructed;
   object_class->get_property = gabble_ft_manager_get_property;
   object_class->set_property = gabble_ft_manager_set_property;
 
@@ -157,6 +166,22 @@ gabble_ft_manager_class_init (GabbleFtManagerClass *gabble_ft_manager_class)
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 }
+
+
+static void
+gabble_ft_manager_constructed (GObject *object)
+{
+  void (*chain_up) (GObject *) =
+      G_OBJECT_CLASS (gabble_ft_manager_parent_class)->constructed;
+  GabbleFtManager *self = GABBLE_FT_MANAGER (object);
+
+  if (chain_up != NULL)
+    chain_up (object);
+
+  self->priv->status_changed_id = g_signal_connect (self->priv->connection,
+      "status-changed", (GCallback) connection_status_changed_cb, object);
+}
+
 
 void
 gabble_ft_manager_dispose (GObject *object)
@@ -275,6 +300,71 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
       requests);
 
   g_slist_free (requests);
+}
+
+
+static void
+new_jingle_session_cb (GabbleJingleFactory *jf,
+    GabbleJingleSession *sess,
+    gpointer data)
+{
+  GabbleFtManager *self = GABBLE_FT_MANAGER (data);
+  GList *cs;
+
+  if (gabble_jingle_session_get_content_type (sess) !=
+      GABBLE_TYPE_JINGLE_SHARE)
+    return;
+
+  cs = gabble_jingle_session_get_contents (sess);
+
+  if (cs != NULL)
+    {
+      GabbleJingleShare *c = GABBLE_JINGLE_SHARE (cs->data);
+      const gchar *filename;
+      guint64 size;
+      GabbleFileTransferChannel *chan;
+
+      filename = gabble_jingle_share_get_filename (c);
+      size = gabble_jingle_share_get_filesize (c);
+
+      chan = gabble_file_transfer_channel_new (self->priv->connection,
+          sess->peer, sess->peer, TP_FILE_TRANSFER_STATE_PENDING,
+          NULL, filename, size, TP_FILE_HASH_TYPE_NONE, NULL,
+          NULL, 0, 0, FALSE);
+
+      gabble_file_transfer_channel_set_jingle_session (chan, sess);
+
+      gabble_ft_manager_channel_created (self, chan, NULL);
+
+      g_list_free (cs);
+    }
+
+}
+
+
+static void
+connection_status_changed_cb (GabbleConnection *conn,
+                              guint status,
+                              guint reason,
+                              GabbleFtManager *self)
+{
+
+  switch (status)
+    {
+    case TP_CONNECTION_STATUS_CONNECTING:
+      g_signal_connect (self->priv->connection->jingle_factory, "new-session",
+          G_CALLBACK (new_jingle_session_cb), self);
+      break;
+
+    case TP_CONNECTION_STATUS_DISCONNECTED:
+      if (self->priv->status_changed_id != 0)
+      {
+        g_signal_handler_disconnect (self->priv->connection,
+            self->priv->status_changed_id);
+        self->priv->status_changed_id = 0;
+      }
+      break;
+    }
 }
 
 static gboolean
@@ -399,7 +489,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
   chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, base_connection->self_handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
-      description, date, initial_offset, NULL, TRUE);
+      description, date, initial_offset, TRUE);
 
   if (!gabble_file_transfer_channel_offer_file (chan, &error))
     {
@@ -555,7 +645,9 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
-      description, date, 0, bytestream, resume_supported);
+      description, date, 0, resume_supported);
+
+  gabble_file_transfer_channel_set_bytestream (chan, bytestream);
 
   gabble_ft_manager_channel_created (self, chan, NULL);
 }

@@ -8,6 +8,7 @@ currently supporting:
 * single-user chats
 * multi-user chats
 * voice/video calling
+* file tranfer
 
 with Jabber/XMPP and Google Talk interoperability.
 

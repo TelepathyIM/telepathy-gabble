@@ -310,6 +310,8 @@ cancelled_cb (GCancellable *cancellable, gpointer user_data)
   g_simple_async_result_set_error (priv->result,
       G_IO_ERROR, G_IO_ERROR_CANCELLED, "Offer cancelled");
   g_simple_async_result_complete_in_idle (priv->result);
+
+  g_object_unref (priv->cancellable);
   g_object_unref (priv->result);
   priv->result = NULL;
   priv->cancellable = NULL;

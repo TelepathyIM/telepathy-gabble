@@ -19,6 +19,8 @@
 
 #include "gateways.h"
 
+#include "config.h"
+
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/util.h>
 #include <telepathy-glib/errors.h>
@@ -104,6 +106,7 @@ plugin_iface_init (
   GabblePluginInterface *iface = g_iface;
 
   iface->name = "Gateway registration plugin";
+  iface->version = PACKAGE_VERSION;
   iface->sidecar_interfaces = sidecar_interfaces;
   iface->create_sidecar = gabble_gateway_plugin_create_sidecar;
 }

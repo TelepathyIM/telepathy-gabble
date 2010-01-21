@@ -630,7 +630,8 @@ codec_offer_finished_cb (GObject *source,
   local_codecs = gabble_call_content_codecoffer_offer_finish (
     GABBLE_CALL_CONTENT_CODECOFFER (source), result, &error);
 
-  if (error != NULL)
+  if (error != NULL || priv->deinit_has_run ||
+      priv->offer != GABBLE_CALL_CONTENT_CODECOFFER (source))
     goto out;
 
   call_content_set_local_codecs (self, local_codecs);
@@ -649,12 +650,12 @@ out:
     {
       priv->offer = NULL;
       priv->offer_cancellable = NULL;
+
+      if (priv->deinit_has_run)
+        g_object_unref (self);
     }
 
   g_object_unref (source);
-
-  if (priv->deinit_has_run)
-    g_object_unref (self);
 }
 
 static void

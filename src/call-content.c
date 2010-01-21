@@ -541,8 +541,22 @@ void
 gabble_call_content_deinit (GabbleCallContent *content)
 {
   GabbleCallContentPrivate *priv = content->priv;
+  GList *l;
+
+  if (priv->deinit_has_run)
+    return;
 
   priv->deinit_has_run = TRUE;
+
+  dbus_g_connection_unregister_g_object (tp_get_bus (), G_OBJECT (content));
+
+  for (l = priv->streams; l != NULL; l = g_list_next (l))
+    {
+      g_object_unref (l->data);
+    }
+
+  g_list_free (priv->streams);
+  priv->streams = NULL;
 
   if (priv->offer_cancellable != NULL)
     g_cancellable_cancel (priv->offer_cancellable);

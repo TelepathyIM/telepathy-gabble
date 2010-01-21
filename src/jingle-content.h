@@ -86,6 +86,8 @@ struct _GabbleJingleContentClass {
     void  (*parse_description) (GabbleJingleContent *, LmMessageNode *,
         GError **);
     void  (*produce_description) (GabbleJingleContent *, LmMessageNode *);
+    void  (*transport_created) (GabbleJingleContent *,
+        GabbleJingleTransportIface *);
 };
 
 typedef struct _GabbleJingleContentPrivate GabbleJingleContentPrivate;

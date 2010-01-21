@@ -96,6 +96,7 @@ G_DEFINE_TYPE(GabbleJingleContent, gabble_jingle_content, G_TYPE_OBJECT);
 static void new_transport_candidates_cb (GabbleJingleTransportIface *trans,
     GList *candidates, GabbleJingleContent *content);
 static void _maybe_ready (GabbleJingleContent *self);
+static void transport_created (GabbleJingleContent *c);
 
 static void
 gabble_jingle_content_init (GabbleJingleContent *obj)
@@ -237,6 +238,8 @@ gabble_jingle_content_set_property (GObject *object,
 
           g_signal_connect (priv->transport, "new-candidates",
               (GCallback) new_transport_candidates_cb, self);
+
+          transport_created (self);
         }
       break;
     case PROP_NAME:
@@ -406,6 +409,17 @@ new_transport_candidates_cb (GabbleJingleTransportIface *trans,
 }
 
 static void
+transport_created (GabbleJingleContent *c)
+{
+  void (*virtual_method)(GabbleJingleContent *, GabbleJingleTransportIface *) = \
+      GABBLE_JINGLE_CONTENT_GET_CLASS (c)->transport_created;
+
+  if (virtual_method != NULL)
+    virtual_method (c, c->priv->transport);
+}
+
+
+static void
 parse_description (GabbleJingleContent *c, LmMessageNode *desc_node,
     GError **error)
 {
@@ -561,6 +575,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
   g_assert (priv->transport == NULL);
   priv->transport = trans;
+  transport_created (c);
 
   g_assert (priv->creator == NULL);
   priv->creator = g_strdup (creator);

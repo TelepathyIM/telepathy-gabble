@@ -85,7 +85,9 @@ def test(jp, q, bus, conn, stream):
 
     jt2.incoming_call()
 
-    ret = q.expect_many(EventPattern('dbus-signal', signal='NewChannels'),
+    ret = q.expect_many(EventPattern('dbus-signal', signal='NewChannels',
+            predicate=lambda e:
+                cs.CHANNEL_TYPE_CALL in e.args[0][0][1].values()),
         EventPattern('dbus-signal', signal='NewCodecOffer'))
 
     chan = bus.get_object(conn.bus_name, ret[0].args[0][0][0])

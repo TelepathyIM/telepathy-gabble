@@ -107,6 +107,7 @@ TWISTED_TESTS = \
 	jingle/call-basics.py \
 	jingle/call-codecoffer.py \
 	jingle/decloak-peer.py \
+	jingle/call-muc.py \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \

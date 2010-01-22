@@ -400,7 +400,7 @@ new_call_channel (GabbleMediaFactory *self,
     mcr);
 
   self->priv->pending_call_channels
-    = g_list_prepend (self->priv->pending_call_channels, channel);
+    = g_list_prepend (self->priv->pending_call_channels, mcr);
 }
 
 static void

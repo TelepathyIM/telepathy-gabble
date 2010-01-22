@@ -314,21 +314,26 @@ def rccs(q, bus, conn, stream):
     # Test Channel.Type.Call
     media_classes = [ rcc for rcc in rccs
         if rcc[0][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CALL ]
-    assertLength(1, media_classes)
+    assertLength(2, media_classes)
 
-    fixed, allowed = media_classes[0]
+    hts = []
 
-    assertEquals(cs.HT_CONTACT, fixed[cs.TARGET_HANDLE_TYPE])
+    for mc in media_classes:
+        fixed, allowed = media_classes[0]
 
-    expected_allowed = [
-        cs.TARGET_ID, cs.TARGET_HANDLE,
-        cs.CALL_INITIAL_VIDEO, cs.CALL_INITIAL_AUDIO,
-        cs.CALL_MUTABLE_CONTENTS
-    ]
+        hts.append (fixed[cs.TARGET_HANDLE_TYPE])
 
-    allowed.sort()
-    expected_allowed.sort()
-    assertEquals(expected_allowed, allowed)
+        expected_allowed = [
+            cs.TARGET_ID, cs.TARGET_HANDLE,
+            cs.CALL_INITIAL_VIDEO, cs.CALL_INITIAL_AUDIO,
+            cs.CALL_MUTABLE_CONTENTS
+        ]
+
+        allowed.sort()
+        expected_allowed.sort()
+        assertEquals(expected_allowed, allowed)
+
+    assertEquals([cs.HT_CONTACT, cs.HT_ROOM].sort(),  hts.sort())
 
 if __name__ == '__main__':
     exec_test(rccs)

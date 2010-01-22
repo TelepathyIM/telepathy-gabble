@@ -103,6 +103,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       tp_presence_mixin_simple_presence_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       conn_presence_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_GABBLE_DECLOAK,
+      conn_decloak_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION,
       location_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY_INFO,
@@ -143,6 +145,7 @@ enum
     PROP_ALIAS,
     PROP_FALLBACK_SOCKS5_PROXIES,
     PROP_KEEPALIVE_INTERVAL,
+    PROP_DECLOAK_AUTOMATICALLY,
 
     LAST_PROPERTY
 };
@@ -186,6 +189,8 @@ struct _GabbleConnectionPrivate
   gchar *fallback_conference_server;
 
   GStrv fallback_socks5_proxies;
+
+  gboolean decloak_automatically;
 
   /* authentication properties */
   gchar *stream_server;
@@ -506,6 +511,11 @@ gabble_connection_get_property (GObject    *object,
     case PROP_KEEPALIVE_INTERVAL:
       g_value_set_uint (value, priv->keepalive_interval);
       break;
+
+    case PROP_DECLOAK_AUTOMATICALLY:
+      g_value_set_boolean (value, priv->decloak_automatically);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -615,6 +625,11 @@ gabble_connection_set_property (GObject      *object,
     case PROP_KEEPALIVE_INTERVAL:
       priv->keepalive_interval = g_value_get_uint (value);
       break;
+
+    case PROP_DECLOAK_AUTOMATICALLY:
+      priv->decloak_automatically = g_value_get_boolean (value);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -675,6 +690,8 @@ base_connected_cb (TpBaseConnection *base_conn)
   gabble_connection_connected_olpc (conn);
 }
 
+#define TWICE(x) (x), (x)
+
 static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
@@ -692,6 +709,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       GABBLE_IFACE_OLPC_GADGET,
       TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
       TP_IFACE_CONNECTION_INTERFACE_LOCATION,
+      GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
       NULL };
   static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
         { "GadgetAvailable", NULL, NULL },
@@ -700,6 +718,10 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   static TpDBusPropertiesMixinPropImpl location_props[] = {
         { "LocationAccessControlTypes", NULL, NULL },
         { "LocationAccessControl", NULL, NULL },
+        { NULL }
+  };
+  static TpDBusPropertiesMixinPropImpl decloak_props[] = {
+        { "DecloakAutomatically", TWICE ("decloak-automatically") },
         { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
@@ -717,6 +739,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           conn_avatars_properties_getter,
           NULL,
           NULL,
+        },
+        { GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
+          tp_dbus_properties_mixin_getter_gobject_properties,
+          tp_dbus_properties_mixin_setter_gobject_properties,
+          decloak_props,
         },
         { NULL }
   };
@@ -910,6 +937,14 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           "Seconds between keepalive packets, or 0 to disable",
           0, G_MAXUINT, 30,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_DECLOAK_AUTOMATICALLY,
+      g_param_spec_boolean (
+          "decloak-automatically", "Decloak automatically?",
+          "Leak presence and capabilities when requested",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   gabble_connection_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
@@ -1973,32 +2008,31 @@ connection_shut_down (TpBaseConnection *base)
   tp_base_connection_finish_shutdown (base);
 }
 
-
-/**
- * _gabble_connection_signal_own_presence:
- * @self: A #GabbleConnection
- * @error: pointer in which to return a GError in case of failure.
- *
- * Signal the user's stored presence to the jabber server
- *
- * Retuns: FALSE if an error occurred
- */
 gboolean
-_gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
+gabble_connection_visible_to (GabbleConnection *self,
+    TpHandle recipient)
+{
+  if (self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
+    return FALSE;
+
+  if ((gabble_roster_handle_get_subscription (self->roster, recipient)
+      & GABBLE_ROSTER_SUBSCRIPTION_FROM) == 0)
+    return FALSE;
+
+  /* FIXME: other reasons they might not be able to see our presence? */
+
+  return TRUE;
+}
+
+static void
+gabble_connection_fill_in_caps (GabbleConnection *self,
+    LmMessage *presence_message)
 {
   GabblePresence *presence = self->self_presence;
-  LmMessage *message = gabble_presence_as_message (presence, NULL);
-  LmMessageNode *node = lm_message_get_node (message);
-  gboolean ret;
+  LmMessageNode *node = lm_message_get_node (presence_message);
   gchar *caps_hash;
   gboolean voice_v1, video_v1;
   GString *ext = g_string_new ("");
-
-  if (presence->status == GABBLE_PRESENCE_HIDDEN)
-    {
-      if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0)
-        lm_message_node_set_attribute (node, "type", "invisible");
-    }
 
   /* XEP-0115 version 1.5 uses a verification string in the 'ver' attribute */
   caps_hash = caps_hash_compute_from_self_presence (self);
@@ -2031,14 +2065,112 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
 
   lm_message_node_set_attribute (node, "ext", ext->str);
   g_string_free (ext, TRUE);
+  g_free (caps_hash);
+}
+
+gboolean
+gabble_connection_send_capabilities (GabbleConnection *self,
+    const gchar *recipient,
+    GError **error)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self, TP_HANDLE_TYPE_CONTACT);
+  LmMessage *message;
+  gboolean ret;
+  TpHandle handle;
+
+  /* if we don't have a handle allocated for the recipient, they clearly aren't
+   * getting our presence... */
+  handle = tp_handle_lookup (contact_repo, recipient, NULL, NULL);
+
+  if (handle != 0 && gabble_connection_visible_to (self, handle))
+    {
+      /* nothing to do, they should already have had our presence */
+      return TRUE;
+    }
+
+  /* We deliberately don't include anything except the caps here */
+  message = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_PRESENCE,
+      LM_MESSAGE_SUB_TYPE_AVAILABLE);
+
+  gabble_connection_fill_in_caps (self, message);
 
   ret = _gabble_connection_send (self, message, error);
 
-  g_free (caps_hash);
   lm_message_unref (message);
 
-  if (!self->priv->closing)
+  return ret;
+}
+
+/**
+ * _gabble_connection_signal_own_presence:
+ * @self: A #GabbleConnection
+ * @to: bare or full JID for directed presence, or NULL
+ * @error: pointer in which to return a GError in case of failure.
+ *
+ * Signal the user's stored presence to @to, or to the jabber server
+ *
+ * Retuns: FALSE if an error occurred
+ */
+gboolean
+_gabble_connection_signal_own_presence (GabbleConnection *self,
+    const gchar *to,
+    GError **error)
+{
+  GabblePresence *presence = self->self_presence;
+  LmMessage *message = gabble_presence_as_message (presence, to);
+  gboolean ret;
+
+  if (presence->status == GABBLE_PRESENCE_HIDDEN)
+    {
+      if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0
+          && to == NULL)
+        lm_message_node_set_attribute (lm_message_get_node (message),
+            "type", "invisible");
+      /* FIXME: or if sending directed presence, should we add
+       * <show>away</show>? */
+    }
+
+  gabble_connection_fill_in_caps (self, message);
+
+  ret = _gabble_connection_send (self, message, error);
+
+  lm_message_unref (message);
+
+  /* FIXME: if sending broadcast presence, should we echo it to everyone we
+   * previously sent directed presence to? (Perhaps also GC them after a
+   * while?) */
+
+  if (to == NULL && !self->priv->closing)
     gabble_muc_factory_broadcast_presence (self->muc_factory);
+
+  return ret;
+}
+
+gboolean
+gabble_connection_request_decloak (GabbleConnection *self,
+    const gchar *to,
+    const gchar *reason,
+    GError **error)
+{
+  GabblePresence *presence = self->self_presence;
+  LmMessage *message = gabble_presence_as_message (presence, to);
+  LmMessageNode *decloak;
+  gboolean ret;
+
+  gabble_connection_fill_in_caps (self, message);
+
+  decloak = lm_message_node_add_child (lm_message_get_node (message),
+      "decloak", NULL);
+  lm_message_node_set_attribute (decloak, "xmlns", NS_DECLOAK);
+
+  if (reason != NULL && *reason != '\0')
+    {
+      lm_message_node_set_attribute (decloak, "reason", reason);
+    }
+
+  ret = _gabble_connection_send (self, message, error);
+  lm_message_unref (message);
 
   return ret;
 }
@@ -2096,7 +2228,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
       return FALSE;
     }
 
-  if (!_gabble_connection_signal_own_presence (self, &error))
+  if (!_gabble_connection_signal_own_presence (self, NULL, &error))
     {
       gabble_capability_set_free (save_set);
       DEBUG ("error sending presence: %s", error->message);
@@ -2428,7 +2560,7 @@ connection_disco_cb (GabbleDisco *disco,
 
   /* send presence to the server to indicate availability */
   /* TODO: some way for the user to set this */
-  if (!_gabble_connection_signal_own_presence (conn, &error))
+  if (!_gabble_connection_signal_own_presence (conn, NULL, &error))
     {
       DEBUG ("sending initial presence failed: %s", error->message);
       goto ERROR;

@@ -37,6 +37,7 @@ TWISTED_TESTS = \
 	olpc/gadget-publish.py \
 	olpc/gadget-restarted.py \
 	olpc/view-presence.py \
+	presence/decloak.py \
 	presence/initial-contact-presence.py \
 	presence/initial-presence.py \
 	presence/presence.py \
@@ -105,6 +106,7 @@ TWISTED_TESTS = \
 	jingle/call-state.py \
 	jingle/call-basics.py \
 	jingle/call-codecoffer.py \
+	jingle/decloak-peer.py \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \

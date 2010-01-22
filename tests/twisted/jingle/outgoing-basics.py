@@ -29,19 +29,19 @@ REQUEST_NONYMOUS = 3 # RequestChannel(HandleTypeContact, h);
 def create(jp, q, bus, conn, stream, peer='foo@bar.com/Res'):
     worker(jp, q, bus, conn, stream, CREATE, peer)
 
-def request_anonymous(jp, q, bus, conn, stream, peer='foo@bar.com/Res'):
+def request_anonymous(jp, q, bus, conn, stream, peer='publish@foo.com/Res'):
     worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS, peer)
 
 def request_anonymous_and_add(jp, q, bus, conn, stream,
-        peer='foo@bar.com/Res'):
+        peer='publish-subscribe@foo.com/Res'):
     worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS_AND_ADD, peer)
 
-def request_nonymous(jp, q, bus, conn, stream, peer='foo@bar.com/Res'):
+def request_nonymous(jp, q, bus, conn, stream, peer='subscribe@foo.com/Res'):
     worker(jp, q, bus, conn, stream, REQUEST_NONYMOUS, peer)
 
 def worker(jp, q, bus, conn, stream, variant, peer):
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', peer)
-    jt2.prepare()
+    jt2.prepare(send_presence=True, send_roster=True)
 
     self_handle = conn.GetSelfHandle()
     remote_handle = conn.RequestHandles(1, [jt2.peer])[0]
@@ -204,8 +204,27 @@ def worker(jp, q, bus, conn, stream, variant, peer):
                       cs.GC_REASON_INVITED]),
             )
     else:
+        forbidden = []
+
+        if peer.split('/', 1)[0] in (
+                'publish@foo.com', 'publish-subscribe@foo.com'):
+            forbidden = [EventPattern('stream-presence')]
+            q.forbid_events(forbidden)
+        else:
+            # we're calling someone not on our roster, so we'll send directed
+            # presence first
+            presence = q.expect('stream-presence')
+            assert (xpath.queryForNodes('/presence/c', presence.stanza)
+                    is not None)
+            assert (xpath.queryForNodes(
+                '/presence/x[@xmlns="vcard-temp:x:update"]', presence.stanza)
+                is not None)
+
         session_initiate = q.expect('stream-iq',
             predicate=jp.action_predicate('session-initiate'))
+
+        if forbidden:
+            q.unforbid_events(forbidden)
 
     jt2.parse_session_initiate(session_initiate.query)
     stream.send(jp.xml(jp.ResultIq('test@localhost', session_initiate.stanza,

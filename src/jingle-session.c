@@ -1822,6 +1822,8 @@ static void
 try_session_initiate_or_accept (GabbleJingleSession *sess)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessage *msg;
   LmMessageNode *sess_node;
   gboolean contents_ready = TRUE;
@@ -1846,6 +1848,12 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
           DEBUG ("session not locally accepted yet, not initiating");
           return;
         }
+
+      /* send directed presence (including our own caps, avatar etc.) to
+       * the peer, if we aren't already visible to them */
+      if (!gabble_connection_visible_to (priv->conn, sess->peer))
+        _gabble_connection_signal_own_presence (priv->conn,
+            tp_handle_inspect (contact_repo, sess->peer), NULL);
 
       action = JINGLE_ACTION_SESSION_INITIATE;
       new_state = JS_STATE_PENDING_INITIATE_SENT;

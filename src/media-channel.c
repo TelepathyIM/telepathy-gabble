@@ -150,7 +150,7 @@ typedef struct {
 struct _delayed_request_streams_ctx {
   GabbleMediaChannel *chan;
   gulong caps_disco_id;
-  guint timeout_id;
+  gulong unsure_period_ended_id;
   guint contact_handle;
   GArray *types;
   GFunc succeeded_cb;
@@ -1663,8 +1663,9 @@ destroy_request (struct _delayed_request_streams_ctx *ctx,
 {
   GabbleMediaChannelPrivate *priv = ctx->chan->priv;
 
-  if (ctx->timeout_id)
-    g_source_remove (ctx->timeout_id);
+  if (ctx->unsure_period_ended_id)
+    g_signal_handler_disconnect (priv->conn->presence_cache,
+        ctx->unsure_period_ended_id);
 
   if (ctx->caps_disco_id)
     g_signal_handler_disconnect (priv->conn->presence_cache,
@@ -1705,7 +1706,6 @@ repeat_request (struct _delayed_request_streams_ctx *ctx)
   media_channel_request_streams (ctx->chan, ctx->contact_handle, ctx->types,
       ctx->succeeded_cb, ctx->failed_cb, ctx->context);
 
-  ctx->timeout_id = 0;
   ctx->context = NULL;
   destroy_and_remove_request (ctx);
   return FALSE;
@@ -1720,8 +1720,9 @@ capabilities_discovered_cb (GabblePresenceCache *cache,
   if (ctx->contact_handle != handle)
     return;
 
-  /* If there are more cache caps pending for this contact, wait for them. */
-  if (gabble_presence_cache_caps_pending (cache, handle))
+  /* If we're still unsure about this contact (most likely because there are
+   * more cache caps pending), wait for them. */
+  if (gabble_presence_cache_is_unsure (cache, handle))
     return;
 
   repeat_request (ctx);
@@ -1733,8 +1734,7 @@ delay_stream_request (GabbleMediaChannel *chan,
                       const GArray *types,
                       GFunc succeeded_cb,
                       GFunc failed_cb,
-                      gpointer context,
-                      gboolean disco_in_progress)
+                      gpointer context)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   struct _delayed_request_streams_ctx *ctx =
@@ -1748,19 +1748,12 @@ delay_stream_request (GabbleMediaChannel *chan,
   ctx->types = g_array_sized_new (FALSE, FALSE, sizeof (guint), types->len);
   g_array_append_vals (ctx->types, types->data, types->len);
 
-  if (disco_in_progress)
-    {
-      ctx->caps_disco_id = g_signal_connect (priv->conn->presence_cache,
-          "capabilities-discovered", G_CALLBACK (capabilities_discovered_cb),
-          ctx);
-      ctx->timeout_id = 0;
-    }
-  else
-    {
-      ctx->caps_disco_id = 0;
-      ctx->timeout_id = g_timeout_add_seconds (5,
-          (GSourceFunc) repeat_request, ctx);
-    }
+  ctx->caps_disco_id = g_signal_connect (priv->conn->presence_cache,
+      "capabilities-discovered", G_CALLBACK (capabilities_discovered_cb),
+      ctx);
+  ctx->unsure_period_ended_id = g_signal_connect_swapped (
+      priv->conn->presence_cache, "unsure-period-ended",
+      G_CALLBACK (repeat_request), ctx);
 
   g_ptr_array_add (priv->delayed_request_streams, ctx);
 }
@@ -1798,7 +1791,7 @@ media_channel_request_streams (GabbleMediaChannel *self,
         {
           DEBUG ("Delaying RequestStreams until we get all caps from contact");
           delay_stream_request (self, contact_handle, types,
-              succeeded_cb, failed_cb, context, TRUE);
+              succeeded_cb, failed_cb, context);
           g_error_free (error);
           return;
         }
@@ -1961,14 +1954,18 @@ contact_is_media_capable (GabbleMediaChannel *chan,
   /* Okay, they're not capable (yet). Let's figure out whether we should wait,
    * and return an appropriate error.
    */
-  if (gabble_presence_cache_caps_pending (priv->conn->presence_cache, peer))
+  if (gabble_presence_cache_is_unsure (priv->conn->presence_cache, peer))
     {
-      DEBUG ("caps are pending for peer %u", peer);
+      DEBUG ("presence cache is still unsure about handle %u", peer);
       wait = TRUE;
     }
-  else if (gabble_presence_cache_is_unsure (priv->conn->presence_cache))
+  else if (!priv->tried_decloaking &&
+      gabble_presence_cache_request_decloaking (priv->conn->presence_cache,
+        peer, "media"))
     {
-      DEBUG ("presence cache is still unsure (interested in handle %u)", peer);
+      /* only ask to decloak at most once per call */
+      priv->tried_decloaking = TRUE;
+      DEBUG ("asked handle %u to decloak, let's see what they do", peer);
       wait = TRUE;
     }
 

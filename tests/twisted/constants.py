@@ -100,6 +100,7 @@ CONN_IFACE_CONTACT_CAPS = CONN + '.Interface.ContactCapabilities'
 CONN_IFACE_SIMPLE_PRESENCE = CONN + '.Interface.SimplePresence'
 CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
 CONN_IFACE_LOCATION = CONN + '.Interface.Location'
+CONN_IFACE_GABBLE_DECLOAK = CONN + '.Interface.Gabble.Decloak'
 
 STREAM_HANDLER = 'org.freedesktop.Telepathy.Media.StreamHandler'
 

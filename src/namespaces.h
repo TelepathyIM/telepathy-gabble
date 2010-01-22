@@ -106,5 +106,7 @@
 #define NS_XMPP_STANZAS         "urn:ietf:params:xml:ns:xmpp-stanzas"
 #define NS_GEOLOC               "http://jabber.org/protocol/geoloc"
 
+#define NS_DECLOAK "http://telepathy.freedesktop.org/xmpp/protocol/decloak"
+
 
 #endif /* __GABBLE_NAMESPACES__H__ */

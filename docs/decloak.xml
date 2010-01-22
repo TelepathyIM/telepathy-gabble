@@ -1,0 +1,273 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE xep SYSTEM 'xep.dtd' [
+  <!ENTITY % ents SYSTEM 'xep.ent'>
+%ents;
+<!ENTITY TYBALTCAPS "&lt;c ver=&quot;[Tybalt's client's caps hash]&quot; ...&gt;">
+<!ENTITY JULIETCAPS "&lt;c ver=&quot;[Juliet's client's caps hash]&quot; ...&gt;">
+<!ENTITY GWCAPS "&lt;c ver=&quot;[SIP gateway's caps hash]&quot; ...&gt;">
+<!ENTITY DECLOAK "http://telepathy.freedesktop.org/xmpp/protocol/decloak">
+]>
+<?xml-stylesheet type='text/xsl' href='xep.xsl'?>
+<xep>
+<header>
+  <title>Presence de-cloaking</title>
+  <abstract>This specification defines an XMPP protocol extension to
+    query a user's presence.</abstract>
+  &LEGALNOTICE;
+  <number>xxxx</number>
+  <status>ProtoXEP</status>
+  <type>Standards track</type>
+  <sig>None</sig>
+  <approver>Council</approver>
+  <dependencies/>
+  <supersedes/>
+  <supersededby/>
+  <shortname>NOT YET ASSIGNED</shortname>
+  <author>
+    <firstname>Simon</firstname>
+    <surname>McVittie</surname>
+    <email>simon.mcvittie@collabora.co.uk</email>
+    <jid>simon.mcvittie@collabora.co.uk</jid>
+  </author>
+  <revision>
+    <version>0.0.1</version>
+    <date>2010-01-05</date>
+    <initials>smcv</initials>
+    <remark><p>First draft.</p></remark>
+  </revision>
+</header>
+<section1 topic='Introduction' anchor='intro'>
+
+  <p>Various XMPP extensions, such as &xep0166;, require additional support
+    from clients, advertised in presence via &xep0115;, or require that IQs
+    are made to a particular resource.</p>
+
+  <p>For instance, Jingle calls can only be made by sending an IQ to a
+    particular resource. Until older versions of Jingle (with different
+    namespaces) and vendor-specific dialects of Jingle (such as those used by
+    Google Talk) are no longer necessary for interoperability, it isn't enough
+    to know a suitable resource - it's also necessary to determine which
+    dialect is supported by that resource.</p>
+
+  <p>This is particularly problematic when providing a gateway to a protocol
+    in which the concept of a roster is less central, such as SIP - users
+    should be able to make a call through an XMPP-to-SIP gateway by typing
+    the SIP URI (or telephone number) of an arbitrary SIP contact, without
+    first exchanging presence.</p>
+
+  <p>This document defines a protocol to request that an entity temporarily
+    reveals their presence to another entity (i.e. a deliberate
+    "presence leak").</p>
+
+  <p>The XML namespace defined here is "&DECLOAK;".</p>
+
+</section1>
+<section1 topic='Requirements' anchor='reqs'>
+
+  <p>An entity should be able to attempt to initiate a communication session
+    that requires IQs and/or capability negotiation (Jingle, a file transfer,
+    end-to-end encryption, or other similar communication modes) with an
+    arbitrary entity.</p>
+
+  <p>If the receiving entity agrees to divulge their presence in this way,
+    minimal presence (with no 'type' attribute, &SHOW; element, avatar hash,
+    etc.) and capabilities should be communicated to the initiating entity,
+    so that the initiating entity can continue to initiate the communication
+    session.</p>
+
+</section1>
+<section1 topic='Use Cases' anchor='usecases'>
+
+  <section2 topic='Making a Jingle call' anchor='usecases-call'>
+
+    <p>Juliet wishes to make a media call to Tybalt, but no presence
+      subscription between Juliet and Tybalt exists in either direction.
+      Suppose for illustration that Juliet and Tybalt have the following
+      presence, although neither can initially see the other's presence:</p>
+
+    <example caption="Initial state">
+      <![CDATA[
+      <presence from='juliet@shakespeare.lit/balcony'>
+          <show>dnd</show>
+          <status>on the phone</status>
+          ]]>&JULIETCAPS;<![CDATA[
+      </presence>
+
+      <presence from='tybalt@shakespeare.lit/library'>
+          <show>dnd</show>
+          <status>researching</status>
+          ]]>&TYBALTCAPS;<![CDATA[
+      </presence>
+
+      <presence from='tybalt@shakespeare.lit/garden'>
+          <show>xa</show>
+          <status>gone to the library</status>
+          ]]>&TYBALTCAPS;<![CDATA[
+      </presence>
+      ]]></example>
+
+    <p>Juliet requests that Tybalt divulges his availability and capabilities,
+      by sending directed presence to his bare JID with the &lt;decloak&gt;
+      element.</p>
+
+    <example caption="Requesting that a peer de-cloaks">
+      <![CDATA[
+      <presence from='juliet@shakespeare.lit/balcony'
+        to='tybalt@shakespeare.lit'>
+          ]]>&JULIETCAPS;<![CDATA[
+          <decloak xmlns=']]>&DECLOAK;<![CDATA[' reason='media'/>
+      </presence>
+      ]]></example>
+
+    <section3 topic='De-cloaking allowed' anchor='usecases-call-approved'>
+
+      <p>Tybalt MAY de-cloak one or more resources in
+        response, by sending directed presence to Juliet.</p>
+
+      <example caption="De-cloaking in response to that request">
+        <![CDATA[
+        <presence from='tybalt@shakespeare.lit/library'
+          to='juliet@shakespeare.lit'>
+          ]]>&JULIETCAPS;<![CDATA[
+        </presence>
+
+        <presence from='tybalt@shakespeare.lit/garden'
+          to='juliet@shakespeare.lit'>
+          ]]>&TYBALTCAPS;<![CDATA[
+        </presence>
+        ]]></example>
+
+      <p>Juliet can proceed to perform XEP-0115 Entity Capabilities
+        discovery to find out the meaning of the &lt;c/&gt; elements, and
+        proceed to make a Jingle call, file transfer, etc.</p>
+
+      <p><em>FIXME: to limit the presence leak, Tybalt only sends bare
+          presence - but this means Juliet can't know that the library
+          resource is more likely to get an answer than the garden resource,
+          and can't know that Tybalt is busy and does not wish to be
+          disturbed...</em></p>
+
+    </section3>
+
+    <section3 topic='De-cloaking not allowed' anchor='usecases-call-ignored'>
+
+      <p>Alternatively, Tybalt MAY ignore the request (in particular, this
+        will happen for any resource that does not implement this
+        specification).</p>
+
+    </section3>
+
+  </section2>
+
+  <section2 topic='Calling a SIP gateway' anchor='usecases-call'>
+
+    <p>Juliet wishes to make a media call to Romeo, who does not use XMPP, but
+      has the SIP URI sip:romeo@shakespeare.lit, which can be called via an
+      XMPP-to-SIP gateway.</p>
+
+    <p>Juliet requests that the SIP contact representing Romeo on the gateway
+      divulges its availability and capabilities, by sending directed
+      presence to its bare JID with the &lt;decloak&gt; element.</p>
+
+    <example caption="Requesting that a gateway contact de-cloaks">
+      <![CDATA[
+      <presence from='juliet@shakespeare.lit/balcony'
+        to='romeo%shakespeare.lit@sip.shakespeare.lit'>
+          ]]>&JULIETCAPS;<![CDATA[
+          <decloak xmlns=']]>&DECLOAK;<![CDATA[' reason='media'/>
+      </presence>
+      ]]></example>
+
+    <p>In response, the SIP gateway automatically de-cloaks that JID,
+      in order to tell Juliet what its capabilities are.</p>
+
+    <example caption="De-cloaking in response to that request">
+      <![CDATA[
+      <presence from='romeo%shakespeare.lit@sip.shakespeare.lit'
+        to='juliet@shakespeare.lit'>
+        ]]>&GWCAPS;<![CDATA[
+      </presence>
+      ]]></example>
+
+    <p>Juliet can proceed to perform XEP-0115 Entity Capabilities
+      discovery to find out the meaning of the &lt;c/&gt; elements, and
+      proceed to make a Jingle call to that JID, which will be gatewayed
+      to Romeo.</p>
+
+  </section2>
+
+</section1>
+<section1 topic='Business Rules' anchor='bizrules'>
+
+  <p>Because this is a presence leak, clients that implement the receiving side
+    of this specification, and indicate the presence of a user, MUST allow it
+    to be disabled by user configuration. (Gateways and other non-user entities
+    MAY divulge their own presence and capabilities unconditionally.)</p>
+
+  <p>Clients MAY interpret a de-cloak with the reason attribute as a hint
+    that communication is about to start; for instance, a call accept/reject
+    dialog could double as a UI for accepting or rejecting de-cloaking.</p>
+
+  <p>However, note that for minimum call-setup delay in Jingle, it is desirable
+    to start negotiating candidates as soon as possible, so user
+    interfaces which prompt the user interactively for permission to divulge
+    presence will tend to delay call setup. As a result, it may be
+    advantageous to have a way to configure unconditional de-cloaking.</p>
+
+  <p>Well-known values for the 'reason' attribute are:</p>
+
+  <dl>
+    <dt>media</dt>
+    <dd>Presence is requested for a voice and/or video call,
+      e.g. via Jingle-RTP</dd>
+
+    <dt>text</dt>
+    <dd>Presence is requested for a plain-text or XHTML-IM
+      conversation, e.g. with end-to-end encryption (which requires
+      capabilities to be disclosed)</dd>
+
+    <dt>file</dt>
+    <dd>Presence is requested for one or more file transfers, e.g.
+      via Jingle or Stream Initiation</dd>
+  </dl>
+
+</section1>
+<section1 topic='Security Considerations' anchor='security'>
+
+  <p>De-cloaking is an intentional presence leak. Clients that support
+    de-cloaking MUST allow it to be disabled by user configuration.</p>
+
+</section1>
+<section1 topic='IANA Considerations' anchor='iana'>
+  <p>None.</p>
+</section1>
+<section1 topic='XMPP Registrar Considerations' anchor='registrar'>
+  <p>None.</p>
+</section1>
+<section1 topic='XML Schema' anchor='schema'>
+  <code><![CDATA[
+    <xs:schema
+      xmlns:xs='http://www.w3.org/2001/XMLSchema'
+      targetNamespace=']]>&DECLOAK;<![CDATA['
+      xmlns=']]>&DECLOAK;<![CDATA['
+      elementFormDefault='qualified'>
+
+      <xs:element name='decloak'>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base='empty'>
+              <xs:attribute name='reason' use='optional' type='xs:string'/>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:simpleType name='empty'>
+        <xs:restriction base='xs:string'>
+          <xs:enumeration value=''/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:schema>
+  ]]></code>
+</section1>
+</xep>

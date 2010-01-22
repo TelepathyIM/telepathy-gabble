@@ -264,10 +264,10 @@ struct _GabbleMucChannelPrivate
 
   TpPropertiesContext *properties_ctx;
 
-  unsigned ready:1;
-  unsigned closed:1;
-  unsigned dispose_has_run:1;
-  unsigned invited:1;
+  gboolean ready;
+  gboolean closed;
+  gboolean dispose_has_run;
+  gboolean invited;
 
   gchar *invitation_message;
 

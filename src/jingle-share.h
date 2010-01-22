@@ -60,9 +60,22 @@ struct _GabbleJingleShare {
     GabbleJingleSharePrivate *priv;
 };
 
+typedef struct {
+  gboolean folder;
+  gboolean image;
+  guint64 size;
+  gchar *name;
+  guint image_width;
+  guint image_height;
+} GabbleJingleShareManifest;
+
 const gchar *gabble_jingle_share_parse (GabbleJingleShare *sess,
     LmMessage *message, GError **error);
 void jingle_share_register (GabbleJingleFactory *factory);
+
+gchar *gabble_jingle_share_get_source_url (GabbleJingleShare *content);
+gchar *gabble_jingle_share_get_preview_url (GabbleJingleShare *content);
+GList *gabble_jingle_share_get_manifest (GabbleJingleShare *content);
 
 #endif /* __JINGLE_SHARE_H__ */
 

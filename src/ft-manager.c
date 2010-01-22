@@ -324,8 +324,10 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
       guint64 size;
       GabbleFileTransferChannel *chan;
 
-      filename = gabble_jingle_share_get_filename (c);
-      size = gabble_jingle_share_get_filesize (c);
+      g_object_get (c,
+          "filename", &filename,
+          "filesize", &size,
+          NULL);
 
       chan = gabble_file_transfer_channel_new (self->priv->connection,
           sess->peer, sess->peer, TP_FILE_TRANSFER_STATE_PENDING,

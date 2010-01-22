@@ -1266,6 +1266,7 @@ offer_jingle (GabbleFileTransferChannel *self, const gchar *jid,
   /*TODO: listen to notify::state, new-content and terminated signals */
 
   GabbleJingleSession *jingle;
+  GList *cs;
 
   jingle = gabble_jingle_factory_create_session (
       self->priv->connection->jingle_factory,
@@ -1276,6 +1277,16 @@ offer_jingle (GabbleFileTransferChannel *self, const gchar *jid,
       JINGLE_MEDIA_TYPE_FILE, "share", NS_GOOGLE_SESSION_SHARE,
       NS_GOOGLE_TRANSPORT_P2P);
 
+  cs = gabble_jingle_session_get_contents (jingle);
+
+  if (cs != NULL)
+    {
+      GabbleJingleShare *c = GABBLE_JINGLE_SHARE (cs->data);
+      g_object_set (c,
+          "filename", self->priv->filename,
+          "filesize", self->priv->size,
+          NULL);
+    }
   gabble_file_transfer_channel_set_jingle_session (self, jingle);
   gabble_jingle_session_accept (self->priv->jingle);
 

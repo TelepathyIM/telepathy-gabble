@@ -605,6 +605,12 @@ static const gchar * const anon_channel_allowed_properties[] = {
     NULL
 };
 
+const gchar * const *
+gabble_media_factory_call_channel_allowed_properties (void)
+{
+  return call_channel_allowed_properties;
+}
+
 static GHashTable *
 gabble_media_factory_streamed_media_channel_class (void)
 {

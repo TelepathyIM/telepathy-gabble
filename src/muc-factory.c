@@ -40,6 +40,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "im-channel.h"
+#include "media-factory.h"
 #include "message-util.h"
 #include "muc-channel.h"
 #include "namespaces.h"
@@ -48,6 +49,7 @@
 #include "tube-dbus.h"
 #include "tube-stream.h"
 #include "util.h"
+#include "call-muc-channel.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
 
@@ -385,7 +387,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
 }
 
 static void
-muc_channel_tube_closed_cb (GabbleTubesChannel *chan,
+muc_sub_channel_closed_cb (TpSvcChannel *chan,
     gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
@@ -394,6 +396,22 @@ muc_channel_tube_closed_cb (GabbleTubesChannel *chan,
       TP_EXPORTABLE_CHANNEL (chan));
 }
 
+static void
+muc_channel_new_call (GabbleMucChannel *muc,
+    GabbleCallMucChannel *call,
+    GSList *requests,
+    gpointer user_data)
+{
+  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
+
+  DEBUG ("Emitting new Call channel");
+
+  tp_channel_manager_emit_new_channel (fac,
+      TP_EXPORTABLE_CHANNEL (call), requests);
+
+  g_signal_connect (call, "closed",
+    G_CALLBACK (muc_sub_channel_closed_cb), fac);
+}
 
 static void
 muc_channel_new_tube (GabbleMucChannel *channel,
@@ -406,7 +424,7 @@ muc_channel_new_tube (GabbleMucChannel *channel,
       TP_EXPORTABLE_CHANNEL (tube), NULL);
 
   g_signal_connect (tube, "closed",
-    G_CALLBACK (muc_channel_tube_closed_cb), fac);
+    G_CALLBACK (muc_sub_channel_closed_cb), fac);
 }
 
 /**
@@ -470,6 +488,8 @@ new_muc_channel (GabbleMucFactory *fac,
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
   g_signal_connect (chan, "new-tube", (GCallback) muc_channel_new_tube, fac);
+  g_signal_connect (chan, "new-call",
+      (GCallback) muc_channel_new_call, fac);
 
   g_hash_table_insert (priv->text_channels, GUINT_TO_POINTER (handle), chan);
 
@@ -1138,6 +1158,13 @@ gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
   func (manager, table, gabble_tube_dbus_channel_get_allowed_properties (),
       user_data);
 
+  /* Muc Channel.Type.Call */
+  g_value_set_static_string (channel_type_value,
+      GABBLE_IFACE_CHANNEL_TYPE_CALL);
+  func (manager, table,
+      gabble_media_factory_call_channel_allowed_properties (),
+      user_data);
+
   g_hash_table_destroy (table);
 }
 
@@ -1624,6 +1651,96 @@ handle_dbus_tube_channel_request (GabbleMucFactory *self,
       require_new, handle, error);
 }
 
+static void
+call_muc_channel_request_cb (GObject *source,
+  GAsyncResult *result,
+  gpointer user_data)
+{
+  GabbleMucFactory *self = GABBLE_MUC_FACTORY (user_data);
+  GabbleMucChannel *channel = GABBLE_MUC_CHANNEL (source);
+  gpointer request_token;
+  GError *error = NULL;
+
+
+  if (!gabble_muc_channel_request_call_finish (channel,
+      result, &request_token, &error))
+    {
+      tp_channel_manager_emit_request_failed (self,
+        request_token, error->domain, error->code, error->message);
+      g_error_free (error);
+    }
+
+  /* No need to handle a successful request, this is handled when the muc
+   * signals a new call cahnnel automagically */
+}
+
+static gboolean
+handle_call_channel_request (GabbleMucFactory *self,
+    gpointer request_token,
+    GHashTable *request_properties,
+    gboolean require_new,
+    TpHandle handle,
+    GError **error)
+{
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  gboolean initial_audio, initial_video;
+  GabbleMucChannel *muc;
+  GabbleCallMucChannel *call;
+
+  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
+          muc_channel_fixed_properties,
+          gabble_media_factory_call_channel_allowed_properties (),
+          error))
+    return FALSE;
+
+  initial_audio = tp_asv_get_boolean (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL);
+  initial_video = tp_asv_get_boolean (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL);
+
+  if (!initial_audio && !initial_video)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Request didn't set either InitialAudio or InitialVideo");
+      return FALSE;
+    }
+
+  ensure_muc_channel (self, priv, handle, &muc, TRUE, NULL, NULL, NULL);
+
+  call = gabble_muc_channel_get_call (muc);
+
+  if (call != NULL)
+    {
+      if (require_new)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "There is already a call in this muc");
+          goto error;
+        }
+      else
+        {
+          tp_channel_manager_emit_request_already_satisfied (self,
+            request_token,
+            TP_EXPORTABLE_CHANNEL (call));
+          goto out;
+        }
+    }
+
+  /* FIXME not coping properly with deinitialisation */
+  gabble_muc_channel_request_call (muc,
+      request_properties,
+      require_new,
+      request_token,
+      call_muc_channel_request_cb,
+      self);
+out:
+  return TRUE;
+
+error:
+  return FALSE;
+}
+
+
 static gboolean
 gabble_muc_factory_request (GabbleMucFactory *self,
                             gpointer request_token,
@@ -1658,7 +1775,8 @@ gabble_muc_factory_request (GabbleMucFactory *self,
    if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
        tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
        tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
-       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE) &&
+       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_CALL))
      return FALSE;
 
   /* validity already checked by TpBaseConnection */
@@ -1687,6 +1805,12 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     {
       if (handle_dbus_tube_channel_request (self, request_token,
+          request_properties, require_new, handle, &error))
+        return TRUE;
+    }
+  else if (!tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_CALL))
+    {
+      if (handle_call_channel_request (self, request_token,
           request_properties, require_new, handle, &error))
         return TRUE;
     }

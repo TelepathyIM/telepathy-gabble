@@ -23,6 +23,7 @@
 #define __GABBLE_MUC_CHANNEL_H__
 
 #include <glib-object.h>
+#include <gio/gio.h>
 
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
@@ -32,6 +33,7 @@
 
 #include "types.h"
 #include "tubes-channel.h"
+#include "call-muc-channel.h"
 
 G_BEGIN_DECLS
 
@@ -111,6 +113,20 @@ GabbleTubesChannel *
 gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
     TpHandle initiator,
     gboolean requested);
+
+GabbleCallMucChannel * gabble_muc_channel_get_call (GabbleMucChannel *gmuc);
+
+void gabble_muc_channel_request_call (GabbleMucChannel *gmuc,
+    GHashTable *request,
+    gboolean require_new,
+    gpointer token,
+    GAsyncReadyCallback callback,
+    gpointer user_data);
+
+gboolean gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
+    GAsyncResult *result,
+    gpointer *token,
+    GError **error);
 
 void gabble_muc_channel_teardown (GabbleMucChannel *gmuc);
 void gabble_muc_channel_close_tube (GabbleMucChannel *gmuc);

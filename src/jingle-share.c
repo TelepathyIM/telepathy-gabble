@@ -67,11 +67,11 @@ struct _GabbleJingleSharePrivate
 static gchar *
 generate_temp_url (void)
 {
-  gchar buf[sizeof(guint32)*2];
-  guint32 *uint_buf = (guint32 *)buf;
+  gchar buf[sizeof (guint32) * 2];
+  guint32 *uint_buf = (guint32 *) buf;
   guint i;
 
-  for (i = 0; i < sizeof(buf); i++)
+  for (i = 0; i < sizeof (buf); i++)
     buf[i] = g_random_int_range (0, 256);
 
   return g_strdup_printf ("/temporary/%x%x/", uint_buf[0], uint_buf[1]);

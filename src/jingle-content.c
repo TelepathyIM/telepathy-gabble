@@ -459,17 +459,24 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   GType transport_type = 0;
   GabbleJingleTransportIface *trans = NULL;
   JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
+  JingleMediaType media_type;
 
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
   creator = lm_message_node_get_attribute (content_node, "creator");
   name = lm_message_node_get_attribute (content_node, "name");
   senders = lm_message_node_get_attribute (content_node, "senders");
+  g_object_get (c, "media-type", &media_type, NULL);
 
   g_assert (priv->transport_ns == NULL);
 
   if (senders == NULL)
-      senders = "both";
+    {
+      if (media_type == JINGLE_MEDIA_TYPE_FILE)
+        senders = "initiator";
+      else
+        senders = "both";
+    }
 
   if (google_mode)
     {
@@ -650,7 +657,12 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
     }
 
   if (senders == NULL)
-      senders = "both";
+    {
+      if (media_type == JINGLE_MEDIA_TYPE_FILE)
+        senders = "initiator";
+      else
+        senders = "both";
+    }
 
   newsenders = parse_senders (senders);
   if (newsenders == JINGLE_CONTENT_SENDERS_NONE)

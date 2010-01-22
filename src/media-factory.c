@@ -834,14 +834,14 @@ gabble_media_factory_create_call (TpChannelManager *manager,
   if (method == METHOD_ENSURE)
     {
       GList *l;
-      TpHandle peer = 0;
+      TpHandle handle = 0;
 
       for (l = self->priv->call_channels; l != NULL; l = g_list_next (l))
         {
           GabbleCallChannel *channel = GABBLE_CALL_CHANNEL (l->data);
-          g_object_get (channel, "peer", &peer, NULL);
+          g_object_get (channel, "handle", &handle, NULL);
 
-          if (peer == target)
+          if (handle == target)
             {
               /* Per the spec, we ignore InitialAudio and InitialVideo when
                * looking for an existing channel.
@@ -856,9 +856,9 @@ gabble_media_factory_create_call (TpChannelManager *manager,
           l != NULL; l = g_list_next (l))
         {
           MediaChannelRequest *mcr = (MediaChannelRequest *) l->data;
-          g_object_get (mcr->channel, "peer", &peer, NULL);
+          g_object_get (mcr->channel, "handle", &handle, NULL);
 
-          if (peer == target)
+          if (handle == target)
             {
               /* Per the spec, we ignore InitialAudio and InitialVideo when
                * looking for an existing channel.

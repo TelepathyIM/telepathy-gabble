@@ -612,7 +612,7 @@ gabble_call_channel_dispose (GObject *object)
 
   for (l = priv->contents; l != NULL; l = g_list_next (l))
     {
-      g_object_unref (l->data);
+      gabble_call_content_deinit (l->data);
     }
 
   g_list_free (priv->contents);

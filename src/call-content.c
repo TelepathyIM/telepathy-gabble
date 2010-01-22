@@ -90,13 +90,16 @@ struct _GabbleCallContentPrivate
   GabbleJingleContent *content;
 
   GabbleCallContentCodecoffer *offer;
+  GCancellable *offer_cancellable;
   gint offers;
+  guint offer_count;
 
   GabbleCallContentDisposition disposition;
   TpHandle creator;
 
   GList *streams;
   gboolean dispose_has_run;
+  gboolean deinit_has_run;
 };
 
 static void
@@ -442,7 +445,8 @@ gabble_call_content_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* release any references held by the object here */
+  g_assert (priv->offer == NULL);
+
   for (l = priv->streams; l != NULL; l = g_list_next (l))
     {
       g_object_unref (l->data);
@@ -553,6 +557,47 @@ gabble_call_content_accept (GabbleCallContent *content)
     g_list_foreach (priv->streams, call_content_accept_stream, NULL);
 }
 
+static gboolean
+maybe_finish_deinit (GabbleCallContent *self)
+{
+  GabbleCallContentPrivate *priv = self->priv;
+
+  g_assert (priv->deinit_has_run);
+
+  if (priv->offer_count > 0)
+    return FALSE;
+
+  g_object_unref (self);
+  return TRUE;
+}
+
+void
+gabble_call_content_deinit (GabbleCallContent *content)
+{
+  GabbleCallContentPrivate *priv = content->priv;
+  GList *l;
+
+  if (priv->deinit_has_run)
+    return;
+
+  priv->deinit_has_run = TRUE;
+
+  dbus_g_connection_unregister_g_object (tp_get_bus (), G_OBJECT (content));
+
+  for (l = priv->streams; l != NULL; l = g_list_next (l))
+    {
+      g_object_unref (l->data);
+    }
+
+  g_list_free (priv->streams);
+  priv->streams = NULL;
+
+  if (priv->offer_cancellable != NULL)
+    g_cancellable_cancel (priv->offer_cancellable);
+  else
+    maybe_finish_deinit (content);
+}
+
 static GPtrArray *
 call_content_codec_list_to_array (GList *codecs)
 {
@@ -633,7 +678,8 @@ codec_offer_finished_cb (GObject *source,
   local_codecs = gabble_call_content_codecoffer_offer_finish (
     GABBLE_CALL_CONTENT_CODECOFFER (source), result, &error);
 
-  if (error != NULL)
+  if (error != NULL || priv->deinit_has_run ||
+      priv->offer != GABBLE_CALL_CONTENT_CODECOFFER (source))
     goto out;
 
   call_content_set_local_codecs (self, local_codecs);
@@ -648,8 +694,17 @@ codec_offer_finished_cb (GObject *source,
   g_array_free (empty, TRUE);
 
 out:
-  g_object_unref (priv->offer);
-  priv->offer = NULL;
+  if (priv->offer == GABBLE_CALL_CONTENT_CODECOFFER (source))
+    {
+      priv->offer = NULL;
+      priv->offer_cancellable = NULL;
+    }
+
+  --priv->offer_count;
+  g_object_unref (source);
+
+  if (priv->deinit_has_run)
+    maybe_finish_deinit (self);
 }
 
 static void
@@ -670,13 +725,16 @@ call_content_new_offer (GabbleCallContent *self)
   arr = call_content_codec_list_to_array (codecs);
   g_hash_table_insert (map, GUINT_TO_POINTER (priv->target), arr);
 
-  /* FIXME: Support switching offers */
-  g_assert (priv->offer == NULL);
+  if (priv->offer != NULL)
+    g_cancellable_cancel (priv->offer_cancellable);
+
   path = g_strdup_printf ("%s/Offer%d",
     priv->object_path, priv->offers++);
 
   priv->offer = gabble_call_content_codecoffer_new (path, map);
-  gabble_call_content_codecoffer_offer (priv->offer, NULL,
+  priv->offer_cancellable = g_cancellable_new ();
+  ++priv->offer_count;
+  gabble_call_content_codecoffer_offer (priv->offer, priv->offer_cancellable,
     codec_offer_finished_cb, self);
 
   gabble_svc_call_content_interface_media_emit_new_codec_offer (

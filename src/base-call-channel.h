@@ -23,6 +23,10 @@
 
 #include <glib-object.h>
 
+#include <extensions/extensions.h>
+
+#include "jingle-content.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleBaseCallChannel GabbleBaseCallChannel;

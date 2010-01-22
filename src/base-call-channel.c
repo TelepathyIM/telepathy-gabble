@@ -245,6 +245,7 @@ gabble_base_call_channel_get_property (GObject    *object,
     {
       case PROP_OBJECT_PATH:
         g_value_set_string (value, priv->object_path);
+        g_assert (priv->object_path != NULL);
         break;
       case PROP_CHANNEL_TYPE:
         g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_CALL);
@@ -378,9 +379,11 @@ gabble_base_call_channel_set_property (GObject *object,
         break;
       case PROP_TARGET_HANDLE:
         self->target = g_value_get_uint (value);
+        g_assert (self->target != 0);
         break;
       case PROP_CONNECTION:
         self->conn = g_value_get_object (value);
+        g_assert (self->conn != NULL);
         break;
       case PROP_CREATOR:
         priv->creator = g_value_get_uint (value);

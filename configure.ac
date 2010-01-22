@@ -112,6 +112,15 @@ AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
+AC_ARG_ENABLE([is-a-phone],
+  AC_HELP_STRING([--enable-is-a-phone],
+    [advertise that we are a phone, not a PC]),
+    [is_a_phone=$enableval], [is_a_phone=no])
+
+if test x$is_a_phone = xyes; then
+  AC_DEFINE(IS_A_PHONE, [], [Defined if the target device is a phone])
+fi
+
 dnl Check for Glib
 PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16, gobject-2.0 >= 2.16, gthread-2.0 >= 2.16])
 

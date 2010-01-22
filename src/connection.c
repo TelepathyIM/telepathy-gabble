@@ -2245,7 +2245,11 @@ connection_iq_disco_cb (LmMessageHandler *handler,
       (result_query, "identity", NULL);
   lm_message_node_set_attribute (identity, "category", "client");
   lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
+#ifdef IS_A_PHONE
+  lm_message_node_set_attribute (identity, "type", "phone");
+#else
   lm_message_node_set_attribute (identity, "type", "pc");
+#endif
 
   if (node == NULL)
     features = gabble_presence_peek_caps (self->self_presence);

@@ -1,3 +1,11 @@
+telepathy-gabble 0.9.4 (UNRELEASED)
+===================================
+
+Enhancements:
+
+• Added an --enable-is-a-phone configure switch, which makes Gabble identify
+  itself as a "phone" (rather than a "pc") in XEP-0115 disco replies.
+
 telepathy-gabble 0.9.3 (2009-12-21)
 ===================================
 

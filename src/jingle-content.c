@@ -36,6 +36,7 @@
 #include "jingle-transport-google.h"
 #include "namespaces.h"
 #include "util.h"
+#include "gabble-signals-marshal.h"
 
 /* signal enum */
 enum
@@ -43,6 +44,7 @@ enum
   READY,
   NEW_CANDIDATES,
   REMOVED,
+  NEW_CHANNEL,
   LAST_SIGNAL
 };
 
@@ -84,6 +86,7 @@ struct _GabbleJingleContentPrivate
   gboolean have_local_candidates;
 
   guint gtalk4_event_id;
+  guint last_channel_component_id;
 
   gboolean dispose_has_run;
 };
@@ -349,6 +352,17 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     0,
     NULL, NULL,
     g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+  signals[NEW_CHANNEL] = g_signal_new (
+    "new-channel",
+    G_TYPE_FROM_CLASS (cls),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    gabble_marshal_VOID__STRING_UINT,
+    G_TYPE_NONE,
+    2,
+    G_TYPE_STRING, G_TYPE_UINT);
 
   /* This signal serves as notification that the GabbleJingleContent is now
    * meaningless; everything holding a reference should drop it after receiving
@@ -622,7 +636,11 @@ gabble_jingle_content_parse_info (GabbleJingleContent *c,
           GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (priv->transport))
         {
           gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (priv->transport);
-          jingle_transport_google_set_component_name (gtrans, name, 1);
+          jingle_transport_google_set_component_name (gtrans, name,
+              ++priv->last_channel_component_id);
+
+          g_signal_emit (c, signals[NEW_CHANNEL], 0,
+              name, priv->last_channel_component_id);
         }
     }
   else if (complete_node)

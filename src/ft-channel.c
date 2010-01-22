@@ -1595,23 +1595,28 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
       self->priv->initial_offset = 0;
     }
 
-  if (self->priv->bytestream) {
-    gabble_signal_connect_weak (self->priv->bytestream, "data-received",
-        G_CALLBACK (data_received_cb), G_OBJECT (self));
+  if (self->priv->bytestream)
+    {
+      gabble_signal_connect_weak (self->priv->bytestream, "data-received",
+          G_CALLBACK (data_received_cb), G_OBJECT (self));
 
 
-    /* Block the bytestream while the user is not connected to the socket */
-    gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
+      /* Block the bytestream while the user is not connected to the socket */
+      gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
 
-    /* channel state will change to open once the bytestream is open */
-    gabble_bytestream_iface_accept (self->priv->bytestream, augment_si_reply,
-        self);
-  } else if (self->priv->jingle) {
-    /*TODO: complete */
-    gabble_jingle_session_accept (self->priv->jingle);
-  } else {
-    g_assert_not_reached ();
-  }
+      /* channel state will change to open once the bytestream is open */
+      gabble_bytestream_iface_accept (self->priv->bytestream, augment_si_reply,
+          self);
+    }
+  else if (self->priv->jingle)
+    {
+      /*TODO: complete */
+      gabble_jingle_session_accept (self->priv->jingle);
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
 }
 
 /**

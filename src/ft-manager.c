@@ -351,19 +351,19 @@ connection_status_changed_cb (GabbleConnection *conn,
 
   switch (status)
     {
-    case TP_CONNECTION_STATUS_CONNECTING:
-      g_signal_connect (self->priv->connection->jingle_factory, "new-session",
-          G_CALLBACK (new_jingle_session_cb), self);
-      break;
+      case TP_CONNECTION_STATUS_CONNECTING:
+        g_signal_connect (self->priv->connection->jingle_factory, "new-session",
+            G_CALLBACK (new_jingle_session_cb), self);
+        break;
 
-    case TP_CONNECTION_STATUS_DISCONNECTED:
-      if (self->priv->status_changed_id != 0)
-      {
-        g_signal_handler_disconnect (self->priv->connection,
-            self->priv->status_changed_id);
-        self->priv->status_changed_id = 0;
-      }
-      break;
+      case TP_CONNECTION_STATUS_DISCONNECTED:
+        if (self->priv->status_changed_id != 0)
+          {
+            g_signal_handler_disconnect (self->priv->connection,
+                self->priv->status_changed_id);
+            self->priv->status_changed_id = 0;
+          }
+        break;
     }
 }
 

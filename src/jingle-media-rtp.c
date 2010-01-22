@@ -276,17 +276,21 @@ static void transport_created (GabbleJingleContent *content,
   GabbleJingleMediaRtpPrivate *priv = self->priv;
   GabbleJingleTransportGoogle *gtrans = NULL;
 
-  if (GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (transport)) {
-    gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (transport);
+  if (GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (transport))
+    {
+      gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (transport);
 
-    if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO) {
-      jingle_transport_google_set_component_name (gtrans, "rtp", 1);
-      jingle_transport_google_set_component_name (gtrans, "rtcp", 2);
-    } else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO) {
-      jingle_transport_google_set_component_name (gtrans, "video_rtp", 1);
-      jingle_transport_google_set_component_name (gtrans, "video_rtcp", 2);
+      if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+        {
+          jingle_transport_google_set_component_name (gtrans, "rtp", 1);
+          jingle_transport_google_set_component_name (gtrans, "rtcp", 2);
+        }
+      else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+        {
+          jingle_transport_google_set_component_name (gtrans, "video_rtp", 1);
+          jingle_transport_google_set_component_name (gtrans, "video_rtcp", 2);
+        }
     }
-  }
 }
 
 

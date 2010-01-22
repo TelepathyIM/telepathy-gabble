@@ -95,7 +95,7 @@ free_manifest (GabbleJingleShare *self)
 static void
 gen_manifest (GabbleJingleShare *self)
 {
-  if (self->priv->manifest == NULL)
+  if (self->priv->manifest == NULL && self->priv->filename != NULL)
     {
       GabbleJingleShareManifest *m = g_slice_new0 (GabbleJingleShareManifest);
       m->name = g_strdup (self->priv->filename);

@@ -32,8 +32,6 @@ typedef struct _GabbleCallChannelClass GabbleCallChannelClass;
 
 struct _GabbleCallChannelClass {
     GabbleBaseCallChannelClass parent_class;
-
-    TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleCallChannel {

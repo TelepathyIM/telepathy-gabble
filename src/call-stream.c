@@ -408,8 +408,24 @@ call_stream_update_sender_states (GabbleCallStream *self)
 
   if (gabble_jingle_content_sending (priv->content))
     {
-      if (created_by_us || state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
+      if (state == JINGLE_CONTENT_STATE_EMPTY && created_by_us)
         local_state = GABBLE_SENDING_STATE_SENDING;
+      else if (created_by_us || state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
+        {
+          gpointer state_p;
+          gboolean exists;
+
+          exists = g_hash_table_lookup_extended (priv->senders,
+              GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
+              NULL,
+              &state_p);
+
+          if (exists && GPOINTER_TO_UINT (state_p) ==
+              GABBLE_SENDING_STATE_SENDING)
+            local_state = GABBLE_SENDING_STATE_SENDING;
+          else
+            local_state = GABBLE_SENDING_STATE_PENDING_SEND;
+        }
       else
         local_state = GABBLE_SENDING_STATE_PENDING_SEND;
     }
@@ -701,15 +717,57 @@ gabble_call_stream_candidates_prepared (
     context);
 }
 
+void
+gabble_call_stream_set_sending (GabbleCallStream *self,
+    gboolean sending)
+{
+  GabbleCallStreamPrivate *priv = self->priv;
+  guint self_handle = TP_BASE_CONNECTION (priv->conn)->self_handle;
+  gpointer state_p;
+  gboolean exists;
+  guint state;
+
+  if (sending)
+    state = GABBLE_SENDING_STATE_SENDING;
+  else
+    state = GABBLE_SENDING_STATE_NONE;
+
+  exists = g_hash_table_lookup_extended (priv->senders,
+      GUINT_TO_POINTER (self_handle),
+      NULL,
+      &state_p);
+
+  if (!exists || state != GPOINTER_TO_UINT (state_p))
+    {
+      GHashTable *updates = g_hash_table_new (g_direct_hash, g_direct_equal);
+      GArray *empty = g_array_new (FALSE, TRUE, sizeof (TpHandle));
+
+      g_hash_table_insert (priv->senders,
+          GUINT_TO_POINTER (self_handle),
+          GUINT_TO_POINTER (state));
+
+      g_hash_table_insert (updates,
+          GUINT_TO_POINTER (self_handle),
+          GUINT_TO_POINTER (state));
+
+      gabble_svc_call_stream_emit_senders_changed (self,
+        updates,
+        empty);
+      g_array_unref (empty);
+
+      if (sending == (!exists || state_p == GABBLE_SENDING_STATE_NONE))
+        gabble_jingle_content_set_sending (priv->content, sending);
+    }
+}
+
 static void
-gabble_call_stream_set_sending (GabbleSvcCallStream *iface,
+gabble_call_stream_set_sending_async (GabbleSvcCallStream *iface,
     gboolean sending,
     DBusGMethodInvocation *context)
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (iface);
-  GabbleCallStreamPrivate *priv = self->priv;
 
-  gabble_jingle_content_set_sending (priv->content, sending);
+  gabble_call_stream_set_sending (self, sending);
 
   gabble_svc_call_stream_return_from_set_sending (context);
 }
@@ -720,9 +778,9 @@ call_stream_iface_init (gpointer g_iface, gpointer iface_data)
   GabbleSvcCallStreamClass *klass =
     (GabbleSvcCallStreamClass *) g_iface;
 
-#define IMPLEMENT(x) gabble_svc_call_stream_implement_##x (\
-    klass, gabble_call_stream_##x)
-  IMPLEMENT(set_sending);
+#define IMPLEMENT(x, suffix) gabble_svc_call_stream_implement_##x (\
+    klass, gabble_call_stream_##x##suffix)
+  IMPLEMENT(set_sending, _async);
 #undef IMPLEMENT
 }
 
@@ -743,4 +801,21 @@ const gchar *
 gabble_call_stream_get_object_path (GabbleCallStream *stream)
 {
   return stream->priv->object_path;
+}
+
+guint
+gabble_call_stream_get_local_sending_state (GabbleCallStream *self)
+{
+  GabbleCallStreamPrivate *priv = self->priv;
+  guint self_handle = TP_BASE_CONNECTION (priv->conn)->self_handle;
+  gpointer state_p;
+  gboolean exists;
+
+  exists = g_hash_table_lookup_extended (priv->senders,
+      GUINT_TO_POINTER (self_handle), NULL, &state_p);
+
+  if (exists)
+    return GPOINTER_TO_UINT (state_p);
+  else
+    return GABBLE_SENDING_STATE_NONE;
 }

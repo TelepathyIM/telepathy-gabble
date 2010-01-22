@@ -534,6 +534,25 @@ gabble_call_content_get_object_path (GabbleCallContent *content)
   return content->priv->object_path;
 }
 
+static void
+call_content_accept_stream (gpointer data, gpointer user_data)
+{
+  GabbleCallStream *stream = GABBLE_CALL_STREAM (data);
+
+  if (gabble_call_stream_get_local_sending_state (stream) ==
+      GABBLE_SENDING_STATE_PENDING_SEND)
+    gabble_call_stream_set_sending (stream, TRUE);
+}
+
+void
+gabble_call_content_accept (GabbleCallContent *content)
+{
+  GabbleCallContentPrivate *priv = content->priv;
+
+  if (priv->disposition == GABBLE_CALL_CONTENT_DISPOSITION_INITIAL)
+    g_list_foreach (priv->streams, call_content_accept_stream, NULL);
+}
+
 static GPtrArray *
 call_content_codec_list_to_array (GList *codecs)
 {

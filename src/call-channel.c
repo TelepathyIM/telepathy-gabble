@@ -57,6 +57,8 @@ static const char *call_channel_add_content (GabbleCallChannel *self,
 
 static void call_session_state_changed_cb (GabbleJingleSession *session,
   GParamSpec *param, GabbleCallChannel *self);
+static void call_session_new_content_cb (GabbleJingleSession *session,
+    GabbleJingleContent *c, GabbleCallChannel *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
   G_TYPE_OBJECT,
@@ -175,6 +177,8 @@ gabble_call_channel_constructed (GObject *obj)
 
       gabble_signal_connect_weak (priv->session, "notify::state",
         G_CALLBACK (call_session_state_changed_cb), obj);
+      gabble_signal_connect_weak (priv->session, "new-content",
+          G_CALLBACK (call_session_new_content_cb), obj);
 
       for (l = contents; l != NULL; l = g_list_next (l))
         {
@@ -672,6 +676,26 @@ call_session_state_changed_cb (GabbleJingleSession *session,
     }
 }
 
+static void
+call_session_new_content_cb (GabbleJingleSession *session,
+    GabbleJingleContent *c,
+    GabbleCallChannel *self)
+{
+  const gchar *path;
+  JingleMediaType type;
+
+  /* This will need another condition when early media is supported */
+  if (gabble_jingle_content_is_created_by_us (c))
+    return;
+
+  /* Not safe if the session would contain non-JingleMediaRtp content */
+  g_object_get (c, "media-type", &type, NULL);
+
+  path = call_channel_add_content (self, c,
+      GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+  gabble_svc_channel_type_call_emit_content_added (self, path, type);
+}
+
 static const gchar *
 call_channel_add_content (GabbleCallChannel *self,
   GabbleJingleContent *c,
@@ -918,6 +942,8 @@ gabble_call_channel_accept (GabbleSvcChannelTypeCall *iface,
     }
 
   gabble_jingle_session_accept (self->priv->session);
+  g_list_foreach (self->priv->contents,
+      (GFunc)gabble_call_content_accept, NULL);
 
   gabble_svc_channel_type_call_return_from_accept (context);
   return;
@@ -1089,6 +1115,8 @@ call_channel_init_async (GAsyncInitable *initable,
 
       gabble_signal_connect_weak (priv->session, "notify::state",
         G_CALLBACK (call_session_state_changed_cb), G_OBJECT (self));
+      gabble_signal_connect_weak (priv->session, "new-content",
+          G_CALLBACK (call_session_new_content_cb), G_OBJECT (self));
 
       g_object_set (priv->session, "dialect", dialect, NULL);
 

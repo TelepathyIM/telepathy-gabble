@@ -314,8 +314,11 @@ gabble_base_call_channel_get_property (GObject    *object,
         g_value_set_boolean (value, self->initial_video);
         break;
       case PROP_MUTABLE_CONTENTS:
-        g_value_set_boolean (value,
-           gabble_jingle_session_can_modify_contents (priv->session));
+        if (priv->session != NULL)
+          g_value_set_boolean (value,
+            gabble_jingle_session_can_modify_contents (priv->session));
+        else
+          g_value_set_boolean (value, TRUE);
         break;
       case PROP_CONTENTS:
         {

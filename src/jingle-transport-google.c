@@ -466,56 +466,62 @@ group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
     GList *candidates)
 {
   GabbleJingleTransportGooglePrivate *priv = transport->priv;
-  GList **all_candidates = NULL;
+  GList *all_candidates = NULL;
   JingleMediaType media;
   GList *li;
-  guint components = 0;
-  guint idx;
+  GList *cands;
 
   for (li = candidates; li != NULL; li = g_list_next (li))
     {
       JingleCandidate *c = li->data;
-      GList **cands = NULL;
 
-      for (idx = 0; idx < components;  idx++) {
-        JingleCandidate *c2 = all_candidates[idx]->data;
-        if (c->component == c2->component) {
-          cands = &(all_candidates[idx]);
-          break;
+      for (cands = all_candidates; cands != NULL;  cands = g_list_next (cands))
+        {
+          JingleCandidate *c2 = ((GList *) cands->data)->data;
+          if (c->component == c2->component)
+            {
+              break;
+            }
         }
-      }
-      if (cands == NULL) {
-        all_candidates = g_renew (GList *, all_candidates, ++components);
-        cands = &(all_candidates[components-1]);
-      }
+      if (cands == NULL)
+        {
+          all_candidates = g_list_prepend (all_candidates, NULL);
+          cands = all_candidates;
+        }
 
-      *cands = g_list_prepend (*cands, c);
+      cands->data = g_list_prepend (cands->data, c);
     }
 
   g_object_get (priv->content, "media-type", &media, NULL);
 
-  for (idx = 0; idx < components;  idx++) {
-    GHashTableIter iter;
-    gpointer key, value;
-    gchar *name = NULL;
-    JingleCandidate *c = all_candidates[idx]->data;
+  for (cands = all_candidates; cands != NULL;  cands = g_list_next (cands))
+    {
+      GHashTableIter iter;
+      gpointer key, value;
+      gchar *name = NULL;
+      JingleCandidate *c = ((GList *) cands->data)->data;
 
-    g_hash_table_iter_init (&iter, priv->channels);
-    while (g_hash_table_iter_next (&iter, &key, &value)) {
-      if (GPOINTER_TO_INT (value) == c->component) {
-        name = key;
-        break;
-      }
+      g_hash_table_iter_init (&iter, priv->channels);
+      while (g_hash_table_iter_next (&iter, &key, &value))
+        {
+          if (GPOINTER_TO_INT (value) == c->component)
+            {
+              name = key;
+              break;
+            }
+        }
+      if (name)
+        {
+          transmit_candidates (transport, name, cands->data);
+        }
+      else
+        {
+          DEBUG ("Ignoring unknown component %d", c->component);
+        }
+      g_list_free (cands->data);
     }
-    if (name) {
-      transmit_candidates (transport, name, all_candidates[idx]);
-    } else {
-      DEBUG ("Ignoring unknown component %d", c->component);
-    }
-    g_list_free (all_candidates[idx]);
-  }
 
-  g_free (all_candidates);
+  g_list_free (all_candidates);
 }
 
 /* Takes in a list of slice-allocated JingleCandidate structs */

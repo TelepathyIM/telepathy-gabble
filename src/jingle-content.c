@@ -33,6 +33,7 @@
 #include "jingle-factory.h"
 #include "jingle-session.h"
 #include "jingle-transport-iface.h"
+#include "jingle-transport-google.h"
 #include "namespaces.h"
 #include "util.h"
 
@@ -590,6 +591,38 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
     priv->gtalk4_event_id = g_idle_add (send_gtalk4_transport_accept, c);
 
   return;
+}
+
+void
+gabble_jingle_content_parse_info (GabbleJingleContent *c,
+    LmMessageNode *content_node, GError **error)
+{
+  GabbleJingleContentPrivate *priv = c->priv;
+  LmMessageNode *channel_node;
+  LmMessageNode *complete_node;
+  GabbleJingleTransportGoogle *gtrans = NULL;
+
+  channel_node = lm_message_node_get_child_any_ns (content_node, "channel");
+  complete_node = lm_message_node_get_child_any_ns (content_node, "complete");
+
+  DEBUG ("parsing info message : %p - %p", channel_node, complete_node);
+  if (channel_node)
+    {
+      const gchar *name;
+      name = lm_message_node_get_attribute (channel_node, "name");
+      DEBUG ("Channel name is %s", name);
+      if (name && priv->transport &&
+          GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (priv->transport))
+        {
+          gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (priv->transport);
+          jingle_transport_google_set_component_name (gtrans, name, 1);
+        }
+    }
+  else if (complete_node)
+    {
+      /* TODO: do something maybe ?*/
+    }
+
 }
 
 void

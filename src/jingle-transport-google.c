@@ -613,7 +613,8 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
 
 void
 jingle_transport_google_set_component_name (
-    GabbleJingleTransportGoogle *transport, gchar *name, gint component_id)
+    GabbleJingleTransportGoogle *transport,
+    const gchar *name, gint component_id)
 {
   GabbleJingleTransportGooglePrivate *priv = transport->priv;
 

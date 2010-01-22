@@ -106,7 +106,7 @@ typedef struct {
 } JingleStateActions;
 
 /* gcc should be able to figure this out from the table below, but.. */
-#define MAX_ACTIONS_PER_STATE 11
+#define MAX_ACTIONS_PER_STATE 12
 
 /* NB: JINGLE_ACTION_UNKNOWN is used as a terminator here. */
 static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = {
@@ -116,24 +116,27 @@ static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = 
   { JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_SESSION_ACCEPT,
     JINGLE_ACTION_TRANSPORT_ACCEPT, /* required for GTalk4 */
     JINGLE_ACTION_DESCRIPTION_INFO, JINGLE_ACTION_SESSION_INFO,
-    JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_UNKNOWN },
+    JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_INFO,
+    JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_INITIATED */
   { JINGLE_ACTION_SESSION_ACCEPT, JINGLE_ACTION_SESSION_TERMINATE,
     JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_CONTENT_REJECT,
     JINGLE_ACTION_CONTENT_MODIFY, JINGLE_ACTION_CONTENT_ACCEPT,
     JINGLE_ACTION_CONTENT_REMOVE,  JINGLE_ACTION_DESCRIPTION_INFO,
     JINGLE_ACTION_TRANSPORT_ACCEPT, JINGLE_ACTION_SESSION_INFO,
+    JINGLE_ACTION_INFO,
     JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_PENDING_ACCEPT_SENT */
   { JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_DESCRIPTION_INFO,
     JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_SESSION_INFO,
+    JINGLE_ACTION_INFO,
     JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_ACTIVE */
   { JINGLE_ACTION_CONTENT_MODIFY, JINGLE_ACTION_CONTENT_ADD,
     JINGLE_ACTION_CONTENT_REMOVE, JINGLE_ACTION_CONTENT_REPLACE,
     JINGLE_ACTION_CONTENT_ACCEPT, JINGLE_ACTION_CONTENT_REJECT,
     JINGLE_ACTION_SESSION_INFO, JINGLE_ACTION_TRANSPORT_INFO,
-    JINGLE_ACTION_DESCRIPTION_INFO,
+    JINGLE_ACTION_DESCRIPTION_INFO, JINGLE_ACTION_INFO,
     JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_UNKNOWN },
   /* JS_STATE_ENDED */
   { JINGLE_ACTION_UNKNOWN }
@@ -156,7 +159,8 @@ gabble_jingle_session_defines_action (GabbleJingleSession *sess,
         return (a != JINGLE_ACTION_DESCRIPTION_INFO &&
             a != JINGLE_ACTION_SESSION_INFO);
       case JINGLE_DIALECT_GTALK4:
-        if (a == JINGLE_ACTION_TRANSPORT_ACCEPT)
+        if (a == JINGLE_ACTION_TRANSPORT_ACCEPT ||
+            a == JINGLE_ACTION_INFO )
           return TRUE;
       case JINGLE_DIALECT_GTALK3:
         return (a == JINGLE_ACTION_SESSION_ACCEPT ||
@@ -529,6 +533,8 @@ parse_action (const gchar *txt)
       return JINGLE_ACTION_TRANSPORT_ACCEPT;
   else if (!tp_strdiff (txt, "description-info"))
       return JINGLE_ACTION_DESCRIPTION_INFO;
+  else if (!tp_strdiff (txt, "info"))
+      return JINGLE_ACTION_INFO;
 
   return JINGLE_ACTION_UNKNOWN;
 }
@@ -569,6 +575,8 @@ produce_action (JingleAction action, JingleDialect dialect)
       return "transport-accept";
     case JINGLE_ACTION_DESCRIPTION_INFO:
       return "description-info";
+    case JINGLE_ACTION_INFO:
+      return "info";
     default:
       /* only reached if g_return_val_if_fail is disabled */
       DEBUG ("unknown action %u", action);
@@ -1411,6 +1419,26 @@ on_description_info (GabbleJingleSession *sess, LmMessageNode *node,
   _foreach_content (sess, node, TRUE, _each_description_info, error);
 }
 
+static void
+on_info (GabbleJingleSession *sess, LmMessageNode *node,
+    GError **error)
+{
+  GabbleJingleSessionPrivate *priv = sess->priv;
+  GabbleJingleContent *c = NULL;
+
+  DEBUG ("received info ");
+  if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
+    {
+      GHashTableIter iter;
+      g_hash_table_iter_init (&iter, priv->initiator_contents);
+      while (g_hash_table_iter_next (&iter, NULL, (gpointer) &c))
+        {
+          gabble_jingle_content_parse_info (c, node, error);
+          if (error != NULL && *error != NULL)
+            break;
+        }
+    }
+}
 
 static HandlerFunc handlers[] = {
   NULL, /* for unknown action */
@@ -1426,7 +1454,8 @@ static HandlerFunc handlers[] = {
   on_session_terminate, /* jingle_on_session_terminate */
   on_transport_info, /* jingle_on_transport_info */
   on_transport_accept,
-  on_description_info
+  on_description_info,
+  on_info
 };
 
 static void

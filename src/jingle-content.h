@@ -112,6 +112,8 @@ void gabble_jingle_content_produce_node (GabbleJingleContent *c,
 void gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   LmMessageNode *content_node, gboolean google_mode, GError **error);
 
+void gabble_jingle_content_parse_info (GabbleJingleContent *c,
+    LmMessageNode *content_node, GError **error);
 void gabble_jingle_content_parse_transport_info (GabbleJingleContent *self,
   LmMessageNode *trans_node, GError **error);
 void gabble_jingle_content_parse_description_info (GabbleJingleContent *self,

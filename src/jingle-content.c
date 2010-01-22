@@ -634,12 +634,15 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   LmMessageNode *trans_node, *desc_node;
   JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
   JingleContentSenders newsenders;
+  JingleMediaType media_type;
 
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
   senders = lm_message_node_get_attribute (content_node, "senders");
+  g_object_get (c, "media-type", &media_type, NULL);
 
-  if (JINGLE_IS_GOOGLE_DIALECT (dialect) && trans_node == NULL)
+  if (media_type != JINGLE_MEDIA_TYPE_FILE &&
+      JINGLE_IS_GOOGLE_DIALECT (dialect) && trans_node == NULL)
     {
       DEBUG ("no transport node, assuming GTalk3 dialect");
       /* gtalk lj0.3 assumes google-p2p transport */

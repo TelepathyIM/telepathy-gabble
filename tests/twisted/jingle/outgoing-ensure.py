@@ -16,7 +16,7 @@ import constants as cs
 from jingletest2 import JingleProtocol031, JingleTest2
 
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream, channel_type):
     jt = JingleTest2(JingleProtocol031(), conn, q, stream, 'test@localhost',
         'foo@sip.bar.com')
     jt.prepare()
@@ -24,12 +24,15 @@ def test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
     handle = conn.RequestHandles(cs.HT_CONTACT, [jt.peer])[0]
 
-    # Ensure a channel that doesn't exist yet.
-    call_async(q, conn.Requests, 'EnsureChannel',
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+    request = { cs.CHANNEL_TYPE: channel_type,
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-              cs.TARGET_HANDLE: handle,
-              })
+              cs.TARGET_HANDLE: handle}
+
+    if channel_type == cs.CHANNEL_TYPE_CALL:
+        request[cs.CALL_INITIAL_AUDIO] = True
+
+    # Ensure a channel that doesn't exist yet.
+    call_async(q, conn.Requests, 'EnsureChannel', request)
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='EnsureChannel'),
@@ -49,7 +52,7 @@ def test(q, bus, conn, stream):
     sig_path, sig_ct, sig_ht, sig_h, sig_sh = old_sig.args
 
     assertEquals(sig_path, path)
-    assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA, sig_ct)
+    assertEquals(channel_type, sig_ct)
     assertEquals(cs.HT_CONTACT, sig_ht)
     assertEquals(handle, sig_h)
     assert sig_sh # suppress handler
@@ -60,7 +63,7 @@ def test(q, bus, conn, stream):
     assertEquals(path, new_sig.args[0][0][0])
     emitted_props = new_sig.args[0][0][1]
 
-    assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA, emitted_props[cs.CHANNEL_TYPE])
+    assertEquals(channel_type, emitted_props[cs.CHANNEL_TYPE])
     assertEquals(cs.HT_CONTACT, emitted_props[cs.TARGET_HANDLE_TYPE])
     assertEquals(handle, emitted_props[cs.TARGET_HANDLE])
     assertEquals(jt.peer_bare_jid, emitted_props[cs.TARGET_ID])
@@ -70,11 +73,7 @@ def test(q, bus, conn, stream):
 
     # Now ensure a media channel with the same contact, and check it's the
     # same.
-    call_async(q, conn.Requests, 'EnsureChannel',
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-              cs.TARGET_HANDLE: handle,
-              })
+    call_async(q, conn.Requests, 'EnsureChannel', request)
 
     event = q.expect('dbus-return', method='EnsureChannel')
     yours2, path2, props2 = event.value
@@ -90,11 +89,15 @@ def test(q, bus, conn, stream):
     chan.Close()
 
 
+    # The remaining checks don't apply to calls
+    if channel_type == cs.CHANNEL_TYPE_CALL:
+        return
+
     # Now, create an anonymous channel with RequestChannel, add the other
     # person to it with RequestStreams, then Ensure a media channel with that
     # person.  We should get the anonymous channel back.
     call_async(
-        q, conn, 'RequestChannel', cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 0, True)
+        q, conn, 'RequestChannel', channel_type, 0, 0, True)
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
@@ -107,7 +110,7 @@ def test(q, bus, conn, stream):
 
     path = ret.value[0]
     assertEquals(
-        [path, cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_NONE, 0, True],
+        [path, channel_type, cs.HT_NONE, 0, True],
         old_sig.args)
 
     assertLength(1, new_sig.args)
@@ -116,7 +119,7 @@ def test(q, bus, conn, stream):
     assertEquals(path, new_sig.args[0][0][0])
     emitted_props = new_sig.args[0][0][1]
 
-    assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA, emitted_props[cs.CHANNEL_TYPE])
+    assertEquals(channel_type, emitted_props[cs.CHANNEL_TYPE])
     assertEquals(cs.HT_NONE, emitted_props[cs.TARGET_HANDLE_TYPE])
     assertEquals(0, emitted_props[cs.TARGET_HANDLE])
     assertEquals('', emitted_props[cs.TARGET_ID])
@@ -133,11 +136,7 @@ def test(q, bus, conn, stream):
     # Now, Ensuring a media channel with handle should yield the channel just
     # created.
 
-    call_async(q, conn.Requests, 'EnsureChannel',
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-              cs.TARGET_HANDLE: handle,
-              })
+    call_async(q, conn.Requests, 'EnsureChannel', request)
 
     event = q.expect('dbus-return', method='EnsureChannel')
     yours, path2, _ = event.value
@@ -151,4 +150,7 @@ def test(q, bus, conn, stream):
     chan.Close()
 
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(lambda q, bus, conn, stream:
+        test(q, bus, conn, stream, cs.CHANNEL_TYPE_STREAMED_MEDIA))
+    exec_test(lambda q, bus, conn, stream:
+        test(q, bus, conn, stream, cs.CHANNEL_TYPE_CALL))

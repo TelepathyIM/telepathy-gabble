@@ -36,6 +36,8 @@ typedef struct _GabbleBaseCallChannelClass GabbleBaseCallChannelClass;
 struct _GabbleBaseCallChannelClass {
     GObjectClass parent_class;
 
+    TpHandleType handle_type;
+
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 

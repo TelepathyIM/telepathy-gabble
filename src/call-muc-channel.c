@@ -130,6 +130,8 @@ gabble_call_muc_channel_class_init (
     GabbleCallMucChannelClass *gabble_call_muc_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_muc_channel_class);
+  GabbleBaseCallChannelClass *base_call_class =
+    GABBLE_BASE_CALL_CHANNEL_CLASS (gabble_call_muc_channel_class);
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_call_muc_channel_class,
@@ -141,6 +143,8 @@ gabble_call_muc_channel_class_init (
   object_class->constructed = gabble_call_muc_channel_constructed;
   object_class->dispose = gabble_call_muc_channel_dispose;
   object_class->finalize = gabble_call_muc_channel_finalize;
+
+  base_call_class->handle_type = TP_HANDLE_TYPE_ROOM;
 
   param_spec = g_param_spec_object ("muc", "GabbleMuc object",
       "The muc to which this call is related",

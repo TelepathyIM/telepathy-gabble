@@ -3112,7 +3112,7 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
           g_value_take_boxed (val, array);
           tp_contacts_mixin_set_contact_attribute (attributes_hash,
               handle,
-              TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES"/caps",
+              TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES"/capabilities",
               val);
         }
     }

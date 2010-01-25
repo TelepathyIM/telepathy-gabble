@@ -102,6 +102,8 @@ CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
 CONN_IFACE_LOCATION = CONN + '.Interface.Location'
 CONN_IFACE_GABBLE_DECLOAK = CONN + '.Interface.Gabble.Decloak'
 
+ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
+
 STREAM_HANDLER = 'org.freedesktop.Telepathy.Media.StreamHandler'
 
 ERROR = 'org.freedesktop.Telepathy.Error'

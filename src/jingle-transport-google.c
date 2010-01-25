@@ -260,7 +260,10 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       if (g_hash_table_lookup_extended (priv->channels, name,
               NULL, NULL) == FALSE)
-        break;
+        {
+          DEBUG ("Couldn't find name %s in channels", name);
+          break;
+        }
 
       component = GPOINTER_TO_INT (g_hash_table_lookup (priv->channels, name));
       address = lm_message_node_get_attribute (node, "address");

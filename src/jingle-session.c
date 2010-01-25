@@ -1910,7 +1910,10 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
   _map_initial_contents (sess, _check_content_ready, &contents_ready);
 
   if (!contents_ready)
+    {
+      DEBUG ("Contents not yet ready, not initiating/accepting now..");
       return;
+    }
 
   msg = gabble_jingle_session_new_message (sess, action, &sess_node);
 

@@ -26,6 +26,7 @@
 
 #include "muc-channel.h"
 #include "call-muc-channel.h"
+#include "util.h"
 
 static void async_initable_iface_init (GAsyncInitableIface *iface);
 
@@ -104,6 +105,7 @@ gabble_call_muc_channel_set_property (GObject *object,
     {
       case PROP_MUC:
         priv->muc = g_value_get_object (value);
+        g_assert (priv->muc != NULL);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -178,19 +180,40 @@ gabble_call_muc_channel_finalize (GObject *object)
 }
 
 static void
+muc_channel_ready_cb (GabbleMucChannel *channel,
+  gpointer user_data)
+{
+  GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
+
+  g_simple_async_result_complete (result);
+  g_object_unref (result);
+}
+
+static void
 call_muc_channel_init_async (GAsyncInitable *initable,
   int priority,
   GCancellable *cancellable,
   GAsyncReadyCallback callback,
   gpointer user_data)
 {
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (initable);
+  GabbleCallMucChannelPrivate *priv =
+    GABBLE_CALL_MUC_CHANNEL_GET_PRIVATE (self);
   GSimpleAsyncResult *result;
 
   result = g_simple_async_result_new (G_OBJECT (initable),
       callback, user_data, NULL);
 
-  g_simple_async_result_complete_in_idle (result);
-  g_object_unref (result);
+  if (_gabble_muc_channel_is_ready (priv->muc))
+    {
+      g_simple_async_result_complete_in_idle (result);
+      g_object_unref (result);
+    }
+  else
+    {
+      gabble_signal_connect_weak (priv->muc,
+        "ready", G_CALLBACK (muc_channel_ready_cb), G_OBJECT (result));
+    }
 }
 
 static void

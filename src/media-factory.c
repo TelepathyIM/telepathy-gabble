@@ -1155,7 +1155,6 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     const gchar * const *cap_tokens,
     GabbleCapabilitySet *cap_set)
 {
-  GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
   static GQuark q_gtalk_p2p = 0, q_ice_udp = 0, q_h264 = 0;
   static GQuark qc_gtalk_p2p = 0, qc_ice_udp = 0, qc_h264 = 0;
   gboolean gtalk_p2p = FALSE, h264 = FALSE, audio = FALSE, video = FALSE,
@@ -1228,14 +1227,17 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
           continue;
         }
 
+#ifdef ENABLE_CHANNEL_TYPE_CALL
       /* If there is a handler that can support Call channels, use those for
        * incoming channels */
       if (!tp_strdiff (tp_asv_get_string (filter,
             TP_IFACE_CHANNEL ".ChannelType"),
             GABBLE_IFACE_CHANNEL_TYPE_CALL))
         {
+          GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
           self->priv->use_call_channels = TRUE;
         }
+#endif
 
       if (tp_asv_lookup (filter, TP_IFACE_CHANNEL ".TargetHandleType")
           != NULL &&

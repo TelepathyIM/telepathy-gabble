@@ -16,6 +16,11 @@ from servicetest import (
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 import ns
+from config import CHANNEL_TYPE_CALL_ENABLED
+
+if not CHANNEL_TYPE_CALL_ENABLED:
+    print "NOTE: built with --disable-channel-type-call"
+    raise SystemExit(77)
 
 def check_state (q, chan, state, wait = False):
     if wait:

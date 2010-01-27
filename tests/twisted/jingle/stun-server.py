@@ -13,6 +13,8 @@ from servicetest import (
 import jingletest
 import constants as cs
 
+from config import CHANNEL_TYPE_CALL_ENABLED
+
 def test_stun_server(stun_server_prop,
         expected_stun_server=None, expected_stun_port=None):
     if expected_stun_server == None:
@@ -295,22 +297,29 @@ if __name__ == '__main__':
             'fallback-stun-port': dbus.UInt16(54321)})
 
     # Call tests
-    exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-        google=False))
-    exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-        google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
-        protocol=GoogleXmlStream)
-    exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-        google=True, expected_stun_server='5.4.3.2', expected_stun_port=54321),
-        protocol=GoogleXmlStream,
-        params={'stun-server': 'resolves-to-5.4.3.2',
-            'stun-port': dbus.UInt16(54321)})
-    exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-        google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
-        protocol=GoogleXmlStream,
-        params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-            'fallback-stun-port': dbus.UInt16(54321)})
-    exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-        google=False, expected_stun_server='5.4.3.2', expected_stun_port=54321),
-        params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-            'fallback-stun-port': dbus.UInt16(54321)})
+    if CHANNEL_TYPE_CALL_ENABLED:
+        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+            google=False))
+        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+            google=True, expected_stun_server='1.2.3.4',
+            expected_stun_port=12345),
+            protocol=GoogleXmlStream)
+        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+            google=True, expected_stun_server='5.4.3.2',
+            expected_stun_port=54321),
+            protocol=GoogleXmlStream,
+            params={'stun-server': 'resolves-to-5.4.3.2',
+                'stun-port': dbus.UInt16(54321)})
+        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+            google=True, expected_stun_server='1.2.3.4',
+            expected_stun_port=12345),
+            protocol=GoogleXmlStream,
+            params={'fallback-stun-server': 'resolves-to-5.4.3.2',
+                'fallback-stun-port': dbus.UInt16(54321)})
+        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+            google=False, expected_stun_server='5.4.3.2',
+            expected_stun_port=54321),
+            params={'fallback-stun-server': 'resolves-to-5.4.3.2',
+                'fallback-stun-port': dbus.UInt16(54321)})
+    else:
+        print "NOTE: built with --disable-channel-type-call; omitting Call tests"

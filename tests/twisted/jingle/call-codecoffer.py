@@ -12,6 +12,12 @@ import constants as cs
 
 from jingletest2 import JingleTest2, test_dialects, JingleProtocol031
 
+from config import CHANNEL_TYPE_CALL_ENABLED
+
+if not CHANNEL_TYPE_CALL_ENABLED:
+    print "NOTE: built with --disable-channel-type-call"
+    raise SystemExit(77)
+
 def check_offer (bus, conn, content):
     [path, codecmap] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)

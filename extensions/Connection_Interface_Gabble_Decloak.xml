@@ -23,9 +23,10 @@
     <tp:added version="Gabble 0.9.UNRELEASED">(Gabble-specific)</tp:added>
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
 
-    <tp:docstring>
-      A simple D-Bus API for Gabble's 'decloak' proto-XEP. See that document
-      for details.
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      A simple D-Bus API for <a
+        href="http://xmpp.org/extensions/xep-0276.html">XEP-0276 Temporary
+        Presence Sharing</a>. See the XEP for more details.
     </tp:docstring>
 
     <property name="DecloakAutomatically"

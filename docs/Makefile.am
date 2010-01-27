@@ -5,7 +5,6 @@ htmldir = $(if $(filter-out @%@,@htmldir@),@htmldir@,$(datadir)/doc/$(PACKAGE))
 
 man_MANS = telepathy-gabble.8
 html_DATA = \
-    decloak.html \
     olpc.html \
     muc-bytestream.html \
     si-multiple.html \

@@ -24,43 +24,77 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
 
     <tp:flags name="Mail_Notification_Flags" value-prefix="Mail_Notification" type="u" >
-      <tp:flag suffix="Has_Prop_UnreadMailCount" value="1">
+      <tp:flag suffix="Supports_Unread_Mail_Count" value="1">
         <tp:docstring>
-          The protocol provide up-to-date information about the number of 
-          unread e-mails (or e-mails thread) in the user's mailbox. The
+          The CM provides the number of unread e-mails (or e-mail
+          threads) in the main folder of your e-mail account set as
+          <tp:member-ref>UnreadMailCount</tp:member-ref> property. The
           connection manager will update this value by emitting the
           <tp:member-ref>UnreadMailsChanged</tp:member-ref> signal.
         </tp:docstring>
       </tp:flag>
-      <tp:flag suffix="Has_Prop_UnreadMails" value="2">
+      <tp:flag suffix="Supports_Unread_Mails" value="2">
         <tp:docstring>
-          The protocol provide an up-to-date details' list about currently
-          unread e-mails. The connection manager must also provide the 
-          <tp:member-ref>UnreadMailCount</tp:member-ref>
-          property. Connection managers that support this feature must not emit 
-          <tp:member-ref>MailsReceived</tp:member-ref> signal.
-          The connection manager will update this value by emitting the
+          The CM provides a detailed list of unread e-mails set as
+          <tp:member-ref>UnreadMails</tp:member-ref> property. This flag
+          implies that <tt>Supports_Unread_Mail_Count</tt> is set and
+          CANNOT be combine with flag <tt>Emits_Mails_Received</tt>.
+          The CM will update the list by emitting the
           <tp:member-ref>UnreadMailsChanged</tp:member-ref> signals.
         </tp:docstring>
       </tp:flag>
-      <tp:flag suffix="Has_Signal_MailsReceived" value="4">
+      <tp:flag suffix="Emits_Mails_Received" value="4">
         <tp:docstring>
-        This connection manager emits <tp:member-ref>MailsReceived</tp:member-ref>
-        signal which provide details about newly arrived e-mails but does not 
-        maintain their read status afterward. It must only emit this signal if
-        they have real-time information about e-mails or threads but would not
-        be unable to remove them from the <tp:member-ref>UnreadMails</tp:member-ref> 
-        array because unread to read status is not reported.
+          The CM emits <tp:member-ref>MailsReceived</tp:member-ref>
+          signal which provide details about newly arrived e-mails but does
+          NOT maintain their read/unread status afterward. This flag CANNOT
+          be combined with <tt>Supports_Unread_Mails</tt>.
+        </tp:docstring>
+      </tp:flag>
+      <tp:flag suffix="Supports_Request_Inbox_URL" value="8">
+        <tp:docstring>
+          The CM provides a URL (with optional POST data) that leads to the
+          the inbox folder of the e-mail account inside a web base client.
+          This URL can be obtained via the
+          <tp:member-ref>RequestInboxURL</tp:member-ref> method. It is
+          strongly advised to set this flag if
+          <tt>Supports_Unread_Mail_Count</tt> is set.
+        </tp:docstring>
+      </tp:flag>
+      <tp:flag suffix="Supports_Request_Mail_URL" value="16">
+        <tp:docstring>
+          The CM provides a URL (with optional POST data) that leads to the
+          a specific mail inside a web base client. This URL can be obtained
+          via the <tp:member-ref>RequestMailURL</tp:member-ref> method. It is
+          strongly advised to set this flag if
+          <tt>Supports_Unread_Mails</tt> or <tt>Emits_Mails_Received</tt>
+          is set.
+          <tp:rationale>
+            If possible client SHOULD fallback to
+            <tp:member-ref>RequestInboxURL</tp:member-ref> if
+            <tt>Supports_Request_Mail_URL</tt> is NOT set.
+          </tp:rationale>
+        </tp:docstring>
+      </tp:flag>
+      <tp:flag suffix="Supports_Request_Compose_URL" value="32">
+        <tp:docstring>
+          The CM provides an URL (with optional POST data) that leads to a
+          e-mail editor inside a web base client. This URL can be obtained
+          via the <tp:member-ref>RequestComposeURL</tp:member-ref> method.
+          This flag is optional and does NOT depend on any other flags.
         </tp:docstring>
       </tp:flag>
       <tp:docstring>
-        Flags representing capabilities that may be provided by a connection 
-        manager. Those value can be used as bitfield. Some flags may depend 
-        or conflict with others.
+        <p>Flags representing capabilities provided by a connection manager.
+          Those values can be used as bitfield. Some flags depends or
+          conflicts with each others. While it's NOT mandatory, it is
+          strongly advised that <tt>Supports_Request_Inbox_URL</tt> flag is
+          set to ensure that there always exists a way to open unread
+          messages.</p>
       </tp:docstring>
     </tp:flags>
 
-    <tp:enum name="HTTP_Method" type="u"> 
+    <tp:enum name="HTTP_Method" type="u">
       <tp:enumvalue suffix="Get" value="0">
         <tp:docstring>
           Use GET method when opening the URL.
@@ -68,7 +102,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:enumvalue>
       <tp:enumvalue suffix="Post" value="1">
         <tp:docstring>
-          Use POST method when opening the URL.
+          Use POST method when opening the URL. Refer to
+          <tp:type>HTTP_Post_Data</tp:type> for more details.
         </tp:docstring>
       </tp:enumvalue>
       <tp:docstring>
@@ -78,30 +113,60 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <tp:struct name="HTTP_Post_Data" array-name="HTTP_Post_Data_List">
       <tp:docstring>
-        A pair (key, value) representing POST Data.
+        <p>A pair (key, value) representing POST data compatible with
+        application/x-www-form-urlencoded type. The strings MUST be
+        valid UTF-8 strings. The character set for the key MUST follow
+        the rules defined in
+        <a href="http://www.w3.org/TR/html401/types.html#type-cdata">
+        W3 specification for CDATA</a>. The value SHOULD NOT be
+        encoded with HTML entity.</p>
+
+        <p>For example, if the POST data should contain a key "less-than" with value
+        "&lt;", and a key "percent" with value "%", this should be represented as
+        two HTTP_Post_Data structures, ("less-than", "&lt;") and ("percent", "%"),
+        resulting in a POST request whose request body is "less-than=&amp;lt;&amp;percent=%25".
+        If a client passes this to a browser by writing it into an HTML form, it
+        could do so by representing it as:</p>
+  
+        <pre>
+        &lt;input type="hidden" name="less-than"&gt;&amp;lt;&lt;/input&gt;
+        &lt;input type="hidden" name="percent"&gt;%&lt;/input&gt;
+        </pre>
+
+        <tp:rationale>
+          This data MAY be used to generate a HTML file that will
+          automatically load the URL with appropriate POST data (in which case
+          the client MUST convert the
+          <a href="http://www.ietf.org/rfc/rfc1738.txt">reserved characters</a>
+          into HTML entities) or MAY use it as-is inside an UTF-8 API that will
+          instruct the browser how to load the URL (like the Netscape Plug-in
+          API). For this reason, the choice of non encoded UTF-8 strings is
+          prefered.
+        </tp:rationale>
       </tp:docstring>
-      <tp:member type="s" name="key"/>
-      <tp:member type="s" name="value"/>
+      <tp:member type="s" name="Key"/>
+      <tp:member type="s" name="Value"/>
     </tp:struct>
 
     <tp:struct name="Mail_Address" array-name="Mail_Address_List">
       <tp:docstring>
-        A pair (name, address) representing an e-mail address.
+        A pair (name, address) representing an e-mail address 
+        (e.g. ("Nicolas Dufresne", "nicolas.dufresne@collabora.co.uk") ).
       </tp:docstring>
-      <tp:member type="s" name="name"/>
-      <tp:member type="s" name="address"/>
+      <tp:member type="s" name="Name"/>
+      <tp:member type="s" name="Address"/>
     </tp:struct>
 
-    <tp:enum name="Mail_Type" type="u"> 
-      <tp:enumvalue suffix="single" value="0">
+    <tp:enum name="Mail_Type" type="u">
+      <tp:enumvalue suffix="Single" value="0">
         <tp:docstring>
-          The e-mail is represented as a single reply by only
+          The e-mail is represented as a single message send by only
           one sender.
         </tp:docstring>
       </tp:enumvalue>
-      <tp:enumvalue suffix="thread" value="1">
+      <tp:enumvalue suffix="Thread" value="1">
         <tp:docstring>
-          The e-mail refer to a thread where multiple person may
+          The e-mail refer to a thread where multiple person MAY
           have replied.
         </tp:docstring>
       </tp:enumvalue>
@@ -112,61 +177,67 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <tp:struct name="Mail_URL">
       <tp:docstring>
-        Structure that contains required information to open Web base e-mail 
+        Structure that contains required information to open Web base e-mail
         UI without need for re-authentication.
       </tp:docstring>
-      <tp:member type="s" name="url">
+      <tp:member type="s" name="URL">
         <tp:docstring>
           URL of the inbox folder or mail Web viewer.
         </tp:docstring>
       </tp:member>
-      <tp:member type="u" name="method" tp:type="HTTP_Method">
+      <tp:member type="u" name="Method" tp:type="HTTP_Method">
         <tp:docstring>
           HTTP Method for opening URL.
         </tp:docstring>
       </tp:member>
-      <tp:member type="a(ss)" name="post_data" tp:type="HTTP_Post_Data[]">
+      <tp:member type="a(ss)" name="Post_Data" tp:type="HTTP_Post_Data[]">
         <tp:docstring>
           Array of name-value pair structs of the POST data to use when opening
-          the URL. Because of the nature of the POST data, this information may
-          not be shared between clients.
+          the URL. Because the POST data frequently contains short-lived credential
+          tokens, this information MAY NOT be shared between clients.
         </tp:docstring>
       </tp:member>
     </tp:struct>
 
     <tp:simple-type name="Mail" type="a{sv}" array-name="Mail_List">
       <tp:docstring>
-        E-mail representation has been reduced to hash table with possible keys (of type strings) 
-        listed above. All keys are optional except the "id" key that must be provided by every 
-        protocol that support unread mail listing. Without this key, it would not be impossible to 
-        unlist the e-mails that are no longer marked as unread.
+        E-mail representation has been reduced to hash table with possible
+        keys (of type strings) listed above. Most keys are optional unless
+        explicity stated in dedicated section. At least one of "senders"
+        and "subject" key MUST be set.
         <tp:rationale>
-          The hash map will allow extending the protocol without any ABI 
+          The hash map will allow extending the protocol without any ABI
           changes. Only the documentation will need to be updated.
         </tp:rationale>
-      
+
         <div class="indent">
         <h3>Keys</h3>
         <ul>
           <li>id &#8212; s</li>
-          <div class="docstring">A unique ID for this e-mail</div>
+          <div class="docstring">
+            A unique ID for this e-mail. CMs with <tt>Supports_Unread_Mails</tt>
+            set in <tp:member-ref>Capabilities</tp:member-ref> MUST provide this
+            key in each <tp:type>Mail</tp:type>. The ID MUST be unique within the
+            session.
+          </div>
 
           <li>type &#8212; u (<tp:type>Mail_Type</tp:type>)</li>
           <div class="docstring">
-            Type of e-mail. This can be set to "single", which means e-mails 
-            are represented separately, or "thread", when information is described
-            by the protocol as thread. Note that threads may have multiple unread senders.
+            Type of e-mail. This can be set to "single", which means e-mails
+            are represented separately, or "thread", when information is
+            described by the protocol as thread. Note that threads MAY have
+            multiple unread senders. If unset, "single" MUST be assumed.
           </div>
 
-          <li>url_data &#8212; s</li>
+          <li>url-data &#8212; s</li>
           <div class="docstring">An opaque string used to build URL when
             calling <tp:member-ref>RequestMailURL</tp:member-ref>.
           </div>
 
           <li>senders &#8212; a(ss) (<tp:type>Mail_Address</tp:type>)</li>
           <div class="docstring">
-            An array of sender display name and e-mail address pair. Note that 
-            only e-mails thread may have multiple senders.
+            An array of sender display name and e-mail address pair. Note that
+            only e-mails thread MAY have multiple senders.
           </div>
 
           <li>to-addresses &#8212; a(ss) (<tp:type>Mail_Address</tp:type>)</li>
@@ -181,57 +252,67 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
             copy recipients.
           </div>
 
-          <li>subject &#8212; s</li>
-          <div class="docstring">The subject of the message.</div>
+          <li>sent-timestamp &#8212; x (<tp:type>Unix_Timestamp64</tp:type>)</li>
+          <div class="docstring">A UNIX timestamp of when the message has been
+            sent (in seconds) (optional).
+          </div>
 
-          <li>sent-timestamp &#8212; u</li>
-          <div class="docstring">A UNIX timestamp of when the message has been sent (in seconds).</div>
-
-          <li>received-timestamp &#8212; u</li>
-          <div class="docstring">A UNIX timestamp of when the message has been received (in seconds).</div>
+          <li>received-timestamp &#8212; x (<tp:type>Unix_Timestamp64</tp:type>)</li>
+          <div class="docstring">A UNIX timestamp of when the message has been
+            received (in seconds).
+          </div>
 
           <li>has-attachments &#8212; b</li>
-          <div class="docstring">A boolean of whether this message has attachments.</div>
+          <div class="docstring">A boolean of whether this message has
+            attachments.
+          </div>
+
+          <li>subject &#8212; s</li>
+          <div class="docstring">
+            The subject of the message. This must be encoded in UTF-8.
+          </div>
 
           <li>content-type &#8212; s</li>
           <div class="docstring">
-            MIME type of the message contents. Plain text should be
-            assumed if unset.
+            MIME type of the message content. Two types are currently supported,
+            "text/plain" where text is valid UTF-8 and "text/html" where text
+            is a valid HTML document. "text/plain" MUST be assumed if unset.
           </div>
 
-          <li>snippet &#8212; s</li>
+          <li>truncated &#8212; b</li>
           <div class="docstring">
-            A small part of the message body (content-type should
-            be set if this message is HTML encoded).
+            A boolean, TRUE means that the "content" contains only a snippet
+            of real body.
           </div>
 
-          <li>body &#8212; s</li>
+          <li>content &#8212; s</li>
           <div class="docstring">
-            The body of the message (content-type should
-            be set if this message is HTML encoded).
+            The body of the message. The text MUST be formated according to
+            "content-type".
           </div>
 
           <li>folder &#8212; s</li>
           <div class="docstring">
-            The name of the folder containing this e-mails. 
+            The name of the folder containing this e-mails.
             If unset, inbox will be assumed.
           </div>
         </ul>
         </div>
       </tp:docstring>
     </tp:simple-type>
-   
+
     <property name="Capabilities" type="u" access="read"
       tp:type="Mail_Notification_Flags" tp:name-for-bindings="Capabilities">
       <tp:docstring>
-        Integer representing the bitwise-OR of supported features for e-mails 
-        notification on this server.
+        Integer representing the bitwise-OR of supported features for e-mails
+        notification on this server. This property CANNOT change after the 
+        Connection becomes CONNECTED.
         <tp:rational>
           This property explicitly state the behavior and availability
           of the other properties and signals within this interface. A
           connection manager that cannot at least set one of the flag
           in the <tp:type>Mail_Notification_Flags</tp:type>
-          should not provide this interface.
+          SHOULD NOT provide this interface.
         </tp:rational>
       </tp:docstring>
     </property>
@@ -239,76 +320,119 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
     <property name="UnreadMailCount" type="u" access="read"
       tp:name-for-bindings="Unread_Mail_Count">
       <tp:docstring>
-        The number of unread messages in the inbox.
+        The number of unread messages in the Inbox. Change notification is via
+        <tp:member-ref>UnreadMailsChanged</tp:member-ref>. This property
+        can be used if <tt>Supports_Unread_Mail_Count</tt> flag is set in
+        <tp:member-ref>Capabilities</tp:member-ref>.
       </tp:docstring>
     </property>
 
     <property name="UnreadMails" type="aa{sv}" tp:type="Mail[]"
       tp:name-for-bindings="Unread_Mails" access="read">
       <tp:docstring>
-        A array of unread <tp:type>Mail</tp:type>s.
+        A array of unread <tp:type>Mail</tp:type>s. Change notification is via
+        <tp:member-ref>UnreadMailsChanged</tp:member-ref>. This property
+        can be used if <tt>Supports_Unread_Mails</tt> flag is set in
+        <tp:member-ref>Capabilities</tp:member-ref>.
       </tp:docstring>
     </property>
 
     <signal name="MailsReceived" tp:name-for-bindings="Mails_Received">
-      <arg name="mails" type="aa{sv}" tp:type="Mail[]">
+      <arg name="Mails" type="aa{sv}" tp:type="Mail[]">
         <tp:docstring>
-          An array of <tp:type>Mail</tp:type>s. Those e-mails do not have a unique "ID".
+          An array of <tp:type>Mail</tp:type>s. Those e-mail MAY NOT have the
+          "id" key or MAY have an "id" key that is not unique.
+          <tp:rationale>
+            In this context, the "id" key does not make much sense since
+            e-mails will only be sent once. CMs may still set it to put
+            additional information for method 
+            <tp:member-ref>RequestMailURL</tp:member-ref>.
+          </tp:rationale>
         </tp:docstring>
       </arg>
 
       <tp:docstring>
         Emitted when new e-mails messages arrive to the inbox associated with
-        this connection. This signal is used for protocol that are not able
+        this connection. This signal is used for protocol that are NOT able
         to maintained <tp:member-ref>UnreadMails</tp:member-ref> list but
-        receives real-time notification about newly arrived e-mails.
+        receives real-time notification about newly arrived e-mails. It MAY be
+        emited only if <tt>Emits_Mails_Received</tt> flag is set in
+        <tp:member-ref>Capabilities</tp:member-ref>.
       </tp:docstring>
     </signal>
 
     <signal name="UnreadMailsChanged"
       tp:name-for-bindings="Unread_Mails_Changed">
-      <arg name="count" type="u">
+      <arg name="Count" type="u">
         <tp:docstring>
           Number of unread messages in the inbox (the new value of
           <tp:member-ref>UnreadMailCount</tp:member-ref>).
         </tp:docstring>
       </arg>
-      <arg name="mails_added" type="aa{sv}" tp:type="Mail[]">
+      <arg name="Mails_Added" type="aa{sv}" tp:type="Mail[]">
         <tp:docstring>
           A list of <tp:type>Mail</tp:type> that are being added or updated in
           <tp:member-ref>UnreadMails</tp:member-ref>. This list will be
-          empty if the protocol does not support listing unread e-mails
+          empty if the protocol does NOT support listing unread e-mails
           or threads.
           <tp:rationale>
-            Mails may be updated when the URL information (url and POST Data) 
-            have changed, or senders were added or removed from an e-mails 
+            Mails MAY be updated when the URL information (url and POST Data)
+            have changed, or senders were added or removed from an e-mails
             thread (see <tp:type>Mail_Type</tp:type>).
           </tp:rationale>
         </tp:docstring>
       </arg>
-      <arg name="mails_removed" type="as">
+      <arg name="Mails_Removed" type="as">
         <tp:docstring>
           A list of e-mails ID that are being removed from
           <tp:member-ref>UnreadMails</tp:member-ref>. This list will be
-          empty if the protocol does not support listing unread e-mails
+          empty if the protocol does NOT support listing unread e-mails
           or threads.
         </tp:docstring>
       </arg>
       <tp:docstring>
-        Emitted when <tp:member-ref>UnreadMails</tp:member-ref> or 
-        <tp:member-ref>UnreadMailCount</tp:member-ref> have changed.
+        Emitted when <tp:member-ref>UnreadMails</tp:member-ref> or
+        <tp:member-ref>UnreadMailCount</tp:member-ref> have changed. It MAY be
+        emited only if <tt>Supports_Unread_Mail_Count</tt> flag is set in
+        <tp:member-ref>Capabilities</tp:member-ref>. <tt>mails_added</tt> and
+        <tt>mails_removed</tt> MAY NOT be empty list if 
+        <tt>Supports_Unread_Mails</tt> flag is set.
       </tp:docstring>
     </signal>
 
     <method name="Subscribe"
         tp:name-for-bindings="Subscribe">
       <tp:docstring>
-        This method subscribes a client to the notification interface. This
-        should be called if a client wants to get notified of incoming
-        e-mails. Before anyone subscribes to the interface, the connection
-        manager should try to minimized memory usage and network traffic as
-        much as possible. The Control Manager must detect client disconnection
-        (e.g. in case of crash) and free resources that are no longer required.
+        <p>This method subscribes a client to the notification interface. This
+          MUST be called by clients before using this interface.</p>
+
+        <p>The CM tracks a subscription count (like a refcount) for each
+          unique bus name that has called Subscribe(). When a client calls
+          Unsubscribe(), it releases one "reference". If a client exits
+          (or crash), it releases all of its "references".</p>
+
+        <tp:rationale>
+            The reference count imposed on the subscription SHOULD simplify
+            implementation of client running in the same process
+            (e.g. plug-ins). Two plug-ins interested in mail notification can
+            call Subscribe independently without relying on the CM to handle
+            this particular action.
+        </tp:rationale>
+
+        <tp:rationale>
+            This method exists to initiate real time messages in the case
+            at least one client is subscribed. This may also be used to reduce
+            memory and network overhead when there is no active subscription.
+            An example of protocol that benifits from this method is the
+            Google XMPP Mail Notification extension. In this protocol, the CM
+            receives a notification telling that something has changed. To get
+            more information, the CM must request this information. Knowing
+            that nobody is currently interested in this information, the CM
+            can avoid generating useless network traffic. In the same situation,
+            the CM may free the list of unread messages and reduce memory
+            overhead.
+        </tp:rationale>
+
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
@@ -321,11 +445,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
     <method name="Unsubscribe"
         tp:name-for-bindings="Unsubscribe">
       <tp:docstring>
-        This method unsubscribes a client from the notification interface. This
-        should called if a client no longer wants tot get notified of incoming
-        e-mails. When all the client has been Unsubscribed, the connection manager
-        should free all non-required information and reduce network traffic. It must
-        be possible to call Subscribe later.
+        This method unsubscribes a client from the notification interface.
+        This SHOULD be called when a client no longer need the mail
+        notification interface.
+        <tp:rationale>
+          When the last client unsubscribe from this interface, the CM may
+          free any uneeded data and reduce network traffic. See
+          <tp:member-ref>Unsubscribe</tp:member-ref> for more rationale on
+          this topic.
+        </tp:rationale>
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
@@ -337,79 +465,184 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <method name="RequestInboxURL"
       tp:name-for-bindings="Request_Inbox_URL">
-      <arg direction="out" name="url" type="(sua(ss))" tp:type="Mail_URL" >
+      <arg direction="out" name="URL" type="(sua(ss))" tp:type="Mail_URL" >
         <tp:docstring>
           A struture that contains URL and any additional data to open Web
           mail client without re-authentication.
         </tp:docstring>
       </arg>
       <tp:docstring>
-        This method create and return a URL and optionnal POST data that allow
-        openning the Inbox folder of your Web mail account. This URL may 
-        contains token with short life time. Thus, a client should not reuse it
-        and request a new URL whenever it is needed.
+        This method creates and returns an URL and an optionnal POST data that
+        allow openning the Inbox folder of your Web mail account. This URL may
+        contains token with short lifetime. Thus, a client SHOULD NOT reuse it
+        and request a new URL whenever it is needed. This method is implemented
+        only if <tt>Supports_Request_Inbox_URL</tt> flag is set in
+        <tp:member-ref>Capabilities</tp:member-ref>.
         <tp:rationale>
-          We are not using properties here because the tokens may not be shared
+          We are NOT using properties here because the tokens MAY NOT be shared
           between clients and that network may be required to obtain the
           information that leads to authentication free Web access.
         </tp:rationale>
       </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented"/>
+      </tp:possible-errors>
     </method>
 
     <method name="RequestMailURL"
       tp:name-for-bindings="Request_Mail_URL">
-      <arg direction="in" name="id" type="s">
+      <arg direction="in" name="ID" type="s">
         <tp:docstring>
-          The mail ID as found in <tp:type>Mail</tp:type> structure.
+          The mail ID as found in <tp:type>Mail</tp:type> structure. If this
+          key is missing, use the empty string.
         </tp:docstring>
       </arg>
-      <arg direction="in" name="url_data" type="s">
+      <arg direction="in" name="URL_Data" type="s">
         <tp:docstring>
           An opaque string that contains information required by CM to build
           a correct URL for opening Web mail client without re-authentication.
-          This token is part of <tp:type>Mail</tp:type> structure.
+          This token is part of <tp:type>Mail</tp:type> structure, if it's
+          missing, use the empty string.
         </tp:docstring>
       </arg>
-      <arg direction="out" name="url" type="(sua(ss))" tp:type="Mail_URL" >
+      <arg direction="out" name="URL" type="(sua(ss))" tp:type="Mail_URL" >
         <tp:docstring>
           A struture that contains URL and any additional data to open Web
           mail client without re-authentication.
         </tp:docstring>
       </arg>
       <tp:docstring>
-        This method create and return a URL and optionnal POST data that allow
-        openning specific mail of your Web mail account. Refer to 
-        <tp:member-ref>RequestInboxURL</tp:member-ref>.
+        This method creates and return a URL and optionnal POST data that
+        allow openning specific mail of your Web mail account. Refer to
+        <tp:member-ref>RequestInboxURL</tp:member-ref> for rationale. This
+        method is implemented only if <tt>Supports_Request_Mail_URL</tt> flag
+        is set in <tp:member-ref>Capabilities</tp:member-ref>.
       </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented"/>
+      </tp:possible-errors>
+    </method>
+
+    <method name="RequestComposeURL"
+      tp:name-for-bindings="Request_Compose_URL">
+      <arg direction="out" name="URL" type="(sua(ss))" tp:type="Mail_URL" >
+        <tp:docstring>
+          A struture that contains URL and any additional data to open Web
+          mail client without re-authentication.
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        This method assembles and returns an URL and optional POST data that
+        allow openning the mail compositer page of your Web mail account.
+        This method is implemented only if <tt>Supports_Request_Compose_URL</tt>
+        flag is set in <tp:member-ref>Capabilities</tp:member-ref>.
+        <tp:rationale>
+          The goal is to allow a Web mail user to have the same level of
+          integration as if he were using a native mail client.
+        </tp:rationale>
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented"/>
+      </tp:possible-errors>
     </method>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An interface to support receiving notifications about a e-mail
         account associated with this connection. It is intended that the
-        connection manager has the means to provide necessary
-        information (URL, method, POST data) so that the client is 
-        able to open the user's inbox and possibly individual messages without 
-        having to re-authenticate. To use this interface, a client must first
-        subscribe using the <tp:member-ref>Subscribe</tp:member-ref> method.</p>
-
-      <p>When unread e-mails arrive into the into or unread e-mails are marked 
-        read or deleted the
-        <tp:member-ref>UnreadMailsChanged</tp:member-ref> signal
-        will be emitted with the new value of
-        <tp:member-ref>UnreadMailCount</tp:member-ref>, an array
-        of new or modified mails and the list of removed e-mail unique IDs. 
-        To open the web base mail client for the inbox folder or a specific
-        mail client must call <tp:member-ref>RequestInboxURL</tp:member-ref>
-        or <tp:member-ref>RequestMailURL</tp:member-ref>. Those methods
-        will do proper actions to retreive the information and provide
-        authentication free URL to the requested Web client interface.
+        connection manager has the means to provide necessary information
+        so that the client is always able to open a web based mail client
+        without having to re-authenticate.
       </p>
       <p>
-        Some protocol may not be able to provide a list of unread e-mails
-        but may provide some information about the messages received. On
-        such protocols, the <tp:member-ref>MailsReceived</tp:member-ref>
-        signal will also be emitted, with information about the e-mails.
-        The protocol does not keep track of any of this information.
+        To use this interface, a client MUST first subscribe using the
+        <tp:member-ref>Subscribe</tp:member-ref> method. The subscription
+        mechanic aims at reducing network traffic and memory footprint in the
+        situation where nobody is currently interesting in provided
+        information.
+      </p>
+      <p>
+        Protocol often have different level of Mail Notification support. To
+        make it more explicit, the interface provides a property called
+        <tp:member-ref>Capabilities</tp:member-ref>. Possible value are
+        described by <tp:type>Mail_Notification_Flags</tp:type>. Not all
+        combinations are valid. We can regroup the mail notification in four
+        different combinations.
+      </p>
+      <p>
+        <b>1) Supports_Unread_Mail_Count only:</b>
+        <br/>
+        This flag is generally combined with other flags, but provides
+        sufficient information to be usefull. The mail count is supported
+        by most protocols including MSN, Yahoo and Google Talk. It allows 
+        a UI to permanantly display messages like 'GMail: 4 unread messages'.
+      </p>
+      <p>
+        <b>2) Emist_Mails_Received only:</b>
+        <br/>
+        In this case, the CM does not keep track of any mails. It simply emits
+        information whenever they arrived to it. Those events may be used for
+        short term display (like notification popup) to inform the user. No
+        protocol is known to only supported this single feature, but it is
+        useful for certain library integration that does not implement
+        tracking of count or have a buggy counter implementation.
+        <tp:rationale>
+          It's always better to remove a feature then enabling one that does
+          not behave properly.
+        </tp:rationale>
+      </p>
+      <p>
+        <b>3) Supports_Unread_Mail_Count and Supports_Unread_Mails:</b>
+        <br/>
+        This allow full state recovery of unread mail status. It is provided
+        by Google XMPP Mail Notification Extension. With this set of flag,
+        a client could have same display has case 1, and have let's say a
+        plus button to show more detailed information. Refer to
+        <tp:type>Mail</tp:type> documentation for the list of details that
+        MAY be provided.
+      </p>
+      <p>
+        <b>4) Supports_Unread_Mail_Count and Emits_Mails_Received</b>
+        <br/>
+        This is the most common level of support, it is provided by protocols
+        like MSN and Yahoo. This would result in a combination of case 1 and 2
+        where the client could display a counter and real-time notification.
+      </p>
+      <p>
+        In case 1, 3 and 4, client SHOULD connect to signal
+        <tp:member-ref>UnreadMailsChanged</tp:member-ref> to get updated with
+        latest value of <tp:member-ref>UnreadMailCount</tp:member-ref>. In
+        case 3, this signal also provides updates of
+        <tp:member-ref>UnreadMails</tp:member-ref> property.
+      </p>
+      <p>
+        In case 2 and 4, client MAY connect to signal
+        <tp:member-ref>MailsReceived</tp:member-ref> to get real-time
+        notification about newly arrived e-mails.
+      </p>
+      <p>
+        Other independant features promoted within the
+        <tp:member-ref>Capabilities</tp:member-ref> are the RequestSomethingURL
+        methods. Those requests are used to obtain authentication free URL that
+        will allow client to open web base mail client. Those capabilities
+        are all optional, but flag <tt>Supports_Request_Inbox_URL</tt> is
+        recommanded for case 1, 3 and 4. Flag 
+        <tt>Supports_Request_Mail_URL</tt> is mostly usefull for case 1, 3
+        and 4, but client SHOULD fallback to Inbox URL if missing. Finally,
+        flag <tt>Supports_Request_Compose_URL</tt> is a special feature that
+        allow accessing the mail creation web interface with a single click.
+        This feature is simply optional.
+      </p>
+      <p>
+        When done with this interface, client SHOULD call
+        <tp:member-ref>Unsubscribe</tp:member-ref>. If no more clients are
+        subscribed, the CM will then be able to free any uneeded memory and
+        reduce network traffic.
       </p>
     </tp:docstring>
   </interface>

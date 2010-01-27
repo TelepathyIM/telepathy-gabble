@@ -62,12 +62,18 @@ def test_google_featured(q, bus, conn, stream):
     thread3_snippet = "body2"
 
     # Supported mail capability flags
-    Has_Prop_UnreadMailCount = 1
-    Has_Prop_UnreadMails = 2
+    Supports_Unread_Mail_Count = 1
+    Supports_Unread_Mails = 2
+    Supports_Request_Inbox_URL = 8
+    Supports_Request_Mail_URL = 16
+    expected_caps = Supports_Unread_Mail_Count\
+                    | Supports_Unread_Mails\
+                    | Supports_Request_Inbox_URL\
+                    | Supports_Request_Mail_URL
     
     # Nobody is subscribed yet, attributes should all be empty, and
     # capabilities are set properly.
-    check_properties_empty(conn, Has_Prop_UnreadMailCount | Has_Prop_UnreadMails)
+    check_properties_empty(conn, expected_caps)
 
     # Check that gabble query mail data on initial subscribe.
     conn.MailNotification.Subscribe()
@@ -154,13 +160,15 @@ def test_google_featured(q, bus, conn, stream):
     # we need to divided by 1000
     assert mail1['received-timestamp'] == thread1_date / 1000
     assert mail1['subject'] == thread1_subject
-    assert mail1['snippet'] == thread1_snippet
+    assert mail1['truncated'] == True
+    assert mail1['content'] == thread1_snippet
     assert mail1['senders'] == thread1_senders
 
     assert mail2 != None
     assert mail2['received-timestamp'] == thread2_date / 1000
     assert mail2['subject'] == thread2_subject
-    assert mail2['snippet'] == thread2_snippet
+    assert mail2['truncated'] == True
+    assert mail2['content'] == thread2_snippet
     assert mail2['senders'] == thread2_senders
 
     # Extract mails from stored mails, order is unkown
@@ -178,13 +186,15 @@ def test_google_featured(q, bus, conn, stream):
     assert stored_mail1 != None
     assert stored_mail1['received-timestamp'] == thread1_date / 1000
     assert stored_mail1['subject'] == thread1_subject
-    assert stored_mail1['snippet'] == thread1_snippet
+    assert stored_mail1['truncated'] == True
+    assert stored_mail1['content'] == thread1_snippet
     assert stored_mail1['senders'] == thread1_senders
 
     assert stored_mail2 != None
     assert stored_mail2['received-timestamp'] == thread2_date / 1000
     assert stored_mail2['subject'] == thread2_subject
-    assert stored_mail2['snippet'] == thread2_snippet
+    assert stored_mail2['truncated'] == True
+    assert stored_mail2['content'] == thread2_snippet
     assert stored_mail2['senders'] == thread2_senders
     
     # Now we want to validate the update mechanism. Thus we wil send an
@@ -252,11 +262,11 @@ def test_google_featured(q, bus, conn, stream):
 
     # Check the we can get an URL for a specific mail
     mail_url = conn.MailNotification.RequestMailURL(thread1_id,
-            mails_added[0]['url_data']);
+            mails_added[0]['url-data']);
     
     # Unsubscribe and check that all data has been dropped
     conn.MailNotification.Unsubscribe()
-    check_properties_empty(conn, Has_Prop_UnreadMailCount | Has_Prop_UnreadMails)
+    check_properties_empty(conn, expected_caps)
 
 
 def test_no_google_featured(q, bus, conn, stream):

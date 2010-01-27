@@ -50,9 +50,6 @@ enum
 {
   PROP_CAPABILITIES,
   PROP_UNREAD_MAIL_COUNT,
-  PROP_INBOX_URL,
-  PROP_METHOD,
-  PROP_POST_DATA,
   PROP_UNREAD_MAILS,
   NUM_OF_PROP,
 };
@@ -69,7 +66,8 @@ struct MailsHelperData
 static GPtrArray empty_array = { 0 };
 
 
-static void unsubscribe (GabbleConnection *conn, const gchar *name);
+static void unsubscribe (GabbleConnection *conn, const gchar *name,
+    gboolean remove_all);
 static void update_unread_mails (GabbleConnection *conn);
 
 
@@ -84,33 +82,44 @@ sender_name_owner_changed (TpDBusDaemon *dbus_daemon,
   if (CHECK_STR_EMPTY (new_owner))
     {
       DEBUG ("Sender removed: %s", name);
-      unsubscribe (conn, name);
+      unsubscribe (conn, name, TRUE);
     }
 }
 
 
 static void
 unsubscribe (GabbleConnection *conn,
-    const gchar *name)
+    const gchar *name, gboolean remove_all)
 {
-  tp_dbus_daemon_cancel_name_owner_watch (conn->daemon, name,
-      sender_name_owner_changed, conn);
+  guint count;
 
   g_return_if_fail (g_hash_table_size (conn->mail_subscribers) > 0);
 
-  g_hash_table_remove (conn->mail_subscribers, name);
+  count = GPOINTER_TO_UINT (
+          g_hash_table_lookup (conn->mail_subscribers, name));
 
-  if (g_hash_table_size (conn->mail_subscribers) == 0)
+  if (count == 1 || remove_all)
     {
-      DEBUG ("Last sender unsubscribed, cleaning up!");
-      g_free (conn->inbox_url);
-      conn->inbox_url = NULL;
-      if (conn->unread_mails)
+      tp_dbus_daemon_cancel_name_owner_watch (conn->daemon, name,
+          sender_name_owner_changed, conn);
+
+      g_hash_table_remove (conn->mail_subscribers, name);
+
+      if (g_hash_table_size (conn->mail_subscribers) == 0)
         {
-          g_hash_table_unref (conn->unread_mails);
-          conn->unread_mails = NULL;
+          DEBUG ("Last sender unsubscribed, cleaning up!");
+          g_free (conn->inbox_url);
+          conn->inbox_url = NULL;
+          if (conn->unread_mails)
+            {
+              g_hash_table_unref (conn->unread_mails);
+              conn->unread_mails = NULL;
+            }
         }
     }
+  else
+    g_hash_table_insert (conn->mail_subscribers, g_strdup(name),
+        GUINT_TO_POINTER(--count));
 }
 
 
@@ -133,6 +142,7 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   gchar *sender;
+  guint count;
 
   if (check_supported_or_dbus_return(conn, context))
       return;
@@ -141,23 +151,22 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
 
   DEBUG ("Subscribe called by: %s", sender);
 
-  if (g_hash_table_lookup_extended (conn->mail_subscribers, sender, NULL, NULL))
-    {
-      DEBUG ("Sender '%s' is already subscribed!", sender);
-      g_free (sender);
-      goto done;
-    }
+  count = GPOINTER_TO_UINT (
+      g_hash_table_lookup (conn->mail_subscribers, sender));
 
   /* Gives sender ownership to mail_subscribers hash table */
-  g_hash_table_insert (conn->mail_subscribers, sender, NULL);
+  g_hash_table_insert (conn->mail_subscribers, sender, 
+      GUINT_TO_POINTER (++count));
 
-  if (g_hash_table_size (conn->mail_subscribers) == 1)
-    update_unread_mails(conn);
+  if (count == 1)
+    {
+      if (g_hash_table_size (conn->mail_subscribers) == 1)
+        update_unread_mails(conn);
+     
+      tp_dbus_daemon_watch_name_owner (conn->daemon, sender,
+          sender_name_owner_changed, conn, NULL);
+    }
 
-  tp_dbus_daemon_watch_name_owner (conn->daemon, sender,
-      sender_name_owner_changed, conn, NULL);
-
-done:
   gabble_svc_connection_interface_mail_notification_return_from_subscribe (
       context);
 }
@@ -184,7 +193,7 @@ gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotificati
       goto done;
     }
 
-  unsubscribe (conn, sender);
+  unsubscribe (conn, sender, FALSE);
 
 done:
   g_free (sender);
@@ -336,10 +345,11 @@ handle_snippet (WockyXmppNode *parent_node,
   node = wocky_xmpp_node_get_child (parent_node, "snippet");
   if (node)
     {
-      if (tp_strdiff (node->content, tp_asv_get_string (mail, "snippet")))
+      if (tp_strdiff (node->content, tp_asv_get_string (mail, "content")))
         {
           *dirty = TRUE;
-          tp_asv_set_string (mail, "snippet", node->content);
+          tp_asv_set_boolean (mail, "truncated", TRUE);
+          tp_asv_set_string (mail, "content", node->content);
         }
     }
 }
@@ -378,7 +388,7 @@ mail_thread_info_each (WockyXmppNode *node,
         {
           mail = tp_asv_new ("id", G_TYPE_STRING, tid,
                              "type", G_TYPE_UINT, GABBLE_MAIL_TYPE_THREAD,
-                             "url_data", G_TYPE_STRING, "",
+                             "url-data", G_TYPE_STRING, "",
                              NULL);
           dirty = TRUE;
         }
@@ -386,13 +396,13 @@ mail_thread_info_each (WockyXmppNode *node,
       val_str = wocky_xmpp_node_get_attribute (node, "date");
       if (val_str)
         {
-          guint date;
+          gint64 date;
 
-          date = (guint)(g_ascii_strtoull (val_str, NULL, 0) / 1000l);
-          if (date != tp_asv_get_uint32 (mail, "received-timestamp", NULL))
+          date = (g_ascii_strtoll (val_str, NULL, 0) / 1000l);
+          if (date != tp_asv_get_int64 (mail, "received-timestamp", NULL))
             dirty = TRUE;
 
-          tp_asv_set_uint32 (mail, "received-timestamp", date);
+          tp_asv_set_int64 (mail, "received-timestamp", date);
         }
 
       handle_senders (node, mail, &dirty);
@@ -682,8 +692,11 @@ conn_mail_notif_properties_getter (GObject *object,
     {
       if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
         g_value_set_uint (value,
-            GABBLE_MAIL_NOTIFICATION_HAS_PROP_UNREADMAILCOUNT
-            | GABBLE_MAIL_NOTIFICATION_HAS_PROP_UNREADMAILS);
+            GABBLE_MAIL_NOTIFICATION_SUPPORTS_UNREAD_MAIL_COUNT
+            | GABBLE_MAIL_NOTIFICATION_SUPPORTS_UNREAD_MAILS
+            | GABBLE_MAIL_NOTIFICATION_SUPPORTS_REQUEST_INBOX_URL
+            | GABBLE_MAIL_NOTIFICATION_SUPPORTS_REQUEST_MAIL_URL
+            );
       else
         g_value_set_uint (value, 0);
     }

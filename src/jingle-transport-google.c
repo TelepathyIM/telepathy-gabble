@@ -614,15 +614,22 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   klass->get_transport_type = get_transport_type;
 }
 
-void
+/* Returns FALSE if the component name already exists */
+gboolean
 jingle_transport_google_set_component_name (
     GabbleJingleTransportGoogle *transport,
     const gchar *name, gint component_id)
 {
   GabbleJingleTransportGooglePrivate *priv = transport->priv;
 
+  if (g_hash_table_lookup_extended (priv->channels, name,
+          NULL, NULL) == TRUE)
+      return FALSE;
+
   g_hash_table_insert (priv->channels, g_strdup (name),
       GINT_TO_POINTER (component_id));
+
+  return TRUE;
 }
 
 void

@@ -359,10 +359,10 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    gabble_marshal_VOID__STRING_UINT,
+    gabble_marshal_VOID__STRING_INT,
     G_TYPE_NONE,
     2,
-    G_TYPE_STRING, G_TYPE_UINT);
+    G_TYPE_STRING, G_TYPE_INT);
 
   /* This signal serves as notification that the GabbleJingleContent is now
    * meaningless; everything holding a reference should drop it after receiving
@@ -614,14 +614,60 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   return;
 }
 
+static guint
+new_channel (GabbleJingleContent *c, const gchar *name)
+{
+  GabbleJingleContentPrivate *priv = c->priv;
+  GabbleJingleTransportGoogle *gtrans = NULL;
+
+  if (priv->transport &&
+      GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (priv->transport))
+    {
+      gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (priv->transport);
+      if (jingle_transport_google_set_component_name (gtrans, name,
+              priv->last_channel_component_id + 1) == FALSE)
+        return 0;
+
+      priv->last_channel_component_id++;
+
+      g_signal_emit (c, signals[NEW_CHANNEL], 0,
+          name, priv->last_channel_component_id);
+
+      return priv->last_channel_component_id;
+    }
+  return 0;
+}
+
+guint
+gabble_jingle_content_create_channel (GabbleJingleContent *self,
+    const gchar *name)
+{
+  GabbleJingleContentPrivate *priv = self->priv;
+  LmMessageNode *sess_node, *channel_node;
+  LmMessage *msg = NULL;
+
+  /* Send the info action before creating the channel, in case candidates need
+     to be sent on the signal emit. It doesn't matter if the channel already
+     exists anyways... */
+  msg = gabble_jingle_session_new_message (self->session,
+      JINGLE_ACTION_INFO, &sess_node);
+
+  DEBUG ("Sending Gtalk4 'info' message to peer");
+  channel_node = lm_message_node_add_child (sess_node, "channel", NULL);
+  lm_message_node_set_attribute (channel_node, "xmlns", priv->content_ns);
+  lm_message_node_set_attribute (channel_node, "name", name);
+
+  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+
+  return new_channel (self, name);
+}
+
 void
 gabble_jingle_content_parse_info (GabbleJingleContent *c,
     LmMessageNode *content_node, GError **error)
 {
-  GabbleJingleContentPrivate *priv = c->priv;
   LmMessageNode *channel_node;
   LmMessageNode *complete_node;
-  GabbleJingleTransportGoogle *gtrans = NULL;
 
   channel_node = lm_message_node_get_child_any_ns (content_node, "channel");
   complete_node = lm_message_node_get_child_any_ns (content_node, "complete");
@@ -632,16 +678,8 @@ gabble_jingle_content_parse_info (GabbleJingleContent *c,
       const gchar *name;
       name = lm_message_node_get_attribute (channel_node, "name");
       DEBUG ("Channel name is %s", name);
-      if (name && priv->transport &&
-          GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (priv->transport))
-        {
-          gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (priv->transport);
-          jingle_transport_google_set_component_name (gtrans, name,
-              ++priv->last_channel_component_id);
-
-          g_signal_emit (c, signals[NEW_CHANNEL], 0,
-              name, priv->last_channel_component_id);
-        }
+      if (name)
+        new_channel (c, name);
     }
   else if (complete_node)
     {
@@ -691,7 +729,8 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
 
   if (newsenders != priv->senders)
     {
-      DEBUG ("changing senders from %s to %s", produce_senders (priv->senders), senders);
+      DEBUG ("changing senders from %s to %s", produce_senders (priv->senders),
+          senders);
       priv->senders = newsenders;
       g_object_notify ((GObject *) c, "senders");
     }

@@ -776,6 +776,8 @@ gabble_file_transfer_channel_dispose (GObject *object)
 
   if (self->priv->jingle != NULL)
     {
+      gabble_jingle_session_terminate (self->priv->jingle,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
       g_object_unref (self->priv->jingle);
       self->priv->jingle = NULL;
     }
@@ -849,13 +851,24 @@ gabble_file_transfer_channel_finalize (GObject *object)
 }
 
 static void
-close_bytestream_and_transport (GabbleFileTransferChannel *self)
+close_session_and_transport (GabbleFileTransferChannel *self)
 {
   if (self->priv->bytestream != NULL)
     {
       gabble_bytestream_iface_close (self->priv->bytestream, NULL);
       g_object_unref (self->priv->bytestream);
       self->priv->bytestream = NULL;
+    }
+
+  if (self->priv->jingle != NULL)
+    {
+      gabble_jingle_session_terminate (self->priv->jingle,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+    }
+  if (self->priv->nice_agents != NULL)
+    {
+      g_hash_table_destroy (self->priv->nice_agents);
+      self->priv->nice_agents = NULL;
     }
 
   if (self->priv->transport != NULL)
@@ -885,8 +898,7 @@ gabble_file_transfer_channel_close (TpSvcChannel *iface,
           TP_FILE_TRANSFER_STATE_CANCELLED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED);
 
-      close_bytestream_and_transport (self);
-      /*TODO: close jingle session*/
+      close_session_and_transport (self);
     }
 
   gabble_file_transfer_channel_do_close (GABBLE_FILE_TRANSFER_CHANNEL (iface));
@@ -1009,7 +1021,7 @@ check_address_and_access_control (GabbleFileTransferChannel *self,
 }
 
 static void
-bytestream_open (GabbleFileTransferChannel *self)
+channel_open (GabbleFileTransferChannel *self)
 {
   if (self->priv->socket_address != NULL)
     {
@@ -1036,7 +1048,7 @@ bytestream_open (GabbleFileTransferChannel *self)
 }
 
 static void
-bytestream_closed (GabbleFileTransferChannel *self)
+channel_closed (GabbleFileTransferChannel *self)
 {
   if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED)
     {
@@ -1065,11 +1077,11 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 
   if (state == GABBLE_BYTESTREAM_STATE_OPEN)
     {
-      bytestream_open (self);
+      channel_open (self);
     }
   else if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
     {
-      bytestream_closed (self);
+      channel_closed (self);
     }
 }
 
@@ -1524,31 +1536,38 @@ static gboolean
 offer_jingle (GabbleFileTransferChannel *self, const gchar *jid,
               const gchar *resource, GError **error)
 {
-  /*TODO: listen to notify::state, new-content and terminated signals */
 
   GabbleJingleSession *jingle;
-  GList *cs;
+  GabbleJingleContent *content;
 
   jingle = gabble_jingle_factory_create_session (
       self->priv->connection->jingle_factory,
       self->priv->handle, resource, FALSE);
+
+  if (!jingle)
+    return FALSE;
+
   g_object_set (jingle, "dialect", JINGLE_DIALECT_GTALK4, NULL);
 
-  gabble_jingle_session_add_content (jingle,
+  content = gabble_jingle_session_add_content (jingle,
       JINGLE_MEDIA_TYPE_FILE, "share", NS_GOOGLE_SESSION_SHARE,
       NS_GOOGLE_TRANSPORT_P2P);
 
-  cs = gabble_jingle_session_get_contents (jingle);
-
-  if (cs != NULL)
+  if (content)
     {
-      GabbleJingleShare *c = GABBLE_JINGLE_SHARE (cs->data);
-      g_object_set (c,
+      g_object_set (content,
           "filename", self->priv->filename,
           "filesize", self->priv->size,
           NULL);
     }
+  else
+    {
+      g_object_unref (jingle);
+      return FALSE;
+    }
+
   gabble_file_transfer_channel_set_jingle_session (self, jingle);
+
   gabble_jingle_session_accept (self->priv->jingle);
 
   return TRUE;
@@ -2050,7 +2069,7 @@ transport_handler (GibberTransport *transport,
         (const gchar *) data->data))
     {
       DEBUG ("Sending failed. Closing the bytestream");
-      close_bytestream_and_transport (self);
+      close_session_and_transport (self);
       return;
     }
 
@@ -2083,13 +2102,22 @@ bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
 static void
 file_transfer_send (GabbleFileTransferChannel *self)
 {
-  gibber_transport_set_handler (self->priv->transport, transport_handler, self);
-  /* We shouldn't receive data if the bytestream isn't open otherwise it will
-     error out */
-  if (self->priv->state == TP_FILE_TRANSFER_STATE_OPEN)
-    gibber_transport_block_receiving (self->priv->transport, FALSE);
+  /* TODO: do something for jingle */
+  if(self->priv->bytestream)
+    {
+      gibber_transport_set_handler (self->priv->transport, transport_handler,
+          self);
+      /* We shouldn't receive data if the bytestream isn't open otherwise it
+         will error out */
+      if (self->priv->state == TP_FILE_TRANSFER_STATE_OPEN)
+        gibber_transport_block_receiving (self->priv->transport, FALSE);
+      else
+        gibber_transport_block_receiving (self->priv->transport, TRUE);
+    }
   else
-    gibber_transport_block_receiving (self->priv->transport, TRUE);
+    {
+      gibber_transport_block_receiving (self->priv->transport, TRUE);
+    }
 }
 
 static void
@@ -2097,8 +2125,11 @@ file_transfer_receive (GabbleFileTransferChannel *self)
 {
   /* Client is connected, we can now receive data. Unblock the bytestream */
   /* TODO: do something for jingle */
-  g_assert (self->priv->bytestream != NULL);
-  gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
+  if(self->priv->bytestream)
+    {
+      g_assert (self->priv->bytestream != NULL);
+      gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
+    }
 }
 
 static void
@@ -2109,8 +2140,7 @@ transport_disconnected_cb (GibberTransport *transport,
 
   if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED)
     {
-      /* TODO: do something for jingle */
-      close_bytestream_and_transport (self);
+      close_session_and_transport (self);
 
       gabble_file_transfer_channel_set_state (
           TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),

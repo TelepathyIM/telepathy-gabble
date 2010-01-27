@@ -62,8 +62,13 @@
 #include <telepathy-glib/svc-generic.h>
 #include <telepathy-glib/svc-channel.h>
 
+#include <nice/agent.h>
+
 static void channel_iface_init (gpointer g_iface, gpointer iface_data);
 static void file_transfer_iface_init (gpointer g_iface, gpointer iface_data);
+static void nice_data_received_cb (NiceAgent *agent, guint stream_id,
+    guint component_id, guint len, gchar *buffer, gpointer user_data);
+
 
 G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel,
     G_TYPE_OBJECT,
@@ -132,6 +137,7 @@ struct _GabbleFileTransferChannelPrivate {
   gboolean resume_supported;
 
   GabbleJingleSession *jingle;
+  GHashTable *nice_agents;
 
   GabbleBytestreamIface *bytestream;
   GibberListener *listener;
@@ -774,6 +780,12 @@ gabble_file_transfer_channel_dispose (GObject *object)
       self->priv->jingle = NULL;
     }
 
+  if (self->priv->nice_agents != NULL)
+    {
+      g_hash_table_destroy (self->priv->nice_agents);
+      self->priv->nice_agents = NULL;
+    }
+
   if (self->priv->bytestream != NULL)
     {
       g_object_unref (self->priv->bytestream);
@@ -1085,11 +1097,269 @@ gabble_file_transfer_channel_set_bytestream (GabbleFileTransferChannel *self,
   return TRUE;
 }
 
+static void
+jingle_session_state_changed_cb (GabbleJingleSession *session,
+                                 GParamSpec *arg1,
+                                 GabbleFileTransferChannel *self)
+{
+  JingleSessionState state;
+
+  DEBUG ("called");
+
+  g_object_get (session,
+      "state", &state,
+      NULL);
+
+  switch (state)
+    {
+      case JS_STATE_INVALID:
+      case JS_STATE_PENDING_CREATED:
+        break;
+      case JS_STATE_PENDING_INITIATE_SENT:
+      case JS_STATE_PENDING_INITIATED:
+        gabble_file_transfer_channel_set_state (
+            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+            TP_FILE_TRANSFER_STATE_PENDING,
+            TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
+        break;
+      case JS_STATE_PENDING_ACCEPT_SENT:
+        gabble_file_transfer_channel_set_state (
+            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+            TP_FILE_TRANSFER_STATE_ACCEPTED,
+            TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
+        break;
+      case JS_STATE_ACTIVE:
+        channel_open (self);
+        break;
+      case JS_STATE_ENDED:
+      default:
+        channel_closed (self);
+        break;
+    }
+}
+
+static void
+jingle_session_terminated_cb (GabbleJingleSession *session,
+                       gboolean local_terminator,
+                       TpChannelGroupChangeReason reason,
+                       const gchar *text,
+                       gpointer user_data)
+{
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+
+  g_assert (session == self->priv->jingle);
+
+  if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED &&
+      self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
+    {
+      gabble_file_transfer_channel_set_state (
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_FILE_TRANSFER_STATE_CANCELLED,
+          local_terminator ?
+          TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED:
+          TP_FILE_TRANSFER_STATE_CHANGE_REASON_REMOTE_STOPPED);
+
+      close_session_and_transport (self);
+    }
+
+  gabble_file_transfer_channel_do_close (self);
+
+}
+
+static void
+content_new_remote_candidates_cb (GabbleJingleContent *content,
+    GList *clist, gpointer user_data)
+{
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+  GList *li;
+
+  DEBUG ("Got new remote candidates");
+
+  for (li = clist; li; li = li->next)
+    {
+      JingleCandidate *candidate = li->data;
+      NiceCandidate *cand = NULL;
+      NiceAgent *agent = NULL;
+      GSList *candidates = NULL;
+
+      if (candidate->type != JINGLE_TRANSPORT_PROTOCOL_UDP)
+        continue;
+
+      agent = g_hash_table_lookup (self->priv->nice_agents,
+          GINT_TO_POINTER (candidate->component));
+      if (agent == NULL)
+        continue;
+
+      cand = nice_candidate_new (
+          candidate->type == JINGLE_CANDIDATE_TYPE_LOCAL?
+          NICE_CANDIDATE_TYPE_HOST:
+          candidate->type == JINGLE_CANDIDATE_TYPE_STUN?
+          NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
+          NICE_CANDIDATE_TYPE_RELAYED);
+
+
+      cand->transport = JINGLE_TRANSPORT_PROTOCOL_UDP;
+      nice_address_init (&cand->addr);
+      nice_address_set_from_string (&cand->addr, candidate->address);
+      nice_address_set_port (&cand->addr, candidate->port);
+      cand->priority = candidate->preference * 1000;
+      cand->stream_id = 1;
+      cand->component_id = 1;
+      /*
+      if (c->id == NULL)
+        candidate_id = g_strdup_printf ("R%d", ++priv->remote_candidate_count);
+      else
+      candidate_id = c->id;*/
+      if (candidate->id)
+        strncpy (cand->foundation, candidate->id,
+            NICE_CANDIDATE_MAX_FOUNDATION - 1);
+      cand->username = g_strdup (candidate->username?candidate->username:"");
+      cand->password = g_strdup (candidate->password?candidate->password:"");
+
+      candidates = g_slist_append (candidates, cand);
+      nice_agent_set_remote_candidates (agent, 1, 1, candidates);
+      g_slist_foreach (candidates, (GFunc)nice_candidate_free, NULL);
+      g_slist_free (candidates);
+    }
+}
+
+static void
+nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
+    gpointer user_data)
+{
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+  GList *cs = gabble_jingle_session_get_contents (self->priv->jingle);
+
+  DEBUG ("libnice candidate gathering done!!!!");
+  if (cs != NULL)
+    {
+      GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (cs->data);
+      GList *candidates = NULL;
+      GList *remote_candidates = NULL;
+      GSList *local_candidates;
+      GSList *li;
+      GHashTableIter iter;
+      gpointer key, value;
+      gint component = -1;
+
+      /* Send remote candidates to libnice and listen to new signal */
+      remote_candidates = gabble_jingle_content_get_remote_candidates (content);
+      content_new_remote_candidates_cb (content, remote_candidates, self);
+
+      gabble_signal_connect_weak (content, "new-candidates",
+          (GCallback) content_new_remote_candidates_cb, G_OBJECT (self));
+
+      /* Send gathered local candidates to the content */
+      local_candidates = nice_agent_get_local_candidates (agent, stream_id, 1);
+
+      g_hash_table_iter_init (&iter, self->priv->nice_agents);
+      while (g_hash_table_iter_next (&iter, &key, &value))
+        {
+          if (value == agent)
+            {
+              component = GPOINTER_TO_INT (key);
+              break;
+            }
+        }
+      for (li = local_candidates; li; li = li->next)
+        {
+          NiceCandidate *cand = li->data;
+          JingleCandidate *candidate;
+          gchar ip[NICE_ADDRESS_STRING_LEN];
+
+          nice_address_to_string (&cand->addr, ip);
+
+          candidate = jingle_candidate_new (
+              /* protocol */
+              cand->transport == NICE_CANDIDATE_TRANSPORT_UDP?
+              JINGLE_TRANSPORT_PROTOCOL_UDP:
+              JINGLE_TRANSPORT_PROTOCOL_TCP,
+              /* candidate type */
+              cand->type == NICE_CANDIDATE_TYPE_HOST?
+              JINGLE_CANDIDATE_TYPE_LOCAL:
+              cand->type == NICE_CANDIDATE_TYPE_RELAYED?
+              JINGLE_CANDIDATE_TYPE_RELAY:
+              JINGLE_CANDIDATE_TYPE_STUN,
+              /* id */
+              cand->foundation,
+              /* component */
+              component,
+              /* address */
+              ip,
+              /* port */
+              nice_address_get_port (&cand->addr),
+              /* generation */
+              0,
+              /* preference */
+              cand->priority / 1000,
+              /* username */
+              cand->username?cand->username:"",
+              /* password */
+              cand->password?cand->password:"",
+              /* network */
+              0);
+
+          candidates = g_list_prepend (candidates, candidate);
+        }
+
+      gabble_jingle_content_add_candidates (content, candidates);
+    }
+}
+
+static void
+nice_new_selected_pair (NiceAgent *agent,  guint stream_id,
+    guint component_id, gchar *lfoundation, gchar *rfoundation,
+    gpointer user_data)
+{
+  DEBUG ("libnice selected pair changed!!!!");
+}
+
+static void
+nice_component_state_changed (NiceAgent *agent,  guint stream_id,
+    guint component_id, guint state, gpointer user_data)
+{
+  DEBUG ("libnice component state changed %d!!!!", state);
+}
+
+static void
+content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
+    gint channel_id, gpointer user_data)
+{
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+  NiceAgent *agent = nice_agent_new_reliable (g_main_context_default (),
+      NICE_COMPATIBILITY_GOOGLE);
+  guint stream_id = nice_agent_add_stream (agent, 1);
+
+  DEBUG ("New channel %s was created and linked to id %d", name, channel_id);
+  gabble_signal_connect_weak (agent, "candidate-gathering-done",
+      G_CALLBACK (nice_candidate_gathering_done), G_OBJECT (self));
+
+  gabble_signal_connect_weak (agent, "component-state-changed",
+      G_CALLBACK (nice_component_state_changed), G_OBJECT (self));
+  gabble_signal_connect_weak (agent, "new-selected-pair",
+  G_CALLBACK (nice_new_selected_pair), G_OBJECT (self));
+
+  nice_agent_attach_recv (agent, stream_id, 1, g_main_context_default (),
+      nice_data_received_cb, self);
+
+
+  /* TODO: ask jingle_factory for google relay info */
+
+  /* Add the agent to the hash table before gathering candidates in case the
+     gathering finishes synchronously, and the callback tries to add local
+     candidates to the content, it needs to find which the channel id.. */
+  DEBUG ("Going to add %d (%p) into %p (agent %p)", channel_id,
+      GINT_TO_POINTER (channel_id), self->priv->nice_agents, agent);
+  g_hash_table_insert (self->priv->nice_agents,
+      GINT_TO_POINTER (channel_id), agent);
+
+  nice_agent_gather_candidates (agent, stream_id);
+}
+
 gboolean
 gabble_file_transfer_channel_set_jingle_session (
     GabbleFileTransferChannel *self, GabbleJingleSession *session)
 {
-  GList *candidates = NULL;
   GList *cs;
 
   if (session == NULL)
@@ -1098,45 +1368,36 @@ gabble_file_transfer_channel_set_jingle_session (
   if (self->priv->bytestream || self->priv->jingle)
     return FALSE;
 
+  if (self->priv->nice_agents != NULL)
+    {
+      g_hash_table_destroy (self->priv->nice_agents);
+      self->priv->nice_agents = NULL;
+    }
+
+  self->priv->nice_agents = g_hash_table_new_full (NULL, NULL,
+      NULL, g_object_unref);
+  /* FIXME: we should start creating a nice agent already and have it start
+     the candidate gathering.. but we don't know which channel name to
+     assign it to... */
+
+  /* FIXME: should we really ref it here ? I think not... */
   self->priv->jingle = g_object_ref (session);
 
+  gabble_signal_connect_weak (session, "notify::state",
+      (GCallback) jingle_session_state_changed_cb, G_OBJECT (self));
+  gabble_signal_connect_weak (session, "terminated",
+      (GCallback) jingle_session_terminated_cb, G_OBJECT (self));
 
-  /* TODO: remove this dummy candidate */
   cs = gabble_jingle_session_get_contents (session);
 
   if (cs != NULL)
     {
-      JingleCandidate *cand;
-      GabbleJingleShare *c = GABBLE_JINGLE_SHARE (cs->data);
-      cand = jingle_candidate_new (
-          /* protocol */
-          JINGLE_TRANSPORT_PROTOCOL_UDP,
-          /* candidate type */
-          JINGLE_CANDIDATE_TYPE_LOCAL,
-          /* id */
-          "1",
-          /* component */
-          1,
-          /* address */
-          "192.168.1.105",
-          /* port */
-          1234,
-          /* generation */
-          0,
-          /* preference */
-          1.0,
-          /* username */
-          "abcde",
-          /* password */
-          "fgh",
-          /* network */
-          0);
+      GabbleJingleShare *content = GABBLE_JINGLE_SHARE (cs->data);
 
-      candidates = g_list_prepend (candidates, cand);
-      gabble_jingle_content_add_candidates (GABBLE_JINGLE_CONTENT (c),
-          candidates);
+      gabble_signal_connect_weak (content, "new-channel",
+          (GCallback) content_new_channel_cb, G_OBJECT (self));
     }
-  /* TODO: listen to stuff */
+
   return TRUE;
 }
 
@@ -1458,6 +1719,17 @@ transferred_chunk (GabbleFileTransferChannel *self,
        emit_progress_update_cb, self);
 }
 
+static void
+nice_data_received_cb (NiceAgent *agent,
+                       guint stream_id,
+                       guint component_id,
+                       guint len,
+                       gchar *buffer,
+                       gpointer user_data)
+{
+  /* TODO */
+  DEBUG ("received data from libnice: %d byes", len);
+}
 
 static void
 data_received_cb (GabbleBytestreamIface *stream,
@@ -1467,6 +1739,7 @@ data_received_cb (GabbleBytestreamIface *stream,
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
   GError *error = NULL;
+  /* TOOD: make it jingle/libnice compat */
 
   g_assert (self->priv->transport != NULL);
 
@@ -1621,7 +1894,16 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
     }
   else if (self->priv->jingle)
     {
-      /*TODO: complete */
+      GList *cs = gabble_jingle_session_get_contents (self->priv->jingle);
+
+      if (cs != NULL)
+        {
+          GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (cs->data);
+          /* The new-channel signal will take care of the rest.. */
+          /* TODO */
+          g_assert (gabble_jingle_content_create_channel (content,
+                  "private-1") > 0);
+        }
       gabble_jingle_session_accept (self->priv->jingle);
     }
   else

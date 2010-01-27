@@ -2161,8 +2161,8 @@ gabble_connection_request_decloak (GabbleConnection *self,
   gabble_connection_fill_in_caps (self, message);
 
   decloak = lm_message_node_add_child (lm_message_get_node (message),
-      "decloak", NULL);
-  lm_message_node_set_attribute (decloak, "xmlns", NS_DECLOAK);
+      "temppres", NULL);
+  lm_message_node_set_attribute (decloak, "xmlns", NS_TEMPPRES);
 
   if (reason != NULL && *reason != '\0')
     {

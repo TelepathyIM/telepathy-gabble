@@ -1516,8 +1516,8 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
         priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
     }
 
-  child_node = wocky_xmpp_node_get_child_ns (presence_node, "decloak",
-      NS_DECLOAK);
+  child_node = wocky_xmpp_node_get_child_ns (presence_node, "temppres",
+      NS_TEMPPRES);
 
   if (child_node != NULL)
     {

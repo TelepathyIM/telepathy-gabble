@@ -4,10 +4,12 @@ should ask them to "de-cloak".
 """
 
 from gabbletest import exec_test
-from servicetest import make_channel_proxy, call_async, sync_dbus
+from servicetest import (make_channel_proxy, call_async, sync_dbus,
+        assertEquals, assertLength)
 import jingletest
 
 import dbus
+from twisted.words.xish import xpath
 
 import constants as cs
 import ns
@@ -49,7 +51,11 @@ def run_test(q, bus, conn, stream, jt, decloak_allowed):
     call_async(q, media_iface, 'RequestStreams', handle,
         [cs.MEDIA_STREAM_TYPE_AUDIO])
 
-    q.expect('stream-presence') # the decloak
+    e = q.expect('stream-presence', presence_type=None)
+    nodes = xpath.queryForNodes('/presence/temppres[@xmlns="%s"]'
+            % ns.TEMPPRES, e.stanza)
+    assertLength(1, nodes)
+    assertEquals('media', nodes[0].getAttribute('reason'))
 
     if decloak_allowed:
         jt.send_remote_presence()

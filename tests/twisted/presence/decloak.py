@@ -41,7 +41,7 @@ def worker(q, bus, conn, stream, should_decloak):
     # Amy directs presence to us
 
     presence = make_presence('amy@foo.com/panopticon')
-    decloak = presence.addElement((ns.DECLOAK, 'decloak'))
+    decloak = presence.addElement((ns.TEMPPRES, 'temppres'))
     decloak['reason'] = 'media'
     stream.send(presence)
 

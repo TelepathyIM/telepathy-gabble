@@ -2,8 +2,16 @@ tools_dir = $(top_srcdir)/tools
 
 EXTRA_DIST = \
     all.xml \
+    Call_Content_Codec_Offer.xml \
+    Call_Content_Interface_Media.xml \
+    Call_Content.xml \
+    Call_Stream_Endpoint.xml \
+    Call_Stream_Interface_Media.xml \
+    Call_Stream.xml \
     Channel_Bundle.xml \
     Channel_Future.xml \
+    Channel_Interface_Conference.xml \
+    Channel_Type_Call.xml \
     Connection_Future.xml \
     Connection_Interface_Contact_Info.xml \
     Connection_Interface_Gabble_Decloak.xml \

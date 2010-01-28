@@ -1,10 +1,49 @@
-telepathy-gabble 0.9.4 (UNRELEASED)
+telepathy-gabble 0.9.4 (2010-01-28)
 ===================================
+
+The “Samuel Clemens had four cats!” release.
 
 Enhancements:
 
 • Added an --enable-is-a-phone configure switch, which makes Gabble identify
-  itself as a "phone" (rather than a "pc") in XEP-0115 disco replies.
+  itself as a "phone" (rather than a "pc") in XEP-0115 disco replies. (wjt)
+
+• Added preliminary support for the Channel.Type.Call draft. By default,
+  incoming Jingle calls are exposed as Channel.Type.Call if a handler is
+  available; pass --disable-channel-type-call to configure to always expose
+  incoming calls as StreamedMedia. (sjoerd, Maiku)
+
+• One-to-one text channels can now be upgraded to multi-user conferences using
+  the draft Conference interface. This will use a PMUC room on Google's
+  conference server if at least one participant is using a Google Talk client,
+  or an instant room on your own conference server (XEP-0045 §10.1.2)
+  otherwise. (danni)
+
+• Implements XEP-0276, to permit calling contacts whose presence you are not
+  subscribed to (controlled by a simple Gabble-specific connection interface).
+  (smcv)
+
+• Plugins may now specify their own version number, for improved debug logs.
+  (wjt)
+
+• Added a simple sidecar, implemented as a plugin, to support registering to
+  gateways which require nothing more than a username and password. (smcv)
+
+Fixes:
+
+• We can now accept calls from, and place calls to, bare JIDs (that is,
+  contacts with no resource). This is required for calling XEP-0100-compliant
+  SIP gateways. (smcv)
+
+• We now deal correctly with setting a vCard if there's no existing vCard on
+  the server. (fd.o#25987, wjt)
+
+• ignore-ssl-errors is now implied by require-encryption being false. This was
+  a regression from 0.8. (wjt)
+
+• ContactCapabilities are now exposed on the Contacts interface with the
+  correct attribute name. (fd.o#26210, wjt)
+
 
 telepathy-gabble 0.9.3 (2009-12-21)
 ===================================

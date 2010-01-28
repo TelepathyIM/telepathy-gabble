@@ -1319,18 +1319,47 @@ nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
 }
 
 static void
-nice_new_selected_pair (NiceAgent *agent,  guint stream_id,
-    guint component_id, gchar *lfoundation, gchar *rfoundation,
-    gpointer user_data)
-{
-  DEBUG ("libnice selected pair changed!!!!");
-}
-
-static void
 nice_component_state_changed (NiceAgent *agent,  guint stream_id,
     guint component_id, guint state, gpointer user_data)
 {
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+  GList *cs;
+
   DEBUG ("libnice component state changed %d!!!!", state);
+  cs = gabble_jingle_session_get_contents (self->priv->jingle);
+
+  if (cs != NULL)
+    {
+      GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (cs->data);
+      JingleTransportState ts = JINGLE_TRANSPORT_STATE_DISCONNECTED;
+
+      switch (state)
+        {
+          case NICE_COMPONENT_STATE_DISCONNECTED:
+          case NICE_COMPONENT_STATE_GATHERING:
+            ts = JINGLE_TRANSPORT_STATE_DISCONNECTED;
+            break;
+          case NICE_COMPONENT_STATE_CONNECTING:
+            ts = JINGLE_TRANSPORT_STATE_CONNECTING;
+            break;
+          case NICE_COMPONENT_STATE_CONNECTED:
+          case NICE_COMPONENT_STATE_READY:
+            ts = JINGLE_TRANSPORT_STATE_CONNECTED;
+            break;
+          case NICE_COMPONENT_STATE_FAILED:
+            close_session_and_transport (self);
+
+            gabble_file_transfer_channel_set_state (
+                TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+                TP_FILE_TRANSFER_STATE_CANCELLED,
+                TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
+            /* return because we don't want to call use the content after it
+               has been destroyed.. */
+            return;
+        }
+      gabble_jingle_content_set_transport_state (content, ts);
+    }
+
 }
 
 static void
@@ -1348,8 +1377,6 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
 
   gabble_signal_connect_weak (agent, "component-state-changed",
       G_CALLBACK (nice_component_state_changed), G_OBJECT (self));
-  gabble_signal_connect_weak (agent, "new-selected-pair",
-  G_CALLBACK (nice_new_selected_pair), G_OBJECT (self));
 
   nice_agent_attach_recv (agent, stream_id, 1, g_main_context_default (),
       nice_data_received_cb, self);
@@ -2103,7 +2130,7 @@ static void
 file_transfer_send (GabbleFileTransferChannel *self)
 {
   /* TODO: do something for jingle */
-  if(self->priv->bytestream)
+  if (self->priv->bytestream)
     {
       gibber_transport_set_handler (self->priv->transport, transport_handler,
           self);
@@ -2125,7 +2152,7 @@ file_transfer_receive (GabbleFileTransferChannel *self)
 {
   /* Client is connected, we can now receive data. Unblock the bytestream */
   /* TODO: do something for jingle */
-  if(self->priv->bytestream)
+  if (self->priv->bytestream)
     {
       g_assert (self->priv->bytestream != NULL);
       gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);

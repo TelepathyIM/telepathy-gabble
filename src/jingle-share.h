@@ -67,6 +67,12 @@ typedef struct {
   gchar *name;
   guint image_width;
   guint image_height;
+} GabbleJingleShareManifestEntry;
+
+typedef struct {
+  gchar *source_url;
+  gchar *preview_url;
+  GList *entries;
 } GabbleJingleShareManifest;
 
 const gchar *gabble_jingle_share_parse (GabbleJingleShare *sess,
@@ -75,7 +81,8 @@ void jingle_share_register (GabbleJingleFactory *factory);
 
 gchar *gabble_jingle_share_get_source_url (GabbleJingleShare *content);
 gchar *gabble_jingle_share_get_preview_url (GabbleJingleShare *content);
-GList *gabble_jingle_share_get_manifest (GabbleJingleShare *content);
+GabbleJingleShareManifest *gabble_jingle_share_get_manifest (
+    GabbleJingleShare *content);
 
 #endif /* __JINGLE_SHARE_H__ */
 

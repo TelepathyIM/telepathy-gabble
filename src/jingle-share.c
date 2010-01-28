@@ -56,11 +56,9 @@ struct _GabbleJingleSharePrivate
 {
   gboolean dispose_has_run;
 
-  GList *manifest;
+  GabbleJingleShareManifest *manifest;
   gchar *filename;
   guint64 filesize;
-  gchar *source_url;
-  gchar *preview_url;
 };
 
 
@@ -82,25 +80,39 @@ free_manifest (GabbleJingleShare *self)
 {
   GList * i;
 
-  for (i = self->priv->manifest; i; i = i->next)
+  for (i = self->priv->manifest->entries; i; i = i->next)
     {
-      GabbleJingleShareManifest *item = i->data;
+      GabbleJingleShareManifestEntry *item = i->data;
       g_free (item->name);
-      g_slice_free (GabbleJingleShareManifest, item);
+      g_slice_free (GabbleJingleShareManifestEntry, item);
     }
-  g_list_free (self->priv->manifest);
+  g_list_free (self->priv->manifest->entries);
+
+  g_free (self->priv->manifest->source_url);
+  g_free (self->priv->manifest->preview_url);
+
+  g_slice_free (GabbleJingleShareManifest, self->priv->manifest);
   self->priv->manifest = NULL;
 }
 
 static void
 gen_manifest (GabbleJingleShare *self)
 {
-  if (self->priv->manifest == NULL && self->priv->filename != NULL)
+  if (self->priv->manifest == NULL)
     {
-      GabbleJingleShareManifest *m = g_slice_new0 (GabbleJingleShareManifest);
-      m->name = g_strdup (self->priv->filename);
-      m->size = self->priv->filesize;
-      self->priv->manifest = g_list_prepend (self->priv->manifest, m);
+      GabbleJingleShareManifestEntry *m = NULL;
+
+      self->priv->manifest = g_slice_new0 (GabbleJingleShareManifest);
+      self->priv->manifest->source_url = generate_temp_url ();
+      self->priv->manifest->preview_url = generate_temp_url ();
+
+      if (self->priv->filename != NULL)
+        {
+          m = g_slice_new0 (GabbleJingleShareManifestEntry);
+          m->name = g_strdup (self->priv->filename);
+          m->size = self->priv->filesize;
+          self->priv->manifest->entries = g_list_prepend (NULL, m);
+        }
     }
 }
 
@@ -113,9 +125,6 @@ gabble_jingle_share_init (GabbleJingleShare *obj)
 
   DEBUG ("jingle share init called");
   obj->priv = priv;
-
-  priv->source_url = generate_temp_url ();
-  priv->preview_url = generate_temp_url ();
 
   priv->dispose_has_run = FALSE;
 }
@@ -135,12 +144,6 @@ gabble_jingle_share_dispose (GObject *object)
 
   g_free (priv->filename);
   priv->filename = NULL;
-
-  g_free (priv->source_url);
-  priv->source_url = NULL;
-
-  g_free (priv->preview_url);
-  priv->preview_url = NULL;
 
   free_manifest (self);
 
@@ -264,6 +267,8 @@ parse_description (GabbleJingleContent *content,
   if (protocol_node != NULL)
     http_node = lm_message_node_get_child (protocol_node, "http");
 
+  free_manifest (self);
+  priv->manifest = g_slice_new0 (GabbleJingleShareManifest);
 
   /* Build the manifest */
   for (i = node_iter (manifest_node); i; i = node_iter_next (i))
@@ -273,7 +278,7 @@ parse_description (GabbleJingleContent *content,
       LmMessageNode *image = NULL;
       gboolean folder;
       const gchar *size;
-      GabbleJingleShareManifest *m = g_slice_new0 (GabbleJingleShareManifest);
+      GabbleJingleShareManifestEntry *m = NULL;
 
       if (!tp_strdiff (lm_message_node_get_name (node), "folder"))
         folder = TRUE;
@@ -286,7 +291,7 @@ parse_description (GabbleJingleContent *content,
       if (name == NULL)
         continue;
 
-      m = g_slice_new0 (GabbleJingleShareManifest);
+      m = g_slice_new0 (GabbleJingleShareManifestEntry);
       m->folder = folder;
       m->name = g_strdup (lm_message_node_get_value (name));
 
@@ -310,17 +315,13 @@ parse_description (GabbleJingleContent *content,
           if (height)
             m->image_height = atoi (height);
         }
-      priv->manifest = g_list_prepend (priv->manifest, m);
+      priv->manifest->entries = g_list_prepend (priv->manifest->entries, m);
     }
 
   /* Get the source and preview url paths from the protocol/http node */
   if (http_node != NULL)
     {
       /* clear the previously set values */
-      g_free (priv->source_url);
-      g_free (priv->preview_url);
-      priv->source_url = priv->preview_url = NULL;
-
       for (i = node_iter (http_node); i; i = node_iter_next (i))
         {
           LmMessageNode *node = node_iter_data (i);
@@ -334,10 +335,16 @@ parse_description (GabbleJingleContent *content,
             continue;
 
           if (!tp_strdiff (name, "source-path"))
-            priv->source_url = g_strdup (lm_message_node_get_value (node));
+            {
+              const gchar *url = lm_message_node_get_value (node);
+              priv->manifest->source_url = g_strdup (url);
+            }
 
           if (!tp_strdiff (name, "preview-path"))
-            priv->preview_url = g_strdup (lm_message_node_get_value (node));
+            {
+              const gchar *url = lm_message_node_get_value (node);
+              priv->manifest->preview_url = g_strdup (url);
+            }
         }
     }
 
@@ -346,11 +353,11 @@ parse_description (GabbleJingleContent *content,
   priv->filename = NULL;
   priv->filesize = 0;
 
-  if (g_list_length (priv->manifest) > 0)
+  if (g_list_length (priv->manifest->entries) > 0)
     {
-      if (g_list_length (priv->manifest) == 1)
+      if (g_list_length (priv->manifest->entries) == 1)
         {
-          GabbleJingleShareManifest *m = priv->manifest->data;
+          GabbleJingleShareManifestEntry *m = priv->manifest->entries->data;
           if (m->folder)
             priv->filename = g_strdup_printf ("%s.tar", m->name);
           else
@@ -363,9 +370,9 @@ parse_description (GabbleJingleContent *content,
           GList *li;
           gchar *temp;
           priv->filename = g_strdup ("");
-          for (li = priv->manifest; li; li = li->next)
+          for (li = priv->manifest->entries; li; li = li->next)
             {
-              GabbleJingleShareManifest *m = li->data;
+              GabbleJingleShareManifestEntry *m = li->data;
 
               temp = priv->filename;
               priv->filename = g_strdup_printf ("%s%s%s%s",  temp, m->name,
@@ -405,9 +412,9 @@ produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
 
   manifest_node = lm_message_node_add_child (desc_node, "manifest", NULL);
 
-  for (i = priv->manifest; i; i = i->next)
+  for (i = priv->manifest->entries; i; i = i->next)
     {
-      GabbleJingleShareManifest *m = i->data;
+      GabbleJingleShareManifestEntry *m = i->data;
       LmMessageNode *file_node;
       LmMessageNode *image_node;
       gchar *size_str, *width_str, *height_str;
@@ -418,11 +425,11 @@ produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
         file_node = lm_message_node_add_child (manifest_node, "file", NULL);
 
       if (m->size > 0)
-      {
-        size_str = g_strdup_printf ("%llu", m->size);
-        lm_message_node_set_attribute (file_node, "size", size_str);
-        g_free (size_str);
-      }
+        {
+          size_str = g_strdup_printf ("%llu", m->size);
+          lm_message_node_set_attribute (file_node, "size", size_str);
+          g_free (size_str);
+        }
       lm_message_node_add_child (file_node, "name", m->name);
 
       if (m->image &&
@@ -447,19 +454,17 @@ produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
 
   protocol_node = lm_message_node_add_child (desc_node, "protocol", NULL);
   http_node = lm_message_node_add_child (protocol_node, "http", NULL);
-  if (priv->source_url)
-    {
-      url_node = lm_message_node_add_child (http_node, "url", priv->source_url);
-      lm_message_node_set_attribute (url_node, "name", "source-path");
-    }
-  if (priv->preview_url)
-    {
-      url_node = lm_message_node_add_child (http_node, "url", priv->preview_url);
-      lm_message_node_set_attribute (url_node, "name", "preview-path");
-    }
+  url_node = lm_message_node_add_child (http_node, "url",
+      priv->manifest->source_url);
+  lm_message_node_set_attribute (url_node, "name", "source-path");
+  url_node = lm_message_node_add_child (http_node, "url",
+      priv->manifest->preview_url);
+  lm_message_node_set_attribute (url_node, "name", "preview-path");
+
 }
 
-GList *gabble_jingle_share_get_manifest (GabbleJingleShare *self)
+GabbleJingleShareManifest *
+gabble_jingle_share_get_manifest (GabbleJingleShare *self)
 {
   gen_manifest (self);
   return self->priv->manifest;

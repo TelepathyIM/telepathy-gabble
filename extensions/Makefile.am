@@ -52,8 +52,8 @@ XSLTPROCFLAGS = --nonet --novalid
 
 _gen/all.xml: all.xml $(wildcard *.xml) Makefile.am
 	@$(mkdir_p) _gen
-	$(AM_V_GEN)$(XSLTPROC) $(XSLTPROCFLAGS) --xinclude $(tools_dir)/identity.xsl \
-		$< > $@
+	$(AM_V_GEN)$(PYTHON) $(tools_dir)/xincludator.py \
+		$< > $@.tmp && mv $@.tmp $@
 
 extensions.html: _gen/all.xml $(tools_dir)/doc-generator.xsl Makefile.am
 	$(AM_V_GEN)$(XSLTPROC) $(XSLTPROCFLAGS) \

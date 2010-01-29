@@ -376,6 +376,9 @@ gabble_base_call_channel_set_property (GObject *object,
         g_free (priv->object_path);
         priv->object_path = g_value_dup_string (value);
         break;
+      case PROP_REQUESTED:
+        priv->requested = g_value_get_boolean (value);
+        break;
       case PROP_HANDLE_TYPE:
       case PROP_CHANNEL_TYPE:
         /* these properties are writable in the interface, but not actually
@@ -506,7 +509,7 @@ gabble_base_call_channel_class_init (
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",

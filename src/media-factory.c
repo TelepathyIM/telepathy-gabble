@@ -374,6 +374,12 @@ new_call_channel (GabbleMediaFactory *self,
   MediaChannelRequest *mcr;
   gchar *object_path;
   TpBaseConnection *conn = TP_BASE_CONNECTION (self->priv->conn);
+  TpHandle initiator;
+
+  if (sess != NULL)
+    initiator = sess->peer;
+  else
+    initiator = conn->self_handle;
 
   object_path = g_strdup_printf ("%s/CallChannel%u",
     conn->object_path, self->priv->channel_index);
@@ -386,6 +392,8 @@ new_call_channel (GabbleMediaFactory *self,
     "handle", peer,
     "initial-audio", initial_audio,
     "initial-video", initial_video,
+    "requested", request_token != NULL,
+    "creator", initiator,
     NULL);
 
   g_free (object_path);

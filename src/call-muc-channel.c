@@ -245,6 +245,7 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
     "connection", connection,
     "handle", target,
     "initial-audio", TRUE,
+    "requested", request != NULL,
     NULL);
 }
 

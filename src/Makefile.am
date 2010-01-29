@@ -35,6 +35,10 @@ libgabble_convenience_la_SOURCES = \
     call-channel.c \
     call-muc-channel.h \
     call-muc-channel.c \
+    call-member.h \
+    call-member.c \
+    call-member-content.h \
+    call-member-content.c \
     call-stream.h \
     call-stream.c \
     call-stream-endpoint.h \

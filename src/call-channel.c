@@ -47,6 +47,9 @@
 
 static void async_initable_iface_init (GAsyncInitableIface *iface);
 
+static void call_session_state_changed_cb (GabbleJingleSession *session,
+  GParamSpec *param, GabbleCallChannel *self);
+
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
   GABBLE_TYPE_BASE_CALL_CHANNEL,
   G_IMPLEMENT_INTERFACE (G_TYPE_ASYNC_INITABLE, async_initable_iface_init);
@@ -55,6 +58,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
 /* properties */
 enum
 {
+  PROP_SESSION = 1,
   LAST_PROPERTY
 };
 
@@ -63,11 +67,56 @@ enum
 struct _GabbleCallChannelPrivate
 {
   gboolean dispose_has_run;
+
+  GabbleJingleSession *session;
 };
 
 static void
 gabble_call_channel_constructed (GObject *obj)
 {
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (obj);
+  GabbleCallChannelPrivate *priv = self->priv;
+  GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (obj);
+  GabbleCallMember *member;
+
+  member = gabble_base_call_channel_ensure_member_from_handle (cbase,
+    cbase->target);
+
+  if (priv->session != NULL)
+    {
+      GList *contents, *l;
+
+      gabble_call_member_set_session (member, priv->session);
+
+      gabble_signal_connect_weak (priv->session, "notify::state",
+        G_CALLBACK (call_session_state_changed_cb), obj);
+
+      contents = gabble_call_member_get_contents (member);
+
+      for (l = contents; l != NULL; l = g_list_next (l))
+        {
+          GabbleCallMemberContent *content =
+            GABBLE_CALL_MEMBER_CONTENT (l->data);
+
+          gabble_base_call_channel_add_content (cbase,
+            gabble_call_member_content_get_jingle_content (content),
+            GABBLE_CALL_CONTENT_DISPOSITION_INITIAL,
+            priv->session->peer);
+
+          switch (gabble_call_member_content_get_media_type (content))
+            {
+              case JINGLE_MEDIA_TYPE_AUDIO:
+                cbase->initial_audio = TRUE;
+                break;
+              case JINGLE_MEDIA_TYPE_VIDEO:
+                cbase->initial_video = TRUE;
+                break;
+              default:
+                break;
+            }
+        }
+    }
+
   if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_channel_parent_class)->constructed (obj);
 }
@@ -90,8 +139,14 @@ gabble_call_channel_get_property (GObject    *object,
     GValue     *value,
     GParamSpec *pspec)
 {
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (object);
+  GabbleCallChannelPrivate *priv = self->priv;
+
   switch (property_id)
     {
+      case PROP_SESSION:
+        g_value_set_object (value, priv->session);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -104,8 +159,15 @@ gabble_call_channel_set_property (GObject *object,
     const GValue *value,
     GParamSpec *pspec)
 {
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (object);
+  GabbleCallChannelPrivate *priv = self->priv;
+
   switch (property_id)
     {
+      case PROP_SESSION:
+        g_assert (priv->session == NULL);
+        priv->session = g_value_dup_object (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -119,6 +181,7 @@ gabble_call_channel_class_init (
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_channel_class);
   GabbleBaseCallChannelClass *base_call_class =
     GABBLE_BASE_CALL_CHANNEL_CLASS (gabble_call_channel_class);
+  GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_call_channel_class,
       sizeof (GabbleCallChannelPrivate));
@@ -132,6 +195,12 @@ gabble_call_channel_class_init (
   object_class->finalize = gabble_call_channel_finalize;
 
   base_call_class->handle_type = TP_HANDLE_TYPE_CONTACT;
+
+  param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
+      "Jingle session associated with this media channel object.",
+      GABBLE_TYPE_JINGLE_SESSION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SESSION, param_spec);
 }
 
 void
@@ -145,6 +214,7 @@ gabble_call_channel_dispose (GObject *object)
 
   self->priv->dispose_has_run = TRUE;
 
+
   if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose (object);
 }
@@ -156,6 +226,33 @@ gabble_call_channel_finalize (GObject *object)
 }
 
 static void
+call_session_state_changed_cb (GabbleJingleSession *session,
+  GParamSpec *param,
+  GabbleCallChannel *self)
+{
+  GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
+  JingleSessionState state;
+  GabbleCallState cstate;
+
+  cstate = gabble_base_call_channel_get_state (
+    GABBLE_BASE_CALL_CHANNEL (self));
+
+  g_object_get (session, "state", &state, NULL);
+
+  if (state == JS_STATE_ACTIVE && cstate != GABBLE_CALL_STATE_ACCEPTED)
+    {
+      gabble_base_call_channel_set_state (cbase, GABBLE_CALL_STATE_ACCEPTED);
+      return;
+    }
+
+  if (state == JS_STATE_ENDED && cstate < GABBLE_CALL_STATE_ENDED)
+    {
+      gabble_base_call_channel_set_state (cbase, GABBLE_CALL_STATE_ENDED);
+      return;
+    }
+}
+
+static void
 call_channel_init_async (GAsyncInitable *initable,
   int priority,
   GCancellable *cancellable,
@@ -163,8 +260,10 @@ call_channel_init_async (GAsyncInitable *initable,
   gpointer user_data)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (initable);
+  GabbleCallChannelPrivate *priv = self->priv;
   GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
   GSimpleAsyncResult *result;
+  GError *error = NULL;
 
   result = g_simple_async_result_new (G_OBJECT (self),
     callback, user_data, NULL);
@@ -172,44 +271,40 @@ call_channel_init_async (GAsyncInitable *initable,
   if (gabble_base_call_channel_registered (base))
     goto out;
 
-  if (gabble_base_call_channel_get_session (base) == NULL)
+  if (priv->session == NULL)
     {
-      const gchar *resource;
-      JingleDialect dialect;
-      GabbleJingleSession *session;
-      const gchar *transport;
+      GabbleCallMember *member;
+      GList *contents, *l;
 
-      /* FIXME might need to wait on capabilities, also don't need transport
-       * and dialect already */
-      if (!jingle_pick_best_resource (base->conn,
-        base->target, base->initial_audio, base->initial_video,
-        &transport, &dialect, &resource))
+      member = gabble_base_call_channel_ensure_member_from_handle (base,
+        base->target);
+
+      if (!gabble_call_member_start_session (member,
+          base->initial_audio ? "Audio" : NULL,
+          base->initial_video ? "Video" : NULL,
+          &error))
+       {
+         g_simple_async_result_set_from_error (result, error);
+         g_error_free (error);
+         goto out;
+       }
+
+      priv->session = gabble_call_member_get_session (member);
+      gabble_signal_connect_weak (priv->session, "notify::state",
+        G_CALLBACK (call_session_state_changed_cb), G_OBJECT (self));
+
+      contents = gabble_call_member_get_contents (member);
+
+      for (l = contents; l != NULL; l = g_list_next (l))
         {
-          g_simple_async_result_set_error (result, TP_ERRORS,
-            TP_ERROR_NOT_CAPABLE,
-            "member does not have the desired audio/video capabilities");
-          goto out;
+          GabbleCallMemberContent *content =
+            GABBLE_CALL_MEMBER_CONTENT (l->data);
+
+          gabble_base_call_channel_add_content (base,
+            gabble_call_member_content_get_jingle_content (content),
+            GABBLE_CALL_CONTENT_DISPOSITION_INITIAL,
+            ((TpBaseConnection *) base->conn)->self_handle);
         }
-
-      gabble_base_call_channel_set_transport (base, transport);
-
-      session = gabble_jingle_factory_create_session (
-          base->conn->jingle_factory, base->target, resource, FALSE);
-      g_object_set (session, "dialect", dialect, NULL);
-
-      gabble_base_call_channel_set_session (base, session);
-      g_object_unref (session);
-
-      /* Setup the session and the initial contents */
-      if (base->initial_audio)
-        gabble_base_call_channel_create_content (base, "Audio",
-          JINGLE_MEDIA_TYPE_AUDIO,
-          GABBLE_CALL_CONTENT_DISPOSITION_INITIAL, NULL);
-
-      if (base->initial_video)
-        gabble_base_call_channel_create_content (base, "Video",
-          JINGLE_MEDIA_TYPE_VIDEO,
-          GABBLE_CALL_CONTENT_DISPOSITION_INITIAL, NULL);
     }
 
   gabble_base_call_channel_register (base);

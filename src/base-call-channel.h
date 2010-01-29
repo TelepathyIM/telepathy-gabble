@@ -25,7 +25,9 @@
 
 #include <extensions/extensions.h>
 
+#include "connection.h"
 #include "jingle-content.h"
+#include "call-member.h"
 
 G_BEGIN_DECLS
 
@@ -75,8 +77,6 @@ void gabble_base_call_channel_close (GabbleBaseCallChannel *self);
 void gabble_base_call_channel_register (GabbleBaseCallChannel *self);
 gboolean gabble_base_call_channel_registered (GabbleBaseCallChannel *self);
 
-GabbleJingleSession * gabble_base_call_channel_get_session (
-    GabbleBaseCallChannel *self);
 void gabble_base_call_channel_set_transport (GabbleBaseCallChannel *self,
     const gchar *transport);
 void gabble_base_call_channel_set_session (GabbleBaseCallChannel *self,
@@ -87,6 +87,26 @@ const gchar* gabble_base_call_channel_create_content (
     JingleMediaType type,
     GabbleCallContentDisposition disposition,
     GError **error);
+
+GabbleCallMember *gabble_base_call_channel_ensure_member (
+    GabbleBaseCallChannel *self,
+    const gchar *jid);
+
+GabbleCallMember *gabble_base_call_channel_ensure_member_from_handle (
+    GabbleBaseCallChannel *self,
+    TpHandle handle);
+
+GabbleCallState gabble_base_call_channel_get_state (
+  GabbleBaseCallChannel *self);
+
+void gabble_base_call_channel_set_state (GabbleBaseCallChannel *self,
+  GabbleCallState state);
+
+const gchar *
+gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
+  GabbleJingleContent *c,
+  GabbleCallContentDisposition disposition,
+  TpHandle creator);
 
 G_END_DECLS
 

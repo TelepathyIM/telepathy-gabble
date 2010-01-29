@@ -954,6 +954,9 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_TUBE:
       g_value_set_object (value, priv->tube);
       break;
+    case PROP_WOCKY_MUC:
+      g_value_set_object (value, priv->wmuc);
+      break;
     case PROP_INVITATION_MESSAGE:
       g_value_set_string (value, "");
       break;

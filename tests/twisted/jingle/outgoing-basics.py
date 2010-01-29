@@ -319,7 +319,7 @@ def rccs(q, bus, conn, stream):
     hts = []
 
     for mc in media_classes:
-        fixed, allowed = media_classes[0]
+        fixed, allowed = mc
 
         hts.append (fixed[cs.TARGET_HANDLE_TYPE])
 
@@ -333,7 +333,7 @@ def rccs(q, bus, conn, stream):
         expected_allowed.sort()
         assertEquals(expected_allowed, allowed)
 
-    assertEquals([cs.HT_CONTACT, cs.HT_ROOM].sort(),  hts.sort())
+    assertEquals(sorted([cs.HT_CONTACT, cs.HT_ROOM]),  sorted(hts))
 
 if __name__ == '__main__':
     exec_test(rccs)

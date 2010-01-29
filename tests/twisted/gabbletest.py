@@ -629,7 +629,7 @@ def _elem_add(elem, *children):
             raise ValueError(
                 'invalid child object %r (must be element or unicode)', child)
 
-def elem(a, b=None, **kw):
+def elem(a, b=None, attrs={}, **kw):
     r"""
     >>> elem('foo')().toXml()
     u'<foo/>'
@@ -640,6 +640,10 @@ def elem(a, b=None, **kw):
     >>> elem('foo', x='1')(u'hello',
     ...         elem('http://foo.org', 'bar', y='2')(u'bye')).toXml()
     u"<foo x='1'>hello<bar xmlns='http://foo.org' y='2'>bye</bar></foo>"
+    >>> elem('foo', attrs={'xmlns:bar': 'urn:bar', 'bar:cake': 'yum'})(
+    ...   elem('bar:e')(u'i')
+    ... ).toXml()
+    u"<foo xmlns:bar='urn:bar' bar:cake='yum'><bar:e>i</bar:e></foo>"
     """
 
     class _elem(domish.Element):
@@ -652,7 +656,22 @@ def elem(a, b=None, **kw):
     else:
         elem = _elem((None, a))
 
-    for k, v in kw.iteritems():
+    # Can't just update kw into attrs, because that *modifies the parameter's
+    # default*. Thanks python.
+    allattrs = {}
+    allattrs.update(kw)
+    allattrs.update(attrs)
+
+    # First, let's pull namespaces out
+    realattrs = {}
+    for k, v in allattrs.iteritems():
+        if k.startswith('xmlns:'):
+            abbr = k[len('xmlns:'):]
+            elem.localPrefixes[abbr] = v
+        else:
+            realattrs[k] = v
+
+    for k, v in realattrs.iteritems():
         if k == 'from_':
             elem['from'] = v
         else:

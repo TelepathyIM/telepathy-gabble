@@ -80,19 +80,22 @@ free_manifest (GabbleJingleShare *self)
 {
   GList * i;
 
-  for (i = self->priv->manifest->entries; i; i = i->next)
+  if (self->priv->manifest)
     {
-      GabbleJingleShareManifestEntry *item = i->data;
-      g_free (item->name);
-      g_slice_free (GabbleJingleShareManifestEntry, item);
+      for (i = self->priv->manifest->entries; i; i = i->next)
+        {
+          GabbleJingleShareManifestEntry *item = i->data;
+          g_free (item->name);
+          g_slice_free (GabbleJingleShareManifestEntry, item);
+        }
+      g_list_free (self->priv->manifest->entries);
+
+      g_free (self->priv->manifest->source_url);
+      g_free (self->priv->manifest->preview_url);
+
+      g_slice_free (GabbleJingleShareManifest, self->priv->manifest);
+      self->priv->manifest = NULL;
     }
-  g_list_free (self->priv->manifest->entries);
-
-  g_free (self->priv->manifest->source_url);
-  g_free (self->priv->manifest->preview_url);
-
-  g_slice_free (GabbleJingleShareManifest, self->priv->manifest);
-  self->priv->manifest = NULL;
 }
 
 static void

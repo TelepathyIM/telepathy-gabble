@@ -504,6 +504,7 @@ gabble_file_transfer_channel_constructor (GType type,
   return obj;
 }
 
+static void close_session_and_transport (GabbleFileTransferChannel *self);
 static void gabble_file_transfer_channel_dispose (GObject *object);
 static void gabble_file_transfer_channel_finalize (GObject *object);
 
@@ -774,37 +775,8 @@ gabble_file_transfer_channel_dispose (GObject *object)
       self->priv->progress_timer = 0;
     }
 
-  if (self->priv->jingle != NULL)
-    {
-      gabble_jingle_session_terminate (self->priv->jingle,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
-      g_object_unref (self->priv->jingle);
-      self->priv->jingle = NULL;
-    }
+  close_session_and_transport (self);
 
-  if (self->priv->nice_agents != NULL)
-    {
-      g_hash_table_destroy (self->priv->nice_agents);
-      self->priv->nice_agents = NULL;
-    }
-
-  if (self->priv->bytestream != NULL)
-    {
-      g_object_unref (self->priv->bytestream);
-      self->priv->bytestream = NULL;
-    }
-
-  if (self->priv->listener != NULL)
-    {
-      g_object_unref (self->priv->listener);
-      self->priv->listener = NULL;
-    }
-
-  if (self->priv->transport != NULL)
-    {
-      g_object_unref (self->priv->transport);
-      self->priv->transport = NULL;
-    }
 
   /* release any references held by the object here */
 
@@ -853,6 +825,24 @@ gabble_file_transfer_channel_finalize (GObject *object)
 static void
 close_session_and_transport (GabbleFileTransferChannel *self)
 {
+  if (self->priv->jingle != NULL)
+    {
+      gabble_jingle_session_terminate (self->priv->jingle,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+      /* the terminate could synchronously unref it and set it to NULL */
+      if (self->priv->jingle != NULL)
+        {
+          g_object_unref (self->priv->jingle);
+          self->priv->jingle = NULL;
+        }
+    }
+
+  if (self->priv->nice_agents != NULL)
+    {
+      g_hash_table_destroy (self->priv->nice_agents);
+      self->priv->nice_agents = NULL;
+    }
+
   if (self->priv->bytestream != NULL)
     {
       gabble_bytestream_iface_close (self->priv->bytestream, NULL);
@@ -860,15 +850,10 @@ close_session_and_transport (GabbleFileTransferChannel *self)
       self->priv->bytestream = NULL;
     }
 
-  if (self->priv->jingle != NULL)
+  if (self->priv->listener != NULL)
     {
-      gabble_jingle_session_terminate (self->priv->jingle,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
-    }
-  if (self->priv->nice_agents != NULL)
-    {
-      g_hash_table_destroy (self->priv->nice_agents);
-      self->priv->nice_agents = NULL;
+      g_object_unref (self->priv->listener);
+      self->priv->listener = NULL;
     }
 
   if (self->priv->transport != NULL)
@@ -1946,7 +1931,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
         {
           GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (cs->data);
           /* The new-channel signal will take care of the rest.. */
-          /* TODO */
+          /* TODO make sure it works, otherwise increment private-%d */
           g_assert (gabble_jingle_content_create_channel (content,
                   "private-1") > 0);
         }

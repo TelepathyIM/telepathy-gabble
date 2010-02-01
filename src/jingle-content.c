@@ -45,6 +45,7 @@ enum
   NEW_CANDIDATES,
   REMOVED,
   NEW_CHANNEL,
+  COMPLETED,
   LAST_SIGNAL
 };
 
@@ -363,6 +364,16 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     G_TYPE_NONE,
     2,
     G_TYPE_STRING, G_TYPE_INT);
+
+  signals[COMPLETED] = g_signal_new (
+    "completed",
+    G_TYPE_FROM_CLASS (cls),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    g_cclosure_marshal_VOID__VOID,
+    G_TYPE_NONE,
+    0);
 
   /* This signal serves as notification that the GabbleJingleContent is now
    * meaningless; everything holding a reference should drop it after receiving
@@ -683,7 +694,7 @@ gabble_jingle_content_parse_info (GabbleJingleContent *c,
     }
   else if (complete_node)
     {
-      /* TODO: do something maybe ?*/
+      g_signal_emit (c, signals[COMPLETED], 0);
     }
 
 }

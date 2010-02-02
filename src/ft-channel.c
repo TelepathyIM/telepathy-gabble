@@ -2417,7 +2417,8 @@ transport_disconnected_cb (GibberTransport *transport,
 {
   DEBUG ("transport to local socket has been disconnected");
 
-  if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED)
+  if (self->priv->transferred_bytes + self->priv->initial_offset <
+      self->priv->size)
     {
       close_session_and_transport (self);
 

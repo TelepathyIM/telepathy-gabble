@@ -791,6 +791,9 @@ gabble_base_call_channel_accept (GabbleSvcChannelTypeCall *iface,
   if (base_class->accept != NULL)
     base_class->accept (self);
 
+  g_list_foreach (self->priv->contents,
+      (GFunc)gabble_call_content_accept, NULL);
+
   gabble_svc_channel_type_call_return_from_accept (context);
 }
 

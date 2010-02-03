@@ -1966,33 +1966,31 @@ handle_error (GObject *source,
     {
       GError *tp_error /* doesn't need initializing */;
 
-      // FIXME, the wocky enum is identical to the gabble enum, but
-      // don't rely on this:
-      switch ((GabbleXmppError) errnum)
+      switch (errnum)
         {
-          case XMPP_ERROR_FORBIDDEN:
+          case WOCKY_XMPP_ERROR_FORBIDDEN:
             tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_BANNED,
                 "banned from room");
             reason = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
             break;
-          case XMPP_ERROR_SERVICE_UNAVAILABLE:
+          case WOCKY_XMPP_ERROR_SERVICE_UNAVAILABLE:
             tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_FULL,
                 "room is full");
             break;
 
-          case XMPP_ERROR_REGISTRATION_REQUIRED:
+          case WOCKY_XMPP_ERROR_REGISTRATION_REQUIRED:
             tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_INVITE_ONLY,
                 "room is invite only");
             break;
 
-          case XMPP_ERROR_CONFLICT:
+          case WOCKY_XMPP_ERROR_CONFLICT:
             if (handle_nick_conflict (gmuc, &tp_error))
               return;
             break;
 
           default:
             tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                "%s", gabble_xmpp_error_description (errnum));
+                "%s", wocky_xmpp_error_description (errnum));
             break;
         }
 

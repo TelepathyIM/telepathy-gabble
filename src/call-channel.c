@@ -97,11 +97,14 @@ gabble_call_channel_constructed (GObject *obj)
         {
           GabbleCallMemberContent *content =
             GABBLE_CALL_MEMBER_CONTENT (l->data);
+          GabbleCallContent *c;
 
-          gabble_base_call_channel_add_content (cbase,
-            gabble_call_member_content_get_jingle_content (content),
-            GABBLE_CALL_CONTENT_DISPOSITION_INITIAL,
-            priv->session->peer);
+          c = gabble_base_call_channel_add_content (cbase,
+                gabble_call_member_content_get_name (content),
+                gabble_call_member_content_get_media_type (content),
+                GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+
+          gabble_call_content_add_member_content (c, content);
 
           switch (gabble_call_member_content_get_media_type (content))
             {
@@ -299,11 +302,14 @@ call_channel_init_async (GAsyncInitable *initable,
         {
           GabbleCallMemberContent *content =
             GABBLE_CALL_MEMBER_CONTENT (l->data);
+          GabbleCallContent *c;
 
-          gabble_base_call_channel_add_content (base,
-            gabble_call_member_content_get_jingle_content (content),
-            GABBLE_CALL_CONTENT_DISPOSITION_INITIAL,
-            ((TpBaseConnection *) base->conn)->self_handle);
+          c = gabble_base_call_channel_add_content (base,
+                gabble_call_member_content_get_name (content),
+                gabble_call_member_content_get_media_type (content),
+                GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+
+          gabble_call_content_add_member_content (c, content);
         }
     }
 

@@ -30,6 +30,7 @@
 
 #include <extensions/extensions.h>
 
+#include "call-member.h"
 #include "call-content.h"
 #include "call-content-codecoffer.h"
 #include "call-stream.h"
@@ -45,12 +46,11 @@
 
 static void call_content_iface_init (gpointer, gpointer);
 static void call_content_media_iface_init (gpointer, gpointer);
-static void call_content_remote_codecs_cb (
-  GabbleJingleMediaRtp *media, GList *codecs, gpointer user_data);
 static void call_content_new_offer (GabbleCallContent *self);
 
 static GPtrArray *call_content_codec_list_to_array (GList *codecs);
-static GHashTable *call_content_generate_codec_map (GabbleCallContent *self);
+static GHashTable *call_content_generate_codec_map (GabbleCallContent *self,
+    gboolean include_local);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallContent, gabble_call_content,
   G_TYPE_OBJECT,
@@ -67,7 +67,6 @@ enum
 {
   PROP_OBJECT_PATH = 1,
   PROP_CONNECTION,
-  PROP_JINGLE_CONTENT,
   PROP_TARGET_HANDLE,
 
   PROP_NAME,
@@ -76,6 +75,7 @@ enum
 
   PROP_CONTACT_CODEC_MAP,
   PROP_MEDIA_TYPE,
+  PROP_JINGLE_MEDIA_TYPE,
   PROP_STREAMS,
   PROP_CODEC_OFFER,
 };
@@ -87,7 +87,7 @@ struct _GabbleCallContentPrivate
 
   gchar *object_path;
   TpHandle target;
-  GabbleJingleContent *content;
+  GList *contents;
 
   GabbleCallContentCodecoffer *offer;
   GCancellable *offer_cancellable;
@@ -100,6 +100,11 @@ struct _GabbleCallContentPrivate
   GList *streams;
   gboolean dispose_has_run;
   gboolean deinit_has_run;
+
+  gchar *name;
+  JingleMediaType mtype;
+
+  GList *local_codecs;
 };
 
 static void
@@ -128,20 +133,15 @@ gabble_call_content_get_property (GObject    *object,
       case PROP_OBJECT_PATH:
         g_value_set_string (value, priv->object_path);
         break;
-      case PROP_JINGLE_CONTENT:
-        g_value_set_object (value, priv->content);
-        break;
-      case PROP_TARGET_HANDLE:
-        g_value_set_uint (value, priv->target);
-        break;
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
         break;
+      case PROP_JINGLE_MEDIA_TYPE:
+        g_value_set_uint (value, priv->mtype);
+        break;
       case PROP_MEDIA_TYPE:
         {
-          JingleMediaType mtype;
-          g_object_get (priv->content, "media-type", &mtype, NULL);
-          switch (mtype)
+          switch (priv->mtype)
             {
               case JINGLE_MEDIA_TYPE_AUDIO:
                 g_value_set_uint (value, TP_MEDIA_STREAM_TYPE_AUDIO);
@@ -172,12 +172,7 @@ gabble_call_content_get_property (GObject    *object,
         }
       case PROP_NAME:
         {
-          gchar *name;
-          g_object_get (priv->content, "name", &name, NULL);
-          if (name != NULL)
-            g_value_take_string (value, name);
-          else
-            g_value_set_static_string (value, "");
+          g_value_take_string (value, priv->name);
           break;
         }
       case PROP_CREATOR:
@@ -190,7 +185,7 @@ gabble_call_content_get_property (GObject    *object,
         {
           GHashTable *map;
 
-          map = call_content_generate_codec_map (content);
+          map = call_content_generate_codec_map (content, TRUE);
           g_value_set_boxed (value, map);
           g_hash_table_unref (map);
           break;
@@ -245,14 +240,14 @@ gabble_call_content_set_property (GObject *object,
         priv->object_path = g_value_dup_string (value);
         g_assert (priv->object_path != NULL);
         break;
-      case PROP_JINGLE_CONTENT:
-        priv->content = g_value_dup_object (value);
-        break;
-      case PROP_TARGET_HANDLE:
-        priv->target = g_value_get_uint (value);
-        break;
       case PROP_CONNECTION:
         priv->conn = g_value_get_object (value);
+        break;
+      case PROP_NAME:
+        priv->name = g_value_dup_string (value);
+        break;
+      case PROP_JINGLE_MEDIA_TYPE:
+        priv->mtype = g_value_get_uint (value);
         break;
       case PROP_CREATOR:
         priv->creator = g_value_get_uint (value);
@@ -277,32 +272,6 @@ gabble_call_content_constructed (GObject *obj)
   bus = tp_get_bus ();
   DEBUG ("Registering %s", priv->object_path);
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
-
-  if (priv->content != NULL)
-    {
-      GabbleCallStream *stream;
-      gchar *path;
-
-      path = g_strdup_printf ("%s/Stream%p", priv->object_path, priv->content);
-      stream = g_object_new (GABBLE_TYPE_CALL_STREAM,
-        "object-path", path,
-        "connection", priv->conn,
-        "jingle-content", priv->content,
-        NULL);
-      g_free (path);
-
-      priv->streams = g_list_prepend (priv->streams, stream);
-
-      if (gabble_jingle_media_rtp_get_remote_codecs (
-          GABBLE_JINGLE_MEDIA_RTP (priv->content)) != NULL)
-        {
-          call_content_new_offer (self);
-        }
-
-      gabble_signal_connect_weak (priv->content, "remote-codecs",
-        G_CALLBACK (call_content_remote_codecs_cb),
-        obj);
-    }
 
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed (obj);
@@ -360,20 +329,6 @@ gabble_call_content_class_init (
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
 
-  param_spec = g_param_spec_object ("jingle-content", "Jingle Content",
-      "The Jingle Content related to this content object",
-      GABBLE_TYPE_JINGLE_CONTENT,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_JINGLE_CONTENT,
-      param_spec);
-
-  param_spec = g_param_spec_uint ("target-handle", "Target Handle",
-      "Target handle of the call channel",
-      0, G_MAXUINT, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_TARGET_HANDLE,
-      param_spec);
-
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this media channel object.",
       GABBLE_TYPE_CONNECTION,
@@ -383,7 +338,7 @@ gabble_call_content_class_init (
   param_spec = g_param_spec_string ("name", "Name",
       "The name of this content if any",
       "",
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_NAME, param_spec);
 
   param_spec = g_param_spec_uint ("media-type", "Media Type",
@@ -391,6 +346,13 @@ gabble_call_content_class_init (
       0, G_MAXUINT, 0,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("jingle-media-type", "Jingle Media Type",
+      "The JingleMediaType of this content",
+      0, G_MAXUINT, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_JINGLE_MEDIA_TYPE,
       param_spec);
 
   param_spec = g_param_spec_uint ("creator", "Creator",
@@ -455,9 +417,6 @@ gabble_call_content_dispose (GObject *object)
   g_list_free (priv->streams);
   priv->streams = NULL;
 
-  g_object_unref (priv->content);
-  priv->content = NULL;
-
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_content_parent_class)->dispose (object);
 }
@@ -499,10 +458,22 @@ call_content_set_local_codecs (GabbleCallContent *self,
         l = g_list_append (l, c);
     }
 
+  jingle_media_rtp_free_codecs (priv->local_codecs);
+  priv->local_codecs = l;
 
-  /* FIXME react properly on errors */
-  jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content),
-    l, TRUE, NULL);
+  for (l = priv->contents ; l != NULL; l = g_list_next (l))
+    {
+      GabbleCallMemberContent *c = GABBLE_CALL_MEMBER_CONTENT (l->data);
+      GabbleJingleContent *j =
+        gabble_call_member_content_get_jingle_content (c);
+
+      if (j == NULL)
+        continue;
+
+      /* FIXME react properly on errors ? */
+      jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (j),
+        jingle_media_rtp_copy_codecs (priv->local_codecs), TRUE, NULL);
+    }
 
 }
 
@@ -611,6 +582,8 @@ call_content_codec_list_to_array (GList *codecs)
       GValueArray *v;
       JingleCodec *c = l->data;
 
+      g_assert (c->params != NULL);
+
       v = gabble_value_array_build (5,
         G_TYPE_UINT, (guint) c->id,
         G_TYPE_STRING, c->name,
@@ -626,12 +599,13 @@ call_content_codec_list_to_array (GList *codecs)
 }
 
 static GHashTable *
-call_content_generate_codec_map (GabbleCallContent *self)
+call_content_generate_codec_map (GabbleCallContent *self,
+  gboolean include_local)
 {
   GabbleCallContentPrivate *priv = self->priv;
-  GList *codecs;
   GHashTable *map;
   GPtrArray *arr;
+  GList *l;
 
   /* FIXME this map is always remote + local, irrespective of whether it has
    * been accepted or not */
@@ -639,25 +613,28 @@ call_content_generate_codec_map (GabbleCallContent *self)
   map = g_hash_table_new_full (g_direct_hash, g_direct_equal,
     NULL, (GDestroyNotify) g_ptr_array_unref);
 
-  /* Local codecs */
-  codecs = gabble_jingle_media_rtp_get_local_codecs (
-     GABBLE_JINGLE_MEDIA_RTP (priv->content));
-
-  if (codecs != NULL)
+  if (include_local && priv->local_codecs != NULL)
     {
-      arr = call_content_codec_list_to_array (codecs);
+      arr = call_content_codec_list_to_array (priv->local_codecs);
       g_hash_table_insert (map,
         GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
         arr);
     }
 
-  codecs = gabble_jingle_media_rtp_get_remote_codecs (
-     GABBLE_JINGLE_MEDIA_RTP (priv->content));
-
-  if (codecs != NULL)
+  for (l = priv->contents ; l != NULL; l = g_list_next (l))
     {
-      arr = call_content_codec_list_to_array (codecs);
-      g_hash_table_insert (map, GUINT_TO_POINTER (priv->target), arr);
+      GabbleCallMemberContent *c = GABBLE_CALL_MEMBER_CONTENT (l->data);
+      GList *codecs;
+
+      codecs = gabble_call_member_content_get_remote_codecs (c);
+      if (codecs != NULL)
+        {
+          GabbleCallMember *m = gabble_call_member_content_get_member (c);
+          arr = call_content_codec_list_to_array (codecs);
+          g_hash_table_insert (map,
+              GUINT_TO_POINTER (gabble_call_member_get_handle (m)),
+              arr);
+        }
     }
 
   return map;
@@ -684,7 +661,7 @@ codec_offer_finished_cb (GObject *source,
 
   call_content_set_local_codecs (self, local_codecs);
 
-  codec_map = call_content_generate_codec_map (self);
+  codec_map = call_content_generate_codec_map (self, TRUE);
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
   gabble_svc_call_content_interface_media_emit_codecs_changed (self,
@@ -711,19 +688,10 @@ static void
 call_content_new_offer (GabbleCallContent *self)
 {
   GabbleCallContentPrivate *priv = self->priv;
-  GList *codecs;
   GHashTable *map;
-  GPtrArray *arr;
   gchar *path;
 
-  codecs = gabble_jingle_media_rtp_get_remote_codecs (
-     GABBLE_JINGLE_MEDIA_RTP (priv->content));
-
-  map = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-    NULL, (GDestroyNotify) g_ptr_array_unref);
-
-  arr = call_content_codec_list_to_array (codecs);
-  g_hash_table_insert (map, GUINT_TO_POINTER (priv->target), arr);
+  map = call_content_generate_codec_map (self, FALSE);
 
   if (priv->offer != NULL)
     g_cancellable_cancel (priv->offer_cancellable);
@@ -744,10 +712,79 @@ call_content_new_offer (GabbleCallContent *self)
   g_free (path);
 }
 
+const gchar *
+gabble_call_content_get_name (GabbleCallContent *self)
+{
+  return self->priv->name;
+}
+
+JingleMediaType
+gabble_call_content_get_media_type (GabbleCallContent *self)
+{
+  return self->priv->mtype;
+}
+
 static void
-call_content_remote_codecs_cb (GabbleJingleMediaRtp *media,
-    GList *codecs,
+member_content_codecs_changed (GabbleCallMemberContent *mcontent,
+  gpointer user_data)
+{
+  GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
+
+  DEBUG ("Popping up new codec offer");
+  call_content_new_offer (self);
+}
+
+static void
+call_content_setup_jingle (GabbleCallContent *self,
+    GabbleCallMemberContent *mcontent)
+{
+  GabbleCallContentPrivate *priv = self->priv;
+  GabbleJingleContent *jingle;
+  GabbleCallStream *stream;
+  gchar *path;
+
+  jingle = gabble_call_member_content_get_jingle_content (mcontent);
+
+  if (jingle == NULL)
+    return;
+
+  path = g_strdup_printf ("%s/Stream%p", priv->object_path, jingle);
+  stream = g_object_new (GABBLE_TYPE_CALL_STREAM,
+      "object-path", path,
+      "connection", priv->conn,
+      "jingle-content", jingle,
+      NULL);
+  g_free (path);
+
+  jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (jingle),
+      jingle_media_rtp_copy_codecs (priv->local_codecs), TRUE, NULL);
+
+  priv->streams = g_list_prepend (priv->streams, stream);
+}
+
+static void
+member_content_got_jingle_content_cb (GabbleCallMemberContent *mcontent,
     gpointer user_data)
 {
-  call_content_new_offer (GABBLE_CALL_CONTENT (user_data));
+  GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
+  call_content_setup_jingle (self, mcontent);
+}
+
+void
+gabble_call_content_add_member_content (GabbleCallContent *self,
+    GabbleCallMemberContent *content)
+{
+  self->priv->contents = g_list_prepend (self->priv->contents, content);
+  call_content_setup_jingle (self, content);
+
+  gabble_signal_connect_weak (content, "codecs-changed",
+    G_CALLBACK (member_content_codecs_changed), G_OBJECT (self));
+
+  gabble_signal_connect_weak (content, "got-jingle-content",
+    G_CALLBACK (member_content_got_jingle_content_cb), G_OBJECT (self));
+
+  if (gabble_call_member_content_get_remote_codecs (content) != NULL)
+    {
+      call_content_new_offer (self);
+    }
 }

@@ -581,32 +581,34 @@ gabble_base_call_channel_get_state (GabbleBaseCallChannel *self)
   return self->priv->state;
 }
 
-const gchar *
+GabbleCallContent *
 gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
-  GabbleJingleContent *c,
-  GabbleCallContentDisposition disposition,
-  TpHandle creator)
+    const gchar *name,
+    JingleMediaType mtype,
+    GabbleCallContentDisposition disposition)
 {
   GabbleBaseCallChannelPrivate *priv = self->priv;
   gchar *object_path;
   GabbleCallContent *content;
 
-  object_path = g_strdup_printf ("%s/Content%p", priv->object_path, c);
+  /* FIXME could clash when other party in a one-to-one call creates a stream
+   * with the same media type and name */
+  object_path =
+    g_strdup_printf ("%s/Content_%s_%d", priv->object_path, name, mtype);
 
   content = g_object_new (GABBLE_TYPE_CALL_CONTENT,
     "connection", self->conn,
     "object-path", object_path,
-    "jingle-content", c,
-    "target-handle", self->target,
     "disposition", disposition,
-    "creator", creator,
+    "jingle-media-type", mtype,
+    "name", name,
     NULL);
 
   g_free (object_path);
 
   priv->contents = g_list_prepend (priv->contents, content);
 
-  return gabble_call_content_get_object_path (content);
+  return GABBLE_CALL_CONTENT (content);
 }
 
 void
@@ -829,10 +831,13 @@ gabble_base_call_channel_add_content_dbus (GabbleSvcChannelTypeCall *iface,
       content = gabble_call_member_create_content (member, name, type, &error);
 
       if (content != NULL)
-        path = gabble_base_call_channel_add_content (self,
-            gabble_call_member_content_get_jingle_content (content),
-            GABBLE_CALL_CONTENT_DISPOSITION_NONE,
-              ((TpBaseConnection *) self->conn)->self_handle);
+        {
+          GabbleCallContent *c;
+          c = gabble_base_call_channel_add_content (self,
+            name, type, GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+          gabble_call_content_add_member_content (c, content);
+          path = gabble_call_content_get_object_path (c);
+        }
       break;
     }
 

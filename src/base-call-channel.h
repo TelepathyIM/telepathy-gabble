@@ -28,6 +28,7 @@
 #include "connection.h"
 #include "jingle-content.h"
 #include "call-member.h"
+#include "call-content.h"
 
 G_BEGIN_DECLS
 
@@ -102,11 +103,12 @@ GabbleCallState gabble_base_call_channel_get_state (
 void gabble_base_call_channel_set_state (GabbleBaseCallChannel *self,
   GabbleCallState state);
 
-const gchar *
-gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
-  GabbleJingleContent *c,
-  GabbleCallContentDisposition disposition,
-  TpHandle creator);
+
+GabbleCallContent * gabble_base_call_channel_add_content (
+    GabbleBaseCallChannel *self,
+    const gchar *name,
+    JingleMediaType mtype,
+    GabbleCallContentDisposition disposition);
 
 G_END_DECLS
 

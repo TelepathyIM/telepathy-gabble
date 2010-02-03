@@ -23,6 +23,9 @@
 
 #include <glib-object.h>
 
+#include "jingle-content.h"
+#include "call-member-content.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleCallContent GabbleCallContent;
@@ -63,6 +66,11 @@ GType gabble_call_content_get_type (void);
 const gchar *gabble_call_content_get_object_path (GabbleCallContent *content);
 void gabble_call_content_accept (GabbleCallContent *content);
 void gabble_call_content_deinit (GabbleCallContent *content);
+const gchar *gabble_call_content_get_name (GabbleCallContent *self);
+JingleMediaType gabble_call_content_get_media_type (GabbleCallContent *self);
+
+void gabble_call_content_add_member_content (GabbleCallContent *self,
+    GabbleCallMemberContent *content);
 
 G_END_DECLS
 

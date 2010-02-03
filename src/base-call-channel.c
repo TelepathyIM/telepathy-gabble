@@ -742,8 +742,8 @@ gabble_base_call_channel_accept (GabbleSvcChannelTypeCall *iface,
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
   GabbleBaseCallChannelPrivate *priv = self->priv;
-  GHashTableIter iter;
-  gpointer value;
+  GabbleBaseCallChannelClass *base_class =
+      GABBLE_BASE_CALL_CHANNEL_GET_CLASS (self);
 
   DEBUG ("Client accepted the call");
 
@@ -761,13 +761,8 @@ gabble_base_call_channel_accept (GabbleSvcChannelTypeCall *iface,
         GABBLE_CALL_STATE_ACCEPTED);
     }
 
-  g_hash_table_iter_init (&iter, priv->members);
-  while (g_hash_table_iter_next (&iter, NULL, &value))
-    {
-      GabbleCallMember *member = GABBLE_CALL_MEMBER (value);
-      GabbleJingleSession *session = gabble_call_member_get_session (member);
-      gabble_jingle_session_accept (session);
-    }
+  if (base_class->accept != NULL)
+    base_class->accept (self);
 
   gabble_svc_channel_type_call_return_from_accept (context);
 }

@@ -50,6 +50,8 @@ static void async_initable_iface_init (GAsyncInitableIface *iface);
 static void call_session_state_changed_cb (GabbleJingleSession *session,
   GParamSpec *param, GabbleCallChannel *self);
 
+static void call_channel_accept (GabbleBaseCallChannel *channel);
+
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
   GABBLE_TYPE_BASE_CALL_CHANNEL,
   G_IMPLEMENT_INTERFACE (G_TYPE_ASYNC_INITABLE, async_initable_iface_init);
@@ -198,6 +200,7 @@ gabble_call_channel_class_init (
   object_class->finalize = gabble_call_channel_finalize;
 
   base_call_class->handle_type = TP_HANDLE_TYPE_CONTACT;
+  base_call_class->accept = call_channel_accept;
 
   param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
       "Jingle session associated with this media channel object.",
@@ -324,4 +327,11 @@ static void
 async_initable_iface_init (GAsyncInitableIface *iface)
 {
   iface->init_async = call_channel_init_async;
+}
+
+static void
+call_channel_accept (GabbleBaseCallChannel *channel)
+{
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (channel);
+  gabble_jingle_session_accept (self->priv->session);
 }

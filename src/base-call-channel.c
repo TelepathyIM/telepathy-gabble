@@ -781,11 +781,22 @@ gabble_base_call_channel_accept (GabbleSvcChannelTypeCall *iface,
           gabble_base_call_channel_set_state (self,
               GABBLE_CALL_STATE_PENDING_RECEIVER);
         }
+      else
+        {
+          DEBUG ("Invalid state for Accept: Channel requested and "
+              "state == %d", priv->state);
+          goto err;
+        }
     }
   else if (priv->state < GABBLE_CALL_STATE_ACCEPTED)
     {
       gabble_base_call_channel_set_state (self,
         GABBLE_CALL_STATE_ACCEPTED);
+    }
+  else
+    {
+      DEBUG ("Invalid state for Accept: state == %d", priv->state);
+      goto err;
     }
 
   if (base_class->accept != NULL)
@@ -795,6 +806,14 @@ gabble_base_call_channel_accept (GabbleSvcChannelTypeCall *iface,
       (GFunc)gabble_call_content_accept, NULL);
 
   gabble_svc_channel_type_call_return_from_accept (context);
+  return;
+
+err:
+  {
+    GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "Invalid state for Accept" };
+    dbus_g_method_return_error (context, &e);
+  }
 }
 
 static void

@@ -27,12 +27,12 @@
 
 #include <telepathy-glib/handle.h>
 
+#include "types.h"
 #include "jingle-session.h"
 #include "call-member-content.h"
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleCallMember GabbleCallMember;
 typedef struct _GabbleCallMemberPrivate GabbleCallMemberPrivate;
 typedef struct _GabbleCallMemberClass GabbleCallMemberClass;
 
@@ -78,11 +78,16 @@ GabbleCallMemberFlags gabble_call_member_get_flags (
 
 GList *gabble_call_member_get_contents (GabbleCallMember *self);
 
+GabbleCallMemberContent * gabble_call_member_ensure_content (
+    GabbleCallMember *self,
+    const gchar *name,
+    JingleMediaType mtype);
+
 GabbleCallMemberContent * gabble_call_member_create_content (
-  GabbleCallMember *self,
-  const gchar *name,
-  JingleMediaType mtype,
-  GError **error);
+    GabbleCallMember *self,
+    const gchar *name,
+    JingleMediaType mtype,
+    GError **error);
 
 gboolean gabble_call_member_start_session (GabbleCallMember *self,
     const gchar *audio_name,

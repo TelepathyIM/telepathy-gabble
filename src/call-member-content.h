@@ -23,11 +23,12 @@
 
 #include <glib-object.h>
 
+#include "types.h"
 #include "jingle-content.h"
+#include "jingle-media-rtp.h"
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleCallMemberContent GabbleCallMemberContent;
 typedef struct _GabbleCallMemberContentPrivate GabbleCallMemberContentPrivate;
 typedef struct _GabbleCallMemberContentClass GabbleCallMemberContentClass;
 
@@ -60,15 +61,36 @@ GType gabble_call_member_content_get_type (void);
     GabbleCallMemberContentClass))
 
 GabbleCallMemberContent *gabble_call_member_content_new (const gchar *name,
-    JingleMediaType type);
+    JingleMediaType type,
+    GabbleCallMember *member);
 
 GabbleCallMemberContent *gabble_call_member_content_from_jingle_content (
-    GabbleJingleContent *jingle_content);
+    GabbleJingleContent *jingle_content,
+    GabbleCallMember *member);
 
 JingleMediaType gabble_call_member_content_get_media_type (
     GabbleCallMemberContent *self);
 
+const gchar *gabble_call_member_content_get_name (
+    GabbleCallMemberContent *self);
+
 GabbleJingleContent *gabble_call_member_content_get_jingle_content (
+    GabbleCallMemberContent *self);
+
+gboolean gabble_call_member_content_has_jingle_content (
+    GabbleCallMemberContent *self);
+
+GList *gabble_call_member_content_get_remote_codecs (
+    GabbleCallMemberContent *self);
+
+void gabble_call_member_content_set_remote_codecs (
+    GabbleCallMemberContent *self,
+    GList *codecs);
+
+GList * gabble_call_member_content_get_remote_codecs (
+    GabbleCallMemberContent *self);
+
+GabbleCallMember *gabble_call_member_content_get_member (
     GabbleCallMemberContent *self);
 
 G_END_DECLS

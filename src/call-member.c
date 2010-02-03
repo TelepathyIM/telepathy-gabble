@@ -35,6 +35,7 @@ G_DEFINE_TYPE(GabbleCallMember, gabble_call_member, G_TYPE_OBJECT)
 enum
 {
     FLAGS_CHANGED,
+    CONTENT_ADDED,
     LAST_SIGNAL
 };
 
@@ -174,6 +175,15 @@ gabble_call_member_class_init (
                   NULL, NULL,
                   g_cclosure_marshal_VOID__UINT,
                   G_TYPE_NONE, 1, G_TYPE_UINT);
+
+  signals[CONTENT_ADDED] =
+    g_signal_new ("content-added",
+                  G_OBJECT_CLASS_TYPE (gabble_call_member_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__OBJECT,
+                  G_TYPE_NONE, 1, G_TYPE_OBJECT);
 }
 
 void
@@ -253,10 +263,14 @@ gabble_call_member_set_session (GabbleCallMember *self,
       c != NULL; c = g_list_next (c))
     {
       GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (c->data);
+      GabbleCallMemberContent *mcontent;
 
-      priv->contents = g_list_append (priv->contents,
-          gabble_call_member_content_from_jingle_content (
-              content));
+      mcontent = gabble_call_member_content_from_jingle_content (content,
+        self);
+
+      priv->contents = g_list_append (priv->contents, mcontent);
+      g_signal_emit (self, signals[CONTENT_ADDED], 0, mcontent);
+
 
       if (priv->transport_ns == NULL)
         {
@@ -294,6 +308,34 @@ gabble_call_member_get_contents (GabbleCallMember *self)
   GabbleCallMemberPrivate *priv = self->priv;
 
   return priv->contents;
+}
+
+GabbleCallMemberContent *
+gabble_call_member_ensure_content (GabbleCallMember *self,
+  const gchar *name,
+  JingleMediaType mtype)
+{
+  GabbleCallMemberPrivate *priv = self->priv;
+  GList *l;
+  GabbleCallMemberContent *content = NULL;
+
+  for (l = priv->contents ; l != NULL; l = g_list_next (l))
+    {
+      content = GABBLE_CALL_MEMBER_CONTENT (l->data);
+
+      if (gabble_call_member_content_get_media_type (content) == mtype &&
+          !tp_strdiff (gabble_call_member_content_get_name (content), name))
+        break;
+    }
+
+  if (content == NULL)
+    {
+      content = gabble_call_member_content_new (name, mtype, self);
+      priv->contents = g_list_prepend (priv->contents, content);
+      g_signal_emit (self, signals[CONTENT_ADDED], 0, content);
+    }
+
+  return content;
 }
 
 GabbleCallMemberContent *
@@ -336,9 +378,10 @@ gabble_call_member_create_content (GabbleCallMember *self,
 
   g_assert (c != NULL);
 
-  content = gabble_call_member_content_from_jingle_content (c);
+  content = gabble_call_member_content_from_jingle_content (c, self);
 
   priv->contents = g_list_append (priv->contents, content);
+  g_signal_emit (self, signals[CONTENT_ADDED], 0, content);
 
   return content;
 }

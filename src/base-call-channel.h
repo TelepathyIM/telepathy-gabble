@@ -40,8 +40,10 @@ struct _GabbleBaseCallChannelClass {
     GObjectClass parent_class;
 
     TpHandleType handle_type;
+    void (*accept) (GabbleBaseCallChannel *self);
 
     TpDBusPropertiesMixinClass dbus_props_class;
+
 };
 
 struct _GabbleBaseCallChannel {
@@ -103,6 +105,11 @@ GabbleCallState gabble_base_call_channel_get_state (
 void gabble_base_call_channel_set_state (GabbleBaseCallChannel *self,
   GabbleCallState state);
 
+GabbleCallMember * gabble_base_call_channel_get_member_from_handle (
+    GabbleBaseCallChannel *self,
+    TpHandle handle);
+
+GList * gabble_base_call_channel_get_contents (GabbleBaseCallChannel *self);
 
 GabbleCallContent * gabble_base_call_channel_add_content (
     GabbleBaseCallChannel *self,

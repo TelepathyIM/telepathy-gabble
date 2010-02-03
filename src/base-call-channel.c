@@ -901,6 +901,14 @@ call_member_flags_changed_cb (GabbleCallMember *member,
 }
 
 GabbleCallMember *
+gabble_base_call_channel_get_member_from_handle (
+    GabbleBaseCallChannel *self,
+    TpHandle handle)
+{
+  return g_hash_table_lookup (self->priv->members, GUINT_TO_POINTER (handle));
+}
+
+GabbleCallMember *
 gabble_base_call_channel_ensure_member_from_handle (
     GabbleBaseCallChannel *self,
     TpHandle handle)
@@ -941,4 +949,10 @@ members_to_hash (GabbleBaseCallChannel *self)
     }
 
   return h;
+}
+
+GList *
+gabble_base_call_channel_get_contents (GabbleBaseCallChannel *self)
+{
+  return self->priv->contents;
 }

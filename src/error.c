@@ -583,16 +583,6 @@ map_wocky_xmpp_error (const GError *error)
     case WOCKY_XMPP_ERROR_SERVICE_UNAVAILABLE:
       return TP_ERROR_NOT_AVAILABLE;
 
-    case WOCKY_XMPP_ERROR_JINGLE_OUT_OF_ORDER:
-    case WOCKY_XMPP_ERROR_JINGLE_UNKNOWN_SESSION:
-    case WOCKY_XMPP_ERROR_JINGLE_UNSUPPORTED_CONTENT:
-    case WOCKY_XMPP_ERROR_JINGLE_UNSUPPORTED_TRANSPORT:
-    case WOCKY_XMPP_ERROR_SI_NO_VALID_STREAMS:
-    case WOCKY_XMPP_ERROR_SI_BAD_PROFILE:
-      /* FIXME: in practice these map to abrupt session termination, rather
-       * than a specific D-Bus error */
-      return TP_ERROR_NOT_AVAILABLE;
-
     case WOCKY_XMPP_ERROR_UNDEFINED_CONDITION:
     default:
       return TP_ERROR_NOT_AVAILABLE;

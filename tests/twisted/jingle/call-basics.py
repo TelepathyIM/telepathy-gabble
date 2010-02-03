@@ -196,9 +196,9 @@ def run_test(jp, q, bus, conn, stream, incoming):
     if incoming:
         # Act as if we're ringing
         chan.Ringing (dbus_interface=cs.CHANNEL_TYPE_CALL)
-        #signal = q.expect('dbus-signal', signal='CallStateChanged')
-        #assertEquals(cs.CALL_STATE_RINGING,
-        #    signal.args[1] & cs.CALL_STATE_RINGING)
+        signal = q.expect('dbus-signal', signal='CallStateChanged')
+        assertEquals(cs.CALL_STATE_RINGING,
+            signal.args[1] & cs.CALL_STATE_RINGING)
 
         # We should have a codec offer
         check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
@@ -326,12 +326,12 @@ def run_test(jp, q, bus, conn, stream, incoming):
     # All Direction should be both now
     stream_props = cstream.GetAll (cs.CALL_STREAM,
         dbus_interface = dbus.PROPERTIES_IFACE)
-    #assertEquals (
-    #    {
-    #        self_handle : cs.CALL_SENDING_STATE_SENDING,
-    #        remote_handle: cs.CALL_SENDING_STATE_SENDING
-    #    },
-    #    stream_props["Senders"])
+    assertEquals (
+        {
+            self_handle : cs.CALL_SENDING_STATE_SENDING,
+            remote_handle: cs.CALL_SENDING_STATE_SENDING
+        },
+        stream_props["Senders"])
 
     # Turn sending off and on again
     cstream.SetSending (False,

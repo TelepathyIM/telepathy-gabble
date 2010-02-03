@@ -450,14 +450,14 @@ gabble_base_call_channel_class_init (
   param_spec = g_param_spec_boolean ("initial-audio", "InitialAudio",
       "Whether the channel initially contained an audio stream",
       FALSE,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIAL_AUDIO,
       param_spec);
 
   param_spec = g_param_spec_boolean ("initial-video", "InitialVideo",
       "Whether the channel initially contained an video stream",
       FALSE,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_INITIAL_VIDEO,
       param_spec);
 

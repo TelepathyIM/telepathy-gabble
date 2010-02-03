@@ -244,18 +244,8 @@ register_cb (GObject *porter,
 
   reply = wocky_porter_send_iq_finish (WOCKY_PORTER (porter), result, &error);
 
-  if (reply == NULL)
-    goto finally;
-
-  error = wocky_xmpp_stanza_to_gerror (reply);    /* NULL on success */
-  g_object_unref (reply);
-
-finally:
-  if (error == NULL)
-    {
-      gabble_svc_gabble_plugin_gateways_return_from_register (context);
-    }
-  else
+  if (reply == NULL ||
+      wocky_xmpp_stanza_extract_errors (reply, NULL, &error, NULL, NULL))
     {
       GError *tp_error = NULL;
 
@@ -290,6 +280,13 @@ finally:
       g_error_free (error);
       g_error_free (tp_error);
     }
+  else
+    {
+      gabble_svc_gabble_plugin_gateways_return_from_register (context);
+    }
+
+  if (reply != NULL)
+    g_object_unref (reply);
 }
 
 static void

@@ -117,7 +117,7 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
   return p;
 }
 
-static void
+void
 jingle_media_rtp_codec_free (JingleCodec *p)
 {
   g_hash_table_destroy (p->params);
@@ -141,7 +141,22 @@ build_codec_table (GList *codecs)
   return table;
 }
 
-static void
+GList *
+jingle_media_rtp_copy_codecs (GList *codecs)
+{
+  GList *ret = NULL, *l;
+
+  for (l = codecs; l != NULL; l = g_list_next (l))
+    {
+      JingleCodec *c = l->data;
+      ret = g_list_append (ret, jingle_media_rtp_codec_new (c->id,
+            c->name, c->clockrate, c->channels, c->params));
+    }
+
+  return ret;
+}
+
+void
 jingle_media_rtp_free_codecs (GList *codecs)
 {
   while (codecs != NULL)

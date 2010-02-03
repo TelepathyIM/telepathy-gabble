@@ -837,6 +837,14 @@ gabble_base_call_channel_add_content_dbus (GabbleSvcChannelTypeCall *iface,
   gpointer value;
   GError *error = NULL;
 
+  if (priv->state == GABBLE_CALL_STATE_ENDED)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "No contents can be added. The call has already ended.");
+      dbus_g_method_return_error (context, error);
+      return;
+    }
+
   if (mtype == TP_MEDIA_STREAM_TYPE_AUDIO)
     type = JINGLE_MEDIA_TYPE_AUDIO;
   else if (mtype == TP_MEDIA_STREAM_TYPE_VIDEO)

@@ -358,7 +358,7 @@ static void handle_errmsg (GObject *source,
     WockyMucMember *who,
     const gchar *text,
     WockyXmppError error,
-    const gchar *etype,
+    WockyXmppErrorType etype,
     gpointer data);
 
 static GObject *
@@ -2611,14 +2611,13 @@ handle_errmsg (GObject *source,
     WockyMucMember *who,
     const gchar *text,
     WockyXmppError error,
-    const gchar *etype,
+    WockyXmppErrorType etype,
     gpointer data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   gboolean from_member = (who != NULL);
-  GabbleXmppErrorType status = XMPP_ERROR_TYPE_UNDEFINED;
   TpChannelTextSendError tp_err = TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
   TpDeliveryStatus ds = TP_DELIVERY_STATUS_DELIVERED;
   TpHandleRepoIface *repo = NULL;
@@ -2647,9 +2646,8 @@ handle_errmsg (GObject *source,
     }
 
   tp_err = gabble_tp_send_error_from_wocky_xmpp_error (error);
-  status = gabble_xmpp_error_type_to_enum (etype);
 
-  if (status == XMPP_ERROR_TYPE_WAIT)
+  if (etype == XMPP_ERROR_TYPE_WAIT)
     ds = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
   else
     ds = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;

@@ -172,7 +172,7 @@ gabble_call_content_get_property (GObject    *object,
         }
       case PROP_NAME:
         {
-          g_value_take_string (value, priv->name);
+          g_value_set_string (value, priv->name);
           break;
         }
       case PROP_CREATOR:

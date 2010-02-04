@@ -131,22 +131,28 @@ typedef enum
     HTTP_CLIENT_IDLE,
     HTTP_CLIENT_RECEIVE,
     HTTP_CLIENT_HEADERS,
-    HTTP_CLIENT_BODY_LENGTH,
-    HTTP_CLIENT_BODY_CHUNKED,
+    HTTP_CLIENT_CHUNK_SIZE,
+    HTTP_CLIENT_CHUNK_END,
+    HTTP_CLIENT_CHUNK_FINAL,
+    HTTP_CLIENT_BODY,
   } HttpStatus;
 
 
 typedef struct
 {
   NiceAgent *agent;
+  guint stream_id;
+  guint component_id;
   GabbleJingleShare *content;
   gint channel_id;
   HttpStatus http_status;
-  gboolean is_tar;
   gboolean is_chunked;
-  guint content_length;
+  guint64 content_length;
   gchar *write_buffer;
   guint write_len;
+  gchar *read_buffer;
+  guint read_len;
+  gint manifest_entry;
 } JingleChannel;
 
 /* private structure */
@@ -1250,8 +1256,8 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
       nice_address_set_from_string (&cand->addr, candidate->address);
       nice_address_set_port (&cand->addr, candidate->port);
       cand->priority = candidate->preference * 1000;
-      cand->stream_id = 1;
-      cand->component_id = 1;
+      cand->stream_id = channel->stream_id;
+      cand->component_id = channel->component_id;
       /*
       if (c->id == NULL)
         candidate_id = g_strdup_printf ("R%d", ++priv->remote_candidate_count);
@@ -1264,7 +1270,8 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
       cand->password = g_strdup (candidate->password?candidate->password:"");
 
       candidates = g_slist_append (candidates, cand);
-      nice_agent_set_remote_candidates (channel->agent, 1, 1, candidates);
+      nice_agent_set_remote_candidates (channel->agent,
+          channel->stream_id, channel->component_id, candidates);
       g_slist_foreach (candidates, (GFunc)nice_candidate_free, NULL);
       g_slist_free (candidates);
     }
@@ -1292,7 +1299,8 @@ nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
       (GCallback) content_new_remote_candidates_cb, G_OBJECT (self));
 
   /* Send gathered local candidates to the content */
-  local_candidates = nice_agent_get_local_candidates (agent, stream_id, 1);
+  local_candidates = nice_agent_get_local_candidates (agent, stream_id,
+      channel->component_id);
 
   for (li = local_candidates; li; li = li->next)
     {
@@ -1376,23 +1384,35 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
   gabble_jingle_content_set_transport_state (content, ts);
 }
 
-static void
-nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
-    gpointer user_data)
+static void get_next_manifest_entry (GabbleFileTransferChannel *self,
+    JingleChannel *channel)
 {
-  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  gchar *buffer = NULL;
-  JingleChannel *channel = get_jingle_channel (self, agent);
+  GabbleJingleShareManifest *manifest = NULL;
+  GabbleJingleShareManifestEntry *entry = NULL;
 
-  /*TODO : other http states */
-  if (channel->http_status == HTTP_CLIENT_IDLE)
+  manifest = gabble_jingle_share_get_manifest (channel->content);
+  channel->manifest_entry++;
+  entry = g_list_nth_data (manifest->entries, channel->manifest_entry);
+  if (entry == NULL)
     {
-      GabbleJingleShareManifest *manifest = NULL;
+      GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (channel->content);
+      DEBUG ("Received all the file. Transfer is complete");
+      gabble_jingle_content_send_complete (content);
 
-      manifest = gabble_jingle_share_get_manifest (channel->content);
+      gabble_file_transfer_channel_set_state (
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_FILE_TRANSFER_STATE_COMPLETED,
+          TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
 
-      /* TODO: keep track of which files/folders in the manifest we downloaded
-         and request the 'next' file/folder.. and do the whole tar thing... */
+      if (gibber_transport_buffer_is_empty (self->priv->transport))
+        gibber_transport_disconnect (self->priv->transport);
+
+    }
+  else
+    {
+      gchar *buffer = NULL;
+
+      /* TODO: the Host is the peer's JID, not ours... */
       buffer = g_strdup_printf ("GET %s%s%s HTTP/1.1\r\n"
           "Connection: Keep-Alive\r\n"
           "Content-Length: 0\r\n"
@@ -1400,11 +1420,32 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
           "User-Agent: %s\r\n\r\n",
           manifest->source_url,
           manifest->source_url[strlen (manifest->source_url) - 1] == '/'?"":"/",
-          ((GabbleJingleShareManifestEntry *)manifest->entries->data)->name,
+          entry->name,
           gabble_connection_get_full_jid (self->priv->connection),
           PACKAGE_STRING);
-      nice_agent_send (agent, stream_id, component_id, strlen (buffer), buffer);
+      /* FIXME: check for success */
+      nice_agent_send (channel->agent, channel->stream_id,
+          channel->component_id, strlen (buffer), buffer);
       g_free (buffer);
+
+      channel->http_status = HTTP_CLIENT_RECEIVE;
+      /* Do not receive anything until the local socket is connected */
+      if (self->priv->transport == NULL)
+        nice_agent_attach_recv (channel->agent, channel->stream_id,
+            channel->component_id, NULL, NULL, NULL);
+    }
+}
+
+static void
+nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
+    gpointer user_data)
+{
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+  JingleChannel *channel = get_jingle_channel (self, agent);
+
+  if (channel->http_status == HTTP_CLIENT_IDLE)
+    {
+      get_next_manifest_entry (self, channel);
     }
   else if (channel->http_status == HTTP_SERVER_SEND)
     {
@@ -1438,6 +1479,7 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
 
 }
 
+
 static void
 content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
     gint channel_id, gpointer user_data)
@@ -1453,7 +1495,15 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
   DEBUG ("New channel %s was created and linked to id %d", name, channel_id);
 
   channel->agent = agent;
+  channel->stream_id = stream_id;
+  channel->component_id = NICE_COMPONENT_TYPE_RTP;
   channel->content = GABBLE_JINGLE_SHARE (content);
+  channel->channel_id = channel_id;
+
+  /* We increment the manifest_entry before fetching the entry, so we
+     initialize it at -1, in order to start the index at 0 */
+  channel->manifest_entry = -1;
+
   if (requested)
       channel->http_status = HTTP_SERVER_IDLE;
   else
@@ -1468,9 +1518,8 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
   gabble_signal_connect_weak (agent, "reliable-transport-writable",
       G_CALLBACK (nice_component_writable), G_OBJECT (self));
 
-  nice_agent_attach_recv (agent, stream_id, 1, g_main_context_default (),
-      nice_data_received_cb, self);
-
+  nice_agent_attach_recv (agent, stream_id, channel->component_id,
+      g_main_context_default (), nice_data_received_cb, self);
 
   /* TODO: ask jingle_factory for google relay info */
 
@@ -1881,67 +1930,106 @@ transferred_chunk (GabbleFileTransferChannel *self,
        emit_progress_update_cb, self);
 }
 
-
 static void
-nice_data_received_cb (NiceAgent *agent,
-                       guint stream_id,
-                       guint component_id,
-                       guint len,
-                       gchar *buffer,
-                       gpointer user_data)
+send_transport_data (GabbleFileTransferChannel *self,
+    JingleChannel *channel, const guint8 *data, guint data_len)
 {
-  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  JingleChannel *channel = get_jingle_channel (self, agent);
+  GError *error = NULL;
+  if (!gibber_transport_send (self->priv->transport, data, data_len, &error))
+    {
+      DEBUG ("sending to transport failed: %s", error->message);
+      g_error_free (error);
 
-  /* TODO */
-  DEBUG ("received %d bytes of data from libnice", len);
+      gabble_file_transfer_channel_set_state (
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_FILE_TRANSFER_STATE_CANCELLED,
+          TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
+    }
+  else
+    {
+      transferred_chunk (self, (guint64) data_len);
+
+      if (!gibber_transport_buffer_is_empty (self->priv->transport))
+        {
+          /* We don't want to send more data while the buffer isn't empty */
+          /* FIXME: what if we miss TCP syn/ack messages and cause longer
+             timeouts because rto becomes big ? */
+          nice_agent_attach_recv (channel->agent, channel->stream_id,
+              channel->component_id, NULL, NULL, NULL);
+        }
+    }
+}
+
+/* Return the pointer at the end of the line or NULL if not \n found */
+static gchar *
+http_read_line (gchar *buffer, guint len)
+{
+  gchar *p = buffer;
+  while ((guint) (p - buffer) < len && *p != '\n')
+    p++;
+  if ((guint) (p - buffer) >= len)
+    {
+      DEBUG ("hit the end of the buffer, but not yet done");
+      return NULL;
+    }
+  *p = 0;
+  if (p > buffer && *(p-1) == '\r')
+    *(p-1) = 0;
+  p++;
+
+  return p;
+}
+
+static guint
+http_data_received (GabbleFileTransferChannel *self, JingleChannel *channel,
+    gchar *buffer, guint len)
+{
+
+  DEBUG ("Received HTTP data with status : %d", channel->http_status);
 
   switch (channel->http_status)
     {
       case HTTP_SERVER_IDLE:
+        {
+          gchar *headers = http_read_line (buffer, len);
+          if (headers == NULL)
+            return 0;
+
+          channel->http_status = HTTP_SERVER_HEADERS;
+
+          return headers - buffer;
+        }
+        break;
       case HTTP_SERVER_HEADERS:
         {
-          gchar *line;
-          gchar *p = buffer;
-          while ((guint) (p - buffer) < len)
-            {
-              line = p;
-              while ((guint) (p - buffer) < len && *p != '\n') p++;
-              if ((guint) (p - buffer) >= len)
-                {
-                  /* FIXME: what if we get partial headers */
-                  DEBUG ("hit the end of the buffer, but not yet done");
-                  break;
-                }
-              *p = 0;
-              if (*(p-1) == '\r') *(p-1) = 0;
-              p++;
-              DEBUG ("Found line (%d) : %s", strlen (line), line);
-              if (*line == 0)
-                {
-                  gchar *response = NULL;
-                  /* FIXME: if we change status inside the while, it sucks... */
-                  /* FIXME: how about content-length and an actual body ? */
-                  channel->http_status = HTTP_SERVER_SEND;
-                  DEBUG ("Found empty line, now sending our response");
+          gchar *line = buffer;
+          gchar *next_line = http_read_line (buffer, len);
+          if (next_line == NULL)
+            return 0;
 
-                  /* TODO: actually check for the requested file's uri */
-                  response = g_strdup_printf ("HTTP/1.1 200\r\n"
-                      "Connection: Keep-Alive\r\n"
-                      "Content-Length: %llu\r\n"
-                      "Content-Type: application/octet-stream\r\n\r\n",
-                      self->priv->size - self->priv->initial_offset);
-                  nice_agent_send (agent, stream_id, component_id,
-                      strlen (response), response);
-                  g_free (response);
-                  gibber_transport_block_receiving (self->priv->transport,
-                      FALSE);
-                }
-              else if (channel->http_status == HTTP_SERVER_IDLE)
-                {
-                  channel->http_status = HTTP_SERVER_HEADERS;
-                }
+          DEBUG ("Found line (%d) : %s", strlen (line), line);
+          if (*line == 0)
+            {
+              gchar *response = NULL;
+              /* FIXME: how about content-length and an actual body ? */
+              channel->http_status = HTTP_SERVER_SEND;
+              DEBUG ("Found empty line, now sending our response");
+
+              /* FIXME: actually check for the requested file's uri */
+              /* FIXME: check for success of nice_agent_send */
+              response = g_strdup_printf ("HTTP/1.1 200\r\n"
+                  "Connection: Keep-Alive\r\n"
+                  "Content-Length: %llu\r\n"
+                  "Content-Type: application/octet-stream\r\n\r\n",
+                  self->priv->size - self->priv->initial_offset);
+              nice_agent_send (channel->agent, channel->stream_id,
+                  channel->component_id, strlen (response), response);
+              g_free (response);
+              gibber_transport_block_receiving (self->priv->transport,
+                  FALSE);
             }
+
+          return next_line - buffer;
         }
         break;
       case HTTP_SERVER_SEND:
@@ -1953,45 +2041,174 @@ nice_data_received_cb (NiceAgent *agent,
             "not supposed to happen");
         break;
       case HTTP_CLIENT_RECEIVE:
+        {
+          gchar *headers = http_read_line (buffer, len);
+          if (headers == NULL)
+            return 0;
+
+          channel->http_status = HTTP_CLIENT_HEADERS;
+
+          return headers - buffer;
+        }
       case HTTP_CLIENT_HEADERS:
         {
-          gchar *line;
-          gchar *p = buffer;
-          while ((guint) (p - buffer) < len)
+          gchar *line = buffer;
+          gchar *next_line = http_read_line (buffer, len);
+          if (next_line == NULL)
+            return 0;
+
+          DEBUG ("Found line (%d) : %s", strlen (line), line);
+          if (*line == 0)
             {
-              line = p;
-              while ((guint) (p - buffer) < len && *p != '\n') p++;
-              if ((guint) (p - buffer) >= len)
-                {
-                  /* FIXME: what if we get partial headers */
-                  DEBUG ("hit the end of the buffer, but not yet done");
-                  break;
-                }
-              *p = 0;
-              p--;
-              if (*p == '\r') *p = 0;
-              DEBUG ("Found line (%d) : %s", strlen (line), line);
-              if (*line == 0)
-                {
-                  /* FIXME: how about content-length and an actual body ? */
-                  channel->http_status = HTTP_CLIENT_BODY_LENGTH;
-                  DEBUG ("Found empty line, now receiving file data");
-                  /*TODO: build response*/
-                  nice_agent_send (agent, stream_id, component_id, len, buffer);
-                  gibber_transport_block_receiving (self->priv->transport,
-                      FALSE);
-                }
-              else if (channel->http_status == HTTP_CLIENT_RECEIVE)
-                {
-                  channel->http_status = HTTP_CLIENT_HEADERS;
-                }
+              if (channel->is_chunked)
+                channel->http_status = HTTP_CLIENT_CHUNK_SIZE;
+              else
+                channel->http_status = HTTP_CLIENT_BODY;
+              DEBUG ("Found empty line, now receiving file data");
+              /* FIXME: check if content length was 0 ? */
             }
+          else if (!g_ascii_strncasecmp (line, "Content-Length: ", 16))
+            {
+              channel->is_chunked = FALSE;
+              /* Check strtoull read all the length */
+              channel->content_length = g_ascii_strtoull (line + 16,
+                  NULL, 10);
+              DEBUG ("Found data length : %llu", channel->content_length);
+            }
+          else if (!g_ascii_strncasecmp (line,
+                  "Transfer-Encoding: chunked", 26))
+            {
+              channel->is_chunked = TRUE;
+              channel->content_length = 0;
+              DEBUG ("Found file is chunked");
+            }
+
+          return next_line - buffer;
         }
         break;
-      case HTTP_CLIENT_BODY_LENGTH:
+      case HTTP_CLIENT_CHUNK_SIZE:
+        {
+          gchar *line = buffer;
+          gchar *next_line = http_read_line (buffer, len);
+          if (next_line == NULL)
+            return 0;
+
+          DEBUG ("Found line (%d) : %s", strlen (line), line);
+          /* FIXME : check validity of strtoul */
+          channel->content_length = strtoul (line, NULL, 16);
+          DEBUG ("chunk length is : %llu", channel->content_length);
+          if (channel->content_length > 0)
+              channel->http_status = HTTP_CLIENT_BODY;
+          else
+              channel->http_status = HTTP_CLIENT_CHUNK_FINAL;
+
+          return next_line - buffer;
+        }
         break;
-      case HTTP_CLIENT_BODY_CHUNKED:
+      case HTTP_CLIENT_BODY:
+        {
+          guint consumed = 0;
+
+          DEBUG ("Chunk length is now at : %llu", channel->content_length);
+          if (len >= channel->content_length)
+            {
+              DEBUG ("Chunk has %llu bytes remaining", channel->content_length);
+              consumed = channel->content_length;
+              send_transport_data (self, channel, (const guint8 *) buffer,
+                  channel->content_length);
+              channel->content_length = 0;
+              if (channel->is_chunked)
+                channel->http_status = HTTP_CLIENT_CHUNK_END;
+              else
+                get_next_manifest_entry (self, channel);
+            }
+          else
+            {
+              consumed = len;
+              channel->content_length -= len;
+              send_transport_data (self, channel, (const guint8 *) buffer, len);
+            }
+
+          return consumed;
+        }
         break;
+      case HTTP_CLIENT_CHUNK_END:
+        {
+          gchar *chunk = http_read_line (buffer, len);
+          if (chunk == NULL)
+            return 0;
+
+          channel->http_status = HTTP_CLIENT_CHUNK_SIZE;
+
+          return chunk - buffer;
+        }
+        break;
+      case HTTP_CLIENT_CHUNK_FINAL:
+        {
+          gchar *end = http_read_line (buffer, len);
+          if (end == NULL)
+            return 0;
+
+          channel->http_status = HTTP_CLIENT_IDLE;
+          get_next_manifest_entry (self, channel);
+
+          return end - buffer;
+        }
+        break;
+    }
+
+  return 0;
+}
+
+static void
+nice_data_received_cb (NiceAgent *agent,
+                       guint stream_id,
+                       guint component_id,
+                       guint len,
+                       gchar *buffer,
+                       gpointer user_data)
+{
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
+  JingleChannel *channel = get_jingle_channel (self, agent);
+  gboolean free_buffer = FALSE;
+
+  DEBUG ("received %d bytes of data from libnice", len);
+
+  if (channel->read_buffer != NULL)
+    {
+      gchar *tmp = g_malloc (channel->read_len + len);
+      memcpy (tmp, channel->read_buffer, channel->read_len);
+      memcpy (tmp + channel->read_len, buffer, len);
+
+      buffer = tmp;
+      len += channel->read_len;
+      free_buffer = TRUE;
+
+      g_free (channel->read_buffer);
+      channel->read_buffer = NULL;
+      channel->read_len = 0;
+    }
+  while (len > 0)
+    {
+      guint consumed = http_data_received (self, channel, buffer, len);
+
+      if (consumed == 0)
+        {
+          channel->read_buffer = g_memdup (buffer, len);
+          channel->read_len = len;
+          break;
+        }
+      else
+        {
+          /* we assume http_data_received never returns consumed > len */
+          len -= consumed;
+          buffer += consumed;
+        }
+    }
+
+  if (free_buffer)
+    {
+      g_free (buffer);
     }
 }
 
@@ -2003,7 +2220,6 @@ data_received_cb (GabbleBytestreamIface *stream,
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
   GError *error = NULL;
-  /* TOOD: make it jingle/libnice compat */
 
   g_assert (self->priv->transport != NULL);
 
@@ -2323,8 +2539,8 @@ transport_handler (GibberTransport *transport,
     {
       JingleChannel *channel = g_hash_table_lookup (self->priv->jingle_channels,
           GINT_TO_POINTER (1));
-      gint ret = nice_agent_send (channel->agent, 1, 1, data->length,
-          (const gchar *) data->data);
+      gint ret = nice_agent_send (channel->agent, channel->stream_id,
+          channel->component_id, data->length, (const gchar *) data->data);
 
       if (ret < 0 || (guint) ret < data->length)
         {
@@ -2403,11 +2619,21 @@ static void
 file_transfer_receive (GabbleFileTransferChannel *self)
 {
   /* Client is connected, we can now receive data. Unblock the bytestream */
-  /* TODO: do something for jingle */
   if (self->priv->bytestream)
     {
       g_assert (self->priv->bytestream != NULL);
       gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
+    }
+  else if (self->priv->jingle)
+    {
+      JingleChannel *channel = g_hash_table_lookup (self->priv->jingle_channels,
+          GINT_TO_POINTER (1));
+      if (channel)
+        {
+          nice_agent_attach_recv (channel->agent, channel->stream_id,
+              channel->component_id, g_main_context_default (),
+              nice_data_received_cb, self);
+        }
     }
 }
 
@@ -2434,8 +2660,20 @@ transport_buffer_empty_cb (GibberTransport *transport,
                            GabbleFileTransferChannel *self)
 {
   /* Buffer is empty so we can unblock the buffer if it was blocked */
-  /* TODO: do something for jingle */
-  gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
+  if (self->priv->bytestream)
+    gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
+
+  if (self->priv->jingle)
+    {
+      JingleChannel *channel = g_hash_table_lookup (self->priv->jingle_channels,
+          GINT_TO_POINTER (1));
+      if (channel)
+        {
+          nice_agent_attach_recv (channel->agent, channel->stream_id,
+              channel->component_id, g_main_context_default (),
+              nice_data_received_cb, self);
+        }
+    }
 
   if (self->priv->state > TP_FILE_TRANSFER_STATE_OPEN)
     gibber_transport_disconnect (transport);

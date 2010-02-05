@@ -1534,9 +1534,9 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
   g_hash_table_insert (self->priv->jingle_channels,
       GINT_TO_POINTER (channel_id), channel);
 
+  channel->agent_attached = TRUE;
   nice_agent_attach_recv (agent, stream_id, channel->component_id,
       g_main_context_default (), nice_data_received_cb, self);
-  channel->agent_attached = TRUE;
 
   nice_agent_gather_candidates (agent, stream_id);
 }
@@ -2658,10 +2658,10 @@ file_transfer_receive (GabbleFileTransferChannel *self)
           GINT_TO_POINTER (1));
       if (channel && !channel->agent_attached)
         {
+          channel->agent_attached = TRUE;
           nice_agent_attach_recv (channel->agent, channel->stream_id,
               channel->component_id, g_main_context_default (),
               nice_data_received_cb, self);
-          channel->agent_attached = TRUE;
         }
     }
 }
@@ -2699,10 +2699,10 @@ transport_buffer_empty_cb (GibberTransport *transport,
           GINT_TO_POINTER (1));
       if (channel && !channel->agent_attached)
         {
+          channel->agent_attached = TRUE;
           nice_agent_attach_recv (channel->agent, channel->stream_id,
               channel->component_id, g_main_context_default (),
               nice_data_received_cb, self);
-          channel->agent_attached = TRUE;
         }
     }
 

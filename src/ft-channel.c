@@ -1554,10 +1554,17 @@ free_jingle_channel (gpointer data)
 {
   JingleChannel *channel = (JingleChannel *)data;
 
+  DEBUG ("Freeing jingle channel");
+
   if (channel->write_buffer)
     {
       g_free (channel->write_buffer);
       channel->write_buffer = NULL;
+    }
+  if (channel->read_buffer)
+    {
+      g_free (channel->read_buffer);
+      channel->read_buffer = NULL;
     }
   g_object_unref (channel->agent);
   g_slice_free (JingleChannel, channel);
@@ -2178,7 +2185,7 @@ nice_data_received_cb (NiceAgent *agent,
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
   JingleChannel *channel = get_jingle_channel (self, agent);
-  gboolean free_buffer = FALSE;
+  gchar *free_buffer = NULL;
 
   DEBUG ("received %d bytes of data from libnice", len);
 
@@ -2188,9 +2195,9 @@ nice_data_received_cb (NiceAgent *agent,
       memcpy (tmp, channel->read_buffer, channel->read_len);
       memcpy (tmp + channel->read_len, buffer, len);
 
-      buffer = tmp;
+      DEBUG ("read buffer found with size %d", channel->read_len);
+      free_buffer = buffer = tmp;
       len += channel->read_len;
-      free_buffer = TRUE;
 
       g_free (channel->read_buffer);
       channel->read_buffer = NULL;
@@ -2214,9 +2221,10 @@ nice_data_received_cb (NiceAgent *agent,
         }
     }
 
-  if (free_buffer)
+  if (free_buffer != NULL)
     {
-      g_free (buffer);
+      DEBUG ("Freed temp buffer");
+      g_free (free_buffer);
     }
 }
 

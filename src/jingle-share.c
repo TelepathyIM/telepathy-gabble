@@ -237,8 +237,8 @@ gabble_jingle_share_class_init (GabbleJingleShareClass *cls)
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE,
       g_param_spec_uint ("media-type", "media type",
           "Media type.",
-          JINGLE_MEDIA_TYPE_FILE, JINGLE_MEDIA_TYPE_FILE, JINGLE_MEDIA_TYPE_FILE,
-          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          JINGLE_MEDIA_TYPE_NONE, G_MAXUINT32, JINGLE_MEDIA_TYPE_NONE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (object_class, PROP_FILENAME,
       g_param_spec_string ("filename", "file name",

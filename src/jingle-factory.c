@@ -706,13 +706,14 @@ get_unique_sid_for (GabbleJingleFactory *factory,
 {
   guint32 val;
   gchar *sid = NULL;
-  gchar *key_;
+  gchar *key_ = NULL;
 
   do
     {
       val = g_random_int_range (1000000, G_MAXINT);
 
       g_free (sid);
+      g_free (key_);
       sid = g_strdup_printf ("%u", val);
       key_ = make_session_map_key (peer, resource, sid);
     }

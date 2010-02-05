@@ -797,6 +797,7 @@ gabble_file_transfer_channel_dispose (GObject *object)
   if (self->priv->dispose_has_run)
     return;
 
+  DEBUG ("dispose called");
   self->priv->dispose_has_run = TRUE;
 
   tp_handle_unref (handle_repo, self->priv->handle);
@@ -1980,13 +1981,13 @@ static gchar *
 http_read_line (gchar *buffer, guint len)
 {
   gchar *p = buffer;
+
   while ((guint) (p - buffer) < len && *p != '\n')
     p++;
+
   if ((guint) (p - buffer) >= len)
-    {
-      DEBUG ("hit the end of the buffer, but not yet done");
-      return NULL;
-    }
+    return NULL;
+
   *p = 0;
   if (p > buffer && *(p-1) == '\r')
     *(p-1) = 0;
@@ -1999,8 +2000,6 @@ static guint
 http_data_received (GabbleFileTransferChannel *self, JingleChannel *channel,
     gchar *buffer, guint len)
 {
-
-  DEBUG ("Received HTTP data with status : %d", channel->http_status);
 
   switch (channel->http_status)
     {
@@ -2022,7 +2021,7 @@ http_data_received (GabbleFileTransferChannel *self, JingleChannel *channel,
           if (next_line == NULL)
             return 0;
 
-          DEBUG ("Found line (%d) : %s", strlen (line), line);
+          DEBUG ("Found server headers line (%d) : %s", strlen (line), line);
           if (*line == 0)
             {
               gchar *response = NULL;
@@ -2072,7 +2071,7 @@ http_data_received (GabbleFileTransferChannel *self, JingleChannel *channel,
           if (next_line == NULL)
             return 0;
 
-          DEBUG ("Found line (%d) : %s", strlen (line), line);
+          DEBUG ("Found client headers line (%d) : %s", strlen (line), line);
           if (*line == 0)
             {
               if (channel->is_chunked)
@@ -2108,7 +2107,7 @@ http_data_received (GabbleFileTransferChannel *self, JingleChannel *channel,
           if (next_line == NULL)
             return 0;
 
-          DEBUG ("Found line (%d) : %s", strlen (line), line);
+          DEBUG ("Found chunk size line (%d) : %s", strlen (line), line);
           /* FIXME : check validity of strtoul */
           channel->content_length = strtoul (line, NULL, 16);
           DEBUG ("chunk length is : %llu", channel->content_length);
@@ -2130,10 +2129,8 @@ http_data_received (GabbleFileTransferChannel *self, JingleChannel *channel,
         {
           guint consumed = 0;
 
-          DEBUG ("Chunk length is now at : %llu", channel->content_length);
           if (len >= channel->content_length)
             {
-              DEBUG ("Chunk has %llu bytes remaining", channel->content_length);
               consumed = channel->content_length;
               send_transport_data (self, channel, (const guint8 *) buffer,
                   channel->content_length);
@@ -2193,7 +2190,6 @@ nice_data_received_cb (NiceAgent *agent,
   JingleChannel *channel = get_jingle_channel (self, agent);
   gchar *free_buffer = NULL;
 
-  DEBUG ("received %d bytes of data from libnice", len);
 
   if (channel->read_buffer != NULL)
     {
@@ -2201,7 +2197,6 @@ nice_data_received_cb (NiceAgent *agent,
       memcpy (tmp, channel->read_buffer, channel->read_len);
       memcpy (tmp + channel->read_len, buffer, len);
 
-      DEBUG ("read buffer found with size %d", channel->read_len);
       free_buffer = buffer = tmp;
       len += channel->read_len;
 
@@ -2228,10 +2223,8 @@ nice_data_received_cb (NiceAgent *agent,
     }
 
   if (free_buffer != NULL)
-    {
-      DEBUG ("Freed temp buffer");
-      g_free (free_buffer);
-    }
+    g_free (free_buffer);
+
 }
 
 static void
@@ -2705,7 +2698,6 @@ transport_buffer_empty_cb (GibberTransport *transport,
           GINT_TO_POINTER (1));
       if (channel && !channel->agent_attached)
         {
-          DEBUG ("Attaching ice agent because before is empty");
           nice_agent_attach_recv (channel->agent, channel->stream_id,
               channel->component_id, g_main_context_default (),
               nice_data_received_cb, self);

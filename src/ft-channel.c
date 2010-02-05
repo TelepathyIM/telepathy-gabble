@@ -2107,10 +2107,8 @@ http_data_received (GabbleFileTransferChannel *self, JingleChannel *channel,
           if (next_line == NULL)
             return 0;
 
-          DEBUG ("Found chunk size line (%d) : %s", strlen (line), line);
           /* FIXME : check validity of strtoul */
           channel->content_length = strtoul (line, NULL, 16);
-          DEBUG ("chunk length is : %llu", channel->content_length);
           if (channel->content_length > 0)
               channel->http_status = HTTP_CLIENT_BODY;
           else

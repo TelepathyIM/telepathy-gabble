@@ -2860,8 +2860,8 @@ setup_local_socket (GabbleFileTransferChannel *self,
 
   self->priv->socket_type = address_type;
 
-  g_signal_connect (self->priv->listener, "new-connection",
-    G_CALLBACK (new_connection_cb), self);
+  gabble_signal_connect_weak (self->priv->listener, "new-connection",
+    G_CALLBACK (new_connection_cb), G_OBJECT (self));
 
   return TRUE;
 }

@@ -49,6 +49,8 @@ static void async_initable_iface_init (GAsyncInitableIface *iface);
 
 static void call_session_state_changed_cb (GabbleJingleSession *session,
   GParamSpec *param, GabbleCallChannel *self);
+static void call_member_content_added_cb (GabbleCallMember *member,
+    GabbleCallMemberContent *content, GabbleCallChannel *self);
 
 static void call_channel_accept (GabbleBaseCallChannel *channel);
 
@@ -92,6 +94,8 @@ gabble_call_channel_constructed (GObject *obj)
 
       gabble_signal_connect_weak (priv->session, "notify::state",
         G_CALLBACK (call_session_state_changed_cb), obj);
+      gabble_signal_connect_weak (member, "content-added",
+        G_CALLBACK (call_member_content_added_cb), G_OBJECT (self));
 
       contents = gabble_call_member_get_contents (member);
 
@@ -258,6 +262,34 @@ call_session_state_changed_cb (GabbleJingleSession *session,
     }
 }
 
+/* This function handles additional contents added by the remote side */
+static void
+call_member_content_added_cb (GabbleCallMember *member,
+    GabbleCallMemberContent *content,
+    GabbleCallChannel *self)
+{
+  GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
+  GabbleJingleContent *jingle_content;
+  GabbleCallContent *c;
+
+  jingle_content = gabble_call_member_content_get_jingle_content (content);
+
+  if (jingle_content == NULL ||
+      gabble_jingle_content_is_created_by_us (jingle_content))
+    return;
+
+  c = gabble_base_call_channel_add_content (cbase,
+      gabble_call_member_content_get_name (content),
+      gabble_call_member_content_get_media_type (content),
+      GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+
+  gabble_call_content_add_member_content (c, content);
+
+  gabble_svc_channel_type_call_emit_content_added (self,
+      gabble_call_content_get_object_path (c),
+      gabble_call_content_get_media_type (c));
+}
+
 static void
 call_channel_init_async (GAsyncInitable *initable,
   int priority,
@@ -314,6 +346,9 @@ call_channel_init_async (GAsyncInitable *initable,
 
           gabble_call_content_add_member_content (c, content);
         }
+
+      gabble_signal_connect_weak (member, "content-added",
+        G_CALLBACK (call_member_content_added_cb), G_OBJECT (self));
     }
 
   gabble_base_call_channel_register (base);

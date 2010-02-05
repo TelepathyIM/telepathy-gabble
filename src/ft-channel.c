@@ -1140,7 +1140,7 @@ get_jingle_channel (GabbleFileTransferChannel *self, NiceAgent *agent)
   g_hash_table_iter_init (&iter, self->priv->jingle_channels);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      JingleChannel *channel = (JingleChannel *)value;
+      JingleChannel *channel = (JingleChannel *) value;
       if (channel->agent == agent)
         {
           ret = channel;
@@ -1553,7 +1553,7 @@ content_completed (GabbleJingleContent *content, gpointer user_data)
 static void
 free_jingle_channel (gpointer data)
 {
-  JingleChannel *channel = (JingleChannel *)data;
+  JingleChannel *channel = (JingleChannel *) data;
 
   DEBUG ("Freeing jingle channel");
 

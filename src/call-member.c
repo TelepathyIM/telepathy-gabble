@@ -249,6 +249,25 @@ remote_state_changed_cb (GabbleJingleSession *session, gpointer user_data)
   g_signal_emit (self, signals[FLAGS_CHANGED], 0, priv->flags);
 }
 
+/* This function handles additional contents added by the remote side */
+static void
+new_content_cb (GabbleJingleSession *session,
+    GabbleJingleContent *c,
+    gpointer user_data)
+{
+  GabbleCallMember *self = GABBLE_CALL_MEMBER (user_data);
+  GabbleCallMemberPrivate *priv = self->priv;
+  GabbleCallMemberContent *content = NULL;
+
+  if (gabble_jingle_content_is_created_by_us (c))
+    return;
+
+  content = gabble_call_member_content_from_jingle_content (c, self);
+
+  priv->contents = g_list_append (priv->contents, content);
+  g_signal_emit (self, signals[CONTENT_ADDED], 0, content);
+}
+
 void
 gabble_call_member_set_session (GabbleCallMember *self,
     GabbleJingleSession *session)
@@ -282,6 +301,8 @@ gabble_call_member_set_session (GabbleCallMember *self,
 
   gabble_signal_connect_weak (priv->session, "remote-state-changed",
     G_CALLBACK (remote_state_changed_cb), G_OBJECT (self));
+  gabble_signal_connect_weak (priv->session, "new-content",
+    G_CALLBACK (new_content_cb), G_OBJECT (self));
 }
 
 GabbleJingleSession *

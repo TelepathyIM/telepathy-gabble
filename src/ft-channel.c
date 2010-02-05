@@ -2117,6 +2117,12 @@ http_data_received (GabbleFileTransferChannel *self, JingleChannel *channel,
           else
               channel->http_status = HTTP_CLIENT_CHUNK_FINAL;
 
+          /* Reset the size of the file as we receive more data than expected */
+          if (self->priv->transferred_bytes + self->priv->initial_offset +
+              channel->content_length >= self->priv->size)
+            self->priv->size = self->priv->transferred_bytes +          \
+                self->priv->initial_offset + channel->content_length;
+
           return next_line - buffer;
         }
         break;

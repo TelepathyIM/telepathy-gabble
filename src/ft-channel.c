@@ -1415,7 +1415,7 @@ static void get_next_manifest_entry (GabbleFileTransferChannel *self,
     {
       gchar *buffer = NULL;
 
-      /* TODO: the Host is the peer's JID, not ours... */
+      /* The session initiator will always be the full JID of the peer */
       buffer = g_strdup_printf ("GET %s%s%s HTTP/1.1\r\n"
           "Connection: Keep-Alive\r\n"
           "Content-Length: 0\r\n"
@@ -1424,8 +1424,9 @@ static void get_next_manifest_entry (GabbleFileTransferChannel *self,
           manifest->source_url,
           manifest->source_url[strlen (manifest->source_url) - 1] == '/'?"":"/",
           entry->name,
-          gabble_connection_get_full_jid (self->priv->connection),
+          gabble_jingle_session_get_initiator (self->priv->jingle),
           PACKAGE_STRING);
+
       /* FIXME: check for success */
       nice_agent_send (channel->agent, channel->stream_id,
           channel->component_id, strlen (buffer), buffer);

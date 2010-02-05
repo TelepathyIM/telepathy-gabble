@@ -2257,6 +2257,12 @@ gabble_jingle_session_get_peer_resource (GabbleJingleSession *sess)
 }
 
 const gchar *
+gabble_jingle_session_get_initiator (GabbleJingleSession *sess)
+{
+  return sess->priv->initiator;
+}
+
+const gchar *
 gabble_jingle_session_get_sid (GabbleJingleSession *sess)
 {
   return sess->priv->sid;

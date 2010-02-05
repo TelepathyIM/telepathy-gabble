@@ -356,3 +356,27 @@ AC_OUTPUT( Makefile \
            gabble/telepathy-gabble-uninstalled.pc \
            gabble/telepathy-gabble.pc
 )
+
+if test false != "$TEST_PYTHON"; then
+  tests_enabled=yes
+else
+  tests_enabled=no
+fi
+
+echo "
+Configure summary:
+
+        Compiler....................:  ${CC}
+        Compiler Flags..............:  ${CFLAGS} ${ERROR_CFLAGS}
+        Prefix......................:  ${prefix}
+        Coding style checks.........:  ${ENABLE_CODING_STYLE_CHECKS}
+        Enable debug................:  ${enable_debug}
+        Python tests................:  ${tests_enabled}
+
+    Features:
+
+        Client type.................:  \"${CLIENT_TYPE}\"
+        Plugin support..............:  ${enable_plugins}
+        Plugin headers installed....:  ${enable_plugin_api}
+        Channel.Type.Call support...:  ${enable_channel_type_call}
+"

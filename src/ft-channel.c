@@ -2401,10 +2401,22 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
       if (cs != NULL)
         {
           GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (cs->data);
+          guint initial_id = 0;
+          gint channel_id;
+
           /* The new-channel signal will take care of the rest.. */
-          /* TODO make sure it works, otherwise increment private-%d */
-          g_assert (gabble_jingle_content_create_channel (content,
-                  "private-1") > 0);
+          do
+            {
+              gchar *channel_name = NULL;
+
+              channel_name = g_strdup_printf ("gabble-%d", ++initial_id);
+              channel_id = gabble_jingle_content_create_channel (content,
+                  channel_name);
+              g_free (channel_name);
+            } while (channel_id <= 0 && initial_id < 10);
+
+          /* FIXME: not assert but actually cancel the FT? */
+          g_assert (channel_id > 0);
         }
       gabble_jingle_session_accept (self->priv->jingle);
     }

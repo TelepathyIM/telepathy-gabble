@@ -1598,7 +1598,6 @@ gabble_file_transfer_channel_set_jingle_session (
      the candidate gathering.. but we don't know which channel name to
      assign it to... */
 
-  /* FIXME: should we really ref it here ? I think not... */
   self->priv->jingle = g_object_ref (session);
 
   gabble_signal_connect_weak (session, "notify::state",

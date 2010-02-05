@@ -1372,12 +1372,13 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
         ts = JINGLE_TRANSPORT_STATE_CONNECTED;
         break;
       case NICE_COMPONENT_STATE_FAILED:
-        close_session_and_transport (self);
 
         gabble_file_transfer_channel_set_state (
             TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
             TP_FILE_TRANSFER_STATE_CANCELLED,
             TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
+
+        close_session_and_transport (self);
         /* return because we don't want to use the content after it
            has been destroyed.. */
         return;
@@ -1522,8 +1523,6 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
   gabble_signal_connect_weak (agent, "reliable-transport-writable",
       G_CALLBACK (nice_component_writable), G_OBJECT (self));
 
-  nice_agent_attach_recv (agent, stream_id, channel->component_id,
-      g_main_context_default (), nice_data_received_cb, self);
 
   /* TODO: ask jingle_factory for google relay info */
 
@@ -1532,6 +1531,10 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
      candidates to the content, it needs to find the channel id.. */
   g_hash_table_insert (self->priv->jingle_channels,
       GINT_TO_POINTER (channel_id), channel);
+
+  nice_agent_attach_recv (agent, stream_id, channel->component_id,
+      g_main_context_default (), nice_data_received_cb, self);
+  channel->agent_attached = TRUE;
 
   nice_agent_gather_candidates (agent, stream_id);
 }
@@ -2652,12 +2655,13 @@ transport_disconnected_cb (GibberTransport *transport,
   if (self->priv->transferred_bytes + self->priv->initial_offset <
       self->priv->size)
     {
-      close_session_and_transport (self);
 
       gabble_file_transfer_channel_set_state (
           TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
           TP_FILE_TRANSFER_STATE_CANCELLED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
+
+      close_session_and_transport (self);
     }
 }
 

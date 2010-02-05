@@ -143,6 +143,7 @@ typedef struct
   NiceAgent *agent;
   guint stream_id;
   guint component_id;
+  gboolean agent_attached;
   GabbleJingleShare *content;
   gint channel_id;
   HttpStatus http_status;
@@ -1431,8 +1432,11 @@ static void get_next_manifest_entry (GabbleFileTransferChannel *self,
       channel->http_status = HTTP_CLIENT_RECEIVE;
       /* Do not receive anything until the local socket is connected */
       if (self->priv->transport == NULL)
-        nice_agent_attach_recv (channel->agent, channel->stream_id,
-            channel->component_id, NULL, NULL, NULL);
+        {
+          nice_agent_attach_recv (channel->agent, channel->stream_id,
+              channel->component_id, NULL, NULL, NULL);
+          channel->agent_attached = FALSE;
+        }
     }
 }
 
@@ -1956,6 +1960,7 @@ send_transport_data (GabbleFileTransferChannel *self,
              timeouts because rto becomes big ? */
           nice_agent_attach_recv (channel->agent, channel->stream_id,
               channel->component_id, NULL, NULL, NULL);
+          channel->agent_attached = FALSE;
         }
     }
 }
@@ -2628,11 +2633,12 @@ file_transfer_receive (GabbleFileTransferChannel *self)
     {
       JingleChannel *channel = g_hash_table_lookup (self->priv->jingle_channels,
           GINT_TO_POINTER (1));
-      if (channel)
+      if (channel && !channel->agent_attached)
         {
           nice_agent_attach_recv (channel->agent, channel->stream_id,
               channel->component_id, g_main_context_default (),
               nice_data_received_cb, self);
+          channel->agent_attached = TRUE;
         }
     }
 }
@@ -2667,11 +2673,13 @@ transport_buffer_empty_cb (GibberTransport *transport,
     {
       JingleChannel *channel = g_hash_table_lookup (self->priv->jingle_channels,
           GINT_TO_POINTER (1));
-      if (channel)
+      if (channel && !channel->agent_attached)
         {
+          DEBUG ("Attaching ice agent because before is empty");
           nice_agent_attach_recv (channel->agent, channel->stream_id,
               channel->component_id, g_main_context_default (),
               nice_data_received_cb, self);
+          channel->agent_attached = TRUE;
         }
     }
 

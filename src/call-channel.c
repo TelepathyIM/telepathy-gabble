@@ -1,6 +1,7 @@
 /*
  * gabble-call-channel.c - Source for GabbleCallChannel
- * Copyright (C) 2009 Collabora Ltd.
+ * Copyright (C) 2006, 2009 Collabora Ltd.
+ * Copyright (C) 2006 Nokia Corporation
  * @author Sjoerd Simons <sjoerd.simons@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or
@@ -40,6 +41,7 @@
 
 #include "connection.h"
 #include "jingle-session.h"
+#include "presence-cache.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -290,6 +292,53 @@ call_member_content_added_cb (GabbleCallMember *member,
       gabble_call_content_get_media_type (c));
 }
 
+static gboolean
+contact_is_media_capable (GabbleCallChannel *self,
+    TpHandle handle,
+    gboolean *wait_ret,
+    GError **error)
+{
+  GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
+  GabblePresence *presence;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
+      (TpBaseConnection *) base->conn, TP_HANDLE_TYPE_CONTACT);
+  gboolean wait = FALSE;
+
+  presence = gabble_presence_cache_get (base->conn->presence_cache, handle);
+
+  if (presence != NULL)
+    {
+      const GabbleCapabilitySet *caps = gabble_presence_peek_caps (presence);
+
+      if (gabble_capability_set_has_one (caps,
+            gabble_capabilities_get_any_audio_video ()))
+        return TRUE;
+    }
+
+  /* Okay, they're not capable (yet). Let's figure out whether we should wait,
+   * and return an appropriate error.
+   */
+  if (gabble_presence_cache_is_unsure (base->conn->presence_cache, handle))
+    {
+      DEBUG ("presence cache is still unsure about handle %u", handle);
+      wait = TRUE;
+    }
+
+  if (wait_ret != NULL)
+    *wait_ret = wait;
+
+  if (presence == NULL)
+    g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
+        "contact %d (%s) has no presence available", handle,
+        tp_handle_inspect (contact_handles, handle));
+  else
+    g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+        "contact %d (%s) doesn't have sufficient media caps", handle,
+        tp_handle_inspect (contact_handles, handle));
+
+  return FALSE;
+}
+
 static void
 call_member_content_removed_cb (GabbleCallMember *member,
     GabbleCallMemberContent *mcontent,
@@ -313,23 +362,12 @@ call_member_content_removed_cb (GabbleCallMember *member,
 }
 
 static void
-call_channel_init_async (GAsyncInitable *initable,
-  int priority,
-  GCancellable *cancellable,
-  GAsyncReadyCallback callback,
-  gpointer user_data)
+call_channel_continue_init (GabbleCallChannel *self,
+    GSimpleAsyncResult *result)
 {
-  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (initable);
   GabbleCallChannelPrivate *priv = self->priv;
   GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
-  GSimpleAsyncResult *result;
   GError *error = NULL;
-
-  result = g_simple_async_result_new (G_OBJECT (self),
-    callback, user_data, NULL);
-
-  if (gabble_base_call_channel_registered (base))
-    goto out;
 
   if (priv->session == NULL)
     {
@@ -380,6 +418,96 @@ call_channel_init_async (GAsyncInitable *initable,
 out:
   g_simple_async_result_complete_in_idle (result);
   g_object_unref (result);
+}
+
+static void
+call_channel_capabilities_discovered_cb (GabblePresenceCache *cache,
+    TpHandle handle,
+    gpointer user_data)
+{
+  GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (
+      g_async_result_get_source_object (G_ASYNC_RESULT (result)));
+  GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
+  GError *error_ = NULL;
+  gboolean wait;
+
+  if (base->target != handle || gabble_base_call_channel_registered (base))
+    return;
+
+  if (!contact_is_media_capable (self, base->target, &wait, &error_))
+    {
+      if (wait)
+        {
+          DEBUG ("contact %u caps still pending", base->target);
+          g_error_free (error_);
+        }
+      else
+        {
+          DEBUG ("%u: %s", error_->code, error_->message);
+          g_simple_async_result_set_from_error (result, error_);
+          g_error_free (error_);
+          g_simple_async_result_complete_in_idle (result);
+          g_object_unref (result);
+        }
+    }
+  else
+    {
+      call_channel_continue_init (self, result);
+    }
+}
+
+static void
+call_channel_init_async (GAsyncInitable *initable,
+  int priority,
+  GCancellable *cancellable,
+  GAsyncReadyCallback callback,
+  gpointer user_data)
+{
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (initable);
+  GabbleCallChannelPrivate *priv = self->priv;
+  GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
+  GSimpleAsyncResult *result;
+  GError *error_ = NULL;
+  gboolean wait;
+
+  result = g_simple_async_result_new (G_OBJECT (self),
+      callback, user_data, NULL);
+
+  if (gabble_base_call_channel_registered (base))
+    {
+      g_simple_async_result_complete_in_idle (result);
+      g_object_unref (result);
+      return;
+    }
+
+  if (priv->session == NULL &&
+      !contact_is_media_capable (self, base->target, &wait, &error_))
+    {
+      if (wait)
+        {
+          DEBUG ("contact %u caps still pending, adding anyways",
+              base->target);
+          g_error_free (error_);
+
+          gabble_signal_connect_weak (base->conn->presence_cache,
+              "capabilities-discovered",
+              G_CALLBACK (call_channel_capabilities_discovered_cb),
+              G_OBJECT (result));
+        }
+      else
+        {
+          DEBUG ("%u: %s", error_->code, error_->message);
+          g_simple_async_result_set_from_error (result, error_);
+          g_error_free (error_);
+          g_simple_async_result_complete_in_idle (result);
+          g_object_unref (result);
+        }
+    }
+  else
+    {
+      call_channel_continue_init (self, result);
+    }
 }
 
 static void

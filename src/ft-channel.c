@@ -2205,12 +2205,17 @@ http_data_received (GabbleFileTransferChannel *self, JingleChannel *channel,
           DEBUG ("Found client headers line (%d) : %s", strlen (line), line);
           if (*line == 0)
             {
-              if (channel->is_chunked)
-                channel->http_status = HTTP_CLIENT_CHUNK_SIZE;
-              else
-                channel->http_status = HTTP_CLIENT_BODY;
               DEBUG ("Found empty line, now receiving file data");
-              /* FIXME: check if content length was 0 ? */
+              if (channel->is_chunked)
+                {
+                  channel->http_status = HTTP_CLIENT_CHUNK_SIZE;
+                }
+              else
+                {
+                  channel->http_status = HTTP_CLIENT_BODY;
+                  if (channel->content_length == 0)
+                    get_next_manifest_entry (self, channel);
+                }
             }
           else if (!g_ascii_strncasecmp (line, "Content-Length: ", 16))
             {

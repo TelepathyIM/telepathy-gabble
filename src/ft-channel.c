@@ -1491,6 +1491,92 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
 
 }
 
+typedef struct
+{
+  GabbleFileTransferChannel *self;
+  JingleChannel *channel;
+} GoogleRelaySessionData;
+
+static void
+set_relay_info (gpointer item, gpointer user_data)
+{
+  GoogleRelaySessionData *data = user_data;
+  GHashTable *relay = item;
+  const gchar *server_ip = NULL;
+  const gchar *username = NULL;
+  const gchar *password = NULL;
+  const gchar *type_str = NULL;
+  guint server_port;
+  NiceRelayType type;
+  GValue *value;
+
+  value = g_hash_table_lookup (relay, "ip");
+  if (value)
+    server_ip = g_value_get_string (value);
+  else
+    return;
+
+  value = g_hash_table_lookup (relay, "port");
+  if (value)
+    server_port = g_value_get_uint (value);
+  else
+    return;
+
+  value = g_hash_table_lookup (relay, "username");
+  if (value)
+    username = g_value_get_string (value);
+  else
+    return;
+
+  value = g_hash_table_lookup (relay, "password");
+  if (value)
+    password = g_value_get_string (value);
+  else
+    return;
+
+  value = g_hash_table_lookup (relay, "type");
+  if (value)
+    type_str = g_value_get_string (value);
+  else
+    return;
+
+  if (!strcmp (type_str, "udp"))
+    type = NICE_RELAY_TYPE_TURN_UDP;
+  else if (!strcmp (type_str, "tcp"))
+    type = NICE_RELAY_TYPE_TURN_TCP;
+  else if (!strcmp (type_str, "tls"))
+    type = NICE_RELAY_TYPE_TURN_TLS;
+  else
+    return;
+
+  nice_agent_set_relay_info (data->channel->agent,
+      data->channel->stream_id, data->channel->component_id,
+      server_ip, server_port,
+      username, password, type);
+
+}
+
+static void
+google_relay_session_cb (GPtrArray *relays, gpointer user_data)
+{
+  GoogleRelaySessionData *data = user_data;
+
+  if (data->self == NULL)
+    {
+      DEBUG ("Received relay session callback but self got destroyed");
+      g_slice_free (GoogleRelaySessionData, data);
+      return;
+    }
+
+  if (relays)
+      g_ptr_array_foreach (relays, set_relay_info, user_data);
+
+  nice_agent_gather_candidates (data->channel->agent, data->channel->stream_id);
+
+  g_object_remove_weak_pointer (G_OBJECT (data->self), (gpointer *)&data->self);
+  g_slice_free (GoogleRelaySessionData, data);
+}
+
 
 static void
 content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
@@ -1503,6 +1589,9 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
   NiceAgent *agent = nice_agent_new_reliable (g_main_context_default (),
       NICE_COMPATIBILITY_GOOGLE);
   guint stream_id = nice_agent_add_stream (agent, 1);
+  gchar *stun_server;
+  guint stun_port;
+  GoogleRelaySessionData *relay_data = NULL;
 
   DEBUG ("New channel %s was created and linked to id %d", name, channel_id);
 
@@ -1531,8 +1620,6 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
       G_CALLBACK (nice_component_writable), G_OBJECT (self));
 
 
-  /* TODO: ask jingle_factory for google relay info */
-
   /* Add the agent to the hash table before gathering candidates in case the
      gathering finishes synchronously, and the callback tries to add local
      candidates to the content, it needs to find the channel id.. */
@@ -1543,7 +1630,24 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
   nice_agent_attach_recv (agent, stream_id, channel->component_id,
       g_main_context_default (), nice_data_received_cb, self);
 
-  nice_agent_gather_candidates (agent, stream_id);
+  if (gabble_jingle_factory_get_stun_server (
+          self->priv->connection->jingle_factory, &stun_server, &stun_port))
+    {
+      g_object_set (agent,
+          "stun-server", stun_server,
+          "stun-server-port", stun_port,
+          NULL);
+      g_free (stun_server);
+    }
+
+  relay_data = g_slice_new0 (GoogleRelaySessionData);
+  relay_data->self = self;
+  relay_data->channel = channel;
+  g_object_add_weak_pointer (G_OBJECT (relay_data->self),
+      (gpointer *)&relay_data->self);
+  gabble_jingle_factory_create_google_relay_session (
+      self->priv->connection->jingle_factory, 1,
+      google_relay_session_cb, relay_data);
 }
 
 static void

@@ -1396,6 +1396,11 @@ static void get_next_manifest_entry (GabbleFileTransferChannel *self,
   manifest = gabble_jingle_share_get_manifest (channel->content);
   channel->manifest_entry++;
   entry = g_list_nth_data (manifest->entries, channel->manifest_entry);
+
+  /* FIXME: We only support one file per manifest for now! */
+  if (channel->manifest_entry > 0)
+    entry = NULL;
+
   if (entry == NULL)
     {
       GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (channel->content);
@@ -1577,6 +1582,8 @@ gboolean
 gabble_file_transfer_channel_set_jingle_session (
     GabbleFileTransferChannel *self, GabbleJingleSession *session)
 {
+  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->connection;
+  gboolean requested = (self->priv->initiator == base_conn->self_handle);
   GList *cs;
 
   if (session == NULL)
@@ -1610,6 +1617,26 @@ gabble_file_transfer_channel_set_jingle_session (
   if (cs != NULL)
     {
       GabbleJingleShare *content = GABBLE_JINGLE_SHARE (cs->data);
+
+      if (!requested)
+        {
+          GabbleJingleShareManifest *manifest = NULL;
+          GabbleJingleShareManifestEntry *entry = NULL;
+
+          /* FIXME: We only support one file per manifest for now! */
+          manifest = gabble_jingle_share_get_manifest (content);
+          entry = g_list_nth_data (manifest->entries, 0);
+          if (entry != NULL)
+            {
+              g_free (self->priv->filename);
+              if (entry->folder)
+                self->priv->filename = g_strdup_printf ("%s.tar", entry->name);
+              else
+                self->priv->filename = g_strdup (entry->name);
+
+              self->priv->size = entry->size;
+            }
+        }
 
       gabble_signal_connect_weak (content, "new-channel",
           (GCallback) content_new_channel_cb, G_OBJECT (self));

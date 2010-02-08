@@ -2115,18 +2115,15 @@ send_transport_data (GabbleFileTransferChannel *self,
 static gchar *
 http_read_line (gchar *buffer, guint len)
 {
-  gchar *p = buffer;
+  gchar *p = memchr (buffer, '\n', len);
 
-  while ((guint) (p - buffer) < len && *p != '\n')
-    p++;
-
-  if ((guint) (p - buffer) >= len)
-    return NULL;
-
-  *p = 0;
-  if (p > buffer && *(p-1) == '\r')
-    *(p-1) = 0;
-  p++;
+  if (p != NULL)
+    {
+      *p = 0;
+      if (p > buffer && *(p-1) == '\r')
+        *(p-1) = 0;
+      p++;
+    }
 
   return p;
 }

@@ -634,15 +634,18 @@ new_channel (GabbleJingleContent *c, const gchar *name)
   if (priv->transport &&
       GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (priv->transport))
     {
+      guint id = priv->last_channel_component_id + 1;
+
       gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (priv->transport);
-      if (jingle_transport_google_set_component_name (gtrans, name,
-              priv->last_channel_component_id + 1) == FALSE)
+
+      if (jingle_transport_google_set_component_name (gtrans, name, id) == FALSE)
         return 0;
 
       priv->last_channel_component_id++;
 
-      g_signal_emit (c, signals[NEW_CHANNEL], 0,
-          name, priv->last_channel_component_id);
+      DEBUG ("New channel '%s' with id : %d", name, id);
+
+      g_signal_emit (c, signals[NEW_CHANNEL], 0, name, id);
 
       return priv->last_channel_component_id;
     }
@@ -706,8 +709,7 @@ gabble_jingle_content_parse_info (GabbleJingleContent *c,
     {
       const gchar *name;
       name = lm_message_node_get_attribute (channel_node, "name");
-      DEBUG ("Channel name is %s", name);
-      if (name)
+      if (name != NULL)
         new_channel (c, name);
     }
   else if (complete_node)

@@ -1419,6 +1419,12 @@ static void get_next_manifest_entry (GabbleFileTransferChannel *self,
   else
     {
       gchar *buffer = NULL;
+      gchar *source_url = manifest->source_url;
+      guint url_len = strlen (source_url);
+      gchar *separator = "";
+
+      if (source_url[url_len -1] != '/')
+        separator = "/";
 
       /* The session initiator will always be the full JID of the peer */
       buffer = g_strdup_printf ("GET %s%s%s HTTP/1.1\r\n"
@@ -1426,9 +1432,7 @@ static void get_next_manifest_entry (GabbleFileTransferChannel *self,
           "Content-Length: 0\r\n"
           "Host: %s:0\r\n"
           "User-Agent: %s\r\n\r\n",
-          manifest->source_url,
-          manifest->source_url[strlen (manifest->source_url) - 1] == '/'?"":"/",
-          entry->name,
+          source_url, separator, entry->name,
           gabble_jingle_session_get_initiator (self->priv->jingle),
           PACKAGE_STRING);
 

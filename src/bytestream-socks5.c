@@ -672,7 +672,7 @@ socks5_error (GabbleBytestreamSocks5 *self)
 
       case SOCKS5_STATE_INITIATOR_AWAITING_AUTH_REQUEST:
       case SOCKS5_STATE_INITIATOR_AWAITING_COMMAND:
-        DEBUG ("Something goes wrong during SOCKS5 negotation. Don't close "
+        DEBUG ("Something goes wrong during SOCKS5 negotiation. Don't close "
             "the bytestream yet as the target can still try other streamhosts");
         break;
 
@@ -1586,7 +1586,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
 
           if (priv->socks5_state != SOCKS5_STATE_INITIATOR_OFFER_SENT)
             {
-              DEBUG ("We are already in the negotation process (state: %u). "
+              DEBUG ("We are already in the negotiation process (state: %u). "
                   "Closing the bytestream", priv->socks5_state);
               goto socks5_init_error;
             }

@@ -250,12 +250,26 @@ remote_state_changed_cb (GabbleJingleSession *session, gpointer user_data)
 }
 
 static void
+member_content_removed_cb (GabbleCallMemberContent *mcontent,
+    gpointer user_data)
+{
+  GabbleCallMember *self = GABBLE_CALL_MEMBER (user_data);
+  GabbleCallMemberPrivate *priv = self->priv;
+
+  priv->contents = g_list_remove (priv->contents, mcontent);
+  g_object_unref (mcontent);
+}
+
+static void
 gabble_call_member_add_member_content (GabbleCallMember *self,
     GabbleCallMemberContent *content)
 {
   GabbleCallMemberPrivate *priv = self->priv;
 
   priv->contents = g_list_prepend (priv->contents, content);
+
+  gabble_signal_connect_weak (content, "removed",
+      G_CALLBACK (member_content_removed_cb), G_OBJECT (self));
 
   g_signal_emit (self, signals[CONTENT_ADDED], 0, content);
 }

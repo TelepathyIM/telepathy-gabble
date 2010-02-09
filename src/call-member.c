@@ -36,6 +36,7 @@ enum
 {
     FLAGS_CHANGED,
     CONTENT_ADDED,
+    CONTENT_REMOVED,
     LAST_SIGNAL
 };
 
@@ -184,6 +185,15 @@ gabble_call_member_class_init (
                   NULL, NULL,
                   g_cclosure_marshal_VOID__OBJECT,
                   G_TYPE_NONE, 1, G_TYPE_OBJECT);
+
+  signals[CONTENT_REMOVED] =
+    g_signal_new ("content-removed",
+                  G_OBJECT_CLASS_TYPE (gabble_call_member_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__OBJECT,
+                  G_TYPE_NONE, 1, G_TYPE_OBJECT);
 }
 
 void
@@ -257,6 +267,7 @@ member_content_removed_cb (GabbleCallMemberContent *mcontent,
   GabbleCallMemberPrivate *priv = self->priv;
 
   priv->contents = g_list_remove (priv->contents, mcontent);
+  g_signal_emit (self, signals[CONTENT_REMOVED], 0, mcontent);
   g_object_unref (mcontent);
 }
 

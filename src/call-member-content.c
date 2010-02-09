@@ -47,6 +47,7 @@ enum
 {
     CODECS_CHANGED,
     GOT_JINGLE_CONTENT,
+    REMOVED,
     LAST_SIGNAL
 };
 
@@ -204,6 +205,14 @@ gabble_call_member_content_class_init (
       NULL, NULL,
       g_cclosure_marshal_VOID__VOID,
       G_TYPE_NONE, 0);
+
+  signals[REMOVED] = g_signal_new ("removed",
+      G_OBJECT_CLASS_TYPE (gabble_call_member_content_class),
+      G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+      0,
+      NULL, NULL,
+      g_cclosure_marshal_VOID__VOID,
+      G_TYPE_NONE, 0);
 }
 
 void
@@ -264,6 +273,13 @@ gabble_call_member_content_new (const gchar *name,
 }
 
 static void
+call_member_content_jingle_removed_cb (GabbleJingleContent *jingle_content,
+    GabbleCallMemberContent *content)
+{
+  g_signal_emit (content, signals[REMOVED], 0);
+}
+
+static void
 call_member_content_jingle_codecs_cb (GabbleJingleMediaRtp *media,
     GList *codecs,
     gpointer user_data)
@@ -292,6 +308,8 @@ gabble_call_member_content_from_jingle_content (
   content = gabble_call_member_content_new (name, mtype, member);
   content->priv->jingle_content = g_object_ref (jingle_content);
 
+  gabble_signal_connect_weak (jingle_content, "removed",
+      G_CALLBACK (call_member_content_jingle_removed_cb), G_OBJECT (content));
   gabble_signal_connect_weak (jingle_content, "remote-codecs",
     G_CALLBACK (call_member_content_jingle_codecs_cb), G_OBJECT (content));
 

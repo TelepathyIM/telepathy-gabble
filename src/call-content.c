@@ -817,3 +817,9 @@ gabble_call_content_add_member_content (GabbleCallContent *self,
       call_content_new_offer (self);
     }
 }
+
+GList *
+gabble_call_content_get_member_contents (GabbleCallContent *self)
+{
+  return self->priv->contents;
+}

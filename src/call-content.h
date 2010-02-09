@@ -72,6 +72,8 @@ JingleMediaType gabble_call_content_get_media_type (GabbleCallContent *self);
 void gabble_call_content_add_member_content (GabbleCallContent *self,
     GabbleCallMemberContent *content);
 
+GList *gabble_call_content_get_member_contents (GabbleCallContent *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_CALL_CONTENT_H__*/

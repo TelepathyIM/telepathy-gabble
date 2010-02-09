@@ -824,3 +824,9 @@ gabble_call_stream_get_local_sending_state (GabbleCallStream *self)
   else
     return GABBLE_SENDING_STATE_NONE;
 }
+
+GabbleJingleContent *
+gabble_call_stream_get_jingle_content (GabbleCallStream *stream)
+{
+  return stream->priv->content;
+}

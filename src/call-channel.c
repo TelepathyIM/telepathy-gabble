@@ -291,6 +291,28 @@ call_member_content_added_cb (GabbleCallMember *member,
 }
 
 static void
+call_member_content_removed_cb (GabbleCallMember *member,
+    GabbleCallMemberContent *mcontent,
+    GabbleBaseCallChannel *self)
+{
+  GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
+  GList *l;
+
+  for (l = gabble_base_call_channel_get_contents (cbase);
+      l != NULL; l = g_list_next (l))
+    {
+      GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
+      GList *contents = gabble_call_content_get_member_contents (content);
+
+      if (contents != NULL && contents->data == mcontent)
+        {
+          base_call_channel_remove_content (cbase, content);
+          break;
+        }
+    }
+}
+
+static void
 call_channel_init_async (GAsyncInitable *initable,
   int priority,
   GCancellable *cancellable,
@@ -349,6 +371,8 @@ call_channel_init_async (GAsyncInitable *initable,
 
       gabble_signal_connect_weak (member, "content-added",
         G_CALLBACK (call_member_content_added_cb), G_OBJECT (self));
+      gabble_signal_connect_weak (member, "content-removed",
+        G_CALLBACK (call_member_content_removed_cb), G_OBJECT (self));
     }
 
   gabble_base_call_channel_register (base);

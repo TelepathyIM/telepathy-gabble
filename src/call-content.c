@@ -770,6 +770,32 @@ member_content_got_jingle_content_cb (GabbleCallMemberContent *mcontent,
   call_content_setup_jingle (self, mcontent);
 }
 
+static void
+member_content_removed_cb (GabbleCallMemberContent *mcontent,
+    gpointer user_data)
+{
+  GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
+  GabbleCallContentPrivate *priv = self->priv;
+  GabbleJingleContent *content;
+  GList *l;
+
+  priv->contents = g_list_remove (priv->contents, mcontent);
+
+  content = gabble_call_member_content_get_jingle_content (mcontent);
+
+  for (l = priv->streams; l != NULL; l = g_list_next (l))
+    {
+      GabbleCallStream *stream = GABBLE_CALL_STREAM (l->data);
+
+      if (content == gabble_call_stream_get_jingle_content (stream))
+        {
+          priv->streams = g_list_delete_link (priv->streams, l);
+          g_object_unref (stream);
+          break;
+        }
+    }
+}
+
 void
 gabble_call_content_add_member_content (GabbleCallContent *self,
     GabbleCallMemberContent *content)
@@ -782,6 +808,9 @@ gabble_call_content_add_member_content (GabbleCallContent *self,
 
   gabble_signal_connect_weak (content, "got-jingle-content",
     G_CALLBACK (member_content_got_jingle_content_cb), G_OBJECT (self));
+
+  gabble_signal_connect_weak (content, "removed",
+    G_CALLBACK (member_content_removed_cb), G_OBJECT (self));
 
   if (gabble_call_member_content_get_remote_codecs (content) != NULL)
     {

@@ -249,6 +249,17 @@ remote_state_changed_cb (GabbleJingleSession *session, gpointer user_data)
   g_signal_emit (self, signals[FLAGS_CHANGED], 0, priv->flags);
 }
 
+static void
+gabble_call_member_add_member_content (GabbleCallMember *self,
+    GabbleCallMemberContent *content)
+{
+  GabbleCallMemberPrivate *priv = self->priv;
+
+  priv->contents = g_list_prepend (priv->contents, content);
+
+  g_signal_emit (self, signals[CONTENT_ADDED], 0, content);
+}
+
 /* This function handles additional contents added by the remote side */
 static void
 new_content_cb (GabbleJingleSession *session,
@@ -256,7 +267,6 @@ new_content_cb (GabbleJingleSession *session,
     gpointer user_data)
 {
   GabbleCallMember *self = GABBLE_CALL_MEMBER (user_data);
-  GabbleCallMemberPrivate *priv = self->priv;
   GabbleCallMemberContent *content = NULL;
 
   if (gabble_jingle_content_is_created_by_us (c))
@@ -264,8 +274,7 @@ new_content_cb (GabbleJingleSession *session,
 
   content = gabble_call_member_content_from_jingle_content (c, self);
 
-  priv->contents = g_list_append (priv->contents, content);
-  g_signal_emit (self, signals[CONTENT_ADDED], 0, content);
+  gabble_call_member_add_member_content (self, content);
 }
 
 void
@@ -287,9 +296,7 @@ gabble_call_member_set_session (GabbleCallMember *self,
       mcontent = gabble_call_member_content_from_jingle_content (content,
         self);
 
-      priv->contents = g_list_append (priv->contents, mcontent);
-      g_signal_emit (self, signals[CONTENT_ADDED], 0, mcontent);
-
+      gabble_call_member_add_member_content (self, mcontent);
 
       if (priv->transport_ns == NULL)
         {
@@ -352,8 +359,7 @@ gabble_call_member_ensure_content (GabbleCallMember *self,
   if (content == NULL)
     {
       content = gabble_call_member_content_new (name, mtype, self);
-      priv->contents = g_list_prepend (priv->contents, content);
-      g_signal_emit (self, signals[CONTENT_ADDED], 0, content);
+      gabble_call_member_add_member_content (self, content);
     }
 
   return content;
@@ -401,8 +407,7 @@ gabble_call_member_create_content (GabbleCallMember *self,
 
   content = gabble_call_member_content_from_jingle_content (c, self);
 
-  priv->contents = g_list_append (priv->contents, content);
-  g_signal_emit (self, signals[CONTENT_ADDED], 0, content);
+  gabble_call_member_add_member_content (self, content);
 
   return content;
 }

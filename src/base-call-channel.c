@@ -584,6 +584,21 @@ gabble_base_call_channel_get_state (GabbleBaseCallChannel *self)
   return self->priv->state;
 }
 
+void
+base_call_channel_remove_content (GabbleBaseCallChannel *self,
+    GabbleCallContent *content)
+{
+  GabbleBaseCallChannelPrivate *priv = self->priv;
+  const gchar *path;
+
+  priv->contents = g_list_remove (priv->contents, content);
+
+  path = gabble_call_content_get_object_path (content);
+  gabble_svc_channel_type_call_emit_content_removed (self, path);
+
+  gabble_call_content_deinit (content);
+}
+
 GabbleCallContent *
 gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
     const gchar *name,

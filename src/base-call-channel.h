@@ -117,6 +117,9 @@ GabbleCallContent * gabble_base_call_channel_add_content (
     JingleMediaType mtype,
     GabbleCallContentDisposition disposition);
 
+void base_call_channel_remove_content (GabbleBaseCallChannel *self,
+    GabbleCallContent *content);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_BASE_CALL_CHANNEL_H__*/

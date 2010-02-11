@@ -1099,9 +1099,11 @@ on_http_response (SoupSession *soup,
       const gchar *relay_ssltcp_port;
       const gchar *username;
       const gchar *password;
+      gchar *escaped_str;
 
-      DEBUG ("Response from Google:\n====\n%s\n====",
-          msg->response_body->data);
+      escaped_str = g_strescape (msg->response_body->data, "\r\n");
+      DEBUG ("Response from Google:\n====\n%s\n====", escaped_str);
+      g_free (escaped_str);
 
       lines = g_strsplit (msg->response_body->data, "\n", 0);
 

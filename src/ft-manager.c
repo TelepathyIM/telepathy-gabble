@@ -739,7 +739,8 @@ gabble_ft_manager_get_contact_caps (
     const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
-  if (gabble_capability_set_has (caps, NS_FILE_TRANSFER))
+  if (gabble_capability_set_has (caps, NS_FILE_TRANSFER) ||
+      gabble_capability_set_has (caps, NS_GOOGLE_FEAT_SHARE))
     add_file_transfer_channel_class (arr);
 }
 

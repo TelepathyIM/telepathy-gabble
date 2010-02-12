@@ -118,7 +118,11 @@ AC_ARG_ENABLE([is-a-phone],
     [is_a_phone=$enableval], [is_a_phone=no])
 
 if test x$is_a_phone = xyes; then
-  AC_DEFINE(IS_A_PHONE, [], [Defined if the target device is a phone])
+  AC_DEFINE(CLIENT_TYPE, ["phone"],
+      [Client type from http://xmpp.org/registrar/disco-categories.html#client])
+else
+  AC_DEFINE(CLIENT_TYPE, ["pc"],
+      [Client type from http://xmpp.org/registrar/disco-categories.html#client])
 fi
 
 dnl Check for Glib

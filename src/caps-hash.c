@@ -375,7 +375,8 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
     }
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
-  g_ptr_array_add (identities, g_strdup ("client/pc//" PACKAGE_STRING));
+  g_ptr_array_add (identities, g_strdup_printf (
+      "client/%s//%s", CLIENT_TYPE, PACKAGE_STRING));
 
   /* Gabble does not use dataforms, let 'dataforms' be empty */
 

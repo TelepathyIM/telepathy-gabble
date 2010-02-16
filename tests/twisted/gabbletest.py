@@ -206,13 +206,14 @@ class XmppAuthenticator(xmlstream.Authenticator):
 
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
-def make_stream_event(type, stanza):
+def make_stream_event(type, stanza, stream):
     event = servicetest.Event(type, stanza=stanza)
+    event.stream = stream
     event.to = stanza.getAttribute("to")
     return event
 
-def make_iq_event(iq):
-    event = make_stream_event('stream-iq', iq)
+def make_iq_event(stream, iq):
+    event = make_stream_event('stream-iq', iq, stream)
     event.iq_type = iq.getAttribute("type")
     event.iq_id = iq.getAttribute("id")
     query = iq.firstChildElement()
@@ -229,13 +230,13 @@ def make_iq_event(iq):
 
     return event
 
-def make_presence_event(stanza):
-    event = make_stream_event('stream-presence', stanza)
+def make_presence_event(stream, stanza):
+    event = make_stream_event('stream-presence', stanza, stream)
     event.presence_type = stanza.getAttribute('type')
     return event
 
-def make_message_event(stanza):
-    event = make_stream_event('stream-message', stanza)
+def make_message_event(stream, stanza):
+    event = make_stream_event('stream-message', stanza, stream)
     event.message_type = stanza.getAttribute('type')
     return event
 
@@ -247,11 +248,11 @@ class BaseXmlStream(xmlstream.XmlStream):
         xmlstream.XmlStream.__init__(self, authenticator)
         self.event_func = event_func
         self.addObserver('//iq', lambda x: event_func(
-            make_iq_event(x)))
+            make_iq_event(self, x)))
         self.addObserver('//message', lambda x: event_func(
-            make_message_event(x)))
+            make_message_event(self, x)))
         self.addObserver('//presence', lambda x: event_func(
-            make_presence_event(x)))
+            make_presence_event(self, x)))
         self.addObserver('//event/stream/authd', self._cb_authd)
 
     def _cb_authd(self, _):

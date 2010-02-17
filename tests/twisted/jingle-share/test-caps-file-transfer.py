@@ -2,7 +2,7 @@ import dbus
 
 from twisted.words.xish import xpath
 
-from servicetest import assertEquals
+from servicetest import (assertEquals, EventPattern)
 from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 import constants as cs
 
@@ -148,14 +148,12 @@ def test2(q, bus, connections, streams):
 
     for i, conn in enumerate(connections):
         path = conn.object.__dbus_object_path__
-        print "Connecting %s" % path
         conn.Connect()
         q.expect('dbus-signal', signal='StatusChanged', path=path,
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-        print "DONE CONNECTING %s" % path
 
-    conn1 = connections[0]
-    conn2 = connections[1]
+    conn1, conn2 = connections
+    stream1, stream2 = streams
     conn1_handle = conn1.Properties.Get(cs.CONN, 'SelfHandle')
     conn1_jid = conn1.InspectHandles(cs.HT_CONTACT, [conn1_handle])[0]
     conn2_handle = conn2.Properties.Get(cs.CONN, 'SelfHandle')
@@ -176,12 +174,30 @@ def test2(q, bus, connections, streams):
                                     [ft_fixed_properties],
                                     dbus.Array([], signature="s"))])
 
-    q.expect('dbus-signal', signal='ContactCapabilitiesChanged',
-             path=conn1.object.__dbus_object_path__,
-             args=[{conn1_handle:generic_ft_caps}])
-    q.expect('dbus-signal', signal='ContactCapabilitiesChanged',
-             path=conn2.object.__dbus_object_path__,
-             args=[{handle1:generic_ft_caps}])
+    _, presence, disco, _ = \
+        q.expect_many(EventPattern('dbus-signal',
+                                   signal='ContactCapabilitiesChanged',
+                                   path=conn1.object.__dbus_object_path__,
+                                   args=[{conn1_handle:generic_ft_caps}]),
+                      EventPattern('stream-presence', stream=stream1),
+                      EventPattern('stream-iq', stream=stream1,
+                                   query_ns=ns.DISCO_INFO,
+                                   iq_type = 'result'),
+                      EventPattern('dbus-signal',
+                                   signal='ContactCapabilitiesChanged',
+                                   path=conn2.object.__dbus_object_path__,
+                                   args=[{handle1:generic_ft_caps}]))
+
+    presence_c = xpath.queryForNodes('/presence/c', presence.stanza)[0]
+    assert "share-v1" in presence_c.attributes['ext']
+
+    conn1_ver = presence_c.attributes['ver']
+
+    found_share = False
+    for feature in xpath.queryForNodes('/iq/query/feature', disco.stanza):
+        if feature.attributes['var'] == ns.GOOGLE_FEAT_SHARE:
+            found_share = True
+    assert found_share
 
     check_contact_caps (conn2, handle1, True)
 
@@ -190,13 +206,30 @@ def test2(q, bus, connections, streams):
                                     [ft_fixed_properties],
                                     dbus.Array([], signature="s"))])
 
-    q.expect('dbus-signal', signal='ContactCapabilitiesChanged',
-             path=conn2.object.__dbus_object_path__,
-             args=[{conn2_handle:generic_ft_caps}])
+    _, presence, _ = \
+        q.expect_many(EventPattern('dbus-signal',
+                                   signal='ContactCapabilitiesChanged',
+                                   path=conn2.object.__dbus_object_path__,
+                                   args=[{conn2_handle:generic_ft_caps}]),
+                      EventPattern('stream-presence', stream=stream2),
+                      EventPattern('dbus-signal',
+                                   signal='ContactCapabilitiesChanged',
+                                   path=conn1.object.__dbus_object_path__,
+                                   args=[{handle2:generic_ft_caps}]))
 
-    q.expect('dbus-signal', signal='ContactCapabilitiesChanged',
-             path=conn1.object.__dbus_object_path__,
-             args=[{handle2:generic_ft_caps}])
+    presence_c = xpath.queryForNodes('/presence/c', presence.stanza)[0]
+    assert "share-v1" in presence_c.attributes['ext']
+
+    # We will have the same capabilities on both sides, so we can't check for
+    # a cap disco since the hash will be the same, so we need to make sure the
+    # hash is indeed the same
+    assert presence_c.attributes['ver'] == conn1_ver
+
+    found_share = False
+    for feature in xpath.queryForNodes('/iq/query/feature', disco.stanza):
+        if feature.attributes['var'] == ns.GOOGLE_FEAT_SHARE:
+            found_share = True
+    assert found_share
 
     check_contact_caps (conn1, handle2, True)
 

@@ -11,6 +11,8 @@ import servicetest
 
 from twisted.words.xish import domish
 from twisted.words.protocols.jabber import xmlstream
+import twisted.internet.protocol
+from twisted.internet import reactor
 
 from gabbletest import (
     make_connection, make_stream, XmppAuthenticator, XmppXmlStream,
@@ -94,10 +96,13 @@ if __name__ == '__main__':
         'server': 'localhost',
         'port': dbus.UInt32(4242),
         }
-    conn1 = make_connection(bus, queue.append, params)
+    conn1, jid1 = make_connection(bus, queue.append, params)
     authenticator = BlockForeverTlsAuthenticator('test1', 'pass')
-    stream1, port1 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
-                          port=4242)
+    stream1 = make_stream(queue.append, authenticator, protocol=XmppXmlStream)
+
+    factory = twisted.internet.protocol.Factory()
+    factory.protocol = lambda:stream1
+    port1 = reactor.listenTCP(4242, factory)
 
     params = {
         'account': 'test2@localhost/Resource',
@@ -106,10 +111,13 @@ if __name__ == '__main__':
         'server': 'localhost',
         'port': dbus.UInt32(4343),
         }
-    conn2 = make_connection(bus, queue.append, params)
+    conn2, jid2 = make_connection(bus, queue.append, params)
     authenticator = XmppAuthenticator('test2', 'pass')
-    stream2, port2 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
-                          port=4343)
+    stream2 = make_stream(queue.append, authenticator, protocol=XmppXmlStream)
+
+    factory = twisted.internet.protocol.Factory()
+    factory.protocol = lambda:stream2
+    port1 = reactor.listenTCP(4343, factory)
 
     try:
         test(queue, bus, conn1, conn2, stream1, stream2)

@@ -365,7 +365,11 @@ class GoogleXmlStream(BaseXmlStream):
 def make_connection(bus, event_func, params=None, idx=0):
     # Gabble accepts a resource in 'account', but the value of 'resource'
     # overrides it if there is one.
-    account = 'test%d@localhost/%s' % (idx, re.sub(r'.*/', '', sys.argv[0]))
+    if idx == 0:
+        idx = ""
+
+    account = 'test%s@localhost/%s' % (idx, re.sub(r'.*/', '', sys.argv[0]))
+
     default_params = {
         'account': account,
         'password': 'pass',
@@ -383,11 +387,13 @@ def make_connection(bus, event_func, params=None, idx=0):
                                         default_params)
     return (conn, jid)
 
-def make_stream(event_func, authenticator=None, protocol=None, port=4242, resource=None, idx=0):
+def make_stream(event_func, authenticator=None, protocol=None, port=4242,
+                resource=None, idx=0):
     # set up Jabber server
-
+    if idx == 0:
+        idx = ""
     if authenticator is None:
-        authenticator = XmppAuthenticator('test%d' % idx, 'pass', resource=resource)
+        authenticator = XmppAuthenticator('test%s' % idx, 'pass', resource=resource)
 
     if protocol is None:
         protocol = XmppXmlStream
@@ -436,7 +442,8 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
         conns.append(conn)
         jids.append(jid)
         streams.append(make_stream(queue.append, protocol=protocol,
-                                   authenticator=authenticator, resource=resource, idx=i))
+                                   authenticator=authenticator,
+                                   resource=resource, idx=i))
 
     if num_instances > 1:
         mappings = dict(map (lambda jid, stream: (jid, stream), jids, streams))

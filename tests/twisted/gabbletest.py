@@ -201,7 +201,8 @@ class XmppAuthenticator(xmlstream.Authenticator):
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
         bind = result.addElement((NS_XMPP_BIND, 'bind'))
-        jid = bind.addElement('jid', content=('test@localhost/%s' % resource))
+        jid = bind.addElement('jid', content=('%s@localhost/%s' % \
+                                                  (self.username, resource)))
         self.xmlstream.send(result)
 
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
@@ -364,7 +365,7 @@ class GoogleXmlStream(BaseXmlStream):
 def make_connection(bus, event_func, params=None, idx=0):
     # Gabble accepts a resource in 'account', but the value of 'resource'
     # overrides it if there is one.
-    account = 'test%d@localhost/%s' % (idx, re.sub(r'.*tests/twisted/', '', sys.argv[0]))
+    account = 'test%d@localhost/%s' % (idx, re.sub(r'.*/', '', sys.argv[0]))
     default_params = {
         'account': account,
         'password': 'pass',

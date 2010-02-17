@@ -438,16 +438,17 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
         streams.append(make_stream(queue.append, protocol=protocol,
                                    authenticator=authenticator, resource=resource, idx=i))
 
-    mappings = dict(map (lambda jid, stream: (jid, stream), jids, streams))
+    if num_instances > 1:
+        mappings = dict(map (lambda jid, stream: (jid, stream), jids, streams))
 
-    def addObservers(stream, jid):
-        stream.addObserver('/iq', lambda x: \
-                               forward_iq(stream, jid, mappings, x))
-        stream.addObserver('/presence', lambda x: \
-                               PresenceDispatcher.GotPresence(stream, jid, \
-                                                                  mappings, x))
-    for (jid, stream) in mappings.items():
-        addObservers(stream, jid)
+        def addObservers(stream, jid):
+            stream.addObserver('/iq', lambda x: \
+                                   forward_iq(stream, jid, mappings, x))
+            stream.addObserver('/presence', lambda x: \
+                                   PresenceDispatcher.GotPresence(stream, jid, \
+                                                                      mappings, x))
+        for (jid, stream) in mappings.items():
+            addObservers(stream, jid)
 
 
     factory_streams = list(streams)

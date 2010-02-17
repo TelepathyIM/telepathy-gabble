@@ -1,3 +1,16 @@
+telepathy-gabble 0.8.10 (2010-02-16)
+====================================
+
+The “perhaps man is not meant to know” release.
+
+Fixes:
+
+• Correctly generate capability hashes when compiled with --enable-is-a-phone.
+  (wjt)
+
+• Escape binary data before logging it, so that we don't try to send illegal
+  non-UTF8 debug data over D-Bus. (maiku)
+
 telepathy-gabble 0.8.10 (2010-01-28)
 ====================================
 

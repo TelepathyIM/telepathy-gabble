@@ -387,7 +387,7 @@ def make_connection(bus, event_func, params=None, idx=0):
                                         default_params)
     return (conn, jid)
 
-def make_stream(event_func, authenticator=None, protocol=None, port=4242,
+def make_stream(event_func, authenticator=None, protocol=None,
                 resource=None, idx=0):
     # set up Jabber server
     if idx == 0:

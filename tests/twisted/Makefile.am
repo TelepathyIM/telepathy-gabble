@@ -213,6 +213,7 @@ endif
 config.py: Makefile
 	$(AM_V_GEN) { \
 		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
+		echo "CLIENT_TYPE = '$(CLIENT_TYPE)'"; \
 		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
 		echo "PLUGINS_ENABLED = $(PLUGINS_ENABLED_PYBOOL)"; \
 		echo "CHANNEL_TYPE_CALL_ENABLED = $(CHANNEL_TYPE_CALL_ENABLED_PYBOOL)"; \

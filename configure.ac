@@ -120,10 +120,14 @@ AC_ARG_ENABLE([is-a-phone],
 if test x$is_a_phone = xyes; then
   AC_DEFINE(CLIENT_TYPE, ["phone"],
       [Client type from http://xmpp.org/registrar/disco-categories.html#client])
+  CLIENT_TYPE=phone
 else
   AC_DEFINE(CLIENT_TYPE, ["pc"],
       [Client type from http://xmpp.org/registrar/disco-categories.html#client])
+  CLIENT_TYPE=pc
 fi
+
+AC_SUBST(CLIENT_TYPE)
 
 dnl Check for Glib
 PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16, gobject-2.0 >= 2.16, gthread-2.0 >= 2.16])

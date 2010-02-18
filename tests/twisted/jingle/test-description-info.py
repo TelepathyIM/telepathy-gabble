@@ -113,7 +113,7 @@ def test(q, bus, conn, stream, send_early_description_info=False):
         )
     assertEquals('foo@bar.com/Foo', e.query['initiator'])
 
-    assert jt2.audio_codecs == [ (name, id, rate)
+    assert jt2.audio_codecs == [ (name, id, rate, parameters)
         for id, name, type, rate, channels, parameters in unwrap(src.args[0]) ], \
         (jt2.audio_codecs, unwrap(src.args[0]))
 
@@ -127,9 +127,9 @@ def test(q, bus, conn, stream, send_early_description_info=False):
 
     # farstream is buggy, and tells tp-fs to tell Gabble to change the third
     # codec's clockrate. This isn't legal, so Gabble says no.
-    new_codecs = [ ('GSM', 3, 8000),
-                   ('PCMA', 8, 8000),
-                   ('PCMU', 0, 4000) ]
+    new_codecs = [ ('GSM', 3, 8000, {}),
+                   ('PCMA', 8, 8000, {}),
+                   ('PCMU', 0, 4000, {}) ]
     call_async(q, stream_handler, 'CodecsUpdated',
         jt2.dbusify_codecs(new_codecs))
     event = q.expect('dbus-error', method='CodecsUpdated')

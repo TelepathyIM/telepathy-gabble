@@ -479,11 +479,13 @@ class JingleTest2:
              'node': 'http://example.com/fake-client0' }
 
     # Default audio codecs for the remote end
-    audio_codecs = [ ('GSM', 3, 8000), ('PCMA', 8, 8000), ('PCMU', 0, 8000) ]
+    audio_codecs = [ ('GSM', 3, 8000, {}),
+        ('PCMA', 8, 8000, {}),
+        ('PCMU', 0, 8000, {}) ]
 
     # Default video codecs for the remote end. I have no idea what's
     # a suitable value here...
-    video_codecs = [ ('WTF', 42, 80000) ]
+    video_codecs = [ ('WTF', 42, 80000, {}) ]
 
     # Default candidates for the remote end
     remote_transports = [
@@ -568,6 +570,11 @@ class JingleTest2:
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
 
+    def generate_payloads(self, codecs, **kwargs):
+        return [ self.jp.PayloadType(payload_name,
+            str(rate), str(id), parameters, **kwargs) for
+                    (payload_name, id, rate, parameters) in codecs ]
+
     def generate_contents(self, transports=[]):
         assert len(self.audio_names + self.video_names) > 0
 
@@ -581,11 +588,8 @@ class JingleTest2:
             assert jp.can_do_video()
             assert self.audio_names
 
-            payload = [jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in self.video_codecs ] + \
-                    [ jp.PayloadType(name, str(rate), str(id),
-                        {}, type = "audio" ) for (name, id, rate, )
-                            in self.audio_codecs ]
+            payload = self.generate_payloads (self.video_codecs) + \
+                self.generate_payloads (self.audio_codecs, type="audio")
 
             contents.append(
                 jp.Content('stream0', 'initiator', 'both',
@@ -594,9 +598,7 @@ class JingleTest2:
              )
         else:
             def mk_content(name, media, codecs):
-                payload = [
-                    jp.PayloadType(payload_name, str(rate), str(id)) for
-                    (payload_name, id, rate) in codecs ]
+                payload = self.generate_payloads (codecs)
 
                 contents.append(
                     jp.Content(name, 'initiator', 'both',
@@ -660,8 +662,8 @@ class JingleTest2:
             jp.Jingle(self.sid, self.peer, 'content-accept', [
                 jp.Content(c['name'], c['creator'], c['senders'],
                     jp.Description(media, [
-                        jp.PayloadType(name, str(rate), str(id)) for
-                            (name, id, rate) in codecs ]),
+                        jp.PayloadType(name, str(rate), str(id), parameters) for
+                            (name, id, rate, parameters) in codecs ]),
                 jp.TransportGoogleP2P()) ]) ])
         self.stream.send(jp.xml(node))
 
@@ -693,14 +695,12 @@ class JingleTest2:
         self.stream.send(jp.xml(node))
 
     def dbusify_codecs(self, codecs):
-        dbussed_codecs = [ (id, name, 0, rate, 0, {} )
-                            for (name, id, rate) in codecs ]
-        return dbus.Array(dbussed_codecs, signature='(usuuua{ss})')
-
-    def dbusify_codecs_with_params(self, codecs):
-        dbussed_codecs = [ (id, name, 0, rate, 0, params)
+        dbussed_codecs = [ (id, name, 0, rate, 0, params )
                             for (name, id, rate, params) in codecs ]
         return dbus.Array(dbussed_codecs, signature='(usuuua{ss})')
+
+    def dbusify_codecs_with_params (self, codecs):
+        return self.dbusify_codecs(codecs)
 
     def get_audio_codecs_dbus(self):
         return self.dbusify_codecs(self.audio_codecs)
@@ -709,14 +709,12 @@ class JingleTest2:
         return self.dbusify_codecs(self.video_codecs)
 
     def dbusify_call_codecs(self, codecs):
-        dbussed_codecs = [ (id, name, rate, 0, {} )
-                            for (name, id, rate) in codecs ]
-        return dbus.Array(dbussed_codecs, signature='(usuua{ss})')
-
-    def dbusify_call_codecs_with_params(self, codecs):
         dbussed_codecs = [ (id, name, rate, 0, params)
                             for (name, id, rate, params) in codecs ]
         return dbus.Array(dbussed_codecs, signature='(usuua{ss})')
+
+    def dbusify_call_codecs_with_params(self, codecs):
+        return dbusify_call_codecs (self, codecs)
 
     def get_call_audio_codecs_dbus(self):
         return self.dbusify_call_codecs(self.audio_codecs)

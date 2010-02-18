@@ -178,6 +178,8 @@ gabble_jingle_session_init (GabbleJingleSession *obj)
          GabbleJingleSessionPrivate);
   obj->priv = priv;
 
+  DEBUG ("Initializing the jingle session %p", obj);
+
   priv->initiator_contents = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_object_unref);
   priv->responder_contents = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -1831,6 +1833,8 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
   JingleSessionState new_state;
   JingleReplyHandler handler;
 
+  DEBUG ("Trying initiate or accept");
+
   /* If there are no contents yet, we shouldn't have been called at all. */
   g_assert (g_hash_table_size (priv->initiator_contents) +
       g_hash_table_size (priv->responder_contents) > 0);
@@ -1879,6 +1883,8 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
     }
 
   _map_initial_contents (sess, _check_content_ready, &contents_ready);
+
+  DEBUG ("Contents are ready: %s", contents_ready ? "yes" : "no");
 
   if (!contents_ready)
       return;

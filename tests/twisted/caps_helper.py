@@ -4,13 +4,13 @@ import base64
 import dbus
 
 from twisted.words.xish import domish, xpath
-from gabbletest import make_result_iq, make_presence
+from gabbletest import make_result_iq, make_presence, elem_iq, elem
 from servicetest import (
     EventPattern,
     assertEquals, assertContains, assertDoesNotContain, assertLength,
     )
 
-from config import PACKAGE_STRING, ENABLE_ASSUMED_FT_CAP
+import config
 import ns
 import constants as cs
 
@@ -61,7 +61,7 @@ VARIABLE_CAPS = (
     ns.TUBES + '/dbus#com.example.Xiangqi',
     ])
 
-if ENABLE_ASSUMED_FT_CAP:
+if config.ENABLE_ASSUMED_FT_CAP:
     # For backwards compatibility, the default behaviour of the stable
     # branch is to say that we can receive file transfers, even if no
     # client seems to be able to. Disable with
@@ -222,27 +222,33 @@ def disco_caps(q, stream, presence):
     assertEquals('sha-1', hash)
 
     # ask caps
-    request = """
-<iq from='fake_contact@jabber.org/resource' 
-    id='disco1'
-    to='gabble@jabber.org/resource' 
-    type='get'>
-  <query xmlns='""" + ns.DISCO_INFO + """'
-         node='""" + node + '#' + ver + """'/>
-</iq>
-"""
+    request = \
+        elem_iq(stream, 'get', from_='fake_contact@jabber.org/resource')(
+          elem(ns.DISCO_INFO, 'query', node=(node + '#' + ver))
+        )
     stream.send(request)
 
     # receive caps
-    event = q.expect('stream-iq', query_ns=ns.DISCO_INFO)
+    event = q.expect('stream-iq', query_ns=ns.DISCO_INFO, iq_id=request['id'])
+
+    # Check that Gabble's announcing the identity we think it should be.
+    identity_nodes = xpath.queryForNodes('/iq/query/identity', event.stanza)
+    assertLength(1, identity_nodes)
+    identity_node = identity_nodes[0]
+
+    assertEquals('client', identity_node['category'])
+    assertEquals(config.CLIENT_TYPE, identity_node['type'])
+    assertEquals(config.PACKAGE_STRING, identity_node['name'])
+    assertDoesNotContain('xml:lang', identity_node.attributes)
+
+    identity = 'client/%s//%s' % (config.CLIENT_TYPE, config.PACKAGE_STRING)
 
     features = []
     for feature in xpath.queryForNodes('/iq/query/feature', event.stanza):
         features.append(feature['var'])
 
     # Check if the hash matches the announced capabilities
-    assertEquals(compute_caps_hash(['client/pc//%s' % PACKAGE_STRING], features, {}),
-        ver)
+    assertEquals(compute_caps_hash([identity], features, {}), ver)
 
     return (event, features)
 

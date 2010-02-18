@@ -195,6 +195,7 @@ endif
 config.py: Makefile
 	$(QUIET_GEN) { \
 		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
+		echo "CLIENT_TYPE = '$(CLIENT_TYPE)'"; \
 		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
 		echo "ENABLE_ASSUMED_FT_CAP = $(ENABLE_ASSUMED_FT_CAP_PYBOOL)"; \
 	} > $@

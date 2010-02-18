@@ -12,24 +12,19 @@ import dbus
 from twisted.words.xish import xpath, domish
 
 from servicetest import EventPattern, assertEquals
-from gabbletest import exec_test
+from gabbletest import exec_test, elem, elem_iq
 import constants as cs
 import ns
 
 def disco_bundle(q, bus, conn, stream, node, features):
-
-    request = """
-<iq from='fake_contact@jabber.org/resource'
-    id='disco1'
-    to='gabble@jabber.org/resource'
-    type='get'>
-  <query xmlns='""" + ns.DISCO_INFO + """'
-         node='""" + node + """'/>
-</iq>
-"""
+    request = \
+        elem_iq(stream, 'get', from_='fake_contact@jabber.org/resource')(
+          elem(ns.DISCO_INFO, 'query', node=node)
+        )
     stream.send(request)
 
-    disco_response = q.expect('stream-iq', query_ns=ns.DISCO_INFO)
+    disco_response = q.expect('stream-iq', query_ns=ns.DISCO_INFO,
+            iq_id=request['id'])
     nodes = xpath.queryForNodes('/iq/query/feature', disco_response.stanza)
     vars = [n["var"] for n in nodes]
     assertEquals(set(features), set(vars))

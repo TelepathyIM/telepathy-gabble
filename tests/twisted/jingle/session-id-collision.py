@@ -5,6 +5,7 @@ sid.
 """
 
 from jingletest2 import JingleTest2, test_all_dialects
+import constants as cs
 
 def test(jp, q, bus, conn, stream):
     jt1 = JingleTest2(jp, conn, q, stream, 'test@localhost',

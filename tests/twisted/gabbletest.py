@@ -245,6 +245,10 @@ class PresenceDispatcher(object):
     presences = {}
 
     @staticmethod
+    def reset():
+        PresenceDispatcher.presences = {}
+
+    @staticmethod
     def GotPresence (stream, jid, mappings, stanza):
         stanza.attributes['from'] = jid
         PresenceDispatcher.presences[jid] = stanza
@@ -447,6 +451,11 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
 
     if num_instances > 1:
         mappings = dict(map (lambda jid, stream: (jid, stream), jids, streams))
+
+        # We need to reset the presence dispatcher so if we run multiple
+        # exec_test in the same unit test, we won't get wrong presences being
+        # dispatched to not-yet-connected streams
+        PresenceDispatcher.reset()
 
         def addObservers(stream, jid):
             stream.addObserver('/iq', lambda x: \

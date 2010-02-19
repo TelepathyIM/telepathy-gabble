@@ -1017,6 +1017,9 @@ bytestream_open (GabbleFileTransferChannel *self)
           TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
           TP_FILE_TRANSFER_STATE_OPEN,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
+
+      if (self->priv->transport)
+        gibber_transport_block_receiving (self->priv->transport, FALSE);
     }
   else
     {
@@ -1066,6 +1069,9 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
     }
 }
 
+static void bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
+                                         gboolean blocked,
+                                         GabbleFileTransferChannel *self);
 static void
 set_bytestream (GabbleFileTransferChannel *self,
                 GabbleBytestreamIface *bytestream)
@@ -1077,6 +1083,8 @@ set_bytestream (GabbleFileTransferChannel *self,
 
   gabble_signal_connect_weak (bytestream, "state-changed",
       G_CALLBACK (bytestream_state_changed_cb), G_OBJECT (self));
+  gabble_signal_connect_weak (self->priv->bytestream, "write-blocked",
+      G_CALLBACK (bytestream_write_blocked_cb), G_OBJECT (self));
 }
 
 static void
@@ -1649,15 +1657,20 @@ bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
                              gboolean blocked,
                              GabbleFileTransferChannel *self)
 {
-  gibber_transport_block_receiving (self->priv->transport, blocked);
+  if (self->priv->transport)
+    gibber_transport_block_receiving (self->priv->transport, blocked);
 }
 
 static void
 file_transfer_send (GabbleFileTransferChannel *self)
 {
-  gabble_signal_connect_weak (self->priv->bytestream, "write-blocked",
-    G_CALLBACK (bytestream_write_blocked_cb), G_OBJECT (self));
   gibber_transport_set_handler (self->priv->transport, transport_handler, self);
+  /* We shouldn't receive data if the bytestream isn't open otherwise it will
+     error out */
+  if (self->priv->state == TP_FILE_TRANSFER_STATE_OPEN)
+    gibber_transport_block_receiving (self->priv->transport, FALSE);
+  else
+    gibber_transport_block_receiving (self->priv->transport, TRUE);
 }
 
 static void

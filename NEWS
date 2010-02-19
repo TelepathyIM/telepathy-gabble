@@ -1,3 +1,24 @@
+telepathy-gabble 0.9.5 (2010-02-19)
+===================================
+
+The "eclectic mandate whittling" release.
+
+Enhancements:
+
+• Update Wocky for improved error-wrangling code (wjt)
+
+Fixes:
+
+• When delaying a stream request until service discovery has finished in order
+  to interpret capabilities, correctly resume the request after service
+  discovery (smcv)
+
+• Calculate capabilities hash correctly when compiled with
+  --enable-is-a-phone (wjt)
+
+• Don't emit a potentially-non-UTF-8 Google relay magic_cookie in debug output
+  (Maiku)
+
 telepathy-gabble 0.9.4 (2010-01-28)
 ===================================
 

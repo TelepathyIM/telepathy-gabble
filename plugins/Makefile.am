@@ -1,12 +1,19 @@
 plugindir = $(libdir)/telepathy/gabble-0
 
-# installable plugins
-plugin_LTLIBRARIES = \
+installable_plugins = \
 	gateways.la
 
 # testing-only plugins
 noinst_LTLIBRARIES = \
 	test.la
+
+if ENABLE_PLUGINS
+plugin_LTLIBRARIES = $(installable_plugins)
+else
+# we still compile the plugin (just to make sure it compiles!) but we don't
+# install it
+noinst_LTLIBRARIES += $(installable_plugins)
+endif
 
 test_la_SOURCES = \
     test.c \

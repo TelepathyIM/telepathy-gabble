@@ -132,6 +132,7 @@ TWISTED_TESTS = \
 	jingle/test-wait-for-caps.py \
 	jingle/test-wait-for-caps-incomplete.py \
 	jingle-share/test-caps-file-transfer.py \
+	jingle-share/test-send-file.py \
 	file-transfer/test-caps-file-transfer.py \
 	file-transfer/test-ibb-too-early.py \
 	file-transfer/test-receive-file-and-close-socket-while-receiving.py \

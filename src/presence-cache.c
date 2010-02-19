@@ -1215,6 +1215,13 @@ _caps_disco_cb (GabbleDisco *disco,
 
   if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
     {
+      /* Remove the node from the hash table without freeing it. This needs
+       * to be done before emitting the signal, so that when recipients of
+       * the capabilities-discovered signal ask whether we're unsure about
+       * the handle, there is no pending disco request that would make us
+       * unsure. */
+      g_hash_table_steal (priv->disco_pending, node);
+
       /* We trust this caps node. Serve all its waiters. */
       for (i = waiters; NULL != i; i = i->next)
         {
@@ -1224,7 +1231,7 @@ _caps_disco_cb (GabbleDisco *disco,
           emit_capabilities_discovered (cache, waiter->handle);
         }
 
-      g_hash_table_remove (priv->disco_pending, node);
+      disco_waiter_list_free (waiters);
     }
   else
     {

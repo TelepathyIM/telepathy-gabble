@@ -861,6 +861,8 @@ gabble_file_transfer_channel_finalize (GObject *object)
 static void
 close_session_and_transport (GabbleFileTransferChannel *self)
 {
+
+  DEBUG ("Closing session and transport");
   if (self->priv->jingle != NULL)
     {
       gabble_jingle_session_terminate (self->priv->jingle,
@@ -1119,6 +1121,8 @@ gabble_file_transfer_channel_set_bytestream (GabbleFileTransferChannel *self,
 
   if (self->priv->bytestream || self->priv->jingle)
     return FALSE;
+
+  DEBUG ("Setting bytestream to %p", bytestream);
 
   self->priv->bytestream = g_object_ref (bytestream);
 
@@ -2760,7 +2764,7 @@ file_transfer_send (GabbleFileTransferChannel *self)
       else
         gibber_transport_block_receiving (self->priv->transport, TRUE);
     }
-  else
+  else if (self->priv->jingle)
     {
       JingleChannel *channel = g_hash_table_lookup (self->priv->jingle_channels,
           GINT_TO_POINTER (1));

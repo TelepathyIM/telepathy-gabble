@@ -2753,23 +2753,10 @@ bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
 static void
 file_transfer_send (GabbleFileTransferChannel *self)
 {
-  if (self->priv->bytestream)
-    {
-      gibber_transport_set_handler (self->priv->transport, transport_handler,
-          self);
-      /* We shouldn't receive data if the bytestream isn't open otherwise it
-         will error out */
-      if (self->priv->state == TP_FILE_TRANSFER_STATE_OPEN)
-        gibber_transport_block_receiving (self->priv->transport, FALSE);
-      else
-        gibber_transport_block_receiving (self->priv->transport, TRUE);
-    }
-  else if (self->priv->jingle)
+  if (self->priv->jingle)
     {
       JingleChannel *channel = g_hash_table_lookup (self->priv->jingle_channels,
           GINT_TO_POINTER (1));
-      gibber_transport_set_handler (self->priv->transport, transport_handler,
-          self);
       if (channel == NULL || channel->http_status != HTTP_SERVER_SEND)
         {
           gibber_transport_block_receiving (self->priv->transport, TRUE);
@@ -2779,6 +2766,18 @@ file_transfer_send (GabbleFileTransferChannel *self)
           gibber_transport_block_receiving (self->priv->transport, FALSE);
         }
     }
+  else
+    {
+      /* We shouldn't receive data if the bytestream isn't open otherwise it
+         will error out */
+      if (self->priv->state == TP_FILE_TRANSFER_STATE_OPEN)
+        gibber_transport_block_receiving (self->priv->transport, FALSE);
+      else
+        gibber_transport_block_receiving (self->priv->transport, TRUE);
+    }
+
+  gibber_transport_set_handler (self->priv->transport, transport_handler,
+      self);
 }
 
 static void

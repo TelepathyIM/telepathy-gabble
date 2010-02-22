@@ -48,7 +48,7 @@
 
 enum
 {
-  PROP_CAPABILITIES,
+  PROP_MAIL_NOTIFICATION_FLAGS,
   PROP_UNREAD_MAIL_COUNT,
   PROP_UNREAD_MAILS,
   NUM_OF_PROP,
@@ -693,21 +693,21 @@ conn_mail_notif_properties_getter (GObject *object,
 
   if (G_UNLIKELY (prop_quarks[0] == 0))
     {
-      prop_quarks[PROP_CAPABILITIES] = g_quark_from_static_string ("Capabilities");
+      prop_quarks[PROP_MAIL_NOTIFICATION_FLAGS] = g_quark_from_static_string ("MailNotificationFlags");
       prop_quarks[PROP_UNREAD_MAIL_COUNT] = g_quark_from_static_string ("UnreadMailCount");
       prop_quarks[PROP_UNREAD_MAILS] = g_quark_from_static_string ("UnreadMails");
     }
 
   DEBUG ("MailNotification get property %s", g_quark_to_string (name));
 
-  if (name == prop_quarks[PROP_CAPABILITIES])
+  if (name == prop_quarks[PROP_MAIL_NOTIFICATION_FLAGS])
     {
       if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
         g_value_set_uint (value,
-            GABBLE_MAIL_NOTIFICATION_SUPPORTS_UNREAD_MAIL_COUNT
-            | GABBLE_MAIL_NOTIFICATION_SUPPORTS_UNREAD_MAILS
-            | GABBLE_MAIL_NOTIFICATION_SUPPORTS_REQUEST_INBOX_URL
-            | GABBLE_MAIL_NOTIFICATION_SUPPORTS_REQUEST_MAIL_URL
+            GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_UNREAD_MAIL_COUNT
+            | GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_UNREAD_MAILS
+            | GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_REQUEST_INBOX_URL
+            | GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_REQUEST_MAIL_URL
             );
       else
         g_value_set_uint (value, 0);

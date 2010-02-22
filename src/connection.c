@@ -729,7 +729,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { NULL }
   };
   static TpDBusPropertiesMixinPropImpl mail_notif_props[] = {
-        { "Capabilities", NULL, NULL },
+        { "MailNotificationFlags", NULL, NULL },
         { "UnreadMailCount", NULL, NULL },
         { "UnreadMails", NULL, NULL },
         { NULL }

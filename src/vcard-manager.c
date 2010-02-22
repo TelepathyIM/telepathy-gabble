@@ -1704,6 +1704,21 @@ gabble_vcard_manager_edit_info_new (const gchar *element_name,
   const gchar *key;
   const gchar *value;
 
+  if (to_del)
+    {
+      /* editing and any other operation are mutually exclusive */
+      const gchar *first_edit = NULL;
+
+      g_return_val_if_fail (!accept_multiple, NULL);
+      g_return_val_if_fail (element_value == NULL, NULL);
+
+      va_start (ap, to_del);
+      first_edit = va_arg (ap, const gchar *);
+      va_end (ap);
+
+      g_return_val_if_fail (first_edit == NULL, NULL);
+    }
+
   info = g_slice_new (GabbleVCardManagerEditInfo);
   info->element_name = g_strdup (element_name);
   info->element_value = g_strdup (element_value);

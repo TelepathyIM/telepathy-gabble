@@ -36,6 +36,19 @@
  * Plugin implementation *
  *************************/
 
+static guint debug = 0;
+
+#define DEBUG(format, ...) \
+G_STMT_START { \
+    if (debug != 0) \
+      g_debug ("%s: " format, G_STRFUNC, ## __VA_ARGS__); \
+} G_STMT_END
+
+static const GDebugKey debug_keys[] = {
+      { "gateways", 1 },
+      { NULL, 0 }
+};
+
 static void plugin_iface_init (
     gpointer g_iface,
     gpointer data);
@@ -112,8 +125,12 @@ plugin_iface_init (
 }
 
 GabblePlugin *
-gabble_plugin_create ()
+gabble_plugin_create (void)
 {
+  debug = g_parse_debug_string (g_getenv ("GABBLE_DEBUG"), debug_keys,
+      G_N_ELEMENTS (debug_keys) - 1);
+  DEBUG ("loaded");
+
   return g_object_new (GABBLE_TYPE_GATEWAY_PLUGIN,
       NULL);
 }
@@ -281,7 +298,9 @@ register_cb (GObject *porter,
           gabble_set_tp_error_from_wocky (error, &tp_error);
         }
 
+      DEBUG ("Failed to register: %s", tp_error->message);
       dbus_g_method_return_error (context, tp_error);
+
       g_error_free (error);
       g_error_free (tp_error);
     }
@@ -305,6 +324,8 @@ gateways_register (
   GabbleGatewaySidecar *self = GABBLE_GATEWAY_SIDECAR (sidecar);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);
   WockyXmppStanza *stanza;
+
+  DEBUG ("Trying to register on '%s' as '%s'", gateway, username);
 
   /* This is a *really* minimal implementation. We're meant to ask the gateway
    * what parameters it supports (a XEP-0077 pseudo-form or a XEP-0004 data

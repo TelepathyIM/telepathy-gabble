@@ -225,11 +225,12 @@ gibber_unix_transport_send_credentials (GibberUnixTransport *transport,
   iov.iov_base = (void *) data;
   iov.iov_len = size;
 
-  memset (&msg, 0, sizeof msg);
+  memset (&msg, 0, sizeof (msg));
   msg.msg_iov = &iov;
   msg.msg_iovlen = 1;
   msg.msg_control = buffer;
   msg.msg_controllen = sizeof (buffer);
+  memset (buffer, 0, sizeof (buffer));
 
   /* Set the credentials */
   ch = CMSG_FIRSTHDR (&msg);

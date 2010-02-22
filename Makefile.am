@@ -1,8 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = docs tools extensions lib src data m4 tests
+SUBDIRS = docs tools extensions lib src data m4 plugins tests gabble
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-debug --enable-wocky-gtk-doc
+DISTCHECK_CONFIGURE_FLAGS = --disable-debug --enable-gtk-doc
 
 CLEANFILES = FIXME.out
 
@@ -19,4 +19,9 @@ include tools/lcov.am
 LCOV_CHECK_ARGS = CHECK_TWISTED_SLEEP=6
 
 CHANGELOG_RANGE = telepathy-gabble-0.6.0..
+CHECK_FOR_UNRELEASED = \
+	$(srcdir)/NEWS \
+	$(wildcard $(srcdir)/gabble/*.[ch]) \
+	$(wildcard $(srcdir)/src/*.[ch])
+
 include tools/telepathy.am

@@ -62,11 +62,10 @@ struct _GabbleMediaChannelPrivate
   gboolean initial_audio;
   gboolean initial_video;
   gboolean immutable_streams;
-
-  /* These are really booleans, but gboolean is signed. Thanks, GLib */
-  unsigned ready:1;
-  unsigned closed:1;
-  unsigned dispose_has_run:1;
+  gboolean ready;
+  gboolean closed;
+  gboolean dispose_has_run;
+  gboolean tried_decloaking;
 };
 
 void gabble_media_channel_hold_latch_to_session (GabbleMediaChannel *chan);

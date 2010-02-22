@@ -2,10 +2,22 @@ tools_dir = $(top_srcdir)/tools
 
 EXTRA_DIST = \
     all.xml \
+    Call_Content_Codec_Offer.xml \
+    Call_Content_Interface_Media.xml \
+    Call_Content.xml \
+    Call_Stream_Endpoint.xml \
+    Call_Stream_Interface_Media.xml \
+    Call_Stream.xml \
     Channel_Bundle.xml \
     Channel_Future.xml \
+    Channel_Interface_Conference.xml \
+    Channel_Type_Call.xml \
+    Connection_Future.xml \
     Connection_Interface_Contact_Info.xml \
+    Connection_Interface_Gabble_Decloak.xml \
     Channel_Type_Contact_Search.xml \
+    Gabble_Plugin_Gateways.xml \
+    Gabble_Plugin_Test.xml \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \
     OLPC_Gadget.xml \
@@ -48,8 +60,8 @@ XSLTPROCFLAGS = --nonet --novalid
 
 _gen/all.xml: all.xml $(wildcard *.xml) Makefile.am
 	@$(mkdir_p) _gen
-	$(AM_V_GEN)$(XSLTPROC) $(XSLTPROCFLAGS) --xinclude $(tools_dir)/identity.xsl \
-		$< > $@
+	$(AM_V_GEN)$(PYTHON) $(tools_dir)/xincludator.py \
+		$< > $@.tmp && mv $@.tmp $@
 
 extensions.html: _gen/all.xml $(tools_dir)/doc-generator.xsl Makefile.am
 	$(AM_V_GEN)$(XSLTPROC) $(XSLTPROCFLAGS) \

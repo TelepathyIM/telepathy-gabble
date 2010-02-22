@@ -2,25 +2,31 @@
 
 <!--
 
-Copyright (c) 1999 - 2008 XMPP Standards Foundation
+Copyright (c) 1999 - 2009 XMPP Standards Foundation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any 
+person obtaining a copy of this software and 
+associated documentation files (the "Software"), to 
+deal in the Software without restriction, including 
+without limitation the rights to use, copy, modify, 
+merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom 
+the Software is furnished to do so, subject to the 
+following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice 
+shall be included in all copies or substantial portions 
+of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF 
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED 
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT 
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR 
+ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN 
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE 
+OR OTHER DEALINGS IN THE SOFTWARE.
 
 -->
 
@@ -35,7 +41,9 @@ THE SOFTWARE.
       <head>
         <title>XEP-<xsl:value-of select='/xep/header/number'/>:<xsl:text> </xsl:text><xsl:value-of select='/xep/header/title' /></title>
         <link rel='stylesheet' type='text/css' href='../xmpp.css' />
+        <link href="../prettify.css" type="text/css" rel="stylesheet" />
         <link rel='shortcut icon' type='image/x-icon' href='/favicon.ico' />
+        <script type="text/javascript" src="../prettify.js"></script>
         <!-- BEGIN META TAGS FOR DUBLIN CORE -->
         <meta>
           <xsl:attribute name='name'><xsl:text>DC.Title</xsl:text></xsl:attribute>
@@ -80,17 +88,69 @@ THE SOFTWARE.
         </meta>
         <!-- END META TAGS FOR DUBLIN CORE -->
       </head>
-      <body>
+      <body onload="prettyPrint()">
         <!-- TITLE -->
         <h1>XEP-<xsl:value-of select='/xep/header/number' />:<xsl:text> </xsl:text><xsl:value-of select='/xep/header/title' /></h1>
-        <!-- ABSTRACT -->
-        <p><xsl:value-of select='/xep/header/abstract'/></p>
-        <!-- NOTICE -->
+        <!-- TOP TABLE -->
+        <xsl:variable name='authors.count' select='count(/xep/header/author)'/>
+        <table>
+          <tr valign='top'>
+            <td><strong>Abstract:</strong></td>
+            <td><xsl:value-of select='/xep/header/abstract'/></td>
+          </tr>
+          <xsl:if test='$authors.count=1'>
+            <tr valign='top'>
+              <td><strong>Author:</strong></td>
+              <td><xsl:value-of select='/xep/header/author/firstname'/><xsl:text> </xsl:text><xsl:value-of select='/xep/header/author/surname'/></td>
+            </tr>
+          </xsl:if>
+          <xsl:if test='$authors.count&gt;1'>
+            <tr valign='top'>
+              <td><strong>Authors:</strong></td>
+              <td>
+                <xsl:for-each select='/xep/header/author'>
+                  <xsl:if test="position()!=last()">
+                    <xsl:value-of select='firstname'/>
+                    <xsl:text> </xsl:text>
+                    <xsl:value-of select='surname'/>
+                    <xsl:text>, </xsl:text>
+                  </xsl:if>
+                  <xsl:if test="position()=last()">
+                    <xsl:value-of select='firstname'/>
+                    <xsl:text> </xsl:text>
+                    <xsl:value-of select='surname'/>
+                  </xsl:if>
+                </xsl:for-each>
+              </td>
+            </tr>
+          </xsl:if>
+          <tr valign='top'>
+            <td><strong>Copyright:</strong></td>
+            <td>&#169; 1999 - 2009 XMPP Standards Foundation. <a href='#appendix-legal'>SEE LEGAL NOTICES</a>.</td>
+          </tr>
+          <tr valign='top'>
+            <td><strong>Status:</strong></td>
+            <td><xsl:value-of select='/xep/header/status'/></td>
+          </tr>
+          <tr valign='top'>
+            <td><strong>Type:</strong></td>
+            <td><xsl:value-of select='/xep/header/type'/></td>
+          </tr>
+          <tr valign='top'>
+            <td><strong>Version:</strong></td>
+            <td><xsl:value-of select='/xep/header/revision[position()=1]/version'/></td>
+          </tr>
+          <tr valign='top'>
+            <td><strong>Last&#160;Updated:</strong></td>
+            <td><xsl:value-of select='/xep/header/revision[position()=1]/date'/></td>
+          </tr>
+        </table>
+        <!-- DEPLOYABILITY -->
         <hr />
         <xsl:variable name='thestatus' select='/xep/header/status'/>
         <xsl:variable name='thetype' select='/xep/header/type'/>
         <xsl:if test='$thestatus = "Active" and $thetype = "Historical"'>
-          <p style='color:green'>NOTICE: This Historical specification provides canonical documentation of a protocol that is in use within the Jabber/XMPP community. This document is not a standards-track specification within the XMPP Standards Foundation's standards process; however, it may be converted to standards-track in the future or may be obsoleted by a more modern protocol.</p>
+          <p style='color:green'>NOTICE: This Historical specification provides canonical documentation of a protocol that is in use within the Jabber/XMPP community. This document is not a standards-track specification within the XMPP Standards Foundation's standards process; however, it might be converted to standards-track in the future or might be obsoleted by a more modern protocol.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Active" and $thetype = "Humorous"'>
           <p style='color:green'>NOTICE: This document is Humorous. It MAY provide amusement but SHOULD NOT be taken seriously.</p>
@@ -102,60 +162,73 @@ THE SOFTWARE.
           <p style='color:green'>NOTICE: This Procedural document defines a process or activity of the XMPP Standards Foundation (XSF) that has been approved by the XMPP Council and/or the XSF Board of Directors. The XSF is currently following the process or activity defined herein and will do so until this document is deprecated or obsoleted.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Deferred"'>
-          <p style='color:red'>WARNING: Consideration of this document has been Deferred by the XMPP Standards Foundation. Implementation of the protocol described herein is not recommended.</p>
+          <p style='color:red'>WARNING: Consideration of this document has been <strong>Deferred</strong> by the XMPP Standards Foundation. Implementation of the protocol described herein is not recommended.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Deprecated"'>
-          <p style='color:red'>WARNING: This document has been deprecated by the XMPP Standards Foundation. Implementation of the protocol described herein is not recommended. Developers desiring similar functionality should implement the protocol that supersedes this one (if any).</p>
+          <p style='color:red'>WARNING: This document has been <strong>Deprecated</strong> by the XMPP Standards Foundation. Implementation of the protocol described herein is not recommended. Developers desiring similar functionality are advised to implement the protocol that supersedes this one (if any).</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Draft"'>
-          <p style='color:green'>NOTICE: The protocol defined herein is a Draft Standard of the XMPP Standards Foundation. Implementations are encouraged and the protocol is appropriate for deployment in production systems, but some changes to the protocol are possible before it becomes a Final Standard.</p>
+          <p style='color:green'>NOTICE: The protocol defined herein is a <strong>Draft Standard</strong> of the XMPP Standards Foundation. Implementations are encouraged and the protocol is appropriate for deployment in production systems, but some changes to the protocol are possible before it becomes a Final Standard.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Experimental" and $thetype = "Historical"'>
-          <p style='color:red'>NOTICE: This Historical document attempts to provide canonical documentation of a protocol that is in use within the Jabber/XMPP community. Publication as an XMPP Extension Protocol does not imply approval of this proposal by the XMPP Standards Foundation. This document is not a standards-track specification within the XMPP Standards Foundation's standards process; however, it may be converted to standards-track in the future or may be obsoleted by a more modern protocol.</p>
+          <p style='color:red'>NOTICE: This Historical document attempts to provide canonical documentation of a protocol that is in use within the Jabber/XMPP community. Publication as an XMPP Extension Protocol does not imply approval of this proposal by the XMPP Standards Foundation. This document is not a standards-track specification within the XMPP Standards Foundation's standards process; however, it might be converted to standards-track in the future or might be obsoleted by a more modern protocol.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Experimental" and $thetype = "Informational"'>
-          <p style='color:red'>WARNING: This Informational document is Experimental. Publication as an XMPP Extension Protocol does not imply approval of this proposal by the XMPP Standards Foundation. Implementation of the best practice or protocol profile described herein is encouraged in exploratory implementations, although production systems should not deploy implementations of this protocol until it advances to a status of Draft.</p>
+          <p style='color:red'>WARNING: This Informational document is Experimental. Publication as an XMPP Extension Protocol does not imply approval of this proposal by the XMPP Standards Foundation. Implementation of the best practice or protocol profile described herein is encouraged in exploratory implementations, although production systems are advised to carefully consider whether it is appropriate to deploy implementations of this protocol before it advances to a status of Draft.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Experimental" and $thetype = "Procedural"'>
           <p style='color:red'>NOTICE: This Procedural document proposes that the process or activity defined herein shall be followed by the XMPP Standards Foundation (XSF). However, this process or activity has not yet been approved by the XMPP Council and/or the XSF Board of Directors and is therefore not currently in force.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Experimental" and $thetype = "Standards Track"'>
-          <p style='color:red'>WARNING: This Standards-Track document is Experimental. Publication as an XMPP Extension Protocol does not imply approval of this proposal by the XMPP Standards Foundation. Implementation of the protocol described herein is encouraged in exploratory implementations, but production systems should not deploy implementations of this protocol until it advances to a status of Draft.</p>
+          <p style='color:red'>WARNING: This Standards-Track document is Experimental. Publication as an XMPP Extension Protocol does not imply approval of this proposal by the XMPP Standards Foundation. Implementation of the protocol described herein is encouraged in exploratory implementations, but production systems are advised to carefully consider whether it is appropriate to deploy implementations of this protocol before it advances to a status of Draft.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Final"'>
-          <p style='color:green'>NOTICE: The protocol defined herein is a Final Standard of the XMPP Standards Foundation and may be considered a stable technology for implementation and deployment.</p>
+          <p style='color:green'>NOTICE: The protocol defined herein is a <strong>Final Standard</strong> of the XMPP Standards Foundation and can be considered a stable technology for implementation and deployment.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Obsolete"'>
-          <p style='color:red'>WARNING: This document has been obsoleted by the XMPP Standards Foundation. Implementation of the protocol described herein is not recommended. Developers desiring similar functionality should implement the protocol that supersedes this one (if any).</p>
+          <p style='color:red'>WARNING: This document has been obsoleted by the XMPP Standards Foundation. Implementation of the protocol described herein is not recommended. Developers desiring similar functionality are advised to implement the protocol that supersedes this one (if any).</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Proposed"'>
-          <p style='color:red'>NOTICE: This document is currently within Last Call or under consideration by the XMPP Council for advancement to the next stage in the XSF standards process.</p>
+          <p style='color:red'>NOTICE: This document is currently within Last Call or under consideration by the XMPP Council for advancement to the next stage in the XSF standards process. The Last Call ends on <xsl:value-of select='/xep/header/lastcall'/>. Please send your feedback to the <a href='http://mail.jabber.org/mailman/listinfo/standards'>standards@xmpp.org</a> discussion list.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "ProtoXEP"'>
-          <p style='color:red'>WARNING: This document has not yet been accepted for consideration or approved in any official manner by the XMPP Standards Foundation, and this document must not be referred to as an XMPP Extension Protocol (XEP). If this document is accepted as a XEP by the XMPP Council, it will be published at &lt;<a href="http://www.xmpp.org/extensions/">http://www.xmpp.org/extensions/</a>&gt; and announced on the &lt;standards@xmpp.org&gt; mailing list.</p>
+          <p style='color:red'>WARNING: This document has not yet been accepted for consideration or approved in any official manner by the XMPP Standards Foundation, and this document is not yet an XMPP Extension Protocol (XEP). If this document is accepted as a XEP by the XMPP Council, it will be published at &lt;<a href="http://xmpp.org/extensions/">http://xmpp.org/extensions/</a>&gt; and announced on the &lt;standards@xmpp.org&gt; mailing list.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Rejected"'>
           <p style='color:red'>WARNING: This document has been Rejected by the XMPP Council. Implementation of the protocol described herein is not recommended under any circumstances.</p>
         </xsl:if>
         <xsl:if test='$thestatus = "Retracted"'>
-          <p style='color:red'>WARNING: This document has been retracted by the author(s). Implementation of the protocol described herein is not recommended. Developers desiring similar functionality should implement the protocol that supersedes this one (if any).</p>
+          <p style='color:red'>WARNING: This document has been retracted by the author(s). Implementation of the protocol described herein is not recommended. Developers desiring similar functionality are advised to implement the protocol that supersedes this one (if any).</p>
         </xsl:if>
+        <!-- TABLE OF CONTENTS -->
+        <hr />
+        <xsl:call-template name='processTOC' />
+        <!-- END FRONT MATTER -->
+        <!-- BEGIN XEP CONTENTS -->
+        <hr />
+        <xsl:apply-templates select='/xep/section1'/>
+        <!-- END XEP CONTENTS -->
+        <!-- BEGIN APPENDICES -->
+        <hr />
+        <a name='appendices'></a>
+        <h2>Appendices</h2>
         <hr />
         <!-- XEP INFO -->
-        <h2>Document Information</h2>
+        <a name='appendix-docinfo'></a>
+        <h3>Appendix A: Document Information</h3>
           <p class='indent'>
-            Series: <a href='http://www.xmpp.org/extensions/'>XEP</a><br />
+            Series: <a href='http://xmpp.org/extensions/'>XEP</a><br />
             Number: <xsl:value-of select='/xep/header/number'/><br />
             Publisher: <a href='/xsf/'>XMPP Standards Foundation</a><br />
             Status: 
             <a>
-              <xsl:attribute name='href'><xsl:text>http://www.xmpp.org/extensions/xep-0001.html#states-</xsl:text><xsl:value-of select='/xep/header/status'/></xsl:attribute>
+              <xsl:attribute name='href'><xsl:text>http://xmpp.org/extensions/xep-0001.html#states-</xsl:text><xsl:value-of select='/xep/header/status'/></xsl:attribute>
               <xsl:value-of select='/xep/header/status'/>
             </a>
             <br />
             Type:
             <a>
-              <xsl:attribute name='href'><xsl:text>http://www.xmpp.org/extensions/xep-0001.html#types-</xsl:text><xsl:value-of select='/xep/header/type'/></xsl:attribute>
+              <xsl:attribute name='href'><xsl:text>http://xmpp.org/extensions/xep-0001.html#types-</xsl:text><xsl:value-of select='/xep/header/type'/></xsl:attribute>
               <xsl:value-of select='/xep/header/type'/>
             </a>
             <br />
@@ -168,10 +241,10 @@ THE SOFTWARE.
             <xsl:variable name='ApprovingBody' select='/xep/header/approver'/>
             <xsl:choose>
               <xsl:when test='$ApprovingBody = "Board"'>
-                Approving Body: <a href='http://www.xmpp.org/xsf/board/'>XSF Board of Directors</a><br />
+                Approving Body: <a href='http://xmpp.org/xsf/board/'>XSF Board of Directors</a><br />
               </xsl:when>
               <xsl:otherwise>
-                Approving Body: <a href='http://www.xmpp.org/council/'>XMPP Council</a><br />
+                Approving Body: <a href='http://xmpp.org/council/'>XMPP Council</a><br />
               </xsl:otherwise>
             </xsl:choose>
             <xsl:variable name='dependencies.count' select='count(/xep/header/dependencies/spec)'/>
@@ -222,73 +295,95 @@ THE SOFTWARE.
             <xsl:if test='$reg.count=1'>
               Registry: 
               <xsl:variable name='registryURL'>
-                <xsl:text>http://www.xmpp.org/registrar/</xsl:text>
+                <xsl:text>http://xmpp.org/registrar/</xsl:text>
                 <xsl:value-of select='/xep/header/shortname'/>
                 <xsl:text>.html</xsl:text>
               </xsl:variable>
               &lt;<a href='{$registryURL}'><xsl:value-of select='$registryURL'/></a>&gt;
               <br />
             </xsl:if>
-            <xsl:variable name='wikiURL'>
-              <xsl:text>http://wiki.jabber.org/index.php/</xsl:text>
-              <xsl:value-of select='/xep/header/title'/>
-              <xsl:text> (XEP-</xsl:text>
+            <xsl:variable name='sourceHTML'>
+              <xsl:text>http://svn.xmpp.org:18080/browse/XMPP/trunk/extensions/xep-</xsl:text>
               <xsl:value-of select='/xep/header/number'/>
-              <xsl:text>)</xsl:text>
+              <xsl:text>.xml</xsl:text>
+            </xsl:variable>
+            <xsl:variable name='sourceRSS'>
+              <xsl:text>http://svn.xmpp.org:18080//changelog/~rss/XMPP/trunk/extensions/xep-</xsl:text>
+              <xsl:value-of select='/xep/header/number'/>
+              <xsl:text>.xml/rss.xml</xsl:text>
             </xsl:variable>
             <xsl:if test='$thestatus != "ProtoXEP"'>
-              Wiki Page: &lt;<a href='{$wikiURL}'><xsl:value-of select='$wikiURL'/></a>&gt;
+              Source Control: 
+                <a class='standardsButton' href='{$sourceHTML}'>HTML</a>&#160;
+                <a class='standardsButton' href='{$sourceRSS}'>RSS</a>
             </xsl:if>
           </p>
         <hr />
         <!-- AUTHOR INFO -->
-        <h2>Author Information</h2>
+        <a name='appendix-authorinfo'></a>
+        <h3>Appendix B: Author Information</h3>
         <div class='indent'>
           <xsl:apply-templates select='/xep/header/author'/>
         </div>
         <hr />
         <!-- LEGAL NOTICES -->
+        <a name='appendix-legal'></a>
+        <h3>Appendix C: Legal Notices</h3>
         <xsl:apply-templates select='/xep/header/legal'/>
         <hr />
+        <!-- XMPP NOTICE -->
+        <a name='appendix-xmpp'></a>
+        <h3>Appendix D: Relation to XMPP</h3>
+        <p class='indent'>The Extensible Messaging and Presence Protocol (XMPP) is defined in the XMPP Core (RFC 3920) and XMPP IM (RFC 3921) specifications contributed by the XMPP Standards Foundation to the Internet Standards Process, which is managed by the Internet Engineering Task Force in accordance with RFC 2026. Any protocol defined in this document has been developed outside the Internet Standards Process and is to be understood as an extension to XMPP rather than as an evolution, development, or modification of XMPP itself.</p>
+        <hr />
         <!-- DISCUSSION VENUE -->
-        <h2>Discussion Venue</h2>
+        <a name='appendix-discuss'></a>
+        <h3>Appendix E: Discussion Venue</h3>
+        <xsl:variable name='discuss.count' select='count(/xep/header/discuss)'/>
+        <xsl:variable name='discuss.venue' select='count(/xep/header/discuss)'/>
+        <xsl:if test='$discuss.count=1'>
+          <xsl:variable name='discussWeb'>
+            <xsl:text>http://mail.jabber.org/mailman/listinfo/</xsl:text>
+            <xsl:value-of select='/xep/header/discuss'/>
+          </xsl:variable>
+          <xsl:variable name='discussMail'>
+            <xsl:value-of select='/xep/header/discuss'/>
+            <xsl:text>@xmpp.org</xsl:text>
+          </xsl:variable>
+          <p class='indent'>There exists a special venue for discussion related to the technology described in this document: the &lt;<a href='{$discussWeb}'><xsl:value-of select='$discussMail'/></a>&gt; mailing list.</p>
+        </xsl:if>
         <xsl:variable name='Approver' select='/xep/header/approver'/>
         <xsl:choose>
           <xsl:when test='$Approver = "Board"'>
-            <p class='indent'>The preferred venue for discussion of this document is the Standards discussion list: &lt;<a href="http://mail.jabber.org/mailman/listinfo/standards">http://mail.jabber.org/mailman/listinfo/standards</a>&gt;.</p>
-            <p class='indent'>Discussion by the membership of the XSF may also be appropriate (see &lt;<a href="http://mail.jabber.org/mailman/listinfo/members">http://mail.jabber.org/mailman/listinfo/members</a>&gt; for details).</p>
+            <p class='indent'>The primary venue for discussion of XMPP Extension Protocols is the &lt;<a href="http://mail.jabber.org/mailman/listinfo/standards">standards@xmpp.org</a>&gt; discussion list.</p>
+            <p class='indent'>Discussion by the membership of the XSF might also be appropriate (see &lt;<a href="http://mail.jabber.org/mailman/listinfo/members">http://mail.jabber.org/mailman/listinfo/members</a>&gt; for details).</p>
           </xsl:when>
           <xsl:otherwise>
-            <p class='indent'>The preferred venue for discussion of this document is the Standards discussion list: &lt;<a href="http://mail.jabber.org/mailman/listinfo/standards">http://mail.jabber.org/mailman/listinfo/standards</a>&gt;.</p>
+            <p class='indent'>The primary venue for discussion of XMPP Extension Protocols is the &lt;<a href="http://mail.jabber.org/mailman/listinfo/standards">standards@xmpp.org</a>&gt; discussion list.</p>
+            <p class='indent'>Discussion on other xmpp.org discussion lists might also be appropriate; see &lt;<a href='http://xmpp.org/about/discuss.shtml'>http://xmpp.org/about/discuss.shtml</a>&gt; for a complete list.</p>
             <xsl:if test='contains(/xep/header/dependencies,"RFC")'>
-              <p class='indent'>Given that this XMPP Extension Protocol normatively references IETF technologies, discussion on the XSF-IETF list may also be appropriate (see &lt;<a href="http://mail.jabber.org/mailman/listinfo/xsf-ietf">http://mail.jabber.org/mailman/listinfo/xsf-ietf</a>&gt; for details).</p>
+              <p class='indent'>Given that this XMPP Extension Protocol normatively references IETF technologies, discussion on the &lt;<a href="http://mail.jabber.org/mailman/listinfo/xsf-ietf">xsf-ietf@xmpp.org</a>&gt; list might also be appropriate.</p>
             </xsl:if>
           </xsl:otherwise>
         </xsl:choose>
-        <p class='indent'>Errata may be sent to &lt;<a href='mailto:editor@xmpp.org'>editor@xmpp.org</a>&gt;.</p>
-        <!-- XMPP NOTICE AND CONFORMANCE TERMS-->
-        <!-- (we don't put these on Procedural XEPs) -->
-        <xsl:if test='$thetype = "Standards Track" or $thetype = "Historical" or $thetype = "Informational"'>
-          <h2>Relation to XMPP</h2>
-          <p class='indent'>The Extensible Messaging and Presence Protocol (XMPP) is defined in the XMPP Core (RFC 3920) and XMPP IM (RFC 3921) specifications contributed by the XMPP Standards Foundation to the Internet Standards Process, which is managed by the Internet Engineering Task Force in accordance with RFC 2026. Any protocol defined in this document has been developed outside the Internet Standards Process and is to be understood as an extension to XMPP rather than as an evolution, development, or modification of XMPP itself.</p>
-          <h2>Conformance Terms</h2>
-          <p class='indent'>The following keywords as used in this document are to be interpreted as described in <a href='http://www.ietf.org/rfc/rfc2119.txt'>RFC 2119</a>: "MUST", "SHALL", "REQUIRED"; "MUST NOT", "SHALL NOT"; "SHOULD", "RECOMMENDED"; "SHOULD NOT", "NOT RECOMMENDED"; "MAY", "OPTIONAL".</p>
-        </xsl:if>
-        <!-- TABLE OF CONTENTS -->
+        <p class='indent'>Errata can be sent to &lt;<a href='mailto:editor@xmpp.org'>editor@xmpp.org</a>&gt;.</p>
         <hr />
-        <xsl:call-template name='processTOC' />
-        <!-- XEP CONTENTS -->
+        <!-- CONFORMANCE TERMS-->
+        <a name='appendix-conformance'></a>
+        <h3>Appendix F: Requirements Conformance</h3>
+        <p class='indent'>The following requirements keywords as used in this document are to be interpreted as described in <a href='http://www.ietf.org/rfc/rfc2119.txt'>RFC 2119</a>: "MUST", "SHALL", "REQUIRED"; "MUST NOT", "SHALL NOT"; "SHOULD", "RECOMMENDED"; "SHOULD NOT", "NOT RECOMMENDED"; "MAY", "OPTIONAL".</p>
         <hr />
-        <xsl:apply-templates select='/xep/section1'/>
         <!-- NOTES -->
-        <hr />
-        <h2><a name="notes"></a>Notes</h2>
+        <a name="appendix-notes"></a>
+        <h3>Appendix G: Notes</h3>
         <div class='indent'>
           <xsl:apply-templates select='//note' mode='endlist'/>
         </div>
         <!-- REVISION HISTORY -->
         <hr />
-        <h2><a name="revs"></a>Revision History</h2>
+        <a name="appendix-revs"></a>
+        <h3>Appendix H: Revision History</h3>
+          <p>Note: Older versions of this specification might be available at <a href='http://xmpp.org/extensions/attic/'>http://xmpp.org/extensions/attic/</a></p>
           <div class='indent'>
             <xsl:apply-templates select='/xep/header/revision'/>
           </div>
@@ -314,10 +409,16 @@ THE SOFTWARE.
   <xsl:template name='processTOC'>
     <h2>Table of Contents</h2>
     <div class='indent'>
-    <p>
-      <xsl:apply-templates select='//section1' mode='toc'/>
-      <br /><a href="#notes">Notes</a>
-      <br /><a href="#revs">Revision History</a>
+    <p><xsl:apply-templates select='//section1' mode='toc'/></p>
+    <p><a href='#appendices'>Appendices</a>
+      <br />&#160;&#160;&#160;&#160;<a href="#appendix-docinfo">A: Document Information</a>
+      <br />&#160;&#160;&#160;&#160;<a href="#appendix-authorinfo">B: Author Information</a>
+      <br />&#160;&#160;&#160;&#160;<a href="#appendix-legal">C: Legal Notices</a>
+      <br />&#160;&#160;&#160;&#160;<a href="#appendix-xmpp">D: Relation to XMPP</a>
+      <br />&#160;&#160;&#160;&#160;<a href="#appendix-discuss">E: Discussion Venue</a>
+      <br />&#160;&#160;&#160;&#160;<a href="#appendix-conformance">F: Requirements Conformance</a>
+      <br />&#160;&#160;&#160;&#160;<a href="#appendix-notes">G: Notes</a>
+      <br />&#160;&#160;&#160;&#160;<a href="#appendix-revs">H: Revision History</a>
     </p>
     </div>
   </xsl:template>
@@ -379,19 +480,18 @@ THE SOFTWARE.
   </xsl:template>
 
   <xsl:template match='legal'>
-    <h2>Legal Notices</h2>
     <div class='indent'>
-      <h3>Copyright</h3>
+      <h4>Copyright</h4>
       <xsl:apply-templates select='/xep/header/legal/copyright'/>
-      <h3>Permissions</h3>
+      <h4>Permissions</h4>
       <xsl:apply-templates select='/xep/header/legal/permissions'/>
-      <h3>Disclaimer of Warranty</h3>
+      <h4>Disclaimer of Warranty</h4>
       <span style='font-weight: bold'>
         <xsl:apply-templates select='/xep/header/legal/warranty'/>
       </span>
-      <h3>Limitation of Liability</h3>
+      <h4>Limitation of Liability</h4>
       <xsl:apply-templates select='/xep/header/legal/liability'/>
-      <h3>IPR Conformance</h3>
+      <h4>IPR Conformance</h4>
       <xsl:apply-templates select='/xep/header/legal/conformance'/>
     </div>
   </xsl:template>
@@ -756,14 +856,14 @@ THE SOFTWARE.
   <xsl:template match='example'>
     <p class='caption'><a><xsl:attribute name='name'><xsl:text>example-</xsl:text><xsl:number level='any' count='example'/></xsl:attribute></a>Example <xsl:number level='any' count='example'/>.<xsl:text> </xsl:text><xsl:value-of select='@caption'/></p>
     <div class='indent'>
-      <pre><xsl:apply-templates/></pre>
+      <pre class='prettyprint'><xsl:apply-templates/></pre>
     </div>
   </xsl:template>
 
   <xsl:template match='code'>
     <p class='caption'><xsl:value-of select='@caption'/></p>
     <div class='indent'>
-      <pre><xsl:apply-templates/></pre>
+      <pre class='prettyprint'><xsl:apply-templates/></pre>
     </div>
   </xsl:template>
 
@@ -821,6 +921,32 @@ THE SOFTWARE.
       </xsl:if>
       <xsl:apply-templates/>
     </td>
+  </xsl:template>
+
+  <xsl:template match='dl'>
+    <div class='indent'>
+      <dl>
+        <xsl:apply-templates/>
+      </dl>
+    </div>
+  </xsl:template>
+
+  <xsl:template match='di'>
+    <di>
+      <xsl:apply-templates/>
+    </di>
+  </xsl:template>
+
+  <xsl:template match='dt'>
+    <dt>
+      <strong><xsl:apply-templates/></strong>
+    </dt>
+  </xsl:template>
+
+  <xsl:template match='dd'>
+    <dd>
+      <xsl:apply-templates/>
+    </dd>
   </xsl:template>
 
   <xsl:template match='note'>

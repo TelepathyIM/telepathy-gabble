@@ -25,7 +25,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <lib/gibber/gibber-resolver.h>
 #include <loudmouth/loudmouth.h>
 #include <libsoup/soup.h>
 
@@ -59,11 +58,6 @@ enum
   LAST_PROPERTY
 };
 
-/* The 'session' map is keyed by:
- * "<peer's handle>\n<peer's resource>\n<session id>"
- */
-#define SESSION_MAP_KEY_FORMAT "%u\n%s\n%s"
-
 struct _GabbleJingleFactoryPrivate
 {
   GabbleConnection *conn;
@@ -74,7 +68,6 @@ struct _GabbleJingleFactoryPrivate
 
   /* instances of SESSION_MAP_KEY_FORMAT => GabbleJingleSession. */
   GHashTable *sessions;
-  GibberResolver *resolver;
   SoupSession *soup;
 
   gchar *stun_server;
@@ -140,14 +133,15 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
-  priv->resolver = gibber_resolver_get_resolver ();
   priv->relay_http_port = 80;
 }
 
 typedef struct {
+    GabbleJingleFactory *factory;
     gchar *stun_server;
     guint16 stun_port;
     gboolean fallback;
+    GCancellable *cancellable;
 } PendingStunServer;
 
 static void
@@ -155,50 +149,52 @@ pending_stun_server_free (gpointer p)
 {
   PendingStunServer *data = p;
 
+  if (data->factory != NULL)
+    g_object_remove_weak_pointer (G_OBJECT (data->factory),
+        (gpointer)&data->factory);
+
+  g_object_unref (data->cancellable);
   g_free (data->stun_server);
   g_slice_free (PendingStunServer, p);
 }
 
 static void
-stun_server_resolved_cb (GibberResolver *resolver,
-                         GList *entries,
-                         GError *error,
-                         gpointer user_data,
-                         GObject *object)
+stun_server_resolved_cb (GObject *resolver,
+                         GAsyncResult *result,
+                         gpointer user_data)
 {
-  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (object);
   PendingStunServer *data = user_data;
-  GibberResolverAddrInfo *info;
+  GabbleJingleFactory *self = data->factory;
   GError *e = NULL;
   gchar *stun_server;
+  GList *entries;
 
-  if (error != NULL)
-    {
-      DEBUG ("Failed to resolve STUN server %s:%u: %s",
-          data->stun_server, data->stun_port, error->message);
-      return;
-    }
+  if (self != NULL)
+      g_object_weak_unref (G_OBJECT (self),
+          (GWeakNotify)g_cancellable_cancel, data->cancellable);
+
+  entries = g_resolver_lookup_by_name_finish (
+      G_RESOLVER (resolver), result, &e);
 
   if (entries == NULL)
     {
-      DEBUG ("No results for STUN server %s:%u",
-          data->stun_server, data->stun_port);
-      return;
-    }
-
-  info = entries->data;
-
-  if (!gibber_resolver_sockaddr_to_str ((struct sockaddr *) &(info->sockaddr),
-        info->sockaddr_len, &stun_server, NULL, &e))
-    {
-      DEBUG ("Couldn't convert resolved address of %s to string: %s",
-          data->stun_server, e->message);
+      DEBUG ("Failed to resolve STUN server %s:%u: %s",
+          data->stun_server, data->stun_port, e->message);
       g_error_free (e);
-      return;
+      goto out;
     }
+
+  stun_server = g_inet_address_to_string (entries->data);
+  g_resolver_free_addresses (entries);
 
   DEBUG ("Resolved STUN server %s:%u to %s:%u", data->stun_server,
       data->stun_port, stun_server, data->stun_port);
+
+  if (self == NULL)
+    {
+      g_free (stun_server);
+      goto out;
+    }
 
   if (data->fallback)
     {
@@ -212,6 +208,10 @@ stun_server_resolved_cb (GibberResolver *resolver,
       self->priv->stun_server = stun_server;
       self->priv->stun_port = data->stun_port;
     }
+
+out:
+  pending_stun_server_free (data);
+  g_object_unref (resolver);
 }
 
 static void
@@ -220,21 +220,29 @@ take_stun_server (GabbleJingleFactory *self,
                   guint16 stun_port,
                   gboolean fallback)
 {
-  PendingStunServer *data = g_slice_new0 (PendingStunServer);
+  GResolver *resolver;
+  PendingStunServer *data;
 
   if (stun_server == NULL)
     return;
 
+  resolver = g_resolver_get_default ();
+  data = g_slice_new0 (PendingStunServer);
+
   DEBUG ("Resolving %s STUN server %s:%u",
       fallback ? "fallback" : "primary", stun_server, stun_port);
+  data->factory = self;
+  g_object_add_weak_pointer (G_OBJECT (self), (gpointer *) &data->factory);
   data->stun_server = stun_server;
   data->stun_port = stun_port;
   data->fallback = fallback;
 
-  gibber_resolver_addrinfo (self->priv->resolver, stun_server, NULL,
-      AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0,
-      stun_server_resolved_cb, data, pending_stun_server_free,
-      G_OBJECT (self));
+  data->cancellable = g_cancellable_new ();
+  g_object_weak_ref (G_OBJECT (self), (GWeakNotify)g_cancellable_cancel,
+      data->cancellable);
+
+  g_resolver_lookup_by_name_async (resolver, stun_server,
+      data->cancellable, stun_server_resolved_cb, data);
 }
 
 
@@ -671,12 +679,21 @@ connection_status_changed_cb (GabbleConnection *conn,
     }
 }
 
+/* The 'session' map is keyed by:
+ * "<peer's handle>\n<peer's resource>\n<session id>"
+ * or for bare JIDs
+ * "<peer's handle>\n\001\n<session id>"
+ * (\001 is not a valid character in a resource, as per resourceprep).
+ */
+#define SESSION_MAP_KEY_FORMAT "%u\n%s\n%s"
+
 static gchar *
 make_session_map_key (TpHandle peer,
     const gchar *resource,
     const gchar *sid)
 {
-  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, peer, resource, sid);
+  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, peer,
+      resource == NULL ? "\001" : resource, sid);
 }
 
 static gchar *
@@ -724,12 +741,13 @@ ensure_session (GabbleJingleFactory *self,
 
   if (resource == NULL || *resource == '\0')
     {
-      g_set_error (error, GABBLE_XMPP_ERROR,
-          XMPP_ERROR_BAD_REQUEST, "IQ sender '%s' has no resource", from);
-      return NULL;
+      /* if we're called by a SIP gateway, it might be using a bare JID */
+      resource = NULL;
     }
-
-  resource++;
+  else
+    {
+      resource++;
+    }
 
   peer = tp_handle_ensure (contact_repo, from, NULL, error);
 
@@ -839,9 +857,9 @@ create_session (GabbleJingleFactory *fac,
   GabbleJingleSession *sess;
   gboolean local_initiator;
   gchar *sid_, *key;
+  const gchar *resource_sep;
 
   g_assert (peer != 0);
-  g_assert (peer_resource != NULL);
 
   if (sid != NULL)
     {
@@ -868,7 +886,14 @@ create_session (GabbleJingleFactory *fac,
   /* Takes ownership of key */
   g_hash_table_insert (priv->sessions, key, sess);
 
-  DEBUG ("new session (%u, %s, %s) @ %p", peer, peer_resource, sid_, sess);
+  if (peer_resource == NULL)
+    resource_sep = "'";
+  else
+    resource_sep = "";
+
+  DEBUG ("new session (%u, %s%s%s, %s) @ %p", peer, resource_sep,
+      peer_resource == NULL ? "(no resource)" : peer_resource, resource_sep,
+      sid_, sess);
 
   g_free (sid_);
 
@@ -1099,9 +1124,11 @@ on_http_response (SoupSession *soup,
       const gchar *relay_ssltcp_port;
       const gchar *username;
       const gchar *password;
+      gchar *escaped_str;
 
-      DEBUG ("Response from Google:\n====\n%s\n====",
-          msg->response_body->data);
+      escaped_str = g_strescape (msg->response_body->data, "\r\n");
+      DEBUG ("Response from Google:\n====\n%s\n====", escaped_str);
+      g_free (escaped_str);
 
       lines = g_strsplit (msg->response_body->data, "\n", 0);
 

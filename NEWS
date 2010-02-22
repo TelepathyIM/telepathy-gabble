@@ -1,9 +1,100 @@
-telepathy-gabble 0.9.3 (UNRELEASED)
+telepathy-gabble 0.9.6 (UNRELEASED)
 ===================================
 
-Highlights:
+...
+
+telepathy-gabble 0.9.5 (2010-02-19)
+===================================
+
+The "eclectic mandate whittling" release.
+
+Enhancements:
+
+• Update Wocky for improved error-wrangling code (wjt)
 
 Fixes:
+
+• When delaying a stream request until service discovery has finished in order
+  to interpret capabilities, correctly resume the request after service
+  discovery (smcv)
+
+• Calculate capabilities hash correctly when compiled with
+  --enable-is-a-phone (wjt)
+
+• Don't emit a potentially-non-UTF-8 Google relay magic_cookie in debug output
+  (Maiku)
+
+telepathy-gabble 0.9.4 (2010-01-28)
+===================================
+
+The “Samuel Clemens had four cats!” release.
+
+Enhancements:
+
+• Added an --enable-is-a-phone configure switch, which makes Gabble identify
+  itself as a "phone" (rather than a "pc") in XEP-0115 disco replies. (wjt)
+
+• Added preliminary support for the Channel.Type.Call draft. By default,
+  incoming Jingle calls are exposed as Channel.Type.Call if a handler is
+  available; pass --disable-channel-type-call to configure to always expose
+  incoming calls as StreamedMedia. (sjoerd, Maiku)
+
+• One-to-one text channels can now be upgraded to multi-user conferences using
+  the draft Conference interface. This will use a PMUC room on Google's
+  conference server if at least one participant is using a Google Talk client,
+  or an instant room on your own conference server (XEP-0045 §10.1.2)
+  otherwise. (danni)
+
+• Implements XEP-0276, to permit calling contacts whose presence you are not
+  subscribed to (controlled by a simple Gabble-specific connection interface).
+  (smcv)
+
+• Plugins may now specify their own version number, for improved debug logs.
+  (wjt)
+
+• Added a simple sidecar, implemented as a plugin, to support registering to
+  gateways which require nothing more than a username and password. (smcv)
+
+Fixes:
+
+• We can now accept calls from, and place calls to, bare JIDs (that is,
+  contacts with no resource). This is required for calling XEP-0100-compliant
+  SIP gateways. (smcv)
+
+• We now deal correctly with setting a vCard if there's no existing vCard on
+  the server. (fd.o#25987, wjt)
+
+• ignore-ssl-errors is now implied by require-encryption being false. This was
+  a regression from 0.8. (wjt)
+
+• ContactCapabilities are now exposed on the Contacts interface with the
+  correct attribute name. (fd.o#26210, wjt)
+
+
+telepathy-gabble 0.9.3 (2009-12-21)
+===================================
+
+The ``TRANSPORT CHAOS threat level: PANDEMONIUM'' release
+
+Highlights:
+ • Various updates to the OpenSSL backend causing it not to stall when
+   reading multiple ssl records at the same time
+
+Enhancements:
+
+• Gabble now advertises a 'pmuc-v1' capability bundle, telling the Google Mail
+  client that we support being invited to MUCs. (fd.o#22768, jonnylamb)
+
+• Rather than hard-coding a list of SOCKS5 proxy servers to use if the user's
+  own XMPP server does not provide one, Gabble now falls back to a list of
+  proxy servers returned by discoing the newly-set-up proxies.telepathy.im.
+  (fd.o#25304, cassidy)
+
+• Various leaks fixed as pointed out by valgrind (daf, sjoerd)
+
+Fixes:
+
+• Do not re-publish our own vCard if nothing's changed (fd.o#25341, andrunko)
 
 • The default resource is now unique to the machine Gabble is running
   on, rather than being randomly generated for each connection. Fixes
@@ -30,6 +121,14 @@ Fixes:
 
 • Allow sending chat state to contacts whose capabilities we don't know,
   such as invisible Google Talk users (wjt)
+
+• Only disco SOCKS5 proxies when they're needed for a file transfer or tube.
+  (fd.o#21151, cassidy)
+
+• Do not advertise support for file transfers unless a handler is available.
+  (fd.o#25243, smcv)
+
+• Do not re-publish our own vCard if nothing's changed (fd.o#25341, andrunko)
 
 telepathy-gabble 0.9.2 (2009-10-27)
 ===================================

@@ -29,10 +29,10 @@
 #include "bytestream-iface.h"
 #include "muc-channel.h"
 #include "tube-iface.h"
+#include "types.h"
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleTubesChannel GabbleTubesChannel;
 typedef struct _GabbleTubesChannelPrivate GabbleTubesChannelPrivate;
 typedef struct _GabbleTubesChannelClass GabbleTubesChannelClass;
 
@@ -77,7 +77,7 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
     gboolean require_new);
 
 void gabble_tubes_channel_presence_updated (GabbleTubesChannel *chan,
-    TpHandle contact, LmMessage *presence);
+    TpHandle contact, LmMessageNode *presence);
 
 void gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *chan,
     GabbleBytestreamIface *bytestream, LmMessage *msg);

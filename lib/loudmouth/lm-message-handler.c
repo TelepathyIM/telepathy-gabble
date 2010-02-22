@@ -40,7 +40,11 @@ lm_message_handler_unref (LmMessageHandler *handler)
   handler->ref_count--;
 
   if (handler->ref_count == 0)
-    g_slice_free (LmMessageHandler, handler);
+    {
+      if (handler->notify != NULL)
+        handler->notify (handler->user_data);
+      g_slice_free (LmMessageHandler, handler);
+    }
 }
 
 LmMessageHandler *

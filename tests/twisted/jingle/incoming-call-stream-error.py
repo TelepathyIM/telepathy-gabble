@@ -21,7 +21,8 @@ def test(jp, q, bus, conn, stream):
     # Ring ring!
     jt.incoming_call()
     new_channel, new_session_handler = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannel',
+            predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args),
         EventPattern('dbus-signal', signal='NewSessionHandler'))
     assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA, new_channel.args[1])
     assertEquals(cs.HT_CONTACT, new_channel.args[2])

@@ -83,9 +83,31 @@ class JingleProtocol:
         "Creates a <parameter> element"
         return ('parameter', None, {'name': name, 'value': value}, [])
 
-    def TransportGoogleP2P(self):
-        "Creates a <transport> element for Google P2P transport"
-        return ('transport', ns.GOOGLE_P2P, {}, [])
+    def TransportGoogleP2P(self, remote_transports=[]):
+        """
+        Creates a <transport> element for Google P2P transport.
+        If remote_transports is present, and of the form
+        [(host, port, proto, subtype, profile, pref, transtype, user, pwd)]
+        (basically a list of Media_Stream_Handler_Transport without the
+        component number) then it will be converted to xml and added.
+        """
+        candidates = []
+        for i, (host, port, proto, subtype, profile, pref, transtype, user, pwd
+                ) in enumerate(remote_transports):
+            candidates.append(("candidate", None, {
+                "name": "rtp",
+                "address": host,
+                "port": str(port),
+                "protocol": ["udp", "tcp"][proto],
+                "preference": str(pref),
+                "type":  ["local", "stun", "relay"][transtype],
+                "network": "0",
+                "generation": "0",# Increment this yourself if you care.
+                "component": "1", # 1 is rtp, 2 is rtcp
+                "username": user,
+                "password": pwd,
+                }, [])) #NOTE: subtype and profile are unused
+        return ('transport', ns.GOOGLE_P2P, {}, candidates)
 
     def TransportIceUdp(self, remote_transports=[]):
         """
@@ -214,12 +236,19 @@ class GtalkProtocol03(JingleProtocol):
 
         return p
 
-    # Gtalk has only one content, and <content> node is implicit
-    def Content(self, name, creator, senders, children):
+    # Gtalk has only one content, and <content> node is implicit. Also it
+    # never mixes payloads and transport information. It's up to the call of
+    # this function to ensure it never calls it with both mixed
+    def Content(self, name, creator, senders=None,
+            description=None, transport=None):
         # Normally <content> has <description> and <transport>, but we only
-        # use <description>
-        assert len(children) == 2
-        return children[0]
+        # use <description> unless <transport> has candidates.
+        assert description == None or len(transport[3]) == 0
+
+        if description != None:
+            return description
+        else:
+            return transport[3][0]
 
     def Description(self, type, children):
         if type == 'audio':
@@ -233,10 +262,6 @@ class GtalkProtocol03(JingleProtocol):
     def match_jingle_action(self, q, action):
         action = self._action_map(action)
         return q is not None and q.name == 'session' and q['type'] == action
-
-    # Content will never pick up transport, so this can return invalid value
-    def TransportGoogleP2P(self):
-        return None
 
     def _extract_session_id(self, query):
         return query['id']
@@ -295,15 +320,19 @@ class GtalkProtocol04(JingleProtocol):
     def Jingle(self, sid, initiator, action, children):
         # ignore Content and go straight for its children
         if len(children) == 1 and children[0][0] == 'dummy-content':
-            children = [ children[0][3][0], children[0][3][1] ]
+            # Either have just a transport or a description + transport
+            # without candidates
+            children = children[0][3]
 
         action = self._action_map(action)
         return ('session', ns.GOOGLE_SESSION,
             { 'type': action, 'initiator': initiator, 'id': sid }, children)
 
     # hacky: parent Jingle node should just pick up our children
-    def Content(self, name, creator, senders, children):
-        return ('dummy-content', None, {}, children)
+    def Content(self, name, creator, senders=None,
+            description=None, transport=None):
+        return ('dummy-content', None, {},
+            [node for node in [description, transport] if node != None])
 
     def Description(self, type, children):
         return ('description', ns.GOOGLE_SESSION_PHONE, {}, children)
@@ -334,11 +363,13 @@ class JingleProtocol015(JingleProtocol):
             { 'action': action, 'initiator': initiator, 'sid': sid }, children)
 
     # Note: senders weren't mandatory in this dialect
-    def Content(self, name, creator, senders, children):
+    def Content(self, name, creator, senders = None,
+            description=None, transport=None):
         attribs = { 'name': name, 'creator': creator }
         if senders:
             attribs['senders'] = senders
-        return ('content', None, attribs, children)
+        return ('content', None, attribs,
+            [node for node in [description, transport] if node != None])
 
     def Description(self, type, children):
         if type == 'audio':
@@ -390,11 +421,13 @@ class JingleProtocol031(JingleProtocol):
         return ('jingle', ns.JINGLE,
             { 'action': action, 'initiator': initiator, 'sid': sid }, children)
 
-    def Content(self, name, creator, senders, children):
+    def Content(self, name, creator, senders=None,
+            description=None, transport=None):
         if not senders:
             senders = 'both'
         return ('content', None,
-            { 'name': name, 'creator': creator, 'senders': senders }, children)
+            { 'name': name, 'creator': creator, 'senders': senders },
+            [node for node in [description, transport] if node != None])
 
     def Description(self, type, children):
         return ('description', ns.JINGLE_RTP, { 'media': type }, children)
@@ -472,10 +505,11 @@ class JingleTest2:
         self.q = q
         self.jid = jid
         self.peer = peer
+        self.peer_bare_jid = peer.split('/', 1)[0]
         self.stream = stream
         self.sid = 'sess' + str(int(random.random() * 10000))
 
-    def prepare(self, send_presence=True):
+    def prepare(self, send_presence=True, send_roster=True):
         # If we need to override remote caps, feats, codecs or caps,
         # we should do it prior to calling this method.
 
@@ -486,7 +520,7 @@ class JingleTest2:
         # status connected, vCard query
         # If we don't catch the vCard query here, it can trip us up later:
         # http://bugs.freedesktop.org/show_bug.cgi?id=19161
-        self.q.expect_many(
+        events = self.q.expect_many(
                 EventPattern('dbus-signal', signal='StatusChanged',
                     args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED]),
                 EventPattern('stream-authenticated'),
@@ -496,7 +530,24 @@ class JingleTest2:
                     args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
                 EventPattern('stream-iq', to=None, query_ns='vcard-temp',
                     query_name='vCard'),
+                EventPattern('stream-iq', query_ns=ns.ROSTER),
                 )
+
+        # some Jingle tests care about our roster relationship to the peer
+        if send_roster:
+            roster = events[-1]
+
+            roster.stanza['type'] = 'result'
+            item = roster.query.addElement('item')
+            item['jid'] = 'publish@foo.com'
+            item['subscription'] = 'from'
+            item = roster.query.addElement('item')
+            item['jid'] = 'subscribe@foo.com'
+            item['subscription'] = 'to'
+            item = roster.query.addElement('item')
+            item['jid'] = 'publish-subscribe@foo.com'
+            item['subscription'] = 'both'
+            self.stream.send(roster.stanza)
 
         if send_presence:
             self.send_presence_and_caps()
@@ -517,7 +568,7 @@ class JingleTest2:
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)
 
-    def generate_contents(self):
+    def generate_contents(self, transports=[]):
         assert len(self.audio_names + self.video_names) > 0
 
         jp = self.jp
@@ -530,25 +581,27 @@ class JingleTest2:
             assert jp.can_do_video()
             assert self.audio_names
 
+            payload = [jp.PayloadType(name, str(rate), str(id)) for
+                        (name, id, rate) in self.video_codecs ] + \
+                    [ jp.PayloadType(name, str(rate), str(id),
+                        {}, type = "audio" ) for (name, id, rate, )
+                            in self.audio_codecs ]
+
             contents.append(
-                jp.Content('stream0', 'initiator', 'both', [
-                    jp.Description('video', [
-                        jp.PayloadType(name, str(rate), str(id)) for
-                            (name, id, rate) in self.video_codecs ] +
-                        [ jp.PayloadType(name, str(rate), str(id),
-                            {}, type = "audio" ) for (name, id, rate, )
-                                in self.audio_codecs ],
-                        ),
-                    jp.TransportGoogleP2P() ])
+                jp.Content('stream0', 'initiator', 'both',
+                    jp.Description('video', payload),
+                    jp.TransportGoogleP2P(transports))
              )
         else:
             def mk_content(name, media, codecs):
+                payload = [
+                    jp.PayloadType(payload_name, str(rate), str(id)) for
+                    (payload_name, id, rate) in codecs ]
+
                 contents.append(
-                    jp.Content(name, 'initiator', 'both', [
-                        jp.Description(media, [
-                            jp.PayloadType(name, str(rate), str(id)) for
-                            (name, id, rate) in codecs ]),
-                    jp.TransportGoogleP2P() ])
+                    jp.Content(name, 'initiator', 'both',
+                        jp.Description(media, payload),
+                    jp.TransportGoogleP2P(transports))
                 )
 
             for name in self.audio_names:
@@ -605,11 +658,11 @@ class JingleTest2:
         # Remote end finally accepts
         node = jp.SetIq(self.peer, self.jid, [
             jp.Jingle(self.sid, self.peer, 'content-accept', [
-                jp.Content(c['name'], c['creator'], c['senders'], [
+                jp.Content(c['name'], c['creator'], c['senders'],
                     jp.Description(media, [
                         jp.PayloadType(name, str(rate), str(id)) for
                             (name, id, rate) in codecs ]),
-                jp.TransportGoogleP2P() ]) ]) ])
+                jp.TransportGoogleP2P()) ]) ])
         self.stream.send(jp.xml(node))
 
     def terminate(self, reason=None, text=""):
@@ -628,6 +681,17 @@ class JingleTest2:
             jp.Jingle(self.sid, self.peer, 'session-terminate', body) ])
         self.stream.send(jp.xml(iq))
 
+    def remote_candidates(self, name, creator):
+        jp = self.jp
+
+        node = jp.SetIq(self.peer, self.jid,
+            [ jp.Jingle(self.sid, self.peer, 'transport-info',
+                [ jp.Content(name, creator,
+                    transport=jp.TransportGoogleP2P (self.remote_transports))
+                ] )
+            ])
+        self.stream.send(jp.xml(node))
+
     def dbusify_codecs(self, codecs):
         dbussed_codecs = [ (id, name, 0, rate, 0, {} )
                             for (name, id, rate) in codecs ]
@@ -644,6 +708,23 @@ class JingleTest2:
     def get_video_codecs_dbus(self):
         return self.dbusify_codecs(self.video_codecs)
 
+    def dbusify_call_codecs(self, codecs):
+        dbussed_codecs = [ (id, name, rate, 0, {} )
+                            for (name, id, rate) in codecs ]
+        return dbus.Array(dbussed_codecs, signature='(usuua{ss})')
+
+    def dbusify_call_codecs_with_params(self, codecs):
+        dbussed_codecs = [ (id, name, rate, 0, params)
+                            for (name, id, rate, params) in codecs ]
+        return dbus.Array(dbussed_codecs, signature='(usuua{ss})')
+
+    def get_call_audio_codecs_dbus(self):
+        return self.dbusify_call_codecs(self.audio_codecs)
+
+    def get_call_video_codecs_dbus(self):
+        return self.dbusify_call_codecs(self.video_codecs)
+
+
     def get_remote_transports_dbus(self):
         return dbus.Array([
             (dbus.UInt32(1 + i), host, port, proto, subtype,
@@ -652,6 +733,20 @@ class JingleTest2:
                     pref, transtype, user, pwd)
                 in enumerate(self.remote_transports) ],
             signature='(usuussduss)')
+
+    def get_call_remote_transports_dbus(self):
+        return dbus.Array([
+            (1 , host, port,
+                { "Type": transtype,
+                  "Foundation": "",
+                  "Protocol": proto,
+                  "Priority": int((1+i) * 65536),
+                  "Username": user,
+                  "Password": pwd }
+             ) for i, (host, port, proto, subtype, profile,
+                    pref, transtype, user, pwd)
+                in enumerate(self.remote_transports) ],
+            signature='(usqa{sv})')
 
 
 def test_dialects(f, dialects):

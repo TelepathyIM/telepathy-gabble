@@ -6,6 +6,7 @@
 
 #include <glib.h>
 
+#include "src/debug.h"
 #include "src/presence.h"
 #include "src/namespaces.h"
 
@@ -156,6 +157,10 @@ int main (int argc, char **argv)
   g_object_unref (presence);
 
   gabble_capabilities_finalize (NULL);
+
+  /* The capabilities code will have initialized the debugging infrastructure
+   */
+  gabble_debug_free ();
 
   return 0;
 }

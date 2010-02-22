@@ -28,8 +28,11 @@ def worker(jp, q, bus, conn, stream):
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel',
+            predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args),
+        EventPattern('dbus-signal', signal='NewChannels',
+            predicate=lambda e:
+                cs.CHANNEL_TYPE_CONTACT_LIST not in e.args[0][0][1].values()),
         )
     path = ret.value[0]
 
@@ -101,8 +104,8 @@ def worker(jp, q, bus, conn, stream):
 
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'transport-info', [
-            jp.Content('stream1', 'initiator', 'both', [
-                transport]) ]) ])
+            jp.Content('Audio', 'initiator', 'both',
+                transport = transport) ]) ])
     stream.send(jp.xml(node))
 
     candidate_e, result_e =  q.expect_many(
@@ -128,11 +131,11 @@ def worker(jp, q, bus, conn, stream):
     # This is what pidgin does.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'session-accept', [
-            jp.Content('stream1', 'initiator', 'both', [
+            jp.Content('Audio', 'initiator', 'both',
                 jp.Description('audio', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),
-                transport ]) ]) ])
+                transport) ]) ])
     stream.send(jp.xml(node))
 
     candidate_e, result_e = q.expect_many(

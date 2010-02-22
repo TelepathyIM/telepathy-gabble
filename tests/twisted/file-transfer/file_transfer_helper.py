@@ -423,13 +423,6 @@ class SendFileTest(FileTransferTest):
 
         assert data == self.file.data[self.file.offset:]
 
-        # If not all the bytes transferred have been announced using
-        # TransferredBytesChanged, wait for them
-        while self.count < to_receive:
-            self.q.expect('dbus-signal', signal='TransferredBytesChanged')
-
-        assert self.count == to_receive
-
         if self.completed:
             # FileTransferStateChanged has already been received
             waiting = []
@@ -437,6 +430,13 @@ class SendFileTest(FileTransferTest):
             waiting = [EventPattern('dbus-signal', signal='FileTransferStateChanged')]
 
         events = self.bytestream.wait_bytestream_closed(waiting)
+
+        # If not all the bytes transferred have been announced using
+        # TransferredBytesChanged, wait for them
+        while self.count < to_receive:
+            self.q.expect('dbus-signal', signal='TransferredBytesChanged')
+
+        assert self.count == to_receive
 
         if len(waiting) > 1:
             state, reason = events[0].args

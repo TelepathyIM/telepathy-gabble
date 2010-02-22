@@ -33,6 +33,8 @@
 #define QUIRK_PREFIX "\x07"
 /* Gabble 0.7.x with 16 <= x < 29 omits @creator on <content/> */
 #define QUIRK_OMITS_CONTENT_CREATORS "\x07omits-content-creators"
+/* The Google Webmail client doesn't support some features */
+#define QUIRK_GOOGLE_WEBMAIL_CLIENT "\x07google-webmail-client"
 
 /**
  * GabbleCapabilitySet:
@@ -108,11 +110,10 @@ const GabbleCapabilitySet *gabble_capabilities_get_olpc_notify (void);
  */
 #define BUNDLE_VOICE_V1         "voice-v1"
 #define BUNDLE_VIDEO_V1         "video-v1"
+#define BUNDLE_PMUC_V1          "pmuc-v1"
 
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_voice_v1 (void);
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
-
-#define BUNDLE_PMUC_V1          "pmuc-v1"
 
 /*
  * capabilities_fill_cache

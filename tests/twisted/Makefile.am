@@ -13,6 +13,7 @@ TWISTED_TESTS = \
 	caps/receive-jingle.py \
 	caps/trust-thyself.py \
 	caps/tube-caps.py \
+	gateways.py \
 	muc/name-conflict.py \
 	muc/renamed.py \
 	muc/roomlist.py \
@@ -36,6 +37,7 @@ TWISTED_TESTS = \
 	olpc/gadget-publish.py \
 	olpc/gadget-restarted.py \
 	olpc/view-presence.py \
+	presence/decloak.py \
 	presence/initial-contact-presence.py \
 	presence/initial-presence.py \
 	presence/presence.py \
@@ -82,7 +84,9 @@ TWISTED_TESTS = \
 	tubes/request-invalid-dbus-tube.py \
 	tubes/test-get-available-tubes.py \
 	tubes/test-socks5-muc.py \
+	vcard/item-not-found.py \
 	vcard/overlapping-sets.py \
+	vcard/redundant-set.py \
 	vcard/set-set-disconnect.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
@@ -102,6 +106,9 @@ TWISTED_TESTS = \
 	vcard/update-rejected.py \
 	jingle/accept-extra-stream.py \
 	jingle/call-state.py \
+	jingle/call-basics.py \
+	jingle/call-codecoffer.py \
+	jingle/decloak-peer.py \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
@@ -115,6 +122,7 @@ TWISTED_TESTS = \
 	jingle/outgoing-many-streams.py \
 	jingle/payload-types.py \
 	jingle/preload-caps-crash.py \
+	jingle/session-id-collision.py \
 	jingle/stream-handler-error.py \
 	jingle/test-content-adding-removal.py \
 	jingle/test-description-info.py \
@@ -126,6 +134,7 @@ TWISTED_TESTS = \
 	jingle/test-wait-for-caps.py \
 	jingle/test-wait-for-caps-incomplete.py \
 	file-transfer/test-caps-file-transfer.py \
+	file-transfer/test-ibb-too-early.py \
 	file-transfer/test-receive-file-and-close-socket-while-receiving.py \
 	file-transfer/test-receive-file-and-disconnect.py \
 	file-transfer/test-receive-file-and-sender-disconnect-while-pending.py \
@@ -150,8 +159,9 @@ TWISTED_TESTS = \
 	test-fallback-socks5-proxy.py \
 	test-register.py \
 	test-set-status-idempotence.py \
-        test-location.py \
-	pubsub.py
+	test-location.py \
+	pubsub.py \
+	sidecars.py
 
 TESTS =
 
@@ -191,10 +201,25 @@ else
 DEBUGGING_PYBOOL = False
 endif
 
+if ENABLE_PLUGINS
+PLUGINS_ENABLED_PYBOOL = True
+else
+PLUGINS_ENABLED_PYBOOL = False
+endif
+
+if ENABLE_CHANNEL_TYPE_CALL
+CHANNEL_TYPE_CALL_ENABLED_PYBOOL = True
+else
+CHANNEL_TYPE_CALL_ENABLED_PYBOOL = False
+endif
+
 config.py: Makefile
 	$(AM_V_GEN) { \
 		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
+		echo "CLIENT_TYPE = '$(CLIENT_TYPE)'"; \
 		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
+		echo "PLUGINS_ENABLED = $(PLUGINS_ENABLED_PYBOOL)"; \
+		echo "CHANNEL_TYPE_CALL_ENABLED = $(CHANNEL_TYPE_CALL_ENABLED_PYBOOL)"; \
 	} > $@
 
 BUILT_SOURCES = config.py
@@ -202,7 +227,6 @@ BUILT_SOURCES = config.py
 EXTRA_DIST = \
 	$(TWISTED_TESTS) \
 	bytestream.py \
-	config.py \
 	constants.py \
 	gabbletest.py \
 	httptest.py \
@@ -222,13 +246,14 @@ noinst_PROGRAMS = \
 
 telepathy_gabble_debug_SOURCES = \
     main-debug.c \
-    resolver-fake.c \
-    resolver-fake.h
+    test-resolver.c \
+    test-resolver.h
 
 telepathy_gabble_debug_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la \
-    $(top_builddir)/lib/gibber/libgibber.la \
     $(ALL_LIBS)
+
+telepathy_gabble_debug_LDFLAGS = -export-dynamic
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
     @TP_GLIB_CFLAGS@ \

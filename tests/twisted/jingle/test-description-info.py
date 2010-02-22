@@ -60,8 +60,8 @@ def test(q, bus, conn, stream, send_early_description_info=False):
         """
         node = jp.SetIq(jt2.peer, jt2.jid, [
             jp.Jingle(jt2.sid, jt2.peer, 'description-info', [
-                jp.Content('stream1', 'initiator', 'both', [
-                    jp.Description('audio', [ ]) ]) ]) ])
+                jp.Content('stream1', 'initiator', 'both',
+                    jp.Description('audio', [ ])) ]) ])
         stream.send(jp.xml(node))
 
         sync_stream(q, stream)
@@ -166,9 +166,9 @@ def test(q, bus, conn, stream, send_early_description_info=False):
     # error back.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'description-info', [
-            jp.Content(audio_content, 'initiator', 'both', [
+            jp.Content(audio_content, 'initiator', 'both',
                 jp.Description('audio', [
-                    jp.PayloadType('PCMU', '1600', '0') ]) ]) ]) ])
+                    jp.PayloadType('PCMU', '1600', '0') ])) ]) ])
     stream.send(jp.xml(node))
     q.expect('stream-iq', iq_type='error',
         predicate=lambda x: x.stanza['id'] == node[2]['id'])
@@ -182,10 +182,10 @@ def test(q, bus, conn, stream, send_early_description_info=False):
     c = new_codecs[2]
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'description-info', [
-            jp.Content(audio_content, 'initiator', 'both', [
+            jp.Content(audio_content, 'initiator', 'both',
                 jp.Description('audio', [
                     jp.PayloadType(c[0], str(c[2]), str(c[1]), c[3])
-                ]) ]) ]) ])
+                ])) ]) ])
     stream.send(jp.xml(node))
 
     # Gabble should patch its idea of the remote codecs with the update it just

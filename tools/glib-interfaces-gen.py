@@ -13,26 +13,32 @@ class Generator(object):
         self.decls = open(declfile, 'w')
         self.spec = get_by_path(dom, "spec")[0]
 
+    def h(self, code):
+        self.decls.write(code.encode('utf-8'))
+
+    def c(self, code):
+        self.impls.write(code.encode('utf-8'))
+
     def __call__(self):
-        for file in self.decls, self.impls:
-            self.do_header(file)
+        for f in self.h, self.c:
+            self.do_header(f)
         self.do_body()
 
     # Header
-    def do_header(self, file):
-        file.write('/* Generated from: ')
-        file.write(get_descendant_text(get_by_path(self.spec, 'title')))
+    def do_header(self, f):
+        f('/* Generated from: ')
+        f(get_descendant_text(get_by_path(self.spec, 'title')))
         version = get_by_path(self.spec, "version")
         if version:
-            file.write(' version ' + get_descendant_text(version))
-        file.write('\n\n')
+            f(' version ' + get_descendant_text(version))
+        f('\n\n')
         for copyright in get_by_path(self.spec, 'copyright'):
-            file.write(get_descendant_text(copyright))
-            file.write('\n')
-        file.write('\n')
-        file.write(get_descendant_text(get_by_path(self.spec, 'license')))
-        file.write(get_descendant_text(get_by_path(self.spec, 'docstring')))
-        file.write("""
+            f(get_descendant_text(copyright))
+            f('\n')
+        f('\n')
+        f(get_descendant_text(get_by_path(self.spec, 'license')))
+        f(get_descendant_text(get_by_path(self.spec, 'docstring')))
+        f("""
  */
 
 """)
@@ -44,7 +50,7 @@ class Generator(object):
 
     def do_iface(self, iface):
         parent_name = get_by_path(iface, '../@name')
-        self.decls.write("""\
+        self.h("""\
 /**
  * %(IFACE_DEFINE)s:
  *
@@ -56,7 +62,7 @@ class Generator(object):
             parent_name).upper().replace('/', ''),
        'name' : iface.getAttribute('name')})
 
-        self.decls.write("""
+        self.h("""
 /**
  * %(IFACE_QUARK_DEFINE)s:
  *
@@ -74,7 +80,7 @@ GQuark %(iface_quark_func)s (void);
             parent_name).lower().replace('/', ''),
        'name' : iface.getAttribute('name')})
 
-        self.impls.write("""\
+        self.c("""\
 GQuark
 %(iface_quark_func)s (void)
 {
@@ -91,6 +97,22 @@ GQuark
 """ % {'iface_quark_func' : (self.prefix + 'iface_quark_' + \
             parent_name).lower().replace('/', ''),
        'name' : iface.getAttribute('name')})
+
+        for prop in iface.getElementsByTagNameNS(None, 'property'):
+            self.decls.write("""
+/**
+ * %(IFACE_PREFIX)s_%(PROP_UC)s:
+ *
+ * The fully-qualified property name "%(name)s.%(prop)s"
+ */
+#define %(IFACE_PREFIX)s_%(PROP_UC)s \\
+"%(name)s.%(prop)s"
+""" % {'IFACE_PREFIX' : (self.prefix + 'PROP_' + \
+                parent_name).upper().replace('/', ''),
+           'PROP_UC': prop.getAttributeNS(NS_TP, "name-for-bindings").upper(),
+           'name' : iface.getAttribute('name'),
+           'prop' : prop.getAttribute('name'),
+           })
 
 if __name__ == '__main__':
     argv = argv[1:]

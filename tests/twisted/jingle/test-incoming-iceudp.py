@@ -23,15 +23,16 @@ def worker(jp, q, bus, conn, stream):
     # Remote end calls us
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'session-initiate', [
-            jp.Content('stream1', 'initiator', 'both', [
+            jp.Content('stream1', 'initiator', 'both',
                 jp.Description('audio', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportIceUdp() ]) ]) ])
+            jp.TransportIceUdp()) ]) ])
     stream.send(jp.xml(node))
 
     nc, e = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannel',
+            predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args),
         EventPattern('dbus-signal', signal='NewSessionHandler'),
         )
     path = nc.args[0]

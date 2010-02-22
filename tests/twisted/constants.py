@@ -22,6 +22,7 @@ CHANNEL_IFACE_MESSAGES = CHANNEL + ".Interface.Messages"
 CHANNEL_IFACE_PASSWORD = CHANNEL + ".Interface.Password"
 CHANNEL_IFACE_TUBE = CHANNEL + ".Interface.Tube"
 
+CHANNEL_TYPE_CALL = CHANNEL + ".Type.Call.DRAFT"
 CHANNEL_TYPE_CONTACT_LIST = CHANNEL + ".Type.ContactList"
 CHANNEL_TYPE_CONTACT_SEARCH = CHANNEL + ".Type.ContactSearch.DRAFT2"
 CHANNEL_TYPE_TEXT = CHANNEL + ".Type.Text"
@@ -50,6 +51,47 @@ INITIAL_AUDIO = CHANNEL_TYPE_STREAMED_MEDIA + '.InitialAudio'
 INITIAL_VIDEO = CHANNEL_TYPE_STREAMED_MEDIA + '.InitialVideo'
 IMMUTABLE_STREAMS = CHANNEL_TYPE_STREAMED_MEDIA + '.ImmutableStreams'
 
+CALL_INITIAL_AUDIO = CHANNEL_TYPE_CALL + '.InitialAudio'
+CALL_INITIAL_VIDEO = CHANNEL_TYPE_CALL + '.InitialVideo'
+CALL_MUTABLE_CONTENTS = CHANNEL_TYPE_CALL + '.MutableContents'
+
+CALL_CONTENT = 'org.freedesktop.Telepathy.Call.Content.DRAFT'
+CALL_CONTENT_IFACE_MEDIA = \
+    'org.freedesktop.Telepathy.Call.Content.Interface.Media.DRAFT'
+
+CALL_CONTENT_CODECOFFER = \
+    'org.freedesktop.Telepathy.Call.Content.CodecOffer.DRAFT'
+
+CALL_STREAM = 'org.freedesktop.Telepathy.Call.Stream.DRAFT'
+CALL_STREAM_IFACE_MEDIA = \
+    'org.freedesktop.Telepathy.Call.Stream.Interface.Media.DRAFT'
+
+CALL_STREAM_ENDPOINT = 'org.freedesktop.Telepathy.Call.Stream.Endpoint.DRAFT'
+
+CALL_MEDIA_TYPE_AUDIO = 0
+CALL_MEDIA_TYPE_VIDEO = 1
+
+CALL_STREAM_TRANSPORT_RAW_UDP = 0
+CALL_STREAM_TRANSPORT_ICE = 1
+CALL_STREAM_TRANSPORT_GOOGLE = 2
+
+CALL_STATE_UNKNOWN = 0
+CALL_STATE_PENDING_INITIATOR = 1
+CALL_STATE_PENDING_RECEIVER = 2
+CALL_STATE_ACCEPTED = 3
+CALL_STATE_ENDED = 4
+
+CALL_MEMBER_FLAG_RINGING = 1
+CALL_MEMBER_FLAG_HELD = 2
+
+CALL_DISPOSITION_NONE = 0
+CALL_DISPOSITION_EARLY_MEDIA = 1
+CALL_DISPOSITION_INITIAL = 2
+
+CALL_SENDING_STATE_NONE = 0
+CALL_SENDING_STATE_PENDING_SEND = 1
+CALL_SENDING_STATE_SENDING = 2
+
 CONN = "org.freedesktop.Telepathy.Connection"
 CONN_IFACE_AVATARS = CONN + '.Interface.Avatars'
 CONN_IFACE_CAPS = CONN + '.Interface.Capabilities'
@@ -59,6 +101,9 @@ CONN_IFACE_CONTACT_INFO = CONN + ".Interface.ContactInfo.DRAFT"
 CONN_IFACE_SIMPLE_PRESENCE = CONN + '.Interface.SimplePresence'
 CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
 CONN_IFACE_LOCATION = CONN + '.Interface.Location'
+CONN_IFACE_GABBLE_DECLOAK = CONN + '.Interface.Gabble.Decloak'
+
+ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
 
 STREAM_HANDLER = 'org.freedesktop.Telepathy.Media.StreamHandler'
 
@@ -74,6 +119,7 @@ CONNECTION_FAILED = ERROR + '.ConnectionFailed'
 CONNECTION_LOST = ERROR + '.ConnectionLost'
 CANCELLED = ERROR + '.Cancelled'
 DISCONNECTED = ERROR + '.Disconnected'
+REGISTRATION_EXISTS = ERROR + '.RegistrationExists'
 
 UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
 

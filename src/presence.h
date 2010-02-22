@@ -87,6 +87,7 @@ gboolean gabble_presence_has_cap (GabblePresence *presence, const gchar *ns);
 GabbleCapabilitySet *gabble_presence_dup_caps (GabblePresence *presence);
 const GabbleCapabilitySet *gabble_presence_peek_caps (GabblePresence *presence);
 
+gboolean gabble_presence_has_resources (GabblePresence *self);
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
     GabbleCapabilitySetPredicate predicate, gconstpointer user_data);
 
@@ -96,6 +97,9 @@ gboolean gabble_presence_resource_has_caps (GabblePresence *presence,
 
 LmMessage *gabble_presence_as_message (GabblePresence *presence,
     const gchar *to);
+void gabble_presence_add_status_and_vcard (GabblePresence *presence,
+  WockyXmppStanza *stanza);
+
 gchar *gabble_presence_dump (GabblePresence *presence);
 
 gboolean gabble_presence_added_to_view (GabblePresence *presence);
@@ -110,6 +114,11 @@ typedef struct {
 gconstpointer gabble_presence_resource_pick_best_feature (
     GabblePresence *presence,
     const gchar *resource,
+    const GabbleFeatureFallback *table,
+    GabbleCapabilitySetPredicate predicate);
+
+gconstpointer
+gabble_presence_pick_best_feature (GabblePresence *presence,
     const GabbleFeatureFallback *table,
     GabbleCapabilitySetPredicate predicate);
 

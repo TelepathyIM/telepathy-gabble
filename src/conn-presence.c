@@ -23,12 +23,15 @@
 
 #include <string.h>
 
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
+
+#include "extensions/extensions.h"    /* for Decloak */
 
 #include "connection.h"
 #include "debug.h"
@@ -254,7 +257,7 @@ set_own_status_cb (GObject *obj,
       if (base->status == TP_CONNECTION_STATUS_CONNECTED)
         {
           emit_one_presence_update (conn, base->self_handle);
-          retval = _gabble_connection_signal_own_presence (conn, error);
+          retval = _gabble_connection_signal_own_presence (conn, NULL, error);
         }
       else
         {
@@ -354,4 +357,66 @@ void
 conn_presence_iface_init (gpointer g_iface, gpointer iface_data)
 {
   tp_presence_mixin_iface_init (g_iface, iface_data);
+}
+
+static void
+conn_presence_send_directed_presence (
+    GabbleSvcConnectionInterfaceGabbleDecloak *conn,
+    guint contact,
+    gboolean full,
+    DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (conn);
+  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar *jid = tp_handle_inspect (contact_handles, contact);
+  gboolean ok;
+  GError *error = NULL;
+
+  g_return_if_fail (jid != NULL);
+
+  /* We don't strictly respect @full - we'll always send full presence to
+   * people we think ought to be receiving it anyway, because if we didn't,
+   * you could confuse them by sending directed presence that was less
+   * informative than the broadcast presence they already saw. */
+  if (full || gabble_connection_visible_to (self, contact))
+    {
+      ok = _gabble_connection_signal_own_presence (self, jid, &error);
+    }
+  else
+    {
+      ok = gabble_connection_send_capabilities (self, jid, &error);
+    }
+
+  if (ok)
+    {
+      gabble_svc_connection_interface_gabble_decloak_return_from_send_directed_presence (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+}
+
+void
+conn_decloak_emit_requested (GabbleConnection *conn,
+    TpHandle contact,
+    const gchar *reason,
+    gboolean decloaked)
+{
+  gabble_svc_connection_interface_gabble_decloak_emit_decloak_requested (conn,
+      contact, reason, decloaked);
+}
+
+void
+conn_decloak_iface_init (gpointer g_iface,
+    gpointer iface_data)
+{
+#define IMPLEMENT(x) \
+  gabble_svc_connection_interface_gabble_decloak_implement_##x (\
+  g_iface, conn_presence_##x)
+  IMPLEMENT (send_directed_presence);
+#undef IMPLEMENT
 }

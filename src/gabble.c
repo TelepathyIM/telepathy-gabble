@@ -32,6 +32,7 @@
 
 #include "debug.h"
 #include "connection-manager.h"
+#include "plugin-loader.h"
 
 static TpBaseConnectionManager *
 construct_cm (void)
@@ -118,7 +119,9 @@ int
 gabble_main (int argc,
     char **argv)
 {
+  GabblePluginLoader *loader;
   int out;
+
   tp_debug_divert_messages (g_getenv ("GABBLE_LOGFILE"));
 
 #ifdef ENABLE_DEBUG
@@ -140,13 +143,19 @@ gabble_main (int argc,
     tp_debug_set_persistent (TRUE);
 #endif
 
+  loader = gabble_plugin_loader_dup ();
+
   out = tp_run_connection_manager ("telepathy-gabble", VERSION,
       construct_cm, argc, argv);
+
+  g_object_unref (loader);
 
 #ifdef ENABLE_DEBUG
   g_log_set_default_handler (g_log_default_handler, NULL);
   g_object_unref (debug_sender);
 #endif
+
+  wocky_deinit ();
 
   return out;
 }

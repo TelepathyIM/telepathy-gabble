@@ -31,6 +31,8 @@
 #include "connection.h"
 #include "debug.h"
 
+#include "extensions/extensions.h"
+
 G_DEFINE_TYPE(GabbleConnectionManager,
     gabble_connection_manager,
     TP_TYPE_BASE_CONNECTION_MANAGER)
@@ -50,6 +52,8 @@ static void
 gabble_connection_manager_finalize (GObject *object)
 {
   gabble_debug_free ();
+
+  G_OBJECT_CLASS (gabble_connection_manager_parent_class)->finalize (object);
 }
 
 static void
@@ -91,6 +95,7 @@ struct _GabbleParams {
   gchar *alias;
   GStrv fallback_socks5_proxies;
   guint keepalive_interval;
+  gboolean decloak_automatically;
 };
 
 enum {
@@ -115,6 +120,7 @@ enum {
     JABBER_PARAM_ALIAS,
     JABBER_PARAM_FALLBACK_SOCKS5_PROXIES,
     JABBER_PARAM_KEEPALIVE_INTERVAL,
+    JABBER_PARAM_DECLOAK_AUTOMATICALLY,
 
     LAST_JABBER_PARAM
 };
@@ -221,6 +227,11 @@ static TpCMParamSpec jabber_params[] = {
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GUINT_TO_POINTER (30),
     G_STRUCT_OFFSET (GabbleParams, keepalive_interval), NULL, NULL },
 
+  { GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
+    DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER (FALSE),
+    G_STRUCT_OFFSET (GabbleParams, decloak_automatically), NULL, NULL },
+
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -242,6 +253,7 @@ free_params (void *p)
   g_free (params->https_proxy_server);
   g_free (params->fallback_conference_server);
   g_free (params->stun_server);
+  g_free (params->fallback_stun_server);
   g_free (params->alias);
   g_strfreev (params->fallback_socks5_proxies);
 
@@ -289,6 +301,15 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
                        "password",           params->password,
                        NULL);
 
+  /* split up account into username, stream-server and resource */
+  if (!_gabble_connection_set_properties_from_account (conn, params->account,
+        error))
+    {
+      g_object_unref (G_OBJECT (conn));
+      conn = NULL;
+      goto out;
+    }
+
   SET_PROPERTY_IF_PARAM_SET ("connect-server", JABBER_PARAM_SERVER,
                              params->server);
   SET_PROPERTY_IF_PARAM_SET ("resource", JABBER_PARAM_RESOURCE,
@@ -328,14 +349,9 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
       JABBER_PARAM_FALLBACK_SOCKS5_PROXIES, params->fallback_socks5_proxies);
   SET_PROPERTY_IF_PARAM_SET ("keepalive-interval",
       JABBER_PARAM_KEEPALIVE_INTERVAL, params->keepalive_interval);
+  SET_PROPERTY_IF_PARAM_SET ("decloak-automatically",
+      JABBER_PARAM_DECLOAK_AUTOMATICALLY, params->decloak_automatically);
 
-  /* split up account into username, stream-server and resource */
-  if (!_gabble_connection_set_properties_from_account (conn, params->account,
-        error))
-    {
-      g_object_unref (G_OBJECT (conn));
-      conn = NULL;
-    }
-
+out:
   return (TpBaseConnection *) conn;
 }

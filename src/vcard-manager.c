@@ -1008,6 +1008,111 @@ vcard_copy (LmMessageNode *parent, LmMessageNode *src)
     return new;
 }
 
+static gboolean
+vcard_node_changed (GabbleConnection *conn,
+                    LmMessageNode *vcard_node,
+                    GabbleVCardManagerEditInfo *edit)
+{
+  LmMessageNode *node;
+
+  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
+    {
+      /* Google's server only stores N, FN and PHOTO */
+      if (tp_strdiff (edit->element_name, "N") &&
+          tp_strdiff (edit->element_name, "FN") &&
+          tp_strdiff (edit->element_name, "PHOTO"))
+        {
+          DEBUG ("ignoring vcard node %s because this is a Google server",
+              edit->element_name);
+          return FALSE;
+        }
+    }
+
+  if (edit->accept_multiple)
+    {
+      /* we're adding, not replacing, which is always a difference */
+      DEBUG ("vcard node %s to be appended, vcard needs update",
+          edit->element_name);
+      return TRUE;
+    }
+
+  node = lm_message_node_get_child (vcard_node, edit->element_name);
+
+  if (edit->to_del)
+    {
+      /* deleting and any other operation are mutually exclusive */
+      g_assert (edit->to_edit == NULL);
+      g_assert (edit->element_value == NULL);
+
+      if (node != NULL)
+        {
+          DEBUG ("vcard node %s deleted, vcard needs update",
+              edit->element_name);
+          return TRUE;
+        }
+      else
+        {
+          return FALSE;
+        }
+    }
+
+  if (node == NULL)
+    {
+          DEBUG ("vcard node %s added, vcard needs update",
+              edit->element_name);
+          return TRUE;
+    }
+  else
+    {
+      const gchar *node_value = lm_message_node_get_value (node);
+      const gchar *edit_value = edit->element_value;
+
+      /* NULL and "" are the same, as far as XML content goes */
+      if (edit_value == NULL)
+        edit_value = "";
+
+      if (node_value == NULL)
+        node_value = "";
+
+      if (tp_strdiff (node_value, edit_value))
+        {
+          DEBUG ("vcard node %s changed, vcard needs update",
+              edit->element_name);
+          return TRUE;
+        }
+
+      if (edit->to_edit != NULL)
+        {
+          GHashTableIter iter;
+          gpointer k, v;
+
+          g_hash_table_iter_init (&iter, edit->to_edit);
+
+          while (g_hash_table_iter_next (&iter, &k, &v))
+            {
+              LmMessageNode *child = lm_message_node_get_child (node, k);
+
+              node_value = lm_message_node_get_value (child);
+
+              if (v == NULL)
+                v = "";
+
+              if (node_value == NULL)
+                node_value = "";
+
+              if (tp_strdiff (node_value, v))
+                {
+                  DEBUG ("vcard node %s/%s changed, vcard needs update",
+                      edit->element_name, (const gchar *) k);
+                  return TRUE;
+                }
+            }
+        }
+    }
+
+  return FALSE;
+}
+
 static void
 manager_patch_vcard (GabbleVCardManager *self,
                      LmMessageNode *vcard_node)
@@ -1016,12 +1121,29 @@ manager_patch_vcard (GabbleVCardManager *self,
   LmMessage *msg;
   LmMessageNode *patched_vcard;
   GList *li;
+  GSList *edit_link;
+  gboolean vcard_changed = FALSE;
 
   /* Bail out if we don't have outstanding edits to make, or if we already
    * have a set request in progress.
    */
   if (priv->edits == NULL || priv->edit_pipeline_item != NULL)
       return;
+
+  for (edit_link = priv->edits; edit_link != NULL; edit_link = edit_link->next)
+    {
+      if (vcard_node_changed (priv->connection, vcard_node, edit_link->data))
+        {
+          vcard_changed = TRUE;
+          break;
+        }
+    }
+
+  if (!vcard_changed)
+    {
+      DEBUG ("nothing changed, not updating vcard");
+      goto out;
+    }
 
   DEBUG("patching vcard");
 
@@ -1058,6 +1180,7 @@ manager_patch_vcard (GabbleVCardManager *self,
 
   lm_message_unref (msg);
 
+out:
   /* We've applied those, forget about them */
   g_slist_foreach (priv->edits, (GFunc) gabble_vcard_manager_edit_info_free,
       NULL);
@@ -1086,6 +1209,13 @@ suspended_request_timeout_cb (gpointer data)
   return FALSE;
 }
 
+static gboolean
+is_item_not_found (const GError *error)
+{
+  return (error->domain == GABBLE_XMPP_ERROR &&
+      error->code == XMPP_ERROR_ITEM_NOT_FOUND);
+}
+
 /* Called when a GET request in the pipeline has either succeeded or failed. */
 static void
 pipeline_reply_cb (GabbleConnection *conn,
@@ -1111,7 +1241,11 @@ pipeline_reply_cb (GabbleConnection *conn,
 
   entry->pipeline_item = NULL;
 
-  if (error)
+  /* XEP-0054 says that the server MUST return <item-not-found/> if you have no
+   * vCard set, so we should treat that case identically to the server
+   * returning success but with no <vCard/> node.
+   */
+  if (error != NULL && !is_item_not_found (error))
     {
       /* First, handle the error "wait": suspend the request and replay it
        * later */

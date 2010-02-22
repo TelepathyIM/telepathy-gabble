@@ -9,7 +9,7 @@ AC_PREREQ([2.59])
 
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [9])
-m4_define([gabble_micro_version], [2])
+m4_define([gabble_micro_version], [5])
 m4_define([gabble_nano_version], [1])
 
 # Some magic
@@ -112,6 +112,23 @@ AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
+AC_ARG_ENABLE([is-a-phone],
+  AC_HELP_STRING([--enable-is-a-phone],
+    [advertise that we are a phone, not a PC]),
+    [is_a_phone=$enableval], [is_a_phone=no])
+
+if test x$is_a_phone = xyes; then
+  AC_DEFINE(CLIENT_TYPE, ["phone"],
+      [Client type from http://xmpp.org/registrar/disco-categories.html#client])
+  CLIENT_TYPE=phone
+else
+  AC_DEFINE(CLIENT_TYPE, ["pc"],
+      [Client type from http://xmpp.org/registrar/disco-categories.html#client])
+  CLIENT_TYPE=pc
+fi
+
+AC_SUBST(CLIENT_TYPE)
+
 dnl Check for Glib
 PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16, gobject-2.0 >= 2.16, gthread-2.0 >= 2.16])
 
@@ -121,10 +138,36 @@ AC_SUBST(GLIB_LIBS)
 GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
 
+AC_ARG_ENABLE(plugins,
+  AC_HELP_STRING([--enable-plugins],
+                 [enable experimental plugin support]),
+    [enable_plugins=$enableval], [enable_plugins=no])
+
+if test x$enable_plugins = xyes; then
+  AC_DEFINE(ENABLE_PLUGINS, [], [Enable plugins])
+  dnl If we want plugins, we need gmodule
+  PKG_CHECK_MODULES(GMODULE, [gmodule-2.0])
+fi
+
+AC_SUBST(GMODULE_CFLAGS)
+AC_SUBST(GMODULE_LIBS)
+
+AM_CONDITIONAL(ENABLE_PLUGINS, test x$enable_plugins = xyes)
+AC_SUBST(ENABLE_PLUGINS)
+
+AC_ARG_ENABLE(channel-type-call,
+  AC_HELP_STRING([--disable-channel-type-call],
+                 [disable support for the draft Channel.Type.Call]),
+    [enable_channel_type_call=$enableval], [enable_channel_type_call=yes])
+
+if test x$enable_channel_type_call = xyes; then
+  AC_DEFINE(ENABLE_CHANNEL_TYPE_CALL, [], [Enable Channel.Type.Call])
+fi
+
+AM_CONDITIONAL(ENABLE_CHANNEL_TYPE_CALL, test x$enable_channel_type_call = xyes)
+
 dnl Check for D-Bus
-# dbus-glib 0.78 fixed the bug #17329. It is needed for the contact
-# capabilities interface.
-PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.78])
+PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.82])
 
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
@@ -133,29 +176,6 @@ PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.7.37])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)
-
-
-# Needed for hostname resolver
-AC_CHECK_FUNC(res_query, ,
-  [AC_CHECK_LIB(resolv, res_query, [ RESOLV_LIBS="-lresolv" ],
-    [ save_libs="$LIBS"
-      LIBS="-lresolv $LIBS"
-      AC_MSG_CHECKING([for res_query in -lresolv (alternate version)])
-      AC_LINK_IFELSE(
-        [AC_LANG_PROGRAM([[#include <resolv.h>]], [[res_query(0,0,0,0,0)]])],
-        [ AC_MSG_RESULT(yes)
-          LIBS="$save_libs"
-          RESOLV_LIBS="-lresolv"
-        ],
-        [ AC_MSG_RESULT(no)
-          LIBS="$save_libs"
-          AC_CHECK_LIB(bind, res_query,
-            [ RESOLV_LIBS="-lbind" ],
-            [ AC_MSG_ERROR(res_query not found) ] ) ] ) ] )
-  ]
-)
-
-AC_SUBST(RESOLV_LIBS)
 
 dnl Check for code generation tools
 XSLTPROC=
@@ -177,42 +197,11 @@ AC_MSG_RESULT([$TEST_PYTHON])
 AC_SUBST(TEST_PYTHON)
 AM_CONDITIONAL([WANT_TWISTED_TESTS], test false != "$TEST_PYTHON")
 
-# Always build Wocky with GTK doc support as we need it when doing "make check"
 # We have to run Wocky's configure *before* looking for it with PKG_CHECK_MODULES so wocky-uninstalled.pc has been generated
-echo "== Configuring embedded Wocky instance =="
-AS_MKDIR_P(["$ac_top_build_prefix"lib/ext/wocky])
-origdir=`pwd`
 
-AC_ARG_ENABLE(wocky-gtk-doc,
-  AC_HELP_STRING([--enable-wocky-gtk-doc],[compile wocky with gtk-doc enabled]),
-    enable_wocky_gtk_doc=$enableval, enable_wocky_gtk_doc=no )
-
-AC_ARG_WITH([wocky-tls],
-  AS_HELP_STRING([--with-wocky-tls],[tls library (gnutls, openssl, auto)]),
-  [],
-  [with_wocky_tls=auto])
-
-AS_CASE([$with_wocky_tls],
-  [gnutls], [with_wocky_tls=gnutls],
-  [openssl],[with_wocky_tls=openssl],
-  [auto],   [with_wocky_tls=auto],
-  [*],      [AC_MSG_ERROR(unknown ssl library "$with_wocky_tls")])
-
-confcmd="$origdir"/"$srcdir"/lib/ext/wocky/configure
-if test x$enable_wocky_gtk_doc != xno; then
-  confcmd="$confcmd --enable-gtk-doc"
-fi
-if test x$enable_silent_rules != xno; then
-  confcmd="$confcmd --enable-silent-rules"
-fi
-if test x$werror == xno; then
-  confcmd="$confcmd --disable-Werror"
-fi
-confcmd="$confcmd --with-tls=$with_wocky_tls"
-cd "$ac_top_build_prefix"lib/ext/wocky && echo "running $confcmd" &&
-  $confcmd ||
-  AC_MSG_ERROR([Failed to configure embedded Wocky tree])
-cd "$origdir"
+prev_top_build_prefix=$ac_top_build_prefix
+AX_CONFIG_DIR([lib/ext/wocky])
+ac_top_build_prefix=$prev_top_build_prefix
 
 dnl Check for Wocky
 # re-enable once Wocky has been released as a lib
@@ -245,10 +234,15 @@ AC_OUTPUT( Makefile \
            data/Makefile \
            tests/Makefile \
            tools/Makefile \
+           tests/suppressions/Makefile \
            tests/twisted/Makefile \
            tests/twisted/tools/Makefile \
            lib/Makefile \
            lib/ext/Makefile \
            lib/gibber/Makefile \
-           lib/loudmouth/Makefile
+           lib/loudmouth/Makefile \
+           plugins/Makefile \
+           gabble/Makefile \
+           gabble/telepathy-gabble-uninstalled.pc \
+           gabble/telepathy-gabble.pc
 )

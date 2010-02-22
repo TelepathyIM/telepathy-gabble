@@ -15,6 +15,7 @@ class JingleTest:
         self.stream = stream
         self.local_jid = local_jid
         self.remote_jid = remote_jid
+        self.remote_bare_jid = remote_jid.split('/', 1)[0]
         self.session_id = 'sess' + str(int(random.random() * 10000))
         self.google_mode = False
 
@@ -190,11 +191,11 @@ class JingleTest:
 
         iq, jingle = self._jingle_stanza('session-accept')
 
-        jingle.addChild(self.create_content_node('stream1', 'audio',
+        jingle.addChild(self.create_content_node('Audio', 'audio',
             self.audio_codecs))
 
         if with_video:
-            jingle.addChild(self.create_content_node('stream2', 'video',
+            jingle.addChild(self.create_content_node('Video', 'video',
                 self.video_codecs))
 
         self.stream.send(iq.toXml())

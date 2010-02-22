@@ -1,0 +1,210 @@
+# Gabble leaks
+{
+  we leak one default resource hash per process
+  Memcheck:Leak
+  ...
+  fun:g_compute_checksum_for_data
+  fun:sha1_hex
+  fun:gabble_connection_constructed
+}
+
+{
+  Test resolver leaks the records that were added
+  Memcheck:Leak
+  ...
+  fun:test_resolver_add_A
+}
+
+# Glib type registration one-time leaks
+{
+  g_type_init_with_debug_flags leaks one-time per registered type
+  Memcheck:Leak
+   ...
+  fun:g_type_init_with_debug_flags
+}
+
+{
+   g_type_register_fundamental, same story
+   Memcheck:Leak
+   ...
+   fun:g_type_register_fundamental
+}
+
+{
+  Various mixins set type qdata, types stay alive
+  Memcheck:Leak
+  ...
+  fun:g_type_set_qdata
+}
+
+{
+  Information about static interface lives forever
+  Memcheck:Leak
+  ...
+  fun:g_type_add_interface_static
+}
+
+{
+  Type prerequisites
+  Memcheck:Leak
+  ...
+  fun:g_type_interface_add_prerequisite
+}
+
+{
+  Various memory is never freed when first initializing a type class
+  Memcheck:Leak
+  ...
+  fun:g_type_class_ref
+}
+
+# Glib mainloop one time leaks
+{
+  Default main context stays alive an keeps an array around for pending fds
+  Memcheck:Leak
+  fun:malloc
+  fun:g_malloc
+  fun:g_main_context_iterate
+}
+
+{
+  Default main context stays alive an keeps an array for pending dispatches
+  Memcheck:Leak
+  ...
+  fun:g_ptr_array_add
+  fun:g_main_context_check
+  fun:g_main_context_iterate
+}
+
+{
+   Global hashtable of signal handlers, memory allocated when resized
+   Memcheck:Leak
+   fun:calloc
+   fun:g_malloc0
+   fun:g_hash_table_remove_internal
+   fun:g_signal_handlers_destroy
+}
+
+{
+  g_main_loop_run constructs a GStaticPrivate GMainDispatch
+  Memcheck:Leak
+  ...
+  fun:get_dispatch
+}
+
+# glib one-time initialisaton of various bits
+{
+  Random seed initialization
+  Memcheck:Leak
+  ...
+  fun:g_rand_new
+  fun:g_random_int_range
+}
+
+{
+  GDataSet has a global hashtable that leaks per process
+  Memcheck:Leak
+  ...
+  fun:g_data_initialize
+}
+
+{
+  GIO has a static mapping to various connection factories
+  Memcheck:Leak
+  ...
+  fun:g_socket_connection_factory_register_type
+}
+
+{
+  GLib has a static copy of the userdir
+  Memcheck:Leak
+  ...
+  fun:g_init_user_config_dir
+}
+
+{
+   Caching of the tmp location
+   Memcheck:Leak
+   ...
+   fun:g_get_any_init_do
+}
+
+{
+  thread init causes g_get_language_name to cache stuff
+  Memcheck:Leak
+  ...
+  fun:g_get_language_names
+}
+
+{
+   Thread initialisation
+   Memcheck:Leak
+   ...
+   fun:g_private_new_posix_impl
+}
+
+{
+   Thread initialisation
+   Memcheck:Leak
+   ...
+   fun:g_thread_init_glib
+}
+
+# telepathy-glib leaks the dbus connection, which causes dbus to have some
+# stuff around on exit...
+{
+  the subtree that stores objects is reallocated in _register_g_object
+  Memcheck:Leak
+  ...
+  fun:dbus_g_connection_register_g_object
+}
+
+{
+  As we leak a connection, the corresponding dataslots bookkeeping is leaked
+  Memcheck:Leak
+  ...
+  fun:dbus_realloc
+  fun:_dbus_data_slot_allocator_alloc
+  fun:tp_dbus_daemon_constructor
+}
+
+{
+  As we leak a connection, the corresponding dataslots bookkeeping is leaked
+  Memcheck:Leak
+  ...
+  fun:dbus_realloc
+  fun:_dbus_data_slot_list_set
+  fun:dbus_connection_set_data
+  fun:tp_dbus_daemon_constructor
+}
+
+# dbus-glib type registration one-time leaks
+{
+  dbus-glib specialized GTypes are permanent
+  Memcheck:Leak
+  ...
+  fun:lookup_or_register_specialized
+}
+
+{
+  dbus-glib object type information leaks
+  Memcheck:Leak
+  ...
+  fun:dbus_g_object_type_install_info
+}
+
+# misc library one-time leaks
+{
+  global gnutls data
+  Memcheck:Leak
+  ...
+  fun:gnutls_global_init
+}
+
+{
+  selinux, we just don't know
+  Memcheck:Leak
+  fun:malloc
+  fun:getdelim
+  obj:/lib/libselinux.so.1
+}

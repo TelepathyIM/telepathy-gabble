@@ -173,6 +173,12 @@ gabble_presence_peek_caps (GabblePresence *presence)
   return presence->priv->cap_set;
 }
 
+gboolean
+gabble_presence_has_resources (GabblePresence *self)
+{
+  return (self->priv->resources != NULL);
+}
+
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,
@@ -465,13 +471,59 @@ OUT:
   return ret;
 }
 
+void
+gabble_presence_add_status_and_vcard (GabblePresence *presence,
+  WockyXmppStanza *stanza)
+{
+  WockyXmppNode *vcard_node;
+
+  switch (presence->status)
+    {
+    case GABBLE_PRESENCE_AVAILABLE:
+    case GABBLE_PRESENCE_OFFLINE:
+    case GABBLE_PRESENCE_HIDDEN:
+      break;
+    case GABBLE_PRESENCE_AWAY:
+      wocky_xmpp_node_add_child_with_content (stanza->node, "show",
+          JABBER_PRESENCE_SHOW_AWAY);
+      break;
+    case GABBLE_PRESENCE_CHAT:
+      wocky_xmpp_node_add_child_with_content (stanza->node, "show",
+          JABBER_PRESENCE_SHOW_CHAT);
+      break;
+    case GABBLE_PRESENCE_DND:
+      wocky_xmpp_node_add_child_with_content (stanza->node, "show",
+          JABBER_PRESENCE_SHOW_DND);
+      break;
+    case GABBLE_PRESENCE_XA:
+      wocky_xmpp_node_add_child_with_content (stanza->node, "show",
+          JABBER_PRESENCE_SHOW_XA);
+      break;
+    default:
+      g_critical ("%s: Unexpected Telepathy presence type", G_STRFUNC);
+      break;
+    }
+
+  if (presence->status_message)
+    wocky_xmpp_node_add_child_with_content (stanza->node, "status",
+        presence->status_message);
+
+  vcard_node = wocky_xmpp_node_add_child_ns (stanza->node, "x",
+        NS_VCARD_TEMP_UPDATE);
+
+  if (presence->avatar_sha1 != NULL)
+    {
+      wocky_xmpp_node_add_child_with_content (vcard_node, "photo",
+        presence->avatar_sha1);
+    }
+}
+
 LmMessage *
 gabble_presence_as_message (GabblePresence *presence,
                             const gchar *to)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   LmMessage *message;
-  LmMessageNode *node, *subnode;
   LmMessageSubType subtype;
   Resource *res = priv->resources->data; /* pick first resource */
 
@@ -484,47 +536,17 @@ gabble_presence_as_message (GabblePresence *presence,
 
   message = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_PRESENCE,
               subtype);
-  node = lm_message_get_node (message);
 
-  switch (presence->status)
-    {
-    case GABBLE_PRESENCE_AVAILABLE:
-    case GABBLE_PRESENCE_OFFLINE:
-    case GABBLE_PRESENCE_HIDDEN:
-      break;
-    case GABBLE_PRESENCE_AWAY:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_AWAY);
-      break;
-    case GABBLE_PRESENCE_CHAT:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_CHAT);
-      break;
-    case GABBLE_PRESENCE_DND:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_DND);
-      break;
-    case GABBLE_PRESENCE_XA:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_XA);
-      break;
-    default:
-      g_critical ("%s: Unexpected Telepathy presence type", G_STRFUNC);
-      break;
-    }
-
-  if (presence->status_message)
-    lm_message_node_add_child (node, "status", presence->status_message);
+  gabble_presence_add_status_and_vcard (presence, WOCKY_XMPP_STANZA (message));
 
   if (res->priority)
     {
       gchar *priority = g_strdup_printf ("%d", res->priority);
+      LmMessageNode *node;
+
+      node = lm_message_get_node (message);
       lm_message_node_add_child (node, "priority", priority);
       g_free (priority);
-    }
-
-  subnode = lm_message_node_add_child (node, "x", "");
-  lm_message_node_set_attribute (subnode, "xmlns", NS_VCARD_TEMP_UPDATE);
-  /* NULL means we make no particular assertion about the avatar. */
-  if (presence->avatar_sha1 != NULL)
-    {
-      lm_message_node_add_child (subnode, "photo", presence->avatar_sha1);
     }
 
   return message;
@@ -653,6 +675,29 @@ gabble_presence_resource_pick_best_feature (GabblePresence *presence,
   for (row = table; row->result != NULL; row++)
     {
       if (row->considered && predicate (res->cap_set, row->check_data))
+        {
+          return row->result;
+        }
+    }
+
+  return NULL;
+}
+
+gconstpointer
+gabble_presence_pick_best_feature (GabblePresence *presence,
+    const GabbleFeatureFallback *table,
+    GabbleCapabilitySetPredicate predicate)
+{
+  const GabbleFeatureFallback *row;
+
+  g_return_val_if_fail (presence != NULL, NULL);
+  g_return_val_if_fail (predicate != NULL, NULL);
+  g_return_val_if_fail (table != NULL, NULL);
+
+  for (row = table; row->result != NULL; row++)
+    {
+      if (row->considered && predicate (presence->priv->cap_set,
+            row->check_data))
         {
           return row->result;
         }

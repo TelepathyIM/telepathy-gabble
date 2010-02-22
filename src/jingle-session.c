@@ -349,7 +349,6 @@ gabble_jingle_session_constructed (GObject *object)
 
   g_assert (priv->conn != NULL);
   g_assert (self->peer != 0);
-  g_assert (priv->peer_resource != NULL);
   g_assert (priv->sid != NULL);
 
   tp_handle_ref (contact_repo, self->peer);
@@ -360,8 +359,16 @@ gabble_jingle_session_constructed (GObject *object)
    * should be two variants: one taking handle + resource, and another taking a
    * full JID; the other fields could be filled in here.
    */
-  priv->peer_jid = g_strdup_printf ("%s/%s",
-      tp_handle_inspect (contact_repo, self->peer), priv->peer_resource);
+  if (priv->peer_resource == NULL)
+    {
+      priv->peer_jid = g_strdup (tp_handle_inspect (contact_repo, self->peer));
+    }
+  else
+    {
+      priv->peer_jid = g_strdup_printf ("%s/%s",
+          tp_handle_inspect (contact_repo, self->peer),
+          priv->peer_resource);
+    }
 
   if (priv->local_initiator)
     priv->initiator = gabble_connection_get_full_jid (priv->conn);
@@ -426,7 +433,8 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
   g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
   param_spec = g_param_spec_string ("peer-resource", "Session peer's resource",
-      "The resource of the contact with whom this session communicates.",
+      "The resource of the contact with whom this session communicates, "
+      "or NULL if communicating with a bare JID",
       NULL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
@@ -631,6 +639,7 @@ lookup_content (GabbleJingleSession *sess,
           priv->conn->presence_cache, sess->peer);
 
       if (creator == NULL && presence != NULL &&
+          priv->peer_resource != NULL &&
           gabble_presence_resource_has_caps (presence, priv->peer_resource,
               gabble_capability_set_predicate_has,
               QUIRK_OMITS_CONTENT_CREATORS))
@@ -759,7 +768,8 @@ create_content (GabbleJingleSession *sess, GType content_type,
   GabbleJingleContent *c;
   GHashTable *contents;
 
-  DEBUG ("session creating new content type, conn == %p, jf == %p", priv->conn, priv->conn->jingle_factory);
+  DEBUG ("session creating new content name %s, type %d, conn %p, jf %p",
+    name, type, priv->conn, priv->conn->jingle_factory);
 
   /* FIXME: media-type is introduced by GabbleJingleMediaRTP, not by the
    * superclass, so this call is unsafe in the general case */
@@ -1812,6 +1822,8 @@ static void
 try_session_initiate_or_accept (GabbleJingleSession *sess)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessage *msg;
   LmMessageNode *sess_node;
   gboolean contents_ready = TRUE;
@@ -1830,6 +1842,18 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
           DEBUG ("session is in state %u, won't try to initiate", priv->state);
           return;
         }
+
+      if (!priv->locally_accepted)
+        {
+          DEBUG ("session not locally accepted yet, not initiating");
+          return;
+        }
+
+      /* send directed presence (including our own caps, avatar etc.) to
+       * the peer, if we aren't already visible to them */
+      if (!gabble_connection_visible_to (priv->conn, sess->peer))
+        _gabble_connection_signal_own_presence (priv->conn,
+            tp_handle_inspect (contact_repo, sess->peer), NULL);
 
       action = JINGLE_ACTION_SESSION_INITIATE;
       new_state = JS_STATE_PENDING_INITIATE_SENT;
@@ -2108,24 +2132,31 @@ gabble_jingle_session_remove_content (GabbleJingleSession *sess,
 }
 
 GabbleJingleContent *
-gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mtype,
-    const gchar *content_ns, const gchar *transport_ns)
+gabble_jingle_session_add_content (GabbleJingleSession *sess,
+    JingleMediaType mtype,
+    const gchar *name,
+    const gchar *content_ns,
+    const gchar *transport_ns)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c;
   GType content_type;
-  gchar *name = NULL;
   GHashTable *contents = priv->local_initiator ? priv->initiator_contents
       : priv->responder_contents;
   guint id = g_hash_table_size (contents) + 1;
+  gchar *cname = NULL;
 
-  do
+  if (name == NULL || *name == '\0')
+    name = (mtype == JINGLE_MEDIA_TYPE_AUDIO ?  "Audio" : "Video");
+
+  cname = g_strdup (name);
+
+  while (g_hash_table_lookup (priv->initiator_contents, cname) != NULL
+      || g_hash_table_lookup (priv->responder_contents, cname) != NULL)
     {
-      g_free (name);
-      name = g_strdup_printf ("stream%d", id++);
+      g_free (cname);
+      cname = g_strdup_printf ("%s_%d", name, id++);
     }
-  while (g_hash_table_lookup (priv->initiator_contents, name) != NULL
-      && g_hash_table_lookup (priv->responder_contents, name) != NULL);
 
   content_type = gabble_jingle_factory_lookup_content_type (
       priv->conn->jingle_factory, content_ns);
@@ -2133,12 +2164,12 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess, JingleMediaType mt
   g_assert (content_type != 0);
 
   c = create_content (sess, content_type, mtype,
-      content_ns, transport_ns, name, NULL, NULL);
+      content_ns, transport_ns, cname, NULL, NULL);
 
   /* The new content better have ended up in the set we thought it would... */
-  g_assert (g_hash_table_lookup (contents, name) != NULL);
+  g_assert (g_hash_table_lookup (contents, cname) != NULL);
 
-  g_free (name);
+  g_free (cname);
 
   return c;
 }

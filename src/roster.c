@@ -1553,6 +1553,7 @@ got_roster_iq (GabbleRoster *roster,
            * from them, we know they're offline. Let clients know that.
            */
           conn_presence_emit_presence_update (priv->conn, members);
+          g_array_free (members, TRUE);
         }
 
       tp_intset_destroy (pub_add);

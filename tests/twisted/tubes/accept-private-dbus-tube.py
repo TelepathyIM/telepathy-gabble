@@ -10,13 +10,15 @@ import tubetestutil as t
 
 from twisted.words.xish import domish, xpath
 
+last_tube_id = 69
+
 def contact_offer_dbus_tube(bytestream, tube_id):
     iq, si = bytestream.create_si_offer(ns.TUBES)
 
     tube = si.addElement((ns.TUBES, 'tube'))
     tube['type'] = 'dbus'
     tube['service'] = 'com.example.TestCase2'
-    tube['id'] = tube_id
+    tube['id'] = str(tube_id)
     parameters = tube.addElement((None, 'parameters'))
     parameter = parameters.addElement((None, 'parameter'))
     parameter['type'] = 'str'
@@ -26,6 +28,8 @@ def contact_offer_dbus_tube(bytestream, tube_id):
     bytestream.stream.send(iq)
 
 def test(q, bus, conn, stream, bytestream_cls, access_control):
+    global last_tube_id
+
     t.check_conn_properties(q, conn)
 
     conn.Connect()
@@ -85,7 +89,8 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
     bytestream = bytestream_cls(stream, q, 'beta', bob_full_jid,
         'test@localhost/Reource', True)
 
-    contact_offer_dbus_tube(bytestream, '69')
+    last_tube_id += 1
+    contact_offer_dbus_tube(bytestream, last_tube_id)
 
     # tubes channel is created
     event = q.expect('dbus-signal', signal='NewChannel')
@@ -106,7 +111,7 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
     parameters = event.args[4]
     state = event.args[5]
 
-    assert id == 69
+    assertEquals (last_tube_id, id)
     initiator_jid = conn.InspectHandles(1, [initiator])[0]
     assert initiator_jid == 'bob@localhost'
     assert type == cs.TUBE_TYPE_DBUS
@@ -125,7 +130,8 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
 
     # Init the bytestream
     events, _ = bytestream.open_bytestream([EventPattern('dbus-return', method='AcceptDBusTube')],
-        [EventPattern('dbus-signal', signal='TubeStateChanged', args=[69, 2])])
+        [EventPattern('dbus-signal', signal='TubeStateChanged',
+        args=[last_tube_id, 2])])
 
     return_event = events[0]
     address = return_event.value[0]
@@ -135,7 +141,8 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
     bytestream = bytestream_cls(stream, q, 'gamma', bob_full_jid,
         self_full_jid, True)
 
-    contact_offer_dbus_tube(bytestream, '70')
+    last_tube_id += 1
+    contact_offer_dbus_tube(bytestream, last_tube_id)
 
     e = q.expect('dbus-signal', signal='NewChannels')
     channels = e.args[0]
@@ -173,11 +180,8 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
     # accept the tube (new API)
     call_async(q, dbus_tube_iface, 'Accept', access_control)
 
-    # Init the bytestream
-    events, state_event = bytestream.open_bytestream(
-            [EventPattern('stream-iq', iq_type='result', query_ns=ns.SI),
-                EventPattern('dbus-return', method='Accept')],
-            [EventPattern('dbus-signal', signal='TubeChannelStateChanged')])
+    events = q.expect_many (EventPattern('stream-iq', iq_type='result',
+        query_ns=ns.SI), EventPattern('dbus-return', method='Accept'))
 
     iq_event = events[0]
     bytestream.check_si_reply(iq_event.stanza)
@@ -187,6 +191,12 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
     return_event = events[1]
     addr = return_event.value[0]
     assert len(addr) > 0
+
+    # Open the bytestream
+    _, state_event = bytestream.open_bytestream([],
+            [EventPattern('dbus-signal',
+                signal='TubeChannelStateChanged',
+                path=path)])
 
     state_event = state_event[0]
     assert state_event.args[0] == cs.TUBE_STATE_OPEN

@@ -91,16 +91,23 @@ const GabbleCapabilitySet *gabble_presence_cache_peek_own_caps (
 void gabble_presence_cache_really_remove (GabblePresenceCache *cache,
     TpHandle handle);
 
+LmHandlerResult
+gabble_presence_parse_presence_message (GabblePresenceCache *cache,
+    TpHandle handle,
+    const gchar *from,
+    LmMessage *message);
+
 void gabble_presence_cache_contacts_added_to_olpc_view (
     GabblePresenceCache *cache, TpHandleSet *handles);
 
 void gabble_presence_cache_contacts_removed_from_olpc_view (
     GabblePresenceCache *cache, TpHandleSet *handles);
 
-gboolean gabble_presence_cache_caps_pending (GabblePresenceCache *cache,
+gboolean gabble_presence_cache_is_unsure (GabblePresenceCache *cache,
     TpHandle handle);
 
-gboolean gabble_presence_cache_is_unsure (GabblePresenceCache *cache);
+gboolean gabble_presence_cache_request_decloaking (GabblePresenceCache *self,
+    TpHandle handle, const gchar *reason);
 
 void gabble_presence_cache_update_location (GabblePresenceCache *cache,
     TpHandle handle, GHashTable *location);

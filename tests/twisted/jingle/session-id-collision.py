@@ -5,6 +5,7 @@ sid.
 """
 
 from jingletest2 import JingleTest2, test_all_dialects
+import constants as cs
 
 def test(jp, q, bus, conn, stream):
     jt1 = JingleTest2(jp, conn, q, stream, 'test@localhost',
@@ -20,12 +21,14 @@ def test(jp, q, bus, conn, stream):
     jt2.sid = '1'
 
     jt1.incoming_call()
-    q.expect('dbus-signal', signal='NewChannel')
+    q.expect('dbus-signal', signal='NewChannel',
+        predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args)
 
     # If Gabble confuses the two sessions, it'll NAK the IQ rather than
     # realising this is a new call.
     jt2.incoming_call()
-    q.expect('dbus-signal', signal='NewChannel')
+    q.expect('dbus-signal', signal='NewChannel',
+        predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args)
 
     # On the other hand, if the same person calls twice with the same sid,
     # Gabble _should_ NAK the second s-i.

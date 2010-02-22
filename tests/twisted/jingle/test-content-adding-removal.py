@@ -127,7 +127,7 @@ def test(jp, q, bus, conn, stream, peer_removes_final_content):
         # session-terminate.
         node = jp.SetIq(jt.peer, jt.jid, [
             jp.Jingle(jt.sid, jt.peer, 'content-remove', [
-                jp.Content(c['name'], c['creator'], c['senders'], []) ]) ])
+                jp.Content(c['name'], c['creator'], c['senders']) ]) ])
         stream.send(jp.xml(node))
     else:
         # The Telepathy client removes the second stream; Gabble should

@@ -661,6 +661,9 @@ gabble_media_stream_dispose (GObject *object)
   g_object_unref (priv->content);
   priv->content = NULL;
 
+  g_free (self->name);
+  self->name = NULL;
+
   if (G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose (object);
 }
@@ -1043,6 +1046,8 @@ pass_local_codecs (GabbleMediaStream *stream,
 
       DEBUG ("adding codec %s (%u %u %u)", c->name, c->id, c->clockrate, c->channels);
       li = g_list_append (li, c);
+      g_free (name);
+      g_hash_table_unref (params);
     }
 
   return jingle_media_rtp_set_local_codecs (
@@ -1372,6 +1377,8 @@ new_remote_candidates_cb (GabbleJingleContent *content,
           G_MAXUINT);
 
       g_free (candidate_id);
+      g_value_unset (&transport);
+      g_ptr_array_free (transports, TRUE);
 
       g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
     }

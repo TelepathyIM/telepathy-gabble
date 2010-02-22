@@ -45,28 +45,9 @@ G_BEGIN_DECLS
 /* Default parameters for optional parameters */
 #define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT           443
 #define GABBLE_PARAMS_DEFAULT_STUN_PORT                  3478
-#define GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER       "stun.collabora.co.uk"
-/* List of public SOCKS5 proxies:
- * http://coccinella.im/servers/servers_by_proxy_bytestreams.html */
-#define GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES             \
-    { "proxy.jabber.org", "proxy.jabberfr.org",\
-      "proxy65.rooyee.biz", "proxy.jabbim.cz",\
-      "proxy.911910.cn",\
-      "proxy.downtempo.de",\
-      "proxy.im.flosoft.biz",\
-      "proxy.jabber.bluendo.com", "proxy.jabber.dk", "proxy.jabber.freenet.de",\
-      "proxy.jabber.minus273.org",\
-      "proxy.jabber.planetteamspeak.com", "proxy.jabber.tf-network.de",\
-      "proxy.jabjab.de", "proxy.jabster.pl",\
-      "proxy.ubuntu-jabber.de", "proxy.ubuntu-jabber.net",\
-      "proxy65.unstable.nl", "proxy.verdammung.org", "proxy.vke.ru",\
-      "proxy.vodka-pomme.net", "proxy.jabbernet.eu",\
-      NULL }
+#define GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER       "stun.telepathy.im"
+#define GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES             { NULL }
 
-/* These proxies appeared to be the same as proxy.jabbernet.eu
-    "proxy.jabberchat.eu", "proxy.shady.nl", "proxy.nedbsd.be",\
-    "proxy.nedbsd.eu", "proxy.nedbsd.nl", "proxy.4business.nl"\
-*/
 
 /* order must match array of statuses in conn-presence.c */
 /* in increasing order of presence */
@@ -202,6 +183,13 @@ struct _GabbleConnection {
     WockyPepService *pep_olpc_current_act;
     WockyPepService *pep_olpc_act_props;
 
+    /* Sidecars */
+    /* gchar *interface → GabbleSidecar */
+    GHashTable *sidecars;
+
+    /* gchar *interface → GList<DBusGMethodInvocation> */
+    GHashTable *pending_sidecars;
+
     GabbleConnectionPrivate *priv;
 };
 
@@ -235,6 +223,8 @@ GType gabble_connection_get_type (void);
 
 gchar *gabble_connection_get_full_jid (GabbleConnection *conn);
 
+WockyPorter *gabble_connection_get_porter (GabbleConnection *conn);
+
 gboolean _gabble_connection_set_properties_from_account (
     GabbleConnection *conn, const gchar *account, GError **error);
 gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg,
@@ -251,7 +241,7 @@ const char *_gabble_connection_find_conference_server (GabbleConnection *);
 gchar *gabble_connection_get_canonical_room_name (GabbleConnection *conn,
     const gchar *jid);
 gboolean _gabble_connection_signal_own_presence (GabbleConnection *,
-    GError **);
+    const gchar *to, GError **);
 
 void gabble_connection_ensure_capabilities (GabbleConnection *self,
     const GabbleCapabilitySet *ensured);
@@ -259,6 +249,15 @@ void gabble_connection_ensure_capabilities (GabbleConnection *self,
 gboolean gabble_connection_send_presence (GabbleConnection *conn,
     LmMessageSubType sub_type, const gchar *contact, const gchar *status,
     GError **error);
+
+gboolean gabble_connection_visible_to (GabbleConnection *self,
+    TpHandle recipient);
+
+gboolean gabble_connection_send_capabilities (GabbleConnection *self,
+    const gchar *recipient, GError **error);
+
+gboolean gabble_connection_request_decloak (GabbleConnection *self,
+    const gchar *to, const gchar *reason, GError **error);
 
 /* extern only for the benefit of the unit tests */
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,

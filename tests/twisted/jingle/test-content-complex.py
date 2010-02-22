@@ -99,11 +99,11 @@ def worker(jp, q, bus, conn, stream):
     # Remote end tries to create a content we can't handle
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
-            jp.Content('bogus', 'initiator', 'both', [
+            jp.Content('bogus', 'initiator', 'both',
                 jp.Description('hologram', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
+            jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
     # In older Jingle, this is a separate namespace, which isn't
@@ -125,11 +125,11 @@ def worker(jp, q, bus, conn, stream):
     # Remote end then tries to create a content with a name it's already used
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
-            jp.Content(jt2.audio_names[0], 'initiator', 'both', [
+            jp.Content(jt2.audio_names[0], 'initiator', 'both',
                 jp.Description('audio', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
+            jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
     # Gabble should return error (content already exists)
@@ -164,7 +164,7 @@ def worker(jp, q, bus, conn, stream):
     # Remote end rejects the first stream we tried to add.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-reject', [
-            jp.Content(c['name'], c['creator'], c['senders'], []) ]) ])
+            jp.Content(c['name'], c['creator'], c['senders']) ]) ])
     stream.send(jp.xml(node))
 
     # Gabble removes the stream
@@ -175,11 +175,11 @@ def worker(jp, q, bus, conn, stream):
     # just added
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
-            jp.Content(d['name'], 'initiator', 'both', [
+            jp.Content(d['name'], 'initiator', 'both',
                 jp.Description('audio', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
+            jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
     # Because stream names are namespaced by creator, Gabble should be okay
@@ -193,7 +193,7 @@ def worker(jp, q, bus, conn, stream):
     # it tried to add.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-remove', [
-            jp.Content(d['name'], 'initiator', d['senders'], []) ]) ])
+            jp.Content(d['name'], 'initiator', d['senders']) ]) ])
     stream.send(jp.xml(node))
 
     q.expect_many(
@@ -211,11 +211,11 @@ def worker(jp, q, bus, conn, stream):
     #    called 'foo' existed any more.
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-accept', [
-            jp.Content(d['name'], d['creator'], d['senders'], [
+            jp.Content(d['name'], d['creator'], d['senders'],
                 jp.Description('video', [
                     jp.PayloadType(name, str(rate), str(id)) for
                         (name, id, rate) in jt2.audio_codecs ]),
-            jp.TransportGoogleP2P() ]) ]) ])
+            jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
     # We get remote codecs
@@ -233,7 +233,7 @@ def worker(jp, q, bus, conn, stream):
     # ...but before it's acked the peer sends its own content-remove...
     node = jp.SetIq(jt2.peer, jt2.jid, [
         jp.Jingle(jt2.sid, jt2.peer, 'content-remove', [
-            jp.Content(c['name'], c['creator'], c['senders'], []) ]) ])
+            jp.Content(c['name'], c['creator'], c['senders']) ]) ])
     stream.send(jp.xml(node))
 
     # ...and we don't want Gabble to break when that happens.

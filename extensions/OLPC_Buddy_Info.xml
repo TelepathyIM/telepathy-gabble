@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   <interface name="org.laptop.Telepathy.BuddyInfo">
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
 
-    <method name="SetProperties">
+    <method name="SetProperties" tp:name-for-bindings="Set_Properties">
       <arg direction="in" name="properties" type="a{sv}">
         <tp:docstring>
           A dictionary mapping information names to the desired values.
@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <method name="GetProperties">
+    <method name="GetProperties" tp:name-for-bindings="Get_Properties">
       <arg direction="in" name="contact" type="u">
         <tp:docstring>
           An integer handle for the contact to request his properties for
@@ -59,7 +59,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <signal name="PropertiesChanged">
+    <signal name="PropertiesChanged" tp:name-for-bindings="Properties_Changed">
       <arg name="contact" type="u">
         <tp:docstring>
           An integer handle representing the contact
@@ -89,7 +89,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       <tp:member type="u" tp:type="Room_Handle" name="room"/>
     </tp:struct>
 
-    <method name="SetActivities">
+    <method name="SetActivities" tp:name-for-bindings="Set_Activities">
       <arg direction="in" name="activities" type="a(su)" tp:type="Activity[]">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of structs containing:
@@ -108,7 +108,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <method name="GetActivities">
+    <method name="GetActivities" tp:name-for-bindings="Get_Activities">
       <arg direction="in" name="contact" type="u">
         <tp:docstring>
           An integer handle for the contact whose activities are to be returned
@@ -132,7 +132,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <signal name="ActivitiesChanged">
+    <signal name="ActivitiesChanged" tp:name-for-bindings="Activities_Changed">
       <arg name="contact" type="u">
         <tp:docstring>
           An integer handle representing the contact
@@ -153,7 +153,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:docstring>
     </signal>
 
-    <method name="SetCurrentActivity">
+    <method name="SetCurrentActivity"
+        tp:name-for-bindings="Set_Current_Activity">
       <arg direction="in" name="activity" type="s">
         <tp:docstring>
           The identifier of the activity, or the empty string if there is no
@@ -175,7 +176,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <method name="GetCurrentActivity">
+    <method name="GetCurrentActivity"
+        tp:name-for-bindings="Get_Current_Activity">
       <arg direction="in" name="contact" type="u">
         <tp:docstring>
           An integer handle for the contact whose current activity is to be
@@ -201,7 +203,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <signal name="CurrentActivityChanged">
+    <signal name="CurrentActivityChanged"
+        tp:name-for-bindings="Current_Activity_Changed">
       <arg name="contact" type="u">
         <tp:docstring>
           An integer handle representing the contact

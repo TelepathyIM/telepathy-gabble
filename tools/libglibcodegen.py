@@ -23,14 +23,13 @@ please make any changes there.
 
 from libtpcodegen import NS_TP, \
                          Signature, \
-                         camelcase_to_lower, \
-                         camelcase_to_upper, \
                          cmp_by_name, \
                          escape_as_identifier, \
                          get_by_path, \
                          get_descendant_text, \
                          get_docstring, \
-                         xml_escape
+                         xml_escape, \
+                         get_deprecated
 
 def dbus_gutils_wincaps_to_uscore(s):
     """Bug-for-bug compatible Python port of _dbus_gutils_wincaps_to_uscore

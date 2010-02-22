@@ -3,7 +3,7 @@
 from sys import argv, stdout, stderr
 import xml.dom.minidom
 
-from libglibcodegen import NS_TP, camelcase_to_upper, get_docstring, \
+from libglibcodegen import NS_TP, get_docstring, \
         get_descendant_text, get_by_path
 
 class Generator(object):
@@ -16,21 +16,24 @@ class Generator(object):
         self.do_body()
         self.do_footer()
 
+    def write(self, code):
+        stdout.write(code.encode('utf-8'))
+
     # Header
     def do_header(self):
-        stdout.write('/* Generated from ')
-        stdout.write(get_descendant_text(get_by_path(self.spec, 'title')))
+        self.write('/* Generated from ')
+        self.write(get_descendant_text(get_by_path(self.spec, 'title')))
         version = get_by_path(self.spec, "version")
         if version:
-            stdout.write(', version ' + get_descendant_text(version))
-        stdout.write('\n\n')
+            self.write(', version ' + get_descendant_text(version))
+        self.write('\n\n')
         for copyright in get_by_path(self.spec, 'copyright'):
-            stdout.write(get_descendant_text(copyright))
-            stdout.write('\n')
-        stdout.write(get_descendant_text(get_by_path(self.spec, 'license')))
-        stdout.write('\n')
-        stdout.write(get_descendant_text(get_by_path(self.spec, 'docstring')))
-        stdout.write("""
+            self.write(get_descendant_text(copyright))
+            self.write('\n')
+        self.write(get_descendant_text(get_by_path(self.spec, 'license')))
+        self.write('\n')
+        self.write(get_descendant_text(get_by_path(self.spec, 'docstring')))
+        self.write("""
  */
 
 #ifdef __cplusplus
@@ -51,28 +54,28 @@ extern "C" {
         value_prefix = flags.getAttribute('singular') or \
                        flags.getAttribute('value-prefix') or \
                        flags.getAttribute('name')
-        stdout.write("""\
+        self.write("""\
 /**
  *
 %s:
 """ % (self.prefix + name).replace('_', ''))
         for flag in get_by_path(flags, 'flag'):
             self.do_gtkdoc(flag, value_prefix)
-        stdout.write(' *\n')
+        self.write(' *\n')
         docstrings = get_by_path(flags, 'docstring')
         if docstrings:
-            stdout.write("""\
+            self.write("""\
  * <![CDATA[%s]]>
  *
 """ % get_descendant_text(docstrings).replace('\n', ' '))
-        stdout.write("""\
+        self.write("""\
  * Bitfield/set of flags generated from the Telepathy specification.
  */
 typedef enum {
 """)
         for flag in get_by_path(flags, 'flag'):
             self.do_val(flag, value_prefix)
-        stdout.write("""\
+        self.write("""\
 } %s;
 
 """ % (self.prefix + name).replace('_', ''))
@@ -84,7 +87,7 @@ typedef enum {
                        enum.getAttribute('name')
         name_plural = enum.getAttribute('plural') or \
                       enum.getAttribute('name') + 's'
-        stdout.write("""\
+        self.write("""\
 /**
  *
 %s:
@@ -92,21 +95,21 @@ typedef enum {
         vals = get_by_path(enum, 'enumvalue')
         for val in vals:
             self.do_gtkdoc(val, value_prefix)
-        stdout.write(' *\n')
+        self.write(' *\n')
         docstrings = get_by_path(enum, 'docstring')
         if docstrings:
-            stdout.write("""\
+            self.write("""\
  * <![CDATA[%s]]>
  *
 """ % get_descendant_text(docstrings).replace('\n', ' '))
-        stdout.write("""\
+        self.write("""\
  * Bitfield/set of flags generated from the Telepathy specification.
  */
 typedef enum {
 """)
         for val in vals:
             self.do_val(val, value_prefix)
-        stdout.write("""\
+        self.write("""\
 } %(mixed-name)s;
 
 /**
@@ -127,20 +130,20 @@ typedef enum {
                 (suffix or name)).upper()
         assert not (name and suffix) or name == suffix, \
                 'Flag/enumvalue name %s != suffix %s' % (name, suffix)
-        stdout.write('    %s = %s,\n' % (use_name, val.getAttribute('value')))
+        self.write('    %s = %s,\n' % (use_name, val.getAttribute('value')))
 
     def do_gtkdoc(self, node, value_prefix):
-        stdout.write(' * @')
-        stdout.write((self.prefix + value_prefix + '_' +
+        self.write(' * @')
+        self.write((self.prefix + value_prefix + '_' +
             node.getAttribute('suffix')).upper())
-        stdout.write(': <![CDATA[')
+        self.write(': <![CDATA[')
         docstring = get_by_path(node, 'docstring')
-        stdout.write(get_descendant_text(docstring).replace('\n', ' '))
-        stdout.write(']]>\n')
+        self.write(get_descendant_text(docstring).replace('\n', ' '))
+        self.write(']]>\n')
 
     # Footer
     def do_footer(self):
-        stdout.write("""
+        self.write("""
 #ifdef __cplusplus
 }
 #endif

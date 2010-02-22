@@ -104,10 +104,15 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
   p->channels = channels;
 
   if (params != NULL)
+    {
+      g_hash_table_ref (params);
       p->params = params;
+    }
   else
+    {
       p->params = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
           g_free);
+    }
 
   return p;
 }
@@ -868,6 +873,7 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
       if (!compare_codecs (priv->local_codecs, codecs, &changed, &err))
         {
           DEBUG ("codec update was illegal: %s", err->message);
+          jingle_media_rtp_free_codecs (codecs);
           g_propagate_error (error, err);
           return FALSE;
         }
@@ -936,4 +942,10 @@ GList *
 gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self)
 {
   return self->priv->remote_codecs;
+}
+
+GList *
+gabble_jingle_media_rtp_get_local_codecs (GabbleJingleMediaRtp *self)
+{
+  return self->priv->local_codecs;
 }

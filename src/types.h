@@ -42,6 +42,7 @@ typedef struct _GabbleRequestPipeline GabbleRequestPipeline;
 typedef struct _GabbleOlpcView GabbleOlpcView;
 typedef struct _GabbleOlpcGadgetManager GabbleOlpcGadgetManager;
 
+typedef struct _GabbleTubesChannel GabbleTubesChannel;
 
 typedef struct _GabbleJingleFactory GabbleJingleFactory;
 typedef struct _GabbleJingleSession GabbleJingleSession;

@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   <interface name="org.laptop.Telepathy.Channel.Interface.View">
   <tp:requires interface="org.freedesktop.Telepathy.Channel"/>
 
-    <signal name="ActivitiesChanged">
+    <signal name="ActivitiesChanged" tp:name-for-bindings="Activities_Changed">
       <arg name="added" type="a(su)" tp:type="Activity[]">
         <tp:docstring>
           Room handles of the added activities
@@ -35,7 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:docstring>
     </signal>
 
-    <signal name="BuddiesChanged">
+    <signal name="BuddiesChanged" tp:name-for-bindings="Buddies_Changed">
       <arg name="added" type="au">
         <tp:docstring>
           Handles of the added buddies

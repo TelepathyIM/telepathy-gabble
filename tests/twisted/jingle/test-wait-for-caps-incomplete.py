@@ -50,7 +50,8 @@ def test(q, bus, conn, stream):
         [EventPattern('dbus-error', method='RequestStreams')])
 
     # RequestStreams should now return NotAvailable
-    assert before_events[0].error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
+    assert before_events[0].error.get_dbus_name() == cs.NOT_AVAILABLE, \
+            before_events[0].error
 
 if __name__ == '__main__':
     exec_test(test, timeout=10)

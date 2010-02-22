@@ -1,7 +1,7 @@
 if WANT_TWISTED_TESTS
 CHECKTWISTED = twisted
 endif
-SUBDIRS = $(CHECKTWISTED)
+SUBDIRS = $(CHECKTWISTED) suppressions
 
 noinst_PROGRAMS = \
 	test-base64 \
@@ -11,7 +11,8 @@ noinst_PROGRAMS = \
 	test-handles \
 	test-jid-decode \
 	test-parse-message \
-	test-presence
+	test-presence \
+	test-tp-error-from-wocky
 
 LDADD = $(top_builddir)/src/libgabble-convenience.la
 
@@ -24,7 +25,7 @@ TESTS = $(noinst_PROGRAMS)
 
 TESTS_ENVIRONMENT = G_DEBUG=fatal-warnings,fatal-criticals
 
-check-valgrind:
+check-valgrind: $(TESTS)
 	G_SLICE=always-malloc \
 	G_DEBUG=gc-friendly \
 	$(MAKE) \
@@ -32,6 +33,10 @@ check-valgrind:
 		libtool --mode=execute valgrind \
 			--leak-check=full \
 			--show-reachable=no \
+			--gen-suppressions=all \
+			--num-callers=20 \
+			--suppressions=@abs_top_srcdir@/tests/suppressions/gabble.supp \
+			--suppressions=@abs_top_srcdir@/tests/suppressions/tp-glib.supp \
 			--error-exitcode=1" \
 		check-TESTS
 
@@ -43,7 +48,10 @@ check_c_sources = \
 	test-presence.c \
 	test-jid-decode.c \
 	test-handles.c \
-	test-parse-message.c
+	test-parse-message.c \
+	tp-error-from-wocky.c
+
+test_tp_error_from_wocky_SOURCES = tp-error-from-wocky.c
 
 include $(top_srcdir)/tools/check-coding-style.mk
 check-local: check-coding-style

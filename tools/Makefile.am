@@ -9,32 +9,24 @@ EXTRA_DIST = \
     glib-gtypes-generator.py \
     glib-interfaces-gen.py \
     glib-signals-marshal-gen.py \
-    identity.xsl \
     lcov.am \
     libglibcodegen.py \
     libtpcodegen.py \
     telepathy.am \
-    xep.xsl
+    xincludator.py
 
 CLEANFILES = *.pyc *.pyo
 
 all: $(EXTRA_DIST)
 
 libglibcodegen.py: libtpcodegen.py
-	test -e $@
+	test -e $<
 	$(AM_V_GEN)touch $@
 
 glib-ginterface-gen.py glib-gtypes-generator.py glib-interfaces-gen.py \
 glib-signals-marshal-gen.py c-constants-gen.py: %: libglibcodegen.py
-	test -e $@
+	test -e $<
 	$(AM_V_GEN)touch $@
-
-maintainer-update-from-xmpp.org:
-	set -e; \
-	uri=svn://svn.xmpp.org:7938/xmpp/trunk/extensions/xep.xsl; \
-	svn info $$uri; \
-	svn cat $$uri > xep.xsl.tmp
-	mv xep.xsl.tmp xep.xsl
 
 TELEPATHY_GLIB_SRCDIR = $(top_srcdir)/../telepathy-glib
 maintainer-update-from-telepathy-glib:

@@ -21,6 +21,8 @@
 #ifndef __GABBLE_ERROR_H__
 #define __GABBLE_ERROR_H__
 
+#include <gabble/gabble.h>
+
 #include <glib.h>
 #include <loudmouth/loudmouth.h>
 
@@ -91,5 +93,7 @@ LmMessageNode *gabble_xmpp_error_to_node (GabbleXmppError error,
 const gchar *gabble_xmpp_error_string (GabbleXmppError error);
 const gchar *gabble_xmpp_error_description (GabbleXmppError error);
 GError *gabble_message_get_xmpp_error (LmMessage *msg);
+
+GabbleXmppErrorType gabble_xmpp_error_type_to_enum (const gchar *error_type);
 
 #endif /* __GABBLE_ERROR_H__ */

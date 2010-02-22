@@ -26,24 +26,25 @@ REQUEST_ANONYMOUS_AND_ADD = 2 # RequestChannel(HandleTypeNone, 0);
 REQUEST_NONYMOUS = 3 # RequestChannel(HandleTypeContact, h);
                      # RequestStreams(h, ...)
 
-def create(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, CREATE)
+def create(jp, q, bus, conn, stream, peer='foo@bar.com/Res'):
+    worker(jp, q, bus, conn, stream, CREATE, peer)
 
-def request_anonymous(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS)
+def request_anonymous(jp, q, bus, conn, stream, peer='publish@foo.com/Res'):
+    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS, peer)
 
-def request_anonymous_and_add(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS_AND_ADD)
+def request_anonymous_and_add(jp, q, bus, conn, stream,
+        peer='publish-subscribe@foo.com/Res'):
+    worker(jp, q, bus, conn, stream, REQUEST_ANONYMOUS_AND_ADD, peer)
 
-def request_nonymous(jp, q, bus, conn, stream):
-    worker(jp, q, bus, conn, stream, REQUEST_NONYMOUS)
+def request_nonymous(jp, q, bus, conn, stream, peer='subscribe@foo.com/Res'):
+    worker(jp, q, bus, conn, stream, REQUEST_NONYMOUS, peer)
 
-def worker(jp, q, bus, conn, stream, variant):
-    jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
-    jt2.prepare()
+def worker(jp, q, bus, conn, stream, variant, peer):
+    jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', peer)
+    jt2.prepare(send_presence=True, send_roster=True)
 
     self_handle = conn.GetSelfHandle()
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    remote_handle = conn.RequestHandles(1, [jt2.peer])[0]
 
     if variant == REQUEST_NONYMOUS:
         path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
@@ -52,15 +53,18 @@ def worker(jp, q, bus, conn, stream, variant):
         path = conn.Requests.CreateChannel({
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-            cs.TARGET_HANDLE: handle,
+            cs.TARGET_HANDLE: remote_handle,
             })[0]
     else:
         path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
             cs.HT_NONE, 0, True)
 
     old_sig, new_sig = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel',
+            predicate=lambda e: cs.CHANNEL_TYPE_CONTACT_LIST not in e.args),
+        EventPattern('dbus-signal', signal='NewChannels',
+            predicate=lambda e:
+                cs.CHANNEL_TYPE_CONTACT_LIST not in e.args[0][0][1].values()),
         )
 
     if variant == REQUEST_NONYMOUS or variant == CREATE:
@@ -81,7 +85,7 @@ def worker(jp, q, bus, conn, stream, variant):
     if variant == REQUEST_NONYMOUS or variant == CREATE:
         assertEquals(remote_handle, emitted_props[cs.TARGET_HANDLE])
         assertEquals(cs.HT_CONTACT, emitted_props[cs.TARGET_HANDLE_TYPE])
-        assertEquals('foo@bar.com', emitted_props[cs.TARGET_ID])
+        assertEquals(jt2.peer_bare_jid, emitted_props[cs.TARGET_ID])
     else:
         assertEquals(0, emitted_props[cs.TARGET_HANDLE])
         assertEquals(cs.HT_NONE, emitted_props[cs.TARGET_HANDLE_TYPE])
@@ -103,7 +107,7 @@ def worker(jp, q, bus, conn, stream, variant):
     if variant == REQUEST_NONYMOUS or variant == CREATE:
         assertEquals(remote_handle, channel_props['TargetHandle'])
         assertEquals(cs.HT_CONTACT, channel_props['TargetHandleType'])
-        assertEquals('foo@bar.com', channel_props['TargetID'])
+        assertEquals(jt2.peer_bare_jid, channel_props['TargetID'])
         assertEquals((cs.HT_CONTACT, remote_handle), chan.GetHandle())
     else:
         assertEquals(0, channel_props['TargetHandle'])
@@ -200,8 +204,27 @@ def worker(jp, q, bus, conn, stream, variant):
                       cs.GC_REASON_INVITED]),
             )
     else:
+        forbidden = []
+
+        if peer.split('/', 1)[0] in (
+                'publish@foo.com', 'publish-subscribe@foo.com'):
+            forbidden = [EventPattern('stream-presence')]
+            q.forbid_events(forbidden)
+        else:
+            # we're calling someone not on our roster, so we'll send directed
+            # presence first
+            presence = q.expect('stream-presence')
+            assert (xpath.queryForNodes('/presence/c', presence.stanza)
+                    is not None)
+            assert (xpath.queryForNodes(
+                '/presence/x[@xmlns="vcard-temp:x:update"]', presence.stanza)
+                is not None)
+
         session_initiate = q.expect('stream-iq',
             predicate=jp.action_predicate('session-initiate'))
+
+        if forbidden:
+            q.unforbid_events(forbidden)
 
     jt2.parse_session_initiate(session_initiate.query)
     stream.send(jp.xml(jp.ResultIq('test@localhost', session_initiate.stanza,
@@ -269,6 +292,7 @@ def rccs(q, bus, conn, stream):
     rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS,
         'RequestableChannelClasses')
 
+    # Test Channel.Type.StreamedMedia
     media_classes = [ rcc for rcc in rccs
         if rcc[0][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA ]
 
@@ -278,11 +302,45 @@ def rccs(q, bus, conn, stream):
 
     assertEquals(cs.HT_CONTACT, fixed[cs.TARGET_HANDLE_TYPE])
 
-    assertContains(cs.TARGET_HANDLE, allowed)
-    assertContains(cs.TARGET_ID, allowed)
+    expected_allowed = [
+        cs.TARGET_ID, cs.TARGET_HANDLE,
+        cs.INITIAL_VIDEO, cs.INITIAL_AUDIO
+    ]
+
+    allowed.sort()
+    expected_allowed.sort()
+    assertEquals(expected_allowed, allowed)
+
+    # Test Channel.Type.Call
+    media_classes = [ rcc for rcc in rccs
+        if rcc[0][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CALL ]
+    assertLength(1, media_classes)
+
+    fixed, allowed = media_classes[0]
+
+    assertEquals(cs.HT_CONTACT, fixed[cs.TARGET_HANDLE_TYPE])
+
+    expected_allowed = [
+        cs.TARGET_ID, cs.TARGET_HANDLE,
+        cs.CALL_INITIAL_VIDEO, cs.CALL_INITIAL_AUDIO,
+        cs.CALL_MUTABLE_CONTENTS
+    ]
+
+    allowed.sort()
+    expected_allowed.sort()
+    assertEquals(expected_allowed, allowed)
 
 if __name__ == '__main__':
     exec_test(rccs)
+    test_all_dialects(create)
     test_all_dialects(request_anonymous)
     test_all_dialects(request_anonymous_and_add)
     test_all_dialects(request_nonymous)
+    test_all_dialects(lambda j, q, b, c, s:
+            create(j, q, b, c, s, peer='foo@gw.bar.com'))
+    test_all_dialects(lambda j, q, b, c, s:
+            request_anonymous(j, q, b, c, s, peer='foo@gw.bar.com'))
+    test_all_dialects(lambda j, q, b, c, s:
+            request_anonymous_and_add(j, q, b, c, s, peer='foo@gw.bar.com'))
+    test_all_dialects(lambda j, q, b, c, s:
+            request_nonymous(j, q, b, c, s, peer='foo@gw.bar.com'))

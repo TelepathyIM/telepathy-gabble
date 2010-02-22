@@ -536,13 +536,13 @@ _insert_edit_info (GSList *edits,
       g_free, g_free);
   for (p = field_params; *p != NULL; ++p)
     {
-      // params should be in the format type=foo
-      gchar *delim = strchr(*p, '=');
+      /* params should be in the format type=foo */
+      gchar *delim = strchr (*p, '=');
       if (!delim)
         continue;
 
       g_hash_table_insert (edit_info->to_edit,
-          g_ascii_strup(delim + 1, -1),
+          g_ascii_strup (delim + 1, -1),
           NULL);
     }
 

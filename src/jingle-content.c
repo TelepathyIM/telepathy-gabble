@@ -959,12 +959,18 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 
   priv->senders = senders;
 
-  msg = gabble_jingle_session_new_message (c->session,
-      JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
-  gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
-  gabble_jingle_session_send (c->session, msg, NULL, NULL);
+  /* only signal content modification if the content has been sent
+   * to the peer already. */
+  if (priv->state >= JINGLE_CONTENT_STATE_SENT)
+    {
+      msg = gabble_jingle_session_new_message (c->session,
+          JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
+      gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
+      gabble_jingle_session_send (c->session, msg, NULL, NULL);
 
-  /* FIXME: actually check whether remote end accepts our content-modify */
+      /* FIXME: actually check whether remote end accepts our content-modify */
+    }
+
   return TRUE;
 }
 

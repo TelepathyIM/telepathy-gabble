@@ -27,31 +27,36 @@ def test(q, bus, conn, stream):
     vcard_set_event = q.expect('stream-iq', iq_type='set',
         query_ns=ns.VCARD_TEMP, query_name='vCard')
 
-    # Before the server replies, the user sets their avatar.
+    # Before the server replies, the user sets their avatar
     call_async(q, conn.Avatars, 'SetAvatar', 'hello', 'image/png')
     sync_dbus(bus, q, conn)
+    # This acknowledgement is for the nickname
     acknowledge_iq(stream, vcard_set_event.stanza)
 
+    # This sets the avatar
     vcard_set_event = q.expect('stream-iq', iq_type='set',
         query_ns=ns.VCARD_TEMP, query_name='vCard')
-    acknowledge_iq(stream, vcard_set_event.stanza)
-    q.expect('dbus-return', method='SetAvatar')
-
+    # Before the server replies, the user sets their ContactInfo
     call_async(q, conn.ContactInfo, 'SetContactInfo',
                [(u'fn', [], [u'Bob']),
                 (u'n', [], [u'', u'Bob', u'', u'', u'']),
                 (u'nickname', [], [u'bob'])])
     sync_dbus(bus, q, conn)
+    # This acknowledgement is for the avatar; SetAvatar won't happen
+    # until this has
     acknowledge_iq(stream, vcard_set_event.stanza)
+    q.expect('dbus-return', method='SetAvatar')
 
+    # This sets the ContactInfo
     vcard_set_event = q.expect('stream-iq', iq_type='set',
         query_ns=ns.VCARD_TEMP, query_name='vCard')
+    # This acknowledgement is for the ContactInfo; SetContactInfo won't happen
+    # until this has
     acknowledge_iq(stream, vcard_set_event.stanza)
     q.expect('dbus-return', method='SetContactInfo')
 
-    # And then crashes.
+    # Now Gabble gets disconnected.
     sync_stream(q, stream)
-
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 

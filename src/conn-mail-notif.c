@@ -127,11 +127,19 @@ static inline gboolean
 check_supported_or_dbus_return (GabbleConnection *conn,
     DBusGMethodInvocation *context)
 {
+  if (TP_BASE_CONNECTION (conn)->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_DISCONNECTED, "Not connected" };
+      dbus_g_method_return_error (context, &e);
+      return TRUE;
+    }
+  
   if (!(conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY))
     {
       tp_dbus_g_method_return_not_implemented (context);
       return TRUE;
     }
+
   return FALSE;
 }
 

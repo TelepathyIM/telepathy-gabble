@@ -90,8 +90,7 @@ struct _GabbleVCardManagerPrivate
 
   gboolean have_self_avatar;
 
-  /* Contains all the vCard fields that should be changed, using field
-   * names as keys. (Maps gchar* -> gchar *). */
+  /* list of pending edits (GabbleVCardManagerEditInfo structures) */
   GSList *edits;
 
   /* Used by ContactInfo.SetContactInfo in order to replace the current vcard.

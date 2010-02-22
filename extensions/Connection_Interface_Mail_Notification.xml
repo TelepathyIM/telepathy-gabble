@@ -365,6 +365,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </property>
 
+    <property name="MailAddress" type="s"
+      tp:name-for-bindings="Mail_Address" access="read">
+      <tp:docstring>
+        A string representing the e-mail address of the account. The CMs MUST
+        provide this information.
+        <tp:rationale>
+          In close integration of MailNotification with other e-mail services,
+          the e-mail address can be used has a unique identifier for the
+          account. Possible integration could be between Telepathy and
+          Evolution where the e-mail address is the common information in
+          both interfaces.
+        </tp:rationale>
+      </tp:docstring>
+    </property>
+
     <signal name="MailsReceived" tp:name-for-bindings="Mails_Received">
       <arg name="Mails" type="aa{sv}" tp:type="Mail[]">
         <tp:docstring>

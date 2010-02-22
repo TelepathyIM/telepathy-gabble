@@ -732,6 +732,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { "MailNotificationFlags", NULL, NULL },
         { "UnreadMailCount", NULL, NULL },
         { "UnreadMails", NULL, NULL },
+        { "MailAddress", NULL, NULL },
         { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {

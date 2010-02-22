@@ -51,6 +51,7 @@ enum
   PROP_MAIL_NOTIFICATION_FLAGS,
   PROP_UNREAD_MAIL_COUNT,
   PROP_UNREAD_MAILS,
+  PROP_MAIL_ADDRESS,
   NUM_OF_PROP,
 };
 
@@ -693,9 +694,14 @@ conn_mail_notif_properties_getter (GObject *object,
 
   if (G_UNLIKELY (prop_quarks[0] == 0))
     {
-      prop_quarks[PROP_MAIL_NOTIFICATION_FLAGS] = g_quark_from_static_string ("MailNotificationFlags");
-      prop_quarks[PROP_UNREAD_MAIL_COUNT] = g_quark_from_static_string ("UnreadMailCount");
-      prop_quarks[PROP_UNREAD_MAILS] = g_quark_from_static_string ("UnreadMails");
+      prop_quarks[PROP_MAIL_NOTIFICATION_FLAGS] =
+        g_quark_from_static_string ("MailNotificationFlags");
+      prop_quarks[PROP_UNREAD_MAIL_COUNT] =
+        g_quark_from_static_string ("UnreadMailCount");
+      prop_quarks[PROP_UNREAD_MAILS] =
+        g_quark_from_static_string ("UnreadMails");
+      prop_quarks[PROP_MAIL_ADDRESS] =
+        g_quark_from_static_string ("MailAddress");
     }
 
   DEBUG ("MailNotification get property %s", g_quark_to_string (name));
@@ -720,6 +726,19 @@ conn_mail_notif_properties_getter (GObject *object,
       GPtrArray *mails = get_unread_mails(conn);
       g_value_set_boxed (value, mails);
       g_ptr_array_free (mails, TRUE);
+    }
+  else if (name == prop_quarks[PROP_MAIL_ADDRESS])
+    {
+      gchar *address, *username, *stream_server;
+
+      g_object_get (object, "username", &username, NULL);
+      g_object_get (object, "stream-server", &stream_server, NULL);
+      
+      address = gabble_encode_jid (username, stream_server, NULL);
+
+      g_free (username);
+      g_free (stream_server);
+      g_value_take_string (value, address);
     }
   else
     g_assert (!"Unknown mail notification property, please file a bug.");

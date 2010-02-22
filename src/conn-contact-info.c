@@ -530,7 +530,8 @@ _insert_edit_info (GSList *edits,
 
   tmp = g_ascii_strup (field_name, -1);
   edit_info = gabble_vcard_manager_edit_info_new (tmp, NULL,
-      accept_multiple, FALSE, NULL);
+      accept_multiple ? GABBLE_VCARD_EDIT_APPEND : GABBLE_VCARD_EDIT_REPLACE,
+      NULL);
   g_free (tmp);
   edit_info->to_edit = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_free);
@@ -649,7 +650,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
           tmp = g_ascii_strup (field_name, -1);
           edit_info = gabble_vcard_manager_edit_info_new (tmp,
-              field_values[0], FALSE, FALSE, NULL);
+              field_values[0], GABBLE_VCARD_EDIT_REPLACE, NULL);
           g_free (tmp);
           edits = g_slist_append (edits, edit_info);
        }
@@ -751,11 +752,10 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       GabbleVCardManagerEditInfo *edit_info;
 
       edit_info = gabble_vcard_manager_edit_info_new ("NICKNAME",
-          g_ptr_array_index (nicknames, 0), FALSE, FALSE, NULL);
+          g_ptr_array_index (nicknames, 0), GABBLE_VCARD_EDIT_REPLACE, NULL);
       for (i = 1; i < nicknames->len; ++i)
         edit_info->element_value = g_strconcat (edit_info->element_value,
             ",", g_ptr_array_index (nicknames, i), NULL);
-      edit_info->accept_multiple = FALSE;
       edits = g_slist_append (edits, edit_info);
 
       g_ptr_array_add (nicknames, NULL);

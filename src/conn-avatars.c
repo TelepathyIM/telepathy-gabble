@@ -835,14 +835,16 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
       base64 = base64_encode (avatar->len, avatar->data, TRUE);
 
       edit_info = gabble_vcard_manager_edit_info_new ("PHOTO",
-          NULL, FALSE, FALSE, "TYPE", mime_type, "BINVAL", base64,
+          NULL, GABBLE_VCARD_EDIT_REPLACE,
+          "TYPE", mime_type,
+          "BINVAL", base64,
           NULL);
 
       g_free (base64);
     }
   else
     edit_info = gabble_vcard_manager_edit_info_new ("PHOTO",
-        NULL, FALSE, TRUE, NULL);
+        NULL, GABBLE_VCARD_EDIT_DELETE, NULL);
 
   edits = g_slist_append (edits, edit_info);
 

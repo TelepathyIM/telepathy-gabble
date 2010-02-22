@@ -79,6 +79,12 @@ struct _GabbleVCardManager {
     GabbleVCardManagerPrivate *priv;
 };
 
+typedef enum {
+    GABBLE_VCARD_EDIT_REPLACE,
+    GABBLE_VCARD_EDIT_APPEND,
+    GABBLE_VCARD_EDIT_DELETE
+} GabbleVCardEditType;
+
 struct _GabbleVCardManagerEditInfo {
     /* name of element to edit */
     gchar *element_name;
@@ -89,14 +95,11 @@ struct _GabbleVCardManagerEditInfo {
     /* list of elements (hash gchar/gchar) to edit/add */
     GHashTable *to_edit;
 
-    /* whether multiple instances of elements with the same name of this element
-     * are allowed. If FALSE the first element with this name will be
-     * updated. */
-    gboolean accept_multiple;
-
-    /* whether all instances of elements with the same name of this element
-     * should be removed */
-    gboolean to_del;
+    /* If REPLACE, the first element with this name (if any) will be updated;
+     * if APPEND, an element with this name will be added;
+     * if DELETE, all elements with this name will be removed.
+     */
+    GabbleVCardEditType edit_type;
 };
 
 typedef void (*GabbleVCardManagerCb)(GabbleVCardManager *self,
@@ -159,11 +162,11 @@ gchar *vcard_get_avatar_sha1 (LmMessageNode *vcard);
 void gabble_vcard_manager_set_suspend_reply_timeout (guint timeout);
 void gabble_vcard_manager_set_default_request_timeout (guint timeout);
 
-GabbleVCardManagerEditInfo *gabble_vcard_manager_edit_info_new (const gchar *element_name,
-                                                                const gchar *element_value,
-                                                                gboolean accept_multiple,
-                                                                gboolean to_del,
-                                                                ...);
+GabbleVCardManagerEditInfo *gabble_vcard_manager_edit_info_new (
+    const gchar *element_name,
+    const gchar *element_value,
+    GabbleVCardEditType edit_type,
+    ...) G_GNUC_NULL_TERMINATED;
 void gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info);
 
 G_END_DECLS

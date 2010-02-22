@@ -664,7 +664,7 @@ status_changed_cb (GObject *object,
       if (alias_src >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
         priv->edits = g_slist_append (priv->edits,
             gabble_vcard_manager_edit_info_new ("NICKNAME", alias,
-                FALSE, FALSE, NULL));
+                GABBLE_VCARD_EDIT_REPLACE, NULL));
 
       g_free (alias);
 
@@ -964,7 +964,8 @@ patch_vcard_foreach (gpointer data, gpointer user_data)
   LmMessageNode *node;
 
   node = lm_message_node_get_child (vcard_node, info->element_name);
-  if (info->to_del)
+
+  if (info->edit_type == GABBLE_VCARD_EDIT_DELETE)
     {
       while (node != NULL)
         {
@@ -975,7 +976,7 @@ patch_vcard_foreach (gpointer data, gpointer user_data)
       return;
     }
 
-  if (node && !info->accept_multiple)
+  if (node && info->edit_type != GABBLE_VCARD_EDIT_APPEND)
     lm_message_node_set_value (node, info->element_value);
   else
     node = lm_message_node_add_child (vcard_node,
@@ -1027,7 +1028,7 @@ vcard_node_changed (GabbleConnection *conn,
         }
     }
 
-  if (edit->accept_multiple)
+  if (edit->edit_type == GABBLE_VCARD_EDIT_APPEND)
     {
       /* we're adding, not replacing, which is always a difference */
       DEBUG ("vcard node %s to be appended, vcard needs update",
@@ -1037,10 +1038,9 @@ vcard_node_changed (GabbleConnection *conn,
 
   node = lm_message_node_get_child (vcard_node, edit->element_name);
 
-  if (edit->to_del)
+  if (edit->edit_type == GABBLE_VCARD_EDIT_DELETE)
     {
       /* deleting and any other operation are mutually exclusive */
-      g_assert (edit->to_edit == NULL);
       g_assert (edit->element_value == NULL);
 
       if (node != NULL)
@@ -1464,7 +1464,7 @@ gabble_vcard_manager_edit_one (GabbleVCardManager *self,
   GabbleVCardManagerEditInfo *info;
 
   info = gabble_vcard_manager_edit_info_new (
-      element_name, element_value, FALSE, FALSE, NULL);
+      element_name, element_value, GABBLE_VCARD_EDIT_REPLACE, NULL);
   if (info->element_value)
     DEBUG ("%s => value of length %ld starting %.30s", info->element_name,
         (long) strlen (info->element_value), info->element_value);
@@ -1695,8 +1695,7 @@ gabble_vcard_manager_set_default_request_timeout (guint timeout)
 GabbleVCardManagerEditInfo *
 gabble_vcard_manager_edit_info_new (const gchar *element_name,
                                     const gchar *element_value,
-                                    gboolean accept_multiple,
-                                    gboolean to_del,
+                                    GabbleVCardEditType edit_type,
                                     ...)
 {
   GabbleVCardManagerEditInfo *info;
@@ -1704,29 +1703,25 @@ gabble_vcard_manager_edit_info_new (const gchar *element_name,
   const gchar *key;
   const gchar *value;
 
-  if (to_del)
+  if (edit_type == GABBLE_VCARD_EDIT_DELETE)
     {
-      /* editing and any other operation are mutually exclusive */
       const gchar *first_edit = NULL;
 
-      g_return_val_if_fail (!accept_multiple, NULL);
       g_return_val_if_fail (element_value == NULL, NULL);
 
-      va_start (ap, to_del);
+      va_start (ap, edit_type);
       first_edit = va_arg (ap, const gchar *);
       va_end (ap);
-
       g_return_val_if_fail (first_edit == NULL, NULL);
     }
 
   info = g_slice_new (GabbleVCardManagerEditInfo);
   info->element_name = g_strdup (element_name);
   info->element_value = g_strdup (element_value);
-  info->accept_multiple = accept_multiple;
-  info->to_del = to_del;
+  info->edit_type = edit_type;
   info->to_edit = NULL;
 
-  va_start (ap, to_del);
+  va_start (ap, edit_type);
   while ((key = va_arg (ap, const gchar *))) {
       value = va_arg (ap, const gchar *);
 

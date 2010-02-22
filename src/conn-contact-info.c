@@ -232,164 +232,106 @@ _parse_vcard (LmMessageNode *vcard_node,
   for (i = node_iter (vcard_node); i; i = node_iter_next (i))
     {
       LmMessageNode *node = node_iter_data (i);
+      const VCardField *field;
 
       if (!node->name || strcmp (node->name, "") == 0)
         continue;
 
-      if (strcmp (node->name, "FN") == 0 ||
-          strcmp (node->name, "BDAY") == 0 ||
-          strcmp (node->name, "JABBERID") == 0 ||
-          strcmp (node->name, "MAILER") == 0 ||
-          strcmp (node->name, "TZ") == 0 ||
-          strcmp (node->name, "TITLE") == 0 ||
-          strcmp (node->name, "ROLE") == 0 ||
-          strcmp (node->name, "NOTE") == 0 ||
-          strcmp (node->name, "PRODID") == 0 ||
-          strcmp (node->name, "REV") == 0 ||
-          strcmp (node->name, "SORT-STRING") == 0 ||
-          strcmp (node->name, "UID") == 0 ||
-          strcmp (node->name, "URL") == 0 ||
-          strcmp (node->name, "DESC") == 0)
-        {
-          const gchar * const field_values[2] = {
-              lm_message_node_get_value (node),
-              NULL
-          };
+      field = g_hash_table_lookup (known_fields_by_uc, node->name);
 
-          _insert_contact_field (contact_info, node->name, NULL, field_values);
+      if (field == NULL)
+        {
+          DEBUG ("unknown vCard node in XML: %s", node->name);
+          continue;
         }
-     else if (strcmp (node->name, "N") == 0)
-       {
-          const gchar * const elements[] = { "FAMILY", "GIVEN", "MIDDLE",
-              "PREFIX", "SUFFIX", NULL };
 
-          _create_contact_field_extended (contact_info, node,
-              NULL, elements);
-       }
-      else if (strcmp (node->name, "NICKNAME") == 0)
+      switch (field->behaviour)
         {
-          const gchar *node_value = lm_message_node_get_value (node);
-
-          if (strchr (node_value, ','))
+        case FIELD_SIMPLE:
             {
-              GPtrArray *nicknames = g_ptr_array_new ();
-              const gchar *start, *p, *prev = NULL;
-              guint j;
+              const gchar * const field_values[2] = {
+                  lm_message_node_get_value (node),
+                  NULL
+              };
 
-              start = p = node_value;
-              while (*p != '\0')
+              _insert_contact_field (contact_info, node->name, NULL,
+                  field_values);
+
+            }
+          break;
+
+        case FIELD_STRUCTURED:
+        case FIELD_STRUCTURED_ONCE:
+        case FIELD_REPEATING:
+          _create_contact_field_extended (contact_info, node,
+              field->types, field->elements);
+          break;
+
+        case FIELD_NICKNAME:
+            {
+              const gchar *node_value = lm_message_node_get_value (node);
+
+              /* we know that NICKNAME works like this now, and we can't handle
+               * it any other way */
+              g_assert (field->types[0] == NULL);
+              g_assert (field->elements[0] == NULL);
+
+              if (strchr (node_value, ','))
                 {
-                  if (*p == ',' && (!prev || *prev != '\\'))
-                    {
-                      if ((p - start) != 0)
-                        g_ptr_array_add (nicknames,
-                            g_strndup (start, (p - start)));
+                  GPtrArray *nicknames = g_ptr_array_new ();
+                  const gchar *start, *p, *prev = NULL;
+                  guint j;
 
-                      start = (p + 1);
+                  start = p = node_value;
+                  while (*p != '\0')
+                    {
+                      if (*p == ',' && (!prev || *prev != '\\'))
+                        {
+                          if ((p - start) != 0)
+                            g_ptr_array_add (nicknames,
+                                g_strndup (start, (p - start)));
+
+                          start = (p + 1);
+                        }
+
+                      prev = p;
+                      ++p;
                     }
 
-                  prev = p;
-                  ++p;
+                  if (start != p)
+                    g_ptr_array_add (nicknames,
+                        g_strndup (start, (p - start + 1)));
+
+                  for (j = 0; j < nicknames->len; ++j)
+                    {
+                      const gchar * const field_values[2] = {
+                          g_ptr_array_index (nicknames, j),
+                          NULL
+                      };
+
+                      _insert_contact_field (contact_info, node->name,
+                         NULL, field_values);
+                    }
+
+                  g_ptr_array_add (nicknames, NULL);
+                  g_strfreev ((gchar **) g_ptr_array_free (nicknames, FALSE));
                 }
-
-              if (start != p)
-                g_ptr_array_add (nicknames,
-                    g_strndup (start, (p - start + 1)));
-
-              for (j = 0; j < nicknames->len; ++j)
+              else
                 {
                   const gchar * const field_values[2] = {
-                      g_ptr_array_index (nicknames, j),
+                      node_value,
                       NULL
                   };
 
                   _insert_contact_field (contact_info, node->name,
-                     NULL, field_values);
+                      NULL, field_values);
                 }
-
-              g_ptr_array_add (nicknames, NULL);
-              g_strfreev ((gchar **) g_ptr_array_free (nicknames, FALSE));
             }
-          else
-            {
-              const gchar * const field_values[2] = {
-                  node_value,
-                  NULL
-              };
+          break;
 
-              _insert_contact_field (contact_info, node->name,
-                  NULL, field_values);
-            }
+        default:
+          g_assert_not_reached ();
         }
-      else if (strcmp (node->name, "ADR") == 0)
-        {
-          const gchar * const types[] = { "HOME", "WORK", "POSTAL",
-              "PARCEL", "DOM", "INTL", "PREF", NULL };
-          const gchar * const elements[] = { "POBOX", "EXTADD", "STREET",
-              "LOCALITY", "REGION", "PCODE", "CTRY", NULL };
-
-          _create_contact_field_extended (contact_info, node,
-              types, elements);
-        }
-      else if (strcmp (node->name, "LABEL") == 0)
-        {
-          const gchar * const types[] = { "HOME", "WORK", "POSTAL",
-              "PARCEL", "DOM", "INTL", "PREF", NULL };
-          const gchar * const elements[] = { "LINE", NULL };
-
-          _create_contact_field_extended (contact_info, node,
-              types, elements);
-        }
-      else if (strcmp (node->name, "TEL") == 0)
-        {
-          const gchar * const types[] = { "HOME", "WORK", "VOICE",
-              "FAX", "PAGER", "MSG", "CELL", "VIDEO", "BBS", "MODEM", "ISDN",
-              "PCS", "PREF", NULL };
-          const gchar * const elements[] = { "NUMBER", NULL };
-
-          _create_contact_field_extended (contact_info, node,
-              types, elements);
-        }
-      else if (strcmp (node->name, "EMAIL") == 0)
-        {
-          const gchar * const types[] = { "HOME", "WORK", "INTERNET",
-              "PREF", "X400", NULL };
-          const gchar * const elements[] = { "USERID", NULL };
-
-          _create_contact_field_extended (contact_info, node,
-              types, elements);
-        }
-      else if (strcmp (node->name, "GEO") == 0)
-        {
-          const gchar * const elements[] = { "LAT", "LON", NULL };
-
-          _create_contact_field_extended (contact_info, node,
-              NULL, elements);
-        }
-      else if (strcmp (node->name, "ORG") == 0)
-        {
-          /* TODO accept more than one ORGUNIT */
-          const gchar * const elements[] = { "ORGNAME", "ORGUNIT", NULL };
-
-          _create_contact_field_extended (contact_info, node,
-              NULL, elements);
-        }
-      else if (strcmp (node->name, "KEY") == 0)
-        {
-          const gchar * const types[] = { "TYPE", NULL };
-          const gchar * const elements[] = { "CRED", NULL };
-
-          _create_contact_field_extended (contact_info, node,
-              types, elements);
-        }
-
-      // skipped fields
-      // PHOTO
-      // LOGO
-      // AGENT
-      // CATEGORIES
-      // SOUND
-      // CLASS
     }
 
   return contact_info;

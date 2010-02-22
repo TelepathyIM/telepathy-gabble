@@ -36,6 +36,96 @@
 #include "debug.h"
 #include "util.h"
 
+#define MAX_TYPES 14    /* increase as needed */
+#define MAX_ELEMENTS 8  /* increase as needed */
+
+typedef enum {
+    /* in Telepathy: one value per field; in XMPP: one value per field */
+    FIELD_SIMPLE,
+    /* special case for NICKNAME */
+    FIELD_NICKNAME,
+    /* in Telepathy: exactly n_elements values; in XMPP: a child element for
+     * each entry in elements, in that order */
+    FIELD_STRUCTURED,
+    /* same as FIELD_STRUCTURED but may not be repeated */
+    FIELD_STRUCTURED_ONCE,
+    /* same as FIELD_STRUCTURED except the last element may repeat n times */
+    FIELD_REPEATING,
+} FieldBehaviour;
+
+typedef struct {
+    const gchar *name;
+    FieldBehaviour behaviour;
+    GabbleContactInfoFieldFlags tp_flags;
+    const gchar * const types[MAX_TYPES];
+    const gchar * const elements[MAX_ELEMENTS];
+} VCardField;
+
+static VCardField known_fields[] = {
+    /* Simple fields */
+      { "FN", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "BDAY", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "JABBERID", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "MAILER", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "TZ", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "TITLE", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "ROLE", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "NOTE", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "PRODID", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "REV", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "SORT-STRING", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "UID", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "URL", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "DESC", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+
+      { "NICKNAME", FIELD_NICKNAME, 0, { NULL }, { NULL } },
+
+      { "N", FIELD_STRUCTURED_ONCE, 0, { NULL },
+          { "FAMILY", "GIVEN", "MIDDLE", "PREFIX", "SUFFIX", NULL } },
+
+      { "ADR", FIELD_STRUCTURED, 0,
+          { "HOME", "WORK", "POSTAL", "PARCEL", "DOM", "INTL", "PREF", NULL },
+          { "POBOX", "EXTADD", "STREET", "LOCALITY", "REGION", "PCODE", "CTRY",
+            NULL } },
+      { "GEO", FIELD_STRUCTURED_ONCE, 0,
+          { NULL },
+          { "LAT", "LON", NULL } },
+      /* TEL and EMAIL are like structured fields: they have exactly one child
+       * per occurrence */
+      { "TEL", FIELD_STRUCTURED, 0,
+          { "HOME", "WORK", "VOICE", "FAX", "PAGER", "MSG", "CELL", "VIDEO",
+            "BBS", "MODEM", "ISDN", "PCS", "PREF", NULL },
+          { "NUMBER", NULL } },
+      { "EMAIL", FIELD_STRUCTURED, 0,
+          { "HOME", "WORK", "INTERNET", "PREF", "X400", NULL },
+          { "USERID", NULL } },
+
+      { "LABEL", FIELD_REPEATING, 0,
+          { "HOME", "WORK", "POSTAL", "PARCEL", "DOM", "INTL", "PREF", NULL },
+          { "LINE", NULL } },
+
+      { "ORG", FIELD_REPEATING, 0,
+          { NULL },
+          { "ORGNAME", "ORGUNIT", NULL } },
+
+      /* Things we don't handle: */
+
+      /* PHOTO: we treat it as the avatar instead */
+
+      /* KEY: is Base64 (perhaps? hard to tell from the XEP) */
+      /* LOGO: can be base64 or a URL */
+      /* SOUND: can be base64, URL, or phonetic (!) */
+      /* AGENT: is an embedded vCard (!) */
+      /* CATEGORIES: same vCard encoding as NICKNAME, but split into KEYWORDs
+       *  in XMPP; nobody is likely to use it on XMPP */
+      /* CLASS: if you're putting non-PUBLIC vCards on your XMPP account,
+       * you're probably Doing It Wrong */
+
+      { NULL }
+};
+static GHashTable *known_fields_by_uc = NULL;
+static GHashTable *known_fields_by_lc = NULL;
+
 static GPtrArray *supported_fields = NULL;
 
 /*
@@ -795,6 +885,21 @@ _vcard_updated (GObject *object,
 void
 conn_contact_info_class_init (GabbleConnectionClass *klass)
 {
+  VCardField *field;
+
+  /* These are never freed; they're only allocated once per run of Gabble.
+   * The destructor in the latter is only set for completeness */
+  known_fields_by_uc = g_hash_table_new (g_str_hash, g_str_equal);
+  known_fields_by_lc = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, NULL);
+
+  for (field = known_fields; field->name != NULL; field++)
+    {
+      g_hash_table_insert (known_fields_by_uc, (gchar *) field->name, field);
+      g_hash_table_insert (known_fields_by_lc,
+          g_ascii_strdown (field->name, -1), field);
+    }
+
   supported_fields = dbus_g_type_specialized_construct (
           GABBLE_ARRAY_TYPE_FIELD_SPECS);
 }

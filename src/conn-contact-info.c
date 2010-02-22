@@ -38,6 +38,15 @@
 
 static GPtrArray *supported_fields = NULL;
 
+/*
+ * _insert_contact_field:
+ * @contact_info: an array of Contact_Info_Field structures
+ * @field_name: a vCard field name in any case combination
+ * @field_params: a list of vCard type-parameters, typically of the form
+ *  type=xxx; must be in lower-case if case-insensitive
+ * @field_values: for unstructured fields, an array containing one element;
+ *  for structured fields, the elements of the field in order
+ */
 static void
 _insert_contact_field (GPtrArray *contact_info,
                        const gchar *field_name,

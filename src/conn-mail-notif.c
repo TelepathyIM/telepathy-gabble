@@ -197,13 +197,17 @@ gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotificati
   if (!g_hash_table_lookup_extended (conn->mail_subscribers, sender,
                                     NULL, NULL))
     {
+      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "Not subscribed" };
+
       DEBUG ("Sender '%s' is not subscribed!", sender);
-      goto done;
+
+      dbus_g_method_return_error (context, &e);
+      g_free (sender);
+      return;
     }
 
   unsubscribe (conn, sender, FALSE);
 
-done:
   g_free (sender);
   gabble_svc_connection_interface_mail_notification_return_from_unsubscribe (context);
 }

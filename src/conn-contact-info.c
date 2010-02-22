@@ -650,6 +650,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       gchar **field_params = NULL;
       gchar **field_values = NULL;
       guint n_field_values = 0;
+      VCardField *field;
 
       g_value_init (&contact_info_field, GABBLE_STRUCT_TYPE_CONTACT_INFO_FIELD);
       g_value_set_static_boxed (&contact_info_field,
@@ -664,123 +665,64 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       if (field_values)
         n_field_values = g_strv_length (field_values);
 
-      if (strcmp (field_name, "fn") == 0 ||
-          strcmp (field_name, "bday") == 0 ||
-          strcmp (field_name, "jabberid") == 0 ||
-          strcmp (field_name, "mailer") == 0 ||
-          strcmp (field_name, "tz") == 0 ||
-          strcmp (field_name, "title") == 0 ||
-          strcmp (field_name, "role") == 0 ||
-          strcmp (field_name, "note") == 0 ||
-          strcmp (field_name, "prodid") == 0 ||
-          strcmp (field_name, "rev") == 0 ||
-          strcmp (field_name, "sort-string") == 0 ||
-          strcmp (field_name, "uid") == 0 ||
-          strcmp (field_name, "url") == 0 ||
-          strcmp (field_name, "desc") == 0)
-       {
-          GabbleVCardManagerEditInfo *edit_info;
-          gchar *tmp;
+      field = g_hash_table_lookup (known_fields_by_lc, field_name);
 
-          if (n_field_values != 1)
+      if (field == NULL)
+        {
+          DEBUG ("unknown vCard field from D-Bus: %s", field_name);
+          continue;
+        }
+
+      switch (field->behaviour)
+        {
+        case FIELD_SIMPLE:
             {
-              DEBUG ("Trying to edit %s field with wrong arguments",
-                  field_name);
-              continue;
+              GabbleVCardManagerEditInfo *edit_info;
+              gchar *tmp;
+
+              if (n_field_values != 1)
+                {
+                  DEBUG ("Trying to edit %s field with wrong arguments",
+                      field_name);
+                  continue;
+                }
+
+              tmp = g_ascii_strup (field_name, -1);
+              edit_info = gabble_vcard_manager_edit_info_new (tmp,
+                  field_values[0], GABBLE_VCARD_EDIT_REPLACE, NULL);
+              g_free (tmp);
+              edits = g_slist_append (edits, edit_info);
             }
+          break;
 
-          tmp = g_ascii_strup (field_name, -1);
-          edit_info = gabble_vcard_manager_edit_info_new (tmp,
-              field_values[0], GABBLE_VCARD_EDIT_REPLACE, NULL);
-          g_free (tmp);
-          edits = g_slist_append (edits, edit_info);
-       }
-     else if (strcmp (field_name, "n") == 0)
-       {
-          const gchar * const elements[] = { "FAMILY", "GIVEN", "MIDDLE",
-              "PREFIX", "SUFFIX", NULL };
-
+        case FIELD_STRUCTURED:
+        case FIELD_STRUCTURED_ONCE:
+        case FIELD_REPEATING:
           edits = _insert_edit_info (edits, field_name,
               (const gchar * const *) field_params,
-              (const gchar * const *) field_values, elements,
-              FALSE);
-        }
-      else if (strcmp (field_name, "nickname") == 0)
-        {
-          if (n_field_values != 1)
+              (const gchar * const *) field_values,
+              field->elements,
+              /* N can't be repeated */
+              (field->behaviour != FIELD_STRUCTURED_ONCE));
+          break;
+
+        case FIELD_NICKNAME:
             {
-              DEBUG ("Trying to edit %s field with wrong arguments",
-                  field_name);
-              continue;
+              if (n_field_values != 1)
+                {
+                  DEBUG ("Trying to edit %s field with wrong arguments",
+                      field_name);
+                  continue;
+                }
+
+              if (!nicknames)
+                nicknames = g_ptr_array_new ();
+              g_ptr_array_add (nicknames, g_strdup (field_values[0]));
             }
+          break;
 
-          if (!nicknames)
-            nicknames = g_ptr_array_new ();
-          g_ptr_array_add (nicknames, g_strdup (field_values[0]));
-        }
-      else if (strcmp (field_name, "adr") == 0)
-        {
-          const gchar * const elements[] = { "POBOX", "EXTADD", "STREET",
-              "LOCALITY", "REGION", "PCODE", "CTRY", NULL };
-
-          edits = _insert_edit_info (edits, field_name,
-              (const gchar * const *) field_params,
-              (const gchar * const *) field_values, elements,
-              TRUE);
-        }
-      else if (strcmp (field_name, "label") == 0)
-        {
-          const gchar * const elements[] = { "LINE", NULL };
-
-          edits = _insert_edit_info (edits, field_name,
-              (const gchar * const *) field_params,
-              (const gchar * const *) field_values, elements,
-              TRUE);
-        }
-      else if (strcmp (field_name, "tel") == 0)
-        {
-          const gchar * const elements[] = { "NUMBER", NULL };
-
-          edits = _insert_edit_info (edits, field_name,
-              (const gchar * const *) field_params,
-              (const gchar * const *) field_values, elements,
-              TRUE);
-        }
-      else if (strcmp (field_name, "email") == 0)
-        {
-          const gchar * const elements[] = { "USERID", NULL };
-
-          edits = _insert_edit_info (edits, field_name,
-              (const gchar * const *) field_params,
-              (const gchar * const *) field_values, elements,
-              TRUE);
-        }
-      else if (strcmp (field_name, "geo") == 0)
-        {
-          const gchar * const elements[] = { "LAT", "LON", NULL };
-
-          edits = _insert_edit_info (edits, field_name,
-              (const gchar * const *) field_params,
-              (const gchar * const *) field_values, elements,
-              FALSE);
-        }
-      else if (strcmp (field_name, "org") == 0)
-        {
-          const gchar * const elements[] = { "ORGNAME", "ORGUNIT", NULL };
-
-          edits = _insert_edit_info (edits, field_name,
-              (const gchar * const *) field_params,
-              (const gchar * const *) field_values, elements,
-              TRUE);
-        }
-      else if (strcmp (field_name, "key") == 0)
-        {
-          const gchar * const elements[] = { "CRED", NULL };
-
-          edits = _insert_edit_info (edits, field_name,
-              (const gchar * const *) field_params,
-              (const gchar * const *) field_values, elements,
-              TRUE);
+        default:
+          g_assert_not_reached ();
         }
 
       g_free (field_name);

@@ -1,4 +1,3 @@
-import constants as cs
 from file_transfer_helper import SendFileTest, ReceiveFileTest, \
     exec_file_transfer_test
 

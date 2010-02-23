@@ -118,6 +118,43 @@ class FileTransferTest(object):
         self.conn = conn
         self.stream = stream
 
+        self.stream.addObserver(
+            "//presence", self._cb_presence_iq, priority=1)
+        self.stream.addObserver(
+            "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
+            self._cb_disco_iq, priority=1)
+
+    def _cb_presence_iq(self, stanza):
+        nodes = xpath.queryForNodes("/presence/c", stanza)
+        c = nodes[0]
+        if 'share-v1' in c.getAttribute('ext'):
+            assert c.getAttribute('ver') == '3P6yJJDbtCEEfrrTqxq1V8N5+ms='
+            # Replace ver hash from one with file-transfer ns to one without
+            c.attributes['ver'] = 'gGreg/ivJyPi+XauJumCPGz28h8='
+            print "Replaced ver hash"
+
+    def _cb_disco_iq(self, iq):
+        nodes = xpath.queryForNodes("/iq/query", iq)
+        query = nodes[0]
+        if query.getAttribute('node') is None:
+            return
+
+        print "discovery iq received"
+        if iq.getAttribute('type') == 'result':
+            print 'type is result'
+            n = query.attributes['node'].replace('3P6yJJDbtCEEfrrTqxq1V8N5+ms=',
+                                                 'gGreg/ivJyPi+XauJumCPGz28h8=')
+            query.attributes['node'] = n
+
+            for node in query.children:
+                if node.getAttribute('var') == ns.FILE_TRANSFER:
+                    print "found FT feature"
+                    query.children.remove(node)
+        elif iq.getAttribute('type') == 'get':
+            n = query.attributes['node'].replace('gGreg/ivJyPi+XauJumCPGz28h8=',
+                                                 '3P6yJJDbtCEEfrrTqxq1V8N5+ms=')
+            query.attributes['node'] = n
+
     def create_socket(self):
         if self.address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
             return socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -130,13 +167,18 @@ class FileTransferTest(object):
 
 class ReceiveFileTest(FileTransferTest):
     def __init__(self, file, address_type, access_control, access_control_param):
-        FileTransferTest.__init__(self, file, address_type, access_control, access_control_param)
+        FileTransferTest.__init__(self, file, address_type, access_control,
+                                  access_control_param)
 
         self._actions = [self.connect, self.set_ft_caps, None,
+
                          self.wait_for_ft_caps, None,
+
                          self.check_new_channel, self.create_ft_channel,
                          self.accept_file, None,
+
                          self.receive_file, None,
+
                          self.close_channel, self.done]
 
     def check_new_channel(self):
@@ -159,14 +201,14 @@ class ReceiveFileTest(FileTransferTest):
 
         # org.freedesktop.Telepathy.Channel.Type.FileTransfer D-Bus properties
         assert props[cs.FT_STATE] == cs.FT_STATE_PENDING, props
-        assert props[cs.FT_CONTENT_TYPE] == self.file.content_type, props
+        assert props[cs.FT_CONTENT_TYPE] == '', props
         assert props[cs.FT_FILENAME] == self.file.name, props
         assert props[cs.FT_SIZE] == self.file.size, props
         # FT's protocol doesn't allow us the send the hash info
-        assert props[cs.FT_CONTENT_HASH_TYPE] == cs.FILE_HASH_TYPE_MD5, props
-        assert props[cs.FT_CONTENT_HASH] == self.file.hash, props
-        assert props[cs.FT_DESCRIPTION] == self.file.description, props
-        assert props[cs.FT_DATE] == self.file.date, props
+        assert props[cs.FT_CONTENT_HASH_TYPE] == cs.FILE_HASH_TYPE_NONE, props
+        assert props[cs.FT_CONTENT_HASH] == '', props
+        assert props[cs.FT_DESCRIPTION] == '', props
+        assert props[cs.FT_DATE] == 0, props
         assert props[cs.FT_AVAILABLE_SOCKET_TYPES] == \
             {cs.SOCKET_ADDRESS_TYPE_UNIX: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
             cs.SOCKET_ADDRESS_TYPE_IPV4: [cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
@@ -248,10 +290,14 @@ class SendFileTest(FileTransferTest):
 
         self._actions = [self.connect, self.set_ft_caps,
                          self.check_ft_available, None,
+
                          self.wait_for_ft_caps, None,
+
                          self.request_ft_channel, self.create_ft_channel,
                          self.provide_file, None,
+
                          self.send_file, self.wait_for_completion, None,
+
                          self.close_channel, self.done]
 
     def check_ft_available(self):

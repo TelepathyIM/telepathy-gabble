@@ -4,7 +4,7 @@ import hashlib
 import time
 import datetime
 
-from servicetest import EventPattern
+from servicetest import EventPattern, TimeoutError
 from gabbletest import exec_test, sync_stream, make_result_iq
 import ns
 
@@ -409,9 +409,16 @@ class SendFileTest(FileTransferTest):
 
         # If not all the bytes transferred have been announced using
         # TransferredBytesChanged, wait for them
+        tries = 0
         while self.count < to_send:
-            self.q.expect('dbus-signal', signal='TransferredBytesChanged',
-                          path=self.channel.__dbus_object_path__)
+            try:
+                self.q.expect('dbus-signal', signal='TransferredBytesChanged',
+                              path=self.channel.__dbus_object_path__)
+            except TimeoutError, e:
+                tries += 1
+                print "Timeout exception"
+                if tries >= 3:
+                    raise e
 
         assert self.count == to_send
 

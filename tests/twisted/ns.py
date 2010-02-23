@@ -15,6 +15,7 @@ GOOGLE_JINGLE_INFO = 'google:jingleinfo'
 GOOGLE_P2P = "http://www.google.com/transport/p2p"
 GOOGLE_ROSTER = 'google:roster'
 GOOGLE_SESSION = "http://www.google.com/session"
+GOOGLE_SESSION_SHARE = "http://www.google.com/session/share"
 GOOGLE_SESSION_PHONE = "http://www.google.com/session/phone"
 GOOGLE_SESSION_VIDEO = "http://www.google.com/session/video"
 GOOGLE_MAIL_NOTIFY = "google:mail:notify"

@@ -367,16 +367,25 @@ class SendFileTest(FileTransferTest):
 
 
     def provide_file(self):
-        self.address = self.ft_channel.ProvideFile(self.address_type,
-                self.access_control, self.access_control_param,
-                byte_arrays=True)
-
         self.open = False
         def ft_state_changed_cb(state, reason):
             if state == cs.FT_STATE_OPEN:
                 self.open = True
         self.ft_channel.connect_to_signal('FileTransferStateChanged',
                                           ft_state_changed_cb)
+
+        self.address = self.ft_channel.ProvideFile(self.address_type,
+                self.access_control, self.access_control_param,
+                byte_arrays=True)
+
+        # Make sure the file transfer is of type jingle-share
+        event = self.q.expect('stream-iq', stream=self.stream,
+                              query_name = 'session',
+                              query_ns = ns.GOOGLE_SESSION)
+        description_node = xpath.queryForNodes('/iq/session/description',
+                                               event.stanza)[0]
+        assert description_node.uri == ns.GOOGLE_SESSION_SHARE, \
+            description_node.uri
 
 
     def send_file(self):

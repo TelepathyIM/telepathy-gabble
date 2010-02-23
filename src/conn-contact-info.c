@@ -554,14 +554,13 @@ gabble_connection_request_contact_info (GabbleSvcConnectionInterfaceContactInfo 
 
 static GSList *
 _insert_edit_info (GSList *edits,
-                   const gchar * const field_name,
+                   const VCardField *field,
                    const gchar * const * field_params,
                    const gchar * const * field_values,
                    const gchar * const * elements,
                    gboolean accept_multiple)
 {
   GabbleVCardManagerEditInfo *edit_info;
-  gchar *tmp;
   const gchar * const * p;
   guint i;
   guint n_field_values = g_strv_length ((gchar **) field_values);
@@ -569,15 +568,13 @@ _insert_edit_info (GSList *edits,
 
   if (n_field_values != n_elements)
     {
-      DEBUG ("Trying to edit %s field with wrong arguments", field_name);
+      DEBUG ("Trying to edit %s field with wrong arguments", field->xmpp_name);
       return edits;
     }
 
-  tmp = g_ascii_strup (field_name, -1);
-  edit_info = gabble_vcard_manager_edit_info_new (tmp, NULL,
+  edit_info = gabble_vcard_manager_edit_info_new (field->xmpp_name, NULL,
       accept_multiple ? GABBLE_VCARD_EDIT_APPEND : GABBLE_VCARD_EDIT_REPLACE,
       NULL);
-  g_free (tmp);
   edit_info->to_edit = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_free);
   for (p = field_params; *p != NULL; ++p)
@@ -702,7 +699,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
         case FIELD_REPEATING:
-          edits = _insert_edit_info (edits, field_name,
+          edits = _insert_edit_info (edits, field,
               (const gchar * const *) field_params,
               (const gchar * const *) field_values,
               field->elements,

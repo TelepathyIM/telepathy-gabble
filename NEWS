@@ -1,7 +1,30 @@
-telepathy-gabble 0.9.6 (UNRELEASED)
+telepathy-gabble 0.9.6 (2010-02-23)
 ===================================
 
-...
+The "save us from this existential quagmire!" release.
+
+Enhancements:
+
+• The plugin loader is now built by default, and the gateway-registration
+  plugin is installed by default. Since the API is still experimental and
+  likely to change from one release to the next, the development headers
+  etc. necessary to write third-party plugins are only installed if you
+  configure with --enable-plugin-api (this is not recommended). (smcv)
+
+Fixes:
+
+• fd.o #26658: queue up any data received on the FileTransfer socket until the
+  channel moves to state OPEN (KaKaRoTo)
+
+• Clean up signal connections in GabbleJingleFactory to avoid a possible
+  use-after-free if a Jingle session, or the Connection, outlives the Jingle
+  factory (KaKaRoTo)
+
+• Improve the gateway-registration plugin to exchange presence subscriptions
+  and fix a memory leak (smcv)
+
+• Don't install the plugin unless the plugin loader has been enabled, and
+  don't compile a useless static-library version of the plugin (smcv)
 
 telepathy-gabble 0.9.5 (2010-02-19)
 ===================================

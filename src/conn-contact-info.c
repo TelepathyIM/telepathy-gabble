@@ -42,8 +42,6 @@
 typedef enum {
     /* in Telepathy: one value per field; in XMPP: one value per field */
     FIELD_SIMPLE,
-    /* special case for NICKNAME */
-    FIELD_NICKNAME,
     /* in Telepathy: exactly n_elements values; in XMPP: a child element for
      * each entry in elements, in that order */
     FIELD_STRUCTURED,
@@ -76,13 +74,11 @@ static VCardField known_fields[] = {
       { "SORT-STRING", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
       { "UID", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
       { "URL", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "NICKNAME", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
 
     /* Simple fields which are Jabber-specific */
       { "JABBERID", "x-jabber", FIELD_SIMPLE, 0, { NULL }, { NULL } },
       { "DESC", "x-desc", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-
-    /* NICKNAME is special - multiple comma-separated values */
-      { "NICKNAME", NULL, FIELD_NICKNAME, 0, { NULL }, { NULL } },
 
     /* Structured fields */
       { "N", NULL, FIELD_STRUCTURED_ONCE, 0, { NULL },
@@ -269,68 +265,6 @@ _parse_vcard (LmMessageNode *vcard_node,
         case FIELD_REPEATING:
           _create_contact_field_extended (contact_info, node,
               field->types, field->elements);
-          break;
-
-        case FIELD_NICKNAME:
-            {
-              const gchar *node_value = lm_message_node_get_value (node);
-
-              /* we know that NICKNAME works like this now, and we can't handle
-               * it any other way */
-              g_assert (field->types[0] == NULL);
-              g_assert (field->elements[0] == NULL);
-
-              if (strchr (node_value, ','))
-                {
-                  GPtrArray *nicknames = g_ptr_array_new ();
-                  const gchar *start, *p, *prev = NULL;
-                  guint j;
-
-                  start = p = node_value;
-                  while (*p != '\0')
-                    {
-                      if (*p == ',' && (!prev || *prev != '\\'))
-                        {
-                          if ((p - start) != 0)
-                            g_ptr_array_add (nicknames,
-                                g_strndup (start, (p - start)));
-
-                          start = (p + 1);
-                        }
-
-                      prev = p;
-                      ++p;
-                    }
-
-                  if (start != p)
-                    g_ptr_array_add (nicknames,
-                        g_strndup (start, (p - start + 1)));
-
-                  for (j = 0; j < nicknames->len; ++j)
-                    {
-                      const gchar * const field_values[2] = {
-                          g_ptr_array_index (nicknames, j),
-                          NULL
-                      };
-
-                      _insert_contact_field (contact_info, node->name,
-                         NULL, field_values);
-                    }
-
-                  g_ptr_array_add (nicknames, NULL);
-                  g_strfreev ((gchar **) g_ptr_array_free (nicknames, FALSE));
-                }
-              else
-                {
-                  const gchar * const field_values[2] = {
-                      node_value,
-                      NULL
-                  };
-
-                  _insert_contact_field (contact_info, node->name,
-                      NULL, field_values);
-                }
-            }
           break;
 
         default:
@@ -642,7 +576,6 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
   GSList *edits = NULL;
-  GPtrArray *nicknames = NULL;
   guint i;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
@@ -693,7 +626,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
               tmp = g_ascii_strup (field_name, -1);
               edit_info = gabble_vcard_manager_edit_info_new (tmp,
-                  field_values[0], GABBLE_VCARD_EDIT_REPLACE, NULL);
+                  field_values[0], GABBLE_VCARD_EDIT_APPEND, NULL);
               g_free (tmp);
               edits = g_slist_append (edits, edit_info);
             }
@@ -707,21 +640,6 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
               (const gchar * const *) field_values);
           break;
 
-        case FIELD_NICKNAME:
-            {
-              if (n_field_values != 1)
-                {
-                  DEBUG ("Trying to edit %s field with wrong arguments",
-                      field_name);
-                  continue;
-                }
-
-              if (!nicknames)
-                nicknames = g_ptr_array_new ();
-              g_ptr_array_add (nicknames, g_strdup (field_values[0]));
-            }
-          break;
-
         default:
           g_assert_not_reached ();
         }
@@ -729,21 +647,6 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       g_free (field_name);
       g_strfreev (field_params);
       g_strfreev (field_values);
-    }
-
-  if (nicknames)
-    {
-      GabbleVCardManagerEditInfo *edit_info;
-
-      edit_info = gabble_vcard_manager_edit_info_new ("NICKNAME",
-          g_ptr_array_index (nicknames, 0), GABBLE_VCARD_EDIT_REPLACE, NULL);
-      for (i = 1; i < nicknames->len; ++i)
-        edit_info->element_value = g_strconcat (edit_info->element_value,
-            ",", g_ptr_array_index (nicknames, i), NULL);
-      edits = g_slist_append (edits, edit_info);
-
-      g_ptr_array_add (nicknames, NULL);
-      g_strfreev ((gchar **) g_ptr_array_free (nicknames, FALSE));
     }
 
   if (edits)

@@ -29,7 +29,7 @@ def test(q, bus, conn, stream):
     n = result.firstChildElement().addElement('N')
     n.addElement('GIVEN', content='Bob')
     result.firstChildElement().addElement('NICKNAME',
-        content='bob,bob1\,,bob2,bob3\,bob4')
+        content=r'bob,bob1\,,bob2,bob3\,bob4')
     stream.send(result)
 
     q.expect('dbus-signal', signal='ContactInfoChanged')
@@ -38,10 +38,7 @@ def test(q, bus, conn, stream):
     assert conn.ContactInfo.GetContactInfo([handle]) == \
         {handle: [(u'fn', [], [u'Bob']),
                   (u'n', [], [u'', u'Bob', u'', u'', u'']),
-                  (u'nickname', [], [u'bob']),
-                  (u'nickname', [], [u'bob1\,']),
-                  (u'nickname', [], [u'bob2']),
-                  (u'nickname', [], [u'bob3\,bob4'])]}
+                  (u'nickname', [], [r'bob,bob1\,,bob2,bob3\,bob4'])]}
 
 
 if __name__ == '__main__':

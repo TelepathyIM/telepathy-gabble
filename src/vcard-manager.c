@@ -769,8 +769,6 @@ extract_nickname (LmMessageNode *vcard_node)
 {
   LmMessageNode *node;
   const gchar *nick;
-  gchar **bits;
-  gchar *ret;
 
   node = lm_message_node_get_child (vcard_node, "NICKNAME");
 
@@ -779,18 +777,7 @@ extract_nickname (LmMessageNode *vcard_node)
 
   nick = lm_message_node_get_value (node);
 
-  /* nick is comma-separated, we want the first one. rule out corner cases of
-   * the entire string or the first value being empty before we g_strsplit */
-  if (nick == NULL || *nick == '\0' || *nick == ',')
-    return NULL;
-
-  bits = g_strsplit (nick, ",", 2);
-
-  ret = g_strdup (bits[0]);
-
-  g_strfreev (bits);
-
-  return ret;
+  return g_strdup (nick);
 }
 
 static void

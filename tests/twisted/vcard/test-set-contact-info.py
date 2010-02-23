@@ -41,8 +41,14 @@ def test(q, bus, conn, stream):
     vcard_set_event = q.expect('stream-iq', iq_type='set',
                 query_ns='vcard-temp', query_name='vCard')
 
-    assertEquals('HR Ninja,Enforcement Ninja',
-            xpath.queryForString('/iq/vCard/NICKNAME', vcard_set_event.stanza))
+    assertLength(2, xpath.queryForNodes('/iq/vCard/NICKNAME',
+        vcard_set_event.stanza))
+    nicknames = []
+    for nickname in xpath.queryForNodes('/iq/vCard/NICKNAME',
+            vcard_set_event.stanza):
+        nicknames.append(str(nickname))
+    assertEquals(['HR Ninja', 'Enforcement Ninja'], nicknames)
+
     assertEquals(None, xpath.queryForNodes('/iq/vCard/PHOTO',
         vcard_set_event.stanza))
     assertLength(1, xpath.queryForNodes('/iq/vCard/N',

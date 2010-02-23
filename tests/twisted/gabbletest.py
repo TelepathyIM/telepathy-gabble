@@ -262,6 +262,20 @@ class PresenceDispatcher(object):
                 presence.attributes['to'] = jid
                 stream.send(presence)
 
+    @staticmethod
+    def LostPresence(stream, jid, mappings):
+        if PresenceDispatcher.presences.has_key(jid):
+            del PresenceDispatcher.presences[jid]
+            for dest_jid  in PresenceDispatcher.presences.keys():
+                if dest_jid != jid:
+                    presence = domish.Element(('jabber:client', 'presence'))
+                    presence['from'] = jid
+                    presence['to'] = dest_jid
+                    presence['type'] = 'unavailable'
+                    mappings[dest_jid].send(presence)
+
+
+
 def forward_iq(stream, jid, mappings, stanza):
     stanza.attributes['from'] = jid
 
@@ -449,8 +463,19 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
                                    authenticator=authenticator,
                                    resource=resource, idx=i))
 
+
     if num_instances > 1:
         mappings = dict(map (lambda jid, stream: (jid, stream), jids, streams))
+
+        def name_owner_changed(name, old_name, new_name, **kw):
+            for i, conn in enumerate(conns):
+                stream = streams[i]
+                jid = jids[i]
+                if new_name == '' and conn._requested_bus_name == name:
+                    PresenceDispatcher.LostPresence(stream, jid, mappings)
+
+        bus.add_signal_receiver(name_owner_changed, 'NameOwnerChanged',
+                                'org.freedesktop.DBus', None)
 
         # We need to reset the presence dispatcher so if we run multiple
         # exec_test in the same unit test, we won't get wrong presences being

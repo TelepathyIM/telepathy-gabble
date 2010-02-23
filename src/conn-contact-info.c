@@ -696,17 +696,29 @@ conn_contact_info_class_init (GabbleConnectionClass *klass)
     {
       GValueArray *va;
       gchar *vcard_name;
+      guint max_times;
 
       if (field->vcard_name != NULL)
         vcard_name = g_strdup (field->vcard_name);
       else
         vcard_name = g_ascii_strdown (field->xmpp_name, -1);
 
+      switch (field->behaviour)
+        {
+        case FIELD_SIMPLE_ONCE:
+        case FIELD_STRUCTURED_ONCE:
+          max_times = 1;
+          break;
+
+        default:
+          max_times = G_MAXUINT32;
+        }
+
       va = tp_value_array_build (4,
           G_TYPE_STRING, vcard_name,
           G_TYPE_STRV, NULL,            /* any type-param is allowed for now */
           G_TYPE_UINT, field->tp_flags,
-          G_TYPE_UINT, G_MAXUINT32,     /* maximum occurrences */
+          G_TYPE_UINT, max_times,
           G_TYPE_INVALID);
 
       g_ptr_array_add (supported_fields, va);

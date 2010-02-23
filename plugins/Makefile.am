@@ -15,17 +15,19 @@ else
 noinst_LTLIBRARIES += $(installable_plugins)
 endif
 
+AM_LDFLAGS = -module -avoid-version -shared
+
 test_la_SOURCES = \
     test.c \
     test.h
 
-test_la_LDFLAGS = -module -avoid-version -rpath $(plugindir) -lm
+# because test.la is not installed, libtool will want to compile it as static
+# despite -shared (a convenience library), unless we also use -rpath
+test_la_LDFLAGS = $(AM_LDFLAGS) -rpath $(plugindir)
 
 gateways_la_SOURCES = \
 	gateways.c \
 	gateways.h
-
-gateways_la_LDFLAGS = -module -avoid-version
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
     @TP_GLIB_CFLAGS@ \

@@ -138,7 +138,6 @@ class FileTransferTest(object):
             assert c.getAttribute('ver') == '3P6yJJDbtCEEfrrTqxq1V8N5+ms='
             # Replace ver hash from one with file-transfer ns to one without
             c.attributes['ver'] = 'gGreg/ivJyPi+XauJumCPGz28h8='
-            print "Replaced ver hash"
 
     def _cb_disco_iq(self, iq):
         nodes = xpath.queryForNodes("/iq/query", iq)
@@ -146,16 +145,13 @@ class FileTransferTest(object):
         if query.getAttribute('node') is None:
             return
 
-        print "discovery iq received"
         if iq.getAttribute('type') == 'result':
-            print 'type is result'
             n = query.attributes['node'].replace('3P6yJJDbtCEEfrrTqxq1V8N5+ms=',
                                                  'gGreg/ivJyPi+XauJumCPGz28h8=')
             query.attributes['node'] = n
 
             for node in query.children:
                 if node.getAttribute('var') == ns.FILE_TRANSFER:
-                    print "found FT feature"
                     query.children.remove(node)
         elif iq.getAttribute('type') == 'get':
             n = query.attributes['node'].replace('gGreg/ivJyPi+XauJumCPGz28h8=',
@@ -432,7 +428,6 @@ class SendFileTest(FileTransferTest):
                               path=self.channel.__dbus_object_path__)
             except TimeoutError, e:
                 tries += 1
-                print "Timeout exception"
                 if tries >= 3:
                     raise e
 
@@ -488,7 +483,6 @@ def exec_file_transfer_test(send_cls, recv_cls, file = None):
                     break
 
                 if target_set == False:
-                    print "Setting target"
                     send.set_target(recv.self_handle_name)
                     recv.set_target(send.self_handle_name)
                     target_set = True

@@ -1,5 +1,7 @@
 """Test IBB stream tube support in the context of a MUC."""
 
+import sys
+
 import dbus
 
 from servicetest import call_async, EventPattern, EventProtocolClientFactory, unwrap, assertEquals
@@ -168,6 +170,8 @@ def test(q, bus, conn, stream, bytestream_cls,
     assert props[cs.TARGET_ID] == 'chat@conf.localhost'
     assert props[cs.STREAM_TUBE_SERVICE] == 'echo'
     assert props[cs.TUBE_PARAMETERS] == {'s': 'hello', 'ay': 'hello', 'u': 123, 'i': -123}
+    assert access_control in \
+            props[cs.STREAM_TUBE_SUPPORTED_SOCKET_TYPES][address_type]
 
     tube_chan = bus.get_object(conn.bus_name, path)
     tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE,

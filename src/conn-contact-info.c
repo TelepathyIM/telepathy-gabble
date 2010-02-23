@@ -54,11 +54,18 @@ typedef enum {
 } FieldBehaviour;
 
 typedef struct {
+    /* Name in XEP-0054, vcard-temp (upper-case as per the DTD) */
     const gchar *xmpp_name;
+    /* Name in Telepathy's vCard representation (lower-case), or NULL
+     * to lower-case the XEP-0054 name automatically */
     const gchar *vcard_name;
+    /* General type of field */
     FieldBehaviour behaviour;
+    /* Telepathy flags for this field (none are applicable to XMPP yet) */
     GabbleContactInfoFieldFlags tp_flags;
+    /* Valid values for the TYPE type-parameter, in upper case */
     const gchar * const types[MAX_TYPES];
+    /* Child elements for structured/repeating fields, in upper case */
     const gchar * const elements[MAX_ELEMENTS];
 } VCardField;
 

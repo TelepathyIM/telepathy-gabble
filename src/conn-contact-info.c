@@ -54,7 +54,8 @@ typedef enum {
 } FieldBehaviour;
 
 typedef struct {
-    const gchar *name;
+    const gchar *xmpp_name;
+    const gchar *vcard_name;
     FieldBehaviour behaviour;
     GabbleContactInfoFieldFlags tp_flags;
     const gchar * const types[MAX_TYPES];
@@ -63,52 +64,55 @@ typedef struct {
 
 static VCardField known_fields[] = {
     /* Simple fields */
-      { "FN", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "BDAY", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "JABBERID", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "MAILER", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "TZ", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "TITLE", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "ROLE", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "NOTE", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "PRODID", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "REV", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "SORT-STRING", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "UID", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "URL", FIELD_SIMPLE, 0, { NULL }, { NULL } },
-      { "DESC", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "FN", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "BDAY", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "MAILER", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "TZ", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "TITLE", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "ROLE", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "NOTE", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "PRODID", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "REV", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "SORT-STRING", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "UID", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "URL", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
 
-      { "NICKNAME", FIELD_NICKNAME, 0, { NULL }, { NULL } },
+    /* Simple fields which are Jabber-specific */
+      { "JABBERID", "x-jabber", FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "DESC", "x-desc", FIELD_SIMPLE, 0, { NULL }, { NULL } },
 
-      { "N", FIELD_STRUCTURED_ONCE, 0, { NULL },
+    /* NICKNAME is special - multiple comma-separated values */
+      { "NICKNAME", NULL, FIELD_NICKNAME, 0, { NULL }, { NULL } },
+
+    /* Structured fields */
+      { "N", NULL, FIELD_STRUCTURED_ONCE, 0, { NULL },
           { "FAMILY", "GIVEN", "MIDDLE", "PREFIX", "SUFFIX", NULL } },
-
-      { "ADR", FIELD_STRUCTURED, 0,
+      { "ADR", NULL, FIELD_STRUCTURED, 0,
           { "HOME", "WORK", "POSTAL", "PARCEL", "DOM", "INTL", "PREF", NULL },
           { "POBOX", "EXTADD", "STREET", "LOCALITY", "REGION", "PCODE", "CTRY",
             NULL } },
-      { "GEO", FIELD_STRUCTURED_ONCE, 0,
+      { "GEO", NULL, FIELD_STRUCTURED_ONCE, 0,
           { NULL },
           { "LAT", "LON", NULL } },
       /* TEL and EMAIL are like structured fields: they have exactly one child
        * per occurrence */
-      { "TEL", FIELD_STRUCTURED, 0,
+      { "TEL", NULL, FIELD_STRUCTURED, 0,
           { "HOME", "WORK", "VOICE", "FAX", "PAGER", "MSG", "CELL", "VIDEO",
             "BBS", "MODEM", "ISDN", "PCS", "PREF", NULL },
           { "NUMBER", NULL } },
-      { "EMAIL", FIELD_STRUCTURED, 0,
+      { "EMAIL", NULL, FIELD_STRUCTURED, 0,
           { "HOME", "WORK", "INTERNET", "PREF", "X400", NULL },
           { "USERID", NULL } },
 
-      { "LABEL", FIELD_REPEATING, 0,
+    /* Structured fields where the last element can repeat */
+      { "LABEL", NULL, FIELD_REPEATING, 0,
           { "HOME", "WORK", "POSTAL", "PARCEL", "DOM", "INTL", "PREF", NULL },
           { "LINE", NULL } },
-
-      { "ORG", FIELD_REPEATING, 0,
+      { "ORG", NULL, FIELD_REPEATING, 0,
           { NULL },
           { "ORGNAME", "ORGUNIT", NULL } },
 
-      /* Things we don't handle: */
+    /* Things we don't handle: */
 
       /* PHOTO: we treat it as the avatar instead */
 
@@ -123,8 +127,8 @@ static VCardField known_fields[] = {
 
       { NULL }
 };
-static GHashTable *known_fields_by_uc = NULL;
-static GHashTable *known_fields_by_lc = NULL;
+static GHashTable *known_fields_xmpp = NULL;
+static GHashTable *known_fields_vcard = NULL;
 
 static GPtrArray *supported_fields = NULL;
 
@@ -237,7 +241,7 @@ _parse_vcard (LmMessageNode *vcard_node,
       if (!node->name || strcmp (node->name, "") == 0)
         continue;
 
-      field = g_hash_table_lookup (known_fields_by_uc, node->name);
+      field = g_hash_table_lookup (known_fields_xmpp, node->name);
 
       if (field == NULL)
         {
@@ -665,7 +669,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       if (field_values)
         n_field_values = g_strv_length (field_values);
 
-      field = g_hash_table_lookup (known_fields_by_lc, field_name);
+      field = g_hash_table_lookup (known_fields_vcard, field_name);
 
       if (field == NULL)
         {
@@ -773,15 +777,22 @@ conn_contact_info_class_init (GabbleConnectionClass *klass)
 
   /* These are never freed; they're only allocated once per run of Gabble.
    * The destructor in the latter is only set for completeness */
-  known_fields_by_uc = g_hash_table_new (g_str_hash, g_str_equal);
-  known_fields_by_lc = g_hash_table_new_full (g_str_hash, g_str_equal,
+  known_fields_xmpp = g_hash_table_new (g_str_hash, g_str_equal);
+  known_fields_vcard = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, NULL);
 
-  for (field = known_fields; field->name != NULL; field++)
+  for (field = known_fields; field->xmpp_name != NULL; field++)
     {
-      g_hash_table_insert (known_fields_by_uc, (gchar *) field->name, field);
-      g_hash_table_insert (known_fields_by_lc,
-          g_ascii_strdown (field->name, -1), field);
+      gchar *vcard_name;
+
+      if (field->vcard_name != NULL)
+        vcard_name = g_strdup (field->vcard_name);
+      else
+        vcard_name = g_ascii_strdown (field->xmpp_name, -1);
+
+      g_hash_table_insert (known_fields_xmpp,
+          (gchar *) field->xmpp_name, field);
+      g_hash_table_insert (known_fields_vcard, vcard_name, field);
     }
 
   supported_fields = dbus_g_type_specialized_construct (

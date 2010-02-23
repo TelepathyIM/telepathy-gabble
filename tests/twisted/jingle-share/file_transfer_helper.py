@@ -460,25 +460,32 @@ def exec_file_transfer_test(send_cls, recv_cls, file = None):
             send_action = 0
             recv_action = 0
             target_set = False
+            done = False
             while send_action < len(send._actions) or \
                     recv_action < len(recv._actions):
                 for i in range(send_action, len(send._actions)):
                     action = send._actions[i]
                     if action is None:
                         break
-                    print "Running Send action %s" % action.__name__
-                    action()
-                    print "Action finished"
+                    done = action()
+                    if done is True:
+                        break
                 send_action = i + 1
+
+                if done is True:
+                    break
 
                 for i in range(recv_action, len(recv._actions)):
                     action = recv._actions[i]
                     if action is None:
                         break
-                    print "Running Recv action %s" % action.__name__
-                    action()
-                    print "Action finished"
+                    done =  action()
+                    if done is True:
+                        break
                 recv_action = i + 1
+
+                if done is True:
+                    break
 
                 if target_set == False:
                     print "Setting target"

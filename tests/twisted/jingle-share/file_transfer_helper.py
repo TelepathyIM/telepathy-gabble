@@ -439,55 +439,51 @@ class SendFileTest(FileTransferTest):
         assert self.count == to_send
 
 
-def exec_file_transfer_test(send_cls, recv_cls):
-        for addr_type, access_control, access_control_param in [
-                (cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
-                (cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, ""),
-                (cs.SOCKET_ADDRESS_TYPE_IPV6, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")]:
+def exec_file_transfer_test(send_cls, recv_cls, file = None):
+        addr_type = cs.SOCKET_ADDRESS_TYPE_IPV4
+        access_control = cs.SOCKET_ACCESS_CONTROL_LOCALHOST
+        access_control_param = ""
 
+        if file is None:
             file = File()
-            def test(q, bus, conns, streams):
-                conn1, conn2 = conns
-                stream1, stream2 = streams
-                send = send_cls(file, addr_type, access_control,
-                                access_control_param)
-                recv = recv_cls(file, addr_type, access_control,
-                                access_control_param)
-                send.test(q, bus, conn1, stream1)
-                recv.test(q, bus, conn2, stream2)
 
-                send_action = 0
-                recv_action = 0
-                target_set = False
-                while send_action < len(send._actions) or \
-                        recv_action < len(recv._actions):
-                    for i in range(send_action, len(send._actions)):
-                        action = send._actions[i]
-                        if action is None:
-                            break
-                        print "Running Send action %s" % action.__name__
-                        action()
-                        print "Action finished"
-                    send_action = i + 1
+        def test(q, bus, conns, streams):
+            conn1, conn2 = conns
+            stream1, stream2 = streams
+            send = send_cls(file, addr_type, access_control,
+                            access_control_param)
+            recv = recv_cls(file, addr_type, access_control,
+                            access_control_param)
+            send.test(q, bus, conn1, stream1)
+            recv.test(q, bus, conn2, stream2)
 
-                    for i in range(recv_action, len(recv._actions)):
-                        action = recv._actions[i]
-                        if action is None:
-                            break
-                        print "Running Recv action %s" % action.__name__
-                        action()
-                        print "Action finished"
-                    recv_action = i + 1
+            send_action = 0
+            recv_action = 0
+            target_set = False
+            while send_action < len(send._actions) or \
+                    recv_action < len(recv._actions):
+                for i in range(send_action, len(send._actions)):
+                    action = send._actions[i]
+                    if action is None:
+                        break
+                    print "Running Send action %s" % action.__name__
+                    action()
+                    print "Action finished"
+                send_action = i + 1
 
-                    if target_set == False:
-                        print "Setting target"
-                        send.set_target(recv.self_handle_name)
-                        recv.set_target(send.self_handle_name)
-                        target_set = True
+                for i in range(recv_action, len(recv._actions)):
+                    action = recv._actions[i]
+                    if action is None:
+                        break
+                    print "Running Recv action %s" % action.__name__
+                    action()
+                    print "Action finished"
+                recv_action = i + 1
 
-            exec_test(test, num_instances=2)
+                if target_set == False:
+                    print "Setting target"
+                    send.set_target(recv.self_handle_name)
+                    recv.set_target(send.self_handle_name)
+                    target_set = True
 
-            # test resume
-            #file.offset = 5
-            #test = test_cls(file, addr_type, access_control, access_control_param)
-            #exec_test(test.test)
+        exec_test(test, num_instances=2)

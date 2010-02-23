@@ -578,15 +578,17 @@ _insert_edit_info (GSList *edits,
       edit_type, NULL);
   edit_info->to_edit = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_free);
+
   for (p = field_params; *p != NULL; ++p)
     {
-      /* params should be in the format type=foo */
-      gchar *delim = strchr (*p, '=');
-      if (!delim)
+      /* all the type parameters that vcard-temp supports should be in the
+       * format type=foo in Telepathy; in particular, we don't support
+       * language=foo */
+      if (!g_str_has_prefix (*p, "type="))
         continue;
 
       g_hash_table_insert (edit_info->to_edit,
-          g_ascii_strup (delim + 1, -1),
+          g_ascii_strup (*p + strlen ("type="), -1),
           NULL);
     }
 

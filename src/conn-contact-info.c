@@ -781,8 +781,12 @@ conn_contact_info_class_init (GabbleConnectionClass *klass)
   known_fields_vcard = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, NULL);
 
+  supported_fields = dbus_g_type_specialized_construct (
+          GABBLE_ARRAY_TYPE_FIELD_SPECS);
+
   for (field = known_fields; field->xmpp_name != NULL; field++)
     {
+      GValueArray *va;
       gchar *vcard_name;
 
       if (field->vcard_name != NULL)
@@ -790,13 +794,18 @@ conn_contact_info_class_init (GabbleConnectionClass *klass)
       else
         vcard_name = g_ascii_strdown (field->xmpp_name, -1);
 
+      va = tp_value_array_build (4,
+          G_TYPE_STRING, vcard_name,
+          G_TYPE_STRV, NULL,            /* any type-param is allowed for now */
+          G_TYPE_UINT, field->tp_flags,
+          G_TYPE_UINT, G_MAXUINT32,     /* maximum occurrences */
+          G_TYPE_INVALID);
+
+      g_ptr_array_add (supported_fields, va);
       g_hash_table_insert (known_fields_xmpp,
           (gchar *) field->xmpp_name, field);
       g_hash_table_insert (known_fields_vcard, vcard_name, field);
     }
-
-  supported_fields = dbus_g_type_specialized_construct (
-          GABBLE_ARRAY_TYPE_FIELD_SPECS);
 }
 
 void

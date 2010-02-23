@@ -556,15 +556,17 @@ static GSList *
 _insert_edit_info (GSList *edits,
                    const VCardField *field,
                    const gchar * const * field_params,
-                   const gchar * const * field_values,
-                   const gchar * const * elements,
-                   gboolean accept_multiple)
+                   const gchar * const * field_values)
 {
   GabbleVCardManagerEditInfo *edit_info;
   const gchar * const * p;
   guint i;
   guint n_field_values = g_strv_length ((gchar **) field_values);
-  guint n_elements = g_strv_length ((gchar **) elements);
+  guint n_elements = g_strv_length ((gchar **) field->elements);
+  GabbleVCardEditType edit_type = GABBLE_VCARD_EDIT_APPEND;
+
+  if (field->behaviour == FIELD_STRUCTURED_ONCE)
+    edit_type = GABBLE_VCARD_EDIT_REPLACE;
 
   if (n_field_values != n_elements)
     {
@@ -573,8 +575,7 @@ _insert_edit_info (GSList *edits,
     }
 
   edit_info = gabble_vcard_manager_edit_info_new (field->xmpp_name, NULL,
-      accept_multiple ? GABBLE_VCARD_EDIT_APPEND : GABBLE_VCARD_EDIT_REPLACE,
-      NULL);
+      edit_type, NULL);
   edit_info->to_edit = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_free);
   for (p = field_params; *p != NULL; ++p)
@@ -590,7 +591,7 @@ _insert_edit_info (GSList *edits,
     }
 
   for (i = 0; i < n_elements; ++i)
-    g_hash_table_insert (edit_info->to_edit, g_strdup (elements[i]),
+    g_hash_table_insert (edit_info->to_edit, g_strdup (field->elements[i]),
         g_strdup (field_values[i]));
 
   return g_slist_append (edits, edit_info);
@@ -701,10 +702,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
         case FIELD_REPEATING:
           edits = _insert_edit_info (edits, field,
               (const gchar * const *) field_params,
-              (const gchar * const *) field_values,
-              field->elements,
-              /* N can't be repeated */
-              (field->behaviour != FIELD_STRUCTURED_ONCE));
+              (const gchar * const *) field_values);
           break;
 
         case FIELD_NICKNAME:

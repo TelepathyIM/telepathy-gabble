@@ -61,6 +61,7 @@ class FileTransferTest(object):
         self.address_type = address_type
         self.access_control = access_control
         self.access_control_param = access_control_param
+        self.closed = True
 
     def connect(self):
         self.conn.Connect()
@@ -104,10 +105,16 @@ class FileTransferTest(object):
         self.ft_channel = dbus.Interface(ft_chan, cs.CHANNEL_TYPE_FILE_TRANSFER)
         self.ft_props = dbus.Interface(ft_chan, cs.PROPERTIES_IFACE)
 
+        self.closed = False
+        def channel_closed_cb():
+            self.closed = True
+        self.channel.connect_to_signal('Closed', channel_closed_cb)
+
     def close_channel(self):
-        self.channel.Close()
-        self.q.expect('dbus-signal', signal='Closed',
-                      path=self.channel.__dbus_object_path__)
+        if self.closed is False:
+            self.channel.Close()
+            self.q.expect('dbus-signal', signal='Closed',
+                          path=self.channel.__dbus_object_path__)
 
     def done(self):
         pass

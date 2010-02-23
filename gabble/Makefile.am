@@ -1,4 +1,4 @@
-if ENABLE_PLUGINS
+if ENABLE_PLUGIN_API
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = telepathy-gabble.pc
 

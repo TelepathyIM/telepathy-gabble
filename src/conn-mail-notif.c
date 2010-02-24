@@ -119,8 +119,8 @@ unsubscribe (GabbleConnection *conn,
         }
     }
   else
-    g_hash_table_insert (conn->mail_subscribers, g_strdup(name),
-        GUINT_TO_POINTER(--count));
+    g_hash_table_insert (conn->mail_subscribers, g_strdup (name),
+        GUINT_TO_POINTER (--count));
 }
 
 
@@ -153,7 +153,7 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
   gchar *sender;
   guint count;
 
-  if (check_supported_or_dbus_return(conn, context))
+  if (check_supported_or_dbus_return (conn, context))
       return;
 
   sender = dbus_g_method_get_sender (context);
@@ -170,7 +170,7 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
   if (count == 1)
     {
       if (g_hash_table_size (conn->mail_subscribers) == 1)
-        update_unread_mails(conn);
+        update_unread_mails (conn);
 
       tp_dbus_daemon_watch_name_owner (conn->daemon, sender,
           sender_name_owner_changed, conn, NULL);
@@ -188,7 +188,7 @@ gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotificati
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   gchar *sender;
 
-  if (check_supported_or_dbus_return(conn, context))
+  if (check_supported_or_dbus_return (conn, context))
       return;
 
   sender = dbus_g_method_get_sender (context);
@@ -222,7 +222,7 @@ gabble_mail_notification_request_inbox_url (
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   GValueArray *result;
 
-  if (check_supported_or_dbus_return(conn, context))
+  if (check_supported_or_dbus_return (conn, context))
     return;
 
   /* TODO Make sure we don't have to authenticate again */
@@ -251,7 +251,7 @@ gabble_mail_notification_request_mail_url (
   GValueArray *result;
   gchar *url = NULL;
 
-  if (check_supported_or_dbus_return(conn, context))
+  if (check_supported_or_dbus_return (conn, context))
     return;
 
   /* TODO Make sure we don't have to authenticate again */
@@ -297,7 +297,7 @@ sender_each (WockyXmppNode *node,
           1, wocky_xmpp_node_get_attribute (node, "address") ?: "",
           G_MAXUINT);
 
-      g_ptr_array_add (senders, g_value_get_boxed(&sender));
+      g_ptr_array_add (senders, g_value_get_boxed (&sender));
       g_value_unset (&sender);
     }
   return TRUE;
@@ -546,7 +546,7 @@ new_mail_handler (WockyPorter *porter,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  if (g_hash_table_size(conn->mail_subscribers) > 0)
+  if (g_hash_table_size (conn->mail_subscribers) > 0)
     {
       DEBUG ("Got Google <new-mail> notification");
       update_unread_mails (conn);
@@ -652,10 +652,10 @@ conn_mail_notif_iface_init (gpointer g_iface,
 
 #define IMPLEMENT(x) gabble_svc_connection_interface_mail_notification_implement_##x (\
     klass, gabble_mail_notification_##x)
-  IMPLEMENT(subscribe);
-  IMPLEMENT(unsubscribe);
-  IMPLEMENT(request_inbox_url);
-  IMPLEMENT(request_mail_url);
+  IMPLEMENT (subscribe);
+  IMPLEMENT (unsubscribe);
+  IMPLEMENT (request_inbox_url);
+  IMPLEMENT (request_mail_url);
 #undef IMPLEMENT
 }
 
@@ -723,7 +723,7 @@ conn_mail_notif_properties_getter (GObject *object,
         conn->unread_mails ? g_hash_table_size (conn->unread_mails) : 0);
   else if (name == prop_quarks[PROP_UNREAD_MAILS])
     {
-      GPtrArray *mails = get_unread_mails(conn);
+      GPtrArray *mails = get_unread_mails (conn);
       g_value_set_boxed (value, mails);
       g_ptr_array_free (mails, TRUE);
     }

@@ -1,3 +1,4 @@
+import dbus
 import constants as cs
 
 from servicetest import EventPattern
@@ -61,6 +62,19 @@ class SendFileDeclined (SendFileTest):
         state, reason = state_event.args
         assert state == cs.FT_STATE_CANCELLED
         assert reason == cs.FT_STATE_CHANGE_REASON_REMOTE_STOPPED
+
+        transferred = self.ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER,
+                                        'TransferredBytes')
+        # no byte has been transferred as the file was declined
+        assert transferred == 0
+
+        # try to provide the file
+        try:
+            self.provide_file()
+        except dbus.DBusException, e:
+            assert e.get_dbus_name() == cs.NOT_AVAILABLE
+        else:
+            assert False
 
 
 if __name__ == '__main__':

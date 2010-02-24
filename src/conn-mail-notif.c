@@ -119,8 +119,10 @@ unsubscribe (GabbleConnection *conn,
         }
     }
   else
-    g_hash_table_insert (conn->mail_subscribers, g_strdup (name),
-        GUINT_TO_POINTER (--count));
+    {
+      g_hash_table_insert (conn->mail_subscribers, g_strdup (name),
+          GUINT_TO_POINTER (--count));
+    }
 }
 
 
@@ -719,8 +721,10 @@ conn_mail_notif_properties_getter (GObject *object,
         g_value_set_uint (value, 0);
     }
   else if (name == prop_quarks[PROP_UNREAD_MAIL_COUNT])
-    g_value_set_uint (value,
-        conn->unread_mails ? g_hash_table_size (conn->unread_mails) : 0);
+    {
+      g_value_set_uint (value,
+          conn->unread_mails ? g_hash_table_size (conn->unread_mails) : 0);
+    }
   else if (name == prop_quarks[PROP_UNREAD_MAILS])
     {
       GPtrArray *mails = get_unread_mails (conn);
@@ -741,5 +745,7 @@ conn_mail_notif_properties_getter (GObject *object,
       g_value_take_string (value, address);
     }
   else
-    g_assert (!"Unknown mail notification property, please file a bug.");
+    {
+      g_assert (!"Unknown mail notification property, please file a bug.");
+    }
 }

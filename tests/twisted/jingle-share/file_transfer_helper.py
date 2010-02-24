@@ -243,7 +243,7 @@ class ReceiveFileTest(FileTransferTest):
                          args=[cs.FT_STATE_OPEN, cs.FT_STATE_CHANGE_REASON_NONE]))
 
         offset = offset_event.args[0]
-        assert offset == self.file.offset
+        assert offset == 0
 
         state, reason = state_event.args
         assert state == cs.FT_STATE_OPEN
@@ -260,7 +260,7 @@ class ReceiveFileTest(FileTransferTest):
         # Read the file from Gabble's socket
         data = ''
         read = 0
-        to_receive = self.file.size - self.file.offset
+        to_receive = self.file.size
 
         e = self.q.expect('dbus-signal', signal='TransferredBytesChanged',
                           path=self.channel.__dbus_object_path__)
@@ -271,7 +271,7 @@ class ReceiveFileTest(FileTransferTest):
             if len(received) == 0:
                 break
             data += received
-        assert data == self.file.data[self.file.offset:]
+        assert data == self.file.data
 
         while count < to_receive:
             # Catch TransferredBytesChanged until we transfered all the data
@@ -371,9 +371,14 @@ class SendFileTest(FileTransferTest):
 
     def provide_file(self):
         self.open = False
+        self.offset_defined = False
         def ft_state_changed_cb(state, reason):
             if state == cs.FT_STATE_OPEN:
                 self.open = True
+        def initial_offset_defined_cb(offset):
+            self.offset_defined = True
+            assert offset == 0, offset
+
         self.ft_channel.connect_to_signal('FileTransferStateChanged',
                                           ft_state_changed_cb)
 
@@ -397,12 +402,15 @@ class SendFileTest(FileTransferTest):
             self.q.expect('dbus-signal', signal='FileTransferStateChanged',
                           path=self.channel.__dbus_object_path__,
                           args=[cs.FT_STATE_OPEN, cs.FT_STATE_CHANGE_REASON_NONE])
+
+        assert self.offset_defined == True
+
         s = self.create_socket()
         s.connect(self.address)
-        s.send(self.file.data[self.file.offset:])
+        s.send(self.file.data)
 
     def wait_for_completion(self):
-        to_send = self.file.size - self.file.offset
+        to_send = self.file.size
         self.count = 0
 
         def bytes_changed_cb(bytes):

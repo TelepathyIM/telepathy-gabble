@@ -488,8 +488,6 @@ store_unread_mails (GabbleConnection *conn,
         conn, g_hash_table_size (conn->unread_mails), data.mails_added,
         (const char **)mails_removed->pdata);
 
-  DEBUG ("reached");
-
   g_ptr_array_free (data.mails_added, TRUE);
   g_ptr_array_free (mails_removed, TRUE);
 }
@@ -501,7 +499,6 @@ query_unread_mails_cb (GObject *source_object,
     gpointer user_data)
 {
   GError *error = NULL;
-  gchar *result_str;
   WockyXmppNode *node;
   WockyPorter *porter = WOCKY_PORTER (source_object);
   WockyXmppStanza *reply = wocky_porter_send_iq_finish (porter, res, &error);
@@ -514,10 +511,6 @@ query_unread_mails_cb (GObject *source_object,
     }
 
   DEBUG ("Got unread mail details");
-
-  result_str = wocky_xmpp_node_to_string (reply->node);
-  DEBUG ("%s", result_str);
-  g_free (result_str);
 
   node = wocky_xmpp_node_get_child (reply->node, "mailbox");
 

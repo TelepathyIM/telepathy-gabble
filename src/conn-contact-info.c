@@ -561,25 +561,26 @@ _insert_edit_info (GSList *edits,
 
   edit_info = gabble_vcard_manager_edit_info_new (field->xmpp_name, NULL,
       edit_type, NULL);
-  edit_info->to_edit = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, g_free);
 
   for (p = field_params; *p != NULL; ++p)
     {
+      gchar *tmp;
+
       /* all the type parameters that vcard-temp supports should be in the
        * format type=foo in Telepathy; in particular, we don't support
        * language=foo */
       if (!g_str_has_prefix (*p, "type="))
         continue;
 
-      g_hash_table_insert (edit_info->to_edit,
-          g_ascii_strup (*p + strlen ("type="), -1),
-          NULL);
+      tmp = g_ascii_strup (*p + strlen ("type="), -1);
+      gabble_vcard_manager_edit_info_add_child (edit_info,
+          tmp, NULL);
+      g_free (tmp);
     }
 
   for (i = 0; i < n_elements; ++i)
-    g_hash_table_insert (edit_info->to_edit, g_strdup (field->elements[i]),
-        g_strdup (field_values[i]));
+    gabble_vcard_manager_edit_info_add_child (edit_info,
+        field->elements[i], field_values[i]);
 
   return g_slist_append (edits, edit_info);
 }

@@ -47,6 +47,47 @@ static guint request_wait_delay = 5 * 60;
 
 static const gchar *NO_ALIAS = "none";
 
+typedef struct {
+    gchar *key;
+    gchar *value;
+} GabbleVCardChild;
+
+static GabbleVCardChild *
+gabble_vcard_child_new (const gchar *key,
+    const gchar *value)
+{
+  GabbleVCardChild *child = g_slice_new (GabbleVCardChild);
+
+  child->key = g_strdup (key);
+  child->value = g_strdup (value);
+  return child;
+}
+
+static void
+gabble_vcard_child_free (GabbleVCardChild *child)
+{
+  g_free (child->key);
+  g_free (child->value);
+  g_slice_free (GabbleVCardChild, child);
+}
+
+struct _GabbleVCardManagerEditInfo {
+    /* name of element to edit */
+    gchar *element_name;
+
+    /* value of element to edit or NULL if no value should be used */
+    gchar *element_value;
+
+    /* list of GabbleVCardChild */
+    GList *children;
+
+    /* If REPLACE, the first element with this name (if any) will be updated;
+     * if APPEND, an element with this name will be added;
+     * if DELETE, all elements with this name will be removed.
+     */
+    GabbleVCardEditType edit_type;
+};
+
 /* signal enum */
 enum
 {
@@ -949,6 +990,7 @@ patch_vcard_foreach (gpointer data, gpointer user_data)
   GabbleVCardManagerEditInfo *info = data;
   LmMessageNode *vcard_node = user_data;
   LmMessageNode *node;
+  GList *iter;
 
   node = lm_message_node_get_child (vcard_node, info->element_name);
 
@@ -969,8 +1011,12 @@ patch_vcard_foreach (gpointer data, gpointer user_data)
     node = lm_message_node_add_child (vcard_node,
         info->element_name, info->element_value);
 
-  if (info->to_edit)
-    g_hash_table_foreach (info->to_edit, patch_vcard_node_foreach, node);
+  for (iter = info->children; iter != NULL; iter = iter->next)
+    {
+      GabbleVCardChild *child = iter->data;
+
+      patch_vcard_node_foreach (child->key, child->value, node);
+    }
 }
 
 /* Loudmouth hates me. The feelings are mutual.
@@ -1067,16 +1113,16 @@ vcard_node_changed (GabbleConnection *conn,
           return TRUE;
         }
 
-      if (edit->to_edit != NULL)
+      if (edit->children != NULL)
         {
-          GHashTableIter iter;
-          gpointer k, v;
+          GList *iter;
 
-          g_hash_table_iter_init (&iter, edit->to_edit);
-
-          while (g_hash_table_iter_next (&iter, &k, &v))
+          for (iter = edit->children; iter != NULL; iter = iter->next)
             {
-              LmMessageNode *child = lm_message_node_get_child (node, k);
+              GabbleVCardChild *pair = iter->data;
+              const gchar *v = pair->value;
+              LmMessageNode *child = lm_message_node_get_child (node,
+                  pair->key);
 
               node_value = lm_message_node_get_value (child);
 
@@ -1089,7 +1135,7 @@ vcard_node_changed (GabbleConnection *conn,
               if (tp_strdiff (node_value, v))
                 {
                   DEBUG ("vcard node %s/%s changed, vcard needs update",
-                      edit->element_name, (const gchar *) k);
+                      edit->element_name, pair->key);
                   return TRUE;
                 }
             }
@@ -1706,18 +1752,12 @@ gabble_vcard_manager_edit_info_new (const gchar *element_name,
   info->element_name = g_strdup (element_name);
   info->element_value = g_strdup (element_value);
   info->edit_type = edit_type;
-  info->to_edit = NULL;
+  info->children = NULL;
 
   va_start (ap, edit_type);
   while ((key = va_arg (ap, const gchar *))) {
       value = va_arg (ap, const gchar *);
-
-      if (!info->to_edit)
-        info->to_edit = g_hash_table_new_full (g_str_hash, g_str_equal,
-            g_free, g_free);
-
-      g_hash_table_insert (info->to_edit, g_strdup (key),
-          g_strdup (value));
+      gabble_vcard_manager_edit_info_add_child (info, key, value);
   }
   va_end (ap);
 
@@ -1725,11 +1765,21 @@ gabble_vcard_manager_edit_info_new (const gchar *element_name,
 }
 
 void
+gabble_vcard_manager_edit_info_add_child (
+    GabbleVCardManagerEditInfo *edit_info,
+    const gchar *key,
+    const gchar *value)
+{
+  edit_info->children = g_list_append (edit_info->children,
+      gabble_vcard_child_new (key, value));
+}
+
+void
 gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info)
 {
   g_free (info->element_name);
   g_free (info->element_value);
-  if (info->to_edit)
-    g_hash_table_destroy (info->to_edit);
+  g_list_foreach (info->children, (GFunc) gabble_vcard_child_free, NULL);
+  g_list_free (info->children);
   g_slice_free (GabbleVCardManagerEditInfo, info);
 }

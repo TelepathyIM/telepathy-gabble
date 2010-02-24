@@ -85,23 +85,6 @@ typedef enum {
     GABBLE_VCARD_EDIT_DELETE
 } GabbleVCardEditType;
 
-struct _GabbleVCardManagerEditInfo {
-    /* name of element to edit */
-    gchar *element_name;
-
-    /* value of element to edit or NULL if no value should be used */
-    gchar *element_value;
-
-    /* list of elements (hash gchar/gchar) to edit/add */
-    GHashTable *to_edit;
-
-    /* If REPLACE, the first element with this name (if any) will be updated;
-     * if APPEND, an element with this name will be added;
-     * if DELETE, all elements with this name will be removed.
-     */
-    GabbleVCardEditType edit_type;
-};
-
 typedef void (*GabbleVCardManagerCb)(GabbleVCardManager *self,
                                     GabbleVCardManagerRequest *request,
                                     TpHandle handle,
@@ -163,6 +146,11 @@ GabbleVCardManagerEditInfo *gabble_vcard_manager_edit_info_new (
     const gchar *element_value,
     GabbleVCardEditType edit_type,
     ...) G_GNUC_NULL_TERMINATED;
+
+void gabble_vcard_manager_edit_info_add_child (
+    GabbleVCardManagerEditInfo *edit_info, const gchar *key,
+    const gchar *value);
+
 void gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info);
 
 /* For unit tests only */

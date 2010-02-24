@@ -30,6 +30,10 @@ def test(q, bus, conn, stream):
     n.addElement('GIVEN', content='Bob')
     result.firstChildElement().addElement('NICKNAME',
         content=r'bob,bob1\,,bob2,bob3\,bob4')
+    label = result.firstChildElement().addElement('LABEL')
+    label.addElement('LINE', content='42 West Wallaby Street')
+    label.addElement('LINE', content="Bishop's Stortford\n")
+    label.addElement('LINE', content='Huntingdon')
     stream.send(result)
 
     q.expect('dbus-signal', signal='ContactInfoChanged')
@@ -38,7 +42,12 @@ def test(q, bus, conn, stream):
     assert conn.ContactInfo.GetContactInfo([handle]) == \
         {handle: [(u'fn', [], [u'Bob']),
                   (u'n', [], [u'', u'Bob', u'', u'', u'']),
-                  (u'nickname', [], [r'bob,bob1\,,bob2,bob3\,bob4'])]}
+                  (u'nickname', [], [r'bob,bob1\,,bob2,bob3\,bob4']),
+                  # LABEL comes out as a single blob of text
+                  (u'label', [], ['42 West Wallaby Street\n'
+                      "Bishop's Stortford\n"
+                      'Huntingdon\n']),
+                  ]}
 
 
 if __name__ == '__main__':
